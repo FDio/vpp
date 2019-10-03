@@ -992,7 +992,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0015")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
@@ -1014,7 +1014,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0016")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
@@ -1036,7 +1036,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0017")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
@@ -1058,7 +1058,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0018")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
@@ -1081,7 +1081,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0019")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.DENY, port,
@@ -1108,7 +1108,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0020")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.DENY, port,
@@ -1136,7 +1136,7 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0021")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.DENY, port,
@@ -1162,7 +1162,7 @@ class TestACLplugin(VppTestCase):
         """ VPP-687 zero length udp ipv4 packet"""
         self.logger.info("ACLP_TEST_START_0022")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
@@ -1197,7 +1197,7 @@ class TestACLplugin(VppTestCase):
         """ VPP-687 zero length udp ipv6 packet"""
         self.logger.info("ACLP_TEST_START_0023")
 
-        port = random.randint(0, 65535)
+        port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
         rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
