@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "17c891e6_78d293d7",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2356,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-10-03T18:49:45Z",
+      "side": 1,
+      "message": "Why is the same if logic here not present in the ip4 portion above?  Maybe this explain why IPSec test did not have the right checksum?",
+      "range": {
+        "startLine": 2356,
+        "startChar": 39,
+        "endLine": 2356,
+        "endChar": 63
+      },
+      "revId": "df8988fefe9e73e7e88eacdd79842fe76d0e915a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
