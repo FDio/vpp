@@ -64,7 +64,7 @@ prepare_rewrite (ip6_address_t src_addr, ip6_address_t * sid_list,
   iph->src_address = src_addr;
   iph->dst_address = sid_list[0];
   iph->payload_length = sr_hdr_len;
-  iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
+  iph->hop_limit = sr_get_hop_limit ();
 
   if (num_sids > 1)
     {
