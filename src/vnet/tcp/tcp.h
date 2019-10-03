@@ -120,6 +120,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(RATE_SAMPLE, "Conn does rate sampling")	\
   _(TRACK_BURST, "Track burst")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
+  _(NO_CSUM_OFFLOAD, "No Checksum Offload")     \
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -1233,6 +1234,7 @@ vlib_buffer_push_tcp_net_order (vlib_buffer_t * b, u16 sp, u16 dp, u32 seq,
   th->window = wnd;
   th->checksum = 0;
   th->urgent_pointer = 0;
+  vnet_buffer (b)->l4_hdr_offset = (u8 *) th - b->data;
   return th;
 }
 
