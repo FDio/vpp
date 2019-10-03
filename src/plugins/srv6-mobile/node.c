@@ -320,7 +320,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  hdrlen = sizeof(gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
 		  len0 += hdrlen;
 	        }
-	      hdrlen += sizeof(ipv4_gtpu_header_t);
+	      hdrlen += sizeof(ip4_gtpu_header_t);
 
               vlib_buffer_advance (b0, -(word) hdrlen);
 
@@ -882,12 +882,12 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      qfi &= ~GTPU_PDU_SESSION_P_BIT_MASK;
 	      if (qfi)
 		{
-		  hdr_len = sizeof (gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
-		  len0 += hdr_len;
+		  hdrlen = sizeof (gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
+		  len0 += hdrlen;
 		}
-	      hdr_len += sizeof(ip6_gtpu_header_t);
+	      hdrlen += sizeof(ip6_gtpu_header_t);
 
-              vlib_buffer_advance (b0, -(word) hdr_len);
+              vlib_buffer_advance (b0, -(word) hdrlen);
 
               hdr0 = vlib_buffer_get_current (b0);
 
