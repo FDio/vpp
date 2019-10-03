@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "873b4391_66bfb13f",
+        "filename": "src/vnet/gso/gso.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-03T17:40:52Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 31,
+        "startChar": 2,
+        "endLine": 31,
+        "endChar": 5
+      },
+      "revId": "0c44264229f8a39f88fca344344a35b332be5e7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
