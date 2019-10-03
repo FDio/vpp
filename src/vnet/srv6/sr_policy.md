@@ -54,3 +54,7 @@ Spray policies are used for removing multicast state from a network core domain,
 In case the user decides to create an SR policy an IPv6 Source Address must be specified for the encapsulated traffic. In order to do so the user might use the following command:
     
     set sr encaps source addr XXXX::YYYY
+
+Default hop-limit for the encapsulating IPv6 header is 64. It is possible to specify custom hop-limit value from 0 to 255 using this command:
+
+    set sr encaps hop-limit N
