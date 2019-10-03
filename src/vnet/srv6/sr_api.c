@@ -50,6 +50,7 @@ _(SR_POLICY_MOD, sr_policy_mod)                         \
 _(SR_POLICY_DEL, sr_policy_del)                         \
 _(SR_STEERING_ADD_DEL, sr_steering_add_del)             \
 _(SR_SET_ENCAP_SOURCE, sr_set_encap_source)             \
+_(SR_SET_ENCAP_HOP_LIMIT, sr_set_encap_hop_limit)       \
 _(SR_LOCALSIDS_DUMP, sr_localsids_dump)                 \
 _(SR_POLICIES_DUMP, sr_policies_dump)                   \
 _(SR_STEERING_POL_DUMP, sr_steering_pol_dump)
@@ -176,6 +177,16 @@ vl_api_sr_set_encap_source_t_handler (vl_api_sr_set_encap_source_t * mp)
   sr_set_source ((ip6_address_t *) & mp->encaps_source);
 
   REPLY_MACRO (VL_API_SR_SET_ENCAP_SOURCE_REPLY);
+}
+
+static void
+vl_api_sr_set_encap_hop_limit_t_handler (vl_api_sr_set_encap_hop_limit_t * mp)
+{
+  vl_api_sr_set_encap_hop_limit_reply_t *rmp;
+  int rv = 0;
+  sr_set_hop_limit (mp->hop_limit);
+
+  REPLY_MACRO (VL_API_SR_SET_ENCAP_HOP_LIMIT_REPLY);
 }
 
 static void vl_api_sr_steering_add_del_t_handler
