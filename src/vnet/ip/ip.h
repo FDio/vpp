@@ -195,6 +195,85 @@ ip_incremental_checksum_buffer (vlib_main_t * vm,
   return sum;
 }
 
+always_inline u16
+ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
+			  ip_csum_t sum0, u32 payload_length,
+			  u8 * iph, u32 ip_header_size, u8 * l4h)
+{
+  u16 sum16;
+  u8 *data_this_buffer, length_odd;
+  u32 n_bytes_left, n_this_buffer, n_ip_bytes_this_buffer;
+
+  n_bytes_left = payload_length;
+
+  if (l4h)			/* packet l4 header and no buffer chain involved */
+    {
+      ASSERT (p0 == NULL);
+      n_this_buffer = payload_length;
+      data_this_buffer = l4h;
+    }
+  else
+    {
+      ASSERT (p0);
+      if (iph)			/* ip header pointer set to packet in buffer */
+	{
+	  ASSERT (ip_header_size);
+	  n_this_buffer = payload_length;
+	  data_this_buffer = iph + ip_header_size;	/* at l4 header */
+	  n_ip_bytes_this_buffer =
+	    p0->current_length - (((u8 *) iph - p0->data) - p0->current_data);
+	  if (PREDICT_FALSE (payload_length + ip_header_size >
+			     n_ip_bytes_this_buffer))
+	    {
+	      n_this_buffer = n_ip_bytes_this_buffer - ip_header_size;
+	      if (PREDICT_FALSE (n_this_buffer >> 31))
+		{		/*  error - ip header don't fit this buffer */
+		  ASSERT (0);
+		  return 0xfefe;
+		}
+	    }
+	}
+      else			/* packet in buffer with no ip header  */
+	{			/* buffer current pointer at l4 header */
+	  n_this_buffer = p0->current_length;
+	  data_this_buffer = vlib_buffer_get_current (p0);
+	}
+      n_this_buffer = clib_min (n_this_buffer, n_bytes_left);
+    }
+
+  while (1)
+    {
+      sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
+      n_bytes_left -= n_this_buffer;
+      if (n_bytes_left == 0)
+	break;
+
+      if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  ASSERT (0);		/* error - more buffer expected */
+	  return 0xfefe;
+	}
+
+      length_odd = (n_this_buffer & 1);
+
+      p0 = vlib_get_buffer (vm, p0->next_buffer);
+      data_this_buffer = vlib_buffer_get_current (p0);
+      n_this_buffer = clib_min (p0->current_length, n_bytes_left);
+
+      if (PREDICT_FALSE (length_odd))
+	{
+	  /* Prepend a 0 byte to maintain 2-byte checksum alignment */
+	  data_this_buffer--;
+	  n_this_buffer++;
+	  n_bytes_left++;
+	  data_this_buffer[0] = 0;
+	}
+    }
+
+  sum16 = ~ip_csum_fold (sum0);
+  return sum16;
+}
+
 void ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index);
 
 extern vlib_node_registration_t ip4_inacl_node;

@@ -683,7 +683,8 @@ vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
 		    sizeof (ip6h->src_address));
   clib_memcpy_fast (ip6h->dst_address.as_u8, dst->as_u8,
 		    sizeof (ip6h->src_address));
-  b->flags |= VNET_BUFFER_F_IS_IP6;
+  vnet_buffer (b)->l3_hdr_offset = (u8 *) ip6h - b->data;
+  b->flags |= VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
   return ip6h;
 }
