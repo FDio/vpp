@@ -263,6 +263,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      u32 hdrlen = 0;
 	      uword key;
 	      u16 port;
+	      ip4_address_t dst4;
 	      void *p;
 
               // we need to be sure there is enough space before 
@@ -291,17 +292,15 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      shift = ls0->localsid_len % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		for (index = 0; index < 4; index++) {
-		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index];
-		}
+		clib_memcpy_fast (&dst4.as_u8[0], &dst0.as_u8[offset], 4);
 
 		qfi = dst0.as_u8[offset + 4];
 
 		clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 5], 4);
 	      } else {
 		for (index = 0; index < 4; index ++) {
-		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index] << shift;
-		  hdr0->ip4.dst_address.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
+		  dst4.as_u8[index] = dst0.as_u8[offset + index] << shift;
+		  dst4.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
 		}
 
 		qfi |= dst0.as_u8[offset + 4] << shift;
@@ -322,11 +321,14 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	        }
 	      hdrlen += sizeof(ip4_gtpu_header_t);
 
+	      // IPv4 GTP-U header creation.
               vlib_buffer_advance (b0, -(word) hdrlen);
 
               hdr0 = vlib_buffer_get_current (b0);
 
               clib_memcpy_fast (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
+
+	      hdr0->ip4.dst_address.as_u32 = dst4.as_u32;
 
               hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
