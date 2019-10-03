@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "98750860_656a5243",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-03T19:59:25Z",
+      "side": 1,
+      "message": "On the else branch initialize csum to 0 and mark the buffer as having VNET_BUFFER_F_OFFLOAD_TCP_CKSUM\n\nThat is, deal with all l4 offloads here and deal with ip offload in tcp_output.",
+      "range": {
+        "startLine": 611,
+        "startChar": 2,
+        "endLine": 611,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7382da0c_558875e5",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2357,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-03T19:59:25Z",
+      "side": 1,
+      "message": "Move to tcp_compute_checksum",
+      "range": {
+        "startLine": 2353,
+        "startChar": 0,
+        "endLine": 2357,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
