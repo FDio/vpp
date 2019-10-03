@@ -45,6 +45,30 @@
       "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a612bfbd_5c14753a",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2357,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-10-03T20:04:42Z",
+      "side": 1,
+      "message": "I actually thought it is better to do it here, where setting of the offload bit is together with l3/l4_hdr_offset above, which is required for checksum offload to work properly.  Separating out setting of hdr_offset and offload bit may be more confusing to follow.",
+      "parentUuid": "7382da0c_558875e5",
+      "range": {
+        "startLine": 2353,
+        "startChar": 0,
+        "endLine": 2357,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
