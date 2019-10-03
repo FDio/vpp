@@ -1079,7 +1079,7 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (n_bytes_left == 0)
 	break;
 
-      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
+
       if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
 	  *bogus_lengthp = 1;

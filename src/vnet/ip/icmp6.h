@@ -47,8 +47,10 @@
   _ (TTL_EXPIRE_SENT, "hop limit exceeded response sent")		\
   _ (PARAM_PROBLEM_SENT, "parameter problem response sent")		\
   _ (DROP, "error message dropped")					\
-  _ (ALLOC_FAILURE, "buffer allocation failure")
-
+  _ (ALLOC_FAILURE, "buffer allocation failure")                        \
+  _ (BAD_CRC, "bad crc in packet")                                    \
+  _ (MISSING_DATA_PACKET, "missing data in packet")
+  
 
 typedef enum
 {

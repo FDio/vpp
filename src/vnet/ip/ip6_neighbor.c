@@ -1205,6 +1205,13 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    clib_net_to_host_u16 (ip0->payload_length) - sizeof (h0[0]);
 
 	  error0 = ICMP6_ERROR_NONE;
+	  if(ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0,
+						   &bogus_length))
+	      error0 = ICMP6_ERROR_BAD_CRC;
+                
+	  if(bogus_length == 1)
+	      error0 = ICMP6_ERROR_MISSING_DATA_PACKET;
+      
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  ip6_sadd_link_local =
 	    ip6_address_is_link_local_unicast (&ip0->src_address);
@@ -1547,6 +1554,14 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	    ip6_address_is_link_local_unicast (&ip0->src_address);
 
 	  error0 = ICMP6_ERROR_NONE;
+      
+	  if(ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0,
+						   &bogus_length))
+	      error0 = ICMP6_ERROR_BAD_CRC;
+                
+	  if(bogus_length == 1)
+	      error0 = ICMP6_ERROR_MISSING_DATA_PACKET;
+      
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  /* check if solicitation  (not from nd_timer node) */
