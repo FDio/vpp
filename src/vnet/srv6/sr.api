@@ -137,6 +137,18 @@ autoreply define sr_set_encap_source
   u8 encaps_source[16];
 };
 
+/** \brief IPv6 SR Set SRv6 encapsulation hop-limit
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param hop_limit is the hop-limit value to set
+*/
+autoreply define sr_set_encap_hop_limit
+{
+  u32 client_index;
+  u32 context;
+  u8 hop_limit;
+};
+
 /** \brief IPv6 SR steering add/del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
