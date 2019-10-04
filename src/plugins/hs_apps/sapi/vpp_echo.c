@@ -881,6 +881,8 @@ echo_process_opts (int argc, char **argv)
 	em->use_sock_api = 0;
       else if (unformat (a, "fifo-size %d", &tmp))
 	em->fifo_size = tmp << 10;
+      else if (unformat (a, "prealloc-fifos %u", &em->prealloc_fifo_pairs))
+	;
       else if (unformat (a, "rx-buf %U", unformat_data, &em->rx_buf_size))
 	;
       else if (unformat (a, "tx-buf %U", unformat_data, &em->tx_buf_size))
@@ -1004,6 +1006,7 @@ main (int argc, char **argv)
   em->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
   em->use_sock_api = 1;
   em->fifo_size = 64 << 10;
+  em->prealloc_fifo_pairs = 16;
   em->n_clients = 1;
   em->n_connects = 1;
   em->n_sessions = 2;
