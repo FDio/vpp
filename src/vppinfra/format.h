@@ -317,6 +317,8 @@ uword unformat_init_unix_env (unformat_input_t * input, char *var);
 unformat_function_t unformat_unix_gid;
 #endif /* CLIB_UNIX */
 
+uword unformat_data_size (unformat_input_t * input, va_list * args);
+
 /* Test code. */
 int test_format_main (unformat_input_t * input);
 int test_unformat_main (unformat_input_t * input);
