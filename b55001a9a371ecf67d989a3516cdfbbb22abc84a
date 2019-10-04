@@ -69,6 +69,30 @@
       "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c195ca66_a5c22838",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2357,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-04T00:34:55Z",
+      "side": 1,
+      "message": "Well, we could move the l4_hdr_offset to the csum function as well. Not sure if any other infra component depends on it. If yes, we can just set it when pushing the tcp header. \n\nOtherwise, we do this predict_true twice per packet. Once when we compute the csum and once here",
+      "parentUuid": "a612bfbd_5c14753a",
+      "range": {
+        "startLine": 2353,
+        "startChar": 0,
+        "endLine": 2357,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
