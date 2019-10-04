@@ -93,6 +93,30 @@
       "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75609891_00dd4977",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2357,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-10-04T02:11:15Z",
+      "side": 1,
+      "message": "I have no objection of putting l4_hdr_offset in csum function. Patch set 3 was in fact setting the offload bit there but we had the IPsec test failure due to checksum error.  When setting offload bit is moved here, the IPsec test now passes. Somehow TCP checksum was 0 in the test case. How the bit got cleared between session_fifo_read_and_send node which push the TCP header including calling csum function and tcp-output node here is not clear.  In fact, vlib_buffer_push_ip4 function does set both l3/l4_hdr_offset already but vlib_buffer_push_ip6 does not. For most efficient code, we can make both push_ip4/ip6 set the l3/l4_hdr_offset, set the offload bit in csum function, and remove setting l3/l4_hdr_offset here, if we root cause why TCP offload bit is cleared.",
+      "parentUuid": "c195ca66_a5c22838",
+      "range": {
+        "startLine": 2353,
+        "startChar": 0,
+        "endLine": 2357,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
