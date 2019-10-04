@@ -1077,6 +1077,30 @@ unformat_init_unix_env (unformat_input_t * input, char *var)
   return val != 0;
 }
 
+uword
+unformat_data_size (unformat_input_t * input, va_list * args)
+{
+  u64 _a;
+  u64 *a = va_arg (*args, u64 *);
+  if (unformat (input, "%lluGb", &_a))
+    *a = _a << 30;
+  else if (unformat (input, "%lluG", &_a))
+    *a = _a << 30;
+  else if (unformat (input, "%lluMb", &_a))
+    *a = _a << 20;
+  else if (unformat (input, "%lluM", &_a))
+    *a = _a << 20;
+  else if (unformat (input, "%lluKb", &_a))
+    *a = _a << 10;
+  else if (unformat (input, "%lluK", &_a))
+    *a = _a << 10;
+  else if (unformat (input, "%llu", a))
+    ;
+  else
+    return 0;
+  return 1;
+}
+
 #endif /* CLIB_UNIX */
 
 
