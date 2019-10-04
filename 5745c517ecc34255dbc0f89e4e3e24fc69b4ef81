@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb293a3d_378c4140",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2229,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-04T14:07:38Z",
+      "side": 1,
+      "message": "Since this is not in the packet forwarding path, please convert this to a check for NULL seg_mgr_props, print an error message with clib_warning() and return.",
+      "range": {
+        "startLine": 2229,
+        "startChar": 0,
+        "endLine": 2229,
+        "endChar": 25
+      },
+      "revId": "5745c517ecc34255dbc0f89e4e3e24fc69b4ef81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
