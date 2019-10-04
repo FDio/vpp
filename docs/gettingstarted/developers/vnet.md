@@ -598,3 +598,186 @@ The verbose form displays all of the match rules, with hit-counters.
 To construct **matches**, add the values to match after the indicated
 keywords in the mask syntax. For example: "... mask l3 ip4 src" ->
 "... match l3 ip4 src 192.168.1.11"
+
+## VPP Packet Generator
+
+We use the VPP packet generator to inject packets into the forwarding
+graph. The packet generator can replay pcap traces, and generate packets
+out of whole cloth at respectably high performance.
+
+The VPP pg enables quite a variety of use-cases, ranging from functional
+testing of new data-plane nodes to regression testing to performance
+tuning.
+
+## PG setup scripts
+
+PG setup scripts describe traffic in detail, and leverage vpp debug
+CLI mechanisms. It's reasonably unusual to construct a pg setup script
+which doesn't include a certain amount of interface and FIB configuration.
+
+For example:
+
+```
+    loop create
+    set int ip address loop0 192.168.1.1/24
+    set int state loop0 up
+
+    packet-generator new {
+        name pg0
+        limit 100
+        rate 1e6
+        size 300-300
+        interface loop0
+        node ethernet-input
+        data { IP4: 1.2.3 -> 4.5.6
+               UDP: 192.168.1.10 - 192.168.1.254 -> 192.168.2.10
+               UDP: 1234 -> 2345
+               incrementing 286
+        }
+    }
+```
+
+A packet generator stream definition includes two major sections:
+- Stream Parameter Setup
+- Packet Data
+
+### Stream Parameter Setup
+
+Given the example above, let's look at how to set up stream
+parameters:
+
+- **name pg0** - Name of the stream, in this case "pg0"
+
+- **limit 1000** - Number of packets to send when the stream is
+enabled. "limit 0" means send packets continuously.
+
+- **maxframe \<nnn\>** - Maximum frame size. Handy for injecting
+multiple frames no larger than \<nnn\>. Useful for checking dual /
+quad loop codes
+
+- **rate 1e6** - Packet injection rate, in this case 1 MPPS. When not
+specified, the packet generator injects packets as fast as possible
+
+- **size 300-300** - Packet size range, in this case send 300-byte packets
+
+- **interface loop0** - Packets appear as if they were received on the
+specified interface. This datum is used in multiple ways: to select
+graph arc feature configuration, to select IP FIBs.  Configure
+features e.g. on loop0 to exercise those features.
+
+- **tx-interface \<name\>** - Packets will be transmitted on the
+indicated interface. Typically required only when injecting packets
+into post-IP-rewrite graph nodes.
+
+- **pcap \<filename\>** - Replay packets from the indicated pcap
+capture file. "make test" makes extensive use of this feature:
+generate packets using scapy, save them in a .pcap file, then inject
+them into the vpp graph via a vpp pg "pcap \<filename\>" stream
+definition
+
+- **worker \<nn\>** - Generate packets for the stream using the
+indicated vpp worker thread. The vpp pg generates and injects O(10
+MPPS / core).  Use multiple stream definitions and worker threads to
+generate and inject enough traffic to easily fill a 40 gbit pipe with
+small packets.
+
+### Data definition
+
+Packet generator data definitions make use of a layered implementation
+strategy. Networking layers are specified in order, and the notation can
+seem a bit counter-intuitive. In the example above, the data
+definition stanza constructs a set of L2-L4 headers layers, and
+uses an incrementing fill pattern to round out the requested 300-byte
+packets.
+
+- **IP4: 1.2.3 -> 4.5.6** - Construct an L2 (MAC) header with the ip4
+ethertype (0x800), src MAC address of 00:01:00:02:00:03 and dst MAC
+address of 00:04:00:05:00:06. Mac addresses may be specified in either
+_xxxx.xxxx.xxxx_ format or _xx:xx:xx:xx:xx:xx_ format.
+
+- **UDP: 192.168.1.10 - 192.168.1.254 -> 192.168.2.10** - Construct an
+incrementing set of L3 (IPv4) headers for successive packets with
+source addresses ranging from .10 to .254. All packets in the stream
+have a constant dest address of 192.168.2.10. Set the protocol field
+to 17, UDP.
+
+- **UDP: 1234 -> 2345** - Set the UDP source and destination ports to
+1234 and 2345, respectively
+
+- **incrementing 256** - Insert up to 256 incrementing data bytes.
+
+Obvious variations involve "s/IP4/IP6/" in the above, along with
+changing from IPv4 to IPv6 address notation.
+
+The vpp pg can set any / all IPv4 header fields, including tos, packet
+length, mf / df / fragment id and offset, ttl, protocol, checksum, and
+src/dst addresses. Take a look at ../src/vnet/ip/ip[46]_pg.c for
+details.
+
+If all else fails, specify the entire packet data in hex:
+
+- **hex 0xabcd...** - copy hex data verbatim into the packet
+
+When replaying pcap files ("**pcap \<filename\>**"), do not specify a
+data stanza.
+
+### Diagnosing "packet-generator new" parse failures
+
+If you want to inject packets into a brand-new graph node, remember
+to tell the packet generator debug CLI how to parse the packet
+data stanza.
+
+If the node expects L2 Ethernet MAC headers, specify ".unformat_buffer
+= unformat_ethernet_header":
+
+```
+    /* *INDENT-OFF* */
+    VLIB_REGISTER_NODE (ethernet_input_node) =
+    {
+      <snip>
+      .unformat_buffer = unformat_ethernet_header,
+      <snip>
+    };
+```
+
+Beyond that, it may be necessary to set breakpoints in
+.../src/vnet/pg/cli.c. Debug image suggested.
+
+When debugging new nodes, it may be far simpler to directly inject
+ethernet frames - and add a corresponding vlib_buffer_advance in the
+new node - than to modify the packet generator.
+
+## Debug CLI
+
+The descriptions above describe the "packet-generator new" debug CLI in
+detail.
+
+Additional debug CLI commands include:
+
+```
+    vpp# packet-generator enable [<stream-name>]
+```
+
+which enables the named stream, or all streams.
+
+```
+    vpp# packet-generator disable [<stream-name>]
+```
+
+disables the named stream, or all streams.
+
+
+```
+    vpp# packet-generator delete <stream-name>
+```
+
+Deletes the named stream.
+
+```
+    vpp# packet-generator configure <stream-name> [limit <nnn>]
+         [rate <f64-pps>] [size <nn>-<nn>]
+```
+
+Changes stream parameters without having to recreate the entire stream
+definition. Note that re-issuing a "packet-generator new" command will
+correctly recreate the named stream.
