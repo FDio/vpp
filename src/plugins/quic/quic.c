@@ -940,8 +940,8 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_stream_data.bidi_local = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
-  quicly_ctx->transport_params.max_stream_data.bidi_remote = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
+  quicly_ctx->transport_params.max_stream_data.bidi_local = (qm->udp_fifo_size - 1);	/* max_enq is SIZE - 1 */
+  quicly_ctx->transport_params.max_stream_data.bidi_remote = (qm->udp_fifo_size - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
 
   quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
@@ -2182,6 +2182,24 @@ quic_register_cipher_suite (quic_crypto_engine_t type,
   qm->quic_ciphers[type] = ciphers;
 }
 
+static void
+quic_update_fifo_size ()
+{
+  quic_main_t *qm = &quic_main;
+  segment_manager_props_t *seg_mgr_props =
+    application_get_segment_manager_properties (qm->app_index);
+
+  if (seg_mgr_props)
+    {
+      clib_warning
+	("error while getting segment_manager_props_t, can't update fifo-size");
+      return;
+    }
+
+  seg_mgr_props->tx_fifo_size = qm->udp_fifo_size;
+  seg_mgr_props->rx_fifo_size = qm->udp_fifo_size;
+}
+
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
@@ -2191,7 +2209,6 @@ quic_init (vlib_main_t * vm)
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   quic_main_t *qm = &quic_main;
-  u32 fifo_size = QUIC_FIFO_SIZE;
   u32 num_threads, i;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -2205,8 +2222,9 @@ quic_init (vlib_main_t * vm)
   a->name = format (0, "quic");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = qm->udp_fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = qm->udp_fifo_size;
+  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = qm->udp_fifo_prealloc;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
@@ -2271,6 +2289,29 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+u64 quic_fifosize = 0;
+static clib_error_t *
+quic_plugin_set_fifo_size_command_fn (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_data_size, &quic_main.udp_fifo_size))
+	quic_update_fifo_size ();
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  return 0;
+}
+
 static u8 *
 quic_format_ctx_stat (u8 * s, va_list * args)
 {
@@ -2319,6 +2360,12 @@ VLIB_CLI_COMMAND(quic_plugin_crypto_command, static)=
   .short_help = "quic set crypto api [picotls, vpp]",
   .function = quic_plugin_crypto_command_fn,
 };
+VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
+{
+  .path = "quic set fifo-size",
+  .short_help = "quic set fifo-size N[Kb|Mb|GB] (default 64K)",
+  .function = quic_plugin_set_fifo_size_command_fn,
+};
 VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
 {
   .path = "show quic stats",
@@ -2331,6 +2378,33 @@ VLIB_PLUGIN_REGISTER () =
   .description = "Quic transport protocol",
   .default_disabled = 1,
 };
+/* *INDENT-ON* */
+
+static clib_error_t *
+quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  quic_main.udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
+  quic_main.udp_fifo_prealloc = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "fifo-size %U", unformat_data_size,
+	   &quic_main.udp_fifo_size))
+	;
+      else
+	if (unformat
+	    (input, "fifo-prealloc %u", &quic_main.udp_fifo_prealloc))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (quic_config_fn, "quic");
 
 static uword
 quic_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
