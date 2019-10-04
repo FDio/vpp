@@ -337,6 +337,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	        {
 		  gtpu_pdu_session_t *sess;
 
+		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
+		  hdr0->gtpu.ext->seq = 0;
+		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
 
 		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip4_gtpu_header_t) + sizeof(gtpu_exthdr_t));
@@ -902,6 +905,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		{
 		  gtpu_pdu_session_t *sess;
 
+		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
 		  hdr0->gtpu.ext->seq = 0;
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
