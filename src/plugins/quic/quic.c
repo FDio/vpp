@@ -39,6 +39,7 @@ static char *quic_error_strings[] = {
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 static int quic_on_client_connected (quic_ctx_t * ctx);
+static u32 quic_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
 
 static u32
 quic_ctx_alloc (u32 thread_index)
@@ -978,8 +979,8 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_stream_data.bidi_local = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
-  quicly_ctx->transport_params.max_stream_data.bidi_remote = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
+  quicly_ctx->transport_params.max_stream_data.bidi_local = (quic_fifo_size - 1);	/* max_enq is SIZE - 1 */
+  quicly_ctx->transport_params.max_stream_data.bidi_remote = (quic_fifo_size - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
 
   quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
@@ -2219,6 +2220,17 @@ quic_register_cipher_suite (quic_crypto_engine_t type,
   qm->quic_ciphers[type] = ciphers;
 }
 
+static void
+quic_update_fifo_size ()
+{
+  quic_main_t *qm = &quic_main;
+  segment_manager_props_t *seg_mgr_props =
+    application_get_segment_manager_properties (qm->app_index);
+  assert (seg_mgr_props);
+  seg_mgr_props->tx_fifo_size = quic_fifo_size;
+  seg_mgr_props->rx_fifo_size = quic_fifo_size;
+}
+
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
@@ -2228,7 +2240,6 @@ quic_init (vlib_main_t * vm)
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   quic_main_t *qm = &quic_main;
-  u32 fifo_size = QUIC_FIFO_SIZE;
   u32 num_threads, i;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -2242,8 +2253,8 @@ quic_init (vlib_main_t * vm)
   a->name = format (0, "quic");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = quic_fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = quic_fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
@@ -2308,6 +2319,27 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+u64 quic_fifosize = 0;
+static clib_error_t *
+quic_plugin_setfifosize_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_data_size, &quic_fifo_size))
+	quic_update_fifo_size ();
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+  return 0;
+}
+
 static u8 *
 quic_format_ctx_stat (u8 * s, va_list * args)
 {
@@ -2355,6 +2387,12 @@ VLIB_CLI_COMMAND(quic_plugin_crypto_command, static)=
   .path = "quic set crypto api",
   .short_help = "quic set crypto api [picotls, vpp]",
   .function = quic_plugin_crypto_command_fn,
+};
+VLIB_CLI_COMMAND(quic_plugin_setfifosize_command, static)=
+{
+  .path = "quic set fifo-size",
+  .short_help = "quic set fifo-size N[Kb|Mb|GB] (default 64K)",
+  .function = quic_plugin_setfifosize_command_fn,
 };
 VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
 {
