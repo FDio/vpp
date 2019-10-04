@@ -46,6 +46,30 @@
       "revId": "f1687cdd8940cc36ba779a57c7a4abccf7d575fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b29ed0b4_23537736",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 12853,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-04T13:48:56Z",
+      "side": 1,
+      "message": "Doesn\u0027t that depend on what layout the compiler chooses?",
+      "parentUuid": "ae119094_d72414f9",
+      "range": {
+        "startLine": 12852,
+        "startChar": 2,
+        "endLine": 12853,
+        "endChar": 67
+      },
+      "revId": "f1687cdd8940cc36ba779a57c7a4abccf7d575fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
