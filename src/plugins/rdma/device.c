@@ -534,15 +534,20 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
+  /*
+   * /!\ WARNING /!\ creation order is important
+   * We *must* create TX queues *before* RX queues, otherwise we will receive
+   * the broacast packets we sent
+   */
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    if ((err = rdma_txq_init (vm, rd, i, txq_size)))
+      return err;
+
   for (i = 0; i < rxq_num; i++)
     if ((err = rdma_rxq_init (vm, rd, i, rxq_size)))
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
-
-  for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((err = rdma_txq_init (vm, rd, i, txq_size)))
-      return err;
 
   if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
 			    bm->buffer_mem_size,
