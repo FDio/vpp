@@ -335,6 +335,7 @@ show_node_runtime (vlib_main_t * vm,
       u64 n_internal_vectors, n_internal_calls;
       u64 n_clocks, l, v, c, d;
       int brief = 1;
+      int summary = 0;
       int max = 0;
       vlib_main_t **stat_vms = 0, *stat_vm;
 
@@ -345,6 +346,9 @@ show_node_runtime (vlib_main_t * vm,
 	brief = 0;
       if (unformat (input, "max") || unformat (input, "m"))
 	max = 1;
+      if (unformat (input, "summary") || unformat (input, "sum")
+	  || unformat (input, "su"))
+	summary = 1;
 
       for (i = 0; i < vec_len (vlib_mains); i++)
 	{
@@ -446,19 +450,23 @@ show_node_runtime (vlib_main_t * vm,
 	     (f64) n_input / dt,
 	     (f64) n_output / dt, (f64) n_drop / dt, (f64) n_punt / dt);
 
-	  vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm, 0, max);
-	  for (i = 0; i < vec_len (nodes); i++)
+	  if (summary == 0)
 	    {
-	      c =
-		nodes[i]->stats_total.calls -
-		nodes[i]->stats_last_clear.calls;
-	      d =
-		nodes[i]->stats_total.suspends -
-		nodes[i]->stats_last_clear.suspends;
-	      if (c || d || !brief)
+	      vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm,
+			       0, max);
+	      for (i = 0; i < vec_len (nodes); i++)
 		{
-		  vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm,
-				   nodes[i], max);
+		  c =
+		    nodes[i]->stats_total.calls -
+		    nodes[i]->stats_last_clear.calls;
+		  d =
+		    nodes[i]->stats_total.suspends -
+		    nodes[i]->stats_last_clear.suspends;
+		  if (c || d || !brief)
+		    {
+		      vlib_cli_output (vm, "%U", format_vlib_node_stats,
+				       stat_vm, nodes[i], max);
+		    }
 		}
 	    }
 	  vec_free (nodes);
