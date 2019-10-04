@@ -444,6 +444,7 @@ bond_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       n_left -= 1;
       b += 1;
+      h += 1;
     }
 }
 
