@@ -291,6 +291,8 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   vec_reset_length (f);
   f = format (f, "%v/driver%c", dev_dir_name, 0);
   di->driver_name = clib_sysfs_link_to_name ((char *) f);
+  if (!di->driver_name)
+    di->driver_name = format (0, "<NONE>%c", 0);
 
   di->iommu_group = -1;
   if (lvm->container_fd != -1)
