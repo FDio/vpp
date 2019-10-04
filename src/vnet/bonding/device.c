@@ -449,6 +449,7 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 
       n_left -= 1;
       b += 1;
+      h += 1;
     }
 }
 
