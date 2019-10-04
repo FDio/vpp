@@ -16,6 +16,24 @@
       "revId": "d9ee90d2c7e73caebfac2a3277f5ce253e07ece2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3c1e522d_376db8ad",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-10-04T13:41:41Z",
+      "side": 1,
+      "message": "I have thought about having enum types. But I don\u0027t find a way to present the devices in plugins i.e. vmxnet3. While here I am using dynamic device type from device_class.",
+      "parentUuid": "d64e0127_51587416",
+      "revId": "d9ee90d2c7e73caebfac2a3277f5ce253e07ece2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
