@@ -117,6 +117,30 @@
       "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "652815c4_7784457a",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2357,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-04T03:24:39Z",
+      "side": 1,
+      "message": "vlib_buffer_push_ip4 is doing probably too much when setting the l4 header offset. And yes, given that we\u0027re separating l4 and l3 csum computation, we should also separate the places where we initialize the offsets and set the flags.\n\nIn case of ipv4 csum offload we may hit some surprising corner cases if the callers don\u0027t properly initialize the l4 offset.",
+      "parentUuid": "75609891_00dd4977",
+      "range": {
+        "startLine": 2353,
+        "startChar": 0,
+        "endLine": 2357,
+        "endChar": 5
+      },
+      "revId": "b55001a9a371ecf67d989a3516cdfbbb22abc84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
