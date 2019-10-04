@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d64e0127_51587416",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-04T12:02:57Z",
+      "side": 1,
+      "message": "Why is this a string and not an enum?",
+      "revId": "d9ee90d2c7e73caebfac2a3277f5ce253e07ece2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
