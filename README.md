@@ -61,7 +61,7 @@ $ ./runner.py infra start
 
 This command instantiates 4 VPP containers with following topology:
 
-![Topology Diagram](extras/ietf105/topo-init.png)
+![Topology Diagram](extras/ietf106/topo-init.png)
 
 You can check the instantiated docker instances with "docker ps".
 
@@ -122,7 +122,7 @@ $ ./runner.py test tmap_ipv6
 
 This case uses SRv6 end functions, End.M.GTP6.D.Di and End.M.GTP6.E.
 
-![Topology Diagram](extras/ietf105/topo-test_gtp6d.png)
+![Topology Diagram](extras/ietf106/topo-test_gtp6d.png)
 
 VPP1 is configured with "End.M.GTP6.D.Di", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D:: of the packet capture. VPP1 translates it to SRv6 toward D:: with SR policy <D2::, D3::, D4::TEID> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
 
