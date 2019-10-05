@@ -299,7 +299,7 @@ format_vlib_node_stats (u8 * s, va_list * va)
   return s;
 }
 
-f64 vlib_get_stat_segment_update_rate (void) __attribute__ ((weak));
+f64 vlib_get_stat_segment_update_rate (void) __attribute__((weak));
 f64
 vlib_get_stat_segment_update_rate (void)
 {
