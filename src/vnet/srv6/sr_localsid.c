@@ -33,6 +33,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/srv6/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip4_packet.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj.h>
@@ -321,10 +322,13 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
+  ip4_address_t resulting_address4;
   ip46_address_t next_hop;
   char address_set = 0;
+  char ip4_set = 0;
   char behavior = 0;
   void *ls_plugin_mem = 0;
+  sr_localsid_fn_registration_t *result_plugin = 0;
 
   int rv;
 
@@ -340,13 +344,25 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			    &resulting_address))
 	address_set = 1;
       else if (!address_set
+	       && unformat (input, "address %U", unformat_ip4_address,
+		            &resulting_address4))
+	address_set = ip4_set = 1;
+      else if (!address_set
 	       && unformat (input, "prefix %U/%d", unformat_ip6_address,
 		            &resulting_address, &prefix_len))
 	address_set = 1;
       else if (!address_set
+	       && unformat (input, "prefix %U/%d", unformat_ip4_address,
+		            &resulting_address4, &prefix_len))
+	address_set = ip4_set = 1;
+      else if (!address_set
 	       && unformat (input, "addr %U", unformat_ip6_address,
 			    &resulting_address))
 	address_set = 1;
+      else if (!address_set
+	       && unformat (input, "addr %U", unformat_ip4_address,
+		            &resulting_address4))
+	address_set = ip4_set = 1;
       else if (unformat (input, "fib-table %u", &fib_index));
       else if (vlan_index == (u32) ~ 0
 	       && unformat (input, "vlan %u", &vlan_index));
@@ -393,6 +409,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		    (input, "%U", (*plugin_it)->ls_unformat, &ls_plugin_mem))
 		  {
 		    behavior = (*plugin_it)->sr_localsid_function_number;
+		    result_plugin = *plugin_it;
 		    break;
 		  }
 	      }
@@ -427,6 +444,20 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (end_psp && !(behavior == SR_BEHAVIOR_END || behavior == SR_BEHAVIOR_X))
     return clib_error_return (0,
 			      "Error: SRv6 PSP only compatible with End and End.X");
+
+  if (ip4_set)
+    {
+      if (!behavior || !result_plugin || strcmp((char *)result_plugin->keyword_str, "end.m.gtp4.d"))
+        return clib_error_return (0,
+			          "Error: IPv4 address format can be supported with SRv6-End.M.GTP4.D only");
+
+      resulting_address.as_u32[0] = 0x0;
+      resulting_address.as_u32[1] = 0x0;
+      resulting_address.as_u16[4] = 0x0;
+      resulting_address.as_u16[5] = 0xffff;
+      clib_memcpy_fast(&resulting_address.as_u32[3], &resulting_address4.as_u32, 4);
+      prefix_len += 96;
+    }
 
   rv = sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp, behavior,
 			sw_if_index, vlan_index, fib_index, &next_hop,
