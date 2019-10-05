@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "128b9acd_9b6dfc86",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2359,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-10-05T02:16:02Z",
+      "side": 1,
+      "message": "Should we remove l4_hdr_offset as it should already be setup?",
+      "range": {
+        "startLine": 2359,
+        "startChar": 24,
+        "endLine": 2359,
+        "endChar": 37
+      },
+      "revId": "10441be971f759d6e9b78c7a4f21122e28aa99ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
