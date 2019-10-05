@@ -27,7 +27,7 @@ WORKDIR {{vpp_path}}
 RUN set -eux; \
     make wipe; \
     export UNATTENDED=y; \
-    make install-dep; \
+    echo "y" | make install-dep; \
     rm -rf /var/lib/apt/lists/* ; \
     make build; \
     make pkg-deb; \

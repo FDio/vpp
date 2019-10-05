@@ -203,7 +203,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
-
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -258,10 +257,13 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
             {
               u32 teid;
               u8 *teid8p = (u8 *)&teid;
+	      u8 qfi = 0;
 	      u32 index;
 	      u32 offset, shift;
+	      u32 hdrlen = 0;
 	      uword key;
 	      u16 port;
+	      ip4_address_t dst4;
 	      void *p;
 
               // we need to be sure there is enough space before 
@@ -286,30 +288,23 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
               len0 = vlib_buffer_length_in_chain (vm, b0);
 
-              // jump back to data[0] or pre_data if required
-              vlib_buffer_advance (b0, -(word) sizeof (ip4_gtpu_header_t));
-
-              hdr0 = vlib_buffer_get_current (b0);
-
-              clib_memcpy (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
-
 	      offset = ls0->localsid_len / 8;
 	      shift = ls0->localsid_len % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		for (index = 0; index < 4; index++) {
-		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index];
-		}
+		clib_memcpy_fast (&dst4.as_u8[0], &dst0.as_u8[offset], 4);
 
-	        teid8p[0] = dst0.as_u8[offset + 5];
-                teid8p[1] = dst0.as_u8[offset + 6];
-                teid8p[2] = dst0.as_u8[offset + 7];
-                teid8p[3] = dst0.as_u8[offset + 8];
+		qfi = dst0.as_u8[offset + 4];
+
+		clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 5], 4);
 	      } else {
 		for (index = 0; index < 4; index ++) {
-		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index] << shift;
-		  hdr0->ip4.dst_address.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
+		  dst4.as_u8[index] = dst0.as_u8[offset + index] << shift;
+		  dst4.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
 		}
+
+		qfi |= dst0.as_u8[offset + 4] << shift;
+		qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
 
 		for (index = 0; index < 4; index ++) {
 		  *teid8p = dst0.as_u8[offset + 5 + index] << shift;
@@ -318,8 +313,42 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		}
 	      }
 
+	      qfi &= ~GTPU_PDU_SESSION_P_BIT_MASK;
+	      if (qfi)
+		{
+		  hdrlen = sizeof(gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
+		  len0 += hdrlen;
+	        }
+	      hdrlen += sizeof(ip4_gtpu_header_t);
+
+	      // IPv4 GTP-U header creation.
+              vlib_buffer_advance (b0, -(word) hdrlen);
+
+              hdr0 = vlib_buffer_get_current (b0);
+
+              clib_memcpy_fast (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
+
+	      hdr0->ip4.dst_address.as_u32 = dst4.as_u32;
+
               hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
+
+	      if (qfi)
+	        {
+		  gtpu_pdu_session_t *sess;
+
+		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
+		  hdr0->gtpu.ext->seq = 0;
+		  hdr0->gtpu.ext->npdu_num = 0;
+		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
+
+		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip4_gtpu_header_t) + sizeof(gtpu_exthdr_t));
+		  sess->exthdrlen = 1;
+		  sess->type = 0;
+		  sess->spare = 0;
+		  sess->u.val = qfi;
+		  sess->nextexthdr = 0;
+	        }
 
 	      offset = ls_param->v4src_position / 8;
 	      shift = ls_param->v4src_position % 8;
@@ -463,13 +492,40 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 	      ip6_address_t src6;
 	      u32 teid;
 	      u8 *teidp;
+	      u8 qfi = 0;
+	      u8 *qfip = NULL;
 	      u32 offset, shift, index;
 	      ip6srv_combo_header_t *ip6srv;
 
+	      // Decap from GTP-U.
 	      hdr = (ip4_gtpu_header_t *)ip4;
+
+	      hdr_len = sizeof (ip4_gtpu_header_t);
 
 	      teid = hdr->gtpu.teid;
 	      teidp = (u8 *) &teid;
+
+	      if (hdr->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+	        {
+		  // Extention header.
+		  hdr_len += sizeof(gtpu_exthdr_t);
+		  if (hdr->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+		    {
+		      // PDU Session Container.
+		      gtpu_pdu_session_t *sess;
+
+		      sess = (gtpu_pdu_session_t *)(((char *)hdr) + hdr_len);
+		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+		      qfip = (u8 *)&qfi;
+
+		      hdr_len += sizeof(gtpu_pdu_session_t);
+
+		      if (sess->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+			{
+			  hdr_len += sizeof(gtpu_paging_policy_t);
+			}
+		    }
+	        }
 
 	      src = hdr->ip4.src_address;
 	      srcp = (u8 *) &src;
@@ -486,6 +542,11 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		{
 		  clib_memcpy_fast (&seg.as_u8[offset], dstp, 4);
 
+		  if (qfip)
+		    {
+		      seg.as_u8[offset + 4] = qfi;
+		    }
+
 		  clib_memcpy_fast (&seg.as_u8[offset + 5], teidp, 4);
 		}
 	      else
@@ -497,6 +558,12 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		      seg.as_u8[offset + index + 5] |= teidp[index] >> shift;
 		      seg.as_u8[offset + index + 6] |= teidp[index] << (8 - shift);
+		    }
+
+		  if (qfip)
+		    {
+		      seg.as_u8[offset+4] |= qfi >> shift;
+		      seg.as_u8[offset+5] |= qfi << (8 - shift);
 		    }
 		}
 
@@ -518,7 +585,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		    }
 		}
 
-	      vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+	      vlib_buffer_advance (b0, (word) hdr_len);
+
+	      // Encap to SRv6.
 	      encap = vlib_buffer_get_current (b0);
 	      len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -783,21 +852,16 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
                   ip6srv0->sr.length * 8);
 
               // get length of encapsulated IPv6 packet (the remaining part)
-              len0 = vlib_buffer_length_in_chain (vm, b0);
-
 	      p = vlib_buffer_get_current (b0);
 
-              // jump back to data[0] or pre_data if required
-              vlib_buffer_advance (b0, -(word) sizeof (ip6_gtpu_header_t));
-
-              hdr0 = vlib_buffer_get_current (b0);
-
-              clib_memcpy_fast (hdr0, &sm->cache_hdr, sizeof (ip6_gtpu_header_t));
+              len0 = vlib_buffer_length_in_chain (vm, b0);
 
               u32 teid;
               u8 *teid8p = (u8 *)&teid;
+	      u8 qfi = 0;
 	      u16 index;
 	      u16 offset, shift;
+	      u32 hdrlen = 0;
 
 	      index = ls0->localsid_len;
 	      index += 8;
@@ -805,10 +869,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      shift = index % 8;
 
 	      if (PREDICT_TRUE (shift == 0)) {
-                teid8p[0] = dst0.as_u8[offset];
-                teid8p[1] = dst0.as_u8[offset+1];
-                teid8p[2] = dst0.as_u8[offset+2];
-                teid8p[3] = dst0.as_u8[offset+3];
+		clib_memcpy_fast (teid8p, &dst0.as_u8[offset], 4);
+
+		qfi = dst0.as_u8[offset + 4];
 	      } else {
 		for (index = offset; index < offset + 4; index++)	      
 		  {
@@ -816,10 +879,44 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		    *teid8p |= dst0.as_u8[index+1] >> (8 - shift);
 		    teid8p++;
 		  }
+
+		qfi |= dst0.as_u8[offset + 4] << shift;
+		qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
 	      }
+
+	      qfi &= ~GTPU_PDU_SESSION_P_BIT_MASK;
+	      if (qfi)
+		{
+		  hdrlen = sizeof (gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
+		  len0 += hdrlen;
+		}
+	      hdrlen += sizeof(ip6_gtpu_header_t);
+
+              vlib_buffer_advance (b0, -(word) hdrlen);
+
+              hdr0 = vlib_buffer_get_current (b0);
+
+              clib_memcpy_fast (hdr0, &sm->cache_hdr, sizeof (ip6_gtpu_header_t));
 
               hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
+
+	      if (qfi)
+		{
+		  gtpu_pdu_session_t *sess;
+
+		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
+		  hdr0->gtpu.ext->seq = 0;
+		  hdr0->gtpu.ext->npdu_num = 0;
+		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
+
+		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip6_gtpu_header_t) + sizeof(gtpu_exthdr_t));
+		  sess->exthdrlen = 1;
+		  sess->type = 0;
+		  sess->spare = 0;
+		  sess->u.val = qfi;
+		  sess->nextexthdr = 0;
+		}
 
               hdr0->udp.length = clib_host_to_net_u16 (len0 +
                   sizeof (udp_header_t) + sizeof (gtpu_header_t));
@@ -911,7 +1008,10 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  ip6_address_t seg0, dst0;
 	  u32 teid = 0;
 	  u8 *teidp;
+	  u8 qfi;
+	  u8 *qfip = NULL;
 	  u32 offset, shift;
+	  u32 hdrlen;
 	  ip6_header_t *encap;
           
 	  u32 next0 = SRV6_END_M_GTP6_D_NEXT_LOOKUP;
@@ -933,6 +1033,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
           hdr0 = vlib_buffer_get_current (b0);
 
+	  hdrlen = sizeof(ip6_gtpu_header_t);
+
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
           if ((hdr0->ip6.protocol != IP_PROTOCOL_UDP)
@@ -949,6 +1051,28 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      dst0 = hdr0->ip6.dst_address;
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
+
+	      if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+		{
+		  // Extention header.
+		  hdrlen += sizeof(gtpu_exthdr_t);
+		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+		    {
+		      // PDU Session Container.
+		      gtpu_pdu_session_t *sess;
+
+		      sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip6_gtpu_header_t) + sizeof(gtpu_exthdr_t));
+		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+		      qfip = (u8 *)&qfi;
+
+		      hdrlen += sizeof(gtpu_pdu_session_t);
+
+		      if (sess->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+			{
+			  hdrlen += sizeof(gtpu_paging_policy_t);
+			}
+		    }
+		}
 	      
 	      offset = ls_param->sr_prefixlen / 8;
 	      shift = ls_param->sr_prefixlen % 8;
@@ -957,6 +1081,10 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      if (PREDICT_TRUE (shift == 0))
 	        {
 		  clib_memcpy_fast (&seg0.as_u8[offset], teidp, 4);
+		  if (qfip)
+		    {
+		      seg0.as_u8[offset+4] = qfi;
+		    }
 	        }
 	      else
 	        {
@@ -967,10 +1095,16 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
  	  	      seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
 		      seg0.as_u8[offset + idx + 1] |= teidp[idx] << (8 - shift);
 		    }
+
+		  if (qfip)
+		    {
+		      seg0.as_u8[offset+4] |= qfi >> shift;
+		      seg0.as_u8[offset+5] |= qfi << (8 - shift);
+		    }
 		}
 
               // jump over variable length data
-              vlib_buffer_advance (b0, (word) sizeof (ip6_gtpu_header_t));
+              vlib_buffer_advance (b0, (word) hdrlen);
 
               // get length of encapsulated IPv6 packet (the remaining part)
               len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -1173,7 +1307,10 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  ip6_address_t seg0;
 	  u32 teid = 0;
 	  u8 *teidp;
+	  u8 qfi = 0;
+	  u8 *qfip = NULL;
 	  u32 offset, shift;
+	  u32 hdrlen;
 	  ip6_header_t *encap;
           
 	  u32 next0 = SRV6_END_M_GTP6_D_DI_NEXT_LOOKUP;
@@ -1195,6 +1332,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
           hdr0 = vlib_buffer_get_current (b0);
 
+	  hdrlen = sizeof(ip6_gtpu_header_t);
+
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
           if ((hdr0->ip6.protocol != IP_PROTOCOL_UDP)
@@ -1212,6 +1351,28 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
 	      
+	      if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+	        {
+		  // Extention header.
+		  hdrlen += sizeof(gtpu_exthdr_t);
+		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+		    {
+		      // PDU Session Container.
+		      gtpu_pdu_session_t *sess;
+
+		      sess = (gtpu_pdu_session_t *)(((char *)hdr0) + hdrlen);
+		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+		      qfip = &qfi;
+
+		      hdrlen += sizeof(gtpu_pdu_session_t);
+
+		      if (sess->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+		        {
+			  hdrlen += sizeof(gtpu_paging_policy_t);
+			}
+		    }
+	        }
+	      
 	      offset = ls_param->sr_prefixlen / 8;
 	      shift = ls_param->sr_prefixlen % 8;
 
@@ -1219,6 +1380,11 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      if (PREDICT_TRUE (shift == 0))
 	        {
 		  clib_memcpy_fast (&seg0.as_u8[offset], teidp, 4);
+
+		  if (qfip)
+		    {
+		      seg0.as_u8[offset + 4] = qfi;
+		    }
 		}
   	      else
 	        {
@@ -1229,10 +1395,16 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
  	  	      seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
 		      seg0.as_u8[offset + idx + 1] |= teidp[idx] << (8 - shift);
 		    }
+
+		  if (qfip)
+		    {
+		      seg0.as_u8[offset + 4] |= qfi >> shift;
+		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
+		    }
 		}
 
               // jump over variable length data
-              vlib_buffer_advance (b0, (word) sizeof (ip6_gtpu_header_t));
+              vlib_buffer_advance (b0, (word) hdrlen);
 
               // get length of encapsulated IPv6 packet (the remaining part)
               len0 = vlib_buffer_length_in_chain (vm, b0);
