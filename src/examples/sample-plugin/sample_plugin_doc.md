@@ -14,14 +14,14 @@ Now (re)build VPP.
 
 	$ make wipe
 
-Define environmental variable 'VPP_WITH_SAMPLE_PLUGIN=yes' with a process scope
+Define environmental variable 'SAMPLE_PLUGIN=yes' with a process scope
 
-	$ VPP_WITH_SAMPLE_PLUGIN=yes make build
+	$ SAMPLE_PLUGIN=yes make build
 
 or a session scope, and build VPP. 
 
-	$ export VPP_WITH_SAMPLE_PLUGIN=yes
-	& make build
+	$ export SAMPLE_PLUGIN=yes
+	$ make build
 
 Now run VPP and make sure the plugin is loaded. 
 
