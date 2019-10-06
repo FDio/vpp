@@ -23,6 +23,25 @@
 
 #include <vnet/ip/ip.h>
 
+/*
+ * Copy the mpls header if present.
+ * The current is pointing to the ip header.
+ * Adjust the buffer and point to the mpls headers on these fragments
+ * before sending the packet back to mpls-output node.
+ */
+static inline void
+copy_mpls_hdr (vlib_buffer_t * to_b, vlib_buffer_t * from_b)
+{
+  if ((vnet_buffer (from_b)->ip_frag.flags) & IP_FRAG_FLAG_MPLS_HEADER)
+    {
+      u8 mpls_hdr_length = vnet_buffer (from_b)->mpls.mpls_hdr_length;
+      u8 *org_from_mpls_packet =
+	from_b->data + (from_b->current_data - mpls_hdr_length);
+      clib_memcpy_fast ((to_b->data - mpls_hdr_length), org_from_mpls_packet,
+			mpls_hdr_length);
+      vlib_buffer_advance (to_b, -vnet_buffer (to_b)->mpls.mpls_hdr_length);
+    }
+}
 
 typedef struct
 {
@@ -38,8 +57,8 @@ format_ip_frag_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_frag_trace_t *t = va_arg (*args, ip_frag_trace_t *);
-  s = format (s, "IPv%s mtu: %u fragments: %u",
-	      t->ipv6 ? "6" : "4", t->mtu, t->n_fragments);
+  s = format (s, "IPv%s mtu: %u fragments: %u next: %d",
+	      t->ipv6 ? "6" : "4", t->mtu, t->n_fragments, t->next);
   return s;
 }
 
@@ -67,6 +86,14 @@ frag_set_sw_if_index (vlib_buffer_t * to, vlib_buffer_t * from)
     {
       vnet_buffer2 (to)->qos = vnet_buffer2 (from)->qos;
       to->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+    }
+
+  /* Copy mpls opaque data */
+  if ((vnet_buffer (from)->ip_frag.flags) & IP_FRAG_FLAG_MPLS_HEADER)
+    {
+      vnet_buffer (to)->mpls.pyld_proto = vnet_buffer (from)->mpls.pyld_proto;
+      vnet_buffer (to)->mpls.mpls_hdr_length =
+	vnet_buffer (from)->mpls.mpls_hdr_length;
     }
 }
 
@@ -232,6 +259,10 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 	    clib_host_to_net_u16 (to_b->current_length -
 				  sizeof (*encap_header6));
 	}
+
+      /* Copy mpls header if present */
+      copy_mpls_hdr (to_b, org_from_b);
+
       rem -= len;
       fo += len;
     }
@@ -492,6 +523,9 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       to_frag_hdr->next_hdr = ip6->protocol;
       to_frag_hdr->rsv = 0;
 
+      /* Copy mpls header if present */
+      copy_mpls_hdr (to_b, org_from_b);
+
       rem -= len;
       fo += len;
     }
@@ -519,6 +553,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
     [IP4_FRAG_NEXT_IP4_REWRITE] = "ip4-rewrite",
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IP4_FRAG_NEXT_MPLS_OUTPUT] = "mpls-output",
     [IP4_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_FRAG_NEXT_DROP] = "ip4-drop"
   },
@@ -541,6 +576,7 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
     [IP6_FRAG_NEXT_IP6_REWRITE] = "ip6-rewrite",
     [IP6_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP6_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IP6_FRAG_NEXT_MPLS_OUTPUT] = "mpls-output",
     [IP6_FRAG_NEXT_DROP] = "ip6-drop"
   },
 };
