@@ -989,7 +989,7 @@ vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
 
       si = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
 
-      if (!(si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+      if (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
 	{
 	  send_ip_unnumbered_details (am, reg,
 				      sw_if_index,
