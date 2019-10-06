@@ -311,7 +311,16 @@ class ARPTestCase(VppTestCase):
         #
         self.pg2.set_unnumbered(self.pg1.sw_if_index)
 
+        #
+        # test the unnumbered dump both by all interfaces and just the enabled
+        # one
+        #
         unnum = self.vapi.ip_unnumbered_dump()
+        self.assertTrue(len(unnum))
+        self.assertEqual(unnum[0].ip_sw_if_index, self.pg1.sw_if_index)
+        self.assertEqual(unnum[0].sw_if_index, self.pg2.sw_if_index)
+        unnum = self.vapi.ip_unnumbered_dump(self.pg2.sw_if_index)
+        self.assertTrue(len(unnum))
         self.assertEqual(unnum[0].ip_sw_if_index, self.pg1.sw_if_index)
         self.assertEqual(unnum[0].sw_if_index, self.pg2.sw_if_index)
 
