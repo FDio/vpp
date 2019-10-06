@@ -195,11 +195,8 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
  * Get maximum tx burst allowed for transport connection
  *
  * @param tc		transport connection
- * @param time_now	current cpu time as returned by @ref clib_cpu_time_now
- * @param mss		transport's mss
  */
-u32 transport_connection_snd_space (transport_connection_t * tc,
-				    u64 time_now, u16 mss);
+u32 transport_connection_snd_space (transport_connection_t * tc);
 
 /**
  * Get tx pacer max burst

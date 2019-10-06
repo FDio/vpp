@@ -594,26 +594,36 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       tc = tcp_connection_get (pending_deq_acked[i], thread_index);
       tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
-      if (PREDICT_FALSE (!tc->burst_acked))
-	continue;
-
-      /* Dequeue the newly ACKed bytes */
-      session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
-      tc->burst_acked = 0;
-      tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
-
-      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
+      if (tc->burst_acked)
 	{
-	  if (seq_leq (tc->psh_seq, tc->snd_una))
-	    tc->flags &= ~TCP_CONN_PSH_PENDING;
+	  /* Dequeue the newly ACKed bytes */
+	  session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
+	  tc->burst_acked = 0;
+	  tcp_validate_txf_size(tc, tc->snd_una_max - tc->snd_una);
+
+	  if (PREDICT_FALSE(tc->flags & TCP_CONN_PSH_PENDING))
+	    {
+	      if (seq_leq(tc->psh_seq, tc->snd_una))
+		tc->flags &= ~TCP_CONN_PSH_PENDING;
+	    }
+
+	  /* If everything has been acked, stop retransmit timer
+	   * otherwise update. */
+	  tcp_retransmit_timer_update (tc);
+
+	  /* Update pacer based on our new cwnd estimate */
+	  tcp_connection_tx_pacer_update (tc);
 	}
 
-      /* If everything has been acked, stop retransmit timer
-       * otherwise update. */
-      tcp_retransmit_timer_update (tc);
-
-      /* Update pacer based on our new cwnd estimate */
-      tcp_connection_tx_pacer_update (tc);
+      if (tc->data_segs_out == tc->prev_data_segs_out
+          || (tcp_in_fastrecovery (tc) && tcp_fastrecovery_prr_snd_space (tc) < tc->snd_mss)
+          || (tcp_in_recovery (tc) && tcp_available_output_snd_space (tc) < tc->snd_mss))
+	{
+//	  clib_warning ("restting pacer");
+	  transport_connection_tx_pacer_reset_bucket (&tc->connection,
+	      tcp_get_worker (tc->c_thread_index)->vm->clib_time.last_cpu_time);
+	}
+      tc->prev_data_segs_out = tc->data_segs_out;
     }
   _vec_len (wrk->pending_deq_acked) = 0;
 }
@@ -1323,6 +1333,7 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (tcp_cc_is_spurious_retransmit (tc))
     {
+      clib_warning ("spurious");
       tcp_cc_congestion_undo (tc);
       is_spurious = 1;
     }
@@ -1335,14 +1346,20 @@ tcp_cc_recover (tcp_connection_t * tc)
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+//  if (!session_get (tc->c_s_index, tc->c_thread_index)->tx_fifo->has_event)
+//    os_panic ();
+
   /* Previous recovery left us congested. Continue sending as part
    * of the current recovery event with an updated snd_congestion */
   if (tc->sack_sb.sacked_bytes)
     {
+      clib_warning ("recovered congested cong %u", tc->snd_congestion - tc->iss);
       tc->snd_congestion = tc->snd_nxt;
       tc->snd_rxt_ts = tcp_tstamp (tc);
       tc->prr_start = tc->snd_una;
       scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+      ASSERT (tcp_fastrecovery_prr_snd_space (tc) >= tc->snd_mss);
       tcp_program_retransmit (tc);
       return is_spurious;
     }
@@ -1353,8 +1370,6 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (!tcp_in_recovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);
-
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
@@ -1589,9 +1604,10 @@ process_ack:
   if (tc->flags & TCP_CONN_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
 
+  tcp_program_dequeue (wrk, tc);
+
   if (tc->bytes_acked)
     {
-      tcp_program_dequeue (wrk, tc);
       tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
     }
 

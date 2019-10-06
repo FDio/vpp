@@ -583,11 +583,24 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
   u64 n_periods = norm_time_now - pacer->last_update;
   u64 inc;
 
+  inc = (f64) n_periods * pacer->tokens_per_period;
+  if (PREDICT_FALSE (n_periods > 5e5))
+    {
+      clib_warning ("idle");
+      pacer->last_update = norm_time_now;
+      pacer->bucket = TRANSPORT_PACER_MIN_BURST;
+      return TRANSPORT_PACER_MIN_BURST;
+    }
+
+//  clib_warning ("nperiods %u t/p %.3f inc %u", n_periods, pacer->tokens_per_period, n_periods * (f64) pacer->tokens_per_period);
   if (n_periods > 0
-      && (inc = (f32) n_periods * pacer->tokens_per_period) > 10)
+      && (inc = (f64) n_periods * pacer->tokens_per_period) > 10)
     {
       pacer->last_update = norm_time_now;
       pacer->bucket = clib_min (pacer->bucket + inc, pacer->bytes_per_sec);
+//      clib_warning ("inc %u t/p %.3f periods %u bucket %u", inc,
+//                    pacer->tokens_per_period, n_periods, pacer->bucket);
+
     }
 
   return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
@@ -655,8 +668,10 @@ u32
 transport_connection_tx_pacer_burst (transport_connection_t * tc,
 				     u64 time_now)
 {
+  u32 max_burst;
   time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
-  return spacer_max_burst (&tc->pacer, time_now);
+  max_burst = spacer_max_burst (&tc->pacer, time_now);
+  return (max_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_burst;
 }
 
 void
@@ -668,22 +683,9 @@ transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 }
 
 u32
-transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
-				u16 mss)
+transport_connection_snd_space (transport_connection_t * tc)
 {
-  u32 snd_space, max_paced_burst;
-
-  snd_space = tp_vfts[tc->proto].send_space (tc);
-  if (transport_connection_is_tx_paced (tc))
-    {
-      time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
-      max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
-      max_paced_burst =
-	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
-      snd_space = clib_min (snd_space, max_paced_burst);
-      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
-    }
-  return snd_space;
+  return tp_vfts[tc->proto].send_space (tc);
 }
 
 u64
