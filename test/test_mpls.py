@@ -379,6 +379,30 @@ class TestMPLS(VppTestCase):
         except:
             raise
 
+    def verify_capture_fragmented_labelled_ip4(self, src_if, capture, sent,
+                                               mpls_labels, ip_ttl=None):
+        try:
+            capture = verify_filter(capture, sent)
+
+            for i in range(len(capture)):
+                tx = sent[0]
+                rx = capture[i]
+                tx_ip = tx[IP]
+                rx_ip = rx[IP]
+
+                verify_mpls_stack(self, rx, mpls_labels)
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+                if not ip_ttl:
+                    # IP processing post pop has decremented the TTL
+                    self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+                else:
+                    self.assertEqual(rx_ip.ttl, ip_ttl)
+
+        except:
+            raise
+
     def test_swap(self):
         """ MPLS label swap tests """
 
@@ -849,6 +873,38 @@ class TestMPLS(VppTestCase):
         route_11_0_0_2.remove_vpp_config()
         route_11_0_0_1.remove_vpp_config()
         route_10_0_0_2.remove_vpp_config()
+        route_10_0_0_1.remove_vpp_config()
+
+    def test_imposition_fragmentation(self):
+        """ MPLS label imposition fragmentation test """
+
+        #
+        # Add a ipv4 non-recursive route with a single out label
+        #
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[VppMplsLabel(32)])])
+        route_10_0_0_1.add_vpp_config()
+
+        #
+        # a stream that matches the route for 10.0.0.1
+        # PG0 is in the default table
+        #
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.1")
+        for i in range(0, 257):
+            self.extend_packet(tx[i], 10000)
+
+        #
+        # 5 fragments per packet (257*5=1285)
+        #
+        rx = self.send_and_expect(self.pg0, tx, self.pg0, 1285)
+        self.verify_capture_fragmented_labelled_ip4(self.pg0, rx, tx,
+                                                    [VppMplsLabel(32)])
+
+        #
+        # cleanup
+        #
         route_10_0_0_1.remove_vpp_config()
 
     def test_tunnel_pipe(self):
