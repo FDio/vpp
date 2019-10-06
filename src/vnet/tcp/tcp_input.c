@@ -1323,6 +1323,7 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (tcp_cc_is_spurious_retransmit (tc))
     {
+      clib_warning ("spurious");
       tcp_cc_congestion_undo (tc);
       is_spurious = 1;
     }
@@ -1335,14 +1336,20 @@ tcp_cc_recover (tcp_connection_t * tc)
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+//  if (!session_get (tc->c_s_index, tc->c_thread_index)->tx_fifo->has_event)
+//    os_panic ();
+
   /* Previous recovery left us congested. Continue sending as part
    * of the current recovery event with an updated snd_congestion */
   if (tc->sack_sb.sacked_bytes)
     {
+      clib_warning ("recovered congested cong %u", tc->snd_congestion - tc->iss);
       tc->snd_congestion = tc->snd_nxt;
       tc->snd_rxt_ts = tcp_tstamp (tc);
       tc->prr_start = tc->snd_una;
       scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+      ASSERT (tcp_fastrecovery_prr_snd_space (tc) >= tc->snd_mss);
       tcp_program_retransmit (tc);
       return is_spurious;
     }
@@ -1353,8 +1360,6 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (!tcp_in_recovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);
-
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
@@ -1472,6 +1477,20 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
       tcp_program_retransmit (tc);
     }
+
+  if (tc->snd_rxt_bytes == tc->rxt_prev
+      || tcp_fastrecovery_prr_snd_space (tc) < tc->snd_mss)
+    transport_connection_tx_pacer_reset_bucket (&tc->connection,
+                                                tcp_get_worker (tc->c_thread_index)->vm->
+						  clib_time.last_cpu_time);
+//  else
+//    {
+//  u64 last_time = tcp_get_worker (tc->c_thread_index)->vm->clib_time.last_cpu_time;
+//  tc->connection.pacer.last_update = last_time >> 10;
+//    }
+
+  tc->rxt_prev = tc->snd_rxt_bytes;
+
 
   /*
    * Notify cc of the event
