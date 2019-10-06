@@ -1,0 +1,7 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+2: Dave Barach <openvpp@barachs.net>
+Submitted-by: Dave Barach <openvpp@barachs.net>
+Submitted-at: Sun, 06 Oct 2019 12:48:50 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/22550
+Project: vpp
+Branch: refs/heads/stable/1908
