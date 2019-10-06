@@ -25,7 +25,7 @@ CMAKE?=cmake
 endif
 
 sample-plugin_cmake_args ?=
-sample-plugin_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
+sample-plugin_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 sample-plugin_cmake_args += -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)"
 sample-plugin_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
 sample-plugin_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
