@@ -594,6 +594,12 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
 }
 
 static inline void
+spacer_set_bucket (spacer_t * pacer, u32 bytes)
+{
+  pacer->bucket = bytes;
+}
+
+static inline void
 spacer_update_bucket (spacer_t * pacer, u32 bytes)
 {
   ASSERT (pacer->bucket >= bytes);
@@ -655,8 +661,10 @@ u32
 transport_connection_tx_pacer_burst (transport_connection_t * tc,
 				     u64 time_now)
 {
+  u32 max_burst;
   time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
-  return spacer_max_burst (&tc->pacer, time_now);
+  max_burst = spacer_max_burst (&tc->pacer, time_now);
+  return (max_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_burst;
 }
 
 void
@@ -668,22 +676,9 @@ transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 }
 
 u32
-transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
-				u16 mss)
+transport_connection_snd_space (transport_connection_t * tc)
 {
-  u32 snd_space, max_paced_burst;
-
-  snd_space = tp_vfts[tc->proto].send_space (tc);
-  if (transport_connection_is_tx_paced (tc))
-    {
-      time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
-      max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
-      max_paced_burst =
-	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
-      snd_space = clib_min (snd_space, max_paced_burst);
-      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
-    }
-  return snd_space;
+  return tp_vfts[tc->proto].send_space (tc);
 }
 
 u64

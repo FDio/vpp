@@ -1281,6 +1281,10 @@ tcp_snd_space_inline (tcp_connection_t * tc)
       int snt_limited = tc->snd_nxt - tc->limited_transmit;
       snd_space = clib_max ((int) 2 * tc->snd_mss - snt_limited, 0);
     }
+  if (snd_space < tc->snd_mss)
+    transport_connection_tx_pacer_reset_bucket (&tc->connection,
+                                                tcp_get_worker (tc->c_thread_index)->vm->
+						  clib_time.last_cpu_time);
   return tcp_round_snd_space (tc, snd_space);
 }
 
@@ -1366,6 +1370,15 @@ tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 
   transport_connection_tx_pacer_update (&tc->connection,
 					tcp_cc_get_pacing_rate (tc));
+  if (tcp_available_output_snd_space (tc) < tc->snd_mss)
+    transport_connection_tx_pacer_reset_bucket (&tc->connection,
+                                                tcp_get_worker (tc->c_thread_index)->vm->
+						  clib_time.last_cpu_time);
+  else
+    {
+  u64 last_time = tcp_get_worker (tc->c_thread_index)->vm->clib_time.last_cpu_time;
+  tc->connection.pacer.last_update = last_time >> 10;
+    }
 }
 
 void
