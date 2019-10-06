@@ -815,12 +815,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				int *n_tx_packets, u8 peek_data)
 {
   u32 next_index, next0, next1, *to_next, n_left_to_next, max_burst;
-  u32 n_trace, n_bufs_needed = 0, n_left, pbi;
+  u32 n_trace, n_bufs_needed = 0, n_left, pbi, pacer_burst;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
   vlib_main_t *vm = wrk->vm;
   transport_proto_t tp;
+  u8 cc_limited = 0;
   vlib_buffer_t *pb;
   u16 n_bufs, rv;
 
@@ -863,10 +864,25 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
-  ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   vm->clib_time.
-						   last_cpu_time,
-						   ctx->snd_mss);
+  ctx->snd_space = transport_connection_snd_space (ctx->tc);
+
+  if (transport_connection_is_tx_paced (ctx->tc))
+    {
+      pacer_burst = transport_connection_tx_pacer_burst (ctx->tc,
+                                                         vm->clib_time.
+                                                         last_cpu_time);
+      if (ctx->snd_space < pacer_burst)
+	{
+	  cc_limited = 1;
+	}
+      else
+	{
+	  ctx->snd_space = clib_min (ctx->snd_space, pacer_burst);
+	  ctx->snd_space = ctx->snd_space >= ctx->snd_mss ?
+			   ctx->snd_space - ctx->snd_space % ctx->snd_mss :
+			   ctx->snd_space;
+	}
+    }
 
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
@@ -881,7 +897,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
-    return SESSION_TX_NO_DATA;
+    {
+      transport_connection_tx_pacer_reset_bucket (ctx->tc,
+						  vm->clib_time.
+						  last_cpu_time);
+      return SESSION_TX_NO_DATA;
+    }
 
   n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
@@ -982,7 +1003,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 
   *n_tx_packets += ctx->n_segs_per_evt;
-  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
+  transport_connection_update_tx_bytes (ctx->tc,
+                                        cc_limited ? pacer_burst :
+                                        ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
