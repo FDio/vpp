@@ -7,14 +7,16 @@
 FD.io VPP
 #########
 
-FD.io Vector Packet Processing (VPP) is a fast, scalable and multi-platform network stack. 
+FD.io Vector Packet Processing (VPP) is a fast, scalable layer 2-4
+multi-platform network stack. VPP supports integration with OpenStack
+and Kubernetes. Network management features include configuration,
+counters and sampling. Development tools include plugin extensibility,
+high-performance event-logging, multiple kinds of packet tracing;
+debug images include extensive consistency checking.
 
-FD.io VPP is, at it's core, a scalable layer 2-4 network stack. 
-It supports integration into both Open Stack and Kubernetes environments. 
-It supports network management features including configuration, counters and sampling. 
-It supports extending with plugins, tracing and debugging. 
-It supports use cases such as vSwitch, vRouter, Gateways, Firewalls and Load Balancers, to name but a few. 
-Finally it is useful both a software development kit or an appliance out of the box. 
+Use-cases include vSwitch, vRouter, Gateways, Firewalls and Load
+Balancers, to name several. Out of the box, VPP works as a software
+development kit or an appliance.
 
 .. toctree::
    :maxdepth: 2
