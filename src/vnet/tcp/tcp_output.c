@@ -409,7 +409,10 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
     tc->flags |= TCP_CONN_TRACK_BURST;
 
   if (tc->snd_una == tc->snd_nxt)
-    tcp_cc_event (tc, TCP_CC_EVT_START_TX);
+    {
+      tcp_cc_event (tc, TCP_CC_EVT_START_TX);
+      tcp_connection_tx_pacer_reset (tc, tc->cwnd, TRANSPORT_PACER_MIN_MSS);
+    }
 }
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -1435,19 +1438,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
   max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
 
-  /* Start is beyond snd_congestion */
   start = tc->snd_una + offset;
-  if (seq_geq (start, tc->snd_congestion))
-    return 0;
-
-  /* Don't overshoot snd_congestion */
-  if (seq_gt (start + max_deq_bytes, tc->snd_congestion))
-    {
-      max_deq_bytes = tc->snd_congestion - start;
-      if (max_deq_bytes == 0)
-	return 0;
-    }
-
   n_bytes = tcp_prepare_segment (wrk, tc, offset, max_deq_bytes, b);
   if (!n_bytes)
     return 0;
@@ -1903,16 +1894,27 @@ static int
 tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 burst_size)
 {
+  u8 snd_limited = 0, can_rescue = 0, reset_pacer = 0;
   u32 n_written = 0, offset, max_bytes, n_segs = 0;
+  u32 bi, max_deq, burst_bytes, sent_bytes;
   sack_scoreboard_hole_t *hole;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
   sack_scoreboard_t *sb;
-  u32 bi, max_deq;
   int snd_space;
-  u8 snd_limited = 0, can_rescue = 0;
+  u64 time_now;
 
   ASSERT (tcp_in_cong_recovery (tc));
+
+  time_now = wrk->vm->clib_time.last_cpu_time;
+  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
+						     time_now);
+  burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
+  if (!burst_size)
+    {
+      tcp_program_retransmit (tc);
+      return 0;
+    }
 
   if (tcp_in_recovery (tc))
     snd_space = tcp_available_cc_snd_space (tc);
@@ -1921,12 +1923,11 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   if (snd_space < tc->snd_mss)
     {
-      /* We're cc constrained so don't accumulate tokens */
-      transport_connection_tx_pacer_reset_bucket (&tc->connection,
-						  vm->
-						  clib_time.last_cpu_time);
-      return 0;
+      reset_pacer = burst_bytes > tc->snd_mss;
+      goto done;
     }
+
+  reset_pacer = snd_space < burst_bytes;
 
   sb = &tc->sack_sb;
 
@@ -1967,9 +1968,12 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  /* We are out of lost holes to retransmit so send some new data. */
 	  if (max_deq > tc->snd_mss)
 	    {
-	      u32 n_segs_new, av_window;
-	      av_window = tc->snd_wnd - (tc->snd_nxt - tc->snd_una);
-	      snd_space = clib_min (snd_space, av_window);
+	      u32 n_segs_new;
+	      int av_wnd;
+
+	      av_wnd = (int) tc->snd_wnd - (tc->snd_nxt - tc->snd_una);
+	      av_wnd = clib_max (av_wnd, 0);
+	      snd_space = clib_min (snd_space, av_wnd);
 	      snd_space = clib_min (max_deq, snd_space);
 	      burst_size = clib_min (burst_size - n_segs,
 				     snd_space / tc->snd_mss);
@@ -2034,6 +2038,19 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
+  if (reset_pacer)
+    {
+      transport_connection_tx_pacer_reset_bucket (&tc->connection,
+						  vm->clib_time.
+						  last_cpu_time);
+    }
+  else
+    {
+      sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
+      transport_connection_tx_pacer_update_bytes (&tc->connection,
+						  sent_bytes);
+    }
+
   return n_segs;
 }
 
@@ -2045,14 +2062,28 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 			u32 burst_size)
 {
   u32 n_written = 0, offset = 0, bi, max_deq, n_segs_now;
+  u32 burst_bytes, sent_bytes;
   vlib_main_t *vm = wrk->vm;
   int snd_space, n_segs = 0;
+  u8 cc_limited = 0;
   vlib_buffer_t *b;
+  u64 time_now;
 
   ASSERT (tcp_in_fastrecovery (tc));
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
 
+  time_now = wrk->vm->clib_time.last_cpu_time;
+  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
+						     time_now);
+  burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
+  if (!burst_size)
+    {
+      tcp_program_retransmit (tc);
+      return 0;
+    }
+
   snd_space = tcp_available_cc_snd_space (tc);
+  cc_limited = snd_space < burst_bytes;
 
   if (!tcp_fastrecovery_first (tc))
     goto send_unsent;
@@ -2098,19 +2129,12 @@ send_unsent:
 
 done:
   tcp_fastrecovery_first_off (tc);
-  return n_segs;
-}
 
-/**
- * Do fast retransmit
- */
-static int
-tcp_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, u32 burst_size)
-{
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    return tcp_retransmit_sack (wrk, tc, burst_size);
-  else
-    return tcp_retransmit_no_sack (wrk, tc, burst_size);
+  sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
+  sent_bytes = cc_limited ? burst_bytes : sent_bytes;
+  transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
+
+  return n_segs;
 }
 
 static int
@@ -2164,23 +2188,16 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 static int
 tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 {
-  u32 n_segs = 0, burst_size, sent_bytes, burst_bytes;
   tcp_worker_ctx_t *wrk;
+  u32 n_segs;
 
   wrk = tcp_get_worker (tc->c_thread_index);
-  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
-						     wrk->vm->
-						     clib_time.last_cpu_time);
-  burst_size = clib_min (max_burst_size, burst_bytes / tc->snd_mss);
-  if (!burst_size)
-    {
-      tcp_program_retransmit (tc);
-      return 0;
-    }
 
-  n_segs = tcp_retransmit (wrk, tc, burst_size);
-  sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
-  transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    n_segs = tcp_retransmit_sack (wrk, tc, max_burst_size);
+  else
+    n_segs = tcp_retransmit_no_sack (wrk, tc, max_burst_size);
+
   return n_segs;
 }
 
