@@ -19,6 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/ip/ip_frag.h>
 
 typedef struct {
   /* Adjacency taken. */
@@ -26,8 +27,15 @@ typedef struct {
   u32 flow_hash;
 } mpls_output_trace_t;
 
+typedef enum {
+  MPLS_OUTPUT_MODE,
+  MPLS_OUTPUT_MIDCHAIN_MODE
+}mpls_output_mode_t;
+
 #define foreach_mpls_output_next        	\
-_(DROP, "error-drop")
+_(DROP, "error-drop")                           \
+_(IP4_FRAG, "ip4-frag")                         \
+_(IP6_FRAG, "ip6-frag")
 
 typedef enum {
 #define _(s,n) MPLS_OUTPUT_NEXT_##s,
@@ -50,11 +58,36 @@ format_mpls_output_trace (u8 * s, va_list * args)
   return s;
 }
 
+/*
+ * Save the mpls header length and adjust the current to ip header
+ */
+static inline u32
+set_mpls_fragmentation(vlib_buffer_t * p0, ip_adjacency_t * adj0)
+{
+  u32 next0;
+
+  /* advance size of (all) mpls header to ip header before fragmenting */
+  /* save the current pointing to first mpls header. */
+  vnet_buffer (p0)->mpls.mpls_hdr_length = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;
+  vlib_buffer_advance (p0, vnet_buffer (p0)->mpls.mpls_hdr_length);
+
+  /* IP fragmentation */
+  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
+                           IP4_FRAG_NEXT_MPLS_OUTPUT,
+                           ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
+
+  /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
+  vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
+  next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
+
+  return next0;
+}
+
 static inline uword
 mpls_output_inline (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
                     vlib_frame_t * from_frame,
-		    int is_midchain)
+                    mpls_output_mode_t mode)
 {
   u32 n_left_from, next_index, * from, * to_next, thread_index;
   vlib_node_runtime_t * error_node;
@@ -162,8 +195,11 @@ mpls_output_inline (vlib_main_t * vm,
             }
           else
             {
-              error0 = IP4_ERROR_MTU_EXCEEDED;
-              next0 = MPLS_OUTPUT_NEXT_DROP;
+	      error0 = IP4_ERROR_MTU_EXCEEDED;
+	      next0 = set_mpls_fragmentation (p0, adj0);
+              vlib_node_increment_counter (vm, mpls_output_node.index,
+                                           MPLS_ERROR_PKTS_NEED_FRAG,
+                                           1);
             }
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
                            adj1[0].rewrite_header.max_l3_packet_bytes))
@@ -182,10 +218,13 @@ mpls_output_inline (vlib_main_t * vm,
             }
           else
             {
-              error1 = IP4_ERROR_MTU_EXCEEDED;
-              next1 = MPLS_OUTPUT_NEXT_DROP;
+	      error1 = IP4_ERROR_MTU_EXCEEDED;
+	      next1 = set_mpls_fragmentation (p1, adj1);
+              vlib_node_increment_counter (vm, mpls_output_node.index,
+                                           MPLS_ERROR_PKTS_NEED_FRAG,
+                                           1);
             }
-          if (is_midchain)
+          if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
 	      adj0->sub_type.midchain.fixup_func
                 (vm, adj0, p0,
@@ -221,7 +260,7 @@ mpls_output_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
         {
 	  ip_adjacency_t * adj0;
-          mpls_unicast_header_t *hdr0;
+	  mpls_unicast_header_t *hdr0;
 	  vlib_buffer_t * p0;
 	  u32 pi0, adj_index0, next0, error0;
           word rw_len0;
@@ -233,7 +272,7 @@ mpls_output_inline (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
 	  adj0 = adj_get(adj_index0);
-      	  hdr0 = vlib_buffer_get_current (p0);
+	  hdr0 = vlib_buffer_get_current (p0);
 
 	  /* Guess we are only writing on simple Ethernet header. */
           vnet_rewrite_one_header (adj0[0], hdr0, 
@@ -268,10 +307,13 @@ mpls_output_inline (vlib_main_t * vm,
             }
           else
             {
-              error0 = IP4_ERROR_MTU_EXCEEDED;
-              next0 = MPLS_OUTPUT_NEXT_DROP;
+	      error0 = IP4_ERROR_MTU_EXCEEDED;
+	      next0 = set_mpls_fragmentation (p0, adj0);
+              vlib_node_increment_counter (vm, mpls_output_node.index,
+                                           MPLS_ERROR_PKTS_NEED_FRAG,
+                                           1);
             }
-          if (is_midchain)
+          if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
 	      adj0->sub_type.midchain.fixup_func
                 (vm, adj0, p0,
@@ -317,7 +359,7 @@ VLIB_NODE_FN (mpls_output_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-    return (mpls_output_inline(vm, node, from_frame, /* is_midchain */ 0));
+    return (mpls_output_inline(vm, node, from_frame, MPLS_OUTPUT_MODE));
 }
 
 VLIB_REGISTER_NODE (mpls_output_node) = {
@@ -341,7 +383,7 @@ VLIB_NODE_FN (mpls_midchain_node) (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
-    return (mpls_output_inline(vm, node, from_frame, /* is_midchain */ 1));
+    return (mpls_output_inline(vm, node, from_frame, MPLS_OUTPUT_MIDCHAIN_MODE));
 }
 
 VLIB_REGISTER_NODE (mpls_midchain_node) = {
