@@ -815,7 +815,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				int *n_tx_packets, u8 peek_data)
 {
   u32 next_index, next0, next1, *to_next, n_left_to_next, max_burst;
-  u32 n_trace, n_bufs_needed = 0, n_left, pbi;
+  u32 n_trace, n_bufs_needed = 0, n_left, pbi, burst;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
@@ -843,18 +843,18 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (ctx->transport_vft->flush_data)
 	ctx->transport_vft->flush_data (ctx->tc);
+      e->event_type = SESSION_IO_EVT_TX;
     }
 
   if (ctx->s->flags & SESSION_F_CUSTOM_TX)
     {
-      u32 n_custom_tx;
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
-      n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
-      *n_tx_packets += n_custom_tx;
+      burst = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
+      *n_tx_packets += burst;
       if (PREDICT_FALSE
 	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
 	return SESSION_TX_OK;
-      max_burst -= n_custom_tx;
+      max_burst -= burst;
       if (!max_burst)
 	{
 	  session_evt_add_old (wrk, elt);
@@ -881,7 +881,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
-    return SESSION_TX_NO_DATA;
+    {
+      transport_connection_tx_pacer_reset_bucket (ctx->tc,
+						  vm->clib_time.
+						  last_cpu_time);
+      return SESSION_TX_NO_DATA;
+    }
 
   n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,

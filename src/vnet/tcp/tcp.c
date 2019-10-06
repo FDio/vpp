@@ -727,6 +727,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
     tcp_init_snd_vars (tc);
 
   tcp_cc_init (tc);
+  tc->cwnd = 1900000;
 
   if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
     tcp_add_del_adjacency (tc, 1);
@@ -1281,6 +1282,10 @@ tcp_snd_space_inline (tcp_connection_t * tc)
       int snt_limited = tc->snd_nxt - tc->limited_transmit;
       snd_space = clib_max ((int) 2 * tc->snd_mss - snt_limited, 0);
     }
+//  if (snd_space < tc->snd_mss)
+//    transport_connection_tx_pacer_reset_bucket (&tc->connection,
+//                                                tcp_get_worker (tc->c_thread_index)->vm->
+//						  clib_time.last_cpu_time);
   return tcp_round_snd_space (tc, snd_space);
 }
 
@@ -1366,6 +1371,15 @@ tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 
   transport_connection_tx_pacer_update (&tc->connection,
 					tcp_cc_get_pacing_rate (tc));
+//  if (tcp_available_output_snd_space (tc) < tc->snd_mss)
+//    transport_connection_tx_pacer_reset_bucket (&tc->connection,
+//                                                tcp_get_worker (tc->c_thread_index)->vm->
+//						  clib_time.last_cpu_time);
+//  else
+//    {
+//  u64 last_time = tcp_get_worker (tc->c_thread_index)->vm->clib_time.last_cpu_time;
+//  tc->connection.pacer.last_update = last_time >> 10;
+//    }
 }
 
 void
@@ -1377,6 +1391,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
   u64 last_time = wrk->vm->clib_time.last_cpu_time;
   transport_connection_tx_pacer_reset (&tc->connection, window / srtt,
 				       start_bucket, last_time);
+//  clib_warning ("reset to %u time %lu %lu", tc->connection.pacer.bytes_per_sec, last_time,
+//                (u64) (last_time >> 10));
 }
 
 static void
