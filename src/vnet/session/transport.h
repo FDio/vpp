@@ -19,6 +19,10 @@
 #include <vnet/vnet.h>
 #include <vnet/session/transport_types.h>
 
+#define TRANSPORT_PACER_MIN_MSS 	1460
+#define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
+#define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
+
 typedef struct _transport_options_t
 {
   transport_tx_fn_type_t tx_type;

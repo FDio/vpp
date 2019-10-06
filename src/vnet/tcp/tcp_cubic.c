@@ -104,6 +104,7 @@ cubic_congestion (tcp_connection_t * tc)
   cd->w_max = w_max;
   tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
   tc->cwnd = tc->ssthresh;
+//  tc->ssthresh = tc->cwnd;
 }
 
 static void
@@ -120,6 +121,8 @@ cubic_loss (tcp_connection_t * tc)
 static void
 cubic_recovered (tcp_connection_t * tc)
 {
+//  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+//  cd->K = 0;
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;

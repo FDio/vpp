@@ -727,6 +727,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
     tcp_init_snd_vars (tc);
 
   tcp_cc_init (tc);
+//  tc->cwnd = 1900000;
 
   if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
     tcp_add_del_adjacency (tc, 1);
