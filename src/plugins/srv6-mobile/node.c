@@ -313,7 +313,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		}
 	      }
 
-	      qfi &= ~GTPU_PDU_SESSION_P_BIT_MASK;
 	      if (qfi)
 		{
 		  hdrlen = sizeof(gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
@@ -341,6 +340,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  hdr0->gtpu.ext->seq = 0;
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
+
+	      	  qfi = ((qfi & SRV6_PDU_SESSION_QFI_MASK) >> 2) | ((qfi & SRV6_PDU_SESSION_R_BIT_MASK) << 5);
 
 		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip4_gtpu_header_t) + sizeof(gtpu_exthdr_t));
 		  sess->exthdrlen = 1;
@@ -544,6 +545,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
 		      seg.as_u8[offset + 4] = qfi;
 		    }
 
@@ -562,6 +565,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
 		      seg.as_u8[offset+4] |= qfi >> shift;
 		      seg.as_u8[offset+5] |= qfi << (8 - shift);
 		    }
@@ -884,7 +889,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
 	      }
 
-	      qfi &= ~GTPU_PDU_SESSION_P_BIT_MASK;
 	      if (qfi)
 		{
 		  hdrlen = sizeof (gtpu_exthdr_t) + sizeof(gtpu_pdu_session_t);
@@ -909,6 +913,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		  hdr0->gtpu.ext->seq = 0;
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
+
+		  qfi = ((qfi & SRV6_PDU_SESSION_QFI_MASK) >> 2) | ((qfi & SRV6_PDU_SESSION_R_BIT_MASK) << 5);
 
 		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip6_gtpu_header_t) + sizeof(gtpu_exthdr_t));
 		  sess->exthdrlen = 1;
@@ -1083,6 +1089,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  clib_memcpy_fast (&seg0.as_u8[offset], teidp, 4);
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
 		      seg0.as_u8[offset+4] = qfi;
 		    }
 	        }
@@ -1098,6 +1105,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & ~GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
 		      seg0.as_u8[offset+4] |= qfi >> shift;
 		      seg0.as_u8[offset+5] |= qfi << (8 - shift);
 		    }
@@ -1383,6 +1391,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
 		      seg0.as_u8[offset + 4] = qfi;
 		    }
 		}
@@ -1398,6 +1407,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		  if (qfip)
 		    {
+		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
 		      seg0.as_u8[offset + 4] |= qfi >> shift;
 		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
 		    }
