@@ -1471,6 +1471,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  u32 hdr_len0, hdr_len1, hdr_len2, hdr_len3;
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
@@ -1482,7 +1483,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_address_t sr_addr0, sr_addr1, sr_addr2, sr_addr3;
           ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
           u32 teid0 = 0, teid1 = 0, teid2 = 0, teid3 = 0;
-	  u8 *teidp0 = NULL, *teidp1 = NULL, *teidp2 = NULL, *teidp3 = NULL;
+          u8 *teidp0 = NULL, *teidp1 = NULL, *teidp2 = NULL, *teidp3 = NULL;
+          u8 qfi0 = 0, qfi1 = 0, qfi2 = 0, qfi3 = 0;
+          u8 *qfip0 = NULL, *qfip1 = NULL, *qfip2 = NULL, *qfip3 = NULL;
 	  u32 offset, shift;
 	  u32 index;
 
@@ -1560,11 +1563,35 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (sl0->is_tmap)
 	    {
                hdr0 = vlib_buffer_get_current (b0);
+               hdr_len0 = sizeof(ip4_gtpu_header_t);
                teid0 = hdr0->gtpu.teid;
 	       teidp0 = (u8 *)&teid0;
                sr_addr0 = hdr0->ip4.src_address;
                dst_addr0 = hdr0->ip4.dst_address;
-               vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+
+               // 5g header check and header length calc
+	       if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+                 {
+                   // Extention header
+                   hdr_len0 += sizeof(gtpu_exthdr_t);
+                   if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+                     {
+                       gtpu_pdu_session_t *sess0;
+
+                       sess0 = (gtpu_pdu_session_t *)(((char *)hdr0) + hdr_len0);
+                       qfi0 = sess0->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+                       qfip0 = (u8 *)&qfi0;
+
+                       hdr_len0 += sizeof(gtpu_pdu_session_t);
+
+                       if (sess0->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+                         {
+                           hdr_len0 += sizeof(gtpu_paging_policy_t);
+                         }
+                     }
+                 }
+
+	       vlib_buffer_advance (b0, (word) hdr_len0);
 	       encap0 = vlib_buffer_get_current (b0);
                clib_memcpy_fast (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
                        		 sl0->rewrite, vec_len (sl0->rewrite));
@@ -1579,11 +1606,35 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (sl1->is_tmap)
 	    {
                hdr1 = vlib_buffer_get_current (b1);
+               hdr_len1 = sizeof(ip4_gtpu_header_t);
                teid1 = hdr1->gtpu.teid;
 	       teidp1 = (u8 *)&teid1;
                sr_addr1 = hdr1->ip4.src_address;
                dst_addr1 = hdr1->ip4.dst_address;
-               vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
+
+               // 5g header check and header length calc
+	       if (hdr1->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+                 {
+                   // Extention header
+                   hdr_len1 += sizeof(gtpu_exthdr_t);
+                   if (hdr1->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+                     {
+                       gtpu_pdu_session_t *sess1;
+
+                       sess1 = (gtpu_pdu_session_t *)(((char *)hdr1) + hdr_len1);
+                       qfi1 = sess1->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+                       qfip1 = (u8 *)&qfi1;
+
+                       hdr_len1 += sizeof(gtpu_pdu_session_t);
+
+                       if (sess1->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+                         {
+                           hdr_len1 += sizeof(gtpu_paging_policy_t);
+                         }
+                     }
+                 }
+
+               vlib_buffer_advance (b1, (word) hdr_len1);
 	       encap1 = vlib_buffer_get_current (b1);
                clib_memcpy_fast (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
                        		 sl1->rewrite, vec_len (sl1->rewrite));
@@ -1597,11 +1648,35 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (sl2->is_tmap)
 	    {
                hdr2 = vlib_buffer_get_current (b2);
+               hdr_len2 = sizeof(ip4_gtpu_header_t);
                teid2 = hdr2->gtpu.teid;
 	       teidp2 =  (u8 *)&teid2;
                sr_addr2 = hdr2->ip4.src_address;
                dst_addr2 = hdr2->ip4.dst_address;
-               vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
+
+               // 5g header check and header length calc
+	       if (hdr2->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+                 {
+                   // Extention header
+                   hdr_len2 += sizeof(gtpu_exthdr_t);
+                   if (hdr2->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+                     {
+                       gtpu_pdu_session_t *sess2;
+
+                       sess2 = (gtpu_pdu_session_t *)(((char *)hdr2) + hdr_len2);
+                       qfi2 = sess2->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+                       qfip2 = (u8 *)&qfi2;
+
+                       hdr_len2 += sizeof(gtpu_pdu_session_t);
+
+                       if (sess2->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+                         {
+                           hdr_len2 += sizeof(gtpu_paging_policy_t);
+                         }
+                     }
+                 }
+
+               vlib_buffer_advance (b2, (word) hdr_len2);
 	       encap2 = vlib_buffer_get_current (b2);
                clib_memcpy_fast (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
                        		 sl2->rewrite, vec_len (sl2->rewrite));
@@ -1615,11 +1690,35 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (sl3->is_tmap)
 	    {
                hdr3 = vlib_buffer_get_current (b3);
+               hdr_len3 = sizeof(ip4_gtpu_header_t);
                teid3 = hdr3->gtpu.teid;
 	       teidp3 = (u8 *)&teid3;
                sr_addr3 = hdr3->ip4.src_address;
                dst_addr3 = hdr3->ip4.dst_address;
-               vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
+
+               // 5g header check and header length calc
+	       if (hdr3->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+                 {
+                   // Extention header
+                   hdr_len3 += sizeof(gtpu_exthdr_t);
+                   if (hdr3->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+                     {
+                       gtpu_pdu_session_t *sess3;
+
+                       sess3 = (gtpu_pdu_session_t *)(((char *)hdr3) + hdr_len3);
+                       qfi3 = sess3->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+                       qfip3 = (u8 *)&qfi3;
+
+                       hdr_len3 += sizeof(gtpu_pdu_session_t);
+
+                       if (sess3->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+                         {
+                           hdr_len3 += sizeof(gtpu_paging_policy_t);
+                         }
+                     }
+                 }
+
+               vlib_buffer_advance (b3, (word) hdr_len3);
 	       encap3 = vlib_buffer_get_current (b3);
                clib_memcpy_fast (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
                        		 sl3->rewrite, vec_len (sl3->rewrite));
@@ -1672,6 +1771,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr0->segments->as_u8[offset + index] = dst_addr0.as_u8[index];
 		}
 
+                if (qfip0)
+                  {
+                    sr0->segments->as_u8[offset + 4] = qfi0;
+                  }
+
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset+5+index] = teidp0[index];
 		}
@@ -1680,6 +1784,12 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr0->segments->as_u8[offset + index] |= dst_addr0.as_u8[index] >> shift;
 		  sr0->segments->as_u8[offset + index + 1] |= dst_addr0.as_u8[index] << (8 - shift);
 		}
+
+                if (qfip0)
+                  {
+                    sr0->segments->as_u8[offset + 4] |= qfi0 >> shift;
+                    sr0->segments->as_u8[offset + 5] |= qfi0 << (8 - shift);
+                  }
 
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset + 5 + index] |=  teidp0[index] >> shift;
@@ -1713,6 +1823,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr1->segments->as_u8[offset + index] = dst_addr1.as_u8[index];
 		}
 
+                if (qfip1)
+                  {
+                    sr1->segments->as_u8[offset + 4] = qfi1;
+                  }
+
 		for (index = 0; index < 4; index++) {
 		  sr1->segments->as_u8[offset+5+index] = teidp1[index];
 		}
@@ -1721,6 +1836,12 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr1->segments->as_u8[offset + index] |= dst_addr1.as_u8[index] >> shift;
 		  sr1->segments->as_u8[offset + index + 1] |= dst_addr1.as_u8[index] << (8 - shift);
 		}
+
+                if (qfip1)
+                  {
+                    sr1->segments->as_u8[offset + 4] |= qfi1 >> shift;
+                    sr1->segments->as_u8[offset + 5] |= qfi1 << (8 - shift);
+                  }
 
 		for (index = 0; index < 4; index++) {
 		  sr1->segments->as_u8[offset + 5 + index] |=  teidp1[index] >> shift;
@@ -1754,6 +1875,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr2->segments->as_u8[offset + index] = dst_addr2.as_u8[index];
 		}
 
+                if (qfip2)
+                  {
+                    sr2->segments->as_u8[offset + 4] = qfi2;
+                  }
+
 		for (index = 0; index < 4; index++) {
 		  sr2->segments->as_u8[offset+5+index] = teidp2[index];
 		}
@@ -1762,6 +1888,12 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr2->segments->as_u8[offset + index] |= dst_addr2.as_u8[index] >> shift;
 		  sr2->segments->as_u8[offset + index + 1] |= dst_addr2.as_u8[index] << (8 - shift);
 		}
+
+                if (qfip2)
+                  {
+                    sr2->segments->as_u8[offset + 4] |= qfi2 >> shift;
+                    sr2->segments->as_u8[offset + 5] |= qfi2 << (8 - shift);
+                  }
 
 		for (index = 0; index < 4; index++) {
 		  sr2->segments->as_u8[offset + 5 + index] |=  teidp2[index] >> shift;
@@ -1795,6 +1927,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr3->segments->as_u8[offset + index] = dst_addr3.as_u8[index];
 		}
 
+                if (qfip3)
+                  {
+                    sr3->segments->as_u8[offset + 4] = qfi3;
+                  }
+
 		for (index = 0; index < 4; index++) {
 		  sr3->segments->as_u8[offset+5+index] = teidp3[index];
 		}
@@ -1803,6 +1940,12 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr3->segments->as_u8[offset + index] |= dst_addr3.as_u8[index] >> shift;
 		  sr3->segments->as_u8[offset + index + 1] |= dst_addr3.as_u8[index] << (8 - shift);
 		}
+
+                if (qfip3)
+                  {
+                    sr3->segments->as_u8[offset + 4] |= qfi3 >> shift;
+                    sr3->segments->as_u8[offset + 5] |= qfi3 << (8 - shift);
+                  }
 
 		for (index = 0; index < 4; index++) {
 		  sr3->segments->as_u8[offset + 5 + index] |=  teidp3[index] >> shift;
@@ -1924,10 +2067,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
           ip4_gtpu_header_t *hdr0;
+          u32 hdr_len0 = 0;
           ip4_address_t sr_addr0;
           ip4_address_t dst_addr0;
           u32 teid0 = 0;
 	  u8 *teidp0 = NULL;
+          u8 qfi0 = 0;
+	  u8 *qfip0 = NULL;
 	  u32 offset, shift;
 	  u32 index;
 
@@ -1956,13 +2102,36 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
               // save for later use
               hdr0 = vlib_buffer_get_current (b0);
+              hdr_len0 = sizeof(ip4_gtpu_header_t);
               teid0 = hdr0->gtpu.teid;
 	      teidp0 = (u8 *)&teid0;
               sr_addr0 = hdr0->ip4.src_address;
               dst_addr0 = hdr0->ip4.dst_address;
 
+              // 5g header check and header length calc
+              if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+                {
+                  // Extention header
+                  hdr_len0 += sizeof(gtpu_exthdr_t);
+                  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
+                    {
+                      gtpu_pdu_session_t *sess0;
+
+                      sess0 = (gtpu_pdu_session_t *)(((char *)hdr0) + hdr_len0);
+                      qfi0 = sess0->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
+                      qfip0 = (u8 *)&qfi0;
+
+                      hdr_len0 += sizeof(gtpu_pdu_session_t);
+
+                      if (sess0->u.val & GTPU_PDU_SESSION_P_BIT_MASK)
+                        {
+                          hdr_len0 += sizeof(gtpu_paging_policy_t);
+                        }
+                    }
+                }
+
               // go after GTPU, we are at segment header
-              vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+              vlib_buffer_advance (b0, (word) hdr_len0);
 
 	      encap0 = vlib_buffer_get_current (b0);
 	       
@@ -1997,6 +2166,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr0->segments->as_u8[offset + index] = dst_addr0.as_u8[index];
 		}
 
+                if (qfip0)
+                  {
+                    sr0->segments->as_u8[offset + 4] = qfi0;
+                  }
+
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset+5+index] = teidp0[index];
 		}
@@ -2005,6 +2179,12 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  sr0->segments->as_u8[offset + index] |= dst_addr0.as_u8[index] >> shift;
 		  sr0->segments->as_u8[offset + index + 1] |= dst_addr0.as_u8[index] << (8 - shift);
 		}
+
+                if (qfip0)
+                  {
+                    sr0->segments->as_u8[offset + 4] |= qfi0 >> shift;
+                    sr0->segments->as_u8[offset + 5] |= qfi0 << (8 - shift);
+                  }
 
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset + 5 + index] |=  teidp0[index] >> shift;
