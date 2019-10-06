@@ -118,6 +118,10 @@ typedef struct
 #define GTPU_PDU_SESSION_R_BIT_MASK	0x40
 #define GTPU_PDU_SESSION_QFI_MASK	0x3f
 
+#define SRV6_PDU_SESSION_P_BIT_MASK	0x01
+#define SRV6_PDU_SESSION_R_BIT_MASK	0x02
+#define SRV6_PDU_SESSION_QFI_MASK	0xfC
+
 /* *INDENT-OFF* */
 typedef struct
 {
