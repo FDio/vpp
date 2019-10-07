@@ -171,6 +171,7 @@ define show_version
 {
   u32 client_index;
   u32 context;
+  u32 dummy;
 };
 
 /** \brief show version response
