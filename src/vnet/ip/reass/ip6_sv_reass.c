@@ -589,6 +589,7 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	      next0 = IP6_SV_REASSEMBLY_NEXT_HANDOFF;
 	      vnet_buffer (b0)->ip.reass.owner_thread_index =
 		kv.v.thread_index;
+	      goto packet_enqueue;
 	    }
 
 	  if (!reass)
