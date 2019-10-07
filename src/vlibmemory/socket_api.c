@@ -386,7 +386,7 @@ vl_socket_write_ready (clib_file_t * uf)
 {
   clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
-  int n;
+  int bytes_sent;
 
   u32 reg_index = uf->private_data;
   if (is_being_removed_reg_index (reg_index))
@@ -403,8 +403,8 @@ vl_socket_write_ready (clib_file_t * uf)
   while (remaining_bytes > 0)
     {
       bytes_to_send = remaining_bytes > 4096 ? 4096 : remaining_bytes;
-      n = write (uf->file_descriptor, p, bytes_to_send);
-      if (n < 0)
+      bytes_sent = write (uf->file_descriptor, p, bytes_to_send);
+      if (bytes_sent <= 0)
 	{
 	  if (errno == EAGAIN)
 	    {
@@ -416,8 +416,8 @@ vl_socket_write_ready (clib_file_t * uf)
 	  vl_socket_request_remove_reg_index (reg_index);
 	  return 0;
 	}
-      remaining_bytes -= bytes_to_send;
-      p += bytes_to_send;
+      remaining_bytes -= bytes_sent;
+      p += bytes_sent;
     }
 
   vec_delete (rp->output_vector, total_bytes - remaining_bytes, 0);
