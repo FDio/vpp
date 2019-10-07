@@ -566,6 +566,9 @@ sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t * addr)
   u8 *s;
 
   s = clib_sysfs_link_to_name (path);
+  if (!s)
+    return 0;
+
   unformat_init_string (&in, (char *) s, strlen ((char *) s));
   rv = unformat (&in, "%U", unformat_vlib_pci_addr, addr);
   unformat_free (&in);
