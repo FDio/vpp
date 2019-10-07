@@ -16,27 +16,12 @@
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/vnet_msg_enum.h>
-#include <vnet/dhcp/dhcp6_packet.h>
-#include <vnet/dhcp/dhcp6_ia_na_client_dp.h>
+#include <dhcp/dhcp6_packet.h>
+#include <dhcp/dhcp6_ia_na_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <float.h>
 #include <math.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-#include <vlibapi/api_helper_macros.h>
-
-#define foreach_dhcp6_client_cp_msg                                           \
-_(DHCP6_CLIENT_ENABLE_DISABLE, dhcp6_client_enable_disable)
-
-#define vl_api_dhcp6_client_enable_disable_t_print vl_noop_handler
 
 typedef struct
 {
@@ -622,7 +607,7 @@ VLIB_CLI_COMMAND (dhcp6_clients_show_command, static) = {
 };
 /* *INDENT-ON* */
 
-static int
+int
 dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
@@ -766,67 +751,20 @@ VLIB_CLI_COMMAND (dhcp6_client_enable_disable_command, static) = {
 };
 /* *INDENT-ON* */
 
-static void
-  vl_api_dhcp6_client_enable_disable_t_handler
-  (vl_api_dhcp6_client_enable_disable_t * mp)
-{
-  vl_api_dhcp6_client_enable_disable_reply_t *rmp;
-  u32 sw_if_index;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  rv = dhcp6_client_enable_disable (sw_if_index, mp->enable);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_SW_INTERFACE_SET_TABLE_REPLY);
-}
-
-#define vl_msg_name_crc_list
-#include <vnet/dhcp/dhcp6_ia_na_client_cp.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_dhcp6_ia_na_client_cp;
-#undef _
-}
-
 static clib_error_t *
-dhcp_client_cp_init (vlib_main_t * vm)
+dhcp_ia_na_client_cp_init (vlib_main_t * vm)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
-  api_main_t *am = &api_main;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
-  rm->api_main = am;
+  rm->api_main = &api_main;
   rm->node_index = dhcp6_client_cp_process_node.index;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0/* do NOT trace! */);
-  foreach_dhcp6_client_cp_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
-
-  return 0;
+  return NULL;
 }
 
-VLIB_INIT_FUNCTION (dhcp_client_cp_init);
+VLIB_INIT_FUNCTION (dhcp_ia_na_client_cp_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

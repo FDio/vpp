@@ -891,54 +891,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES lisp-gpe/lisp_gpe.api)
 
 ##############################################################################
-# DHCP client
-##############################################################################
-list(APPEND VNET_SOURCES
-  dhcp/client.c
-  dhcp/dhcp_client_detect.c
-  dhcp/dhcp6_client_common_dp.c
-  dhcp/dhcp6_pd_client_dp.c
-  dhcp/dhcp6_pd_client_cp.c
-  dhcp/dhcp6_ia_na_client_dp.c
-  dhcp/dhcp6_ia_na_client_cp.c
-  dhcp/dhcp_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  dhcp/dhcp_client_detect.c
-)
-
-list(APPEND VNET_HEADERS
-  dhcp/client.h
-  dhcp/dhcp6_client_common_dp.h
-  dhcp/dhcp6_pd_client_dp.h
-  dhcp/dhcp6_ia_na_client_dp.h
-)
-
-list(APPEND VNET_API_FILES
-  dhcp/dhcp.api
-  dhcp/dhcp6_pd_client_cp.api
-  dhcp/dhcp6_ia_na_client_cp.api
-)
-
-##############################################################################
-# DHCP proxy
-##############################################################################
-list(APPEND VNET_SOURCES
-  dhcp/dhcp6_proxy_node.c
-  dhcp/dhcp4_proxy_node.c
-  dhcp/dhcp_proxy.c
-)
-
-list(APPEND VNET_HEADERS
-  dhcp/dhcp4_packet.h
-  dhcp/dhcp6_packet.h
-  dhcp/dhcp_proxy.h
-  dhcp/dhcp6_proxy_error.def
-  dhcp/dhcp4_proxy_error.def
-)
-
-##############################################################################
 # ipv6 segment routing
 ##############################################################################
 

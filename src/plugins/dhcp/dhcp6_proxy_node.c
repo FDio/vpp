@@ -17,15 +17,15 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/dhcp/dhcp_proxy.h>
-#include <vnet/dhcp/dhcp6_packet.h>
+#include <dhcp/dhcp_proxy.h>
+#include <dhcp/dhcp6_packet.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/fib/fib.h>
 
 static char *dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
-#include <vnet/dhcp/dhcp6_proxy_error.def>
+#include <dhcp/dhcp6_proxy_error.def>
 #undef dhcpv6_proxy_error
 };
 

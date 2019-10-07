@@ -17,13 +17,13 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/dhcp/dhcp_proxy.h>
-#include <vnet/dhcp/client.h>
+#include <dhcp/dhcp_proxy.h>
+#include <dhcp/client.h>
 #include <vnet/fib/ip4_fib.h>
 
 static char *dhcp_proxy_error_strings[] = {
 #define dhcp_proxy_error(n,s) s,
-#include <vnet/dhcp/dhcp4_proxy_error.def>
+#include <dhcp/dhcp4_proxy_error.def>
 #undef dhcp_proxy_error
 };
 

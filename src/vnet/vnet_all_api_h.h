@@ -60,7 +60,6 @@
 #include <vnet/srmpls/sr_mpls.api.h>
 #include <vnet/classify/classify.api.h>
 #include <vnet/ipfix-export/ipfix_export.api.h>
-#include <vnet/dhcp/dhcp.api.h>
 #include <vnet/cop/cop.api.h>
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
@@ -71,8 +70,6 @@
 #include <vnet/pg/pg.api.h>
 #include <vnet/feature/feature.api.h>
 #include <vnet/qos/qos.api.h>
-#include <vnet/dhcp/dhcp6_pd_client_cp.api.h>
-#include <vnet/dhcp/dhcp6_ia_na_client_cp.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.api.h>
 #include <vnet/syslog/syslog.api.h>

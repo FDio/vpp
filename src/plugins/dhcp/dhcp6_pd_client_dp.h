@@ -17,7 +17,7 @@
 #define included_vnet_dhcp6_pd_client_dp_h
 
 #include <vlib/vlib.h>
-#include <vnet/dhcp/dhcp6_client_common_dp.h>
+#include <dhcp/dhcp6_client_common_dp.h>
 
 typedef struct
 {
@@ -89,30 +89,23 @@ typedef struct
   dhcp6_prefix_info_t *prefixes;
 } prefix_report_t;
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
 void dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
 				   dhcp6_pd_send_client_message_params_t *
 				   params);
 void dhcp6_pd_set_publisher_node (uword node_index, uword event_type);
 int dhcp6_pd_publish_report (prefix_report_t * r);
-
-void
-  vl_api_want_dhcp6_pd_reply_events_t_handler
-  (vl_api_want_dhcp6_pd_reply_events_t * mp);
-void
-  vl_api_dhcp6_pd_send_client_message_t_handler
-  (vl_api_dhcp6_pd_send_client_message_t * mp);
-void
-  vl_api_dhcp6_clients_enable_disable_t_handler
-  (vl_api_dhcp6_clients_enable_disable_t * mp);
+int dhcp6_pd_client_enable_disable (u32 sw_if_index,
+				    const u8 * prefix_group, u8 enable);
+int dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
+				  ip6_address_t address, u8 prefix_length,
+				  u8 is_add);
 
 extern vlib_node_registration_t dhcp6_pd_reply_process_node;
 
 enum
 { DHCP6_PD_DP_REPLY_REPORT, DHCP6_PD_DP_REPORT_MAX };
+
+#include <dhcp/dhcp.api_types.h>
 
 typedef struct _vnet_dhcp6_pd_reply_function_list_elt
 {

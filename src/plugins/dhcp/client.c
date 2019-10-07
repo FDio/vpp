@@ -14,8 +14,8 @@
  */
 #include <vlib/vlib.h>
 #include <vlibmemory/api.h>
-#include <vnet/dhcp/client.h>
-#include <vnet/dhcp/dhcp_proxy.h>
+#include <dhcp/client.h>
+#include <dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/qos/qos_types.h>
 
