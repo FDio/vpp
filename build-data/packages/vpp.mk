@@ -47,7 +47,7 @@ vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
   $(CMAKE) -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))
 #vpp_make_args = --no-print-directory
-vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR)
+vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 vpp_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
 
 vpp-package-deb: vpp-install

@@ -210,7 +210,7 @@ nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
     {
       s_kv.key = s->out2in.as_u64;
       if (clib_bihash_add_del_8_8 (&tsm->out2in, &s_kv, 0))
-	nat_log_warn ("out2in key del failed");
+	nat_elog_warn ("out2in key del failed");
 
       snat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
 					   s->in2out.addr.as_u32,
@@ -271,7 +271,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
-      nat_log_notice ("maximum sessions exceeded");
+      nat_elog_notice ("maximum sessions exceeded");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -307,7 +307,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			      thread_index);
   if (!u)
     {
-      nat_log_warn ("create NAT user failed");
+      nat_elog_warn ("create NAT user failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -315,7 +315,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   if (!s)
     {
       nat44_delete_user_with_no_session (sm, u, thread_index);
-      nat_log_warn ("create NAT session failed");
+      nat_elog_warn ("create NAT session failed");
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -363,7 +363,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   if (clib_bihash_add_or_overwrite_stale_8_8
       (&sm->per_thread_data[thread_index].in2out, &kv0,
        nat44_i2o_is_idle_session_cb, &ctx0))
-    nat_log_notice ("in2out key add failed");
+    nat_elog_notice ("in2out key add failed");
 
   kv0.key = s->out2in.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
@@ -371,7 +371,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   if (clib_bihash_add_or_overwrite_stale_8_8
       (&sm->per_thread_data[thread_index].out2in, &kv0,
        nat44_o2i_is_idle_session_cb, &ctx0))
-    nat_log_notice ("out2in key add failed");
+    nat_elog_notice ("out2in key add failed");
 
   /* log NAT event */
   snat_ipfix_logging_nat44_ses_create (thread_index,
@@ -1777,7 +1777,7 @@ VLIB_NODE_FN (nat44_in2out_reass_node) (vlib_main_t * vm,
 	    {
 	      next0 = SNAT_IN2OUT_NEXT_DROP;
 	      b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_REASS];
-	      nat_log_notice ("maximum reassemblies exceeded");
+	      nat_elog_notice ("maximum reassemblies exceeded");
 	      goto trace0;
 	    }
 
@@ -1844,7 +1844,7 @@ VLIB_NODE_FN (nat44_in2out_reass_node) (vlib_main_t * vm,
 		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_FRAG];
-		      nat_log_notice
+		      nat_elog_notice
 			("maximum fragments per reassembly exceeded");
 		      next0 = SNAT_IN2OUT_NEXT_DROP;
 		      goto trace0;

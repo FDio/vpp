@@ -786,8 +786,10 @@ out:
 static void
 send_bd_ip_mac_entry (vpe_api_main_t * am,
 		      vl_api_registration_t * reg,
-		      u32 bd_id, u8 is_ipv6,
-		      u8 * ip_address, u8 * mac_address, u32 context)
+		      u32 bd_id,
+		      const ip46_address_t * ip,
+		      ip46_type_t itype,
+		      const mac_address_t * mac, u32 context)
 {
   vl_api_bd_ip_mac_details_t *mp;
 
@@ -795,12 +797,11 @@ send_bd_ip_mac_entry (vpe_api_main_t * am,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BD_IP_MAC_DETAILS);
 
-  mp->bd_id = ntohl (bd_id);
-
-  clib_memcpy (mp->mac_address, mac_address, 6);
-  mp->is_ipv6 = is_ipv6;
-  clib_memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
   mp->context = context;
+  mp->entry.bd_id = ntohl (bd_id);
+
+  ip_address_encode (ip, itype, &mp->entry.ip);
+  mac_address_encode (mac, mp->entry.mac);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -845,18 +846,31 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
 	{
 	  ip4_address_t ip4_addr;
 	  ip6_address_t *ip6_addr;
-	  u64 mac_addr;
+	  mac_address_t mac;
+	  u64 mac64;
 	  bd_id = bd_config->bd_id;
 
          /* *INDENT-OFF* */
-         hash_foreach (ip4_addr.as_u32, mac_addr, bd_config->mac_by_ip4,
+         hash_foreach (ip4_addr.as_u32, mac64, bd_config->mac_by_ip4,
          ({
-            send_bd_ip_mac_entry (am, reg, bd_id, 0, (u8 *) &(ip4_addr.as_u8), (u8 *) &mac_addr, mp->context);
+           ip46_address_t ip = {
+             .ip4 = ip4_addr,
+           };
+           mac_address_from_u64(&mac, mac64);
+
+           send_bd_ip_mac_entry (am, reg, bd_id, &ip, IP46_TYPE_IP4,
+                                 &mac, mp->context);
          }));
 
-         hash_foreach_mem (ip6_addr, mac_addr, bd_config->mac_by_ip6,
+         hash_foreach_mem (ip6_addr, mac64, bd_config->mac_by_ip6,
          ({
-            send_bd_ip_mac_entry (am, reg, bd_id, 1, (u8 *) &(ip6_addr->as_u8), (u8 *) &mac_addr, mp->context);
+           ip46_address_t ip = {
+             .ip6 = *ip6_addr,
+           };
+           mac_address_from_u64(&mac, mac64);
+
+           send_bd_ip_mac_entry (am, reg, bd_id, &ip, IP46_TYPE_IP6,
+                                 &mac, mp->context);
          }));
          /* *INDENT-ON* */
 	}
@@ -875,7 +889,7 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
   int rv = 0;
   uword *p;
 
-  bd_id = ntohl (mp->bd_id);
+  bd_id = ntohl (mp->entry.bd_id);
 
   if (bd_id == 0)
     {
@@ -891,8 +905,8 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
     }
   bd_index = p[0];
 
-  type = ip_address_decode (&mp->ip, &ip_addr);
-  mac_address_decode (mp->mac, &mac);
+  type = ip_address_decode (&mp->entry.ip, &ip_addr);
+  mac_address_decode (mp->entry.mac, &mac);
 
   if (bd_add_del_ip_mac (bd_index, type, &ip_addr, &mac, mp->is_add))
     rv = VNET_API_ERROR_UNSPECIFIED;

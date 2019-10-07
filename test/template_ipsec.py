@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp, reassemble4
+from util import ppp, reassemble4, fragment_rfc791, fragment_rfc8200
 from vpp_papi import VppEnum
 
 
@@ -84,14 +84,18 @@ class IPsecIPv6Params(object):
         self.nat_header = None
 
 
+def mk_scapy_crpyt_key(p):
+    if p.crypt_algo == "AES-GCM":
+        return p.crypt_key + struct.pack("!I", p.salt)
+    else:
+        return p.crypt_key
+
+
 def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
     use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
-    if p.crypt_algo == "AES-GCM":
-        crypt_key = p.crypt_key + struct.pack("!I", p.salt)
-    else:
-        crypt_key = p.crypt_key
+    crypt_key = mk_scapy_crpyt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -117,10 +121,7 @@ def config_tun_params(p, encryption_type, tun_if):
 def config_tra_params(p, encryption_type):
     use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
-    if p.crypt_algo == "AES-GCM":
-        crypt_key = p.crypt_key + struct.pack("!I", p.salt)
-    else:
-        crypt_key = p.crypt_key
+    crypt_key = mk_scapy_crpyt_key(p)
     p.scapy_tra_sa = SecurityAssociation(
         encryption_type,
         spi=p.vpp_tra_spi,
@@ -269,32 +270,83 @@ class IpsecTcpTests(IpsecTcp):
 
 class IpsecTra4(object):
     """ verify methods for Transport v4 """
-    def verify_tra_anti_replay(self, count=1):
+    def verify_tra_anti_replay(self):
         p = self.params[socket.AF_INET]
         use_esn = p.vpp_tra_sa.use_esn
 
-        # fire in a packet with seq number 1
-        pkt = (Ether(src=self.tra_if.remote_mac,
-                     dst=self.tra_if.local_mac) /
-               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
-                                         dst=self.tra_if.local_ip4) /
-                                      ICMP(),
-                                      seq_num=1))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        seq_cycle_node_name = ('/err/%s/sequence number cycled' %
+                               self.tra4_encrypt_node_name)
+        replay_node_name = ('/err/%s/SA replayed packet' %
+                            self.tra4_decrypt_node_name)
+        if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
+            hash_failed_node_name = ('/err/%s/ESP decryption failed' %
+                                     self.tra4_decrypt_node_name)
+        else:
+            hash_failed_node_name = ('/err/%s/Integrity check failed' %
+                                     self.tra4_decrypt_node_name)
+        replay_count = self.statistics.get_err_counter(replay_node_name)
+        hash_failed_count = self.statistics.get_err_counter(
+            hash_failed_node_name)
+        seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
 
-        # now move the window over to 235
+        if ESP == self.encryption_type:
+            undersize_node_name = ('/err/%s/undersized packet' %
+                                   self.tra4_decrypt_node_name)
+            undersize_count = self.statistics.get_err_counter(
+                undersize_node_name)
+
+        #
+        # send packets with seq numbers 1->34
+        # this means the window size is still in Case B (see RFC4303
+        # Appendix A)
+        #
+        # for reasons i haven't investigated Scapy won't create a packet with
+        # seq_num=0
+        #
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(1, 34)]
+        recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        # replayed packets are dropped
+        self.send_and_assert_no_replies(self.tra_if, pkts)
+        replay_count += len(pkts)
+        self.assert_error_counter_equal(replay_node_name, replay_count)
+
+        #
+        # now send a batch of packets all with the same sequence number
+        # the first packet in the batch is legitimate, the rest bogus
+        #
+        pkts = (Ether(src=self.tra_if.remote_mac,
+                      dst=self.tra_if.local_mac) /
+                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                          dst=self.tra_if.local_ip4) /
+                                       ICMP(),
+                                       seq_num=35))
+        recv_pkts = self.send_and_expect(self.tra_if, pkts * 8,
+                                         self.tra_if, n_rx=1)
+        replay_count += 7
+        self.assert_error_counter_equal(replay_node_name, replay_count)
+
+        #
+        # now move the window over to 257 (more than one byte) and into Case A
+        #
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
-                                      seq_num=235))
+                                      seq_num=257))
         recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
-        self.assert_error_counter_equal(
-            '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name, 3)
+        replay_count += 3
+        self.assert_error_counter_equal(replay_node_name, replay_count)
 
         # the window size is 64 packets
         # in window are still accepted
@@ -303,14 +355,14 @@ class IpsecTra4(object):
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
-                                      seq_num=172))
+                                      seq_num=200))
         recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(self.encryption_type,
                                        p.vpp_tra_spi,
                                        crypt_algo=p.crypt_algo,
-                                       crypt_key=p.crypt_key[::-1],
+                                       crypt_key=mk_scapy_crpyt_key(p)[::-1],
                                        auth_algo=p.auth_algo,
                                        auth_key=p.auth_key[::-1])
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -321,12 +373,13 @@ class IpsecTra4(object):
                                 seq_num=350))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        self.assert_error_counter_equal(
-            '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name, 17)
+        hash_failed_count += 17
+        self.assert_error_counter_equal(hash_failed_node_name,
+                                        hash_failed_count)
 
         # a malformed 'runt' packet
         #  created by a mis-constructed SA
-        if (ESP == self.encryption_type):
+        if (ESP == self.encryption_type and p.crypt_algo != "NULL"):
             bogus_sa = SecurityAssociation(self.encryption_type,
                                            p.vpp_tra_spi)
             pkt = (Ether(src=self.tra_if.remote_mac,
@@ -337,8 +390,9 @@ class IpsecTra4(object):
                                     seq_num=350))
             self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-            self.assert_error_counter_equal(
-                '/err/%s/undersized packet' % self.tra4_decrypt_node_name, 17)
+            undersize_count += 17
+            self.assert_error_counter_equal(undersize_node_name,
+                                            undersize_count)
 
         # which we can determine since this packet is still in the window
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -349,7 +403,11 @@ class IpsecTra4(object):
                                       seq_num=234))
         self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
+        #
         # out of window are dropped
+        #  this is Case B. So VPP will consider this to be a high seq num wrap
+        #  and so the decrypt attempt will fail
+        #
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
@@ -361,44 +419,59 @@ class IpsecTra4(object):
         if use_esn:
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
-            self.assert_error_counter_equal(
-                '/err/%s/Integrity check failed' %
-                self.tra4_decrypt_node_name, 34)
+            hash_failed_count += 17
+            self.assert_error_counter_equal(hash_failed_node_name,
+                                            hash_failed_count)
 
         else:
-            self.assert_error_counter_equal(
-                '/err/%s/SA replayed packet' %
-                self.tra4_decrypt_node_name, 20)
+            replay_count += 17
+            self.assert_error_counter_equal(replay_node_name,
+                                            replay_count)
 
-        # valid packet moves the window over to 236
+        # valid packet moves the window over to 258
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
-                                      seq_num=236))
+                                      seq_num=258))
         rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
         decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
 
-        # move VPP's SA to just before the seq-number wrap
+        #
+        # move VPP's SA TX seq-num to just before the seq-number wrap.
+        # then fire in a packet that VPP should drop on TX because it
+        # causes the TX seq number to wrap; unless we're using extened sequence
+        # numbers.
+        #
         self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
+        self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
+        self.logger.info(self.vapi.ppcli("show ipsec sa 1"))
 
-        # then fire in a packet that VPP should drop because it causes the
-        # seq number to wrap  unless we're using extended.
-        pkt = (Ether(src=self.tra_if.remote_mac,
-                     dst=self.tra_if.local_mac) /
-               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
-                                         dst=self.tra_if.local_ip4) /
-                                      ICMP(),
-                                      seq_num=237))
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(259, 280)]
 
         if use_esn:
-            rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
-            # in order to decrpyt the high order number needs to wrap
-            p.vpp_tra_sa.seq_num = 0x100000000
-            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+            rxs = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-            # send packets with high bits set
+            #
+            # in order for scapy to decrypt its SA's high order number needs
+            # to wrap
+            #
+            p.vpp_tra_sa.seq_num = 0x100000000
+            for rx in rxs:
+                decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+
+            #
+            # wrap scapy's TX high sequence number. VPP is in case B, so it
+            # will consider this a high seq wrap also.
+            # The low seq num we set it to will place VPP's RX window in Case A
+            #
             p.scapy_tra_sa.seq_num = 0x100000005
             pkt = (Ether(src=self.tra_if.remote_mac,
                          dst=self.tra_if.local_mac) /
@@ -407,13 +480,72 @@ class IpsecTra4(object):
                                           ICMP(),
                                           seq_num=0x100000005))
             rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
-            # in order to decrpyt the high order number needs to wrap
             decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+
+            #
+            # A packet that has seq num between (2^32-64) and 5 is within
+            # the window
+            #
+            p.scapy_tra_sa.seq_num = 0xfffffffd
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                             dst=self.tra_if.local_ip4) /
+                                          ICMP(),
+                                          seq_num=0xfffffffd))
+            rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+
+            #
+            # While in case A we cannot wrap the high sequence number again
+            # becuase VPP will consider this packet to be one that moves the
+            # window forward
+            #
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                             dst=self.tra_if.local_ip4) /
+                                          ICMP(),
+                                          seq_num=0x200000999))
+            self.send_and_assert_no_replies(self.tra_if, [pkt], self.tra_if)
+
+            hash_failed_count += 1
+            self.assert_error_counter_equal(hash_failed_node_name,
+                                            hash_failed_count)
+
+            #
+            # but if we move the wondow forward to case B, then we can wrap
+            # again
+            #
+            p.scapy_tra_sa.seq_num = 0x100000555
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                             dst=self.tra_if.local_ip4) /
+                                          ICMP(),
+                                          seq_num=0x100000555))
+            rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+
+            p.scapy_tra_sa.seq_num = 0x200000444
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                             dst=self.tra_if.local_ip4) /
+                                          ICMP(),
+                                          seq_num=0x200000444))
+            rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+
         else:
-            self.send_and_assert_no_replies(self.tra_if, [pkt])
-            self.assert_error_counter_equal(
-                '/err/%s/sequence number cycled' %
-                self.tra4_encrypt_node_name, 1)
+            #
+            # without ESN TX sequence numbers can't wrap and packets are
+            # dropped from here on out.
+            #
+            self.send_and_assert_no_replies(self.tra_if, pkts)
+            seq_cycle_count += len(pkts)
+            self.assert_error_counter_equal(seq_cycle_node_name,
+                                            seq_cycle_count)
 
         # move the security-associations seq number on to the last we used
         self.vapi.cli("test ipsec sa %d seq 0x15f" % p.scapy_tra_sa_id)
@@ -423,6 +555,7 @@ class IpsecTra4(object):
     def verify_tra_basic4(self, count=1):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
         try:
             p = self.params[socket.AF_INET]
             send_pkts = self.gen_encrypt_pkts(p.scapy_tra_sa, self.tra_if,
@@ -461,7 +594,7 @@ class IpsecTra4Tests(IpsecTra4):
     """ UT test methods for Transport v4 """
     def test_tra_anti_replay(self):
         """ ipsec v4 transport anti-reply test """
-        self.verify_tra_anti_replay(count=1)
+        self.verify_tra_anti_replay()
 
     def test_tra_basic(self, count=1):
         """ ipsec v4 transport basic test """
@@ -558,6 +691,8 @@ class IpsecTun4(object):
     def verify_encrypted(self, p, sa, rxs):
         decrypt_pkts = []
         for rx in rxs:
+            if p.nat_header:
+                self.assertEqual(rx[UDP].dport, 4500)
             self.assert_packet_checksums_valid(rx)
             self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
             try:
@@ -604,6 +739,37 @@ class IpsecTun4(object):
 
         self.verify_counters4(p, count, n_rx)
 
+    def verify_tun_reass_44(self, p):
+        self.vapi.cli("clear errors")
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.tun_if.sw_if_index, enable_ip4=True)
+
+        try:
+            config_tun_params(p, self.encryption_type, self.tun_if)
+            send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
+                                              src=p.remote_tun_if_host,
+                                              dst=self.pg1.remote_ip4,
+                                              payload_size=1900,
+                                              count=1)
+            send_pkts = fragment_rfc791(send_pkts[0], 1400)
+            recv_pkts = self.send_and_expect(self.tun_if, send_pkts,
+                                             self.pg1, n_rx=1)
+            self.verify_decrypted(p, recv_pkts)
+
+            send_pkts = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
+                                      dst=p.remote_tun_if_host, count=1)
+            recv_pkts = self.send_and_expect(self.pg1, send_pkts,
+                                             self.tun_if)
+            self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
+
+        finally:
+            self.logger.info(self.vapi.ppcli("show error"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
+
+        self.verify_counters4(p, 1, 1)
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.tun_if.sw_if_index, enable_ip4=False)
+
     def verify_tun_64(self, p, count=1):
         self.vapi.cli("clear errors")
         try:
@@ -642,12 +808,33 @@ class IpsecTun4(object):
 
         self.verify_counters4(p, count)
 
+    def verify_keepalive(self, p):
+        pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
+               IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
+               UDP(sport=333, dport=4500) /
+               Raw(0xff))
+        self.send_and_assert_no_replies(self.tun_if, pkt*31)
+        self.assert_error_counter_equal(
+            '/err/%s/NAT Keepalive' % self.tun4_input_node, 31)
+
+        pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
+               IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
+               UDP(sport=333, dport=4500) /
+               Raw(0xfe))
+        self.send_and_assert_no_replies(self.tun_if, pkt*31)
+        self.assert_error_counter_equal(
+            '/err/%s/Too Short' % self.tun4_input_node, 31)
+
 
 class IpsecTun4Tests(IpsecTun4):
     """ UT test methods for Tunnel v4 """
     def test_tun_basic44(self):
         """ ipsec 4o4 tunnel basic test """
         self.verify_tun_44(self.params[socket.AF_INET], count=1)
+
+    def test_tun_reass_basic44(self):
+        """ ipsec 4o4 tunnel basic reassembly test """
+        self.verify_tun_reass_44(self.params[socket.AF_INET])
 
     def test_tun_burst44(self):
         """ ipsec 4o4 tunnel burst test """
@@ -656,59 +843,116 @@ class IpsecTun4Tests(IpsecTun4):
 
 class IpsecTun6(object):
     """ verify methods for Tunnel v6 """
-    def verify_counters6(self, p, count):
-        if (hasattr(p, "tun_sa_in")):
-            pkts = p.tun_sa_in.get_stats()['packets']
+    def verify_counters6(self, p_in, p_out, count):
+        if (hasattr(p_in, "tun_sa_in")):
+            pkts = p_in.tun_sa_in.get_stats()['packets']
             self.assertEqual(pkts, count,
                              "incorrect SA in counts: expected %d != %d" %
                              (count, pkts))
-            pkts = p.tun_sa_out.get_stats()['packets']
+        if (hasattr(p_out, "tun_sa_out")):
+            pkts = p_out.tun_sa_out.get_stats()['packets']
             self.assertEqual(pkts, count,
                              "incorrect SA out counts: expected %d != %d" %
                              (count, pkts))
         self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tun6_decrypt_node_name, count)
 
-    def verify_tun_66(self, p, count=1):
-        """ ipsec 6o6 tunnel basic test """
+    def verify_decrypted6(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IPv6].src, p.remote_tun_if_host)
+            self.assert_equal(rx[IPv6].dst, self.pg1.remote_ip6)
+            self.assert_packet_checksums_valid(rx)
+
+    def verify_encrypted6(self, p, sa, rxs):
+        for rx in rxs:
+            self.assert_packet_checksums_valid(rx)
+            self.assertEqual(len(rx) - len(Ether()) - len(IPv6()),
+                             rx[IPv6].plen)
+            try:
+                decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IPv6])
+                if not decrypt_pkt.haslayer(IPv6):
+                    decrypt_pkt = IPv6(decrypt_pkt[Raw].load)
+                self.assert_packet_checksums_valid(decrypt_pkt)
+                self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
+                self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
+            except:
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", decrypt_pkt))
+                except:
+                    pass
+                raise
+
+    def verify_drop_tun_66(self, p_in, count=1, payload_size=64):
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
+
+        config_tun_params(p_in, self.encryption_type, self.tun_if)
+        send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
+                                           src=p_in.remote_tun_if_host,
+                                           dst=self.pg1.remote_ip6,
+                                           count=count)
+        self.send_and_assert_no_replies(self.tun_if, send_pkts)
+        self.logger.info(self.vapi.cli("sh punt stats"))
+
+    def verify_tun_66(self, p_in, p_out=None, count=1, payload_size=64):
+        self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
+        if not p_out:
+            p_out = p_in
+        try:
+            config_tun_params(p_in, self.encryption_type, self.tun_if)
+            config_tun_params(p_out, self.encryption_type, self.tun_if)
+            send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
+                                               src=p_in.remote_tun_if_host,
+                                               dst=self.pg1.remote_ip6,
+                                               count=count)
+            recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
+            self.verify_decrypted6(p_in, recv_pkts)
+
+            send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+                                       dst=p_out.remote_tun_if_host,
+                                       count=count,
+                                       payload_size=payload_size)
+            recv_pkts = self.send_and_expect(self.pg1, send_pkts,
+                                             self.tun_if)
+            self.verify_encrypted6(p_out, p_out.vpp_tun_sa, recv_pkts)
+
+        finally:
+            self.logger.info(self.vapi.ppcli("show error"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.verify_counters6(p_in, p_out, count)
+
+    def verify_tun_reass_66(self, p):
+        self.vapi.cli("clear errors")
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.tun_if.sw_if_index, enable_ip6=True)
+
         try:
             config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
-                                               count=count)
-            recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
-            for recv_pkt in recv_pkts:
-                self.assert_equal(recv_pkt[IPv6].src, p.remote_tun_if_host)
-                self.assert_equal(recv_pkt[IPv6].dst, self.pg1.remote_ip6)
-                self.assert_packet_checksums_valid(recv_pkt)
+                                               count=1,
+                                               payload_size=1900)
+            send_pkts = fragment_rfc8200(send_pkts[0], 1, 1400, self.logger)
+            recv_pkts = self.send_and_expect(self.tun_if, send_pkts,
+                                             self.pg1, n_rx=1)
+            self.verify_decrypted6(p, recv_pkts)
+
             send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
                                        dst=p.remote_tun_if_host,
-                                       count=count)
-            recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
-            for recv_pkt in recv_pkts:
-                self.assertEqual(len(recv_pkt) - len(Ether()) - len(IPv6()),
-                                 recv_pkt[IPv6].plen)
-                try:
-                    decrypt_pkt = p.vpp_tun_sa.decrypt(recv_pkt[IPv6])
-                    if not decrypt_pkt.haslayer(IPv6):
-                        decrypt_pkt = IPv6(decrypt_pkt[Raw].load)
-                    self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
-                    self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
-                    self.assert_packet_checksums_valid(decrypt_pkt)
-                except:
-                    self.logger.debug(ppp("Unexpected packet:", recv_pkt))
-                    try:
-                        self.logger.debug(
-                            ppp("Decrypted packet:", decrypt_pkt))
-                    except:
-                        pass
-                    raise
+                                       count=1,
+                                       payload_size=64)
+            recv_pkts = self.send_and_expect(self.pg1, send_pkts,
+                                             self.tun_if)
+            self.verify_encrypted6(p, p.vpp_tun_sa, recv_pkts)
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
-        self.verify_counters6(p, count)
+        self.verify_counters6(p, p, 1)
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.tun_if.sw_if_index, enable_ip6=False)
 
     def verify_tun_46(self, p, count=1):
         """ ipsec 4o6 tunnel basic test """
@@ -747,7 +991,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
-        self.verify_counters6(p, count)
+        self.verify_counters6(p, p, count)
 
 
 class IpsecTun6Tests(IpsecTun6):
@@ -756,6 +1000,10 @@ class IpsecTun6Tests(IpsecTun6):
     def test_tun_basic66(self):
         """ ipsec 6o6 tunnel basic test """
         self.verify_tun_66(self.params[socket.AF_INET6], count=1)
+
+    def test_tun_reass_basic66(self):
+        """ ipsec 6o6 tunnel basic reassembly test """
+        self.verify_tun_reass_66(self.params[socket.AF_INET6])
 
     def test_tun_burst66(self):
         """ ipsec 6o6 tunnel burst test """

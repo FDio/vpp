@@ -1298,6 +1298,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 	virtio_free_used_desc (vm, vring);
       }
     vec_free (vring->buffers);
+    clib_spinlock_free (&vring->lockp);
     vlib_physmem_free (vm, vring->desc);
   }
 

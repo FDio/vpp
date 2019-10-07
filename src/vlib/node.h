@@ -187,6 +187,7 @@ static void __vlib_rm_node_registration_##x (void)                      \
 __VA_ARGS__ vlib_node_registration_t x
 #else
 #define VLIB_REGISTER_NODE(x,...)                                       \
+STATIC_ASSERT (sizeof(# __VA_ARGS__) != 7,"node " #x " must not be declared as static"); \
 static __clib_unused vlib_node_registration_t __clib_unused_##x
 #endif
 
@@ -302,6 +303,7 @@ typedef struct vlib_node_t
 
 #define VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE (1 << 6)
 #define VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE (1 << 7)
+#define VLIB_NODE_FLAG_TRACE_SUPPORTED (1 << 8)
 
   /* State for input nodes. */
   u8 state;
@@ -400,8 +402,8 @@ typedef struct vlib_frame_t
 
 typedef struct
 {
-  /* Frame index. */
-  u32 frame_index;
+  /* Frame pointer. */
+  vlib_frame_t *frame;
 
   /* Node runtime for this next. */
   u32 node_runtime_index;
@@ -440,7 +442,6 @@ always_inline void
 vlib_next_frame_init (vlib_next_frame_t * nf)
 {
   clib_memset (nf, 0, sizeof (nf[0]));
-  nf->frame_index = ~0;
   nf->node_runtime_index = ~0;
 }
 
@@ -451,7 +452,7 @@ typedef struct
   u32 node_runtime_index;
 
   /* Frame index (in the heap). */
-  u32 frame_index;
+  vlib_frame_t *frame;
 
   /* Start of next frames for this node. */
   u32 next_frame_index;
@@ -537,8 +538,8 @@ typedef struct
   /* Number of allocated frames for this scalar/vector size. */
   u32 n_alloc_frames;
 
-  /* Vector of free frame indices for this scalar/vector size. */
-  u32 *free_frame_indices;
+  /* Vector of free frames for this scalar/vector size. */
+  vlib_frame_t **free_frames;
 } vlib_frame_size_t;
 
 typedef struct
@@ -761,8 +762,27 @@ typedef struct
 
   /* Node registrations added by constructors */
   vlib_node_registration_t *node_registrations;
+
+  /* Node index from error code */
+  u32 *node_by_error;
 } vlib_node_main_t;
 
+typedef u16 vlib_error_t;
+
+always_inline u32
+vlib_error_get_node (vlib_node_main_t * nm, vlib_error_t e)
+{
+  return nm->node_by_error[e];
+}
+
+always_inline u32
+vlib_error_get_code (vlib_node_main_t * nm, vlib_error_t e)
+{
+  u32 node_index = nm->node_by_error[e];
+  vlib_node_t *n = nm->nodes[node_index];
+  u32 error_code = e - n->error_heap_index;
+  return error_code;
+}
 
 #define FRAME_QUEUE_MAX_NELTS 64
 typedef struct

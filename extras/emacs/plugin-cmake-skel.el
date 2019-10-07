@@ -38,20 +38,16 @@ nil
 
 add_vpp_plugin("plugin-name"
   SOURCES
-  " plugin-name ".c 
-  node.c 
+  " plugin-name ".c
+  node.c
   " plugin-name "_periodic.c
   " plugin-name ".h
 
   MULTIARCH_SOURCES
-  node.c 
+  node.c
 
   API_FILES
   " plugin-name".api
-
-  INSTALL_HEADERS
-  " plugin-name "_all_api_h.h
-  " plugin-name "_msg_enum.h
 
   API_TEST_SOURCES
   " plugin-name "_test.c

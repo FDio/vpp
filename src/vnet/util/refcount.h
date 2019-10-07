@@ -30,6 +30,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vppinfra/lock.h>
 
 /*
  * Reference counting
@@ -41,7 +42,7 @@
 */
 typedef struct {
   u32 *counters;
-  volatile u32 *counter_lock;
+  clib_spinlock_t counter_lock;
   CLIB_CACHE_LINE_ALIGN_MARK(o);
 } vlib_refcount_per_cpu_t;
 
@@ -50,16 +51,15 @@ typedef struct {
 } vlib_refcount_t;
 
 static_always_inline
-void vlib_refcount_lock (volatile u32 *counter_lock)
+void vlib_refcount_lock (clib_spinlock_t counter_lock)
 {
-  while (clib_atomic_test_and_set (counter_lock))
-    ;
+  clib_spinlock_lock (&counter_lock);
 }
 
 static_always_inline
-void vlib_refcount_unlock (volatile u32 *counter_lock)
+void vlib_refcount_unlock (clib_spinlock_t counter_lock)
 {
-  clib_atomic_release(counter_lock);
+  clib_spinlock_unlock (&counter_lock);
 }
 
 void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size);
@@ -86,9 +86,7 @@ void vlib_refcount_init(vlib_refcount_t *r)
 
   for (thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++)
     {
-      r->per_cpu[thread_index].counter_lock =
-	  clib_mem_alloc_aligned(CLIB_CACHE_LINE_BYTES,CLIB_CACHE_LINE_BYTES);
-      r->per_cpu[thread_index].counter_lock[0] = 0;
+      clib_spinlock_init (&r->per_cpu[thread_index].counter_lock);
     }
 }
 

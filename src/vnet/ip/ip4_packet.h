@@ -138,7 +138,7 @@ typedef union
     u8 ip_version_and_header_length;
 
     /* Type of service. */
-    u8 tos;
+    ip_dscp_t tos;
 
     /* Total layer 3 packet length including this header. */
     u16 length;

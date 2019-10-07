@@ -142,14 +142,6 @@ ipsec_add_del_policy (vlib_main_t * vm,
   u32 spd_index;
   uword *p;
 
-  if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-    {
-      p = hash_get (im->sa_index_by_sa_id, policy->sa_id);
-      if (!p)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
-      policy->sa_index = p[0];
-    }
-
   p = hash_get (im->spd_index_by_spd_id, policy->id);
 
   if (!p)
@@ -163,6 +155,17 @@ ipsec_add_del_policy (vlib_main_t * vm,
   if (is_add)
     {
       u32 policy_index;
+
+      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
+	{
+	  index_t sa_index = ipsec_sa_find_and_lock (policy->sa_id);
+
+	  if (INDEX_INVALID == sa_index)
+	    return VNET_API_ERROR_SYSCALL_ERROR_1;
+	  policy->sa_index = sa_index;
+	}
+      else
+	policy->sa_index = INDEX_INVALID;
 
       pool_get (im->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
@@ -188,6 +191,7 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	if (ipsec_policy_is_equal (vp, policy))
 	  {
 	    vec_del1 (spd->policies[policy->type], ii);
+	    ipsec_sa_unlock (vp->sa_index);
 	    pool_put (im->policies, vp);
 	    break;
 	  }

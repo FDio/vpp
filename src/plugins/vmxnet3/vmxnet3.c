@@ -220,7 +220,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   shared->misc.guest_info |= VMXNET3_GOS_TYPE_LINUX;
   shared->misc.version_support = VMXNET3_VERSION_SELECT;
   shared->misc.upt_features = VMXNET3_F_RXCSUM;
-  if (vd->lro_enable)
+  if (vd->gso_enable)
     shared->misc.upt_features |= VMXNET3_F_LRO;
   if (vd->num_rx_queues > 1)
     {
@@ -406,7 +406,6 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 		     vmxnet3_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
   clib_error_t *error = 0;
   u32 ret, i, size;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -453,10 +452,10 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
       return error;
     }
 
-  /* LRO is only supported for version >= 3 */
-  if ((vmxm->lro_configured) && (vd->version >= 3))
+  /* GSO is only supported for version >= 3 */
+  if (args->enable_gso && (vd->version >= 3))
     {
-      vd->lro_enable = 1;
+      vd->gso_enable = 1;
       vnm->interface_main.gso_interface_count++;
     }
 
@@ -798,7 +797,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vd->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  if (vd->lro_enable)
+  if (vd->gso_enable)
     hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
 
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
@@ -919,7 +918,7 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   clib_memset (vd, 0, sizeof (*vd));
   pool_put (vmxm->devices, vd);
 
-  if (vd->lro_enable)
+  if (vd->gso_enable)
     vnm->interface_main.gso_interface_count--;
 }
 

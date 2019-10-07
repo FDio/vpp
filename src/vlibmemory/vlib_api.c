@@ -68,29 +68,6 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-u8 *
-vl_api_serialize_message_table (api_main_t * am, u8 * vector)
-{
-  serialize_main_t _sm, *sm = &_sm;
-  hash_pair_t *hp;
-  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
-
-  serialize_open_vector (sm, vector);
-
-  /* serialize the count */
-  serialize_integer (sm, nmsg, sizeof (u32));
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
-  ({
-    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
-    serialize_cstring (sm, (char *) hp->key);
-  }));
-  /* *INDENT-ON* */
-
-  return serialize_close_vector (sm);
-}
-
 static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 {
@@ -342,7 +319,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
        * of the application to process the request, the client will
        * sit and wait for Godot...
        */
-      vector_rate = vlib_last_vector_length_per_node (vm);
+      vector_rate = (f64) vlib_last_vectors_per_main_loop (vm);
       start_time = vlib_time_now (vm);
       while (1)
 	{

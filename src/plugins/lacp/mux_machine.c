@@ -212,11 +212,26 @@ void
 lacp_mux_debug_func (slave_if_t * sif, int event, int state,
 		     lacp_fsm_state_t * transition)
 {
-  clib_warning ("%U-MUX: event %U, old state %U, new state %U",
-		format_vnet_sw_if_index_name, vnet_get_main (),
-		sif->sw_if_index, format_mux_event,
-		event, format_mux_sm_state, state, format_mux_sm_state,
-		transition->next_state);
+  vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) =
+    {
+      .format = "%s",
+      .format_args = "T4",
+    };
+  /* *INDENT-ON* */
+  struct
+  {
+    u32 event;
+  } *ed = 0;
+
+  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+  ed->event =
+    elog_string (&vlib_global_main.elog_main, "%U-MUX: %U, %U->%U%c",
+		 format_vnet_sw_if_index_name, vnet_get_main (),
+		 sif->sw_if_index, format_mux_event, event,
+		 format_mux_sm_state, state, format_mux_sm_state,
+		 transition->next_state, 0);
 }
 
 void

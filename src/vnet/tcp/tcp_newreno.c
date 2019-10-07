@@ -15,20 +15,27 @@
 
 #include <vnet/tcp/tcp.h>
 
-void
+static void
 newreno_congestion (tcp_connection_t * tc)
 {
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
+  tc->cwnd = tc->ssthresh;
 }
 
-void
+static void
+newreno_loss (tcp_connection_t * tc)
+{
+  tc->cwnd = tcp_loss_wnd (tc);
+}
+
+static void
 newreno_recovered (tcp_connection_t * tc)
 {
   tc->cwnd = tc->ssthresh;
 }
 
-void
-newreno_rcv_ack (tcp_connection_t * tc)
+static void
+newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   if (tcp_in_slowstart (tc))
     {
@@ -42,7 +49,8 @@ newreno_rcv_ack (tcp_connection_t * tc)
 }
 
 void
-newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type)
+newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
+		      tcp_rate_sample_t * rs)
 {
   if (ack_type == TCP_CC_DUPACK)
     {
@@ -71,7 +79,7 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type)
     }
 }
 
-void
+static void
 newreno_conn_init (tcp_connection_t * tc)
 {
   tc->ssthresh = tc->snd_wnd;
@@ -81,6 +89,7 @@ newreno_conn_init (tcp_connection_t * tc)
 const static tcp_cc_algorithm_t tcp_newreno = {
   .name = "newreno",
   .congestion = newreno_congestion,
+  .loss = newreno_loss,
   .recovered = newreno_recovered,
   .rcv_ack = newreno_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,

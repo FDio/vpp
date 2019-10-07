@@ -49,7 +49,7 @@ static double transport_pacer_period;
 
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
-#define TRANSPORT_PACER_MAX_BURST	(32 * TRANSPORT_PACER_MIN_MSS)
+#define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)
@@ -57,27 +57,12 @@ format_transport_proto (u8 * s, va_list * args)
   u32 transport_proto = va_arg (*args, u32);
   switch (transport_proto)
     {
-    case TRANSPORT_PROTO_TCP:
-      s = format (s, "TCP");
+#define _(sym, str, sstr) 			\
+    case TRANSPORT_PROTO_ ## sym:		\
+      s = format (s, str);			\
       break;
-    case TRANSPORT_PROTO_UDP:
-      s = format (s, "UDP");
-      break;
-    case TRANSPORT_PROTO_SCTP:
-      s = format (s, "SCTP");
-      break;
-    case TRANSPORT_PROTO_NONE:
-      s = format (s, "NONE");
-      break;
-    case TRANSPORT_PROTO_TLS:
-      s = format (s, "TLS");
-      break;
-    case TRANSPORT_PROTO_UDPC:
-      s = format (s, "UDPC");
-      break;
-    case TRANSPORT_PROTO_QUIC:
-      s = format (s, "QUIC");
-      break;
+      foreach_transport_proto
+#undef _
     default:
       s = format (s, "UNKNOWN");
       break;
@@ -91,27 +76,12 @@ format_transport_proto_short (u8 * s, va_list * args)
   u32 transport_proto = va_arg (*args, u32);
   switch (transport_proto)
     {
-    case TRANSPORT_PROTO_TCP:
-      s = format (s, "T");
+#define _(sym, str, sstr) 			\
+    case TRANSPORT_PROTO_ ## sym:		\
+      s = format (s, sstr);			\
       break;
-    case TRANSPORT_PROTO_UDP:
-      s = format (s, "U");
-      break;
-    case TRANSPORT_PROTO_SCTP:
-      s = format (s, "S");
-      break;
-    case TRANSPORT_PROTO_NONE:
-      s = format (s, "N");
-      break;
-    case TRANSPORT_PROTO_TLS:
-      s = format (s, "J");
-      break;
-    case TRANSPORT_PROTO_UDPC:
-      s = format (s, "U");
-      break;
-    case TRANSPORT_PROTO_QUIC:
-      s = format (s, "Q");
-      break;
+      foreach_transport_proto
+#undef _
     default:
       s = format (s, "?");
       break;
@@ -179,33 +149,16 @@ uword
 unformat_transport_proto (unformat_input_t * input, va_list * args)
 {
   u32 *proto = va_arg (*args, u32 *);
-  if (unformat (input, "tcp"))
-    *proto = TRANSPORT_PROTO_TCP;
-  else if (unformat (input, "TCP"))
-    *proto = TRANSPORT_PROTO_TCP;
-  else if (unformat (input, "udpc"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "UDPC"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "udp"))
-    *proto = TRANSPORT_PROTO_UDP;
-  else if (unformat (input, "UDP"))
-    *proto = TRANSPORT_PROTO_UDP;
-  else if (unformat (input, "sctp"))
-    *proto = TRANSPORT_PROTO_SCTP;
-  else if (unformat (input, "SCTP"))
-    *proto = TRANSPORT_PROTO_SCTP;
-  else if (unformat (input, "tls"))
-    *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "TLS"))
-    *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "quic"))
-    *proto = TRANSPORT_PROTO_QUIC;
-  else if (unformat (input, "QUIC"))
-    *proto = TRANSPORT_PROTO_QUIC;
-  else
+
+#define _(sym, str, sstr)						\
+  if (unformat (input, str))						\
+    {									\
+      *proto = TRANSPORT_PROTO_ ## sym;					\
+      return 1;								\
+    }
+  foreach_transport_proto
+#undef _
     return 0;
-  return 1;
 }
 
 u32
@@ -288,16 +241,22 @@ transport_protocol_get_vft (transport_proto_t transport_proto)
   return &tp_vfts[transport_proto];
 }
 
+u8
+transport_half_open_has_fifos (transport_proto_t tp)
+{
+  return tp_vfts[tp].transport_options.half_open_has_fifos;
+}
+
 transport_service_type_t
 transport_protocol_service_type (transport_proto_t tp)
 {
-  return tp_vfts[tp].service_type;
+  return tp_vfts[tp].transport_options.service_type;
 }
 
 transport_tx_fn_type_t
 transport_protocol_tx_fn_type (transport_proto_t tp)
 {
-  return tp_vfts[tp].tx_type;
+  return tp_vfts[tp].transport_options.tx_type;
 }
 
 void
@@ -318,6 +277,15 @@ transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
   tp_vfts[tp].close (conn_index, thread_index);
 }
 
+void
+transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index)
+{
+  if (tp_vfts[tp].reset)
+    tp_vfts[tp].reset (conn_index, thread_index);
+  else
+    tp_vfts[tp].close (conn_index, thread_index);
+}
+
 u32
 transport_start_listen (transport_proto_t tp, u32 session_index,
 			transport_endpoint_t * tep)
@@ -334,7 +302,7 @@ transport_stop_listen (transport_proto_t tp, u32 conn_index)
 u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
-  return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
+  return (tp_vfts[tp].transport_options.service_type == TRANSPORT_SERVICE_CL);
 }
 
 always_inline void
@@ -599,9 +567,8 @@ format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
 
-  s = format (s, "bucket %u max_burst %u tokens/period %.3f last_update %x",
-	      pacer->bucket, pacer->max_burst_size, pacer->tokens_per_period,
-	      pacer->last_update);
+  s = format (s, "bucket %u tokens/period %.3f last_update %x",
+	      pacer->bucket, pacer->tokens_per_period, pacer->last_update);
   return s;
 }
 
@@ -611,10 +578,11 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
   u64 n_periods = norm_time_now - pacer->last_update;
   u64 inc;
 
-  if (n_periods > 0 && (inc = n_periods * pacer->tokens_per_period) > 10)
+  if (n_periods > 0
+      && (inc = (f32) n_periods * pacer->tokens_per_period) > 10)
     {
       pacer->last_update = norm_time_now;
-      pacer->bucket += inc;
+      pacer->bucket = clib_min (pacer->bucket + inc, pacer->bytes_per_sec);
     }
 
   return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
@@ -631,7 +599,21 @@ static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
 {
   ASSERT (rate_bytes_per_sec != 0);
+  pacer->bytes_per_sec = rate_bytes_per_sec;
   pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
+}
+
+static inline u64
+spacer_pace_rate (spacer_t * pacer)
+{
+  return pacer->bytes_per_sec;
+}
+
+static inline void
+spacer_reset_bucket (spacer_t * pacer, u64 norm_time_now)
+{
+  pacer->last_update = norm_time_now;
+  pacer->bucket = 0;
 }
 
 void
@@ -672,6 +654,14 @@ transport_connection_tx_pacer_burst (transport_connection_t * tc,
   return spacer_max_burst (&tc->pacer, time_now);
 }
 
+void
+transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+					    u64 time_now)
+{
+  time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+  spacer_reset_bucket (&tc->pacer, time_now);
+}
+
 u32
 transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
 				u16 mss)
@@ -683,17 +673,23 @@ transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
     {
       time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
       max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
-      max_paced_burst = (max_paced_burst < mss) ? 0 : max_paced_burst;
+      max_paced_burst =
+	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
       snd_space = clib_min (snd_space, max_paced_burst);
-      snd_space = snd_space - snd_space % mss;
+      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
     }
   return snd_space;
 }
 
-void
-transport_connection_update_tx_stats (transport_connection_t * tc, u32 bytes)
+u64
+transport_connection_tx_pacer_rate (transport_connection_t * tc)
 {
-  tc->stats.tx_bytes += bytes;
+  return spacer_pace_rate (&tc->pacer);
+}
+
+void
+transport_connection_update_tx_bytes (transport_connection_t * tc, u32 bytes)
+{
   if (transport_connection_is_tx_paced (tc))
     spacer_update_bucket (&tc->pacer, bytes);
 }

@@ -3,14 +3,13 @@
 import inspect
 import os
 import unittest
+from framework import VppTestCase
 from multiprocessing import Process, Pipe
 from pickle import dumps
-
 import six
 from six import moves
-
-from framework import VppTestCase
-from enum import Enum
+import sys
+from aenum import IntEnum, IntFlag
 
 
 class SerializableClassCopy(object):
@@ -18,6 +17,9 @@ class SerializableClassCopy(object):
     Empty class used as a basis for a serializable copy of another class.
     """
     pass
+
+    def __repr__(self):
+        return '<SerializableClassCopy dict=%s>' % self.__dict__
 
 
 class RemoteClassAttr(object):
@@ -44,7 +46,8 @@ class RemoteClassAttr(object):
     def __getattr__(self, attr):
         if attr[0] == '_':
             if not (attr.startswith('__') and attr.endswith('__')):
-                raise AttributeError
+                raise AttributeError('tried to get private attribute: %s ',
+                                     attr)
         self._path.append(attr)
         return self
 
@@ -55,11 +58,11 @@ class RemoteClassAttr(object):
                 return
         self._path.append(attr)
         self._remote._remote_exec(RemoteClass.SETATTR, self.path_to_str(),
-                                  True, value=val)
+                                  value=val)
 
     def __call__(self, *args, **kwargs):
         return self._remote._remote_exec(RemoteClass.CALL, self.path_to_str(),
-                                         True, *args, **kwargs)
+                                         *args, **kwargs)
 
 
 class RemoteClass(Process):
@@ -119,7 +122,7 @@ class RemoteClass(Process):
             if not (attr.startswith('__') and attr.endswith('__')):
                 if hasattr(super(RemoteClass, self), '__getattr__'):
                     return super(RemoteClass, self).__getattr__(attr)
-                raise AttributeError
+                raise AttributeError('missing: %s', attr)
         return RemoteClassAttr(self, attr)
 
     def __setattr__(self, attr, val):
@@ -129,7 +132,7 @@ class RemoteClass(Process):
                 return
         setattr(RemoteClassAttr(self, None), attr, val)
 
-    def _remote_exec(self, op, path=None, ret=True, *args, **kwargs):
+    def _remote_exec(self, op, path=None, *args, **kwargs):
         """
         Execute given operation on a given, possibly nested, member remotely.
         """
@@ -137,23 +140,20 @@ class RemoteClass(Process):
         mutable_args = list(args)
         for i, val in enumerate(mutable_args):
             if isinstance(val, RemoteClass) or \
-               isinstance(val, RemoteClassAttr):
+                    isinstance(val, RemoteClassAttr):
                 mutable_args[i] = val.get_remote_value()
         args = tuple(mutable_args)
         for key, val in six.iteritems(kwargs):
             if isinstance(val, RemoteClass) or \
-               isinstance(val, RemoteClassAttr):
+                    isinstance(val, RemoteClassAttr):
                 kwargs[key] = val.get_remote_value()
         # send request
         args = self._make_serializable(args)
         kwargs = self._make_serializable(kwargs)
         self._pipe[RemoteClass.PIPE_PARENT].send((op, path, args, kwargs))
-        if not ret:
-            # no return value expected
-            return None
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
-        if path.split('.')[-1] == 'sleep':
+        if path is not None and path.split('.')[-1] == 'sleep':
             if args and isinstance(args[0], (long, int)):
                 timeout += args[0]
             elif 'timeout' in kwargs:
@@ -244,13 +244,18 @@ class RemoteClass(Process):
 
         # copy at least serializable attributes and properties
         for name, member in inspect.getmembers(obj):
-            if name[0] == '_':  # skip private members
+            # skip private members and non-writable dunder methods.
+            if name[0] == '_':
+                if name in ['__weakref__']:
+                    continue
+                if name in ['__dict__']:
+                    continue
                 if not (name.startswith('__') and name.endswith('__')):
                     continue
             if callable(member) and not isinstance(member, property):
                 continue
             if not self._serializable(member):
-                continue
+                member = self._make_serializable(member)
             setattr(copy, name, member)
         return copy
 
@@ -266,7 +271,7 @@ class RemoteClass(Process):
             if type(obj) is tuple:
                 rv = tuple(rv)
             return rv
-        elif (isinstance(obj, Enum)):
+        elif (isinstance(obj, IntEnum) or isinstance(obj, IntFlag)):
             return obj.value
         else:
             return self._make_obj_serializable(obj)
@@ -297,7 +302,7 @@ class RemoteClass(Process):
 
     def quit_remote(self):
         """ Quit remote execution """
-        self._remote_exec(RemoteClass.QUIT, None, False)
+        self._remote_exec(RemoteClass.QUIT, None)
 
     def get_remote_value(self):
         """ Get value of a remotely held object """

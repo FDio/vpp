@@ -23,6 +23,10 @@
 #define __plugin_msg_base lb_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
+#include <vnet/format_fns.h>
+#include <lb/lb.api_enum.h>
+#include <lb/lb.api_types.h>
+
 //TODO: Move that to vat/plugin_api.c
 //////////////////////////
 uword unformat_ip46_address (unformat_input_t * input, va_list * args)
@@ -62,36 +66,6 @@ uword unformat_ip46_prefix (unformat_input_t * input, va_list * args)
 }
 /////////////////////////
 
-#define vl_msg_id(n,h) n,
-typedef enum {
-#include <lb/lb.api.h>
-    /* We'll want to know how many messages IDs we need... */
-    VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-/* define message structures */
-#define vl_typedefs
-#include <lb/lb.api.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun             /* define message structures */
-#include <lb/lb.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <lb/lb.api.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <lb/lb.api.h>
-#undef vl_api_version
-
 typedef struct {
     /* API message ID base */
     u16 msg_id_base;
@@ -99,36 +73,6 @@ typedef struct {
 } lb_test_main_t;
 
 lb_test_main_t lb_test_main;
-
-#define foreach_standard_reply_retval_handler   \
-_(lb_conf_reply)                 \
-_(lb_add_del_vip_reply)          \
-_(lb_add_del_as_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = lb_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                               \
-  _(LB_CONF_REPLY, lb_conf_reply)                               \
-  _(LB_ADD_DEL_VIP_REPLY, lb_add_del_vip_reply)                 \
-  _(LB_ADD_DEL_AS_REPLY, lb_add_del_as_reply)
 
 static int api_lb_conf (vat_main_t * vam)
 {
@@ -245,8 +189,8 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     }
 
   M(LB_ADD_DEL_VIP, mp);
-  clib_memcpy (mp->ip_prefix, &ip_prefix, sizeof (ip_prefix));
-  mp->prefix_length = prefix_length;
+  clib_memcpy (mp->pfx.address.un.ip6, &ip_prefix.ip6, sizeof (ip_prefix.ip6));
+  mp->pfx.len = prefix_length;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
   mp->encap = (u8)encap;
@@ -320,11 +264,11 @@ static int api_lb_add_del_as (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_AS, mp);
-  clib_memcpy (mp->vip_ip_prefix, &vip_prefix, sizeof (vip_prefix));
-  mp->vip_prefix_length = vip_plen;
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
-  clib_memcpy (mp->as_address, &as_addr, sizeof (as_addr));
+  clib_memcpy (&mp->as_address, &as_addr, sizeof (as_addr));
   mp->is_del = is_del;
   mp->is_flush = is_flush;
 
@@ -333,65 +277,170 @@ static int api_lb_add_del_as (vat_main_t * vam)
   return ret;
 }
 
+static int api_lb_flush_vip (vat_main_t * vam)
+{
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_flush_vip_t *mp;
+  int ret;
+  ip46_address_t vip_prefix;
+  u8 vip_plen;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix,
+                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+      errmsg ("lb_add_del_as: invalid vip prefix\n");
+      return -99;
+  }
+
+  M(LB_FLUSH_VIP, mp);
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
+  S(mp);
+  W (ret);
+  return ret;
+}
+static int api_lb_add_del_intf_nat4 (vat_main_t * vam)
+{
+  // Not yet implemented
+  return -99;
+}
+
+static int api_lb_add_del_intf_nat6 (vat_main_t * vam)
+{
+  // Not yet implemented
+  return -99;
+}
+
+static void vl_api_lb_vip_details_t_handler
+  (vl_api_lb_vip_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%24U%14d%14d%18d",
+       format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+       mp->vip.pfx.len,
+       mp->vip.protocol,
+       ntohs (mp->vip.port));
 /*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg                             \
-_(lb_conf, "[ip4-src-address <addr>] [ip6-src-address <addr>] " \
-           "[buckets <n>] [timeout <s>]")  \
-_(lb_add_del_vip, "<prefix> "  \
-                  "[protocol (tcp|udp) port <n>] "  \
-                  "[encap (gre6|gre4|l3dsr|nat4|nat6)] " \
-                  "[dscp <n>] "  \
-                  "[type (nodeport|clusterip) target_port <n>] " \
-                  "[new_len <n>] [del]")  \
-_(lb_add_del_as, "<vip-prefix> [protocol (tcp|udp) port <n>] "  \
-                 "[<address>] [del] [flush]")
+  lb_main_t *lbm = &lb_main;
+  u32 i = 0;
 
-static void 
-lb_vat_api_hookup (vat_main_t *vam)
-{
-  lb_test_main_t * lbtm = &lb_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + lbtm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
+  u32 vip_count = pool_len(lbm->vips);
 
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
+  print (vam->ofp, "%11d", vip_count);
 
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
+  for (i=0; i<vip_count; i--)
+    {
+      print (vam->ofp, "%24U%14d%14d%18d",
+           format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+           mp->vip.pfx.len,
+           mp->vip.protocol,
+           ntohs (mp->vip.port));
+    }
+*/
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
+static int api_lb_vip_dump (vat_main_t * vam)
 {
-  lb_test_main_t * lbtm = &lb_test_main;
+  vl_api_lb_vip_dump_t *mp;
+  int ret;
 
-  u8 * name;
+  M(LB_VIP_DUMP, mp);
 
-  lbtm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "lb_%08x%c", api_version, 0);
-  lbtm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (lbtm->msg_id_base != (u16) ~0)
-    lb_vat_api_hookup (vam);
-
-  vec_free(name);
-
-  return 0;
+  S(mp);
+  W (ret);
+  return ret;
 }
+
+static void vl_api_lb_as_details_t_handler
+  (vl_api_lb_as_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%24U%14d%14d%18d%d%d",
+       format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+       mp->vip.pfx.len,
+       mp->vip.protocol,
+       ntohs (mp->vip.port),
+       mp->flags,
+       mp->in_use_since);
+
+  //u32 i = 0;
+
+/*
+  lb_main_t *lbm = &lb_main;
+  print (vam->ofp, "%11d", pool_len(lbm->ass));
+  for (i=0; i<pool_len(lbm->ass); i--)
+    {
+      print (vam->ofp, "%24U%14d%14d%18d",
+           format_ip46_address, &mp->pfx.address, IP46_TYPE_ANY,
+           mp->pfx.len,
+           mp->pfx.protocol,
+           ntohs (mp->pfx.port),
+           ntohl(mp->app_srv),
+           mp->flags,
+           mp->in_use_;
+    }
+    */
+}
+
+static int api_lb_as_dump (vat_main_t * vam)
+{
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_as_dump_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  ip46_address_t *as_array = 0;
+  u32 port = 0;
+  u8 protocol = 0;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix,
+                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+      errmsg ("lb_add_del_as: invalid vip prefix\n");
+      return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "%U", unformat_ip46_address,
+                 &as_addr, IP46_TYPE_ANY))
+      {
+        vec_add1(as_array, as_addr);
+      }
+    else if (unformat(line_input, "protocol tcp"))
+      {
+          protocol = IP_PROTOCOL_TCP;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+          protocol = IP_PROTOCOL_UDP;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else {
+        errmsg ("invalid arguments\n");
+        return -99;
+    }
+  }
+
+  if (!vec_len(as_array)) {
+    errmsg ("No AS address provided \n");
+    return -99;
+  }
+
+  M(LB_AS_DUMP, mp);
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8)protocol;
+  mp->port = htons((u16)port);
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+#include <lb/lb.api_test.c>

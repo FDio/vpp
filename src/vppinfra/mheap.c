@@ -41,6 +41,7 @@
 #include <vppinfra/mheap.h>
 #include <vppinfra/os.h>
 #include <vppinfra/time.h>
+#include <vppinfra/lock.h>
 
 #ifdef CLIB_UNIX
 #include <vppinfra/elf_clib.h>
@@ -64,7 +65,7 @@ mheap_maybe_lock (void *v)
 	}
 
       while (clib_atomic_test_and_set (&h->lock))
-	;
+	CLIB_PAUSE ();
 
       h->owner_cpu = my_cpu;
       h->recursion_count = 1;
@@ -81,8 +82,7 @@ mheap_maybe_unlock (void *v)
       if (--h->recursion_count == 0)
 	{
 	  h->owner_cpu = ~0;
-	  CLIB_MEMORY_BARRIER ();
-	  h->lock = 0;
+	  clib_atomic_release (&h->lock);
 	}
     }
 }

@@ -291,6 +291,8 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   vec_reset_length (f);
   f = format (f, "%v/driver%c", dev_dir_name, 0);
   di->driver_name = clib_sysfs_link_to_name ((char *) f);
+  if (!di->driver_name)
+    di->driver_name = format (0, "<NONE>%c", 0);
 
   di->iommu_group = -1;
   if (lvm->container_fd != -1)
@@ -1247,9 +1249,9 @@ vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
 		 di->vendor_id, di->device_id, di->driver_name,
 		 di->iommu_group);
 
-  if (strncmp ("vfio-pci", (char *) di->driver_name, 8) == 0)
+  if (clib_strncmp ("vfio-pci", (char *) di->driver_name, 8) == 0)
     err = add_device_vfio (vm, p, di, 0);
-  else if (strncmp ("uio_pci_generic", (char *) di->driver_name, 8) == 0)
+  else if (clib_strncmp ("uio_pci_generic", (char *) di->driver_name, 8) == 0)
     err = add_device_uio (vm, p, di, 0);
   else
     err = clib_error_create ("device not bound to 'vfio-pci' or "

@@ -70,7 +70,7 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
   u8 *msg_copy;
   u32 length;
   trace_cfg_t *cfgp;
-  u16 msg_id = ntohs (*((u16 *) msg));
+  u16 msg_id = clib_net_to_host_u16 (*((u16 *) msg));
   msgbuf_t *header = (msgbuf_t *) (((u8 *) msg) - offsetof (msgbuf_t, data));
 
   cfgp = am->api_trace_cfg + msg_id;
@@ -189,6 +189,29 @@ vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which)
   return 0;
 }
 
+u8 *
+vl_api_serialize_message_table (api_main_t * am, u8 * vector)
+{
+  serialize_main_t _sm, *sm = &_sm;
+  hash_pair_t *hp;
+  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
+
+  serialize_open_vector (sm, vector);
+
+  /* serialize the count */
+  serialize_integer (sm, nmsg, sizeof (u32));
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
+    serialize_cstring (sm, (char *) hp->key);
+  }));
+  /* *INDENT-ON* */
+
+  return serialize_close_vector (sm);
+}
+
 int
 vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
 {
@@ -223,14 +246,22 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
     }
 
   /* Write the file header */
-  fh.nitems = vec_len (tp->traces);
-  fh.endian = tp->endian;
   fh.wrapped = tp->wrapped;
+  fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
+  u8 *m = vl_api_serialize_message_table (am, 0);
+  fh.msgtbl_size = clib_host_to_net_u32 (vec_len (m));
 
   if (fwrite (&fh, sizeof (fh), 1, fp) != 1)
     {
       return (-10);
     }
+
+  /* Write the message table */
+  if (fwrite (m, vec_len (m), 1, fp) != 1)
+    {
+      return (-14);
+    }
+  vec_free (m);
 
   /* No-wrap case */
   if (tp->wrapped == 0)
@@ -395,8 +426,28 @@ always_inline void
 msg_handler_internal (api_main_t * am,
 		      void *the_msg, int trace_it, int do_it, int free_it)
 {
-  u16 id = ntohs (*((u16 *) the_msg));
+  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   u8 *(*print_fp) (void *, void *);
+
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
+    {
+      /* *INDENT-OFF* */
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg: %s",
+          .format_args = "T4",
+        };
+      /* *INDENT-ON* */
+      struct
+      {
+	u32 c;
+      } *ed;
+      ed = ELOG_DATA (am->elog_main, e);
+      if (id < vec_len (am->msg_names))
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+      else
+	ed->c = elog_string (am->elog_main, "BOGUS");
+    }
 
   if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
     {
@@ -436,28 +487,40 @@ msg_handler_internal (api_main_t * am,
 
   if (free_it)
     vl_msg_api_free (the_msg);
-}
 
-static u32
-elog_id_for_msg_name (vlib_main_t * vm, const char *msg_name)
-{
-  uword *p, r;
-  static uword *h;
-  u8 *name_copy;
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
+    {
+      /* *INDENT-OFF* */
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg-done(%s): %s",
+          .format_args = "t4T4",
+          .n_enum_strings = 2,
+          .enum_strings =
+          {
+            "barrier",
+            "mp-safe",
+          }
+        };
+      /* *INDENT-ON* */
 
-  if (!h)
-    h = hash_create_string (0, sizeof (uword));
-
-  p = hash_get_mem (h, msg_name);
-  if (p)
-    return p[0];
-  r = elog_string (&vm->elog_main, "%s", msg_name);
-
-  name_copy = format (0, "%s%c", msg_name, 0);
-
-  hash_set_mem (h, name_copy, r);
-
-  return r;
+      struct
+      {
+	u32 barrier;
+	u32 c;
+      } *ed;
+      ed = ELOG_DATA (am->elog_main, e);
+      if (id < vec_len (am->msg_names))
+	{
+	  ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+	  ed->barrier = !am->is_mp_safe[id];
+	}
+      else
+	{
+	  ed->c = elog_string (am->elog_main, "BOGUS");
+	  ed->barrier = 0;
+	}
+    }
 }
 
 /* This is only to be called from a vlib/vnet app */
@@ -466,12 +529,12 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 				 void *the_msg, vlib_main_t * vm,
 				 vlib_node_runtime_t * node)
 {
-  u16 id = ntohs (*((u16 *) the_msg));
+  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   u8 *(*handler) (void *, void *, void *);
   u8 *(*print_fp) (void *, void *);
   int is_mp_safe = 1;
 
-  if (PREDICT_FALSE (vm->elog_trace_api_messages))
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
@@ -484,11 +547,11 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
       {
 	u32 c;
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
+      ed = ELOG_DATA (am->elog_main, e);
       if (id < vec_len (am->msg_names))
-	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
       else
-	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+	ed->c = elog_string (am->elog_main, "BOGUS");
     }
 
   if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
@@ -534,7 +597,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   if (!(am->message_bounce[id]))
     vl_msg_api_free (the_msg);
 
-  if (PREDICT_FALSE (vm->elog_trace_api_messages))
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
@@ -555,11 +618,11 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	u32 barrier;
 	u32 c;
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
+      ed = ELOG_DATA (am->elog_main, e);
       if (id < vec_len (am->msg_names))
-	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
       else
-	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+	ed->c = elog_string (am->elog_main, "BOGUS");
       ed->barrier = is_mp_safe;
     }
 }
@@ -617,7 +680,7 @@ void
 vl_msg_api_cleanup_handler (void *the_msg)
 {
   api_main_t *am = &api_main;
-  u16 id = ntohs (*((u16 *) the_msg));
+  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
 
   if (PREDICT_FALSE (id >= vec_len (am->msg_cleanup_handlers)))
     {
@@ -638,7 +701,7 @@ vl_msg_api_replay_handler (void *the_msg)
 {
   api_main_t *am = &api_main;
 
-  u16 id = ntohs (*((u16 *) the_msg));
+  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
 
   if (PREDICT_FALSE (id >= vec_len (am->msg_handlers)))
     {
@@ -992,6 +1055,81 @@ vl_msg_pop_heap (void *oldheap)
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 }
 
+int
+vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
+{
+  if (len)
+    clib_memcpy_fast (str->buf, buf, len);
+  str->length = htonl (len);
+  return len + sizeof (u32);
+}
+
+int
+vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
+{
+  u32 len = vec_len (vec);
+  clib_memcpy (str->buf, vec, len);
+  str->length = htonl (len);
+  return len + sizeof (u32);
+}
+
+/* Return a pointer to the API string (not nul terminated */
+u8 *
+vl_api_from_api_string (vl_api_string_t * astr)
+{
+  return astr->buf;
+}
+
+u32
+vl_api_string_len (vl_api_string_t * astr)
+{
+  return clib_net_to_host_u32 (astr->length);
+}
+
+u8 *
+vl_api_format_string (u8 * s, va_list * args)
+{
+  vl_api_string_t *a = va_arg (*args, vl_api_string_t *);
+  vec_add (s, a->buf, clib_net_to_host_u32 (a->length));
+  return s;
+}
+
+/*
+ * Returns a new vector. Remember to free it after use.
+ */
+u8 *
+vl_api_from_api_to_vec (vl_api_string_t * astr)
+{
+  u8 *v = 0;
+  vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
+  return v;
+}
+
+void
+vl_api_set_elog_main (elog_main_t * m)
+{
+  api_main_t *am = &api_main;
+  am->elog_main = m;
+}
+
+int
+vl_api_set_elog_trace_api_messages (int enable)
+{
+  int rv;
+  api_main_t *am = &api_main;
+
+  rv = am->elog_trace_api_messages;
+  am->elog_trace_api_messages = enable;
+  return rv;
+}
+
+int
+vl_api_get_elog_trace_api_messages (void)
+{
+  api_main_t *am = &api_main;
+
+  return am->elog_trace_api_messages;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -29,6 +29,4 @@ add_vpp_plugin(ikev2
   INSTALL_HEADERS
   ikev2.h
   ikev2_priv.h
-  ikev2_msg_enum.h
-  ikev2_all_api.h
 )

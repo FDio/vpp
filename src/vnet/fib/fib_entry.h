@@ -17,17 +17,22 @@
 #define __FIB_ENTRY_H__
 
 #include <vnet/fib/fib_node.h>
-#include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
 
 /**
  * The different sources that can create a route.
- * The sources are defined here the thier relative priority order.
+ * The sources are defined here with their relative priority order.
  * The lower the value the higher the priority
  */
 typedef enum fib_source_t_ {
+    /**
+     * An invalid source
+     * This is not a real source, so don't use it to source a prefix.
+     * It exists here to provide a value for inexistant/uninitialized source
+     */
+    FIB_SOURCE_INVALID = 0,
     /**
      * Marker. Add new values after this one.
      */
@@ -157,6 +162,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 #define FIB_SOURCE_MAX (FIB_SOURCE_LAST+1)
 
 #define FIB_SOURCES {					\
+    [FIB_SOURCE_INVALID] = "invalid",			\
     [FIB_SOURCE_SPECIAL] = "special",			\
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \
@@ -187,7 +193,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 
 /**
  * The different sources that can create a route.
- * The sources are defined here the thier relative priority order.
+ * The sources are defined here with their relative priority order.
  * The lower the value the higher the priority
  */
 typedef enum fib_entry_attribute_t_ {
@@ -505,9 +511,9 @@ typedef struct fib_entry_t_ {
     u32 fe_sibling;
 
     /**
-     * A vector of delegates.
+     * A vector of delegate indices.
      */
-    fib_entry_delegate_t *fe_delegates;
+    index_t *fe_delegates;
 } fib_entry_t;
 
 #define FOR_EACH_FIB_ENTRY_FLAG(_item) \
@@ -539,7 +545,7 @@ extern void fib_entry_update (fib_node_index_t fib_entry_index,
 extern void fib_entry_path_add(fib_node_index_t fib_entry_index,
 			       fib_source_t source,
 			       fib_entry_flag_t flags,
-			       const fib_route_path_t *rpath);
+			       const fib_route_path_t *rpaths);
 extern void fib_entry_special_add(fib_node_index_t fib_entry_index,
 				  fib_source_t source,
 				  fib_entry_flag_t flags,
@@ -553,7 +559,7 @@ extern fib_entry_src_flag_t fib_entry_special_remove(fib_node_index_t fib_entry_
 
 extern fib_entry_src_flag_t fib_entry_path_remove(fib_node_index_t fib_entry_index,
 						  fib_source_t source,
-						  const fib_route_path_t *rpath);
+						  const fib_route_path_t *rpaths);
 
 extern void fib_entry_inherit(fib_node_index_t cover,
                               fib_node_index_t covered);
@@ -601,9 +607,8 @@ extern u32 fib_entry_get_resolving_interface_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);
 
-extern void fib_entry_encode(fib_node_index_t fib_entry_index,
-			     fib_route_path_encode_t **api_rpaths);
-extern const fib_prefix_t *fib_entry_get_prefix(fib_node_index_t fib_entry_index);
+extern fib_route_path_t* fib_entry_encode(fib_node_index_t fib_entry_index);
+extern const fib_prefix_t* fib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern void fib_entry_set_source_data(fib_node_index_t fib_entry_index,
                                       fib_source_t source,

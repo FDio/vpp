@@ -47,7 +47,9 @@ macro(add_vpp_library lib)
     foreach(file ${ARG_API_FILES})
       get_filename_component(dir ${file} DIRECTORY)
       install(
-	FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+	FILES ${file} ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+	${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
+	${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
 	DESTINATION include/${lib}/${dir}
 	COMPONENT vpp-dev
       )

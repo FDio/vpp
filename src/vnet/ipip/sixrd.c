@@ -34,6 +34,7 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/plugin/plugin.h>
 
@@ -227,12 +228,10 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 	  fib_node_init (&sixrd_ad->sixrd_node, sixrd_fib_node_type);
 	  sixrd_ad->adj_index = ai;
 	  sixrd_ad->sixrd_fib_entry_index =
-	    fib_table_entry_special_add (t->fib_index, &pfx, FIB_SOURCE_RR,
-					 FIB_ENTRY_FLAG_NONE);
-	  sixrd_ad->sixrd_sibling =
-	    fib_entry_child_add (sixrd_ad->sixrd_fib_entry_index,
-				 sixrd_fib_node_type,
-				 sixrd_ad - sixrd_adj_delegate_pool);
+	    fib_entry_track (t->fib_index, &pfx,
+			     sixrd_fib_node_type,
+			     sixrd_ad - sixrd_adj_delegate_pool,
+			     &sixrd_ad->sixrd_sibling);
 
 	  adj_delegate_add (adj, sixrd_adj_delegate_type,
 			    sixrd_ad - sixrd_adj_delegate_pool);
@@ -421,10 +420,8 @@ sixrd_adj_delegate_adj_deleted (adj_delegate_t * aed)
   sixrd_adj_delegate_t *sixrd_ad;
 
   sixrd_ad = sixrd_adj_from_base (aed);
-  fib_entry_child_remove (sixrd_ad->sixrd_fib_entry_index,
-			  sixrd_ad->sixrd_sibling);
-  fib_table_entry_delete_index (sixrd_ad->sixrd_fib_entry_index,
-				FIB_SOURCE_RR);
+  fib_entry_untrack (sixrd_ad->sixrd_fib_entry_index,
+		     sixrd_ad->sixrd_sibling);
   pool_put (sixrd_adj_delegate_pool, sixrd_ad);
 }
 

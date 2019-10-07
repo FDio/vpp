@@ -50,8 +50,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  error = rte_eth_dev_default_mac_addr_set (xd->port_id,
-					    (struct ether_addr *) address);
+  error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
 
   if (error)
     {
@@ -214,7 +213,7 @@ static_always_inline void
 dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
 {
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-  CLIB_PREFETCH (mb, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (mb, sizeof (struct rte_mbuf), STORE);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
@@ -226,10 +225,11 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   u32 tcp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
   u32 udp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  u32 tso = b->flags & VNET_BUFFER_F_GSO;
   u64 ol_flags;
 
   /* Is there any work for us? */
-  if (PREDICT_TRUE ((ip_cksum | tcp_cksum | udp_cksum) == 0))
+  if (PREDICT_TRUE ((ip_cksum | tcp_cksum | udp_cksum | tso) == 0))
     return;
 
   mb->l2_len = vnet_buffer (b)->l3_hdr_offset - b->current_data;
@@ -241,6 +241,14 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   ol_flags |= ip_cksum ? PKT_TX_IP_CKSUM : 0;
   ol_flags |= tcp_cksum ? PKT_TX_TCP_CKSUM : 0;
   ol_flags |= udp_cksum ? PKT_TX_UDP_CKSUM : 0;
+  ol_flags |= tso ? (tcp_cksum ? PKT_TX_TCP_SEG : PKT_TX_UDP_SEG) : 0;
+
+  if (tso)
+    {
+      mb->l4_len = vnet_buffer2 (b)->gso_l4_hdr_sz;
+      mb->tso_segsz = vnet_buffer2 (b)->gso_size;
+    }
+
   mb->ol_flags |= ol_flags;
 
   /* we are trying to help compiler here by using local ol_flags with known
@@ -281,6 +289,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   n_left = n_packets;
   mb = ptd->mbufs;
 
+#if (CLIB_N_PREFETCHES >= 8)
   while (n_left >= 8)
     {
       u32 or_flags;
@@ -345,6 +354,62 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       mb += 4;
       n_left -= 4;
     }
+#elif (CLIB_N_PREFETCHES >= 4)
+  while (n_left >= 4)
+    {
+      vlib_buffer_t *b2, *b3;
+      u32 or_flags;
+
+      CLIB_PREFETCH (mb[2], CLIB_CACHE_LINE_BYTES, STORE);
+      CLIB_PREFETCH (mb[3], CLIB_CACHE_LINE_BYTES, STORE);
+      b2 = vlib_buffer_from_rte_mbuf (mb[2]);
+      CLIB_PREFETCH (b2, CLIB_CACHE_LINE_BYTES, LOAD);
+      b3 = vlib_buffer_from_rte_mbuf (mb[3]);
+      CLIB_PREFETCH (b3, CLIB_CACHE_LINE_BYTES, LOAD);
+
+      b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
+      b[1] = vlib_buffer_from_rte_mbuf (mb[1]);
+
+      or_flags = b[0]->flags | b[1]->flags;
+      all_or_flags |= or_flags;
+
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
+
+      if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  dpdk_validate_rte_mbuf (vm, b[0], 1);
+	  dpdk_validate_rte_mbuf (vm, b[1], 1);
+	}
+      else
+	{
+	  dpdk_validate_rte_mbuf (vm, b[0], 0);
+	  dpdk_validate_rte_mbuf (vm, b[1], 0);
+	}
+
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+			 (or_flags &
+			  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+	{
+	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
+	  dpdk_buffer_tx_offload (xd, b[1], mb[1]);
+	}
+
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, b[0]);
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, b[1]);
+	}
+
+      mb += 2;
+      n_left -= 2;
+    }
+#endif
+
   while (n_left > 0)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);

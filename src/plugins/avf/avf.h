@@ -22,6 +22,9 @@
 
 #include <vlib/log.h>
 
+#define AVF_AQ_ENQ_SUSPEND_TIME		50e-6
+#define AVF_AQ_ENQ_MAX_WAIT_TIME	50e-3
+
 #define AVF_RXD_STATUS(x)		(1ULL << x)
 #define AVF_RXD_STATUS_DD		AVF_RXD_STATUS(0)
 #define AVF_RXD_STATUS_EOP		AVF_RXD_STATUS(1)
@@ -37,6 +40,21 @@
 #define AVF_TXD_CMD_EOP			AVF_TXD_CMD(0)
 #define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
 #define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
+
+#define avf_log_err(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_ERR, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
+
+#define avf_log_warn(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
+
+#define avf_log_debug(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
 
 #define foreach_avf_device_flags \
   _(0, INITIALIZED, "initialized") \
@@ -158,9 +176,11 @@ typedef struct
   u32 rss_key_size;
   u32 rss_lut_size;
   virtchnl_link_speed_t link_speed;
+  vlib_pci_addr_t pci_addr;
 
   /* stats */
   virtchnl_eth_stats_t eth_stats;
+  virtchnl_eth_stats_t last_cleared_eth_stats;
 
   /* error */
   clib_error_t *error;
@@ -300,7 +320,8 @@ avf_rxd_is_not_dd (avf_rx_desc_t * d)
 
 typedef struct
 {
-  u32 next_index;
+  u16 qid;
+  u16 next_index;
   u32 hw_if_index;
   u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN];
 } avf_input_trace_t;

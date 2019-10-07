@@ -49,13 +49,13 @@ igmp_proxy_device_mfib_path_add_del (igmp_group_t * group, u8 add)
       .frp_sw_if_index = config->sw_if_index,
       .frp_fib_index = 0,
       .frp_weight = 1,
+      .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
     };
   /* *INDENT-ON* */
 
   if (add)
     mfib_table_entry_path_update (mfib_index, &mpfx_group_addr,
-				  MFIB_SOURCE_IGMP, &via_itf_path,
-				  MFIB_ITF_FLAG_FORWARD);
+				  MFIB_SOURCE_IGMP, &via_itf_path);
   else
     mfib_table_entry_path_remove (mfib_index, &mpfx_group_addr,
 				  MFIB_SOURCE_IGMP, &via_itf_path);

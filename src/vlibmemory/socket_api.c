@@ -439,7 +439,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   regp->name = format (0, "%s%c", mp->name, 0);
 
   u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
-  rp = vl_msg_api_alloc (size);
+  rp = vl_msg_api_alloc_zero (size);
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE_REPLY);
   rp->index = htonl (sock_api_registration_handle (regp));
   rp->context = mp->context;
@@ -450,7 +450,8 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     rp->message_table[i].index = htons(hp->value[0]);
-    strncpy((char *)rp->message_table[i].name, (char *)hp->key, 64-1);
+    strncpy_s((char *)rp->message_table[i].name, 64 /* bytes of space at dst */,
+              (char *)hp->key, 64-1 /* chars to copy, without zero byte. */);
     i++;
   }));
   /* *INDENT-ON* */
@@ -691,9 +692,9 @@ reply:
 }
 
 #define foreach_vlib_api_msg                    	\
-_(SOCKCLNT_CREATE, sockclnt_create)             	\
-_(SOCKCLNT_DELETE, sockclnt_delete)			\
-_(SOCK_INIT_SHM, sock_init_shm)
+  _(SOCKCLNT_CREATE, sockclnt_create, 1)             	\
+  _(SOCKCLNT_DELETE, sockclnt_delete, 1)		\
+  _(SOCK_INIT_SHM, sock_init_shm, 1)
 
 clib_error_t *
 vl_sock_api_init (vlib_main_t * vm)
@@ -709,35 +710,19 @@ vl_sock_api_init (vlib_main_t * vm)
   if (sm->socket_name == 0)
     return 0;
 
-#define _(N,n)                                                  \
+#define _(N,n,t)						\
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+                           sizeof(vl_api_##n##_t), t);
   foreach_vlib_api_msg;
 #undef _
 
   vec_resize (sm->input_buffer, 4096);
 
   sock->config = (char *) sm->socket_name;
-
-  /* mkdir of file socket, only under /run  */
-  if (strncmp (sock->config, "/run", 4) == 0)
-    {
-      u8 *tmp = format (0, "%s", sock->config);
-      int i = vec_len (tmp);
-      while (i && tmp[--i] != '/')
-	;
-
-      tmp[i] = 0;
-
-      if (i)
-	vlib_unix_recursive_mkdir ((char *) tmp);
-      vec_free (tmp);
-    }
-
   sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
   error = clib_socket_init (sock);
   if (error)
@@ -790,16 +775,21 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
+      /* DEPRECATE: default keyword is ignored */
       else if (unformat (input, "default"))
-	{
-	  sm->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
-	}
+	;
       else
 	{
 	  return clib_error_return (0, "unknown input '%U'",
 				    format_unformat_error, input);
 	}
     }
+
+  if (!vec_len (sm->socket_name))
+    sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
+			      API_SOCKET_FILENAME);
+  vec_terminate_c_string (sm->socket_name);
+
   return 0;
 }
 

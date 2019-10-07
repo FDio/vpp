@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "5.0.0";
+option version = "5.2.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 
@@ -120,6 +120,27 @@ define nat_show_config_reply
   u32 nat64_st_memory_size;
 };
 
+enum nat_log_level : u8
+{
+  NAT_LOG_NONE = 0x00,
+  NAT_LOG_ERROR = 0x01,
+  NAT_LOG_WARNING = 0x02,
+  NAT_LOG_NOTICE = 0x03,
+  NAT_LOG_INFO = 0x04,
+  NAT_LOG_DEBUG = 0x05,
+};
+
+/** \brief Set NAT logging level
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param log_level - logging level
+*/
+autoreply define nat_set_log_level {
+  u32 client_index;
+  u32 context;
+  vl_api_nat_log_level_t log_level;
+};
+
 /** \brief Set NAT workers
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -150,7 +171,7 @@ define nat_worker_details {
   u32 context;
   u32 worker_index;
   u32 lcore_id;
-  string name;
+  string name[64];
 };
 
 /** \brief Enable/disable NAT IPFIX logging
@@ -657,7 +678,7 @@ autoreply define nat44_add_del_static_mapping {
   u16 external_port;
   vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Dump NAT44 static mappings
@@ -696,7 +717,7 @@ define nat44_static_mapping_details {
   u16 external_port;
   vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Add/delete NAT44 identity mapping
@@ -722,7 +743,7 @@ autoreply define nat44_add_del_identity_mapping {
   u16 port;
   vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Dump NAT44 identity mappings
@@ -752,7 +773,7 @@ define nat44_identity_mapping_details {
   u16 port;
   vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Add/delete NAT44 pool address from specific interfce
@@ -872,7 +893,7 @@ define nat44_user_session_details {
     @param probability - probability of the internal node to be randomly matched
     @param vrf_id - VRF id
 */
-typeonly manual_endian define nat44_lb_addr_port {
+typedef nat44_lb_addr_port {
   vl_api_ip4_address_t addr;
   u16 port;
   u8 probability;
@@ -906,9 +927,9 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u16 external_port;
   u8 protocol;
   u32 affinity;
+  string tag[64];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Add/delete NAT44 load-balancing static mapping rule backend
@@ -962,9 +983,9 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 protocol;
   vl_api_nat_config_flags_t flags;
   u32 affinity;
+  string tag[64];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Delete NAT44 session

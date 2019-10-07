@@ -32,44 +32,36 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   session_event_t *evt;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
-  u32 tries = 0, max_tries;
 
   mq = session_main_get_vpp_event_queue (thread_index);
-  while (svm_msg_q_try_lock (mq))
-    {
-      max_tries = vlib_get_current_process (vlib_get_main ())? 1e6 : 3;
-      if (tries++ == max_tries)
-	{
-	  SESSION_DBG ("failed to enqueue evt");
-	  return -1;
-	}
-    }
+  if (PREDICT_FALSE (svm_msg_q_lock (mq)))
+    return -1;
   if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       svm_msg_q_unlock (mq);
       return -2;
     }
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-    {
-      svm_msg_q_unlock (mq);
-      return -2;
-    }
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->event_type = evt_type;
   switch (evt_type)
     {
     case SESSION_CTRL_EVT_RPC:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
+    case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_BUILTIN_RX:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
     case SESSION_CTRL_EVT_CLOSE:
+    case SESSION_CTRL_EVT_RESET:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
@@ -77,6 +69,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -1;
     }
+  evt->event_type = evt_type;
 
   svm_msg_q_add_and_unlock (mq, &msg);
   return 0;
@@ -99,10 +92,10 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
-  /* only event supported for now is disconnect */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE);
-  return session_send_evt_to_thread (s, 0, s->thread_index,
-				     SESSION_CTRL_EVT_CLOSE);
+  /* only events supported are disconnect and reset */
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE
+	  || evt_type == SESSION_CTRL_EVT_RESET);
+  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
 }
 
 void
@@ -125,25 +118,51 @@ session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
     }
 }
 
+void
+session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
+{
+  session_t *s;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (s->session_state < SESSION_STATE_TRANSPORT_DELETED);
+  if (!(s->flags & SESSION_F_CUSTOM_TX))
+    {
+      s->flags |= SESSION_F_CUSTOM_TX;
+      if (svm_fifo_set_event (s->tx_fifo))
+	{
+	  session_worker_t *wrk;
+	  session_evt_elt_t *elt;
+	  wrk = session_main_get_worker (tc->thread_index);
+	  if (has_prio)
+	    elt = session_evt_alloc_new (wrk);
+	  else
+	    elt = session_evt_alloc_old (wrk);
+	  elt->evt.session_index = tc->s_index;
+	  elt->evt.event_type = SESSION_IO_EVT_TX;
+	}
+    }
+}
+
 static void
-session_program_transport_close (session_t * s)
+session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
 {
   u32 thread_index = vlib_get_thread_index ();
+  session_evt_elt_t *elt;
   session_worker_t *wrk;
-  session_event_t *evt;
 
   /* If we are in the handler thread, or being called with the worker barrier
    * held, just append a new event to pending disconnects vector. */
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
       wrk = session_main_get_worker (s->thread_index);
-      vec_add2 (wrk->pending_disconnects, evt, 1);
-      clib_memset (evt, 0, sizeof (*evt));
-      evt->session_handle = session_handle (s);
-      evt->event_type = SESSION_CTRL_EVT_CLOSE;
+      elt = session_evt_alloc_ctrl (wrk);
+      clib_memset (&elt->evt, 0, sizeof (session_event_t));
+      elt->evt.session_handle = session_handle (s);
+      elt->evt.event_type = evt;
     }
   else
-    session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
+    session_send_ctrl_evt_to_thread (s, evt);
 }
 
 session_t *
@@ -168,6 +187,7 @@ session_alloc (u32 thread_index)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
+  s->app_index = APP_INVALID_INDEX;
   return s;
 }
 
@@ -181,13 +201,25 @@ session_free (session_t * s)
       pool_put (session_main.wrk[thread_index].sessions, s);
       return;
     }
-  SESSION_EVT_DBG (SESSION_EVT_FREE, s);
+  SESSION_EVT (SESSION_EVT_FREE, s);
   pool_put (session_main.wrk[s->thread_index].sessions, s);
+}
+
+static void
+session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return;
+  app_worker_cleanup_notify (app_wrk, s, ntf);
 }
 
 void
 session_free_w_fifos (session_t * s)
 {
+  session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
   segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
   session_free (s);
 }
@@ -204,7 +236,7 @@ session_delete (session_t * s)
 
   /* Delete from the main lookup table. */
   if ((rv = session_lookup_del_session (s)))
-    clib_warning ("hash delete error, rv %d", rv);
+    clib_warning ("session %u hash delete rv %d", s->session_index, rv);
 
   session_free_w_fifos (s);
 }
@@ -452,11 +484,14 @@ u32
 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  u32 rv;
 
-  if (svm_fifo_needs_tx_ntf (s->tx_fifo, max_bytes))
+  rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+
+  if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
 
-  return svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  return rv;
 }
 
 static inline int
@@ -508,12 +543,7 @@ session_enqueue_notify_inline (session_t * s)
       return 0;
     }
 
-  /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
-      ed->data[0] = SESSION_IO_EVT_RX;
-      ed->data[1] = svm_fifo_max_dequeue_prod (s->rx_fifo);
-  }));
-  /* *INDENT-ON* */
+  SESSION_EVT (SESSION_EVT_ENQ, s, svm_fifo_max_dequeue_prod (s->rx_fifo));
 
   s->flags &= ~SESSION_F_RX_EVT;
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
@@ -536,10 +566,44 @@ session_enqueue_notify (session_t * s)
   return session_enqueue_notify_inline (s);
 }
 
+static void
+session_enqueue_notify_rpc (void *arg)
+{
+  u32 session_index = pointer_to_uword (arg);
+  session_t *s;
+
+  s = session_get_if_valid (session_index, vlib_get_thread_index ());
+  if (!s)
+    return;
+
+  session_enqueue_notify (s);
+}
+
+/**
+ * Like session_enqueue_notify, but can be called from a thread that does not
+ * own the session.
+ */
+void
+session_enqueue_notify_thread (session_handle_t sh)
+{
+  u32 thread_index = session_thread_from_handle (sh);
+  u32 session_index = session_index_from_handle (sh);
+
+  /*
+   * Pass session index (u32) as opposed to handle (u64) in case pointers
+   * are not 64-bit.
+   */
+  session_send_rpc_evt_to_thread (thread_index,
+				  session_enqueue_notify_rpc,
+				  uword_to_pointer (session_index, void *));
+}
+
 int
 session_dequeue_notify (session_t * s)
 {
   app_worker_t *app_wrk;
+
+  svm_fifo_clear_deq_ntf (s->tx_fifo);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (PREDICT_FALSE (!app_wrk))
@@ -552,8 +616,6 @@ session_dequeue_notify (session_t * s)
   if (PREDICT_FALSE (s->tx_fifo->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
 				       s->tx_fifo, SESSION_IO_EVT_TX);
-
-  svm_fifo_clear_tx_ntf (s->tx_fifo);
 
   return 0;
 }
@@ -605,8 +667,9 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
   return errors;
 }
 
-int
-session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+static inline int
+session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
+				      session_state_t opened_state)
 {
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
@@ -649,6 +712,10 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
       return -1;
     }
 
+  s = session_get (new_si, new_ti);
+  s->session_state = opened_state;
+  session_lookup_add_connection (tc, session_handle (s));
+
   if (app_worker_connect_notify (app_wrk, s, opaque))
     {
       s = session_get (new_si, new_ti);
@@ -656,11 +723,21 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
       return -1;
     }
 
-  s = session_get (new_si, new_ti);
-  s->session_state = SESSION_STATE_READY;
-  session_lookup_add_connection (tc, session_handle (s));
-
   return 0;
+}
+
+int
+session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+{
+  return session_stream_connect_notify_inline (tc, is_fail,
+					       SESSION_STATE_READY);
+}
+
+int
+session_ho_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+{
+  return session_stream_connect_notify_inline (tc, is_fail,
+					       SESSION_STATE_OPENED);
 }
 
 typedef struct _session_switch_pool_args
@@ -671,17 +748,35 @@ typedef struct _session_switch_pool_args
   u32 new_session_index;
 } session_switch_pool_args_t;
 
+/**
+ * Notify old thread of the session pool switch
+ */
 static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  app_worker_t *app_wrk;
   session_t *s;
+
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
   s->tx_fifo->master_session_index = args->new_session_index;
   s->tx_fifo->master_thread_index = args->new_thread_index;
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk)
+    {
+      session_handle_t new_sh;
+      new_sh = session_make_handle (args->new_session_index,
+				    args->new_thread_index);
+      app_worker_migrate_notify (app_wrk, s, new_sh);
+
+      /* Trigger app read on the new thread */
+      session_enqueue_notify_thread (new_sh);
+    }
+
   session_free (s);
   clib_mem_free (cb_args);
 }
@@ -762,9 +857,6 @@ session_transport_delete_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
-  /* Make sure we don't try to send anything more */
-  svm_fifo_dequeue_drop_all (s->tx_fifo);
-
   switch (s->session_state)
     {
     case SESSION_STATE_CREATED:
@@ -775,48 +867,56 @@ session_transport_delete_notify (transport_connection_t * tc)
       break;
     case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
+    case SESSION_STATE_CLOSING:
+    case SESSION_STATE_TRANSPORT_CLOSED:
       /* If transport finishes or times out before we get a reply
        * from the app, mark transport as closed and wait for reply
        * before removing the session. Cleanup session table in advance
        * because transport will soon be closed and closed sessions
        * are assumed to have been removed from the lookup table */
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
-    case SESSION_STATE_CLOSING:
-    case SESSION_STATE_CLOSED_WAITING:
+    case SESSION_STATE_APP_CLOSED:
       /* Cleanup lookup table as transport needs to still be valid.
        * Program transport close to ensure that all session events
        * have been cleaned up. Once transport close is called, the
        * session is just removed because both transport and app have
        * confirmed the close*/
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
-      session_program_transport_close (s);
+      s->session_state = SESSION_STATE_CLOSED;
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
+      session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       break;
-    case SESSION_STATE_TRANSPORT_CLOSED:
+    case SESSION_STATE_TRANSPORT_DELETED:
       break;
     case SESSION_STATE_CLOSED:
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       session_delete (s);
       break;
     default:
       clib_warning ("session state %u", s->session_state);
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       session_delete (s);
       break;
     }
 }
 
 /**
- * Notification from transport that session can be closed
+ * Notification from transport that it is closed
  *
- * Should be called by transport only if it was closed with non-empty
- * tx fifo and once it decides to begin the closing procedure prior to
- * issuing a delete notify. This gives the chance to the session layer
- * to cleanup any outstanding events.
+ * Should be called by transport, prior to calling delete notify, once it
+ * knows that no more data will be exchanged. This could serve as an
+ * early acknowledgment of an active close especially if transport delete
+ * can be delayed a long time, e.g., tcp time-wait.
  */
 void
 session_transport_closed_notify (transport_connection_t * tc)
 {
+  app_worker_t *app_wrk;
   session_t *s;
 
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
@@ -828,16 +928,21 @@ session_transport_closed_notify (transport_connection_t * tc)
     {
       session_transport_closing_notify (tc);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
+      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
     }
   /* If app close has not been received or has not yet resulted in
    * a transport close, only mark the session transport as closed */
   else if (s->session_state <= SESSION_STATE_CLOSING)
     {
-      session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
     }
-  else
+  /* If app also closed, switch to closed */
+  else if (s->session_state == SESSION_STATE_APP_CLOSED)
     s->session_state = SESSION_STATE_CLOSED;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk)
+    app_worker_transport_closed_notify (app_wrk, s);
 }
 
 /**
@@ -877,13 +982,13 @@ session_stream_accept_notify (transport_connection_t * tc)
  */
 int
 session_stream_accept (transport_connection_t * tc, u32 listener_index,
-		       u8 notify)
+		       u32 thread_index, u8 notify)
 {
   session_t *s;
   int rv;
 
   s = session_alloc_for_connection (tc);
-  s->listener_index = listener_index;
+  s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
   s->session_state = SESSION_STATE_CREATED;
 
   if ((rv = app_worker_init_accepted (s)))
@@ -934,7 +1039,6 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   sh = session_handle (s);
   session_lookup_add_connection (tc, sh);
-
   return app_worker_connect_notify (app_wrk, s, opaque);
 }
 
@@ -970,6 +1074,8 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
    * thing but better than allocating a separate half-open pool.
    */
   tc->s_index = opaque;
+  if (transport_half_open_has_fifos (rmt->transport_proto))
+    return session_ho_stream_connect_notify (tc, 0 /* is_fail */ );
   return 0;
 }
 
@@ -1065,7 +1171,8 @@ session_stop_listen (session_t * s)
   if (!tc)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
-  session_lookup_del_connection (tc);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_del_connection (tc);
   transport_stop_listen (tp, s->connection_index);
   return 0;
 }
@@ -1086,17 +1193,28 @@ session_close (session_t * s)
     {
       /* Session will only be removed once both app and transport
        * acknowledge the close */
-      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
-	session_program_transport_close (s);
-
-      /* Session already closed. Clear the tx fifo */
-      if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->tx_fifo);
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED
+	  || s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       return;
     }
 
   s->session_state = SESSION_STATE_CLOSING;
-  session_program_transport_close (s);
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
+}
+
+/**
+ * Force a close without waiting for data to be flushed
+ */
+void
+session_reset (session_t * s)
+{
+  if (s->session_state >= SESSION_STATE_CLOSING)
+    return;
+  /* Drop all outstanding tx data */
+  svm_fifo_dequeue_drop_all (s->tx_fifo);
+  s->session_state = SESSION_STATE_CLOSING;
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
 
 /**
@@ -1109,25 +1227,45 @@ session_close (session_t * s)
 void
 session_transport_close (session_t * s)
 {
-  /* If transport is already closed, just free the session */
-  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
-      session_free_w_fifos (s);
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+	s->session_state = SESSION_STATE_CLOSED;
+      /* If transport is already deleted, just free the session */
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+	session_free_w_fifos (s);
       return;
     }
 
-  /* If tx queue wasn't drained, change state to closed waiting for transport.
-   * This way, the transport, if it so wishes, can continue to try sending the
-   * outstanding data (in closed state it cannot). It MUST however at one
-   * point, either after sending everything or after a timeout, call delete
-   * notify. This will finally lead to the complete cleanup of the session.
+  /* If the tx queue wasn't drained, the transport can continue to try
+   * sending the outstanding data (in closed state it cannot). It MUST however
+   * at one point, either after sending everything or after a timeout, call
+   * delete notify. This will finally lead to the complete cleanup of the
+   * session.
    */
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-    s->session_state = SESSION_STATE_CLOSED_WAITING;
-  else
-    s->session_state = SESSION_STATE_CLOSED;
+  s->session_state = SESSION_STATE_APP_CLOSED;
 
   transport_close (session_get_transport_proto (s), s->connection_index,
+		   s->thread_index);
+}
+
+/**
+ * Force transport close
+ */
+void
+session_transport_reset (session_t * s)
+{
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+	s->session_state = SESSION_STATE_CLOSED;
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+	session_free_w_fifos (s);
+      return;
+    }
+
+  s->session_state = SESSION_STATE_APP_CLOSED;
+  transport_reset (session_get_transport_proto (s), s->connection_index,
 		   s->thread_index);
 }
 
@@ -1141,8 +1279,6 @@ session_transport_close (session_t * s)
 void
 session_transport_cleanup (session_t * s)
 {
-  s->session_state = SESSION_STATE_CLOSED;
-
   /* Delete from main lookup table before we axe the the transport */
   session_lookup_del_session (s);
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
@@ -1287,7 +1423,8 @@ session_register_transport (transport_proto_t transport_proto,
   /* *INDENT-ON* */
 
   smm->session_type_to_next[session_type] = next_index;
-  smm->session_tx_fns[session_type] = session_tx_fns[vft->tx_type];
+  smm->session_tx_fns[session_type] =
+    session_tx_fns[vft->transport_options.tx_type];
 }
 
 transport_connection_t *
@@ -1349,25 +1486,15 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < num_threads; i++)
     {
       wrk = &smm->wrk[i];
-      vec_validate (wrk->free_event_vector, 128);
-      _vec_len (wrk->free_event_vector) = 0;
-      vec_validate (wrk->pending_event_vector, 128);
-      _vec_len (wrk->pending_event_vector) = 0;
-      vec_validate (wrk->pending_disconnects, 128);
-      _vec_len (wrk->pending_disconnects) = 0;
-      vec_validate (wrk->postponed_event_vector, 128);
-      _vec_len (wrk->postponed_event_vector) = 0;
-
+      wrk->ctrl_head = clib_llist_make_head (wrk->event_elts, evt_list);
+      wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
+      wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
+      wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
-      wrk->dispatch_period = 500e-6;
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
     }
-
-#if SESSION_DEBUG
-  vec_validate (smm->last_event_poll_by_thread, num_threads - 1);
-#endif
 
   /* Allocate vpp event queues segment and queue */
   session_vpp_event_queues_allocate (smm);
@@ -1454,8 +1581,8 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
       if (session_main.is_enabled)
 	return 0;
 
-      session_node_enable_disable (is_en);
       error = session_manager_main_enable (vm);
+      session_node_enable_disable (is_en);
     }
   else
     {
@@ -1563,6 +1690,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
 			 &smm->evt_qs_segment_size))
 	;
+      else if (unformat (input, "enable"))
+	vnet_session_enable_disable (vm, 1 /* is_en */ );
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

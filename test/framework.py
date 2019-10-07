@@ -5,6 +5,7 @@ import gc
 import sys
 import os
 import select
+import signal
 import unittest
 import tempfile
 import time
@@ -21,7 +22,7 @@ from logging import FileHandler, DEBUG, Formatter
 
 import scapy.compat
 from scapy.packet import Raw
-from hook import StepHook, PollHook, VppDiedError
+import hook as hookmodule
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
@@ -56,9 +57,28 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
-debug_framework = False
-if os.getenv('TEST_DEBUG', "0") == "1":
-    debug_framework = True
+
+class BoolEnvironmentVariable(object):
+
+    def __init__(self, env_var_name, default='n', true_values=None):
+        self.name = env_var_name
+        self.default = default
+        self.true_values = true_values if true_values is not None else \
+            ("y", "yes", "1")
+
+    def __bool__(self):
+        return os.getenv(self.name, self.default).lower() in self.true_values
+
+    if sys.version_info[0] == 2:
+        __nonzero__ = __bool__
+
+    def __repr__(self):
+        return 'BoolEnvironmentVariable(%r, default=%r, true_values=%r)' % \
+               (self.name, self.default, self.true_values)
+
+
+debug_framework = BoolEnvironmentVariable('TEST_DEBUG')
+if debug_framework:
     import debug_internal
 
 """
@@ -67,6 +87,36 @@ if os.getenv('TEST_DEBUG', "0") == "1":
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
+
+
+class VppDiedError(Exception):
+    """ exception for reporting that the subprocess has died."""
+
+    signals_by_value = {v: k for k, v in signal.__dict__.items() if
+                        k.startswith('SIG') and not k.startswith('SIG_')}
+
+    def __init__(self, rv=None, testcase=None, method_name=None):
+        self.rv = rv
+        self.signal_name = None
+        self.testcase = testcase
+        self.method_name = method_name
+
+        try:
+            self.signal_name = VppDiedError.signals_by_value[-rv]
+        except (KeyError, TypeError):
+            pass
+
+        if testcase is None and method_name is None:
+            in_msg = ''
+        else:
+            in_msg = 'running %s.%s ' % (testcase, method_name)
+
+        msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
+            in_msg,
+            self.rv,
+            ' [%s]' % (self.signal_name if
+                       self.signal_name is not None else ''))
+        super(VppDiedError, self).__init__(msg)
 
 
 class _PacketInfo(object):
@@ -143,7 +193,7 @@ def pump_output(testclass):
 
 
 def _is_skip_aarch64_set():
-    return os.getenv('SKIP_AARCH64', 'n').lower() in ('yes', 'y', '1')
+    return BoolEnvironmentVariable('SKIP_AARCH64')
 
 
 is_skip_aarch64_set = _is_skip_aarch64_set()
@@ -157,8 +207,7 @@ is_platform_aarch64 = _is_platform_aarch64()
 
 
 def _running_extended_tests():
-    s = os.getenv("EXTENDED_TESTS", "n")
-    return True if s.lower() in ("y", "yes", "1") else False
+    return BoolEnvironmentVariable("EXTENDED_TESTS")
 
 
 running_extended_tests = _running_extended_tests()
@@ -169,7 +218,7 @@ def _running_on_centos():
     return True if "centos" in os_id.lower() else False
 
 
-running_on_centos = _running_on_centos
+running_on_centos = _running_on_centos()
 
 
 class KeepAliveReporter(object):
@@ -283,9 +332,9 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
-        s = os.getenv("STEP", "n")
-        cls.step = True if s.lower() in ("y", "yes", "1") else False
+        cls.step = BoolEnvironmentVariable('STEP')
         d = os.getenv("DEBUG", None)
+        # inverted case to handle '' == True
         c = os.getenv("CACHE_OUTPUT", "1")
         cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
         cls.set_debug_flags(d)
@@ -313,13 +362,16 @@ class VppTestCase(unittest.TestCase):
             coredump_size = "coredump-size unlimited"
 
         cpu_core_number = cls.get_least_used_cpu()
+        if not hasattr(cls, "worker_config"):
+            cls.worker_config = ""
 
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
                            coredump_size, "runtime-dir", cls.tempdir, "}",
                            "api-trace", "{", "on", "}", "api-segment", "{",
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number), "}",
+                           "main-core", str(cpu_core_number),
+                           cls.worker_config, "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "plugins",
@@ -351,12 +403,13 @@ class VppTestCase(unittest.TestCase):
         print(single_line_delim)
         print("You can debug the VPP using e.g.:")
         if cls.debug_gdbserver:
-            print("gdb " + cls.vpp_bin + " -ex 'target remote localhost:7777'")
+            print("sudo gdb " + cls.vpp_bin +
+                  " -ex 'target remote localhost:7777'")
             print("Now is the time to attach a gdb by running the above "
                   "command, set up breakpoints etc. and then resume VPP from "
                   "within gdb by issuing the 'continue' command")
         elif cls.debug_gdb:
-            print("gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
+            print("sudo gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
@@ -491,9 +544,9 @@ class VppTestCase(unittest.TestCase):
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
                                        read_timeout)
             if cls.step:
-                hook = StepHook(cls)
+                hook = hookmodule.StepHook(cls)
             else:
-                hook = PollHook(cls)
+                hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)
             cls.wait_for_stats_socket()
             cls.statistics = VPPStats(socketname=cls.stats_sock)
@@ -518,10 +571,8 @@ class VppTestCase(unittest.TestCase):
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
         except Exception:
-            try:
-                cls.quit()
-            except Exception:
-                pass
+
+            cls.quit()
             raise
 
     @classmethod
@@ -626,6 +677,7 @@ class VppTestCase(unittest.TestCase):
                 self.logger.info(self.statistics.set_errors_str())
                 self.logger.info(self.vapi.ppcli("show run"))
                 self.logger.info(self.vapi.ppcli("show log"))
+                self.logger.info(self.vapi.ppcli("show bihash"))
                 self.logger.info("Logging testcase specific show commands.")
                 self.show_commands_at_teardown()
                 self.registry.remove_vpp_config(self.logger)
@@ -651,7 +703,9 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
-            raise Exception("VPP is dead when setting up the test")
+
+            raise VppDiedError(rv=None, testcase=self.__class__.__name__,
+                               method_name=self._testMethodName)
         self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
@@ -711,7 +765,7 @@ class VppTestCase(unittest.TestCase):
         cls._captures = []
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces):
+    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
         """
         Create packet-generator interfaces.
 
@@ -721,7 +775,7 @@ class VppTestCase(unittest.TestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i)
+            intf = VppPGInterface(cls, i, gso, gso_size)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result
@@ -922,8 +976,6 @@ class VppTestCase(unittest.TestCase):
     def assert_packet_checksums_valid(self, packet,
                                       ignore_zero_udp_checksums=True):
         received = packet.__class__(scapy.compat.raw(packet))
-        self.logger.debug(
-            ppp("Verifying packet checksums for packet:", received))
         udp_layers = ['UDP', 'UDPerror']
         checksum_fields = ['cksum', 'chksum']
         checksums = []
@@ -1425,15 +1477,24 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger, env={}):
+    def __init__(self, args, logger, env=None):
         self.logger = logger
         self.args = args
+        self.process = None
         self.result = None
+        env = {} if env is None else env
         self.env = copy.deepcopy(env)
         super(Worker, self).__init__()
 
     def run(self):
         executable = self.args[0]
+        if not os.path.exists(executable) or not os.access(
+                executable, os.F_OK | os.X_OK):
+            # Exit code that means some system file did not exist,
+            # could not be opened, or had some other kind of error.
+            self.result = os.EX_OSFILE
+            raise EnvironmentError(
+                "executable '%s' is not found or executable." % executable)
         self.logger.debug("Running executable w/args `%s'" % self.args)
         env = os.environ.copy()
         env.update(self.env)

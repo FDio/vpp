@@ -112,7 +112,7 @@ format_vlib_buffer (u8 * s, va_list * args)
 		b->total_length_not_including_first_buffer);
 
   if (b->flags & VLIB_BUFFER_IS_TRACED)
-    s = format (s, ", trace 0x%x", b->trace_index);
+    s = format (s, ", trace handle 0x%x", b->trace_handle);
 
   if (a)
     s = format (s, "\n%U%v", format_white_space, indent, a);
@@ -693,7 +693,7 @@ retry:
     }
 
   if (error)
-    return error;
+    goto done;
 
   vec_reset_length (name);
   name = format (name, "default-numa-%d%c", numa_node, 0);
@@ -703,9 +703,14 @@ retry:
 				    physmem_map_index);
 
   if (*index == (u8) ~ 0)
-    return clib_error_return (0, "maximum number of buffer pools reached");
+    {
+      error = clib_error_return (0, "maximum number of buffer pools reached");
+      goto done;
+    }
 
-  return 0;
+done:
+  vec_free (name);
+  return error;
 }
 
 void

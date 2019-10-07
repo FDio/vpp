@@ -20,7 +20,7 @@ option version = "1.0.0";
     @param weight - locator weight
     @param addr - IPv4/6 address
 */
-typeonly manual_print manual_endian define gpe_locator
+typedef gpe_locator
 {
   u8 is_ip4;
   u8 weight;
@@ -117,7 +117,7 @@ define gpe_fwd_entries_get
   u32 vni;
 };
 
-typeonly manual_print manual_endian define gpe_fwd_entry
+typedef gpe_fwd_entry
 {
   u32 fwd_entry_index;
   u32 dp_table;
@@ -225,7 +225,7 @@ define gpe_native_fwd_rpaths_get
     @param nh_sw_if_index - next-hop sw_if_index (~0 if not set)
     @param nh_addr - next hop address
 */
-typeonly manual_print manual_endian define gpe_native_fwd_rpath
+typedef gpe_native_fwd_rpath
 {
   u32 fib_index;
   u32 nh_sw_if_index;

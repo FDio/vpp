@@ -61,7 +61,7 @@ l2pbb_configure (vlib_main_t * vlib_main,
 
   l2_output_config_t *config = 0;
   vnet_hw_interface_t *hi;
-  hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+  hi = vnet_get_sup_hw_interface_api_visible_or_null (vnet_main, sw_if_index);
 
   if (!hi)
     {
@@ -149,7 +149,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   u32 push_outer_et;
   u32 cfg_tags;
 
-  hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+  hi = vnet_get_sup_hw_interface_api_visible_or_null (vnet_main, sw_if_index);
   if (!hi || (hi->hw_class_index != ethernet_hw_interface_class.index))
     {
       error = VNET_API_ERROR_INVALID_INTERFACE;	/* non-ethernet interface */
@@ -364,7 +364,7 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
   *vtr_tag2 = 0;
   *push_dot1q = 0;
 
-  hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+  hi = vnet_get_sup_hw_interface_api_visible_or_null (vnet_main, sw_if_index);
   if (!hi || (hi->hw_class_index != ethernet_hw_interface_class.index))
     {
       /* non-ethernet interface */

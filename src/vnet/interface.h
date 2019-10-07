@@ -43,11 +43,12 @@
 #include <vlib/vlib.h>
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
+#include <vppinfra/lock.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
-struct ip46_address_t;
+union ip46_address_t_;
 
 typedef enum
 {
@@ -174,6 +175,14 @@ static __clib_unused void * __clib_unused_##f = f;
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(f,p)     	\
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,sw_interface_admin_up_down, p)
 
+/**
+ * Tunnel description parameters
+ */
+typedef int (*vnet_dev_class_ip_tunnel_desc_t) (u32 sw_if_index,
+						union ip46_address_t_ * src,
+						union ip46_address_t_ * dst,
+						u8 * is_l2);
+
 /* A class of hardware interface devices. */
 typedef struct _vnet_device_class
 {
@@ -234,6 +243,8 @@ typedef struct _vnet_device_class
 
   /* Format flow offload entry */
   format_function_t *format_flow;
+
+  vnet_dev_class_ip_tunnel_desc_t ip_tun_desc;
 
   /* Function to clear hardware counters for device. */
   void (*clear_counters) (u32 dev_class_instance);
@@ -487,6 +498,7 @@ typedef enum vnet_hw_interface_flags_t_
    that packets flow over. */
 typedef struct vnet_hw_interface_t
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Interface name. */
   u8 *name;
 
@@ -568,7 +580,10 @@ typedef struct vnet_hw_interface_t
   /* numa node that hardware device connects to */
   u8 numa_node;
 
-  u8 padding[3];
+  /* trace */
+  i32 n_trace;
+
+  u32 trace_classify_table_index;
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
@@ -665,7 +680,7 @@ typedef enum vnet_sw_interface_flags_t_
 
   VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
 
-  VNET_SW_INTERFACE_FLAG_BOND_SLAVE = (1 << 4),
+  __VNET_SW_INTERFACE_FLAG_UNUSED2 = (1 << 4),
 
   /* Interface does not appear in CLI/API */
   VNET_SW_INTERFACE_FLAG_HIDDEN = (1 << 5),
@@ -795,9 +810,12 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 *split_buffers;
-  u32 padding[14];
 } vnet_interface_per_thread_data_t;
+
+typedef u8 *(*vnet_buffer_opquae_formatter_t) (const vlib_buffer_t * b,
+					       u8 * s);
 
 typedef struct
 {
@@ -823,19 +841,22 @@ typedef struct
 
   /* Software interface counters both simple and combined
      packet and byte counters. */
-  volatile u32 *sw_if_counter_lock;
+  clib_spinlock_t sw_if_counter_lock;
   vlib_simple_counter_main_t *sw_if_counters;
   vlib_combined_counter_main_t *combined_sw_if_counters;
 
   vnet_hw_interface_nodes_t *deleted_hw_interface_nodes;
 
-  /* pcap drop tracing */
-  int drop_pcap_enable;
-  pcap_main_t pcap_main;
-  u8 *pcap_filename;
-  u32 pcap_sw_if_index;
-  u32 pcap_pkts_to_capture;
+  /*
+   * pcap drop tracing
+   * Only the drop filter hash lives here. See ../src/vlib/main.h for
+   * the rest of the variables.
+   */
   uword *pcap_drop_filter_hash;
+
+  /* Buffer metadata format helper functions */
+  vnet_buffer_opquae_formatter_t *buffer_opaque_format_helpers;
+  vnet_buffer_opquae_formatter_t *buffer_opaque2_format_helpers;
 
   /* per-thread data */
   vnet_interface_per_thread_data_t *per_thread_data;
@@ -851,15 +872,14 @@ static inline void
 vnet_interface_counter_lock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
-    while (clib_atomic_test_and_set (im->sw_if_counter_lock))
-      /* zzzz */ ;
+    clib_spinlock_lock (&im->sw_if_counter_lock);
 }
 
 static inline void
 vnet_interface_counter_unlock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
-    clib_atomic_release (im->sw_if_counter_lock);
+    clib_spinlock_unlock (&im->sw_if_counter_lock);
 }
 
 void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
@@ -869,6 +889,28 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 uword vnet_interface_output_node (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame);
+
+void vnet_register_format_buffer_opaque_helper
+  (vnet_buffer_opquae_formatter_t fn);
+
+void vnet_register_format_buffer_opaque2_helper
+  (vnet_buffer_opquae_formatter_t fn);
+
+typedef struct
+{
+  u8 *filename;
+  int enable;
+  int status;
+  u32 packets_to_capture;
+  u32 max_bytes_per_pkt;
+  u8 rx_enable;
+  u8 tx_enable;
+  u8 drop_enable;
+  u32 sw_if_index;
+  int filter;
+} vnet_pcap_dispatch_trace_args_t;
+
+int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);
 
 #endif /* included_vnet_interface_h */
 

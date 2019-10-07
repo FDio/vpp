@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <vnet/feature/feature.h>
 #include <vnet/classify/flow_classify.h>
 
 flow_classify_main_t flow_classify_main;

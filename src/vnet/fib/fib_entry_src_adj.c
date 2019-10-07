@@ -237,7 +237,9 @@ fib_entry_src_adj_activate (fib_entry_src_t *src,
      *   ip route add 10.0.0.0/24 Eth0
      * is attached. and we want adj-fibs to install on Eth0.
      */
-    if (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover))
+    if (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover) ||
+        (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_for_source(src->u.adj.fesa_cover,
+                                                                  FIB_SOURCE_INTERFACE)))
     {
         fib_entry_src_path_list_walk_cxt_t ctx = {
             .cover_itf = fib_entry_get_resolving_interface(src->u.adj.fesa_cover),

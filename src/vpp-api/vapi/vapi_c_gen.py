@@ -13,10 +13,16 @@ class CField(Field):
         return "vapi_type_%s" % self.name
 
     def get_c_def(self):
-        if self.len is not None:
-            return "%s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
+        if self.type.get_c_name() == 'vl_api_string_t':
+            if self.len:
+                return "u8 %s[%d];" % (self.name, self.len)
+            else:
+                return "vl_api_string_t %s;" % (self.name)
         else:
-            return "%s %s;" % (self.type.get_c_name(), self.name)
+            if self.len is not None:
+                return "%s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
+            else:
+                return "%s %s;" % (self.type.get_c_name(), self.name)
 
     def get_swap_to_be_code(self, struct, var):
         if self.len is not None:
@@ -707,12 +713,12 @@ def gen_json_unified_header(parser, logger, j, io, name):
     emitted = []
     for e in parser.enums_by_json[j]:
         emit_definition(parser, j, emitted, e)
-    for a in parser.aliases_by_json[j]:
-        emit_definition(parser, j, emitted, a)
     for u in parser.unions_by_json[j]:
         emit_definition(parser, j, emitted, u)
     for t in parser.types_by_json[j]:
         emit_definition(parser, j, emitted, t)
+    for a in parser.aliases_by_json[j]:
+        emit_definition(parser, j, emitted, a)
     for m in parser.messages_by_json[j].values():
         emit_definition(parser, j, emitted, m)
 

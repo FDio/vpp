@@ -278,6 +278,7 @@ VLIB_NODE_FN (netmap_input_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (netmap_input_node) = {
   .name = "netmap-input",
   .sibling_of = "device-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .format_trace = format_netmap_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   /* default state is INTERRUPT mode, switch to POLLING if worker threads are enabled */

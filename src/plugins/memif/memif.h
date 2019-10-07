@@ -27,6 +27,8 @@
 #define MEMIF_VERSION_MINOR	0
 #define MEMIF_VERSION		((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 
+#define MEMIF_SECRET_SIZE       24
+
 /*
  *  Type definitions
  */
@@ -85,7 +87,7 @@ typedef struct __attribute__ ((packed))
   memif_version_t version;
   memif_interface_id_t id;
   memif_interface_mode_t mode:8;
-  uint8_t secret[24];
+  uint8_t secret[MEMIF_SECRET_SIZE];
   uint8_t name[32];
 } memif_msg_init_t;
 

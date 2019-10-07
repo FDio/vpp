@@ -359,14 +359,11 @@ show_version_cb (vapi_ctx_t ctx, void *caller_ctx,
 {
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (true, is_last);
-  ck_assert_str_eq ("vpe", (char *) vl_api_from_api_string (&p->program));
+  ck_assert_str_eq ("vpe", (char *) p->program);
   printf
     ("show_version_reply: program: `%s', version: `%s', build directory: "
-     "`%s', build date: `%s'\n",
-     vl_api_from_api_string (&p->program),
-     vl_api_from_api_string (&p->version),
-     vl_api_from_api_string (&p->build_directory),
-     vl_api_from_api_string (&p->build_date));
+     "`%s', build date: `%s'\n", p->program, p->version, p->build_directory,
+     p->build_date);
   ++*(int *) caller_ctx;
   return VAPI_OK;
 }
@@ -577,8 +574,8 @@ START_TEST (test_loopbacks_1)
       clib_memset (&seen, 0, sizeof (seen));
       dump = vapi_alloc_sw_interface_dump (ctx);
       dump->payload.name_filter_valid = 0;
-      clib_memset (dump->payload.name_filter, 0,
-		   sizeof (dump->payload.name_filter));
+      clib_memset (dump->payload.name_filter.buf, 0,
+		   dump->payload.name_filter.length);
       while (VAPI_EAGAIN ==
 	     (rv =
 	      vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb,
@@ -609,8 +606,8 @@ START_TEST (test_loopbacks_1)
   clib_memset (&seen, 0, sizeof (seen));
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
-	       sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter.buf, 0,
+	       dump->payload.name_filter.length);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -734,8 +731,8 @@ START_TEST (test_loopbacks_2)
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
   vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
-	       sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter.buf, 0,
+	       dump->payload.name_filter.length);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -775,8 +772,8 @@ START_TEST (test_loopbacks_2)
   dctx.last_called = false;
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
-	       sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter.buf, 0,
+	       dump->payload.name_filter.length);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -802,9 +799,7 @@ generic_cb (vapi_ctx_t ctx, void *callback_ctx, vapi_msg_id_t id, void *msg)
   ck_assert_int_eq (id, vapi_msg_id_show_version_reply);
   ck_assert_ptr_ne (NULL, msg);
   vapi_msg_show_version_reply *reply = msg;
-  ck_assert_str_eq ("vpe",
-		    (char *) vl_api_from_api_string (&reply->
-						     payload.program));
+  ck_assert_str_eq ("vpe", (char *) reply->payload.program);
   return VAPI_OK;
 }
 

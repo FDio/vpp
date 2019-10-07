@@ -28,6 +28,11 @@ M:	Dave Barach <dave@barachs.net>
 F:	build-root/Makefile
 F:	build-data/
 
+Link Bonding
+I:	bonding
+M:	Steven Luong <sluong@cisco.com>
+F:	src/vnet/bonding/
+
 Doxygen
 I:	doxygen
 M:	Chris Luke <chrisy@flirble.org>
@@ -68,10 +73,34 @@ I:	bfd
 M:	Klement Sekera <ksekera@cisco.com>
 F:	src/vnet/bfd/
 
+VNET Classifier
+I:	classify
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/classify
+
 VNET Device Drivers
 I:	devices
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
+
+VNET TAP Drivers
+I:	tap
+M:	Damjan Marion <damarion@cisco.com>
+M:	Steven Luong <sluong@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/vnet/devices/tap/
+
+VNET Native Virtio Drivers
+I:      virtio
+M:      Mohsin Kazmi <sykazmi@cisco.com>
+F:      src/vnet/devices/virtio/
+
+VNET Etherent
+I:	ethernet
+M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/ethernet/
 
 VNET Feature Arcs
 I:	feature
@@ -92,10 +121,20 @@ I:	ip
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
 
+VNET QoS
+I:	qos
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/qos/
+
 VNET Interface Common
 I:	interface
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/interface*.[ch]
+
+VNET Packet Generator
+I:	pg
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/pg/
 
 VNET Segment Routing (IPv6 and MPLS)
 I:	sr
@@ -115,6 +154,11 @@ I:	crypto
 M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/crypto/
+
+VNET COP
+I:	cop
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/cop/
 
 Crypto IA32 Plugin
 I:	crypto-ia32
@@ -147,6 +191,11 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
+VNET GSO
+I: gso
+M: Andrew Yourtchenko <ayourtch@gmail.com>
+F: src/vnet/interface_output.c
+
 Plugin - MAP
 I:	map
 Y:	src/plugins/map/FEATURE.yaml
@@ -158,6 +207,11 @@ I:	mpls
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/mpls/
 
+VNET BIER
+I:	bier
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/bier/
+
 VNET Session Layer
 I:	session
 M:	Florin Coras <fcoras@cisco.com>
@@ -167,6 +221,11 @@ VNET TCP
 I:	tcp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
+
+VNET UDP
+I:	udp
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vnet/udp
 
 VNET VXLAN
 I:	vxlan
@@ -178,11 +237,23 @@ I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
+VNET VXLAN-GBP
+I:	vxlan-gbp
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/vxlan-gbp/
+
 VNET IPIP
 I:	ipip
 Y:	src/vnet/ipip/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/vnet/ipip/
+
+VNET DHCP
+I:	dhcp
+M:	Dave Barach <dave@barachs.net>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/dhcp/
 
 VNET TLS and TLS engine plugins
 I:	tls
@@ -192,10 +263,20 @@ F:	src/vnet/tls
 F:	src/plugins/tlsopenssl
 F:	src/plugins/tlsmbedtls
 
+VNET SYSLOG
+I:	syslog
+M:	Matus Fabian <matfabia@cisco.com>
+F:	src/vnet/syslog
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/abf/
+
+Plugin - Simple DNS name resolver
+I:	dns
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/dns/
 
 Plugin - Group Based Policy (GBP)
 I:	gbp
@@ -206,6 +287,11 @@ Plugin - ACL
 I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
+
+Plugin - NAT
+I:      nat
+M:      Ole Troan <ot@cisco.com>
+F:      src/plugins/nat/
 
 Plugin - AVF Device driver
 I:	avf
@@ -228,6 +314,16 @@ I:	flowprobe
 Y:	src/plugins/flowprobe/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
+
+Plugin - http_static
+I:	http_static
+M:	Dave Barach <dbarach@cisco.com>
+F:	src/plugins/http_static/
+
+Plugin - builtinurl
+I:	builtinurl
+M:	Dave Barach <dbarach@cisco.com>
+F:	src/plugins/builtinurl/
 
 Plugin - Group Based Policy (GBP)
 I:	gbp
@@ -290,6 +386,11 @@ I:	srv6-as
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
 
+Plugin - Link Aggregation Control Protocol
+I:	lacp
+M:	Steven Luong <sluong@cisco.com>
+F:	src/plugins/lacp/
+
 Plugin - Load Balancer
 I:	lb
 M:	Pfister <ppfister@cisco.com>
@@ -309,10 +410,12 @@ M:	Dave Barach <dave@barachs.net>
 F:      src/plugins/mactime/
 
 Plugin - Network Delay Simulator
+I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
 Test Infrastructure
+I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/
@@ -332,6 +435,11 @@ I:	vpp
 M:	Dave Barach <dave@barachs.net>
 F:	src/vpp/
 
+Emacs templates
+I:	emacs
+M:	Dave Barach <dave@barachs.net>
+F:	extras/emacs/
+
 Graphical Event Viewer
 I:	g2
 M:	Dave Barach <dave@barachs.net>
@@ -342,16 +450,39 @@ I:	perftool
 M:	Dave Barach <dave@barachs.net>
 F:	src/tools/perftool/
 
-Binary API Compiler
+Plugin - vmxnet3 device driver
+I:	vmxnet3
+M:	Steven Luong <sluong@cisco.com>
+F:	src/plugins/vmxnet3/
+
+Binary API Compiler for Python
 I:	vppapigen
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
+
+API trace tool
+I:	vppapitrace
+M:	Ole Troan <otroan@employees.org>
+F:	src/tools/vppapitrace/
+
+Binary API Compiler for C and C++
+I:	vapi
+M:	Ole Troan <ot@cisco.com>
+F:	src/vpp-api/vapi
 
 Plugin - RDMA (ibverb) driver
 I:	rdma
 M:	Benoît Ganne <bganne@cisco.com>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/rdma/
+
+Plugin - QUIC protocol
+I:	quic
+M:	Aloys Augustin <aloaugus@cisco.com>
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+M:	Dave Wallace <dwallacelf@gmail.com>
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/quic/
 
 libmemif
 I:	libmemif
@@ -368,6 +499,57 @@ I:	stats
 M:	Ole Troan <ot@cisco.com>
 F:	src/vpp/stats/
 F:	src/vpp-api/client/stat_client.[ch]
+
+VPP Object Model
+I:	vom
+M:	Neale Ranns <nranns@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	extras/vom/vom/
+
+Plugin - Host Stack Applications
+I:	hsa
+M:	Florin Coras <fcoras@cisco.com>
+M:	Dave Wallace <dwallacelf@gmail.com>
+M:	Aloys Augustin <aloaugus@cisco.com>
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+F:	src/plugins/hs_apps/
+
+Python binding for the VPP API
+I:	papi
+M:	Ole Troan <ot@cisco.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
+F:	src/vpp-api/python
+
+Plugin - SCTP
+I:	sctp
+F:	src/plugins/sctp/
+
+Cisco Discovery Protocol
+I:	cdp
+F:	src/plugins/cdp/
+
+Source VRF Select
+I:	svs
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/svs/
+
+LAN Emulation
+I:	l2e
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/l2e/
+
+IPv6 Connection Tracker
+I:	ct6
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/ct6
+
+Steal The NIC
+I:	stn
+F:	src/plugins/stn
+
+Awkward chained buffer geometry tool
+I:	oddbuf
+F:	src/plugins/oddbuf
 
 THE REST
 I:	misc

@@ -394,15 +394,6 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	    }
 	}
 
-      /* Do not change state for slave link of bonded interfaces */
-      if (si->flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
-	{
-	  error = clib_error_return
-	    (0, "not allowed as %U belong to a BondEthernet interface",
-	     format_vnet_sw_interface_name, vnm, si);
-	  goto done;
-	}
-
       /* Already in the desired state? */
       if ((si->flags & mask) == flags)
 	goto done;
@@ -513,6 +504,30 @@ vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
   return vnet_sw_interface_set_flags_helper
     (vnm, sw_if_index, flags,
      VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE);
+}
+
+void
+vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index)
+{
+  u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
+
+  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+    {
+      flags |= VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+    }
+}
+
+void
+vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index)
+{
+  u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    {
+      flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+    }
 }
 
 static u32
@@ -753,6 +768,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   pool_get (im->hw_interfaces, hw);
   clib_memset (hw, 0, sizeof (*hw));
+  hw->trace_classify_table_index = ~0;
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
@@ -1245,9 +1261,8 @@ vnet_interface_init (vlib_main_t * vm)
 	 sizeof (b->opaque), sizeof (vnet_buffer_opaque_t));
     }
 
-  im->sw_if_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-						   CLIB_CACHE_LINE_BYTES);
-  im->sw_if_counter_lock[0] = 1;	/* should be no need */
+  clib_spinlock_init (&im->sw_if_counter_lock);
+  clib_spinlock_lock (&im->sw_if_counter_lock);	/* should be no need */
 
   vec_validate (im->sw_if_counters, VNET_N_SIMPLE_INTERFACE_COUNTER - 1);
 #define _(E,n,p)							\
@@ -1262,7 +1277,7 @@ vnet_interface_init (vlib_main_t * vm)
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_##E].stat_segment_name = "/" #p "/" #n;
   foreach_combined_interface_counter_name
 #undef _
-    im->sw_if_counter_lock[0] = 0;
+    clib_spinlock_unlock (&im->sw_if_counter_lock);
 
   im->device_class_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));

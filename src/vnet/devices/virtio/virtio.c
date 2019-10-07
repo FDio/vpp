@@ -317,10 +317,13 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
 	  if (vif->net_ns)
 	    vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
+	  if (vif->host_mtu_size)
+	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
+			     vif->host_mtu_size);
 	  vlib_cli_output (vm, "  fd %d", vif->fd);
 	  vlib_cli_output (vm, "  tap-fd %d", vif->tap_fd);
-	  vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
 	}
+      vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
 		       vif->mac_addr);
       vlib_cli_output (vm, "  Device instance: %u", vif->dev_instance);

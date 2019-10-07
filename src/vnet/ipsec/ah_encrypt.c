@@ -75,8 +75,8 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
 
-  s = format (s, "ah: sa-index %d spi %u seq %u:%u integrity %U",
-	      t->sa_index, t->spi, t->seq_hi, t->seq_lo,
+  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %u:%u integrity %U",
+	      t->sa_index, t->spi, t->spi, t->seq_hi, t->seq_lo,
 	      format_ipsec_integ_alg, t->integ_alg);
   return s;
 }
@@ -216,12 +216,12 @@ ah_encrypt_inline (vlib_main_t * vm,
       /* transport mode save the eth header before it is overwritten */
       if (PREDICT_FALSE (!ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	{
-	  ethernet_header_t *ieh0 = (ethernet_header_t *)
-	    ((u8 *) vlib_buffer_get_current (b[0]) -
-	     sizeof (ethernet_header_t));
-	  ethernet_header_t *oeh0 =
-	    (ethernet_header_t *) ((u8 *) ieh0 + (adv - icv_size));
-	  clib_memcpy_fast (oeh0, ieh0, sizeof (ethernet_header_t));
+	  const u32 l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	  u8 *l2_hdr_in = (u8 *) vlib_buffer_get_current (b[0]) - l2_len;
+
+	  u8 *l2_hdr_out = l2_hdr_in + adv - icv_size;
+
+	  clib_memcpy_le32 (l2_hdr_out, l2_hdr_in, l2_len);
 	}
 
       vlib_buffer_advance (b[0], adv - icv_size);
@@ -294,9 +294,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 			    &sa0->ip4_hdr.address_pair,
 			    sizeof (ip4_address_t));
 
-	  next[0] = sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_next_node;
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-	    sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_index;
+	  next[0] = sa0->dpo.dpoi_next_node;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	}
       else if (is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
 	       ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
@@ -304,9 +303,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  clib_memcpy_fast (&oh6_0->ip6.src_address,
 			    &sa0->ip6_hdr.src_address,
 			    sizeof (ip6_address_t) * 2);
-	  next[0] = sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_next_node;
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-	    sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_index;
+	  next[0] = sa0->dpo.dpoi_next_node;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	}
 
       if (PREDICT_TRUE (sa0->integ_op_id))

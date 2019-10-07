@@ -155,6 +155,9 @@ typedef struct pg_stream_t
      Zero means no packet limit. */
   u64 n_packets_limit;
 
+  /* Only generate up to n_max_frame per frame. */
+  u32 n_max_frame;
+
   /* Rate for this stream in packets/second.
      Zero means unlimited rate. */
   f64 rate_packets_per_second;
@@ -299,6 +302,8 @@ typedef struct
   /* Identifies stream for this interface. */
   u32 id;
 
+  u8 gso_enabled;
+  u32 gso_size;
   pcap_main_t pcap_main;
   u8 *pcap_file_name;
 } pg_interface_t;
@@ -351,7 +356,8 @@ void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s,
 			       int is_enable);
 
 /* Find/create free packet-generator interface index. */
-u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index);
+u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index,
+			     u8 gso_enabled, u32 gso_size);
 
 always_inline pg_node_t *
 pg_get_node (uword node_index)

@@ -175,7 +175,7 @@ vl_api_sr_set_encap_source_t_handler (vl_api_sr_set_encap_source_t * mp)
   int rv = 0;
   sr_set_source ((ip6_address_t *) & mp->encaps_source);
 
-  REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
+  REPLY_MACRO (VL_API_SR_SET_ENCAP_SOURCE_REPLY);
 }
 
 static void vl_api_sr_steering_add_del_t_handler

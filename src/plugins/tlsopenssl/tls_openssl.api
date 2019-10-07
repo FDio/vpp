@@ -1,0 +1,24 @@
+/* Define TLS OpenSSL binary API to control the feature */
+
+option version = "2.0.0";
+
+autoreply define tls_openssl_set_engine {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* if async is enabled */
+    u32 async_enable;
+
+    /* engine name */
+    u8 engine[64];
+
+    /* algorithm */
+    u8 algorithm[64];
+
+    /* cipher */
+    u8 ciphers[64];
+    option vat_help = "tls openssl set [engine <engine name>] [alg [algorithm] [async]";
+};

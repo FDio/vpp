@@ -17,9 +17,12 @@
 #define included_clib_lock_h
 
 #include <vppinfra/clib.h>
+#include <vppinfra/atomics.h>
 
 #if __x86_64__
 #define CLIB_PAUSE() __builtin_ia32_pause ()
+#elif defined (__aarch64__) || defined (__arm__)
+#define CLIB_PAUSE() __asm__ ("yield")
 #else
 #define CLIB_PAUSE()
 #endif
@@ -41,6 +44,9 @@ do {							\
 #define CLIB_LOCK_DBG(_p)
 #define CLIB_LOCK_DBG_CLEAR(_p)
 #endif
+
+#define CLIB_SPINLOCK_IS_LOCKED(_p) (*(_p))->lock
+#define CLIB_SPINLOCK_ASSERT_LOCKED(_p) ASSERT(CLIB_SPINLOCK_IS_LOCKED((_p)))
 
 typedef struct
 {
@@ -73,8 +79,15 @@ clib_spinlock_free (clib_spinlock_t * p)
 static_always_inline void
 clib_spinlock_lock (clib_spinlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->lock))
-    CLIB_PAUSE ();
+  u32 free = 0;
+  while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->lock, &free, 1, 0))
+    {
+      /* atomic load limits number of compare_exchange executions */
+      while (clib_atomic_load_relax_n (&(*p)->lock))
+	CLIB_PAUSE ();
+      /* on failure, compare_exchange writes (*p)->lock into free */
+      free = 0;
+    }
   CLIB_LOCK_DBG (p);
 }
 
@@ -89,9 +102,8 @@ static_always_inline void
 clib_spinlock_unlock (clib_spinlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
-  /* Make sure all writes are complete before releasing the lock */
-  CLIB_MEMORY_BARRIER ();
-  (*p)->lock = 0;
+  /* Make sure all reads/writes are complete before releasing the lock */
+  clib_atomic_release (&(*p)->lock);
 }
 
 static_always_inline void
@@ -108,9 +120,8 @@ clib_spinlock_unlock_if_init (clib_spinlock_t * p)
 typedef struct clib_rw_lock_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 n_readers;
-  volatile u32 n_readers_lock;
-  volatile u32 writer_lock;
+  /* -1 when W lock held, > 0 when R lock held */
+  volatile i32 rw_cnt;
 #if CLIB_DEBUG > 0
   pid_t pid;
   uword thread_index;
@@ -138,46 +149,37 @@ clib_rwlock_free (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_reader_lock (clib_rwlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
-    CLIB_PAUSE ();
-
-  (*p)->n_readers += 1;
-  if ((*p)->n_readers == 1)
+  i32 cnt;
+  do
     {
-      while (clib_atomic_test_and_set (&(*p)->writer_lock))
+      /* rwlock held by a writer */
+      while ((cnt = clib_atomic_load_relax_n (&(*p)->rw_cnt)) < 0)
 	CLIB_PAUSE ();
     }
-  CLIB_MEMORY_BARRIER ();
-  (*p)->n_readers_lock = 0;
-
+  while (!clib_atomic_cmp_and_swap_acq_relax_n
+	 (&(*p)->rw_cnt, &cnt, cnt + 1, 1));
   CLIB_LOCK_DBG (p);
 }
 
 always_inline void
 clib_rwlock_reader_unlock (clib_rwlock_t * p)
 {
-  ASSERT ((*p)->n_readers > 0);
+  ASSERT ((*p)->rw_cnt > 0);
   CLIB_LOCK_DBG_CLEAR (p);
-
-  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
-    CLIB_PAUSE ();
-
-  (*p)->n_readers -= 1;
-  if ((*p)->n_readers == 0)
-    {
-      CLIB_MEMORY_BARRIER ();
-      (*p)->writer_lock = 0;
-    }
-
-  CLIB_MEMORY_BARRIER ();
-  (*p)->n_readers_lock = 0;
+  clib_atomic_fetch_sub_rel (&(*p)->rw_cnt, 1);
 }
 
 always_inline void
 clib_rwlock_writer_lock (clib_rwlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->writer_lock))
-    CLIB_PAUSE ();
+  i32 cnt = 0;
+  do
+    {
+      /* rwlock held by writer or reader(s) */
+      while ((cnt = clib_atomic_load_relax_n (&(*p)->rw_cnt)) != 0)
+	CLIB_PAUSE ();
+    }
+  while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->rw_cnt, &cnt, -1, 1));
   CLIB_LOCK_DBG (p);
 }
 
@@ -185,8 +187,7 @@ always_inline void
 clib_rwlock_writer_unlock (clib_rwlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
-  CLIB_MEMORY_BARRIER ();
-  (*p)->writer_lock = 0;
+  clib_atomic_release (&(*p)->rw_cnt);
 }
 
 #endif

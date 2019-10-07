@@ -64,7 +64,7 @@ typedef CLIB_PACKED
    */
   union {
     struct {
-      u32 remote_ip;
+      ip4_address_t remote_ip;
       u32 spi;
     };
     u64 as_u64;
@@ -84,23 +84,13 @@ typedef CLIB_PACKED
 }) ipsec6_tunnel_key_t;
 /* *INDENT-ON* */
 
-typedef struct
-{
-  u8 is_add;
-  u32 local_sa_id;
-  u32 remote_sa_id;
-  ip4_address_t src;
-  ip4_address_t dst;
-} ipsec_gre_tunnel_add_del_args_t;
+extern u8 *format_ipsec4_tunnel_key (u8 * s, va_list * args);
+extern u8 *format_ipsec6_tunnel_key (u8 * s, va_list * args);
 
 extern int ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 					     ipsec_add_del_tunnel_args_t *
 					     args, u32 * sw_if_index);
 extern int ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args);
-extern int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
-					   const
-					   ipsec_gre_tunnel_add_del_args_t *
-					   args);
 
 extern int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index,
 				   u32 sa_id, u8 is_outbound);

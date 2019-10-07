@@ -25,6 +25,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/dhcp/dhcp6_pd_client_dp.h>
 #include <vnet/dhcp/dhcp6_client_common_dp.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -457,7 +458,7 @@ void
   params.mrt = ntohl (mp->mrt);
   params.mrc = ntohl (mp->mrc);
   params.mrd = ntohl (mp->mrd);
-  params.msg_type = mp->msg_type;
+  params.msg_type = ntohl (mp->msg_type);
   params.T1 = ntohl (mp->T1);
   params.T2 = ntohl (mp->T2);
   n_prefixes = ntohl (mp->n_prefixes);
@@ -471,8 +472,8 @@ void
 	&params.prefixes[i];
       pref->preferred_lt = ntohl (pi->preferred_time);
       pref->valid_lt = ntohl (pi->valid_time);
-      memcpy (pref->prefix.as_u8, pi->prefix, 16);
-      pref->prefix_length = pi->prefix_length;
+      ip6_address_decode (pi->prefix.address, &pref->prefix);
+      pref->prefix_length = pi->prefix.len;
     }
 
   dhcp6_pd_send_client_message (vm, ntohl (mp->sw_if_index), mp->stop,
@@ -542,8 +543,8 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      for (j = 0; j < vec_len (events[i].prefixes); j++)
 		{
 		  dhcp6_prefix_info_t *info = &events[i].prefixes[j];
-		  memcpy (prefix->prefix, &info->prefix, 16);
-		  prefix->prefix_length = info->prefix_length;
+		  ip6_address_encode (&info->prefix, prefix->prefix.address);
+		  prefix->prefix.len = info->prefix_length;
 		  prefix->valid_time = htonl (info->valid_time);
 		  prefix->preferred_time = htonl (info->preferred_time);
 		  prefix++;

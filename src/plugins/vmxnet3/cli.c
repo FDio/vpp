@@ -32,6 +32,7 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vmxnet3_create_if_args_t args;
+  u32 size;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -42,18 +43,20 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "%U", unformat_vlib_pci_addr, &args.addr))
 	;
+      else if (unformat (line_input, "gso"))
+	args.enable_gso = 1;
       else if (unformat (line_input, "elog"))
 	args.enable_elog = 1;
       else if (unformat (line_input, "bind"))
 	args.bind = 1;
-      else if (unformat (line_input, "rx-queue-size %u", &args.rxq_size))
-	;
-      else if (unformat (line_input, "tx-queue-size %u", &args.txq_size))
-	;
-      else if (unformat (line_input, "num-tx-queues %u", &args.txq_num))
-	;
-      else if (unformat (line_input, "num-rx-queues %u", &args.rxq_num))
-	;
+      else if (unformat (line_input, "rx-queue-size %u", &size))
+	args.rxq_size = size;
+      else if (unformat (line_input, "tx-queue-size %u", &size))
+	args.txq_size = size;
+      else if (unformat (line_input, "num-tx-queues %u", &size))
+	args.txq_num = size;
+      else if (unformat (line_input, "num-rx-queues %u", &size))
+	args.rxq_num = size;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -70,8 +73,9 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help = "create interface vmxnet3 <pci-address>"
-                "[rx-queue-size <size>] [tx-queue-size <size>]"
-                "[num-tx-queues <number>] [num-rx-queues <number>] [bind]",
+                " [rx-queue-size <size>] [tx-queue-size <size>]"
+                " [num-tx-queues <number>] [num-rx-queues <number>] [bind]"
+                " [gso]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -108,7 +112,7 @@ vmxnet3_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || vmxnet3_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not a vmxnet3 interface");
 
@@ -165,7 +169,7 @@ vmxnet3_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || vmxnet3_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not a vmxnet3 interface");
 
@@ -209,7 +213,6 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
   if (!hw_if_indices)
     return;
 
-  vlib_cli_output (vm, "LRO/TSO configured: %u", vmxm->lro_configured);
   for (i = 0; i < vec_len (hw_if_indices); i++)
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
@@ -218,7 +221,7 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
 		       hw_if_indices[i]);
       vlib_cli_output (vm, "  Version: %u", vd->version);
-      vlib_cli_output (vm, "  LRO/TSO enable: %u", vd->lro_enable);
+      vlib_cli_output (vm, "  GSO enable: %u", vd->gso_enable);
       vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
 		       &vd->pci_addr);
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
@@ -585,26 +588,6 @@ vmxnet3_cli_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vmxnet3_cli_init);
-
-static clib_error_t *
-vmxnet3_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "lro"))
-	vmxm->lro_configured = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  return 0;
-}
-
-/* vmxnet3 { ... } configuration. */
-VLIB_CONFIG_FUNCTION (vmxnet3_config, "vmxnet3");
 
 /*
  * fd.io coding-style-patch-verification: ON

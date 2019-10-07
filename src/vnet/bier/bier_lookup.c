@@ -250,9 +250,6 @@ bier_lookup (vlib_main_t * vm,
                     {
                         bier_lookup_trace_t *tr;
 
-                        if (c0 != b0)
-                            vlib_buffer_copy_trace_flag (vm, b0, ci0);
-
                         tr = vlib_add_trace (vm, node, c0, sizeof (*tr));
                         tr->bt_index = bti0;
                         tr->bfm_index = blm->blm_fmasks[thread_index][clone];

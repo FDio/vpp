@@ -50,7 +50,7 @@ define l3xc_plugin_get_version_reply
     @param n_paths Number of paths
     @param paths The set of forwarding paths.
  */
-typeonly define l3xc
+typedef l3xc
 {
   u32 sw_if_index;
   u8 is_ip6;

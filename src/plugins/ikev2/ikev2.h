@@ -221,7 +221,8 @@ typedef enum
   _(9 , DES_IV32,  "des-iv32") \
   _(11, NULL,      "null")     \
   _(12, AES_CBC,   "aes-cbc")  \
-  _(13, AES_CTR,   "aes-ctr")
+  _(13, AES_CTR,   "aes-ctr")  \
+  _(14, AES_GCM,   "aes-gcm")
 
 typedef enum
 {

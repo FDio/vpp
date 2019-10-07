@@ -18,7 +18,7 @@
 #include <vnet/fib/ip4_fib.h>
 
 /*
- * A table of pefixes to be added to tables and the sources for them
+ * A table of prefixes to be added to tables and the sources for them
  */
 typedef struct ip4_fib_table_special_prefix_t_ {
     fib_prefix_t ift_prefix;
@@ -435,7 +435,7 @@ ip4_fib_table_sub_tree_walk (ip4_fib_t *fib,
     int i;
 
     /*
-     * There is no efficent way to walk this array of hash tables.
+     * There is no efficient way to walk this array of hash tables.
      * so we walk each table with a mask length greater than and equal to
      * the required root and check it is covered by the root.
      */

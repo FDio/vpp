@@ -66,8 +66,6 @@
 #endif /* __x86_x64__ */
 
 libmemif_main_t libmemif_main;
-int memif_epfd;
-int poll_cancel_fd = -1;
 
 static char memif_buf[MAX_ERRBUF_LEN];
 
@@ -236,8 +234,17 @@ memif_syscall_error_handler (int err_code)
   return MEMIF_ERR_SYSCALL;
 }
 
+/* Always valid */
+libmemif_main_t *
+get_libmemif_main (memif_socket_t * ms)
+{
+  if (ms != NULL && ms->lm != NULL)
+    return ms->lm;
+  return &libmemif_main;
+}
+
 static int
-memif_add_epoll_fd (int fd, uint32_t events)
+memif_add_epoll_fd (libmemif_main_t * lm, int fd, uint32_t events)
 {
   if (fd < 0)
     {
@@ -248,7 +255,7 @@ memif_add_epoll_fd (int fd, uint32_t events)
   memset (&evt, 0, sizeof (evt));
   evt.events = events;
   evt.data.fd = fd;
-  if (epoll_ctl (memif_epfd, EPOLL_CTL_ADD, fd, &evt) < 0)
+  if (epoll_ctl (lm->epfd, EPOLL_CTL_ADD, fd, &evt) < 0)
     {
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
@@ -258,7 +265,7 @@ memif_add_epoll_fd (int fd, uint32_t events)
 }
 
 static int
-memif_mod_epoll_fd (int fd, uint32_t events)
+memif_mod_epoll_fd (libmemif_main_t * lm, int fd, uint32_t events)
 {
   if (fd < 0)
     {
@@ -269,7 +276,7 @@ memif_mod_epoll_fd (int fd, uint32_t events)
   memset (&evt, 0, sizeof (evt));
   evt.events = events;
   evt.data.fd = fd;
-  if (epoll_ctl (memif_epfd, EPOLL_CTL_MOD, fd, &evt) < 0)
+  if (epoll_ctl (lm->epfd, EPOLL_CTL_MOD, fd, &evt) < 0)
     {
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
@@ -279,7 +286,7 @@ memif_mod_epoll_fd (int fd, uint32_t events)
 }
 
 static int
-memif_del_epoll_fd (int fd)
+memif_del_epoll_fd (libmemif_main_t * lm, int fd)
 {
   if (fd < 0)
     {
@@ -288,7 +295,7 @@ memif_del_epoll_fd (int fd)
     }
   struct epoll_event evt;
   memset (&evt, 0, sizeof (evt));
-  if (epoll_ctl (memif_epfd, EPOLL_CTL_DEL, fd, &evt) < 0)
+  if (epoll_ctl (lm->epfd, EPOLL_CTL_DEL, fd, &evt) < 0)
     {
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
@@ -298,10 +305,17 @@ memif_del_epoll_fd (int fd)
 }
 
 int
-memif_control_fd_update (int fd, uint8_t events)
+memif_control_fd_update (int fd, uint8_t events, void *private_ctx)
 {
+  libmemif_main_t *lm;
+
+  if (private_ctx == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = (libmemif_main_t *) private_ctx;
+
   if (events & MEMIF_FD_EVENT_DEL)
-    return memif_del_epoll_fd (fd);
+    return memif_del_epoll_fd (lm, fd);
 
   uint32_t evt = 0;
   if (events & MEMIF_FD_EVENT_READ)
@@ -310,17 +324,18 @@ memif_control_fd_update (int fd, uint8_t events)
     evt |= EPOLLOUT;
 
   if (events & MEMIF_FD_EVENT_MOD)
-    return memif_mod_epoll_fd (fd, evt);
+    return memif_mod_epoll_fd (lm, fd, evt);
 
-  return memif_add_epoll_fd (fd, evt);
+  return memif_add_epoll_fd (lm, fd, evt);
 }
 
 int
-add_list_elt (memif_list_elt_t * e, memif_list_elt_t ** list, uint16_t * len)
+add_list_elt (libmemif_main_t * lm, memif_list_elt_t * e,
+	      memif_list_elt_t ** list, uint16_t * len)
 {
-  libmemif_main_t *lm = &libmemif_main;
-
+  memif_list_elt_t *tmp;
   int i;
+
   for (i = 0; i < *len; i++)
     {
       if ((*list)[i].data_struct == NULL)
@@ -330,7 +345,7 @@ add_list_elt (memif_list_elt_t * e, memif_list_elt_t ** list, uint16_t * len)
 	  return i;
 	}
     }
-  memif_list_elt_t *tmp;
+
   tmp = lm->realloc (*list, sizeof (memif_list_elt_t) * *len * 2);
   if (tmp == NULL)
     return -1;
@@ -354,12 +369,13 @@ int
 get_list_elt (memif_list_elt_t ** e, memif_list_elt_t * list, uint16_t len,
 	      int key)
 {
+  int i;
   if (key == -1)
     {
       *e = NULL;
       return -1;
     }
-  int i;
+
   for (i = 0; i < len; i++)
     {
       if (list[i].key == key)
@@ -411,9 +427,9 @@ free_list_elt_ctx (memif_list_elt_t * list, uint16_t len,
 }
 
 static void
-memif_control_fd_update_register (memif_control_fd_update_t * cb)
+memif_control_fd_update_register (libmemif_main_t * lm,
+				  memif_control_fd_update_t * cb)
 {
-  libmemif_main_t *lm = &libmemif_main;
   lm->control_fd_update = cb;
 }
 
@@ -431,30 +447,48 @@ memif_register_external_region (memif_add_external_region_t * ar,
 }
 
 static void
-memif_alloc_register (memif_alloc_t * ma)
+memif_alloc_register (libmemif_main_t * lm, memif_alloc_t * ma)
 {
-  libmemif_main_t *lm = &libmemif_main;
   lm->alloc = ma;
 }
 
 static void
-memif_realloc_register (memif_realloc_t * mr)
+memif_realloc_register (libmemif_main_t * lm, memif_realloc_t * mr)
 {
-  libmemif_main_t *lm = &libmemif_main;
   lm->realloc = mr;
 }
 
 static void
-memif_free_register (memif_free_t * mf)
+memif_free_register (libmemif_main_t * lm, memif_free_t * mf)
 {
-  libmemif_main_t *lm = &libmemif_main;
   lm->free = mf;
 }
 
 int
-memif_set_connection_request_timer(struct itimerspec timer)
+memif_set_connection_request_timer (struct itimerspec timer)
 {
   libmemif_main_t *lm = &libmemif_main;
+  int err = MEMIF_ERR_SUCCESS;
+
+  lm->arm = timer;
+
+  /* overwrite timer, if already armed */
+  if (lm->disconn_slaves != 0)
+    {
+      if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
+	{
+	  err = memif_syscall_error_handler (errno);
+	}
+    }
+  return err;
+}
+
+int
+memif_per_thread_set_connection_request_timer (memif_per_thread_main_handle_t
+					       pt_main,
+					       struct itimerspec timer)
+{
+  libmemif_main_t *lm = (libmemif_main_t *) pt_main;
   int err = MEMIF_ERR_SUCCESS;
 
   lm->arm = timer;
@@ -479,24 +513,25 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
   libmemif_main_t *lm = &libmemif_main;
   memset (lm, 0, sizeof (libmemif_main_t));
 
+  /* register custom memory management */
   if (memif_alloc != NULL)
     {
-      memif_alloc_register (memif_alloc);
+      memif_alloc_register (lm, memif_alloc);
     }
   else
-    memif_alloc_register (malloc);
+    memif_alloc_register (lm, malloc);
 
   if (memif_realloc != NULL)
     {
-      memif_realloc_register (memif_realloc);
+      memif_realloc_register (lm, memif_realloc);
     }
   else
-    memif_realloc_register (realloc);
+    memif_realloc_register (lm, realloc);
 
   if (memif_free != NULL)
-    memif_free_register (memif_free);
+    memif_free_register (lm, memif_free);
   else
-    memif_free_register (free);
+    memif_free_register (lm, free);
 
   if (app_name != NULL)
     {
@@ -510,26 +545,27 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
 	       strlen (MEMIF_DEFAULT_APP_NAME));
     }
 
+  lm->poll_cancel_fd = -1;
   /* register control fd update callback */
   if (on_control_fd_update != NULL)
-    memif_control_fd_update_register (on_control_fd_update);
+    memif_control_fd_update_register (lm, on_control_fd_update);
   else
     {
-      memif_epfd = epoll_create (1);
-      memif_control_fd_update_register (memif_control_fd_update);
-      if ((poll_cancel_fd = eventfd (0, EFD_NONBLOCK)) < 0)
+      lm->epfd = epoll_create (1);
+      memif_control_fd_update_register (lm, memif_control_fd_update);
+      if ((lm->poll_cancel_fd = eventfd (0, EFD_NONBLOCK)) < 0)
 	{
 	  err = errno;
 	  DBG ("eventfd: %s", strerror (err));
 	  return memif_syscall_error_handler (err);
 	}
-      lm->control_fd_update (poll_cancel_fd, MEMIF_FD_EVENT_READ);
+      lm->control_fd_update (lm->poll_cancel_fd, MEMIF_FD_EVENT_READ, NULL);
       DBG ("libmemif event polling initialized");
     }
 
   lm->control_list_len = 2;
   lm->interrupt_list_len = 2;
-  lm->listener_list_len = 1;
+  lm->socket_list_len = 1;
   lm->pending_list_len = 1;
 
   lm->control_list =
@@ -546,9 +582,9 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
       err = MEMIF_ERR_NOMEM;
       goto error;
     }
-  lm->listener_list =
-    lm->alloc (sizeof (memif_list_elt_t) * lm->listener_list_len);
-  if (lm->listener_list == NULL)
+  lm->socket_list =
+    lm->alloc (sizeof (memif_list_elt_t) * lm->socket_list_len);
+  if (lm->socket_list == NULL)
     {
       err = MEMIF_ERR_NOMEM;
       goto error;
@@ -572,10 +608,10 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
       lm->interrupt_list[i].key = -1;
       lm->interrupt_list[i].data_struct = NULL;
     }
-  for (i = 0; i < lm->listener_list_len; i++)
+  for (i = 0; i < lm->socket_list_len; i++)
     {
-      lm->listener_list[i].key = -1;
-      lm->listener_list[i].data_struct = NULL;
+      lm->socket_list[i].key = -1;
+      lm->socket_list[i].data_struct = NULL;
     }
   for (i = 0; i < lm->pending_list_len; i++)
     {
@@ -597,17 +633,190 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
   lm->arm.it_interval.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
   lm->arm.it_interval.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
 
-  if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ) < 0)
+  if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ, NULL) < 0)
     {
       DBG ("callback type memif_control_fd_update_t error!");
       err = MEMIF_ERR_CB_FDUPDATE;
       goto error;
     }
 
+  /* Create default socket */
+  err = memif_create_socket ((memif_socket_handle_t *) &
+			     lm->default_socket,
+			     MEMIF_DEFAULT_SOCKET_PATH, NULL);
+  if (err != MEMIF_ERR_SUCCESS)
+    goto error;
+
   return err;
 
 error:
   memif_cleanup ();
+  return err;
+}
+
+int
+memif_per_thread_init (memif_per_thread_main_handle_t * pt_main,
+		       void *private_ctx,
+		       memif_control_fd_update_t * on_control_fd_update,
+		       char *app_name, memif_alloc_t * memif_alloc,
+		       memif_realloc_t * memif_realloc,
+		       memif_free_t * memif_free)
+{
+  memif_err_t err = MEMIF_ERR_SUCCESS;
+  int i;
+  libmemif_main_t *lm;
+
+  /* Allocate unique libmemif main */
+  if (memif_alloc != NULL)
+    lm = memif_alloc (sizeof (libmemif_main_t));
+  else
+    lm = malloc (sizeof (libmemif_main_t));
+
+  if (lm == NULL)
+    return MEMIF_ERR_NOMEM;
+
+  memset (lm, 0, sizeof (libmemif_main_t));
+
+  /* register custom memory management */
+  if (memif_alloc != NULL)
+    {
+      memif_alloc_register (lm, memif_alloc);
+    }
+  else
+    memif_alloc_register (lm, malloc);
+
+  if (memif_realloc != NULL)
+    {
+      memif_realloc_register (lm, memif_realloc);
+    }
+  else
+    memif_realloc_register (lm, realloc);
+
+  if (memif_free != NULL)
+    memif_free_register (lm, memif_free);
+  else
+    memif_free_register (lm, free);
+
+  lm->private_ctx = private_ctx;
+
+  /* set app name */
+  if (app_name != NULL)
+    {
+      uint8_t len = (strlen (app_name) > MEMIF_NAME_LEN)
+	? strlen (app_name) : MEMIF_NAME_LEN;
+      strncpy ((char *) lm->app_name, app_name, len);
+    }
+  else
+    {
+      strncpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
+	       strlen (MEMIF_DEFAULT_APP_NAME));
+    }
+
+  lm->poll_cancel_fd = -1;
+  /* register control fd update callback */
+  if (on_control_fd_update != NULL)
+    memif_control_fd_update_register (lm, on_control_fd_update);
+  else
+    {
+      lm->epfd = epoll_create (1);
+      memif_control_fd_update_register (lm, memif_control_fd_update);
+      if ((lm->poll_cancel_fd = eventfd (0, EFD_NONBLOCK)) < 0)
+	{
+	  err = errno;
+	  DBG ("eventfd: %s", strerror (err));
+	  return memif_syscall_error_handler (err);
+	}
+      lm->control_fd_update (lm->poll_cancel_fd, MEMIF_FD_EVENT_READ,
+			     lm->private_ctx);
+      DBG ("libmemif event polling initialized");
+    }
+
+  /* Initialize lists */
+  lm->control_list_len = 2;
+  lm->interrupt_list_len = 2;
+  lm->socket_list_len = 1;
+  lm->pending_list_len = 1;
+
+  lm->control_list =
+    lm->alloc (sizeof (memif_list_elt_t) * lm->control_list_len);
+  if (lm->control_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  lm->interrupt_list =
+    lm->alloc (sizeof (memif_list_elt_t) * lm->interrupt_list_len);
+  if (lm->interrupt_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  lm->socket_list =
+    lm->alloc (sizeof (memif_list_elt_t) * lm->socket_list_len);
+  if (lm->socket_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  lm->pending_list =
+    lm->alloc (sizeof (memif_list_elt_t) * lm->pending_list_len);
+  if (lm->pending_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+
+  for (i = 0; i < lm->control_list_len; i++)
+    {
+      lm->control_list[i].key = -1;
+      lm->control_list[i].data_struct = NULL;
+    }
+  for (i = 0; i < lm->interrupt_list_len; i++)
+    {
+      lm->interrupt_list[i].key = -1;
+      lm->interrupt_list[i].data_struct = NULL;
+    }
+  for (i = 0; i < lm->socket_list_len; i++)
+    {
+      lm->socket_list[i].key = -1;
+      lm->socket_list[i].data_struct = NULL;
+    }
+  for (i = 0; i < lm->pending_list_len; i++)
+    {
+      lm->pending_list[i].key = -1;
+      lm->pending_list[i].data_struct = NULL;
+    }
+
+  /* Initialize autoconnect */
+  lm->disconn_slaves = 0;
+
+  lm->timerfd = timerfd_create (CLOCK_REALTIME, TFD_NONBLOCK);
+  if (lm->timerfd < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+
+  lm->arm.it_value.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
+  lm->arm.it_value.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
+  lm->arm.it_interval.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
+  lm->arm.it_interval.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
+
+  if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ,
+			     lm->private_ctx) < 0)
+    {
+      DBG ("callback type memif_control_fd_update_t error!");
+      err = MEMIF_ERR_CB_FDUPDATE;
+      goto error;
+    }
+
+  *pt_main = lm;
+
+  return err;
+
+error:
+  *pt_main = lm;
+  memif_per_thread_cleanup (pt_main);
   return err;
 }
 
@@ -644,21 +853,260 @@ memif_set_rx_mode (memif_conn_handle_t c, memif_rx_mode_t rx_mode,
   return MEMIF_ERR_SUCCESS;
 }
 
+static int
+memif_socket_start_listening (memif_socket_t * ms)
+{
+  libmemif_main_t *lm = get_libmemif_main (ms);
+  memif_list_elt_t elt;
+  struct stat file_stat;
+  struct sockaddr_un un = { 0 };
+  int on = 1;
+  int err = MEMIF_ERR_SUCCESS;
+
+  if (ms->type == MEMIF_SOCKET_TYPE_CLIENT)
+    return MEMIF_ERR_INVAL_ARG;
+
+  /* check if file exists */
+  if (stat ((char *) ms->filename, &file_stat) == 0)
+    {
+      if (S_ISSOCK (file_stat.st_mode))
+	unlink ((char *) ms->filename);
+      else
+	return memif_syscall_error_handler (errno);
+    }
+
+  ms->fd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
+  if (ms->fd < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+
+  DBG ("socket %d created", ms->fd);
+  un.sun_family = AF_UNIX;
+  strncpy ((char *) un.sun_path, (char *) ms->filename,
+	   sizeof (un.sun_path) - 1);
+  if (setsockopt (ms->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+  if (bind (ms->fd, (struct sockaddr *) &un, sizeof (un)) < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+  if (listen (ms->fd, 1) < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+  if (stat ((char *) ms->filename, &file_stat) < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+
+  /* add socket to libmemif main */
+  elt.key = ms->fd;
+  elt.data_struct = ms;
+  add_list_elt (lm, &elt, &lm->socket_list, &lm->socket_list_len);
+  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_READ, ms->private_ctx);
+
+  ms->type = MEMIF_SOCKET_TYPE_LISTENER;
+
+  return err;
+
+error:
+  if (ms->fd > 0)
+    {
+      close (ms->fd);
+      ms->fd = -1;
+    }
+  return err;
+}
+
+int
+memif_create_socket (memif_socket_handle_t * sock, const char *filename,
+		     void *private_ctx)
+{
+  libmemif_main_t *lm = &libmemif_main;
+  memif_socket_t *ms = (memif_socket_t *) * sock;
+  int i, err = MEMIF_ERR_SUCCESS;
+
+  for (i = 0; i < lm->socket_list_len; i++)
+    {
+      if ((ms = (memif_socket_t *) lm->socket_list[i].data_struct) != NULL)
+	{
+	  if (strncmp ((char *) ms->filename, filename,
+		       strlen ((char *) ms->filename)) == 0)
+	    return MEMIF_ERR_INVAL_ARG;
+	}
+    }
+
+  /* allocate memif_socket_t */
+  ms = NULL;
+  ms = lm->alloc (sizeof (memif_socket_t));
+  if (ms == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  memset (ms, 0, sizeof (memif_socket_t));
+  /* set filename */
+  ms->filename = lm->alloc (strlen (filename) + sizeof (char));
+  if (ms->filename == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  memset (ms->filename, 0, strlen (filename) + sizeof (char));
+  strncpy ((char *) ms->filename, filename, strlen (filename));
+
+  ms->type = MEMIF_SOCKET_TYPE_NONE;
+
+  ms->interface_list_len = 1;
+  ms->interface_list =
+    lm->alloc (sizeof (memif_list_elt_t) * ms->interface_list_len);
+  if (ms->interface_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  ms->interface_list[0].key = -1;
+  ms->interface_list[0].data_struct = NULL;
+
+  *sock = ms;
+
+  return err;
+
+error:
+  if (ms != NULL)
+    {
+      if (ms->filename != NULL)
+	{
+	  lm->free (ms->filename);
+	  ms->filename = NULL;
+	}
+      if (ms->fd > 0)
+	{
+	  close (ms->fd);
+	  ms->fd = -1;
+	}
+      if (ms->interface_list != NULL)
+	{
+	  lm->free (ms->interface_list);
+	  ms->interface_list = NULL;
+	  ms->interface_list_len = 0;
+	}
+      lm->free (ms);
+      *sock = ms = NULL;
+    }
+  return err;
+}
+
+int
+memif_per_thread_create_socket (memif_per_thread_main_handle_t pt_main,
+				memif_socket_handle_t * sock,
+				const char *filename, void *private_ctx)
+{
+  libmemif_main_t *lm = (libmemif_main_t *) pt_main;
+  memif_socket_t *ms = (memif_socket_t *) * sock;
+  int i, err = MEMIF_ERR_SUCCESS;
+
+  if (lm == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  for (i = 0; i < lm->socket_list_len; i++)
+    {
+      if ((ms = (memif_socket_t *) lm->socket_list[i].data_struct) != NULL)
+	{
+	  if (strncmp ((char *) ms->filename, filename,
+		       strlen ((char *) ms->filename)) == 0)
+	    return MEMIF_ERR_INVAL_ARG;
+	}
+    }
+
+  /* allocate memif_socket_t */
+  ms = NULL;
+  ms = lm->alloc (sizeof (memif_socket_t));
+  if (ms == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  memset (ms, 0, sizeof (memif_socket_t));
+  ms->lm = lm;
+  /* set filename */
+  ms->filename = lm->alloc (strlen (filename) + sizeof (char));
+  if (ms->filename == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  memset (ms->filename, 0, strlen (filename) + sizeof (char));
+  strncpy ((char *) ms->filename, filename, strlen (filename));
+
+  ms->type = MEMIF_SOCKET_TYPE_NONE;
+
+  ms->interface_list_len = 1;
+  ms->interface_list =
+    lm->alloc (sizeof (memif_list_elt_t) * ms->interface_list_len);
+  if (ms->interface_list == NULL)
+    {
+      err = MEMIF_ERR_NOMEM;
+      goto error;
+    }
+  ms->interface_list[0].key = -1;
+  ms->interface_list[0].data_struct = NULL;
+
+  *sock = ms;
+
+  return err;
+
+error:
+  if (ms != NULL)
+    {
+      if (ms->filename != NULL)
+	{
+	  lm->free (ms->filename);
+	  ms->filename = NULL;
+	}
+      if (ms->fd > 0)
+	{
+	  close (ms->fd);
+	  ms->fd = -1;
+	}
+      if (ms->interface_list != NULL)
+	{
+	  lm->free (ms->interface_list);
+	  ms->interface_list = NULL;
+	  ms->interface_list_len = 0;
+	}
+      lm->free (ms);
+      *sock = ms = NULL;
+    }
+  return err;
+}
+
 int
 memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 	      memif_connection_update_t * on_connect,
 	      memif_connection_update_t * on_disconnect,
 	      memif_interrupt_t * on_interrupt, void *private_ctx)
 {
-  libmemif_main_t *lm = &libmemif_main;
-  int err, i, index = 0, sockfd = -1;
-  memif_list_elt_t list_elt;
+  libmemif_main_t *lm = get_libmemif_main (args->socket);
+  int err, index = 0;
+  memif_list_elt_t elt;
   memif_connection_t *conn = (memif_connection_t *) * c;
+  memif_socket_t *ms;
+
   if (conn != NULL)
     {
       DBG ("This handle already points to existing memif.");
       return MEMIF_ERR_CONN;
     }
+
   conn = (memif_connection_t *) lm->alloc (sizeof (memif_connection_t));
   if (conn == NULL)
     {
@@ -704,178 +1152,48 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
   strncpy ((char *) conn->args.interface_name, (char *) args->interface_name,
 	   l);
 
-  /* allocate and initialize socket_filename so it can be copyed to sun_path
-     without memory leaks */
-  conn->args.socket_filename = lm->alloc (sizeof (char *) * 108);
-  if (conn->args.socket_filename == NULL)
-    {
-      err = MEMIF_ERR_NOMEM;
-      goto error;
-    }
-  memset (conn->args.socket_filename, 0, 108 * sizeof (char *));
+  if ((l = strlen ((char *) args->secret)) > 0)
+    strncpy ((char *) conn->args.secret, (char *) args->secret, l);
 
-  if (args->socket_filename)
-    {
-      if (conn->args.socket_filename == NULL)
-	{
-	  err = memif_syscall_error_handler (errno);
-	  goto error;
-	}
-      strncpy ((char *) conn->args.socket_filename,
-	       (char *) args->socket_filename,
-	       strlen ((char *) args->socket_filename));
-    }
+  if (args->socket != NULL)
+    conn->args.socket = args->socket;
+  else if (lm->default_socket != NULL)
+    conn->args.socket = lm->default_socket;
   else
     {
-      uint16_t sdl = strlen (MEMIF_DEFAULT_SOCKET_DIR);
-      uint16_t sfl = strlen (MEMIF_DEFAULT_SOCKET_FILENAME);
-      if (conn->args.socket_filename == NULL)
-	{
-	  err = memif_syscall_error_handler (errno);
-	  goto error;
-	}
-      strncpy ((char *) conn->args.socket_filename,
-	       MEMIF_DEFAULT_SOCKET_DIR, sdl);
-      conn->args.socket_filename[sdl] = '/';
-      strncpy ((char *) (conn->args.socket_filename + 1 + sdl),
-	       MEMIF_DEFAULT_SOCKET_FILENAME, sfl);
+      err = MEMIF_ERR_INVAL_ARG;
+      goto error;
     }
 
-  if ((l = strlen ((char *) args->secret)) > 0)
+  ms = (memif_socket_t *) conn->args.socket;
+
+  if ((conn->args.is_master && ms->type == MEMIF_SOCKET_TYPE_CLIENT) ||
+      (!conn->args.is_master && ms->type == MEMIF_SOCKET_TYPE_LISTENER))
     {
-      strncpy ((char *) conn->args.secret, (char *) args->secret, l);
+      err = MEMIF_ERR_INVAL_ARG;
+      goto error;
     }
+
+  elt.key = conn->args.interface_id;
+  elt.data_struct = conn;
+  add_list_elt (lm, &elt, &ms->interface_list, &ms->interface_list_len);
+  ms->use_count++;
 
   if (conn->args.is_master)
     {
-      conn->run_args.buffer_size = conn->args.buffer_size;
-      memif_socket_t *ms;
-      memif_list_elt_t elt;
-      for (i = 0; i < lm->listener_list_len; i++)
+      if (ms->type == MEMIF_SOCKET_TYPE_NONE)
 	{
-	  if ((ms =
-	       (memif_socket_t *) lm->listener_list[i].data_struct) != NULL)
-	    {
-	      if (strncmp
-		  ((char *) ms->filename, (char *) conn->args.socket_filename,
-		   strlen ((char *) ms->filename)) == 0)
-		{
-		  /* add interface to listener socket */
-		  elt.key = conn->args.interface_id;
-		  *c = elt.data_struct = conn;
-		  add_list_elt (&elt, &ms->interface_list,
-				&ms->interface_list_len);
-		  ms->use_count++;
-		  conn->listener_fd = ms->fd;
-		  break;
-		}
-	    }
-	  else
-	    {
-	      struct stat file_stat;
-	      if (stat ((char *) conn->args.socket_filename, &file_stat) == 0)
-		{
-		  if (S_ISSOCK (file_stat.st_mode))
-		    unlink ((char *) conn->args.socket_filename);
-		  else
-		    return memif_syscall_error_handler (errno);
-		}
-	      DBG ("creating socket file");
-	      ms = lm->alloc (sizeof (memif_socket_t));
-	      if (ms == NULL)
-		{
-		  err = MEMIF_ERR_NOMEM;
-		  goto error;
-		}
-	      ms->filename =
-		lm->alloc (strlen ((char *) conn->args.socket_filename) +
-			   sizeof (char));
-	      if (ms->filename == NULL)
-		{
-		  err = MEMIF_ERR_NOMEM;
-		  goto error;
-		}
-	      memset (ms->filename, 0,
-		      strlen ((char *) conn->args.socket_filename) +
-		      sizeof (char));
-	      strncpy ((char *) ms->filename,
-		       (char *) conn->args.socket_filename,
-		       strlen ((char *) conn->args.socket_filename));
-	      ms->interface_list_len = 1;
-	      ms->interface_list =
-		lm->alloc (sizeof (memif_list_elt_t) *
-			   ms->interface_list_len);
-	      if (ms->interface_list == NULL)
-		{
-		  err = MEMIF_ERR_NOMEM;
-		  goto error;
-		}
-	      ms->interface_list[0].key = -1;
-	      ms->interface_list[0].data_struct = NULL;
-	      struct sockaddr_un un = { 0 };
-	      int on = 1;
-
-	      ms->fd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
-	      if (ms->fd < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-	      DBG ("socket %d created", ms->fd);
-	      un.sun_family = AF_UNIX;
-	      strncpy ((char *) un.sun_path, (char *) ms->filename,
-		       sizeof (un.sun_path) - 1);
-	      DBG ("sockopt");
-	      if (setsockopt
-		  (ms->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-	      DBG ("bind");
-	      if (bind (ms->fd, (struct sockaddr *) &un, sizeof (un)) < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-	      DBG ("listen");
-	      if (listen (ms->fd, 1) < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-	      DBG ("stat");
-	      if (stat ((char *) ms->filename, &file_stat) < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-
-	      /* add interface to listener socket */
-	      elt.key = conn->args.interface_id;
-	      *c = elt.data_struct = conn;
-	      add_list_elt (&elt, &ms->interface_list,
-			    &ms->interface_list_len);
-	      ms->use_count = 1;
-	      conn->listener_fd = ms->fd;
-
-	      /* add listener socket to libmemif main */
-	      elt.key = ms->fd;
-	      elt.data_struct = ms;
-	      add_list_elt (&elt, &lm->listener_list, &lm->listener_list_len);
-	      lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_READ);
-	      break;
-	    }
+	  err = memif_socket_start_listening (ms);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    goto error;
 	}
     }
   else
     {
-      lm->disconn_slaves++;
-
-      list_elt.key = -1;
-      *c = list_elt.data_struct = conn;
+      elt.key = -1;
+      elt.data_struct = conn;
       if ((index =
-	   add_list_elt (&list_elt, &lm->control_list,
+	   add_list_elt (lm, &elt, &lm->control_list,
 			 &lm->control_list_len)) < 0)
 	{
 	  err = MEMIF_ERR_NOMEM;
@@ -885,8 +1203,8 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
       conn->index = index;
 
       /* try connectiong to master */
-      err = memif_request_connection(conn);
-      if ((err < 0) && (lm->disconn_slaves == 1))
+      err = memif_request_connection (conn);
+      if ((err != MEMIF_ERR_SUCCESS) && (lm->disconn_slaves == 0))
 	{
 	  /* connection failed, arm reconnect timer (if not armed) */
 	  if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
@@ -895,16 +1213,14 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 	      goto error;
 	    }
 	}
+      lm->disconn_slaves++;
     }
+
+  *c = conn;
 
   return 0;
 
 error:
-  if (sockfd > 0)
-    close (sockfd);
-  sockfd = -1;
-  if (conn->args.socket_filename)
-    lm->free (conn->args.socket_filename);
   if (conn != NULL)
     lm->free (conn);
   *c = conn = NULL;
@@ -912,15 +1228,23 @@ error:
 }
 
 int
-memif_request_connection(memif_conn_handle_t c)
+memif_request_connection (memif_conn_handle_t c)
 {
-  libmemif_main_t *lm = &libmemif_main;
   memif_connection_t *conn = (memif_connection_t *) c;
+  libmemif_main_t *lm;
+  memif_socket_t *ms;
   int err = MEMIF_ERR_SUCCESS;
   int sockfd = -1;
   struct sockaddr_un sun;
 
-  if (conn->args.is_master)
+  if (conn == NULL)
+    return MEMIF_ERR_NOCONN;
+
+  ms = (memif_socket_t *) conn->args.socket;
+  lm = get_libmemif_main (ms);
+
+
+  if (conn->args.is_master || ms->type == MEMIF_SOCKET_TYPE_LISTENER)
     return MEMIF_ERR_INVAL_ARG;
   if (conn->fd > 0)
     return MEMIF_ERR_ALRCONN;
@@ -934,11 +1258,10 @@ memif_request_connection(memif_conn_handle_t c)
 
   sun.sun_family = AF_UNIX;
 
-  strncpy (sun.sun_path, (char *) conn->args.socket_filename,
-	   sizeof (sun.sun_path) - 1);
+  strncpy (sun.sun_path, (char *) ms->filename, sizeof (sun.sun_path) - 1);
 
   if (connect (sockfd, (struct sockaddr *) &sun,
-      sizeof (struct sockaddr_un)) == 0)
+	       sizeof (struct sockaddr_un)) == 0)
     {
       conn->fd = sockfd;
       conn->read_fn = memif_conn_fd_read_ready;
@@ -948,8 +1271,8 @@ memif_request_connection(memif_conn_handle_t c)
       lm->control_list[conn->index].key = conn->fd;
 
       lm->control_fd_update (sockfd,
-		MEMIF_FD_EVENT_READ |
-		MEMIF_FD_EVENT_WRITE);
+			     MEMIF_FD_EVENT_READ |
+			     MEMIF_FD_EVENT_WRITE, conn->private_ctx);
 
       lm->disconn_slaves--;
       if (lm->disconn_slaves == 0)
@@ -963,13 +1286,14 @@ memif_request_connection(memif_conn_handle_t c)
     }
   else
     {
-      strcpy ((char *) conn->remote_disconnect_string,
-          memif_strerror (memif_syscall_error_handler
-                  (errno)));
+      err = memif_syscall_error_handler (errno);
+      strcpy ((char *) conn->remote_disconnect_string, memif_strerror (err));
       goto error;
     }
 
- return err;
+  ms->type = MEMIF_SOCKET_TYPE_CLIENT;
+
+  return err;
 
 error:
   if (sockfd > 0)
@@ -993,7 +1317,7 @@ memif_control_fd_handler (int fd, uint8_t events)
       size = read (fd, &b, sizeof (b));
 
       if (size == -1)
-        goto error;
+	goto error;
 
       for (i = 0; i < lm->control_list_len; i++)
 	{
@@ -1003,7 +1327,9 @@ memif_control_fd_handler (int fd, uint8_t events)
 	      conn = lm->control_list[i].data_struct;
 	      if (conn->args.is_master)
 		continue;
-	      memif_request_connection(conn);
+	      err = memif_request_connection (conn);
+	      if (err != MEMIF_ERR_SUCCESS)
+		DBG ("memif_request_connection: %s", memif_strerror (err));
 	    }
 	}
     }
@@ -1035,17 +1361,134 @@ memif_control_fd_handler (int fd, uint8_t events)
 	    }
 	  return MEMIF_ERR_SUCCESS;
 	}
-      get_list_elt (&e, lm->listener_list, lm->listener_list_len, fd);
-      if (e != NULL)
+      get_list_elt (&e, lm->socket_list, lm->socket_list_len, fd);
+      if (e != NULL
+	  && ((memif_socket_t *) e->data_struct)->type ==
+	  MEMIF_SOCKET_TYPE_LISTENER)
 	{
-	  err = memif_conn_fd_accept_ready ((memif_socket_t *) e->data_struct);
+	  err =
+	    memif_conn_fd_accept_ready ((memif_socket_t *) e->data_struct);
 	  return err;
 	}
 
       get_list_elt (&e, lm->pending_list, lm->pending_list_len, fd);
       if (e != NULL)
 	{
-	  err = memif_read_ready (fd);
+	  err = memif_read_ready (lm, fd);
+	  return err;
+	}
+
+      get_list_elt (&e, lm->control_list, lm->control_list_len, fd);
+      if (e != NULL)
+	{
+	  if (events & MEMIF_FD_EVENT_READ)
+	    {
+	      err =
+		((memif_connection_t *) e->data_struct)->
+		read_fn (e->data_struct);
+	      if (err != MEMIF_ERR_SUCCESS)
+		return err;
+	    }
+	  if (events & MEMIF_FD_EVENT_WRITE)
+	    {
+	      err =
+		((memif_connection_t *) e->data_struct)->
+		write_fn (e->data_struct);
+	      if (err != MEMIF_ERR_SUCCESS)
+		return err;
+	    }
+	  if (events & MEMIF_FD_EVENT_ERROR)
+	    {
+	      err =
+		((memif_connection_t *) e->data_struct)->
+		error_fn (e->data_struct);
+	      if (err != MEMIF_ERR_SUCCESS)
+		return err;
+	    }
+	}
+    }
+
+  return MEMIF_ERR_SUCCESS;	/* 0 */
+
+error:
+  return err;
+}
+
+int
+memif_per_thread_control_fd_handler (memif_per_thread_main_handle_t pt_main,
+				     int fd, uint8_t events)
+{
+  int i, err = MEMIF_ERR_SUCCESS;	/* 0 */
+  uint16_t num;
+  memif_list_elt_t *e = NULL;
+  memif_connection_t *conn;
+  libmemif_main_t *lm = (libmemif_main_t *) pt_main;
+
+  if (fd == lm->timerfd)
+    {
+      uint64_t b;
+      ssize_t size;
+      size = read (fd, &b, sizeof (b));
+
+      if (size == -1)
+	goto error;
+
+      for (i = 0; i < lm->control_list_len; i++)
+	{
+	  if ((lm->control_list[i].key < 0)
+	      && (lm->control_list[i].data_struct != NULL))
+	    {
+	      conn = lm->control_list[i].data_struct;
+	      if (conn->args.is_master)
+		continue;
+	      err = memif_request_connection (conn);
+	      if (err != MEMIF_ERR_SUCCESS)
+		DBG ("memif_request_connection: %s", memif_strerror (err));
+	    }
+	}
+    }
+  else
+    {
+      get_list_elt (&e, lm->interrupt_list, lm->interrupt_list_len, fd);
+      if (e != NULL)
+	{
+	  if (((memif_connection_t *) e->data_struct)->on_interrupt != NULL)
+	    {
+	      num =
+		(((memif_connection_t *) e->data_struct)->
+		 args.is_master) ? ((memif_connection_t *) e->
+				    data_struct)->run_args.
+		num_s2m_rings : ((memif_connection_t *) e->data_struct)->
+		run_args.num_m2s_rings;
+	      for (i = 0; i < num; i++)
+		{
+		  if (((memif_connection_t *) e->data_struct)->
+		      rx_queues[i].int_fd == fd)
+		    {
+		      ((memif_connection_t *) e->data_struct)->
+			on_interrupt ((void *) e->data_struct,
+				      ((memif_connection_t *) e->
+				       data_struct)->private_ctx, i);
+		      return MEMIF_ERR_SUCCESS;
+		    }
+		}
+	    }
+	  return MEMIF_ERR_SUCCESS;
+	}
+      get_list_elt (&e, lm->socket_list, lm->socket_list_len, fd);
+      if (e != NULL
+	  && ((memif_socket_t *) e->data_struct)->type ==
+	  MEMIF_SOCKET_TYPE_LISTENER)
+	{
+	  err =
+	    memif_conn_fd_accept_ready ((memif_socket_t *) e->data_struct);
+	  return err;
+	}
+
+      get_list_elt (&e, lm->pending_list, lm->pending_list_len, fd);
+      if (e != NULL)
+	{
+	  err = memif_read_ready (lm, fd);
 	  return err;
 	}
 
@@ -1088,6 +1531,7 @@ error:
 int
 memif_poll_event (int timeout)
 {
+  libmemif_main_t *lm = &libmemif_main;
   struct epoll_event evt;
   int en = 0, err = MEMIF_ERR_SUCCESS;	/* 0 */
   uint32_t events = 0;
@@ -1097,7 +1541,7 @@ memif_poll_event (int timeout)
   evt.events = EPOLLIN | EPOLLOUT;
   sigset_t sigset;
   sigemptyset (&sigset);
-  en = epoll_pwait (memif_epfd, &evt, 1, timeout, &sigset);
+  en = epoll_pwait (lm->epfd, &evt, 1, timeout, &sigset);
   if (en < 0)
     {
       err = errno;
@@ -1106,7 +1550,50 @@ memif_poll_event (int timeout)
     }
   if (en > 0)
     {
-      if (evt.data.fd == poll_cancel_fd)
+      if (evt.data.fd == lm->poll_cancel_fd)
+	{
+	  r = read (evt.data.fd, &counter, sizeof (counter));
+	  if (r == -1)
+	    return MEMIF_ERR_DISCONNECTED;
+
+	  return MEMIF_ERR_POLL_CANCEL;
+	}
+      if (evt.events & EPOLLIN)
+	events |= MEMIF_FD_EVENT_READ;
+      if (evt.events & EPOLLOUT)
+	events |= MEMIF_FD_EVENT_WRITE;
+      if (evt.events & EPOLLERR)
+	events |= MEMIF_FD_EVENT_ERROR;
+      err = memif_control_fd_handler (evt.data.fd, events);
+      return err;
+    }
+  return 0;
+}
+
+int
+memif_per_thread_poll_event (memif_per_thread_main_handle_t pt_main,
+			     int timeout)
+{
+  libmemif_main_t *lm = (libmemif_main_t *) pt_main;
+  struct epoll_event evt;
+  int en = 0, err = MEMIF_ERR_SUCCESS;	/* 0 */
+  uint32_t events = 0;
+  uint64_t counter = 0;
+  ssize_t r = 0;
+  memset (&evt, 0, sizeof (evt));
+  evt.events = EPOLLIN | EPOLLOUT;
+  sigset_t sigset;
+  sigemptyset (&sigset);
+  en = epoll_pwait (lm->epfd, &evt, 1, timeout, &sigset);
+  if (en < 0)
+    {
+      err = errno;
+      DBG ("epoll_pwait: %s", strerror (err));
+      return memif_syscall_error_handler (err);
+    }
+  if (en > 0)
+    {
+      if (evt.data.fd == lm->poll_cancel_fd)
 	{
 	  r = read (evt.data.fd, &counter, sizeof (counter));
 	  if (r == -1)
@@ -1129,12 +1616,32 @@ memif_poll_event (int timeout)
 int
 memif_cancel_poll_event ()
 {
+  libmemif_main_t *lm = &libmemif_main;
   uint64_t counter = 1;
   ssize_t w = 0;
 
-  if (poll_cancel_fd == -1)
+  if (lm->poll_cancel_fd == -1)
     return 0;
-  w = write (poll_cancel_fd, &counter, sizeof (counter));
+  w = write (lm->poll_cancel_fd, &counter, sizeof (counter));
+  if (w < sizeof (counter))
+    return MEMIF_ERR_INT_WRITE;
+
+  return 0;
+}
+
+int
+memif_per_thread_cancel_poll_event (memif_per_thread_main_handle_t pt_main)
+{
+  libmemif_main_t *lm = (libmemif_main_t *) pt_main;
+  uint64_t counter = 1;
+  ssize_t w = 0;
+
+  if (lm == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  if (lm->poll_cancel_fd == -1)
+    return 0;
+  w = write (lm->poll_cancel_fd, &counter, sizeof (counter));
   if (w < sizeof (counter))
     return MEMIF_ERR_INT_WRITE;
 
@@ -1156,23 +1663,26 @@ memif_msg_queue_free (libmemif_main_t * lm, memif_msg_queue_elt_t ** e)
 int
 memif_disconnect_internal (memif_connection_t * c)
 {
+  uint16_t num;
+  int err = MEMIF_ERR_SUCCESS, i;	/* 0 */
+  memif_queue_t *mq;
+  libmemif_main_t *lm;
+  memif_list_elt_t *e;
+
   if (c == NULL)
     {
       DBG ("no connection");
       return MEMIF_ERR_NOCONN;
     }
-  uint16_t num;
-  int err = MEMIF_ERR_SUCCESS, i;	/* 0 */
-  memif_queue_t *mq;
-  libmemif_main_t *lm = &libmemif_main;
-  memif_list_elt_t *e;
+
+  lm = get_libmemif_main (c->args.socket);
 
   c->on_disconnect ((void *) c, c->private_ctx);
 
   if (c->fd > 0)
     {
       memif_msg_send_disconnect (c->fd, (uint8_t *) "interface deleted", 0);
-      lm->control_fd_update (c->fd, MEMIF_FD_EVENT_DEL);
+      lm->control_fd_update (c->fd, MEMIF_FD_EVENT_DEL, c->private_ctx);
       close (c->fd);
     }
   get_list_elt (&e, lm->control_list, lm->control_list_len, c->fd);
@@ -1217,7 +1727,8 @@ memif_disconnect_internal (memif_connection_t * c)
 	      if (mq->int_fd > 0)
 		{
 		  if (c->on_interrupt != NULL)
-		    lm->control_fd_update (mq->int_fd, MEMIF_FD_EVENT_DEL);
+		    lm->control_fd_update (mq->int_fd, MEMIF_FD_EVENT_DEL,
+					   c->private_ctx);
 		  close (mq->int_fd);
 		}
 	      free_list_elt (lm->interrupt_list, lm->interrupt_list_len,
@@ -1272,20 +1783,52 @@ memif_disconnect_internal (memif_connection_t * c)
   return err;
 }
 
+const char *
+memif_get_socket_filename (memif_socket_handle_t sock)
+{
+  memif_socket_t *ms = (memif_socket_t *) sock;
+
+  if (ms == NULL)
+    return NULL;
+
+  return (char *) ms->filename;
+}
+
+int
+memif_delete_socket (memif_socket_handle_t * sock)
+{
+  memif_socket_t *ms = (memif_socket_t *) * sock;
+  libmemif_main_t *lm;
+
+  /* check if socket is in use */
+  if (ms == NULL || ms->use_count > 0)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (ms);
+
+  lm->free (ms->interface_list);
+  ms->interface_list = NULL;
+  lm->free (ms->filename);
+  ms->filename = NULL;
+  lm->free (ms);
+  *sock = ms = NULL;
+
+  return MEMIF_ERR_SUCCESS;
+}
+
 int
 memif_delete (memif_conn_handle_t * conn)
 {
   memif_connection_t *c = (memif_connection_t *) * conn;
+  libmemif_main_t *lm;
+  memif_socket_t *ms = NULL;
+  int err = MEMIF_ERR_SUCCESS;
+
   if (c == NULL)
     {
       DBG ("no connection");
       return MEMIF_ERR_NOCONN;
     }
-  libmemif_main_t *lm = &libmemif_main;
-  memif_list_elt_t *e = NULL;
-  memif_socket_t *ms = NULL;
-
-  int err = MEMIF_ERR_SUCCESS;
 
   if (c->fd > 0)
     {
@@ -1295,35 +1838,29 @@ memif_delete (memif_conn_handle_t * conn)
 	return err;
     }
 
+  lm = get_libmemif_main (c->args.socket);
+
   free_list_elt_ctx (lm->control_list, lm->control_list_len, c);
 
-  if (c->args.is_master)
+  ms = (memif_socket_t *) c->args.socket;
+  ms->use_count--;
+  free_list_elt (ms->interface_list, ms->interface_list_len,
+		 c->args.interface_id);
+  if (ms->use_count <= 0)
     {
-      get_list_elt (&e, lm->listener_list, lm->listener_list_len,
-		    c->listener_fd);
-      if (e != NULL)
+      /* stop listening on this socket */
+      if (ms->type == MEMIF_SOCKET_TYPE_LISTENER)
 	{
-	  ms = (memif_socket_t *) e->data_struct;
-	  ms->use_count--;
-	  free_list_elt (ms->interface_list, ms->interface_list_len,
-			 c->args.interface_id);
-	  if (ms->use_count <= 0)
-	    {
-	      lm->control_fd_update (c->listener_fd, MEMIF_FD_EVENT_DEL);
-	      free_list_elt (lm->listener_list, lm->listener_list_len,
-			     c->listener_fd);
-	      close (c->listener_fd);
-	      c->listener_fd = ms->fd = -1;
-	      lm->free (ms->interface_list);
-	      ms->interface_list = NULL;
-	      lm->free (ms->filename);
-	      ms->filename = NULL;
-	      lm->free (ms);
-	      ms = NULL;
-	    }
+	  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_DEL, ms->private_ctx);
+	  free_list_elt (lm->socket_list, lm->socket_list_len, ms->fd);
+	  close (ms->fd);
+	  ms->fd = -1;
 	}
+      /* socket not in use */
+      ms->type = MEMIF_SOCKET_TYPE_NONE;
     }
-  else
+
+  if (!c->args.is_master)
     {
       lm->disconn_slaves--;
       if (lm->disconn_slaves <= 0)
@@ -1336,10 +1873,6 @@ memif_delete (memif_conn_handle_t * conn)
 	}
     }
 
-  if (c->args.socket_filename)
-    lm->free (c->args.socket_filename);
-  c->args.socket_filename = NULL;
-
   lm->free (c);
   c = NULL;
 
@@ -1350,10 +1883,15 @@ memif_delete (memif_conn_handle_t * conn)
 int
 memif_connect1 (memif_connection_t * c)
 {
-  libmemif_main_t *lm = &libmemif_main;
+  libmemif_main_t *lm;
   memif_region_t *mr;
   memif_queue_t *mq;
   int i;
+
+  if (c == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (c->args.socket);
 
   for (i = 0; i < c->regions_num; i++)
     {
@@ -1365,7 +1903,7 @@ memif_connect1 (memif_connection_t * c)
 	      if (mr->is_external)
 		{
 		  if (lm->get_external_region_addr == NULL)
-		    return 99;	/* FIXME: proper error report */
+		    return MEMIF_ERR_INVAL_ARG;
 		  mr->addr =
 		    lm->get_external_region_addr (mr->region_size, mr->fd,
 						  c->private_ctx);
@@ -1418,7 +1956,8 @@ memif_connect1 (memif_connection_t * c)
 	}
     }
 
-  lm->control_fd_update (c->fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_MOD);
+  lm->control_fd_update (c->fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_MOD,
+			 c->private_ctx);
 
   return 0;
 }
@@ -1531,7 +2070,7 @@ memif_init_queues (libmemif_main_t * lm, memif_connection_t * conn)
 	return memif_syscall_error_handler (errno);
       e.key = mq[x].int_fd;
       e.data_struct = conn;
-      add_list_elt (&e, &lm->interrupt_list, &lm->interrupt_list_len);
+      add_list_elt (lm, &e, &lm->interrupt_list, &lm->interrupt_list_len);
 
       mq[x].ring = memif_get_ring (conn, MEMIF_RING_S2M, x);
       DBG ("RING: %p I: %d", mq[x].ring, x);
@@ -1556,7 +2095,7 @@ memif_init_queues (libmemif_main_t * lm, memif_connection_t * conn)
 	return memif_syscall_error_handler (errno);
       e.key = mq[x].int_fd;
       e.data_struct = conn;
-      add_list_elt (&e, &lm->interrupt_list, &lm->interrupt_list_len);
+      add_list_elt (lm, &e, &lm->interrupt_list, &lm->interrupt_list_len);
 
       mq[x].ring = memif_get_ring (conn, MEMIF_RING_M2S, x);
       DBG ("RING: %p I: %d", mq[x].ring, x);
@@ -1576,7 +2115,12 @@ int
 memif_init_regions_and_queues (memif_connection_t * conn)
 {
   memif_region_t *r;
-  libmemif_main_t *lm = &libmemif_main;
+  libmemif_main_t *lm;
+
+  if (conn == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (conn->args.socket);
 
   /* region 0. rings */
   memif_add_region (lm, conn, /* has_buffers */ 0);
@@ -1664,6 +2208,7 @@ memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
       ring->desc[slot & mask].offset =
 	(uint32_t) (b0->data -
 		    c->regions[ring->desc[slot & mask].region].addr);
+      ring->desc[slot & mask].flags &= ~MEMIF_DESC_FLAG_NEXT;
       ring->desc[slot & mask].flags |=
 	(b0->flags & MEMIF_BUFFER_FLAG_NEXT) ? MEMIF_DESC_FLAG_NEXT : 0;
 
@@ -1708,7 +2253,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   if (EXPECT_FALSE (!count_out))
     return MEMIF_ERR_INVAL_ARG;
 
-  libmemif_main_t *lm = &libmemif_main;
+  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   memif_buffer_t *b0;
@@ -1830,7 +2375,7 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
     run_args.num_m2s_rings;
   if (EXPECT_FALSE (qid >= num))
     return MEMIF_ERR_QID;
-  libmemif_main_t *lm = &libmemif_main;
+  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
   memif_queue_t *mq = &c->rx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
@@ -2026,14 +2571,17 @@ int
 memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 		   char *buf, ssize_t buflen)
 {
-  libmemif_main_t *lm = &libmemif_main;
   memif_connection_t *c = (memif_connection_t *) conn;
+  libmemif_main_t *lm;
+  memif_socket_t *ms;
+  int err = MEMIF_ERR_SUCCESS, i;
+  ssize_t l0 = 0, l1;
+
   if (c == NULL)
     return MEMIF_ERR_NOCONN;
 
-  int err = MEMIF_ERR_SUCCESS, i;
-  ssize_t l0, l1;
-  l0 = 0;
+  ms = (memif_socket_t *) c->args.socket;
+  lm = get_libmemif_main (ms);
 
   l1 = strlen ((char *) c->args.interface_name);
   if (l0 + l1 < buflen)
@@ -2091,11 +2639,11 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   md->role = (c->args.is_master) ? 0 : 1;
   md->mode = c->args.mode;
 
-  l1 = strlen ((char *) c->args.socket_filename);
+  l1 = strlen ((char *) ms->filename);
   if (l0 + l1 < buflen)
     {
       md->socket_filename =
-	(uint8_t *) strcpy (buf + l0, (char *) c->args.socket_filename);
+	(uint8_t *) strcpy (buf + l0, (char *) ms->filename);
       l0 += l1 + 1;
     }
   else
@@ -2117,13 +2665,13 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     {
       md->regions = (memif_region_details_t *) (buf + l0);
       for (i = 0; i < md->regions_num; i++)
-        {
-          md->regions[i].index = i;
-          md->regions[i].addr = c->regions[i].addr;
-          md->regions[i].size = c->regions[i].region_size;
-          md->regions[i].fd = c->regions[i].fd;
-          md->regions[i].is_external = c->regions[i].is_external;
-        }
+	{
+	  md->regions[i].index = i;
+	  md->regions[i].addr = c->regions[i].addr;
+	  md->regions[i].size = c->regions[i].region_size;
+	  md->regions[i].fd = c->regions[i].fd;
+	  md->regions[i].is_external = c->regions[i].is_external;
+	}
       l0 += l1;
     }
   else
@@ -2138,15 +2686,15 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     {
       md->rx_queues = (memif_queue_details_t *) (buf + l0);
       for (i = 0; i < md->rx_queues_num; i++)
-        {
-          md->rx_queues[i].region = c->rx_queues[i].region;
-          md->rx_queues[i].qid = i;
-          md->rx_queues[i].ring_size = (1 << c->rx_queues[i].log2_ring_size);
-          md->rx_queues[i].flags = c->rx_queues[i].ring->flags;
-          md->rx_queues[i].head = c->rx_queues[i].ring->head;
-          md->rx_queues[i].tail = c->rx_queues[i].ring->tail;
-          md->rx_queues[i].buffer_size = c->run_args.buffer_size;
-        }
+	{
+	  md->rx_queues[i].region = c->rx_queues[i].region;
+	  md->rx_queues[i].qid = i;
+	  md->rx_queues[i].ring_size = (1 << c->rx_queues[i].log2_ring_size);
+	  md->rx_queues[i].flags = c->rx_queues[i].ring->flags;
+	  md->rx_queues[i].head = c->rx_queues[i].ring->head;
+	  md->rx_queues[i].tail = c->rx_queues[i].ring->tail;
+	  md->rx_queues[i].buffer_size = c->run_args.buffer_size;
+	}
       l0 += l1;
     }
   else
@@ -2161,15 +2709,15 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     {
       md->tx_queues = (memif_queue_details_t *) (buf + l0);
       for (i = 0; i < md->tx_queues_num; i++)
-        {
-          md->tx_queues[i].region = c->tx_queues[i].region;
-          md->tx_queues[i].qid = i;
-          md->tx_queues[i].ring_size = (1 << c->tx_queues[i].log2_ring_size);
-          md->tx_queues[i].flags = c->tx_queues[i].ring->flags;
-          md->tx_queues[i].head = c->tx_queues[i].ring->head;
-          md->tx_queues[i].tail = c->tx_queues[i].ring->tail;
-          md->tx_queues[i].buffer_size = c->run_args.buffer_size;
-        }
+	{
+	  md->tx_queues[i].region = c->tx_queues[i].region;
+	  md->tx_queues[i].qid = i;
+	  md->tx_queues[i].ring_size = (1 << c->tx_queues[i].log2_ring_size);
+	  md->tx_queues[i].flags = c->tx_queues[i].ring->flags;
+	  md->tx_queues[i].head = c->tx_queues[i].ring->head;
+	  md->tx_queues[i].tail = c->tx_queues[i].ring->tail;
+	  md->tx_queues[i].buffer_size = c->run_args.buffer_size;
+	}
       l0 += l1;
     }
   else
@@ -2184,12 +2732,15 @@ int
 memif_get_queue_efd (memif_conn_handle_t conn, uint16_t qid, int *efd)
 {
   memif_connection_t *c = (memif_connection_t *) conn;
+  uint8_t num;
+
   *efd = -1;
   if (c == NULL)
     return MEMIF_ERR_NOCONN;
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
-  uint8_t num =
+
+  num =
     (c->args.is_master) ? c->run_args.num_s2m_rings : c->
     run_args.num_m2s_rings;
   if (qid >= num)
@@ -2204,20 +2755,58 @@ int
 memif_cleanup ()
 {
   libmemif_main_t *lm = &libmemif_main;
+  int err;
+
+  err = memif_delete_socket ((memif_socket_handle_t *) & lm->default_socket);
+  if (err != MEMIF_ERR_SUCCESS)
+    return err;
+
   if (lm->control_list)
     lm->free (lm->control_list);
   lm->control_list = NULL;
   if (lm->interrupt_list)
     lm->free (lm->interrupt_list);
   lm->interrupt_list = NULL;
-  if (lm->listener_list)
-    lm->free (lm->listener_list);
-  lm->listener_list = NULL;
+  if (lm->socket_list)
+    lm->free (lm->socket_list);
+  lm->socket_list = NULL;
   if (lm->pending_list)
     lm->free (lm->pending_list);
   lm->pending_list = NULL;
-  if (poll_cancel_fd != -1)
-    close (poll_cancel_fd);
+  if (lm->poll_cancel_fd != -1)
+    close (lm->poll_cancel_fd);
+
+  return MEMIF_ERR_SUCCESS;	/* 0 */
+}
+
+int
+memif_per_thread_cleanup (memif_per_thread_main_handle_t * pt_main)
+{
+  libmemif_main_t *lm = (libmemif_main_t *) * pt_main;
+
+  if (lm == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  /* No default socket in case of per thread */
+
+  if (lm->control_list)
+    lm->free (lm->control_list);
+  lm->control_list = NULL;
+  if (lm->interrupt_list)
+    lm->free (lm->interrupt_list);
+  lm->interrupt_list = NULL;
+  if (lm->socket_list)
+    lm->free (lm->socket_list);
+  lm->socket_list = NULL;
+  if (lm->pending_list)
+    lm->free (lm->pending_list);
+  lm->pending_list = NULL;
+  if (lm->poll_cancel_fd != -1)
+    close (lm->poll_cancel_fd);
+
+  lm->free (lm);
+
+  *pt_main = NULL;
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }

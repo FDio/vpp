@@ -19,9 +19,16 @@
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_contract.h>
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
+
+char *gbp_contract_error_strings[] = {
+#define _(sym,string) string,
+  foreach_gbp_contract_error
+#undef _
+};
 
 /**
  * Single contract DB instance
@@ -64,6 +71,12 @@ gbp_rule_alloc (gbp_rule_action_t action,
   gu->gu_action = action;
 
   return (gu - gbp_rule_pool);
+}
+
+void
+gbp_rule_free (index_t gui)
+{
+  pool_put_index (gbp_rule_pool, gui);
 }
 
 index_t
@@ -132,6 +145,8 @@ gbp_contract_rules_free (index_t * rules)
 	adj_unlock (gnh->gnh_ai[fproto]);
       }
     }
+
+    gbp_rule_free (*gui);
   }
   vec_free (rules);
 }
@@ -152,7 +167,7 @@ format_gbp_next_hop (u8 * s, va_list * args)
   return (s);
 }
 
-static u8 *
+u8 *
 format_gbp_rule_action (u8 * s, va_list * args)
 {
   gbp_rule_action_t action = va_arg (*args, gbp_rule_action_t);
@@ -213,7 +228,7 @@ format_gbp_rule (u8 * s, va_list * args)
     {
     case GBP_RULE_PERMIT:
     case GBP_RULE_DENY:
-      break;
+      return (s);
     case GBP_RULE_REDIRECT:
       s = format (s, ", %U", format_gbp_hash_mode, gu->gu_hash_mode);
       break;
@@ -221,19 +236,19 @@ format_gbp_rule (u8 * s, va_list * args)
 
   vec_foreach (gnhi, gu->gu_nhs)
   {
-    s = format (s, "\n      [%U]", format_gbp_next_hop, *gnhi);
+    s = format (s, "\n        [%U]", format_gbp_next_hop, *gnhi);
   }
 
   FOR_EACH_GBP_POLICY_NODE (pnode)
   {
-    s = format (s, "\n    policy-%U", format_gbp_policy_node, pnode);
+    s = format (s, "\n      policy-%U", format_gbp_policy_node, pnode);
 
     FOR_EACH_FIB_IP_PROTOCOL (fproto)
     {
       if (dpo_id_is_valid (&gu->gu_dpo[pnode][fproto]))
 	{
 	  s =
-	    format (s, "\n      %U", format_dpo_id,
+	    format (s, "\n        %U", format_dpo_id,
 		    &gu->gu_dpo[pnode][fproto], 8);
 	}
     }
@@ -268,7 +283,10 @@ gbp_contract_mk_adj (gbp_next_hop_t * gnh, fib_protocol_t fproto)
   gnh->gnh_ai[fproto] =
     adj_nbr_add_or_lock_w_rewrite (fproto,
 				   fib_proto_to_link (fproto),
-				   &gnh->gnh_ip, ge->ge_fwd.gef_itf, rewrite);
+				   &gnh->gnh_ip,
+				   gbp_itf_get_sw_if_index (ge->
+							    ge_fwd.gef_itf),
+				   rewrite);
 
   adj_unlock (old_ai);
 }
@@ -444,7 +462,8 @@ gbp_contract_mk_lbs (index_t * guis)
 }
 
 int
-gbp_contract_update (sclass_t sclass,
+gbp_contract_update (gbp_scope_t scope,
+		     sclass_t sclass,
 		     sclass_t dclass,
 		     u32 acl_index,
 		     index_t * rules,
@@ -457,6 +476,7 @@ gbp_contract_update (sclass_t sclass,
   uword *p;
 
   gbp_contract_key_t key = {
+    .gck_scope = scope,
     .gck_src = sclass,
     .gck_dst = dclass,
   };
@@ -468,7 +488,7 @@ gbp_contract_update (sclass_t sclass,
 	gm->acl_plugin.register_user_module ("GBP ACL", "src-epg", "dst-epg");
     }
 
-  p = hash_get (gbp_contract_db.gc_hash, key.as_u32);
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
   if (p != NULL)
     {
       gci = p[0];
@@ -483,7 +503,7 @@ gbp_contract_update (sclass_t sclass,
       pool_get_zero (gbp_contract_pool, gc);
       gc->gc_key = key;
       gci = gc - gbp_contract_pool;
-      hash_set (gbp_contract_db.gc_hash, key.as_u32, gci);
+      hash_set (gbp_contract_db.gc_hash, key.as_u64, gci);
 
       vlib_validate_combined_counter (&gbp_contract_drop_counters, gci);
       vlib_zero_combined_counter (&gbp_contract_drop_counters, gci);
@@ -513,16 +533,17 @@ gbp_contract_update (sclass_t sclass,
 }
 
 int
-gbp_contract_delete (sclass_t sclass, sclass_t dclass)
+gbp_contract_delete (gbp_scope_t scope, sclass_t sclass, sclass_t dclass)
 {
   gbp_contract_key_t key = {
+    .gck_scope = scope,
     .gck_src = sclass,
     .gck_dst = dclass,
   };
   gbp_contract_t *gc;
   uword *p;
 
-  p = hash_get (gbp_contract_db.gc_hash, key.as_u32);
+  p = hash_get (gbp_contract_db.gc_hash, key.as_u64);
   if (p != NULL)
     {
       gc = gbp_contract_get (p[0]);
@@ -531,7 +552,7 @@ gbp_contract_delete (sclass_t sclass, sclass_t dclass)
       gbp_main.acl_plugin.put_lookup_context_index (gc->gc_lc_index);
       vec_free (gc->gc_allowed_ethertypes);
 
-      hash_unset (gbp_contract_db.gc_hash, key.as_u32);
+      hash_unset (gbp_contract_db.gc_hash, key.as_u64);
       pool_put (gbp_contract_pool, gc);
 
       return (0);
@@ -559,7 +580,7 @@ gbp_contract_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   sclass_t sclass = SCLASS_INVALID, dclass = SCLASS_INVALID;
-  u32 acl_index = ~0, stats_index;
+  u32 acl_index = ~0, stats_index, scope;
   u8 add = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -568,9 +589,11 @@ gbp_contract_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "src-epg %d", &sclass))
+      else if (unformat (input, "scope %d", &scope))
 	;
-      else if (unformat (input, "dst-epg %d", &dclass))
+      else if (unformat (input, "sclass %d", &sclass))
+	;
+      else if (unformat (input, "dclass %d", &dclass))
 	;
       else if (unformat (input, "acl-index %d", &acl_index))
 	;
@@ -585,12 +608,12 @@ gbp_contract_cli (vlib_main_t * vm,
 
   if (add)
     {
-      gbp_contract_update (sclass, dclass, acl_index,
+      gbp_contract_update (scope, sclass, dclass, acl_index,
 			   NULL, NULL, &stats_index);
     }
   else
     {
-      gbp_contract_delete (sclass, dclass);
+      gbp_contract_delete (scope, sclass, dclass);
     }
 
   return (NULL);
@@ -618,7 +641,7 @@ format_gbp_contract_key (u8 * s, va_list * args)
 {
   gbp_contract_key_t *gck = va_arg (*args, gbp_contract_key_t *);
 
-  s = format (s, "{%d,%d}", gck->gck_src, gck->gck_dst);
+  s = format (s, "{%d,%d,%d}", gck->gck_scope, gck->gck_src, gck->gck_dst);
 
   return (s);
 }
@@ -637,23 +660,27 @@ format_gbp_contract (u8 * s, va_list * args)
   s = format (s, "[%d] %U: acl-index:%d",
 	      gci, format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
 
+  s = format (s, "\n    rules:");
   vec_foreach (gui, gc->gc_rules)
   {
-    s = format (s, "\n    %d: %U", *gui, format_gbp_rule, *gui);
+    s = format (s, "\n      %d: %U", *gui, format_gbp_rule, *gui);
   }
 
-  s = format (s, "\n    allowed-ethertypes:[");
+  s = format (s, "\n    allowed-ethertypes:");
+  s = format (s, "\n      [");
   vec_foreach (et, gc->gc_allowed_ethertypes)
   {
     int host_et = clib_net_to_host_u16 (*et);
     if (0 != host_et)
       s = format (s, "0x%x, ", host_et);
   }
+  s = format (s, "]");
 
+  s = format (s, "\n    stats:");
   vlib_get_combined_counter (&gbp_contract_drop_counters, gci, &counts);
-  s = format (s, "\n   drop:[%Ld:%Ld]", counts.packets, counts.bytes);
+  s = format (s, "\n      drop:[%Ld:%Ld]", counts.packets, counts.bytes);
   vlib_get_combined_counter (&gbp_contract_permit_counters, gci, &counts);
-  s = format (s, "\n   permit:[%Ld:%Ld]", counts.packets, counts.bytes);
+  s = format (s, "\n      permit:[%Ld:%Ld]", counts.packets, counts.bytes);
 
   s = format (s, "]");
 

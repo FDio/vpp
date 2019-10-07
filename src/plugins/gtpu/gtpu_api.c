@@ -27,57 +27,11 @@
 
 #include <gtpu/gtpu.h>
 
-
-#define vl_msg_id(n,h) n,
-typedef enum
-{
-#include <gtpu/gtpu.api.h>
-  /* We'll want to know how many messages IDs we need... */
-  VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-/* define message structures */
-#define vl_typedefs
-#include <gtpu/gtpu.api.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <gtpu/gtpu.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <gtpu/gtpu.api.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <gtpu/gtpu.api.h>
-#undef vl_api_version
-
-#define vl_msg_name_crc_list
-#include <gtpu/gtpu.api.h>
-#undef vl_msg_name_crc_list
+#include <gtpu/gtpu.api_enum.h>
+#include <gtpu/gtpu.api_types.h>
 
 #define REPLY_MSG_ID_BASE gtm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-static void
-setup_message_id_table (gtpu_main_t * gtm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + gtm->msg_id_base);
-  foreach_vl_msg_name_crc_gtpu;
-#undef _
-}
-
-#define foreach_gtpu_plugin_api_msg                             \
-_(SW_INTERFACE_SET_GTPU_BYPASS, sw_interface_set_gtpu_bypass)         \
-_(GTPU_ADD_DEL_TUNNEL, gtpu_add_del_tunnel)                           \
-_(GTPU_TUNNEL_DUMP, gtpu_tunnel_dump)
 
 static void
   vl_api_sw_interface_set_gtpu_bypass_t_handler
@@ -215,30 +169,13 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
     }
 }
 
-
+#include <gtpu/gtpu.api.c>
 static clib_error_t *
 gtpu_api_hookup (vlib_main_t * vm)
 {
   gtpu_main_t *gtm = &gtpu_main;
 
-  u8 *name = format (0, "gtpu_%08x%c", api_version, 0);
-  gtm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + gtm->msg_id_base),     \
-                           #n,                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_gtpu_plugin_api_msg;
-#undef _
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (gtm, &api_main);
-
+  gtm->msg_id_base = setup_message_id_table ();
   return 0;
 }
 

@@ -75,7 +75,7 @@ typedef enum
 } ip46_type_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (union {
+typedef CLIB_PACKED (union ip46_address_t_ {
   struct {
     u32 pad[3];
     ip4_address_t ip4;
@@ -94,6 +94,21 @@ typedef CLIB_PACKED (union {
 #define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
                                          && ((a1)->as_u64[1] == (a2)->as_u64[1]))
 #define ip46_address_initializer {{{ 0 }}}
+
+static_always_inline int
+ip46_address_is_equal_v4 (const ip46_address_t * ip46,
+			  const ip4_address_t * ip4)
+{
+  return (ip46->ip4.as_u32 == ip4->as_u32);
+}
+
+static_always_inline int
+ip46_address_is_equal_v6 (const ip46_address_t * ip46,
+			  const ip6_address_t * ip6)
+{
+  return ((ip46->ip6.as_u64[0] == ip6->as_u64[0]) &&
+	  (ip46->ip6.as_u64[1] == ip6->as_u64[1]));
+}
 
 static_always_inline void
 ip46_address_copy (ip46_address_t * dst, const ip46_address_t * src)
@@ -208,23 +223,6 @@ ip6_set_solicited_node_multicast_address (ip6_address_t * a, u32 id)
   ASSERT ((id >> 24) == 0);
   id |= 0xff << 24;
   a->as_u32[3] = clib_host_to_net_u32 (id);
-}
-
-always_inline void
-ip6_link_local_address_from_ethernet_address (ip6_address_t * a,
-					      const u8 * ethernet_address)
-{
-  a->as_u64[0] = a->as_u64[1] = 0;
-  a->as_u16[0] = clib_host_to_net_u16 (0xfe80);
-  /* Always set locally administered bit (6). */
-  a->as_u8[0x8] = ethernet_address[0] | (1 << 6);
-  a->as_u8[0x9] = ethernet_address[1];
-  a->as_u8[0xa] = ethernet_address[2];
-  a->as_u8[0xb] = 0xff;
-  a->as_u8[0xc] = 0xfe;
-  a->as_u8[0xd] = ethernet_address[3];
-  a->as_u8[0xe] = ethernet_address[4];
-  a->as_u8[0xf] = ethernet_address[5];
 }
 
 always_inline void
@@ -385,13 +383,13 @@ typedef struct
   ip6_address_t src_address, dst_address;
 } ip6_header_t;
 
-always_inline u8
+always_inline ip_dscp_t
 ip6_traffic_class (const ip6_header_t * i)
 {
   return (i->ip_version_traffic_class_and_flow_label & 0x0FF00000) >> 20;
 }
 
-static_always_inline u8
+static_always_inline ip_dscp_t
 ip6_traffic_class_network_order (const ip6_header_t * ip6)
 {
   return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
@@ -399,7 +397,7 @@ ip6_traffic_class_network_order (const ip6_header_t * ip6)
 }
 
 static_always_inline void
-ip6_set_traffic_class_network_order (ip6_header_t * ip6, u8 dscp)
+ip6_set_traffic_class_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
 {
   u32 tmp =
     clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
@@ -512,6 +510,7 @@ typedef CLIB_PACKED (struct {
   /* Length of this header plus option data in 8 byte units. */
   u8 n_data_u64s;
 }) ip6_ext_header_t;
+/* *INDENT-ON* */
 
 #define foreach_ext_hdr_type \
   _(IP6_HOP_BY_HOP_OPTIONS) \
@@ -524,12 +523,13 @@ typedef CLIB_PACKED (struct {
   _(HIP) \
   _(SHIM6)
 
-always_inline u8 ip6_ext_hdr(u8 nexthdr)
+always_inline u8
+ip6_ext_hdr (u8 nexthdr)
 {
 #ifdef CLIB_HAVE_VEC128
   static const u8x16 ext_hdr_types = {
 #define _(x) IP_PROTOCOL_##x,
- foreach_ext_hdr_type
+    foreach_ext_hdr_type
 #undef _
   };
 
@@ -538,9 +538,9 @@ always_inline u8 ip6_ext_hdr(u8 nexthdr)
   /*
    * find out if nexthdr is an extension header or a protocol
    */
-  return   0
+  return 0
 #define _(x) || (nexthdr == IP_PROTOCOL_##x)
- foreach_ext_hdr_type;
+    foreach_ext_hdr_type;
 #undef _
 #endif
 }
@@ -549,37 +549,79 @@ always_inline u8 ip6_ext_hdr(u8 nexthdr)
 #define ip6_ext_authhdr_len(p) ((((ip6_ext_header_t *)(p))->n_data_u64s+2) << 2)
 
 always_inline void *
-ip6_ext_next_header (ip6_ext_header_t *ext_hdr )
-{ return (void *)((u8 *) ext_hdr + ip6_ext_header_len(ext_hdr)); }
-
-/*
- * Macro to find the IPv6 ext header of type t
- * I is the IPv6 header
- * P is the previous IPv6 ext header (NULL if none)
- * M is the matched IPv6 ext header of type t
- */
-#define ip6_ext_header_find_t(i, p, m, t)               \
-if ((i)->protocol == t)                                 \
-{                                                       \
-  (m) = (void *)((i)+1);                                \
-  (p) = NULL;                                           \
-}                                                       \
-else                                                    \
-{                                                       \
-  (m) = NULL;                                           \
-  (p) = (void *)((i)+1);                                \
-  while (ip6_ext_hdr((p)->next_hdr) &&                  \
-    ((ip6_ext_header_t *)(p))->next_hdr != (t))         \
-  {                                                     \
-    (p) = ip6_ext_next_header((p));                     \
-  }                                                     \
-  if ( ((p)->next_hdr) == (t))                          \
-  {                                                     \
-    (m) = (void *)(ip6_ext_next_header((p)));           \
-  }                                                     \
+ip6_ext_next_header (ip6_ext_header_t * ext_hdr)
+{
+  return (void *) ((u8 *) ext_hdr + ip6_ext_header_len (ext_hdr));
 }
 
+always_inline int
+vlib_object_within_buffer_data (vlib_main_t * vm, vlib_buffer_t * b,
+				void *obj, size_t len)
+{
+  u8 *o = obj;
+  if (o < b->data ||
+      o + len > b->data + vlib_buffer_get_default_data_size (vm))
+    return 0;
+  return 1;
+}
 
+/*
+ * find ipv6 extension header within ipv6 header within buffer b
+ *
+ * @param vm
+ * @param b buffer to limit search to
+ * @param ip6_header ipv6 header
+ * @param header_type extension header type to search for
+ * @param[out] prev_ext_header address of header preceding found header
+ */
+always_inline void *
+ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
+		     ip6_header_t * ip6_header, u8 header_type,
+		     ip6_ext_header_t ** prev_ext_header)
+{
+  ip6_ext_header_t *prev = NULL;
+  ip6_ext_header_t *result = NULL;
+  if ((ip6_header)->protocol == header_type)
+    {
+      result = (void *) (ip6_header + 1);
+      if (!vlib_object_within_buffer_data (vm, b, result,
+					   ip6_ext_header_len (result)))
+	{
+	  result = NULL;
+	}
+    }
+  else
+    {
+      result = NULL;
+      prev = (void *) (ip6_header + 1);
+      while (ip6_ext_hdr (prev->next_hdr) && prev->next_hdr != header_type)
+	{
+	  prev = ip6_ext_next_header (prev);
+	  if (!vlib_object_within_buffer_data (vm, b, prev,
+					       ip6_ext_header_len (prev)))
+	    {
+	      prev = NULL;
+	      break;
+	    }
+	}
+      if (prev && (prev->next_hdr == header_type))
+	{
+	  result = ip6_ext_next_header (prev);
+	  if (!vlib_object_within_buffer_data (vm, b, result,
+					       ip6_ext_header_len (result)))
+	    {
+	      result = NULL;
+	    }
+	}
+    }
+  if (prev_ext_header)
+    {
+      *prev_ext_header = prev;
+    }
+  return result;
+}
+
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
   /* Length of this header plus option data in 8 byte units. */

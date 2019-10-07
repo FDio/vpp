@@ -245,9 +245,9 @@ abf_policy_cmd (vlib_main_t * vm,
 		unformat_input_t * main_input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 acl_index, policy_id;
   fib_route_path_t *rpaths = NULL, rpath;
-  u32 is_del;
+  u32 acl_index, policy_id, is_del;
+  dpo_proto_t payload_proto;
   int rv = 0;
 
   is_del = 0;
@@ -269,7 +269,7 @@ abf_policy_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_del = 0;
       else if (unformat (line_input, "via %U",
-			 unformat_fib_route_path, &rpath))
+			 unformat_fib_route_path, &rpath, &payload_proto))
 	vec_add1 (rpaths, rpath);
       else
 	return (clib_error_return (0, "unknown input '%U'",

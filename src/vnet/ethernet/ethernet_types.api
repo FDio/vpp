@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-typedef u8 mac_address[6];
+manual_print typedef u8 mac_address[6];

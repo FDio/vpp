@@ -19,7 +19,7 @@
 #include <vnet/ip/ip6_packet.h>
 
 /**
- * Aggregrate type for a prefix in the IPv6 Link-local table
+ * Aggregate type for a prefix in the IPv6 Link-local table
  */
 typedef struct ip6_ll_prefix_t_
 {

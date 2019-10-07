@@ -37,6 +37,7 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
+#include <vppinfra/lock.h>
 
 #ifndef MMAP_PAGESIZE
 #define MMAP_PAGESIZE (clib_mem_get_page_size())
@@ -104,7 +105,7 @@ ssvm_lock (ssvm_shared_header_t * h, u32 my_pid, u32 tag)
     }
 
   while (clib_atomic_test_and_set (&h->lock))
-    ;
+    CLIB_PAUSE ();
 
   h->owner_pid = my_pid;
   h->recursion_count = 1;
@@ -115,7 +116,7 @@ always_inline void
 ssvm_lock_non_recursive (ssvm_shared_header_t * h, u32 tag)
 {
   while (clib_atomic_test_and_set (&h->lock))
-    ;
+    CLIB_PAUSE ();
 
   h->tag = tag;
 }
@@ -127,8 +128,7 @@ ssvm_unlock (ssvm_shared_header_t * h)
     {
       h->owner_pid = 0;
       h->tag = 0;
-      CLIB_MEMORY_BARRIER ();
-      h->lock = 0;
+      clib_atomic_release (&h->lock);
     }
 }
 
@@ -136,8 +136,7 @@ always_inline void
 ssvm_unlock_non_recursive (ssvm_shared_header_t * h)
 {
   h->tag = 0;
-  CLIB_MEMORY_BARRIER ();
-  h->lock = 0;
+  clib_atomic_release (&h->lock);
 }
 
 static inline void *

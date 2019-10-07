@@ -16,10 +16,9 @@
 #ifndef included_stat_segment_h
 #define included_stat_segment_h
 
-#include <stdatomic.h>
 #include <vlib/vlib.h>
 #include <vppinfra/socket.h>
-#include <vpp-api/client/stat_client.h>
+#include <vpp/stats/stat_segment_shared.h>
 
 typedef enum
 {
@@ -36,6 +35,8 @@ typedef enum
  STAT_COUNTER_NODE_SUSPENDS,
  STAT_COUNTER_INTERFACE_NAMES,
  STAT_COUNTER_NODE_NAMES,
+ STAT_COUNTER_MEM_STATSEG_TOTAL,
+ STAT_COUNTER_MEM_STATSEG_USED,
  STAT_COUNTERS
 } stat_segment_counter_t;
 
@@ -53,19 +54,9 @@ typedef enum
   _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)        \
   _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)  \
   _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
-  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)
-
-typedef struct
-{
-  stat_directory_type_t type;
-  union {
-    uint64_t offset;
-    uint64_t index;
-    uint64_t value;
-  };
-  uint64_t offset_vector;
-  char name[128]; // TODO change this to pointer to "somewhere"
-} stat_segment_directory_entry_t;
+  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
+  _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
+  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
 
 /* Default stat segment 32m */
 #define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
@@ -73,29 +64,10 @@ typedef struct
 /* Shared segment memory layout version */
 #define STAT_SEGMENT_VERSION		1
 
-/*
- * Shared header first in the shared memory segment.
- */
-typedef struct
-{
-  u64 version;
-  atomic_int_fast64_t epoch;
-  atomic_int_fast64_t in_progress;
-  atomic_int_fast64_t directory_offset;
-  atomic_int_fast64_t error_offset;
-  atomic_int_fast64_t stats_offset;
-} stat_segment_shared_header_t;
-
 static inline uint64_t
 stat_segment_offset (void *start, void *data)
 {
   return (char *) data - (char *) start;
-}
-
-static inline void *
-stat_segment_pointer (void *start, uint64_t offset)
-{
-  return ((char *) start + offset);
 }
 
 typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e, u32 i);
@@ -118,6 +90,9 @@ typedef struct
   u8 **interfaces;
   u8 **nodes;
 
+  /* Update interval */
+  f64 update_interval;
+
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;
@@ -135,5 +110,10 @@ extern stat_segment_main_t stat_segment_main;
 
 clib_error_t *
 stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
+clib_error_t *
+stat_segment_register_state_counter(u8 *name, u32 *index);
+clib_error_t *
+stat_segment_deregister_state_counter(u32 index);
+void stat_segment_set_state_counter (u32 index, u64 value);
 
 #endif

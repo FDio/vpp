@@ -177,12 +177,15 @@ class Message(object):
                     p = field_class(field_name=field[1],
                                     field_type=field_type)
                 elif l == 3:
-                    if field[2] == 0:
+                    if field[2] == 0 and field[0] != 'string':
                         raise ParseError(
                             "While parsing message `%s': variable length "
                             "array `%s' doesn't have reference to member "
                             "containing the actual length" % (
                                 name, field[1]))
+                    if field[0] == 'string' and field[2] > 0:
+                        field_type = json_parser.lookup_type_like_id('u8')
+
                     p = field_class(
                         field_name=field[1],
                         field_type=field_type,
@@ -374,19 +377,6 @@ class JsonParser(object):
                     self.unions[union.name] = union
                     self.logger.debug("Parsed union: %s" % union)
                     self.unions_by_json[path].append(union)
-                for name, body in j['aliases'].iteritems():
-                    if name in self.aliases:
-                        progress = progress + 1
-                        continue
-                    if 'length' in body:
-                        array_len = body['length']
-                    else:
-                        array_len = None
-                    t = self.types[body['type']]
-                    alias = self.alias_class(name, t, array_len)
-                    self.aliases[name] = alias
-                    self.logger.debug("Parsed alias: %s" % alias)
-                    self.aliases_by_json[path].append(alias)
                 for t in j['types']:
                     if t[0] in self.types:
                         progress = progress + 1
@@ -405,6 +395,23 @@ class JsonParser(object):
                     self.types[type_.name] = type_
                     self.types_by_json[path].append(type_)
                     self.logger.debug("Parsed type: %s" % type_)
+                for name, body in j['aliases'].iteritems():
+                    if name in self.aliases:
+                        progress = progress + 1
+                        continue
+                    if 'length' in body:
+                        array_len = body['length']
+                    else:
+                        array_len = None
+                    try:
+                        t = self.lookup_type_like_id(body['type'])
+                    except ParseError as e:
+                        exceptions.append(e)
+                        continue
+                    alias = self.alias_class(name, t, array_len)
+                    self.aliases[name] = alias
+                    self.logger.debug("Parsed alias: %s" % alias)
+                    self.aliases_by_json[path].append(alias)
                 if not exceptions:
                     # finished parsing
                     break

@@ -68,7 +68,6 @@ lacp_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from;
   lacp_input_trace_t *t0;
-  uword n_trace = vlib_get_trace_count (vm, node);
 
   from = vlib_frame_vector_args (frame);	/* array of buffer indices */
   n_left_from = frame->n_vectors;	/* number of buffer indices */
@@ -89,12 +88,10 @@ lacp_node_fn (vlib_main_t * vm,
       b0->error = node->errors[error0];
 
       /* If this pkt is traced, snapshoot the data */
-      if (PREDICT_FALSE (n_trace > 0))
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
 	  int len;
-	  vlib_trace_buffer (vm, node, next0, b0,
-			     /* follow_chain */ 0);
-	  vlib_set_trace_count (vm, node, --n_trace);
+
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	  len = (b0->current_length < sizeof (t0->pkt))
 	    ? b0->current_length : sizeof (t0->pkt);

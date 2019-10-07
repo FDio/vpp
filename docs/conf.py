@@ -23,7 +23,7 @@ copyright = u'2018, Linux Foundation'
 author = u'John DeNisco'
 
 # The short X.Y version
-version = u'19.08'
+version = u'master'
 # The full version, including alpha/beta/rc tags
 release = u'01'
 
@@ -41,7 +41,6 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'recommonmark',
-    'sphinx_markdown_tables'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

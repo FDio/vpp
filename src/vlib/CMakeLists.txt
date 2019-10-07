@@ -52,6 +52,7 @@ add_vpp_library(vlib
   drop.c
   error.c
   format.c
+  handoff_trace.c
   i2c.c
   init.c
   linux/pci.c

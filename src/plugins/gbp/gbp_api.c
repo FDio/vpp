@@ -31,58 +31,18 @@
 #include <gbp/gbp_bridge_domain.h>
 #include <gbp/gbp_route_domain.h>
 #include <gbp/gbp_ext_itf.h>
+#include <gbp/gbp_contract.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <gbp/gbp_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <gbp/gbp_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <gbp/gbp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <gbp/gbp_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <gbp/gbp_all_api_h.h>
-#undef vl_api_version
-
+#include <gbp/gbp.api_enum.h>
+#include <gbp/gbp.api_types.h>
+#include <vnet/format_fns.h>
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_gbp_api_msg                                 \
-  _(GBP_ENDPOINT_ADD, gbp_endpoint_add)                     \
-  _(GBP_ENDPOINT_DEL, gbp_endpoint_del)                     \
-  _(GBP_ENDPOINT_DUMP, gbp_endpoint_dump)                   \
-  _(GBP_SUBNET_ADD_DEL, gbp_subnet_add_del)                 \
-  _(GBP_SUBNET_DUMP, gbp_subnet_dump)                       \
-  _(GBP_ENDPOINT_GROUP_ADD, gbp_endpoint_group_add)         \
-  _(GBP_ENDPOINT_GROUP_DEL, gbp_endpoint_group_del)         \
-  _(GBP_ENDPOINT_GROUP_DUMP, gbp_endpoint_group_dump)       \
-  _(GBP_BRIDGE_DOMAIN_ADD, gbp_bridge_domain_add)           \
-  _(GBP_BRIDGE_DOMAIN_DEL, gbp_bridge_domain_del)           \
-  _(GBP_BRIDGE_DOMAIN_DUMP, gbp_bridge_domain_dump)         \
-  _(GBP_ROUTE_DOMAIN_ADD, gbp_route_domain_add)             \
-  _(GBP_ROUTE_DOMAIN_DEL, gbp_route_domain_del)             \
-  _(GBP_ROUTE_DOMAIN_DUMP, gbp_route_domain_dump)           \
-  _(GBP_RECIRC_ADD_DEL, gbp_recirc_add_del)                 \
-  _(GBP_RECIRC_DUMP, gbp_recirc_dump)                       \
-  _(GBP_EXT_ITF_ADD_DEL, gbp_ext_itf_add_del)               \
-  _(GBP_EXT_ITF_DUMP, gbp_ext_itf_dump)                     \
-  _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
-  _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
-  _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)             \
-  _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)             \
-  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#include "gbp_api_print.h"
 
 gbp_main_t gbp_main;
 
@@ -239,13 +199,16 @@ gbp_endpoint_send_details (index_t gei, void *args)
     }
   else
     {
-      mp->endpoint.sw_if_index = ntohl (gef->gef_itf);
+      mp->endpoint.sw_if_index =
+	ntohl (gbp_itf_get_sw_if_index (gef->gef_itf));
     }
   mp->endpoint.sclass = ntohs (ge->ge_fwd.gef_sclass);
   mp->endpoint.n_ips = n_ips;
   mp->endpoint.flags = gbp_endpoint_flags_encode (gef->gef_flags);
   mp->handle = htonl (gei);
-  mp->age = vlib_time_now (vlib_get_main ()) - ge->ge_last_time;
+  mp->age =
+    clib_host_to_net_f64 (vlib_time_now (vlib_get_main ()) -
+			  ge->ge_last_time);
   mac_address_encode (&ge->ge_key.gek_mac, mp->endpoint.mac);
 
   vec_foreach_index (ii, ge->ge_key.gek_ips)
@@ -342,6 +305,7 @@ vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
   int rv = 0;
 
   rv = gbp_bridge_domain_add_and_lock (ntohl (mp->bd.bd_id),
+				       ntohl (mp->bd.rd_id),
 				       gbp_bridge_domain_flags_from_api
 				       (mp->bd.flags),
 				       ntohl (mp->bd.bvi_sw_if_index),
@@ -369,6 +333,7 @@ vl_api_gbp_route_domain_add_t_handler (vl_api_gbp_route_domain_add_t * mp)
   int rv = 0;
 
   rv = gbp_route_domain_add_and_lock (ntohl (mp->rd.rd_id),
+				      ntohs (mp->rd.scope),
 				      ntohl (mp->rd.ip4_table_id),
 				      ntohl (mp->rd.ip6_table_id),
 				      ntohl (mp->rd.ip4_uu_sw_if_index),
@@ -400,6 +365,9 @@ gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t * t)
       return (0);
     case GBP_API_SUBNET_L3_OUT:
       *t = GBP_SUBNET_L3_OUT;
+      return (0);
+    case GBP_API_SUBNET_ANON_L3_OUT:
+      *t = GBP_SUBNET_ANON_L3_OUT;
       return (0);
     case GBP_API_SUBNET_STITCHED_INTERNAL:
       *t = GBP_SUBNET_STITCHED_INTERNAL;
@@ -457,6 +425,9 @@ gub_subnet_type_to_api (gbp_subnet_type_t t)
       break;
     case GBP_SUBNET_L3_OUT:
       a = GBP_API_SUBNET_L3_OUT;
+      break;
+    case GBP_SUBNET_ANON_L3_OUT:
+      a = GBP_API_SUBNET_ANON_L3_OUT;
       break;
     }
 
@@ -559,6 +530,7 @@ static int
 gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
 {
   vl_api_gbp_bridge_domain_details_t *mp;
+  gbp_route_domain_t *gr;
   gbp_walk_ctx_t *ctx;
 
   ctx = args;
@@ -570,10 +542,14 @@ gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_BRIDGE_DOMAIN_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
+  gr = gbp_route_domain_get (gb->gb_rdi);
+
   mp->bd.bd_id = ntohl (gb->gb_bd_id);
+  mp->bd.rd_id = ntohl (gr->grd_id);
   mp->bd.bvi_sw_if_index = ntohl (gb->gb_bvi_sw_if_index);
   mp->bd.uu_fwd_sw_if_index = ntohl (gb->gb_uu_fwd_sw_if_index);
-  mp->bd.bm_flood_sw_if_index = ntohl (gb->gb_bm_flood_sw_if_index);
+  mp->bd.bm_flood_sw_if_index =
+    ntohl (gbp_itf_get_sw_if_index (gb->gb_bm_flood_itf));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -720,7 +696,8 @@ vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
 
   if (mp->is_add)
     rv = gbp_ext_itf_add (sw_if_index,
-			  ntohl (ext_itf->bd_id), ntohl (ext_itf->rd_id));
+			  ntohl (ext_itf->bd_id), ntohl (ext_itf->rd_id),
+			  ntohl (ext_itf->flags));
   else
     rv = gbp_ext_itf_delete (sw_if_index);
 
@@ -744,9 +721,10 @@ gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_EXT_ITF_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
+  mp->ext_itf.flags = ntohl (gx->gx_flags);
   mp->ext_itf.bd_id = ntohl (gbp_bridge_domain_get_bd_id (gx->gx_bd));
   mp->ext_itf.rd_id = ntohl (gbp_route_domain_get_rd_id (gx->gx_rd));
-  mp->ext_itf.sw_if_index = ntohl (gx->gx_itf);
+  mp->ext_itf.sw_if_index = ntohl (gbp_itf_get_sw_if_index (gx->gx_itf));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -921,6 +899,8 @@ gbp_contract_rules_decode (u8 n_rules,
 
       if (0 != rv)
 	{
+	  index_t *gui;
+	  vec_foreach (gui, guis) gbp_rule_free (*gui);
 	  vec_free (guis);
 	  return (rv);
 	}
@@ -961,13 +941,15 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 	  allowed_ethertypes[ii] = mp->contract.allowed_ethertypes[ii];
 	}
 
-      rv = gbp_contract_update (ntohs (mp->contract.sclass),
+      rv = gbp_contract_update (ntohs (mp->contract.scope),
+				ntohs (mp->contract.sclass),
 				ntohs (mp->contract.dclass),
 				ntohl (mp->contract.acl_index),
 				rules, allowed_ethertypes, &stats_index);
     }
   else
-    rv = gbp_contract_delete (ntohs (mp->contract.sclass),
+    rv = gbp_contract_delete (ntohs (mp->contract.scope),
+			      ntohs (mp->contract.sclass),
 			      ntohs (mp->contract.dclass));
 
 out:
@@ -997,6 +979,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
   mp->contract.sclass = ntohs (gbpc->gc_key.gck_src);
   mp->contract.dclass = ntohs (gbpc->gc_key.gck_dst);
   mp->contract.acl_index = ntohl (gbpc->gc_acl_index);
+  mp->contract.scope = ntohs (gbpc->gc_key.gck_scope);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -1137,59 +1120,17 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
   gbp_vxlan_walk (gbp_vxlan_tunnel_send_details, &ctx);
 }
 
-/*
- * gbp_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <gbp/gbp_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc)                                     \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + GBP_MSG_BASE);
-  foreach_vl_msg_name_crc_gbp;
-#undef _
-}
-
-static void
-gbp_api_hookup (vlib_main_t * vm)
-{
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N + GBP_MSG_BASE,          \
-                            #n,                                 \
-                            vl_api_##n##_t_handler,             \
-                            vl_noop_handler,                    \
-                            vl_api_##n##_t_endian,              \
-                            vl_api_##n##_t_print,               \
-                            sizeof(vl_api_##n##_t), 1);
-  foreach_gbp_api_msg;
-#undef _
-}
-
+#include <gbp/gbp.api.c>
 static clib_error_t *
 gbp_init (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
   gbp_main_t *gbpm = &gbp_main;
-  u8 *name = format (0, "gbp_%08x%c", api_version, 0);
 
   gbpm->gbp_acl_user_id = ~0;
 
   /* Ask for a correctly-sized block of API message decode slots */
-  msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
-					VL_MSG_FIRST_AVAILABLE);
-  gbp_api_hookup (vm);
+  msg_id_base = setup_message_id_table ();
 
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (am);
-
-  vec_free (name);
   return (NULL);
 }
 

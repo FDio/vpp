@@ -17,8 +17,10 @@
 #define __GBP_BRIDGE_DOMAIN_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 
 #include <vnet/fib/fib_types.h>
+#include <vnet/l2/l2_bd.h>
 
 /**
  * Bridge Domain Flags
@@ -46,6 +48,12 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_bd_index;
 
   /**
+   * Index of the Route-domain this BD is associated with. This is used as the
+   * 'scope' of the packets for contract matching.
+   */
+  u32 gb_rdi;
+
+  /**
    * Flags conttrolling behaviour
    */
   gbp_bridge_domain_flags_t gb_flags;
@@ -63,7 +71,7 @@ typedef struct gbp_bridge_domain_t_
   /**
    * The BD's interface to sned Broadcast and multicast packets
    */
-  u32 gb_bm_flood_sw_if_index;
+  gbp_itf_hdl_t gb_bm_flood_itf;
 
   /**
    * The index of the BD's VNI interface on which packets from
@@ -78,7 +86,15 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_locks;
 } gbp_bridge_domain_t;
 
+extern void gbp_bridge_domain_itf_add (index_t gbdi,
+				       u32 sw_if_index,
+				       l2_bd_port_type_t type);
+extern void gbp_bridge_domain_itf_del (index_t gbdi,
+				       u32 sw_if_index,
+				       l2_bd_port_type_t type);
+
 extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
+					   u32 rd_id,
 					   gbp_bridge_domain_flags_t flags,
 					   u32 bvi_sw_if_index,
 					   u32 uu_fwd_sw_if_index,
@@ -119,6 +135,14 @@ gbp_bridge_domain_get_by_bd_index (u32 bd_index)
 {
   return (gbp_bridge_domain_get
 	  (gbp_bridge_domain_db.gbd_by_bd_index[bd_index]));
+}
+
+extern gbp_scope_t *gbp_scope_by_bd_index;
+
+always_inline gbp_scope_t
+gbp_bridge_domain_get_scope (u32 bd_index)
+{
+  return (gbp_scope_by_bd_index[bd_index]);
 }
 
 #endif

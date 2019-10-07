@@ -31,6 +31,7 @@
 #include <linux/rtnetlink.h>
 
 #include <vlib/vlib.h>
+#include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -57,38 +58,6 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
-static clib_error_t *
-call_tap_read_ready (clib_file_t * uf)
-{
-  /* nothing to do */
-  return 0;
-}
-
-static void
-tap_delete_if_cp (u32 * sw_if_index)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  tap_delete_if (vm, *sw_if_index);
-}
-
-/*
- * Tap clean-up routine:
- * Linux side of tap interface can be deleted i.e. tap is
- * attached to container and if someone will delete this
- * container, will also removes tap interface. While VPP
- * will have other side of tap. This function will RPC
- * main thread to call the tap_delete_if to cleanup tap.
- */
-static clib_error_t *
-call_tap_error_ready (clib_file_t * uf)
-{
-  vl_api_rpc_call_main_thread (tap_delete_if_cp, (u8 *) & uf->private_data,
-			       sizeof (uf->private_data));
-  return 0;
-}
-
 static int
 open_netns_fd (char *netns)
 {
@@ -112,6 +81,7 @@ open_netns_fd (char *netns)
 void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
   tap_main_t *tm = &tap_main;
@@ -123,9 +93,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
-  clib_file_t t = { 0 };
   clib_error_t *err = 0;
   int fd = -1;
+  char *host_if_name = 0;
 
   if (args->id != ~0)
     {
@@ -208,7 +178,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
   if (!args->host_if_name)
-    args->host_if_name = (u8 *) ifr.ifr_ifrn.ifrn_name;
+    host_if_name = ifr.ifr_ifrn.ifrn_name;
+  else
+    host_if_name = (char *) args->host_if_name;
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -239,7 +211,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  goto error;
 	}
       args->error = vnet_netlink_set_link_netns (vif->ifindex, fd,
-						 (char *) args->host_if_name);
+						 host_if_name);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -252,21 +224,20 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 						args->host_namespace);
 	  goto error;
 	}
-      if ((vif->ifindex = if_nametoindex ((char *) args->host_if_name)) == 0)
+      if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	  args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
-						args->host_if_name);
+						host_if_name);
 	  goto error;
 	}
     }
   else
     {
-      if (args->host_if_name)
+      if (host_if_name)
 	{
 	  args->error = vnet_netlink_set_link_name (vif->ifindex,
-						    (char *)
-						    args->host_if_name);
+						    host_if_name);
 	  if (args->error)
 	    {
 	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -361,12 +332,38 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
+  if (args->host_mtu_set)
+    {
+      args->error =
+	vnet_netlink_set_link_mtu (vif->ifindex, args->host_mtu_size);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+  else if (tm->host_mtu_size != 0)
+    {
+      args->error =
+	vnet_netlink_set_link_mtu (vif->ifindex, tm->host_mtu_size);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+      args->host_mtu_set = 1;
+      args->host_mtu_size = tm->host_mtu_size;
+    }
+
   /* Set vhost memory table */
   i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
   vhost_mem = clib_mem_alloc (i);
   clib_memset (vhost_mem, 0, i);
   vhost_mem->nregions = 1;
-  vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
+  vhost_mem->regions[0].memory_size = vpm->max_size;
+  vhost_mem->regions[0].guest_phys_addr = vpm->base_addr;
+  vhost_mem->regions[0].userspace_addr =
+    vhost_mem->regions[0].guest_phys_addr;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
   if ((args->error =
@@ -390,12 +387,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
 
-  vif->host_if_name = args->host_if_name;
-  args->host_if_name = 0;
-  vif->net_ns = args->host_namespace;
-  args->host_namespace = 0;
-  vif->host_bridge = args->host_bridge;
-  args->host_bridge = 0;
+  vif->host_if_name = format (0, "%s%c", host_if_name, 0);
+  vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
+  vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
+  vif->host_mtu_size = args->host_mtu_size;
   clib_memcpy (vif->host_mac_addr, args->host_mac_addr, 6);
   vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
   vif->host_ip6_prefix_len = args->host_ip6_prefix_len;
@@ -420,6 +415,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
   args->sw_if_index = vif->sw_if_index;
+  args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   if (args->tap_flags & TAP_FLAG_GSO)
@@ -438,14 +434,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   vif->cxq_vring = NULL;
-
-  t.read_function = call_tap_read_ready;
-  t.error_function = call_tap_error_ready;
-  t.file_descriptor = vif->tap_fd;
-  t.private_data = vif->sw_if_index;
-  t.description = format (0, "tap sw_if_index %u  fd: %u",
-			  vif->sw_if_index, vif->tap_fd);
-  vif->tap_file_index = clib_file_add (&file_main, &t);
 
   goto done;
 
@@ -466,6 +454,11 @@ error:
 							       TX_QUEUE (i));
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
+
+  vec_free (vif->host_if_name);
+  vec_free (vif->net_ns);
+  vec_free (vif->host_bridge);
+
   clib_memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
@@ -488,7 +481,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
 
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
@@ -501,7 +494,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     vnm->interface_main.gso_interface_count--;
 
-  clib_file_del_by_index (&file_main, vif->tap_file_index);
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
@@ -522,6 +514,10 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
 
+  vec_free (vif->host_if_name);
+  vec_free (vif->net_ns);
+  vec_free (vif->host_bridge);
+
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
@@ -535,8 +531,10 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  vnet_hw_interface_t *hw;
   clib_error_t *err = 0;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -627,6 +625,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     if (vif->host_ip6_prefix_len)
       clib_memcpy(tapid->host_ip6_addr, &vif->host_ip6_addr, 16);
     tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
+    tapid->host_mtu_size = vif->host_mtu_size;
   );
   /* *INDENT-ON* */
 
@@ -636,6 +635,26 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
 }
 
 static clib_error_t *
+tap_mtu_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  tap_main_t *tm = &tap_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "host-mtu %d", &tm->host_mtu_size))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+/* tap { host-mtu <size> } configuration. */
+VLIB_CONFIG_FUNCTION (tap_mtu_config, "tap");
+
+static clib_error_t *
 tap_init (vlib_main_t * vm)
 {
   tap_main_t *tm = &tap_main;
@@ -643,6 +662,8 @@ tap_init (vlib_main_t * vm)
 
   tm->log_default = vlib_log_register_class ("tap", 0);
   vlib_log_debug (tm->log_default, "initialized");
+
+  tm->host_mtu_size = 0;
 
   return error;
 }

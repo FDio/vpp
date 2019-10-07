@@ -111,8 +111,8 @@ vlib_dump_frame_ownership (void)
 		     nm->nodes[this_node_runtime->node_index]->name,
 		     index - first_nf_index,
 		     nm->nodes[owned_runtime->node_index]->name);
-	    fformat (stderr, "  nf index %d nf->frame_index %d\n",
-		     nf - vm->node_main.next_frames, nf->frame_index);
+	    fformat (stderr, "  nf index %d nf->frame %p\n",
+		     nf - vm->node_main.next_frames, nf->frame);
 	  }
       }
   }

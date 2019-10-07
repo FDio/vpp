@@ -88,6 +88,9 @@ do {							\
 #define STATIC_ASSERT_SIZEOF(d, s) \
   STATIC_ASSERT (sizeof (d) == s, "Size of " #d " must be " # s " bytes")
 
+#define STATIC_ASSERT_SIZEOF_ELT(d, e, s) \
+  STATIC_ASSERT (sizeof (((d *)0)->e) == s, "Size of " #d "." #e " must be " # s " bytes")
+
 #define STATIC_ASSERT_OFFSET_OF(s, e, o) \
   STATIC_ASSERT (STRUCT_OFFSET_OF(s,e) == o, "Offset of " #s "." #e " must be " # o)
 

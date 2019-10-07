@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import struct
 import collections
-import sys
 import logging
-from . import vpp_format
-import ipaddress
 import socket
+import struct
+import sys
 
 if sys.version_info <= (3, 4):
-    from aenum import IntEnum
+    from aenum import IntEnum  # noqa: F401
 else:
-    from enum import IntEnum
+    from enum import IntEnum  # noqa: F401
 
 if sys.version_info <= (3, 6):
-    from aenum import IntFlag
+    from aenum import IntFlag  # noqa: F401
 else:
-    from enum import IntFlag
 
+    from enum import IntFlag  # noqa: F401
+
+from . import vpp_format  # noqa: E402
 
 #
 # Set log-level in application by doing e.g.:
@@ -70,12 +69,15 @@ def conversion_unpacker(data, field_type):
 class BaseTypes(object):
     def __init__(self, type, elements=0, options=None):
         base_types = {'u8': '>B',
+                      'i8': '>b',
                       'string': '>s',
                       'u16': '>H',
+                      'i16': '>h',
                       'u32': '>I',
                       'i32': '>i',
                       'u64': '>Q',
-                      'f64': '>d',
+                      'i64': '>q',
+                      'f64': '=d',
                       'bool': '>?',
                       'header': '>HI'}
 
@@ -103,31 +105,46 @@ class BaseTypes(object):
 
 
 class String(object):
-    def __init__(self, options):
-        self.name = 'string'
+    def __init__(self, name, num, options):
+        self.name = name
+        self.num = num
         self.size = 1
         self.length_field_packer = BaseTypes('u32')
-        self.limit = options['limit'] if 'limit' in options else None
-
-    def pack(self, list, kwargs=None):
-        if not list:
-            return self.length_field_packer.pack(0) + b""
-        if self.limit and len(list) > self.limit:
+        self.limit = options['limit'] if 'limit' in options else num
+        self.fixed = True if num else False
+        if self.fixed and not self.limit:
             raise VPPSerializerValueError(
                 "Invalid argument length for: {}, {} maximum {}".
                 format(list, len(list), self.limit))
 
-        return self.length_field_packer.pack(len(list)) + list.encode('utf8')
+    def pack(self, list, kwargs=None):
+        if not list:
+            if self.fixed:
+                return b"\x00" * self.limit
+            return self.length_field_packer.pack(0) + b""
+        if self.limit and len(list) > self.limit - 1:
+            raise VPPSerializerValueError(
+                "Invalid argument length for: {}, {} maximum {}".
+                format(list, len(list), self.limit - 1))
+        if self.fixed:
+            return list.encode('ascii').ljust(self.limit, b'\x00')
+        return self.length_field_packer.pack(len(list)) + list.encode('ascii')
 
     def unpack(self, data, offset=0, result=None, ntc=False):
+        if self.fixed:
+            p = BaseTypes('u8', self.num)
+            s = p.unpack(data, offset)
+            s2 = s[0].split(b'\0', 1)[0]
+            return (s2.decode('ascii'), self.num)
+
         length, length_field_size = self.length_field_packer.unpack(data,
                                                                     offset)
         if length == 0:
-            return b'', 0
+            return '', 0
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
-        x2 = x.split(b'\0', 1)[0]
-        return (x2.decode('utf8'), size + length_field_size)
+        #x2 = x.split(b'\0', 1)[0]
+        return (x.decode('ascii', errors='replace'), size + length_field_size)
 
 
 types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
@@ -179,10 +196,6 @@ class FixedList_u8(object):
                 'Invalid array length for "{}" got {}'
                 ' expected {}'
                 .format(self.name, len(data[offset:]), self.num))
-        if self.field_type == 'string':
-            s = self.packer.unpack(data, offset)
-            s2 = s[0].split(b'\0', 1)[0]
-            return (s2.decode('utf-8'), self.num)
         return self.packer.unpack(data, offset)
 
 
@@ -328,8 +341,11 @@ class VPPEnumType(object):
     def __getattr__(self, name):
         return self.enum[name]
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
+
+    if sys.version[0] == '2':
+        __nonzero__ = __bool__
 
     def pack(self, data, kwargs=None):
         return types[self.enumtype].pack(data)
@@ -398,7 +414,7 @@ class VPPTypeAlias(object):
         self.name = name
         t = vpp_get_type(msgdef['type'])
         if not t:
-            raise ValueError()
+            raise ValueError('No such type: {}'.format(msgdef['type']))
         if 'length' in msgdef:
             if msgdef['length'] == 0:
                 raise ValueError()
@@ -413,6 +429,7 @@ class VPPTypeAlias(object):
             self.size = t.size
 
         types[name] = self
+        self.toplevelconversion = False
 
     def __call__(self, args):
         self.options = args
@@ -429,8 +446,13 @@ class VPPTypeAlias(object):
         return self.packer.pack(data, kwargs)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
+        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+            # Disable type conversion for dependent types
+            ntc = True
+            self.toplevelconversion = True
         t, size = self.packer.unpack(data, offset, result, ntc=ntc)
-        if not ntc:
+        if self.toplevelconversion:
+            self.toplevelconversion = False
             return conversion_unpacker(t, self.name), size
         return t, size
 
@@ -468,10 +490,17 @@ class VPPType(object):
             if fieldlen == 3:  # list
                 list_elements = f[2]
                 if list_elements == 0:
-                    p = VLAList_legacy(f_name, f_type)
+                    if f_type == 'string':
+                        p = String(f_name, 0, self.options)
+                    else:
+                        p = VLAList_legacy(f_name, f_type)
                     self.packers.append(p)
-                elif f_type == 'u8' or f_type == 'string':
+                elif f_type == 'u8':
                     p = FixedList_u8(f_name, f_type, list_elements)
+                    self.packers.append(p)
+                    size += p.size
+                elif f_type == 'string':
+                    p = String(f_name, list_elements, self.options)
                     self.packers.append(p)
                     size += p.size
                 else:
@@ -490,6 +519,7 @@ class VPPType(object):
         self.size = size
         self.tuple = collections.namedtuple(name, self.fields, rename=True)
         types[name] = self
+        self.toplevelconversion = False
 
     def __call__(self, args):
         self.options = args
@@ -528,6 +558,11 @@ class VPPType(object):
         # Return a list of arguments
         result = []
         total = 0
+        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+            # Disable type conversion for dependent types
+            ntc = True
+            self.toplevelconversion = True
+
         for p in self.packers:
             x, size = p.unpack(data, offset, result, ntc)
             if type(x) is tuple and len(x) == 1:
@@ -536,7 +571,9 @@ class VPPType(object):
             offset += size
             total += size
         t = self.tuple._make(result)
-        if not ntc:
+
+        if self.toplevelconversion:
+            self.toplevelconversion = False
             t = conversion_unpacker(t, self.name)
         return t, total
 

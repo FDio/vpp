@@ -28,6 +28,8 @@
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_attached_export.h>
 #include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_entry_delegate.h>
+#include <vnet/fib/fib_entry_track.h>
 
 /*
  * Array of strings/names for the FIB sources
@@ -203,14 +205,13 @@ format_fib_entry (u8 * s, va_list * args)
 
         if (level >= FIB_ENTRY_FORMAT_DETAIL2)
         {
-            fib_entry_delegate_type_t fdt;
-            fib_entry_delegate_t *fed;
+            index_t *fedi;
 
             s = format (s, " Delegates:\n");
-            FOR_EACH_DELEGATE(fib_entry, fdt, fed,
+            vec_foreach(fedi, fib_entry->fe_delegates)
             {
-                s = format(s, "  %U\n", format_fib_entry_deletegate, fed);
-            });
+                s = format(s, "  %U\n", format_fib_entry_delegate, *fedi);
+            }
         }
     }
 
@@ -464,8 +465,8 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
     }
     else
     {
-        fed = fib_entry_delegate_get(fib_entry,
-                                     fib_entry_chain_type_to_delegate_type(fct));
+        fed = fib_entry_delegate_find(fib_entry,
+                                      fib_entry_chain_type_to_delegate_type(fct));
 
         if (NULL == fed)
         {
@@ -906,13 +907,11 @@ void
 fib_entry_path_add (fib_node_index_t fib_entry_index,
 		    fib_source_t source,
 		    fib_entry_flag_t flags,
-		    const fib_route_path_t *rpath)
+		    const fib_route_path_t *rpaths)
 {
     fib_source_t best_source;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
-
-    ASSERT(1 == vec_len(rpath));
 
     fib_entry = fib_entry_get(fib_entry_index);
     ASSERT(NULL != fib_entry);
@@ -920,7 +919,7 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
     
-    fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpath);
+    fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpaths);
 
     fib_entry_source_change(fib_entry, best_source, source);
 
@@ -1003,15 +1002,13 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
 fib_entry_src_flag_t
 fib_entry_path_remove (fib_node_index_t fib_entry_index,
 		       fib_source_t source,
-		       const fib_route_path_t *rpath)
+		       const fib_route_path_t *rpaths)
 {
     fib_entry_src_flag_t sflag;
     fib_source_t best_source;
     fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
-
-    ASSERT(1 == vec_len(rpath));
 
     fib_entry = fib_entry_get(fib_entry_index);
     ASSERT(NULL != fib_entry);
@@ -1020,7 +1017,7 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
     best_source = fib_entry_src_get_source(bsrc);
     bflags = fib_entry_src_get_flags(bsrc);
 
-    sflag = fib_entry_src_action_path_remove(fib_entry, source, rpath);
+    sflag = fib_entry_src_action_path_remove(fib_entry, source, rpaths);
 
     FIB_ENTRY_DBG(fib_entry, "path remove:%U", format_fib_source, source);
 
@@ -1490,7 +1487,7 @@ fib_entry_is_resolved (fib_node_index_t fib_entry_index)
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    fed = fib_entry_delegate_get(fib_entry, FIB_ENTRY_DELEGATE_BFD);
+    fed = fib_entry_delegate_find(fib_entry, FIB_ENTRY_DELEGATE_BFD);
 
     if (NULL == fed)
     {
@@ -1646,13 +1643,17 @@ fib_entry_module_init (void)
 {
     fib_node_register_type(FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
     fib_entry_logger = vlib_log_register_class("fib", "entry");
+
+    fib_entry_track_module_init();
 }
 
-void
-fib_entry_encode (fib_node_index_t fib_entry_index,
-		  fib_route_path_encode_t **api_rpaths)
+fib_route_path_t *
+fib_entry_encode (fib_node_index_t fib_entry_index)
 {
     fib_path_ext_list_t *ext_list;
+    fib_path_encode_ctx_t ctx = {
+        .rpaths = NULL,
+    };
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
 
@@ -1670,8 +1671,10 @@ fib_entry_encode (fib_node_index_t fib_entry_index,
         fib_path_list_walk_w_ext(fib_entry->fe_parent,
                                  ext_list,
                                  fib_path_encode,
-                                 api_rpaths);
+                                 &ctx);
     }
+
+    return (ctx.rpaths);
 }
 
 const fib_prefix_t *

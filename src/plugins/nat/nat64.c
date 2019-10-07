@@ -306,7 +306,7 @@ nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
     {
       if (nat64_db_init (db, bib_buckets, bib_memory_size, st_buckets,
                          st_memory_size, nat64_free_out_addr_and_port))
-	nat_log_err ("NAT64 DB init failed");
+	nat_elog_err ("NAT64 DB init failed");
     }
   /* *INDENT-ON* */
 }
@@ -606,7 +606,7 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
 	  foreach_snat_protocol
 #undef _
 	default:
-	  nat_log_notice ("unknown protocol");
+	  nat_elog_notice ("unknown protocol");
 	  return;
 	}
       break;
@@ -1120,7 +1120,7 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
 	  ip6->as_u32[3] = ip4->as_u32;
 	  break;
 	default:
-	  nat_log_notice ("invalid prefix length");
+	  nat_elog_notice ("invalid prefix length");
 	  break;
 	}
     }
@@ -1193,7 +1193,7 @@ nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
       ip4->as_u32 = ip6->as_u32[3];
       break;
     default:
-      nat_log_notice ("invalid prefix length");
+      nat_elog_notice ("invalid prefix length");
       break;
     }
 }
@@ -1278,7 +1278,7 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	case NAT64_CLEANER_RESCHEDULE:
 	  break;
 	default:
-	  nat_log_notice ("unknown event %u", event_type);
+	  nat_elog_notice_X1 ("unknown event %d", "i4", event_type);
 	  break;
 	}
 

@@ -19,6 +19,13 @@
 #include <vnet/vnet.h>
 #include <vnet/session/transport_types.h>
 
+typedef struct _transport_options_t
+{
+  transport_tx_fn_type_t tx_type;
+  transport_service_type_t service_type;
+  u8 half_open_has_fifos;
+} transport_options_t;
+
 /*
  * Transport protocol virtual function table
  */
@@ -32,6 +39,7 @@ typedef struct _transport_proto_vft
   u32 (*stop_listen) (u32 conn_index);
   int (*connect) (transport_endpoint_cfg_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
+  void (*reset) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
   clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
 
@@ -45,7 +53,7 @@ typedef struct _transport_proto_vft
   u32 (*tx_fifo_offset) (transport_connection_t * tc);
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
-  int (*custom_tx) (void *session);
+  int (*custom_tx) (void *session, u32 max_burst_size);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*
@@ -74,8 +82,7 @@ typedef struct _transport_proto_vft
   /*
    * Properties
    */
-  transport_tx_fn_type_t tx_type;
-  transport_service_type_t service_type;
+  transport_options_t transport_options;
 } transport_proto_vft_t;
 /* *INDENT-ON* */
 
@@ -90,6 +97,7 @@ do {								\
 
 int transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep);
 void transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index);
+void transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index);
 u32 transport_start_listen (transport_proto_t tp, u32 session_index,
 			    transport_endpoint_t * tep);
 u32 transport_stop_listen (transport_proto_t tp, u32 conn_index);
@@ -121,9 +129,9 @@ transport_get_half_open (transport_proto_t tp, u32 conn_index)
 }
 
 static inline int
-transport_custom_tx (transport_proto_t tp, void *s)
+transport_custom_tx (transport_proto_t tp, void *s, u32 max_burst_size)
 {
-  return tp_vfts[tp].custom_tx (s);
+  return tp_vfts[tp].custom_tx (s, max_burst_size);
 }
 
 static inline int
@@ -193,8 +201,32 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
 u32 transport_connection_snd_space (transport_connection_t * tc,
 				    u64 time_now, u16 mss);
 
+/**
+ * Get tx pacer max burst
+ *
+ * @param tc		transport connection
+ * @param time_now	current cpu time
+ * @return		max burst for connection
+ */
 u32 transport_connection_tx_pacer_burst (transport_connection_t * tc,
 					 u64 time_now);
+
+/**
+ * Get tx pacer current rate
+ *
+ * @param tc		transport connection
+ * @return		rate for connection in bytes/s
+ */
+u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
+
+/**
+ * Reset tx pacer bucket
+ *
+ * @param tc		transport connection
+ * @param time_now	current cpu time
+ */
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+						 u64 time_now);
 
 /**
  * Initialize period for tx pacers
@@ -216,16 +248,15 @@ transport_connection_is_tx_paced (transport_connection_t * tc)
 u8 *format_transport_pacer (u8 * s, va_list * args);
 
 /**
- * Update tx byte stats for transport connection
+ * Update tx bytes for paced transport connection
  *
- * If tx pacing is enabled, this also updates pacer bucket to account for the
+ * If tx pacing is enabled, this update pacer bucket to account for the
  * amount of bytes that have been sent.
  *
  * @param tc		transport connection
- * @param pkts		packets recently sent
  * @param bytes		bytes recently sent
  */
-void transport_connection_update_tx_stats (transport_connection_t * tc,
+void transport_connection_update_tx_bytes (transport_connection_t * tc,
 					   u32 bytes);
 
 void

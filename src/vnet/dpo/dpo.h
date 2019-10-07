@@ -124,6 +124,7 @@ typedef enum dpo_type_t_ {
     DPO_BIER_DISP_TABLE,
     DPO_BIER_DISP_ENTRY,
     DPO_IP6_LL,
+    DPO_PW_CW,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -159,6 +160,7 @@ typedef enum dpo_type_t_ {
     [DPO_BIER_DISP_ENTRY] = "bier-disp-entry",	\
     [DPO_BIER_DISP_TABLE] = "bier-disp-table",	\
     [DPO_IP6_LL] = "ip6-link-local",	\
+    [DPO_PW_CW] = "PW-CW",	\
 }
 
 /**
@@ -332,7 +334,7 @@ extern void dpo_stack(dpo_type_t child_type,
  *  VLIB graph arcs are created, from the child_node passed.
  *
  * @param child_node
- *  The VLIB grpah node index to create an arc from to the parent
+ *  The VLIB graph node index to create an arc from to the parent
  *
  * @param dpo
  *  This is the DPO to stack and set.

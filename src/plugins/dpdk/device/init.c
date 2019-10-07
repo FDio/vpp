@@ -207,6 +207,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   int i;
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_sw_interface_t *sw;
@@ -266,7 +267,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   RTE_ETH_FOREACH_DEV(i)
     {
       u8 addr[6];
-      u8 vlan_strip = 0;
+      int vlan_off;
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
       struct rte_eth_link l;
@@ -462,6 +463,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |=
+		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
+		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		}
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
@@ -575,7 +584,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  addr[1] = 0xfe;
 	}
       else
-	rte_eth_macaddr_get (i, (struct ether_addr *) addr);
+	rte_eth_macaddr_get (i, (void *) addr);
 
       if (xd->tx_q_used < tm->n_vlib_mains)
 	dpdk_device_lock_init (xd);
@@ -739,6 +748,23 @@ dpdk_lib_init (dpdk_main_t * dm)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 
+    if (devconf->tso == DPDK_DEVICE_TSO_ON)
+    {
+      if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
+      {
+        /*tcp_udp checksum must be enabled*/
+        if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+        {
+          hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+          vnm->interface_main.gso_interface_count++;
+          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
+                                   DEV_TX_OFFLOAD_UDP_TSO;
+        }
+        else
+          return clib_error_return (0, "TSO: TCP/UDP checksum offload must be enabled");
+      }
+    }
+
       dpdk_device_setup (xd);
 
       if (vec_len (xd->errors))
@@ -778,22 +804,26 @@ dpdk_lib_init (dpdk_main_t * dm)
        * VLAN stripping: default to VLAN strip disabled, unless specified
        * otherwise in the startup config.
        */
-      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
-	vlan_strip = 1;
 
-      if (vlan_strip)
+      vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	{
-	  int vlan_off;
-	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-          if (vlan_off)
-	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	  else
-	    xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) == 0)
+	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
 	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+      else
+	{
+	  if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
+	    {
+	      vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
+	      if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
+		dpdk_log_warn ("set VLAN offload failed\n");
+	    }
+	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	}
 
       if (hi)
@@ -911,7 +941,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* all Intel QAT devices VFs */
     else if (d->vendor_id == 0x8086 && d->device_class == PCI_CLASS_PROCESSOR_CO &&
-        (d->device_id == 0x0443 || d->device_id == 0x37c9 || d->device_id == 0x19e3))
+        (d->device_id == 0x0443 || d->device_id == 0x18a1 || d->device_id == 0x19e3 ||
+        d->device_id == 0x37c9 || d->device_id == 0x6f55))
       ;
     /* Cisco VIC */
     else if (d->vendor_id == 0x1137 &&
@@ -1019,6 +1050,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
   devconf->hqos_enabled = 0;
+  devconf->tso = DPDK_DEVICE_TSO_DEFAULT;
 #if 0
   dpdk_device_config_hqos_default (&devconf->hqos);
 #endif
@@ -1066,6 +1098,14 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
       else if (unformat (input, "hqos"))
 	{
 	  devconf->hqos_enabled = 1;
+	}
+      else if (unformat (input, "tso on"))
+	{
+	  devconf->tso = DPDK_DEVICE_TSO_ON;
+	}
+      else if (unformat (input, "tso off"))
+	{
+	  devconf->tso = DPDK_DEVICE_TSO_OFF;
 	}
       else
 	{
@@ -1348,6 +1388,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       vec_insert (conf->eal_init_args, 2, 3);
       conf->eal_init_args[3] = (u8 *) "-n";
       tmp = format (0, "%d", conf->nchannels);
+      vec_terminate_c_string (tmp);
       conf->eal_init_args[4] = tmp;
     }
 
@@ -1372,6 +1413,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 		conf->default_devconf.vlan_strip_offload > 0)
 		devconf->vlan_strip_offload =
 			conf->default_devconf.vlan_strip_offload;
+
+	/* copy tso config from default device */
+	_(tso)
 
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
@@ -1437,6 +1481,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   for (i = 1; i < vec_len (conf->eal_init_args); i++)
     conf->eal_init_args_str = format (conf->eal_init_args_str, "%s ",
 				      conf->eal_init_args[i]);
+
+  vec_terminate_c_string (conf->eal_init_args_str);
 
   dpdk_log_warn ("EAL init args: %s", conf->eal_init_args_str);
   ret = rte_eal_init (vec_len (conf->eal_init_args),

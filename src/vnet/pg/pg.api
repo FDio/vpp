@@ -18,18 +18,22 @@
     This file defines packet-generator interface APIs.
 */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /** \brief PacketGenerator create interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param interface_id - interface index
+    @param enable_gso - enable gso on this interface
+    @param gso_size - gso size on this interface
 */
 define pg_create_interface
 {
   u32 client_index;
   u32 context;
   u32 interface_id;
+  u8 gso_enabled;
+  u32 gso_size;
 };
 
 /** \brief PacketGenerator create interface response

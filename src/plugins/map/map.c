@@ -16,6 +16,7 @@
  */
 
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vppinfra/crc32.h>
@@ -60,15 +61,14 @@ map_main_t map_main;
 
 
 /*
- * Save usre-assigned MAP domain names ("tags") in a vector of
+ * Save user-assigned MAP domain names ("tags") in a vector of
  * extra domain information.
  */
 static void
-map_save_extras (u32 map_domain_index, char *tag)
+map_save_extras (u32 map_domain_index, u8 * tag)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
-  u32 len;
 
   if (map_domain_index == ~0)
     return;
@@ -80,9 +80,7 @@ map_save_extras (u32 map_domain_index, char *tag)
   if (!tag)
     return;
 
-  len = strlen (tag) + 1;
-  de->tag = clib_mem_alloc (len);
-  clib_memcpy (de->tag, tag, len);
+  de->tag = vec_dup (tag);
 }
 
 
@@ -91,7 +89,7 @@ map_free_extras (u32 map_domain_index)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
-  char *tag;
+  u8 *tag;
 
   if (map_domain_index == ~0)
     return;
@@ -101,7 +99,7 @@ map_free_extras (u32 map_domain_index)
   if (!tag)
     return;
 
-  clib_mem_free (tag);
+  vec_free (tag);
   de->tag = 0;
 }
 
@@ -116,7 +114,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
 		   u8 ea_bits_len,
 		   u8 psid_offset,
 		   u8 psid_length,
-		   u32 * map_domain_index, u16 mtu, u8 flags, char *tag)
+		   u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag)
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
@@ -388,10 +386,8 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
     .fp_addr = *addr,
   };
 
-  pr->fei = fib_table_entry_special_add (0,	// default fib
-					 &pfx,
-					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-  pr->sibling = fib_entry_child_add (pr->fei, FIB_NODE_TYPE_MAP_E, proto);
+  pr->fei = fib_entry_track (0,	// default fib
+			     &pfx, FIB_NODE_TYPE_MAP_E, proto, &pr->sibling);
   map_stack (pr);
 }
 
@@ -399,18 +395,10 @@ static void
 map_fib_unresolve (map_main_pre_resolved_t * pr,
 		   fib_protocol_t proto, u8 len, const ip46_address_t * addr)
 {
-  fib_prefix_t pfx = {
-    .fp_proto = proto,
-    .fp_len = len,
-    .fp_addr = *addr,
-  };
-
   if (pr->fei != FIB_NODE_INDEX_INVALID)
     {
-      fib_entry_child_remove (pr->fei, pr->sibling);
+      fib_entry_untrack (pr->fei, pr->sibling);
 
-      fib_table_entry_special_remove (0,	// default fib
-				      &pfx, FIB_SOURCE_RR);
       dpo_reset (&pr->dpo);
 
       pr->fei = FIB_NODE_INDEX_INVALID;
@@ -566,7 +554,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
-      else if (unformat (line_input, "tag %s", &tag))
+      else if (unformat (line_input, "tag %v", &tag))
 	;
       else
 	{
@@ -585,7 +573,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
   map_create_domain (&ip4_prefix, ip4_prefix_len,
 		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
 		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
-		     mtu, flags, (char *) tag);
+		     mtu, flags, tag);
 
 done:
   unformat_free (line_input);
@@ -938,7 +926,7 @@ format_map_domain (u8 * s, va_list * args)
   de = vec_elt_at_index (mm->domain_extras, map_domain_index);
 
   s = format (s,
-	      "[%d] tag {%s} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
+	      "[%d] tag {%v} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
 	      "ea-bits-len %d psid-offset %d psid-len %d mtu %d %s",
 	      map_domain_index, de->tag,
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
@@ -975,24 +963,6 @@ format_map_domain (u8 * s, va_list * args)
 		      &dst);
 	}
     }
-  return s;
-}
-
-static u8 *
-format_map_ip4_reass (u8 * s, va_list * args)
-{
-  map_main_t *mm = &map_main;
-  map_ip4_reass_t *r = va_arg (*args, map_ip4_reass_t *);
-  map_ip4_reass_key_t *k = &r->key;
-  f64 now = vlib_time_now (mm->vlib_main);
-  f64 lifetime = (((f64) mm->ip4_reass_conf_lifetime_ms) / 1000);
-  f64 dt = (r->ts + lifetime > now) ? (r->ts + lifetime - now) : -1;
-  s = format (s,
-	      "ip4-reass src=%U  dst=%U  protocol=%d  identifier=%d  port=%d  lifetime=%.3lf\n",
-	      format_ip4_address, &k->src.as_u8, format_ip4_address,
-	      &k->dst.as_u8, k->protocol,
-	      clib_net_to_host_u16 (k->fragment_id),
-	      (r->port >= 0) ? clib_net_to_host_u16 (r->port) : -1, dt);
   return s;
 }
 
@@ -1076,12 +1046,8 @@ show_map_fragments_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
   map_main_t *mm = &map_main;
-  map_ip4_reass_t *f4;
   map_ip6_reass_t *f6;
 
-  /* *INDENT-OFF* */
-  pool_foreach(f4, mm->ip4_reass_pool, ({vlib_cli_output (vm, "%U", format_map_ip4_reass, f4);}));
-  /* *INDENT-ON* */
   /* *INDENT-OFF* */
   pool_foreach(f6, mm->ip6_reass_pool, ({vlib_cli_output (vm, "%U", format_map_ip6_reass, f6);}));
   /* *INDENT-ON* */
@@ -1098,7 +1064,7 @@ map_error_counter_get (u32 node_index, map_error_t map_error)
   vlib_node_t *n = vlib_get_node (vm, node_index);
   u32 ci;
 
-  ci = vlib_error_get_code (e);
+  ci = vlib_error_get_code (&vm->node_main, e);
   ASSERT (ci < n->n_errors);
   ci += n->error_heap_index;
 
@@ -1209,7 +1175,7 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 lifetime = ~0;
-  f64 ht_ratio = (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1);
+  f64 ht_ratio = (MAP_IP6_REASS_CONF_HT_RATIO_MAX + 1);
   u32 pool_size = ~0;
   u64 buffers = ~(0ull);
   u8 ip4 = 0, ip6 = 0;
@@ -1244,19 +1210,8 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (ip4)
     {
-      if (pool_size != ~0 && pool_size > MAP_IP4_REASS_CONF_POOL_SIZE_MAX)
-	return clib_error_return (0, "invalid ip4-reass pool-size ( > %d)",
-				  MAP_IP4_REASS_CONF_POOL_SIZE_MAX);
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1)
-	  && ht_ratio > MAP_IP4_REASS_CONF_HT_RATIO_MAX)
-	return clib_error_return (0, "invalid ip4-reass ht-ratio ( > %d)",
-				  MAP_IP4_REASS_CONF_HT_RATIO_MAX);
-      if (lifetime != ~0 && lifetime > MAP_IP4_REASS_CONF_LIFETIME_MAX)
-	return clib_error_return (0, "invalid ip4-reass lifetime ( > %d)",
-				  MAP_IP4_REASS_CONF_LIFETIME_MAX);
-      if (buffers != ~(0ull) && buffers > MAP_IP4_REASS_CONF_BUFFERS_MAX)
-	return clib_error_return (0, "invalid ip4-reass buffers ( > %ld)",
-				  MAP_IP4_REASS_CONF_BUFFERS_MAX);
+      return clib_error_return (0,
+				"ip4 reassembly no longer supported in map");
     }
 
   if (ip6)
@@ -1264,8 +1219,7 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (pool_size != ~0 && pool_size > MAP_IP6_REASS_CONF_POOL_SIZE_MAX)
 	return clib_error_return (0, "invalid ip6-reass pool-size ( > %d)",
 				  MAP_IP6_REASS_CONF_POOL_SIZE_MAX);
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1)
-	  && ht_ratio > MAP_IP6_REASS_CONF_HT_RATIO_MAX)
+      if (ht_ratio > MAP_IP6_REASS_CONF_HT_RATIO_MAX)
 	return clib_error_return (0, "invalid ip6-reass ht-log2len ( > %d)",
 				  MAP_IP6_REASS_CONF_HT_RATIO_MAX);
       if (lifetime != ~0 && lifetime > MAP_IP6_REASS_CONF_LIFETIME_MAX)
@@ -1377,168 +1331,6 @@ format_map_trace (u8 * s, va_list * args)
 	    clib_net_to_host_u16 (port));
 
   return s;
-}
-
-static_always_inline map_ip4_reass_t *
-map_ip4_reass_lookup (map_ip4_reass_key_t * k, u32 bucket, f64 now)
-{
-  map_main_t *mm = &map_main;
-  u32 ri = mm->ip4_reass_hash_table[bucket];
-  while (ri != MAP_REASS_INDEX_NONE)
-    {
-      map_ip4_reass_t *r = pool_elt_at_index (mm->ip4_reass_pool, ri);
-      if (r->key.as_u64[0] == k->as_u64[0] &&
-	  r->key.as_u64[1] == k->as_u64[1] &&
-	  now < r->ts + (((f64) mm->ip4_reass_conf_lifetime_ms) / 1000))
-	{
-	  return r;
-	}
-      ri = r->bucket_next;
-    }
-  return NULL;
-}
-
-#define map_ip4_reass_pool_index(r) (r - map_main.ip4_reass_pool)
-
-void
-map_ip4_reass_free (map_ip4_reass_t * r, u32 ** pi_to_drop)
-{
-  map_main_t *mm = &map_main;
-  map_ip4_reass_get_fragments (r, pi_to_drop);
-
-  // Unlink in hash bucket
-  map_ip4_reass_t *r2 = NULL;
-  u32 r2i = mm->ip4_reass_hash_table[r->bucket];
-  while (r2i != map_ip4_reass_pool_index (r))
-    {
-      ASSERT (r2i != MAP_REASS_INDEX_NONE);
-      r2 = pool_elt_at_index (mm->ip4_reass_pool, r2i);
-      r2i = r2->bucket_next;
-    }
-  if (r2)
-    {
-      r2->bucket_next = r->bucket_next;
-    }
-  else
-    {
-      mm->ip4_reass_hash_table[r->bucket] = r->bucket_next;
-    }
-
-  // Unlink in list
-  if (r->fifo_next == map_ip4_reass_pool_index (r))
-    {
-      mm->ip4_reass_fifo_last = MAP_REASS_INDEX_NONE;
-    }
-  else
-    {
-      if (mm->ip4_reass_fifo_last == map_ip4_reass_pool_index (r))
-	mm->ip4_reass_fifo_last = r->fifo_prev;
-      pool_elt_at_index (mm->ip4_reass_pool, r->fifo_prev)->fifo_next =
-	r->fifo_next;
-      pool_elt_at_index (mm->ip4_reass_pool, r->fifo_next)->fifo_prev =
-	r->fifo_prev;
-    }
-
-  pool_put (mm->ip4_reass_pool, r);
-  mm->ip4_reass_allocated--;
-}
-
-map_ip4_reass_t *
-map_ip4_reass_get (u32 src, u32 dst, u16 fragment_id,
-		   u8 protocol, u32 ** pi_to_drop)
-{
-  map_ip4_reass_t *r;
-  map_main_t *mm = &map_main;
-  map_ip4_reass_key_t k = {.src.data_u32 = src,
-    .dst.data_u32 = dst,
-    .fragment_id = fragment_id,
-    .protocol = protocol
-  };
-
-  u32 h = 0;
-#ifdef clib_crc32c_uses_intrinsics
-  h = clib_crc32c ((u8 *) k.as_u32, 16);
-#else
-  u64 tmp = k.as_u32[0] ^ k.as_u32[1] ^ k.as_u32[2] ^ k.as_u32[3];
-  h = clib_xxhash (tmp);
-#endif
-  h = h >> (32 - mm->ip4_reass_ht_log2len);
-
-  f64 now = vlib_time_now (mm->vlib_main);
-
-  //Cache garbage collection
-  while (mm->ip4_reass_fifo_last != MAP_REASS_INDEX_NONE)
-    {
-      map_ip4_reass_t *last =
-	pool_elt_at_index (mm->ip4_reass_pool, mm->ip4_reass_fifo_last);
-      if (last->ts + (((f64) mm->ip4_reass_conf_lifetime_ms) / 1000) < now)
-	map_ip4_reass_free (last, pi_to_drop);
-      else
-	break;
-    }
-
-  if ((r = map_ip4_reass_lookup (&k, h, now)))
-    return r;
-
-  if (mm->ip4_reass_allocated >= mm->ip4_reass_conf_pool_size)
-    return NULL;
-
-  pool_get (mm->ip4_reass_pool, r);
-  mm->ip4_reass_allocated++;
-  int i;
-  for (i = 0; i < MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY; i++)
-    r->fragments[i] = ~0;
-
-  u32 ri = map_ip4_reass_pool_index (r);
-
-  //Link in new bucket
-  r->bucket = h;
-  r->bucket_next = mm->ip4_reass_hash_table[h];
-  mm->ip4_reass_hash_table[h] = ri;
-
-  //Link in fifo
-  if (mm->ip4_reass_fifo_last != MAP_REASS_INDEX_NONE)
-    {
-      r->fifo_next =
-	pool_elt_at_index (mm->ip4_reass_pool,
-			   mm->ip4_reass_fifo_last)->fifo_next;
-      r->fifo_prev = mm->ip4_reass_fifo_last;
-      pool_elt_at_index (mm->ip4_reass_pool, r->fifo_prev)->fifo_next = ri;
-      pool_elt_at_index (mm->ip4_reass_pool, r->fifo_next)->fifo_prev = ri;
-    }
-  else
-    {
-      r->fifo_next = r->fifo_prev = ri;
-      mm->ip4_reass_fifo_last = ri;
-    }
-
-  //Set other fields
-  r->ts = now;
-  r->key = k;
-  r->port = -1;
-#ifdef MAP_IP4_REASS_COUNT_BYTES
-  r->expected_total = 0xffff;
-  r->forwarded = 0;
-#endif
-
-  return r;
-}
-
-int
-map_ip4_reass_add_fragment (map_ip4_reass_t * r, u32 pi)
-{
-  if (map_main.ip4_reass_buffered_counter >= map_main.ip4_reass_conf_buffers)
-    return -1;
-
-  int i;
-  for (i = 0; i < MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY; i++)
-    if (r->fragments[i] == ~0)
-      {
-	r->fragments[i] = pi;
-	map_main.ip4_reass_buffered_counter++;
-	return 0;
-      }
-  return -1;
 }
 
 static_always_inline map_ip6_reass_t *
@@ -1766,44 +1558,6 @@ map_ip6_reass_add_fragment (map_ip6_reass_t * r, u32 pi,
   return 0;
 }
 
-void
-map_ip4_reass_reinit (u32 * trashed_reass, u32 * dropped_packets)
-{
-  map_main_t *mm = &map_main;
-  int i;
-
-  if (dropped_packets)
-    *dropped_packets = mm->ip4_reass_buffered_counter;
-  if (trashed_reass)
-    *trashed_reass = mm->ip4_reass_allocated;
-  if (mm->ip4_reass_fifo_last != MAP_REASS_INDEX_NONE)
-    {
-      u16 ri = mm->ip4_reass_fifo_last;
-      do
-	{
-	  map_ip4_reass_t *r = pool_elt_at_index (mm->ip4_reass_pool, ri);
-	  for (i = 0; i < MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY; i++)
-	    if (r->fragments[i] != ~0)
-	      map_ip4_drop_pi (r->fragments[i]);
-
-	  ri = r->fifo_next;
-	  pool_put (mm->ip4_reass_pool, r);
-	}
-      while (ri != mm->ip4_reass_fifo_last);
-    }
-
-  vec_free (mm->ip4_reass_hash_table);
-  vec_resize (mm->ip4_reass_hash_table, 1 << mm->ip4_reass_ht_log2len);
-  for (i = 0; i < (1 << mm->ip4_reass_ht_log2len); i++)
-    mm->ip4_reass_hash_table[i] = MAP_REASS_INDEX_NONE;
-  pool_free (mm->ip4_reass_pool);
-  pool_alloc (mm->ip4_reass_pool, mm->ip4_reass_conf_pool_size);
-
-  mm->ip4_reass_allocated = 0;
-  mm->ip4_reass_fifo_last = MAP_REASS_INDEX_NONE;
-  mm->ip4_reass_buffered_counter = 0;
-}
-
 u8
 map_get_ht_log2len (f32 ht_ratio, u16 pool_size)
 {
@@ -1813,52 +1567,6 @@ map_get_ht_log2len (f32 ht_ratio, u16 pool_size)
     if ((1 << i) >= desired_size)
       return i;
   return 4;
-}
-
-int
-map_ip4_reass_conf_ht_ratio (f32 ht_ratio, u32 * trashed_reass,
-			     u32 * dropped_packets)
-{
-  map_main_t *mm = &map_main;
-  if (ht_ratio > MAP_IP4_REASS_CONF_HT_RATIO_MAX)
-    return -1;
-
-  map_ip4_reass_lock ();
-  mm->ip4_reass_conf_ht_ratio = ht_ratio;
-  mm->ip4_reass_ht_log2len =
-    map_get_ht_log2len (ht_ratio, mm->ip4_reass_conf_pool_size);
-  map_ip4_reass_reinit (trashed_reass, dropped_packets);
-  map_ip4_reass_unlock ();
-  return 0;
-}
-
-int
-map_ip4_reass_conf_pool_size (u16 pool_size, u32 * trashed_reass,
-			      u32 * dropped_packets)
-{
-  map_main_t *mm = &map_main;
-  if (pool_size > MAP_IP4_REASS_CONF_POOL_SIZE_MAX)
-    return -1;
-
-  map_ip4_reass_lock ();
-  mm->ip4_reass_conf_pool_size = pool_size;
-  map_ip4_reass_reinit (trashed_reass, dropped_packets);
-  map_ip4_reass_unlock ();
-  return 0;
-}
-
-int
-map_ip4_reass_conf_lifetime (u16 lifetime_ms)
-{
-  map_main.ip4_reass_conf_lifetime_ms = lifetime_ms;
-  return 0;
-}
-
-int
-map_ip4_reass_conf_buffers (u32 buffers)
-{
-  map_main.ip4_reass_conf_buffers = buffers;
-  return 0;
 }
 
 void
@@ -1892,7 +1600,7 @@ map_ip6_reass_reinit (u32 * trashed_reass, u32 * dropped_packets)
   for (i = 0; i < (1 << mm->ip6_reass_ht_log2len); i++)
     mm->ip6_reass_hash_table[i] = MAP_REASS_INDEX_NONE;
   pool_free (mm->ip6_reass_pool);
-  pool_alloc (mm->ip6_reass_pool, mm->ip4_reass_conf_pool_size);
+  pool_alloc (mm->ip6_reass_pool, mm->ip6_reass_conf_pool_size);
 
   mm->ip6_reass_allocated = 0;
   mm->ip6_reass_buffered_counter = 0;
@@ -2274,28 +1982,10 @@ map_init (vlib_main_t * vm)
   vlib_zero_simple_counter (&mm->icmp_relayed, 0);
   mm->icmp_relayed.stat_segment_name = "/map/icmp-relayed";
 
-  /* IP4 virtual reassembly */
-  mm->ip4_reass_hash_table = 0;
-  mm->ip4_reass_pool = 0;
-  mm->ip4_reass_lock =
-    clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  *mm->ip4_reass_lock = 0;
-  mm->ip4_reass_conf_ht_ratio = MAP_IP4_REASS_HT_RATIO_DEFAULT;
-  mm->ip4_reass_conf_lifetime_ms = MAP_IP4_REASS_LIFETIME_DEFAULT;
-  mm->ip4_reass_conf_pool_size = MAP_IP4_REASS_POOL_SIZE_DEFAULT;
-  mm->ip4_reass_conf_buffers = MAP_IP4_REASS_BUFFERS_DEFAULT;
-  mm->ip4_reass_ht_log2len =
-    map_get_ht_log2len (mm->ip4_reass_conf_ht_ratio,
-			mm->ip4_reass_conf_pool_size);
-  mm->ip4_reass_fifo_last = MAP_REASS_INDEX_NONE;
-  map_ip4_reass_reinit (NULL, NULL);
-
   /* IP6 virtual reassembly */
   mm->ip6_reass_hash_table = 0;
   mm->ip6_reass_pool = 0;
-  mm->ip6_reass_lock =
-    clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  *mm->ip6_reass_lock = 0;
+  clib_spinlock_init (&mm->ip6_reass_lock);
   mm->ip6_reass_conf_ht_ratio = MAP_IP6_REASS_HT_RATIO_DEFAULT;
   mm->ip6_reass_conf_lifetime_ms = MAP_IP6_REASS_LIFETIME_DEFAULT;
   mm->ip6_reass_conf_pool_size = MAP_IP6_REASS_POOL_SIZE_DEFAULT;
