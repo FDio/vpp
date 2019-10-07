@@ -29,6 +29,8 @@
 _(RX, "good packets received")					  \
 _(DISABLED, "ipsec packets received on disabled interface")       \
 _(NO_TUNNEL, "no matching tunnel")                                \
+_(NAT_KEEPALIVE, "NAT Keepalive")                                 \
+_(TOO_SHORT, "Too Short")                                         \
 _(SPI_0, "SPI 0")
 
 static char *ipsec_if_input_error_strings[] = {
@@ -48,7 +50,12 @@ typedef enum
 
 typedef struct
 {
-  u32 spi;
+  union
+  {
+    ipsec4_tunnel_key_t key4;
+    ipsec6_tunnel_key_t key6;
+  };
+  u8 is_ip6;
   u32 seq;
 } ipsec_if_input_trace_t;
 
@@ -59,7 +66,12 @@ format_ipsec_if_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipsec_if_input_trace_t *t = va_arg (*args, ipsec_if_input_trace_t *);
 
-  s = format (s, "IPSec: spi %u seq %u", t->spi, t->seq);
+  if (t->is_ip6)
+    s = format (s, "IPSec: %U seq %u",
+		format_ipsec6_tunnel_key, &t->key6, t->seq);
+  else
+    s = format (s, "IPSec: %U seq %u",
+		format_ipsec4_tunnel_key, &t->key4, t->seq);
   return s;
 }
 
@@ -74,7 +86,8 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
       b->error = node->errors[IPSEC_IF_INPUT_ERROR_SPI_0];
       b->punt_reason =
 	ipsec_punt_reason[(ip4->protocol == IP_PROTOCOL_UDP ?
-			   IPSEC_PUNT_IP4_SPI_UDP_0 : IPSEC_PUNT_IP4_SPI_0)];
+			   IPSEC_PUNT_IP4_SPI_UDP_0 :
+			   IPSEC_PUNT_IP4_NO_SUCH_TUNNEL)];
     }
   else
     {
@@ -90,16 +103,9 @@ ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
 			vlib_buffer_t * b,
 			const esp_header_t * esp, u16 offset)
 {
-  if (PREDICT_FALSE (0 == esp->spi))
-    {
-      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
-      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_SPI_0];
-    }
-  else
-    {
-      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
-      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
-    }
+  b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+  b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
+
   vlib_buffer_advance (b, -offset);
   return (IPSEC_INPUT_NEXT_PUNT);
 }
@@ -155,6 +161,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp_header_t *esp0, *esp1;
       u32 len0, len1;
       u16 buf_adv0, buf_adv1;
+      u16 buf_rewind0, buf_rewind1;
       u32 tid0, tid1;
       ipsec_tunnel_if_t *t0, *t1;
       ipsec4_tunnel_key_t key40, key41;
@@ -191,11 +198,12 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
 				  sizeof (udp_header_t));
 	      buf_adv0 = 0;
+	      buf_rewind0 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
 	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
-	      buf_adv0 = ip4_header_bytes (ip40);
+	      buf_rewind0 = buf_adv0 = ip4_header_bytes (ip40);
 	    }
 	  /* NAT UDP port 4500 case, don't advance any more */
 	  if (ip41->protocol == IP_PROTOCOL_UDP)
@@ -204,11 +212,12 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41) +
 				  sizeof (udp_header_t));
 	      buf_adv1 = 0;
+	      buf_rewind1 = ip4_header_bytes (ip41) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
 	      esp1 = (esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41));
-	      buf_adv1 = ip4_header_bytes (ip41);
+	      buf_rewind1 = buf_adv1 = ip4_header_bytes (ip41);
 	    }
 	}
 
@@ -217,6 +226,19 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
       len1 = vlib_buffer_length_in_chain (vm, b[1]);
+
+      /* If the packet is too short to contain an SPI, then maybe
+       * it's a keep alive */
+      if (len0 < sizeof (esp_header_t))
+	{
+	  if (esp0->spi_bytes[0] == 0xff)
+	    b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NAT_KEEPALIVE];
+	  else
+	    b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_TOO_SHORT];
+
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  goto pkt1;
+	}
 
       if (is_ip6)
 	{
@@ -248,7 +270,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else			/* !is_ip6 */
 	{
-	  key40.remote_ip = ip40->src_address.as_u32;
+	  key40.remote_ip = ip40->src_address;
 	  key40.spi = esp0->spi;
 
 	  if (key40.as_u64 == last_key4.as_u64)
@@ -268,7 +290,8 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[0] =
-		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40, buf_adv0);
+		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40,
+					    buf_rewind0);
 		  n_no_tunnel++;
 		  goto pkt1;
 		}
@@ -314,6 +337,18 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
     pkt1:
+
+      if (len1 < sizeof (esp_header_t))
+	{
+	  if (esp0->spi_bytes[0] == 0xff)
+	    b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_NAT_KEEPALIVE];
+	  else
+	    b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_TOO_SHORT];
+
+	  next[1] = IPSEC_INPUT_NEXT_DROP;
+	  goto trace1;
+	}
+
       if (is_ip6)
 	{
 	  key61.remote_ip = ip61->src_address;
@@ -344,7 +379,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else			/* !is_ip6 */
 	{
-	  key41.remote_ip = ip41->src_address.as_u32;
+	  key41.remote_ip = ip41->src_address;
 	  key41.spi = esp1->spi;
 
 	  if (key41.as_u64 == last_key4.as_u64)
@@ -364,7 +399,8 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[1] =
-		    ipsec_ip4_if_no_tunnel (node, b[1], esp1, ip41, buf_adv1);
+		    ipsec_ip4_if_no_tunnel (node, b[1], esp1, ip41,
+					    buf_rewind1);
 		  n_no_tunnel++;
 		  goto trace1;
 		}
@@ -416,14 +452,22 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	      tr->spi = clib_host_to_net_u32 (esp0->spi);
+	      if (is_ip6)
+		clib_memcpy (&tr->key6, &key60, sizeof (tr->key6));
+	      else
+		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
+	      tr->is_ip6 = is_ip6;
 	      tr->seq = clib_host_to_net_u32 (esp0->seq);
 	    }
 	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[1], sizeof (*tr));
-	      tr->spi = clib_host_to_net_u32 (esp1->spi);
+	      if (is_ip6)
+		clib_memcpy (&tr->key6, &key61, sizeof (tr->key6));
+	      else
+		clib_memcpy (&tr->key4, &key41, sizeof (tr->key4));
+	      tr->is_ip6 = is_ip6;
 	      tr->seq = clib_host_to_net_u32 (esp1->seq);
 	    }
 	}
@@ -478,6 +522,17 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_advance (b[0], buf_adv0);
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
+      if (len0 < sizeof (esp_header_t))
+	{
+	  if (esp0->spi_bytes[0] == 0xff)
+	    b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NAT_KEEPALIVE];
+	  else
+	    b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_TOO_SHORT];
+
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  goto trace00;
+	}
+
       if (is_ip6)
 	{
 	  key60.remote_ip = ip60->src_address;
@@ -508,7 +563,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else			/* !is_ip6 */
 	{
-	  key40.remote_ip = ip40->src_address.as_u32;
+	  key40.remote_ip = ip40->src_address;
 	  key40.spi = esp0->spi;
 
 	  if (key40.as_u64 == last_key4.as_u64)
@@ -581,7 +636,11 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	      tr->spi = clib_host_to_net_u32 (esp0->spi);
+	      if (is_ip6)
+		clib_memcpy (&tr->key6, &key60, sizeof (tr->key6));
+	      else
+		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
+	      tr->is_ip6 = is_ip6;
 	      tr->seq = clib_host_to_net_u32 (esp0->seq);
 	    }
 	}

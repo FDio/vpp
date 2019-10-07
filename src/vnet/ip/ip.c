@@ -235,6 +235,7 @@ ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask)
     }
   else
     {
+      mask->as_u64[0] = 0xffffffffffffffffL;
       mask->as_u64[1] =
 	clib_host_to_net_u64 (0xffffffffffffffffL << (128 - pref_len));
     }
@@ -292,6 +293,23 @@ format_ip_address_family (u8 * s, va_list * args)
     }
 
   return (format (s, "unknown"));
+}
+
+u8 *
+format_ip_dscp (u8 * s, va_list * va)
+{
+  ip_dscp_t dscp = va_arg (*va, u32);	// int promotion of u8
+
+  switch (dscp)
+    {
+#define _(n,v)                                                  \
+    case IP_DSCP_##v:                                           \
+      return (format (s, "%s", #v));
+      foreach_ip_dscp
+#undef _
+    }
+
+  return (format (s, "unknon"));
 }
 
 /*

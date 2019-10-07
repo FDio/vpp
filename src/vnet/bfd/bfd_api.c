@@ -28,6 +28,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/bfd/bfd_main.h>
 #include <vnet/bfd/bfd_api.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -67,19 +68,9 @@ pub_sub_handler (bfd_events, BFD_EVENTS);
 
 #define BFD_UDP_API_PARAM_COMMON_CODE                                         \
   ip46_address_t local_addr;                                                  \
-  clib_memset (&local_addr, 0, sizeof (local_addr));                               \
   ip46_address_t peer_addr;                                                   \
-  clib_memset (&peer_addr, 0, sizeof (peer_addr));                                 \
-  if (mp->is_ipv6)                                                            \
-    {                                                                         \
-      clib_memcpy_fast (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6)); \
-      clib_memcpy_fast (&peer_addr.ip6, mp->peer_addr, sizeof (peer_addr.ip6));    \
-    }                                                                         \
-  else                                                                        \
-    {                                                                         \
-      clib_memcpy_fast (&local_addr.ip4, mp->local_addr, sizeof (local_addr.ip4)); \
-      clib_memcpy_fast (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));    \
-    }
+  ip_address_decode(&mp->local_addr, &local_addr);                             \
+  ip_address_decode(&mp->peer_addr, &peer_addr);
 
 #define BFD_UDP_API_PARAM_FROM_MP(mp) \
   clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
@@ -154,15 +145,14 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_DETAILS);
   mp->context = context;
-  mp->state = bs->local_state;
+  mp->state = clib_host_to_net_u32 (bs->local_state);
   bfd_udp_session_t *bus = &bs->udp;
   bfd_udp_key_t *key = &bus->key;
   mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
-  mp->is_ipv6 = !(ip46_address_is_ip4 (&key->local_addr));
   if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
       (bs->auth.is_delayed && bs->auth.next_key))
     {
-      mp->is_authenticated = 1;
+      mp->is_authenticated = true;
     }
   if (bs->auth.is_delayed && bs->auth.next_key)
     {
@@ -174,20 +164,8 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
       mp->bfd_key_id = bs->auth.curr_bfd_key_id;
       mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
     }
-  if (mp->is_ipv6)
-    {
-      clib_memcpy_fast (mp->local_addr, &key->local_addr,
-			sizeof (key->local_addr));
-      clib_memcpy_fast (mp->peer_addr, &key->peer_addr,
-			sizeof (key->peer_addr));
-    }
-  else
-    {
-      clib_memcpy_fast (mp->local_addr, key->local_addr.ip4.data,
-			sizeof (key->local_addr.ip4.data));
-      clib_memcpy_fast (mp->peer_addr, key->peer_addr.ip4.data,
-			sizeof (key->peer_addr.ip4.data));
-    }
+  ip_address_encode (&key->local_addr, IP46_TYPE_ANY, &mp->local_addr);
+  ip_address_encode (&key->peer_addr, IP46_TYPE_ANY, &mp->peer_addr);
 
   mp->required_min_rx =
     clib_host_to_net_u32 (bs->config_required_min_rx_usec);
@@ -248,7 +226,8 @@ vl_api_bfd_udp_session_set_flags_t_handler (vl_api_bfd_udp_session_set_flags_t
   BFD_UDP_API_PARAM_COMMON_CODE;
 
   rv = bfd_udp_session_set_flags (BFD_UDP_API_PARAM_FROM_MP (mp),
-				  mp->admin_up_down);
+				  clib_net_to_host_u32 (mp->flags) &
+				  IF_STATUS_API_FLAG_ADMIN_UP);
 
   REPLY_MACRO (VL_API_BFD_UDP_SESSION_SET_FLAGS_REPLY);
 }
@@ -383,32 +362,32 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
     rmp->sw_if_index = ntohl (sw_if_index);
     if (is_set)
       {
-        rmp->is_set = 1;
+        rmp->is_set = true;
         rmp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
         if (have_usable_ip4)
           {
-            rmp->have_usable_ip4 = 1;
-            clib_memcpy_fast (rmp->ip4_addr, &ip4, sizeof (ip4));
+            rmp->have_usable_ip4 = true;
+	    ip4_address_encode(&ip4, rmp->ip4_addr);
           }
         else
           {
-            rmp->have_usable_ip4 = 0;
+            rmp->have_usable_ip4 = false;
           }
         if (have_usable_ip6)
           {
-            rmp->have_usable_ip6 = 1;
-            clib_memcpy_fast (rmp->ip6_addr, &ip6, sizeof (ip6));
+            rmp->have_usable_ip6 = true;
+	    ip6_address_encode(&ip6, rmp->ip6_addr);
           }
         else
           {
-            rmp->have_usable_ip6 = 0;
+            rmp->have_usable_ip6 = false;
           }
       }
     else
       {
-        rmp->is_set = 0;
-        rmp->have_usable_ip4 = 0;
-        rmp->have_usable_ip6 = 0;
+        rmp->is_set = false;
+        rmp->have_usable_ip4 = false;
+        rmp->have_usable_ip6 = false;
       }
   }))
   /* *INDENT-ON* */

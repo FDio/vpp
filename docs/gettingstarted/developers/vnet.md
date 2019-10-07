@@ -469,3 +469,315 @@ metadata changes, header checksum changes, and so forth.
 This should be of significant value when developing new vpp graph
 nodes. If new code mispositions b->current_data, it will be completely
 obvious from looking at the dispatch trace in wireshark.
+
+## pcap rx, tx, and drop tracing
+
+vpp also supports rx, tx, and drop packet capture in pcap format,
+through the "pcap trace" debug CLI command.
+
+This command is used to start or stop a packet capture, or show the
+status of packet capture. Each of "pcap trace rx", "pcap trace tx",
+and "pcap trace drop" is implemented.  Supply one or more of "rx",
+"tx", and "drop" to enable multiple simultaneous capture types.
+
+These commands have the following optional parameters:
+
+- <b>rx</b> - trace received packets.
+
+- <b>tx</b> - trace transmitted packets.
+
+- <b>drop</b> - trace dropped packets.
+
+- <b>max _nnnn_</b> - file size, number of packet captures. Once
+  <nnnn> packets have been received, the trace buffer buffer is flushed
+  to the indicated file. Defaults to 1000. Can only be updated if packet
+  capture is off.
+
+- <b>max-bytes-per-pkt _nnnn_</b> - maximum number of bytes to trace
+  on a per-paket basis. Must be >32 and less than 9000. Default value:
+  512.
+
+- <b>filter</b> - Use the pcap rx / tx / drop trace filter, which must
+  be configured. Use <b>classify filter pcap...</b> to configure the
+  filter. The filter will only be executed if the per-interface or
+  any-interface tests fail.
+
+- <b>intfc _interface_ | _any_</b> - Used to specify a given interface,
+  or use '<em>any</em>' to run packet capture on all interfaces.
+  '<em>any</em>' is the default if not provided. Settings from a previous
+  packet capture are preserved, so '<em>any</em>' can be used to reset
+  the interface setting.
+
+- <b>file _filename_</b> - Used to specify the output filename. The
+  file will be placed in the '<em>/tmp</em>' directory.  If _filename_
+  already exists, file will be overwritten. If no filename is
+  provided, '<em>/tmp/rx.pcap or tx.pcap</em>' will be used, depending
+  on capture direction. Can only be updated when pcap capture is off.
+
+- <b>status</b> - Displays the current status and configured
+  attributes associated with a packet capture. If packet capture is in
+  progress, '<em>status</em>' also will return the number of packets
+  currently in the buffer. Any additional attributes entered on
+  command line with a '<em>status</em>' request will be ignored.
+
+- <b>filter</b> - Capture packets which match the current packet
+  trace filter set. See next section. Configure the capture filter
+  first.
+
+## packet trace capture filtering
+
+The "classify filter pcap | <interface-name> " debug CLI command
+constructs an arbitrary set of packet classifier tables for use with
+"pcap rx | tx | drop trace," and with the vpp packet tracer on a
+per-interrface basis.
+
+Packets which match a rule in the classifier table chain will be
+traced. The tables are automatically ordered so that matches in the
+most specific table are tried first.
+
+It's reasonably likely that folks will configure a single table with
+one or two matches. As a result, we configure 8 hash buckets and 128K
+of match rule space by default. One can override the defaults by
+specifiying "buckets <nnn>" and "memory-size <xxx>" as desired.
+
+To build up complex filter chains, repeatedly issue the classify
+filter debug CLI command. Each command must specify the desired mask
+and match values. If a classifier table with a suitable mask already
+exists, the CLI command adds a match rule to the existing table.  If
+not, the CLI command add a new table and the indicated mask rule
+
+### Configure a simple pcap classify filter
+
+```
+    classify filter pcap mask l3 ip4 src match l3 ip4 src 192.168.1.11"
+    pcap rx trace on max 100 filter
+```
+
+### Configure a simple interface packet-tracer filter
+
+```
+    classify filter GigabitEthernet3/0/0 mask l3 ip4 src match l3 ip4 src 192.168.1.11"
+    [device-driver debug CLI TBD]
+```
+
+### Configure another fairly simple pcap classify filter
+
+```
+   classify filter pcap mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10
+   pcap tx trace on max 100 filter
+```
+
+### Clear all current classifier filters
+
+```
+    classify filter del
+```
+
+### To inspect the classifier tables
+
+```
+   show classify table [verbose]
+```
+
+The verbose form displays all of the match rules, with hit-counters.
+
+### Terse description of the "mask <xxx>" syntax:
+
+```
+    l2 src dst proto tag1 tag2 ignore-tag1 ignore-tag2 cos1 cos2 dot1q dot1ad
+    l3 ip4 <ip4-mask> ip6 <ip6-mask>
+    <ip4-mask> version hdr_length src[/width] dst[/width]
+               tos length fragment_id ttl protocol checksum
+    <ip6-mask> version traffic-class flow-label src dst proto
+               payload_length hop_limit protocol
+    l4 tcp <tcp-mask> udp <udp_mask> src_port dst_port
+    <tcp-mask> src dst  # ports
+    <udp-mask> src_port dst_port
+```
+
+To construct **matches**, add the values to match after the indicated
+keywords in the mask syntax. For example: "... mask l3 ip4 src" ->
+"... match l3 ip4 src 192.168.1.11"
+
+## VPP Packet Generator
+
+We use the VPP packet generator to inject packets into the forwarding
+graph. The packet generator can replay pcap traces, and generate packets
+out of whole cloth at respectably high performance.
+
+The VPP pg enables quite a variety of use-cases, ranging from functional
+testing of new data-plane nodes to regression testing to performance
+tuning.
+
+## PG setup scripts
+
+PG setup scripts describe traffic in detail, and leverage vpp debug
+CLI mechanisms. It's reasonably unusual to construct a pg setup script
+which doesn't include a certain amount of interface and FIB configuration.
+
+For example:
+
+```
+    loop create
+    set int ip address loop0 192.168.1.1/24
+    set int state loop0 up
+
+    packet-generator new {
+        name pg0
+        limit 100
+        rate 1e6
+        size 300-300
+        interface loop0
+        node ethernet-input
+        data { IP4: 1.2.3 -> 4.5.6
+               UDP: 192.168.1.10 - 192.168.1.254 -> 192.168.2.10
+               UDP: 1234 -> 2345
+               incrementing 286
+        }
+    }
+```
+
+A packet generator stream definition includes two major sections:
+- Stream Parameter Setup
+- Packet Data
+
+### Stream Parameter Setup
+
+Given the example above, let's look at how to set up stream
+parameters:
+
+- **name pg0** - Name of the stream, in this case "pg0"
+
+- **limit 1000** - Number of packets to send when the stream is
+enabled. "limit 0" means send packets continuously.
+
+- **maxframe \<nnn\>** - Maximum frame size. Handy for injecting
+multiple frames no larger than \<nnn\>. Useful for checking dual /
+quad loop codes
+
+- **rate 1e6** - Packet injection rate, in this case 1 MPPS. When not
+specified, the packet generator injects packets as fast as possible
+
+- **size 300-300** - Packet size range, in this case send 300-byte packets
+
+- **interface loop0** - Packets appear as if they were received on the
+specified interface. This datum is used in multiple ways: to select
+graph arc feature configuration, to select IP FIBs.  Configure
+features e.g. on loop0 to exercise those features.
+
+- **tx-interface \<name\>** - Packets will be transmitted on the
+indicated interface. Typically required only when injecting packets
+into post-IP-rewrite graph nodes.
+
+- **pcap \<filename\>** - Replay packets from the indicated pcap
+capture file. "make test" makes extensive use of this feature:
+generate packets using scapy, save them in a .pcap file, then inject
+them into the vpp graph via a vpp pg "pcap \<filename\>" stream
+definition
+
+- **worker \<nn\>** - Generate packets for the stream using the
+indicated vpp worker thread. The vpp pg generates and injects O(10
+MPPS / core).  Use multiple stream definitions and worker threads to
+generate and inject enough traffic to easily fill a 40 gbit pipe with
+small packets.
+
+### Data definition
+
+Packet generator data definitions make use of a layered implementation
+strategy. Networking layers are specified in order, and the notation can
+seem a bit counter-intuitive. In the example above, the data
+definition stanza constructs a set of L2-L4 headers layers, and
+uses an incrementing fill pattern to round out the requested 300-byte
+packets.
+
+- **IP4: 1.2.3 -> 4.5.6** - Construct an L2 (MAC) header with the ip4
+ethertype (0x800), src MAC address of 00:01:00:02:00:03 and dst MAC
+address of 00:04:00:05:00:06. Mac addresses may be specified in either
+_xxxx.xxxx.xxxx_ format or _xx:xx:xx:xx:xx:xx_ format.
+
+- **UDP: 192.168.1.10 - 192.168.1.254 -> 192.168.2.10** - Construct an
+incrementing set of L3 (IPv4) headers for successive packets with
+source addresses ranging from .10 to .254. All packets in the stream
+have a constant dest address of 192.168.2.10. Set the protocol field
+to 17, UDP.
+
+- **UDP: 1234 -> 2345** - Set the UDP source and destination ports to
+1234 and 2345, respectively
+
+- **incrementing 256** - Insert up to 256 incrementing data bytes.
+
+Obvious variations involve "s/IP4/IP6/" in the above, along with
+changing from IPv4 to IPv6 address notation.
+
+The vpp pg can set any / all IPv4 header fields, including tos, packet
+length, mf / df / fragment id and offset, ttl, protocol, checksum, and
+src/dst addresses. Take a look at ../src/vnet/ip/ip[46]_pg.c for
+details.
+
+If all else fails, specify the entire packet data in hex:
+
+- **hex 0xabcd...** - copy hex data verbatim into the packet
+
+When replaying pcap files ("**pcap \<filename\>**"), do not specify a
+data stanza.
+
+### Diagnosing "packet-generator new" parse failures
+
+If you want to inject packets into a brand-new graph node, remember
+to tell the packet generator debug CLI how to parse the packet
+data stanza.
+
+If the node expects L2 Ethernet MAC headers, specify ".unformat_buffer
+= unformat_ethernet_header":
+
+```
+    /* *INDENT-OFF* */
+    VLIB_REGISTER_NODE (ethernet_input_node) =
+    {
+      <snip>
+      .unformat_buffer = unformat_ethernet_header,
+      <snip>
+    };
+```
+
+Beyond that, it may be necessary to set breakpoints in
+.../src/vnet/pg/cli.c. Debug image suggested.
+
+When debugging new nodes, it may be far simpler to directly inject
+ethernet frames - and add a corresponding vlib_buffer_advance in the
+new node - than to modify the packet generator.
+
+## Debug CLI
+
+The descriptions above describe the "packet-generator new" debug CLI in
+detail.
+
+Additional debug CLI commands include:
+
+```
+    vpp# packet-generator enable [<stream-name>]
+```
+
+which enables the named stream, or all streams.
+
+```
+    vpp# packet-generator disable [<stream-name>]
+```
+
+disables the named stream, or all streams.
+
+
+```
+    vpp# packet-generator delete <stream-name>
+```
+
+Deletes the named stream.
+
+```
+    vpp# packet-generator configure <stream-name> [limit <nnn>]
+         [rate <f64-pps>] [size <nn>-<nn>]
+```
+
+Changes stream parameters without having to recreate the entire stream
+definition. Note that re-issuing a "packet-generator new" command will
+correctly recreate the named stream.

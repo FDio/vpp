@@ -396,6 +396,7 @@ no_more_desc:
 	  vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0);
 	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = next_index;
+	  tr->qid = qid;
 	  tr->hw_if_index = ad->hw_if_index;
 	  tr->qw1s[0] = ptd->qw1s[i];
 	  for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
@@ -416,7 +417,7 @@ no_more_desc:
       vlib_frame_t *f;
       ethernet_input_frame_t *ef;
       nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-      f = vlib_get_frame (vm, nf->frame_index);
+      f = vlib_get_frame (vm, nf->frame);
       f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
       ef = vlib_frame_scalar_args (f);
@@ -467,6 +468,7 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .state = VLIB_NODE_STATE_DISABLED,
   .n_errors = AVF_INPUT_N_ERROR,
   .error_strings = avf_input_error_strings,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
 
 /* *INDENT-ON* */

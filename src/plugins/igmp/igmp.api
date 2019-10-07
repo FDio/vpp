@@ -61,7 +61,7 @@ enum filter_mode {
  *   @param saddr - source address
  *   @param gaddr - group address
  */
-typeonly define igmp_group
+typedef igmp_group
 {
   vl_api_filter_mode_t filter;
   u8 n_srcs;

@@ -49,11 +49,8 @@ void verify_show_version_reply (const Show_version_reply &r)
   auto &p = r.get_payload ();
   printf ("show_version_reply: program: `%s', version: `%s', build directory: "
           "`%s', build date: `%s'\n",
-          vl_api_from_api_string (&p.program),
-          vl_api_from_api_string (&p.version),
-          vl_api_from_api_string (&p.build_directory),
-          vl_api_from_api_string (&p.build_date));
-  ck_assert_str_eq ("vpe", (char *)vl_api_from_api_string (&p.program));
+          p.program, p.version, p.build_directory, p.build_date);
+  ck_assert_str_eq ("vpe", (char *)p.program);
 }
 
 Connection con;
@@ -151,7 +148,7 @@ START_TEST (test_loopbacks_1)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (p.name_filter.buf, 0, p.name_filter.length);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -193,7 +190,7 @@ START_TEST (test_loopbacks_1)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (p.name_filter.buf, 0, p.name_filter.length);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -311,7 +308,7 @@ START_TEST (test_loopbacks_2)
   Sw_interface_dump d (con, std::ref (swdcb));
   auto &p = d.get_request ().get_payload ();
   p.name_filter_valid = 0;
-  memset (p.name_filter, 0, sizeof (p.name_filter));
+  memset (p.name_filter.buf, 0, p.name_filter.length);
   auto rv = d.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
   WAIT_FOR_RESPONSE (d, rv);
@@ -340,7 +337,7 @@ START_TEST (test_loopbacks_2)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (p.name_filter.buf, 0, p.name_filter.length);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);

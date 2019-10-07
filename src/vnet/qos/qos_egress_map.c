@@ -41,6 +41,23 @@ qos_egress_map_find (qos_egress_map_id_t mid)
   return (INDEX_INVALID);
 }
 
+qos_egress_map_id_t
+qos_egress_map_get_id (index_t qemi)
+{
+  qos_egress_map_id_t qid;
+  index_t qmi;
+
+  /* *INDENT-OFF* */
+  hash_foreach(qid, qmi, qem_db,
+  ({
+    if (qmi == qemi)
+      return (qid);
+  }));
+  /* *INDENT-OFF* */
+
+  return (~0);
+}
+
 qos_egress_map_t *
 qos_egress_map_find_i (qos_egress_map_id_t mid)
 {
@@ -106,6 +123,20 @@ qos_egress_map_delete (qos_egress_map_id_t mid)
     }
 }
 
+void
+qos_egress_map_walk (qos_egress_map_walk_cb_t fn, void *c)
+{
+  qos_egress_map_id_t qid;
+  index_t qmi;
+
+  /* *INDENT-OFF* */
+  hash_foreach(qid, qmi, qem_db,
+  ({
+    fn(qid, pool_elt_at_index(qem_pool, qmi), c);
+  }));
+  /* *INDENT-OFF* */
+}
+
 static clib_error_t *
 qos_egress_map_update_cli (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -159,55 +190,54 @@ VLIB_CLI_COMMAND (qos_egress_map_update_command, static) = {
 };
 /* *INDENT-ON* */
 
-u8 *
-format_qos_egress_map (u8 * s, va_list * args)
-{
-  qos_egress_map_t *qem = va_arg (*args, qos_egress_map_t *);
-  u32 indent = va_arg (*args, u32);
-  int qs;
-  u32 ii;
-
-  FOR_EACH_QOS_SOURCE (qs)
+  u8 *format_qos_egress_map (u8 * s, va_list * args)
   {
-    s = format (s, "%U%U:[",
-		format_white_space, indent, format_qos_source, qs);
+    qos_egress_map_t *qem = va_arg (*args, qos_egress_map_t *);
+    u32 indent = va_arg (*args, u32);
+    int qs;
+    u32 ii;
 
-    for (ii = 0; ii < ARRAY_LEN (qem->qem_output[qs]) - 1; ii++)
-      {
-	s = format (s, "%d,", qem->qem_output[qs][ii]);
-      }
-    s = format (s, "%d]\n", qem->qem_output[qs][ii]);
-  }
-
-  return (s);
-}
-
-static clib_error_t *
-qos_egress_map_show (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  qos_egress_map_id_t map_id;
-  qos_egress_map_t *qem;
-  clib_error_t *error;
-
-  map_id = ~0;
-  qem = NULL;
-  error = NULL;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    FOR_EACH_QOS_SOURCE (qs)
     {
-      if (unformat (input, "id %d", &map_id))
-	;
-      else
+      s = format (s, "%U%U:[",
+		  format_white_space, indent, format_qos_source, qs);
+
+      for (ii = 0; ii < ARRAY_LEN (qem->qem_output[qs]) - 1; ii++)
 	{
-	  error = unformat_parse_error (input);
-	  goto done;
+	  s = format (s, "%d,", qem->qem_output[qs][ii]);
 	}
+      s = format (s, "%d]\n", qem->qem_output[qs][ii]);
     }
 
-  if (~0 == map_id)
-    {
-      index_t qemi;
+    return (s);
+  }
+
+  static clib_error_t *qos_egress_map_show (vlib_main_t * vm,
+					    unformat_input_t * input,
+					    vlib_cli_command_t * cmd)
+  {
+    qos_egress_map_id_t map_id;
+    qos_egress_map_t *qem;
+    clib_error_t *error;
+
+    map_id = ~0;
+    qem = NULL;
+    error = NULL;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (input, "id %d", &map_id))
+	  ;
+	else
+	  {
+	    error = unformat_parse_error (input);
+	    goto done;
+	  }
+      }
+
+    if (~0 == map_id)
+      {
+	index_t qemi;
 
       /* *INDENT-OFF* */
       hash_foreach(map_id, qemi, qem_db,
@@ -218,25 +248,25 @@ qos_egress_map_show (vlib_main_t * vm,
                            pool_elt_at_index(qem_pool, qemi), 2);
       }));
       /* *INDENT-ON* */
-    }
-  else
-    {
-      qem = qos_egress_map_find_i (map_id);
+      }
+    else
+      {
+	qem = qos_egress_map_find_i (map_id);
 
-      if (NULL == qem)
-	{
-	  error = clib_error_return (0, "No Map for ID %d", map_id);
-	}
-      else
-	{
-	  vlib_cli_output (vm, " Map-ID:%d\n%U",
-			   map_id, format_qos_egress_map, qem, 2);
-	}
-    }
+	if (NULL == qem)
+	  {
+	    error = clib_error_return (0, "No Map for ID %d", map_id);
+	  }
+	else
+	  {
+	    vlib_cli_output (vm, " Map-ID:%d\n%U",
+			     map_id, format_qos_egress_map, qem, 2);
+	  }
+      }
 
-done:
-  return (error);
-}
+  done:
+    return (error);
+  }
 
 /*?
  * Show Egress Qos Maps

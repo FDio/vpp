@@ -47,7 +47,7 @@ vnet_get_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 }
 
 always_inline vnet_hw_interface_t *
-vnet_get_hw_interface_safe (vnet_main_t * vnm, u32 hw_if_index)
+vnet_get_hw_interface_or_null (vnet_main_t * vnm, u32 hw_if_index)
 {
   if (!pool_is_free_index (vnm->interface_main.hw_interfaces, hw_if_index))
     return pool_elt_at_index (vnm->interface_main.hw_interfaces, hw_if_index);
@@ -61,7 +61,7 @@ vnet_get_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 always_inline vnet_sw_interface_t *
-vnet_get_sw_interface_safe (vnet_main_t * vnm, u32 sw_if_index)
+vnet_get_sw_interface_or_null (vnet_main_t * vnm, u32 sw_if_index)
 {
   if (!pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return pool_elt_at_index (vnm->interface_main.sw_interfaces, sw_if_index);
@@ -95,6 +95,22 @@ vnet_get_sup_hw_interface (vnet_main_t * vnm, u32 sw_if_index)
   ASSERT ((sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE) ||
 	  (sw->type == VNET_SW_INTERFACE_TYPE_PIPE));
   return vnet_get_hw_interface (vnm, sw->hw_if_index);
+}
+
+always_inline vnet_hw_interface_t *
+vnet_get_sup_hw_interface_api_visible_or_null (vnet_main_t * vnm,
+					       u32 sw_if_index)
+{
+  vnet_sw_interface_t *si;
+  if (PREDICT_FALSE (pool_is_free_index (vnm->interface_main.sw_interfaces,
+					 sw_if_index)))
+    return NULL;
+  si = vnet_get_sup_sw_interface (vnm, sw_if_index);
+  if (PREDICT_FALSE (si->flags & VNET_SW_INTERFACE_FLAG_HIDDEN))
+    return NULL;
+  ASSERT ((si->type == VNET_SW_INTERFACE_TYPE_HARDWARE) ||
+	  (si->type == VNET_SW_INTERFACE_TYPE_PIPE));
+  return vnet_get_hw_interface (vnm, si->hw_if_index);
 }
 
 always_inline vnet_hw_interface_class_t *
@@ -355,6 +371,9 @@ clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
 /* Change interface flags (e.g. up, down, enable, disable). */
 clib_error_t *vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
 					   vnet_sw_interface_flags_t flags);
+
+void vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index);
+void vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index);
 
 /* Change interface class. */
 clib_error_t *vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index,

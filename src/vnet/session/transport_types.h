@@ -39,18 +39,23 @@ typedef enum transport_service_type_
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
-typedef struct _transport_stats
+typedef enum transport_connection_flags_
 {
-  u64 tx_bytes;
-} transport_stats_t;
+  TRANSPORT_CONNECTION_F_IS_TX_PACED = 1 << 0,
+  TRANSPORT_CONNECTION_F_NO_LOOKUP = 1 << 1, /**< Don't register connection in lookup
+						  Does not apply to local apps and
+						  transports using the network layer (udp/tcp) */
+} transport_connection_flags_t;
 
 typedef struct _spacer
 {
+  u64 bytes_per_sec;
   u64 bucket;
-  u32 max_burst_size;
-  f32 tokens_per_period;
   u64 last_update;
+  f32 tokens_per_period;
 } spacer_t;
+
+#define TRANSPORT_CONN_ID_LEN	44
 
 /*
  * Protocol independent transport properties associated to a session
@@ -67,33 +72,40 @@ typedef struct _transport_connection
     {
       ip46_address_t rmt_ip;	/**< Remote IP */
       ip46_address_t lcl_ip;	/**< Local IP */
+      u32 fib_index;		/**< Network namespace */
       u16 rmt_port;		/**< Remote port */
       u16 lcl_port;		/**< Local port */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
-      u32 fib_index;		/**< Network namespace */
+      u8 unused[2];		/**< First field after id wants to be
+				     4-byte aligned) */
     };
     /*
      * Opaque connection ID
      */
-    u8 opaque_conn_id[42];
+    u8 opaque_conn_id[TRANSPORT_CONN_ID_LEN];
   };
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
   u32 thread_index;		/**< Worker-thread index */
+  u8 flags;			/**< Transport specific flags */
 
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
-  u8 flags;			/**< Transport specific flags */
-  transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
 #endif
+
+  /**
+   * Transport specific state starts in next cache line. Meant to avoid
+   * alignment surprises in transports when base class changes.
+   */
+    CLIB_CACHE_LINE_ALIGN_MARK (end);
 
   /** Macros for 'derived classes' where base is named "connection" */
 #define c_lcl_ip connection.lcl_ip
@@ -120,17 +132,28 @@ typedef struct _transport_connection
 #define c_flags connection.flags
 } transport_connection_t;
 
-#define TRANSPORT_CONNECTION_F_IS_TX_PACED	1 << 0
+STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
+	       == TRANSPORT_CONN_ID_LEN, "update conn id len");
+
+/* Warn if size changes. Two cache lines is already generous, hopefully we
+ * won't have to outgrow that. */
+STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
+	       "moved into 3rd cache line");
+
+#define foreach_transport_proto				\
+  _(TCP, "tcp", "T")					\
+  _(UDP, "udp", "U")					\
+  _(SCTP, "sctp", "S")					\
+  _(NONE, "ct", "C")					\
+  _(TLS, "tls", "J")					\
+  _(UDPC, "udpc", "U")					\
+  _(QUIC, "quic", "Q")					\
 
 typedef enum _transport_proto
 {
-  TRANSPORT_PROTO_TCP,
-  TRANSPORT_PROTO_UDP,
-  TRANSPORT_PROTO_SCTP,
-  TRANSPORT_PROTO_NONE,
-  TRANSPORT_PROTO_TLS,
-  TRANSPORT_PROTO_UDPC,
-  TRANSPORT_PROTO_QUIC,
+#define _(sym, str, sstr) TRANSPORT_PROTO_ ## sym,
+  foreach_transport_proto
+#undef _
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
@@ -184,6 +207,7 @@ transport_endpoint_fib_proto (transport_endpoint_t * tep)
 }
 
 u8 transport_protocol_is_cl (transport_proto_t tp);
+u8 transport_half_open_has_fifos (transport_proto_t tp);
 transport_service_type_t transport_protocol_service_type (transport_proto_t);
 transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 

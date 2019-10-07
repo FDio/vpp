@@ -179,21 +179,28 @@ typedef struct
   virtchnl_vsi_resource_t vsi_res[1];
 } virtchnl_vf_resource_t;
 
+#define foreach_virtchnl_event_code \
+  _(0, UNKNOWN)				\
+  _(1, LINK_CHANGE)			\
+  _(2, RESET_IMPENDING)			\
+  _(3, PF_DRIVER_CLOSE)
+
 typedef enum
 {
-  VIRTCHNL_EVENT_UNKNOWN = 0,
-  VIRTCHNL_EVENT_LINK_CHANGE,
-  VIRTCHNL_EVENT_RESET_IMPENDING,
-  VIRTCHNL_EVENT_PF_DRIVER_CLOSE,
+#define _(a,b) VIRTCHNL_EVENT_##b = (a),
+  foreach_virtchnl_event_code
+#undef _
 } virtchnl_event_codes_t;
 
 #define foreach_virtchnl_link_speed \
+  _(0, 2_5GB, "2.5 Gbps")		\
   _(1, 100MB, "100 Mbps")		\
   _(2, 1GB, "1 Gbps")			\
   _(3, 10GB, "10 Gbps")			\
   _(4, 40GB, "40 Gbps")			\
   _(5, 20GB, "20 Gbps")			\
-  _(6, 25GB, "25 Gbps")
+  _(6, 25GB, "25 Gbps")			\
+  _(7, 5GB, "5 Gbps")
 
 typedef enum
 {

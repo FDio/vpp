@@ -39,7 +39,7 @@ int memif_conn_fd_error (memif_connection_t * c);
 
 int memif_conn_fd_accept_ready (memif_socket_t * ms);
 
-int memif_read_ready (int fd);
+int memif_read_ready (libmemif_main_t *lm, int fd);
 
 int memif_msg_send_disconnect (int fd, uint8_t * err_string,
 			       uint32_t err_code);
@@ -53,7 +53,7 @@ int memif_msg_send (int fd, memif_msg_t * msg, int afd);
 
 int memif_msg_enq_ack (memif_connection_t * c);
 
-int memif_msg_send_hello (int fd);
+int memif_msg_send_hello (libmemif_main_t *lm, int fd);
 
 int memif_msg_enq_init (memif_connection_t * c);
 

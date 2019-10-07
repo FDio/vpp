@@ -185,13 +185,40 @@ typedef struct
 	/* reassembly */
 	union
 	{
-	  /* in/out variables */
+	  /* group input/handoff as handoff is done before input is consumed,
+	   * this way we can handoff while keeping input variables intact */
 	  struct
 	  {
-	    u32 next_index;	/* index of next node - ignored if "feature" node */
-	    u32 error_next_index;	/* index of next node if error - ignored if 'feature' node */
-	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
-	    u16 owner_thread_index;
+	    /* input variables */
+	    struct
+	    {
+	      u32 next_index;	/* index of next node - used by custom apps */
+	      u32 error_next_index;	/* index of next node if error - used by custom apps */
+	    };
+	    /* handoff variables */
+	    struct
+	    {
+	      u16 owner_thread_index;
+	    };
+	  };
+	  /* output variables */
+	  struct
+	  {
+	    union
+	    {
+	      /* shallow virtual reassembly output variables */
+	      struct
+	      {
+		u8 ip_proto;	/* protocol in ip header */
+		u16 l4_src_port;	/* tcp/udp/icmp src port */
+		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
+	      };
+	      /* full reassembly output variables */
+	      struct
+	      {
+		u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	      };
+	    };
 	  };
 	  /* internal variables used during reassembly */
 	  struct
@@ -202,11 +229,9 @@ typedef struct
 	    u16 range_last;
 	    u32 next_range_bi;
 	    u16 ip6_frag_hdr_offset;
-	    u16 owner_feature_thread_index;
 	  };
 	} reass;
       };
-
     } ip;
 
     /*
@@ -276,6 +301,7 @@ typedef struct
     struct
     {
       u32 sad_index;
+      u32 protect_index;
     } ipsec;
 
     /* MAP */
@@ -326,7 +352,11 @@ typedef struct
     struct
     {
       u32 connection_index;
-      u32 seq_number;
+      union
+      {
+	u32 seq_number;
+	u32 next_node_opaque;
+      };
       u32 seq_end;
       u32 ack_number;
       u16 hdr_offset;		/**< offset relative to ip hdr */
@@ -334,20 +364,6 @@ typedef struct
       u16 data_len;		/**< data len */
       u8 flags;
     } tcp;
-
-    /* SCTP */
-    struct
-    {
-      u32 connection_index;
-      u16 sid; /**< Stream ID */
-      u16 ssn; /**< Stream Sequence Number */
-      u32 tsn; /**< Transmission Sequence Number */
-      u16 hdr_offset;		/**< offset relative to ip hdr */
-      u16 data_offset;		/**< offset relative to ip hdr */
-      u16 data_len;		/**< data len */
-      u8 subconn_idx; /**< index of the sub_connection being used */
-      u8 flags;
-    } sctp;
 
     /* SNAT */
     struct
@@ -436,7 +452,10 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
-#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + vnet_buffer2(b)->gso_l4_hdr_sz + vnet_buffer(b)->l4_hdr_offset)
+#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + \
+                       vnet_buffer2(b)->gso_l4_hdr_sz + \
+                       vnet_buffer(b)->l4_hdr_offset - \
+                       vnet_buffer (b)->l3_hdr_offset)
 
 
 format_function_t format_vnet_buffer;

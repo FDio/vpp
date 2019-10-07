@@ -27,12 +27,17 @@ defaultmapping = {
     'acl_interface_list_dump': {'sw_if_index': 4294967295, },
     'app_namespace_add_del': {'sw_if_index': 4294967295, },
     'bd_ip_mac_add_del': {'is_add': 1, },
+    'bfd_udp_add': {'is_authenticated': False, 'bfd_key_id': None,
+                    'conf_key_id': None},
+    'bfd_udp_auth_activate': {'bfd_key_id': None, 'conf_key_id': None,
+                              'is_delayed': False},
     'bier_disp_entry_add_del': {'next_hop_rpf_id': -1, 'next_hop_is_ip4': 1,
                                 'is_add': 1, },
     'bier_disp_table_add_del': {'is_add': 1, },
     'bier_imp_add': {'is_add': 1, },
     'bier_route_add_del': {'is_add': 1, },
     'bier_table_add_del': {'is_add': 1, },
+    'bond_create': {'mac_address': '', 'id': 0xFFFFFFFF},
     'bridge_domain_add_del': {'flood': 1, 'uu_flood': 1, 'forward': 1,
                               'learn': 1, 'is_add': 1, },
     'bvi_create': {'user_instance': 4294967295, },
@@ -45,7 +50,8 @@ defaultmapping = {
     'dhcp6_clients_enable_disable': {'enable': 1, },
     'dhcp6_pd_client_enable_disable': {'enable': 1, },
     'dhcp6_send_client_message': {'server_index': 4294967295, 'mrc': 1, },
-    'dhcp_client_config': {'is_add': 1, 'set_broadcast_flag': 1, },
+    'dhcp6_pd_send_client_message': {'server_index': 0xFFFFFFFF, 'mrc': 1},
+    'dhcp_client_config': {'is_add': 1, 'client': {'set_broadcast_flag': 1}, },
     'dhcp_proxy_config': {'is_add': 1, },
     'dhcp_proxy_set_vss': {'vss_type': 255, 'is_add': 1, },
     'gbp_subnet_add_del': {'sw_if_index': 4294967295, 'epg_id': 65535, },
@@ -61,12 +67,12 @@ defaultmapping = {
     'ip6nd_send_router_solicitation': {'irt': 1, 'mrt': 120, },
     'ip_add_del_route': {'next_hop_sw_if_index': 4294967295,
                          'next_hop_weight': 1, 'next_hop_via_label': 1048576,
-                         'next_hop_id': 4294967295,
                          'classify_table_index': 4294967295, 'is_add': 1, },
     'ip_mroute_add_del': {'is_add': 1, },
     'ip_neighbor_add_del': {'is_add': 1, },
     'ip_punt_police': {'is_add': 1, },
     'ip_punt_redirect': {'is_add': 1, },
+    'ip_route_add_del': {'is_add': 1, },
     'ip_table_add_del': {'is_add': 1, },
     'ip_unnumbered_dump': {'sw_if_index': 4294967295, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
@@ -130,8 +136,6 @@ defaultmapping = {
     'vxlan_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                              'decap_next_index': 4294967295,
                              'instance': 4294967295, },
-    'vxlan_gbp_tunnel_add_del': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
-                                 'instance': 4294967295, },
     'vxlan_gbp_tunnel_dump': {'sw_if_index': 4294967295, },
     'vxlan_gpe_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                                  'protocol': 3, },
@@ -144,6 +148,8 @@ defaultmapping = {
     'want_ip6_nd_events': {'enable_disable': 1, 'ip': '::', },
     'want_ip6_ra_events': {'enable_disable': 1, },
     'want_l2_macs_events': {'enable_disable': 1, },
+    'want_dhcp6_reply_events': {'enable_disable': 1, 'pid': os.getpid(), },
+    'want_dhcp6_pd_reply_events': {'enable_disable': 1, 'pid': os.getpid(), },
 }
 
 
@@ -274,7 +280,7 @@ class VppPapiProvider(object):
             for i, o in enumerate(fields[3:]):
                 try:
                     d[o] = a[i]
-                except:
+                except BaseException:
                     break
 
             # Default override
@@ -330,7 +336,7 @@ class VppPapiProvider(object):
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
-                                       moves.reprlib.repr(reply))
+                                       repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:
@@ -406,47 +412,6 @@ class VppPapiProvider(object):
                          'learn_limit': learn_limit,
                          'pid': os.getpid(), })
 
-    def want_dhcp6_reply_events(self, enable_disable=1):
-        return self.api(self.papi.want_dhcp6_reply_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid()})
-
-    def want_dhcp6_pd_reply_events(self, enable_disable=1):
-        return self.api(self.papi.want_dhcp6_pd_reply_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid()})
-
-    def dhcp6_pd_send_client_message(self, msg_type, sw_if_index, T1, T2,
-                                     prefixes, server_index=0xFFFFFFFF,
-                                     irt=0, mrt=0, mrc=1, mrd=0, stop=0,
-                                     ):
-        return self.api(self.papi.dhcp6_pd_send_client_message,
-                        {'sw_if_index': sw_if_index,
-                         'server_index': server_index,
-                         'irt': irt,
-                         'mrt': mrt,
-                         'mrc': mrc,
-                         'mrd': mrd,
-                         'stop': stop,
-                         'msg_type': msg_type,
-                         'T1': T1,
-                         'T2': T2,
-                         'n_prefixes': len(prefixes),
-                         'prefixes': prefixes})
-
-    def dhcp6_client_enable_disable(self, sw_if_index, prefix_group='',
-                                    enable=1):
-        return self.api(self.papi.dhcp6_client_enable_disable,
-                        {'sw_if_index': sw_if_index,
-                         'enable': enable})
-
-    def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
-                                       enable=1):
-        return self.api(self.papi.dhcp6_pd_client_enable_disable,
-                        {'sw_if_index': sw_if_index,
-                         'prefix_group': prefix_group,
-                         'enable': enable})
-
     def ip6_add_del_address_using_prefix(self, sw_if_index, address,
                                          prefix_length, prefix_group,
                                          is_add=1):
@@ -505,6 +470,37 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.create_loopback,
                         {'mac_address': mac})
+
+    def ip_table_add_del(self,
+                         table_id,
+                         is_add=1,
+                         is_ipv6=0):
+        """
+
+        :param table_id
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+
+        """
+
+        return self.api(
+            self.papi.ip_table_add_del,
+            {'table':
+             {
+                 'table_id': table_id,
+                 'is_ip6': is_ipv6
+             },
+             'is_add': is_add})
+
+    def ip_table_dump(self):
+        return self.api(self.papi.ip_table_dump, {})
+
+    def ip_route_dump(self, table_id, is_ip6=False):
+        return self.api(self.papi.ip_route_dump,
+                        {'table': {
+                            'table_id': table_id,
+                            'is_ip6': is_ip6
+                        }})
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
@@ -631,6 +627,26 @@ class VppPapiProvider(object):
                 }
             })
 
+    def udp_encap_del(self, id):
+        return self.api(self.papi.udp_encap_del, {'id': id})
+
+    def udp_encap_dump(self):
+        return self.api(self.papi.udp_encap_dump, {})
+
+    def want_udp_encap_stats(self, enable=1):
+        return self.api(self.papi.want_udp_encap_stats,
+                        {'enable': enable,
+                         'pid': os.getpid()})
+
+    def mpls_route_dump(self, table_id):
+        return self.api(self.papi.mpls_route_dump,
+                        {'table': {
+                            'mt_table_id': table_id
+                        }})
+
+    def mpls_table_dump(self):
+        return self.api(self.papi.mpls_table_dump, {})
+
     def mpls_table_add_del(
             self,
             table_id,
@@ -644,17 +660,43 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.mpls_table_add_del,
-            {'mt_table_id': table_id,
+            {'mt_table':
+             {
+                 'mt_table_id': table_id,
+             },
              'mt_is_add': is_add})
+
+    def mpls_route_add_del(self,
+                           table_id,
+                           label,
+                           eos,
+                           eos_proto,
+                           is_multicast,
+                           paths,
+                           is_add,
+                           is_multipath):
+        """ MPLS Route add/del """
+        return self.api(
+            self.papi.mpls_route_add_del,
+            {'mr_route':
+             {
+                 'mr_table_id': table_id,
+                 'mr_label': label,
+                 'mr_eos': eos,
+                 'mr_eos_proto': eos_proto,
+                 'mr_is_multicast': is_multicast,
+                 'mr_n_paths': len(paths),
+                 'mr_paths': paths,
+             },
+             'mr_is_add': is_add,
+             'mr_is_multipath': is_multipath})
 
     def mpls_ip_bind_unbind(
             self,
             label,
-            dst_address,
-            dst_address_length,
+            prefix,
             table_id=0,
             ip_table_id=0,
-            is_ip4=1,
             is_bind=1):
         """
         """
@@ -664,140 +706,28 @@ class VppPapiProvider(object):
              'mb_label': label,
              'mb_ip_table_id': ip_table_id,
              'mb_is_bind': is_bind,
-             'mb_is_ip4': is_ip4,
-             'mb_address_length': dst_address_length,
-             'mb_address': dst_address})
+             'mb_prefix': prefix})
 
     def mpls_tunnel_add_del(
             self,
             tun_sw_if_index,
-            next_hop_proto_is_ip4,
-            next_hop_address,
-            next_hop_sw_if_index=0xFFFFFFFF,
-            next_hop_table_id=0,
-            next_hop_weight=1,
-            next_hop_n_out_labels=0,
-            next_hop_out_label_stack=[],
-            next_hop_via_label=MPLS_LABEL_INVALID,
+            paths,
             is_add=1,
             l2_only=0,
             is_multicast=0):
         """
-
-        :param dst_address_length:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param dst_address:
-        :param next_hop_address:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vrf_id:  (Default value = 0)
-        :param lookup_in_vrf:  (Default value = 0)
-        :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param is_add:  (Default value = 1)
-        :param is_drop:  (Default value = 0)
-        :param is_ipv6:  (Default value = 0)
-        :param is_local:  (Default value = 0)
-        :param is_classify:  (Default value = 0)
-        :param is_multipath:  (Default value = 0)
-        :param is_resolve_host:  (Default value = 0)
-        :param is_resolve_attached:  (Default value = 0)
-        :param next_hop_weight:  (Default value = 1)
-        :param is_multicast:  (Default value = 0)
-
         """
         return self.api(
             self.papi.mpls_tunnel_add_del,
-            {'mt_sw_if_index': tun_sw_if_index,
-             'mt_is_add': is_add,
-             'mt_l2_only': l2_only,
-             'mt_is_multicast': is_multicast,
-             'mt_next_hop_proto_is_ip4': next_hop_proto_is_ip4,
-             'mt_next_hop_weight': next_hop_weight,
-             'mt_next_hop': next_hop_address,
-             'mt_next_hop_n_out_labels': next_hop_n_out_labels,
-             'mt_next_hop_sw_if_index': next_hop_sw_if_index,
-             'mt_next_hop_table_id': next_hop_table_id,
-             'mt_next_hop_via_label': next_hop_via_label,
-             'mt_next_hop_out_label_stack': next_hop_out_label_stack})
-
-    def bfd_udp_add(self, sw_if_index, desired_min_tx, required_min_rx,
-                    detect_mult, local_addr, peer_addr, is_ipv6=0,
-                    bfd_key_id=None, conf_key_id=None):
-        if bfd_key_id is None:
-            return self.api(self.papi.bfd_udp_add,
-                            {
-                                'sw_if_index': sw_if_index,
-                                'desired_min_tx': desired_min_tx,
-                                'required_min_rx': required_min_rx,
-                                'local_addr': local_addr,
-                                'peer_addr': peer_addr,
-                                'is_ipv6': is_ipv6,
-                                'detect_mult': detect_mult,
-                            })
-        else:
-            return self.api(self.papi.bfd_udp_add,
-                            {
-                                'sw_if_index': sw_if_index,
-                                'desired_min_tx': desired_min_tx,
-                                'required_min_rx': required_min_rx,
-                                'local_addr': local_addr,
-                                'peer_addr': peer_addr,
-                                'is_ipv6': is_ipv6,
-                                'detect_mult': detect_mult,
-                                'is_authenticated': 1,
-                                'bfd_key_id': bfd_key_id,
-                                'conf_key_id': conf_key_id,
-                            })
-
-    def bfd_udp_mod(self, sw_if_index, desired_min_tx, required_min_rx,
-                    detect_mult, local_addr, peer_addr, is_ipv6=0):
-        return self.api(self.papi.bfd_udp_mod,
-                        {
-                            'sw_if_index': sw_if_index,
-                            'desired_min_tx': desired_min_tx,
-                            'required_min_rx': required_min_rx,
-                            'local_addr': local_addr,
-                            'peer_addr': peer_addr,
-                            'is_ipv6': is_ipv6,
-                            'detect_mult': detect_mult,
-                        })
-
-    def bfd_udp_auth_activate(self, sw_if_index, local_addr, peer_addr,
-                              is_ipv6=0, bfd_key_id=None, conf_key_id=None,
-                              is_delayed=False):
-        return self.api(self.papi.bfd_udp_auth_activate,
-                        {
-                            'sw_if_index': sw_if_index,
-                            'local_addr': local_addr,
-                            'peer_addr': peer_addr,
-                            'is_ipv6': is_ipv6,
-                            'is_delayed': 1 if is_delayed else 0,
-                            'bfd_key_id': bfd_key_id,
-                            'conf_key_id': conf_key_id,
-                        })
-
-    def bfd_udp_session_set_flags(self, admin_up_down, sw_if_index, local_addr,
-                                  peer_addr, is_ipv6=0):
-        return self.api(self.papi.bfd_udp_session_set_flags, {
-            'admin_up_down': admin_up_down,
-            'sw_if_index': sw_if_index,
-            'local_addr': local_addr,
-            'peer_addr': peer_addr,
-            'is_ipv6': is_ipv6,
-        })
-
-    def want_bfd_events(self, enable_disable=1):
-        return self.api(self.papi.want_bfd_events, {
-            'enable_disable': enable_disable,
-            'pid': os.getpid(),
-        })
-
-    def bfd_auth_set_key(self, conf_key_id, auth_type, key):
-        return self.api(self.papi.bfd_auth_set_key, {
-            'conf_key_id': conf_key_id,
-            'auth_type': auth_type,
-            'key': key,
-            'key_len': len(key),
-        })
+            {'mt_is_add': is_add,
+             'mt_tunnel':
+             {
+                 'mt_sw_if_index': tun_sw_if_index,
+                 'mt_l2_only': l2_only,
+                 'mt_is_multicast': is_multicast,
+                 'mt_n_paths': len(paths),
+                 'mt_paths': paths,
+             }})
 
     def classify_add_del_table(
             self,
@@ -945,98 +875,41 @@ class VppPapiProvider(object):
                 'udp_checksum': udp_checksum,
             })
 
-    def dhcp_proxy_config(self,
-                          dhcp_server,
-                          dhcp_src_address,
-                          rx_table_id=0,
-                          server_table_id=0,
-                          is_add=1,
-                          is_ipv6=0):
-        return self.api(
-            self.papi.dhcp_proxy_config,
-            {
-                'rx_vrf_id': rx_table_id,
-                'server_vrf_id': server_table_id,
-                'is_ipv6': is_ipv6,
-                'is_add': is_add,
-                'dhcp_server': dhcp_server,
-                'dhcp_src_address': dhcp_src_address,
-            })
-
-    def dhcp_proxy_set_vss(self,
-                           table_id,
-                           vss_type=255,
-                           vpn_ascii_id="",
-                           oui=0,
-                           vpn_index=0,
-                           is_add=1,
-                           is_ip6=0):
-        return self.api(
-            self.papi.dhcp_proxy_set_vss,
-            {
-                'tbl_id': table_id,
-                'vss_type': vss_type,
-                'vpn_ascii_id': vpn_ascii_id,
-                'oui': oui,
-                'vpn_index': vpn_index,
-                'is_add': is_add,
-                'is_ipv6': is_ip6,
-            })
-
-    def dhcp_client_config(self,
-                           sw_if_index,
-                           hostname,
-                           client_id='',
-                           is_add=1,
-                           set_broadcast_flag=1,
-                           want_dhcp_events=0):
-        return self.api(
-            self.papi.dhcp_client_config,
-            {
-                'is_add': is_add,
-                'client': {
-                    'sw_if_index': sw_if_index,
-                    'hostname': hostname,
-                    'id': client_id,
-                    'want_dhcp_event': want_dhcp_events,
-                    'set_broadcast_flag': set_broadcast_flag,
-                    'pid': os.getpid()}
-            })
-
     def ip_mroute_add_del(self,
-                          src_address,
-                          grp_address,
-                          grp_address_length,
+                          table_id,
+                          prefix,
                           e_flags,
-                          next_hop_afi,
-                          next_hop_sw_if_index,
-                          next_hop_address,
-                          i_flags,
-                          bier_imp=0,
-                          rpf_id=0,
-                          table_id=0,
+                          rpf_id,
+                          paths,
                           is_add=1,
-                          is_ipv6=0,
-                          is_local=0):
+                          is_multipath=1):
         """
         IP Multicast Route add/del
         """
         return self.api(
             self.papi.ip_mroute_add_del,
-            {'next_hop_sw_if_index': next_hop_sw_if_index,
-             'entry_flags': e_flags,
-             'itf_flags': i_flags,
-             'table_id': table_id,
-             'rpf_id': rpf_id,
-             'is_add': is_add,
-             'is_ipv6': is_ipv6,
-             'is_local': is_local,
-             'bier_imp': bier_imp,
-             'next_hop_afi': next_hop_afi,
-             'grp_address_length': grp_address_length,
-             'grp_address': grp_address,
-             'src_address': src_address,
-             'nh_address': next_hop_address})
+            {
+                'is_add': is_add,
+                'is_multipath': is_multipath,
+                'route': {
+                    'table_id': table_id,
+                    'entry_flags': e_flags,
+                    'rpf_id': rpf_id,
+                    'prefix': prefix,
+                    'n_paths': len(paths),
+                    'paths': paths,
+                }
+            })
+
+    def mfib_signal_dump(self):
+        return self.api(self.papi.mfib_signal_dump, {})
+
+    def ip_mroute_dump(self, table_id, is_ip6=False):
+        return self.api(self.papi.ip_mroute_dump,
+                        {'table': {
+                            'table_id': table_id,
+                            'is_ip6': is_ip6
+                        }})
 
     def lisp_enable_disable(self, is_enabled):
         return self.api(
@@ -1228,41 +1101,6 @@ class VppPapiProvider(object):
                          'decap_vrf_id': decap_vrf_id,
                          'protocol': protocol,
                          'vni': vni})
-
-    def vxlan_gbp_tunnel_add_del(
-            self,
-            src,
-            dst,
-            mcast_sw_if_index=0xFFFFFFFF,
-            is_add=1,
-            is_ipv6=0,
-            encap_table_id=0,
-            vni=0,
-            mode=1,
-            instance=0xFFFFFFFF):
-        """
-
-        :param dst_addr:
-        :param src_addr:
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param encap_table_id:  (Default value = 0)
-        :param decap_next_index:  (Default value = 0xFFFFFFFF)
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vni:  (Default value = 0)
-        :param instance:  (Default value = 0xFFFFFFFF)
-
-        """
-        return self.api(self.papi.vxlan_gbp_tunnel_add_del,
-                        {'is_add': is_add,
-                         'tunnel': {
-                             'src': src,
-                             'dst': dst,
-                             'mcast_sw_if_index': mcast_sw_if_index,
-                             'encap_table_id': encap_table_id,
-                             'vni': vni,
-                             'instance': instance,
-                             "mode": mode}})
 
     def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
         return self.api(self.papi.vxlan_gbp_tunnel_dump,
@@ -1633,14 +1471,18 @@ class VppPapiProvider(object):
         """ BIER Route add/del """
         return self.api(
             self.papi.bier_route_add_del,
-            {'br_tbl_id': {"bt_set": bti.set_id,
-                           "bt_sub_domain": bti.sub_domain_id,
-                           "bt_hdr_len_id": bti.hdr_len_id},
-             'br_bp': bp,
-             'br_n_paths': len(paths),
-             'br_paths': paths,
-             'br_is_add': is_add,
-             'br_is_replace': is_replace})
+            {
+                'br_route': {
+                    'br_tbl_id': {"bt_set": bti.set_id,
+                                  "bt_sub_domain": bti.sub_domain_id,
+                                  "bt_hdr_len_id": bti.hdr_len_id},
+                    'br_bp': bp,
+                    'br_n_paths': len(paths),
+                    'br_paths': paths,
+                },
+                'br_is_add': is_add,
+                'br_is_replace': is_replace
+            })
 
     def bier_route_dump(self, bti):
         return self.api(
@@ -1705,9 +1547,7 @@ class VppPapiProvider(object):
              'bde_bp': bp,
              'bde_payload_proto': payload_proto,
              'bde_n_paths': 1,
-             'bde_paths': [{'next_hop': next_hop,
-                            'table_id': next_hop_tbl_id,
-                            'afi': next_hop_afi,
+             'bde_paths': [{'table_id': next_hop_tbl_id,
                             'rpf_id': next_hop_rpf_id,
                             'n_labels': 0,
                             'label_stack': lstack}],
@@ -1876,7 +1716,6 @@ class VppPapiProvider(object):
                         'policy': policy,
                         'priority': priority,
                         'is_outbound': is_outbound,
-                        'is_ip_any': is_ip_any
                     }
             })
 
@@ -1916,19 +1755,6 @@ class VppPapiProvider(object):
                 'udp_encap': udp_encap,
                 'salt': salt
             })
-
-    def ipsec_gre_tunnel_add_del(self, local_ip, remote_ip,
-                                 sa_out, sa_in, is_add=1):
-        return self.api(self.papi.ipsec_gre_tunnel_add_del,
-                        {
-                            'is_add': is_add,
-                            'tunnel': {
-                                'src': local_ip,
-                                'dst': remote_ip,
-                                'local_sa_id': sa_out,
-                                'remote_sa_id': sa_in
-                            }
-                        })
 
     def ipsec_select_backend(self, protocol, index):
         return self.api(self.papi.ipsec_select_backend,
@@ -2011,7 +1837,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_group_del,
                         {'sclass': sclass})
 
-    def gbp_bridge_domain_add(self, bd_id, flags,
+    def gbp_bridge_domain_add(self, bd_id, rd_id, flags,
                               bvi_sw_if_index,
                               uu_fwd_sw_if_index,
                               bm_flood_sw_if_index):
@@ -2023,7 +1849,8 @@ class VppPapiProvider(object):
                                 'bvi_sw_if_index': bvi_sw_if_index,
                                 'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
                                 'bm_flood_sw_if_index': bm_flood_sw_if_index,
-                                'bd_id': bd_id
+                                'bd_id': bd_id,
+                                'rd_id': rd_id
                             }})
 
     def gbp_bridge_domain_del(self, bd_id):
@@ -2032,6 +1859,7 @@ class VppPapiProvider(object):
                         {'bd_id': bd_id})
 
     def gbp_route_domain_add(self, rd_id,
+                             scope,
                              ip4_table_id,
                              ip6_table_id,
                              ip4_uu_sw_if_index,
@@ -2040,6 +1868,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_route_domain_add,
                         {'rd':
                             {
+                                'scope': scope,
                                 'ip4_table_id': ip4_table_id,
                                 'ip6_table_id': ip6_table_id,
                                 'ip4_uu_sw_if_index': ip4_uu_sw_if_index,
@@ -2065,14 +1894,15 @@ class VppPapiProvider(object):
         """ GBP recirc Dump """
         return self.api(self.papi.gbp_recirc_dump, {})
 
-    def gbp_ext_itf_add_del(self, is_add, sw_if_index, bd_id, rd_id):
+    def gbp_ext_itf_add_del(self, is_add, sw_if_index, bd_id, rd_id, flags):
         """ GBP recirc Add/Del """
         return self.api(self.papi.gbp_ext_itf_add_del,
                         {'is_add': is_add,
                          'ext_itf': {
                              'sw_if_index': sw_if_index,
                              'bd_id': bd_id,
-                             'rd_id': rd_id}})
+                             'rd_id': rd_id,
+                             'flags': flags}})
 
     def gbp_ext_itf_dump(self):
         """ GBP recirc Dump """
@@ -2096,20 +1926,6 @@ class VppPapiProvider(object):
         """ GBP Subnet Dump """
         return self.api(self.papi.gbp_subnet_dump,
                         {'_no_type_conversion': True})
-
-    def gbp_contract_add_del(self, is_add, sclass, dclass, acl_index,
-                             rules, allowed_ethertypes):
-        """ GBP contract Add/Del """
-        return self.api(self.papi.gbp_contract_add_del,
-                        {'is_add': is_add,
-                         'contract': {
-                             'acl_index': acl_index,
-                             'sclass': sclass,
-                             'dclass': dclass,
-                             'n_rules': len(rules),
-                             'rules': rules,
-                             'n_ether_types': len(allowed_ethertypes),
-                             'allowed_ethertypes': allowed_ethertypes}})
 
     def gbp_contract_dump(self):
         """ GBP contract Dump """
@@ -2137,28 +1953,6 @@ class VppPapiProvider(object):
     def gbp_vxlan_tunnel_dump(self):
         """ GBP VXLAN tunnel add/del """
         return self.api(self.papi.gbp_vxlan_tunnel_dump, {})
-
-    def qos_egress_map_update(self, id, outputs):
-        """ QOS egress map update """
-        return self.api(self.papi.qos_egress_map_update,
-                        {'map_id': id,
-                         'rows': outputs})
-
-    def qos_egress_map_delete(self, id):
-        """ QOS egress map delete """
-        return self.api(self.papi.qos_egress_map_delete,
-                        {'map_id': id})
-
-    def qos_mark_enable_disable(self, sw_if_index,
-                                output_source,
-                                map_id,
-                                enable):
-        """ QOS Mark Enable/Disable """
-        return self.api(self.papi.qos_mark_enable_disable,
-                        {'map_id': map_id,
-                         'sw_if_index': sw_if_index,
-                         'output_source': output_source,
-                         'enable': enable})
 
     def igmp_enable_disable(self, sw_if_index, enable, host):
         """ Enable/disable IGMP on a given interface """
@@ -2215,12 +2009,14 @@ class VppPapiProvider(object):
             self,
             mode,
             lb,
+            numa_only,
             use_custom_mac,
             mac_address='',
             interface_id=0xFFFFFFFF):
         """
         :param mode: mode
         :param lb: load balance
+        :param numa_only: tx on local numa node for lacp mode
         :param use_custom_mac: use custom mac
         :param mac_address: mac address
         :param interface_id: custom interface ID
@@ -2229,6 +2025,7 @@ class VppPapiProvider(object):
             self.papi.bond_create,
             {'mode': mode,
              'lb': lb,
+             'numa_only': numa_only,
              'use_custom_mac': use_custom_mac,
              'mac_address': mac_address,
              'id': interface_id
@@ -2237,30 +2034,6 @@ class VppPapiProvider(object):
     def pipe_delete(self, parent_sw_if_index):
         return self.api(self.papi.pipe_delete,
                         {'parent_sw_if_index': parent_sw_if_index})
-
-    def memif_create(
-            self,
-            role,
-            mode,
-            rx_queues=None,
-            tx_queues=None,
-            _id=None,
-            socket_id=None,
-            secret=None,
-            ring_size=None,
-            buffer_size=None,
-            hw_addr=None):
-        return self.api(self.papi.memif_create,
-                        {'role': role,
-                         'mode': mode,
-                         'rx_queues': rx_queues,
-                         'tx_queues': tx_queues,
-                         'id': _id,
-                         'socket_id': socket_id,
-                         'secret': secret,
-                         'ring_size': ring_size,
-                         'buffer_size': buffer_size,
-                         'hw_addr': hw_addr})
 
     def svs_table_add_del(self, af, table_id, is_add=1):
         return self.api(self.papi.svs_table_add_del,

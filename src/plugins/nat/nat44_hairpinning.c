@@ -391,7 +391,7 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
   snat_main_per_thread_data_t *tsm;
 
   if (sm->num_workers > 1)
-    ti = sm->worker_out2in_cb (ip, sm->outside_fib_index);
+    ti = sm->worker_out2in_cb (ip, sm->outside_fib_index, 0);
   else
     ti = sm->num_workers;
   tsm = &sm->per_thread_data[ti];

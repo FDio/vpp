@@ -23,6 +23,7 @@
   _ (UNSPECIFIED, "unspecified error")				\
   _ (INVALID_PROTOCOL, "invalid ip4 protocol")			\
   _ (BAD_CHECKSUM, "bad checksum")				\
+  _ (BAD_LENGTH, "bad length")                                  \
   _ (UNKNOWN_TYPE, "unknown igmp message type")			\
   _ (NOT_ENABLED, "IGMP not enabled on this interface")         \
 

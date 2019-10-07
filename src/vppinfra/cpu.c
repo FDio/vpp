@@ -57,17 +57,18 @@
  _(0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)") \
  _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
+/* _(implementor-id, part-id, vendor-name, cpu-name, show CPU pass as string) */
 #define foreach_aarch64_cpu_uarch \
- _(0x41, 0xd03, "ARM", "Cortex-A53") \
- _(0x41, 0xd07, "ARM", "Cortex-A57") \
- _(0x41, 0xd08, "ARM", "Cortex-A72") \
- _(0x41, 0xd09, "ARM", "Cortex-A73") \
- _(0x43, 0x0a1, "Cavium", "ThunderX CN88XX") \
- _(0x43, 0x0a2, "Cavium", "Octeon TX CN81XX") \
- _(0x43, 0x0a3, "Cavium", "Octeon TX CN83XX") \
- _(0x43, 0x0af, "Cavium", "ThunderX2 CN99XX") \
- _(0x43, 0x0b1, "Cavium", "Octeon TX2 CN98XX") \
- _(0x43, 0x0b2, "Cavium", "Octeon TX2 CN93XX") \
+ _(0x41, 0xd03, "ARM", "Cortex-A53", 0) \
+ _(0x41, 0xd07, "ARM", "Cortex-A57", 0) \
+ _(0x41, 0xd08, "ARM", "Cortex-A72", 0) \
+ _(0x41, 0xd09, "ARM", "Cortex-A73", 0) \
+ _(0x43, 0x0a1, "Marvell", "THUNDERX CN88XX", 0) \
+ _(0x43, 0x0a2, "Marvell", "OCTEON TX CN81XX", 0) \
+ _(0x43, 0x0a3, "Marvell", "OCTEON TX CN83XX", 0) \
+ _(0x43, 0x0af, "Marvell", "THUNDERX2 CN99XX", 1) \
+ _(0x43, 0x0b1, "Marvell", "OCTEON TX2 CN98XX", 1) \
+ _(0x43, 0x0b2, "Marvell", "OCTEON TX2 CN96XX", 1)
 
 u8 *
 format_cpu_uarch (u8 * s, va_list * args)
@@ -115,12 +116,14 @@ format(s, "[0x%x] %s ([0x%02x] %s) stepping 0x%x", f, a, m, c, stepping);
   unformat_free (&input);
   close (fd);
 
-  /* Note: Cavium starts counting variants from 1 instead of 0 */
-  if (implementer == 0x43)
-    variant++;
+#define _(i,p,a,c,_format) if ((implementer == i) && (primary_part_number == p)){ \
+	if (_format)\
+	 return format(s, "%s (%s PASS %c%u)", a, c, 'A'+variant, revision);\
+	 else {\
+  if (implementer == 0x43)\
+    variant++; \
+  return format (s, "%s (%s PASS %u.%u)", a, c, variant, revision);}}
 
-#define _(i,p,a,c) if ((implementer == i) && (primary_part_number == p)) \
-  return format(s, "%s (%s PASS %u.%u)", a, c, variant, revision);
   foreach_aarch64_cpu_uarch
 #undef _
     return format (s, "unknown (implementer 0x%02x part 0x%03x PASS %u.%u)",

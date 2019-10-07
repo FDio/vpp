@@ -1538,6 +1538,26 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      break;
 	    }
 	}
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM
+	       && tr->key_len)
+	{
+	  switch (tr->key_len)
+	    {
+	    case 16:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_128;
+	      break;
+	    case 24:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_192;
+	      break;
+	    case 32:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_256;
+	      break;
+	    default:
+	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+	      return 1;
+	      break;
+	    }
+	}
       else
 	{
 	  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
@@ -2555,24 +2575,27 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
     }
 
   /* DH */
-  error = 1;
-  vec_foreach (td, km->supported_transforms)
-  {
-    if (td->type == IKEV2_TRANSFORM_TYPE_DH && td->dh_type == ts->dh_type)
-      {
-	vec_add1 (proposal->transforms, *td);
-	if (is_ike)
-	  {
-	    sa->dh_group = td->dh_type;
-	  }
-	error = 0;
-	break;
-      }
-  }
-  if (error)
+  if (is_ike || ts->dh_type != IKEV2_TRANSFORM_DH_TYPE_NONE)
     {
-      r = clib_error_return (0, "Unsupported algorithm");
-      return r;
+      error = 1;
+      vec_foreach (td, km->supported_transforms)
+      {
+	if (td->type == IKEV2_TRANSFORM_TYPE_DH && td->dh_type == ts->dh_type)
+	  {
+	    vec_add1 (proposal->transforms, *td);
+	    if (is_ike)
+	      {
+		sa->dh_group = td->dh_type;
+	      }
+	    error = 0;
+	    break;
+	  }
+      }
+      if (error)
+	{
+	  r = clib_error_return (0, "Unsupported algorithm");
+	  return r;
+	}
     }
 
   if (!is_ike)
@@ -3036,6 +3059,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
     ike0->exchange = IKEV2_EXCHANGE_SA_INIT;
     ike0->ispi = sa.ispi;
+    ike0->rspi = 0;
+    ike0->msgid = 0;
 
     /* store whole IKE payload - needed for PSK auth */
     vec_free (sa.last_sa_init_req_packet_data);
@@ -3049,12 +3074,6 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.i_auth.method = p->auth.method;
     sa.i_auth.hex = p->auth.hex;
     sa.i_auth.data = vec_dup (p->auth.data);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    clib_memcpy_fast (sa.i_auth.key, p->auth.key,
-		      EVP_PKEY_size (p->auth.key));
-#else
-    sa.i_auth.key = vec_dup (p->auth.key);
-#endif
     vec_add (sa.childs[0].tsi, &p->loc_ts, 1);
     vec_add (sa.childs[0].tsr, &p->rem_ts, 1);
 

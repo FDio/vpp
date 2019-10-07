@@ -21,7 +21,11 @@
 
 typedef struct
 {
-  u32 spi;
+  union
+  {
+    u32 spi;
+    u8 spi_bytes[4];
+  };
   u32 seq;
   u8 data[0];
 } esp_header_t;

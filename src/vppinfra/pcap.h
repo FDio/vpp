@@ -193,6 +193,8 @@ typedef struct
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
 
+#define PCAP_DEF_PKT_TO_CAPTURE (100)
+
 #endif /* included_vppinfra_pcap_h */
 
 /*

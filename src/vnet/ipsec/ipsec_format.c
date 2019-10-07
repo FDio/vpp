@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_table.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 u8 *
 format_ipsec_policy_action (u8 * s, va_list * args)
@@ -186,13 +187,11 @@ format_ipsec_policy (u8 * s, va_list * args)
   s = format (s, "\n     local addr range %U - %U port range %u - %u",
 	      format_ip46_address, &p->laddr.start, ip_type,
 	      format_ip46_address, &p->laddr.stop, ip_type,
-	      clib_net_to_host_u16 (p->lport.start),
-	      clib_net_to_host_u16 (p->lport.stop));
+	      p->lport.start, p->lport.stop);
   s = format (s, "\n     remote addr range %U - %U port range %u - %u",
 	      format_ip46_address, &p->raddr.start, ip_type,
 	      format_ip46_address, &p->raddr.stop, ip_type,
-	      clib_net_to_host_u16 (p->rport.start),
-	      clib_net_to_host_u16 (p->rport.stop));
+	      p->rport.start, p->rport.stop);
 
   vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
   s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
@@ -260,9 +259,7 @@ format_ipsec_sa_flags (u8 * s, va_list * args)
 {
   ipsec_sa_flags_t flags = va_arg (*args, int);
 
-  if (0)
-    ;
-#define _(v, f, str) else if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
+#define _(v, f, str) if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
   foreach_ipsec_sa_flags
 #undef _
     return (s);
@@ -286,15 +283,14 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   sa = pool_elt_at_index (im->sad, sai);
 
-  s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s %U",
-	      sai, sa->id, sa->spi,
-	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
-	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
+  s = format (s, "[%d] sa %u (0x%x) spi %u (0x%08x) protocol:%s flags:[%U]",
+	      sai, sa->id, sa->id, sa->spi, sa->spi,
 	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
 
   if (!(flags & IPSEC_FORMAT_DETAIL))
     goto done;
 
+  s = format (s, "\n   locks %d", sa->node.fn_locks);
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
@@ -302,12 +298,16 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      format_ipsec_replay_window, sa->replay_window);
   s = format (s, "\n   crypto alg %U",
 	      format_ipsec_crypto_alg, sa->crypto_alg);
-  if (sa->crypto_alg)
+  if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->crypto_key);
+  else
+    s = format (s, " key [redacted]");
   s = format (s, "\n   integrity alg %U",
 	      format_ipsec_integ_alg, sa->integ_alg);
-  if (sa->integ_alg)
+  if (sa->integ_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
+  else
+    s = format (s, " key [redacted]");
 
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
@@ -326,9 +326,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 	    format (s, "\n    resovle via fib-entry: %d",
 		    sa->fib_entry_index);
 	  s = format (s, "\n    stacked on:");
-	  s =
-	    format (s, "\n      %U", format_dpo_id,
-		    &sa->dpo[IPSEC_PROTOCOL_ESP], 6);
+	  s = format (s, "\n      %U", format_dpo_id, &sa->dpo, 6);
 	}
     }
 
@@ -367,6 +365,66 @@ format_ipsec_tunnel (u8 * s, va_list * args)
 	      IPSEC_FORMAT_BRIEF);
 
 done:
+  return (s);
+}
+
+u8 *
+format_ipsec_tun_protect (u8 * s, va_list * args)
+{
+  u32 itpi = va_arg (*args, u32);
+  ipsec_tun_protect_t *itp;
+  u32 sai;
+
+  if (pool_is_free_index (ipsec_protect_pool, itpi))
+    {
+      s = format (s, "No such tunnel index: %d", itpi);
+      goto done;
+    }
+
+  itp = pool_elt_at_index (ipsec_protect_pool, itpi);
+
+  s = format (s, "%U", format_vnet_sw_if_index_name,
+	      vnet_get_main (), itp->itp_sw_if_index);
+  s = format (s, "\n output-sa:");
+  s =
+    format (s, "\n  %U", format_ipsec_sa, itp->itp_out_sa,
+	    IPSEC_FORMAT_BRIEF);
+
+  s = format (s, "\n input-sa:");
+  /* *INDENT-OFF* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
+  ({
+  s = format (s, "\n  %U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
+  }));
+  /* *INDENT-ON* */
+
+done:
+  return (s);
+}
+
+u8 *
+format_ipsec4_tunnel_key (u8 * s, va_list * args)
+{
+  ipsec4_tunnel_key_t *key = va_arg (*args, ipsec4_tunnel_key_t *);
+
+  s = format (s, "remote:%U spi:%u (0x%08x)",
+	      format_ip4_address, &key->remote_ip,
+	      clib_net_to_host_u32 (key->spi),
+	      clib_net_to_host_u32 (key->spi));
+
+  return (s);
+}
+
+u8 *
+format_ipsec6_tunnel_key (u8 * s, va_list * args)
+{
+  ipsec6_tunnel_key_t *key = va_arg (*args, ipsec6_tunnel_key_t *);
+
+  s = format (s, "remote:%U spi:%u (0x%08x)",
+	      format_ip6_address, &key->remote_ip,
+	      clib_net_to_host_u32 (key->spi),
+	      clib_net_to_host_u32 (key->spi));
+
   return (s);
 }
 

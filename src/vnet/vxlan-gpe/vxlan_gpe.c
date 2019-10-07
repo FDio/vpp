@@ -22,6 +22,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/interface.h>
@@ -620,12 +621,11 @@ int vnet_vxlan_gpe_add_del_tunnel
 	   * re-stack accordingly
 	   */
 	  vtep_addr_ref (&t->local);
-	  t->fib_entry_index = fib_table_entry_special_add
-	    (t->encap_fib_index, &tun_remote_pfx, FIB_SOURCE_RR,
-	     FIB_ENTRY_FLAG_NONE);
-	  t->sibling_index = fib_entry_child_add
-	    (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
-	     t - ngm->tunnels);
+	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
+						&tun_remote_pfx,
+						FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
+						t - ngm->tunnels,
+						&t->sibling_index);
 	  vxlan_gpe_tunnel_restack_dpo (t);
 	}
       else
@@ -646,8 +646,9 @@ int vnet_vxlan_gpe_add_del_tunnel
 		.frp_addr = zero_addr,
 		.frp_sw_if_index = 0xffffffff,
 		.frp_fib_index = ~0,
-		.frp_weight = 0,
+		.frp_weight = 1,
 		.frp_flags = FIB_ROUTE_PATH_LOCAL,
+		.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
 	      };
 	      const mfib_prefix_t mpfx = {
 		.fp_proto = fp,
@@ -662,16 +663,15 @@ int vnet_vxlan_gpe_add_del_tunnel
 	       */
 	      mfib_table_entry_path_update (t->encap_fib_index,
 					    &mpfx,
-					    MFIB_SOURCE_VXLAN_GPE,
-					    &path, MFIB_ITF_FLAG_FORWARD);
+					    MFIB_SOURCE_VXLAN_GPE, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
 	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
 						   &mpfx,
 						   MFIB_SOURCE_VXLAN_GPE,
-						   &path,
-						   MFIB_ITF_FLAG_ACCEPT);
+						   &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group
@@ -727,8 +727,7 @@ int vnet_vxlan_gpe_add_del_tunnel
       if (!ip46_address_is_multicast (&t->remote))
 	{
 	  vtep_addr_unref (&t->local);
-	  fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
-	  fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
+	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
 	}
       else if (vtep_addr_unref (&t->remote) == 0)
 	{

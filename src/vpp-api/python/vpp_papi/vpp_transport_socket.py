@@ -125,7 +125,7 @@ class VppTransport(object):
         r, length = sockclnt_create_reply.unpack(msg)
         self.socket_index = r.index
         for m in r.message_table:
-            n = m.name.rstrip(b'\x00\x13')
+            n = m.name
             self.message_table[n] = m.index
 
         self.message_thread.daemon = True
@@ -152,6 +152,8 @@ class VppTransport(object):
         if self.message_thread is not None and self.message_thread.is_alive():
             # Allow additional connect() calls.
             self.message_thread.join()
+        # Wipe message table, VPP can be restarted with different plugins.
+        self.message_table = {}
         # Collect garbage.
         self.message_thread = None
         self.socket = None
@@ -188,6 +190,8 @@ class VppTransport(object):
         header = self.header.pack(0, len(buf), 0)
         n = self.socket.send(header)
         n = self.socket.send(buf)
+        if n == 0:
+            raise VppTransportSocketIOError(1, 'Not connected')
 
     def _read(self):
         hdr = self.socket.recv(16)

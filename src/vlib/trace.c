@@ -357,6 +357,7 @@ cli_add_trace_buffer (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vlib_trace_main_t *tm;
+  vlib_node_t *node;
   vlib_trace_node_t *tn;
   u32 node_index, add;
   u8 verbose = 0;
@@ -381,6 +382,17 @@ cli_add_trace_buffer (vlib_main_t * vm,
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+
+  node = vlib_get_node (vm, node_index);
+
+  if ((node->flags & VLIB_NODE_FLAG_TRACE_SUPPORTED) == 0)
+    {
+      error = clib_error_create ("node '%U' doesn't support per-node "
+				 "tracing. There may be another way to "
+				 "initiate trace on this node.",
+				 format_vlib_node_name, vm, node_index);
+      goto done;
     }
 
   /* *INDENT-OFF* */

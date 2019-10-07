@@ -53,7 +53,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
   if (rw->sw_if_index != ~0)
     {
       vnet_sw_interface_t *si;
-      si = vnet_get_sw_interface_safe (vnm, rw->sw_if_index);
+      si = vnet_get_sw_interface_or_null (vnm, rw->sw_if_index);
       if (NULL != si)
 	s = format (s, "%U:", format_vnet_sw_interface_name, vnm, si);
       else

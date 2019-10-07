@@ -27,34 +27,20 @@
 
 
 /* define message IDs */
-#include <lacp/lacp_msg_enum.h>
+#include <lacp/lacp.api_enum.h>
+#include <lacp/lacp.api_types.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <lacp/lacp_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <lacp/lacp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <lacp/lacp_all_api_h.h>
-#undef vl_printfun
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <lacp/lacp_all_api_h.h>
-#undef vl_api_version
+/* Macro to finish up custom dump fns */
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
 
 #define REPLY_MSG_ID_BASE lm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_lacp_plugin_api_msg				\
-_(SW_INTERFACE_LACP_DUMP, sw_interface_lacp_dump)
 
 static void
 lacp_send_sw_interface_details (vl_api_registration_t * reg,
@@ -126,51 +112,21 @@ vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t * mp)
   vec_free (lacpifs);
 }
 
-#define vl_msg_name_crc_list
-#include <lacp/lacp_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (lacp_main_t * lm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lm->msg_id_base);
-  foreach_vl_msg_name_crc_lacp;
-#undef _
-}
-
 /* Set up the API message handling tables */
+#include <lacp/lacp.api.c>
 clib_error_t *
 lacp_plugin_api_hookup (vlib_main_t * vm)
 {
   lacp_main_t *lm = &lacp_main;
   api_main_t *am = &api_main;
-  u8 *name;
-
-  /* Construct the API name */
-  name = format (0, "lacp_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  lm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  lm->msg_id_base = setup_message_id_table ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + lm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_lacp_plugin_api_msg;
-#undef _
+  /* Mark these APIs as mp safe */
+  am->is_mp_safe[VL_API_SW_INTERFACE_LACP_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_LACP_DETAILS] = 1;
 
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (lm, am);
-
-  vec_free (name);
   return 0;
 }
 

@@ -109,8 +109,10 @@ typedef struct vl_shmem_hdr_
 #define VL_API_EPOCH_SHIFT 8
 
 void *vl_msg_api_alloc (int nbytes);
+void *vl_msg_api_alloc_zero (int nbytes);
 void *vl_msg_api_alloc_or_null (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
+void *vl_msg_api_alloc_zero_as_if_client (int nbytes);
 void *vl_msg_api_alloc_as_if_client_or_null (int nbytes);
 void *vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg,
 					   int nbytes);

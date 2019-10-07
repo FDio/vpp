@@ -14,6 +14,7 @@
  */
 
 #include "vom/interface.hpp"
+#include "vom/api_types.hpp"
 #include "vom/bond_group_binding.hpp"
 #include "vom/bond_group_binding_cmds.hpp"
 #include "vom/bond_interface_cmds.hpp"
@@ -157,6 +158,12 @@ const l2_address_t&
 interface::l2_address() const
 {
   return (m_l2_address.data());
+}
+
+const interface::admin_state_t&
+interface::admin_state() const
+{
+  return (m_state.data());
 }
 
 interface::const_iterator_t
@@ -666,8 +673,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
       for (auto& l3_record : *dcmd) {
         auto& payload = l3_record.get_payload();
-        const route::prefix_t pfx(payload.is_ipv6, payload.ip,
-                                  payload.prefix_length);
+        const route::prefix_t pfx = from_api(payload.prefix);
 
         VOM_LOG(log_level_t::DEBUG) << "dump: " << pfx.to_string();
 

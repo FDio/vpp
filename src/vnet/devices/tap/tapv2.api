@@ -19,7 +19,7 @@
     the Linux kernel TAP device driver
 */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 /** \brief Initialize a new tap interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -47,6 +47,8 @@ option version = "2.0.0";
     @param host_ip4_gw - host IPv4 default gateway
     @param host_ip6_gw_set - host IPv6 default gateway should be set
     @param host_ip6_gw - host IPv6 default gateway
+    @param host_mtu_set - host MTU should be set
+    @param host_mtu_size - host MTU size
     @param tap_flags - flags for the TAP interface creation
 */
 define tap_create_v2
@@ -76,6 +78,8 @@ define tap_create_v2
   u8 host_ip4_gw[4];
   u8 host_ip6_gw_set;
   u8 host_ip6_gw[16];
+  u8 host_mtu_set;
+  u32 host_mtu_size;
   u8 tag[64];
   u32 tap_flags;
 };
@@ -125,6 +129,7 @@ define sw_interface_tap_v2_dump
     @param host_ip4_prefix_len - host IPv4 ip address prefix length; 0 if unset
     @param host_ip6_addr - host IPv6 ip address
     @param host_ip6_prefix_len - host IPv6 ip address prefix length; 0 if unset
+    @param host_mtu_size - host mtu size
 */
 define sw_interface_tap_v2_details
 {
@@ -142,6 +147,7 @@ define sw_interface_tap_v2_details
   u8 host_ip4_prefix_len;
   u8 host_ip6_addr[16];
   u8 host_ip6_prefix_len;
+  u32 host_mtu_size;
   u32 tap_flags;
 };
 

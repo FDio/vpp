@@ -169,7 +169,7 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       else
 	{
 	  n_fail++;
-	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_DECRYPT;
+	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	}
     }
   return n_ops - n_fail;

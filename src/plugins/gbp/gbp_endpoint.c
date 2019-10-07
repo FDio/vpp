@@ -101,6 +101,16 @@ gbp_endpoint_is_external (const gbp_endpoint_t * ge)
   return (! !(ge->ge_fwd.gef_flags & GBP_ENDPOINT_FLAG_EXTERNAL));
 }
 
+int
+gbp_endpoint_is_learnt (const gbp_endpoint_t * ge)
+{
+  if (0 == vec_len (ge->ge_locs))
+    return 0;
+
+  /* DP is the highest source so if present it will be first */
+  return (ge->ge_locs[0].gel_src == GBP_ENDPOINT_SRC_DP);
+}
+
 static void
 gbp_endpoint_extract_key_mac_itf (const clib_bihash_kv_16_8_t * key,
 				  mac_address_t * mac, u32 * sw_if_index)
@@ -254,8 +264,8 @@ gbp_endpoint_alloc (const ip46_address_t * ips,
   fib_node_init (&ge->ge_node, gbp_endpoint_fib_type);
   gei = gbp_endpoint_index (ge);
   ge->ge_key.gek_gbd =
-    ge->ge_key.gek_grd =
-    ge->ge_fwd.gef_itf = ge->ge_fwd.gef_fib_index = INDEX_INVALID;
+    ge->ge_key.gek_grd = ge->ge_fwd.gef_fib_index = INDEX_INVALID;
+  gbp_itf_hdl_reset (&ge->ge_fwd.gef_itf);
   ge->ge_last_time = vlib_time_now (vlib_get_main ());
   ge->ge_key.gek_gbd = gbp_bridge_domain_index (gbd);
 
@@ -326,11 +336,7 @@ static void
 gbp_endpoint_loc_destroy (gbp_endpoint_loc_t * gel)
 {
   gbp_endpoint_group_unlock (gel->gel_epg);
-
-  if (gel->gel_flags & GBP_ENDPOINT_FLAG_REMOTE)
-    {
-      vxlan_gbp_tunnel_unlock (gel->gel_sw_if_index);
-    }
+  gbp_itf_unlock (&gel->gel_itf);
 }
 
 static gbp_endpoint_loc_t *
@@ -339,7 +345,7 @@ gbp_endpoint_loc_find_or_add (gbp_endpoint_t * ge, gbp_endpoint_src_t src)
   gbp_endpoint_loc_t gel = {
     .gel_src = src,
     .gel_epg = INDEX_INVALID,
-    .gel_sw_if_index = INDEX_INVALID,
+    .gel_itf = GBP_ITF_HDL_INVALID,
     .gel_locks = 0,
   };
   u32 pos;
@@ -474,7 +480,8 @@ gbp_endpoint_n_learned (int n)
 }
 
 static void
-gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
+gbp_endpoint_loc_update (const gbp_endpoint_t * ge,
+			 gbp_endpoint_loc_t * gel,
 			 const gbp_bridge_domain_t * gb,
 			 u32 sw_if_index,
 			 index_t ggi,
@@ -491,18 +498,12 @@ gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
 
   gbp_endpoint_n_learned (is_learnt - was_learnt);
 
-  if (INDEX_INVALID == gel->gel_epg)
-    {
-      gel->gel_epg = ggi;
-      if (INDEX_INVALID != gel->gel_epg)
-	{
-	  gbp_endpoint_group_lock (gel->gel_epg);
-	}
-    }
-  else
-    {
-      ASSERT (gel->gel_epg == ggi);
-    }
+  /*
+   * update the EPG
+   */
+  gbp_endpoint_group_lock (ggi);
+  gbp_endpoint_group_unlock (gel->gel_epg);
+  gel->gel_epg = ggi;
 
   if (gel->gel_flags & GBP_ENDPOINT_FLAG_REMOTE)
     {
@@ -534,29 +535,29 @@ gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
        * create a child vlxan-gbp tunnel and use that as the endpoint's
        * interface.
        */
-      if (~0 != gel->gel_sw_if_index)
-	vxlan_gbp_tunnel_unlock (gel->gel_sw_if_index);
+      gbp_itf_hdl_t old = gel->gel_itf;
 
       switch (gbp_vxlan_tunnel_get_type (sw_if_index))
 	{
 	case GBP_VXLAN_TEMPLATE_TUNNEL:
 	  gel->tun.gel_parent_sw_if_index = sw_if_index;
-	  gel->gel_sw_if_index =
-	    gbp_vxlan_tunnel_clone_and_lock (sw_if_index,
-					     &gel->tun.gel_src,
-					     &gel->tun.gel_dst);
+	  gel->gel_itf = gbp_vxlan_tunnel_clone_and_lock (sw_if_index,
+							  &gel->tun.gel_src,
+							  &gel->tun.gel_dst);
 	  break;
 	case VXLAN_GBP_TUNNEL:
 	  gel->tun.gel_parent_sw_if_index =
 	    vxlan_gbp_tunnel_get_parent (sw_if_index);
-	  gel->gel_sw_if_index = sw_if_index;
-	  vxlan_gbp_tunnel_lock (gel->gel_sw_if_index);
+	  gel->gel_itf = vxlan_gbp_tunnel_lock_itf (sw_if_index);
 	  break;
 	}
+
+      gbp_itf_unlock (&old);
     }
   else
     {
-      gel->gel_sw_if_index = sw_if_index;
+      gel->gel_itf = gbp_itf_l2_add_and_lock (sw_if_index,
+					      ge->ge_key.gek_gbd);
     }
 }
 
@@ -568,9 +569,7 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
   gbp_endpoint_fwd_t *gef;
   const fib_prefix_t *pfx;
   index_t *ai;
-  index_t gei;
 
-  gei = gbp_endpoint_index (ge);
   gbd = gbp_bridge_domain_get (ge->ge_key.gek_gbd);
   gef = &ge->ge_fwd;
 
@@ -599,26 +598,23 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
     adj_unlock (*ai);
   }
 
-  if (INDEX_INVALID != gef->gef_itf)
+  if (gbp_itf_hdl_is_valid (gef->gef_itf))
     {
       l2fib_del_entry (ge->ge_key.gek_mac.bytes,
-		       gbd->gb_bd_index, gef->gef_itf);
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, L2INPUT_FEAT_NONE);
-      gbp_itf_set_l2_output_feature (gef->gef_itf, gei, L2OUTPUT_FEAT_NONE);
-
-      gbp_itf_unlock (gef->gef_itf);
-      gef->gef_itf = INDEX_INVALID;
+		       gbd->gb_bd_index,
+		       gbp_itf_get_sw_if_index (gef->gef_itf));
     }
 
+  gbp_itf_unlock (&gef->gef_itf);
   vec_free (gef->gef_adjs);
 }
 
 static void
 gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 {
-  const gbp_route_domain_t *grd;
   const gbp_bridge_domain_t *gbd;
   const gbp_endpoint_group_t *gg;
+  const gbp_route_domain_t *grd;
   gbp_endpoint_loc_t *gel;
   gbp_endpoint_fwd_t *gef;
   const fib_prefix_t *pfx;
@@ -644,12 +640,11 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
       gg = NULL;
     }
 
-  gef->gef_itf = gbp_itf_add_and_lock (gel->gel_sw_if_index,
-				       gbd->gb_bd_index);
+  gef->gef_itf = gbp_itf_clone_and_lock (gel->gel_itf);
 
   if (!mac_address_is_zero (&ge->ge_key.gek_mac))
     {
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, L2INPUT_FEAT_GBP_FWD);
+      gbp_itf_l2_set_input_feature (gef->gef_itf, L2INPUT_FEAT_GBP_FWD);
 
       if (gbp_endpoint_is_remote (ge) || gbp_endpoint_is_external (ge))
 	{
@@ -657,18 +652,19 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	   * bridged packets to external endpoints should be classifed
 	   * based on the EP's/BD's EPG
 	   */
-	  gbp_itf_set_l2_output_feature (gef->gef_itf, gei,
+	  gbp_itf_l2_set_output_feature (gef->gef_itf,
 					 L2OUTPUT_FEAT_GBP_POLICY_MAC);
 	}
       else
 	{
-	  gbp_endpoint_add_itf (gef->gef_itf, gei);
-	  gbp_itf_set_l2_output_feature (gef->gef_itf, gei,
+	  gbp_endpoint_add_itf (gbp_itf_get_sw_if_index (gef->gef_itf), gei);
+	  gbp_itf_l2_set_output_feature (gef->gef_itf,
 					 L2OUTPUT_FEAT_GBP_POLICY_PORT);
 	}
       l2fib_add_entry (ge->ge_key.gek_mac.bytes,
 		       gbd->gb_bd_index,
-		       gef->gef_itf, L2FIB_ENTRY_RESULT_FLAG_STATIC);
+		       gbp_itf_get_sw_if_index (gef->gef_itf),
+		       L2FIB_ENTRY_RESULT_FLAG_STATIC);
     }
 
   vec_foreach (pfx, ge->ge_key.gek_ips)
@@ -706,7 +702,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	 * tunnel since the BD will not contain the EP's MAC since it was
 	 * L3 learned. The dst MAC address used is the 'BD's MAC'.
 	 */
-	ip_sw_if_index = gef->gef_itf;
+	ip_sw_if_index = gbp_itf_get_sw_if_index (gef->gef_itf);
 
 	mac_address_to_bytes (gbp_route_domain_get_local_mac (),
 			      eth->src_address);
@@ -759,6 +755,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	     * is applied
 	     */
 	    gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (pfx->fp_proto),
+					grd->grd_scope,
 					gg->gg_sclass, ~0, &policy_dpo);
 
 	    fib_table_entry_special_dpo_add (fib_index, pfx,
@@ -775,7 +772,8 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	 */
 	if (gbp_endpoint_is_local (ge) && ~0 != gg->gg_uplink_sw_if_index)
 	  {
-	    gbp_endpoint_add_itf (gef->gef_itf, gei);
+	    gbp_endpoint_add_itf (gbp_itf_get_sw_if_index (gef->gef_itf),
+				  gei);
 	    if (FIB_PROTOCOL_IP4 == pfx->fp_proto)
 	      send_ip4_garp_w_addr (vlib_get_main (),
 				    &pfx->fp_addr.ip4,
@@ -790,7 +788,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 
   if (gbp_endpoint_is_external (ge))
     {
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei,
+      gbp_itf_l2_set_input_feature (gef->gef_itf,
 				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
     }
   else if (gbp_endpoint_is_local (ge))
@@ -806,7 +804,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 
       if (NULL != gg && ~0 != gg->gg_uplink_sw_if_index)
 	feats |= L2INPUT_FEAT_GBP_FWD;
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, feats);
+      gbp_itf_l2_set_input_feature (gef->gef_itf, feats);
     }
 
   /*
@@ -890,8 +888,8 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
   gei = gbp_endpoint_index (ge);
   gel = gbp_endpoint_loc_find_or_add (ge, src);
 
-  gbp_endpoint_loc_update (gel, gbd, sw_if_index, ggi, flags, tun_src,
-			   tun_dst);
+  gbp_endpoint_loc_update (ge, gel, gbd, sw_if_index, ggi, flags,
+			   tun_src, tun_dst);
 
   if (src <= best)
     {
@@ -1085,6 +1083,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
   u32 sclass = SCLASS_INVALID;
   u32 handle = INDEX_INVALID;
   u32 sw_if_index = ~0;
+  u32 flags = GBP_ENDPOINT_FLAG_NONE;
   u8 add = 1;
   int rv;
 
@@ -1109,6 +1108,8 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	vec_add1 (ips, ip);
       else if (unformat (input, "mac %U", unformat_mac_address, &mac))
 	;
+      else if (unformat (input, "flags 0x%x", &flags))
+	;
       else
 	break;
     }
@@ -1124,9 +1125,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
 				      sw_if_index, ips, &mac,
 				      INDEX_INVALID, INDEX_INVALID,
-				      sclass,
-				      GBP_ENDPOINT_FLAG_NONE,
-				      NULL, NULL, &handle);
+				      sclass, flags, NULL, NULL, &handle);
 
       if (rv)
 	return clib_error_return (0, "GBP Endpoint update returned %d", rv);
@@ -1150,13 +1149,13 @@ gbp_endpoint_cli (vlib_main_t * vm,
  * Configure a GBP Endpoint
  *
  * @cliexpar
- * @cliexstart{set gbp endpoint [del] <interface> epg <ID> ip <IP>}
+ * @cliexstart{gbp endpoint del <handle> | [add] <interface> sclass <SCLASS> ip <IP> mac <MAC> [flags <flags>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_endpoint_cli_node, static) = {
   .path = "gbp endpoint",
-  .short_help = "gbp endpoint [del] <interface> epg <ID> ip <IP> mac <MAC>",
+  .short_help = "gbp endpoint del <handle> | [add] <interface> sclass <SCLASS> ip <IP> mac <MAC> [flags <flags>]",
   .function = gbp_endpoint_cli,
 };
 /* *INDENT-ON* */
@@ -1182,7 +1181,7 @@ format_gbp_endpoint_fwd (u8 * s, va_list * args)
   gbp_endpoint_fwd_t *gef = va_arg (*args, gbp_endpoint_fwd_t *);
 
   s = format (s, "fwd:");
-  s = format (s, "\n   itf:[%U]", format_gbp_itf, gef->gef_itf);
+  s = format (s, "\n   itf:[%U]", format_gbp_itf_hdl, gef->gef_itf);
   if (GBP_ENDPOINT_FLAG_NONE != gef->gef_flags)
     {
       s = format (s, " flags:%U", format_gbp_endpoint_flags, gef->gef_flags);
@@ -1216,10 +1215,8 @@ format_gbp_endpoint_loc (u8 * s, va_list * args)
   gbp_endpoint_loc_t *gel = va_arg (*args, gbp_endpoint_loc_t *);
 
   s = format (s, "%U", format_gbp_endpoint_src, gel->gel_src);
-  s =
-    format (s, "\n    %U", format_vnet_sw_if_index_name, vnet_get_main (),
-	    gel->gel_sw_if_index);
-  s = format (s, " EPG:%d", gel->gel_epg);
+  s = format (s, "\n    EPG:%d [%U]", gel->gel_epg,
+	      format_gbp_itf_hdl, gel->gel_itf);
 
   if (GBP_ENDPOINT_FLAG_NONE != gel->gel_flags)
     {
@@ -1388,6 +1385,9 @@ gbp_endpoint_scan_l2 (vlib_main_t * vm)
   f64 last_start, start_time, delta_t;
   int i, j, k;
 
+  if (!gte_table->instantiated)
+    return;
+
   delta_t = 0;
   last_start = start_time = vlib_time_now (vm);
 
@@ -1439,6 +1439,9 @@ gbp_endpoint_scan_l3 (vlib_main_t * vm)
   clib_bihash_24_8_t *gte_table = &gbp_ep_db.ged_by_ip_rd;
   f64 last_start, start_time, delta_t;
   int i, j, k;
+
+  if (!gte_table->instantiated)
+    return;
 
   delta_t = 0;
   last_start = start_time = vlib_time_now (vm);

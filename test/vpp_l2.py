@@ -8,6 +8,10 @@ from vpp_ip import VppIpAddress
 from vpp_lo_interface import VppLoInterface
 from vpp_papi import MACAddress
 from vpp_sub_interface import L2_VTR_OP
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 
 class L2_PORT_TYPE:
@@ -41,19 +45,11 @@ def find_bridge_domain_port(test, bd_id, sw_if_index):
 
 
 def find_bridge_domain_arp_entry(test, bd_id, mac, ip):
-    vmac = MACAddress(mac)
-    vip = VppIpAddress(ip)
-
-    if vip.version == 4:
-        n = 4
-    else:
-        n = 16
-
     arps = test.vapi.bd_ip_mac_dump(bd_id)
     for arp in arps:
         # do IP addr comparison too once .api is fixed...
-        if vmac.packed == arp.mac_address and \
-                vip.bytes == arp.ip_address[:n]:
+        if mac == str(arp.entry.mac) and \
+           ip == str(arp.entry.ip):
             return True
     return False
 
@@ -136,28 +132,32 @@ class VppBridgeDomainArpEntry(VppObject):
     def __init__(self, test, bd, mac, ip):
         self._test = test
         self.bd = bd
-        self.mac = MACAddress(mac)
-        self.ip = VppIpAddress(ip)
+        self.mac = mac
+        self.ip = ip
 
     def add_vpp_config(self):
-        self._test.vapi.bd_ip_mac_add_del(bd_id=self.bd.bd_id, is_add=1,
-                                          ip=self.ip.encode(),
-                                          mac=self.mac.packed)
+        self._test.vapi.bd_ip_mac_add_del(is_add=1,
+                                          entry={
+                                              'bd_id': self.bd.bd_id,
+                                              'ip': self.ip,
+                                              'mac': self.mac})
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.bd_ip_mac_add_del(bd_id=self.bd.bd_id, is_add=0,
-                                          ip=self.ip.encode(),
-                                          mac=self.mac.packed)
+        self._test.vapi.bd_ip_mac_add_del(is_add=0,
+                                          entry={
+                                              'bd_id': self.bd.bd_id,
+                                              'ip': self.ip,
+                                              'mac': self.mac})
 
     def query_vpp_config(self):
         return find_bridge_domain_arp_entry(self._test,
                                             self.bd.bd_id,
-                                            self.mac.packed,
-                                            self.ip.address)
+                                            self.mac,
+                                            self.ip)
 
     def object_id(self):
-        return "BD-Arp-Entry-%s-%s-%s" % (self.bd, self.mac, self.ip.address)
+        return "BD-Arp-Entry-%s-%s-%s" % (self.bd, self.mac, self.ip)
 
 
 class VppL2FibEntry(VppObject):

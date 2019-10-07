@@ -29,13 +29,16 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #endif /* included_from_layer_3 */
 
+#ifdef vl_printfun
+#include <vnet/format_fns.h>
+#endif
+
 #include <vnet/bonding/bond.api.h>
 #include <vnet/devices/af_packet/af_packet.api.h>
 #include <vnet/devices/netmap/netmap.api.h>
 #include <vnet/devices/virtio/vhost_user.api.h>
 #include <vnet/devices/tap/tapv2.api.h>
 #include <vnet/gre/gre.api.h>
-#include <vnet/ipip/ipip.api.h>
 #include <vnet/interface.api.h>
 #include <vnet/l2/l2.api.h>
 #include <vnet/l2tp/l2tp.api.h>
@@ -48,7 +51,6 @@
 #include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 #include <vnet/bfd/bfd.api.h>
 #include <vnet/ipsec/ipsec.api.h>
-#include <vnet/ipsec-gre/ipsec_gre.api.h>
 #include <vnet/lisp-cp/lisp.api.h>
 #include <vnet/lisp-gpe/lisp_gpe.api.h>
 #include <vnet/lisp-cp/one.api.h>
@@ -63,13 +65,11 @@
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
-#include <vnet/dns/dns.api.h>
 #include <vnet/udp/udp.api.h>
 #include <vnet/bier/bier.api.h>
 #include <vnet/ip/punt.api.h>
 #include <vnet/pg/pg.api.h>
 #include <vnet/feature/feature.api.h>
-#include <vnet/sctp/sctp.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/dhcp/dhcp6_pd_client_cp.api.h>
 #include <vnet/dhcp/dhcp6_ia_na_client_cp.api.h>

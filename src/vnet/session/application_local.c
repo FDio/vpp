@@ -128,7 +128,7 @@ ct_session_connect_notify (session_t * ss)
   ss = session_get (ss_index, 0);
   cs->session_type = ss->session_type;
   cs->connection_index = sct->c_c_index;
-  cs->listener_index = SESSION_INVALID_INDEX;
+  cs->listener_handle = SESSION_INVALID_HANDLE;
   cs->session_state = SESSION_STATE_CONNECTING;
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;
@@ -280,7 +280,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
 						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
-  ss->listener_index = ll->session_index;
+  ss->listener_handle = listen_session_get_handle (ll);
   ss->session_state = SESSION_STATE_CREATED;
 
   server_wrk = application_listener_select_worker (ll);
@@ -467,7 +467,7 @@ format_ct_connection_id (u8 * s, va_list * args)
 }
 
 static int
-ct_custom_tx (void *session)
+ct_custom_tx (void *session, u32 max_burst_size)
 {
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
@@ -492,6 +492,7 @@ static u8 *
 format_ct_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
   ct_connection_t *ct = ct_connection_get (tc_index);
   s = format (s, "%-50U", format_ct_connection_id, ct);
@@ -540,7 +541,7 @@ format_ct_session (u8 * s, va_list * args)
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t cut_thru_proto = {
+static const transport_proto_vft_t cut_thru_proto = {
   .start_listen = ct_start_listen,
   .stop_listen = ct_stop_listen,
   .get_listener = ct_listener_get,
@@ -549,10 +550,12 @@ const static transport_proto_vft_t cut_thru_proto = {
   .get_connection = ct_session_get,
   .custom_tx = ct_custom_tx,
   .app_rx_evt = ct_app_rx_evt,
-  .tx_type = TRANSPORT_TX_INTERNAL,
-  .service_type = TRANSPORT_SERVICE_APP,
   .format_listener = format_ct_listener,
   .format_connection = format_ct_session,
+  .transport_options = {
+    .tx_type = TRANSPORT_TX_INTERNAL,
+    .service_type = TRANSPORT_SERVICE_APP,
+  },
 };
 /* *INDENT-ON* */
 

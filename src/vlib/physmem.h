@@ -57,6 +57,7 @@ typedef struct
 {
   u32 flags;
   uword base_addr;
+  uword max_size;
 #define VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP	(1 << 0)
 #define VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU		(1 << 1)
   vlib_physmem_map_t *maps;

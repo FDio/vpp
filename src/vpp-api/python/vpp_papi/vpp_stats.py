@@ -86,7 +86,7 @@ char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 uint64_t stat_segment_version(void);
 uint64_t stat_segment_version_r(stat_client_main_t *sm);
 void free(void *ptr);
-""")
+""")  # noqa: E501
 
 
 # Utility functions
@@ -130,11 +130,13 @@ def combined_counter_vec_list(api, e):
         vec.append(if_per_thread)
     return vec
 
+
 def error_vec_list(api, e):
     vec = []
     for thread in range(api.stat_segment_vec_len(e)):
         vec.append(e[thread])
     return vec
+
 
 def name_vec_list(api, e):
     return [ffi.string(e[i]).decode('utf-8') for i in
@@ -175,7 +177,7 @@ class VPPStatsIOError(IOError):
         if not message:
             try:
                 message = self.message % kwargs
-            except Exception as e:
+            except Exception:
                 message = self.message
         else:
             message = message % kwargs
@@ -190,7 +192,7 @@ class VPPStatsClientLoadError(RuntimeError):
 class VPPStats(object):
     VPPStatsIOError = VPPStatsIOError
 
-    default_socketname = '/var/run/vpp/stats.sock'
+    default_socketname = '/run/vpp/stats.sock'
     sharedlib_name = 'libvppapiclient.so'
 
     def __init__(self, socketname=default_socketname, timeout=10):
@@ -258,7 +260,7 @@ class VPPStats(object):
                                          .format(name))
                 k, v = s.popitem()
                 return v
-            except VPPStatsIOError as e:
+            except VPPStatsIOError:
                 if retries > 10:
                     return None
                 retries += 1
@@ -280,7 +282,7 @@ class VPPStats(object):
                 error_names = self.ls(['/err/'])
                 error_counters = self.dump(error_names)
                 break
-            except VPPStatsIOError as e:
+            except VPPStatsIOError:
                 if retries > 10:
                     return None
                 retries += 1
@@ -290,8 +292,8 @@ class VPPStats(object):
 
     def set_errors_str(self):
         '''Return all errors counters > 0 pretty printed'''
-        s = 'ERRORS:\n'
+        s = ['ERRORS:']
         error_counters = self.set_errors()
         for k in sorted(error_counters):
-            s += '{:<60}{:>10}\n'.format(k, error_counters[k])
-        return s
+            s.append('{:<60}{:>10}'.format(k, error_counters[k]))
+        return '%s\n' % '\n'.join(s)

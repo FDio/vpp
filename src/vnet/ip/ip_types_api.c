@@ -95,6 +95,18 @@ ip_proto_encode (ip_protocol_t ipp)
   return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
 }
 
+ip_dscp_t
+ip_dscp_decode (u8 in)
+{
+  return ((ip_dscp_t) in);
+}
+
+u8
+ip_dscp_encode (ip_dscp_t dscp)
+{
+  return (dscp);
+}
+
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
 {
@@ -196,7 +208,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
       out->fp_proto = FIB_PROTOCOL_IP6;
       break;
     }
-  out->fp_len = in->address_length;
+  out->fp_len = in->len;
   out->___fp___pad = 0;
   ip_address_decode (&in->address, &out->fp_addr);
 }
@@ -204,7 +216,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 void
 ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 {
-  out->address_length = in->fp_len;
+  out->len = in->fp_len;
   ip_address_encode (&in->fp_addr,
 		     fib_proto_to_ip46 (in->fp_proto), &out->address);
 }
@@ -229,6 +241,9 @@ ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
 
   ip_address_union_decode (&in->grp_address, in->af, &out->fp_grp_addr);
   ip_address_union_decode (&in->src_address, in->af, &out->fp_src_addr);
+
+  if (!ip46_address_is_zero (&out->fp_src_addr))
+    out->fp_len = (out->fp_proto == FIB_PROTOCOL_IP6 ? 256 : 64);
 }
 
 /*

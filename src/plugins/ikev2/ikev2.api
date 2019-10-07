@@ -52,6 +52,7 @@ autoreply define ikev2_profile_add_del
 
   u8 name[64];
   u8 is_add;
+  option vat_help = "name <profile_name> [del]";
 };
 
 /** \brief IKEv2: Set IKEv2 profile authentication method
@@ -74,6 +75,7 @@ autoreply define ikev2_profile_set_auth
   u8 is_hex;
   u32 data_len;
   u8 data[data_len];
+  option vat_help = "name <profile_name> auth_method <method> (auth_data 0x<data> | auth_data <data>)";
 };
 
 /** \brief IKEv2: Set IKEv2 profile local/remote identification
@@ -96,6 +98,7 @@ autoreply define ikev2_profile_set_id
   u8 id_type;
   u32 data_len;
   u8 data[data_len];
+  option vat_help = "name <profile_name> id_type <type> (id_data 0x<data> | id_data <data>) (local|remote)";
 };
 
 /** \brief IKEv2: Set IKEv2 profile traffic selector parameters
@@ -122,6 +125,7 @@ autoreply define ikev2_profile_set_ts
   u16 end_port;
   u32 start_addr;
   u32 end_addr;
+  option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
 };
 
 /** \brief IKEv2: Set IKEv2 local RSA private key
@@ -136,6 +140,7 @@ autoreply define ikev2_set_local_key
   u32 context;
 
   u8 key_file[256];
+  option vat_help = "file <absolute_file_path>";
 };
 
 /** \brief IKEv2: Set IKEv2 responder interface and IP address
@@ -154,6 +159,7 @@ autoreply define ikev2_set_responder
   u8 name[64];
   u32 sw_if_index;
   u8 address[4];
+  option vat_help = "<profile_name> interface <interface> address <addr>";
 };
 
 /** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
@@ -177,6 +183,7 @@ autoreply define ikev2_set_ike_transforms
   u32 crypto_key_size;
   u32 integ_alg;
   u32 dh_group;
+  option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
 };
 
 /** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
@@ -200,6 +207,7 @@ autoreply define ikev2_set_esp_transforms
   u32 crypto_key_size;
   u32 integ_alg;
   u32 dh_group;
+  option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
 };
 
 /** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
@@ -223,6 +231,7 @@ autoreply define ikev2_set_sa_lifetime
   u32 lifetime_jitter;
   u32 handover;
   u64 lifetime_maxdata;
+  option vat_help = "<profile_name> <seconds> <jitter> <handover> <max bytes>";
 };
 
 /** \brief IKEv2: Initiate the SA_INIT exchange
@@ -238,6 +247,7 @@ autoreply define ikev2_initiate_sa_init
   u32 context;
 
   u8 name[64];
+  option vat_help = "<profile_name>";
 };
 
 /** \brief IKEv2: Initiate the delete IKE SA exchange
@@ -253,6 +263,7 @@ autoreply define ikev2_initiate_del_ike_sa
   u32 context;
 
   u64 ispi;
+  option vat_help = "<ispi>";
 };
 
 /** \brief IKEv2: Initiate the delete Child SA exchange
@@ -268,6 +279,7 @@ autoreply define ikev2_initiate_del_child_sa
   u32 context;
 
   u32 ispi;
+  option vat_help = "<ispi>";
 };
 
 /** \brief IKEv2: Initiate the rekey Child SA exchange
@@ -283,6 +295,7 @@ autoreply define ikev2_initiate_rekey_child_sa
   u32 context;
 
   u32 ispi;
+  option vat_help = "<ispi>";
 };
 
 /*

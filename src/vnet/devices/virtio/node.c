@@ -153,6 +153,20 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
       u16 ethertype = clib_net_to_host_u16 (eh->type);
       u16 l2hdr_sz = sizeof (ethernet_header_t);
 
+      if (ethernet_frame_is_tagged (ethertype))
+	{
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
+	}
+
       vnet_buffer (b0)->l2_hdr_offset = 0;
       vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
       if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
@@ -176,7 +190,6 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 	    (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID
 	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 	}
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
@@ -313,12 +326,12 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      virtio_input_trace_t *tr;
 	      vlib_trace_buffer (vm, node, next0, b0,
-				 /* follow_chain */ 0);
+				 /* follow_chain */ 1);
 	      vlib_set_trace_count (vm, node, --n_trace);
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = vif->hw_if_index;
-	      tr->len = len;
+	      tr->len = len + b0->total_length_not_including_first_buffer;
 	      clib_memcpy_fast (&tr->hdr, hdr, hdr_sz);
 	    }
 
@@ -336,7 +349,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* next packet */
 	  n_rx_packets++;
-	  n_rx_bytes += len;
+	  n_rx_bytes += (len + b0->total_length_not_including_first_buffer);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -344,7 +357,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
-				   vif->hw_if_index, n_rx_packets,
+				   vif->sw_if_index, n_rx_packets,
 				   n_rx_bytes);
 
 refill:
@@ -385,6 +398,7 @@ VLIB_REGISTER_NODE (virtio_input_node) = {
   .name = "virtio-input",
   .sibling_of = "device-input",
   .format_trace = format_virtio_input_trace,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = VIRTIO_INPUT_N_ERROR,

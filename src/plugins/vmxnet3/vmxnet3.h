@@ -582,7 +582,7 @@ typedef struct
   void *queues;
   vmxnet3_rss_shared *rss;
   u32 link_speed;
-  u8 lro_enable;
+  u8 gso_enable;
   vmxnet3_tx_stats *tx_stats;
   vmxnet3_rx_stats *rx_stats;
 } vmxnet3_device_t;
@@ -592,7 +592,6 @@ typedef struct
   vmxnet3_device_t *devices;
   u16 msg_id_base;
   vlib_log_class_t log_default;
-  u8 lro_configured;
 } vmxnet3_main_t;
 
 extern vmxnet3_main_t vmxnet3_main;
@@ -606,6 +605,7 @@ typedef struct
   u16 txq_size;
   u16 txq_num;
   u8 bind;
+  u8 enable_gso;
   /* return */
   i32 rv;
   u32 sw_if_index;

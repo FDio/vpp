@@ -71,6 +71,7 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES
   interface.api
+  interface_types.api
   ip/ip_types.api
 )
 
@@ -155,7 +156,9 @@ list(APPEND VNET_HEADERS
   ethernet/p2p_ethernet.h
 )
 
-list(APPEND VNET_API_FILES ethernet/p2p_ethernet.api)
+list(APPEND VNET_API_FILES
+  ethernet/p2p_ethernet.api
+  ethernet/ethernet_types.api)
 
 ##############################################################################
 # Layer 2 protocol: Ethernet bridging
@@ -381,6 +384,7 @@ list(APPEND VNET_API_FILES lldp/lldp.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   classify/vnet_classify.c
+  classify/trace_classify.h
   classify/ip_classify.c
   classify/in_out_acl.c
   classify/policer_classify.c
@@ -397,6 +401,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   classify/vnet_classify.h
+  classify/trace_classify.h
   classify/in_out_acl.h
   classify/policer_classify.h
   classify/flow_classify.h
@@ -426,7 +431,8 @@ list(APPEND VNET_SOURCES
   ip/ip4_pg.c
   ip/ip4_source_and_port_range_check.c
   ip/ip4_source_check.c
-  ip/ip4_reassembly.c
+  ip/reass/ip4_full_reass.c
+  ip/reass/ip4_sv_reass.c
   ip/ip6_format.c
   ip/ip6_forward.c
   ip/ip6_ll_table.c
@@ -436,7 +442,8 @@ list(APPEND VNET_SOURCES
   ip/ip6_input.c
   ip/ip6_neighbor.c
   ip/ip6_pg.c
-  ip/ip6_reassembly.c
+  ip/reass/ip6_full_reass.c
+  ip/reass/ip6_sv_reass.c
   ip/rd_cp.c
   ip/ip_neighbor.c
   ip/ip_api.c
@@ -456,9 +463,13 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_MULTIARCH_SOURCES
   ip/ip4_source_check.c
   ip/ip4_punt_drop.c
-  ip/ip4_reassembly.c
+  ip/reass/ip4_full_reass.c
   ip/ip6_hop_by_hop.c
-  ip/ip6_reassembly.c
+  ip/reass/ip6_full_reass.c
+  ip/reass/ip4_sv_reass.c
+  ip/ip6_hop_by_hop.c
+  ip/reass/ip6_full_reass.c
+  ip/reass/ip6_sv_reass.c
   ip/ip6_input.c
   ip/ip6_punt_drop.c
   ip/punt_node.c
@@ -566,6 +577,8 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_sa.c
   ipsec/ipsec_spd.c
   ipsec/ipsec_spd_policy.c
+  ipsec/ipsec_tun.c
+  ipsec/ipsec_tun_in.c
   ipsec/esp_format.c
   ipsec/esp_encrypt.c
   ipsec/esp_decrypt.c
@@ -582,6 +595,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ipsec/ipsec_if_in.c
   ipsec/ipsec_output.c
   ipsec/ipsec_input.c
+  ipsec/ipsec_tun_in.c
 )
 
 list(APPEND VNET_API_FILES ipsec/ipsec.api)
@@ -626,6 +640,8 @@ list(APPEND VNET_SOURCES
   tcp/tcp_input.c
   tcp/tcp_newreno.c
   tcp/tcp_cubic.c
+  tcp/tcp_bt.c
+  tcp/tcp_debug.c
   tcp/tcp.c
 )
 
@@ -671,33 +687,6 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES udp/udp.api)
-
-##############################################################################
-# Layer 4 protocol: sctp
-##############################################################################
-list(APPEND VNET_SOURCES
-  sctp/sctp_api.c
-  sctp/sctp.c
-  sctp/sctp_pg.c
-  sctp/sctp_input.c
-  sctp/sctp_output.c
-  sctp/sctp_output_node.c
-  sctp/sctp_format.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  sctp/sctp_output_node.c
-  sctp/sctp_input.c
-)
-
-list(APPEND VNET_HEADERS
-  sctp/sctp_error.def
-  sctp/sctp_packet.h
-  sctp/sctp_timer.h
-  sctp/sctp.h
-)
-
-list(APPEND VNET_API_FILES sctp/sctp.api)
 
 ##############################################################################
 # Tunnel protocol: gre
@@ -845,28 +834,6 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
-
-##############################################################################
-# Tunnel protocol: ipsec+gre
-##############################################################################
-list(APPEND VNET_SOURCES
-  ipsec-gre/ipsec_gre.c
-  ipsec-gre/node.c
-  ipsec-gre/interface.c
-  ipsec-gre/ipsec_gre_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  ipsec-gre/node.c
-  ipsec-gre/ipsec_gre.c
-)
-
-list(APPEND VNET_HEADERS
-  ipsec-gre/ipsec_gre.h
-  ipsec-gre/error.def
-)
-
-list(APPEND VNET_API_FILES ipsec-gre/ipsec_gre.api)
 
 ##############################################################################
 # LISP control plane: lisp-cp
@@ -1072,24 +1039,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES span/span.api)
 
 ##############################################################################
-# DNS proxy, API
-##############################################################################
-list(APPEND VNET_SOURCES
-  dns/dns.c
-  dns/dns.h
-  dns/dns_packet.h
-  dns/reply_node.c
-  dns/request_node.c
-  dns/resolver_process.c
-)
-
-list(APPEND VNET_HEADERS
-  dns/dns.h
-)
-
-list(APPEND VNET_API_FILES dns/dns.api)
-
-##############################################################################
 # Packet generator
 ##############################################################################
 
@@ -1222,22 +1171,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES session/session.api)
 
 ##############################################################################
-# session layer applications
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  session-apps/echo_client.c
-  session-apps/echo_server.c
-  session-apps/http_server.c
-  session-apps/proxy.c
-)
-
-list(APPEND VNET_HEADERS
-  session-apps/echo_client.h
-  session-apps/proxy.h
-)
-
-##############################################################################
 # TLS protocol
 ##############################################################################
 
@@ -1349,6 +1282,7 @@ list(APPEND VNET_SOURCES
   fib/fib_entry_src_lisp.c
   fib/fib_entry_cover.c
   fib/fib_entry_delegate.c
+  fib/fib_entry_track.c
   fib/fib_path_list.c
   fib/fib_path.c
   fib/fib_path_ext.c
@@ -1370,6 +1304,8 @@ list(APPEND VNET_HEADERS
   fib/fib_entry.h
   fib/fib_entry_delegate.h
 )
+
+list(APPEND VNET_API_FILES fib/fib_types.api)
 
 ##############################################################################
 # ADJ
@@ -1400,6 +1336,7 @@ list(APPEND VNET_HEADERS
   adj/adj_glean.h
   adj/adj_nsh.h
   adj/adj_nbr.h
+  adj/adj_midchain.h
   adj/rewrite.h
 )
 
@@ -1425,6 +1362,7 @@ list(APPEND VNET_SOURCES
   dpo/mpls_label_dpo.c
   dpo/l3_proxy_dpo.c
   dpo/dvr_dpo.c
+  dpo/pw_cw.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -1455,6 +1393,7 @@ list(APPEND VNET_SOURCES
   mfib/mfib_forward.c
   mfib/ip4_mfib.c
   mfib/ip6_mfib.c
+  mfib/mfib_api.c
   mfib/mfib_types.c
   mfib/mfib_signal.c
   mfib/mfib_itf.c
@@ -1476,6 +1415,8 @@ list(APPEND VNET_HEADERS
   mfib/mfib_types.h
   mfib/mfib_table.h
 )
+
+list(APPEND VNET_API_FILES mfib/mfib_types.api)
 
 ##############################################################################
 # Utilities
@@ -1502,6 +1443,8 @@ list(APPEND VNET_SOURCES
   qos/qos_egress_map.c
   qos/qos_record.c
   qos/qos_record_node.c
+  qos/qos_store.c
+  qos/qos_store_node.c
   qos/qos_mark.c
   qos/qos_mark_node.c
 )
@@ -1583,31 +1526,5 @@ add_vpp_library(vnet
   LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
   DEPENDS api_headers
 )
-
-##############################################################################
-# Session echo apps
-##############################################################################
-
-option(VPP_BUILD_SESSION_ECHO_APPS "Build session echo apps." ON)
-if(VPP_BUILD_SESSION_ECHO_APPS)
-  add_vpp_executable(tcp_echo
-    SOURCES ../tests/vnet/session/tcp_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-  add_vpp_executable(quic_echo
-    SOURCES ../tests/vnet/session/quic_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-  add_vpp_executable(udp_echo
-    SOURCES ../tests/vnet/session/udp_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-endif(VPP_BUILD_SESSION_ECHO_APPS)
 
 ##############################################################################

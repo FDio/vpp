@@ -385,7 +385,6 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 		    {
 		      dhcp_proxy_trace_t *tr;
 
-		      vlib_buffer_copy_trace_flag (vm, b0, ci0);
 		      tr = vlib_add_trace (vm, node, c0, sizeof (*tr));
 		      tr->which = 0;	/* to server */
 		      tr->error = error0;

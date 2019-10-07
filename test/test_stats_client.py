@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 
 import unittest
-
+import time
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 
@@ -42,6 +42,26 @@ class StatsClientTestCase(VppTestCase):
                          "is not equal to "
                          "ending client side file descriptor count: %s" % (
                              initial_fds, ending_fds))
+
+    @unittest.skip("Manual only")
+    def test_mem_leak(self):
+        def loop():
+            print('Running loop')
+            for i in range(50):
+                rv = self.vapi.papi.tap_create_v2(id=i, use_random_mac=1)
+                self.assertEqual(rv.retval, 0)
+                rv = self.vapi.papi.tap_delete_v2(sw_if_index=rv.sw_if_index)
+                self.assertEqual(rv.retval, 0)
+
+        before = self.statistics.get_counter('/mem/statseg/used')
+        loop()
+        self.vapi.cli("memory-trace on stats-segment")
+        for j in range(100):
+            loop()
+        print(self.vapi.cli("show memory stats-segment verbose"))
+        print('AFTER', before,
+              self.statistics.get_counter('/mem/statseg/used'))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

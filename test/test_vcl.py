@@ -7,7 +7,20 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
+
+iperf3 = '/usr/bin/iperf3'
+
+
+def have_app(app):
+    try:
+        subprocess.check_output([app, '-v'])
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    return True
+
+
+_have_iperf3 = have_app(iperf3)
 
 
 class VCLAppWorker(Worker):
@@ -44,7 +57,7 @@ class VCLTestCase(VppTestCase):
         var = "VPP_BUILD_DIR"
         self.build_dir = os.getenv(var, None)
         if self.build_dir is None:
-            raise Exception("Environment variable `%s' not set" % var)
+            raise EnvironmentError("Environment variable `%s' not set" % var)
         self.vppDebug = 'vpp_debug' in self.build_dir
         self.server_addr = "127.0.0.1"
         self.server_port = "22000"
@@ -70,7 +83,6 @@ class VCLTestCase(VppTestCase):
     def cut_thru_test(self, server_app, server_args, client_app, client_args):
         self.env = {'VCL_API_PREFIX': self.shm_prefix,
                     'VCL_APP_SCOPE_LOCAL': "true"}
-
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
         worker_server.start()
@@ -152,14 +164,12 @@ class VCLTestCase(VppTestCase):
         # Add inter-table routes
         ip_t01 = VppIpRoute(self, self.loop1.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
-                                          nh_table_id=2,
-                                          proto=DpoProto.DPO_PROTO_IP6)],
-                            table_id=1, is_ip6=1)
+                                          nh_table_id=2)],
+                            table_id=1)
         ip_t10 = VppIpRoute(self, self.loop0.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
-                                          nh_table_id=1,
-                                          proto=DpoProto.DPO_PROTO_IP6)],
-                            table_id=2, is_ip6=1)
+                                          nh_table_id=1)],
+                            table_id=2)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show interface addr"))
@@ -173,6 +183,7 @@ class VCLTestCase(VppTestCase):
 
         self.vapi.session_enable_disable(is_enabled=0)
 
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def thru_host_stack_test(self, server_app, server_args,
                              client_app, client_args):
         self.env = {'VCL_API_PREFIX': self.shm_prefix,
@@ -199,6 +210,8 @@ class VCLTestCase(VppTestCase):
         self.sleep(self.post_test_sleep)
 
     def validateResults(self, worker_client, worker_server, timeout):
+        if worker_server.process is None:
+            raise RuntimeError('worker_server is not running.')
         if os.path.isdir('/proc/{}'.format(worker_server.process.pid)):
             self.logger.info("Killing server worker process (pid %d)" %
                              worker_server.process.pid)
@@ -220,7 +233,7 @@ class VCLTestCase(VppTestCase):
                     "Couldn't kill client worker process")
                 raise
         if error:
-            raise Exception(
+            raise RuntimeError(
                 "Timeout! Client worker did not finish in %ss" % timeout)
         self.assert_equal(worker_client.result, 0, "Binary test return code")
 
@@ -270,30 +283,13 @@ class LDPCutThruTestCase(VCLTestCase):
         self.cut_thru_test("sock_test_server", self.server_args,
                            "sock_test_client", self.client_echo_test_args)
 
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_cut_thru_iperf3(self):
         """ run LDP cut thru iperf3 test """
 
-        try:
-            subprocess.check_output(['iperf3', '-v'])
-        except subprocess.CalledProcessError:
-            self.logger.error(
-                "WARNING: Subprocess returned non-0 running 'iperf3 -v")
-            self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
-            return
-        except OSError as e:
-            self.logger.error(
-                "WARNING: Subprocess returned with OS error (%s) %s\n"
-                "         'iperf3' is likely not installed,",
-                e.errno, e.strerror)
-            self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
-            return
-        except Exception:
-            self.logger.exception(
-                "Subprocess returned non-0 running 'iperf3 -v")
-
         self.timeout = self.client_iperf3_timeout
-        self.cut_thru_test("iperf3", self.server_iperf3_args,
-                           "iperf3", self.client_iperf3_args)
+        self.cut_thru_test(iperf3, self.server_iperf3_args,
+                           iperf3, self.client_iperf3_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_uni_dir_nsock(self):
@@ -305,6 +301,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            self.client_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skip("sock test apps need to be improved")
     def test_ldp_cut_thru_bi_dir_nsock(self):
         """ run LDP cut thru bi-directional (multiple sockets) test """
 
@@ -635,28 +632,13 @@ class LDPThruHostStackIperf(VCLTestCase):
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
 
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3(self):
         """ run LDP thru host stack iperf3 test """
 
-        try:
-            subprocess.check_output(['iperf3', '-v'])
-        except subprocess.CalledProcessError:
-            self.logger.error("WARNING: 'iperf3' is not installed,")
-            self.logger.error(
-                "         'test_ldp_thru_host_stack_iperf3' not run!")
-            return
-        except OSError as e:
-            self.logger.error("WARNING: 'iperf3' is not installed,")
-            self.logger.error("         'test' not run!")
-            return
-        except Exception as e:
-            self.logger.error("WARNING: 'iperf3' unexpected error,")
-            self.logger.error("         'test' not run!")
-            return
-
         self.timeout = self.client_iperf3_timeout
-        self.thru_host_stack_test("iperf3", self.server_iperf3_args,
-                                  "iperf3", self.client_iperf3_args)
+        self.thru_host_stack_test(iperf3, self.server_iperf3_args,
+                                  iperf3, self.client_iperf3_args)
 
 
 class LDPIpv6CutThruTestCase(VCLTestCase):
@@ -706,21 +688,14 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_ipv6_echo_test_args)
 
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_iperf3(self):
         """ run LDP IPv6 cut thru iperf3 test """
 
-        try:
-            subprocess.check_output(['iperf3', '-v'])
-        except:
-            self.logger.error("WARNING: 'iperf3' is not installed,")
-            self.logger.error(
-                "         'test_ldp_ipv6_cut_thru_iperf3' not run!")
-            return
-
         self.timeout = self.client_iperf3_timeout
-        self.cut_thru_test("iperf3", self.server_ipv6_iperf3_args,
-                           "iperf3", self.client_ipv6_iperf3_args)
+        self.cut_thru_test(iperf3, self.server_ipv6_iperf3_args,
+                           iperf3, self.client_ipv6_iperf3_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_uni_dir_nsock(self):
@@ -732,6 +707,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skip("sock test apps need to be improved")
     def test_ldp_ipv6_cut_thru_bi_dir_nsock(self):
         """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
 

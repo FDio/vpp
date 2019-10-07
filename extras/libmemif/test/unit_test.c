@@ -37,7 +37,7 @@ on_interrupt (memif_conn_handle_t conn, void *ctx, uint16_t qid)
 }
 
 int
-control_fd_update (int fd, uint8_t events)
+control_fd_update (int fd, uint8_t events, void *ctx)
 {
   return 0;
 }

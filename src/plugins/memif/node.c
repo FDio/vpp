@@ -185,7 +185,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 nexts[MEMIF_RX_VECTOR_SZ], *next = nexts;
   u32 _to_next_bufs[MEMIF_RX_VECTOR_SZ], *to_next_bufs = _to_next_bufs, *bi;
   u32 n_rx_packets = 0, n_rx_bytes = 0;
-  u32 n_left, n_left_to_next, next_index;
+  u32 n_left, n_left_to_next;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
@@ -364,7 +365,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_frame_t *f;
 	  ethernet_input_frame_t *ef;
 	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-	  f = vlib_get_frame (vm, nf->frame_index);
+	  f = vlib_get_frame (vm, nf->frame);
 	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
 	  ef = vlib_frame_scalar_args (f);
@@ -924,6 +925,7 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
   .name = "memif-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .sibling_of = "device-input",
   .format_trace = format_memif_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,

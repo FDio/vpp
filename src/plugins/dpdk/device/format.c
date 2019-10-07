@@ -602,8 +602,11 @@ format_dpdk_device (u8 * s, va_list * args)
 	  vec_free (s2);
 	}
 
-      s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
-		  format_dpdk_device_module_info, xd);
+      if (1 < verbose)
+	{
+	  s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
+		      format_dpdk_device_module_info, xd);
+	}
 
       s = format (s, "%Umax rx packet len: %d\n", format_white_space,
 		  indent + 2, di.max_rx_pktlen);
@@ -665,7 +668,7 @@ format_dpdk_device (u8 * s, va_list * args)
   vec_validate (xstat_names, len - 1);
   int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
 
-  if (ret < 0 || ret > len)
+  if (ret >= 0 && ret <= len)
     {
       /* *INDENT-OFF* */
       vec_foreach_index(i, xd->xstats)

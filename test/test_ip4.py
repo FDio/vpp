@@ -13,9 +13,12 @@ from six import moves
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
+from vpp_ip import VppIpPrefix
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable, VppIpTable
+    VppMplsTable, VppIpTable, FibPathType, find_route, \
+    VppIpInterfaceAddress
+from vpp_ip import VppIpAddress
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 
@@ -80,7 +83,6 @@ class TestIPv4(VppTestCase):
             i.resolve_arp()
 
         # config 2M FIB entries
-        self.config_fib_entries(200)
 
     def tearDown(self):
         """Run standard test teardown and log ``show ip arp``."""
@@ -89,33 +91,6 @@ class TestIPv4(VppTestCase):
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show ip arp"))
         # info(self.vapi.cli("show ip fib"))  # many entries
-
-    def config_fib_entries(self, count):
-        """For each interface add to the FIB table *count* routes to
-        "10.0.0.1/32" destination with interface's local address as next-hop
-        address.
-
-        :param int count: Number of FIB entries.
-
-        - *TODO:* check if the next-hop address shouldn't be remote address
-          instead of local address.
-        """
-        n_int = len(self.interfaces)
-        percent = 0
-        counter = 0.0
-        dest_addr = socket.inet_pton(socket.AF_INET, "10.0.0.1")
-        dest_addr_len = 32
-        for i in self.interfaces:
-            next_hop_address = i.local_ip4n
-            for j in range(count / n_int):
-                self.vapi.ip_add_del_route(dst_address=dest_addr,
-                                           dst_address_length=dest_addr_len,
-                                           next_hop_address=next_hop_address)
-                counter += 1
-                if counter / count * 100 > percent:
-                    self.logger.info("Configure %d FIB entries .. %d%% done" %
-                                     (count, percent))
-                    percent += 1
 
     def modify_packet(self, src_if, packet_size, pkt):
         """Add load, set destination IP and extend packet to required packet
@@ -238,6 +213,131 @@ class TestIPv4(VppTestCase):
             self.verify_capture(i, pkts)
 
 
+class TestIPv4IfAddrRoute(VppTestCase):
+    """ IPv4 Interface Addr Route Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4IfAddrRoute, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4IfAddrRoute, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv4IfAddrRoute, self).setUp()
+
+        # create 1 pg interface
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPv4IfAddrRoute, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def test_ipv4_ifaddrs_same_prefix(self):
+        """ IPv4 Interface Addresses Same Prefix test
+
+        Test scenario:
+
+            - Verify no route in FIB for prefix 10.10.10.0/24
+            - Configure IPv4 address 10.10.10.10/24 on an interface
+            - Verify route in FIB for prefix 10.10.10.0/24
+            - Configure IPv4 address 10.10.10.20/24 on an interface
+            - Delete 10.10.10.10/24 from interface
+            - Verify route in FIB for prefix 10.10.10.0/24
+            - Delete 10.10.10.20/24 from interface
+            - Verify no route in FIB for prefix 10.10.10.0/24
+        """
+
+        # create two addresses, verify route not present
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress("10.10.10.10"), 24)
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress("10.10.10.20"), 24)
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertFalse(find_route(self, "10.10.10.255", 32))
+        self.assertFalse(find_route(self, "10.10.10.0", 32))
+
+        # configure first address, verify route present
+        if_addr1.add_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertTrue(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertTrue(find_route(self, "10.10.10.255", 32))
+        self.assertTrue(find_route(self, "10.10.10.0", 32))
+
+        # configure second address, delete first, verify route not removed
+        if_addr2.add_vpp_config()
+        if_addr1.remove_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertTrue(find_route(self, "10.10.10.20", 32))
+        self.assertTrue(find_route(self, "10.10.10.255", 32))
+        self.assertTrue(find_route(self, "10.10.10.0", 32))
+
+        # delete second address, verify route removed
+        if_addr2.remove_vpp_config()
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertFalse(find_route(self, "10.10.10.255", 32))
+        self.assertFalse(find_route(self, "10.10.10.0", 32))
+
+    def test_ipv4_ifaddr_route(self):
+        """ IPv4 Interface Address Route test
+
+        Test scenario:
+
+            - Create loopback
+            - Configure IPv4 address on loopback
+            - Verify that address is not in the FIB
+            - Bring loopback up
+            - Verify that address is in the FIB now
+            - Bring loopback down
+            - Verify that address is not in the FIB anymore
+            - Bring loopback up
+            - Configure IPv4 address on loopback
+            - Verify that address is in the FIB now
+        """
+
+        # create a loopback and configure IPv4
+        loopbacks = self.create_loopback_interfaces(1)
+        lo_if = self.lo_interfaces[0]
+
+        lo_if.local_ip4_prefix_len = 32
+        lo_if.config_ip4()
+
+        # The intf was down when addr was added -> entry not in FIB
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # When intf is brought up, entry is added
+        lo_if.admin_up()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # When intf is brought down, entry is removed
+        lo_if.admin_down()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # Remove addr, bring up interface, re-add -> entry in FIB
+        lo_if.unconfig_ip4()
+        lo_if.admin_up()
+        lo_if.config_ip4()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """
 
@@ -318,7 +418,8 @@ class TestIPv4FibCrud(VppTestCase):
     ..note:: Python API is too slow to add many routes, needs replacement.
     """
 
-    def config_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+    def config_fib_many_to_one(self, start_dest_addr, next_hop_addr,
+                               count, start=0):
         """
 
         :param start_dest_addr:
@@ -326,42 +427,30 @@ class TestIPv4FibCrud(VppTestCase):
         :param count:
         :return list: added ips with 32 prefix
         """
-        added_ips = []
-        dest_addr = int(binascii.hexlify(socket.inet_pton(socket.AF_INET,
-                                         start_dest_addr)), 16)
-        dest_addr_len = 32
-        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
-        for _ in range(count):
-            n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
-            self.vapi.ip_add_del_route(dst_address=n_dest_addr,
-                                       dst_address_length=dest_addr_len,
-                                       next_hop_address=n_next_hop_addr)
-            added_ips.append(socket.inet_ntoa(n_dest_addr))
-            dest_addr += 1
-        return added_ips
+        routes = []
+        for i in range(count):
+            r = VppIpRoute(self, start_dest_addr % (i + start), 32,
+                           [VppRoutePath(next_hop_addr, 0xffffffff)])
+            r.add_vpp_config()
+            routes.append(r)
+        return routes
 
-    def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+    def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr,
+                                 count, start=0):
 
-        removed_ips = []
-        dest_addr = int(binascii.hexlify(socket.inet_pton(socket.AF_INET,
-                                         start_dest_addr)), 16)
-        dest_addr_len = 32
-        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
-        for _ in range(count):
-            n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
-            self.vapi.ip_add_del_route(dst_address=n_dest_addr,
-                                       dst_address_length=dest_addr_len,
-                                       next_hop_address=n_next_hop_addr,
-                                       is_add=0)
-            removed_ips.append(socket.inet_ntoa(n_dest_addr))
-            dest_addr += 1
-        return removed_ips
+        routes = []
+        for i in range(count):
+            r = VppIpRoute(self, start_dest_addr % (i + start), 32,
+                           [VppRoutePath(next_hop_addr, 0xffffffff)])
+            r.remove_vpp_config()
+            routes.append(r)
+        return routes
 
-    def create_stream(self, src_if, dst_if, dst_ips, count):
+    def create_stream(self, src_if, dst_if, routes, count):
         pkts = []
 
         for _ in range(count):
-            dst_addr = random.choice(dst_ips)
+            dst_addr = random.choice(routes).prefix.address
             info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -389,18 +478,6 @@ class TestIPv4FibCrud(VppTestCase):
                 return p
         return None
 
-    @staticmethod
-    def _match_route_detail(route_detail, ip, address_length=32, table_id=0):
-        if route_detail.address == socket.inet_pton(socket.AF_INET, ip):
-            if route_detail.table_id != table_id:
-                return False
-            elif route_detail.address_length != address_length:
-                return False
-            else:
-                return True
-        else:
-            return False
-
     def verify_capture(self, dst_interface, received_pkts, expected_pkts):
         self.assertEqual(len(received_pkts), len(expected_pkts))
         to_verify = list(expected_pkts)
@@ -411,27 +488,13 @@ class TestIPv4FibCrud(VppTestCase):
             to_verify.remove(x)
         self.assertListEqual(to_verify, [])
 
-    def verify_route_dump(self, fib_dump, ips):
+    def verify_route_dump(self, routes):
+        for r in routes:
+            self.assertTrue(find_route(self, r.prefix.address, r.prefix.len))
 
-        def _ip_in_route_dump(ip, fib_dump):
-            return next((route for route in fib_dump
-                         if self._match_route_detail(route, ip)),
-                        False)
-
-        for ip in ips:
-            self.assertTrue(_ip_in_route_dump(ip, fib_dump),
-                            'IP {!s} is not in fib dump.'.format(ip))
-
-    def verify_not_in_route_dump(self, fib_dump, ips):
-
-        def _ip_in_route_dump(ip, fib_dump):
-            return next((route for route in fib_dump
-                         if self._match_route_detail(route, ip)),
-                        False)
-
-        for ip in ips:
-            self.assertFalse(_ip_in_route_dump(ip, fib_dump),
-                             'IP {!s} is in fib dump.'.format(ip))
+    def verify_not_in_route_dump(self, routes):
+        for r in routes:
+            self.assertFalse(find_route(self, r.prefix.address, r.prefix.len))
 
     @classmethod
     def setUpClass(cls):
@@ -474,16 +537,13 @@ class TestIPv4FibCrud(VppTestCase):
         self.deleted_routes = []
 
     def test_1_add_routes(self):
-        """ Add 1k routes
+        """ Add 1k routes """
 
-        - add 100 routes check with traffic script.
-        """
-        # config 1M FIB entries
+        # add 100 routes check with traffic script.
         self.configured_routes.extend(self.config_fib_many_to_one(
-            "10.0.0.0", self.pg0.remote_ip4, 100))
+            "10.0.0.%d", self.pg0.remote_ip4, 100))
 
-        fib_dump = self.vapi.ip_fib_dump()
-        self.verify_route_dump(fib_dump, self.configured_routes)
+        self.verify_route_dump(self.configured_routes)
 
         self.stream_1 = self.create_stream(
             self.pg1, self.pg0, self.configured_routes, 100)
@@ -505,14 +565,13 @@ class TestIPv4FibCrud(VppTestCase):
         """
         # config 1M FIB entries
         self.configured_routes.extend(self.config_fib_many_to_one(
-            "10.0.0.0", self.pg0.remote_ip4, 100))
+            "10.0.0.%d", self.pg0.remote_ip4, 100))
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
-            "10.0.0.10", self.pg0.remote_ip4, 10))
+            "10.0.0.%d", self.pg0.remote_ip4, 10, start=10))
         for x in self.deleted_routes:
             self.configured_routes.remove(x)
 
-        fib_dump = self.vapi.ip_fib_dump()
-        self.verify_route_dump(fib_dump, self.configured_routes)
+        self.verify_route_dump(self.configured_routes)
 
         self.stream_1 = self.create_stream(
             self.pg1, self.pg0, self.configured_routes, 100)
@@ -538,23 +597,22 @@ class TestIPv4FibCrud(VppTestCase):
         """
         # config 1M FIB entries
         self.configured_routes.extend(self.config_fib_many_to_one(
-            "10.0.0.0", self.pg0.remote_ip4, 100))
+            "10.0.0.%d", self.pg0.remote_ip4, 100))
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
-            "10.0.0.10", self.pg0.remote_ip4, 10))
+            "10.0.0.%d", self.pg0.remote_ip4, 10, start=10))
         for x in self.deleted_routes:
             self.configured_routes.remove(x)
 
         tmp = self.config_fib_many_to_one(
-            "10.0.0.10", self.pg0.remote_ip4, 5)
+            "10.0.0.%d", self.pg0.remote_ip4, 5, start=10)
         self.configured_routes.extend(tmp)
         for x in tmp:
             self.deleted_routes.remove(x)
 
         self.configured_routes.extend(self.config_fib_many_to_one(
-            "10.0.1.0", self.pg0.remote_ip4, 100))
+            "10.0.1.%d", self.pg0.remote_ip4, 100))
 
-        fib_dump = self.vapi.ip_fib_dump()
-        self.verify_route_dump(fib_dump, self.configured_routes)
+        self.verify_route_dump(self.configured_routes)
 
         self.stream_1 = self.create_stream(
             self.pg1, self.pg0, self.configured_routes, 300)
@@ -573,20 +631,15 @@ class TestIPv4FibCrud(VppTestCase):
         pkts = self.pg0.get_capture(len(self.stream_1) + len(self.stream_2))
         self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
 
-    def test_4_del_routes(self):
-        """ Delete 1.5k routes
-
-        - delete 5 routes check with traffic script.
-        - add 100 routes check with traffic script.
-        """
+        # delete 5 routes check with traffic script.
+        # add 100 routes check with traffic script.
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
-            "10.0.0.0", self.pg0.remote_ip4, 15))
+            "10.0.0.%d", self.pg0.remote_ip4, 15))
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
-            "10.0.0.20", self.pg0.remote_ip4, 85))
+            "10.0.0.%d", self.pg0.remote_ip4, 85))
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
-            "10.0.1.0", self.pg0.remote_ip4, 100))
-        fib_dump = self.vapi.ip_fib_dump()
-        self.verify_not_in_route_dump(fib_dump, self.deleted_routes)
+            "10.0.1.%d", self.pg0.remote_ip4, 100))
+        self.verify_not_in_route_dump(self.deleted_routes)
 
 
 class TestIPNull(VppTestCase):
@@ -623,7 +676,11 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP unreachables
         #
-        ip_unreach = VppIpRoute(self, "10.0.0.1", 32, [], is_unreach=1)
+        ip_unreach = VppIpRoute(
+            self, "10.0.0.1", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          type=FibPathType.FIB_PATH_TYPE_ICMP_UNREACH)])
         ip_unreach.add_vpp_config()
 
         p_unreach = (Ether(src=self.pg0.remote_mac,
@@ -631,7 +688,6 @@ class TestIPNull(VppTestCase):
                      IP(src=self.pg0.remote_ip4, dst="10.0.0.1") /
                      UDP(sport=1234, dport=1234) /
                      Raw('\xa5' * 100))
-
         self.pg0.add_stream(p_unreach)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -653,7 +709,11 @@ class TestIPNull(VppTestCase):
         #
         # A route via IP NULL that will reply with ICMP prohibited
         #
-        ip_prohibit = VppIpRoute(self, "10.0.0.2", 32, [], is_prohibit=1)
+        ip_prohibit = VppIpRoute(
+            self, "10.0.0.2", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          type=FibPathType.FIB_PATH_TYPE_ICMP_PROHIBIT)])
         ip_prohibit.add_vpp_config()
 
         p_prohibit = (Ether(src=self.pg0.remote_mac,
@@ -695,7 +755,10 @@ class TestIPNull(VppTestCase):
         #
         # insert a more specific as a drop
         #
-        r2 = VppIpRoute(self, "1.1.1.1", 32, [], is_drop=1)
+        r2 = VppIpRoute(self, "1.1.1.1", 32,
+                        [VppRoutePath("0.0.0.0",
+                                      0xffffffff,
+                                      type=FibPathType.FIB_PATH_TYPE_DROP)])
         r2.add_vpp_config()
 
         self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "Drop Route")
@@ -858,8 +921,8 @@ class TestIPSubNets(VppTestCase):
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
-            address_length=16)
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=VppIpPrefix("10.10.10.10", 16).encode())
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -877,8 +940,9 @@ class TestIPSubNets(VppTestCase):
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
-            address_length=16, is_add=0)
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=VppIpPrefix("10.10.10.10", 16).encode(), is_add=0)
+
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -895,8 +959,8 @@ class TestIPSubNets(VppTestCase):
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
-            address_length=31)
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=VppIpPrefix("10.10.10.10", 31).encode())
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -912,8 +976,9 @@ class TestIPSubNets(VppTestCase):
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
-            address_length=31, is_add=0)
+            sw_if_index=self.pg0.sw_if_index,
+            prefix=VppIpPrefix("10.10.10.10", 31).encode(), is_add=0)
+
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1452,11 +1517,12 @@ class TestIPDeag(VppTestCase):
                                   [VppRoutePath("0.0.0.0",
                                                 0xffffffff,
                                                 nh_table_id=1)])
-        route_to_src = VppIpRoute(self, "1.1.1.2", 32,
-                                  [VppRoutePath("0.0.0.0",
-                                                0xffffffff,
-                                                nh_table_id=2,
-                                                is_source_lookup=1)])
+        route_to_src = VppIpRoute(
+            self, "1.1.1.2", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          nh_table_id=2,
+                          type=FibPathType.FIB_PATH_TYPE_SOURCE_LOOKUP)])
         route_to_dst.add_vpp_config()
         route_to_src.add_vpp_config()
 
@@ -1490,6 +1556,7 @@ class TestIPDeag(VppTestCase):
                                                 self.pg1.sw_if_index)],
                                   table_id=1)
         route_in_dst.add_vpp_config()
+
         self.send_and_expect(self.pg0, pkts_dst, self.pg1)
 
         #

@@ -22,6 +22,7 @@
 #include <vnet/fib/fib.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 static clib_error_t *
 set_interface_spd_command_fn (vlib_main_t * vm,
@@ -105,7 +106,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "spi %u", &spi))
 	;
-      else if (unformat (line_input, "salt %u", &salt))
+      else if (unformat (line_input, "salt 0x%x", &salt))
 	;
       else if (unformat (line_input, "esp"))
 	proto = IPSEC_PROTOCOL_ESP;
@@ -143,12 +144,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     }
 
   if (is_add)
-    rv = ipsec_sa_add (id, spi, proto, crypto_alg,
-		       &ck, integ_alg, &ik, flags,
-		       0, clib_host_to_net_u32 (salt),
-		       &tun_src, &tun_dst, NULL);
+    rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
+				&ck, integ_alg, &ik, flags,
+				0, clib_host_to_net_u32 (salt),
+				&tun_src, &tun_dst, NULL);
   else
-    rv = ipsec_sa_del (id);
+    rv = ipsec_sa_unlock_id (id);
 
   if (rv)
     error = clib_error_return (0, "failed");
@@ -293,16 +294,12 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	{
 	  p.lport.start = tmp;
 	  p.lport.stop = tmp2;
-	  p.lport.start = clib_host_to_net_u16 (p.lport.start);
-	  p.lport.stop = clib_host_to_net_u16 (p.lport.stop);
 	}
       else
 	if (unformat (line_input, "remote-port-range %u - %u", &tmp, &tmp2))
 	{
 	  p.rport.start = tmp;
 	  p.rport.stop = tmp2;
-	  p.rport.start = clib_host_to_net_u16 (p.rport.start);
-	  p.rport.stop = clib_host_to_net_u16 (p.rport.stop);
 	}
       else
 	{
@@ -347,13 +344,14 @@ VLIB_CLI_COMMAND (ipsec_policy_add_del_command, static) = {
 /* *INDENT-ON* */
 
 static void
-ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im)
+ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im, u8 detail)
 {
   u32 sai;
 
   /* *INDENT-OFF* */
   pool_foreach_index (sai, im->sad, ({
-    vlib_cli_output(vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
+    vlib_cli_output(vm, "%U", format_ipsec_sa, sai,
+                    (detail ? IPSEC_FORMAT_DETAIL : IPSEC_FORMAT_BRIEF));
   }));
   /* *INDENT-ON* */
 }
@@ -407,7 +405,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  ipsec_sa_show_all (vm, im);
+  ipsec_sa_show_all (vm, im, 0);
   ipsec_spd_show_all (vm, im);
   ipsec_spd_bindings_show_all (vm, im);
   ipsec_tunnel_show_all (vm, im);
@@ -429,6 +427,33 @@ show_ipsec_sa_command_fn (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
   u32 sai = ~0;
+  u8 detail = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%u", &sai))
+	;
+      if (unformat (input, "detail"))
+	detail = 1;
+      else
+	break;
+    }
+
+  if (~0 == sai)
+    ipsec_sa_show_all (vm, im, detail);
+  else
+    vlib_cli_output (vm, "%U", format_ipsec_sa, sai,
+		     IPSEC_FORMAT_DETAIL | IPSEC_FORMAT_INSECURE);
+
+  return 0;
+}
+
+static clib_error_t *
+clear_ipsec_sa_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 sai = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -439,9 +464,20 @@ show_ipsec_sa_command_fn (vlib_main_t * vm,
     }
 
   if (~0 == sai)
-    ipsec_sa_show_all (vm, im);
+    {
+      /* *INDENT-OFF* */
+      pool_foreach_index (sai, im->sad, ({
+        ipsec_sa_clear(sai);
+      }));
+      /* *INDENT-ON* */
+    }
   else
-    vlib_cli_output (vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_DETAIL);
+    {
+      if (pool_is_free_index (im->sad, sai))
+	return clib_error_return (0, "unknown SA index: %d", sai);
+      else
+	ipsec_sa_clear (sai);
+    }
 
   return 0;
 }
@@ -451,6 +487,12 @@ VLIB_CLI_COMMAND (show_ipsec_sa_command, static) = {
     .path = "show ipsec sa",
     .short_help = "show ipsec sa [index]",
     .function = show_ipsec_sa_command_fn,
+};
+
+VLIB_CLI_COMMAND (clear_ipsec_sa_command, static) = {
+    .path = "clear ipsec sa",
+    .short_help = "clear ipsec sa [index]",
+    .function = clear_ipsec_sa_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -820,6 +862,140 @@ VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
       "remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap] [use-esn] [use-anti-replay] "
       "[tx-table <table-id>]",
   .function = create_ipsec_tunnel_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ipsec_tun_protect_cmd (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index, is_del, sa_in, sa_out, *sa_ins = NULL;
+  vnet_main_t *vnm;
+
+  is_del = 0;
+  sw_if_index = ~0;
+  vnm = vnet_get_main ();
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	is_del = 1;
+      else if (unformat (line_input, "add"))
+	is_del = 0;
+      else if (unformat (line_input, "sa-in %d", &sa_in))
+	vec_add1 (sa_ins, sa_in);
+      else if (unformat (line_input, "sa-out %d", &sa_out))
+	;
+      else if (unformat (line_input, "%U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input));
+    }
+
+  if (!is_del)
+    ipsec_tun_protect_update (sw_if_index, sa_out, sa_ins);
+
+  unformat_free (line_input);
+  return NULL;
+}
+
+/**
+ * Protect tunnel with IPSEC
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_cmd_node, static) =
+{
+  .path = "ipsec tunnel protect",
+  .function = ipsec_tun_protect_cmd,
+  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA>",
+    // this is not MP safe
+};
+/* *INDENT-ON* */
+
+static walk_rc_t
+ipsec_tun_protect_show_one (index_t itpi, void *ctx)
+{
+  vlib_cli_output (ctx, "%U", format_ipsec_tun_protect, itpi);
+
+  return (WALK_CONTINUE);
+}
+
+static clib_error_t *
+ipsec_tun_protect_show (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_tun_protect_walk (ipsec_tun_protect_show_one, vm);
+
+  return NULL;
+}
+
+/**
+ * show IPSEC tunnel protection
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_show_node, static) =
+{
+  .path = "show ipsec protect",
+  .function = ipsec_tun_protect_show,
+  .short_help =  "show ipsec protect",
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ipsec_tun_protect_hash_show (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  {
+    ipsec_tun_lkup_result_t value;
+    ipsec4_tunnel_key_t key;
+
+    vlib_cli_output (vm, "IPv4:");
+
+    /* *INDENT-OFF* */
+    hash_foreach(key.as_u64, value.as_u64, im->tun4_protect_by_key,
+    ({
+      vlib_cli_output (vm, " %U", format_ipsec4_tunnel_key, &key);
+      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
+    }));
+    /* *INDENT-ON* */
+  }
+
+  {
+    ipsec_tun_lkup_result_t value;
+    ipsec6_tunnel_key_t *key;
+
+    vlib_cli_output (vm, "IPv6:");
+
+    /* *INDENT-OFF* */
+    hash_foreach_mem(key, value.as_u64, im->tun6_protect_by_key,
+    ({
+      vlib_cli_output (vm, " %U", format_ipsec6_tunnel_key, key);
+      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
+    }));
+    /* *INDENT-ON* */
+  }
+
+  return NULL;
+}
+
+/**
+ * show IPSEC tunnel protection hash tables
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_hash_show_node, static) =
+{
+  .path = "show ipsec protect-hash",
+  .function = ipsec_tun_protect_hash_show,
+  .short_help =  "show ipsec protect-hash",
 };
 /* *INDENT-ON* */
 

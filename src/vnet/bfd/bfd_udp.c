@@ -82,7 +82,7 @@ vnet_api_error_t
 bfd_udp_set_echo_source (u32 sw_if_index)
 {
   vnet_sw_interface_t *sw_if =
-    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main, sw_if_index);
+    vnet_get_sw_interface_or_null (bfd_udp_main.vnet_main, sw_if_index);
   if (sw_if)
     {
       bfd_udp_main.echo_source_sw_if_index = sw_if_index;
@@ -114,8 +114,8 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
    * pick an unused address from that subnet
    */
   vnet_sw_interface_t *sw_if =
-    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main,
-				bfd_udp_main.echo_source_sw_if_index);
+    vnet_get_sw_interface_or_null (bfd_udp_main.vnet_main,
+				   bfd_udp_main.echo_source_sw_if_index);
   if (sw_if && sw_if->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     {
       if (BFD_TRANSPORT_UDP4 == transport)
@@ -566,7 +566,7 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 {
   bfd_udp_main_t *bum = &bfd_udp_main;
   vnet_sw_interface_t *sw_if =
-    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main, sw_if_index);
+    vnet_get_sw_interface_or_null (bfd_udp_main.vnet_main, sw_if_index);
   u8 local_ip_valid = 0;
   ip_interface_address_t *ia = NULL;
   if (!sw_if)

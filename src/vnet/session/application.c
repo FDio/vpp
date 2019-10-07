@@ -52,9 +52,9 @@ static void
 app_listener_free (application_t * app, app_listener_t * app_listener)
 {
   clib_bitmap_free (app_listener->workers);
-  pool_put (app->listeners, app_listener);
   if (CLIB_DEBUG)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+  pool_put (app->listeners, app_listener);
 }
 
 session_handle_t
@@ -212,7 +212,8 @@ app_listener_alloc_and_init (application_t * app,
        * are not related to network fibs, i.e., cannot be added as
        * connections */
       tc = session_get_transport (ls);
-      session_lookup_add_connection (tc, lh);
+      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	session_lookup_add_connection (tc, lh);
     }
 
   if (!ls)
@@ -950,6 +951,8 @@ vnet_listen (vnet_listen_args_t * a)
   application_t *app;
   int rv;
 
+  ASSERT (vlib_thread_is_main_w_barrier ());
+
   app = application_get_if_valid (a->app_index);
   if (!app)
     return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
@@ -1000,6 +1003,8 @@ vnet_connect (vnet_connect_args_t * a)
   app_worker_t *client_wrk;
   application_t *client;
 
+  ASSERT (vlib_thread_is_main_w_barrier ());
+
   if (session_endpoint_is_zero (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE;
 
@@ -1036,6 +1041,8 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   app_worker_t *app_wrk;
   app_listener_t *al;
   application_t *app;
+
+  ASSERT (vlib_thread_is_main_w_barrier ());
 
   if (!(app = application_get_if_valid (a->app_index)))
     return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;

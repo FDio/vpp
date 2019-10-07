@@ -147,7 +147,7 @@ bier_entry_delete (index_t bei)
     be = bier_entry_get(bei);
 
     /*
-     * if we still ahve a path-list, unlink from it
+     * if we still have a path-list, unlink from it
      */
     if (FIB_NODE_INDEX_INVALID != be->be_path_list)
     {

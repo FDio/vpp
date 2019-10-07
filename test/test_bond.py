@@ -9,6 +9,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import MACAddress
+from vpp_ip import VppIpPrefix
 
 
 class TestBondInterface(VppTestCase):
@@ -65,14 +66,14 @@ class TestBondInterface(VppTestCase):
         bond0 = VppBondInterface(self,
                                  mode=3,
                                  lb=1,
+                                 numa_only=0,
                                  use_custom_mac=1,
                                  mac_address=mac)
         bond0.add_vpp_config()
         bond0.admin_up()
-        bond0_addr = socket.inet_pton(socket.AF_INET, "10.10.10.1")
-        self.vapi.sw_interface_add_del_address(sw_if_index=bond0.sw_if_index,
-                                               address=bond0_addr,
-                                               address_length=24)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=bond0.sw_if_index,
+            prefix=VppIpPrefix("10.10.10.1", 24).encode())
 
         self.pg2.config_ip4()
         self.pg2.resolve_arp()
@@ -85,13 +86,9 @@ class TestBondInterface(VppTestCase):
 
         # enslave pg0 and pg1 to BondEthernet0
         self.logger.info("bond enslave interface pg0 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
         self.logger.info("bond enslave interface pg1 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
 
         # verify both slaves in BondEthernet0
         if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
@@ -274,6 +271,7 @@ class TestBondInterface(VppTestCase):
         # verify BondEthernet0 is not in the dump
         if_dump = self.vapi.sw_interface_bond_dump()
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -1377,10 +1377,10 @@ If not set, API server doesn't run.
  * **socket-name <filename>**
      Configure API socket filename.
      
-     **Example:** socket-name /run/vpp/vpp-api.sock
+     **Example:** socket-name /run/vpp/api.sock
      
  * **default**
-     Use the default API socket (/run/vpp-api.sock).
+     Use the default API socket (/run/api.sock).
      
      **Example:** default
 

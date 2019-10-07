@@ -31,34 +31,9 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* declare message IDs */
-#include <vmxnet3/vmxnet3_msg_enum.h>
-
-/* Get CRC codes of the messages defined outside of this plugin */
-#define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#include <vmxnet3/vmxnet3_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-#define vl_endianfun
-#include <vmxnet3/vmxnet3_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <vmxnet3/vmxnet3_all_api_h.h>
-#undef vl_printfun
-
-/* get API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <vmxnet3/vmxnet3_all_api_h.h>
-#undef vp_api_version
+#include <vmxnet3/vmxnet3.api_enum.h>
+#include <vmxnet3/vmxnet3.api_types.h>
+#include <vpp/api/vpe.api_types.h>
 
 typedef struct
 {
@@ -70,30 +45,6 @@ typedef struct
 
 vmxnet3_test_main_t vmxnet3_test_main;
 
-#define foreach_standard_reply_retval_handler		\
-_(vmxnet3_delete_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = vmxnet3_test_main.vat_main; 	\
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-#define foreach_vpe_api_reply_msg			\
-_(VMXNET3_CREATE_REPLY, vmxnet3_create_reply)		\
-_(VMXNET3_DELETE_REPLY, vmxnet3_delete_reply)           \
-_(VMXNET3_DETAILS, vmxnet3_details)
-
 /* vmxnet3 create API */
 static int
 api_vmxnet3_create (vat_main_t * vam)
@@ -102,31 +53,28 @@ api_vmxnet3_create (vat_main_t * vam)
   vl_api_vmxnet3_create_t *mp;
   vmxnet3_create_if_args_t args;
   int ret;
-  u32 x[4];
+  u32 size;
 
   clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "%x:%x:%x.%x", &x[0], &x[1], &x[2], &x[3]))
-	{
-	  args.addr.domain = x[0];
-	  args.addr.bus = x[1];
-	  args.addr.slot = x[2];
-	  args.addr.function = x[3];
-	}
+      if (unformat (i, "%U", unformat_vlib_pci_addr, &args.addr))
+	;
       else if (unformat (i, "elog"))
 	args.enable_elog = 1;
       else if (unformat (i, "bind"))
 	args.bind = 1;
-      else if (unformat (i, "rx-queue-size %u", &args.rxq_size))
-	;
-      else if (unformat (i, "tx-queue-size %u", &args.txq_size))
-	;
-      else if (unformat (i, "num-tx-queues %u", &args.txq_num))
-	;
-      else if (unformat (i, "num-rx-queues %u", &args.rxq_num))
-	;
+      else if (unformat (i, "gso"))
+	args.enable_gso = 1;
+      else if (unformat (i, "rx-queue-size %u", &size))
+	args.rxq_size = size;
+      else if (unformat (i, "tx-queue-size %u", &size))
+	args.txq_size = size;
+      else if (unformat (i, "num-tx-queues %u", &size))
+	args.txq_num = size;
+      else if (unformat (i, "num-rx-queues %u", &size))
+	args.rxq_num = size;
       else
 	{
 	  clib_warning ("unknown input '%U'", format_unformat_error, i);
@@ -143,6 +91,7 @@ api_vmxnet3_create (vat_main_t * vam)
   mp->txq_num = clib_host_to_net_u16 (args.txq_num);
   mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
   mp->bind = args.bind;
+  mp->enable_gso = args.enable_gso;
 
   S (mp);
   W (ret);
@@ -289,67 +238,7 @@ vl_api_vmxnet3_details_t_handler (vl_api_vmxnet3_details_t * mp)
     }
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg					\
-_(vmxnet3_create, "<pci-address> [rx-queue-size <size>] "	\
-  "[tx-queue-size <size>] [num-tx-queues <num>]"		\
-  "[num-rx-queues <num>] [bind]")				\
-_(vmxnet3_delete, "sw_if_index <sw_if_index>")                  \
-_(vmxnet3_dump, "")
-
-static void
-vmxnet3_vat_api_hookup (vat_main_t * vam)
-{
-  vmxnet3_test_main_t *vxm __attribute__ ((unused)) = &vmxnet3_test_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + vxm->msg_id_base),      \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-#define _(n,h)							\
-  hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  vmxnet3_test_main_t *vxm = &vmxnet3_test_main;
-  u8 *name;
-
-  vxm->vat_main = vam;
-
-  name = format (0, "vmxnet3_%08x%c", api_version, 0);
-  vxm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  /* Get the control ping ID */
-#define _(id,n,crc) \
-  const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
-  foreach_vl_msg_name_crc_vpe;
-#undef _
-  vxm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
-
-  if (vxm->msg_id_base != (u16) ~ 0)
-    vmxnet3_vat_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+#include <vmxnet3/vmxnet3.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

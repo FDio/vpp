@@ -24,6 +24,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+#include <vppinfra/elog.h>
 #include <vppinfra/time.h>
 #include <vppinfra/macros.h>
 #include <vppinfra/socket.h>
@@ -47,17 +48,27 @@ typedef struct
    */
   u32 sub_id;
 
-  /* 0 = dot1q, 1=dot1ad */
-  u8 sub_dot1ad;
-
   /* Number of tags 0-2 */
   u8 sub_number_of_tags;
   u16 sub_outer_vlan_id;
   u16 sub_inner_vlan_id;
-  u8 sub_exact_match;
-  u8 sub_default;
-  u8 sub_outer_vlan_id_any;
-  u8 sub_inner_vlan_id_any;
+
+  union
+  {
+    u16 raw_flags;
+    struct
+    {
+      u16 no_tags:1;
+      u16 one_tag:1;
+      u16 two_tags:1;
+      /* 0 = dot1q, 1=dot1ad */
+      u16 sub_dot1ad:1;
+      u16 sub_exact_match:1;
+      u16 sub_default:1;
+      u16 sub_outer_vlan_id_any:1;
+      u16 sub_inner_vlan_id_any:1;
+    };
+  };
 
   /* vlan tag rewrite */
   u32 vtr_op;
@@ -214,6 +225,8 @@ typedef struct
 
   socket_client_main_t *socket_client_main;
   u8 *socket_name;
+
+  elog_main_t elog_main;
 
   /* Convenience */
   vlib_main_t *vlib_main;

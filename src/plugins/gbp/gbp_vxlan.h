@@ -17,6 +17,7 @@
 #define __GBP_VXLAN_H__
 
 #include <vnet/fib/fib_types.h>
+#include <plugins/gbp/gbp_itf.h>
 
 #define forecah_gbp_vxlan_tunnel_layer          \
   _(L2, "l2")                                   \
@@ -52,20 +53,12 @@ typedef struct gbp_vxlan_tunnel_t_
     struct
     {
       /**
-       * BD index (if L2)
-       */
-      u32 gt_bd_index;
-      /**
        * Reference to the GPB-BD
        */
       index_t gt_gbd;
     };
     struct
     {
-      /**
-       * FIB inidices (if L3)
-       */
-      u32 gt_fib_index[FIB_PROTOCOL_IP_MAX];
       /**
        * References to the GBP-RD
        */
@@ -76,7 +69,7 @@ typedef struct gbp_vxlan_tunnel_t_
   /**
    * gbp-itf config for this interface
    */
-  index_t gt_itf;
+  gbp_itf_hdl_t gt_itf;
 
   /**
    * list of child vxlan-gbp tunnels built from this template
@@ -115,13 +108,14 @@ extern int gbp_vxlan_tunnel_del (u32 vni);
 
 extern gbp_vxlan_tunnel_type_t gbp_vxlan_tunnel_get_type (u32 sw_if_index);
 
-extern u32 gbp_vxlan_tunnel_clone_and_lock (u32 parent_tunnel,
-					    const ip46_address_t * src,
-					    const ip46_address_t * dst);
+extern gbp_itf_hdl_t gbp_vxlan_tunnel_clone_and_lock (u32 parent_tunnel,
+						      const ip46_address_t *
+						      src,
+						      const ip46_address_t *
+						      dst);
 
-extern void vxlan_gbp_tunnel_lock (u32 sw_if_index);
-extern void vxlan_gbp_tunnel_unlock (u32 sw_if_index);
 extern u32 vxlan_gbp_tunnel_get_parent (u32 sw_if_index);
+extern gbp_itf_hdl_t vxlan_gbp_tunnel_lock_itf (u32 sw_if_index);
 
 typedef walk_rc_t (*gbp_vxlan_cb_t) (gbp_vxlan_tunnel_t * gt, void *ctx);
 extern void gbp_vxlan_walk (gbp_vxlan_cb_t cb, void *ctx);

@@ -115,6 +115,8 @@ typedef struct
   uword *ipsec6_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
   uword *ipsec_if_by_sw_if_index;
+  uword *tun4_protect_by_key;
+  uword *tun6_protect_by_key;
 
   /* node indices */
   u32 error_drop_node_index;
@@ -139,6 +141,10 @@ typedef struct
   /* tun encrypt arcs and feature nodes */
   u32 esp4_encrypt_tun_feature_index;
   u32 esp6_encrypt_tun_feature_index;
+
+  /* tun nodes to drop packets when no crypto alg set on outbound SA */
+  u32 esp4_no_crypto_tun_feature_index;
+  u32 esp6_no_crypto_tun_feature_index;
 
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
@@ -167,6 +173,7 @@ typedef enum ipsec_format_flags_t_
 {
   IPSEC_FORMAT_BRIEF = 0,
   IPSEC_FORMAT_DETAIL = (1 << 0),
+  IPSEC_FORMAT_INSECURE = (1 << 1),
 } ipsec_format_flags_t;
 
 extern ipsec_main_t ipsec_main;
@@ -238,6 +245,9 @@ ipsec_sa_get (u32 sa_index)
 {
   return (pool_elt_at_index (ipsec_main.sad, sa_index));
 }
+
+void ipsec_add_feature (const char *arc_name, const char *node_name,
+			u32 * out_feature_index);
 
 #endif /* __IPSEC_H__ */
 

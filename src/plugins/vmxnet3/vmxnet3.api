@@ -15,7 +15,7 @@
  *------------------------------------------------------------------
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 /** \brief
     @param client_index - opaque cookie to identify the sender
@@ -30,6 +30,7 @@ option version = "1.0.0";
     @param txq_num - number of transmit queues (optional - default is 1)
     @param bind - automatically bind PCI to vfio-pci module
 		      (optional - default is 0)
+    @param enable_gso - enable gso (optional - default is 0)
 */
 
 define vmxnet3_create
@@ -44,6 +45,8 @@ define vmxnet3_create
   u16 txq_size;
   u16 txq_num;
   u8 bind;
+  u8 enable_gso;
+  option vat_help = "<pci-address> [rx-queue-size <size>] [tx-queue-size <size>] [num-tx-queues <num>] [num-rx-queues <num>] [bind] [gso]";
 };
 
 /** \brief
@@ -71,6 +74,7 @@ autoreply define vmxnet3_delete
   u32 context;
 
   u32 sw_if_index;
+  option vat_help = "sw_if_index <sw_if_index>";
 };
 
 /** \brief vmxnet3_tx_list structure
@@ -80,7 +84,7 @@ autoreply define vmxnet3_delete
     @param tx_consume - tx consume index
 */
 
-typeonly define vmxnet3_tx_list
+typedef vmxnet3_tx_list
 {
   u16 tx_qsize;
   u16 tx_next;
@@ -96,7 +100,7 @@ typeonly define vmxnet3_tx_list
     @param rx_consume - rx consume index
 */
 
-typeonly define vmxnet3_rx_list
+typedef vmxnet3_rx_list
 {
   u16 rx_qsize;
   u16 rx_fill[2];

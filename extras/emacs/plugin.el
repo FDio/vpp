@@ -21,7 +21,7 @@
       (makunbound 'PLUGIN-NAME)
       (makunbound 'plugin-flavor)
       (setq plugin-name (read-string "Plugin name: "))
-      (setq plugin-flavor 
+      (setq plugin-flavor
             (read-string "Dispatch type [dual or qs]: "))
       (setq PLUGIN-NAME (upcase plugin-name))
       (setq cmd-args (concat "mkdir -p " plugin-name))
@@ -32,14 +32,10 @@
       (skel-plugin-cmakelists-text-fragment)
       (find-file (concat plugin-name ".api"))
       (skel-plugin-api)
-      (find-file (concat plugin-name "_all_api_h.h"))
-      (skel-plugin-all-apih)
       (find-file (concat plugin-name ".h"))
       (skel-plugin-h)
       (find-file (concat plugin-name ".c"))
       (skel-plugin-main)
-      (find-file (concat plugin-name "_msg_enum.h"))
-      (skel-plugin-msg-enum)
       (find-file "node.c")
       (if (string= plugin-flavor "qs")
           (skel-plugin-qsnode) (skel-plugin-node))
@@ -50,4 +46,3 @@
       (find-file "setup.pg")
       (skel-plugin-setup)
       (cd start-dir))))
-

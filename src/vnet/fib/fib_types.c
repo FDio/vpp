@@ -434,7 +434,7 @@ uword
 unformat_fib_route_path (unformat_input_t * input, va_list * args)
 {
     fib_route_path_t *rpath = va_arg (*args, fib_route_path_t *);
-    u32 *payload_proto = va_arg (*args, u32*);
+    dpo_proto_t *payload_proto = va_arg (*args, void*);
     u32 weight, preference, udp_encap_id, fi;
     mpls_label_t out_label;
     vnet_main_t *vnm;
@@ -537,6 +537,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
         }
+        else if (unformat (input, "pop-pw-cw"))
+        {
+            rpath->frp_flags |= FIB_ROUTE_PATH_POP_PW_CW;
+        }
         else if (unformat (input,
                            "ip4-lookup-in-table %d",
                            &rpath->frp_fib_index))
@@ -598,7 +602,14 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = DPO_PROTO_IP4;
             rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
         }
-        else if (unformat (input, "out-labels"))
+      else if (unformat (input, "local"))
+	{
+	  clib_memset (&rpath->frp_addr, 0, sizeof (rpath->frp_addr));
+	  rpath->frp_sw_if_index = ~0;
+	  rpath->frp_weight = 1;
+	  rpath->frp_flags |= FIB_ROUTE_PATH_LOCAL;
+        }
+      else if (unformat (input, "out-labels"))
         {
             while (unformat (input, "%U",
                              unformat_mpls_unicast_label, &out_label))
@@ -614,6 +625,15 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
                            &rpath->frp_sw_if_index))
         {
             rpath->frp_proto = *payload_proto;
+        }
+        else if (unformat (input, "via"))
+        {
+            /* new path, back up and return */
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            unformat_put_input (input);
+            break;
         }
         else
         {

@@ -60,6 +60,67 @@
 #define OI_DECAP   0x80000000
 
 static void
+ip6_add_interface_prefix_routes (ip6_main_t * im,
+				 u32 sw_if_index,
+				 u32 fib_index,
+				 ip6_address_t * address, u32 address_length)
+{
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_prefix_t *if_prefix;
+
+  ip_interface_prefix_key_t key = {
+    .prefix = {
+	       .fp_len = address_length,
+	       .fp_proto = FIB_PROTOCOL_IP6,
+	       .fp_addr.ip6 = {
+			       .as_u64 = {
+					  address->as_u64[0] &
+					  im->fib_masks[address_length].
+					  as_u64[0],
+					  address->
+					  as_u64[1] &
+					  im->fib_masks[address_length].
+					  as_u64[1],
+					  },
+			       },
+	       },
+    .sw_if_index = sw_if_index,
+  };
+
+  /* If prefix already set on interface, just increment ref count & return */
+  if_prefix = ip_get_interface_prefix (lm, &key);
+  if (if_prefix)
+    {
+      if_prefix->ref_count += 1;
+      return;
+    }
+
+  /* New prefix - allocate a pool entry, initialize it, add to the hash */
+  pool_get (lm->if_prefix_pool, if_prefix);
+  if_prefix->ref_count = 1;
+  clib_memcpy (&if_prefix->key, &key, sizeof (key));
+  mhash_set (&lm->prefix_to_if_prefix_index, &key,
+	     if_prefix - lm->if_prefix_pool, 0 /* old value */ );
+
+  /* length < 128 - add glean */
+  if (address_length < 128)
+    {
+      /* set the glean route for the prefix */
+      fib_table_entry_update_one_path (fib_index, &key.prefix,
+				       FIB_SOURCE_INTERFACE,
+				       (FIB_ENTRY_FLAG_CONNECTED |
+					FIB_ENTRY_FLAG_ATTACHED),
+				       DPO_PROTO_IP6,
+				       /* No next-hop address */
+				       NULL, sw_if_index,
+				       /* invalid FIB index */
+				       ~0, 1,
+				       /* no out-label stack */
+				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
+    }
+}
+
+static void
 ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 			  ip6_main_t * im, u32 fib_index,
 			  ip_interface_address_t * a)
@@ -72,21 +133,9 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
     .fp_addr.ip6 = *address,
   };
 
-  if (a->address_length < 128)
-    {
-      fib_table_entry_update_one_path (fib_index,
-				       &pfx,
-				       FIB_SOURCE_INTERFACE,
-				       (FIB_ENTRY_FLAG_CONNECTED |
-					FIB_ENTRY_FLAG_ATTACHED),
-				       DPO_PROTO_IP6,
-				       /* No next-hop address */
-				       NULL, sw_if_index,
-				       /* invalid FIB index */
-				       ~0, 1,
-				       /* no label stack */
-				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
-    }
+  /* set special routes for the prefix if needed */
+  ip6_add_interface_prefix_routes (im, sw_if_index, fib_index,
+				   address, a->address_length);
 
   pfx.fp_len = 128;
   if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
@@ -121,23 +170,73 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 }
 
 static void
-ip6_del_interface_routes (ip6_main_t * im,
+ip6_del_interface_prefix_routes (ip6_main_t * im,
+				 u32 sw_if_index,
+				 u32 fib_index,
+				 ip6_address_t * address, u32 address_length)
+{
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_prefix_t *if_prefix;
+
+  ip_interface_prefix_key_t key = {
+    .prefix = {
+	       .fp_len = address_length,
+	       .fp_proto = FIB_PROTOCOL_IP6,
+	       .fp_addr.ip6 = {
+			       .as_u64 = {
+					  address->as_u64[0] &
+					  im->fib_masks[address_length].
+					  as_u64[0],
+					  address->
+					  as_u64[1] &
+					  im->fib_masks[address_length].
+					  as_u64[1],
+					  },
+			       },
+	       },
+    .sw_if_index = sw_if_index,
+  };
+
+  if_prefix = ip_get_interface_prefix (lm, &key);
+  if (!if_prefix)
+    {
+      clib_warning ("Prefix not found while deleting %U",
+		    format_ip4_address_and_length, address, address_length);
+      return;
+    }
+
+  /* If not deleting last intf addr in prefix, decrement ref count & return */
+  if_prefix->ref_count -= 1;
+  if (if_prefix->ref_count > 0)
+    return;
+
+  /* length <= 30, delete glean route */
+  if (address_length <= 128)
+    {
+      /* remove glean route for prefix */
+      fib_table_entry_delete (fib_index, &key.prefix, FIB_SOURCE_INTERFACE);
+
+    }
+
+  mhash_unset (&lm->prefix_to_if_prefix_index, &key, 0 /* old_value */ );
+  pool_put (lm->if_prefix_pool, if_prefix);
+}
+
+static void
+ip6_del_interface_routes (u32 sw_if_index, ip6_main_t * im,
 			  u32 fib_index,
 			  ip6_address_t * address, u32 address_length)
 {
   fib_prefix_t pfx = {
-    .fp_len = address_length,
+    .fp_len = 128,
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_addr.ip6 = *address,
   };
 
-  if (pfx.fp_len < 128)
-    {
-      fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
+  /* delete special routes for the prefix if needed */
+  ip6_del_interface_prefix_routes (im, sw_if_index, fib_index,
+				   address, address_length);
 
-    }
-
-  pfx.fp_len = 128;
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
 }
 
@@ -278,6 +377,13 @@ ip6_add_del_interface_address (vlib_main_t * vm,
                                                       address,
                                                       address_length))
                      {
+		       /* an intf may have >1 addr from the same prefix */
+		       if ((sw_if_index == sif->sw_if_index) &&
+			   (ia->address_length == address_length) &&
+			   !ip6_address_is_equal (x, address))
+		         continue;
+
+		       /* error if the length or intf was different */
                        vnm->api_errno = VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
                        return
                          clib_error_create
@@ -311,7 +417,8 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   ip6_sw_interface_enable_disable (sw_if_index, !is_del);
 
   if (is_del)
-    ip6_del_interface_routes (im, ip6_af.fib_index, address, address_length);
+    ip6_del_interface_routes (sw_if_index,
+			      im, ip6_af.fib_index, address, address_length);
   else
     ip6_add_interface_routes (vnm, sw_if_index,
 			      im, ip6_af.fib_index,
@@ -361,7 +468,7 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 				im, fib_index,
 				ia);
     else
-      ip6_del_interface_routes (im, fib_index,
+      ip6_del_interface_routes (sw_if_index, im, fib_index,
 				a, ia->address_length);
   }));
   /* *INDENT-ON* */
@@ -910,7 +1017,8 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   u16 sum16, payload_length_host_byte_order;
   u32 i, n_this_buffer, n_bytes_left;
   u32 headers_size = sizeof (ip0[0]);
-  void *data_this_buffer;
+  u8 *data_this_buffer;
+  u8 length_odd;
 
   ASSERT (bogus_lengthp);
   *bogus_lengthp = 0;
@@ -918,7 +1026,7 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   /* Initialize checksum with ip header. */
   sum0 = ip0->payload_length + clib_host_to_net_u16 (ip0->protocol);
   payload_length_host_byte_order = clib_net_to_host_u16 (ip0->payload_length);
-  data_this_buffer = (void *) (ip0 + 1);
+  data_this_buffer = (u8 *) (ip0 + 1);
 
   for (i = 0; i < ARRAY_LEN (ip0->src_address.as_uword); i++)
     {
@@ -952,10 +1060,18 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
     }
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
-  if (p0 && n_this_buffer + headers_size > p0->current_length)
-    n_this_buffer =
-      p0->current_length >
-      headers_size ? p0->current_length - headers_size : 0;
+
+  if (p0)
+    {
+      u32 n_ip_bytes_this_buffer =
+	p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
+      if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
+	{
+	  n_this_buffer = p0->current_length > headers_size ?
+	    n_ip_bytes_this_buffer - headers_size : 0;
+	}
+    }
+
   while (1)
     {
       sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
@@ -963,14 +1079,27 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (n_bytes_left == 0)
 	break;
 
+      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
       if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
 	  *bogus_lengthp = 1;
 	  return 0xfefe;
 	}
+
+      length_odd = (n_this_buffer & 1);
+
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
       n_this_buffer = clib_min (p0->current_length, n_bytes_left);
+
+      if (PREDICT_FALSE (length_odd))
+	{
+	  /* Prepend a 0 or the resulting checksum will be incorrect. */
+	  data_this_buffer--;
+	  n_this_buffer++;
+	  n_bytes_left++;
+	  data_this_buffer[0] = 0;
+	}
     }
 
   sum16 = ~ip_csum_fold (sum0);
@@ -1025,7 +1154,7 @@ ip6_urpf_loose_check (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
     (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
     fib_index : vnet_buffer (b)->sw_if_index[VLIB_TX];
 
-  lbi = ip6_fib_table_fwding_lookup (im, fib_index, &i->src_address);
+  lbi = ip6_fib_table_fwding_lookup (fib_index, &i->src_address);
   lb0 = load_balance_get (lbi);
 
   return (fib_urpf_check_size (lb0->lb_urpf));
@@ -1388,7 +1517,7 @@ VLIB_REGISTER_NODE (ip6_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip6-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
-    [IP_LOCAL_NEXT_REASSEMBLY] = "ip6-reassembly",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip6-full-reassembly",
   },
 };
 /* *INDENT-ON* */

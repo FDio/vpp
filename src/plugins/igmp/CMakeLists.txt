@@ -30,8 +30,4 @@ add_vpp_plugin(igmp
 
   API_FILES
   igmp.api
-
-  INSTALL_HEADERS
-  igmp_all_api_h.h
-  igmp_msg_enum.h
 )

@@ -250,7 +250,13 @@ int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       u32 opaque);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_transport_closed_notify (app_worker_t * app_wrk,
+					session_t * s);
 int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
+			       session_cleanup_ntf_t ntf);
+int app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
+			       session_handle_t new_sh);
 int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
 int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
@@ -277,6 +283,15 @@ void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
+
+
+/* Needed while we support both bapi and mq ctrl messages */
+int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
+			      session_handle_t handle, int rv);
+int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
+				  session_t * s, u8 is_fail);
+void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
+			     u32 context, int rv);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

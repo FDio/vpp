@@ -565,7 +565,7 @@ on_disconnect (memif_conn_handle_t conn, void *private_ctx)
 /* user needs to watch new fd or stop watching fd that is about to be closed.
     control fd will be modified during connection establishment to minimize CPU usage */
 int
-control_fd_update (int fd, uint8_t events)
+control_fd_update (int fd, uint8_t events, void *ctx)
 {
   /* convert memif event definitions to epoll events */
   if (events & MEMIF_FD_EVENT_DEL)

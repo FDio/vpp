@@ -61,9 +61,9 @@ format_ipsec_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipsec_input_trace_t *t = va_arg (*args, ipsec_input_trace_t *);
 
-  s = format (s, "%U: sa_id %u spd %u policy %d spi %u seq %u",
+  s = format (s, "%U: sa_id %u spd %u policy %d spi %u (0x%08x) seq %u",
 	      format_ip_protocol, t->proto, t->sa_id,
-	      t->spd, t->policy_index, t->spi, t->seq);
+	      t->spd, t->policy_index, t->spi, t->spi, t->seq);
 
   return s;
 }
@@ -86,25 +86,25 @@ ipsec_input_protect_policy_match (ipsec_spd_t * spd, u32 sa, u32 da, u32 spi)
 
     if (ipsec_sa_is_set_IS_TUNNEL (s))
       {
-	if (da != s->tunnel_dst_addr.ip4.as_u32)
+	if (da != clib_net_to_host_u32 (s->tunnel_dst_addr.ip4.as_u32))
 	  continue;
 
-	if (sa != s->tunnel_src_addr.ip4.as_u32)
+	if (sa != clib_net_to_host_u32 (s->tunnel_src_addr.ip4.as_u32))
 	  continue;
 
 	return p;
       }
 
-    if (da < p->laddr.start.ip4.as_u32)
+    if (da < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
       continue;
 
-    if (da > p->laddr.stop.ip4.as_u32)
+    if (da > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
       continue;
 
-    if (sa < p->raddr.start.ip4.as_u32)
+    if (sa < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
       continue;
 
-    if (sa > p->raddr.stop.ip4.as_u32)
+    if (sa > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
       continue;
 
     return p;
@@ -162,7 +162,7 @@ ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
   return 0;
 }
 
-static vlib_node_registration_t ipsec4_input_node;
+extern vlib_node_registration_t ipsec4_input_node;
 
 VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -233,8 +233,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      /* FIXME TODO missing check whether there is enough data inside
 	       * IP/UDP to contain ESP header & stuff ? */
 	      p0 = ipsec_input_protect_policy_match (spd0,
-						     ip0->src_address.as_u32,
-						     ip0->dst_address.as_u32,
+						     clib_net_to_host_u32
+						     (ip0->src_address.
+						      as_u32),
+						     clib_net_to_host_u32
+						     (ip0->dst_address.
+						      as_u32),
 						     clib_net_to_host_u32
 						     (esp0->spi));
 
@@ -279,8 +283,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	    {
 	      ah0 = (ah_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 	      p0 = ipsec_input_protect_policy_match (spd0,
-						     ip0->src_address.as_u32,
-						     ip0->dst_address.as_u32,
+						     clib_net_to_host_u32
+						     (ip0->src_address.
+						      as_u32),
+						     clib_net_to_host_u32
+						     (ip0->dst_address.
+						      as_u32),
 						     clib_net_to_host_u32
 						     (ah0->spi));
 
@@ -343,7 +351,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
+VLIB_REGISTER_NODE (ipsec4_input_node) = {
   .name = "ipsec4-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
@@ -359,7 +367,7 @@ VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
 };
 /* *INDENT-ON* */
 
-static vlib_node_registration_t ipsec6_input_node;
+extern vlib_node_registration_t ipsec6_input_node;
 
 
 VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
@@ -515,7 +523,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
+VLIB_REGISTER_NODE (ipsec6_input_node) = {
   .name = "ipsec6-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,

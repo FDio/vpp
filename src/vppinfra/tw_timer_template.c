@@ -827,6 +827,18 @@ u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
   u32 first_expiring_index, fast_ring_index;
   i32 delta;
 
+#if TW_TIMER_WHEELS > 1
+  fast_ring_index = tw->current_index[TW_TIMER_RING_FAST];
+  if (fast_ring_index == TW_SLOTS_PER_RING)
+    return 1;
+
+  first_expiring_index = clib_bitmap_next_set (tw->fast_slot_bitmap,
+					       fast_ring_index);
+  if (first_expiring_index == ~0)
+    first_expiring_index = TW_SLOTS_PER_RING;
+
+#else
+
   if (clib_bitmap_is_zero (tw->fast_slot_bitmap))
     return TW_SLOTS_PER_RING;
 
@@ -838,6 +850,7 @@ u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
 					       fast_ring_index);
   if (first_expiring_index == ~0 && fast_ring_index != 0)
     first_expiring_index = clib_bitmap_first_set (tw->fast_slot_bitmap);
+#endif
 
   ASSERT (first_expiring_index != ~0);
 

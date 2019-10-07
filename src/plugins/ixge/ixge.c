@@ -2219,6 +2219,7 @@ VLIB_REGISTER_NODE (ixge_input_node, static) = {
   .function = ixge_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "ixge-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 
   /* Will be enabled if/when hardware is detected. */
   .state = VLIB_NODE_STATE_DISABLED,

@@ -77,9 +77,13 @@ static int acl_lc_index_valid(acl_main_t *am, u32 lc_index)
 static u32 acl_plugin_register_user_module (char *user_module_name, char *val1_label, char *val2_label)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_plugin_set_heap();
+  /*
+   * Because folks like to call this early on,
+   * use the global heap, so as to avoid
+   * initializing the main ACL heap before
+   * they start using ACLs.
+   */
   u32 user_id = get_acl_user_id(am, user_module_name, val1_label, val2_label);
-  clib_mem_set_heap (oldheap);
   return user_id;
 }
 
@@ -99,8 +103,11 @@ static int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 v
   if (!acl_user_id_valid(am, acl_user_id))
     return VNET_API_ERROR_INVALID_REGISTRATION;
 
-  void *oldheap = acl_plugin_set_heap ();
-
+  /*
+   * The lookup context index allocation is
+   * an operation done within the global heap,
+   * so no heap switching necessary.
+   */
 
   pool_get(am->acl_lookup_contexts, acontext);
   acontext->acl_indices = 0;
@@ -111,7 +118,6 @@ static int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 v
   u32 new_context_id = acontext - am->acl_lookup_contexts;
   vec_add1(am->acl_users[acl_user_id].lookup_contexts, new_context_id);
 
-  clib_mem_set_heap (oldheap);
   return new_context_id;
 }
 

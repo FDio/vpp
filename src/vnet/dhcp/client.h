@@ -71,8 +71,6 @@ typedef struct dhcp_client_t_
   /* Requested data (option 55) */
   u8 *option_55_data;
 
-  u8 *l2_rewrite;
-
   /* hostname and software client identifiers */
   u8 *hostname;
   u8 *client_identifier;	/* software version, e.g. vpe 1.0 */
@@ -86,6 +84,13 @@ typedef struct dhcp_client_t_
   /* Interface MAC address, so we can do an rx-packet-for-us check */
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
+
+  /* the unicast adjacency for the DHCP server */
+  adj_index_t ai_ucast;
+  /* the broadcast adjacency on the link */
+  adj_index_t ai_bcast;
+  /* IP DSCP to set in sent packets */
+  ip_dscp_t dscp;
 
   dhcp_event_cb_t event_callback;
 } dhcp_client_t;
@@ -118,6 +123,7 @@ typedef struct
   /* Information used for event callback */
   u32 client_index;
   u32 pid;
+  ip_dscp_t dscp;
   dhcp_event_cb_t event_callback;
 } dhcp_client_add_del_args_t;
 
@@ -140,7 +146,8 @@ extern int dhcp_client_config (u32 is_add,
 			       u8 * hostname,
 			       u8 * client_id,
 			       dhcp_event_cb_t event_callback,
-			       u8 set_broadcast_flag, u32 pid);
+			       u8 set_broadcast_flag,
+			       ip_dscp_t dscp, u32 pid);
 
 /**
  * callback function for clients walking the DHCP client configurations

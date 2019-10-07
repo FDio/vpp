@@ -10,6 +10,17 @@
 %endif
 %define _vpp_install_dir install-%{_vpp_tag}-native
 
+# Failsafe backport of Python2-macros for RHEL <= 6
+%{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python_sitearch:    %global python_sitearch     %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%{!?python_version: %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
+%{!?__python2:      %global __python2       %{__python}}
+%{!?python2_sitelib:    %global python2_sitelib     %{python_sitelib}}
+%{!?python2_sitearch:   %global python2_sitearch    %{python_sitearch}}
+%{!?python2_version:    %global python2_version     %{python_version}}
+
+%{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
+
 %{?systemd_requires}
 
 
@@ -39,12 +50,13 @@ BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 BuildRequires: mbedtls-devel mbedtls
 %if 0%{?fedora}
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python3
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
 Requires: compat-openssl10
 Requires: boost-filesystem mbedtls libffi-devel
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
-BuildRequires: python3-devel, python3-virtualenv
+BuildRequires: python, python-devel, python-virtualenv, python-ply
+BuildRequires: python3, python36-devel, python3-virtualenv
 BuildRequires: cmake
 %else
 %if 0%{rhel} == 7
@@ -128,6 +140,15 @@ Requires: python-setuptools
 %description api-python
 This package contains the python bindings for the vpp api
 
+%package api-python3
+Summary: VPP api python3 bindings
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, libffi-devel
+Requires: python-setuptools
+
+%description api-python3
+This package contains the python3 bindings for the vpp api
+
 %package selinux-policy
 Summary: VPP Security-Enhanced Linux (SELinux) policy
 Group: System Environment/Base
@@ -154,6 +175,7 @@ groupadd -f -r vpp
     make bootstrap AESNI=n
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
+cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
 cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
 
@@ -210,6 +232,7 @@ do
 done
 
 # Python bindings
+cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
 cd %{_mu_build_dir}/../src/vpp-api/python && %py3_install
 
 # SELinux Policy
@@ -365,6 +388,10 @@ fi
 /usr/share/doc/vpp/examples/lua
 
 %files api-python
+%defattr(644,root,root,755)
+%{python2_sitelib}/vpp_*
+
+%files api-python3
 %defattr(644,root,root,755)
 %{python3_sitelib}/vpp_*
 

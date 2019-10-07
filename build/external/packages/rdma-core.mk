@@ -13,10 +13,11 @@
 
 RDMA_CORE_DEBUG?=n
 
-rdma-core_version             := 23
+rdma-core_version             := 25.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
 rdma-core_tarball_md5sum_22.1 := dde4d30e3db20893408ae51041117034
-rdma-core_tarball_md5sum_23 := c78575735c4a71609c1a214ea16cd8dc
+rdma-core_tarball_md5sum_23   := c78575735c4a71609c1a214ea16cd8dc
+rdma-core_tarball_md5sum_25.0 := d8839edaae4cb6dacdacc4b5a824854c
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
@@ -31,6 +32,7 @@ RDMA_FILES := include/infiniband/verbs.h \
 	      include/infiniband/ib_user_ioctl_verbs.h \
 	      include/rdma/ib_user_verbs.h \
 	      lib/statics/libibverbs.a \
+	      util/librdma_util.a \
 	      lib/statics/libmlx5.a
 
 define  rdma-core_config_cmds
@@ -42,12 +44,14 @@ define  rdma-core_config_cmds
 endef
 
 define  rdma-core_build_cmds
-	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a libmlx5.a > $(rdma-core_build_log)
+	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a librdma_util.a libmlx5.a > $(rdma-core_build_log)
 endef
 
 define  rdma-core_install_cmds
 	mkdir -p $(rdma-core_install_dir)
 	tar -C $(rdma-core_build_dir) --xform='s|/statics/|/|' -hc $(RDMA_FILES) | tar -C $(rdma-core_install_dir) -xv > $(rdma-core_install_log)
+	mv -v $(rdma-core_install_dir)/util/librdma_util.a $(rdma-core_install_dir)/lib >> $(rdma-core_install_log)
+	rmdir $(rdma-core_install_dir)/util
 endef
 
 $(eval $(call package,rdma-core))

@@ -633,7 +633,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		  ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
 		  ip6srv->sr.segments_left += 1;
-		  ip6srv->sr.first_segment += 1;
+		  ip6srv->sr.last_entry += 1;
 
 		  ip6srv->sr.length += sizeof(ip6_address_t) / 8;
 		  ip6srv->sr.segments[0] = seg;
@@ -1165,7 +1165,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	          ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
 	          ip6srv->sr.segments_left += 1;
-	          ip6srv->sr.first_segment += 1;
+	          ip6srv->sr.last_entry += 1;
 
 	          ip6srv->sr.length += sizeof(ip6_address_t) / 8;
 	          ip6srv->sr.segments[0] = seg0;
@@ -1462,7 +1462,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
 	          ip6srv->sr.segments_left += 2;
-	          ip6srv->sr.first_segment += 2;
+	          ip6srv->sr.last_entry += 2;
 		}
 	      else
 		{
@@ -1472,7 +1472,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  ip6srv->ip.dst_address = seg0;
 
 		  ip6srv->sr.segments_left += 1;
-	          ip6srv->sr.first_segment += 1;
+	          ip6srv->sr.last_entry += 1;
 		  ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
 		}
 

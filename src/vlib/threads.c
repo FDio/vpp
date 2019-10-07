@@ -44,28 +44,6 @@ vlib_thread_main_t vlib_thread_main;
  * imapacts observed timings.
  */
 
-u32
-elog_global_id_for_msg_name (const char *msg_name)
-{
-  uword *p, r;
-  static uword *h;
-  u8 *name_copy;
-
-  if (!h)
-    h = hash_create_string (0, sizeof (uword));
-
-  p = hash_get_mem (h, msg_name);
-  if (p)
-    return p[0];
-  r = elog_string (&vlib_global_main.elog_main, "%s", msg_name);
-
-  name_copy = format (0, "%s%c", msg_name, 0);
-
-  hash_set_mem (h, name_copy, r);
-
-  return r;
-}
-
 static inline void
 barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 {
@@ -86,8 +64,8 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->count = (int) vlib_worker_threads[0].barrier_sync_count;
-  ed->caller = elog_global_id_for_msg_name
-    (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_string (&vlib_global_main.elog_main,
+			    (char *) vlib_worker_threads[0].barrier_caller);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_open = (int) (1000000.0 * t_open);
   ed->t_closed = (int) (1000000.0 * t_closed);
@@ -113,8 +91,8 @@ barrier_trace_sync_rec (f64 t_entry)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
-  ed->caller = elog_global_id_for_msg_name
-    (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_string (&vlib_global_main.elog_main,
+			    (char *) vlib_worker_threads[0].barrier_caller);
 }
 
 static inline void
@@ -867,6 +845,7 @@ start_workers (vlib_main_t * vm)
 #ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
 	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
 #endif
+	      nm_clone->node_by_error = nm->node_by_error;
 
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
@@ -1081,11 +1060,7 @@ vlib_worker_thread_node_refork (void)
     clib_mem_alloc_no_fail (vec_len (nm->nodes) * sizeof (*new_n_clone));
   for (j = 0; j < vec_len (nm->nodes); j++)
     {
-      vlib_node_t *old_n_clone;
-      vlib_node_t *new_n;
-
-      new_n = nm->nodes[j];
-      old_n_clone = old_nodes_clone[j];
+      vlib_node_t *new_n = nm->nodes[j];
 
       clib_memcpy_fast (new_n_clone, new_n, sizeof (*new_n));
       /* none of the copied nodes have enqueue rights given out */
@@ -1101,6 +1076,7 @@ vlib_worker_thread_node_refork (void)
 	}
       else
 	{
+	  vlib_node_t *old_n_clone = old_nodes_clone[j];
 	  /* Copy stats if the old data is valid */
 	  clib_memcpy_fast (&new_n_clone->stats_total,
 			    &old_n_clone->stats_total,
@@ -1204,6 +1180,7 @@ vlib_worker_thread_node_refork (void)
 
   nm_clone->processes = vec_dup_aligned (nm->processes,
 					 CLIB_CACHE_LINE_BYTES);
+  nm_clone->node_by_error = nm->node_by_error;
 }
 
 void
@@ -1452,7 +1429,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   for (i = 1; i < vec_len (vlib_mains); i++)
     max_vector_rate =
       clib_max (max_vector_rate,
-		vlib_last_vectors_per_main_loop_as_f64 (vlib_mains[i]));
+		(f64) vlib_last_vectors_per_main_loop (vlib_mains[i]));
 
   vlib_worker_threads[0].barrier_sync_count++;
 
@@ -1673,6 +1650,7 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 
   while (1)
     {
+      vlib_buffer_t *b;
       if (fq->head == fq->tail)
 	{
 	  fq->head_hint = fq->head;
@@ -1694,6 +1672,11 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
       ASSERT (elt->n_vectors <= VLIB_FRAME_SIZE);
 
       f = vlib_get_frame_to_node (vm, fqm->node_index);
+
+      /* If the first vector is traced, set the frame trace flag */
+      b = vlib_get_buffer (vm, from[0]);
+      if (b->flags & VLIB_BUFFER_IS_TRACED)
+	f->frame_flags |= VLIB_NODE_FLAG_TRACE;
 
       to = vlib_frame_vector_args (f);
 

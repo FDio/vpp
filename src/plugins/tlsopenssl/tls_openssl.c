@@ -16,6 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
+
 #ifdef HAVE_OPENSSL_ASYNC
 #include <openssl/async.h>
 #endif
@@ -26,9 +27,9 @@
 #include <ctype.h>
 #include <tlsopenssl/tls_openssl.h>
 
-#define MAX_CRYPTO_LEN 16
+#define MAX_CRYPTO_LEN 64
 
-static openssl_main_t openssl_main;
+openssl_main_t openssl_main;
 static u32
 openssl_ctx_alloc (void)
 {
@@ -205,6 +206,28 @@ vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
 
 #endif
 
+static void
+openssl_handle_handshake_failure (tls_ctx_t * ctx)
+{
+  if (SSL_is_server (((openssl_ctx_t *) ctx)->ssl))
+    {
+      /*
+       * Cleanup pre-allocated app session and close transport
+       */
+      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+      ctx->no_app_session = 1;
+      ctx->c_s_index = SESSION_INVALID_INDEX;
+      tls_disconnect_transport (ctx);
+    }
+  else
+    {
+      /*
+       * Also handles cleanup of the pre-allocated session
+       */
+      tls_notify_app_connected (ctx, /* is failed */ 1);
+    }
+}
+
 int
 openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 {
@@ -233,6 +256,17 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
+
+      if (err == SSL_ERROR_SSL)
+	{
+	  char buf[512];
+	  ERR_error_string (ERR_get_error (), buf);
+	  clib_warning ("Err: %s", buf);
+
+	  openssl_handle_handshake_failure (ctx);
+	  return -1;
+	}
+
       openssl_try_handshake_write (oc, tls_session);
 #ifdef HAVE_OPENSSL_ASYNC
       if (err == SSL_ERROR_WANT_ASYNC)
@@ -247,15 +281,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 #endif
 
       if (err != SSL_ERROR_WANT_WRITE)
-	{
-	  if (err == SSL_ERROR_SSL)
-	    {
-	      char buf[512];
-	      ERR_error_string (ERR_get_error (), buf);
-	      clib_warning ("Err: %s", buf);
-	    }
-	  break;
-	}
+	break;
     }
   TLS_DBG (2, "tls state for %u is %s", oc->openssl_ctx_index,
 	   SSL_state_string_long (oc->ssl));
@@ -297,6 +323,13 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
   return rv;
 }
 
+static void
+openssl_confirm_app_close (tls_ctx_t * ctx)
+{
+  tls_disconnect_transport (ctx);
+  session_transport_closed_notify (&ctx->connection);
+}
+
 static inline int
 openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 {
@@ -333,7 +366,7 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 	}
     }
 
-  if (svm_fifo_needs_tx_ntf (app_session->tx_fifo, wrote))
+  if (svm_fifo_needs_deq_ntf (app_session->tx_fifo, wrote))
     session_dequeue_notify (app_session);
 
   if (wrote < deq_max)
@@ -374,6 +407,8 @@ check_tls_fifo:
 
   if (BIO_ctrl_pending (oc->rbio) > 0)
     tls_add_vpp_q_builtin_tx_evt (app_session);
+  else if (ctx->app_closed)
+    openssl_confirm_app_close (ctx);
 
   return wrote;
 }
@@ -734,7 +769,7 @@ openssl_transport_close (tls_ctx_t * ctx)
 {
   if (!openssl_handshake_is_over (ctx))
     {
-      session_close (session_get_from_handle (ctx->tls_session_handle));
+      openssl_handle_handshake_failure (ctx);
       return 0;
     }
   session_transport_closing_notify (&ctx->connection);
@@ -744,9 +779,16 @@ openssl_transport_close (tls_ctx_t * ctx)
 static int
 openssl_app_close (tls_ctx_t * ctx)
 {
-  tls_disconnect_transport (ctx);
-  session_transport_delete_notify (&ctx->connection);
-  openssl_ctx_free (ctx);
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  session_t *app_session;
+
+  /* Wait for all data to be written to tcp */
+  app_session = session_get_from_handle (ctx->app_session_handle);
+  if (BIO_ctrl_pending (oc->rbio) <= 0
+      && !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
+    openssl_confirm_app_close (ctx);
+  else
+    ctx->app_closed = 1;
   return 0;
 }
 
@@ -809,7 +851,7 @@ tls_init_ca_chain (void)
   return (rv < 0 ? -1 : 0);
 }
 
-static int
+int
 tls_openssl_set_ciphers (char *ciphers)
 {
   openssl_main_t *om = &openssl_main;
@@ -835,8 +877,10 @@ tls_openssl_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_main_t *om = &openssl_main;
+  clib_error_t *error = 0;
   u32 num_threads;
 
+  error = tls_openssl_api_init (vm);
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
   SSL_library_init ();
@@ -858,7 +902,7 @@ tls_openssl_init (vlib_main_t * vm)
   tls_openssl_set_ciphers
     ("ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
 
-  return 0;
+  return error;
 }
 /* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tls_openssl_init) =
@@ -920,7 +964,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   else
     {
-      if (!openssl_engine_register (engine_name, engine_alg))
+      if (openssl_engine_register (engine_name, engine_alg) < 0)
 	{
 	  return clib_error_return (0, "failed to register %s polling",
 				    engine_name);

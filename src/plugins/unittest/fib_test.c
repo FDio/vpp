@@ -714,7 +714,7 @@ fib_test_validate_entry (fib_node_index_t fei,
                 fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx->fp_addr.ip4);
                 break;
             case FIB_PROTOCOL_IP6:
-                fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx->fp_addr.ip6);
+                fw_lbi = ip6_fib_table_fwding_lookup(fib_index, &pfx->fp_addr.ip6);
                 break;
             case FIB_PROTOCOL_MPLS:
                 {
@@ -4433,7 +4433,6 @@ fib_test_v6 (void)
 
     dpo = fib_entry_contribute_ip_forwarding(dfrt);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
-                  &ip6_main,
                   1,
                   &pfx_0_0.fp_addr.ip6)),
              "default-route; fwd and non-fwd tables match");
@@ -4501,7 +4500,6 @@ fib_test_v6 (void)
              "attached interface adj is receive ok");
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
-                  &ip6_main,
                   1,
                   &local_pfx.fp_addr.ip6)),
              "attached-route; fwd and non-fwd tables match");
@@ -4534,7 +4532,6 @@ fib_test_v6 (void)
 
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
-                  &ip6_main,
                   1,
                   &local_pfx.fp_addr.ip6)),
              "local-route; fwd and non-fwd tables match");

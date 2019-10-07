@@ -142,6 +142,40 @@ u8x16_msb_mask (u8x16 v)
   return (u16) (vgetq_lane_u64 (x64, 0) + (vgetq_lane_u64 (x64, 1) << 8));
 }
 
+static_always_inline u64x2
+u64x2_gather (void *p0, void *p1)
+{
+  u64x2 r = vdupq_n_u64 (*(u64 *) p0);
+  r = vsetq_lane_u64 (*(u64 *) p1, r, 1);
+  return r;
+}
+
+static_always_inline u32x4
+u32x4_gather (void *p0, void *p1, void *p2, void *p3)
+{
+  u32x4 r = vdupq_n_u32 (*(u32 *) p0);
+  r = vsetq_lane_u32 (*(u32 *) p1, r, 1);
+  r = vsetq_lane_u32 (*(u32 *) p2, r, 2);
+  r = vsetq_lane_u32 (*(u32 *) p3, r, 3);
+  return r;
+}
+
+static_always_inline void
+u64x2_scatter (u64x2 r, void *p0, void *p1)
+{
+  *(u64 *) p0 = vgetq_lane_u64 (r, 0);
+  *(u64 *) p1 = vgetq_lane_u64 (r, 1);
+}
+
+static_always_inline void
+u32x4_scatter (u32x4 r, void *p0, void *p1, void *p2, void *p3)
+{
+  *(u32 *) p0 = vgetq_lane_u32 (r, 0);
+  *(u32 *) p1 = vgetq_lane_u32 (r, 1);
+  *(u32 *) p2 = vgetq_lane_u32 (r, 2);
+  *(u32 *) p3 = vgetq_lane_u32 (r, 3);
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE

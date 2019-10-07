@@ -1,13 +1,16 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-from __future__ import print_function
 import ply.lex as lex
 import ply.yacc as yacc
 import sys
 import argparse
+import keyword
 import logging
 import binascii
 import os
+import sys
+
+log = logging.getLogger('vppapigen')
 
 # Ensure we don't leave temporary files around
 sys.dont_write_bytecode = True
@@ -19,12 +22,15 @@ sys.dont_write_bytecode = True
 # Global dictionary of new types (including enums)
 global_types = {}
 
+seen_imports = {}
+
 
 def global_type_add(name, obj):
     '''Add new type to the dictionary of types '''
     type_name = 'vl_api_' + name + '_t'
     if type_name in global_types:
-        raise KeyError('Type is already defined: {}'.format(name))
+        raise KeyError("Attempted redefinition of {!r} with {!r}.".format(
+            name, obj))
     global_types[type_name] = obj
 
 
@@ -78,10 +84,23 @@ class VPPAPILexer(object):
 
     t_ignore_LINE_COMMENT = '//.*'
 
+    def t_FALSE(self, t):
+        r'false'
+        t.value = False
+        return t
+
+    def t_TRUE(self, t):
+        r'false'
+        t.value = True
+        return t
+
     def t_NUM(self, t):
-        r'0[xX][0-9a-fA-F]+|\d+'
+        r'0[xX][0-9a-fA-F]+|-?\d+\.?\d*'
         base = 16 if t.value.startswith('0x') else 10
-        t.value = int(t.value, base)
+        if '.' in t.value:
+            t.value = float(t.value)
+        else:
+            t.value = int(t.value, base)
         return t
 
     def t_ID(self, t):
@@ -125,6 +144,34 @@ def crc_block_combine(block, crc):
     s = str(block).encode()
     return binascii.crc32(s, crc) & 0xffffffff
 
+
+def vla_is_last_check(name, block):
+    vla = False
+    for i, b in enumerate(block):
+        if isinstance(b, Array) and b.vla:
+            vla = True
+            if i + 1 < len(block):
+                raise ValueError(
+                    'VLA field "{}" must be the last field in message "{}"'
+                    .format(b.fieldname, name))
+        elif b.fieldtype.startswith('vl_api_'):
+            if global_types[b.fieldtype].vla:
+                vla = True
+                if i + 1 < len(block):
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
+        elif b.fieldtype == 'string' and b.length == 0:
+            vla = True
+            if i + 1 < len(block):
+                raise ValueError(
+                    'VLA field "{}" must be the last '
+                    'field in message "{}"'
+                    .format(b.fieldname, name))
+    return vla
+
+
 class Service():
     def __init__(self, caller, reply, events=None, stream=False):
         self.caller = caller
@@ -146,21 +193,36 @@ class Typedef():
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
+
         global_type_add(name, self)
+
+        self.vla = vla_is_last_check(name, block)
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
 
 
 class Using():
-    def __init__(self, name, alias):
+    def __init__(self, name, flags, alias):
         self.name = name
+        self.vla = False
+        self.block = []
+        self.manual_print = True
+        self.manual_endian = True
+
+        self.manual_print = False
+        self.manual_endian = False
+        for f in flags:
+            if f == 'manual_print':
+                self.manual_print = True
+            elif f == 'manual_endian':
+                self.manual_endian = True
 
         if isinstance(alias, Array):
-            a = { 'type': alias.fieldtype,  # noqa: E201
-                  'length': alias.length }  # noqa: E202
+            a = {'type': alias.fieldtype,
+                 'length': alias.length}
         else:
-            a = { 'type': alias.fieldtype }  # noqa: E201,E202
+            a = {'type': alias.fieldtype}
         self.alias = a
         self.crc = str(alias).encode()
         global_type_add(name, self)
@@ -170,13 +232,22 @@ class Using():
 
 
 class Union():
-    def __init__(self, name, block):
+    def __init__(self, name, flags, block):
         self.type = 'Union'
         self.manual_print = False
         self.manual_endian = False
         self.name = name
+
+        for f in flags:
+            if f == 'manual_print':
+                self.manual_print = True
+            elif f == 'manual_endian':
+                self.manual_endian = True
+
         self.block = block
         self.crc = str(block).encode()
+        self.vla = vla_is_last_check(name, block)
+
         global_type_add(name, self)
 
     def __repr__(self):
@@ -188,12 +259,12 @@ class Define():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = str(block).encode()
         self.dont_trace = False
         self.manual_print = False
         self.manual_endian = False
         self.autoreply = False
         self.singular = False
+        self.options = {}
         for f in flags:
             if f == 'dont_trace':
                 self.dont_trace = True
@@ -208,7 +279,12 @@ class Define():
             if isinstance(b, Option):
                 if b[1] == 'singular' and b[2] == 'true':
                     self.singular = True
+                else:
+                    self.options[b.option] = b.value
                 block.remove(b)
+
+        self.vla = vla_is_last_check(name, block)
+        self.crc = str(block).encode()
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -218,6 +294,7 @@ class Enum():
     def __init__(self, name, block, enumtype='u32'):
         self.name = name
         self.enumtype = enumtype
+        self.vla = False
 
         count = 0
         for i, b in enumerate(block):
@@ -236,31 +313,45 @@ class Enum():
 
 
 class Import():
-    def __init__(self, filename):
-        self.filename = filename
 
-        # Deal with imports
-        parser = VPPAPI(filename=filename)
-        dirlist = dirlist_get()
-        f = filename
-        for dir in dirlist:
-            f = os.path.join(dir, filename)
-            if os.path.exists(f):
-                break
-        if sys.version[0] == '2':
-            with open(f) as fd:
-                self.result = parser.parse_file(fd, None)
+    def __new__(cls, *args, **kwargs):
+        if args[0] not in seen_imports:
+            instance = super().__new__(cls)
+            instance._initialized = False
+            seen_imports[args[0]] = instance
+
+        return seen_imports[args[0]]
+
+    def __init__(self, filename):
+        if self._initialized:
+            return
         else:
-            with open(f, encoding='utf-8') as fd:
-                self.result = parser.parse_file(fd, None)
+            self.filename = filename
+            # Deal with imports
+            parser = VPPAPI(filename=filename)
+            dirlist = dirlist_get()
+            f = filename
+            for dir in dirlist:
+                f = os.path.join(dir, filename)
+                if os.path.exists(f):
+                    break
+            if sys.version[0] == '2':
+                with open(f) as fd:
+                    self.result = parser.parse_file(fd, None)
+            else:
+                with open(f, encoding='utf-8') as fd:
+                    self.result = parser.parse_file(fd, None)
+            self._initialized = True
 
     def __repr__(self):
         return self.filename
 
 
 class Option():
-    def __init__(self, option):
+    def __init__(self, option, value):
+        self.type = 'Option'
         self.option = option
+        self.value = value
         self.crc = str(option).encode()
 
     def __repr__(self):
@@ -271,16 +362,19 @@ class Option():
 
 
 class Array():
-    def __init__(self, fieldtype, name, length):
+    def __init__(self, fieldtype, name, length, modern_vla=False):
         self.type = 'Array'
         self.fieldtype = fieldtype
         self.fieldname = name
+        self.modern_vla = modern_vla
         if type(length) is str:
             self.lengthfield = length
             self.length = 0
+            self.vla = True
         else:
             self.length = length
             self.lengthfield = None
+            self.vla = False
 
     def __repr__(self):
         return str([self.fieldtype, self.fieldname, self.length,
@@ -291,6 +385,14 @@ class Field():
     def __init__(self, fieldtype, name, limit=None):
         self.type = 'Field'
         self.fieldtype = fieldtype
+
+        if self.fieldtype == 'string':
+            raise ValueError("The string type {!r} is an "
+                             "array type ".format(name))
+
+        if name in keyword.kwlist:
+            raise ValueError("Fieldname {!r} is a python keyword and is not "
+                             "accessible via the python API. ".format(name))
         self.fieldname = name
         self.limit = limit
 
@@ -446,7 +548,9 @@ class VPPAPIParser(object):
         '''define : flist DEFINE ID '{' block_statements_opt '}' ';' '''
         # Legacy typedef
         if 'typeonly' in p[1]:
-            p[0] = Typedef(p[3], p[1], p[5])
+            self._parse_error('legacy typedef. use typedef: {} {}[{}];'
+                              .format(p[1], p[2], p[4]),
+                              self._token_coord(p, 1))
         else:
             p[0] = Define(p[3], p[1], p[5])
 
@@ -472,9 +576,17 @@ class VPPAPIParser(object):
         '''typedef : TYPEDEF ID '{' block_statements_opt '}' ';' '''
         p[0] = Typedef(p[2], [], p[4])
 
+    def p_typedef_flist(self, p):
+        '''typedef : flist TYPEDEF ID '{' block_statements_opt '}' ';' '''
+        p[0] = Typedef(p[3], p[1], p[5])
+
     def p_typedef_alias(self, p):
         '''typedef : TYPEDEF declaration '''
-        p[0] = Using(p[2].fieldname, p[2])
+        p[0] = Using(p[2].fieldname, [], p[2])
+
+    def p_typedef_alias_flist(self, p):
+        '''typedef : flist TYPEDEF declaration '''
+        p[0] = Using(p[3].fieldname, p[1], p[3])
 
     def p_block_statements_opt(self, p):
         '''block_statements_opt : block_statements '''
@@ -515,13 +627,18 @@ class VPPAPIParser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = { **p[1], **p[2] }
+            p[0] = {**p[1], **p[2]}
 
     def p_field_option(self, p):
-        '''field_option : ID '=' assignee ','
+        '''field_option : ID
+                        | ID '=' assignee ','
                         | ID '=' assignee
+
         '''
-        p[0] = { p[1]: p[3] }
+        if len(p) == 2:
+            p[0] = {p[1]: None}
+        else:
+            p[0] = {p[1]: p[3]}
 
     def p_declaration(self, p):
         '''declaration : type_specifier ID ';'
@@ -534,9 +651,14 @@ class VPPAPIParser(object):
             self._parse_error('ERROR')
         self.fields.append(p[2])
 
+    def p_declaration_array_vla(self, p):
+        '''declaration : type_specifier ID '[' ']' ';' '''
+        p[0] = Array(p[1], p[2], 0, modern_vla=True)
+
     def p_declaration_array(self, p):
         '''declaration : type_specifier ID '[' NUM ']' ';'
                        | type_specifier ID '[' ID ']' ';' '''
+
         if len(p) != 7:
             return self._parse_error(
                 'array: %s' % p.value,
@@ -558,7 +680,7 @@ class VPPAPIParser(object):
 
     def p_option(self, p):
         '''option : OPTION ID '=' assignee ';' '''
-        p[0] = Option([p[1], p[2], p[4]])
+        p[0] = Option(p[2], p[4])
 
     def p_assignee(self, p):
         '''assignee : NUM
@@ -591,7 +713,11 @@ class VPPAPIParser(object):
 
     def p_union(self, p):
         '''union : UNION ID '{' block_statements_opt '}' ';' '''
-        p[0] = Union(p[2], p[4])
+        p[0] = Union(p[2], [], p[4])
+
+    def p_union_flist(self, p):
+        '''union : flist UNION ID '{' block_statements_opt '}' ';' '''
+        p[0] = Union(p[3], p[1], p[5])
 
     # Error rule for syntax errors
     def p_error(self, p):
@@ -631,7 +757,6 @@ class VPPAPI(object):
         s['Service'] = []
         s['types'] = []
         s['Import'] = []
-        s['Alias'] = {}
         crc = 0
         for o in objs:
             tname = o.__class__.__name__
@@ -651,10 +776,9 @@ class VPPAPI(object):
                         s['Service'].append(o2)
             elif (isinstance(o, Enum) or
                   isinstance(o, Typedef) or
+                  isinstance(o, Using) or
                   isinstance(o, Union)):
                 s['types'].append(o)
-            elif isinstance(o, Using):
-                s['Alias'][o.name] = o.alias
             else:
                 if tname not in s:
                     raise ValueError('Unknown class type: {} {}'
@@ -740,9 +864,11 @@ class VPPAPI(object):
                                   isinstance(o, Using)):
                 continue
             if isinstance(o, Import):
-                self.process_imports(o.result, True, result)
+                result.append(o)
+                result = self.process_imports(o.result, True, result)
             else:
                 result.append(o)
+        return result
 
 
 # Add message ids to each message.
@@ -764,6 +890,7 @@ def dirlist_add(dirs):
 def dirlist_get():
     return dirlist
 
+
 def foldup_blocks(block, crc):
     for b in block:
         # Look up CRC in user defined types
@@ -773,36 +900,37 @@ def foldup_blocks(block, crc):
             try:
                 crc = crc_block_combine(t.block, crc)
                 return foldup_blocks(t.block, crc)
-            except:
+            except AttributeError:
                 pass
     return crc
+
 
 def foldup_crcs(s):
     for f in s:
         f.crc = foldup_blocks(f.block,
                               binascii.crc32(f.crc))
 
+
 #
 # Main
 #
 def main():
+    if sys.version_info < (3, 5,):
+        log.exception('vppapigen requires a supported version of python. '
+                      'Please use version 3.5 or greater. '
+                      'Using {}'.format(sys.version))
+        return 1
+
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
-    if sys.version[0] == '2':
-        cliparser.add_argument('--input', type=argparse.FileType('r'),
-                               default=sys.stdin)
-        cliparser.add_argument('--output', nargs='?',
-                               type=argparse.FileType('w'),
-                               default=sys.stdout)
-
-    else:
-        cliparser.add_argument('--input',
-                               type=argparse.FileType('r', encoding='UTF-8'),
-                               default=sys.stdin)
-        cliparser.add_argument('--output', nargs='?',
-                               type=argparse.FileType('w', encoding='UTF-8'),
-                               default=sys.stdout)
+    cliparser.add_argument('--outputdir', action='store'),
+    cliparser.add_argument('--input',
+                           type=argparse.FileType('r', encoding='UTF-8'),
+                           default=sys.stdin)
+    cliparser.add_argument('--output', nargs='?',
+                           type=argparse.FileType('w', encoding='UTF-8'),
+                           default=sys.stdout)
 
     cliparser.add_argument('output_module', nargs='?', default='C')
     cliparser.add_argument('--debug', action='store_true')
@@ -825,15 +953,18 @@ def main():
         logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
     else:
         logging.basicConfig()
-    log = logging.getLogger('vppapigen')
 
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
     parsed_objects = parser.parse_file(args.input, log)
 
     # Build a list of objects. Hash of lists.
     result = []
-    parser.process_imports(parsed_objects, False, result)
-    s = parser.process(result)
+
+    if args.output_module == 'C':
+        s = parser.process(parsed_objects)
+    else:
+        result = parser.process_imports(parsed_objects, False, result)
+        s = parser.process(result)
 
     # Add msg_id field
     s['Define'] = add_msg_id(s['Define'])
@@ -872,7 +1003,8 @@ def main():
     else:
         pluginpath = args.pluginpath + '/'
     if pluginpath == '':
-        raise Exception('Output plugin not found')
+        log.exception('Output plugin not found')
+        return 1
     module_path = '{}vppapigen_{}.py'.format(pluginpath,
                                              args.output_module.lower())
 
@@ -880,16 +1012,19 @@ def main():
         plugin = SourceFileLoader(args.output_module,
                                   module_path).load_module()
     except Exception as err:
-        raise Exception('Error importing output plugin: {}, {}'
-                        .format(module_path, err))
+        log.exception('Error importing output plugin: {}, {}'
+                      .format(module_path, err))
+        return 1
 
-    result = plugin.run(filename, s)
+    result = plugin.run(args, filename, s)
     if result:
         print(result, file=args.output)
     else:
-        raise Exception('Running plugin failed: {} {}'
-                        .format(filename, result))
+        log.exception('Running plugin failed: {} {}'
+                      .format(filename, result))
+        return 1
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

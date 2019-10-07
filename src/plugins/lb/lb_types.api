@@ -1,0 +1,73 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2019 Vinci Consulting Corp.  All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ import "vnet/ip/ip_types.api";
+
+enum lb_srv_type
+{
+  LB_API_SRV_TYPE_CLUSTERIP = 0,
+  LB_API_SRV_TYPE_NODEPORT = 1,
+  LB_API_SRV_N_TYPES = 2,
+};
+
+enum lb_encap_type
+{
+  LB_API_ENCAP_TYPE_GRE4 = 0,
+  LB_API_ENCAP_TYPE_GRE6 = 1,
+  LB_API_ENCAP_TYPE_L3DSR = 2,
+  LB_API_ENCAP_TYPE_NAT4 = 3 ,
+  LB_API_ENCAP_TYPE_NAT6 =4,
+  LB_API_ENCAP_N_TYPES =5,
+};
+
+/* Lookup types */
+enum lb_lkp_type_t
+{
+  LB_API_LKP_SAME_IP_PORT = 0,
+  LB_API_LKP_DIFF_IP_PORT = 1,
+  LB_API_LKP_ALL_PORT_IP =2,
+  LB_API_LKP_N_TYPES =3,
+};
+
+enum lb_vip_type
+{
+  LB_API_VIP_TYPE_IP6_GRE6 = 0,
+  LB_API_VIP_TYPE_IP6_GRE4 = 1,
+  LB_API_VIP_TYPE_IP4_GRE6 = 2,
+  LB_API_VIP_TYPE_IP4_GRE4 = 3,
+  LB_API_VIP_TYPE_IP4_L3DSR = 4,
+  LB_API_VIP_TYPE_IP4_NAT4 = 5,
+  LB_API_VIP_TYPE_IP6_NAT6 = 6,
+  LB_API_VIP_N_TYPES = 7,
+};
+
+enum lb_nat_protocol
+{
+  LB_API_NAT_PROTOCOL_UDP = 0x06,
+  LB_API_NAT_PROTOCOL_TCP = 0x17,
+  LB_API_NAT_PROTOCOL_ANY = 0xffffffff,
+};
+
+/** \brief Define connection statistics structure
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+typedef lb_vip
+{
+  vl_api_address_with_prefix_t pfx;
+  vl_api_ip_proto_t protocol;
+  u16 port;
+};

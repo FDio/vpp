@@ -17,6 +17,7 @@
 #define __GBP_ENDPOINT_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/mac_address.h>
 
@@ -58,11 +59,13 @@ extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
 
 /**
  * Sources of Endpoints in priority order. The best (lowest value) source
- * provides the forwarding information
+ * provides the forwarding information.
+ * Data-plane takes preference because the CP data is not always complete,
+ * it may not have the sclass.
  */
 #define foreach_gbp_endpoint_src    \
-  _(CP, "control-plane")            \
   _(DP, "data-plane")               \
+  _(CP, "control-plane")            \
   _(RR, "recursive-resolution")
 
 typedef enum gbp_endpoint_src_t_
@@ -120,7 +123,7 @@ typedef struct gbp_endpoint_loc_t_
   /**
    * The interface on which the EP is connected
    */
-  u32 gel_sw_if_index;
+  gbp_itf_hdl_t gel_itf;
 
   /**
    * Endpoint flags
@@ -156,7 +159,7 @@ typedef struct gbp_endpoint_fwd_t_
   /**
    * The interface on which the EP is connected
    */
-  index_t gef_itf;
+  gbp_itf_hdl_t gef_itf;
 
   /**
    * The L3 adj, if created

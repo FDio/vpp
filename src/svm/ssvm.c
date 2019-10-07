@@ -213,7 +213,7 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
   vec_free (fn);
   vec_free (ssvm->name);
 
-  munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
+  munmap ((void *) ssvm->sh, ssvm->ssvm_size);
 }
 
 /**
@@ -370,6 +370,12 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   }
 #else
   heap = create_mspace (rnd_size, 1 /* locked */ );
+  if (heap == 0)
+    {
+      clib_unix_warning ("mheap alloc");
+      return -1;
+    }
+
   mspace_disable_expand (heap);
 #endif
 

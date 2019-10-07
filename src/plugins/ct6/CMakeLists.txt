@@ -26,10 +26,6 @@ add_vpp_plugin(ct6
   API_FILES
   ct6.api
 
-  INSTALL_HEADERS
-  ct6_all_api_h.h
-  ct6_msg_enum.h
-
   API_TEST_SOURCES
   ct6_test.c
 )

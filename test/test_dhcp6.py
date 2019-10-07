@@ -10,6 +10,7 @@ from scapy.utils6 import in6_mactoifaceid
 from scapy.utils import inet_ntop, inet_pton
 
 from framework import VppTestCase
+from vpp_papi import VppEnum
 import util
 
 
@@ -52,14 +53,17 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        address_bin = '\00\01\00\02\00\03' + '\00' * 8 + '\00\05'
-        address = {'address': address_bin,
+        address = {'address': '1:2:3::5',
                    'preferred_time': 60,
                    'valid_time': 120}
-        self.vapi.dhcp6_send_client_message(msg_type=1,
-                                            sw_if_index=self.pg0.sw_if_index,
-                                            T1=20, T2=40, addresses=[address],
-                                            n_addresses=len([address]))
+        self.vapi.dhcp6_send_client_message(
+            msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
+            sw_if_index=self.pg0.sw_if_index,
+            T1=20,
+            T2=40,
+            addresses=[address],
+            n_addresses=len(
+                [address]))
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -112,8 +116,8 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.assert_equal(ev.T2, 40)
 
             reported_address = ev.addresses[0]
-            address = inet_pton(AF_INET6, ia_na_opts.getfieldval("addr"))
-            self.assert_equal(reported_address.address, address)
+            address = ia_na_opts.getfieldval("addr")
+            self.assert_equal(str(reported_address.address), address)
             self.assert_equal(reported_address.preferred_time,
                               ia_na_opts.getfieldval("preflft"))
             self.assert_equal(reported_address.valid_time,
@@ -129,13 +133,18 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        prefix_bin = '\00\01\00\02\00\03' + '\00' * 10
-        prefix = {'prefix': prefix_bin,
-                  'prefix_length': 50,
+
+        prefix = {'prefix': {'address': '1:2:3::', 'len': 50},
                   'preferred_time': 60,
                   'valid_time': 120}
-        self.vapi.dhcp6_pd_send_client_message(1, self.pg0.sw_if_index,
-                                               T1=20, T2=40, prefixes=[prefix])
+        prefixes = [prefix]
+        self.vapi.dhcp6_pd_send_client_message(
+            msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
+            sw_if_index=self.pg0.sw_if_index,
+            T1=20,
+            T2=40,
+            prefixes=prefixes,
+            n_prefixes=len(prefixes))
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -189,9 +198,10 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.assert_equal(ev.T2, 40)
 
             reported_prefix = ev.prefixes[0]
-            prefix = inet_pton(AF_INET6, ia_pd_opts.getfieldval("prefix"))
-            self.assert_equal(reported_prefix.prefix, prefix)
-            self.assert_equal(reported_prefix.prefix_length,
+            prefix = ia_pd_opts.getfieldval("prefix")
+            self.assert_equal(
+                str(reported_prefix.prefix).split('/')[0], prefix)
+            self.assert_equal(int(str(reported_prefix.prefix).split('/')[1]),
                               ia_pd_opts.getfieldval("plen"))
             self.assert_equal(reported_prefix.preferred_time,
                               ia_pd_opts.getfieldval("preflft"))
@@ -226,7 +236,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg0))
 
@@ -247,14 +257,14 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
     def get_interface_addresses(fib, pg):
         lst = []
         for entry in fib:
-            if entry.address_length == 128:
-                path = entry.path[0]
+            if entry.route.prefix.prefixlen == 128:
+                path = entry.route.paths[0]
                 if path.sw_if_index == pg.sw_if_index:
-                    lst.append(entry.address)
+                    lst.append(str(entry.route.prefix.network_address))
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         return addresses.difference(self.initial_addresses)
 
@@ -288,7 +298,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except BaseException:
             packet.show()
             raise
 
@@ -376,12 +386,12 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         new_addresses = self.get_addresses()
         self.assertEqual(len(new_addresses), 1)
         addr = list(new_addresses)[0]
-        self.assertEqual(inet_ntop(AF_INET6, addr), '7:8::2')
+        self.assertEqual(addr, '7:8::2')
 
         self.sleep(2)
 
         # check that the address is deleted
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -430,7 +440,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -447,7 +457,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -477,7 +487,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg1))
 
@@ -503,14 +513,14 @@ class TestDHCPv6PDControlPlane(VppTestCase):
     def get_interface_addresses(fib, pg):
         lst = []
         for entry in fib:
-            if entry.address_length == 128:
-                path = entry.path[0]
+            if entry.route.prefix.prefixlen == 128:
+                path = entry.route.paths[0]
                 if path.sw_if_index == pg.sw_if_index:
-                    lst.append(entry.address)
+                    lst.append(str(entry.route.prefix.network_address))
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip6_fib_dump()
+        fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg1))
         return addresses.difference(self.initial_addresses)
 
@@ -544,7 +554,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except BaseException:
             packet.show()
             raise
 
@@ -642,7 +652,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             new_addresses = self.get_addresses()
             self.assertEqual(len(new_addresses), 1)
             addr = list(new_addresses)[0]
-            self.assertEqual(inet_ntop(AF_INET6, addr), '7:8:0:2::405')
+            self.assertEqual(addr, '7:8:0:2::405')
 
             self.sleep(1)
 
@@ -656,21 +666,21 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(1)
 
             # check FIB contains 2 addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 2)
             addr1 = list(new_addresses)[0]
             addr2 = list(new_addresses)[1]
-            if inet_ntop(AF_INET6, addr1) == '7:8:0:76::406':
+            if addr1 == '7:8:0:76::406':
                 addr1, addr2 = addr2, addr1
-            self.assertEqual(inet_ntop(AF_INET6, addr1), '7:8:0:2::405')
-            self.assertEqual(inet_ntop(AF_INET6, addr2), '7:8:0:76::406')
+            self.assertEqual(addr1, '7:8:0:2::405')
+            self.assertEqual(addr2, '7:8:0:76::406')
 
             self.sleep(1)
 
             # check that the addresses are deleted
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
@@ -738,7 +748,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
@@ -771,7 +781,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip6_fib_dump()
+            fib = self.vapi.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)

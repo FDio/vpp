@@ -79,10 +79,9 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
       return 1;
     }
   else if (unformat (input, "%U://session/%lu", unformat_transport_proto,
-		     &transport_proto, &sep->transport_opts))
+		     &transport_proto, &sep->parent_handle))
     {
       sep->transport_proto = transport_proto;
-      sep->is_ip4 = 1;
       sep->ip.ip4.as_u32 = 1;	/* ip need to be non zero in vnet */
       return 1;
     }
@@ -143,6 +142,7 @@ int
 vnet_unbind_uri (vnet_unlisten_args_t * a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  application_t *app;
   session_t *listener;
   u32 table_index;
   int rv;
@@ -150,9 +150,11 @@ vnet_unbind_uri (vnet_unlisten_args_t * a)
   if ((rv = parse_uri (a->uri, &sep)))
     return rv;
 
-  /* NOTE: only default fib tables supported for uri apis */
-  table_index = session_lookup_get_index_for_fib (fib_ip_proto (!sep.is_ip4),
-						  0);
+  app = application_get (a->app_index);
+  if (!app)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  table_index = application_session_table (app, fib_ip_proto (!sep.is_ip4));
   listener = session_lookup_listener (table_index,
 				      (session_endpoint_t *) & sep);
   if (!listener)

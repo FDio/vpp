@@ -233,6 +233,10 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
 	return 0;
       memset (f, 0, sizeof (*f));
     }
+  else
+    {
+      fsh->free_fifos = f->next;
+    }
 
   fl_index = fs_freelist_for_size (data_bytes) - 1;
   vec_validate_init_empty (fsh->free_chunks, fl_index, 0);
@@ -248,7 +252,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
 	    last = c;
 	  c->next = first;
 	  first = c;
-	  n_alloc += c->length;
+	  n_alloc += fl_size;
 	  c->length = clib_min (fl_size, data_bytes);
 	  data_bytes -= c->length;
 	}
@@ -394,6 +398,14 @@ fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
   /* (re)initialize the fifo, as in svm_fifo_create */
   svm_fifo_init (f, data_bytes);
 
+  /* Initialize chunks and rbtree for multi-chunk fifos */
+  if (f->start_chunk->next != f->start_chunk)
+    {
+      void *oldheap = ssvm_push_heap (fs->ssvm.sh);
+      svm_fifo_init_chunks (f);
+      ssvm_pop_heap (oldheap);
+    }
+
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
    * both rx and tx fifos keep pointers to the session, it's enough to track
@@ -467,6 +479,9 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
       cur = next;
     }
   while (cur != f->start_chunk);
+
+  f->start_chunk = f->end_chunk = f->new_chunks = 0;
+  f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
 
   oldheap = ssvm_push_heap (sh);
   svm_fifo_free_chunk_lookup (f);
@@ -610,12 +625,16 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   /* Calculate space requirements */
   pair_size = 2 * hdrs + rx_rounded_data_size + tx_rounded_data_size;
   space_available = fs_free_space (fs);
-  pairs_to_alloc = clib_min (space_available / pair_size, *n_fifo_pairs);
+  pairs_to_alloc = space_available / pair_size;
+  pairs_to_alloc = clib_min (pairs_to_alloc, *n_fifo_pairs);
+
+  if (!pairs_to_alloc)
+    return;
 
   if (fs_try_alloc_fifo_batch (fs, rx_fl_index, pairs_to_alloc))
-    clib_warning ("rx prealloc failed");
+    clib_warning ("rx prealloc failed: pairs %u", pairs_to_alloc);
   if (fs_try_alloc_fifo_batch (fs, tx_fl_index, pairs_to_alloc))
-    clib_warning ("tx prealloc failed");
+    clib_warning ("tx prealloc failed: pairs %u", pairs_to_alloc);
 
   /* Account for the pairs allocated */
   *n_fifo_pairs -= pairs_to_alloc;
@@ -632,7 +651,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   if (!fs_chunk_size_is_valid (chunk_size))
     {
       clib_warning ("chunk size out of range %d", chunk_size);
-      return 0;
+      return -1;
     }
 
   fl_index = fs_freelist_for_size (chunk_size);
@@ -651,6 +670,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
       if (!c)
 	{
 	  ssvm_pop_heap (oldheap);
+	  ssvm_unlock_non_recursive (sh);
 	  return -1;
 	}
     }
@@ -658,6 +678,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
     {
       fs->h->free_chunks[fl_index] = c->next;
       c->next = 0;
+      fs->h->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
     }
 
   svm_fifo_add_chunk (f, c);
@@ -783,7 +804,7 @@ fifo_segment_free_bytes (fifo_segment_t * fs)
 }
 
 u32
-fifo_segment_chunk_prealloc_bytes (fifo_segment_t * fs)
+fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 {
   return fs->h->n_fl_chunk_bytes;
 }

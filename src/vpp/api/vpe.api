@@ -19,7 +19,9 @@
     called through a shared memory interface. 
 */
 
-option version = "1.1.0";
+option version = "1.6.0";
+
+import "vpp/api/vpe_types.api";
 
 /* 
  * Note: API placement cleanup in progress
@@ -38,7 +40,6 @@ option version = "1.1.0";
  * L2TP APIs: see .../src/vnet/l2tp/{l2tp.api, l2tp_api.c}
  * BFD APIs: see .../src/vnet/bfd/{bfd.api, bfd_api.c}
  * IPSEC APIs: see .../src/vnet/ipsec/{ipsec.api, ipsec_api.c}
- * IPSEC-GRE APIs: see .../src/vnet/ipsec-gre/{ipsec_gre.api, ipsec_gre_api.c}
  * LISP APIs: see .../src/vnet/lisp/{lisp.api, lisp_api.c}
  * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
  * SESSION APIs: .../vnet/session/{session.api session_api.c}
@@ -91,7 +92,7 @@ define cli_inband
 {
   u32 client_index;
   u32 context;
-  string cmd;
+  string cmd[];
 };
 
 /** \brief vpe parser cli string response
@@ -109,7 +110,7 @@ define cli_inband_reply
 {
   u32 context;
   i32 retval;
-  string reply;
+  string reply[];
 };
 
 /** \brief Get node index using name request
@@ -183,10 +184,10 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  string program [limit = 32];
-  string version [limit = 32];
-  string build_date [limit = 32];
-  string build_directory [limit = 256];
+  string program[32];
+  string version[32];
+  string build_date[32];
+  string build_directory[256];
 };
 
 
@@ -212,7 +213,7 @@ define show_threads
     @param core - thread pinned to actual physical core.
     @param cpu_socket - thread is running on which cpu socket.
 */
-typeonly define thread_data
+typedef thread_data
 {
   u32 id;
   u8 name[64];
@@ -282,6 +283,90 @@ define get_next_index_reply
   u32 context;
   i32 retval;
   u32 next_index;
+};
+
+define log_dump {
+  u32 client_index;
+  u32 context;
+  vl_api_timestamp_t start_timestamp;
+};
+
+define log_details {
+  u32 context;
+  vl_api_timestamp_t timestamp;
+  vl_api_log_level_t level;
+  string msg_class[32];
+  string message[256];
+};
+
+/** \brief Show the current system timestamp.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_vpe_system_time
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for show vpe system time.
+    @param context - sender context which was passed in the request
+    @param retval - return value
+    @param vpe_system_time - the time in seconds since epoch of the host system.
+*/
+define show_vpe_system_time_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_timestamp_t vpe_system_time;
+};
+
+/** \brief f64 types are not standardized across the wire. Sense wire format in each direction by sending the f64 value 1.0.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param f64_one - The constant of 1.0.  If you send a different value, expect an rv=VNET_API_ERROR_API_ENDIAN_FAILED.
+*/
+define get_f64_endian_value
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_one [default=1.0];
+};
+
+/** \brief get_f64_endian_value reply message
+    @param context - sender context which was passed in the request
+    @param retval - return value - VNET_API_ERROR_API_ENDIAN_FAILED if f64_one != 1.0
+    @param f64_one_result - The value of 'f64 1.0'
+*/
+define get_f64_endian_value_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_one_result;
+};
+
+/** \brief Verify f64 wire format by sending a value and receiving the value + 1.0
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The value you want to test.  Default: 1.0.
+*/
+define get_f64_increment_by_one
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_value [default=1.0];
+};
+
+/** \brief get_f64_increment_by_one reply
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The input f64_value incremented by 1.0.
+*/
+define get_f64_increment_by_one_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_value;
 };
 
 /*

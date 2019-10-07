@@ -386,14 +386,19 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     fragment_ext_hdr = IPv6ExtHdrFragment()
     logger.debug(ppp("Fragment header:", fragment_ext_hdr))
 
+    len_ext_and_upper_layer_payload = len(ext_and_upper_layer.payload)
+    if not len_ext_and_upper_layer_payload and \
+       hasattr(ext_and_upper_layer, "data"):
+        len_ext_and_upper_layer_payload = len(ext_and_upper_layer.data)
+
     if len(per_fragment_headers) + len(fragment_ext_hdr) +\
-            len(ext_and_upper_layer) - len(ext_and_upper_layer.payload)\
+            len(ext_and_upper_layer) - len_ext_and_upper_layer_payload\
             > fragsize:
         raise Exception("Cannot fragment this packet - MTU too small "
                         "(%s, %s, %s, %s, %s)" % (
                             len(per_fragment_headers), len(fragment_ext_hdr),
                             len(ext_and_upper_layer),
-                            len(ext_and_upper_layer.payload), fragsize))
+                            len_ext_and_upper_layer_payload, fragsize))
 
     orig_nh = packet[IPv6].nh
     p = per_fragment_headers
