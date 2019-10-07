@@ -21,8 +21,6 @@
 #include <vppinfra/time_range.h>
 #include <vnet/ethernet/ethernet.h>
 
-uword vat_unformat_sw_if_index (unformat_input_t * input, va_list * args);
-
 /* Declare message IDs */
 #include <mactime/mactime.api_enum.h>
 #include <mactime/mactime.api_types.h>
