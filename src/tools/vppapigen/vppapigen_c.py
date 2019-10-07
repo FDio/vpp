@@ -673,6 +673,15 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
         write('   }\n')
         write('}\n')
 
+        for e in s.events:
+            if define_hash[e].manual_print:
+                continue
+            write('static void\n')
+            write('vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n'.format(n=e))
+            write('    vl_print(0, "{n} event called:");\n'.format(n=e))
+            write('    vl_api_{n}_t_print(mp, 0);\n'.format(n=e))
+            write('}\n')
+
     write('static void\n')
     write('setup_message_id_table (vat_main_t * vam, u16 msg_id_base) {\n')
     for s in services:
@@ -687,6 +696,14 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
                   .format(n=s.caller, help=define_hash[s.caller].options['vat_help']))
         except:
             pass
+
+        # Events
+        for e in s.events:
+            write('   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "{n}",\n'
+                  '                           vl_api_{n}_t_handler, vl_noop_handler,\n'
+                  '                           vl_api_{n}_t_endian, vl_api_{n}_t_print,\n'
+                  '                           sizeof(vl_api_{n}_t), 1);\n'
+                  .format(n=e, ID=e.upper()))
 
     write('}\n')
 
