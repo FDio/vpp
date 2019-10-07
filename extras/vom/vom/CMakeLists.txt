@@ -94,6 +94,7 @@ if(GBP_FILE)
     gbp_rule.cpp
     gbp_subnet_cmds.cpp
     gbp_subnet.cpp
+    gbp_types.hpp
     gbp_vxlan.cpp
     gbp_vxlan_cmds.cpp
   )
@@ -166,6 +167,16 @@ list(APPEND VOM_SOURCES
   pipe.cpp
   pipe_cmds.cpp
   prefix.cpp
+  qos_map.cpp
+  qos_map_cmds.cpp
+  qos_mark.cpp
+  qos_mark_cmds.cpp
+  qos_record.cpp
+  qos_record_cmds.cpp
+  qos_store.cpp
+  qos_store_cmds.cpp
+  qos_types.cpp
+  qos_types_api.cpp
   ra_config.cpp
   ra_prefix.cpp
   route.cpp
@@ -220,6 +231,7 @@ if(GBP_FILE)
     gbp_route_domain.hpp
     gbp_rule.hpp
     gbp_subnet.hpp
+    gbp_types.hpp
     gbp_vxlan.hpp
   )
 endif()
@@ -267,6 +279,11 @@ list(APPEND VOM_HEADERS
   om.hpp
   pipe.hpp
   prefix.hpp
+  qos_map.hpp
+  qos_mark.hpp
+  qos_record.hpp
+  qos_store.hpp
+  qos_types.hpp
   ra_config.hpp
   ra_prefix.hpp
   route.hpp
@@ -283,7 +300,7 @@ list(APPEND VOM_HEADERS
   vxlan_tunnel.hpp
 )
 
-add_definitions(-Wall -Werror -std=gnu++11)
+add_definitions(-Wall -Werror -std=gnu++11 -g)
 add_library(vom SHARED ${VOM_SOURCES})
 if (VOM_LIB_VERSION)
   set_target_properties(vom PROPERTIES SOVERSION ${VOM_LIB_VERSION})

@@ -788,10 +788,10 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    }
 
 	    /* do src lookup */
-	    lbi0 = ip6_fib_table_fwding_lookup(&ip6_main,
+	    lbi0 = ip6_fib_table_fwding_lookup(
 					       fib_index0,
 					       input_addr0);
-	    lbi1 = ip6_fib_table_fwding_lookup(&ip6_main,
+	    lbi1 = ip6_fib_table_fwding_lookup(
 					       fib_index1,
 					       input_addr1);
 	    lb0 = load_balance_get(lbi0);
@@ -927,7 +927,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    }
 
 	    /* do src lookup */
-	    lbi0 = ip6_fib_table_fwding_lookup(&ip6_main,
+	    lbi0 = ip6_fib_table_fwding_lookup(
 					       fib_index0,
 					       input_addr0);
 	    lb0 = load_balance_get(lbi0);

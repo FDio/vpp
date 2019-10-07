@@ -13,23 +13,26 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Create host-interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param host_if_name - interface name
     @param hw_addr - interface MAC
     @param use_random_hw_addr - use random generated MAC
+    @param host_if_name - interface name
 */
 define af_packet_create
 {
   u32 client_index;
   u32 context;
 
-  u8 host_if_name[64];
-  u8 hw_addr[6];
-  u8 use_random_hw_addr;
+  vl_api_mac_address_t hw_addr;
+  bool use_random_hw_addr;
+  string host_if_name[64];
 };
 
 /** \brief Create host-interface response
@@ -40,7 +43,7 @@ define af_packet_create_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Delete host-interface
@@ -53,7 +56,7 @@ autoreply define af_packet_delete
   u32 client_index;
   u32 context;
 
-  u8 host_if_name[64];
+  string host_if_name[64];
 };
 
 /** \brief Set l4 offload ckecksum calculation
@@ -64,9 +67,9 @@ autoreply define af_packet_set_l4_cksum_offload
 {
   u32 client_index;
   u32 context;
-  
-  u8 sw_if_index;
-  u8 set;
+
+  vl_api_interface_index_t sw_if_index;
+  bool set;
 };
 
 /** \brief Dump af_packet interfaces request */
@@ -83,8 +86,8 @@ define af_packet_dump
 define af_packet_details
 {
   u32 context;
-  u32 sw_if_index;
-  u8 host_if_name[64];
+  vl_api_interface_index_t sw_if_index;
+  string host_if_name[64];
 };
 
 /*

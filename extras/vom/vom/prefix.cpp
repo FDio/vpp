@@ -32,13 +32,13 @@ l3_proto_t::l3_proto_t(int v, const std::string& s)
 }
 
 bool
-l3_proto_t::is_ipv6()
+l3_proto_t::is_ipv6() const
 {
   return (*this == IPV6);
 }
 
 bool
-l3_proto_t::is_ipv4()
+l3_proto_t::is_ipv4() const
 {
   return (*this == IPV4);
 }
@@ -94,6 +94,37 @@ nh_proto_t::from_address(const boost::asio::ip::address& addr)
   }
 
   return IPV4;
+}
+
+const ip_dscp_t ip_dscp_t::DSCP_CS0(0, "CS0");
+const ip_dscp_t ip_dscp_t::DSCP_CS1(8, "CS1");
+const ip_dscp_t ip_dscp_t::DSCP_CS2(16, "CS2");
+const ip_dscp_t ip_dscp_t::DSCP_CS3(24, "CS3");
+const ip_dscp_t ip_dscp_t::DSCP_CS4(32, "CS4");
+const ip_dscp_t ip_dscp_t::DSCP_CS5(40, "CS5");
+const ip_dscp_t ip_dscp_t::DSCP_CS6(48, "CS6");
+const ip_dscp_t ip_dscp_t::DSCP_CS7(50, "CS7");
+const ip_dscp_t ip_dscp_t::DSCP_AF11(10, "AF11");
+const ip_dscp_t ip_dscp_t::DSCP_AF12(12, "AF12");
+const ip_dscp_t ip_dscp_t::DSCP_AF13(14, "AF13");
+const ip_dscp_t ip_dscp_t::DSCP_AF21(18, "AF21");
+const ip_dscp_t ip_dscp_t::DSCP_AF22(20, "AF22");
+const ip_dscp_t ip_dscp_t::DSCP_AF23(22, "AF23");
+const ip_dscp_t ip_dscp_t::DSCP_AF31(26, "AF31");
+const ip_dscp_t ip_dscp_t::DSCP_AF32(28, "AF32");
+const ip_dscp_t ip_dscp_t::DSCP_AF33(30, "AF33");
+const ip_dscp_t ip_dscp_t::DSCP_AF41(34, "AF41");
+const ip_dscp_t ip_dscp_t::DSCP_AF42(36, "AF42");
+const ip_dscp_t ip_dscp_t::DSCP_AF43(38, "AF43");
+const ip_dscp_t ip_dscp_t::DSCP_EF(46, "EF");
+
+ip_dscp_t::ip_dscp_t(int v, const std::string& s)
+  : enum_base<ip_dscp_t>(v, s)
+{
+}
+ip_dscp_t::ip_dscp_t(int v)
+  : enum_base<ip_dscp_t>(v, std::to_string(v))
+{
 }
 
 /**
@@ -492,15 +523,16 @@ route::mprefix_t::mask_width() const
   return (m_len);
 }
 
-void
-route::mprefix_t::to_vpp(uint8_t* is_ip6,
-                         uint8_t* saddr,
-                         uint8_t* gaddr,
-                         uint16_t* len) const
+l3_proto_t
+route::mprefix_t::l3_proto() const
 {
-  *len = m_len;
-  to_bytes(m_saddr, is_ip6, saddr);
-  to_bytes(m_gaddr, is_ip6, gaddr);
+  if (m_gaddr.is_v6()) {
+    return (l3_proto_t::IPV6);
+  } else {
+    return (l3_proto_t::IPV4);
+  }
+
+  return (l3_proto_t::IPV4);
 }
 
 route::mprefix_t&

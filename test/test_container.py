@@ -82,11 +82,11 @@ class ContainerIntegrationTestCase(VppTestCase):
         for i in range(2):
             intf = self.lo_interfaces[i]
             intf.admin_up()
-            intf._local_ip4 = self.pg_interfaces[i].remote_ip4
-            intf._local_ip4_prefix_len = 32
+            intf.local_ip4 = self.pg_interfaces[i].remote_ip4
+            intf.local_ip4_prefix_len = 32
             intf.config_ip4()
-            intf._local_ip6 = self.pg_interfaces[i].remote_ip6
-            intf._local_ip6_prefix_len = 128
+            intf.local_ip6 = self.pg_interfaces[i].remote_ip6
+            intf.local_ip6_prefix_len = 128
             intf.config_ip6()
 
     def test_0110_basic_conn_test(self):

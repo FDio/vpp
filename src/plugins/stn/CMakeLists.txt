@@ -21,8 +21,6 @@ add_vpp_plugin(stn
 
   INSTALL_HEADERS
   stn.h
-  stn_all_api_h.h
-  stn_msg_enum.h
 
   API_TEST_SOURCES
   stn_test.c

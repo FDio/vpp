@@ -38,3 +38,5 @@ The Developers section covers the following areas:
    eventviewer
    fib20/index.rst
    buildwireshark
+   punt
+   quic_plugin

@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export-common/ioam_export.h>
 #include <ioam/encap/ip6_ioam_trace.h>
@@ -256,17 +257,15 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  data0 = ioam_analyse_get_data_from_flow_id (flow_id0);
 		  data1 = ioam_analyse_get_data_from_flow_id (flow_id1);
 
-		  while (clib_atomic_test_and_set (data0->writer_lock))
-		    ;
+		  clib_spinlock_lock (&data0->writer_lock);
 		  data0->pkt_counter++;
 		  data0->bytes_counter += p_len0;
-		  clib_atomic_release (data0->writer_lock);
+		  clib_spinlock_unlock (&data0->writer_lock);
 
-		  while (clib_atomic_test_and_set (data1->writer_lock))
-		    ;
+		  clib_spinlock_lock (&data1->writer_lock);
 		  data1->pkt_counter++;
 		  data1->bytes_counter += p_len1;
-		  clib_atomic_release (data1->writer_lock);
+		  clib_spinlock_unlock (&data1->writer_lock);
 		}
 	      else if (error0 == 0)
 		{
@@ -274,11 +273,10 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  pkts_failed++;
 
 		  data0 = ioam_analyse_get_data_from_flow_id (flow_id0);
-		  while (clib_atomic_test_and_set (data0->writer_lock))
-		    ;
+		  clib_spinlock_lock (&data0->writer_lock);
 		  data0->pkt_counter++;
 		  data0->bytes_counter += p_len0;
-		  clib_atomic_release (data0->writer_lock);
+		  clib_spinlock_unlock (&data0->writer_lock);
 		}
 	      else if (error1 == 0)
 		{
@@ -286,11 +284,10 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  pkts_failed++;
 
 		  data1 = ioam_analyse_get_data_from_flow_id (flow_id1);
-		  while (clib_atomic_test_and_set (data1->writer_lock))
-		    ;
+		  clib_spinlock_lock (&data1->writer_lock);
 		  data1->pkt_counter++;
 		  data1->bytes_counter += p_len1;
-		  clib_atomic_release (data1->writer_lock);
+		  clib_spinlock_unlock (&data1->writer_lock);
 		}
 	      else
 		pkts_failed += 2;
@@ -327,12 +324,11 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  pkts_analysed++;
 		  data0 = ioam_analyse_get_data_from_flow_id (flow_id0);
-		  while (clib_atomic_test_and_set (data0->writer_lock))
-		    ;
+		  clib_spinlock_lock (&data0->writer_lock);
 		  data0->pkt_counter++;
 		  data0->bytes_counter +=
 		    clib_net_to_host_u16 (ip60->payload_length);
-		  clib_atomic_release (data0->writer_lock);
+		  clib_spinlock_unlock (&data0->writer_lock);
 		}
 	      else
 		pkts_failed++;
@@ -393,13 +389,12 @@ ip6_ioam_analyse_hbh_pot (u32 flow_id, ip6_hop_by_hop_option_t * opt0,
   pot_profile = pot_profile_get_active ();
   ret = pot_validate (pot_profile, cumulative, random);
 
-  while (clib_atomic_test_and_set (data->writer_lock))
-    ;
+  clib_spinlock_lock (&data->writer_lock);
 
   (0 == ret) ? (data->pot_data.sfc_validated_count++) :
     (data->pot_data.sfc_invalidated_count++);
 
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_unlock (&data->writer_lock);
   return 0;
 }
 

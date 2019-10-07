@@ -264,7 +264,6 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   vnet_main_t *vnm = va_arg (*va, vnet_main_t *);
   ethernet_arp_ip4_entry_t *e = va_arg (*va, ethernet_arp_ip4_entry_t *);
   vnet_sw_interface_t *si;
-  u8 *flags = 0;
 
   if (!e)
     return format (s, "%=12s%=16s%=6s%=20s%=24s", "Time", "IP4",
@@ -272,24 +271,12 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 
   si = vnet_get_sw_interface (vnm, e->sw_if_index);
 
-  if (e->flags & IP_NEIGHBOR_FLAG_STATIC)
-    flags = format (flags, "S");
-
-  if (e->flags & IP_NEIGHBOR_FLAG_DYNAMIC)
-    flags = format (flags, "D");
-
-  if (e->flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
-    flags = format (flags, "N");
-
-  s = format (s, "%=12U%=16U%=6s%=20U%U",
-	      format_vlib_time, vnm->vlib_main, e->time_last_updated,
-	      format_ip4_address, &e->ip4_address,
-	      flags ? (char *) flags : "",
-	      format_mac_address_t, &e->mac,
-	      format_vnet_sw_interface_name, vnm, si);
-
-  vec_free (flags);
-  return s;
+  return format (s, "%=12U%=16U%=6U%=20U%U",
+		 format_vlib_time, vnm->vlib_main, e->time_last_updated,
+		 format_ip4_address, &e->ip4_address,
+		 format_ip_neighbor_flags, e->flags,
+		 format_mac_address_t, &e->mac,
+		 format_vnet_sw_interface_name, vnm, si);
 }
 
 typedef struct
@@ -473,6 +460,8 @@ arp_enable (ethernet_arp_main_t * am, u32 sw_if_index)
   am->ethernet_arp_by_sw_if_index[sw_if_index].enabled = 1;
 
   vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 1, NULL, 0);
+  vnet_feature_enable_disable ("arp", "arp-disabled", sw_if_index, 0, NULL,
+			       0);
 }
 
 static int
@@ -491,6 +480,8 @@ arp_disable (ethernet_arp_main_t * am, u32 sw_if_index)
   if (!arp_is_enabled (am, sw_if_index))
     return;
 
+  vnet_feature_enable_disable ("arp", "arp-disabled", sw_if_index, 1, NULL,
+			       0);
   vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 0, NULL, 0);
 
   eai = &am->ethernet_arp_by_sw_if_index[sw_if_index];
@@ -1021,6 +1012,7 @@ arp_learn (vnet_main_t * vnm,
 typedef enum arp_input_next_t_
 {
   ARP_INPUT_NEXT_DROP,
+  ARP_INPUT_NEXT_DISABLED,
   ARP_INPUT_N_NEXT,
 } arp_input_next_t;
 
@@ -1075,11 +1067,84 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
 
 	  if (ETHERNET_ARP_ERROR_replies_sent == error0)
-	    vnet_feature_arc_start (am->feature_arc_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX],
-				    &next0, p0);
+	    {
+	      next0 = ARP_INPUT_NEXT_DISABLED;
+	      vnet_feature_arc_start (am->feature_arc_index,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX],
+				      &next0, p0);
+	    }
 	  else
 	    p0->error = node->errors[error0];
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+typedef enum arp_disabled_next_t_
+{
+  ARP_DISABLED_NEXT_DROP,
+  ARP_DISABLED_N_NEXT,
+} arp_disabled_next_t;
+
+#define foreach_arp_disabled_error					\
+  _ (DISABLED, "ARP Disabled on this interface")                    \
+
+typedef enum
+{
+#define _(sym,string) ARP_DISABLED_ERROR_##sym,
+  foreach_arp_disabled_error
+#undef _
+    ARP_DISABLED_N_ERROR,
+} arp_disabled_error_t;
+
+static char *arp_disabled_error_strings[] = {
+#define _(sym,string) string,
+  foreach_arp_disabled_error
+#undef _
+};
+
+static uword
+arp_disabled (vlib_main_t * vm,
+	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
+				   /* stride */ 1,
+				   sizeof (ethernet_arp_input_trace_t));
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  arp_disabled_next_t next0 = ARP_DISABLED_NEXT_DROP;
+	  vlib_buffer_t *p0;
+	  u32 pi0, error0;
+
+	  next0 = ARP_DISABLED_NEXT_DROP;
+	  error0 = ARP_DISABLED_ERROR_DISABLED;
+
+	  pi0 = to_next[0] = from[0];
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  p0 = vlib_get_buffer (vm, pi0);
+	  p0->error = node->errors[error0];
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -1143,6 +1208,38 @@ arp_mk_reply (vnet_main_t * vnm,
   return (next0);
 }
 
+enum arp_dst_fib_type
+{
+  ARP_DST_FIB_NONE,
+  ARP_DST_FIB_ADJ,
+  ARP_DST_FIB_CONN
+};
+
+/*
+ * we're looking for FIB sources that indicate the destination
+ * is attached. There may be interposed DPO prior to the one
+ * we are looking for
+ */
+static enum arp_dst_fib_type
+arp_dst_fib_check (const fib_node_index_t fei, fib_entry_flag_t * flags)
+{
+  const fib_entry_t *entry = fib_entry_get (fei);
+  const fib_entry_src_t *entry_src;
+  fib_source_t src;
+  /* *INDENT-OFF* */
+  FOR_EACH_SRC_ADDED(entry, entry_src, src,
+  ({
+    *flags = fib_entry_get_flags_for_source (fei, src);
+    if (fib_entry_is_sourced (fei, FIB_SOURCE_ADJ))
+        return ARP_DST_FIB_ADJ;
+      else if (FIB_ENTRY_FLAG_CONNECTED & *flags)
+        return ARP_DST_FIB_CONN;
+  }))
+  /* *INDENT-ON* */
+
+  return ARP_DST_FIB_NONE;
+}
+
 static uword
 arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
@@ -1173,7 +1270,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ethernet_header_t *eth_rx;
 	  const ip4_address_t *if_addr0;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 dst_is_local0, is_unnum0, is_vrrp_reply0;
+	  u8 dst_is_local0, is_vrrp_reply0;
 	  fib_node_index_t dst_fei, src_fei;
 	  const fib_prefix_t *pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
@@ -1202,15 +1299,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop;
 
 	    }
-	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[1].ip4,
-					  32);
-	  dst_flags = fib_entry_get_flags (dst_fei);
-
-	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
-
-	  /* Honor unnumbered interface, if any */
-	  is_unnum0 = sw_if_index0 != conn_sw_if_index0;
 
 	  {
 	    /*
@@ -1313,8 +1401,12 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      }
 	  }
 
-	  if (fib_entry_is_sourced (dst_fei, FIB_SOURCE_ADJ))
+	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+					  &arp0->ip4_over_ethernet[1].ip4,
+					  32);
+	  switch (arp_dst_fib_check (dst_fei, &dst_flags))
 	    {
+	    case ARP_DST_FIB_ADJ:
 	      /*
 	       * We matched an adj-fib on ths source subnet (a /32 previously
 	       * added as a result of ARP). If this request is a gratuitous
@@ -1328,21 +1420,13 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		error0 = arp_learn (vnm, am, sw_if_index0,
 				    &arp0->ip4_over_ethernet[0]);
 	      goto drop;
-	    }
-	  else if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
-	    {
+	    case ARP_DST_FIB_CONN:
+	      /* destination is connected, continue to process */
+	      break;
+	    case ARP_DST_FIB_NONE:
+	      /* destination is not connected, stop here */
 	      error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
 	      goto next_feature;
-	    }
-
-	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
-	    {
-	      /*
-	       * The interface the ARP was received on is not the interface
-	       * on which the covering prefix is configured. Maybe this is a
-	       * case for unnumbered.
-	       */
-	      is_unnum0 = 1;
 	    }
 
 	  dst_is_local0 = (FIB_ENTRY_FLAG_LOCAL & dst_flags);
@@ -1390,8 +1474,17 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      goto next_feature;
 	    }
-	  if (is_unnum0)
+
+	  /* Honor unnumbered interface, if any */
+	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
+	  if (sw_if_index0 != conn_sw_if_index0 ||
+	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
+	      /*
+	       * The interface the ARP is sent to or was received on is not the
+	       * interface on which the covering prefix is configured.
+	       * Maybe this is a case for unnumbered.
+	       */
 	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		{
 		  error0 = ETHERNET_ARP_ERROR_unnumbered_mismatch;
@@ -1550,15 +1643,6 @@ static char *ethernet_arp_error_strings[] = {
 
 /* *INDENT-OFF* */
 
-/* Built-in ARP rx feature path definition */
-VNET_FEATURE_ARC_INIT (arp_feat, static) =
-{
-  .arc_name = "arp",
-  .start_nodes = VNET_FEATURES ("arp-input"),
-  .last_in_arc = "error-drop",
-  .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
-};
-
 VLIB_REGISTER_NODE (arp_input_node, static) =
 {
   .function = arp_input,
@@ -1567,6 +1651,22 @@ VLIB_REGISTER_NODE (arp_input_node, static) =
   .n_errors = ETHERNET_ARP_N_ERROR,
   .error_strings = ethernet_arp_error_strings,
   .n_next_nodes = ARP_INPUT_N_NEXT,
+  .next_nodes = {
+    [ARP_INPUT_NEXT_DROP] = "error-drop",
+    [ARP_INPUT_NEXT_DISABLED] = "arp-disabled",
+  },
+  .format_buffer = format_ethernet_arp_header,
+  .format_trace = format_ethernet_arp_input_trace,
+};
+
+VLIB_REGISTER_NODE (arp_disabled_node, static) =
+{
+  .function = arp_disabled,
+  .name = "arp-disabled",
+  .vector_size = sizeof (u32),
+  .n_errors = ARP_DISABLED_N_ERROR,
+  .error_strings = arp_disabled_error_strings,
+  .n_next_nodes = ARP_DISABLED_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
   },
@@ -1606,11 +1706,20 @@ VLIB_REGISTER_NODE (arp_proxy_node, static) =
   .format_trace = format_ethernet_arp_input_trace,
 };
 
+/* Built-in ARP rx feature path definition */
+VNET_FEATURE_ARC_INIT (arp_feat, static) =
+{
+  .arc_name = "arp",
+  .start_nodes = VNET_FEATURES ("arp-input"),
+  .last_in_arc = "arp-disabled",
+  .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
+};
+
 VNET_FEATURE_INIT (arp_reply_feat_node, static) =
 {
   .arc_name = "arp",
   .node_name = "arp-reply",
-  .runs_before = VNET_FEATURES ("error-drop"),
+  .runs_before = VNET_FEATURES ("arp-disabled"),
 };
 
 VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
@@ -1618,6 +1727,13 @@ VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
   .arc_name = "arp",
   .node_name = "arp-proxy",
   .runs_after = VNET_FEATURES ("arp-reply"),
+  .runs_before = VNET_FEATURES ("arp-disabled"),
+};
+
+VNET_FEATURE_INIT (arp_disabled_feat_node, static) =
+{
+  .arc_name = "arp",
+  .node_name = "arp-disabled",
   .runs_before = VNET_FEATURES ("error-drop"),
 };
 
@@ -1625,6 +1741,7 @@ VNET_FEATURE_INIT (arp_drop_feat_node, static) =
 {
   .arc_name = "arp",
   .node_name = "error-drop",
+  .runs_before = 0,	/* last feature */
 };
 
 /* *INDENT-ON* */
@@ -2942,9 +3059,10 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
 static clib_error_t *
 vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
   if (!is_add && sw_if_index != ~0)
     {
-      ethernet_arp_main_t *am = &ethernet_arp_main;
       ethernet_arp_ip4_entry_t *e;
       /* *INDENT-OFF* */
       pool_foreach (e, am->ip4_entry_pool, ({
@@ -2957,6 +3075,12 @@ vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
         vnet_arp_unset_ip4_over_ethernet_internal (vnm, &args);
       }));
       /* *INDENT-ON* */
+      arp_disable (am, sw_if_index);
+    }
+  else if (is_add)
+    {
+      vnet_feature_enable_disable ("arp", "arp-disabled",
+				   sw_if_index, 1, NULL, 0);
     }
 
   return (NULL);

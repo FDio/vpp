@@ -19,9 +19,11 @@ namespace VOM {
 namespace gbp_route_domain_cmds {
 
 create_cmd::create_cmd(HW::item<uint32_t>& item,
+                       scope_t scope,
                        const handle_t ip4_uu_fwd,
                        const handle_t ip6_uu_fwd)
   : rpc_cmd(item)
+  , m_scope(scope)
   , m_ip4_uu_fwd(ip4_uu_fwd)
   , m_ip6_uu_fwd(ip6_uu_fwd)
 {
@@ -31,7 +33,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_hw_item.data() == other.m_hw_item.data()) &&
-          (m_ip4_uu_fwd == other.m_ip4_uu_fwd) &&
+          (m_scope == other.m_scope) && (m_ip4_uu_fwd == other.m_ip4_uu_fwd) &&
           (m_ip6_uu_fwd == other.m_ip6_uu_fwd));
 }
 
@@ -43,6 +45,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.rd.rd_id = m_hw_item.data();
+  payload.rd.scope = m_scope;
   payload.rd.ip4_table_id = m_hw_item.data();
   payload.rd.ip6_table_id = m_hw_item.data();
   payload.rd.ip4_uu_sw_if_index = m_ip4_uu_fwd.value();
@@ -57,7 +60,7 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-route-domain: " << m_hw_item.to_string()
+  s << "gbp-route-domain: " << m_hw_item.to_string() << " scope:" << m_scope
     << " ip4-uu-fwd:" << m_ip4_uu_fwd.to_string()
     << " ip6-uu-fwd:" << m_ip6_uu_fwd.to_string();
 

@@ -22,14 +22,9 @@
 
 #include "vom/gbp_bridge_domain.hpp"
 #include "vom/gbp_route_domain.hpp"
+#include "vom/gbp_types.hpp"
 
 namespace VOM {
-
-/**
- * EPG IDs are 32 bit integers
- */
-typedef uint32_t vnid_t;
-typedef uint16_t sclass_t;
 
 /**
  * A entry in the ARP termination table of a Bridge Domain

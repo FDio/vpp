@@ -27,7 +27,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
-#include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
 #include <vlib/unix/unix.h>
 
@@ -355,7 +354,7 @@ vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
  * @brief Request IP traffic punt to the local TCP/IP stack.
  *
  * @em Note
- * - UDP, TCP and SCTP are the only protocols supported in the current implementation
+ * - UDP and TCP are the only protocols supported in the current implementation
  *
  * @param vm       vlib_main_t corresponding to the current thread
  * @param af       IP address family.
@@ -371,13 +370,11 @@ punt_l4_add_del (vlib_main_t * vm,
 		 ip_address_family_t af,
 		 ip_protocol_t protocol, u16 port, bool is_add)
 {
-  /* For now we only support TCP, UDP and SCTP punt */
-  if (protocol != IP_PROTOCOL_UDP &&
-      protocol != IP_PROTOCOL_TCP && protocol != IP_PROTOCOL_SCTP)
+  /* For now we only support TCP and UDP punt */
+  if (protocol != IP_PROTOCOL_UDP && protocol != IP_PROTOCOL_TCP)
     return clib_error_return (0,
-			      "only UDP (%d), TCP (%d) and SCTP (%d) protocols are supported, got %d",
-			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP,
-			      IP_PROTOCOL_SCTP, protocol);
+			      "only UDP (%d) and TCP (%d) protocols are supported, got %d",
+			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP, protocol);
 
   if (port == (u16) ~ 0)
     {
@@ -385,17 +382,14 @@ punt_l4_add_del (vlib_main_t * vm,
 	udp_punt_unknown (vm, af == AF_IP4, is_add);
       else if (protocol == IP_PROTOCOL_TCP)
 	tcp_punt_unknown (vm, af == AF_IP4, is_add);
-      else if (protocol == IP_PROTOCOL_SCTP)
-	sctp_punt_unknown (vm, af == AF_IP4, is_add);
 
       return 0;
     }
 
   else if (is_add)
     {
-      if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_SCTP)
-	return clib_error_return (0,
-				  "punt TCP/SCTP ports is not supported yet");
+      if (protocol == IP_PROTOCOL_TCP)
+	return clib_error_return (0, "punt TCP ports is not supported yet");
 
       udp_register_dst_port (vm, port, udp4_punt_node.index, af == AF_IP4);
 
@@ -403,9 +397,8 @@ punt_l4_add_del (vlib_main_t * vm,
     }
   else
     {
-      if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_SCTP)
-	return clib_error_return (0,
-				  "punt TCP/SCTP ports is not supported yet");
+      if (protocol == IP_PROTOCOL_TCP)
+	return clib_error_return (0, "punt TCP ports is not supported yet");
 
       udp_unregister_dst_port (vm, port, af == AF_IP4);
 
@@ -770,6 +763,7 @@ ip_punt_init (vlib_main_t * vm)
 {
   clib_error_t *error = NULL;
   punt_main_t *pm = &punt_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   pm->is_configured = false;
   pm->interface_output_node =
@@ -779,6 +773,9 @@ ip_punt_init (vlib_main_t * vm)
     return error;
 
   pm->hdl = vlib_punt_client_register ("ip-punt");
+
+  vec_validate_aligned (pm->thread_data, tm->n_vlib_mains,
+			CLIB_CACHE_LINE_BYTES);
 
   return (error);
 }

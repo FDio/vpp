@@ -15,17 +15,7 @@
 #ifndef __included_vnet_classify_h__
 #define __included_vnet_classify_h__
 
-#include <stdarg.h>
-
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
 #include <vnet/api_errno.h>	/* for API error numbers */
 
 #include <vppinfra/error.h>
@@ -37,8 +27,6 @@ extern vlib_node_registration_t ip4_classify_node;
 extern vlib_node_registration_t ip6_classify_node;
 
 #define CLASSIFY_TRACE 0
-
-#define U32X4_ALIGNED(p) PREDICT_TRUE((((intptr_t)p) & 0xf) == 0)
 
 /*
  * Classify table option to process packets
@@ -187,9 +175,15 @@ typedef struct
   void *mheap;
 
   /* Writer (only) lock for this table */
-  volatile u32 *writer_lock;
+  clib_spinlock_t writer_lock;
 
 } vnet_classify_table_t;
+
+typedef struct
+{
+  int refcnt;
+  u32 *table_indices;
+} vnet_classify_filter_set_t;
 
 struct _vnet_classify_main
 {
@@ -202,6 +196,12 @@ struct _vnet_classify_main
   unformat_function_t **unformat_acl_next_index_fns;
   unformat_function_t **unformat_policer_next_index_fns;
   unformat_function_t **unformat_opaque_index_fns;
+
+  /* Pool of filter sets */
+  vnet_classify_filter_set_t *filter_sets;
+
+  /* Per-interface filter set map. [0] is used for pcap */
+  u32 *filter_set_by_sw_if_index;
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -228,62 +228,57 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
   ASSERT (t);
   mask = t->mask;
 #ifdef CLIB_HAVE_VEC128
-  if (U32X4_ALIGNED (h))
-    {				//SSE can't handle unaligned data
-      u32x4 *data = (u32x4 *) h;
-      xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
-      switch (t->match_n_vectors)
-	{
-	case 5:
-	  xor_sum.as_u32x4 ^= data[4 + t->skip_n_vectors] & mask[4];
-	  /* FALLTHROUGH */
-	case 4:
-	  xor_sum.as_u32x4 ^= data[3 + t->skip_n_vectors] & mask[3];
-	  /* FALLTHROUGH */
-	case 3:
-	  xor_sum.as_u32x4 ^= data[2 + t->skip_n_vectors] & mask[2];
-	  /* FALLTHROUGH */
-	case 2:
-	  xor_sum.as_u32x4 ^= data[1 + t->skip_n_vectors] & mask[1];
-	  /* FALLTHROUGH */
-	case 1:
-	  break;
-	default:
-	  abort ();
-	}
-    }
-  else
-#endif /* CLIB_HAVE_VEC128 */
+  u32x4u *data = (u32x4u *) h;
+  xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
+  switch (t->match_n_vectors)
     {
-      u32 skip_u64 = t->skip_n_vectors * 2;
-      u64 *data64 = (u64 *) h;
-      xor_sum.as_u64[0] = data64[0 + skip_u64] & ((u64 *) mask)[0];
-      xor_sum.as_u64[1] = data64[1 + skip_u64] & ((u64 *) mask)[1];
-      switch (t->match_n_vectors)
-	{
-	case 5:
-	  xor_sum.as_u64[0] ^= data64[8 + skip_u64] & ((u64 *) mask)[8];
-	  xor_sum.as_u64[1] ^= data64[9 + skip_u64] & ((u64 *) mask)[9];
-	  /* FALLTHROUGH */
-	case 4:
-	  xor_sum.as_u64[0] ^= data64[6 + skip_u64] & ((u64 *) mask)[6];
-	  xor_sum.as_u64[1] ^= data64[7 + skip_u64] & ((u64 *) mask)[7];
-	  /* FALLTHROUGH */
-	case 3:
-	  xor_sum.as_u64[0] ^= data64[4 + skip_u64] & ((u64 *) mask)[4];
-	  xor_sum.as_u64[1] ^= data64[5 + skip_u64] & ((u64 *) mask)[5];
-	  /* FALLTHROUGH */
-	case 2:
-	  xor_sum.as_u64[0] ^= data64[2 + skip_u64] & ((u64 *) mask)[2];
-	  xor_sum.as_u64[1] ^= data64[3 + skip_u64] & ((u64 *) mask)[3];
-	  /* FALLTHROUGH */
-	case 1:
-	  break;
-
-	default:
-	  abort ();
-	}
+    case 5:
+      xor_sum.as_u32x4 ^= data[4 + t->skip_n_vectors] & mask[4];
+      /* FALLTHROUGH */
+    case 4:
+      xor_sum.as_u32x4 ^= data[3 + t->skip_n_vectors] & mask[3];
+      /* FALLTHROUGH */
+    case 3:
+      xor_sum.as_u32x4 ^= data[2 + t->skip_n_vectors] & mask[2];
+      /* FALLTHROUGH */
+    case 2:
+      xor_sum.as_u32x4 ^= data[1 + t->skip_n_vectors] & mask[1];
+      /* FALLTHROUGH */
+    case 1:
+      break;
+    default:
+      abort ();
     }
+#else
+  u32 skip_u64 = t->skip_n_vectors * 2;
+  u64 *data64 = (u64 *) h;
+  xor_sum.as_u64[0] = data64[0 + skip_u64] & ((u64 *) mask)[0];
+  xor_sum.as_u64[1] = data64[1 + skip_u64] & ((u64 *) mask)[1];
+  switch (t->match_n_vectors)
+    {
+    case 5:
+      xor_sum.as_u64[0] ^= data64[8 + skip_u64] & ((u64 *) mask)[8];
+      xor_sum.as_u64[1] ^= data64[9 + skip_u64] & ((u64 *) mask)[9];
+      /* FALLTHROUGH */
+    case 4:
+      xor_sum.as_u64[0] ^= data64[6 + skip_u64] & ((u64 *) mask)[6];
+      xor_sum.as_u64[1] ^= data64[7 + skip_u64] & ((u64 *) mask)[7];
+      /* FALLTHROUGH */
+    case 3:
+      xor_sum.as_u64[0] ^= data64[4 + skip_u64] & ((u64 *) mask)[4];
+      xor_sum.as_u64[1] ^= data64[5 + skip_u64] & ((u64 *) mask)[5];
+      /* FALLTHROUGH */
+    case 2:
+      xor_sum.as_u64[0] ^= data64[2 + skip_u64] & ((u64 *) mask)[2];
+      xor_sum.as_u64[1] ^= data64[3 + skip_u64] & ((u64 *) mask)[3];
+      /* FALLTHROUGH */
+    case 1:
+      break;
+
+    default:
+      abort ();
+    }
+#endif /* CLIB_HAVE_VEC128 */
 
   return clib_xxhash (xor_sum.as_u64[0] ^ xor_sum.as_u64[1]);
 }
@@ -402,107 +397,98 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   v = vnet_classify_entry_at_index (t, v, value_index);
 
 #ifdef CLIB_HAVE_VEC128
-  if (U32X4_ALIGNED (h))
+  u32x4u *data = (u32x4u *) h;
+  for (i = 0; i < limit; i++)
     {
-      u32x4 *data = (u32x4 *) h;
-      for (i = 0; i < limit; i++)
+      key = v->key;
+      result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
+      switch (t->match_n_vectors)
 	{
-	  key = v->key;
-	  result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
-	  switch (t->match_n_vectors)
-	    {
-	    case 5:
-	      result.as_u32x4 |=
-		(data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
-	      /* FALLTHROUGH */
-	    case 4:
-	      result.as_u32x4 |=
-		(data[3 + t->skip_n_vectors] & mask[3]) ^ key[3];
-	      /* FALLTHROUGH */
-	    case 3:
-	      result.as_u32x4 |=
-		(data[2 + t->skip_n_vectors] & mask[2]) ^ key[2];
-	      /* FALLTHROUGH */
-	    case 2:
-	      result.as_u32x4 |=
-		(data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
-	      /* FALLTHROUGH */
-	    case 1:
-	      break;
-	    default:
-	      abort ();
-	    }
-
-	  if (u32x4_zero_byte_mask (result.as_u32x4) == 0xffff)
-	    {
-	      if (PREDICT_TRUE (now))
-		{
-		  v->hits++;
-		  v->last_heard = now;
-		}
-	      return (v);
-	    }
-	  v = vnet_classify_entry_at_index (t, v, 1);
+	case 5:
+	  result.as_u32x4 |= (data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
+	  /* FALLTHROUGH */
+	case 4:
+	  result.as_u32x4 |= (data[3 + t->skip_n_vectors] & mask[3]) ^ key[3];
+	  /* FALLTHROUGH */
+	case 3:
+	  result.as_u32x4 |= (data[2 + t->skip_n_vectors] & mask[2]) ^ key[2];
+	  /* FALLTHROUGH */
+	case 2:
+	  result.as_u32x4 |= (data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
+	  /* FALLTHROUGH */
+	case 1:
+	  break;
+	default:
+	  abort ();
 	}
+
+      if (u32x4_zero_byte_mask (result.as_u32x4) == 0xffff)
+	{
+	  if (PREDICT_TRUE (now))
+	    {
+	      v->hits++;
+	      v->last_heard = now;
+	    }
+	  return (v);
+	}
+      v = vnet_classify_entry_at_index (t, v, 1);
     }
-  else
+#else
+  u32 skip_u64 = t->skip_n_vectors * 2;
+  u64 *data64 = (u64 *) h;
+  for (i = 0; i < limit; i++)
+    {
+      key = v->key;
+
+      result.as_u64[0] =
+	(data64[0 + skip_u64] & ((u64 *) mask)[0]) ^ ((u64 *) key)[0];
+      result.as_u64[1] =
+	(data64[1 + skip_u64] & ((u64 *) mask)[1]) ^ ((u64 *) key)[1];
+      switch (t->match_n_vectors)
+	{
+	case 5:
+	  result.as_u64[0] |=
+	    (data64[8 + skip_u64] & ((u64 *) mask)[8]) ^ ((u64 *) key)[8];
+	  result.as_u64[1] |=
+	    (data64[9 + skip_u64] & ((u64 *) mask)[9]) ^ ((u64 *) key)[9];
+	  /* FALLTHROUGH */
+	case 4:
+	  result.as_u64[0] |=
+	    (data64[6 + skip_u64] & ((u64 *) mask)[6]) ^ ((u64 *) key)[6];
+	  result.as_u64[1] |=
+	    (data64[7 + skip_u64] & ((u64 *) mask)[7]) ^ ((u64 *) key)[7];
+	  /* FALLTHROUGH */
+	case 3:
+	  result.as_u64[0] |=
+	    (data64[4 + skip_u64] & ((u64 *) mask)[4]) ^ ((u64 *) key)[4];
+	  result.as_u64[1] |=
+	    (data64[5 + skip_u64] & ((u64 *) mask)[5]) ^ ((u64 *) key)[5];
+	  /* FALLTHROUGH */
+	case 2:
+	  result.as_u64[0] |=
+	    (data64[2 + skip_u64] & ((u64 *) mask)[2]) ^ ((u64 *) key)[2];
+	  result.as_u64[1] |=
+	    (data64[3 + skip_u64] & ((u64 *) mask)[3]) ^ ((u64 *) key)[3];
+	  /* FALLTHROUGH */
+	case 1:
+	  break;
+	default:
+	  abort ();
+	}
+
+      if (result.as_u64[0] == 0 && result.as_u64[1] == 0)
+	{
+	  if (PREDICT_TRUE (now))
+	    {
+	      v->hits++;
+	      v->last_heard = now;
+	    }
+	  return (v);
+	}
+
+      v = vnet_classify_entry_at_index (t, v, 1);
+    }
 #endif /* CLIB_HAVE_VEC128 */
-    {
-      u32 skip_u64 = t->skip_n_vectors * 2;
-      u64 *data64 = (u64 *) h;
-      for (i = 0; i < limit; i++)
-	{
-	  key = v->key;
-
-	  result.as_u64[0] =
-	    (data64[0 + skip_u64] & ((u64 *) mask)[0]) ^ ((u64 *) key)[0];
-	  result.as_u64[1] =
-	    (data64[1 + skip_u64] & ((u64 *) mask)[1]) ^ ((u64 *) key)[1];
-	  switch (t->match_n_vectors)
-	    {
-	    case 5:
-	      result.as_u64[0] |=
-		(data64[8 + skip_u64] & ((u64 *) mask)[8]) ^ ((u64 *) key)[8];
-	      result.as_u64[1] |=
-		(data64[9 + skip_u64] & ((u64 *) mask)[9]) ^ ((u64 *) key)[9];
-	      /* FALLTHROUGH */
-	    case 4:
-	      result.as_u64[0] |=
-		(data64[6 + skip_u64] & ((u64 *) mask)[6]) ^ ((u64 *) key)[6];
-	      result.as_u64[1] |=
-		(data64[7 + skip_u64] & ((u64 *) mask)[7]) ^ ((u64 *) key)[7];
-	      /* FALLTHROUGH */
-	    case 3:
-	      result.as_u64[0] |=
-		(data64[4 + skip_u64] & ((u64 *) mask)[4]) ^ ((u64 *) key)[4];
-	      result.as_u64[1] |=
-		(data64[5 + skip_u64] & ((u64 *) mask)[5]) ^ ((u64 *) key)[5];
-	      /* FALLTHROUGH */
-	    case 2:
-	      result.as_u64[0] |=
-		(data64[2 + skip_u64] & ((u64 *) mask)[2]) ^ ((u64 *) key)[2];
-	      result.as_u64[1] |=
-		(data64[3 + skip_u64] & ((u64 *) mask)[3]) ^ ((u64 *) key)[3];
-	      /* FALLTHROUGH */
-	    case 1:
-	      break;
-	    default:
-	      abort ();
-	    }
-
-	  if (result.as_u64[0] == 0 && result.as_u64[1] == 0)
-	    {
-	      if (PREDICT_TRUE (now))
-		{
-		  v->hits++;
-		  v->last_heard = now;
-		}
-	      return (v);
-	    }
-
-	  v = vnet_classify_entry_at_index (t, v, 1);
-	}
-    }
   return 0;
 }
 

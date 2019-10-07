@@ -338,6 +338,8 @@ session_lookup_del_session (session_t * s)
   transport_connection_t *ts;
   ts = transport_get_connection (session_get_transport_proto (s),
 				 s->connection_index, s->thread_index);
+  if (!ts || (ts->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    return 0;
   return session_lookup_del_connection (ts);
 }
 
@@ -1408,6 +1410,8 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_namespace_t *app_ns;
   int rv;
 
+  session_cli_return_if_not_enabled ();
+
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1557,6 +1561,8 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   session_rules_table_t *srt;
   session_table_t *st;
   u8 *ns_id = 0, fib_proto;
+
+  session_cli_return_if_not_enabled ();
 
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));

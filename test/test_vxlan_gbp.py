@@ -11,6 +11,8 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import INVALID_INDEX
 
 
 class TestVxlanGbp(VppTestCase):
@@ -90,19 +92,27 @@ class TestVxlanGbp(VppTestCase):
         # Create 2 ucast vxlan tunnels under bd
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
-        next_hop_address = cls.pg0.remote_ip4n
+        next_hop_address = cls.pg0.remote_ip4
         for dest_ip4 in ip4_range(cls.pg0.remote_ip4,
                                   ip_range_start,
                                   ip_range_end):
             # add host route so dest_ip4n will not be resolved
-            vip = VppIpAddress(dest_ip4)
-            cls.vapi.ip_add_del_route(dst_address=vip.bytes,
-                                      dst_address_length=32,
-                                      next_hop_address=next_hop_address)
+            rip = VppIpRoute(cls, dest_ip4, 32,
+                             [VppRoutePath(next_hop_address,
+                                           INVALID_INDEX)],
+                             register=False)
+            rip.add_vpp_config()
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                VppIpAddress(cls.pg0.local_ip4).encode(),
-                vip.encode(),
-                vni=vni)
+                tunnel={
+                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
+                    'dst': VppIpAddress(dest_ip4).encode(),
+                    'vni': vni,
+                    'instance': INVALID_INDEX,
+                    'mcast_sw_if_index': INVALID_INDEX,
+                    'mode': 1,
+                },
+                is_add=1
+            )
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=vni)
 
@@ -136,13 +146,21 @@ class TestVxlanGbp(VppTestCase):
             # pg1 into BD.
             cls.single_tunnel_bd = 1
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                VppIpAddress(cls.pg0.local_ip4).encode(),
-                VppIpAddress(cls.pg0.remote_ip4).encode(),
-                vni=cls.single_tunnel_bd)
+                tunnel={
+                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
+                    'dst': VppIpAddress(cls.pg0.remote_ip4).encode(),
+                    'vni': cls.single_tunnel_bd,
+                    'instance': INVALID_INDEX,
+                    'mcast_sw_if_index': INVALID_INDEX,
+                    'mode': 1,
+                },
+                is_add=1
+            )
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
+                rx_sw_if_index=cls.pg1.sw_if_index,
+                bd_id=cls.single_tunnel_bd)
 
             # Setup vni 2 to test multicast flooding
             cls.n_ucast_tunnels = 2
@@ -151,7 +169,8 @@ class TestVxlanGbp(VppTestCase):
             cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
                                                cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
+                rx_sw_if_index=cls.pg3.sw_if_index,
+                bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestVxlanGbp, cls).tearDownClass()
             raise

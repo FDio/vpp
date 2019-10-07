@@ -72,7 +72,7 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
   vh = (vec_header_t *) ((u8 *) mq->q + q_sz);
   vh->len = cfg->n_rings;
   mq->rings = (svm_msg_q_ring_t *) (vh + 1);
-  rings_ptr = (u8 *) mq->rings + vec_sz;
+  rings_ptr = (u8 *) mq->rings + sizeof (svm_msg_q_ring_t) * cfg->n_rings;
   for (i = 0; i < cfg->n_rings; i++)
     {
       ring = &mq->rings[i];
@@ -120,22 +120,19 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
     {
       if (svm_msg_q_try_lock (mq))
 	return -1;
-      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, ring_index)))
+      if (PREDICT_FALSE (svm_msg_q_is_full (mq)
+			 || svm_msg_q_ring_is_full (mq, ring_index)))
 	{
 	  svm_msg_q_unlock (mq);
 	  return -2;
 	}
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
-      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (msg)))
-	{
-	  svm_msg_q_unlock (mq);
-	  return -2;
-	}
     }
   else
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_ring_is_full (mq, ring_index))
+      while (svm_msg_q_is_full (mq)
+	     || svm_msg_q_ring_is_full (mq, ring_index))
 	svm_msg_q_wait (mq);
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
     }

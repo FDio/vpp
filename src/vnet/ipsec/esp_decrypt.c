@@ -22,12 +22,12 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input-no-checksum")           \
-_(IP6_INPUT, "ip6-input")                       \
-_(IPSEC_GRE_INPUT, "ipsec-gre-input")
+_(IP6_INPUT, "ip6-input")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -67,6 +67,8 @@ static char *esp_decrypt_error_strings[] = {
 typedef struct
 {
   u32 seq;
+  u32 sa_seq;
+  u32 sa_seq_hi;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
 } esp_decrypt_trace_t;
@@ -79,9 +81,11 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
 
-  s = format (s, "esp: crypto %U integrity %U seq %u",
-	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg, t->seq);
+  s =
+    format (s,
+	    "esp: crypto %U integrity %U pkt-seq %d sa-seq %u sa-seq-hi %u",
+	    format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg,
+	    t->integ_alg, t->seq, t->sa_seq, t->sa_seq_hi);
   return s;
 }
 
@@ -93,25 +97,26 @@ typedef struct
     {
       u8 icv_sz;
       u8 iv_sz;
-      ipsec_sa_flags_t flags:8;
+      ipsec_sa_flags_t flags;
       u32 sa_index;
     };
     u64 sa_data;
   };
 
+  u32 seq;
   i16 current_data;
   i16 current_length;
   u16 hdr_sz;
 } esp_decrypt_packet_data_t;
 
-STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 2 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
 
 #define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
 always_inline uword
 esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
-		    int is_ip6)
+		    int is_ip6, int is_tun)
 {
   ipsec_main_t *im = &ipsec_main;
   u32 thread_index = vm->thread_index;
@@ -177,6 +182,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       pd->current_length = b[0]->current_length;
       pd->hdr_sz = pd->current_data - vnet_buffer (b[0])->l3_hdr_offset;
       payload = b[0]->data + pd->current_data;
+      pd->seq = clib_host_to_net_u32 (((esp_header_t *) payload)->seq);
 
       /* we need 4 extra bytes for HMAC calculation when ESN are used */
       if (ipsec_sa_is_set_USE_ESN (sa0) && pd->icv_sz &&
@@ -188,7 +194,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	}
 
       /* anti-reply check */
-      if (ipsec_sa_anti_replay_check (sa0, &((esp_header_t *) payload)->seq))
+      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
 	{
 	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
 	  next[0] = ESP_DECRYPT_NEXT_DROP;
@@ -221,10 +227,11 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op->len = len;
 	  if (ipsec_sa_is_set_USE_ESN (sa0))
 	    {
-	      /* shift ICV for 4 bytes to insert ESN */
+	      /* shift ICV by 4 bytes to insert ESN */
+	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
 	      u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
 	      clib_memcpy_fast (tmp, payload + len, ESP_MAX_ICV_SIZE);
-	      clib_memcpy_fast (payload + len, &sa0->seq_hi, sz);
+	      clib_memcpy_fast (payload + len, &seq_hi, sz);
 	      clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
 	      op->len += sz;
 	      op->digest += sz;
@@ -368,9 +375,37 @@ esp_decrypt_inline (vlib_main_t * vm,
 	goto trace;
 
       sa0 = vec_elt_at_index (im->sad, pd->sa_index);
-      u8 *payload = b[0]->data + pd->current_data;
 
-      ipsec_sa_anti_replay_advance (sa0, ((esp_header_t *) payload)->seq);
+      /*
+       * redo the anti-reply check
+       * in this frame say we have sequence numbers, s, s+1, s+1, s+1
+       * and s and s+1 are in the window. When we did the anti-replay
+       * check above we did so against the state of the window (W),
+       * after packet s-1. So each of the packets in the sequence will be
+       * accepted.
+       * This time s will be cheked against Ws-1, s+1 chceked against Ws
+       * (i.e. the window state is updated/advnaced)
+       * so this time the successive s+! packet will be dropped.
+       * This is a consequence of batching the decrypts. If the
+       * check-dcrypt-advance process was done for each packet it would
+       * be fine. But we batch the decrypts because it's much more efficient
+       * to do so in SW and if we offload to HW and the process is async.
+       *
+       * You're probably thinking, but this means an attacker can send the
+       * above sequence and cause VPP to perform decrpyts that will fail,
+       * and that's true. But if the attacker can determine s (a valid
+       * sequence number in the window) which is non-trivial, it can generate
+       * a sequence s, s+1, s+2, s+3, ... s+n and nothing will prevent any
+       * implementation, sequential or batching, from decrypting these.
+       */
+      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto trace;
+	}
+
+      ipsec_sa_anti_replay_advance (sa0, pd->seq);
 
       esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +
 					  pd->current_length - sizeof (*f) -
@@ -378,7 +413,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       u16 adv = pd->iv_sz + esp_sz;
       u16 tail = sizeof (esp_footer_t) + f->pad_length + pd->icv_sz;
 
-      if ((pd->flags & tun_flags) == 0)	/* transport mode */
+      if ((pd->flags & tun_flags) == 0 && !is_tun)	/* transport mode */
 	{
 	  u8 udp_sz = (is_ip6 == 0 && pd->flags & IPSEC_SA_FLAG_UDP_ENCAP) ?
 	    sizeof (udp_header_t) : 0;
@@ -437,23 +472,62 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      next[0] = ESP_DECRYPT_NEXT_DROP;
 	      b[0]->error = node->errors[ESP_DECRYPT_ERROR_DECRYPTION_FAILED];
+	      goto trace;
+	    }
+	  if (is_tun)
+	    {
+	      if (ipsec_sa_is_set_IS_PROTECT (sa0))
+		{
+		  /*
+		   * Check that the reveal IP header matches that
+		   * of the tunnel we are protecting
+		   */
+		  const ipsec_tun_protect_t *itp;
+
+		  itp =
+		    ipsec_tun_protect_get (vnet_buffer (b[0])->
+					   ipsec.protect_index);
+		  if (PREDICT_TRUE (f->next_header == IP_PROTOCOL_IP_IN_IP))
+		    {
+		      const ip4_header_t *ip4;
+
+		      ip4 = vlib_buffer_get_current (b[0]);
+
+		      if (!ip46_address_is_equal_v4 (&itp->itp_tun.src,
+						     &ip4->dst_address) ||
+			  !ip46_address_is_equal_v4 (&itp->itp_tun.dst,
+						     &ip4->src_address))
+			next[0] = ESP_DECRYPT_NEXT_DROP;
+
+		    }
+		  else if (f->next_header == IP_PROTOCOL_IPV6)
+		    {
+		      const ip6_header_t *ip6;
+
+		      ip6 = vlib_buffer_get_current (b[0]);
+
+		      if (!ip46_address_is_equal_v6 (&itp->itp_tun.src,
+						     &ip6->dst_address) ||
+			  !ip46_address_is_equal_v6 (&itp->itp_tun.dst,
+						     &ip6->src_address))
+			next[0] = ESP_DECRYPT_NEXT_DROP;
+		    }
+		}
 	    }
 	}
-
-      if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
-	next[0] = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  esp_decrypt_trace_t *tr;
-	  u8 *payload = b[0]->data + pd->current_data;
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  sa0 = pool_elt_at_index (im->sad,
 				   vnet_buffer (b[0])->ipsec.sad_index);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
-	  tr->seq = clib_host_to_net_u32 (((esp_header_t *) payload)->seq);
+	  tr->seq = pd->seq;
+	  tr->sa_seq = sa0->last_seq;
+	  tr->sa_seq_hi = sa0->seq_hi;
 	}
 
       /* next */
@@ -477,7 +551,28 @@ VLIB_NODE_FN (esp4_decrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+  return esp_decrypt_inline (vm, node, from_frame, 0, 0);
+}
+
+VLIB_NODE_FN (esp4_decrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_decrypt_inline (vm, node, from_frame, 0, 1);
+}
+
+VLIB_NODE_FN (esp6_decrypt_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * from_frame)
+{
+  return esp_decrypt_inline (vm, node, from_frame, 1, 0);
+}
+
+VLIB_NODE_FN (esp6_decrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_decrypt_inline (vm, node, from_frame, 1, 1);
 }
 
 /* *INDENT-OFF* */
@@ -497,18 +592,43 @@ VLIB_REGISTER_NODE (esp4_decrypt_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (esp6_decrypt_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
-{
-  return esp_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
-}
-
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_decrypt_node) = {
   .name = "esp6-decrypt",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
+
+VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
+  .name = "esp4-decrypt-tun",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
+
+VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
+  .name = "esp6-decrypt-tun",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

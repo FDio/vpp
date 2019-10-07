@@ -954,13 +954,18 @@ vlib_buffer_free_from_ring_no_next (vlib_main_t * vm, u32 * ring, u32 start,
 int vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 			  u32 n_data_bytes);
 
+/* Define vlib_buffer and vnet_buffer flags bits preserved for copy/clone */
+#define VLIB_BUFFER_COPY_CLONE_FLAGS_MASK                     	\
+  (VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID |	\
+   VLIB_BUFFER_IS_TRACED | ~VLIB_BUFFER_FLAGS_ALL)
+
 /* duplicate all buffers in chain */
 always_inline vlib_buffer_t *
 vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 {
   vlib_buffer_t *s, *d, *fd;
   uword n_alloc, n_buffers = 1;
-  u32 flag_mask = VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  u32 flag_mask = VLIB_BUFFER_COPY_CLONE_FLAGS_MASK;
   int i;
 
   s = b;
@@ -987,6 +992,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   d->current_data = s->current_data;
   d->current_length = s->current_length;
   d->flags = s->flags & flag_mask;
+  d->trace_handle = s->trace_handle;
   d->total_length_not_including_first_buffer =
     s->total_length_not_including_first_buffer;
   clib_memcpy_fast (d->opaque, s->opaque, sizeof (s->opaque));
@@ -1131,8 +1137,9 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 	  d->total_length_not_including_first_buffer +=
 	    s->total_length_not_including_first_buffer;
 	}
-      d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
-      d->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
+      d->flags = (s->flags & VLIB_BUFFER_COPY_CLONE_FLAGS_MASK) |
+	VLIB_BUFFER_NEXT_PRESENT;
+      d->trace_handle = s->trace_handle;
       clib_memcpy_fast (d->opaque, s->opaque, sizeof (s->opaque));
       clib_memcpy_fast (d->opaque2, s->opaque2, sizeof (s->opaque2));
       clib_memcpy_fast (vlib_buffer_get_current (d),
@@ -1416,13 +1423,19 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 
       if (dst_left == 0)
 	{
-	  if (db != first)
-	    db->current_data = 0;
 	  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
 	  ASSERT (db->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  db = vlib_get_buffer (vm, db->next_buffer);
 	  dst_left = data_size;
-	  dp = db->data;
+	  if (db->current_data > 0)
+	    {
+	      db->current_data = 0;
+	    }
+	  else
+	    {
+	      dst_left += -db->current_data;
+	    }
+	  dp = vlib_buffer_get_current (db);
 	}
 
       while (src_left == 0)

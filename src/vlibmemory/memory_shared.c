@@ -29,6 +29,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/byte_order.h>
 #include <vppinfra/error.h>
+#include <vppinfra/elog.h>
 #include <svm/queue.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -209,6 +210,16 @@ vl_msg_api_alloc (int nbytes)
 }
 
 void *
+vl_msg_api_alloc_zero (int nbytes)
+{
+  void *ret;
+
+  ret = vl_msg_api_alloc (nbytes);
+  clib_memset (ret, 0, nbytes);
+  return ret;
+}
+
+void *
 vl_msg_api_alloc_or_null (int nbytes)
 {
   int pool;
@@ -223,6 +234,16 @@ void *
 vl_msg_api_alloc_as_if_client (int nbytes)
 {
   return vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
+}
+
+void *
+vl_msg_api_alloc_zero_as_if_client (int nbytes)
+{
+  void *ret;
+
+  ret = vl_msg_api_alloc_as_if_client (nbytes);
+  clib_memset (ret, 0, nbytes);
+  return ret;
 }
 
 void *
@@ -744,7 +765,27 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
    */
   if (PREDICT_FALSE
       (am->vl_clients /* vpp side */  && (q->cursize == q->maxsize)))
-    clib_warning ("WARNING: client input queue at %llx is stuffed...", q);
+    {
+      if (PREDICT_FALSE (am->elog_trace_api_messages))
+	{
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (e) =
+            {
+              .format = "api-client-queue-stuffed: %x%x",
+              .format_args = "i4i4",
+            };
+          /* *INDENT-ON* */
+	  struct
+	  {
+	    u32 hi, low;
+	  } *ed;
+	  ed = ELOG_DATA (am->elog_main, e);
+	  ed->hi = (uword) q >> 32;
+	  ed->low = (uword) q & 0xFFFFFFFF;
+	  clib_warning ("WARNING: client input queue at %llx is stuffed...",
+			q);
+	}
+    }
   (void) svm_queue_add (q, elem, 0 /* nowait */ );
 }
 

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/lisp-cp/lisp_types.h>
 
 static u16 gid_address_put_no_vni (u8 * b, gid_address_t * gid);
@@ -1681,6 +1682,7 @@ locator_parse (void *b, locator_t * loc)
 
   loc->state = status;
   loc->local = 0;
+  loc->probed = 0;
   loc->priority = LOC_PRIORITY (h);
   loc->weight = LOC_WEIGHT (h);
   loc->mpriority = LOC_MPRIORITY (h);

@@ -66,6 +66,15 @@ extern void qos_egress_map_delete (qos_egress_map_id_t tid);
  * Get the VPP QoS map index from the user's map-ID
  */
 extern index_t qos_egress_map_find (qos_egress_map_id_t tid);
+extern qos_egress_map_id_t qos_egress_map_get_id (index_t qemi);
+
+/**
+ * Walk each of the configured maps
+ */
+typedef walk_rc_t (*qos_egress_map_walk_cb_t) (qos_egress_map_id_t id,
+					       const qos_egress_map_t * m,
+					       void *c);
+void qos_egress_map_walk (qos_egress_map_walk_cb_t fn, void *c);
 
 /**
  * Data-plane functions

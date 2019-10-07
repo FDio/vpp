@@ -17,6 +17,7 @@
 #define __GBP_ENDPOINT_GROUP_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 
 #include <vnet/fib/fib_types.h>
 
@@ -48,7 +49,6 @@ typedef struct gpb_endpoint_group_t_
    * Bridge-domain ID the EPG is in
    */
   index_t gg_gbd;
-  index_t gg_bd_index;
 
   /**
    * route-domain/IP-table ID the EPG is in
@@ -64,6 +64,7 @@ typedef struct gpb_endpoint_group_t_
    * the uplink interface dedicated to the EPG
    */
   u32 gg_uplink_sw_if_index;
+  gbp_itf_hdl_t gg_uplink_itf;
 
   /**
    * The DPO used in the L3 path for forwarding internal subnets

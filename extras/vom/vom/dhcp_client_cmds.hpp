@@ -39,7 +39,8 @@ public:
            const handle_t& itf,
            const std::string& hostname,
            const l2_address_t& client_id,
-           bool set_braodcast_flag = false);
+           bool set_braodcast_flag,
+           const ip_dscp_t& dscp);
 
   /**
    * Issue the command to VPP/HW
@@ -75,6 +76,11 @@ private:
    * Flag to control the setting the of DHCP discover's broadcast flag
    */
   const bool m_set_broadcast_flag;
+
+  /**
+   * DSCP bits
+   */
+  const ip_dscp_t& m_dscp;
 };
 
 /**

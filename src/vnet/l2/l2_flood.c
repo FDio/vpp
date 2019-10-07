@@ -250,9 +250,6 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 		      ethernet_header_t *h0;
 		      l2flood_trace_t *t;
 
-		      if (c0 != b0)
-			vlib_buffer_copy_trace_flag (vm, b0, ci0);
-
 		      t = vlib_add_trace (vm, node, c0, sizeof (*t));
 		      h0 = vlib_buffer_get_current (c0);
 		      t->sw_if_index = sw_if_index0;
@@ -300,9 +297,6 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	    {
 	      ethernet_header_t *h0;
 	      l2flood_trace_t *t;
-
-	      if (c0 != b0)
-		vlib_buffer_copy_trace_flag (vm, b0, ci0);
 
 	      t = vlib_add_trace (vm, node, c0, sizeof (*t));
 	      h0 = vlib_buffer_get_current (c0);

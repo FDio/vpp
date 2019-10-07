@@ -39,8 +39,17 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
 
+  /** Notify app that transport is closed */
+  void (*session_transport_closed_callback) (session_t * s);
+
+  /** Notify app that session or transport are about to be removed */
+  void (*session_cleanup_callback) (session_t * s, session_cleanup_ntf_t ntf);
+
   /** Notify app that session was reset */
   void (*session_reset_callback) (session_t * s);
+
+  /** Notify app that session pool migration happened */
+  void (*session_migrate_callback) (session_t * s, session_handle_t new_sh);
 
   /** Direct RX callback for built-in application */
   int (*builtin_app_rx_callback) (session_t * session);
@@ -252,6 +261,25 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_listen_msg_
+{
+  u32 client_index;
+  u32 context;			/* Not needed but keeping it for compatibility with bapi */
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+} __clib_packed session_listen_msg_t;
+
+typedef struct session_listen_uri_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 uri[56];
+} __clib_packed session_listen_uri_msg_t;
+
 typedef struct session_bound_msg_
 {
   u32 context;
@@ -267,6 +295,14 @@ typedef struct session_bound_msg_
   u8 segment_name_length;
   u8 segment_name[128];
 } __clib_packed session_bound_msg_t;
+
+typedef struct session_unlisten_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  session_handle_t handle;
+} __clib_packed session_unlisten_msg_t;
 
 typedef struct session_unlisten_reply_msg_
 {
@@ -294,9 +330,27 @@ typedef struct session_accepted_reply_msg_
   u64 handle;
 } __clib_packed session_accepted_reply_msg_t;
 
-/* Make sure this is not too large, otherwise it won't fit when dequeued in
- * the session queue node */
-STATIC_ASSERT (sizeof (session_accepted_reply_msg_t) <= 16, "accept reply");
+typedef struct session_connect_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+  u8 hostname_len;
+  u8 hostname[16];
+  u64 parent_handle;
+} __clib_packed session_connect_msg_t;
+
+typedef struct session_connect_uri_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 uri[56];
+} __clib_packed session_connect_uri_msg_t;
 
 typedef struct session_connected_msg_
 {
@@ -315,6 +369,13 @@ typedef struct session_connected_msg_
   u8 segment_name[64];
   transport_endpoint_t lcl;
 } __clib_packed session_connected_msg_t;
+
+typedef struct session_disconnect_msg_
+{
+  u32 client_index;
+  u32 context;
+  session_handle_t handle;
+} __clib_packed session_disconnect_msg_t;
 
 typedef struct session_disconnected_msg_
 {
@@ -366,6 +427,12 @@ typedef struct session_worker_update_reply_msg_
   u64 segment_handle;
 } __clib_packed session_worker_update_reply_msg_t;
 
+typedef struct session_app_detach_msg_
+{
+  u32 client_index;
+  u32 context;
+} session_app_detach_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
@@ -379,7 +446,6 @@ app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
   svm_msg_q_lock_and_alloc_msg_w_ring (mq,
 				       SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, &app_evt->msg);
-  svm_msg_q_unlock (mq);
   app_evt->evt = svm_msg_q_msg_data (mq, &app_evt->msg);
   clib_memset (app_evt->evt, 0, sizeof (*app_evt->evt));
   app_evt->evt->event_type = evt_type;
@@ -388,7 +454,7 @@ app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
 static inline void
 app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
 {
-  svm_msg_q_add (mq, &app_evt->msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (mq, &app_evt->msg);
 }
 
 /**
@@ -420,11 +486,6 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
 	  return -2;
 	}
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-	{
-	  svm_msg_q_unlock (mq);
-	  return -2;
-	}
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = session_index;
       evt->event_type = evt_type;
@@ -434,14 +495,13 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
   else
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING))
+      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)
+	     || svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = session_index;
       evt->event_type = evt_type;
-      if (svm_msg_q_is_full (mq))
-	svm_msg_q_wait (mq);
       svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
     }

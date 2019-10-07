@@ -89,7 +89,7 @@ format_vl_api_prefix (u8 * s, va_list * args)
   const vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
 
   s = format (s, "%U/%d", format_vl_api_address,
-	      &pfx->address, pfx->address_length);
+	      &pfx->address, pfx->len);
 
   return s;
 }
@@ -100,6 +100,20 @@ format_vl_api_mac_address (u8 * s, va_list * args)
   vl_api_mac_address_t *mac = va_arg (*args, vl_api_mac_address_t *);
 
   return (format (s, "%U", format_ethernet_address, mac));
+}
+
+u8 *
+format_vl_api_version (u8 * s, va_list * args)
+{
+  vl_api_version_t *ver = va_arg (*args, vl_api_version_t *);
+  s = format(s, "%d.%d.%d", ver->major, ver->minor, ver->patch);
+  if (ver->pre_release[0] != 0)
+  {
+    s = format(s, "-%v", ver->pre_release);
+    if (ver->build_metadata[0] != 0)
+    s = format(s, "+%v", ver->build_metadata);
+    }
+  return s;
 }
 
 uword
@@ -167,8 +181,71 @@ unformat_vl_api_prefix (unformat_input_t * input, va_list * args)
    vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
 
   if (unformat (input, "%U/%d", unformat_vl_api_address, &pfx->address,
-                &pfx->address_length))
+                &pfx->len))
       return (1);
   return (0);
 }
 
+uword
+unformat_vl_api_mprefix (unformat_input_t * input, va_list * args)
+{
+   vl_api_mprefix_t *pfx = va_arg (*args, vl_api_mprefix_t *);
+
+   if (unformat (input, "%U/%d",
+                 unformat_vl_api_ip4_address, &pfx->grp_address.ip4,
+                 &pfx->grp_address_length))
+       pfx->af = ADDRESS_IP4;
+   else if (unformat (input, "%U/%d",
+                 unformat_vl_api_ip6_address, &pfx->grp_address.ip6,
+                 &pfx->grp_address_length))
+       pfx->af = ADDRESS_IP6;
+   else if (unformat (input, "%U %U",
+                      unformat_vl_api_ip4_address, &pfx->src_address.ip4,
+                      unformat_vl_api_ip4_address, &pfx->grp_address.ip4))
+   {
+       pfx->af = ADDRESS_IP4;
+       pfx->grp_address_length = 64;
+   }
+   else if (unformat (input, "%U %U",
+                      unformat_vl_api_ip6_address, &pfx->src_address.ip6,
+                      unformat_vl_api_ip6_address, &pfx->grp_address.ip6))
+   {
+       pfx->af = ADDRESS_IP6;
+       pfx->grp_address_length = 256;
+   }
+   else if (unformat (input, "%U",
+                      unformat_vl_api_ip4_address, &pfx->grp_address.ip4))
+   {
+       pfx->af = ADDRESS_IP4;
+       pfx->grp_address_length = 32;
+       clib_memset(&pfx->src_address, 0, sizeof(pfx->src_address));
+   }
+   else if (unformat (input, "%U",
+                      unformat_vl_api_ip6_address, &pfx->grp_address.ip6))
+   {
+       pfx->af = ADDRESS_IP6;
+       pfx->grp_address_length = 128;
+       clib_memset(&pfx->src_address, 0, sizeof(pfx->src_address));
+   }
+   else
+       return (0);
+
+   return (1);
+}
+
+uword unformat_vl_api_version (unformat_input_t * input, va_list * args)
+{
+vl_api_version_t *ver = va_arg (*args, vl_api_version_t *);
+
+if (unformat (input, "%d.%d.%d-%s+%s",  ver->major, ver->minor, ver->patch, ver->pre_release, ver->build_metadata
+                ))
+      return (1);
+else if (unformat (input, "%d.%d.%d-%s",  ver->major, ver->minor, ver->patch, ver->pre_release
+                ))
+      return (1);
+else if (unformat (input, "%d.%d.%d",  ver->major, ver->minor, ver->patch
+                ))
+      return (1);
+
+  return (0);
+}

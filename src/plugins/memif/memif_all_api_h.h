@@ -15,4 +15,8 @@
  * limitations under the License.
  */
 /* Include the generated file, see BUILT_SOURCES in Makefile.am */
+
+#ifdef vl_printfun
+#include <vnet/format_fns.h>
+#endif
 #include <memif/memif.api.h>

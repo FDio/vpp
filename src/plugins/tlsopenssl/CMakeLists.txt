@@ -17,7 +17,14 @@ if(OPENSSL_FOUND)
   add_vpp_plugin(tlsopenssl
     SOURCES
     tls_openssl.c
+    tls_openssl_api.c
     tls_async.c
+
+    API_FILES
+    tls_openssl.api
+
+    API_TEST_SOURCES
+    tls_openssl_test.c
 
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}

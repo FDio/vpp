@@ -179,7 +179,8 @@ pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 }
 
 u32
-pg_interface_add_or_get (pg_main_t * pg, uword if_id)
+pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
+			 u32 gso_size)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -213,6 +214,13 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id)
       ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
 				   &pi->hw_if_index, pg_eth_flag_change);
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
+      if (gso_enabled)
+	{
+	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	  vnm->interface_main.gso_interface_count++;
+	  pi->gso_enabled = 1;
+	  pi->gso_size = gso_size;
+	}
       pi->sw_if_index = hi->sw_if_index;
 
       hash_set (pg->if_index_by_if_id, if_id, i);
@@ -445,7 +453,9 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   }
 
   /* Find an interface to use. */
-  s->pg_if_index = pg_interface_add_or_get (pg, s->if_id);
+  s->pg_if_index =
+    pg_interface_add_or_get (pg, s->if_id, 0 /* gso_enabled */ ,
+			     0 /* gso_size */ );
 
   if (s->sw_if_index[VLIB_RX] == ~0)
     {

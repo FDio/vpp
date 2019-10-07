@@ -25,6 +25,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/dhcp/dhcp6_ia_na_client_dp.h>
 #include <vnet/dhcp/dhcp6_client_common_dp.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -454,7 +455,7 @@ void
   params.mrt = ntohl (mp->mrt);
   params.mrc = ntohl (mp->mrc);
   params.mrd = ntohl (mp->mrd);
-  params.msg_type = mp->msg_type;
+  params.msg_type = ntohl (mp->msg_type);
   params.T1 = ntohl (mp->T1);
   params.T2 = ntohl (mp->T2);
   n_addresses = ntohl (mp->n_addresses);
@@ -467,7 +468,7 @@ void
       dhcp6_send_client_message_params_address_t *addr = &params.addresses[i];
       addr->preferred_lt = ntohl (ai->preferred_time);
       addr->valid_lt = ntohl (ai->valid_time);
-      memcpy (addr->address.as_u8, ai->address, 16);
+      ip6_address_decode (ai->address, &addr->address);
     }
 
   dhcp6_send_client_message (vm, ntohl (mp->sw_if_index), mp->stop, &params);
@@ -535,7 +536,7 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      for (j = 0; j < vec_len (events[i].addresses); j++)
 		{
 		  dhcp6_address_info_t *info = &events[i].addresses[j];
-		  memcpy (address->address, &info->address, 16);
+		  ip6_address_encode (&info->address, address->address);
 		  address->valid_time = htonl (info->valid_time);
 		  address->preferred_time = htonl (info->preferred_time);
 		  address++;

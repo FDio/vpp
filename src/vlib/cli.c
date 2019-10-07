@@ -44,6 +44,9 @@
 #include <unistd.h>
 #include <ctype.h>
 
+int vl_api_set_elog_trace_api_messages (int enable);
+int vl_api_get_elog_trace_api_messages (void);
+
 static void *current_traced_heap;
 
 /* Root of all show commands. */
@@ -633,7 +636,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		    u32 c;
 		  } *ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_global_id_for_msg_name (c->path);
+		  ed->c = elog_string (&vm->elog_main, c->path);
 		}
 
 	      if (!c->is_mp_safe)
@@ -658,16 +661,16 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		    u32 c, err;
 		  } *ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_global_id_for_msg_name (c->path);
+		  ed->c = elog_string (&vm->elog_main, c->path);
 		  if (c_error)
 		    {
 		      vec_add1 (c_error->what, 0);
-		      ed->err = elog_global_id_for_msg_name
-			((const char *) c_error->what);
+		      ed->err = elog_string (&vm->elog_main,
+					     (char *) c_error->what);
 		      _vec_len (c_error->what) -= 1;
 		    }
 		  else
-		    ed->err = elog_global_id_for_msg_name ("OK");
+		    ed->err = elog_string (&vm->elog_main, "OK");
 		}
 
 	      if (c_error)
@@ -1630,7 +1633,8 @@ elog_trace_command_fn (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  vm->elog_trace_api_messages = api ? enable : vm->elog_trace_api_messages;
+  vl_api_set_elog_trace_api_messages
+    (api ? enable : vl_api_get_elog_trace_api_messages ());
   vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
   vm->elog_trace_graph_dispatch = dispatch ?
     enable : vm->elog_trace_graph_dispatch;
@@ -1660,7 +1664,7 @@ print_status:
 
   vlib_cli_output
     (vm, "    Event log API message trace: %s\n    CLI command trace: %s",
-     vm->elog_trace_api_messages ? "on" : "off",
+     vl_api_get_elog_trace_api_messages ()? "on" : "off",
      vm->elog_trace_cli_commands ? "on" : "off");
   vlib_cli_output
     (vm, "    Barrier sync trace: %s",
@@ -1701,6 +1705,23 @@ VLIB_CLI_COMMAND (elog_trace_command, static) =
   .short_help = "elog trace [api][cli][barrier][dispatch]\n"
   "[circuit-node <name> e.g. ethernet-input][disable]",
   .function = elog_trace_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+suspend_command_fn (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vlib_process_suspend (vm, 30e-3);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (suspend_command, static) =
+{
+  .path = "suspend",
+  .short_help = "suspend debug CLI for 30ms",
+  .function = suspend_command_fn,
 };
 /* *INDENT-ON* */
 

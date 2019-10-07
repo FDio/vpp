@@ -74,32 +74,12 @@ rb_tree_rotate_right (rb_tree_t * rt, rb_node_t * y)
   y->parent = xi;
 }
 
-static void
-rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
+static inline void
+rb_tree_fixup_inline (rb_tree_t * rt, rb_node_t * y, rb_node_t * z)
 {
-  rb_node_index_t yi = 0, xi = rt->root, zi;
-  rb_node_t *y, *zpp, *x, *zp;
+  rb_node_t *zpp, *zp;
+  rb_node_index_t zi;
 
-  y = rb_node (rt, RBTREE_TNIL_INDEX);
-  while (xi != RBTREE_TNIL_INDEX)
-    {
-      x = rb_node (rt, xi);
-      y = x;
-      if (z->key < x->key)
-	xi = x->left;
-      else
-	xi = x->right;
-    }
-  yi = rb_node_index (rt, y);
-  z->parent = yi;
-  if (yi == RBTREE_TNIL_INDEX)
-    rt->root = rb_node_index (rt, z);
-  else if (z->key < y->key)
-    y->left = rb_node_index (rt, z);
-  else
-    y->right = rb_node_index (rt, z);
-
-  /* Tree fixup stage */
   while (y->color == RBTREE_RED)
     {
       zi = rb_node_index (rt, z);
@@ -157,6 +137,35 @@ rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
   rb_node (rt, rt->root)->color = RBTREE_BLACK;
 }
 
+static void
+rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
+{
+  rb_node_index_t yi = 0, xi = rt->root;
+  rb_node_t *y, *x;
+
+  y = rb_node (rt, RBTREE_TNIL_INDEX);
+  while (xi != RBTREE_TNIL_INDEX)
+    {
+      x = rb_node (rt, xi);
+      y = x;
+      if (z->key < x->key)
+	xi = x->left;
+      else
+	xi = x->right;
+    }
+  yi = rb_node_index (rt, y);
+  z->parent = yi;
+  if (yi == RBTREE_TNIL_INDEX)
+    rt->root = rb_node_index (rt, z);
+  else if (z->key < y->key)
+    y->left = rb_node_index (rt, z);
+  else
+    y->right = rb_node_index (rt, z);
+
+  /* Tree fixup stage */
+  rb_tree_fixup_inline (rt, y, z);
+}
+
 rb_node_index_t
 rb_tree_add (rb_tree_t * rt, u32 key)
 {
@@ -182,11 +191,58 @@ rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
   return rb_node_index (rt, n);
 }
 
+rb_node_index_t
+rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
+{
+  rb_node_index_t yi = 0, xi = rt->root;
+  rb_node_t *z, *y, *x;
+
+  pool_get_zero (rt->nodes, z);
+  z->key = key;
+  z->color = RBTREE_RED;
+  z->opaque = opaque;
+
+  y = rb_node (rt, RBTREE_TNIL_INDEX);
+  while (xi != RBTREE_TNIL_INDEX)
+    {
+      x = rb_node (rt, xi);
+      y = x;
+      if (ltfn (z->key, x->key))
+	xi = x->left;
+      else
+	xi = x->right;
+    }
+  yi = rb_node_index (rt, y);
+  z->parent = yi;
+  if (yi == RBTREE_TNIL_INDEX)
+    rt->root = rb_node_index (rt, z);
+  else if (ltfn (z->key, y->key))
+    y->left = rb_node_index (rt, z);
+  else
+    y->right = rb_node_index (rt, z);
+
+  rb_tree_fixup_inline (rt, y, z);
+
+  return rb_node_index (rt, z);
+}
+
 rb_node_t *
 rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key)
 {
   while (rb_node_index (rt, x) != RBTREE_TNIL_INDEX && key != x->key)
     if (key < x->key)
+      x = rb_node_left (rt, x);
+    else
+      x = rb_node_right (rt, x);
+  return x;
+}
+
+rb_node_t *
+rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x, u32 key,
+			       rb_tree_lt_fn ltfn)
+{
+  while (rb_node_index (rt, x) != RBTREE_TNIL_INDEX && key != x->key)
+    if (ltfn (key, x->key))
       x = rb_node_left (rt, x);
     else
       x = rb_node_right (rt, x);
@@ -288,7 +344,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	x->parent = yi;
       else
 	{
-	  rb_tree_transplant (rt, y, rb_node_right (rt, y));
+	  rb_tree_transplant (rt, y, x);
 	  y->right = z->right;
 	  yr = rb_node_right (rt, y);
 	  yr->parent = yi;
@@ -323,7 +379,8 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	  wr = rb_node_right (rt, w);
 	  if (wl->color == RBTREE_BLACK && wr->color == RBTREE_BLACK)
 	    {
-	      w->color = RBTREE_RED;
+	      if (!rb_node_is_tnil (rt, w))
+		w->color = RBTREE_RED;
 	      x = xp;
 	    }
 	  else
@@ -334,6 +391,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 		  w->color = RBTREE_RED;
 		  rb_tree_rotate_right (rt, w);
 		  w = rb_node_right (rt, xp);
+		  wr = rb_node_right (rt, w);
 		}
 	      w->color = xp->color;
 	      xp->color = RBTREE_BLACK;
@@ -356,7 +414,8 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	  wr = rb_node_right (rt, w);
 	  if (wl->color == RBTREE_BLACK && wr->color == RBTREE_BLACK)
 	    {
-	      w->color = RBTREE_RED;
+	      if (!rb_node_is_tnil (rt, w))
+		w->color = RBTREE_RED;
 	      x = xp;
 	    }
 	  else
@@ -367,6 +426,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 		  w->color = RBTREE_RED;
 		  rb_tree_rotate_left (rt, w);
 		  w = rb_node_left (rt, xp);
+		  wl = rb_node_left (rt, w);
 		}
 	      w->color = xp->color;
 	      xp->color = RBTREE_BLACK;
@@ -385,6 +445,18 @@ rb_tree_del (rb_tree_t * rt, u32 key)
 {
   rb_node_t *n;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), key);
+  if (rb_node_index (rt, n) != RBTREE_TNIL_INDEX)
+    {
+      rb_tree_del_node (rt, n);
+      pool_put (rt->nodes, n);
+    }
+}
+
+void
+rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
+{
+  rb_node_t *n;
+  n = rb_tree_search_subtree_custom (rt, rb_node (rt, rt->root), key, ltfn);
   if (rb_node_index (rt, n) != RBTREE_TNIL_INDEX)
     {
       rb_tree_del_node (rt, n);

@@ -46,6 +46,18 @@ class VppPGInterface(VppInterface):
         return self._pg_index
 
     @property
+    def gso_enabled(self):
+        """gso enabled on packet-generator interface"""
+        if self._gso_enabled == 0:
+            return "gso-disabled"
+        return "gso-enabled"
+
+    @property
+    def gso_size(self):
+        """gso size on packet-generator interface"""
+        return self._gso_size
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
@@ -70,6 +82,8 @@ class VppPGInterface(VppInterface):
         """CLI string to load the injected packets"""
         if self._nb_replays is not None:
             return "%s limit %d" % (self._input_cli, self._nb_replays)
+        if self._worker is not None:
+            return "%s worker %d" % (self._input_cli, self._worker)
         return self._input_cli
 
     @property
@@ -86,24 +100,27 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def __init__(self, test, pg_index):
+    def __init__(self, test, pg_index, gso, gso_size):
         """ Create VPP packet-generator interface """
         super(VppPGInterface, self).__init__(test)
 
-        r = test.vapi.pg_create_interface(pg_index)
+        r = test.vapi.pg_create_interface(pg_index, gso, gso_size)
         self.set_sw_if_index(r.sw_if_index)
 
         self._in_history_counter = 0
         self._out_history_counter = 0
         self._out_assert_counter = 0
         self._pg_index = pg_index
+        self._gso_enabled = gso
+        self._gso_size = gso_size
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
         self._in_path = self.test.tempdir + "/" + self._in_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
             self.pg_index, self.out_path)
-        self._cap_name = "pcap%u" % self.sw_if_index
+        self._cap_name = "pcap%u-sw_if_index-%s" % (
+            self.pg_index, self.sw_if_index)
         self._input_cli = \
             "packet-generator new pcap %s source pg%u name %s" % (
                 self.in_path, self.pg_index, self.cap_name)
@@ -131,7 +148,8 @@ class VppPGInterface(VppInterface):
             of at most n packets.
             If n < 0, this is no limit
         """
-
+        # disable the capture to flush the capture
+        self.disable_capture()
         self._rename_previous_capture_file(self.out_path,
                                            self.out_history_counter,
                                            self._out_file)
@@ -142,13 +160,14 @@ class VppPGInterface(VppInterface):
     def disable_capture(self):
         self.test.vapi.cli("%s disable" % self.capture_cli)
 
-    def add_stream(self, pkts, nb_replays=None):
+    def add_stream(self, pkts, nb_replays=None, worker=None):
         """
         Add a stream of packets to this packet-generator
 
         :param pkts: iterable packets
 
         """
+        self._worker = worker
         self._nb_replays = nb_replays
         self._rename_previous_capture_file(self.in_path,
                                            self.in_history_counter,

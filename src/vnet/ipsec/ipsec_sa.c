@@ -17,6 +17,8 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 /**
  * @brief
@@ -80,14 +82,14 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 
   fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
 
-  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			im->ah6_encrypt_node_index :
-			im->ah4_encrypt_node_index),
-		       &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
-  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			im->esp6_encrypt_node_index :
-			im->esp4_encrypt_node_index),
-		       &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
+  if (IPSEC_PROTOCOL_AH == sa->protocol)
+    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+			  im->ah6_encrypt_node_index :
+			  im->ah4_encrypt_node_index), &sa->dpo, &tmp);
+  else
+    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+			  im->esp6_encrypt_node_index :
+			  im->esp4_encrypt_node_index), &sa->dpo, &tmp);
   dpo_reset (&tmp);
 }
 
@@ -122,18 +124,18 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 }
 
 int
-ipsec_sa_add (u32 id,
-	      u32 spi,
-	      ipsec_protocol_t proto,
-	      ipsec_crypto_alg_t crypto_alg,
-	      const ipsec_key_t * ck,
-	      ipsec_integ_alg_t integ_alg,
-	      const ipsec_key_t * ik,
-	      ipsec_sa_flags_t flags,
-	      u32 tx_table_id,
-	      u32 salt,
-	      const ip46_address_t * tun_src,
-	      const ip46_address_t * tun_dst, u32 * sa_out_index)
+ipsec_sa_add_and_lock (u32 id,
+		       u32 spi,
+		       ipsec_protocol_t proto,
+		       ipsec_crypto_alg_t crypto_alg,
+		       const ipsec_key_t * ck,
+		       ipsec_integ_alg_t integ_alg,
+		       const ipsec_key_t * ik,
+		       ipsec_sa_flags_t flags,
+		       u32 tx_table_id,
+		       u32 salt,
+		       const ip46_address_t * tun_src,
+		       const ip46_address_t * tun_dst, u32 * sa_out_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -149,6 +151,7 @@ ipsec_sa_add (u32 id,
   pool_get_aligned_zero (im->sad, sa, CLIB_CACHE_LINE_BYTES);
 
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
+  fib_node_lock (&sa->node);
   sa_index = sa - im->sad;
 
   vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
@@ -216,12 +219,10 @@ ipsec_sa_add (u32 id,
 	  return VNET_API_ERROR_NO_SUCH_FIB;
 	}
 
-      sa->fib_entry_index = fib_table_entry_special_add (sa->tx_fib_index,
-							 &pfx,
-							 FIB_SOURCE_RR,
-							 FIB_ENTRY_FLAG_NONE);
-      sa->sibling = fib_entry_child_add (sa->fib_entry_index,
-					 FIB_NODE_TYPE_IPSEC_SA, sa_index);
+      sa->fib_entry_index = fib_entry_track (sa->tx_fib_index,
+					     &pfx,
+					     FIB_NODE_TYPE_IPSEC_SA,
+					     sa_index, &sa->sibling);
       ipsec_sa_stack (sa);
 
       /* generate header templates */
@@ -271,85 +272,82 @@ ipsec_sa_add (u32 id,
   return (0);
 }
 
-u32
-ipsec_sa_del (u32 id)
+static void
+ipsec_sa_del (ipsec_sa_t * sa)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
-  ipsec_sa_t *sa = 0;
-  uword *p;
   u32 sa_index;
-  clib_error_t *err;
+
+  sa_index = sa - im->sad;
+  hash_unset (im->sa_index_by_sa_id, sa->id);
+
+  /* no recovery possible when deleting an SA */
+  (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
+
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
+    {
+      fib_entry_untrack (sa->fib_entry_index, sa->sibling);
+      dpo_reset (&sa->dpo);
+    }
+  vnet_crypto_key_del (vm, sa->crypto_key_index);
+  vnet_crypto_key_del (vm, sa->integ_key_index);
+  pool_put (im->sad, sa);
+}
+
+void
+ipsec_sa_unlock (index_t sai)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+
+  if (INDEX_INVALID == sai)
+    return;
+
+  sa = pool_elt_at_index (im->sad, sai);
+
+  fib_node_unlock (&sa->node);
+}
+
+index_t
+ipsec_sa_find_and_lock (u32 id)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+  uword *p;
+
+  p = hash_get (im->sa_index_by_sa_id, id);
+
+  if (!p)
+    return INDEX_INVALID;
+
+  sa = pool_elt_at_index (im->sad, p[0]);
+
+  fib_node_lock (&sa->node);
+
+  return (p[0]);
+}
+
+int
+ipsec_sa_unlock_id (u32 id)
+{
+  ipsec_main_t *im = &ipsec_main;
+  uword *p;
 
   p = hash_get (im->sa_index_by_sa_id, id);
 
   if (!p)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  sa_index = p[0];
-  sa = pool_elt_at_index (im->sad, sa_index);
-  if (ipsec_is_sa_used (sa_index))
-    {
-      clib_warning ("sa_id %u used in policy", sa->id);
-      /* sa used in policy */
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
-  hash_unset (im->sa_index_by_sa_id, sa->id);
-  err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
-  if (err)
-    return VNET_API_ERROR_SYSCALL_ERROR_2;
+  ipsec_sa_unlock (p[0]);
 
-  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
-    {
-      fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
-      fib_table_entry_special_remove
-	(sa->tx_fib_index,
-	 fib_entry_get_prefix (sa->fib_entry_index), FIB_SOURCE_RR);
-      dpo_reset (&sa->dpo[IPSEC_PROTOCOL_AH]);
-      dpo_reset (&sa->dpo[IPSEC_PROTOCOL_ESP]);
-    }
-  vnet_crypto_key_del (vm, sa->crypto_key_index);
-  vnet_crypto_key_del (vm, sa->integ_key_index);
-  pool_put (im->sad, sa);
-  return 0;
+  return (0);
 }
 
-u8
-ipsec_is_sa_used (u32 sa_index)
+void
+ipsec_sa_clear (index_t sai)
 {
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_tunnel_if_t *t;
-  ipsec_policy_t *p;
-
-  /* *INDENT-OFF* */
-  pool_foreach(p, im->policies, ({
-     if (p->policy == IPSEC_POLICY_ACTION_PROTECT)
-       {
-         if (p->sa_index == sa_index)
-           return 1;
-       }
-  }));
-
-  pool_foreach(t, im->tunnel_interfaces, ({
-    if (t->input_sa_index == sa_index)
-      return 1;
-    if (t->output_sa_index == sa_index)
-      return 1;
-  }));
-  /* *INDENT-ON* */
-
-  return 0;
-}
-
-u32
-ipsec_get_sa_index_by_sa_id (u32 sa_id)
-{
-  ipsec_main_t *im = &ipsec_main;
-  uword *p = hash_get (im->sa_index_by_sa_id, sa_id);
-  if (!p)
-    return ~0;
-
-  return p[0];
+  vlib_zero_combined_counter (&ipsec_sa_counters, sai);
 }
 
 void
@@ -382,6 +380,15 @@ ipsec_sa_fib_node_get (fib_node_index_t index)
   return (&sa->node);
 }
 
+static ipsec_sa_t *
+ipsec_sa_from_fib_node (fib_node_t * node)
+{
+  ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
+  return ((ipsec_sa_t *) (((char *) node) -
+			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
+
+}
+
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
@@ -392,16 +399,7 @@ ipsec_sa_last_lock_gone (fib_node_t * node)
    * The ipsec SA is a root of the graph. As such
    * it never has children and thus is never locked.
    */
-  ASSERT (0);
-}
-
-static ipsec_sa_t *
-ipsec_sa_from_fib_node (fib_node_t * node)
-{
-  ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
-  return ((ipsec_sa_t *) (((char *) node) -
-			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
-
+  ipsec_sa_del (ipsec_sa_from_fib_node (node));
 }
 
 /**
@@ -416,7 +414,7 @@ ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
 }
 
 /*
- * Virtual function table registered by MPLS GRE tunnels
+ * Virtual function table registered by SAs
  * for participation in the FIB object graph.
  */
 const static fib_node_vft_t ipsec_sa_vft = {

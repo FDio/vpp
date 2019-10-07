@@ -150,7 +150,6 @@ add_vpp_plugin(dpdk
 
   INSTALL_HEADERS
   device/dpdk.h
-#  api/dpdk_all_api_h.h
   ipsec/ipsec.h
 
   LINK_FLAGS

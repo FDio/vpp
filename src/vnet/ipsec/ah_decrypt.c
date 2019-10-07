@@ -27,8 +27,7 @@
 #define foreach_ah_decrypt_next \
   _ (DROP, "error-drop")        \
   _ (IP4_INPUT, "ip4-input")    \
-  _ (IP6_INPUT, "ip6-input")    \
-  _ (IPSEC_GRE_INPUT, "ipsec-gre-input")
+  _ (IP6_INPUT, "ip6-input")
 
 #define _(v, s) AH_DECRYPT_NEXT_##v,
 typedef enum
@@ -185,7 +184,8 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (is_ip6)
 	{
 	  ip6_ext_header_t *prev = NULL;
-	  ip6_ext_header_find_t (ih6, prev, ah0, IP_PROTOCOL_IPSEC_AH);
+	  ah0 =
+	    ip6_ext_header_find (vm, b[0], ih6, IP_PROTOCOL_IPSEC_AH, &prev);
 	  pd->ip_hdr_size = sizeof (ip6_header_t);
 	  ASSERT ((u8 *) ah0 - (u8 *) ih6 == pd->ip_hdr_size);
 	}
@@ -204,7 +204,7 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
+      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
 	{
 	  b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
 	  next[0] = AH_DECRYPT_NEXT_DROP;
@@ -304,7 +304,14 @@ ah_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
-	  ipsec_sa_anti_replay_advance (sa0, clib_host_to_net_u32 (pd->seq));
+	  /* redo the anit-reply check. see esp_decrypt for details */
+	  if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+	    {
+	      b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      goto trace;
+	    }
+	  ipsec_sa_anti_replay_advance (sa0, pd->seq);
 	}
 
       u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size
@@ -370,10 +377,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      oh4->checksum = ip4_header_checksum (oh4);
 	    }
 	}
-
-      /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-      if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
-	next[0] = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
       vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
     trace:

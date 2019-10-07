@@ -38,6 +38,7 @@ define avf_create
   u16 rxq_num;
   u16 rxq_size;
   u16 txq_size;
+  option vat_help = "<pci-address> [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>]";
 };
 
 /** \brief
@@ -65,6 +66,7 @@ autoreply define avf_delete
   u32 context;
 
   u32 sw_if_index;
+  option vat_help = "<sw_if_index>";
 };
 
 /*

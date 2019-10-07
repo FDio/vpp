@@ -449,6 +449,7 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 
       n_left -= 1;
       b += 1;
+      h += 1;
     }
 }
 
@@ -699,6 +700,11 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       goto done;
     }
 
+  /* if have at least one slave on local numa node, only slaves on local numa
+     node will transmit pkts when bif->local_numa_only is enabled */
+  if (bif->n_numa_slaves >= 1)
+    n_slaves = bif->n_numa_slaves;
+
   if (bif->lb == BOND_LB_L2)
     bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L2);
   else if (bif->lb == BOND_LB_L34)
@@ -740,11 +746,6 @@ done:
 	  ptd->per_port_queue[p].n_buffers = 0;
 	}
     }
-
-  vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters
-				 + VNET_INTERFACE_COUNTER_TX, thread_index,
-				 bif->sw_if_index, frame->n_vectors);
-
   return frame->n_vectors;
 }
 
@@ -777,9 +778,10 @@ bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       for (i = 0; i < vec_len (event_data); i++)
 	{
 	  hw_if_index = event_data[i];
-	  /* walk hw interface to process all subinterfaces */
-	  vnet_hw_interface_walk_sw (vnm, hw_if_index,
-				     bond_active_interface_switch_cb, 0);
+	  if (vnet_get_hw_interface_or_null (vnm, hw_if_index))
+	    /* walk hw interface to process all subinterfaces */
+	    vnet_hw_interface_walk_sw (vnm, hw_if_index,
+				       bond_active_interface_switch_cb, 0);
 	}
       vec_reset_length (event_data);
     }
@@ -789,6 +791,7 @@ bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_process_node) = {
   .function = bond_process,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bond-process",
 };
@@ -807,6 +810,25 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
 };
 
 /* *INDENT-ON* */
+
+static clib_error_t *
+bond_slave_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  bond_main_t *bm = &bond_main;
+  slave_if_t *sif;
+  bond_detach_slave_args_t args = { 0 };
+
+  if (is_add)
+    return 0;
+  sif = bond_get_slave_by_sw_if_index (sw_if_index);
+  if (!sif)
+    return 0;
+  args.slave = sw_if_index;
+  bond_detach_slave (bm->vlib_main, &args);
+  return args.error;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bond_slave_interface_add_del);
 
 /*
  * fd.io coding-style-patch-verification: ON

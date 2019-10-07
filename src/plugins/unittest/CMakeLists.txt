@@ -25,7 +25,10 @@ add_vpp_plugin(unittest
   fib_test.c
   ipsec_test.c
   interface_test.c
+  lisp_cp_test.c
+  llist_test.c
   mactime_test.c
+  mpcap_node.c
   mfib_test.c
   punt_test.c
   rbtree_test.c
@@ -36,4 +39,5 @@ add_vpp_plugin(unittest
   svm_fifo_test.c
   unittest.c
   util_test.c
+  test_buffer.c
 )

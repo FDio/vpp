@@ -65,6 +65,7 @@ typedef struct
   u32 sa_index;
   u32 spi;
   u32 seq;
+  u32 sa_seq_hi;
   u8 udp_encap;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -78,11 +79,13 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
 
-  s = format (s, "esp: sa-index %d spi %u seq %u crypto %U integrity %U%s",
-	      t->sa_index, t->spi, t->seq,
-	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg,
-	      t->udp_encap ? " udp-encap-enabled" : "");
+  s =
+    format (s,
+	    "esp: sa-index %d spi %u (0x%08x) seq %u sa-seq-hi %u crypto %U integrity %U%s",
+	    t->sa_index, t->spi, t->spi, t->seq, t->sa_seq_hi,
+	    format_ipsec_crypto_alg,
+	    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
+	    t->udp_encap ? " udp-encap-enabled" : "");
   return s;
 }
 
@@ -367,7 +370,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
 	    }
 
-	  dpo = sa0->dpo + IPSEC_PROTOCOL_ESP;
+	  dpo = &sa0->dpo;
 	  if (!is_tun)
 	    {
 	      next[0] = dpo->dpoi_next_node;
@@ -408,12 +411,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip_hdr = payload - hdr_len;
 
 	  /* L2 header */
-	  l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
-	  hdr_len += l2_len;
-	  l2_hdr = payload - hdr_len;
+	  if (!is_tun)
+	    {
+	      l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	      hdr_len += l2_len;
+	      l2_hdr = payload - hdr_len;
 
-	  /* copy l2 and ip header */
-	  clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	      /* copy l2 and ip header */
+	      clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	    }
+	  else
+	    l2_len = 0;
+
 	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (is_ip6)
@@ -440,7 +449,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
 	    }
 
-	  next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  if (!is_tun)
+	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	}
 
       esp->spi = spi;
@@ -513,7 +523,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						    sizeof (*tr));
 	  tr->sa_index = sa_index0;
 	  tr->spi = sa0->spi;
-	  tr->seq = sa0->seq - 1;
+	  tr->seq = sa0->seq;
+	  tr->sa_seq_hi = sa0->seq_hi;
 	  tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
@@ -618,6 +629,20 @@ VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
   .node_name = "esp4-encrypt-tun",
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
+
+VNET_FEATURE_INIT (esp6o4_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "esp4-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
+VNET_FEATURE_INIT (esp4_ethernet_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ethernet-output",
+  .node_name = "esp4-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx", "adj-midchain-tx-no-count"),
+};
 /* *INDENT-ON* */
 
 VLIB_NODE_FN (esp6_encrypt_tun_node) (vlib_main_t * vm,
@@ -647,6 +672,145 @@ VNET_FEATURE_INIT (esp6_encrypt_tun_feat_node, static) =
 {
   .arc_name = "ip6-output",
   .node_name = "esp6-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
+VNET_FEATURE_INIT (esp4o6_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "esp6-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
+/* *INDENT-ON* */
+
+typedef struct
+{
+  u32 sa_index;
+} esp_no_crypto_trace_t;
+
+static u8 *
+format_esp_no_crypto_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  esp_no_crypto_trace_t *t = va_arg (*args, esp_no_crypto_trace_t *);
+
+  s = format (s, "esp-no-crypto: sa-index %u", t->sa_index);
+
+  return s;
+}
+
+enum
+{
+  ESP_NO_CRYPTO_NEXT_DROP,
+  ESP_NO_CRYPTO_N_NEXT,
+};
+
+enum
+{
+  ESP_NO_CRYPTO_ERROR_RX_PKTS,
+};
+
+static char *esp_no_crypto_error_strings[] = {
+  "Outbound ESP packets received",
+};
+
+always_inline uword
+esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      vlib_frame_t * frame)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  u32 *from = vlib_frame_vector_args (frame);
+  u32 n_left = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, b, n_left);
+
+  while (n_left > 0)
+    {
+      u32 next0;
+      u32 sa_index0;
+
+      /* packets are always going to be dropped, but get the sa_index */
+      sa_index0 = *(u32 *) vnet_feature_next_with_data (&next0, b[0],
+							sizeof (sa_index0));
+
+      next[0] = ESP_NO_CRYPTO_NEXT_DROP;
+
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  esp_no_crypto_trace_t *tr = vlib_add_trace (vm, node, b[0],
+						      sizeof (*tr));
+	  tr->sa_index = sa_index0;
+	}
+
+      n_left -= 1;
+      next += 1;
+      b += 1;
+    }
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       ESP_NO_CRYPTO_ERROR_RX_PKTS, frame->n_vectors);
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (esp4_no_crypto_tun_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
+{
+  return esp_no_crypto_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp4_no_crypto_tun_node) =
+{
+  .name = "esp4-no-crypto",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_no_crypto_trace,
+  .n_errors = ARRAY_LEN(esp_no_crypto_error_strings),
+  .error_strings = esp_no_crypto_error_strings,
+  .n_next_nodes = ESP_NO_CRYPTO_N_NEXT,
+  .next_nodes = {
+    [ESP_NO_CRYPTO_NEXT_DROP] = "ip4-drop",
+  },
+};
+
+VNET_FEATURE_INIT (esp4_no_crypto_tun_feat_node, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "esp4-no-crypto",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
+VLIB_NODE_FN (esp6_no_crypto_tun_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
+{
+  return esp_no_crypto_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp6_no_crypto_tun_node) =
+{
+  .name = "esp6-no-crypto",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_no_crypto_trace,
+  .n_errors = ARRAY_LEN(esp_no_crypto_error_strings),
+  .error_strings = esp_no_crypto_error_strings,
+  .n_next_nodes = ESP_NO_CRYPTO_N_NEXT,
+  .next_nodes = {
+    [ESP_NO_CRYPTO_NEXT_DROP] = "ip6-drop",
+  },
+};
+
+VNET_FEATURE_INIT (esp6_no_crypto_tun_feat_node, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "esp6-no-crypto",
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */

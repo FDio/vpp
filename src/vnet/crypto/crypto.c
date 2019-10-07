@@ -129,6 +129,14 @@ vnet_crypto_set_handler (char *alg_name, char *engine)
   return 0;
 }
 
+int
+vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  return (NULL != cm->ops_handlers[alg]);
+}
+
 void
 vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 				  vnet_crypto_op_id_t opt,

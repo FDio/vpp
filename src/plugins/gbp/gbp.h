@@ -36,7 +36,6 @@
 #include <plugins/gbp/gbp_types.h>
 #include <plugins/gbp/gbp_endpoint.h>
 #include <plugins/gbp/gbp_endpoint_group.h>
-#include <plugins/gbp/gbp_contract.h>
 #include <plugins/gbp/gbp_subnet.h>
 #include <plugins/gbp/gbp_recirc.h>
 
@@ -48,6 +47,15 @@ typedef struct
 
 extern gbp_main_t gbp_main;
 
+typedef enum gbp_policy_type_t_
+{
+  GBP_POLICY_PORT,
+  GBP_POLICY_MAC,
+  GBP_POLICY_LPM,
+  GBP_N_POLICY
+#define GBP_N_POLICY GBP_N_POLICY
+} gbp_policy_type_t;
+
 /**
  * Grouping of global data for the GBP source EPG classification feature
  */
@@ -56,7 +64,7 @@ typedef struct gbp_policy_main_t_
   /**
    * Next nodes for L2 output features
    */
-  u32 l2_output_feat_next[2][32];
+  u32 l2_output_feat_next[GBP_N_POLICY][32];
 } gbp_policy_main_t;
 
 extern gbp_policy_main_t gbp_policy_main;

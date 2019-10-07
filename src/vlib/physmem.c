@@ -115,7 +115,12 @@ vlib_physmem_init (vlib_main_t * vm)
   if (vpm->base_addr == 0)
     vpm->base_addr = VLIB_PHYSMEM_DEFAULT_BASE_ADDDR;
 
-  clib_pmalloc_init (vpm->pmalloc_main, vpm->base_addr, 0);
+  clib_pmalloc_init (vpm->pmalloc_main, vpm->base_addr, vpm->max_size);
+
+  /* update base_addr and max_size per actual allocation */
+  vpm->base_addr = (uword) vpm->pmalloc_main->base;
+  vpm->max_size = (uword) vpm->pmalloc_main->max_pages <<
+    vpm->pmalloc_main->def_log2_page_sz;
 
   return error;
 }

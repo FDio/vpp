@@ -48,7 +48,13 @@ def vac_error_handler(arg, msg, msg_len):
 
 
 class VppTransportShmemIOError(IOError):
-    pass
+    """ exception communicating with vpp over shared memory """
+
+    def __init__(self, rv, descr):
+        self.rv = rv
+        self.desc = descr
+
+        super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
 class VppTransport(object):
@@ -77,7 +83,7 @@ class VppTransport(object):
         self.connected = True
         if not pfx:
             pfx = ffi.NULL
-        return vpp_api.vac_connect(name, pfx, msg_handler, rx_qlen)
+        return vpp_api.vac_connect(name.encode('ascii'), pfx, msg_handler, rx_qlen)
 
     def disconnect(self):
         self.connected = False
@@ -93,7 +99,7 @@ class VppTransport(object):
         return vac_callback_sync if not do_async else vac_callback_async
 
     def get_msg_index(self, name):
-        return vpp_api.vac_get_msg_index(name)
+        return vpp_api.vac_get_msg_index(name.encode('ascii'))
 
     def msg_table_max_index(self):
         return vpp_api.vac_msg_table_max_index()
@@ -117,7 +123,8 @@ class VppTransport(object):
         size = ffi.new("int *")
         rv = vpp_api.vac_read(mem, size, self.read_timeout)
         if rv:
-            raise VppTransportShmemIOError(rv, 'vac_read failed')
+            strerror = 'vac_read failed.  It is likely that VPP died.'
+            raise VppTransportShmemIOError(rv, strerror)
         msg = bytes(ffi.buffer(mem[0], size[0]))
         vpp_api.vac_free(mem[0])
         return msg

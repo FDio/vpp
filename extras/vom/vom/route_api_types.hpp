@@ -19,10 +19,15 @@
 
 namespace VOM {
 
-void to_vpp(const route::path& p, vapi_payload_ip_mroute_add_del& payload);
-void to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload);
+vapi_enum_mfib_itf_flags to_api(const route::itf_flags_t& flags);
+const route::itf_flags_t& from_api(vapi_enum_mfib_itf_flags flags);
 
-route::path from_vpp(const vapi_type_fib_path& p, const nh_proto_t& nh);
+void to_api(const route::path& p, vapi_type_fib_path& o);
+
+route::path from_api(const vapi_type_fib_path& p);
+
+vapi_enum_ip_dscp to_api(const ip_dscp_t& d);
+const ip_dscp_t& from_api(vapi_enum_ip_dscp d);
 
 }; // namespace VOM
 

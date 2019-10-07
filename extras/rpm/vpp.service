@@ -9,6 +9,11 @@ ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
 Type=simple
 Restart=on-failure
 RestartSec=5s
+# Uncomment the following line to enable VPP coredumps on crash
+# You still need to configure the rest of the system to collect them, see
+# https://fdio-vpp.readthedocs.io/en/latest/troubleshooting/reportingissues/reportingissues.html#core-files
+# for details
+#LimitCORE=infinity
 
 [Install]
 WantedBy=multi-user.target

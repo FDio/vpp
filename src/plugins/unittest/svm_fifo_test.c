@@ -1225,6 +1225,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 100, f->size);
   SFIFO_TEST (c->start_byte == fifo_size, "start byte expected %u is %u",
 	      fifo_size, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    *  Add with fifo wrapped
@@ -1243,6 +1244,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 100, f->size);
   SFIFO_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
 	      " %u", fifo_size + 100, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Unwrap fifo
@@ -1255,6 +1257,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 200, f->size);
   SFIFO_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
 	      "%u", fifo_size + 100, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Add N chunks
@@ -1296,6 +1299,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 200 + 10 * 100, f->size);
   SFIFO_TEST (f->tail == old_tail, "new tail expected %u is %u", old_tail,
 	      f->tail);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Enqueue/dequeue tests
@@ -1351,6 +1355,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Simple enqueue/deq and data validation (2)
@@ -1377,6 +1382,42 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /*
+   * Simple enqueue and drop
+   */
+  for (i = 0; i <= n_enqs; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
+
+  /*
+   * Simple enqueue and drop all
+   */
+
+  /* Enqueue just enough data to make sure fifo is not full */
+  for (i = 0; i <= n_enqs / 2; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  /* check drop all as well */
+  svm_fifo_dequeue_drop_all (f);
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
 
   /*
    * OOO enqueues/dequeues and data validation (1)
@@ -1408,6 +1449,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * OOO enqueues/dequeues and data validation (2)
@@ -1427,8 +1469,10 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	  goto cleanup;
 	}
     }
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   svm_fifo_enqueue (f, enq_bytes, &test_data[0]);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   memset (data_buf, 0, vec_len (data_buf));
   for (i = 0; i <= n_deqs; i++)
@@ -1440,6 +1484,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Cleanup
@@ -1554,6 +1599,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->size == 12 * chunk_size + 1, "size expected %u is %u",
 	      12 * chunk_size + 1, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Check enqueue space to force size reduction */
   (void) svm_fifo_max_enqueue (f);
@@ -1564,6 +1610,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      " be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_SHRINK), "shrink flag should not be"
 	      " set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   collected = c = svm_fifo_collect_chunks (f);
   rv = chunk_list_len (c);
@@ -1572,6 +1619,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 11, "expected %u chunks got %u", 11, rv);
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Fifo wrap and multiple chunks used
@@ -1600,6 +1648,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->size == 11 * chunk_size + 1, "size expected %u is %u",
 	      11 * chunk_size + 1, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Check enqueue space to try size reduction. Should not work */
   rv = svm_fifo_max_enqueue (f);
@@ -1610,6 +1659,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue byte-by-byte up to last byte on last chunk */
   deq_bytes = f->size - f->size / 2 - 1;
@@ -1620,6 +1670,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
       if (rv < 0)
 	SFIFO_TEST (0, "dequeue returned");
     }
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   rv = svm_fifo_max_enqueue (f);
 
@@ -1635,6 +1686,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue one more such that head goes beyond last chunk */
   rv = svm_fifo_dequeue (f, 1, &data_buf[deq_bytes]);
@@ -1651,6 +1703,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      " set");
   SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS, "collect flag should"
 	      " be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue the rest of the data */
   deq_bytes += 1;
@@ -1681,6 +1734,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 8, "expected %u chunks got %u", 8, rv);
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * OOO segment on chunk that should be removed
@@ -1700,6 +1754,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_max_enqueue (f);
   SFIFO_TEST (rv == vec_len (test_data) - 200, "free space expected %u is %u",
 	      vec_len (test_data) - 200, rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Ask to reduce size */
   rv = svm_fifo_reduce_size (f, 3.5 * chunk_size, 0);
@@ -1708,6 +1763,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->size == 11 * chunk_size + 1, "size expected %u is %u",
 	      11 * chunk_size + 1, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Try to force size reduction but it should fail */
   rv = svm_fifo_max_enqueue (f);
@@ -1719,6 +1775,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue the in order data. This should shrink nitems */
   rv = svm_fifo_dequeue (f, 200, data_buf);
@@ -1735,11 +1792,13 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Enqueue the missing 50 bytes. Fifo will become full */
   rv = svm_fifo_enqueue (f, 50, &test_data[200]);
   SFIFO_TEST (rv == vec_len (test_data) - 200, "free space expected %u is %u",
 	      vec_len (test_data) - 200, rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   rv = svm_fifo_max_enqueue (f);
 
@@ -1749,6 +1808,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
 
   /* Dequeue a chunk and check nitems shrink but fifo still full */
@@ -1764,6 +1824,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue enough to unwrap the fifo */
   deq_bytes = f->size - f->size / 2 - 300;
@@ -1781,6 +1842,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      " set");
   SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS, "collect flag should"
 	      " be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Dequeue the rest */
   svm_fifo_dequeue (f, test_n_bytes / 2, &data_buf[300 + deq_bytes]);
@@ -1797,13 +1859,16 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 8, "expected %u chunks got %u", 8, rv);
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   chunk_list_splice (collected, c);
 
   /*
-   * Remove all chunks possible
+   * Remove all chunks possible (1)
+   *
+   * Tail and head are in first chunk that is not removed
    */
-  svm_fifo_init_pointers (f, 601, 601);
+  svm_fifo_init_pointers (f, 600, 600);
   rv = svm_fifo_reduce_size (f, 8 * chunk_size, 1);
   SFIFO_TEST (rv == 7 * chunk_size, "actual len expected %u is %u",
 	      7 * chunk_size, rv);
@@ -1814,10 +1879,12 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   rv = svm_fifo_max_enqueue (f);
   SFIFO_TEST (rv == chunk_size, "free space expected %u is %u", chunk_size,
 	      rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Force head/tail to move to first chunk */
   svm_fifo_enqueue (f, 1, test_data);
@@ -1832,6 +1899,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      " set");
   SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS, "collect flag should"
 	      " be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   c = svm_fifo_collect_chunks (f);
   rv = chunk_list_len (c);
@@ -1840,6 +1908,57 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      " not be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_MULTI_CHUNK), "multi-chunk flag should"
 	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /* re-add chunks for next test */
+  svm_fifo_add_chunk (f, c);
+
+  /*
+   * Remove all chunks possible (2)
+   *
+   * Tail and head are in the first chunk that should eventually be removed
+   */
+  svm_fifo_init_pointers (f, 601, 601);
+  rv = svm_fifo_reduce_size (f, 8 * chunk_size, 1);
+  SFIFO_TEST (rv == 7 * chunk_size, "actual len expected %u is %u",
+	      7 * chunk_size, rv);
+  SFIFO_TEST (f->size == 7 * chunk_size + 1, "size expected %u is %u",
+	      7 * chunk_size + 1, f->size);
+  SFIFO_TEST (f->nitems == 1 * chunk_size, "nitems expected %u is %u",
+	      1 * chunk_size, f->nitems);
+  SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
+  SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
+	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  rv = svm_fifo_max_enqueue (f);
+  SFIFO_TEST (rv == chunk_size, "free space expected %u is %u", chunk_size,
+	      rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /* Force head/tail to move to first chunk */
+  svm_fifo_enqueue (f, chunk_size, test_data);
+  svm_fifo_dequeue (f, chunk_size, data_buf);
+  rv = svm_fifo_max_enqueue (f);
+
+  SFIFO_TEST (rv == chunk_size, "free space expected %u is %u", chunk_size,
+	      rv);
+  SFIFO_TEST (f->size == chunk_size + 1, "size expected %u is %u",
+	      chunk_size + 1, f->size);
+  SFIFO_TEST (!(f->flags & SVM_FIFO_F_SHRINK), "shrink flag should not be"
+	      " set");
+  SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS, "collect flag should"
+	      " be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  c = svm_fifo_collect_chunks (f);
+  rv = chunk_list_len (c);
+  SFIFO_TEST (rv == 7, "expected %u chunks got %u", 7, rv);
+  SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
+	      " not be set");
+  SFIFO_TEST (!(f->flags & SVM_FIFO_F_MULTI_CHUNK), "multi-chunk flag should"
+	      " not be set");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   chunk_list_splice (collected, c);
 
@@ -1944,15 +2063,20 @@ sfifo_test_fifo_segment_hello_world (int verbose)
 static int
 sfifo_test_fifo_segment_fifo_grow (int verbose)
 {
-  int rv, fifo_size = 4096, n_chunks, n_free;
+  int rv, fifo_size = 4096, n_chunks, n_batch;
   fifo_segment_main_t *sm = &segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
+  u32 n_free_chunk_bytes;
   fifo_segment_t *fs;
   svm_fifo_t *f;
 
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
+  /* size chosen to be able to force multi chunk allocation lower */
   a->segment_size = 256 << 10;
+
+  /* fifo allocation allocates chunks in batch */
+  n_batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
 
   rv = fifo_segment_create (sm, a);
 
@@ -1966,31 +2090,56 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == n_batch - 1, "free 2^10B chunks "
+	      "should be %u is %u", n_batch - 1, n_chunks);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 1) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 1) * fifo_size);
+
+  /* Grow by preallocated fifo_size chunk */
   fifo_segment_grow_fifo (fs, f, fifo_size);
   SFIFO_TEST (f->size == 2 * fifo_size, "fifo size should be %u is %u",
 	      2 * fifo_size, f->size);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free 2^10B chunks "
+	      "should be %u is %u", n_batch - 2, n_chunks);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 2) * fifo_size);
+
+  /* Grow by a size not preallocated but first make sure there's space */
+  rv = fifo_segment_free_bytes (fs);
+  SFIFO_TEST (rv > 16 * fifo_size, "free bytes %u more than %u", rv,
+	      16 * fifo_size);
 
   fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
   SFIFO_TEST (f->size == 18 * fifo_size, "fifo size should be %u is %u",
 	      18 * fifo_size, f->size);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 2) * fifo_size);
 
   /*
    * Free and test free list size
    */
   fifo_segment_free_fifo (fs, f);
 
-  /* fifo allocation allocates chunks in batch */
-  n_free = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
-
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
+	      " is %u", (16 + n_batch) * fifo_size, rv);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_free, "free 2^10B chunks "
-	      "should be %u is %u", n_free, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch, "free 2^10B chunks "
+	      "should be %u is %u", n_batch, n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 1, "free 2^14B chunks should be %u is %u", 1,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
-	      1 + n_free, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_batch, "free chunks should be %u is %u",
+	      1 + n_batch, n_chunks);
 
   /*
    * Realloc fifo
@@ -1999,24 +2148,106 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 
   fifo_segment_grow_fifo (fs, f, fifo_size);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_free - 2, "free 2^10B chunks should be %u is %u",
-	      n_free - 2, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free 2^10B chunks should be %u is %u",
+	      n_batch - 2, n_chunks);
 
   fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 0, "free 2^14B chunks should be %u is %u", 0,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == n_free - 2, "free chunks should be %u is %u",
-	      n_free - 2, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free chunks should be %u is %u",
+	      n_batch - 2, n_chunks);
 
   /*
    * Free again
    */
   fifo_segment_free_fifo (fs, f);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
-	      1 + n_free, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_batch, "free chunks should be %u is %u",
+	      1 + n_batch, n_chunks);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
+	      " is %u", (16 + n_batch) * fifo_size, rv);
+
+  n_free_chunk_bytes = rv;
+
+  /*
+   * Allocate non power of 2 fifo/chunk and check that free chunk bytes
+   * is correctly updated
+   */
+
+  f = fifo_segment_alloc_fifo (fs, 16 * fifo_size - 1, FIFO_SEGMENT_RX_FIFO);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  SFIFO_TEST (n_free_chunk_bytes - 16 * fifo_size == rv, "free chunk bytes "
+	      "expected %u is %u", n_free_chunk_bytes - 16 * fifo_size, rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  fifo_segment_free_fifo (fs, f);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Force multi chunk fifo allocation
+   */
+
+  /* Check that we can force multi chunk allocation. Note that fifo size
+   * rounded up to power of 2, i.e., 17 becomes 32 */
+  rv = fifo_segment_free_bytes (fs);
+  SFIFO_TEST (rv < 32 * fifo_size, "free bytes %u less than %u", rv,
+	      32 * fifo_size);
+
+  f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  /* Make sure that the non-power of two chunk freed above is correctly
+   * accounted for in the chunk free bytes reduction due to chunk allocation
+   * for the fifo, i.e., it's rounded up by 1 */
+  SFIFO_TEST (n_free_chunk_bytes - 17 * fifo_size == rv, "free chunk bytes "
+	      "expected %u is %u", n_free_chunk_bytes - 17 * fifo_size, rv);
+
+  fifo_segment_free_fifo (fs, f);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Allocate fifo that has all chunks
+   */
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f != 0, "allocation should work");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  fifo_segment_free_fifo (fs, f);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Try to allocate more than space available
+   */
+
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes + fifo_size,
+			       FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f == 0, "allocation should fail");
+
+  /*
+   * Allocate fifo and try to grow beyond available space
+   */
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  rv = fifo_segment_grow_fifo (fs, f, n_free_chunk_bytes);
+
+  SFIFO_TEST (rv == -1, "grow should fail");
+
+  fifo_segment_free_fifo (fs, f);
 
   /*
    * Cleanup
@@ -2281,7 +2512,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   u32 max_pairs, pairs_req, free_space, pair_mem;
   svm_fifo_t *f, *old;
   fifo_segment_t *fs;
-  int rv;
+  int rv, alloc;
 
   clib_memset (a, 0, sizeof (*a));
 
@@ -2307,7 +2538,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   free_space -= (sizeof (svm_fifo_chunk_t) + 4096) * 50;
   SFIFO_TEST (rv == free_space, "free space expected %u is %u", free_space,
 	      rv);
-  rv = fifo_segment_chunk_prealloc_bytes (fs);
+  rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
 	      4096 * 50, rv);
 
@@ -2329,28 +2560,41 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (f != 0, "fifo allocated");
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == 0, "prealloc chunks expected %u is %u", 0, rv);
-  rv = fifo_segment_chunk_prealloc_bytes (fs);
+  rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 0, "chunk free space expected %u is %u", 0, rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Multiple preallocs that consume the remaining space
    */
+  fifo_segment_update_free_bytes (fs);
+  free_space = fifo_segment_free_bytes (fs);
   pair_mem = 2 * (4096 + sizeof (*f) + sizeof (svm_fifo_chunk_t));
-  max_pairs = pairs_req = free_space / pair_mem - 1;
+  max_pairs = pairs_req = (free_space / pair_mem) - 1;
   fifo_segment_preallocate_fifo_pairs (fs, 4096, 4096, &pairs_req);
-  SFIFO_TEST (pairs_req == 0, "prealloc pairs should work");
+  SFIFO_TEST (pairs_req == 0, "prealloc pairs should work req %u", max_pairs);
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == max_pairs * 2, "prealloc chunks expected %u is %u",
 	      max_pairs * 2, rv);
 
-  rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 2);
-  SFIFO_TEST (rv == 0, "chunk prealloc should work");
-  rv = fifo_segment_num_free_chunks (fs, 4096);
-  SFIFO_TEST (rv == (max_pairs + 1) * 2, "prealloc chunks expected %u is %u",
-	      (max_pairs + 1) * 2, rv);
+  fifo_segment_update_free_bytes (fs);
+  rv = fifo_segment_free_bytes (fs);
+  SFIFO_TEST (rv < 2 * pair_mem, "free bytes %u less than %u", rv,
+	      2 * pair_mem);
 
-  free_space = fifo_segment_free_bytes (fs);
-  SFIFO_TEST (rv < 8192, "free bytes expected less than %u is %u", 8192, rv);
+  /* Preallocate as many more chunks as possible. Heap is almost full
+   * so we may not use all the free space*/
+  alloc = 0;
+  while (!fifo_segment_prealloc_fifo_chunks (fs, 4096, 1))
+    alloc++;
+  SFIFO_TEST (alloc, "chunk prealloc should work %u", alloc);
+  rv = fifo_segment_num_free_chunks (fs, 4096);
+  SFIFO_TEST (rv == max_pairs * 2 + alloc, "prealloc chunks expected %u "
+	      "is %u", max_pairs * 2 + alloc, rv);
+
+  rv = fifo_segment_free_bytes (fs);
+  SFIFO_TEST (rv < pair_mem, "free bytes expected less than %u is %u",
+	      pair_mem, rv);
 
   /*
    * Test negative prealloc cases

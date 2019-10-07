@@ -19,6 +19,9 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
+#define SESSION_INVALID_INDEX ((u32)~0)
+#define SESSION_INVALID_HANDLE ((u64)~0)
+
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
   _(u8, transport_proto)					\
@@ -40,7 +43,7 @@ typedef struct _session_endpoint_cfg
   u32 ns_index;
   u8 original_tp;
   u8 *hostname;
-  u64 transport_opts;
+  u64 parent_handle;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -80,6 +83,7 @@ typedef struct _session_endpoint_cfg
   .app_wrk_index = ENDPOINT_INVALID_INDEX,	\
   .opaque = ENDPOINT_INVALID_INDEX,		\
   .hostname = 0,				\
+  .parent_handle = SESSION_INVALID_HANDLE	\
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
@@ -108,30 +112,42 @@ session_endpoint_is_zero (session_endpoint_t * sep)
 typedef u8 session_type_t;
 typedef u64 session_handle_t;
 
+typedef enum
+{
+  SESSION_CLEANUP_TRANSPORT,
+  SESSION_CLEANUP_SESSION,
+} session_cleanup_ntf_t;
+
 /*
  * Session states
  */
+#define foreach_session_state				\
+  _(CREATED, "created")					\
+  _(LISTENING, "listening")				\
+  _(CONNECTING, "connecting")				\
+  _(ACCEPTING, "accepting")				\
+  _(READY, "ready")					\
+  _(OPENED, "opened")					\
+  _(TRANSPORT_CLOSING, "transport-closing")		\
+  _(CLOSING, "closing")					\
+  _(APP_CLOSED, "app-closed")				\
+  _(TRANSPORT_CLOSED, "transport-closed")		\
+  _(TRANSPORT_DELETED, "transport-deleted")		\
+  _(CLOSED, "closed")					\
+
 typedef enum
 {
-  SESSION_STATE_CREATED,
-  SESSION_STATE_LISTENING,
-  SESSION_STATE_CONNECTING,
-  SESSION_STATE_ACCEPTING,
-  SESSION_STATE_READY,
-  SESSION_STATE_OPENED,
-  SESSION_STATE_TRANSPORT_CLOSING,
-  SESSION_STATE_CLOSING,
-  SESSION_STATE_CLOSED_WAITING,
-  SESSION_STATE_TRANSPORT_CLOSED,
-  SESSION_STATE_CLOSED,
-  SESSION_STATE_N_STATES,
+#define _(sym, str) SESSION_STATE_ ## sym,
+  foreach_session_state
+#undef _
+    SESSION_N_STATES,
 } session_state_t;
 
 typedef enum session_flags_
 {
   SESSION_F_RX_EVT = 1,
   SESSION_F_PROXY = (1 << 1),
-  SESSION_F_QUIC_STREAM = (1 << 2),
+  SESSION_F_CUSTOM_TX = (1 << 2),
 } session_flags_t;
 
 typedef struct session_
@@ -167,7 +183,7 @@ typedef struct session_
   union
   {
     /** Parent listener session index if the result of an accept */
-    u32 listener_index;
+    session_handle_t listener_handle;
 
     /** App listener index in app's listener pool if a listener */
     u32 al_index;
@@ -264,6 +280,12 @@ session_parse_handle (session_handle_t handle, u32 * index,
   *thread_index = session_thread_from_handle (handle);
 }
 
+static inline session_handle_t
+session_make_handle (u32 session_index, u32 thread_index)
+{
+  return (((u64) thread_index << 32) | (u64) session_index);
+}
+
 typedef enum
 {
   SESSION_IO_EVT_RX,
@@ -273,20 +295,47 @@ typedef enum
   SESSION_IO_EVT_BUILTIN_TX,
   SESSION_CTRL_EVT_RPC,
   SESSION_CTRL_EVT_CLOSE,
+  SESSION_CTRL_EVT_RESET,
   SESSION_CTRL_EVT_BOUND,
   SESSION_CTRL_EVT_UNLISTEN_REPLY,
   SESSION_CTRL_EVT_ACCEPTED,
   SESSION_CTRL_EVT_ACCEPTED_REPLY,
   SESSION_CTRL_EVT_CONNECTED,
-  SESSION_CTRL_EVT_CONNECTED_REPLY,
   SESSION_CTRL_EVT_DISCONNECTED,
   SESSION_CTRL_EVT_DISCONNECTED_REPLY,
-  SESSION_CTRL_EVT_RESET,
   SESSION_CTRL_EVT_RESET_REPLY,
   SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+  SESSION_CTRL_EVT_DISCONNECT,
+  SESSION_CTRL_EVT_CONNECT,
+  SESSION_CTRL_EVT_CONNECT_URI,
+  SESSION_CTRL_EVT_LISTEN,
+  SESSION_CTRL_EVT_LISTEN_URI,
+  SESSION_CTRL_EVT_UNLISTEN,
+  SESSION_CTRL_EVT_APP_DETACH,
 } session_evt_type_t;
+
+#define foreach_session_ctrl_evt				\
+  _(LISTEN, listen)						\
+  _(LISTEN_URI, listen_uri)					\
+  _(BOUND, bound)						\
+  _(UNLISTEN, unlisten)						\
+  _(UNLISTEN_REPLY, unlisten_reply)				\
+  _(ACCEPTED, accepted)						\
+  _(ACCEPTED_REPLY, accepted_reply)				\
+  _(CONNECT, connect)						\
+  _(CONNECT_URI, connect_uri)					\
+  _(CONNECTED, connected)					\
+  _(DISCONNECT, disconnect)					\
+  _(DISCONNECTED, disconnected)					\
+  _(DISCONNECTED_REPLY, disconnected_reply)			\
+  _(RESET_REPLY, reset_reply)					\
+  _(REQ_WORKER_UPDATE, req_worker_update)			\
+  _(WORKER_UPDATE, worker_update)				\
+  _(WORKER_UPDATE_REPLY, worker_update_reply)			\
+  _(APP_DETACH, app_detach)					\
+
 
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
@@ -317,6 +366,7 @@ typedef struct
     u32 session_index;
     session_handle_t session_handle;
     session_rpc_args_t rpc_args;
+    u32 ctrl_data_index;
     struct
     {
       u8 data[0];

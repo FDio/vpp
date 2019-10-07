@@ -30,15 +30,37 @@ ipsec_main_t ipsec_main;
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
 {
+  ipsec_main_t *im = &ipsec_main;
+
   if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
     return clib_error_return (0, "unsupported none integ-alg");
+
+  if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+    return clib_error_return (0, "No crypto engine support for %U",
+			      format_ipsec_integ_alg, sa->integ_alg);
+
   return 0;
 }
 
 static clib_error_t *
 ipsec_check_esp_support (ipsec_sa_t * sa)
 {
-  return 0;
+  ipsec_main_t *im = &ipsec_main;
+
+  if (IPSEC_INTEG_ALG_NONE != sa->integ_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_integ_alg, sa->integ_alg);
+    }
+  if (IPSEC_CRYPTO_ALG_NONE != sa->crypto_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->crypto_algs[sa->crypto_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_crypto_alg, sa->crypto_alg);
+    }
+
+  return (0);
 }
 
 clib_error_t *
@@ -100,7 +122,7 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
   *out_next_index = vlib_node_add_next (vm, prev_node->index, node->index);
 }
 
-static void
+void
 ipsec_add_feature (const char *arc_name,
 		   const char *node_name, u32 * out_feature_index)
 {
@@ -298,6 +320,13 @@ ipsec_init (vlib_main_t * vm)
 
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_NONE;
+  a->enc_op_id = VNET_CRYPTO_OP_NONE;
+  a->dec_op_id = VNET_CRYPTO_OP_NONE;
+  a->alg = VNET_CRYPTO_ALG_NONE;
+  a->iv_size = 0;
+  a->block_size = 1;
+
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_DES_CBC;
   a->enc_op_id = VNET_CRYPTO_OP_DES_CBC_ENC;
   a->dec_op_id = VNET_CRYPTO_OP_DES_CBC_DEC;
@@ -351,6 +380,11 @@ ipsec_init (vlib_main_t * vm)
 
   vec_validate (im->integ_algs, IPSEC_INTEG_N_ALG - 1);
   ipsec_main_integ_alg_t *i;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_MD5_96];
+  i->op_id = VNET_CRYPTO_OP_MD5_HMAC;
+  i->alg = VNET_CRYPTO_ALG_HMAC_MD5;
+  i->icv_size = 12;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA1_96];
   i->op_id = VNET_CRYPTO_OP_SHA1_HMAC;

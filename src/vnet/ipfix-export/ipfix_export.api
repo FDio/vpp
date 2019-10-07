@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 /** \brief Configure IPFIX exporter process request
     @param client_index - opaque cookie to identify the sender
@@ -140,6 +140,11 @@ define ipfix_classify_table_details {
     u32 table_id;
     u8 ip_version;
     u8 transport_protocol;
+};
+
+autoreply define ipfix_flush {
+    u32 client_index;
+    u32 context;
 };
 
 /*

@@ -32,14 +32,9 @@ typedef struct gpb_route_domain_t_
    * Route-domain ID
    */
   u32 grd_id;
+  gbp_scope_t grd_scope;
   u32 grd_fib_index[FIB_PROTOCOL_IP_MAX];
   u32 grd_table_id[FIB_PROTOCOL_IP_MAX];
-
-  /**
-   * The RD's VNI interface on which packets from unkown endpoints
-   * arrive
-   */
-  u32 grd_vni_sw_if_index;
 
   /**
    * The interfaces on which to send packets to unnknown EPs
@@ -55,6 +50,7 @@ typedef struct gpb_route_domain_t_
 } gbp_route_domain_t;
 
 extern int gbp_route_domain_add_and_lock (u32 rd_id,
+					  gbp_scope_t scope,
 					  u32 ip4_table_id,
 					  u32 ip6_table_id,
 					  u32 ip4_uu_sw_if_index,
@@ -67,6 +63,7 @@ extern index_t gbp_route_domain_index (const gbp_route_domain_t *);
 extern int gbp_route_domain_delete (u32 rd_id);
 extern gbp_route_domain_t *gbp_route_domain_get (index_t i);
 extern u32 gbp_route_domain_get_rd_id (index_t i);
+extern gbp_scope_t gbp_route_domain_get_scope (index_t i);
 
 typedef int (*gbp_route_domain_cb_t) (gbp_route_domain_t * gb, void *ctx);
 extern void gbp_route_domain_walk (gbp_route_domain_cb_t bgpe, void *ctx);

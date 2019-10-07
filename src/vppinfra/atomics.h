@@ -37,11 +37,14 @@
 #define clib_atomic_cmp_and_swap(addr,old,new) __sync_val_compare_and_swap(addr, old, new)
 #define clib_atomic_bool_cmp_and_swap(addr,old,new) __sync_bool_compare_and_swap(addr, old, new)
 
+#define clib_atomic_cmp_and_swap_acq_relax_n(addr,exp,new,weak) __atomic_compare_exchange_n ((addr), (exp), (new), (weak), __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)
+
 #define clib_atomic_test_and_set(a) __atomic_exchange_n(a, 1, __ATOMIC_ACQUIRE)
 #define clib_atomic_release(a) __atomic_store_n(a, 0, __ATOMIC_RELEASE)
 
 #define clib_atomic_fence_rel() __atomic_thread_fence(__ATOMIC_RELEASE);
 
+#define clib_atomic_load_relax_n(a) __atomic_load_n((a), __ATOMIC_RELAXED)
 #define clib_atomic_load_acq_n(a) __atomic_load_n((a), __ATOMIC_ACQUIRE)
 #define clib_atomic_store_rel_n(a, b) __atomic_store_n ((a), (b), __ATOMIC_RELEASE)
 

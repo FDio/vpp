@@ -114,8 +114,7 @@ vxlan_gpe_input (vlib_main_t * vm,
   u32 last_tunnel_index = ~0;
   vxlan4_gpe_tunnel_key_t last_key4;
   vxlan6_gpe_tunnel_key_t last_key6;
-  u32 ip4_pkts_decapsulated = 0;
-  u32 ip6_pkts_decapsulated = 0;
+  u32 pkts_decapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
@@ -345,11 +344,7 @@ vxlan_gpe_input (vlib_main_t * vm,
        */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
 
-	  if (is_ip4)
-	    ip4_pkts_decapsulated++;
-	  else
-	    ip6_pkts_decapsulated++;
-
+	  pkts_decapsulated++;
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
@@ -440,11 +435,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	   */
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
 
-	  if (is_ip4)
-	    ip4_pkts_decapsulated++;
-	  else
-	    ip6_pkts_decapsulated++;
-
+	  pkts_decapsulated++;
 	  stats_n_packets += 1;
 	  stats_n_bytes += len1;
 
@@ -616,11 +607,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	   */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
 
-	  if (is_ip4)
-	    ip4_pkts_decapsulated++;
-	  else
-	    ip6_pkts_decapsulated++;
-
+	  pkts_decapsulated++;
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
@@ -658,12 +645,13 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, vxlan4_gpe_input_node.index,
+
+  vlib_node_increment_counter (vm,
+			       is_ip4 ? vxlan4_gpe_input_node.index :
+			       vxlan6_gpe_input_node.index,
 			       VXLAN_GPE_ERROR_DECAPSULATED,
-			       ip4_pkts_decapsulated);
-  vlib_node_increment_counter (vm, vxlan6_gpe_input_node.index,
-			       VXLAN_GPE_ERROR_DECAPSULATED,
-			       ip6_pkts_decapsulated);
+			       pkts_decapsulated);
+
   /* Increment any remaining batch stats */
   if (stats_n_packets)
     {

@@ -21,24 +21,24 @@ import sys
 import multiprocessing as mp
 import os
 import logging
-import collections
-import struct
 import functools
 import json
 import threading
 import fnmatch
 import weakref
 import atexit
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
+from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
-from . macaddress import MACAddress, mac_pton, mac_ntop
-
-logger = logging.getLogger(__name__)
 
 if sys.version[0] == '2':
     import Queue as queue
 else:
     import queue as queue
+
+__all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
+           'VppEnum', 'VppEnumType',
+           'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
+           'VPPApiClient', )
 
 
 def metaclass(metaclass):
@@ -76,19 +76,6 @@ else:
         return d.items()
 
 
-def call_logger(msgdef, kwargs):
-    s = 'Calling {}('.format(msgdef.name)
-    for k, v in kwargs.items():
-        s += '{}:{} '.format(k, v)
-    s += ')'
-    return s
-
-
-def return_logger(r):
-    s = 'Return from {}'.format(r)
-    return s
-
-
 class VppApiDynamicMethodHolder(object):
     pass
 
@@ -101,6 +88,9 @@ class FuncWrapper(object):
 
     def __call__(self, **kwargs):
         return self._func(**kwargs)
+
+    def __repr__(self):
+        return '<FuncWrapper(func=<%s(%s)>)>' % (self.__name__, self.__doc__)
 
 
 class VPPApiError(Exception):
@@ -122,166 +112,9 @@ class VPPRuntimeError(RuntimeError):
 class VPPValueError(ValueError):
     pass
 
-
-class VPPApiClient(object):
-    """VPP interface.
-
-    This class provides the APIs to VPP.  The APIs are loaded
-    from provided .api.json files and makes functions accordingly.
-    These functions are documented in the VPP .api files, as they
-    are dynamically created.
-
-    Additionally, VPP can send callback messages; this class
-    provides a means to register a callback function to receive
-    these messages in a background thread.
-    """
-    apidir = None
-    VPPApiError = VPPApiError
-    VPPRuntimeError = VPPRuntimeError
-    VPPValueError = VPPValueError
-    VPPNotImplementedError = VPPNotImplementedError
-    VPPIOError = VPPIOError
-
-    def process_json_file(self, apidef_file):
-        api = json.load(apidef_file)
-        types = {}
-        for t in api['enums']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'enum', 'data': t}
-        for t in api['unions']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'union', 'data': t}
-        for t in api['types']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'type', 'data': t}
-        for t, v in api['aliases'].items():
-            types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
-        self.services.update(api['services'])
-
-        i = 0
-        while True:
-            unresolved = {}
-            for k, v in types.items():
-                t = v['data']
-                if not vpp_get_type(k):
-                    if v['type'] == 'enum':
-                        try:
-                            VPPEnumType(t[0], t[1:])
-                        except ValueError:
-                            unresolved[k] = v
-                    elif v['type'] == 'union':
-                        try:
-                            VPPUnionType(t[0], t[1:])
-                        except ValueError:
-                            unresolved[k] = v
-                    elif v['type'] == 'type':
-                        try:
-                            VPPType(t[0], t[1:])
-                        except ValueError:
-                            unresolved[k] = v
-                    elif v['type'] == 'alias':
-                        try:
-                            VPPTypeAlias(k, t)
-                        except ValueError:
-                            unresolved[k] = v
-            if len(unresolved) == 0:
-                break
-            if i > 3:
-                raise VPPValueError('Unresolved type definitions {}'
-                                    .format(unresolved))
-            types = unresolved
-            i += 1
-
-        for m in api['messages']:
-            try:
-                self.messages[m[0]] = VPPMessage(m[0], m[1:])
-            except VPPNotImplementedError:
-                self.logger.error('Not implemented error for {}'.format(m[0]))
-
-    def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=None, loglevel=None,
-                 read_timeout=5, use_socket=False,
-                 server_address='/run/vpp-api.sock'):
-        """Create a VPP API object.
-
-        apifiles is a list of files containing API
-        descriptions that will be loaded - methods will be
-        dynamically created reflecting these APIs.  If not
-        provided this will load the API files from VPP's
-        default install location.
-
-        logger, if supplied, is the logging logger object to log to.
-        loglevel, if supplied, is the log level this logger is set
-        to report at (from the loglevels in the logging module).
-        """
-        if logger is None:
-            logger = logging.getLogger(__name__)
-            if loglevel is not None:
-                logger.setLevel(loglevel)
-        self.logger = logger
-
-        self.messages = {}
-        self.services = {}
-        self.id_names = []
-        self.id_msgdef = []
-        self.header = VPPType('header', [['u16', 'msgid'],
-                                         ['u32', 'client_index']])
-        self.apifiles = []
-        self.event_callback = None
-        self.message_queue = queue.Queue()
-        self.read_timeout = read_timeout
-        self.async_thread = async_thread
-        self.event_thread = None
-
-        if use_socket:
-            from . vpp_transport_socket import VppTransport
-        else:
-            from . vpp_transport_shmem import VppTransport
-
-        if not apifiles:
-            # Pick up API definitions from default directory
-            try:
-                apifiles = self.find_api_files()
-            except RuntimeError:
-                # In test mode we don't care that we can't find the API files
-                if testmode:
-                    apifiles = []
-                else:
-                    raise VPPRuntimeError
-
-        for file in apifiles:
-            with open(file) as apidef_file:
-                self.process_json_file(apidef_file)
-
-        self.apifiles = apifiles
-
-        # Basic sanity check
-        if len(self.messages) == 0 and not testmode:
-            raise VPPValueError(1, 'Missing JSON message definitions')
-
-        self.transport = VppTransport(self, read_timeout=read_timeout,
-                                      server_address=server_address)
-        # Make sure we allow VPP to clean up the message rings.
-        atexit.register(vpp_atexit, weakref.ref(self))
-
-    class ContextId(object):
-        """Multiprocessing-safe provider of unique context IDs."""
-        def __init__(self):
-            self.context = mp.Value(ctypes.c_uint, 0)
-            self.lock = mp.Lock()
-
-        def __call__(self):
-            """Get a new unique (or, at least, not recently used) context."""
-            with self.lock:
-                self.context.value += 1
-                return self.context.value
-    get_context = ContextId()
-
-    def get_type(self, name):
-        return vpp_get_type(name)
-
+class VPPApiJSONFiles(object):
     @classmethod
-    def find_api_dir(cls):
+    def find_api_dir(cls, dirs):
         """Attempt to find the best directory in which API definition
         files may reside. If the value VPP_API_DIR exists in the environment
         then it is first on the search list. If we're inside a recognized
@@ -292,7 +125,6 @@ class VPPApiClient(object):
         :returns: A single directory name, or None if no such directory
             could be found.
         """
-        dirs = [cls.apidir] if cls.apidir else []
 
         # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
         # in which case, plot a course to likely places in the src tree
@@ -383,7 +215,7 @@ class VPPApiClient(object):
         :returns: A list of file paths for the API files found.
         """
         if api_dir is None:
-            api_dir = cls.find_api_dir()
+            api_dir = cls.find_api_dir([])
             if api_dir is None:
                 raise VPPApiError("api_dir cannot be located")
 
@@ -400,6 +232,180 @@ class VPPApiClient(object):
                 api_files.append(os.path.join(root, filename))
 
         return api_files
+
+    @classmethod
+    def process_json_file(self, apidef_file):
+        api = json.load(apidef_file)
+        types = {}
+        services = {}
+        messages = {}
+        for t in api['enums']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'enum', 'data': t}
+        for t in api['unions']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'union', 'data': t}
+        for t in api['types']:
+            t[0] = 'vl_api_' + t[0] + '_t'
+            types[t[0]] = {'type': 'type', 'data': t}
+        for t, v in api['aliases'].items():
+            types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
+        services.update(api['services'])
+
+        i = 0
+        while True:
+            unresolved = {}
+            for k, v in types.items():
+                t = v['data']
+                if not vpp_get_type(k):
+                    if v['type'] == 'enum':
+                        try:
+                            VPPEnumType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'union':
+                        try:
+                            VPPUnionType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'type':
+                        try:
+                            VPPType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'alias':
+                        try:
+                            VPPTypeAlias(k, t)
+                        except ValueError:
+                            unresolved[k] = v
+            if len(unresolved) == 0:
+                break
+            if i > 3:
+                raise VPPValueError('Unresolved type definitions {}'
+                                    .format(unresolved))
+            types = unresolved
+            i += 1
+
+        for m in api['messages']:
+            try:
+                messages[m[0]] = VPPMessage(m[0], m[1:])
+            except VPPNotImplementedError:
+                ### OLE FIXME
+                self.logger.error('Not implemented error for {}'.format(m[0]))
+        return messages, services
+
+class VPPApiClient(object):
+    """VPP interface.
+
+    This class provides the APIs to VPP.  The APIs are loaded
+    from provided .api.json files and makes functions accordingly.
+    These functions are documented in the VPP .api files, as they
+    are dynamically created.
+
+    Additionally, VPP can send callback messages; this class
+    provides a means to register a callback function to receive
+    these messages in a background thread.
+    """
+    apidir = None
+    VPPApiError = VPPApiError
+    VPPRuntimeError = VPPRuntimeError
+    VPPValueError = VPPValueError
+    VPPNotImplementedError = VPPNotImplementedError
+    VPPIOError = VPPIOError
+
+
+    def __init__(self, apifiles=None, testmode=False, async_thread=True,
+                 logger=None, loglevel=None,
+                 read_timeout=5, use_socket=False,
+                 server_address='/run/vpp/api.sock'):
+        """Create a VPP API object.
+
+        apifiles is a list of files containing API
+        descriptions that will be loaded - methods will be
+        dynamically created reflecting these APIs.  If not
+        provided this will load the API files from VPP's
+        default install location.
+
+        logger, if supplied, is the logging logger object to log to.
+        loglevel, if supplied, is the log level this logger is set
+        to report at (from the loglevels in the logging module).
+        """
+        if logger is None:
+            logger = logging.getLogger(
+                "{}.{}".format(__name__, self.__class__.__name__))
+            if loglevel is not None:
+                logger.setLevel(loglevel)
+        self.logger = logger
+
+        self.messages = {}
+        self.services = {}
+        self.id_names = []
+        self.id_msgdef = []
+        self.header = VPPType('header', [['u16', 'msgid'],
+                                         ['u32', 'client_index']])
+        self.apifiles = []
+        self.event_callback = None
+        self.message_queue = queue.Queue()
+        self.read_timeout = read_timeout
+        self.async_thread = async_thread
+        self.event_thread = None
+        self.testmode = testmode
+        self.use_socket = use_socket
+        self.server_address = server_address
+        self._apifiles = apifiles
+
+        if use_socket:
+            from . vpp_transport_socket import VppTransport
+        else:
+            from . vpp_transport_shmem import VppTransport
+
+        if not apifiles:
+            # Pick up API definitions from default directory
+            try:
+                apifiles = VPPApiJSONFiles.find_api_files(self.apidir)
+            except RuntimeError:
+                # In test mode we don't care that we can't find the API files
+                if testmode:
+                    apifiles = []
+                else:
+                    raise VPPRuntimeError
+
+        for file in apifiles:
+            with open(file) as apidef_file:
+                m, s = VPPApiJSONFiles.process_json_file(apidef_file)
+                self.messages.update(m)
+                self.services.update(s)
+
+        self.apifiles = apifiles
+
+        # Basic sanity check
+        if len(self.messages) == 0 and not testmode:
+            raise VPPValueError(1, 'Missing JSON message definitions')
+
+        self.transport = VppTransport(self, read_timeout=read_timeout,
+                                      server_address=server_address)
+        # Make sure we allow VPP to clean up the message rings.
+        atexit.register(vpp_atexit, weakref.ref(self))
+
+    def get_function(self, name):
+        return getattr(self._api, name)
+
+
+    class ContextId(object):
+        """Multiprocessing-safe provider of unique context IDs."""
+        def __init__(self):
+            self.context = mp.Value(ctypes.c_uint, 0)
+            self.lock = mp.Lock()
+
+        def __call__(self):
+            """Get a new unique (or, at least, not recently used) context."""
+            with self.lock:
+                self.context.value += 1
+                return self.context.value
+    get_context = ContextId()
+
+    def get_type(self, name):
+        return vpp_get_type(name)
 
     @property
     def api(self):
@@ -429,7 +435,7 @@ class VPPApiClient(object):
         self._api = VppApiDynamicMethodHolder()
         for name, msg in vpp_iterator(self.messages):
             n = name + '_' + msg.crc[2:]
-            i = self.transport.get_msg_index(n.encode('utf-8'))
+            i = self.transport.get_msg_index(n)
             if i > 0:
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
@@ -451,7 +457,7 @@ class VPPApiClient(object):
                          do_async):
         pfx = chroot_prefix.encode('utf-8') if chroot_prefix else None
 
-        rv = self.transport.connect(name.encode('utf-8'), pfx,
+        rv = self.transport.connect(name, pfx,
                                     msg_handler, rx_qlen)
         if rv != 0:
             raise VPPIOError(2, 'Connect failed')
@@ -461,7 +467,7 @@ class VPPApiClient(object):
         # Initialise control ping
         crc = self.messages['control_ping'].crc
         self.control_ping_index = self.transport.get_msg_index(
-            ('control_ping' + '_' + crc[2:]).encode('utf-8'))
+            ('control_ping' + '_' + crc[2:]))
         self.control_ping_msgdef = self.messages['control_ping']
         if self.async_thread:
             self.event_thread = threading.Thread(
@@ -622,7 +628,9 @@ class VPPApiClient(object):
             pass
         self.validate_args(msgdef, kwargs)
 
-        logging.debug(call_logger(msgdef, kwargs))
+        s = 'Calling {}({})'.format(msgdef.name,
+            ','.join(['{!r}:{!r}'.format(k, v) for k, v in kwargs.items()]))
+        self.logger.debug(s)
 
         b = msgdef.pack(kwargs)
         self.transport.suspend()
@@ -657,17 +665,24 @@ class VPPApiClient(object):
 
         self.transport.resume()
 
-        logger.debug(return_logger(rl))
+        s = 'Return value: {!r}'.format(r)
+        if len(s) > 80:
+            s = s[:80] + "..."
+        self.logger.debug(s)
         return rl
 
     def _call_vpp_async(self, i, msg, **kwargs):
-        """Given a message, send the message and await a reply.
+        """Given a message, send the message and return the context.
 
         msgdef - the message packing definition
         i - the message type index
         context - context number - chosen at random if not
         supplied.
         The remainder of the kwargs are the arguments to the API call.
+
+        The reply message(s) will be delivered later to the registered callback.
+        The returned context will help with assigning which call
+        the reply belongs to.
         """
         if 'context' not in kwargs:
             context = self.get_context()
@@ -683,6 +698,7 @@ class VPPApiClient(object):
         b = msg.pack(kwargs)
 
         self.transport.write(b)
+        return context
 
     def register_event_callback(self, callback):
         """Register a callback for async messages.
@@ -716,6 +732,15 @@ class VPPApiClient(object):
             msgname = type(r).__name__
             if self.event_callback:
                 self.event_callback(msgname, r)
+
+    def __repr__(self):
+        return "<VPPApiClient apifiles=%s, testmode=%s, async_thread=%s, " \
+               "logger=%s, read_timeout=%s, use_socket=%s, " \
+               "server_address='%s'>" % (
+                   self._apifiles, self.testmode, self.async_thread,
+                   self.logger, self.read_timeout, self.use_socket,
+                   self.server_address)
+
 
 # Provide the old name for backward compatibility.
 VPP = VPPApiClient

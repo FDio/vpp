@@ -27,7 +27,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
-#include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
 #include <vlib/unix/unix.h>
 
@@ -224,6 +223,7 @@ typedef struct
 {
   punt_client_t client;
   u8 is_midchain;
+  u8 packet_data[64];
 } udp_punt_trace_t;
 
 static u8 *
@@ -239,6 +239,9 @@ format_udp_punt_trace (u8 * s, va_list * args)
       s = format (s, "\n%U(buffer is part of chain)", format_white_space,
 		  indent);
     }
+  s = format (s, "\n%U%U", format_white_space, indent,
+	      format_hex_bytes, t->packet_data, sizeof (t->packet_data));
+
   return s;
 }
 
@@ -249,13 +252,15 @@ punt_socket_inline (vlib_main_t * vm,
 		    punt_type_t pt, ip_address_family_t af)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
+  u32 thread_index = vm->thread_index;
   uword n_packets = frame->n_vectors;
-  struct iovec *iovecs = 0;
   punt_main_t *pm = &punt_main;
   int i;
 
-  u32 node_index = AF_IP4 == af ? udp4_punt_socket_node.index :
-    udp6_punt_socket_node.index;
+  punt_thread_data_t *ptd = &pm->thread_data[thread_index];
+  u32 node_index = (AF_IP4 == af ?
+		    udp4_punt_socket_node.index :
+		    udp6_punt_socket_node.index);
 
   for (i = 0; i < n_packets; i++)
     {
@@ -326,29 +331,31 @@ punt_socket_inline (vlib_main_t * vm,
 
       struct sockaddr_un *caddr = &c->caddr;
 
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  udp_punt_trace_t *t;
-	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
-	}
-
-      /* Re-set iovecs if present. */
-      if (iovecs)
-	_vec_len (iovecs) = 0;
+      /* Re-set iovecs */
+      vec_reset_length (ptd->iovecs);
 
       /* Add packet descriptor */
       packetdesc.sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
       packetdesc.action = 0;
-      vec_add2 (iovecs, iov, 1);
+      vec_add2 (ptd->iovecs, iov, 1);
       iov->iov_base = &packetdesc;
       iov->iov_len = sizeof (packetdesc);
 
       /** VLIB buffer chain -> Unix iovec(s). */
       vlib_buffer_advance (b, -(sizeof (ethernet_header_t)));
-      vec_add2 (iovecs, iov, 1);
+      vec_add2 (ptd->iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
+
+      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  udp_punt_trace_t *t;
+	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
+	  clib_memcpy_fast (t->packet_data,
+			    vlib_buffer_get_current (b),
+			    sizeof (t->packet_data));
+	}
 
       if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
@@ -363,7 +370,7 @@ punt_socket_inline (vlib_main_t * vm,
 		  t->is_midchain = 1;
 		}
 
-	      vec_add2 (iovecs, iov, 1);
+	      vec_add2 (ptd->iovecs, iov, 1);
 
 	      iov->iov_base = b->data + b->current_data;
 	      iov->iov_len = b->current_length;
@@ -375,8 +382,8 @@ punt_socket_inline (vlib_main_t * vm,
       struct msghdr msg = {
 	.msg_name = caddr,
 	.msg_namelen = sizeof (*caddr),
-	.msg_iov = iovecs,
-	.msg_iovlen = vec_len (iovecs),
+	.msg_iov = ptd->iovecs,
+	.msg_iovlen = vec_len (ptd->iovecs),
       };
 
       if (sendmsg (pm->socket_fd, &msg, 0) < (ssize_t) l)
@@ -614,6 +621,7 @@ VLIB_REGISTER_NODE (punt_socket_rx_node) =
 {
  .function = punt_socket_rx,
  .name = "punt-socket-rx",
+ .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
  .type = VLIB_NODE_TYPE_INPUT,
  .state = VLIB_NODE_STATE_INTERRUPT,
  .vector_size = 1,

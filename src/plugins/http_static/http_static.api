@@ -2,7 +2,7 @@
 /** \file
     This file defines static http server control-plane API messages
 */
-option version = "2.0.0";
+option version = "2.1.0";
 
 /** \brief Configure and enable the static http server
     @param client_index - opaque cookie to identify the sender
@@ -29,7 +29,7 @@ autoreply define http_static_enable {
     u32 private_segment_size;
 
     /* Root of the html path */
-    string www_root[limit=256];
+    string www_root[256];
     /* The bind URI */
-    string uri[limit=256];
+    string uri[256];
 };

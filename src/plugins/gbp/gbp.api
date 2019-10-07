@@ -31,6 +31,7 @@ enum gbp_bridge_domain_flags
 typedef gbp_bridge_domain
 {
   u32 bd_id;
+  u32 rd_id;
   vl_api_gbp_bridge_domain_flags_t flags;
   u32 bvi_sw_if_index;
   u32 uu_fwd_sw_if_index;
@@ -60,6 +61,8 @@ define gbp_bridge_domain_details
   vl_api_gbp_bridge_domain_t bd;
 };
 
+typedef u16 gbp_scope;
+
 typedef gbp_route_domain
 {
   u32 rd_id;
@@ -67,6 +70,7 @@ typedef gbp_route_domain
   u32 ip6_table_id;
   u32 ip4_uu_sw_if_index;
   u32 ip6_uu_sw_if_index;
+  vl_api_gbp_scope_t scope;
 };
 
 manual_print autoreply define gbp_route_domain_add
@@ -163,7 +167,7 @@ typedef gbp_endpoint_retention
   u32 remote_ep_timeout;
 };
 
-typeonly define gbp_endpoint_group
+typedef gbp_endpoint_group
 {
   u32 vnid;
   u16 sclass;
@@ -198,7 +202,7 @@ define gbp_endpoint_group_details
   vl_api_gbp_endpoint_group_t epg;
 };
 
-typeonly define gbp_recirc
+typedef gbp_recirc
 {
   u32 sw_if_index;
   u16 sclass;
@@ -231,9 +235,10 @@ enum gbp_subnet_type
   GBP_API_SUBNET_STITCHED_INTERNAL,
   GBP_API_SUBNET_STITCHED_EXTERNAL,
   GBP_API_SUBNET_L3_OUT,
+  GBP_API_SUBNET_ANON_L3_OUT,
 };
 
-typeonly define gbp_subnet
+typedef gbp_subnet
 {
   u32 rd_id;
   u32 sw_if_index;
@@ -299,6 +304,7 @@ typedef gbp_rule
 
 typedef gbp_contract
 {
+  vl_api_gbp_scope_t scope;
   u16 sclass;
   u16 dclass;
   u32 acl_index;
@@ -387,11 +393,18 @@ define gbp_vxlan_tunnel_details
   vl_api_gbp_vxlan_tunnel_t tunnel;
 };
 
-typeonly define gbp_ext_itf
+enum gbp_ext_itf_flags
+{
+  GBP_API_EXT_ITF_F_NONE = 0,
+  GBP_API_EXT_ITF_F_ANON = 1,
+};
+
+typedef gbp_ext_itf
 {
   u32 sw_if_index;
   u32 bd_id;
   u32 rd_id;
+  vl_api_gbp_ext_itf_flags_t flags;
 };
 
 manual_print autoreply define gbp_ext_itf_add_del

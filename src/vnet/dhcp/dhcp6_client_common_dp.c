@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/dhcp/dhcp6_client_common_dp.h>
 #include <vnet/dhcp/dhcp6_ia_na_client_dp.h>
 #include <vnet/dhcp/dhcp6_pd_client_dp.h>

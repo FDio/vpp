@@ -108,7 +108,7 @@ typedef struct ip4_fib_mtrie_8_ply_t_
   i32 n_non_empty_leafs;
 
   /**
-   * The length of the ply's coviering prefix. Also a measure of its depth
+   * The length of the ply's covering prefix. Also a measure of its depth
    * If a leaf in a slot has a mask length longer than this then it is
    * 'non-empty'. Otherwise it is the value of the cover.
    */
@@ -131,7 +131,7 @@ typedef struct
   /**
    * Embed the PLY with the mtrie struct. This means that the Data-plane
    * 'get me the mtrie' returns the first ply, and not an indirect 'pointer'
-   * to it. therefore no cachline misses in the data-path.
+   * to it. therefore no cacheline misses in the data-path.
    */
   ip4_fib_mtrie_16_ply_t root_ply;
 } ip4_fib_mtrie_t;
@@ -147,13 +147,13 @@ void ip4_mtrie_init (ip4_fib_mtrie_t * m);
 void ip4_mtrie_free (ip4_fib_mtrie_t * m);
 
 /**
- * @brief Add a route/rntry to the mtrie
+ * @brief Add a route/entry to the mtrie
  */
 void ip4_fib_mtrie_route_add (ip4_fib_mtrie_t * m,
 			      const ip4_address_t * dst_address,
 			      u32 dst_address_length, u32 adj_index);
 /**
- * @brief remove a route/rntry to the mtrie
+ * @brief remove a route/entry to the mtrie
  */
 void ip4_fib_mtrie_route_del (ip4_fib_mtrie_t * m,
 			      const ip4_address_t * dst_address,
@@ -177,7 +177,7 @@ format_function_t format_ip4_fib_mtrie;
 extern ip4_fib_mtrie_8_ply_t *ip4_ply_pool;
 
 /**
- * Is the leaf terminal (i.e. an LB index) or non-terminak (i.e. a PLY index)
+ * Is the leaf terminal (i.e. an LB index) or non-terminal (i.e. a PLY index)
  */
 always_inline u32
 ip4_fib_mtrie_leaf_is_terminal (ip4_fib_mtrie_leaf_t n)

@@ -45,6 +45,8 @@ DOXY_DIR ?= $(WS_ROOT)/doxygen
 # Primary source directories
 DOXY_SRC ?= src
 DOXY_SRC_DIRECTORIES = \
+	$(shell find $(DOXY_SRC) -name '*.md' -print | xargs dirname \
+	| sort | uniq) \
 	$(DOXY_SRC)/vppinfra \
 	$(DOXY_SRC)/svm \
 	$(DOXY_SRC)/vlib \

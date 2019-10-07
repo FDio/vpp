@@ -210,6 +210,14 @@ _(i64);
 
 #undef _
 
+/* Dummy endian swap functions for IEEE floating-point numbers */
+/* *INDENT-OFF* */
+always_inline f64 clib_net_to_host_f64 (f64 x) { return x; }
+always_inline f64 clib_host_to_net_f64 (f64 x) { return x; }
+always_inline f32 clib_net_to_host_f32 (f32 x) { return x; }
+always_inline f32 clib_host_to_net_f32 (f32 x) { return x; }
+/* *INDENT-ON* */
+
 #endif /* included_clib_byte_order_h */
 
 /*

@@ -112,6 +112,7 @@ public:
   dhcp_client(const interface& itf,
               const std::string& hostname,
               bool set_broadcast_flag = true,
+              const ip_dscp_t& dscp = ip_dscp_t::DSCP_CS0,
               event_listener* ev = nullptr);
 
   /**
@@ -121,6 +122,7 @@ public:
               const std::string& hostname,
               const l2_address_t& client_id,
               bool set_broadcast_flag = true,
+              const ip_dscp_t& dscp = ip_dscp_t::DSCP_CS0,
               event_listener* ev = nullptr);
 
   /**
@@ -257,6 +259,11 @@ private:
    * Flag to control the setting the of DHCP discover's broadcast flag
    */
   const bool m_set_broadcast_flag;
+
+  /**
+   * DSCP setting for generated IP packets
+   */
+  const ip_dscp_t m_dscp;
 
   /**
    * HW configuration for the binding. The bool representing the

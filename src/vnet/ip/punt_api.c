@@ -321,6 +321,7 @@ typedef struct punt_reason_dump_walk_ctx_t_
 {
   vl_api_registration_t *reg;
   u32 context;
+  u8 *name;
 } punt_reason_dump_walk_ctx_t;
 
 static int
@@ -328,6 +329,14 @@ punt_reason_dump_walk_cb (vlib_punt_reason_t id, const u8 * name, void *args)
 {
   punt_reason_dump_walk_ctx_t *ctx = args;
   vl_api_punt_reason_details_t *mp;
+
+  if (ctx->name)
+    {
+      /* user requested a specific punt-reason */
+      if (vec_cmp (name, ctx->name))
+	/* not the reasonn we're lookgin for */
+	return 1;
+    }
 
   mp = vl_msg_api_alloc (sizeof (*mp) + vec_len (name));
   if (!mp)
@@ -357,9 +366,12 @@ vl_api_punt_reason_dump_t_handler (vl_api_punt_reason_dump_t * mp)
   punt_reason_dump_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
+    .name = vl_api_from_api_to_vec (&mp->reason.name),
   };
 
   punt_reason_walk (punt_reason_dump_walk_cb, &ctx);
+
+  vec_free (ctx.name);
 }
 
 #define vl_msg_name_crc_list

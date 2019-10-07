@@ -34,26 +34,31 @@ gbp_route_domain::event_handler gbp_route_domain::m_evh;
 gbp_route_domain::gbp_route_domain(const gbp_route_domain& rd)
   : m_id(rd.id())
   , m_rd(rd.m_rd)
+  , m_scope(rd.m_scope)
   , m_ip4_uu_fwd(rd.m_ip4_uu_fwd)
   , m_ip6_uu_fwd(rd.m_ip6_uu_fwd)
 {
 }
 
 gbp_route_domain::gbp_route_domain(const route_domain& rd,
+                                   scope_t scope,
                                    const interface& ip4_uu_fwd,
                                    const interface& ip6_uu_fwd)
   : m_id(rd.table_id())
   , m_rd(rd.singular())
+  , m_scope(scope)
   , m_ip4_uu_fwd(ip4_uu_fwd.singular())
   , m_ip6_uu_fwd(ip6_uu_fwd.singular())
 {
 }
 
 gbp_route_domain::gbp_route_domain(const route_domain& rd,
+                                   scope_t scope,
                                    const std::shared_ptr<interface> ip4_uu_fwd,
                                    const std::shared_ptr<interface> ip6_uu_fwd)
   : m_id(rd.table_id())
   , m_rd(rd.singular())
+  , m_scope(scope)
   , m_ip4_uu_fwd(ip4_uu_fwd)
   , m_ip6_uu_fwd(ip6_uu_fwd)
 {
@@ -63,9 +68,10 @@ gbp_route_domain::gbp_route_domain(const route_domain& rd,
     m_ip6_uu_fwd = m_ip6_uu_fwd->singular();
 }
 
-gbp_route_domain::gbp_route_domain(const route_domain& rd)
+gbp_route_domain::gbp_route_domain(const route_domain& rd, scope_t scope)
   : m_id(rd.table_id())
   , m_rd(rd.singular())
+  , m_scope(scope)
   , m_ip4_uu_fwd()
   , m_ip6_uu_fwd()
 {
@@ -120,7 +126,7 @@ gbp_route_domain::operator==(const gbp_route_domain& b) const
   else
     equal = false;
 
-  return ((m_rd->key() == b.m_rd->key()) && equal);
+  return ((m_rd->key() == b.m_rd->key()) && m_scope == b.m_scope && equal);
 }
 
 void
@@ -138,10 +144,10 @@ gbp_route_domain::replay()
   if (rc_t::OK == m_id.rc()) {
     if (m_ip4_uu_fwd && m_ip6_uu_fwd)
       HW::enqueue(new gbp_route_domain_cmds::create_cmd(
-        m_id, m_ip4_uu_fwd->handle(), m_ip6_uu_fwd->handle()));
+        m_id, m_scope, m_ip4_uu_fwd->handle(), m_ip6_uu_fwd->handle()));
     else
-      HW::enqueue(new gbp_route_domain_cmds::create_cmd(m_id, handle_t::INVALID,
-                                                        handle_t::INVALID));
+      HW::enqueue(new gbp_route_domain_cmds::create_cmd(
+        m_id, m_scope, handle_t::INVALID, handle_t::INVALID));
   }
 }
 
@@ -157,7 +163,7 @@ std::string
 gbp_route_domain::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-route-domain:[" << m_rd->to_string();
+  s << "gbp-route-domain:[" << m_rd->to_string() << "scope:" << m_scope;
 
   if (m_ip4_uu_fwd)
     s << " v4-uu:[" << m_ip4_uu_fwd->to_string() << "]";
@@ -178,16 +184,13 @@ gbp_route_domain::find(const key_t& key)
 void
 gbp_route_domain::update(const gbp_route_domain& desired)
 {
-  /*
-   * the desired state is always that the interface should be created
-   */
   if (rc_t::OK != m_id.rc()) {
     if (m_ip4_uu_fwd && m_ip6_uu_fwd)
       HW::enqueue(new gbp_route_domain_cmds::create_cmd(
-        m_id, m_ip4_uu_fwd->handle(), m_ip6_uu_fwd->handle()));
+        m_id, m_scope, m_ip4_uu_fwd->handle(), m_ip6_uu_fwd->handle()));
     else
-      HW::enqueue(new gbp_route_domain_cmds::create_cmd(m_id, handle_t::INVALID,
-                                                        handle_t::INVALID));
+      HW::enqueue(new gbp_route_domain_cmds::create_cmd(
+        m_id, m_scope, handle_t::INVALID, handle_t::INVALID));
   }
 }
 
@@ -230,11 +233,12 @@ gbp_route_domain::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.rd.ip4_uu_sw_if_index);
 
     if (ip6_uu_fwd && ip4_uu_fwd) {
-      gbp_route_domain rd(payload.rd.rd_id, *ip4_uu_fwd, *ip6_uu_fwd);
+      gbp_route_domain rd(payload.rd.rd_id, payload.rd.scope, *ip4_uu_fwd,
+                          *ip6_uu_fwd);
       OM::commit(key, rd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << rd.to_string();
     } else {
-      gbp_route_domain rd(payload.rd.rd_id);
+      gbp_route_domain rd(payload.rd.rd_id, payload.rd.scope);
       OM::commit(key, rd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << rd.to_string();
     }

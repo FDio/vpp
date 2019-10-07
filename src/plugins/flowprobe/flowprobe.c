@@ -32,33 +32,13 @@
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <flowprobe/flowprobe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <flowprobe/flowprobe_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <flowprobe/flowprobe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <flowprobe/flowprobe_all_api_h.h>
-#undef vl_printfun
+#include <flowprobe/flowprobe.api_enum.h>
+#include <flowprobe/flowprobe.api_types.h>
 
 flowprobe_main_t flowprobe_main;
 static vlib_node_registration_t flowprobe_timer_node;
 uword flowprobe_walker_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f);
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <flowprobe/flowprobe_all_api_h.h>
-#undef vl_api_version
 
 #define REPLY_MSG_ID_BASE fm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -88,6 +68,7 @@ VNET_FEATURE_INIT (flow_perpacket_l2, static) =
 /* *INDENT-ON* */
 
 /* Macro to finish up custom dump fns */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define FINISH                                  \
     vec_add1 (s, 0);                            \
     vl_print (handle, (char *)s);               \
@@ -756,11 +737,6 @@ vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t * mp)
   REPLY_MACRO (VL_API_FLOWPROBE_PARAMS_REPLY);
 }
 
-/* List of message types that this plugin understands */
-#define foreach_flowprobe_plugin_api_msg				\
-_(FLOWPROBE_TX_INTERFACE_ADD_DEL, flowprobe_tx_interface_add_del)	\
-_(FLOWPROBE_PARAMS, flowprobe_params)
-
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
@@ -980,42 +956,6 @@ VLIB_CLI_COMMAND (flowprobe_show_stats_command, static) = {
 };
 /* *INDENT-ON* */
 
-/**
- * @brief Set up the API message handling tables
- * @param vm vlib_main_t * vlib main data structure pointer
- * @returns 0 to indicate all is well
- */
-static clib_error_t *
-flowprobe_plugin_api_hookup (vlib_main_t * vm)
-{
-  flowprobe_main_t *fm = &flowprobe_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + fm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_flowprobe_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <flowprobe/flowprobe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (flowprobe_main_t * fm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + fm->msg_id_base);
-  foreach_vl_msg_name_crc_flowprobe;
-#undef _
-}
-
 /*
  * Main-core process, sending an interrupt to the per worker input
  * process that spins the per worker timer wheel.
@@ -1076,6 +1016,8 @@ VLIB_REGISTER_NODE (flowprobe_timer_node,static) = {
 };
 /* *INDENT-ON* */
 
+#include <flowprobe/flowprobe.api.c>
+
 /**
  * @brief Set up the API message handling tables
  * @param vm vlib_main_t * vlib main data structure pointer
@@ -1087,26 +1029,13 @@ flowprobe_init (vlib_main_t * vm)
   flowprobe_main_t *fm = &flowprobe_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
   clib_error_t *error = 0;
-  u8 *name;
   u32 num_threads;
   int i;
 
   fm->vnet_main = vnet_get_main ();
 
-  /* Construct the API name */
-  name = format (0, "flowprobe_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  fm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  /* Hook up message handlers */
-  error = flowprobe_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (fm, &api_main);
-
-  vec_free (name);
+  fm->msg_id_base = setup_message_id_table ();
 
   /* Set up time reference pair */
   fm->vlib_time_0 = vlib_time_now (vm);

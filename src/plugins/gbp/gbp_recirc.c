@@ -108,7 +108,7 @@ gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
       /*
        * bind to the bridge-domain of the EPG
        */
-      gr->gr_itf = gbp_itf_add_and_lock (gr->gr_sw_if_index, gg->gg_bd_index);
+      gr->gr_itf = gbp_itf_l2_add_and_lock (gr->gr_sw_if_index, gg->gg_gbd);
 
       /*
        * set the interface into L2 emulation mode
@@ -211,7 +211,7 @@ gbp_recirc_delete (u32 sw_if_index)
       ip6_sw_interface_enable_disable (gr->gr_sw_if_index, 0);
       l2e_disable (gr->gr_sw_if_index);
 
-      gbp_itf_unlock (gr->gr_itf);
+      gbp_itf_unlock (&gr->gr_itf);
 
       gbp_endpoint_group_unlock (gr->gr_epgi);
       gbp_recirc_db[sw_if_index] = INDEX_INVALID;

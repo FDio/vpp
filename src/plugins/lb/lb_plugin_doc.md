@@ -3,8 +3,8 @@
 ## Version
 
 The load balancer plugin is currently in *beta* version.
-Both CLIs and APIs are subject to *heavy* changes.
-Wich also means feedback is really welcome regarding features, apis, etc...
+Both CLIs and APIs are subject to *heavy* changes,
+which also means feedback is really welcome regarding features, apis, etc...
 
 ## Overview
 
@@ -31,7 +31,7 @@ Meaning that for a given VIP, all AS addresses must be of the same family.
 
 3). IPv4/IPv6 + NAT4/NAT6 encap types:
 This type provides kube-proxy data plane on user space,
-which is used to replace linux kernal's kube-proxy based on iptables.
+which is used to replace linux kernel's kube-proxy based on iptables.
 
 Currently, load balancer plugin supports three service types:
 a) Cluster IP plus Port: support any protocols, including TCP, UDP.
@@ -55,11 +55,11 @@ Please refer to below for details:
 https://schd.ws/hosted_files/ossna2017/1e/VPP_K8S_GTPU_OSSNA.pdf
 
 
-## Performances
+## Performance
 
 The load balancer has been tested up to 1 millions flows and still forwards more
 than 3Mpps per core in such circumstances.
-Although 3Mpps seems already good, it is likely that performances will be improved
+Although 3Mpps seems already good, it is likely that performance will be improved
 in next versions.
 
 ## Configuration
@@ -77,10 +77,10 @@ ip4-src-address: the source address used to send encap. packets using IPv4 for G
 ip6-src-address: the source address used to send encap. packets using IPv6 for GRE6 mode.
                  or Node IP6 address for NAT6 mode.
 
-buckets:         the *per-thread* established-connexions-table number of buckets.
+buckets:         the *per-thread* established-connections-table number of buckets.
 
 timeout:         the number of seconds a connection will remain in the
-                 established-connexions-table while no packet for this flow
+                 established-connections-table while no packet for this flow
                  is received.
 
 ### Configure the VIPs

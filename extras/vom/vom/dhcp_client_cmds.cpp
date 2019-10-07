@@ -14,6 +14,7 @@
  */
 
 #include "vom/dhcp_client_cmds.hpp"
+#include "vom/route_api_types.hpp"
 
 DEFINE_VAPI_MSG_IDS_DHCP_API_JSON;
 
@@ -24,12 +25,14 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
                    const handle_t& itf,
                    const std::string& hostname,
                    const l2_address_t& client_id,
-                   bool set_broadcast_flag)
+                   bool set_broadcast_flag,
+                   const ip_dscp_t& dscp)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_hostname(hostname)
   , m_client_id(client_id)
   , m_set_broadcast_flag(set_broadcast_flag)
+  , m_dscp(dscp)
 {
 }
 
@@ -50,6 +53,7 @@ bind_cmd::issue(connection& con)
   payload.client.pid = getpid();
   payload.client.want_dhcp_event = 1;
   payload.client.set_broadcast_flag = m_set_broadcast_flag;
+  payload.client.dscp = to_api(m_dscp);
 
   memset(payload.client.hostname, 0, sizeof(payload.client.hostname));
   memcpy(payload.client.hostname, m_hostname.c_str(),
@@ -71,7 +75,9 @@ bind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Dhcp-client-bind: " << m_hw_item.to_string()
-    << " itf:" << m_itf.to_string() << " hostname:" << m_hostname;
+    << " itf:" << m_itf.to_string() << " hostname:" << m_hostname
+    << " client_id:[" << m_client_id << "] "
+    << "dscp:" << m_dscp.to_string();
 
   return (s.str());
 }
@@ -167,15 +173,16 @@ events_cmd::notify()
 
     const dhcp_client::state_t& s =
       dhcp_client::state_t::from_vpp(payload.lease.state);
-    route::prefix_t pfx(payload.lease.is_ipv6, payload.lease.host_address,
+    route::prefix_t pfx(payload.lease.is_ipv6,
+                        (uint8_t*)&payload.lease.host_address.un,
                         payload.lease.mask_width);
     std::shared_ptr<interface> itf = interface::find(payload.lease.sw_if_index);
 
     if (itf) {
       std::shared_ptr<dhcp_client::lease_t> ev =
         std::make_shared<dhcp_client::lease_t>(
-          s, itf, from_bytes(0, payload.lease.router_address), pfx,
-          reinterpret_cast<const char*>(payload.lease.hostname),
+          s, itf, from_bytes(0, (uint8_t*)&payload.lease.router_address.un),
+          pfx, reinterpret_cast<const char*>(payload.lease.hostname),
           mac_address_t(payload.lease.host_mac));
       m_listener.handle_dhcp_event(ev);
 

@@ -26,23 +26,42 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
   rv = alloc_arena_next (h);
   alloc_arena_next (h) += nbytes;
 
-  if (rv >= alloc_arena_size (h))
+  if (alloc_arena_next (h) > alloc_arena_size (h))
     os_out_of_memory ();
 
   return (void *) (uword) (rv + alloc_arena (h));
 }
 
-
-void BV (clib_bihash_init)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 {
   uword bucket_size;
 
-  nbuckets = 1 << (max_log2 (nbuckets));
+  alloc_arena (h) = (uword) clib_mem_vm_alloc (h->memory_size);
+  alloc_arena_next (h) = 0;
+  alloc_arena_size (h) = h->memory_size;
 
-  h->name = (u8 *) name;
-  h->nbuckets = nbuckets;
-  h->log2_nbuckets = max_log2 (nbuckets);
+  bucket_size = h->nbuckets * sizeof (h->buckets[0]);
+  h->buckets = BV (alloc_aligned) (h, bucket_size);
+  CLIB_MEMORY_BARRIER ();
+  h->instantiated = 1;
+}
+
+void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
+{
+  int i;
+  void *oldheap;
+  BVT (clib_bihash) * h = a->h;
+
+  a->nbuckets = 1 << (max_log2 (a->nbuckets));
+
+  h->name = (u8 *) a->name;
+  h->nbuckets = a->nbuckets;
+  h->log2_nbuckets = max_log2 (a->nbuckets);
+  h->memory_size = a->memory_size;
+  h->instantiated = 0;
+  h->fmt_fn = a->fmt_fn;
+
+  alloc_arena (h) = 0;
 
   /*
    * Make sure the requested size is rational. The max table
@@ -50,19 +69,48 @@ void BV (clib_bihash_init)
    * If someone starts complaining that's not enough, we can shift
    * the offset by CLIB_LOG2_CACHE_LINE_BYTES...
    */
-  ASSERT (memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
+  ASSERT (h->memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
 
-  alloc_arena (h) = (uword) clib_mem_vm_alloc (memory_size);
-  alloc_arena_next (h) = 0;
-  alloc_arena_size (h) = memory_size;
+  /* Add this hash table to the list */
+  if (a->dont_add_to_all_bihash_list == 0)
+    {
+      for (i = 0; i < vec_len (clib_all_bihashes); i++)
+	if (clib_all_bihashes[i] == h)
+	  goto do_lock;
+      oldheap = clib_all_bihash_set_heap ();
+      vec_add1 (clib_all_bihashes, (void *) h);
+      clib_mem_set_heap (oldheap);
+    }
 
-  bucket_size = nbuckets * sizeof (h->buckets[0]);
-  h->buckets = BV (alloc_aligned) (h, bucket_size);
+do_lock:
+  if (h->alloc_lock)
+    clib_mem_free ((void *) h->alloc_lock);
 
-  h->alloc_lock = BV (alloc_aligned) (h, CLIB_CACHE_LINE_BYTES);
+  /*
+   * Set up the lock now, so we can use it to make the first add
+   * thread-safe
+   */
+  h->alloc_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+					  CLIB_CACHE_LINE_BYTES);
   h->alloc_lock[0] = 0;
 
-  h->fmt_fn = NULL;
+  if (a->instantiate_immediately)
+    BV (clib_bihash_instantiate) (h);
+}
+
+void BV (clib_bihash_init)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+{
+  BVT (clib_bihash_init2_args) _a, *a = &_a;
+
+  memset (a, 0, sizeof (*a));
+
+  a->h = h;
+  a->name = name;
+  a->nbuckets = nbuckets;
+  a->memory_size = memory_size;
+
+  BV (clib_bihash_init2) (a);
 }
 
 #if BIHASH_32_64_SVM
@@ -195,6 +243,12 @@ void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
+  int i;
+
+  if (PREDICT_FALSE (h->instantiated == 0))
+    goto never_initialized;
+
+  h->instantiated = 0;
   vec_free (h->working_copies);
   vec_free (h->working_copy_lengths);
 #if BIHASH_32_64_SVM == 0
@@ -204,7 +258,18 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
     (void) close (h->memfd);
 #endif
   clib_mem_vm_free ((void *) (uword) (alloc_arena (h)), alloc_arena_size (h));
+never_initialized:
   clib_memset (h, 0, sizeof (*h));
+  for (i = 0; i < vec_len (clib_all_bihashes); i++)
+    {
+      if ((void *) h == clib_all_bihashes[i])
+	{
+	  vec_delete (clib_all_bihashes, 1, i);
+	  return;
+	}
+    }
+  clib_warning ("Couldn't find hash table %llx on clib_all_bihashes...",
+		(u64) h);
 }
 
 static
@@ -417,6 +482,21 @@ static inline int BV (clib_bihash_add_del_inline)
   int mark_bucket_linear;
   int resplit_once;
 
+  /*
+   * Create the table (is_add=1,2), or flunk the request now (is_add=0)
+   * Use the alloc_lock to protect the instantiate operation.
+   */
+  if (PREDICT_FALSE (h->instantiated == 0))
+    {
+      if (is_add == 0)
+	return (-1);
+
+      BV (clib_bihash_alloc_lock) (h);
+      if (h->instantiated == 0)
+	BV (clib_bihash_instantiate) (h);
+      BV (clib_bihash_alloc_unlock) (h);
+    }
+
   hash = BV (clib_bihash_hash) (add_v);
 
   bucket_index = hash & (h->nbuckets - 1);
@@ -476,6 +556,13 @@ static inline int BV (clib_bihash_add_del_inline)
 	{
 	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
+	      /* Add but do not overwrite? */
+	      if (is_add == 2)
+		{
+		  BV (clib_bihash_unlock_bucket) (b);
+		  return (-2);
+		}
+
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
 	      clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
 	      BV (clib_bihash_unlock_bucket) (b);
@@ -678,6 +765,9 @@ int BV (clib_bihash_search)
 
   ASSERT (valuep);
 
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return -1;
+
   hash = BV (clib_bihash_hash) (search_key);
 
   bucket_index = hash & (h->nbuckets - 1);
@@ -725,6 +815,9 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   u64 used_bytes;
 
   s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
+
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return format (s, "[empty, uninitialized]");
 
   for (i = 0; i < h->nbuckets; i++)
     {
@@ -819,6 +912,9 @@ void BV (clib_bihash_foreach_key_value_pair)
   BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
   void (*fp) (BVT (clib_bihash_kv) *, void *) = callback;
+
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return;
 
   for (i = 0; i < h->nbuckets; i++)
     {

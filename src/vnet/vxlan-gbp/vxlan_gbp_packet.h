@@ -104,6 +104,8 @@ typedef enum
 #undef _
 } __attribute__ ((packed)) vxlan_gbp_flags_t;
 
+#define VXLAN_GBP_FLAGS_GI (VXLAN_GBP_FLAGS_G|VXLAN_GBP_FLAGS_I)
+
 #define foreach_vxlan_gbp_gpflags \
 _ (0x40, D)                       \
 _ (0x20, E)                       \

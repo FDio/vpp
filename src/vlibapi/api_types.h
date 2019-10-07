@@ -20,9 +20,16 @@
 #ifndef included_api_types_h
 #define included_api_types_h
 
+#include <stdbool.h>
+#include <stdarg.h>
 #include <vppinfra/types.h>
 #include <arpa/inet.h>
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /* VPP API string type */
 typedef struct
@@ -31,31 +38,15 @@ typedef struct
   u8 buf[0];
 } __attribute__ ((packed)) vl_api_string_t;
 
-static inline int
-vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
-{
-  memcpy(str->buf, buf, len);
-  str->length = htonl (len);
-  return len + sizeof (u32);
-}
+extern int vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str);
+extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);
+extern u8 * vl_api_from_api_string (vl_api_string_t * astr);
+extern u32 vl_api_string_len (vl_api_string_t * astr);
+extern u8 * vl_api_from_api_to_vec (vl_api_string_t *astr);
+extern u8 *vl_api_format_string (u8 *s, va_list *args);
 
-/* Return a pointer to the API string (not nul terminated */
-static inline u8 *
-vl_api_from_api_string (vl_api_string_t * astr)
-{
-  return astr->buf;
+#ifdef __cplusplus
 }
-
-static inline u32
-vl_api_string_len (vl_api_string_t * astr)
-{
-  return ntohl (astr->length);
-}
-
-static inline char *
-vl_api_from_api_string_c (vl_api_string_t *astr)
-{
-  return strndup((char *)astr->buf, ntohl (astr->length));
-}
+#endif
 
 #endif

@@ -58,9 +58,22 @@ udp_connection_alloc (u32 thread_index)
 void
 udp_connection_free (udp_connection_t * uc)
 {
-  pool_put (udp_main.connections[uc->c_thread_index], uc);
+  u32 thread_index = uc->c_thread_index;
   if (CLIB_DEBUG)
     clib_memset (uc, 0xFA, sizeof (*uc));
+  pool_put (udp_main.connections[thread_index], uc);
+}
+
+void
+udp_connection_delete (udp_connection_t * uc)
+{
+  if ((uc->flags & UDP_CONN_F_OWNS_PORT)
+      || !(uc->flags & UDP_CONN_F_CONNECTED))
+    udp_unregister_dst_port (vlib_get_main (),
+			     clib_net_to_host_u16 (uc->c_lcl_port),
+			     uc->c_is_ip4);
+  session_transport_delete_notify (&uc->connection);
+  udp_connection_free (uc);
 }
 
 u32
@@ -95,7 +108,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
-  listener->owns_port = 1;
+  listener->flags |= UDP_CONN_F_OWNS_PORT;
   clib_spinlock_init (&listener->rx_lock);
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
@@ -148,6 +161,12 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
+  if (PREDICT_FALSE (uc->flags & UDP_CONN_F_CLOSING))
+    {
+      if (!transport_max_tx_dequeue (&uc->connection))
+	udp_connection_delete (uc);
+    }
+
   return 0;
 }
 
@@ -164,17 +183,16 @@ udp_session_get (u32 connection_index, u32 thread_index)
 void
 udp_session_close (u32 connection_index, u32 thread_index)
 {
-  vlib_main_t *vm = vlib_get_main ();
   udp_connection_t *uc;
+
   uc = udp_connection_get (connection_index, thread_index);
-  if (uc)
-    {
-      if (uc->owns_port || !uc->is_connected)
-	udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
-				 uc->c_is_ip4);
-      session_transport_delete_notify (&uc->connection);
-      udp_connection_free (uc);
-    }
+  if (!uc)
+    return;
+
+  if (!transport_max_tx_dequeue (&uc->connection))
+    udp_connection_delete (uc);
+  else
+    uc->flags |= UDP_CONN_F_CLOSING;
 }
 
 void
@@ -216,7 +234,7 @@ format_udp_connection (u8 * s, va_list * args)
   if (verbose)
     {
       if (verbose == 1)
-	s = format (s, "%-15s\n", "-");
+	s = format (s, "%-15s", "-");
       else
 	s = format (s, "\n");
     }
@@ -239,6 +257,7 @@ u8 *
 format_udp_half_open_session (u8 * s, va_list * args)
 {
   u32 __clib_unused tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   clib_warning ("BUG");
   return 0;
 }
@@ -247,9 +266,10 @@ u8 *
 format_udp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
-  u32 __clib_unused verbose = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
   udp_connection_t *uc = udp_listener_get (tci);
-  return format (s, "%U", format_udp_connection, uc);
+  return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
 u16
@@ -306,7 +326,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
-  uc->owns_port = 1;
+  uc->flags |= UDP_CONN_F_OWNS_PORT;
 
   return uc->c_c_index;
 }
@@ -320,11 +340,13 @@ udp_session_get_half_open (u32 conn_index)
   /* We don't poll main thread if we have workers */
   thread_index = vlib_num_workers ()? 1 : 0;
   uc = udp_connection_get (conn_index, thread_index);
+  if (!uc)
+    return 0;
   return &uc->connection;
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t udp_proto = {
+static const transport_proto_vft_t udp_proto = {
   .start_listen = udp_session_bind,
   .connect = udp_open_connection,
   .stop_listen = udp_session_unbind,
@@ -339,8 +361,10 @@ const static transport_proto_vft_t udp_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DGRAM,
-  .service_type = TRANSPORT_SERVICE_CL,
+  .transport_options = {
+    .tx_type = TRANSPORT_TX_DGRAM,
+    .service_type = TRANSPORT_SERVICE_CL,
+  },
 };
 /* *INDENT-ON* */
 
@@ -353,8 +377,10 @@ udpc_connection_open (transport_endpoint_cfg_t * rmt)
   u32 thread_index = vlib_num_workers ()? 1 : vlib_get_main ()->thread_index;
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
+  if (uc_index == (u32) ~ 0)
+    return -1;
   uc = udp_connection_get (uc_index, thread_index);
-  uc->is_connected = 1;
+  uc->flags |= UDP_CONN_F_CONNECTED;
   return uc_index;
 }
 
@@ -362,15 +388,17 @@ u32
 udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_connection_t *listener;
-  u32 li;
-  li = udp_session_bind (session_index, lcl);
-  listener = udp_listener_get (li);
-  listener->is_connected = 1;
-  return li;
+  u32 li_index;
+  li_index = udp_session_bind (session_index, lcl);
+  if (li_index == (u32) ~ 0)
+    return -1;
+  listener = udp_listener_get (li_index);
+  listener->flags |= UDP_CONN_F_CONNECTED;
+  return li_index;
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t udpc_proto = {
+static const transport_proto_vft_t udpc_proto = {
   .start_listen = udpc_connection_listen,
   .stop_listen = udp_session_unbind,
   .connect = udpc_connection_open,
@@ -385,8 +413,11 @@ const static transport_proto_vft_t udpc_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DGRAM,
-  .service_type = TRANSPORT_SERVICE_CL,
+  .transport_options = {
+    .tx_type = TRANSPORT_TX_DGRAM,
+    .service_type = TRANSPORT_SERVICE_VC,
+    .half_open_has_fifos = 1
+  },
 };
 /* *INDENT-ON* */
 

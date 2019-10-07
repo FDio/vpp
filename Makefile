@@ -20,6 +20,7 @@ SAMPLE_PLUGIN?=no
 STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
+DPDK_CONFIG?=no-pci
 
 ,:=,
 define disable_plugins
@@ -101,7 +102,7 @@ else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel python36-ply
-	RPM_DEPENDS += python36-devel python36-pip
+	RPM_DEPENDS += python3-devel python3-pip
 	RPM_DEPENDS += python-virtualenv python36-jsonschema
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
@@ -218,6 +219,8 @@ help:
 	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo " checkfeaturelist    - check FEATURE.yaml according to schema"
 	@echo " featurelist         - dump feature list in markdown"
+	@echo " json-api-files      - (re)-generate json api files"
+	@echo " json-api-files-debug - (re)-generate json api files for debug target"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv         - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean        - Remove the generated files from the Sphinx docs"
@@ -226,6 +229,7 @@ help:
 	@echo " test-cov            - generate code coverage report for test framework"
 	@echo " test-wipe-cov       - wipe code coverage report for test framework"
 	@echo " test-checkstyle     - check PEP8 compliance for test framework"
+	@echo " test-refresh-deps   - refresh the Python dependencies for the tests"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -420,6 +424,9 @@ test-all-debug:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
 
+papi-wipe:
+	@make -C test papi-wipe
+
 test-help:
 	@make -C test help
 
@@ -445,7 +452,7 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov:
-	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install japi-install
+	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
@@ -454,6 +461,9 @@ test-wipe-cov:
 
 test-checkstyle:
 	@make -C test checkstyle
+
+test-refresh-deps:
+	@make -C test refresh-deps
 
 retest:
 	$(call test,vpp,vpp,retest)
@@ -530,6 +540,12 @@ dpdk-install-dev:
 install-ext-deps:
 	make -C build/external install-$(PKG)
 
+json-api-files:
+	$(WS_ROOT)/src/tools/vppapigen/generate_json.py
+
+json-api-files-debug:
+	$(WS_ROOT)/src/tools/vppapigen/generate_json.py --debug-target
+
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
 	@rm $<
@@ -590,7 +606,7 @@ docs: $(DOCS_DIR)
 docs-clean:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh clean)
 
-verify: install-dep $(BR)/.deps.ok install-ext-deps
+pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
@@ -601,7 +617,15 @@ verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
+ifeq ($(OS_ID),ubuntu)
+	$(call banner,"Building VOM $(PKG) package")
+	@make vom-pkg-deb
+endif
+
+verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
+	$(call banner,"Testing vppapigen")
+	@src/tools/vppapigen/test_vppapigen.py
 	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif

@@ -40,6 +40,7 @@ install(
 ##############################################################################
 set(VPPINFRA_SRCS
   backtrace.c
+  bihash_all_vector.c
   cpu.c
   cuckoo_template.c
   elf.c
@@ -55,6 +56,7 @@ set(VPPINFRA_SRCS
   macros.c
   maplog.c
   mhash.c
+  mpcap.c
   pcap.c
   pmalloc.c
   pool.c
@@ -70,7 +72,6 @@ set(VPPINFRA_SRCS
   string.c
   time.c
   time_range.c
-  timer.c
   timing_wheel.c
   tw_timer_2t_1w_2048sl.c
   tw_timer_16t_2w_512sl.c
@@ -122,6 +123,7 @@ set(VPPINFRA_HEADERS
   hash.h
   heap.h
   lb_hash_hash.h
+  llist.h
   lock.h
   longjmp.h
   macros.h
@@ -134,6 +136,7 @@ set(VPPINFRA_HEADERS
   mhash.h
   mheap_bootstrap.h
   mheap.h
+  mpcap.h
   os.h
   pcap.h
   pcap_funcs.h
@@ -155,7 +158,6 @@ set(VPPINFRA_HEADERS
   string.h
   time.h
   time_range.h
-  timer.h
   timing_wheel.h
   tw_timer_16t_1w_2048sl.h
   tw_timer_16t_2w_512sl.h
@@ -238,9 +240,11 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     ptclosure
     random
     random_isaac
+    rwlock
     serialize
     slist
     socket
+    spinlock
     time
     time_range
     timing_wheel
@@ -251,7 +255,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
   )
     add_vpp_executable(test_${test}
       SOURCES test_${test}.c
-      LINK_LIBRARIES vppinfra
+      LINK_LIBRARIES vppinfra pthread
       )
   endforeach()
 

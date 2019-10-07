@@ -21,6 +21,7 @@ add_vpp_plugin(lb
 
   API_FILES
   lb.api
+  lb_types.api
 
   INSTALL_HEADERS
   lb.h

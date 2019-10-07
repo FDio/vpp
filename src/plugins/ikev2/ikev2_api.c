@@ -26,26 +26,8 @@
 #include <ikev2/ikev2_priv.h>
 
 /* define message IDs */
-#include <plugins/ikev2/ikev2_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <ikev2/ikev2_all_api.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <ikev2/ikev2_all_api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ikev2/ikev2_all_api.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ikev2/ikev2_all_api.h>
-#undef vl_api_version
+#include <plugins/ikev2/ikev2.api_enum.h>
+#include <plugins/ikev2/ikev2.api_types.h>
 
 extern ikev2_main_t ikev2_main;
 
@@ -53,22 +35,6 @@ extern ikev2_main_t ikev2_main;
 #define IKEV2_PLUGIN_VERSION_MINOR 0
 #define REPLY_MSG_ID_BASE ikev2_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_ikev2_api_msg                                   \
-_(IKEV2_PLUGIN_GET_VERSION, ikev2_plugin_get_version)           \
-_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                 \
-_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)               \
-_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                   \
-_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                   \
-_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)                     \
-_(IKEV2_SET_RESPONDER, ikev2_set_responder)                     \
-_(IKEV2_SET_IKE_TRANSFORMS, ikev2_set_ike_transforms)           \
-_(IKEV2_SET_ESP_TRANSFORMS, ikev2_set_esp_transforms)           \
-_(IKEV2_SET_SA_LIFETIME, ikev2_set_sa_lifetime)                 \
-_(IKEV2_INITIATE_SA_INIT, ikev2_initiate_sa_init)               \
-_(IKEV2_INITIATE_DEL_IKE_SA, ikev2_initiate_del_ike_sa)         \
-_(IKEV2_INITIATE_DEL_CHILD_SA, ikev2_initiate_del_child_sa)     \
-_(IKEV2_INITIATE_REKEY_CHILD_SA, ikev2_initiate_rekey_child_sa)
 
 static void
 vl_api_ikev2_plugin_get_version_t_handler (vl_api_ikev2_plugin_get_version_t *
@@ -397,64 +363,16 @@ static void
   REPLY_MACRO (VL_API_IKEV2_INITIATE_REKEY_CHILD_SA_REPLY);
 }
 
-/*
- * ikev2_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <ikev2/ikev2_all_api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (ikev2_main_t * im, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + im->msg_id_base);
-  foreach_vl_msg_name_crc_ikev2;
-#undef _
-}
-
-static clib_error_t *
-ikev2_plugin_api_hookup (vlib_main_t * vm)
-{
-  ikev2_main_t *im = &ikev2_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers(VL_API_##N + im->msg_id_base, #n,     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_ikev2_api_msg;
-#undef _
-
-  return (NULL);
-}
-
+#include <ikev2/ikev2.api.c>
 static clib_error_t *
 ikev2_api_init (vlib_main_t * vm)
 {
   ikev2_main_t *im = &ikev2_main;
-  clib_error_t *error = 0;
-  u8 *name;
-
-  name = format (0, "ikev2_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  im->msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
-					    VL_MSG_FIRST_AVAILABLE);
+  im->msg_id_base = setup_message_id_table ();
 
-  error = ikev2_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (im, &api_main);
-
-  vec_free (name);
-
-  return (error);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (ikev2_api_init);

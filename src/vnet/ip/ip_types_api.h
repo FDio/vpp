@@ -23,15 +23,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_types.h>
 #include <vnet/mfib/mfib_types.h>
-
-/**
- * Forward declarations so we need not #include the API definitions here
- */
-typedef u8 vl_api_ip6_address_t[16];
-typedef u8 vl_api_ip4_address_t[4];
-struct _vl_api_address;
-struct _vl_api_prefix;
-struct _vl_api_mprefix;
+#include <vlibapi/api_types.h>
+#include <vnet/ip/ip.api_types.h>
 
 /**
  * These enum decode/encodes use 'int' as the type for the enum becuase
@@ -41,6 +34,8 @@ extern int ip_address_family_decode (int _af, ip_address_family_t * out);
 extern int ip_address_family_encode (ip_address_family_t af);
 extern int ip_proto_decode (int _af, ip_protocol_t * out);
 extern int ip_proto_encode (ip_protocol_t af);
+extern ip_dscp_t ip_dscp_decode (u8 _dscp);
+extern u8 ip_dscp_encode (ip_dscp_t dscp);
 
 /**
  * Decode/Encode for struct/union types

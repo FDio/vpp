@@ -47,7 +47,6 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vppinfra/timer.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -61,6 +60,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <netinet/tcp.h>
+#include <math.h>
 
 /** ANSI escape code. */
 #define ESC "\x1b"
@@ -293,6 +293,7 @@ typedef enum
   UNIX_CLI_PARSE_ACTION_WORDRIGHT,	/**< Jump cursor to start of right word */
   UNIX_CLI_PARSE_ACTION_ERASELINELEFT,	/**< Erase line to left of cursor */
   UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,	/**< Erase line to right & including cursor */
+  UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT,	/**< Erase word left */
   UNIX_CLI_PARSE_ACTION_CLEAR,		/**< Clear the terminal */
   UNIX_CLI_PARSE_ACTION_REVSEARCH,	/**< Search backwards in command history */
   UNIX_CLI_PARSE_ACTION_FWDSEARCH,	/**< Search forwards in command history */
@@ -359,6 +360,7 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
   _(CTL ('D'), UNIX_CLI_PARSE_ACTION_ERASERIGHT),
   _(CTL ('U'), UNIX_CLI_PARSE_ACTION_ERASELINELEFT),
   _(CTL ('K'), UNIX_CLI_PARSE_ACTION_ERASELINERIGHT),
+  _(CTL ('W'), UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT),
   _(CTL ('Y'), UNIX_CLI_PARSE_ACTION_YANK),
   _(CTL ('L'), UNIX_CLI_PARSE_ACTION_CLEAR),
   _(ESC "b", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* Alt-B */
@@ -451,6 +453,21 @@ typedef enum
   UNIX_CLI_PROCESS_EVENT_QUIT,	      /**< A CLI session wants to close. */
 } unix_cli_process_event_type_t;
 
+/** CLI session telnet negotiation timer events. */
+typedef enum
+{
+  UNIX_CLI_NEW_SESSION_EVENT_ADD, /**< Add a CLI session to the new session list */
+} unix_cli_timeout_event_type_t;
+
+/** Each new session is stored on a list with a deadline after which
+ * a prompt is issued, in case the session TELNET negotiation fails to
+ * complete. */
+typedef struct
+{
+  uword cf_index; /**< Session index of the new session. */
+  f64 deadline;	  /**< Deadline after which the new session must have a prompt. */
+} unix_cli_new_session_t;
+
 /** CLI global state. */
 typedef struct
 {
@@ -468,6 +485,12 @@ typedef struct
 
   /** File pool index of current input. */
   u32 current_input_file_index;
+
+  /** New session process node identifier */
+  u32 new_session_process_node_index;
+
+  /** List of new sessions */
+  unix_cli_new_session_t *new_sessions;
 } unix_cli_main_t;
 
 /** CLI global state */
@@ -1240,24 +1263,108 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
 
 }
 
-/** @brief A failsafe triggered on a timer to ensure we send the prompt
- * to telnet sessions that fail to negotiate the terminal type. */
-static void
-unix_cli_file_welcome_timer (any arg, f64 delay)
+/**
+ * @brief A failsafe manager that ensures CLI sessions issue an initial
+ * prompt if TELNET negotiation fails.
+ */
+static uword
+unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+			      vlib_frame_t * f)
 {
   unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
-  (void) delay;
+  uword event_type, *event_data = 0;
+  f64 wait = 10.0;
 
-  /* Check the connection didn't close already */
-  if (pool_is_free_index (cm->cli_file_pool, (uword) arg))
-    return;
+  while (1)
+    {
+      if (vec_len (cm->new_sessions) > 0)
+	wait = vlib_process_wait_for_event_or_clock (vm, wait);
+      else
+	vlib_process_wait_for_event (vm);
 
-  cf = pool_elt_at_index (cm->cli_file_pool, (uword) arg);
+      event_type = vlib_process_get_events (vm, &event_data);
 
-  if (!cf->started)
-    unix_cli_file_welcome (cm, cf);
+      switch (event_type)
+	{
+	case ~0:		/* no events => timeout */
+	  break;
+
+	case UNIX_CLI_NEW_SESSION_EVENT_ADD:
+	  {
+	    /* Add an identifier to the new session list */
+	    unix_cli_new_session_t ns;
+
+	    ns.cf_index = event_data[0];
+	    ns.deadline = vlib_time_now (vm) + 1.0;
+
+	    vec_add1 (cm->new_sessions, ns);
+
+	    if (wait > 0.1)
+	      wait = 0.1;	/* force a re-evaluation soon, but not too soon */
+	  }
+	  break;
+
+	default:
+	  clib_warning ("BUG: unknown event type 0x%wx", event_type);
+	  break;
+	}
+
+      vec_reset_length (event_data);
+
+      if (vlib_process_suspend_time_is_zero (wait))
+	{
+	  /* Scan the list looking for expired deadlines.
+	   * Emit needed prompts and remove from the list.
+	   * While scanning, look for the nearest new deadline
+	   * for the next iteration.
+	   * Since the list is ordered with newest sessions first
+	   * we can make assumptions about expired sessions being
+	   * contiguous at the beginning and the next deadline is the
+	   * next entry on the list, if any.
+	   */
+	  f64 now = vlib_time_now (vm);
+	  unix_cli_new_session_t *nsp;
+	  word index = 0;
+
+	  wait = INFINITY;
+
+	  vec_foreach (nsp, cm->new_sessions)
+	  {
+	    if (vlib_process_suspend_time_is_zero (nsp->deadline - now))
+	      {
+		/* Deadline reached */
+		unix_cli_file_t *cf;
+
+		/* Mark the highwater */
+		index++;
+
+		/* Check the connection didn't close already */
+		if (pool_is_free_index (cm->cli_file_pool, nsp->cf_index))
+		  continue;
+
+		cf = pool_elt_at_index (cm->cli_file_pool, nsp->cf_index);
+
+		if (!cf->started)
+		  unix_cli_file_welcome (cm, cf);
+	      }
+	    else
+	      {
+		wait = nsp->deadline - now;
+		break;
+	      }
+	  }
+
+	  if (index)
+	    {
+	      /* We have sessions to remove */
+	      vec_delete (cm->new_sessions, index, 0);
+	    }
+	}
+    }
+
+  return 0;
 }
+
 
 /** @brief A mostly no-op Telnet state machine.
  * Process Telnet command bytes in a way that ensures we're mostly
@@ -1509,6 +1616,51 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       _vec_len (cf->current_command) = cf->cursor;
 
       cf->search_mode = 0;
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT:
+      /* calculate num of caracter to be erased */
+      delta = 0;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] == ' ')
+	delta++;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] != ' ')
+	delta++;
+
+      if (vec_len (cf->current_command))
+	{
+	  if (cf->cursor > 0)
+	    {
+	      /* move cursor left delta times */
+	      for (j = delta; j > 0; j--, cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      save = cf->current_command + cf->cursor;
+
+	      /* redraw remainder of line */
+	      memmove (cf->current_command + cf->cursor,
+		       cf->current_command + cf->cursor + delta,
+		       _vec_len (cf->current_command) - cf->cursor - delta);
+	      unix_vlib_cli_output_cooked (cf, uf,
+					   cf->current_command + cf->cursor,
+					   _vec_len (cf->current_command) -
+					   cf->cursor);
+	      cf->cursor += _vec_len (cf->current_command) - cf->cursor;
+
+	      /* print delta amount of blank spaces,
+	       * then finally fix the cursor position */
+	      for (j = delta; j > 0; j--, cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      for (j = delta; j > 0; j--, cf->cursor++)
+		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      for (; (cf->current_command + cf->cursor) > save; cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      _vec_len (cf->current_command) -= delta;
+	    }
+	}
+      cf->search_mode = 0;
+      cf->excursion = 0;
+      vec_reset_length (cf->search_key);
       break;
 
     case UNIX_CLI_PARSE_ACTION_LEFT:
@@ -2712,7 +2864,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       static vlib_node_registration_t r = {
 	.function = unix_cli_process,
 	.type = VLIB_NODE_TYPE_PROCESS,
-	.process_log2_n_stack_bytes = 16,
+	.process_log2_n_stack_bytes = 17,
       };
 
       r.name = name;
@@ -2832,9 +2984,22 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       unix_vlib_cli_output_raw (cf, uf, charmode_option,
 				ARRAY_LEN (charmode_option));
 
-      /* In case the client doesn't negotiate terminal type, use
-       * a timer to kick off the initial prompt. */
-      timer_call (unix_cli_file_welcome_timer, cf_index, 1);
+      if (cm->new_session_process_node_index == ~0)
+	{
+	  /* Create thw new session deadline process */
+	  cm->new_session_process_node_index =
+	    vlib_process_create (um->vlib_main, "unix-cli-new-session",
+				 unix_cli_new_session_process,
+				 16 /* log2_n_stack_bytes */ );
+	}
+
+      /* In case the client doesn't negotiate terminal type, register
+       * our session with a process that will emit the prompt if
+       * a deadline passes */
+      vlib_process_signal_event (um->vlib_main,
+				 cm->new_session_process_node_index,
+				 UNIX_CLI_NEW_SESSION_EVENT_ADD, cf_index);
+
     }
 
   return error;
@@ -3002,7 +3167,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  while (i && tmp[--i] != '/')
 	    ;
 
-	  tmp[i] = 0;
+	  tmp[i] = '\0';
 
 	  if (i)
 	    vlib_unix_recursive_mkdir ((char *) tmp);
@@ -3685,6 +3850,12 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
 static clib_error_t *
 unix_cli_init (vlib_main_t * vm)
 {
+  unix_cli_main_t *cm = &unix_cli_main;
+
+  /* Breadcrumb to indicate the new session process
+   * has not been started */
+  cm->new_session_process_node_index = ~0;
+
   return 0;
 }
 

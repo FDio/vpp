@@ -11,9 +11,11 @@ import threading
 import signal
 import psutil
 import re
+import multiprocessing
 from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
+import framework
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN
@@ -729,11 +731,21 @@ if __name__ == '__main__':
     debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver"]
 
     debug_core = os.getenv("DEBUG", "").lower() == "core"
-    compress_core = os.getenv("CORE_COMPRESS", "").lower() in ("y", "yes", "1")
+    compress_core = framework.BoolEnvironmentVariable("CORE_COMPRESS")
 
-    step = os.getenv("STEP", "n").lower() in ("y", "yes", "1")
+    step = framework.BoolEnvironmentVariable("STEP")
+    force_foreground = framework.BoolEnvironmentVariable("FORCE_FOREGROUND")
 
-    run_interactive = debug or step
+    run_interactive = debug or step or force_foreground
+
+    try:
+        num_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+        num_cpus = multiprocessing.cpu_count()
+    shm_free = psutil.disk_usage('/dev/shm').free
+
+    print('OS reports %s available cpu(s). Free shm: %s' % (
+        num_cpus, "{:,}MB".format(shm_free / (1024 * 1024))))
 
     test_jobs = os.getenv("TEST_JOBS", "1").lower()  # default = 1 process
     if test_jobs == 'auto':
@@ -741,7 +753,6 @@ if __name__ == '__main__':
             concurrent_tests = 1
             print('Interactive mode required, running on one core')
         else:
-            shm_free = psutil.disk_usage('/dev/shm').free
             shm_max_processes = 1
             if shm_free < min_req_shm:
                 raise Exception('Not enough free space in /dev/shm. Required '
@@ -755,8 +766,11 @@ if __name__ == '__main__':
                   % concurrent_tests)
     elif test_jobs.isdigit():
         concurrent_tests = int(test_jobs)
+        print("Running on %s core(s) as set by 'TEST_JOBS'." %
+              concurrent_tests)
     else:
         concurrent_tests = 1
+        print('Running on one core.')
 
     if run_interactive and concurrent_tests > 1:
         raise NotImplementedError(
@@ -806,6 +820,7 @@ if __name__ == '__main__':
 
     if run_interactive and suites:
         # don't fork if requiring interactive terminal
+        print('Running tests in foreground in the current process')
         full_suite = unittest.TestSuite()
         map(full_suite.addTests, suites)
         result = VppTestRunner(verbosity=verbose,
@@ -824,6 +839,8 @@ if __name__ == '__main__':
 
         sys.exit(not was_successful)
     else:
+        print('Running each VPPTestCase in a separate background process'
+              ' with {} parallel process(es)'.format(concurrent_tests))
         exit_code = 0
         while suites and attempts > 0:
             results = run_forked(suites)

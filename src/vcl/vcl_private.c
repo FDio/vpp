@@ -191,6 +191,9 @@ vcl_worker_alloc_and_init ()
   if (vcl_get_worker_index () != ~0)
     return 0;
 
+  /* Use separate heap map entry for worker */
+  clib_mem_set_thread_index ();
+
   if (pool_elts (vcm->workers) == vcm->cfg.max_workers)
     {
       VDBG (0, "max-workers %u limit reached", vcm->cfg.max_workers);
@@ -271,6 +274,12 @@ vcl_worker_set_bapi (void)
 	}
     }
   return -1;
+}
+
+svm_msg_q_t *
+vcl_worker_ctrl_mq (vcl_worker_t * wrk)
+{
+  return wrk->ctrl_mq;
 }
 
 void

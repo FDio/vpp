@@ -109,10 +109,6 @@ punt_replicate (vlib_main_t * vm,
 	  punt_trace_t *t;
 
 	  c0 = vlib_get_buffer (vm, ci0);
-
-	  if (c0 != b0)
-	    vlib_buffer_copy_trace_flag (vm, b0, ci0);
-
 	  t = vlib_add_trace (vm, node, c0, sizeof (*t));
 	  t->pt_reason = pr0;
 	}

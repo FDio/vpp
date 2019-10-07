@@ -57,6 +57,7 @@ typedef enum
   STATE_APP_ENABLED,
   STATE_APP_ATTACHED,
   STATE_APP_ADDING_WORKER,
+  STATE_APP_ADDING_TLS_DATA,
   STATE_APP_FAILED,
   STATE_APP_READY
 } app_state_t;
@@ -167,9 +168,13 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  /* VCL session index of the listening session (if any) */
+  u32 listener_index;
+  /* Accepted sessions on this listener */
+  int n_accepted_sessions;
   u8 has_rx_evt;
   u32 attr;
-  u64 transport_opts;
+  u64 parent_handle;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
@@ -246,6 +251,9 @@ typedef struct vcl_worker_
 
   /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;
+
+  /** VPP mq to be used for exchanging control messages */
+  svm_msg_q_t *ctrl_mq;
 
   /** Message queues epoll fd. Initialized only if using mqs with eventfds */
   int mqs_epfd;
@@ -325,6 +333,9 @@ typedef struct vppcom_main_t_
   /** Mapped segments table */
   uword *segment_table;
 
+  /** Control mq obtained from attach */
+  svm_msg_q_t *ctrl_mq;
+
   fifo_segment_main_t segment_main;
 
 #ifdef VCL_ELOG
@@ -341,6 +352,7 @@ typedef struct vppcom_main_t_
 extern vppcom_main_t *vcm;
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
+#define VCL_INVALID_SESSION_HANDLE ((u64)~0)
 #define VCL_INVALID_SEGMENT_INDEX ((u32)~0)
 #define VCL_INVALID_SEGMENT_HANDLE ((u64)~0)
 
@@ -351,6 +363,7 @@ vcl_session_alloc (vcl_worker_t * wrk)
   pool_get (wrk->sessions, s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
+  s->listener_index = VCL_INVALID_SESSION_INDEX;
   return s;
 }
 
@@ -446,6 +459,26 @@ vcl_session_table_del_listener (vcl_worker_t * wrk, u64 listener_handle)
   hash_unset (wrk->session_index_by_vpp_handles, listener_handle);
 }
 
+static inline int
+vcl_session_is_connectable_listener (vcl_worker_t * wrk,
+				     vcl_session_t * session)
+{
+  /* Tell if we session_handle is a QUIC session.
+   * We can be in the following cases :
+   * Listen session <- QUIC session <- Stream session
+   * QUIC session <- Stream session
+   */
+  vcl_session_t *ls;
+  if (session->session_type != VPPCOM_PROTO_QUIC)
+    return 0;
+  if (session->listener_index == VCL_INVALID_SESSION_INDEX)
+    return !(session->session_state & STATE_LISTEN);
+  ls = vcl_session_get_w_handle (wrk, session->listener_index);
+  if (!ls)
+    return VPPCOM_EBADFD;
+  return ls->session_state & STATE_LISTEN;
+}
+
 static inline vcl_session_t *
 vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
 {
@@ -466,7 +499,8 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
       return 0;
     }
 
-  ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
+  ASSERT ((session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ)) ||
+	  vcl_session_is_connectable_listener (wrk, session));
   return session;
 }
 
@@ -520,6 +554,7 @@ vcl_worker_t *vcl_worker_alloc_and_init (void);
 void vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
 int vcl_worker_set_bapi (void);
+svm_msg_q_t *vcl_worker_ctrl_mq (vcl_worker_t * wrk);
 
 void vcl_flush_mq_events (void);
 void vcl_cleanup_bapi (void);
@@ -571,14 +606,13 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
  * VCL Binary API
  */
 int vppcom_connect_to_vpp (char *app_name);
+void vppcom_disconnect_from_vpp (void);
 void vppcom_init_error_string_table (void);
 void vppcom_send_session_enable_disable (u8 is_enable);
 void vppcom_app_send_attach (void);
 void vppcom_app_send_detach (void);
-void vppcom_send_connect_sock (vcl_session_t * session);
+void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 void vppcom_send_disconnect_session (u64 vpp_handle);
-void vppcom_send_bind_sock (vcl_session_t * session);
-void vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_application_tls_cert_add (vcl_session_t * session,
 					   char *cert, u32 cert_len);

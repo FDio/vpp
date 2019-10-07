@@ -14,19 +14,66 @@
  * limitations under the License.
  */
 
-typedef u8 ip4_address[4];
-typedef u8 ip6_address[16];
+option version = "3.0.0";
+manual_print typedef u8 ip4_address[4];
+manual_print typedef u8 ip6_address[16];
 
 enum address_family {
   ADDRESS_IP4 = 0,
   ADDRESS_IP6,
 };
 
+/* ECN code points - RFC 3168
+   https://tools.ietf.org/html/rfc3168
+*/
+enum ip_ecn : u8 {
+  IP_API_ECN_NONE = 0,
+  IP_API_ECN_ECT0 = 1,
+  IP_API_ECN_ECT1 = 2,
+  IP_API_ECN_CE = 3,
+};
+
+/* DSCP code points - RFC 2474
+   https://tools.ietf.org/html/rfc2474
+   Values other than these RFC defined values are accepted.
+*/
+enum ip_dscp : u8 {
+  IP_API_DSCP_CS0 =  0,
+  IP_API_DSCP_CS1 = 8,
+  IP_API_DSCP_AF11 = 10,
+  IP_API_DSCP_AF12 = 12,
+  IP_API_DSCP_AF13 = 14,
+  IP_API_DSCP_CS2 =  16,
+  IP_API_DSCP_AF21 = 18,
+  IP_API_DSCP_AF22 = 20,
+  IP_API_DSCP_AF23 = 22,
+  IP_API_DSCP_CS3 =  24,
+  IP_API_DSCP_AF31 = 26,
+  IP_API_DSCP_AF32 = 28,
+  IP_API_DSCP_AF33 = 30,
+  IP_API_DSCP_CS4 =  32,
+  IP_API_DSCP_AF41 = 34,
+  IP_API_DSCP_AF42 = 36,
+  IP_API_DSCP_AF43 = 38,
+  IP_API_DSCP_CS5 =  40,
+  IP_API_DSCP_EF =   46,
+  IP_API_DSCP_CS6 =  48,
+  IP_API_DSCP_CS7 =  50,
+};
+
 enum ip_proto {
+  IP_API_PROTO_HOPOPT = 0,
+  IP_API_PROTO_ICMP = 1,
+  IP_API_PROTO_IGMP = 2,
   IP_API_PROTO_TCP = 6,
   IP_API_PROTO_UDP = 17,
+  IP_API_PROTO_GRE = 47,
+  IP_API_PROTO_AH = 50,
+  IP_API_PROTO_ESP = 51,
   IP_API_PROTO_EIGRP = 88,
   IP_API_PROTO_OSPF = 89,
+  IP_API_PROTO_SCTP = 132,
+  IP_API_PROTO_RESERVED = 255,
 };
 
 union address_union {
@@ -34,14 +81,14 @@ union address_union {
   vl_api_ip6_address_t ip6;
 };
 
-typedef address {
+manual_print typedef address {
   vl_api_address_family_t af;
   vl_api_address_union_t un;
 };
 
-typedef prefix {
+manual_print typedef prefix {
   vl_api_address_t address;
-  u8 address_length;
+  u8 len;
 };
 
 typedef mprefix {
@@ -51,12 +98,40 @@ typedef mprefix {
   vl_api_address_union_t src_address;
 };
 
-typedef ip6_prefix {
-  vl_api_ip6_address_t prefix;
+manual_print typedef ip6_prefix {
+  vl_api_ip6_address_t address;
   u8 len;
 };
 
-typedef ip4_prefix {
-  vl_api_ip4_address_t prefix;
+manual_print typedef ip4_prefix {
+  vl_api_ip4_address_t address;
   u8 len;
+};
+
+/** \brief
+ *
+ * The vl_api_[ip4|ip6]_address_with_prefix_t types are used as a type to denote
+ * both an IP address and a prefix. I.e. in CIDR notation
+ * '192.168.10.1/24' the address is 192.168.10.1 and the network
+ * prefix is 192.168.10.0/24.
+ *
+ * If only an address is needed use: vl_api_address_t types and if
+ * only a network prefix is needed (i.e. no hosts bits), then use the
+ * vl_api_prefix_t types.
+ *
+ **/
+
+manual_print typedef vl_api_prefix_t address_with_prefix;
+manual_print typedef vl_api_ip4_prefix_t ip4_address_with_prefix;
+manual_print typedef vl_api_ip6_prefix_t ip6_address_with_prefix;
+
+/** \brief A context for matching prefixes against.  (Think ip prefix list.)
+    The meaning (exact match / want subnets) of an unset matcher is left to the implementer.
+    @param le - le mut be <= to prefix.len. Default: 255 (not set).
+    @param ge - ge must be greater than le and <= max_size of prefix. Default: 255 (not set).
+
+*/
+typedef prefix_matcher {
+  u8 le; /* [default=255] */
+  u8 ge; /* [default=255] */
 };

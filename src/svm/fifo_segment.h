@@ -192,7 +192,7 @@ void fifo_segment_update_free_bytes (fifo_segment_t * fs);
  * @param fs		fifo segment
  * @return		free bytes on chunk free lists
  */
-u32 fifo_segment_chunk_prealloc_bytes (fifo_segment_t * fs);
+u32 fifo_segment_fl_chunk_bytes (fifo_segment_t * fs);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
 svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);

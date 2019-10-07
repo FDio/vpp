@@ -311,7 +311,7 @@ vls_listener_wrk_stop_listen (vcl_locked_session_t * vls, u32 wrk_index)
   s = vcl_session_get (wrk, vls->session_index);
   if (s->session_state != STATE_LISTEN)
     return;
-  vppcom_send_unbind_sock (wrk, s->vpp_handle);
+  vcl_send_session_unlisten (wrk, s);
   s->session_state = STATE_LISTEN_NO_MQ;
   vls_listener_wrk_set (vls, wrk_index, 0 /* is_active */ );
 }

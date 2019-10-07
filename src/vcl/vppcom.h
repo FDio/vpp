@@ -18,6 +18,7 @@
 
 #include <netdb.h>
 #include <errno.h>
+#include <sys/fcntl.h>
 #include <sys/poll.h>
 #include <sys/epoll.h>
 
@@ -51,7 +52,8 @@ typedef enum
   VPPCOM_PROTO_SCTP,
   VPPCOM_PROTO_NONE,
   VPPCOM_PROTO_TLS,
-  VPPCOM_PROTO_UDPC
+  VPPCOM_PROTO_UDPC,
+  VPPCOM_PROTO_QUIC,
 } vppcom_proto_t;
 
 static inline char *
@@ -76,11 +78,20 @@ vppcom_proto_str (vppcom_proto_t proto)
     case VPPCOM_PROTO_UDPC:
       proto_str = "UDPC";
       break;
+    case VPPCOM_PROTO_QUIC:
+      proto_str = "QUIC";
+      break;
     default:
       proto_str = "UNKNOWN";
       break;
     }
   return proto_str;
+}
+
+static inline int
+vcl_proto_is_dgram (uint8_t proto)
+{
+  return proto == VPPCOM_PROTO_UDP || proto == VPPCOM_PROTO_UDPC;
 }
 
 typedef enum
@@ -95,6 +106,7 @@ typedef struct vppcom_endpt_t_
   uint8_t is_ip4;
   uint8_t *ip;
   uint16_t port;
+  uint64_t parent_handle;
 } vppcom_endpt_t;
 
 typedef uint32_t vcl_session_handle_t;
@@ -104,6 +116,7 @@ typedef enum
   VPPCOM_OK = 0,
   VPPCOM_EAGAIN = -EAGAIN,
   VPPCOM_EWOULDBLOCK = -EWOULDBLOCK,
+  VPPCOM_EINPROGRESS = -EINPROGRESS,
   VPPCOM_EFAULT = -EFAULT,
   VPPCOM_ENOMEM = -ENOMEM,
   VPPCOM_EINVAL = -EINVAL,
@@ -254,6 +267,8 @@ extern int vppcom_session_accept (uint32_t session_handle,
 
 extern int vppcom_session_connect (uint32_t session_handle,
 				   vppcom_endpt_t * server_ep);
+extern int vppcom_session_stream_connect (uint32_t session_handle,
+					  uint32_t parent_session_handle);
 extern int vppcom_session_read (uint32_t session_handle, void *buf, size_t n);
 extern int vppcom_session_write (uint32_t session_handle, void *buf,
 				 size_t n);
@@ -294,6 +309,10 @@ extern int vppcom_session_tls_add_key (uint32_t session_handle, char *key,
 				       uint32_t key_len);
 extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
 				     uint32_t max_bytes);
+extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);
+extern int vppcom_session_is_connectable_listener (uint32_t session_handle);
+extern int vppcom_session_listener (uint32_t session_handle);
+extern int vppcom_session_n_accepted (uint32_t session_handle);
 
 /**
  * Request from application to register a new worker
@@ -302,6 +321,11 @@ extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
  * is spawned.
  */
 extern int vppcom_worker_register (void);
+
+/**
+ * Unregister current worker
+ */
+extern void vppcom_worker_unregister (void);
 
 /**
  * Retrieve current worker index

@@ -49,8 +49,6 @@ format_vnet_sw_interface_flags (u8 * s, va_list * args)
 
   if (flags & VNET_SW_INTERFACE_FLAG_ERROR)
     s = format (s, "error");
-  else if (flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
-    s = format (s, "bond-slave");
   else
     {
       s = format (s, "%s",
@@ -190,7 +188,7 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
   u32 sw_if_index = va_arg (*args, u32);
   vnet_sw_interface_t *si;
 
-  si = vnet_get_sw_interface_safe (vnm, sw_if_index);
+  si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
 
   if (NULL == si)
     {
@@ -216,11 +214,20 @@ format_vnet_hw_if_index_name (u8 * s, va_list * args)
 
 u8 *
 format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
-				vnet_sw_interface_t * si)
+				vnet_sw_interface_t * si, int json)
 {
   u32 indent, n_printed;
   int j, n_counters;
+  char *x = "";
+  int json_need_comma_nl = 0;
   u8 *n = 0;
+
+  /*
+   * to output a json snippet, stick quotes in lots of places
+   * definitely deserves a one-character variable name.
+   */
+  if (json)
+    x = "\"";
 
   indent = format_get_indent (s);
   n_printed = 0;
@@ -243,6 +250,21 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
       /* Only display non-zero counters. */
       if (vtotal.packets == 0)
 	continue;
+
+      if (json)
+	{
+	  if (json_need_comma_nl)
+	    {
+	      vec_add1 (s, ',');
+	      vec_add1 (s, '\n');
+	    }
+	  s = format (s, "%s%s_packets%s: %s%Ld%s,\n", x, cm->name, x, x,
+		      vtotal.packets, x);
+	  s = format (s, "%s%s_bytes%s: %s%Ld%s", x, cm->name, x, x,
+		      vtotal.bytes, x);
+	  json_need_comma_nl = 1;
+	  continue;
+	}
 
       if (n_printed > 0)
 	s = format (s, "\n%U", format_white_space, indent);
@@ -278,6 +300,19 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 	/* Only display non-zero counters. */
 	if (vtotal == 0)
 	  continue;
+
+	if (json)
+	  {
+	    if (json_need_comma_nl)
+	      {
+		vec_add1 (s, ',');
+		vec_add1 (s, '\n');
+	      }
+	    s = format (s, "%s%s%s: %s%Ld%s", x, cm->name, x, x, vtotal, x);
+	    json_need_comma_nl = 1;
+	    continue;
+	  }
+
 
 	if (n_printed > 0)
 	  s = format (s, "\n%U", format_white_space, indent);
@@ -317,7 +352,7 @@ format_vnet_sw_interface (u8 * s, va_list * args)
 	      format_vnet_sw_interface_flags, si->flags,
 	      format_vnet_sw_interface_mtu, si);
 
-  s = format_vnet_sw_interface_cntrs (s, im, si);
+  s = format_vnet_sw_interface_cntrs (s, im, si, 0 /* want json */ );
 
   return s;
 }
@@ -340,7 +375,7 @@ format_vnet_sw_interface_name_override (u8 * s, va_list * args)
 	      name, si->sw_if_index,
 	      format_vnet_sw_interface_flags, si->flags);
 
-  s = format_vnet_sw_interface_cntrs (s, im, si);
+  s = format_vnet_sw_interface_cntrs (s, im, si, 0 /* want json */ );
 
   return s;
 }
@@ -361,6 +396,8 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   vnet_buffer_opaque_t *o = (vnet_buffer_opaque_t *) b->opaque;
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vnet_buffer_opquae_formatter_t helper_fp;
   int i;
 
   s = format (s, "raw: ");
@@ -510,25 +547,15 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      (u32) (o->tcp.data_len), (u32) (o->tcp.flags));
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "sctp.connection_index: %d, sctp.sid: %d, sctp.ssn: %d, "
-	      "sctp.tsn: %d, sctp.hdr_offset: %d",
-	      o->sctp.connection_index,
-	      (u32) (o->sctp.sid),
-	      (u32) (o->sctp.ssn),
-	      (u32) (o->sctp.tsn), (u32) (o->sctp.hdr_offset));
-  vec_add1 (s, '\n');
-
-  s = format
-    (s, "sctp.data_offset: %d, sctp.data_len: %d, sctp.subconn_idx: %d, "
-     "sctp.flags: 0x%x",
-     (u32) (o->sctp.data_offset),
-     (u32) (o->sctp.data_len),
-     (u32) (o->sctp.subconn_idx), (u32) (o->sctp.flags));
-  vec_add1 (s, '\n');
-
   s = format (s, "snat.flags: 0x%x", o->snat.flags);
   vec_add1 (s, '\n');
+
+  for (i = 0; i < vec_len (im->buffer_opaque_format_helpers); i++)
+    {
+      helper_fp = im->buffer_opaque_format_helpers[i];
+      s = (*helper_fp) (b, s);
+    }
+
   return s;
 }
 
@@ -537,6 +564,8 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   vnet_buffer_opaque2_t *o = (vnet_buffer_opaque2_t *) b->opaque2;
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vnet_buffer_opquae_formatter_t helper_fp;
 
   int i;
 
@@ -558,8 +587,30 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 
   s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));
   vec_add1 (s, '\n');
+
+  for (i = 0; i < vec_len (im->buffer_opaque2_format_helpers); i++)
+    {
+      helper_fp = im->buffer_opaque2_format_helpers[i];
+      s = (*helper_fp) (b, s);
+    }
+
   return s;
 }
+
+void
+vnet_register_format_buffer_opaque_helper (vnet_buffer_opquae_formatter_t fp)
+{
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vec_add1 (im->buffer_opaque_format_helpers, fp);
+}
+
+void
+vnet_register_format_buffer_opaque2_helper (vnet_buffer_opquae_formatter_t fp)
+{
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vec_add1 (im->buffer_opaque2_format_helpers, fp);
+}
+
 
 uword
 unformat_vnet_hw_interface (unformat_input_t * input, va_list * args)

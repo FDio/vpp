@@ -17,7 +17,7 @@
 /* Define a simple binary API to control the feature */
 
 option version = "0.1.0";
-import "../../vnet/interface_types.api";
+import "vnet/interface_types.api";
 
 autoreply define sample_macswap_enable_disable {
   /* Client identifier, set from api_main.my_client_index */
