@@ -635,6 +635,11 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rd->pci = vlib_pci_get_device_info (vm, &pci_addr, &args->error);
   if (!rd->pci)
     goto err2;
+
+  /* if we failed to parse NUMA node, default to 0 */
+  if (-1 == rd->pci->numa_node)
+    rd->pci->numa_node = 0;
+
   rd->pool = vlib_buffer_pool_get_default_for_numa (vm, rd->pci->numa_node);
 
   if (strncmp ((char *) rd->pci->driver_name, "mlx5_core", 9))
