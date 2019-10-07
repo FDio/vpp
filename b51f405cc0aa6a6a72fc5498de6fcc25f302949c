@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "44a8d9cd_a4f378b8",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-07T12:45:14Z",
+      "side": 1,
+      "message": "Per offline discussion moving in next patchset. The hash is not modified outside of the barrier in this function, and the results of looking at the hash are not acted inside the barrier it is safe to keep the read access outside the barrier.",
+      "parentUuid": "8a51a820_e87ecfba",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7ca0b622_d01dd471",
         "filename": "src/vlib/node.c",
         "patchSetId": 1
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "I agree, if you don\u0027t like my logic on keeping the hash modifications inside the barrier this is where we should move it to.",
       "parentUuid": "7ca0b622_d01dd471",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "df878023_a7ce6941",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-07T12:45:14Z",
+      "side": 1,
+      "message": "moved in next patchset to just above the slot \"auto-alloc\" condition immediately before this.",
+      "parentUuid": "bba51f00_ade08288",
       "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
