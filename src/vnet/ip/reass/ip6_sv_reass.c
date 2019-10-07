@@ -167,8 +167,6 @@ typedef enum
 
 typedef enum
 {
-  ICMP_ERROR_FL_TOO_BIG,
-  ICMP_ERROR_FL_NOT_MULT_8,
   REASS_FRAGMENT_CACHE,
   REASS_FINISH,
   REASS_FRAGMENT_FORWARD,
@@ -193,12 +191,6 @@ format_ip6_sv_reass_trace (u8 * s, va_list * args)
   s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
   switch (t->action)
     {
-    case ICMP_ERROR_FL_TOO_BIG:
-      s = format (s, "\n%Uicmp-error - frag_len > 65535 %U");
-      break;
-    case ICMP_ERROR_FL_NOT_MULT_8:
-      s = format (s, "\n%Uicmp-error - frag_len mod 8 != 0 %U");
-      break;
     case REASS_FRAGMENT_CACHE:
       s = format (s, "[cached]");
       break;
