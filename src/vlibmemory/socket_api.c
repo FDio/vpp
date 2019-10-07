@@ -352,7 +352,7 @@ vl_socket_write_ready (clib_file_t * uf)
 {
   clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
-  int n;
+  int bytes_sent;
 
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
 
@@ -363,8 +363,8 @@ vl_socket_write_ready (clib_file_t * uf)
   while (remaining_bytes > 0)
     {
       bytes_to_send = remaining_bytes > 4096 ? 4096 : remaining_bytes;
-      n = write (uf->file_descriptor, p, bytes_to_send);
-      if (n < 0)
+      bytes_sent = write (uf->file_descriptor, p, bytes_to_send);
+      if (bytes_sent <= 0)
 	{
 	  if (errno == EAGAIN)
 	    {
@@ -378,8 +378,8 @@ vl_socket_write_ready (clib_file_t * uf)
 					     socket_main.registration_pool);
 	  return 0;
 	}
-      remaining_bytes -= bytes_to_send;
-      p += bytes_to_send;
+      remaining_bytes -= bytes_sent;
+      p += bytes_sent;
     }
 
   vec_delete (rp->output_vector, total_bytes - remaining_bytes, 0);
