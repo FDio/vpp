@@ -62,7 +62,8 @@ typedef struct
 /* Graph arcs */
 #define foreach_sr_policy_rewrite_next     \
 _(IP6_LOOKUP, "ip6-lookup")         \
-_(ERROR, "error-drop")
+_(ERROR, "error-drop")              \
+_(ETHERNET_INPUT, "ethernet-input")
 
 typedef enum
 {
@@ -1678,6 +1679,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_policy_t *sp0, *sp1, *sp2, *sp3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
+    u32 sp0_index, sp1_index, sp2_index, sp3_index;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1714,25 +1716,45 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
-	  sp0 = pool_elt_at_index (sm->sr_policies,
-				   sm->sw_iface_sr_policies[vnet_buffer
-							    (b0)->sw_if_index
-							    [VLIB_RX]]);
+    sp0_index =
+      sm->sw_iface_sr_policies[vnet_buffer (b0)->sw_if_index[VLIB_RX]];
+    if (PREDICT_FALSE(sp0_index == ~0))
+      {
+        next0 = SR_POLICY_REWRITE_NEXT_ETHERNET_INPUT;
+        goto end_quad;
+       }
 
-	  sp1 = pool_elt_at_index (sm->sr_policies,
-				   sm->sw_iface_sr_policies[vnet_buffer
-							    (b1)->sw_if_index
-							    [VLIB_RX]]);
+    sp0 = pool_elt_at_index (sm->sr_policies, sp0_index);
 
-	  sp2 = pool_elt_at_index (sm->sr_policies,
-				   sm->sw_iface_sr_policies[vnet_buffer
-							    (b2)->sw_if_index
-							    [VLIB_RX]]);
+    sp1_index =
+      sm->sw_iface_sr_policies[vnet_buffer (b1)->sw_if_index[VLIB_RX]];
+    if (PREDICT_FALSE(sp1_index == ~0))
+      {
+        next1 = SR_POLICY_REWRITE_NEXT_ETHERNET_INPUT;
+        goto end_quad;
+       }
 
-	  sp3 = pool_elt_at_index (sm->sr_policies,
-				   sm->sw_iface_sr_policies[vnet_buffer
-							    (b3)->sw_if_index
-							    [VLIB_RX]]);
+    sp1 = pool_elt_at_index (sm->sr_policies, sp1_index);
+
+    sp2_index =
+      sm->sw_iface_sr_policies[vnet_buffer (b2)->sw_if_index[VLIB_RX]];
+    if (PREDICT_FALSE(sp2_index == ~0))
+      {
+        next2 = SR_POLICY_REWRITE_NEXT_ETHERNET_INPUT;
+        goto end_quad;
+       }
+
+    sp2 = pool_elt_at_index (sm->sr_policies, sp2_index);
+
+    sp3_index =
+      sm->sw_iface_sr_policies[vnet_buffer (b3)->sw_if_index[VLIB_RX]];
+    if (PREDICT_FALSE(sp3_index == ~0))
+      {
+        next3 = SR_POLICY_REWRITE_NEXT_ETHERNET_INPUT;
+        goto end_quad;
+       }
+
+    sp3 = pool_elt_at_index (sm->sr_policies, sp3_index);
 
 	  if (vec_len (sp0->segments_lists) == 1)
 	    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = sp0->segments_lists[0];
@@ -1907,6 +1929,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
+end_quad:
 	  encap_pkts += 4;
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -1924,6 +1947,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_policy_t *sp0;
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+    u32 sp0_index;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1934,10 +1958,15 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  /* Find the SR policy */
-	  sp0 = pool_elt_at_index (sm->sr_policies,
-				   sm->sw_iface_sr_policies[vnet_buffer
-							    (b0)->sw_if_index
-							    [VLIB_RX]]);
+    sp0_index =
+      sm->sw_iface_sr_policies[vnet_buffer (b0)->sw_if_index[VLIB_RX]];
+    if (PREDICT_FALSE(sp0_index == ~0))
+      {
+        next0 = SR_POLICY_REWRITE_NEXT_ETHERNET_INPUT;
+        goto end_single;
+       }
+
+    sp0 = pool_elt_at_index (sm->sr_policies, sp0_index);
 
 	  /* In case there is more than one SL, LB among them */
 	  if (vec_len (sp0->segments_lists) == 1)
@@ -1986,6 +2015,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 				sizeof (tr->dst.as_u8));
 	    }
 
+end_single:
 	  encap_pkts++;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
