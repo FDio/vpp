@@ -19,7 +19,7 @@
 #define included_dhcp_proxy_h
 
 #include <vnet/vnet.h>
-#include <vnet/dhcp/dhcp4_packet.h>
+#include <dhcp/dhcp4_packet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip4.h>
@@ -31,7 +31,7 @@
 typedef enum
 {
 #define dhcp_proxy_error(n,s) DHCP_PROXY_ERROR_##n,
-#include <vnet/dhcp/dhcp4_proxy_error.def>
+#include <dhcp/dhcp4_proxy_error.def>
 #undef dhcp_proxy_error
   DHCP_PROXY_N_ERROR,
 } dhcp_proxy_error_t;
@@ -39,7 +39,7 @@ typedef enum
 typedef enum
 {
 #define dhcpv6_proxy_error(n,s) DHCPV6_PROXY_ERROR_##n,
-#include <vnet/dhcp/dhcp6_proxy_error.def>
+#include <dhcp/dhcp6_proxy_error.def>
 #undef dhcpv6_proxy_error
   DHCPV6_PROXY_N_ERROR,
 } dhcpv6_proxy_error_t;

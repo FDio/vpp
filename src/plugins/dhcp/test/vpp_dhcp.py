@@ -32,6 +32,7 @@ class VppDHCPProxy(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.dhcp_proxy_config(
+            is_add=1,
             rx_vrf_id=self._rx_vrf_id,
             server_vrf_id=self._server_vrf_id,
             dhcp_server=self._dhcp_server,
@@ -105,7 +106,7 @@ class VppDHCPClient(VppObject):
                   'id': self._id, 'want_dhcp_event': self._want_dhcp_event,
                   'set_broadcast_flag': self._set_broadcast_flag,
                   'dscp': self._dscp, 'pid': self._pid}
-        self._test.vapi.dhcp_client_config(client=client)
+        self._test.vapi.dhcp_client_config(is_add=1, client=client)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):

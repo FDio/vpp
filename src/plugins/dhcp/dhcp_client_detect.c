@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <vnet/dhcp/client.h>
+#include <dhcp/client.h>
 #include <vnet/udp/udp.h>
 
 #define foreach_dhcp_client_detect                    \

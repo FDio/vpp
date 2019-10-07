@@ -617,8 +617,10 @@ class TestDHCP(VppTestCase):
         # Add VSS config
         #  table=1, vss_type=1, vpn_index=1, oui=4
         #  table=2, vss_type=0, vpn_id = "ip4-table-2"
-        self.vapi.dhcp_proxy_set_vss(1, 1, vpn_index=1, oui=4, is_add=1)
-        self.vapi.dhcp_proxy_set_vss(2, 0, "ip4-table-2", is_add=1)
+        self.vapi.dhcp_proxy_set_vss(tbl_id=1, vss_type=1,
+                                     vpn_index=1, oui=4, is_add=1)
+        self.vapi.dhcp_proxy_set_vss(tbl_id=2, vss_type=0,
+                                     vpn_ascii_id="ip4-table-2", is_add=1)
 
         self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
@@ -766,8 +768,8 @@ class TestDHCP(VppTestCase):
         # Remove the VSS config
         #  relayed DHCP has default vlaues in the option.
         #
-        self.vapi.dhcp_proxy_set_vss(1, is_add=0)
-        self.vapi.dhcp_proxy_set_vss(2, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(tbl_id=1, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(tbl_id=2, is_add=0)
 
         self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1028,12 +1030,13 @@ class TestDHCP(VppTestCase):
         # Add VSS config
         #
         self.vapi.dhcp_proxy_set_vss(
-            tbl_id=1, vss_type=1, oui=4, vpn_index=1, is_ipv6=1)
+            tbl_id=1, vss_type=1, oui=4, vpn_index=1, is_ipv6=1, is_add=1)
         self.vapi.dhcp_proxy_set_vss(
             tbl_id=2,
             vss_type=0,
             vpn_ascii_id="IPv6-table-2",
-            is_ipv6=1)
+            is_ipv6=1,
+            is_add=1)
 
         self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1062,7 +1065,7 @@ class TestDHCP(VppTestCase):
         # Remove the VSS config
         #  relayed DHCP has default vlaues in the option.
         #
-        self.vapi.dhcp_proxy_set_vss(1, is_ipv6=1, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(tbl_id=1, is_ipv6=1, is_add=0)
 
         self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
