@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cc9d9663_f5193cf9",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-07T16:53:45Z",
+      "side": 1,
+      "message": "In addition to printing the message, shouldn\u0027t the generated code include a warning of the form \"why I am receiving this message?\"\n\nAlong these lines:\n\nstatic void\nvl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)\n{\n  clib_warning (\"WARNING: stub called...\");\n}",
+      "revId": "428237e46b611c33a4211a7c25771fe9192655f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
