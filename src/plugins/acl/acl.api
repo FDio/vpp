@@ -108,6 +108,7 @@ manual_print manual_endian define acl_add_replace
   u32 acl_index; /* ~0 to add, existing ACL# to replace */
   u8 tag[64]; /* What gets in here gets out in the corresponding tag field when dumping the ACLs. */
   u32 count;
+  u32 bar;
   vl_api_acl_rule_t r[count];
 };
 

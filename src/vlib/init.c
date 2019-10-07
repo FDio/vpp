@@ -95,6 +95,8 @@ clib_error_t *vlib_sort_init_exit_functions
   _vlib_init_function_list_elt_t *this_reg = 0;
   hash_pair_t *hp;
   u8 **keys_to_delete = 0;
+  u8 *is_after_everything = 0;
+  u16 n_init_layers = 1;
 
   /*
    * two hash tables: name to index in init_f_names, and
@@ -181,6 +183,7 @@ clib_error_t *vlib_sort_init_exit_functions
 
   n_init_fns = vec_len (init_f_names);
   orig = clib_ptclosure_alloc (n_init_fns);
+  vec_validate (is_after_everything, n_init_fns);
 
   for (i = 0; i < vec_len (constraints); i++)
     {
@@ -197,6 +200,21 @@ clib_error_t *vlib_sort_init_exit_functions
        */
       if (p == 0)
 	{
+	  if (a_name[0] == (u8) '*')
+	    {
+	      p = hash_get_mem (index_by_name, b_name);
+	      if (p == 0)
+		{
+		  clib_warning ("init function '%s' not found (after '%s')",
+				b_name, a_name);
+		  continue;
+		}
+	      b_index = p[0];
+	      is_after_everything[b_index] = strlen ((void *) a_name);
+	      if (is_after_everything[b_index] > n_init_layers)
+		n_init_layers = is_after_everything[b_index];
+	      continue;
+	    }
 	  clib_warning ("init function '%s' not found (before '%s')",
 			a_name, b_name);
 	  continue;
@@ -224,6 +242,11 @@ clib_error_t *vlib_sort_init_exit_functions
 again:
   for (i = 0; i < n_init_fns; i++)
     {
+      if (is_after_everything[i])
+	{
+	  is_after_everything[i]--;
+	  goto item_constrained;
+	}
       for (j = 0; j < n_init_fns; j++)
 	{
 	  if (closure[i][j])
@@ -243,6 +266,10 @@ again:
       }
     item_constrained:
       ;
+    }
+  if (--n_init_layers > 0)
+    {
+      goto again;
     }
 
   /* see if we got a partial order... */
