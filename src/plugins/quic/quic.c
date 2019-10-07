@@ -2226,7 +2226,7 @@ quic_update_fifo_size ()
   segment_manager_props_t *seg_mgr_props =
     application_get_segment_manager_properties (qm->app_index);
 
-  if (seg_mgr_props)
+  if (!seg_mgr_props)
     {
       clib_warning
 	("error while getting segment_manager_props_t, can't update fifo-size");
