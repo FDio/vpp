@@ -905,9 +905,6 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "%U",
-			 unformat_mfib_itf_flags, &rpath.frp_mitf_flags))
-	;
-      else if (unformat (line_input, "%U",
 			 unformat_mfib_entry_flags, &eflags))
 	;
       else

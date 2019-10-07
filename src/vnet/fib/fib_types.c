@@ -18,6 +18,7 @@
 #include <vnet/fib/fib_types.h>
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_types.h>
 #include <vnet/mpls/mpls.h>
 
 /*
@@ -609,6 +610,9 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
 	  rpath->frp_weight = 1;
 	  rpath->frp_flags |= FIB_ROUTE_PATH_LOCAL;
         }
+      else if (unformat (input, "%U",
+			 unformat_mfib_itf_flags, &rpath->frp_mitf_flags))
+	;
       else if (unformat (input, "out-labels"))
         {
             while (unformat (input, "%U",
