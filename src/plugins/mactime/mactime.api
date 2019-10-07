@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-/** \file
+/** @file
     This file defines vpp mactime control-plane API messages
 */
-option version = "1.1.1";
+option version = "1.2.1";
 
-/** \brief api to enable or disable the time-based src mac filter on
+/** @brief api to enable or disable the time-based src mac filter on
     an interface
 */
 
@@ -31,7 +31,7 @@ autoreply define mactime_enable_disable
   option vat_help = "<intfc> [disable]";
 };
 
-/** \brief a time range structure
+/** @brief a time range structure
  * times are in double-precision fp seconds since 1/1/1970,
  * which was a Thursday.
  */
@@ -41,7 +41,7 @@ typedef time_range
   f64 end;                      /**< end of the time range */
 };
 
-/** \brief configure per src-mac time ranges
+/** @brief configure per src-mac time ranges
  *
  * Usage:
  *  to create a static allow entry:
@@ -55,6 +55,10 @@ typedef time_range
  *   set count = number of ranges
  *   set each range start/end in seconds since Sunday began
  *   As in: start/end >= 0.0 && start/end < 7.0 *86400.0
+ *
+ *  to create a (time-range-based) dynamic allow entry with quota:
+ *   Outside of stated time ranges, such entries revert to allow with no quota.
+ *   previous setup, s/allow=1/allow_quota=1/
  *
  *  to create a (time-range-based) dynamic drop entry:
  *   Same procedure to create a dynamic allow entry,
@@ -84,6 +88,58 @@ autoreply define mactime_add_del_range
   /** time ranges, in seconds since Sunday began */
   vl_api_time_range_t ranges[count];
   option vat_help = "name <devname> mac <mac-addr> allow drop allow-range Mon - Fri 9:00 - 17:00";
+};
+
+/** @brief a time range, in fp seconds since Sunday midnight
+ */
+
+typedef mactime_time_range
+{
+  f64 start;
+  f64 end;
+};
+
+/** @brief dump mactime table
+ *
+ * Request a mactime client pool dump
+ * Sequence:
+ * client send vl_api_mactime_dump to vpp
+ * vpp replies with zero or more vl_api_mactime_entry_t's
+ * vpp replies with a vl_api_mactime_dump_reply_t
+ * @param my_table_epoch dump table only if update needed, 0 => full dump
+ */
+
+define mactime_dump
+{
+  u32 client_index;             /**< client index, from api_main */
+  u32 context;                  /**< application context */
+  u32 my_table_epoch;           /**< to suppress dump if no changes */
+};
+
+/** @brief mactime table entry details
+ */
+
+define mactime_details
+{
+  u32 context;
+  u32 pool_index;
+  u8 mac_address[6];
+  u64 data_quota;
+  u64 data_used_in_range;
+  u32 flags;
+  u8 device_name[64];
+  u32 nranges;
+  vl_api_mactime_time_range_t ranges[nranges];
+};
+
+/** @brief dump mactime table reply
+ * Includes the vpp table epoch, needed to optimize API traffic
+ */
+define mactime_dump_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_epoch;
 };
 
 /*

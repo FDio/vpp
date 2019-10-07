@@ -158,6 +158,77 @@ static void vl_api_mactime_enable_disable_t_handler
   REPLY_MACRO (VL_API_MACTIME_ENABLE_DISABLE_REPLY);
 }
 
+static void
+vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
+{
+  vl_api_mactime_details_t *ep;
+  vl_api_mactime_dump_reply_t *rmp;
+  mactime_device_t *dev;
+  mactime_main_t *mm = &mactime_main;
+  vl_api_registration_t *rp;
+  int rv = 0, i;
+  u32 his_table_epoch = clib_net_to_host_u32 (mp->my_table_epoch);
+  u32 message_size;
+  u32 name_len;
+  u32 nranges;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  if (his_table_epoch == mm->device_table_epoch)
+    {
+      rv = VNET_API_ERROR_NO_CHANGE;
+      goto send_reply;
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (dev, mm->devices,
+  ({
+    message_size = sizeof(*ep) + vec_len(dev->device_name) +
+      vec_len(dev->ranges) * sizeof(ep->ranges[0]);
+
+    ep = vl_msg_api_alloc (message_size);
+    memset (ep, 0, message_size);
+    ep->_vl_msg_id = clib_host_to_net_u16 (VL_API_MACTIME_DETAILS
+                                           + mm->msg_id_base);
+    /* Index is the key for the stats segment combined counters */
+    ep->pool_index = clib_host_to_net_u32 (dev - mm->devices);
+
+    clib_memcpy_fast (ep->mac_address, dev->mac_address,
+                      sizeof (ep->mac_address));
+    ep->data_quota = clib_host_to_net_u64 (dev->data_quota);
+    ep->data_used_in_range = clib_host_to_net_u64 (dev->data_used_in_range);
+    ep->flags = clib_host_to_net_u32 (dev->flags);
+    nranges = vec_len (dev->ranges);
+    ep->nranges = clib_host_to_net_u32 (nranges);
+
+    for (i = 0; i < vec_len (dev->ranges); i++)
+      {
+        ep->ranges[i].start = dev->ranges[i].start;
+        ep->ranges[i].end = dev->ranges[i].end;
+      }
+
+    name_len = vec_len (dev->device_name);
+    name_len = (name_len < ARRAY_LEN(ep->device_name)) ?
+      name_len : ARRAY_LEN(ep->device_name) - 1;
+
+    clib_memcpy_fast (ep->device_name, dev->device_name,
+                      name_len);
+    ep->device_name [ARRAY_LEN(ep->device_name) -1] = 0;
+    vl_api_send_msg (rp, (u8 *)ep);
+  }));
+  /* *INDENT-OFF* */
+
+ send_reply:
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_MACTIME_DUMP_REPLY,
+  ({
+    rmp->table_epoch = clib_host_to_net_u32 (mm->device_table_epoch);
+  }));
+  /* *INDENT-ON* */
+}
+
 /** Create a lookup table entry for the indicated mac address
  */
 void
@@ -200,6 +271,14 @@ static void vl_api_mactime_add_del_range_t_handler
   int i, rv = 0;
 
   feature_init (mm);
+
+  /*
+   * Change the table epoch. Skip 0 so clients can code my_table_epoch = 0
+   * to receive a full dump.
+   */
+  mm->device_table_epoch++;
+  if (PREDICT_FALSE (mm->device_table_epoch == 0))
+    mm->device_table_epoch++;
 
   data_quota = clib_net_to_host_u64 (mp->data_quota);
 
