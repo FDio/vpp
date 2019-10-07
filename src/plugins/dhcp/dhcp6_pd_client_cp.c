@@ -15,31 +15,13 @@
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
-#include <vnet/vnet_msg_enum.h>
-#include <vnet/dhcp/dhcp6_packet.h>
-#include <vnet/dhcp/dhcp6_pd_client_dp.h>
+#include <dhcp/dhcp6_packet.h>
+#include <dhcp/dhcp6_pd_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <float.h>
 #include <math.h>
 #include <string.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-#include <vlibapi/api_helper_macros.h>
-
-#define foreach_dhcp6_pd_client_cp_msg                                        \
-_(DHCP6_PD_CLIENT_ENABLE_DISABLE, dhcp6_pd_client_enable_disable)             \
-_(IP6_ADD_DEL_ADDRESS_USING_PREFIX, ip6_add_del_address_using_prefix)
-
-#define vl_api_dhcp6_pd_client_enable_disable_t_print vl_noop_handler
-#define vl_api_ip6_add_del_address_using_prefix_t_print vl_noop_handler
 
 typedef struct
 {
@@ -868,9 +850,10 @@ prefix_group_find_or_create (const u8 * name, u8 create)
     }
 }
 
-static int
-cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
-			ip6_address_t address, u8 prefix_length, u8 is_add)
+int
+dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
+			      ip6_address_t address, u8 prefix_length,
+			      u8 is_add)
 {
 
   ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;
@@ -927,32 +910,6 @@ cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
   return 0;
 }
 
-static void
-  vl_api_ip6_add_del_address_using_prefix_t_handler
-  (vl_api_ip6_add_del_address_using_prefix_t * mp)
-{
-  vl_api_ip6_add_del_address_using_prefix_reply_t *rmp;
-  u32 sw_if_index;
-  ip6_address_t address;
-  u8 prefix_length;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  memcpy (address.as_u8, mp->address, 16);
-  prefix_length = mp->prefix_length;
-
-  rv =
-    cp_ip6_address_add_del (sw_if_index, mp->prefix_group, address,
-			    prefix_length, mp->is_add);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_IP6_ADD_DEL_ADDRESS_USING_PREFIX_REPLY);
-}
-
 static clib_error_t *
 cp_ip6_address_add_del_command_function (vlib_main_t * vm,
 					 unformat_input_t * input,
@@ -999,7 +956,7 @@ cp_ip6_address_add_del_command_function (vlib_main_t * vm,
     error = clib_error_return (0, "Missing address");
   else
     {
-      if (cp_ip6_address_add_del
+      if (dhcp6_cp_ip6_address_add_del
 	  (sw_if_index, prefix_group, address, prefix_length, add) != 0)
 	error = clib_error_return (0, "Error adding or removing address");
     }
@@ -1169,9 +1126,11 @@ VLIB_CLI_COMMAND (ip6_pd_clients_show_command, static) = {
 };
 /* *INDENT-ON* */
 
-static int
-dhcp6_pd_client_enable_disable (u32 sw_if_index, const u8 * prefix_group,
-				u8 enable)
+
+
+int
+dhcp6_pd_client_enable_disable (u32 sw_if_index,
+				const u8 * prefix_group, u8 enable)
 {
   dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
   ip6_prefix_main_t *pm = &ip6_prefix_main;
@@ -1341,66 +1300,17 @@ VLIB_CLI_COMMAND (dhcp6_pd_client_enable_disable_command, static) = {
 };
 /* *INDENT-ON* */
 
-static void
-  vl_api_dhcp6_pd_client_enable_disable_t_handler
-  (vl_api_dhcp6_pd_client_enable_disable_t * mp)
-{
-  vl_api_dhcp6_pd_client_enable_disable_reply_t *rmp;
-  u32 sw_if_index;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  rv =
-    dhcp6_pd_client_enable_disable (sw_if_index, mp->prefix_group,
-				    mp->enable);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_DHCP6_PD_CLIENT_ENABLE_DISABLE_REPLY);
-}
-
-#define vl_msg_name_crc_list
-#include <vnet/dhcp/dhcp6_pd_client_cp.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_dhcp6_pd_client_cp;
-#undef _
-}
-
 static clib_error_t *
 dhcp_pd_client_cp_init (vlib_main_t * vm)
 {
   dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
-  api_main_t *am = &api_main;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
-  rm->api_main = am;
+  rm->api_main = &api_main;
   rm->node_index = dhcp6_pd_client_cp_process_node.index;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0/* do NOT trace! */);
-  foreach_dhcp6_pd_client_cp_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
-
-  return 0;
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (dhcp_pd_client_cp_init);

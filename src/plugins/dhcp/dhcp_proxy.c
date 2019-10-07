@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <vnet/dhcp/dhcp_proxy.h>
+#include <dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 

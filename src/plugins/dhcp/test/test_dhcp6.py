@@ -12,6 +12,7 @@ from scapy.utils import inet_ntop, inet_pton
 from framework import VppTestCase
 from vpp_papi import VppEnum
 import util
+import os
 
 
 def ip6_normalize(ip6):
@@ -49,7 +50,7 @@ class TestDHCPv6DataPlane(VppTestCase):
     def test_dhcp_ia_na_send_solicit_receive_advertise(self):
         """ Verify DHCPv6 IA NA Solicit packet and Advertise event """
 
-        self.vapi.dhcp6_clients_enable_disable()
+        self.vapi.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -57,6 +58,8 @@ class TestDHCPv6DataPlane(VppTestCase):
                    'preferred_time': 60,
                    'valid_time': 120}
         self.vapi.dhcp6_send_client_message(
+            server_index=0xffffffff,
+            mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
             sw_if_index=self.pg0.sw_if_index,
             T1=20,
@@ -89,7 +92,8 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(address.preflft, 60)
         self.assert_equal(address.validlft, 120)
 
-        self.vapi.want_dhcp6_reply_events()
+        self.vapi.want_dhcp6_reply_events(enable_disable=1,
+                                          pid=os.getpid())
 
         try:
             ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=60,
@@ -125,11 +129,12 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         finally:
             self.vapi.want_dhcp6_reply_events(enable_disable=0)
+        self.vapi.dhcp6_clients_enable_disable(enable=0)
 
     def test_dhcp_pd_send_solicit_receive_advertise(self):
         """ Verify DHCPv6 PD Solicit packet and Advertise event """
 
-        self.vapi.dhcp6_clients_enable_disable()
+        self.vapi.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -139,6 +144,8 @@ class TestDHCPv6DataPlane(VppTestCase):
                   'valid_time': 120}
         prefixes = [prefix]
         self.vapi.dhcp6_pd_send_client_message(
+            server_index=0xffffffff,
+            mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
             sw_if_index=self.pg0.sw_if_index,
             T1=20,
@@ -171,7 +178,8 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(prefix.preflft, 60)
         self.assert_equal(prefix.validlft, 120)
 
-        self.vapi.want_dhcp6_pd_reply_events()
+        self.vapi.want_dhcp6_pd_reply_events(enable_disable=1,
+                                             pid=os.getpid())
 
         try:
             ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=60,
@@ -210,6 +218,7 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         finally:
             self.vapi.want_dhcp6_pd_reply_events(enable_disable=0)
+        self.vapi.dhcp6_clients_enable_disable(enable=0)
 
 
 class TestDHCPv6IANAControlPlane(VppTestCase):
@@ -243,10 +252,12 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.vapi.dhcp6_client_enable_disable(self.pg0.sw_if_index)
+        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                              enable=1)
 
     def tearDown(self):
-        self.vapi.dhcp6_client_enable_disable(self.pg0.sw_if_index, enable=0)
+        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                              enable=0)
 
         for i in self.interfaces:
             i.admin_down()
@@ -497,7 +508,8 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.prefix_group = 'my-pd-prefix-group'
 
         self.vapi.dhcp6_pd_client_enable_disable(
-            self.pg0.sw_if_index,
+            enable=1,
+            sw_if_index=self.pg0.sw_if_index,
             prefix_group=self.prefix_group)
 
     def tearDown(self):

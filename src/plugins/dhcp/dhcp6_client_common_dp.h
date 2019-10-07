@@ -17,27 +17,7 @@
 #define included_vnet_dhcp6_client_common_dp_h
 
 #include <vlib/vlib.h>
-#include <vnet/dhcp/dhcp6_client_common_dp.h>
-#include <vnet/dhcp/dhcp6_packet.h>
-#include <vnet/vnet_msg_enum.h>
-#include <vlibapi/api_common.h>
-#include <vlibmemory/api.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
-#include <vlibapi/api_helper_macros.h>
+#include <dhcp/dhcp6_packet.h>
 
 typedef struct
 {
@@ -82,11 +62,7 @@ extern dhcpv6_duid_ll_string_t client_duid;
 void dhcp6_clients_enable_disable (u8 enable);
 u32 server_index_get_or_create (u8 * data, u16 len);
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-void vl_api_dhcp6_duid_ll_set_t_handler (vl_api_dhcp6_duid_ll_set_t * mp);
+extern dhcpv6_duid_ll_string_t client_duid;
 
 static_always_inline f64
 random_f64_from_to (f64 from, f64 to)

@@ -49,6 +49,54 @@ enum dhcpv6_msg_type
   DHCPV6_MSG_API_RELAY_REPL = 13,
 };
 
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define dhcp_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+
+define dhcp_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dhcp_plugin_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define dhcp_plugin_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
 /** \brief DHCP Proxy config add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

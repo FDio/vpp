@@ -24,7 +24,6 @@
 #include <vnet/fib/fib_api.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
@@ -1036,75 +1035,6 @@ vl_api_reset_fib_t_print (vl_api_reset_fib_t * mp, void *handle)
 
   FINISH;
 }
-
-static void *vl_api_dhcp_proxy_config_t_print
-  (vl_api_dhcp_proxy_config_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dhcp_proxy_config_2 ");
-
-  s = format (s, "rx_vrf_id %d ", (mp->rx_vrf_id));
-  s = format (s, "server_vrf_id %d ", (mp->server_vrf_id));
-
-  s = format (s, "svr %U ", format_ip46_address,
-	      (ip46_address_t *) & mp->dhcp_server.un);
-  s = format (s, "src %U ", format_ip46_address,
-	      (ip46_address_t *) & mp->dhcp_src_address.un);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_dhcp_proxy_set_vss_t_print
-  (vl_api_dhcp_proxy_set_vss_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dhcp_proxy_set_vss ");
-
-  s = format (s, "tbl_id %d ", (mp->tbl_id));
-
-  if (mp->vss_type == VSS_TYPE_VPN_ID)
-    {
-      s = format (s, "fib_id %d ", (mp->vpn_index));
-      s = format (s, "oui %d ", (mp->oui));
-    }
-  else if (mp->vss_type == VSS_TYPE_ASCII)
-    s = format (s, "vpn_ascii_id %s", mp->vpn_ascii_id);
-
-  if (mp->is_ipv6 != 0)
-    s = format (s, "ipv6 ");
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_dhcp_client_config_t_print
-  (vl_api_dhcp_client_config_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dhcp_client_config ");
-
-  s = format (s, "sw_if_index %d ", (mp->client.sw_if_index));
-
-  s = format (s, "hostname %s ", mp->client.hostname);
-
-  s = format (s, "want_dhcp_event %d ", mp->client.want_dhcp_event);
-
-  s = format (s, "pid %d ", (mp->client.pid));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
 
 static void *vl_api_set_ip_flow_hash_t_print
   (vl_api_set_ip_flow_hash_t * mp, void *handle)
@@ -3786,8 +3716,6 @@ _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
 _(RESET_FIB, reset_fib)                                                 \
-_(DHCP_PROXY_CONFIG, dhcp_proxy_config)                                 \
-_(DHCP_PROXY_SET_VSS, dhcp_proxy_set_vss)                               \
 _(SET_IP_FLOW_HASH, set_ip_flow_hash)                                   \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
@@ -3814,7 +3742,6 @@ _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                 \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
 _(ADD_NODE_NEXT, add_node_next)						\
-_(DHCP_CLIENT_CONFIG, dhcp_client_config)	                        \
 _(L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel)                           \
 _(L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies)                 \
 _(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
