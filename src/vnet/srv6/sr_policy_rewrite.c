@@ -1773,6 +1773,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip0)
                   {
+                    qfi0 = ((qfi0 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi0 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr0->segments->as_u8[offset + 4] = qfi0;
                   }
 
@@ -1787,6 +1789,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip0)
                   {
+                    qfi0 = ((qfi0 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi0 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr0->segments->as_u8[offset + 4] |= qfi0 >> shift;
                     sr0->segments->as_u8[offset + 5] |= qfi0 << (8 - shift);
                   }
@@ -1825,6 +1829,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip1)
                   {
+                    qfi1 = ((qfi1 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi1 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr1->segments->as_u8[offset + 4] = qfi1;
                   }
 
@@ -1839,6 +1845,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip1)
                   {
+                    qfi1 = ((qfi1 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi1 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr1->segments->as_u8[offset + 4] |= qfi1 >> shift;
                     sr1->segments->as_u8[offset + 5] |= qfi1 << (8 - shift);
                   }
@@ -1877,6 +1885,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip2)
                   {
+                    qfi2 = ((qfi2 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi2 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr2->segments->as_u8[offset + 4] = qfi2;
                   }
 
@@ -1891,6 +1901,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip2)
                   {
+                    qfi2 = ((qfi2 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi2 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr2->segments->as_u8[offset + 4] |= qfi2 >> shift;
                     sr2->segments->as_u8[offset + 5] |= qfi2 << (8 - shift);
                   }
@@ -1929,6 +1941,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip3)
                   {
+                    qfi3 = ((qfi3 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi3 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr3->segments->as_u8[offset + 4] = qfi3;
                   }
 
@@ -1943,6 +1957,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip3)
                   {
+                    qfi3 = ((qfi3 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi3 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr3->segments->as_u8[offset + 4] |= qfi3 >> shift;
                     sr3->segments->as_u8[offset + 5] |= qfi3 << (8 - shift);
                   }
@@ -2168,6 +2184,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip0)
                   {
+                    qfi0 = ((qfi0 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi0 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr0->segments->as_u8[offset + 4] = qfi0;
                   }
 
@@ -2182,6 +2200,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
                 if (qfip0)
                   {
+                    qfi0 = ((qfi0 & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi0 & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
                     sr0->segments->as_u8[offset + 4] |= qfi0 >> shift;
                     sr0->segments->as_u8[offset + 5] |= qfi0 << (8 - shift);
                   }
