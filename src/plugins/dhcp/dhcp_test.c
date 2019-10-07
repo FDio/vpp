@@ -27,10 +27,11 @@
 #include <dhcp/dhcp.api_enum.h>
 #include <dhcp/dhcp.api_types.h>
 
-typedef struct {
-    /* API message ID base */
-    u16 msg_id_base;
-    vat_main_t *vat_main;
+typedef struct
+{
+  /* API message ID base */
+  u16 msg_id_base;
+  vat_main_t *vat_main;
 } dhcp_test_main_t;
 
 dhcp_test_main_t dhcp_test_main;
@@ -299,8 +300,7 @@ api_dhcp_client_config (vat_main_t * vam)
     {
       if (unformat (i, "del"))
 	is_add = 0;
-      else
-	if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+      else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
 	sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	sw_if_index_set = 1;
@@ -342,151 +342,95 @@ api_dhcp_client_config (vat_main_t * vam)
   return ret;
 }
 
-/* static void *vl_api_dhcp_proxy_config_t_print */
-/*   (vl_api_dhcp_proxy_config_t * mp, void *handle) */
-/* { */
-/*   u8 *s; */
-
-/*   s = format (0, "SCRIPT: dhcp_proxy_config_2 "); */
-
-/*   s = format (s, "rx_vrf_id %d ", (mp->rx_vrf_id)); */
-/*   s = format (s, "server_vrf_id %d ", (mp->server_vrf_id)); */
-
-/*   s = format (s, "svr %U ", format_ip46_address, */
-/* 	      (ip46_address_t *) & mp->dhcp_server.un); */
-/*   s = format (s, "src %U ", format_ip46_address, */
-/* 	      (ip46_address_t *) & mp->dhcp_src_address.un); */
-
-/*   if (mp->is_add == 0) */
-/*     s = format (s, "del "); */
-
-/*   FINISH; */
-/* } */
-
-/* static void *vl_api_dhcp_proxy_set_vss_t_print */
-/*   (vl_api_dhcp_proxy_set_vss_t * mp, void *handle) */
-/* { */
-/*   u8 *s; */
-
-/*   s = format (0, "SCRIPT: dhcp_proxy_set_vss "); */
-
-/*   s = format (s, "tbl_id %d ", (mp->tbl_id)); */
-
-/*   if (mp->vss_type == VSS_TYPE_VPN_ID) */
-/*     { */
-/*       s = format (s, "fib_id %d ", (mp->vpn_index)); */
-/*       s = format (s, "oui %d ", (mp->oui)); */
-/*     } */
-/*   else if (mp->vss_type == VSS_TYPE_ASCII) */
-/*     s = format (s, "vpn_ascii_id %s", mp->vpn_ascii_id); */
-
-/*   if (mp->is_ipv6 != 0) */
-/*     s = format (s, "ipv6 "); */
-
-/*   if (mp->is_add == 0) */
-/*     s = format (s, "del "); */
-
-/*   FINISH; */
-/* } */
-
-/* static void *vl_api_dhcp_client_config_t_print */
-/*   (vl_api_dhcp_client_config_t * mp, void *handle) */
-/* { */
-/*   u8 *s; */
-
-/*   s = format (0, "SCRIPT: dhcp_client_config "); */
-
-/*   s = format (s, "sw_if_index %d ", (mp->client.sw_if_index)); */
-
-/*   s = format (s, "hostname %s ", mp->client.hostname); */
-
-/*   s = format (s, "want_dhcp_event %d ", mp->client.want_dhcp_event); */
-
-/*   s = format (s, "pid %d ", (mp->client.pid)); */
-
-/*   if (mp->is_add == 0) */
-/*     s = format (s, "del "); */
-
-/*   FINISH; */
-/* } */
-
 static int
 api_want_dhcp6_reply_events (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_want_dhcp6_pd_reply_events (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp6_send_client_message (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp6_pd_send_client_message (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp_client_dump (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp6_duid_ll_set (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp6_clients_enable_disable (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp_plugin_control_ping (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
+
 static int
 api_dhcp_plugin_get_version (vat_main_t * vam)
 {
-    return -1;
+  return -1;
 }
 
 #define vl_api_dhcp_client_details_t_handler vl_noop_handler
 
 static void
-vl_api_dhcp_plugin_get_version_reply_t_handler (vl_api_dhcp_plugin_get_version_reply_t * mp)
+  vl_api_dhcp_plugin_get_version_reply_t_handler
+  (vl_api_dhcp_plugin_get_version_reply_t * mp)
 {
+  vat_main_t *vam = dhcp_test_main.vat_main;
+  clib_warning ("DHCP plugin version: %d.%d", ntohl (mp->major),
+		ntohl (mp->minor));
+  vam->result_ready = 1;
 }
 
 static void
-vl_api_dhcp_plugin_control_ping_reply_t_handler (vl_api_dhcp_plugin_get_version_reply_t * mp)
+  vl_api_dhcp_plugin_control_ping_reply_t_handler
+  (vl_api_dhcp_plugin_control_ping_reply_t * mp)
 {
+  vat_main_t *vam = dhcp_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
 }
 
-/* static void */
-/* vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp) */
-/* { */
-/*   u8 *s, i; */
-
-/*   s = format (0, "DHCP compl event: pid %d hostname %s host_addr %U " */
-/* 	      "host_mac %U router_addr %U", */
-/* 	      ntohl (mp->pid), mp->lease.hostname, */
-/* 	      format_ip4_address, mp->lease.host_address, */
-/* 	      format_ethernet_address, mp->lease.host_mac, */
-/* 	      format_ip4_address, mp->lease.router_address); */
-
-/*   for (i = 0; i < mp->lease.count; i++) */
-/*     s = */
-/*       format (s, " domain_server_addr %U", format_ip4_address, */
-/* 	      mp->lease.domain_server[i].address); */
-
-/*   errmsg ((char *) s); */
-/*   vec_free (s); */
-/* } */
-
 #include <dhcp/dhcp.api_test.c>
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
