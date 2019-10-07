@@ -288,6 +288,7 @@ ip_csum_fold (ip_csum_t c)
 
 extern ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
 
+/* Checksum routine. */
 always_inline ip_csum_t
 ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
@@ -299,9 +300,6 @@ ip_csum_and_memcpy_fold (ip_csum_t sum, void *dst)
 {
   return ip_csum_fold (sum);
 }
-
-/* Checksum routine. */
-ip_csum_t ip_incremental_checksum (ip_csum_t sum, void *data, uword n_bytes);
 
 #endif /* included_ip_packet_h */
 
