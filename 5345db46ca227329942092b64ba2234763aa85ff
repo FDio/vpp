@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b851e4e1_4d301117",
+        "filename": "docs/gettingstarted/developers/cross_compile_macos.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-07T11:42:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2a100a5e_a60267ef",
+      "range": {
+        "startLine": 15,
+        "startChar": 2,
+        "endLine": 15,
+        "endChar": 5
+      },
+      "revId": "5345db46ca227329942092b64ba2234763aa85ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "88a28884_df287be7",
         "filename": "docs/gettingstarted/developers/cross_compile_macos.rst",
         "patchSetId": 8
@@ -45,6 +69,30 @@
       "revId": "5345db46ca227329942092b64ba2234763aa85ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fdb25167_f72c4512",
+        "filename": "docs/gettingstarted/developers/cross_compile_macos.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-07T11:42:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "88a28884_df287be7",
+      "range": {
+        "startLine": 16,
+        "startChar": 25,
+        "endLine": 16,
+        "endChar": 32
+      },
+      "revId": "5345db46ca227329942092b64ba2234763aa85ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
