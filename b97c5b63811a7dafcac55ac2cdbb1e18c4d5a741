@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63699b40_1842f8d7",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1682,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-08T06:01:42Z",
+      "side": 1,
+      "message": "run \u0027make fixstyle\u0027",
+      "revId": "b97c5b63811a7dafcac55ac2cdbb1e18c4d5a741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa4a4ee1_cf599600",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1724,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-08T06:01:42Z",
+      "side": 1,
+      "message": "if sp1_index could still be valid even though sp0_index is not.",
+      "revId": "b97c5b63811a7dafcac55ac2cdbb1e18c4d5a741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
