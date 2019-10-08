@@ -2050,3 +2050,10 @@ class VppPapiProvider(object):
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
                         })
+
+    def feature_gso_enable_disable(self, sw_if_index, enable_disable=1):
+        return self.api(self.papi.feature_gso_enable_disable,
+                        {
+                            'sw_if_index': sw_if_index,
+                            'enable_disable': enable_disable,
+                        })
