@@ -29,37 +29,13 @@
 #include "ioam_cache.h"
 
 /* define message IDs */
-#include <ioam/ip6/ioam_cache_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/ip6/ioam_cache_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ioam/ip6/ioam_cache_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ioam/ip6/ioam_cache_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/ip6/ioam_cache_all_api_h.h>
-#undef vl_api_version
+#include <ioam/ip6/ioam_cache.api_enum.h>
+#include <ioam/ip6/ioam_cache.api_types.h>
 
 #define REPLY_MSG_ID_BASE cm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 ioam_cache_main_t ioam_cache_main;
-
-/* List of message types that this plugin understands */
-#define foreach_ioam_cache_plugin_api_msg                        \
-_(IOAM_CACHE_IP6_ENABLE_DISABLE, ioam_cache_ip6_enable_disable)
 
 static u8 *
 ioam_e2e_id_trace_handler (u8 * s, ip6_hop_by_hop_option_t * opt)
@@ -181,38 +157,6 @@ static void vl_api_ioam_cache_ip6_enable_disable_t_handler
   rv =
     ioam_cache_ip6_enable_disable (cm, &sr_localsid, (int) (mp->is_disable));
   REPLY_MACRO (VL_API_IOAM_CACHE_IP6_ENABLE_DISABLE_REPLY);
-}
-
-/* Set up the API message handling tables */
-static clib_error_t *
-ioam_cache_plugin_api_hookup (vlib_main_t * vm)
-{
-  ioam_cache_main_t *sm = &ioam_cache_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_ioam_cache_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ioam/ip6/ioam_cache_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (ioam_cache_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_ioam_cache;
-#undef _
 }
 
 static clib_error_t *
@@ -368,29 +312,20 @@ VLIB_CLI_COMMAND (show_ioam_cache_command, static) =
     "show ioam ip6 cache [verbose]",.function = show_ioam_cache_command_fn};
 /* *INDENT_ON* */
 
+#include <ioam/ip6/ioam_cache.api.c>
 static clib_error_t *
 ioam_cache_init (vlib_main_t * vm)
 {
   vlib_node_t *node;
   ioam_cache_main_t *em = &ioam_cache_main;
-  clib_error_t *error = 0;
-  u8 *name;
   u32 cache_node_index = ioam_cache_node.index;
   u32 ts_node_index = ioam_cache_ts_node.index;
   vlib_node_t *ip6_hbyh_node = NULL, *ip6_hbh_pop_node = NULL, *error_node =
     NULL;
 
-  name = format (0, "ioam_cache_%08x%c", api_version, 0);
-
   clib_memset (&ioam_cache_main, 0, sizeof (ioam_cache_main));
   /* Ask for a correctly-sized block of API message decode slots */
-  em->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = ioam_cache_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (em, &api_main);
+  em->msg_id_base = setup_message_id_table ();
 
   /* Hook this node to ip6-hop-by-hop */
   ip6_hbyh_node = vlib_get_node_by_name (vm, (u8 *) "ip6-hop-by-hop");
@@ -412,9 +347,7 @@ ioam_cache_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "ip6-add-syn-hop-by-hop");
   em->ip6_reset_ts_hbh_node_index = node->index;
 
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (ioam_cache_init);

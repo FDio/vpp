@@ -28,35 +28,11 @@
 
 
 /* define message IDs */
-#include <ioam/export/ioam_export_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_api_version
+#include <ioam/export/ioam_export.api_enum.h>
+#include <ioam/export/ioam_export.api_types.h>
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-/* List of message types that this plugin understands */
-#define foreach_ioam_export_plugin_api_msg                        \
-_(IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable)
 
 ioam_export_main_t ioam_export_main;
 
@@ -116,38 +92,6 @@ static void vl_api_ioam_export_ip6_enable_disable_t_handler
   REPLY_MACRO (VL_API_IOAM_EXPORT_IP6_ENABLE_DISABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-ioam_export_plugin_api_hookup (vlib_main_t * vm)
-{
-  ioam_export_main_t *sm = &ioam_export_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_ioam_export_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (ioam_export_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_ioam_export;
-#undef _
-}
-
 static clib_error_t *
 set_ioam_export_ipfix_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
@@ -201,13 +145,11 @@ VLIB_CLI_COMMAND (set_ipfix_command, static) =
     function = set_ioam_export_ipfix_command_fn,};
 /* *INDENT-ON* */
 
-
+#include <ioam/export/ioam_export.api.c>
 static clib_error_t *
 ioam_export_init (vlib_main_t * vm)
 {
   ioam_export_main_t *em = &ioam_export_main;
-  clib_error_t *error = 0;
-  u8 *name;
   u32 node_index = export_node.index;
   vlib_node_t *ip6_hbyh_node = NULL;
 
@@ -216,25 +158,17 @@ ioam_export_init (vlib_main_t * vm)
   em->set_id = IPFIX_IOAM_EXPORT_ID;
   ioam_export_reset_next_node (em);
 
-  name = format (0, "ioam_export_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  em->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  em->msg_id_base = setup_message_id_table ();
+
   em->unix_time_0 = (u32) time (0);	/* Store starting time */
   em->vlib_time_0 = vlib_time_now (vm);
-
-  error = ioam_export_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (em, &api_main);
 
   /* Hook this export node to ip6-hop-by-hop */
   ip6_hbyh_node = vlib_get_node_by_name (vm, (u8 *) "ip6-hop-by-hop");
   em->my_hbh_slot = vlib_node_add_next (vm, ip6_hbyh_node->index, node_index);
-  vec_free (name);
 
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (ioam_export_init);

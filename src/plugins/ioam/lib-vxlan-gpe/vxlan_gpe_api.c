@@ -28,39 +28,8 @@
 
 
 /* define message IDs */
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_api_version
-
-/* List of message types that this plugin understands */
-
-#define foreach_vxlan_gpe_plugin_api_msg                               \
-_(VXLAN_GPE_IOAM_ENABLE, vxlan_gpe_ioam_enable)                        \
-_(VXLAN_GPE_IOAM_DISABLE, vxlan_gpe_ioam_disable)                      \
-_(VXLAN_GPE_IOAM_VNI_ENABLE, vxlan_gpe_ioam_vni_enable)                \
-_(VXLAN_GPE_IOAM_VNI_DISABLE, vxlan_gpe_ioam_vni_disable)              \
-_(VXLAN_GPE_IOAM_TRANSIT_ENABLE, vxlan_gpe_ioam_transit_enable)        \
-_(VXLAN_GPE_IOAM_TRANSIT_DISABLE, vxlan_gpe_ioam_transit_disable)      \
-
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_types.h>
 
 static void vl_api_vxlan_gpe_ioam_enable_t_handler
   (vl_api_vxlan_gpe_ioam_enable_t * mp)
@@ -239,44 +208,11 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-vxlan_gpe_plugin_api_hookup (vlib_main_t * vm)
-{
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vxlan_gpe_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (vxlan_gpe_ioam_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_ioam_vxlan_gpe;
-#undef _
-}
-
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.c>
 static clib_error_t *
 vxlan_gpe_init (vlib_main_t * vm)
 {
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
-  clib_error_t *error = 0;
-  u8 *name;
   u32 encap_node_index = vxlan_gpe_encap_ioam_v4_node.index;
   u32 decap_node_index = vxlan_gpe_decap_ioam_v4_node.index;
   vlib_node_t *vxlan_gpe_encap_node = NULL;
@@ -288,16 +224,8 @@ vxlan_gpe_init (vlib_main_t * vm)
   sm->unix_time_0 = (u32) time (0);	/* Store starting time */
   sm->vlib_time_0 = vlib_time_now (vm);
 
-  name = format (0, "ioam_vxlan_gpe_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  sm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = vxlan_gpe_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (sm, &api_main);
+  sm->msg_id_base = setup_message_id_table ();
 
   /* Hook the ioam-encap node to vxlan-gpe-encap */
   vxlan_gpe_encap_node = vlib_get_node_by_name (vm, (u8 *) "vxlan-gpe-encap");
@@ -316,9 +244,8 @@ vxlan_gpe_init (vlib_main_t * vm)
   sm->dst_by_ip6 = hash_create_mem (0, sizeof (fib_prefix_t), sizeof (uword));
 
   vxlan_gpe_ioam_interface_init ();
-  vec_free (name);
 
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (vxlan_gpe_init);

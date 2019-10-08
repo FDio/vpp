@@ -547,6 +547,10 @@ Steal The NIC
 I:	stn
 F:	src/plugins/stn
 
+IOAM
+I:	ioam
+F:	src/plugins/ioam
+
 Awkward chained buffer geometry tool
 I:	oddbuf
 F:	src/plugins/oddbuf
