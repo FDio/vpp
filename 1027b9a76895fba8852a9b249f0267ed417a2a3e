@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7020f89b_3ca526b8",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1555,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-08T08:44:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1beac2ac_fc2ff92d",
+      "range": {
+        "startLine": 1555,
+        "startChar": 0,
+        "endLine": 1555,
+        "endChar": 17
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "96b16318_5aa1afc0",
         "filename": "src/vnet/session/application.c",
         "patchSetId": 5
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "dd3b2d9b_a1ff5b0e",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1651,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-08T08:44:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "96b16318_5aa1afc0",
+      "range": {
+        "startLine": 1651,
+        "startChar": 11,
+        "endLine": 1651,
+        "endChar": 27
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f5c6bd6f_32162778",
         "filename": "src/vnet/session/session_types.h",
         "patchSetId": 5
@@ -68,6 +116,30 @@
       "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "113ba8cb_e5d56508",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-08T08:44:09Z",
+      "side": 1,
+      "message": "Right, seems a more reasonable naming.",
+      "parentUuid": "f5c6bd6f_32162778",
+      "range": {
+        "startLine": 47,
+        "startChar": 6,
+        "endLine": 47,
+        "endChar": 23
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
