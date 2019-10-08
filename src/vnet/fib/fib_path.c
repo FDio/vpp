@@ -2571,9 +2571,24 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
                     /*
                      * Create the adj needed for sending IP multicast traffic
                      */
-                    ai = adj_mcast_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
-                                               fib_forw_chain_type_to_link_type(fct),
-                                               path->attached.fp_interface);
+                    if (vnet_sw_interface_is_p2p(vnet_get_main(),
+                                                 path->attached.fp_interface))
+                    {
+                        /*
+                         * point-2-point interfaces do not require a glean, since
+                         * there is nothing to ARP. Install a rewrite/nbr adj instead
+                         */
+                        ai = adj_nbr_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
+                                                 fib_forw_chain_type_to_link_type(fct),
+                                                 &zero_addr,
+                                                 path->attached.fp_interface);
+                    }
+                    else
+                    {
+                        ai = adj_mcast_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
+                                                   fib_forw_chain_type_to_link_type(fct),
+                                                   path->attached.fp_interface);
+                    }
                     dpo_set(dpo, DPO_ADJACENCY,
                             fib_forw_chain_type_to_dpo_proto(fct),
                             ai);
