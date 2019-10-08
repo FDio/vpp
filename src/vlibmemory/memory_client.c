@@ -394,6 +394,7 @@ connect_to_vlib_internal (const char *svm_name,
 {
   int rv = 0;
   memory_client_main_t *mm = &memory_client_main;
+  api_main_t *am = &api_main;
 
   if (do_map && (rv = vl_client_api_map (svm_name)))
     {
@@ -415,7 +416,14 @@ connect_to_vlib_internal (const char *svm_name,
       rv = pthread_create (&mm->rx_thread_handle,
 			   NULL /*attr */ , rx_thread_fn, 0);
       if (rv)
-	clib_warning ("pthread_create returned %d", rv);
+	{
+	  clib_warning ("pthread_create returned %d", rv);
+	  am->rx_thread_handle = 0;
+	}
+      else
+	{
+	  am->rx_thread_handle = mm->rx_thread_handle;
+	}
     }
 
   mm->connected_to_vlib = 1;
