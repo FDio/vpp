@@ -28,30 +28,17 @@
 
 
 /* Declare message IDs */
-#include <ioam/export/ioam_export_msg_enum.h>
+#include <ioam/export/ioam_export.api_enum.h>
+#include <ioam/export/ioam_export.api_types.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
+#define vl_endianfun            /* define message structures */
 #define vl_printfun
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/export/ioam_export_all_api_h.h>
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#include <ioam/export/ioam_export.api.h>
+#undef vl_endianfun
+#undef vl_printfun
 #undef vl_api_version
-
 
 typedef struct
 {

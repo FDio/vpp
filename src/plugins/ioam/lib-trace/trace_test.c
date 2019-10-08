@@ -28,30 +28,17 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
-#include <ioam/lib-trace/trace_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
+#include <ioam/lib-trace/trace.api_enum.h>
+#include <ioam/lib-trace/trace.api_types.h>
 
 #define vl_endianfun		/* define message structures */
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
 #define vl_printfun
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-trace/trace_all_api_h.h>
+#define vl_print(handle, ...)
+#include <ioam/lib-trace/trace.api.h>
+#undef vl_endianfun
+#undef vl_printfun
 #undef vl_api_version
-
 
 typedef struct
 {
