@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1beac2ac_fc2ff92d",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1555,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-08T01:19:35Z",
+      "side": 1,
+      "message": "app_cert_key_pair_alloc ?",
+      "range": {
+        "startLine": 1555,
+        "startChar": 0,
+        "endLine": 1555,
+        "endChar": 17
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96b16318_5aa1afc0",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1651,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-08T01:19:35Z",
+      "side": 1,
+      "message": "show app certificate? Unless we think this is independent of the app interface sub-layer",
+      "range": {
+        "startLine": 1651,
+        "startChar": 11,
+        "endLine": 1651,
+        "endChar": 27
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5c6bd6f_32162778",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-08T01:19:35Z",
+      "side": 1,
+      "message": "ckpair_index?",
+      "range": {
+        "startLine": 47,
+        "startChar": 6,
+        "endLine": 47,
+        "endChar": 23
+      },
+      "revId": "1027b9a76895fba8852a9b249f0267ed417a2a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
