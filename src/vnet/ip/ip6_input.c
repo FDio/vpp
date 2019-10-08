@@ -287,9 +287,13 @@ ip6_init (vlib_main_t * vm)
 
 
   uword *u = hash_get (ip_main.protocol_info_by_name, "IPV6_FRAGMENTATION");
-  ip_protocol_info_t *info = vec_elt_at_index (ip_main.protocol_infos, *u);
-  ASSERT (NULL == info->format_header);
-  info->format_header = format_ipv6_fragmentation;
+  if (u)
+    {
+      ip_protocol_info_t *info =
+	vec_elt_at_index (ip_main.protocol_infos, *u);
+      ASSERT (NULL == info->format_header);
+      info->format_header = format_ipv6_fragmentation;
+    }
   return /* no error */ 0;
 }
 
