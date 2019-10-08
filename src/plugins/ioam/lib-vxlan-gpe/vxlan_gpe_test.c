@@ -28,29 +28,18 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_types.h>
 
 #define vl_endianfun		/* define message structures */
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
 #define vl_printfun
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#define vl_print(handle, ...)
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.h>
+#undef vl_endianfun
+#undef vl_printfun
 #undef vl_api_version
+
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 

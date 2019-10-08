@@ -27,37 +27,9 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-
 /* define message IDs */
-#include <ioam/lib-trace/trace_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_api_version
-
-/* List of message types that this plugin understands */
-
-#define foreach_trace_plugin_api_msg                                      \
-_(TRACE_PROFILE_ADD, trace_profile_add)                                     \
-_(TRACE_PROFILE_DEL, trace_profile_del)                                     \
-_(TRACE_PROFILE_SHOW_CONFIG, trace_profile_show_config)
+#include <ioam/lib-trace/trace.api_enum.h>
+#include <ioam/lib-trace/trace.api_types.h>
 
 static void vl_api_trace_profile_add_t_handler
   (vl_api_trace_profile_add_t * mp)
@@ -122,44 +94,11 @@ static void vl_api_trace_profile_show_config_t_handler
     }
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-trace_plugin_api_hookup (vlib_main_t * vm)
-{
-  trace_main_t *sm = &trace_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_trace_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (trace_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_trace;
-#undef _
-}
-
+#include <ioam/lib-trace/trace.api.c>
 static clib_error_t *
 trace_init (vlib_main_t * vm)
 {
   trace_main_t *sm = &trace_main;
-  clib_error_t *error = 0;
-  u8 *name;
 
   bzero (sm, sizeof (trace_main));
   (void) trace_util_init ();
@@ -167,20 +106,10 @@ trace_init (vlib_main_t * vm)
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
 
-  name = format (0, "ioam_trace_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  sm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  sm->msg_id_base = setup_message_id_table ();
 
-  error = trace_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (sm, &api_main);
-
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (trace_init);
