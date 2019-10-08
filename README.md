@@ -1,106 +1,178 @@
-Vector Packet Processing
+SRv6 Mobile User Plane Plugin for VPP
 ========================
 
 ## Introduction
 
-The VPP platform is an extensible framework that provides out-of-the-box
-production quality switch/router functionality. It is the open source version
-of Cisco's Vector Packet Processing (VPP) technology: a high performance,
-packet-processing stack that can run on commodity CPUs.
+This fork of VPP implements stateless mobile user plane protocols translation between GTP-U and SRv6.
+The functions of the translation take advantage of SRv6 network programmability.
+[SRv6 Mobile User Plane](https://tools.ietf.org/html/draft-ietf-dmm-srv6-mobile-uplane) defines the user plane protocol using SRv6
+including following stateless translation functions:
 
-The benefits of this implementation of VPP are its high performance, proven
-technology, its modularity and flexibility, and rich feature set.
+- **T.M.GTP4.D:**  
+   GTP-U over UDP/IPv4 -> SRv6
+- **End.M.GTP4.E:**  
+   SRv6 -> GTP-U over UDP/IPv4
+- **End.M.GTP6.D:**   
+   GTP-U over UDP/IPv6 -> SRv6
+- **End.M.GTP6.E:**  
+   SRv6 -> GTP-U over UDP/IPv6
 
-For more information on VPP and its features please visit the
-[FD.io website](http://fd.io/) and
-[What is VPP?](https://wiki.fd.io/view/VPP/What_is_VPP%3F) pages.
-
-
-## Changes
-
-Details of the changes leading up to this version of VPP can be found under
-@ref release_notes.
-
-
-## Directory layout
-
-| Directory name         | Description                                 |
-| ---------------------- | ------------------------------------------- |
-|      build-data        | Build metadata                              |
-|      build-root        | Build output directory                      |
-|      doxygen           | Documentation generator configuration       |
-|      dpdk              | DPDK patches and build infrastructure       |
-| @ref extras/libmemif   | Client library for memif                    |
-| @ref src/examples      | VPP example code                            |
-| @ref src/plugins       | VPP bundled plugins directory               |
-| @ref src/svm           | Shared virtual memory allocation library    |
-|      src/tests         | Standalone tests (not part of test harness) |
-|      src/vat           | VPP API test program                        |
-| @ref src/vlib          | VPP application library                     |
-| @ref src/vlibapi       | VPP API library                             |
-| @ref src/vlibmemory    | VPP Memory management                       |
-| @ref src/vnet          | VPP networking                              |
-| @ref src/vpp           | VPP application                             |
-| @ref src/vpp-api       | VPP application API bindings                |
-| @ref src/vppinfra      | VPP core library                            |
-| @ref src/vpp/api       | Not-yet-relocated API bindings              |
-|      test              | Unit tests and Python test harness          |
+These functions benefit user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits
+data plane to be able to handle user plane in routing paradigm.
 
 ## Getting started
+To play with SRv6 Mobile User Plane on VPP, you need to install following packages:
 
-In general anyone interested in building, developing or running VPP should
-consult the [VPP wiki](https://wiki.fd.io/view/VPP) for more complete
-documentation.
+	docker
+	python3
+	pip3
 
-In particular, readers are recommended to take a look at [Pulling, Building,
-Running, Hacking, Pushing](https://wiki.fd.io/view/VPP/Pulling,_Building,_Run
-ning,_Hacking_and_Pushing_VPP_Code) which provides extensive step-by-step
-coverage of the topic.
-
-For the impatient, some salient information is distilled below.
-
-
-### Quick-start: On an existing Linux host
-
-To install system dependencies, build VPP and then install it, simply run the
-build script. This should be performed a non-privileged user with `sudo`
-access from the project base directory:
-
-    ./extras/vagrant/build.sh
-
-If you want a more fine-grained approach because you intend to do some
-development work, the `Makefile` in the root directory of the source tree
-provides several convenience shortcuts as `make` targets that may be of
-interest. To see the available targets run:
-
-    make
+	Python packages (use pip):
+	docker
+	scapy
+	jinja2
 
 
-### Quick-start: Vagrant
+### Quick-start
 
-The directory `extras/vagrant` contains a `VagrantFile` and supporting
-scripts to bootstrap a working VPP inside a Vagrant-managed Virtual Machine.
-This VM can then be used to test concepts with VPP or as a development
-platform to extend VPP. Some obvious caveats apply when using a VM for VPP
-since its performance will never match that of bare metal; if your work is
-timing or performance sensitive, consider using bare metal in addition or
-instead of the VM.
+1. Build up the docker container image as following:
 
-For this to work you will need a working installation of Vagrant. Instructions
-for this can be found [on the Setting up Vagrant wiki page]
-(https://wiki.fd.io/view/DEV/Setting_Up_Vagrant).
+```
+$ git clone https://github.com/filvarga/srv6-mobile.git
+$ cd ./srv6-mobile/extras/ietf105
+$ ./runner.py infra build
 
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ietf105-image       latest              577e786b7ec6        2 days ago          5.57GB
+ubuntu              18.04               4c108a37151f        4 weeks ago         64.2MB
+
+```
+
+The runner script [runner.py](https://github.com/filvarga/srv6-mobile/blob/ietf105-hackathon/extras/ietf105/runner.py) has features to automate configurations and procedures for the test.
+
+2. Instantiate test Scenario
+
+Let's try following command to instantiate a topology:
+
+```
+$ ./runner.py infra start
+```
+
+This command instantiates 4 VPP containers with following topology:
+
+![Topology Diagram](extras/ietf106/topo-init.png)
+
+You can check the instantiated docker instances with "docker ps".
+
+
+```
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS               NAMES
+44cb98994500        ietf105-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-4
+6d65fff8aee9        ietf105-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-3
+ad123b516b24        ietf105-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-2
+5efed405b96a        ietf105-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-1
+
+```
+
+You can login to and configure each instantiated container.
+
+```
+$ ./runner.py cmd vppctl 0
+
+Verified image: None
+connecting to: hck-vpp-1
+    _______    _        _   _____  ___
+ __/ __/ _ \  (_)__    | | / / _ \/ _ \
+ _/ _// // / / / _ \   | |/ / ___/ ___/
+ /_/ /____(_)_/\___/   |___/_/  /_/    
+
+vpp#
+```
+
+## Test Scenarios
+### SRv6 Drop-in between GTP-U tunnel
+
+This test scenario introduces SRv6 path between GTP-U tunnel transparently. A GTP-U packet sent out from one end to another is translated to SRv6 and then back to GTP-U. All GTP-U tunnel identifiers are preserved in IPv6 header and SRH.
+
+
+#### GTP-U over UDP/IPv4 case
+
+This case uses SRv6 end functions, T.M.GTP4.D and End.M.GTP4.E.
+
+![Topology Diagram](extras/ietf105/topo-test_gtp4d.png)
+
+VPP1 is configured with "T.M.GTP4.D", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv4 toward the packet capture. VPP1 translates it to SRv6 toward D4::TEID with SR policy <D2::, D3::> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
+
+To start this case with IPv4 payload over GTP-U, you can run:
+
+```
+$ ./runner.py test tmap
+```
+
+If you want to use IPv6 payload instead of IPv4, you can run:
+
+```
+$ ./runner.py test tmap_ipv6
+```
+
+
+#### GTP-U over UDP/IPv6 case
+
+This case uses SRv6 end functions, End.M.GTP6.D.Di and End.M.GTP6.E.
+
+![Topology Diagram](extras/ietf106/topo-test_gtp6d.png)
+
+VPP1 is configured with "End.M.GTP6.D.Di", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D:: of the packet capture. VPP1 translates it to SRv6 toward D:: with SR policy <D2::, D3::, D4::TEID> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
+
+To start this case with IPv4 payload over GTP-U, you can run:
+
+```
+$ ./runner.py test gtp6_drop_in
+```
+
+If you want to use IPv6 payload instead of IPv4, you can run:
+
+```
+$ ./runner.py test gtp6_drop_in_ipv6
+```
+
+
+### GTP-U to SRv6
+
+This test scenario demonstrates GTP-U to SRv6 translation. A GTP-U packet sent out from one end to another is translated to SRv6.
+
+#### GTP-U over UDP/IPv6 case
+
+##### IPv4 payload
+
+This case uses SRv6 end functions, End.M.GTP6.D and End.DT4.
+
+![Topology Diagram](extras/ietf105/topo-test_gtp6.png)
+
+VPP1 is configured with "End.M.GTP6.D", and VPP4 is configured with "End.DT4". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D::2. VPP1 translates it to SRv6 toward the IPv6 destination consists of D4:: and TEID of GTP-U with SR policy <D2::, D3::> in SRH. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv4 packet and send out to the packet capture.
+
+To start this case, you can run:
+
+```
+$ ./runner.py test gtp6
+```
+
+##### IPv6 payload
+
+This case uses SRv6 end functions, End.M.GTP6.D and End.DT6.
+
+
+![Topology Diagram](extras/ietf105/topo-test_gtp6ip6.png)
+
+The configurations are same with IPv4 payload case, except D4:: is configured as "End.DT6" in VPP4. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv6 packet and send out to the packet capture.
+
+If you want to use IPv6 payload instead of IPv4, you can run:
+
+```
+$ ./runner.py test gtp6_ipv6
+```
 
 ## More information
-
-Several modules provide documentation, see @subpage user_doc for more
-end-user-oriented information. Also see @subpage dev_doc for developer notes.
-
-Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
-advanced building strategies and other development notes.
-
-
-## Test Framework
-
-There is PyDoc generated documentation available for the VPP test framework.
-See @ref test_framework_doc for details.
+TBD
