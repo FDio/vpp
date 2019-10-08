@@ -340,6 +340,9 @@ typedef struct
   /** List of API client reaper functions */
   _vl_msg_api_function_list_elt_t *reaper_function_registrations;
 
+  /** Bin API thread handle */
+  pthread_t rx_thread_handle;
+
   /** event log */
   elog_main_t *elog_main;
   int elog_trace_api_messages;
