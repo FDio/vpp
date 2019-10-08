@@ -1786,6 +1786,12 @@ tcp_timer_persist_handler (u32 index)
 			   || tc->snd_nxt == tc->snd_una_max
 			   || tc->rto_boff > 1));
 
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    {
+      tcp_bt_check_app_limited (tc);
+      tcp_bt_track_tx (tc);
+    }
+
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0,
 		  /* burst */ 0, /* update_snd_nxt */ 1);
   tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
