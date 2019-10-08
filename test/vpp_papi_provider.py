@@ -65,6 +65,7 @@ defaultmapping = {
                                 'l2_table_index': 4294967295, },
     'ip6_add_del_address_using_prefix': {'is_add': 1, },
     'ip6nd_send_router_solicitation': {'irt': 1, 'mrt': 120, },
+    'ip6nd_proxy_add_del': {'is_add': 1},
     'ip_add_del_route': {'next_hop_sw_if_index': 4294967295,
                          'next_hop_weight': 1, 'next_hop_via_label': 1048576,
                          'classify_table_index': 4294967295, 'is_add': 1, },
@@ -372,32 +373,6 @@ class VppPapiProvider(object):
         """
         return cli + "\n" + str(self.cli(cli))
 
-    def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
-        return self.api(self.papi.want_ip4_arp_events,
-                        {'enable_disable': enable_disable,
-                         'ip': ip,
-                         'pid': os.getpid(), })
-
-    def want_ip6_nd_events(self, enable_disable=1, ip="::"):
-        return self.api(self.papi.want_ip6_nd_events,
-                        {'enable_disable': enable_disable,
-                         'ip': ip,
-                         'pid': os.getpid(), })
-
-    def want_ip6_ra_events(self, enable_disable=1):
-        return self.api(self.papi.want_ip6_ra_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid(), })
-
-    def ip6nd_send_router_solicitation(self, sw_if_index, irt=1, mrt=120,
-                                       mrc=0, mrd=0):
-        return self.api(self.papi.ip6nd_send_router_solicitation,
-                        {'irt': irt,
-                         'mrt': mrt,
-                         'mrc': mrc,
-                         'mrd': mrd,
-                         'sw_if_index': sw_if_index})
-
     def want_interface_events(self, enable_disable=1):
         return self.api(self.papi.want_interface_events,
                         {'enable_disable': enable_disable,
@@ -470,102 +445,6 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.create_loopback,
                         {'mac_address': mac})
-
-    def ip_table_add_del(self,
-                         table_id,
-                         is_add=1,
-                         is_ipv6=0):
-        """
-
-        :param table_id
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-
-        """
-
-        return self.api(
-            self.papi.ip_table_add_del,
-            {'table':
-             {
-                 'table_id': table_id,
-                 'is_ip6': is_ipv6
-             },
-             'is_add': is_add})
-
-    def ip_table_dump(self):
-        return self.api(self.papi.ip_table_dump, {})
-
-    def ip_route_dump(self, table_id, is_ip6=False):
-        return self.api(self.papi.ip_route_dump,
-                        {'table': {
-                            'table_id': table_id,
-                            'is_ip6': is_ip6
-                        }})
-
-    def ip_neighbor_add_del(self,
-                            sw_if_index,
-                            mac_address,
-                            ip_address,
-                            is_add=1,
-                            flags=0):
-        """ Add neighbor MAC to IPv4 or IPv6 address.
-
-        :param sw_if_index:
-        :param mac_address:
-        :param dst_address:
-        :param is_add:  (Default value = 1)
-        :param flags:  (Default value = 0/NONE)
-        """
-        return self.api(
-            self.papi.ip_neighbor_add_del,
-            {
-                'is_add': is_add,
-                'neighbor': {
-                    'sw_if_index': sw_if_index,
-                    'flags': flags,
-                    'mac_address': mac_address,
-                    'ip_address': ip_address
-                }
-            }
-        )
-
-    def proxy_arp_add_del(self,
-                          low,
-                          hi,
-                          table_id=0,
-                          is_add=1):
-        """ Config Proxy Arp Range.
-
-        :param low_address: Start address in the rnage to Proxy for
-        :param hi_address: End address in the rnage to Proxy for
-        :param vrf_id: The VRF/table in which to proxy
-        """
-
-        return self.api(
-            self.papi.proxy_arp_add_del,
-            {'proxy':
-                {
-                    'table_id': table_id,
-                    'low': low,
-                    'hi': hi,
-                },
-                'is_add': is_add})
-
-    def proxy_arp_intfc_enable_disable(self,
-                                       sw_if_index,
-                                       is_enable=1):
-        """ Enable/Disable an interface for proxy ARP requests
-
-        :param sw_if_index: Interface
-        :param enable_disable: Enable/Disable
-        """
-
-        return self.api(
-            self.papi.proxy_arp_intfc_enable_disable,
-            {'sw_if_index': sw_if_index,
-             'enable_disable': is_enable
-             }
-        )
 
     def gre_tunnel_add_del(self,
                            src,
@@ -874,42 +753,6 @@ class VppPapiProvider(object):
                 'template_interval': template_interval,
                 'udp_checksum': udp_checksum,
             })
-
-    def ip_mroute_add_del(self,
-                          table_id,
-                          prefix,
-                          e_flags,
-                          rpf_id,
-                          paths,
-                          is_add=1,
-                          is_multipath=1):
-        """
-        IP Multicast Route add/del
-        """
-        return self.api(
-            self.papi.ip_mroute_add_del,
-            {
-                'is_add': is_add,
-                'is_multipath': is_multipath,
-                'route': {
-                    'table_id': table_id,
-                    'entry_flags': e_flags,
-                    'rpf_id': rpf_id,
-                    'prefix': prefix,
-                    'n_paths': len(paths),
-                    'paths': paths,
-                }
-            })
-
-    def mfib_signal_dump(self):
-        return self.api(self.papi.mfib_signal_dump, {})
-
-    def ip_mroute_dump(self, table_id, is_ip6=False):
-        return self.api(self.papi.ip_mroute_dump,
-                        {'table': {
-                            'table_id': table_id,
-                            'is_ip6': is_ip6
-                        }})
 
     def lisp_enable_disable(self, is_enabled):
         return self.api(
@@ -1420,31 +1263,6 @@ class VppPapiProvider(object):
                          'exceed_dscp': exceed_dscp,
                          'violate_action_type': violate_action_type,
                          'violate_dscp': violate_dscp})
-
-    def ip_punt_police(self,
-                       policer_index,
-                       is_ip6=0,
-                       is_add=1):
-        return self.api(self.papi.ip_punt_police,
-                        {'policer_index': policer_index,
-                         'is_add': is_add,
-                         'is_ip6': is_ip6})
-
-    def ip_punt_redirect(self,
-                         rx_sw_if_index,
-                         tx_sw_if_index,
-                         address,
-                         is_add=1):
-        return self.api(self.papi.ip_punt_redirect,
-                        {'punt': {'rx_sw_if_index': rx_sw_if_index,
-                                  'tx_sw_if_index': tx_sw_if_index,
-                                  'nh': address},
-                         'is_add': is_add})
-
-    def ip_punt_redirect_dump(self, sw_if_index, is_ipv6=0):
-        return self.api(self.papi.ip_punt_redirect_dump,
-                        {'sw_if_index': sw_if_index,
-                         'is_ipv6': is_ipv6})
 
     def bier_table_add_del(self,
                            bti,
