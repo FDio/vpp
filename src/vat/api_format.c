@@ -9360,7 +9360,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
   u32 sw_if_index = ~0;
   u8 v6_address_set = 0;
   vl_api_ip6_address_t v6address;
-  u8 is_del = 0;
+  u8 is_add = 1;
   int ret;
 
   /* Parse args required to build the message */
@@ -9373,7 +9373,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
       else if (unformat (i, "%U", unformat_vl_api_ip6_address, &v6address))
 	v6_address_set = 1;
       if (unformat (i, "del"))
-	is_del = 1;
+	is_add = 0;
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9395,7 +9395,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
   /* Construct the API message */
   M (IP6ND_PROXY_ADD_DEL, mp);
 
-  mp->is_del = is_del;
+  mp->is_add = is_add;
   mp->sw_if_index = ntohl (sw_if_index);
   clib_memcpy (mp->ip, v6address, sizeof (v6address));
 

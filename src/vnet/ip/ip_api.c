@@ -1258,7 +1258,7 @@ vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t * mp)
   VALIDATE_SW_IF_INDEX (mp);
 
   ip6_address_decode (mp->ip, &ip6);
-  rv = ip6_neighbor_proxy_add_del (ntohl (mp->sw_if_index), &ip6, mp->is_del);
+  rv = ip6_neighbor_proxy_add_del (ntohl (mp->sw_if_index), &ip6, mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_IP6ND_PROXY_ADD_DEL_REPLY);
@@ -2561,7 +2561,7 @@ static void
   vl_api_ip_scan_neighbor_enable_disable_reply_t *rmp;
   ip_neighbor_scan_arg_t arg;
 
-  arg.mode = mp->mode;
+  arg.mode = ntohl (mp->mode);
   arg.scan_interval = mp->scan_interval;
   arg.max_proc_time = mp->max_proc_time;
   arg.max_update = mp->max_update;
