@@ -1709,6 +1709,12 @@ tcp_timer_persist_handler (u32 index)
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    {
+      tcp_bt_check_app_limited (tc);
+      tcp_bt_track_tx (tc);
+    }
+
   /* Just sent new data, enable retransmit */
   tcp_retransmit_timer_update (tc);
 }
