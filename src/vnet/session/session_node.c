@@ -1321,7 +1321,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
-  while (!clib_llist_is_empty (wrk->event_elts, evt_list, old_he))
+  while (n_tx_packets < VLIB_FRAME_SIZE
+	 && !clib_llist_is_empty (wrk->event_elts, evt_list, old_he))
     {
       clib_llist_index_t ei;
 
@@ -1330,7 +1331,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
 
       old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
-      if (n_tx_packets >= VLIB_FRAME_SIZE || ei == old_ti)
+      if (ei == old_ti)
 	break;
     };
 
