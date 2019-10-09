@@ -924,7 +924,12 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
 	  QUIC_DBG (1, "failed to load certificate\n");
 	}
     }
+  else
+    {
+      QUIC_DBG (1, "Missing cert or key %u\n", cert_key_index);
+    }
 }
+
 
 /* Transport proto functions */
 
@@ -1071,6 +1076,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
+  ctx->ckpair_index = sep->ckpair_index;
   quic_store_quicly_ctx (app, ctx->ckpair_index);
   /* Also store it in ctx for convenience
    * Waiting for crypto_ctx logic */
