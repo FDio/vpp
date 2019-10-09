@@ -26,9 +26,9 @@
   _ (OPTION_WITH_ZERO_LENGTH, "option has zero length")                 \
   _ (ECHO_REPLIES_SENT, "echo replies sent")                            \
   _ (DST_LOOKUP_MISS, "icmp6 dst address lookup misses")                \
-  _ (DEST_UNREACH_SENT, "destination unreachable response sent")	\
-  _ (TTL_EXPIRE_SENT, "hop limit exceeded response sent")		\
-  _ (PARAM_PROBLEM_SENT, "parameter problem response sent")		\
+  _ (DEST_UNREACH_SENT, "destination unreachable response sent")        \
+  _ (TTL_EXPIRE_SENT, "hop limit exceeded response sent")               \
+  _ (PARAM_PROBLEM_SENT, "parameter problem response sent")             \
   _ (DROP, "error message dropped")
 
 typedef enum
@@ -46,8 +46,14 @@ typedef struct
 format_function_t format_icmp4_input_trace;
 void ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type,
 			     u32 node_index);
-void icmp4_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code,
-				  u32 data);
+
+static_always_inline void
+icmp4_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code, u32 data)
+{
+  vnet_buffer (b)->ip.icmp.type = type;
+  vnet_buffer (b)->ip.icmp.code = code;
+  vnet_buffer (b)->ip.icmp.data = data;
+}
 
 #endif /* included_vnet_icmp4_h */
 
