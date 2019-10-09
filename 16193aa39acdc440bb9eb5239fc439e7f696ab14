@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2bfc2b68_cbace624",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 12477,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-09T12:50:40Z",
+      "side": 1,
+      "message": "Isn\u0027t this what the vnet/ip/ip_types_api.h encode/decode functions do?",
+      "range": {
+        "startLine": 12465,
+        "startChar": 2,
+        "endLine": 12477,
+        "endChar": 5
+      },
+      "revId": "16193aa39acdc440bb9eb5239fc439e7f696ab14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
