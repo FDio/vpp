@@ -835,6 +835,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   next0 = next1 = next_index;
   max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
 
+  if (!max_burst)
+    {
+      session_evt_add_old (wrk, elt);
+      return SESSION_TX_OK;
+    }
+
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
