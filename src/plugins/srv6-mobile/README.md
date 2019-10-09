@@ -49,7 +49,7 @@ ubuntu              18.04               4c108a37151f        4 weeks ago         
 
 ```
 
-The runner script [runner.py](https://github.com/filvarga/srv6-mobile/blob/ietf105-hackathon/extras/ietf105/runner.py) has features to automate configurations and procedures for the test.
+The runner script [runner.py](https://github.com/filvarga/srv6-mobile/blob/ietf105-hackathon/extras/ietf106/runner.py) has features to automate configurations and procedures for the test.
 
 2. Instantiate test Scenario
 
@@ -61,7 +61,7 @@ $ ./runner.py infra start
 
 This command instantiates 4 VPP containers with following topology:
 
-![Topology Diagram](extras/ietf106/topo-init.png)
+![Topology Diagram](test/topo-init.png)
 
 You can check the instantiated docker instances with "docker ps".
 
@@ -101,7 +101,7 @@ This test scenario introduces SRv6 path between GTP-U tunnel transparently. A GT
 
 This case uses SRv6 end functions, T.M.GTP4.D and End.M.GTP4.E.
 
-![Topology Diagram](extras/ietf105/topo-test_gtp4d.png)
+![Topology Diagram](test/topo-test_gtp4d.png)
 
 VPP1 is configured with "T.M.GTP4.D", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv4 toward the packet capture. VPP1 translates it to SRv6 toward D4::TEID with SR policy <D2::, D3::> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
 
@@ -122,7 +122,7 @@ $ ./runner.py test tmap_ipv6
 
 This case uses SRv6 end functions, End.M.GTP6.D.Di and End.M.GTP6.E.
 
-![Topology Diagram](extras/ietf106/topo-test_gtp6d.png)
+![Topology Diagram](test/topo-test_gtp6d.png)
 
 VPP1 is configured with "End.M.GTP6.D.Di", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D:: of the packet capture. VPP1 translates it to SRv6 toward D:: with SR policy <D2::, D3::, D4::TEID> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
 
@@ -149,7 +149,7 @@ This test scenario demonstrates GTP-U to SRv6 translation. A GTP-U packet sent o
 
 This case uses SRv6 end functions, End.M.GTP6.D and End.DT4.
 
-![Topology Diagram](extras/ietf105/topo-test_gtp6.png)
+![Topology Diagram](test/topo-test_gtp6.png)
 
 VPP1 is configured with "End.M.GTP6.D", and VPP4 is configured with "End.DT4". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D::2. VPP1 translates it to SRv6 toward the IPv6 destination consists of D4:: and TEID of GTP-U with SR policy <D2::, D3::> in SRH. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv4 packet and send out to the packet capture.
 
@@ -164,7 +164,7 @@ $ ./runner.py test gtp6
 This case uses SRv6 end functions, End.M.GTP6.D and End.DT6.
 
 
-![Topology Diagram](extras/ietf105/topo-test_gtp6ip6.png)
+![Topology Diagram](test/topo-test_gtp6ip6.png)
 
 The configurations are same with IPv4 payload case, except D4:: is configured as "End.DT6" in VPP4. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv6 packet and send out to the packet capture.
 
