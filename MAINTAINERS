@@ -376,6 +376,11 @@ I:	pppoe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/pppoe/
 
+Plugin - Ping
+I:	ping
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/ping
+
 Plugin - IPv6 Segment Routing Dynamic Proxy
 I:	srv6-ad
 M:	Francois Clad <fclad@cisco.com>

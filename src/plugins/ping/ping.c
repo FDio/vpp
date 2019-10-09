@@ -14,11 +14,16 @@
  */
 
 #include <stddef.h>
-#include <vnet/ip/ping.h>
+
+#include <vlib/vlib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
-#include <vlib/vlib.h>
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+
+#include <vnet/ip/icmp4.h>
+#include <ping/ping.h>
 
 ping_main_t ping_main;
 
@@ -1251,6 +1256,13 @@ ping_cli_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ping_cli_init);
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "Ping (ping)",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

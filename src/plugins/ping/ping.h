@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_vnet_ping_h
-#define included_vnet_ping_h
+#ifndef included_ping_ping_h
+#define included_ping_ping_h
 
 
 #include <vnet/ip/ip.h>
@@ -88,4 +88,4 @@ typedef enum
   ICMP46_ECHO_REPLY_N_NEXT,
 } icmp46_echo_reply_next_t;
 
-#endif /* included_vnet_ping_h */
+#endif /* included_ping_ping_h */
