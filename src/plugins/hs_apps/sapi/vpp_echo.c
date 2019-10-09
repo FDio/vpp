@@ -871,6 +871,7 @@ print_usage_and_exit (void)
 	   "  tx-results-diff     Tx results different to pass test\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
+	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
 	   "\n"
 	   "  nclients N          Open N clients sending data\n"
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
@@ -1168,7 +1169,7 @@ main (int argc, char **argv)
     {
       ECHO_LOG (1, "Adding crypto context %U", echo_format_crypto_engine,
 		em->crypto_ctx_engine);
-      echo_send_add_crypto_ctx (em);
+      echo_send_add_cert_key (em);
       if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
 	{
 	  ECHO_FAIL (ECHO_FAIL_APP_ATTACH,
@@ -1198,6 +1199,13 @@ main (int argc, char **argv)
     clients_run (em);
   echo_notify_event (em, ECHO_EVT_EXIT);
   echo_free_sessions (em);
+  echo_send_del_cert_key (em);
+  if (wait_for_state_change (em, STATE_CLEANED_CERT_KEY, TIMEOUT))
+    {
+      ECHO_FAIL (ECHO_FAIL_DEL_CERT_KEY, "Couldn't cleanup cert and key");
+      goto exit_on_error;
+    }
+
   echo_send_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
