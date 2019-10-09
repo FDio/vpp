@@ -1593,7 +1593,7 @@ vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a)
 }
 
 int
-vent_app_add_cert_key_interest (u32 index, u32 app_index)
+vnet_app_add_cert_key_interest (u32 index, u32 app_index)
 {
   app_cert_key_pair_t *ckpair;
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
@@ -1634,10 +1634,7 @@ cert_key_pair_store_init (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (cert_key_pair_store_init) =
-{
-  .runs_after = VLIB_INITS("unix_physmem_init"),
-};
+VLIB_INIT_FUNCTION (cert_key_pair_store_init);
 
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
