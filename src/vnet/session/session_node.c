@@ -1308,6 +1308,12 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   }));
   /* *INDENT-ON* */
 
+  /* Don't try to dispatch old io events if no slots left to send */
+  if (n_tx_packets >= VLIB_FRAME_SIZE)
+    {
+      return n_tx_packets;
+    }
+
   /*
    * Handle the old io events
    */
