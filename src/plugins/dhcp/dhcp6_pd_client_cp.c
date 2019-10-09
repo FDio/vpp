@@ -22,6 +22,7 @@
 #include <float.h>
 #include <math.h>
 #include <string.h>
+#include <vnet/ip/ip_types_api.h>
 
 typedef struct
 {

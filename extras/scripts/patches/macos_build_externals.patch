@@ -1,0 +1,17 @@
+diff --git a/build/external/Makefile b/build/external/Makefile
+index e5dff3c43..ffd0a6476 100644
+--- a/build/external/Makefile
++++ b/build/external/Makefile
+@@ -45,10 +45,10 @@ clean:
+ 	@rm -rf $(B) $(I)
+ 
+ .PHONY: install
+-install: dpdk-install rdma-core-install quicly-install
++install:
+ 
+ .PHONY: config
+-config: dpdk-config rdma-core-config
++config:
+ 
+ ##############################################################################
+ # .deb packaging

@@ -28,36 +28,11 @@
 
 
 /* define message IDs */
-#include <ioam/udp-ping/udp_ping_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
-#undef vl_api_version
+#include <ioam/udp-ping/udp_ping.api_enum.h>
+#include <ioam/udp-ping/udp_ping.api_types.h>
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-/* List of message types that this module understands */
-#define foreach_udp_ping_api_msg                                      \
-    _(UDP_PING_ADD_DEL, udp_ping_add_del)                                     \
-    _(UDP_PING_EXPORT, udp_ping_export)                                     \
 
 static void
 vl_api_udp_ping_add_del_t_handler (vl_api_udp_ping_add_del_t * mp)
@@ -103,59 +78,16 @@ vl_api_udp_ping_export_t_handler (vl_api_udp_ping_export_t * mp)
   REPLY_MACRO (VL_API_UDP_PING_EXPORT_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-udp_ping_api_hookup (vlib_main_t * vm)
-{
-  udp_ping_main_t *sm = &udp_ping_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                            #n,					\
-                            vl_api_##n##_t_handler,              \
-                            vl_noop_handler,                     \
-                            vl_api_##n##_t_endian,               \
-                            vl_api_##n##_t_print,                \
-                            sizeof(vl_api_##n##_t), 1);
-  foreach_udp_ping_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (udp_ping_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_udp_ping;
-#undef _
-}
-
+#include <ioam/udp-ping/udp_ping.api.c>
 static clib_error_t *
 udp_ping_api_init (vlib_main_t * vm)
 {
   udp_ping_main_t *sm = &udp_ping_main;
-  clib_error_t *error = 0;
-  u8 *name;
-
-  name = format (0, "udp_ping_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  sm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  sm->msg_id_base = setup_message_id_table ();
 
-  error = udp_ping_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (sm, &api_main);
-
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (udp_ping_api_init);

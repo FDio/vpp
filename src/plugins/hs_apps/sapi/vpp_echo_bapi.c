@@ -283,7 +283,11 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       return;
     }
 
-  ASSERT (mp->app_mq);
+  if (!mp->app_mq)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_NULL_APP_MQ, "NULL app_mq");
+      return;
+    }
   em->app_mq = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
   em->ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
 

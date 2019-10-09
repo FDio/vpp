@@ -68,6 +68,7 @@ _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)           \
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)           \
+_(SW_INTERFACE_ADD_DEL_MAC_ADDRESS, sw_interface_add_del_mac_address) \
 _(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)   \
 _(SW_INTERFACE_GET_MAC_ADDRESS, sw_interface_get_mac_address)   \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                         \
@@ -201,6 +202,8 @@ send_sw_interface_details (vpe_api_main_t * am,
 {
   vnet_hw_interface_t *hi =
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (am->vnet_main, hi->dev_class_index);
 
   vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -243,6 +246,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 
   strncpy ((char *) mp->interface_name,
 	   (char *) interface_name, ARRAY_LEN (mp->interface_name) - 1);
+
+  if (dev_class && dev_class->name)
+    strncpy ((char *) mp->interface_dev_type, (char *) dev_class->name,
+	     ARRAY_LEN (mp->interface_dev_type) - 1);
 
   /* Send the L2 address for ethernet physical intfcs */
   if (swif->sup_sw_if_index == swif->sw_if_index
@@ -897,6 +904,34 @@ static void vl_api_sw_interface_tag_add_del_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_TAG_ADD_DEL_REPLY);
+}
+
+static void vl_api_sw_interface_add_del_mac_address_t_handler
+  (vl_api_sw_interface_add_del_mac_address_t * mp)
+{
+  vl_api_sw_interface_add_del_mac_address_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_hw_interface_t *hi;
+  clib_error_t *error;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  /* for subifs, the MAC should be changed on the actual hw if */
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  error = vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index,
+						 mp->addr, mp->is_add);
+  if (error)
+    {
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      clib_error_report (error);
+      goto out;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY);
 }
 
 static void vl_api_sw_interface_set_mac_address_t_handler

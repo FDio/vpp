@@ -54,6 +54,7 @@ session_mq_listen_handler (void *data)
   a->sep.fib_index = mp->vrf;
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep.transport_proto = mp->proto;
+  a->sep_ext.ckpair_index = mp->ckpair_index;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
@@ -112,6 +113,7 @@ session_mq_connect_handler (void *data)
   a->sep.peer.fib_index = mp->vrf;
   a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep_ext.parent_handle = mp->parent_handle;
+  a->sep_ext.ckpair_index = mp->ckpair_index;
   if (mp->hostname_len)
     {
       vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
@@ -311,7 +313,7 @@ session_mq_reset_reply_handler (void *data)
   app_wrk = app_worker_get (s->app_wrk_index);
   if (!app_wrk || app_wrk->app_index != app->app_index)
     {
-      clib_warning ("App % does not own handle 0x%lx!", app->app_index,
+      clib_warning ("App %u does not own handle 0x%lx!", app->app_index,
 		    mp->handle);
       return;
     }
@@ -1315,7 +1317,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
-  while (!clib_llist_is_empty (wrk->event_elts, evt_list, old_he))
+  while (n_tx_packets < VLIB_FRAME_SIZE
+	 && !clib_llist_is_empty (wrk->event_elts, evt_list, old_he))
     {
       clib_llist_index_t ei;
 
@@ -1324,7 +1327,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
 
       old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
-      if (n_tx_packets >= VLIB_FRAME_SIZE || ei == old_ti)
+      if (ei == old_ti)
 	break;
     };
 
