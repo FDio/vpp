@@ -718,6 +718,9 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
     write('   if (mainp->msg_id_base == (u16) ~0)\n')
     write('      return clib_error_return (0, "{} plugin not loaded...");\n'.format(module))
     write('   setup_message_id_table (vam, mainp->msg_id_base);\n')
+    write('#ifdef VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE\n')
+    write('    VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE(vam);\n')
+    write('#endif\n')
     write('   return 0;\n')
     write('}\n')
 
