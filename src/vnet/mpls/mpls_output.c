@@ -34,8 +34,7 @@ typedef enum {
 
 #define foreach_mpls_output_next        	\
 _(DROP, "error-drop")                           \
-_(IP4_FRAG, "ip4-frag")                         \
-_(IP6_FRAG, "ip6-frag")
+_(FRAG, "mpls-frag")
 
 typedef enum {
 #define _(s,n) MPLS_OUTPUT_NEXT_##s,
@@ -56,31 +55,6 @@ format_mpls_output_trace (u8 * s, va_list * args)
               format_ip_adjacency, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
 	      t->flow_hash);
   return s;
-}
-
-/*
- * Save the mpls header length and adjust the current to ip header
- */
-static inline u32
-set_mpls_fragmentation(vlib_buffer_t * p0, ip_adjacency_t * adj0)
-{
-  u32 next0;
-
-  /* advance size of (all) mpls header to ip header before fragmenting */
-  /* save the current pointing to first mpls header. */
-  vnet_buffer (p0)->mpls.mpls_hdr_length = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;
-  vlib_buffer_advance (p0, vnet_buffer (p0)->mpls.mpls_hdr_length);
-
-  /* IP fragmentation */
-  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
-                           IP4_FRAG_NEXT_MPLS_OUTPUT,
-                           ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
-
-  /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
-  vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
-  next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
-
-  return next0;
 }
 
 static inline uword
@@ -196,7 +170,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error0 = IP4_ERROR_MTU_EXCEEDED;
-	      next0 = set_mpls_fragmentation (p0, adj0);
+	      next0 = MPLS_OUTPUT_NEXT_FRAG;
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
@@ -219,7 +193,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error1 = IP4_ERROR_MTU_EXCEEDED;
-	      next1 = set_mpls_fragmentation (p1, adj1);
+	      next1 = MPLS_OUTPUT_NEXT_FRAG;
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
@@ -308,7 +282,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error0 = IP4_ERROR_MTU_EXCEEDED;
-	      next0 = set_mpls_fragmentation (p0, adj0);
+	      next0 = MPLS_OUTPUT_NEXT_FRAG;
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
@@ -371,11 +345,9 @@ VLIB_REGISTER_NODE (mpls_output_node) = {
 
   .n_next_nodes = MPLS_OUTPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [MPLS_OUTPUT_NEXT_##s] = n,
-    foreach_mpls_output_next
-#undef _
-  },
-
+        [MPLS_OUTPUT_NEXT_DROP] = "mpls-drop",
+        [MPLS_OUTPUT_NEXT_FRAG] = "mpls-frag",
+    },
   .format_trace = format_mpls_output_trace,
 };
 
@@ -390,12 +362,203 @@ VLIB_REGISTER_NODE (mpls_midchain_node) = {
   .name = "mpls-midchain",
   .vector_size = sizeof (u32),
 
-  .format_trace = format_mpls_output_trace,
+  .n_errors = MPLS_N_ERROR,
+  .error_strings = mpls_error_strings,
 
-  .sibling_of = "mpls-output",
+  .n_next_nodes = MPLS_OUTPUT_N_NEXT,
+  .next_nodes = {
+        [MPLS_OUTPUT_NEXT_DROP] = "mpls-drop",
+        [MPLS_OUTPUT_NEXT_FRAG] = "mpls-midchain-frag",
+    },
+  .format_trace = format_mpls_output_trace,
 };
 
-/**
+static char *mpls_frag_error_strings[] = {
+#define _(sym,string) string,
+  foreach_ip_frag_error
+#undef _
+};
+
+typedef struct mpls_frag_trace_t_
+{
+} mpls_frag_trace_t;
+
+static uword
+mpls_frag (vlib_main_t * vm,
+           vlib_node_runtime_t * node,
+           vlib_frame_t * frame)
+{
+    u32 n_left_from, next_index, * from, * to_next, n_left_to_next, *frags;
+    vlib_node_runtime_t * error_node;
+
+    error_node = vlib_node_get_runtime (vm, mpls_output_node.index);
+    from = vlib_frame_vector_args (frame);
+    n_left_from = frame->n_vectors;
+    next_index = node->cached_next_index;
+
+    while (n_left_from > 0)
+    {
+        vlib_get_next_frame (vm, node, next_index,
+                             to_next, n_left_to_next);
+
+        while (n_left_from >= 4 && n_left_to_next >= 2)
+        {
+            ip_adjacency_t * adj0;
+            vlib_buffer_t * p0;
+            u32 pi0, adj_index0, next0;
+            ip_frag_error_t error0;
+            i16 encap_size;
+            u8 is_ip4;
+
+            pi0 = to_next[0] = from[0];
+            p0 = vlib_get_buffer (vm, pi0);
+            from += 1;
+            n_left_from -= 1;
+            is_ip4 = vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4;
+
+            adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+            adj0 = adj_get(adj_index0);
+
+            /* advance size of (all) mpls header to ip header before fragmenting */
+            /* save the current pointing to first mpls header. */
+            encap_size = p0->current_data - vnet_buffer(p0)->l3_hdr_offset;
+            vlib_buffer_advance (p0, -encap_size);
+            
+            /* IP fragmentation */
+            if (is_ip4)
+                ip4_frag_do_fragment (vm, pi0, adj0->rewrite_header.max_l3_packet_bytes,
+                                      encap_size, &frags, &error0);
+            /* else */
+            /*     ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu, u16 encapsize, */
+            /*                           u32 ** buffer, ip_frag_error_t * error); */
+
+            if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+                mpls_frag_trace_t *tr =
+                    vlib_add_trace (vm, node, p0, sizeof (*tr));
+                /* tr->mtu = mtu; */
+                /* tr->ipv6 = is_ip6 ? 1 : 0; */
+                /* tr->n_fragments = vec_len (buffer); */
+                /* tr->next = vnet_buffer (p0)->ip_frag.next_index; */
+	    }
+
+            if (is_ip4 && error0 == IP_FRAG_ERROR_DONT_FRAGMENT_SET)
+	    {
+                icmp4_error_set_vnet_buffer (p0, ICMP4_destination_unreachable,
+                                             ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+                                             vnet_buffer (p0)->ip_frag.mtu);
+                next0 = IP_FRAG_NEXT_ICMP_ERROR;
+	    }
+            else
+	    {
+		next0 = (error0 == IP_FRAG_ERROR_NONE ?
+                         vnet_buffer (p0)-> ip_frag.next_index :
+                         IP_FRAG_NEXT_DROP);
+	    }
+
+            if (error0 == IP_FRAG_ERROR_NONE)
+	    {
+                /* Free original buffer chain */
+                vlib_buffer_free_one (vm, pi0);	/* Free original packet */
+	    }
+            else
+	    {
+                vlib_error_count (vm, next_index, error0, 1);
+                vec_add1 (frags, pi0);	/* Get rid of the original buffer */
+	    }
+
+            /* Send fragments that were added in the frame */
+            u32 *frag_from, frag_left;
+
+            frag_from = frags;
+            frag_left = vec_len (frags);
+
+            while (frag_left > 0)
+            {
+                while (frag_left > 0 && n_left_to_next > 0)
+                {
+                    u32 i;
+                    i = to_next[0] = frag_from[0];
+                    frag_from += 1;
+                    frag_left -= 1;
+                    to_next += 1;
+                    n_left_to_next -= 1;
+
+                    p0 = vlib_get_buffer (vm, i);
+                    p0->error = error_node->errors[error0];
+
+                    vlib_buffer_advance (p0, encap_size);
+
+                    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+                                                     to_next, n_left_to_next, i,
+                                                     next0);
+                }
+                vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+                vlib_get_next_frame (vm, node, next_index, to_next,
+                                     n_left_to_next);
+            }
+            vec_reset_length (frags);
+	}
+        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+    vec_free (frags);
+
+    return frame->n_vectors;
+}
+
+static u8 *
+format_mpls_frag_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  // mpls_frag_trace_t *t = va_arg (*args, mpls_frag_trace_t *);
+
+  //s = format (s, "IPv%s mtu: %u fragments: %u next: %d",
+  //            t->ipv6 ? "6" : "4", t->mtu, t->n_fragments, t->next);
+  return s;
+}
+
+VLIB_REGISTER_NODE (mpls_frag_node) = {
+  .function = mpls_frag,
+  .name = IP6_FRAG_NODE_NAME,
+  .vector_size = sizeof (u32),
+  .format_trace = format_mpls_frag_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = IP_FRAG_N_ERROR,
+  .error_strings = mpls_frag_error_strings,
+
+  .n_next_nodes = IP_FRAG_N_NEXT,
+  .next_nodes = {
+    [IP_FRAG_NEXT_IP_REWRITE] = "mpls-output",
+    [IP_FRAG_NEXT_IP4_LOOKUP] = "error-drop",
+    [IP_FRAG_NEXT_IP6_LOOKUP] = "error-drop",
+    [IP_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [IP_FRAG_NEXT_DROP] = "mpls-drop"
+  },
+};
+
+VLIB_REGISTER_NODE (mpls_midchain_frag_node) = {
+  .function = mpls_frag,
+  .name = IP6_FRAG_NODE_NAME,
+  .vector_size = sizeof (u32),
+  .format_trace = format_mpls_frag_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = IP_FRAG_N_ERROR,
+  .error_strings = mpls_frag_error_strings,
+
+  .n_next_nodes = IP_FRAG_N_NEXT,
+  .next_nodes = {
+    [IP_FRAG_NEXT_IP_REWRITE] = "mpls-midchain",
+    [IP_FRAG_NEXT_IP4_LOOKUP] = "error-drop",
+    [IP_FRAG_NEXT_IP6_LOOKUP] = "error-drop",
+    [IP_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [IP_FRAG_NEXT_DROP] = "mpls-drop"
+  },
+};
+
+/*
  * @brief Next index values from the MPLS incomplete adj node
  */
 #define foreach_mpls_adj_incomplete_next       	\
