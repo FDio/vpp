@@ -168,7 +168,7 @@ ip4_map_t_icmp (vlib_main_t * vm,
 	  if (vnet_buffer (p0)->map_t.mtu < p0->current_length)
 	    {
 	      vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-	      vnet_buffer (p0)->ip_frag.next_index = IP6_FRAG_NEXT_IP6_LOOKUP;
+	      vnet_buffer (p0)->ip_frag.next_index = IP_FRAG_NEXT_IP6_LOOKUP;
 	      next0 = IP4_MAPT_ICMP_NEXT_IP6_FRAG;
 	    }
 	err0:
@@ -287,7 +287,7 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 		{
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
 		  vnet_buffer (p0)->ip_frag.next_index =
-		    IP6_FRAG_NEXT_IP6_LOOKUP;
+		    IP_FRAG_NEXT_IP6_LOOKUP;
 		  next0 = IP4_MAPT_FRAGMENTED_NEXT_IP6_FRAG;
 		}
 	    }
@@ -453,7 +453,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
 		  vnet_buffer (p0)->ip_frag.next_index =
-		    IP6_FRAG_NEXT_IP6_LOOKUP;
+		    IP_FRAG_NEXT_IP6_LOOKUP;
 		  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG;
 		}
 	    }
