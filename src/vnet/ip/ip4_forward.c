@@ -2310,7 +2310,7 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	{
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
-				   IP4_FRAG_NEXT_IP4_REWRITE, 0);
+				   IP_FRAG_NEXT_IP_REWRITE, 0);
 	  *next = IP4_REWRITE_NEXT_FRAGMENT;
 	}
     }
