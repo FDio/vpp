@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.2.0";
+option version = "2.2.1";
 import "vnet/ip/ip_types.api";
 
 /** \brief The types of packets to be punted
@@ -74,7 +74,7 @@ union punt_union
 typedef punt
 {
     vl_api_punt_type_t type;
-    vl_api_punt_union_t punt; 
+    vl_api_punt_union_t punt;
 };
 
 /** \brief Punt traffic to the host
@@ -86,7 +86,7 @@ typedef punt
 autoreply define set_punt {
     u32 client_index;
     u32 context;
-    u8 is_add;
+    bool is_add;
     vl_api_punt_t punt;
 };
 
@@ -101,14 +101,14 @@ define punt_socket_register {
     u32 context;
     u32 header_version;
     vl_api_punt_t punt;
-    u8 pathname[108]; /* Linux sun_path defined to be 108 bytes, see unix(7) */
+    string pathname[108]; /* Linux sun_path defined to be 108 bytes, see unix(7) */
 };
 
 define punt_socket_register_reply
 {
     u32 context;
     i32 retval;
-    u8 pathname[64];
+    string pathname[108];
 };
 
 define punt_socket_dump
@@ -122,7 +122,7 @@ define punt_socket_details
 {
     u32 context;
     vl_api_punt_t punt;
-    u8 pathname[108];
+    string pathname[108];
 };
 
 autoreply define punt_socket_deregister {
