@@ -532,8 +532,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     vtfail ("vppcom_session_create()", wrk->listen_fd);
 
 
-  if (vsm->cfg.proto == VPPCOM_PROTO_TLS
-      || vsm->cfg.proto == VPPCOM_PROTO_QUIC)
+  if (vcl_proto_needs_crypto (vsm->cfg.proto))
     {
       vppcom_session_tls_add_cert (wrk->listen_fd, vcl_test_crt_rsa,
 				   vcl_test_crt_rsa_len);
@@ -747,6 +746,7 @@ main (int argc, char **argv)
   vsm->active_workers = 0;
   vcl_test_server_process_opts (vsm, argc, argv);
 
+  vppcom_set_crypto_engine (vcl_proto_crypto_engine (vsm->cfg.proto));
   rv = vppcom_app_create ("vcl_test_server");
   if (rv)
     vtfail ("vppcom_app_create()", rv);

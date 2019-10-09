@@ -338,6 +338,9 @@ typedef struct vppcom_main_t_
 
   fifo_segment_main_t segment_main;
 
+  /** Crypto engine to use on app attach */
+  u32 crypto_engine;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
