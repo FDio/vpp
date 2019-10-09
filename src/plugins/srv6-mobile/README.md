@@ -49,7 +49,7 @@ ubuntu              18.04               4c108a37151f        4 weeks ago         
 
 ```
 
-The runner script [runner.py](https://github.com/filvarga/srv6-mobile/blob/ietf105-hackathon/extras/ietf106/runner.py) has features to automate configurations and procedures for the test.
+The runner script [runner.py](test/runner.py) has features to automate configurations and procedures for the test.
 
 2. Instantiate test Scenario
 
