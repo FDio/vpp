@@ -861,7 +861,7 @@ class Program(object):
              IP(src="172.20.0.2", dst="172.20.0.1")/
              UDP(sport=2152, dport=2152)/
              GTP_U_Header(gtp_type="g_pdu", teid=200)/
-             GTPPDUSessionContainer(R=1, QFI=3)/
+             GTPPDUSessionContainer(type=1, R=1, QFI=3)/
              IP(src="172.99.0.1", dst="172.99.0.2")/
              ICMP())
 
@@ -1121,7 +1121,7 @@ class Program(object):
                 IPv6(src="C::2", dst="D::2")/
              UDP(sport=2152, dport=2152)/
              GTP_U_Header(gtp_type="g_pdu", teid=200)/
-             GTPPDUSessionContainer(R=1, QFI=3)/
+             GTPPDUSessionContainer(type=1, R=1, QFI=3)/
              IP(src="172.99.0.1", dst="172.99.0.2")/
              ICMP())
 

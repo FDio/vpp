@@ -334,6 +334,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
 	      if (qfi)
 	        {
+		  u8 type = 0;
 		  gtpu_pdu_session_t *sess;
 
 		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
@@ -341,11 +342,13 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
 
+		  type = qfi & SRV6_PDU_SESSION_U_BIT_MASK;
+
 	      	  qfi = ((qfi & SRV6_PDU_SESSION_QFI_MASK) >> 2) | ((qfi & SRV6_PDU_SESSION_R_BIT_MASK) << 5);
 
 		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip4_gtpu_header_t) + sizeof(gtpu_exthdr_t));
 		  sess->exthdrlen = 1;
-		  sess->type = 0;
+		  sess->type = type;
 		  sess->spare = 0;
 		  sess->u.val = qfi;
 		  sess->nextexthdr = 0;
@@ -497,6 +500,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 	      u8 *qfip = NULL;
 	      u32 offset, shift, index;
 	      ip6srv_combo_header_t *ip6srv;
+	      gtpu_pdu_session_t *sess = NULL;
 
 	      // Decap from GTP-U.
 	      hdr = (ip4_gtpu_header_t *)ip4;
@@ -513,8 +517,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		  if (hdr->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
-		      gtpu_pdu_session_t *sess;
-
 		      sess = (gtpu_pdu_session_t *)(((char *)hdr) + hdr_len);
 		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
 		      qfip = (u8 *)&qfi;
@@ -547,6 +549,11 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
 
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSON_U_BIT_MASK;
+			}
+
 		      seg.as_u8[offset + 4] = qfi;
 		    }
 
@@ -566,6 +573,11 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		  if (qfip)
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
+			}
 
 		      seg.as_u8[offset+4] |= qfi >> shift;
 		      seg.as_u8[offset+5] |= qfi << (8 - shift);
@@ -907,6 +919,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 
 	      if (qfi)
 		{
+		  u8 type = 0;
 		  gtpu_pdu_session_t *sess;
 
 		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
@@ -914,11 +927,13 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
 
+		  type = qfi & SRV6_PDU_SESSION_U_BIT_MASK;
+
 		  qfi = ((qfi & SRV6_PDU_SESSION_QFI_MASK) >> 2) | ((qfi & SRV6_PDU_SESSION_R_BIT_MASK) << 5);
 
 		  sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip6_gtpu_header_t) + sizeof(gtpu_exthdr_t));
 		  sess->exthdrlen = 1;
-		  sess->type = 0;
+		  sess->type = type;
 		  sess->spare = 0;
 		  sess->u.val = qfi;
 		  sess->nextexthdr = 0;
@@ -1019,6 +1034,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  u32 offset, shift;
 	  u32 hdrlen;
 	  ip6_header_t *encap;
+     	  gtpu_pdu_session_t *sess = NULL;
           
 	  u32 next0 = SRV6_END_M_GTP6_D_NEXT_LOOKUP;
 
@@ -1065,8 +1081,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
-		      gtpu_pdu_session_t *sess;
-
 		      sess = (gtpu_pdu_session_t *)(((char *)hdr0) + sizeof(ip6_gtpu_header_t) + sizeof(gtpu_exthdr_t));
 		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
 		      qfip = (u8 *)&qfi;
@@ -1090,6 +1104,12 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  if (qfip)
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
+			}
+
 		      seg0.as_u8[offset+4] = qfi;
 		    }
 	        }
@@ -1106,6 +1126,12 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  if (qfip)
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & ~GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
+			}
+
 		      seg0.as_u8[offset+4] |= qfi >> shift;
 		      seg0.as_u8[offset+5] |= qfi << (8 - shift);
 		    }
@@ -1320,6 +1346,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  u32 offset, shift;
 	  u32 hdrlen;
 	  ip6_header_t *encap;
+      	  gtpu_pdu_session_t *sess;
           
 	  u32 next0 = SRV6_END_M_GTP6_D_DI_NEXT_LOOKUP;
 
@@ -1366,8 +1393,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
-		      gtpu_pdu_session_t *sess;
-
 		      sess = (gtpu_pdu_session_t *)(((char *)hdr0) + hdrlen);
 		      qfi = sess->u.val & ~GTPU_PDU_SESSION_P_BIT_MASK;
 		      qfip = &qfi;
@@ -1392,6 +1417,12 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  if (qfip)
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
+			}
+
 		      seg0.as_u8[offset + 4] = qfi;
 		    }
 		}
@@ -1408,6 +1439,11 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  if (qfip)
 		    {
 		      qfi = ((qfi & GTPU_PDU_SESSION_QFI_MASK) << 2) | ((qfi & GTPU_PDU_SESSION_R_BIT_MASK) >> 5);
+
+		      if (sess->type)
+			{
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
+			}
 
 		      seg0.as_u8[offset + 4] |= qfi >> shift;
 		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
