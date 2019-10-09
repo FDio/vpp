@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3686b35f_14fb0aed",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-09T15:00:35Z",
+      "side": 1,
+      "message": "Move comment above the function and perhaps make it doxygen friendly",
+      "range": {
+        "startLine": 259,
+        "startChar": 63,
+        "endLine": 259,
+        "endChar": 72
+      },
+      "revId": "4507c2d9ab9512d86bfca7bf1f7f99a7629cac80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
