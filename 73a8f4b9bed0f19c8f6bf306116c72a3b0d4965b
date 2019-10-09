@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df02dfbd_47e6ace4",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1315,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-09T04:40:26Z",
+      "side": 1,
+      "message": "Apologies, I didn\u0027t pay enough attention with my previous comment. Because we still want to update all the stats lower, could you move this to the while condition lower?",
+      "range": {
+        "startLine": 1313,
+        "startChar": 3,
+        "endLine": 1315,
+        "endChar": 5
+      },
+      "revId": "73a8f4b9bed0f19c8f6bf306116c72a3b0d4965b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e3a041f5_7014d19a",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1324,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-09T04:40:26Z",
+      "side": 1,
+      "message": "Make this: while (n_tx_packets \u003c VLIB_FRAME_SIZE \u0026\u0026 .. ) and remove the n_tx_packets check from the if lower.",
+      "range": {
+        "startLine": 1324,
+        "startChar": 9,
+        "endLine": 1324,
+        "endChar": 10
+      },
+      "revId": "73a8f4b9bed0f19c8f6bf306116c72a3b0d4965b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
