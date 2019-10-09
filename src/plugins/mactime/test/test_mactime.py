@@ -149,7 +149,12 @@ class TestMactime(VppTestCase):
                 "show error"]
 
         for cmd in cmds:
-            self.logger.info(self.vapi.cli(cmd))
+            r = self.vapi.cli_return_response(cmd)
+            if r.retval != 0:
+                if hasattr(r, 'reply'):
+                    self.logger.info(cmd + " FAIL reply " + r.reply)
+                else:
+                    self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
