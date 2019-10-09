@@ -41,7 +41,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 
-
 static char *icmp_error_strings[] = {
 #define _(f,s) s,
   foreach_icmp4_error
@@ -421,14 +420,6 @@ typedef enum
   IP4_ICMP_ERROR_NEXT_LOOKUP,
   IP4_ICMP_ERROR_N_NEXT,
 } ip4_icmp_error_next_t;
-
-void
-icmp4_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code, u32 data)
-{
-  vnet_buffer (b)->ip.icmp.type = type;
-  vnet_buffer (b)->ip.icmp.code = code;
-  vnet_buffer (b)->ip.icmp.data = data;
-}
 
 static u8
 icmp4_icmp_type_to_error (u8 type)
