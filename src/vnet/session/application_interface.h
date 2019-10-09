@@ -256,7 +256,8 @@ clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
 int vnet_app_del_cert_key_pair (u32 index);
-int vent_app_add_cert_key_interest (u32 index, u32 app_index);	/* Ask for app cb on pair deletion */
+/** Ask for app cb on pair deletion */
+int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 
 typedef struct app_session_transport_
 {
