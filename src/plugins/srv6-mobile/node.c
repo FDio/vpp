@@ -551,7 +551,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		      if (sess->type)
 			{
-			  qfi |= SRV6_PDU_SESSON_U_BIT_MASK;
+			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
 			}
 
 		      seg.as_u8[offset + 4] = qfi;
