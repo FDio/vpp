@@ -495,3 +495,15 @@ class VppInterface(object):
     def get_tx_stats(self):
         c = self.test.statistics.get_counter("^/if/tx$")
         return c[0][self.sw_if_index]
+
+    def set_l3_mtu(self, mtu):
+        self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])
+
+    def set_ip4_mtu(self, mtu):
+        self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, mtu, 0, 0])
+
+    def set_ip6_mtu(self, mtu):
+        self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, 0, mtu, 0])
+
+    def set_mpls_mtu(self, mtu):
+        self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, 0, 0, mtu])

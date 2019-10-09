@@ -154,7 +154,8 @@ class TestMPLS(VppTestCase):
             pkts.append(p)
         return pkts
 
-    def create_stream_ip4(self, src_if, dst_ip, ip_ttl=64, ip_dscp=0):
+    def create_stream_ip4(self, src_if, dst_ip, ip_ttl=64,
+                          ip_dscp=0, payload_size=None):
         self.reset_packet_infos()
         pkts = []
         for i in range(0, 257):
@@ -166,6 +167,8 @@ class TestMPLS(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
+            if payload_size:
+                self.extend_packet(p, payload_size)
             pkts.append(p)
         return pkts
 
@@ -911,7 +914,7 @@ class TestMPLS(VppTestCase):
         """ MPLS Tunnel Tests - Pipe """
 
         #
-        # Create a tunnel with a single out label
+        # Create a tunnel with two out labels
         #
         mpls_tun = VppMPLSTunnelInterface(
             self,
@@ -960,6 +963,38 @@ class TestMPLS(VppTestCase):
 
         rx = self.pg0.get_capture()
         self.verify_capture_tunneled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(44),
+                                          VppMplsLabel(46),
+                                          VppMplsLabel(33, ttl=255)])
+
+        #
+        # change tunnel's MTU to a low value
+        #
+        mpls_tun.set_l3_mtu(1200)
+
+        # send IP into the tunnel to be fragmented
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.3",
+                                    payload_size=1500)
+        rx = self.send_and_expect(self.pg0, tx, self.pg0, len(tx)*2)
+
+        fake_tx = []
+        for p in tx:
+            fake_tx.append(p)
+            fake_tx.append(p)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, fake_tx,
+                                         [VppMplsLabel(44),
+                                          VppMplsLabel(46)])
+
+        # send MPLS into the tunnel to be fragmented
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.4",
+                                    payload_size=1500)
+        rx = self.send_and_expect(self.pg0, tx, self.pg0, len(tx)*2)
+
+        fake_tx = []
+        for p in tx:
+            fake_tx.append(p)
+            fake_tx.append(p)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, fake_tx,
                                          [VppMplsLabel(44),
                                           VppMplsLabel(46),
                                           VppMplsLabel(33, ttl=255)])

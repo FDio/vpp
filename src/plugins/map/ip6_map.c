@@ -314,7 +314,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    {
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
-			IP4_FRAG_NEXT_IP4_LOOKUP;
+			IP_FRAG_NEXT_IP4_LOOKUP;
 		      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;
 		      next0 = IP6_MAP_NEXT_IP4_FRAGMENT;
 		    }
@@ -346,7 +346,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    {
 		      vnet_buffer (p1)->ip_frag.flags = 0;
 		      vnet_buffer (p1)->ip_frag.next_index =
-			IP4_FRAG_NEXT_IP4_LOOKUP;
+			IP_FRAG_NEXT_IP4_LOOKUP;
 		      vnet_buffer (p1)->ip_frag.mtu = d1->mtu;
 		      next1 = IP6_MAP_NEXT_IP4_FRAGMENT;
 		    }
@@ -497,7 +497,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    {
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
-			IP4_FRAG_NEXT_IP4_LOOKUP;
+			IP_FRAG_NEXT_IP4_LOOKUP;
 		      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;
 		      next0 = IP6_MAP_NEXT_IP4_FRAGMENT;
 		    }
@@ -622,7 +622,7 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
 	       && error0 == MAP_ERROR_NONE))
 	    {
 	      vnet_buffer (p0)->ip_frag.flags = 0;
-	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP4_LOOKUP;
+	      vnet_buffer (p0)->ip_frag.next_index = IP_FRAG_NEXT_IP4_LOOKUP;
 	      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;
 	      next0 = IP6_MAP_POST_IP4_REASS_NEXT_IP4_FRAGMENT;
 	    }

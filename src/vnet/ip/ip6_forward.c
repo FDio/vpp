@@ -1652,7 +1652,7 @@ typedef enum
 always_inline void
 ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
 	       u16 adj_packet_bytes, bool is_locally_generated,
-	       u32 * next, u32 * error)
+	       u32 * next, u8 is_midchain, u32 * error)
 {
   if (adj_packet_bytes >= 1280 && packet_bytes > adj_packet_bytes)
     {
@@ -1660,7 +1660,9 @@ ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
 	{
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
-				   IP6_FRAG_NEXT_IP6_REWRITE, 0);
+				   (is_midchain ?
+				    IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN :
+				    IP_FRAG_NEXT_IP_REWRITE), 0);
 	  *next = IP6_REWRITE_NEXT_FRAGMENT;
 	  *error = IP6_ERROR_MTU_EXCEEDED;
 	}
@@ -1840,10 +1842,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated0, &next0, &error0);
+			 is_locally_originated0, &next0, is_midchain,
+			 &error0);
 	  ip6_mtu_check (p1, ip1_len,
 			 adj1[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated1, &next1, &error1);
+			 is_locally_originated1, &next1, is_midchain,
+			 &error1);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
@@ -2011,7 +2015,8 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated0, &next0, &error0);
+			 is_locally_originated0, &next0, is_midchain,
+			 &error0);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
