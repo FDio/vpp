@@ -140,7 +140,7 @@ class TestMAP(VppTestCase):
               IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4) /
               UDP(sport=20000, dport=10000) /
               Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, v4*1, self.pg0)
+        rx = self.send_and_expect(self.pg0, v4 * 4, self.pg0)
         v4_reply = v4[1]
         v4_reply.ttl -= 1
         for p in rx:
@@ -154,7 +154,8 @@ class TestMAP(VppTestCase):
               UDP(sport=20000, dport=10000) /
               Raw(b'\xa5' * 100))
 
-        self.send_and_assert_encapped_one(v4, "3000::1", map_translated_addr)
+        #self.send_and_assert_encapped_one(v4, "3000::1", map_translated_addr)
+        self.send_and_assert_encapped(v4 * 4, "3000::1", map_translated_addr)
 
         #
         # Verify reordered fragments are able to pass as well
@@ -293,6 +294,76 @@ class TestMAP(VppTestCase):
         #
         pre_res_route.remove_vpp_config()
         self.vapi.ppcli("map params pre-resolve del ip6-nh 4001::1")
+
+    def test_map_e_inner_frag(self):
+        """ MAP-E Inner fragmentation """
+
+        #
+        # Add a route to the MAP-BR
+        #
+        map_br_pfx = "2001::"
+        map_br_pfx_len = 32
+        map_route = VppIpRoute(self,
+                               map_br_pfx,
+                               map_br_pfx_len,
+                               [VppRoutePath(self.pg1.remote_ip6,
+                                             self.pg1.sw_if_index)])
+        map_route.add_vpp_config()
+
+        #
+        # Add a domain that maps from pg0 to pg1
+        #
+        map_dst = '2001::/32'
+        map_src = '3000::1/128'
+        client_pfx = '192.168.0.0/16'
+        map_translated_addr = '2001:0:101:7000:0:c0a8:101:7'
+        tag = 'MAP-E tag.'
+        self.vapi.map_add_domain(ip4_prefix=client_pfx,
+                                 ip6_prefix=map_dst,
+                                 ip6_src=map_src,
+                                 ea_bits_len=20,
+                                 psid_offset=4,
+                                 psid_length=4,
+                                 mtu=1000,
+                                 tag=tag)
+
+        # Enable MAP on interface.
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg0.sw_if_index,
+                                        is_translation=0)
+
+        # Enable inner fragmentation
+        self.vapi.map_param_set_fragmentation(inner=1)
+
+        v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4, dst='192.168.1.1') /
+              UDP(sport=20000, dport=10000) /
+              Raw(b'\xa5' * 1300))
+
+        self.pg_send(self.pg0, v4*1)
+        rx = self.pg1.get_capture(2)
+
+        frags = fragment_rfc791(v4[1], 1000)
+        frags[0].id = 0
+        frags[1].id = 0
+        frags[0].ttl -= 1
+        frags[1].ttl -= 1
+        frags[0].chksum = 0
+        frags[1].chksum = 0
+
+        v6_reply1 = (IPv6(src='3000::1', dst=map_translated_addr, hlim=63) /
+                     frags[0])
+        v6_reply2 = (IPv6(src='3000::1', dst=map_translated_addr, hlim=63) /
+                     frags[1])
+        rx[0][1].fl = 0
+        rx[1][1].fl = 0
+        rx[0][1][IP].id = 0
+        rx[1][1][IP].id = 0
+        rx[0][1][IP].chksum = 0
+        rx[1][1][IP].chksum = 0
+
+        self.validate(rx[0][1], v6_reply1)
+        self.validate(rx[1][1], v6_reply2)
 
     def validate(self, rx, expected):
         self.assertEqual(rx, expected.__class__(scapy.compat.raw(expected)))
