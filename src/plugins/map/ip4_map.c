@@ -26,8 +26,6 @@ enum ip4_map_next_e
 #ifdef MAP_SKIP_IP6_LOOKUP
   IP4_MAP_NEXT_IP6_REWRITE,
 #endif
-  IP4_MAP_NEXT_IP4_FRAGMENT,
-  IP4_MAP_NEXT_IP6_FRAGMENT,
   IP4_MAP_NEXT_ICMP_ERROR,
   IP4_MAP_NEXT_DROP,
   IP4_MAP_N_NEXT,
@@ -117,17 +115,26 @@ ip4_map_decrement_ttl (ip4_header_t * ip, u8 * error)
 }
 
 static u32
-ip4_map_fragment (vlib_buffer_t * b, u16 mtu, bool df, u8 * error)
+ip4_map_fragment (vlib_main_t * vm, u32 bi, u16 mtu, bool df, u32 ** buffers,
+		  u8 * error)
 {
   map_main_t *mm = &map_main;
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 
   if (mm->frag_inner)
     {
-      // TODO: Fix inner fragmentation after removed inner support from ip-frag.
-      ip_frag_set_vnet_buffer (b, /*sizeof (ip6_header_t), */ mtu,
-			       IP4_FRAG_NEXT_IP6_LOOKUP,
-			       IP_FRAG_FLAG_IP6_HEADER);
-      return (IP4_MAP_NEXT_IP4_FRAGMENT);
+      /* IPv4 fragmented packets inside of IPv6 */
+      ip4_frag_do_fragment (vm, bi, mtu, sizeof (ip6_header_t), buffers);
+
+      /* Fixup */
+      u32 *i;
+      vec_foreach (i, *buffers)
+      {
+	vlib_buffer_t *p = vlib_get_buffer (vm, *i);
+	ip6_header_t *ip6 = vlib_buffer_get_current (p);
+	ip6->payload_length =
+	  clib_host_to_net_u16 (p->current_length - sizeof (ip6_header_t));
+      }
     }
   else
     {
@@ -140,10 +147,11 @@ ip4_map_fragment (vlib_buffer_t * b, u16 mtu, bool df, u8 * error)
 	  *error = MAP_ERROR_DF_SET;
 	  return (IP4_MAP_NEXT_ICMP_ERROR);
 	}
-      ip_frag_set_vnet_buffer (b, mtu, IP6_FRAG_NEXT_IP6_LOOKUP,
-			       IP_FRAG_FLAG_IP6_HEADER);
-      return (IP4_MAP_NEXT_IP6_FRAGMENT);
+
+      /* Create IPv6 fragments here */
+      ip6_frag_do_fragment (vm, bi, mtu, 0, buffers);
     }
+  return (IP4_MAP_NEXT_IP6_LOOKUP);
 }
 
 /*
@@ -165,7 +173,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   while (n_left_from > 0)
     {
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
+#if 0
       /* Dual loop */
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
@@ -278,7 +286,8 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		   && (clib_net_to_host_u16 (ip6h0->payload_length) +
 		       sizeof (*ip6h0) > d0->mtu)))
 		{
-		  next0 = ip4_map_fragment (p0, d0->mtu, df0, &error0);
+		  next0 =
+		    ip4_map_fragment (p0, d0->mtu, df0, buffers0, &error0);
 		}
 	      else
 		{
@@ -347,7 +356,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 					   n_left_to_next, pi0, pi1, next0,
 					   next1);
 	}
-
+#endif
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 pi0;
@@ -359,12 +368,15 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip6_header_t *ip6h0;
 	  u32 next0 = IP4_MAP_NEXT_IP6_LOOKUP;
 	  u32 map_domain_index0 = ~0;
+	  u32 *buffer0 = 0;
+	  bool free_original_buffer0 = false;
+	  u32 *frag_from0, frag_left0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
 	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
+	  //to_next += 1;
+	  //n_left_to_next -= 1;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip40 = vlib_buffer_get_current (p0);
@@ -413,7 +425,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Determine next node. Can be one of:
-	   * ip6-lookup, ip6-rewrite, ip4-fragment, error-drop
+	   * ip6-lookup, ip6-rewrite, error-drop
 	   */
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    {
@@ -422,7 +434,16 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		   && (clib_net_to_host_u16 (ip6h0->payload_length) +
 		       sizeof (*ip6h0) > d0->mtu)))
 		{
-		  next0 = ip4_map_fragment (p0, d0->mtu, df0, &error0);
+		  clib_warning ("OLE OLE OLE fragment: %u %u", next0,
+				d0->mtu);
+		  next0 =
+		    ip4_map_fragment (vm, pi0, d0->mtu, df0, &buffer0,
+				      &error0);
+
+		  if (error0 == MAP_ERROR_NONE)
+		    {
+		      free_original_buffer0 = true;
+		    }
 		}
 	      else
 		{
@@ -450,8 +471,41 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0->error = error_node->errors[error0];
 	exit:
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, pi0, next0);
+	  /* Send fragments that were added in the frame */
+	  if (free_original_buffer0)
+	    {
+	      vlib_buffer_free_one (vm, pi0);	/* Free original packet */
+	    }
+	  else
+	    {
+	      vec_add1 (buffer0, pi0);
+	    }
+
+	  frag_from0 = buffer0;
+	  frag_left0 = vec_len (buffer0);
+
+	  while (frag_left0 > 0)
+	    {
+	      while (frag_left0 > 0 && n_left_to_next > 0)
+		{
+		  u32 i0;
+		  i0 = to_next[0] = frag_from0[0];
+		  frag_from0 += 1;
+		  frag_left0 -= 1;
+		  to_next += 1;
+		  n_left_to_next -= 1;
+
+		  vlib_get_buffer (vm, i0)->error =
+		    error_node->errors[error0];
+		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+						   to_next, n_left_to_next,
+						   i0, next0);
+		}
+	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next,
+				   n_left_to_next);
+	    }
+	  vec_reset_length (buffer0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -491,8 +545,6 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
 #ifdef MAP_SKIP_IP6_LOOKUP
     [IP4_MAP_NEXT_IP6_REWRITE] = "ip6-load-balance",
 #endif
-    [IP4_MAP_NEXT_IP4_FRAGMENT] = "ip4-frag",
-    [IP4_MAP_NEXT_IP6_FRAGMENT] = "ip6-frag",
     [IP4_MAP_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_MAP_NEXT_DROP] = "error-drop",
   },
