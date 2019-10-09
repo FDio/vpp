@@ -30,35 +30,11 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* declare message IDs */
-#include <memif/memif_msg_enum.h>
-
-/* Get CRC codes of the messages defined outside of this plugin */
-#define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#include <memif/memif_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <memif/memif_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <memif/memif_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <memif/memif_all_api_h.h>
-#undef vl_api_version
+#include <vnet/format_fns.h>
+#include <memif/memif.api_enum.h>
+#include <memif/memif.api_types.h>
+#include <vpp/api/vpe.api_types.h>
+//#include <vnet/ethernet/ethernet_types.api_types.h>
 
 typedef struct
 {
@@ -69,37 +45,6 @@ typedef struct
 } memif_test_main_t;
 
 memif_test_main_t memif_test_main;
-
-/* standard reply handlers */
-#define foreach_standard_reply_retval_handler           \
-_(memif_delete_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = memif_test_main.vat_main;    \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                       \
-_(MEMIF_CREATE_REPLY, memif_create_reply)               \
-_(MEMIF_DELETE_REPLY, memif_delete_reply)               \
-_(MEMIF_DETAILS, memif_details)				\
-_(MEMIF_SOCKET_FILENAME_DETAILS, memif_socket_filename_details) \
-_(MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY, memif_socket_filename_add_del_reply)
 
 static uword
 unformat_memif_queues (unformat_input_t * input, va_list * args)
@@ -180,6 +125,7 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 }
 
 /* memif_socket_filename_add_del reply handler */
+#define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANLDER
 static void vl_api_memif_socket_filename_add_del_reply_t_handler
   (vl_api_memif_socket_filename_add_del_reply_t * mp)
 {
@@ -434,75 +380,7 @@ static void vl_api_memif_socket_filename_details_t_handler
 	   ntohl (mp->socket_id), mp->socket_filename);
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg					  \
-_(memif_create, "[id <id>] [socket-id <id>] [ring_size <size>] " \
-		"[buffer_size <size>] [hw_addr <mac_address>] "   \
-		"[secret <string>] [mode ip] <master|slave>")	  \
-_(memif_delete, "<sw_if_index>")                                  \
-_(memif_dump, "")						  \
-_(memif_socket_filename_dump, "")				\
-_(memif_socket_filename_add_del, "[add|del] id <id> filename <file>")
-
-static void
-memif_vat_api_hookup (vat_main_t * vam)
-{
-  memif_test_main_t *mm __attribute__ ((unused)) = &memif_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h)                                          \
-  hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  memif_test_main_t *mm = &memif_test_main;
-  u8 *name;
-
-  mm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "memif_%08x%c", api_version, 0);
-  mm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-  vec_free (name);
-
-  if (mm->msg_id_base == (u16) ~ 0)
-    return clib_error_return (0, "memif plugin not loaded...");
-
-  /* Get the control ping ID */
-#define _(id,n,crc) \
-  const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
-  foreach_vl_msg_name_crc_vpe;
-#undef _
-  mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
-
-  if (mm->msg_id_base != (u16) ~ 0)
-    memif_vat_api_hookup (vam);
-
-  return 0;
-}
+#include <memif/memif.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

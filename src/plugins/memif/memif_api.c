@@ -30,39 +30,12 @@
 #include <vnet/ethernet/ethernet_types_api.h>
 
 /* define message IDs */
-#include <memif/memif_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <memif/memif_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <memif/memif_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <memif/memif_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <memif/memif_all_api_h.h>
-#undef vl_api_version
+#include <vnet/format_fns.h>
+#include <memif/memif.api_enum.h>
+#include <memif/memif.api_types.h>
 
 #define REPLY_MSG_ID_BASE mm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_memif_plugin_api_msg					\
-_(MEMIF_SOCKET_FILENAME_ADD_DEL, memif_socket_filename_add_del)	\
-_(MEMIF_CREATE, memif_create)						\
-_(MEMIF_DELETE, memif_delete)						\
-_(MEMIF_SOCKET_FILENAME_DUMP, memif_socket_filename_dump)		\
-_(MEMIF_DUMP, memif_dump)						\
-
 
 /**
  * @brief Message handler for memif_socket_filename_add_del API.
@@ -375,51 +348,15 @@ void
   /* *INDENT-ON* */
 }
 
-#define vl_msg_name_crc_list
-#include <memif/memif_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (memif_main_t * mm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mm->msg_id_base);
-  foreach_vl_msg_name_crc_memif;
-#undef _
-}
-
 /* Set up the API message handling tables */
+#include <memif/memif.api.c>
 clib_error_t *
 memif_plugin_api_hookup (vlib_main_t * vm)
 {
   memif_main_t *mm = &memif_main;
-  api_main_t *am = &api_main;
-  u8 *name;
-
-  /* Construct the API name */
-  name = format (0, "memif_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  mm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_memif_plugin_api_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (mm, am);
-
-  vec_free (name);
+  mm->msg_id_base = setup_message_id_table ();
   return 0;
 }
 

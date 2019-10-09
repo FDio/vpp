@@ -48,6 +48,7 @@ autoreply define memif_socket_filename_add_del
   bool is_add;		/* 0 = remove, 1 = add association */
   u32 socket_id;	/* unique non-0 id for given socket file name */
   string socket_filename[108];	/* NUL terminated filename */
+  option vat_help = "[add|del] id <id> filename <file>";
 };
 
 /** \brief Create memory interface
@@ -83,6 +84,7 @@ define memif_create
   bool no_zero_copy; /* disable zero copy */
   vl_api_mac_address_t hw_addr; /* optional, randomly generated if zero */
   string secret[24]; /* optional, default is "", max length 24 */
+  option vat_help = "[id <id>] [socket-id <id>] [ring_size <size>] [buffer_size <size>] [hw_addr <mac_address>] [secret <string>] [mode ip] <master|slave>";
 };
 
 /** \brief Create memory interface response
@@ -108,6 +110,7 @@ autoreply define memif_delete
   u32 context;
 
   vl_api_interface_index_t sw_if_index;
+  option vat_help = "<sw_if_index>";
 };
 
 /** \brief Memory interface details structure
