@@ -2293,8 +2293,8 @@ typedef enum
 
 always_inline void
 ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
-	       u16 adj_packet_bytes, bool df, u16 * next, u32 * error,
-	       u8 is_midchain)
+	       u16 adj_packet_bytes, bool df, u16 * next,
+	       u8 is_midchain, u32 * error)
 {
   if (packet_len > adj_packet_bytes)
     {
@@ -2312,8 +2312,8 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
 				   (is_midchain ?
-				    IP4_FRAG_NEXT_IP4_REWRITE_MIDCHAIN :
-				    IP4_FRAG_NEXT_IP4_REWRITE), 0);
+				    IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN :
+				    IP_FRAG_NEXT_IP_REWRITE), 0);
 	  *next = IP4_REWRITE_NEXT_FRAGMENT;
 	}
     }
@@ -2486,12 +2486,12 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0, is_midchain);
+		     next + 0, is_midchain, &error0);
       ip4_mtu_check (b[1], ip1_len,
 		     adj1[0].rewrite_header.max_l3_packet_bytes,
 		     ip1->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 1, &error1, is_midchain);
+		     next + 1, is_midchain, &error1);
 
       if (is_mcast)
 	{
@@ -2660,7 +2660,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0, is_midchain);
+		     next + 0, is_midchain, &error0);
 
       if (is_mcast)
 	{
@@ -2758,7 +2758,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0, is_midchain);
+		     next + 0, is_midchain, &error0);
 
       if (is_mcast)
 	{
