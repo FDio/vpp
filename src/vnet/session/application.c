@@ -1386,6 +1386,58 @@ format_cert_key_pair (u8 * s, va_list * args)
 }
 
 u8 *
+format_crypto_engine (u8 * s, va_list * args)
+{
+  u32 engine = va_arg (*args, u32);
+  switch (engine)
+    {
+    case CRYPTO_ENGINE_NONE:
+      return format (s, "none");
+    case CRYPTO_ENGINE_MBEDTLS:
+      return format (s, "mbedtls");
+    case CRYPTO_ENGINE_OPENSSL:
+      return format (s, "openssl");
+    case CRYPTO_ENGINE_PICOTLS:
+      return format (s, "picotls");
+    case CRYPTO_ENGINE_VPP:
+      return format (s, "vpp");
+    default:
+      return format (s, "unknown engine");
+    }
+  return s;
+}
+
+uword
+unformat_crypto_engine (unformat_input_t * input, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  if (unformat (input, "mbedtls"))
+    *a = CRYPTO_ENGINE_MBEDTLS;
+  else if (unformat (input, "openssl"))
+    *a = CRYPTO_ENGINE_OPENSSL;
+  else if (unformat (input, "picotls"))
+    *a = CRYPTO_ENGINE_PICOTLS;
+  else if (unformat (input, "vpp"))
+    *a = CRYPTO_ENGINE_VPP;
+  else
+    return 0;
+  return 1;
+}
+
+u8 *
+format_crypto_context (u8 * s, va_list * args)
+{
+  crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
+  s =
+    format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
+	    crctx->n_subscribers, crctx->ckpair_index);
+  s = format (s, "[%U]", format_crypto_engine, crctx->crypto_engine);
+  if (crctx->stale)
+    s = format (s, " -- DELETED");
+  return s;
+}
+
+u8 *
 format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
@@ -1546,10 +1598,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/*
- * Certificate store
- *
- */
+/* Certificate store */
 
 static app_cert_key_pair_t *
 app_cert_key_pair_alloc ()
@@ -1598,7 +1647,8 @@ vnet_app_add_cert_key_interest (u32 index, u32 app_index)
   app_cert_key_pair_t *ckpair;
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
     return -1;
-  vec_add1 (ckpair->app_interests, app_index);
+  if (vec_search (ckpair->app_interests, app_index) != ~0)
+    vec_add1 (ckpair->app_interests, app_index);
   return 0;
 }
 
@@ -1626,7 +1676,7 @@ vnet_app_del_cert_key_pair (u32 index)
 }
 
 clib_error_t *
-cert_key_pair_store_init (vlib_main_t * vm)
+application_init (vlib_main_t * vm)
 {
   /* Add a certificate with index 0 to support legacy apis */
   (void) app_cert_key_pair_alloc ();
@@ -1635,7 +1685,7 @@ cert_key_pair_store_init (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (cert_key_pair_store_init);
+VLIB_INIT_FUNCTION (application_init);
 
 VLIB_CLI_COMMAND (show_app_command, static) =
 {

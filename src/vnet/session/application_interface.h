@@ -176,6 +176,15 @@ typedef struct _vnet_app_add_cert_key_pair_args_
   u32 index;
 } vnet_app_add_cert_key_pair_args_t;
 
+typedef struct crypto_ctx_
+{
+  u32 ctx_index;		/**< index in crypto context pool */
+  u32 n_subscribers;		/**< refcount of sessions using said context */
+  u32 ckpair_index;		/**< certificate & key */
+  u8 crypto_engine;
+  u8 stale;			/**< Marked invalid for re-use (aka ckpair deleted) */
+} crypto_context_t;
+
 /* Application attach options */
 typedef enum
 {
