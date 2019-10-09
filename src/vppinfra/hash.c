@@ -103,14 +103,32 @@ zap64 (u64 x, word n)
  * Therefore all the 8 Bytes of the u64 are systematically read, which
  * rightfully causes address-sanitizer to raise an error on smaller inputs.
  *
- * However the invalid Bytes are discarded within zap64(), whicj is why
+ * However the invalid Bytes are discarded within zap64(), which is why
  * this can be silenced safely.
+ *
+ * The above is true *unless* the extra bytes cross a page boundary
+ * into unmapped or no-access space, hence the boundary crossing check.
  */
 static inline u64 __attribute__ ((no_sanitize_address))
 hash_memory64 (void *p, word n_bytes, u64 state)
 {
   u64 *q = p;
   u64 a, b, c, n;
+  int page_boundary_crossing;
+  u64 start_addr, end_addr;
+  union
+  {
+    u8 as_u8[8];
+    u64 as_u64;
+  } tmp;
+
+  /*
+   * If the request crosses a 4k boundary, it's not OK to assume
+   * that the zap64 game is safe. 4k is the minimum known page size.
+   */
+  start_addr = (u64) p;
+  end_addr = start_addr + n_bytes + 7;
+  page_boundary_crossing = (start_addr >> 12) != (end_addr >> 12);
 
   a = b = 0x9e3779b97f4a7c13LL;
   c = state;
@@ -133,18 +151,43 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       a += clib_mem_unaligned (q + 0, u64);
       b += clib_mem_unaligned (q + 1, u64);
       if (n % sizeof (u64))
-	c += zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64)) << 8;
+	{
+	  if (PREDICT_TRUE (page_boundary_crossing == 0))
+	    c +=
+	      zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64)) << 8;
+	  else
+	    {
+	      clib_memcpy_fast (tmp.as_u8, q + 2, n % sizeof (u64));
+	      c += zap64 (tmp.as_u64, n % sizeof (u64)) << 8;
+	    }
+	}
       break;
 
     case 1:
       a += clib_mem_unaligned (q + 0, u64);
       if (n % sizeof (u64))
-	b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
+	{
+	  if (PREDICT_TRUE (page_boundary_crossing == 0))
+	    b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
+	  else
+	    {
+	      clib_memcpy_fast (tmp.as_u8, q + 1, n % sizeof (u64));
+	      b += zap64 (tmp.as_u64, n % sizeof (u64));
+	    }
+	}
       break;
 
     case 0:
       if (n % sizeof (u64))
-	a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
+	{
+	  if (PREDICT_TRUE (page_boundary_crossing == 0))
+	    a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
+	  else
+	    {
+	      clib_memcpy_fast (tmp.as_u8, q, n % sizeof (u64));
+	      a += zap64 (tmp.as_u64, n % sizeof (u64));
+	    }
+	}
       break;
     }
 
