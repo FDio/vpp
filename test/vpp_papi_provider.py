@@ -338,6 +338,20 @@ class VppPapiProvider(object):
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
+    def cli_return_response(self, cli):
+        """ Execute a CLI, calling the before/after hooks appropriately.
+        Return the reply without examining it
+
+        :param cli: CLI to execute
+        :returns: response object
+
+        """
+        self.hook.before_cli(cli)
+        cli += '\n'
+        r = self.papi.cli_inband(cmd=cli)
+        self.hook.after_cli(cli)
+        return r
+
     def cli(self, cli):
         """ Execute a CLI, calling the before/after hooks appropriately.
 
@@ -345,10 +359,7 @@ class VppPapiProvider(object):
         :returns: CLI output
 
         """
-        self.hook.before_cli(cli)
-        cli += '\n'
-        r = self.papi.cli_inband(cmd=cli)
-        self.hook.after_cli(cli)
+        r = self.cli_return_response(cli)
         if r.retval == -156:
             raise CliSyntaxError(r.reply)
         if r.retval != 0:
