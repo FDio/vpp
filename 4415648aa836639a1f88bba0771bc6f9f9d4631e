@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "363f8208_4b73aec5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-09T02:22:56Z",
+      "side": 1,
+      "message": "You\u0027ll have to shorten this a bit. Since the bug is in the session layer I\u0027d rename it to something like:\n\nsession: avoid old io dispatch if no slots left to send\n\nType: fix\n\n\u003crest of the description\u003e",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 121
+      },
+      "revId": "4415648aa836639a1f88bba0771bc6f9f9d4631e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1515c706_9130b2ac",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 838,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-09T02:22:56Z",
+      "side": 1,
+      "message": "By construction we should be here if max_burst is 0. I suspect the bug is that in session_queue_node_fn, after we handle the \"new io events\" we should be checking to see if n_tx_packets is \u003e\u003d VLIB_FRAME_SIZE and if yes, return without trying the \"old io events\".\n\nCould you add the check there and remove this?",
+      "range": {
+        "startLine": 838,
+        "startChar": 0,
+        "endLine": 838,
+        "endChar": 17
+      },
+      "revId": "4415648aa836639a1f88bba0771bc6f9f9d4631e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
