@@ -22,21 +22,9 @@ static tls_engine_vft_t *tls_vfts;
 
 #define TLS_INVALID_HANDLE 	~0
 #define TLS_IDX_MASK 		0x00FFFFFF
-#define TLS_ENGINE_TYPE_SHIFT 	29
+#define TLS_ENGINE_TYPE_SHIFT 	28
 
 void tls_disconnect (u32 ctx_handle, u32 thread_index);
-
-void
-tls_disconnect_transport (tls_ctx_t * ctx)
-{
-  vnet_disconnect_args_t a = {
-    .handle = ctx->tls_session_handle,
-    .app_index = tls_main.app_index,
-  };
-
-  if (vnet_disconnect_session (&a))
-    clib_warning ("disconnect returned");
-}
 
 crypto_engine_type_t
 tls_get_available_engine (void)
@@ -48,6 +36,128 @@ tls_get_available_engine (void)
 	return i;
     }
   return CRYPTO_ENGINE_NONE;
+}
+
+static inline crypto_engine_type_t
+tls_get_engine_type (crypto_engine_type_t preferred)
+{
+  if (!tls_vfts[preferred].ctx_alloc)
+    return tls_get_available_engine ();
+  return preferred;
+}
+
+static void
+tls_crypto_context_free_if_needed (tls_crypto_context_t * crctx)
+{
+  tls_main_t *tm = &tls_main;
+  if (crctx->crctx.n_subscribers || !crctx->crctx.stale)
+    return;
+  tls_vfts[crctx->crctx.engine].free_crypto_context (crctx);
+  pool_put (tm->crypto_ctx_pool, crctx);
+}
+
+static int
+tls_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
+{
+  tls_main_t *tm = &tls_main;
+  tls_crypto_context_t *crctx;
+  /* *INDENT-OFF* */
+  pool_foreach (crctx, tm->crypto_ctx_pool,
+  ({
+    if (crctx->crctx.ckpair_index == ckpair->cert_key_index)
+      {
+      	crctx->crctx.stale = 1;
+	tls_crypto_context_free_if_needed (crctx);
+      }
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static tls_crypto_context_t *
+tls_crypto_context_alloc ()
+{
+  tls_main_t *tm = &tls_main;
+  tls_crypto_context_t *crctx;
+  pool_get (tm->crypto_ctx_pool, crctx);
+  clib_memset (crctx, 0, sizeof (*crctx));
+  crctx->crctx.ctx_index = crctx - tm->crypto_ctx_pool;
+  return crctx;
+}
+
+tls_crypto_context_t *
+tls_crypto_context_get (u32 cr_index)
+{
+  tls_main_t *tm = &tls_main;
+  if (pool_is_free_index (tm->crypto_ctx_pool, cr_index))
+    return 0;
+  return pool_elt_at_index (tm->crypto_ctx_pool, cr_index);
+}
+
+static crypto_context_t *
+tls_get_crypto_context (u32 index)
+{
+  return (crypto_context_t *) tls_crypto_context_get (index);
+}
+
+static void
+tls_list_crypto_context (vlib_main_t * vm)
+{
+  tls_main_t *tm = &tls_main;
+  tls_crypto_context_t *qcrctx;
+  crypto_context_t *crctx;
+  /* *INDENT-OFF* */
+  pool_foreach (qcrctx, tm->crypto_ctx_pool, ({
+    crctx = (crypto_context_t *)qcrctx;
+    vlib_cli_output (vm, "[T]%U", format_crypto_context, crctx);
+  }));
+  /* *INDENT-ON* */
+}
+
+static int
+tls_del_crypto_context (vnet_app_del_crypto_context_args_t * a)
+{
+  tls_crypto_context_t *crctx;
+  crctx = tls_crypto_context_get (a->index);
+  if (!crctx)
+    return -1;
+  crctx->crctx.stale = 1;
+  tls_crypto_context_free_if_needed (crctx);
+  return 0;
+}
+
+static int
+tls_add_crypto_context (vnet_app_add_crypto_context_args_t * a)
+{
+  tls_main_t *tm = &tls_main;
+  app_cert_key_pair_t *ckpair;
+  tls_crypto_context_t *crctx;
+  crypto_engine_type_t engine;
+  engine = tls_get_engine_type (a->engine);
+
+  crctx = tls_crypto_context_alloc ();
+  a->index = crctx->crctx.ctx_index;
+  crctx->crctx.engine = engine;
+  ckpair = app_cert_key_pair_get_if_valid (a->ckpair_index);
+  if (ckpair)
+    {
+      crctx->crctx.ckpair_index = a->ckpair_index;
+      vnet_app_add_cert_key_interest (crctx->crctx.ckpair_index,
+				      tm->app_index);
+    }
+  return tls_vfts[engine].add_crypto_context (crctx, a->options);
+}
+
+void
+tls_disconnect_transport (tls_ctx_t * ctx)
+{
+  vnet_disconnect_args_t a = {
+    .handle = ctx->tls_session_handle,
+    .app_index = tls_main.app_index,
+  };
+
+  if (vnet_disconnect_session (&a))
+    clib_warning ("disconnect returned");
 }
 
 int
@@ -274,14 +384,6 @@ tls_ctx_parse_handle (u32 ctx_handle, u32 * ctx_index, u32 * engine_type)
   *engine_type = ctx_handle >> TLS_ENGINE_TYPE_SHIFT;
 }
 
-static inline crypto_engine_type_t
-tls_get_engine_type (crypto_engine_type_t preferred)
-{
-  if (!tls_vfts[preferred].ctx_alloc)
-    return tls_get_available_engine ();
-  return preferred;
-}
-
 static inline u32
 tls_ctx_alloc (crypto_engine_type_t engine_type)
 {
@@ -423,7 +525,7 @@ tls_session_accept_callback (session_t * tls_session)
   ctx->tls_session_handle = session_handle (tls_session);
   ctx->listener_ctx_index = tls_listener->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  ctx->ckpair_index = lctx->ckpair_index;
+  ctx->crypto_context_index = lctx->crypto_context_index;
 
   /* Preallocate app session. Avoids allocating a session post handshake
    * on tls_session rx and potentially invalidating the session pool */
@@ -525,6 +627,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
   .session_cleanup_callback = tls_app_session_cleanup,
+  .app_cert_key_pair_delete_callback = tls_app_cert_key_pair_delete_callback,
 };
 /* *INDENT-ON* */
 
@@ -533,6 +636,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
   session_endpoint_cfg_t *sep;
+  tls_crypto_context_t *crctx;
   crypto_engine_type_t engine_type;
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
@@ -542,9 +646,10 @@ tls_connect (transport_endpoint_cfg_t * tep)
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
+  crctx = tls_crypto_context_get (sep->crypto_context_index);
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  engine_type = tls_get_engine_type (app->tls_engine);
+  engine_type = tls_get_engine_type (crctx->crctx.engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -553,6 +658,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 
   ctx_index = tls_ctx_half_open_alloc ();
   ctx = tls_ctx_half_open_get (ctx_index);
+  ctx->crypto_context_index = sep->crypto_context_index;
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
@@ -593,6 +699,7 @@ u32
 tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
+  tls_crypto_context_t *crctx;
   app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_al_handle;
@@ -606,9 +713,10 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   u32 lctx_index;
 
   sep = (session_endpoint_cfg_t *) tep;
+  crctx = tls_crypto_context_get (sep->crypto_context_index);
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  engine_type = tls_get_engine_type (app->tls_engine);
+  engine_type = tls_get_engine_type (crctx->crctx.engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -637,9 +745,10 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->app_session_handle = listen_session_get_handle (app_listener);
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
-  lctx->ckpair_index = sep->ckpair_index;
+  lctx->crypto_context_index = sep->crypto_context_index;
 
-  if (tls_vfts[engine_type].ctx_start_listen (lctx))
+  crctx = tls_crypto_context_get (lctx->crypto_context_index);
+  if (!crctx || crctx->crctx.stale)
     {
       vnet_unlisten_args_t a = {
 	.handle = lctx->tls_session_handle,
@@ -651,6 +760,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
       tls_listener_ctx_free (lctx);
       lctx_index = SESSION_INVALID_INDEX;
     }
+  clib_atomic_fetch_add (&crctx->crctx.n_subscribers, 1);
 
   TLS_DBG (1, "Started listening %d, engine type %d", lctx_index,
 	   engine_type);
@@ -660,7 +770,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 u32
 tls_stop_listen (u32 lctx_index)
 {
-  crypto_engine_type_t engine_type;
+  tls_crypto_context_t *crctx;
   tls_ctx_t *lctx;
   int rv;
 
@@ -673,8 +783,9 @@ tls_stop_listen (u32 lctx_index)
   if ((rv = vnet_unlisten (&a)))
     clib_warning ("unlisten returned %d", rv);
 
-  engine_type = lctx->tls_ctx_engine;
-  tls_vfts[engine_type].ctx_stop_listen (lctx);
+  crctx = tls_crypto_context_get (lctx->crypto_context_index);
+  clib_atomic_fetch_sub (&crctx->crctx.n_subscribers, 1);
+  tls_crypto_context_free_if_needed (crctx);
 
   tls_listener_ctx_free (lctx);
   return 0;
@@ -825,6 +936,13 @@ static const transport_proto_vft_t tls_proto = {
     .service_type = TRANSPORT_SERVICE_APP,
   },
 };
+
+static crypto_context_vft_t tls_crypto_ctx_proto = {
+  .del_crypto_context = tls_del_crypto_context,
+  .add_crypto_context = tls_add_crypto_context,
+  .get_crypto_context = tls_get_crypto_context,
+  .list_crypto_context = tls_list_crypto_context,
+};
 /* *INDENT-ON* */
 
 void
@@ -882,7 +1000,11 @@ tls_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
+  crypto_context_register_protocol (TRANSPORT_PROTO_TLS,
+				    &tls_crypto_ctx_proto);
   vec_free (a->name);
+  /* default crypto context for tls */
+  tls_crypto_context_alloc ();
   return 0;
 }
 

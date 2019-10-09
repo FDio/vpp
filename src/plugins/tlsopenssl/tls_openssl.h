@@ -31,19 +31,19 @@ typedef struct tls_ctx_openssl_
   BIO *wbio;
 } openssl_ctx_t;
 
-typedef struct tls_listen_ctx_opensl_
+typedef struct openssl_crypto_context_
 {
-  u32 openssl_lctx_index;
+  crypto_context_t ctx;	      /**< First */
+
   SSL_CTX *ssl_ctx;
   SSL *ssl;
   X509 *srvcert;
   EVP_PKEY *pkey;
-} openssl_listen_ctx_t;
+} openssl_crypto_context_t;
 
 typedef struct openssl_main_
 {
   openssl_ctx_t ***ctx_pool;
-  openssl_listen_ctx_t *lctx_pool;
 
   /* API message ID base */
   u16 msg_id_base;

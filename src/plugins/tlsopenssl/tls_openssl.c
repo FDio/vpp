@@ -81,31 +81,6 @@ openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index)
   return &(*ctx)->ctx;
 }
 
-static u32
-openssl_listen_ctx_alloc (void)
-{
-  openssl_main_t *om = &openssl_main;
-  openssl_listen_ctx_t *lctx;
-
-  pool_get (om->lctx_pool, lctx);
-
-  clib_memset (lctx, 0, sizeof (openssl_listen_ctx_t));
-  lctx->openssl_lctx_index = lctx - om->lctx_pool;
-  return lctx->openssl_lctx_index;
-}
-
-static void
-openssl_listen_ctx_free (openssl_listen_ctx_t * lctx)
-{
-  pool_put_index (openssl_main.lctx_pool, lctx->openssl_lctx_index);
-}
-
-openssl_listen_ctx_t *
-openssl_lctx_get (u32 lctx_index)
-{
-  return pool_elt_at_index (openssl_main.lctx_pool, lctx_index);
-}
-
 static int
 openssl_try_handshake_read (openssl_ctx_t * oc, session_t * tls_session)
 {
@@ -299,7 +274,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
        */
       if ((rv = SSL_get_verify_result (oc->ssl)) != X509_V_OK)
 	{
-	  TLS_DBG (1, " failed verify: %s\n",
+	  TLS_DBG (1, "failed verify: %s\n",
 		   X509_verify_cert_error_string (rv));
 
 	  /*
@@ -590,29 +565,40 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
-openssl_start_listen (tls_ctx_t * lctx)
+openssl_free_crypto_context (tls_crypto_context_t * crctx)
+{
+  openssl_crypto_context_t *octx;
+
+  octx = (openssl_crypto_context_t *) crctx->engine_context;
+  /** octx context might not be allocated */
+  if (octx)
+    {
+      X509_free (octx->srvcert);
+      EVP_PKEY_free (octx->pkey);
+      SSL_CTX_free (octx->ssl_ctx);
+      clib_mem_free (octx);
+    }
+  return 0;
+}
+
+static int
+openssl_add_crypto_context (tls_crypto_context_t * crctx, u64 options[16])
 {
   const SSL_METHOD *method;
   SSL_CTX *ssl_ctx;
-  int rv;
+  long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
+  openssl_main_t *om = &openssl_main;
+  openssl_crypto_context_t *octx;
+  app_cert_key_pair_t *ckpair;
   BIO *cert_bio;
   X509 *srvcert;
   EVP_PKEY *pkey;
-  u32 olc_index;
-  openssl_listen_ctx_t *olc;
-  app_cert_key_pair_t *ckpair;
+  int rv;
 
-  long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
-  openssl_main_t *om = &openssl_main;
-
-  ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
-  if (!ckpair)
-    return -1;
-
+  ckpair = app_cert_key_pair_get (crctx->crctx.ckpair_index);
   if (!ckpair->cert || !ckpair->key)
     {
-      TLS_DBG (1, "tls cert and/or key not configured %d",
-	       lctx->parent_app_wrk_index);
+      TLS_DBG (1, "tls cert and/or key not configured");
       return -1;
     }
 
@@ -620,7 +606,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   ssl_ctx = SSL_CTX_new (method);
   if (!ssl_ctx)
     {
-      clib_warning ("Unable to create SSL context");
+      TLS_DBG (1, "Unable to create SSL context");
       return -1;
     }
 
@@ -649,6 +635,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   if (!srvcert)
     {
       clib_warning ("unable to parse certificate");
+      SSL_CTX_free (ssl_ctx);
       return -1;
     }
   SSL_CTX_use_certificate (ssl_ctx, srvcert);
@@ -660,38 +647,18 @@ openssl_start_listen (tls_ctx_t * lctx)
   if (!pkey)
     {
       clib_warning ("unable to parse pkey");
+      SSL_CTX_free (ssl_ctx);
+      X509_free (srvcert);
       return -1;
     }
   SSL_CTX_use_PrivateKey (ssl_ctx, pkey);
   BIO_free (cert_bio);
 
-  olc_index = openssl_listen_ctx_alloc ();
-  olc = openssl_lctx_get (olc_index);
-  olc->ssl_ctx = ssl_ctx;
-  olc->srvcert = srvcert;
-  olc->pkey = pkey;
-
-  /* store SSL_CTX into TLS level structure */
-  lctx->tls_ssl_ctx = olc_index;
-
-  return 0;
-
-}
-
-static int
-openssl_stop_listen (tls_ctx_t * lctx)
-{
-  u32 olc_index;
-  openssl_listen_ctx_t *olc;
-
-  olc_index = lctx->tls_ssl_ctx;
-  olc = openssl_lctx_get (olc_index);
-
-  X509_free (olc->srvcert);
-  EVP_PKEY_free (olc->pkey);
-
-  SSL_CTX_free (olc->ssl_ctx);
-  openssl_listen_ctx_free (olc);
+  octx = clib_mem_alloc (sizeof (*octx));
+  octx->ssl_ctx = ssl_ctx;
+  octx->srvcert = srvcert;
+  octx->pkey = pkey;
+  crctx->engine_context = (void *) octx;
 
   return 0;
 }
@@ -700,8 +667,8 @@ static int
 openssl_ctx_init_server (tls_ctx_t * ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  u32 olc_index = ctx->tls_ssl_ctx;
-  openssl_listen_ctx_t *olc;
+  openssl_crypto_context_t *ocrctx;
+  tls_crypto_context_t *crctx;
   session_t *tls_session;
   int rv, err;
 #ifdef HAVE_OPENSSL_ASYNC
@@ -709,9 +676,9 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 #endif
 
   /* Start a new connection */
-
-  olc = openssl_lctx_get (olc_index);
-  oc->ssl = SSL_new (olc->ssl_ctx);
+  crctx = tls_crypto_context_get (ctx->crypto_context_index);
+  ocrctx = (openssl_crypto_context_t *) crctx->engine_context;
+  oc->ssl = SSL_new (ocrctx->ssl_ctx);
   if (oc->ssl == NULL)
     {
       TLS_DBG (1, "Couldn't initialize ssl struct");
@@ -800,10 +767,10 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_write = openssl_ctx_write,
   .ctx_read = openssl_ctx_read,
   .ctx_handshake_is_over = openssl_handshake_is_over,
-  .ctx_start_listen = openssl_start_listen,
-  .ctx_stop_listen = openssl_stop_listen,
   .ctx_transport_close = openssl_transport_close,
   .ctx_app_close = openssl_app_close,
+  .add_crypto_context = openssl_add_crypto_context,
+  .free_crypto_context = openssl_free_crypto_context,
 };
 
 int

@@ -146,6 +146,47 @@ autoreply define app_del_cert_key_pair {
     u32 index;
 };
 
+/** \brief Add crypto context
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param engine - Crypto engine
+    @param proto - transport protocol (0 - tcp 1 - udp)
+    @param ckpair_index - Cert and key index
+    @param options - Crypto options
+*/
+define app_add_crypto_context {
+    u32 client_index;
+    u32 context;
+    u8 engine;
+    u8 proto;
+    u32 ckpair_index;
+    u64 options[16];
+};
+
+/** \brief Add crypto context
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param index - crypto context index
+*/
+define app_add_crypto_context_reply {
+    u32 context;
+    i32 retval;
+    u32 index;
+};
+
+/** \brief Delete crypto context
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param handle - crypto context handle
+    @param proto - transport protocol (0 - tcp 1 - udp)
+*/
+autoreply define app_del_crypto_context {
+    u32 client_index;
+    u32 context;
+    u32 index;
+    u8 proto;
+};
+
 /** \brief Application add TLS certificate
  	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender

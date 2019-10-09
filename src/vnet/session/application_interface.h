@@ -176,6 +176,31 @@ typedef struct _vnet_app_add_cert_key_pair_args_
   u32 index;
 } vnet_app_add_cert_key_pair_args_t;
 
+typedef struct _vnet_app_add_crypto_context_args_
+{
+  u32 ckpair_index;
+  u64 *options;
+  u8 engine;
+  u8 proto;
+  u32 index;
+  u32 app_index;
+} vnet_app_add_crypto_context_args_t;
+
+typedef struct _vnet_app_del_crypto_context_args_
+{
+  u32 index;
+  u8 proto;
+} vnet_app_del_crypto_context_args_t;
+
+typedef struct crypto_ctx_
+{
+  u32 ctx_index;		/* index in crypto context pool */
+  u32 n_subscribers;		/* sessions opened refcount */
+  u32 ckpair_index;		/* certificate & key */
+  u8 engine;
+  u8 stale;			/* user asked for deletion */
+} crypto_context_t;
+
 /* Application attach options */
 typedef enum
 {
@@ -191,7 +216,7 @@ typedef enum
   APP_OPTIONS_NAMESPACE_SECRET,
   APP_OPTIONS_PROXY_TRANSPORT,
   APP_OPTIONS_ACCEPT_COOKIE,
-  APP_OPTIONS_TLS_ENGINE,
+  APP_OPTIONS_TLS_ENGINE,	     /**< Deprecated */
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
@@ -258,6 +283,8 @@ int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
 int vnet_app_del_cert_key_pair (u32 index);
 /** Ask for app cb on pair deletion */
 int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
+int vnet_app_add_crypto_context (vnet_app_add_crypto_context_args_t * a);
+int vnet_app_del_crypto_context (vnet_app_del_crypto_context_args_t * a);
 
 typedef struct app_session_transport_
 {
@@ -295,7 +322,7 @@ typedef struct session_listen_msg_
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
-  u32 ckpair_index;
+  u32 crypto_context_index;
 } __clib_packed session_listen_msg_t;
 
 STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
@@ -305,7 +332,7 @@ typedef struct session_listen_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_listen_uri_msg_t;
 
 STATIC_ASSERT (sizeof (session_listen_uri_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
@@ -375,7 +402,7 @@ typedef struct session_connect_msg_
   u8 hostname_len;
   u8 hostname[16];
   u64 parent_handle;
-  u32 ckpair_index;
+  u32 crypto_context_index;
 } __clib_packed session_connect_msg_t;
 
 STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
@@ -385,7 +412,7 @@ typedef struct session_connect_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_connect_uri_msg_t;
 
 STATIC_ASSERT (sizeof (session_connect_uri_msg_t) <=

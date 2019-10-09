@@ -40,6 +40,87 @@ static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 static int quic_check_quic_session_connected (quic_ctx_t * ctx);
 
+/* Crypto contexts */
+
+static void
+quic_crypto_context_free_if_needed (quic_crypto_context_t * crctx)
+{
+  quic_main_t *qm = &quic_main;
+  if (crctx->crctx.n_subscribers || !crctx->crctx.stale)
+    return;
+  pool_put (qm->crypto_ctx_pool, crctx);
+}
+
+static int
+quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
+{
+  quic_main_t *qm = &quic_main;
+  quic_crypto_context_t *crctx;
+  /* *INDENT-OFF* */
+  pool_foreach (crctx, qm->crypto_ctx_pool,
+  ({
+    if (crctx->crctx.ckpair_index == ckpair->cert_key_index)
+      {
+      	crctx->crctx.stale = 1;
+	quic_crypto_context_free_if_needed (crctx);
+      }
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static quic_crypto_context_t *
+quic_crypto_context_alloc ()
+{
+  quic_main_t *qm = &quic_main;
+  quic_crypto_context_t *crctx;
+  pool_get (qm->crypto_ctx_pool, crctx);
+  clib_memset (crctx, 0, sizeof (*crctx));
+  crctx->crctx.ctx_index = crctx - qm->crypto_ctx_pool;
+  return crctx;
+}
+
+static quic_crypto_context_t *
+quic_crypto_context_get (u32 cr_index)
+{
+  quic_main_t *qm = &quic_main;
+  if (pool_is_free_index (qm->crypto_ctx_pool, cr_index))
+    return 0;
+  return pool_elt_at_index (qm->crypto_ctx_pool, cr_index);
+}
+
+static int
+quic_del_crypto_context (vnet_app_del_crypto_context_args_t * a)
+{
+  quic_crypto_context_t *crctx;
+  crctx = quic_crypto_context_get (a->index);
+  if (!crctx)
+    return -1;
+  crctx->crctx.stale = 1;
+  quic_crypto_context_free_if_needed (crctx);
+  return 0;
+}
+
+static void
+quic_list_crypto_context (vlib_main_t * vm)
+{
+  quic_main_t *qm = &quic_main;
+  quic_crypto_context_t *qcrctx;
+  crypto_context_t *crctx;
+  /* *INDENT-OFF* */
+  pool_foreach (qcrctx, qm->crypto_ctx_pool, ({
+    crctx = (crypto_context_t *)qcrctx;
+    vlib_cli_output (vm, "[Q]%U", format_crypto_context, crctx);
+  }));
+  /* *INDENT-ON* */
+}
+
+static crypto_context_t *
+quic_get_crypto_context (u32 index)
+{
+  return (crypto_context_t *) quic_crypto_context_get (index);
+}
+
 /*  Helper functions */
 
 static u32
@@ -52,6 +133,7 @@ quic_ctx_alloc (u32 thread_index)
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
+  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   QUIC_DBG (3, "Allocated quic_ctx %u on thread %u",
 	    ctx - qm->ctx_pool[thread_index], thread_index);
   return ctx - qm->ctx_pool[thread_index];
@@ -62,6 +144,7 @@ quic_ctx_free (quic_ctx_t * ctx)
 {
   QUIC_DBG (2, "Free ctx %u %x", ctx->c_thread_index, ctx->c_c_index);
   u32 thread_index = ctx->c_thread_index;
+  ASSERT (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID);
   if (CLIB_DEBUG)
     clib_memset (ctx, 0xfb, sizeof (*ctx));
   pool_put (quic_main.ctx_pool[thread_index], ctx);
@@ -139,16 +222,19 @@ quic_sendable_packet_count (session_t * udp_session)
 static quicly_context_t *
 quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 {
-  return ctx->quicly_ctx;
+  quic_crypto_context_t *crctx =
+    quic_crypto_context_get (ctx->crypto_context_index);
+  return &crctx->quicly_ctx;
 }
 
 static quicly_context_t *
 quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
 {
-  session_t *udp_session = session_get_from_handle (udp_session_handle);
-  quic_ctx_t *ctx =
-    quic_ctx_get (udp_session->opaque, udp_session->thread_index);
-  return ctx->quicly_ctx;
+  session_t *udp_session;
+  quic_ctx_t *ctx;
+  udp_session = session_get_from_handle (udp_session_handle);
+  ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  return quic_get_quicly_ctx_from_ctx (ctx);
 }
 
 static inline void
@@ -218,6 +304,7 @@ quic_connection_delete (quic_ctx_t * ctx)
     {
       tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
       tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
+      ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
     }
 
   /*  Delete the connection from the connection map */
@@ -232,9 +319,7 @@ quic_connection_delete (quic_ctx_t * ctx)
   if (ctx->conn)
     quicly_free (ctx->conn);
   ctx->conn = NULL;
-
   session_transport_delete_notify (&ctx->connection);
-  quic_ctx_free (ctx);
 }
 
 void
@@ -243,8 +328,6 @@ quic_increment_counter (u8 evt, u8 val)
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_increment_counter (vm, quic_input_node.index, evt, val);
 }
-
-
 
 /**
  * Called when quicly return an error
@@ -361,7 +444,6 @@ quic_send_packets (quic_ctx_t * ctx)
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
   quicly_packet_allocator_t *pa;
-  quicly_context_t *quicly_context;
   int err = 0;
 
   /* We have sctx, get qctx */
@@ -383,15 +465,7 @@ quic_send_packets (quic_ctx_t * ctx)
   if (quic_sendable_packet_count (udp_session) < 2)
     goto stop_sending;
 
-  quicly_context = quic_get_quicly_ctx_from_ctx (ctx);
-  if (!quicly_context)
-    {
-      clib_warning ("Tried to send packets on non existing app worker %u",
-		    ctx->parent_app_wrk_id);
-      quic_connection_delete (ctx);
-      return 1;
-    }
-  pa = quicly_context->packet_allocator;
+  pa = quic_get_quicly_ctx_from_ctx (ctx)->packet_allocator;
   do
     {
       max_packets = quic_sendable_packet_count (udp_session);
@@ -854,85 +928,6 @@ quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
   return 0;
 }
 
-static void
-quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
-{
-  quic_main_t *qm = &quic_main;
-  quicly_context_t *quicly_ctx;
-  ptls_iovec_t key_vec;
-  app_cert_key_pair_t *ckpair;
-  u64 max_enq;
-  if (app->quicly_ctx)
-    return;
-
-  quicly_ctx_data_t *quicly_ctx_data =
-    clib_mem_alloc (sizeof (quicly_ctx_data_t));
-  clib_memset (quicly_ctx_data, 0, sizeof (*quicly_ctx_data));	/* picotls depends on this */
-  quicly_ctx = &quicly_ctx_data->quicly_ctx;
-  ptls_context_t *ptls_ctx = &quicly_ctx_data->ptls_ctx;
-  ptls_ctx->random_bytes = ptls_openssl_random_bytes;
-  ptls_ctx->get_time = &ptls_get_time;
-  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
-  ptls_ctx->cipher_suites = qm->quic_ciphers[qm->default_cipher];
-  ptls_ctx->certificates.list = NULL;
-  ptls_ctx->certificates.count = 0;
-  ptls_ctx->esni = NULL;
-  ptls_ctx->on_client_hello = NULL;
-  ptls_ctx->emit_certificate = NULL;
-  ptls_ctx->sign_certificate = NULL;
-  ptls_ctx->verify_certificate = NULL;
-  ptls_ctx->ticket_lifetime = 86400;
-  ptls_ctx->max_early_data_size = 8192;
-  ptls_ctx->hkdf_label_prefix__obsolete = NULL;
-  ptls_ctx->require_dhe_on_psk = 1;
-  ptls_ctx->encrypt_ticket = &qm->session_cache.super;
-
-  app->quicly_ctx = (u64 *) quicly_ctx;
-  clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
-
-  quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
-  quicly_ctx->tls = ptls_ctx;
-  quicly_ctx->stream_open = &on_stream_open;
-  quicly_ctx->closed_by_peer = &on_closed_by_peer;
-  quicly_ctx->now = &quicly_vpp_now_cb;
-  quicly_amend_ptls_context (quicly_ctx->tls);
-
-  quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-
-  /* max_enq is FIFO_SIZE - 1 */
-  max_enq = app->sm_properties.rx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.bidi_local = max_enq;
-  max_enq = app->sm_properties.tx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.bidi_remote = max_enq;
-  quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
-
-  quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
-  quicly_ctx_data->cid_key[16] = 0;
-  key_vec = ptls_iovec_init (quicly_ctx_data->cid_key,
-			     strlen (quicly_ctx_data->cid_key));
-  quicly_ctx->cid_encryptor =
-    quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
-				      &ptls_openssl_aes128ecb,
-				      &ptls_openssl_sha256, key_vec);
-
-  ckpair = app_cert_key_pair_get_if_valid (cert_key_index);
-  if (ckpair && ckpair->key != NULL && ckpair->cert != NULL)
-    {
-      if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
-	{
-	  QUIC_DBG (1, "failed to read private key from app configuration\n");
-	}
-      if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
-	{
-	  QUIC_DBG (1, "failed to load certificate\n");
-	}
-    }
-}
-
-/* Transport proto functions */
-
 static int
 quic_connect_stream (session_t * quic_session, u32 opaque)
 {
@@ -1040,12 +1035,13 @@ static int
 quic_connect_connection (session_endpoint_cfg_t * sep)
 {
   vnet_connect_args_t _cargs, *cargs = &_cargs;
+  quic_crypto_context_t *crctx;
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
   app_worker_t *app_wrk;
   application_t *app;
   u32 ctx_index;
-  int error;
+  int rv;
 
   clib_memset (cargs, 0, sizeof (*cargs));
   ctx_index = quic_ctx_alloc (vlib_get_thread_index ());
@@ -1076,13 +1072,18 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
-  quic_store_quicly_ctx (app, ctx->ckpair_index);
-  /* Also store it in ctx for convenience
-   * Waiting for crypto_ctx logic */
-  ctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
+  crctx = quic_crypto_context_get (sep->crypto_context_index);
+  if (!crctx || crctx->crctx.stale)
+    {
+      QUIC_DBG (1, "Crypto context %d not found or stale",
+		sep->crypto_context_index);
+      return -1;
+    }
+  clib_atomic_fetch_add (&crctx->crctx.n_subscribers, 1);
+  ctx->crypto_context_index = sep->crypto_context_index;
 
-  if ((error = vnet_connect (cargs)))
-    return error;
+  if ((rv = vnet_connect (cargs)))
+    return rv;
 
   return 0;
 }
@@ -1151,6 +1152,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
   quic_main_t *qm = &quic_main;
+  quic_crypto_context_t *crctx;
   session_handle_t udp_handle;
   session_endpoint_cfg_t *sep;
   session_t *udp_listen_session;
@@ -1159,6 +1161,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   quic_ctx_t *lctx;
   u32 lctx_index;
   app_listener_t *app_listener;
+  int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
   app_wrk = app_worker_get (sep->app_wrk_index);
@@ -1168,15 +1171,22 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 
-  quic_store_quicly_ctx (app, sep->ckpair_index);
+  crctx = quic_crypto_context_get (sep->crypto_context_index);
+  if (!crctx || crctx->crctx.stale)
+    {
+      QUIC_DBG (1, "Crypto context %d not found or stale",
+		sep->crypto_context_index);
+      return -1;
+    }
+  clib_atomic_fetch_add (&crctx->crctx.n_subscribers, 1);
 
   sep->transport_proto = TRANSPORT_PROTO_UDPC;
   clib_memset (args, 0, sizeof (*args));
   args->app_index = qm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  if (vnet_listen (args))
-    return -1;
+  if ((rv = vnet_listen (args)))
+    return rv;
 
   lctx_index = quic_ctx_alloc (0);
   udp_handle = args->handle;
@@ -1186,9 +1196,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 
   lctx = quic_ctx_get (lctx_index, 0);
   lctx->flags |= QUIC_F_IS_LISTENER;
-  /* Also store it in ctx for convenience
-   * Waiting for crypto_ctx logic */
-  lctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
+  lctx->crypto_context_index = sep->crypto_context_index;
 
   clib_memcpy (&lctx->c_rmt_ip, &args->sep.peer.ip, sizeof (ip46_address_t));
   clib_memcpy (&lctx->c_lcl_ip, &args->sep.ip, sizeof (ip46_address_t));
@@ -1211,8 +1219,10 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 static u32
 quic_stop_listen (u32 lctx_index)
 {
-  QUIC_DBG (2, "Called quic_stop_listen");
   quic_ctx_t *lctx;
+  quic_crypto_context_t *crctx;
+
+  QUIC_DBG (2, "Called quic_stop_listen");
   lctx = quic_ctx_get (lctx_index, 0);
   ASSERT (quic_ctx_is_listener (lctx));
   vnet_unlisten_args_t a = {
@@ -1223,8 +1233,9 @@ quic_stop_listen (u32 lctx_index)
   if (vnet_unlisten (&a))
     clib_warning ("unlisten errored");
 
-  /*  TODO: crypto state cleanup */
-
+  crctx = quic_crypto_context_get (lctx->crypto_context_index);
+  clib_atomic_sub_fetch (&crctx->crctx.n_subscribers, 1);
+  quic_crypto_context_free_if_needed (crctx);
   quic_ctx_free (lctx);
   return 0;
 }
@@ -1467,6 +1478,7 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
     {
       tw = &quic_main.wrk_ctx[thread_index].timer_wheel;
       tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
+      ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
     }
   quic_ctx_free (ctx);
 
@@ -1556,6 +1568,32 @@ quic_udp_session_disconnect_callback (session_t * s)
 }
 
 static void
+quic_udp_session_cleanup_callback (session_t * udp_session,
+				   session_cleanup_ntf_t ntf)
+{
+  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
+  quic_crypto_context_t *crctx;
+  quic_ctx_t *ctx;
+
+  if (ntf != SESSION_CLEANUP_SESSION)
+    return;
+
+  ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  crctx = quic_crypto_context_get (ctx->crypto_context_index);
+  clib_atomic_sub_fetch (&crctx->crctx.n_subscribers, 1);
+  quic_crypto_context_free_if_needed (crctx);
+
+  /*  Stop the timer */
+  if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
+    {
+      tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
+      tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
+      ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+    }
+  quic_ctx_free (ctx);
+}
+
+static void
 quic_udp_session_reset_callback (session_t * s)
 {
   clib_warning ("UDP session reset???");
@@ -1587,6 +1625,7 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   u32 *pool_index;
   quic_ctx_t *ctx, *lctx;
   session_t *udp_listen_session;
+  quic_crypto_context_t *crctx;
   u32 thread_index = vlib_get_thread_index ();
 
   udp_listen_session =
@@ -1608,11 +1647,9 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-
-  /* Also store it in ctx for convenience
-   * Waiting for crypto_ctx logic */
-  ctx->quicly_ctx = lctx->quicly_ctx;
-
+  ctx->crypto_context_index = lctx->crypto_context_index;
+  crctx = quic_crypto_context_get (ctx->crypto_context_index);
+  clib_atomic_add_fetch (&crctx->crctx.n_subscribers, 1);
   udp_session->opaque = ctx_index;
 
   /* Put this ctx in the "opening" pool */
@@ -2049,16 +2086,124 @@ quic_get_transport_endpoint (u32 ctx_index, u32 thread_index,
   quic_common_get_transport_endpoint (ctx, tep, is_lcl);
 }
 
+static int
+quic_add_crypto_context (vnet_app_add_crypto_context_args_t * a)
+{
+  quic_main_t *qm = &quic_main;
+  app_cert_key_pair_t *ckpair;
+  quic_crypto_context_t *crctx;
+  quicly_context_t *quicly_ctx;
+  ptls_context_t *ptls_ctx;
+  ptls_iovec_t key_vec;
+  u8 engine;
+  u64 max_enq;
+  application_t *app;
+  char *cid_key;
+  int rv = 0;
+
+  crctx = quic_crypto_context_alloc ();
+  a->index = crctx->crctx.ctx_index;
+  ckpair = app_cert_key_pair_get_if_valid (a->ckpair_index);
+  if (ckpair)
+    {
+      crctx->crctx.ckpair_index = a->ckpair_index;
+      vnet_app_add_cert_key_interest (crctx->crctx.ckpair_index,
+				      qm->app_index);
+    }
+
+  quicly_ctx = &crctx->quicly_ctx;
+  ptls_ctx = &crctx->ptls_ctx;
+  cid_key = crctx->cid_key;
+
+  engine = a->engine;
+  if (!clib_bitmap_get (qm->available_crypto_engines, engine))
+    {
+      engine = CRYPTO_ENGINE_PICOTLS;
+      QUIC_DBG (1, "Crypto engine %U not supported, defaulting",
+		format_crypto_engine, engine);
+    }
+  crctx->crctx.engine = engine;
+
+  ptls_ctx->random_bytes = ptls_openssl_random_bytes;
+  ptls_ctx->get_time = &ptls_get_time;
+  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
+  ptls_ctx->cipher_suites = qm->quic_ciphers[engine];
+  ptls_ctx->certificates.list = NULL;
+  ptls_ctx->certificates.count = 0;
+  ptls_ctx->esni = NULL;
+  ptls_ctx->on_client_hello = NULL;
+  ptls_ctx->emit_certificate = NULL;
+  ptls_ctx->sign_certificate = NULL;
+  ptls_ctx->verify_certificate = NULL;
+  ptls_ctx->ticket_lifetime = 86400;
+  ptls_ctx->max_early_data_size = 8192;
+  ptls_ctx->hkdf_label_prefix__obsolete = NULL;
+  ptls_ctx->require_dhe_on_psk = 1;
+  ptls_ctx->encrypt_ticket = &qm->session_cache.super;
+  clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
+
+  quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
+  quicly_ctx->tls = ptls_ctx;
+  quicly_ctx->stream_open = &on_stream_open;
+  quicly_ctx->closed_by_peer = &on_closed_by_peer;
+  quicly_ctx->now = &quicly_vpp_now_cb;
+  quicly_amend_ptls_context (quicly_ctx->tls);
+
+  quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
+  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
+  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
+
+  app = application_get_if_valid (a->app_index);
+  if (!app)
+    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+
+  /* max_enq is FIFO_SIZE - 1 */
+  max_enq = app->sm_properties.rx_fifo_size - 1;
+  quicly_ctx->transport_params.max_stream_data.bidi_local = max_enq;
+  max_enq = app->sm_properties.tx_fifo_size - 1;
+  quicly_ctx->transport_params.max_stream_data.bidi_remote = max_enq;
+  quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
+
+  quicly_ctx->tls->random_bytes (cid_key, 16);
+  cid_key[16] = 0;
+  key_vec = ptls_iovec_init (cid_key, strlen (cid_key));
+  quicly_ctx->cid_encryptor =
+    quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
+				      &ptls_openssl_aes128ecb,
+				      &ptls_openssl_sha256, key_vec);
+
+  if (ckpair && load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
+    {
+      QUIC_DBG (1, "failed to read private key from app configuration\n");
+      rv = -1;
+      goto failed;
+    }
+  if (ckpair
+      && load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
+    {
+      QUIC_DBG (1, "failed to load certificate\n");
+      rv = -1;
+      goto failed;
+    }
+
+  return 0;
+failed:
+  pool_put (qm->crypto_ctx_pool, crctx);
+  return rv;
+}
+
 /* *INDENT-OFF* */
 static session_cb_vft_t quic_app_cb_vft = {
   .session_accept_callback = quic_udp_session_accepted_callback,
   .session_disconnect_callback = quic_udp_session_disconnect_callback,
+  .session_cleanup_callback = quic_udp_session_cleanup_callback,
   .session_connected_callback = quic_udp_session_connected_callback,
   .session_reset_callback = quic_udp_session_reset_callback,
   .session_migrate_callback = quic_udp_session_migrate_callback,
   .add_segment_callback = quic_add_segment_callback,
   .del_segment_callback = quic_del_segment_callback,
   .builtin_app_rx_callback = quic_udp_session_rx_callback,
+  .app_cert_key_pair_delete_callback = quic_app_cert_key_pair_delete_callback,
 };
 
 static const transport_proto_vft_t quic_proto = {
@@ -2081,6 +2226,13 @@ static const transport_proto_vft_t quic_proto = {
     .service_type = TRANSPORT_SERVICE_APP,
   },
 };
+
+static crypto_context_vft_t quic_crypto_ctx_proto = {
+  .add_crypto_context = quic_add_crypto_context,
+  .del_crypto_context = quic_del_crypto_context,
+  .get_crypto_context = quic_get_crypto_context,
+  .list_crypto_context = quic_list_crypto_context,
+};
 /* *INDENT-ON* */
 
 static void
@@ -2089,6 +2241,7 @@ quic_register_cipher_suite (crypto_engine_type_t type,
 {
   quic_main_t *qm = &quic_main;
   vec_validate (qm->quic_ciphers, type);
+  clib_bitmap_set (qm->available_crypto_engines, type, 1);
   qm->quic_ciphers[type] = ciphers;
 }
 
@@ -2125,6 +2278,8 @@ quic_init (vlib_main_t * vm)
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
+  clib_bitmap_alloc (qm->available_crypto_engines,
+		     app_crypto_engine_n_types ());
 
   a->session_cb_vft = &quic_app_cb_vft;
   a->api_client_index = APP_INVALID_INDEX;
@@ -2170,34 +2325,20 @@ quic_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
+  crypto_context_register_protocol (TRANSPORT_PROTO_QUIC,
+				    &quic_crypto_ctx_proto);
+
   quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_cipher = CRYPTO_ENGINE_PICOTLS;
+
   vec_free (a->name);
+  /* default crypto context for quic */
+  quic_crypto_context_alloc ();
   return 0;
 }
 
 VLIB_INIT_FUNCTION (quic_init);
-
-static clib_error_t *
-quic_plugin_crypto_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
-{
-  quic_main_t *qm = &quic_main;
-  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
-  if (unformat (input, "vpp"))
-    qm->default_cipher = CRYPTO_ENGINE_VPP;
-  else if (unformat (input, "picotls"))
-    qm->default_cipher = CRYPTO_ENGINE_PICOTLS;
-  else
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
-  return 0;
-}
 
 u64 quic_fifosize = 0;
 static clib_error_t *
@@ -2273,13 +2414,27 @@ quic_plugin_showstats_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) =
+static clib_error_t *
+quic_show_ctx_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd)
 {
-  .path = "quic set crypto api",
-  .short_help = "quic set crypto api [picotls, vpp]",
-  .function = quic_plugin_crypto_command_fn,
-};
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx = NULL;
+  u32 num_workers = vlib_num_workers ();
+
+  for (int i = 0; i < num_workers + 1; i++)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (ctx, qm->ctx_pool[i],
+      ({
+        vlib_cli_output (vm, "%U", format_quic_ctx, ctx, 1);
+      }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
 {
   .path = "quic set fifo-size",
@@ -2291,6 +2446,12 @@ VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
   .path = "show quic stats",
   .short_help = "show quic stats",
   .function = quic_plugin_showstats_command_fn,
+};
+VLIB_CLI_COMMAND(quic_show_ctx_command, static)=
+{
+  .path = "show quic ctx",
+  .short_help = "show quic ctx",
+  .function = quic_show_ctx_command_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {

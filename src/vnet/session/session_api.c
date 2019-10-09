@@ -61,6 +61,8 @@ _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 _(APP_ADD_CERT_KEY_PAIR, app_add_cert_key_pair)				\
 _(APP_DEL_CERT_KEY_PAIR, app_del_cert_key_pair)				\
+_(APP_ADD_CRYPTO_CONTEXT, app_add_crypto_context)			\
+_(APP_DEL_CRYPTO_CONTEXT, app_del_crypto_context)			\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static int
@@ -662,12 +664,12 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 
 done:
 
-  ctrl_thread = vlib_num_workers ()? 1 : 0;
-  ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APP_ATTACH_REPLY, ({
     if (!rv)
       {
+	ctrl_thread = vlib_num_workers ()? 1 : 0;
+	ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
 	segp = a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->app_mq = pointer_to_uword (a->app_evt_q);
@@ -1358,6 +1360,56 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 }
 
 static void
+vl_api_app_add_crypto_context_t_handler (vl_api_app_add_crypto_context_t * mp)
+{
+  vl_api_app_add_crypto_context_reply_t *rmp;
+  vnet_app_add_crypto_context_args_t _a, *a = &_a;
+  application_t *app;
+  int rv = 0;
+
+  if (!(app = application_lookup (mp->client_index)))
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
+    }
+
+  clib_memset (a, 0, sizeof (*a));
+  a->engine = mp->engine;
+  a->proto = mp->proto;
+  a->ckpair_index = clib_net_to_host_u32 (mp->ckpair_index);
+  a->options = mp->options;
+  a->app_index = app->app_index;
+  rv = vnet_app_add_crypto_context (a);
+
+done:
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_APP_ADD_CRYPTO_CONTEXT_REPLY, ({
+    if (!rv)
+      rmp->index = clib_host_to_net_u32 (a->index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_app_del_crypto_context_t_handler (vl_api_app_del_crypto_context_t * mp)
+{
+  vl_api_app_del_crypto_context_reply_t *rmp;
+  vnet_app_del_crypto_context_args_t _a, *a = &_a;
+  int rv = 0;
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  a->index = clib_net_to_host_u32 (mp->index);
+  a->proto = mp->proto;
+  rv = vnet_app_del_crypto_context (a);
+
+done:
+  REPLY_MACRO (VL_API_APP_DEL_CRYPTO_CONTEXT_REPLY);
+}
+
+static void
 vl_api_app_add_cert_key_pair_t_handler (vl_api_app_add_cert_key_pair_t * mp)
 {
   vl_api_app_add_cert_key_pair_reply_t *rmp;
@@ -1399,12 +1451,11 @@ vl_api_app_add_cert_key_pair_t_handler (vl_api_app_add_cert_key_pair_t * mp)
   rv = vnet_app_add_cert_key_pair (a);
   vec_free (a->cert);
   vec_free (a->key);
-
 done:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APP_ADD_CERT_KEY_PAIR_REPLY, ({
     if (!rv)
-      rmp->index = a->index;
+      rmp->index = clib_host_to_net_u32 (a->index);
   }));
   /* *INDENT-ON* */
 }
@@ -1414,15 +1465,16 @@ vl_api_app_del_cert_key_pair_t_handler (vl_api_app_del_cert_key_pair_t * mp)
 {
   vl_api_app_del_cert_key_pair_reply_t *rmp;
   int rv = 0;
+  u32 ckpair_index = clib_net_to_host_u32 (mp->index);
   if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
-  rv = vnet_app_del_cert_key_pair (mp->index);
+  rv = vnet_app_del_cert_key_pair (ckpair_index);
 
 done:
-  REPLY_MACRO (VL_API_APP_ADD_CERT_KEY_PAIR_REPLY);
+  REPLY_MACRO (VL_API_APP_DEL_CERT_KEY_PAIR_REPLY);
 }
 
 /* ### WILL BE DEPRECATED POST 20.01 ### */
@@ -1454,6 +1506,8 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
   ckpair = app_cert_key_pair_get_default ();
   vec_validate (ckpair->cert, cert_len);
   clib_memcpy_fast (ckpair->cert, mp->cert, cert_len);
+
+  vnet_app_update_default_crypto_contexts (app);
 
 done:
   REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
@@ -1488,6 +1542,9 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
   ckpair = app_cert_key_pair_get_default ();
   vec_validate (ckpair->key, key_len);
   clib_memcpy_fast (ckpair->key, mp->key, key_len);
+
+  vnet_app_update_default_crypto_contexts (app);
+
 done:
   REPLY_MACRO (VL_API_APPLICATION_TLS_KEY_ADD_REPLY);
 }

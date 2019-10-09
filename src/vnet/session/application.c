@@ -21,6 +21,11 @@
 
 static app_main_t app_main;
 
+/**
+ * Per-type vector of crypto context virtual function tables
+ */
+static crypto_context_vft_t *crypto_ctx_vfts;
+
 #define app_interface_check_thread_and_barrier(_fn, _arg)		\
   if (PREDICT_FALSE (!vlib_thread_is_main_w_barrier ()))		\
     {									\
@@ -541,7 +546,10 @@ application_alloc_and_init (app_init_args_t * a)
   if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
-    app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
+    {
+      app->legacy_tls_engine = options[APP_OPTIONS_TLS_ENGINE];
+      vnet_app_update_default_crypto_contexts (app);
+    }
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
@@ -1386,6 +1394,58 @@ format_cert_key_pair (u8 * s, va_list * args)
 }
 
 u8 *
+format_crypto_engine (u8 * s, va_list * args)
+{
+  u32 engine = va_arg (*args, u32);
+  switch (engine)
+    {
+    case CRYPTO_ENGINE_NONE:
+      return format (s, "none");
+    case CRYPTO_ENGINE_MBEDTLS:
+      return format (s, "mbedtls");
+    case CRYPTO_ENGINE_OPENSSL:
+      return format (s, "openssl");
+    case CRYPTO_ENGINE_PICOTLS:
+      return format (s, "picotls");
+    case CRYPTO_ENGINE_VPP:
+      return format (s, "vpp");
+    default:
+      return format (s, "unknown engine");
+    }
+  return s;
+}
+
+uword
+unformat_crypto_engine (unformat_input_t * input, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  if (unformat (input, "mbedtls"))
+    *a = CRYPTO_ENGINE_MBEDTLS;
+  else if (unformat (input, "openssl"))
+    *a = CRYPTO_ENGINE_OPENSSL;
+  else if (unformat (input, "picotls"))
+    *a = CRYPTO_ENGINE_PICOTLS;
+  else if (unformat (input, "vpp"))
+    *a = CRYPTO_ENGINE_VPP;
+  else
+    return 0;
+  return 1;
+}
+
+u8 *
+format_crypto_context (u8 * s, va_list * args)
+{
+  crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
+  s =
+    format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
+	    crctx->n_subscribers, crctx->ckpair_index);
+  s = format (s, "[%U]", format_crypto_engine, crctx->engine);
+  if (crctx->stale)
+    s = format (s, " -- DELETED");
+  return s;
+}
+
+u8 *
 format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
@@ -1546,10 +1606,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/*
- * Certificate store
- *
- */
+/* Certificate store */
 
 static app_cert_key_pair_t *
 app_cert_key_pair_alloc ()
@@ -1626,16 +1683,118 @@ vnet_app_del_cert_key_pair (u32 index)
 }
 
 clib_error_t *
-cert_key_pair_store_init (vlib_main_t * vm)
+application_init (vlib_main_t * vm)
 {
   /* Add a certificate with index 0 to support legacy apis */
   (void) app_cert_key_pair_alloc ();
   app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
+  clib_bitmap_alloc (app_main.available_crypto_context_protos,
+		     TRANSPORT_N_PROTO);
+  return 0;
+}
+
+/* Crypto contexts */
+
+void
+crypto_context_register_protocol (transport_proto_t tp,
+				  crypto_context_vft_t * vft)
+{
+  vec_validate (crypto_ctx_vfts, tp);
+  clib_bitmap_set (app_main.available_crypto_context_protos, tp, 1);
+  crypto_ctx_vfts[tp] = *vft;
+}
+
+int
+vnet_app_del_crypto_context (vnet_app_del_crypto_context_args_t * a)
+{
+  if (!clib_bitmap_get (app_main.available_crypto_context_protos, a->proto))
+    return VNET_API_ERROR_INVALID_VALUE;
+  return crypto_ctx_vfts[a->proto].del_crypto_context (a);
+}
+
+int
+vnet_app_add_crypto_context (vnet_app_add_crypto_context_args_t * a)
+{
+  int rv;
+  if (!clib_bitmap_get (app_main.available_crypto_context_protos, a->proto))
+    return VNET_API_ERROR_INVALID_VALUE;
+  rv = crypto_ctx_vfts[a->proto].add_crypto_context (a);
+  if (rv)
+    return rv;
+  return 0;
+}
+
+/** Called when default cert / engine updates to maintain legacy behaviors */
+void
+vnet_app_update_default_crypto_contexts (application_t * app)
+{
+  int tp;
+  vnet_app_del_crypto_context_args_t _adel, *adel = &_adel;
+  vnet_app_add_crypto_context_args_t _aadd, *aadd = &_aadd;
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (tp, app_main.available_crypto_context_protos, ({
+    clib_memset (adel, 0, sizeof (*adel));
+    clib_memset (aadd, 0, sizeof (*aadd));
+    adel->proto = tp;
+    aadd->proto = tp;
+    aadd->engine = app->legacy_tls_engine;
+    vnet_app_del_crypto_context (adel);
+    vnet_app_add_crypto_context (aadd);
+  }));
+  /* *INDENT-ON* */
+}
+
+static clib_error_t *
+list_crypto_context_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  int tp;
+  session_cli_return_if_not_enabled ();
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (tp, app_main.available_crypto_context_protos, ({
+    if (crypto_ctx_vfts[tp].list_crypto_context)
+      crypto_ctx_vfts[tp].list_crypto_context (vm);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static clib_error_t *
+set_crypto_context_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  u32 crctx_index = 0;
+  u8 engine = CRYPTO_ENGINE_NONE;
+  u32 tp = TRANSPORT_PROTO_NONE;
+  crypto_context_t *crctx;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%d", &crctx_index))
+	;
+      else if (unformat (input, "engine %U", unformat_crypto_engine, &engine))
+	;
+      else if (unformat (input, "proto %U", unformat_transport_proto, &tp))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  if (!clib_bitmap_get (app_main.available_crypto_context_protos, tp))
+    return clib_error_return (0, "Proto %U has no crypto context support",
+			      format_transport_proto, tp);
+  crctx = crypto_ctx_vfts[tp].get_crypto_context (crctx_index);
+  if (!crctx)
+    return clib_error_return (0, "crypto context %d", crctx_index);
+  crctx->engine = engine;
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (cert_key_pair_store_init);
+VLIB_INIT_FUNCTION (application_init);
 
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
@@ -1649,6 +1808,20 @@ VLIB_CLI_COMMAND (show_certificate_command, static) =
   .path = "show app certificate",
   .short_help = "list app certs and keys present in store",
   .function = show_certificate_command_fn,
+};
+
+VLIB_CLI_COMMAND (list_crypto_context_command, static) =
+{
+  .path = "show app crypto context",
+  .short_help = "list app crypto contextes",
+  .function = list_crypto_context_command_fn,
+};
+
+VLIB_CLI_COMMAND (set_crypto_context_command, static) =
+{
+  .path = "set app crypto context",
+  .short_help = "Set crypto context properties",
+  .function = set_crypto_context_command_fn,
 };
 /* *INDENT-ON* */
 

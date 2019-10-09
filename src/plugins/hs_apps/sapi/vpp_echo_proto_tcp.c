@@ -126,8 +126,8 @@ static void
 tls_echo_set_defaults_after_opts_cb ()
 {
   echo_main_t *em = &echo_main;
-  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
-    em->crypto_ctx_engine = CRYPTO_ENGINE_OPENSSL;
+  if (em->crypto_engine == CRYPTO_ENGINE_NONE)
+    em->crypto_engine = CRYPTO_ENGINE_OPENSSL;
 }
 
 echo_proto_cb_vft_t echo_tcp_proto_cb_vft = {
@@ -150,7 +150,7 @@ echo_proto_cb_vft_t echo_tls_proto_cb_vft = {
 };
 
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TCP, echo_tcp_proto_cb_vft);
-ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TLS, echo_tcp_proto_cb_vft);
+ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TLS, echo_tls_proto_cb_vft);
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_SCTP, echo_tcp_proto_cb_vft);
 
 /*

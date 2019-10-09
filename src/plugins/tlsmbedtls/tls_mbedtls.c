@@ -260,25 +260,18 @@ mbedtls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
-mbedtls_start_listen (tls_ctx_t * lctx)
-{
-  return 0;
-}
-
-static int
-mbedtls_stop_listen (tls_ctx_t * lctx)
-{
-  return 0;
-}
-
-static int
 mbedtls_ctx_init_server (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
   app_cert_key_pair_t *ckpair;
+  tls_crypto_context_t *crctx;
   void *ctx_ptr;
   int rv;
+
+  crctx = tls_crypto_context_get (ctx->crypto_context_index);
+  if (!(ckpair = app_cert_key_pair_get_if_valid (crctx->crctx.ckpair_index)))
+    return -1;
 
   mbedtls_ssl_init (&mc->ssl);
   mbedtls_ssl_config_init (&mc->conf);
@@ -288,9 +281,6 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
   /*
    * 1. Cert
    */
-  ckpair = app_cert_key_pair_get_if_valid (ctx->ckpair_index);
-  if (!ckpair)
-    return -1;
 
   if (!ckpair->cert || !ckpair->key)
     {
@@ -552,7 +542,19 @@ mbedtls_app_close (tls_ctx_t * ctx)
 {
   tls_disconnect_transport (ctx);
   session_transport_delete_notify (&ctx->connection);
-  mbedtls_ctx_free (ctx);
+  return 0;
+}
+
+static int
+mbedtls_free_crypto_context (tls_crypto_context_t * crctx)
+{
+  return 0;
+}
+
+static int
+mbedtls_add_crypto_context (tls_crypto_context_t * crctx, u64 options[16])
+{
+  /* For now crypto infos are stored in transport */
   return 0;
 }
 
@@ -566,10 +568,10 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_write = mbedtls_ctx_write,
   .ctx_read = mbedtls_ctx_read,
   .ctx_handshake_is_over = mbedtls_handshake_is_over,
-  .ctx_start_listen = mbedtls_start_listen,
-  .ctx_stop_listen = mbedtls_stop_listen,
   .ctx_transport_close = mbedtls_transport_close,
   .ctx_app_close = mbedtls_app_close,
+  .add_crypto_context = mbedtls_add_crypto_context,
+  .free_crypto_context = mbedtls_free_crypto_context,
 };
 
 int

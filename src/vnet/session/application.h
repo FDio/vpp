@@ -111,11 +111,8 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /** Preferred tls engine */
-  u8 tls_engine;
-
-  u64 *quicly_ctx;
-
+  /** Legacy tls_engine to use in default crypto context */
+  crypto_engine_type_t legacy_tls_engine;
 } application_t;
 
 typedef struct app_main_
@@ -144,7 +141,25 @@ typedef struct app_main_
    * Last registered crypto engine type
    */
   crypto_engine_type_t last_crypto_engine;
+
+  /**
+   * Bitmap for available crypto context protos
+   */
+  uword *available_crypto_context_protos;
+
 } app_main_t;
+
+/*
+ * Crypto context virtual function table
+ */
+/* *INDENT-OFF* */
+typedef struct _crypto_context_vft {
+  int (*add_crypto_context) (vnet_app_add_crypto_context_args_t * a);
+  int (*del_crypto_context) (vnet_app_del_crypto_context_args_t * a);
+  void (*list_crypto_context) (vlib_main_t * vm);
+  crypto_context_t * (*get_crypto_context) (u32 index);
+} crypto_context_vft_t;
+/* *INDENT-ON* */
 
 typedef struct app_init_args_
 {
@@ -279,6 +294,8 @@ session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 				      u8 transport_proto);
 u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
+u8 *format_crypto_engine (u8 * s, va_list * args);
+u8 *format_crypto_context (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
@@ -288,6 +305,9 @@ app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_default ();
 
+void crypto_context_register_protocol (transport_proto_t tp,
+				       crypto_context_vft_t * vft);
+void vnet_app_update_default_crypto_contexts (application_t * app);
 /* Needed while we support both bapi and mq ctrl messages */
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			      session_handle_t handle, int rv);

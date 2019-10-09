@@ -45,7 +45,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u8 *hostname;
   u64 parent_handle;
-  u32 ckpair_index;
+  u32 crypto_context_index;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -86,7 +86,7 @@ typedef struct _session_endpoint_cfg
   .opaque = ENDPOINT_INVALID_INDEX,		\
   .hostname = 0,				\
   .parent_handle = SESSION_INVALID_HANDLE,	\
-  .ckpair_index = 0				\
+  .crypto_context_index = 0,                    \
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
