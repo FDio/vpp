@@ -182,7 +182,7 @@ dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
   u16 old_id, new_id;
   ip_csum_t sum;
 
-  if (icmp_is_error_message (icmp))
+  if (icmp_type_is_error_message (icmp->type))
     {
       n = DSLITE_IN2OUT_NEXT_DROP;
       *error = DSLITE_ERROR_BAD_ICMP_TYPE;

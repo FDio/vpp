@@ -115,10 +115,8 @@ typedef struct
 
   u32 in2out_node_index;
   u32 in2out_slowpath_node_index;
-  u32 in2out_reass_node_index;
 
   u32 out2in_node_index;
-  u32 out2in_reass_node_index;
 
   ip4_main_t *ip4_main;
   snat_main_t *sm;
@@ -380,7 +378,7 @@ u32 nat64_get_worker_in2out (ip6_address_t * addr);
  *
  * @returns worker thread index.
  */
-u32 nat64_get_worker_out2in (ip4_header_t * ip);
+u32 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip);
 
 #endif /* __included_nat64_h__ */
 

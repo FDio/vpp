@@ -156,7 +156,7 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (ip6_parse
-	       (ip60, b0->current_length, &l4_protocol0, &l4_offset0,
+	       (vm, b0, ip60, b0->current_length, &l4_protocol0, &l4_offset0,
 		&frag_offset0)))
 	    {
 	      next0 = NAT66_IN2OUT_NEXT_DROP;

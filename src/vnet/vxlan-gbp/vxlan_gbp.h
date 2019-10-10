@@ -127,6 +127,7 @@ typedef struct
   u32 dev_instance;		/* Real device instance in tunnel vector */
   u32 user_instance;		/* Instance name being shown to user */
 
+
     VNET_DECLARE_REWRITE;
 } vxlan_gbp_tunnel_t;
 

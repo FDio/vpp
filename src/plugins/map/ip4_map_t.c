@@ -69,7 +69,8 @@ typedef struct
 } icmp_to_icmp6_ctx_t;
 
 static int
-ip4_to_ip6_set_icmp_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
+ip4_to_ip6_set_icmp_cb (vlib_buffer_t * b, ip4_header_t * ip4,
+			ip6_header_t * ip6, void *arg)
 {
   icmp_to_icmp6_ctx_t *ctx = arg;
 
@@ -83,8 +84,8 @@ ip4_to_ip6_set_icmp_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 }
 
 static int
-ip4_to_ip6_set_inner_icmp_cb (ip4_header_t * ip4, ip6_header_t * ip6,
-			      void *arg)
+ip4_to_ip6_set_inner_icmp_cb (vlib_buffer_t * b, ip4_header_t * ip4,
+			      ip6_header_t * ip6, void *arg)
 {
   icmp_to_icmp6_ctx_t *ctx = arg;
 
