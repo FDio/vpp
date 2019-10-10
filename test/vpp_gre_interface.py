@@ -42,6 +42,10 @@ class VppGreInterface(VppInterface):
                                           session_id=self.t_session,
                                           is_add=0)
 
+    def remove_vpp_config_by_sw_if_index(self):
+        self.unconfig()
+        self.test.vapi.gre_tunnel_del(sw_if_index=self.sw_if_index)
+
     def object_id(self):
         return "gre-%d" % self.sw_if_index
 

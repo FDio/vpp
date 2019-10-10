@@ -684,7 +684,7 @@ class TestGRE(VppTestCase):
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
         route4_via_tun.remove_vpp_config()
-        gre_if.remove_vpp_config()
+        gre_if.remove_vpp_config_by_sw_if_index()
 
         self.pg2.unconfig_ip6()
         self.pg1.unconfig_ip6()

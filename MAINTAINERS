@@ -284,6 +284,11 @@ I:	flow
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/flow/
 
+VNET GRE
+I:	gre
+M:	Neale Ranns
+F:	src/vnet/gre/
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
