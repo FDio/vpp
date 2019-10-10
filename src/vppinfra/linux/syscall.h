@@ -48,7 +48,7 @@ move_pages (int pid, unsigned long count, void **pages, const int *nodes,
 }
 
 #ifndef HAVE_MEMFD_CREATE
-#ifndef _LINUX_MEMFD_H	// tentative
+#ifndef MFD_CLOEXEC
 static inline int
 memfd_create (const char *name, unsigned int flags)
 {
