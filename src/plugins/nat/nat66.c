@@ -19,6 +19,7 @@
 
 #include <nat/nat66.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/reass/ip6_sv_reass.h>
 
 nat66_main_t nat66_main;
 
@@ -29,11 +30,13 @@ VNET_FEATURE_INIT (nat66_in2out, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "nat66-in2out",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("ip6-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (nat66_out2in, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "nat66-out2in",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("ip6-sv-reassembly-feature"),
 };
 
 /* *INDENT-ON* */
@@ -99,6 +102,9 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
     }
 
   feature_name = is_inside ? "nat66-in2out" : "nat66-out2in";
+  int rv = ip6_sv_reass_enable_disable_with_refcnt (sw_if_index, is_add);
+  if (rv)
+    return rv;
   return vnet_feature_enable_disable ("ip6-unicast", feature_name,
 				      sw_if_index, is_add, 0, 0);
 }
