@@ -117,16 +117,18 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
   sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-  if (!icmp_is_error_message (icmp0))
+  if (!icmp_type_is_error_message
+      (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags))
     {
       protocol = SNAT_PROTOCOL_ICMP;
       key0.ext_host_addr = ip0->src_address;
       key0.ext_host_port = 0;
-      key0.out_port = echo0->identifier;
+      key0.out_port = vnet_buffer (b0)->ip.reass.l4_src_port;
       out_addr = ip0->dst_address;
     }
   else
     {
+      /* if error message, then it's not fragmented and we can access it */
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
       protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
@@ -191,8 +193,10 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
       goto out;
     }
 
-  if (PREDICT_FALSE (icmp0->type != ICMP4_echo_reply &&
-		     !icmp_is_error_message (icmp0)))
+  if (PREDICT_FALSE
+      (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags != ICMP4_echo_reply
+       && !icmp_type_is_error_message (vnet_buffer (b0)->ip.
+				       reass.icmp_type_or_tcp_flags)))
     {
       b0->error = node->errors[NAT_DET_OUT2IN_ERROR_BAD_ICMP_TYPE];
       next0 = NAT_DET_OUT2IN_NEXT_DROP;

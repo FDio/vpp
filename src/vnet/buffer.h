@@ -185,9 +185,8 @@ typedef struct
 	/* reassembly */
 	union
 	{
-	  /* group input/output/handoff to simplify the code, this way:
-	   * we can handoff while keeping input variables intact
-	   * and also we can write the output and still use next_index later */
+	  /* group input/output to simplify the code, this way
+	   * we can handoff while keeping input variables intact */
 	  struct
 	  {
 	    /* input variables */
@@ -201,23 +200,28 @@ typedef struct
 	    {
 	      u16 owner_thread_index;
 	    };
-	    /* output variables */
-	    struct
+	  };
+	  /* output variables */
+	  struct
+	  {
+	    union
 	    {
-	      union
+	      /* shallow virtual reassembly output variables */
+	      struct
 	      {
-		/* shallow virtual reassembly output variables */
-		struct
-		{
-		  u8 ip_proto;	/* protocol in ip header */
-		  u16 l4_src_port;	/* tcp/udp/icmp src port */
-		  u16 l4_dst_port;	/* tcp/udp/icmp dst port */
-		};
-		/* full reassembly output variables */
-		struct
-		{
-		  u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
-		};
+		u8 ip_proto;	/* protocol in ip header */
+		u8 icmp_type_or_tcp_flags;
+		u8 is_non_first_fragment;
+		u8 save_rewrite_length;
+		u16 l4_src_port;	/* tcp/udp/icmp src port */
+		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
+		u32 tcp_ack_number;
+		u32 tcp_seq_number;
+	      };
+	      /* full reassembly output variables */
+	      struct
+	      {
+		u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
 	      };
 	    };
 	  };
@@ -384,7 +388,10 @@ typedef struct
 
 STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
 	       == STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  mpls.save_rewrite_length)
+				  ip.reass.save_rewrite_length)
+	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
+				  ip.reass.save_rewrite_length) ==
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length)
 	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
 				  mpls.save_rewrite_length) == 1
 	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,

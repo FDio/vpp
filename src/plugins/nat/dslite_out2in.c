@@ -46,7 +46,8 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
 
   echo = (icmp_echo_header_t *) (icmp + 1);
 
-  if (icmp_is_error_message (icmp) || (icmp->type != ICMP4_echo_reply))
+  if (icmp_type_is_error_message (icmp->type)
+      || (icmp->type != ICMP4_echo_reply))
     {
       n = DSLITE_OUT2IN_NEXT_DROP;
       *error = DSLITE_ERROR_BAD_ICMP_TYPE;

@@ -31,6 +31,7 @@ from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
 from ipaddress import IPv6Network
+from util import ppc, ppp
 
 
 # NAT HA protocol event data
@@ -168,10 +169,6 @@ class MethodHolder(VppTestCase):
                 last_ip_address=addr.ip_address,
                 vrf_id=0xFFFFFFFF, flags=addr.flags)
 
-        self.vapi.nat_set_reass(timeout=2, max_reass=1024, max_frag=5,
-                                drop_frag=0)
-        self.vapi.nat_set_reass(timeout=2, max_reass=1024, max_frag=5,
-                                drop_frag=0, is_ip6=1)
         self.verify_no_nat44_user()
         self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
                                    tcp_transitory=240, icmp=60)
@@ -762,6 +759,7 @@ class MethodHolder(VppTestCase):
                 proto=frags[0][IP].proto)
         if ip.proto == IP_PROTOS.tcp:
             p = (ip / TCP(buffer.getvalue()))
+            self.logger.debug(ppp("Reassembled:", p))
             self.assert_tcp_checksum_valid(p)
         elif ip.proto == IP_PROTOS.udp:
             p = (ip / UDP(buffer.getvalue()[:8]) /
@@ -792,6 +790,7 @@ class MethodHolder(VppTestCase):
             p = (ip / TCP(buffer.getvalue()))
         elif ip.nh == IP_PROTOS.udp:
             p = (ip / UDP(buffer.getvalue()))
+        self.logger.debug(ppp("Reassembled:", p))
         self.assert_packet_checksums_valid(p)
         return p
 
@@ -1154,9 +1153,6 @@ class MethodHolder(VppTestCase):
             data = b"A" * 16 + b"B" * 16 + b"C" * 3
         self.port_in = random.randint(1025, 65535)
 
-        reass = self.vapi.nat_reass_dump()
-        reass_n_start = len(reass)
-
         # in2out
         pkts = self.create_stream_frag(self.pg0,
                                        self.pg1.remote_ip4,
@@ -1221,11 +1217,6 @@ class MethodHolder(VppTestCase):
             self.assertEqual(p[layer].id, self.port_in)
         self.assertEqual(data, p[Raw].load)
 
-        reass = self.vapi.nat_reass_dump()
-        reass_n_end = len(reass)
-
-        self.assertEqual(reass_n_end - reass_n_start, 2)
-
     def frag_in_order_in_plus_out(self, proto=IP_PROTOS.tcp):
         layer = self.proto2layer(proto)
 
@@ -1236,9 +1227,6 @@ class MethodHolder(VppTestCase):
         self.port_in = random.randint(1025, 65535)
 
         for i in range(2):
-            reass = self.vapi.nat_reass_dump()
-            reass_n_start = len(reass)
-
             # out2in
             pkts = self.create_stream_frag(self.pg0,
                                            self.server_out_addr,
@@ -1289,11 +1277,6 @@ class MethodHolder(VppTestCase):
             else:
                 self.assertEqual(p[layer].id, self.port_in)
             self.assertEqual(data, p[Raw].load)
-
-            reass = self.vapi.nat_reass_dump()
-            reass_n_end = len(reass)
-
-            self.assertEqual(reass_n_end - reass_n_start, 2)
 
     def reass_hairpinning(self, proto=IP_PROTOS.tcp):
         layer = self.proto2layer(proto)
@@ -3581,25 +3564,6 @@ class TestNAT44(MethodHolder):
 
         self.verify_no_nat44_user()
 
-    def test_set_get_reass(self):
-        """ NAT44 set/get virtual fragmentation reassembly """
-        reas_cfg1 = self.vapi.nat_get_reass()
-
-        self.vapi.nat_set_reass(timeout=reas_cfg1.ip4_timeout + 5,
-                                max_reass=reas_cfg1.ip4_max_reass * 2,
-                                max_frag=reas_cfg1.ip4_max_frag * 2,
-                                drop_frag=0)
-
-        reas_cfg2 = self.vapi.nat_get_reass()
-
-        self.assertEqual(reas_cfg1.ip4_timeout + 5, reas_cfg2.ip4_timeout)
-        self.assertEqual(reas_cfg1.ip4_max_reass * 2, reas_cfg2.ip4_max_reass)
-        self.assertEqual(reas_cfg1.ip4_max_frag * 2, reas_cfg2.ip4_max_frag)
-
-        self.vapi.nat_set_reass(timeout=2, max_reass=1024, max_frag=5,
-                                drop_frag=1)
-        self.assertTrue(self.vapi.nat_get_reass().ip4_drop_frag)
-
     def test_frag_in_order(self):
         """ NAT44 translate fragments arriving in order """
 
@@ -3612,21 +3576,9 @@ class TestNAT44(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
-        reas_cfg1 = self.vapi.nat_get_reass()
-        # this test was intermittently failing in some cases
-        # until we temporarily bump the reassembly timeouts
-        self.vapi.nat_set_reass(timeout=20, max_reass=1024, max_frag=5,
-                                drop_frag=0)
-
         self.frag_in_order(proto=IP_PROTOS.tcp)
         self.frag_in_order(proto=IP_PROTOS.udp)
         self.frag_in_order(proto=IP_PROTOS.icmp)
-
-        # restore the reassembly timeouts
-        self.vapi.nat_set_reass(timeout=reas_cfg1.ip4_timeout,
-                                max_reass=reas_cfg1.ip4_max_reass,
-                                max_frag=reas_cfg1.ip4_max_frag,
-                                drop_frag=reas_cfg1.ip4_drop_frag)
 
     def test_frag_forwarding(self):
         """ NAT44 forwarding fragment test """
@@ -3771,60 +3723,6 @@ class TestNAT44(MethodHolder):
             tcp = p[TCP]
             self.assertGreaterEqual(tcp.sport, 1025)
             self.assertLessEqual(tcp.sport, 1027)
-
-    def test_ipfix_max_frags(self):
-        """ IPFIX logging maximum fragments pending reassembly exceeded """
-        self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
-            sw_if_index=self.pg0.sw_if_index,
-            flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
-            sw_if_index=self.pg1.sw_if_index,
-            is_add=1)
-        self.vapi.nat_set_reass(timeout=2, max_reass=1024, max_frag=1,
-                                drop_frag=0)
-        self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
-                                     src_address=self.pg3.local_ip4,
-                                     path_mtu=512,
-                                     template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=1)
-
-        data = b"A" * 4 + b"B" * 16 + b"C" * 3
-        self.tcp_port_in = random.randint(1025, 65535)
-        pkts = self.create_stream_frag(self.pg0,
-                                       self.pg1.remote_ip4,
-                                       self.tcp_port_in,
-                                       20,
-                                       data)
-        pkts.reverse()
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
-        sleep(1)
-        self.vapi.ipfix_flush()
-        capture = self.pg3.get_capture(9)
-        ipfix = IPFIXDecoder()
-        # first load template
-        for p in capture:
-            self.assertTrue(p.haslayer(IPFIX))
-            self.assertEqual(p[IP].src, self.pg3.local_ip4)
-            self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
-            self.assertEqual(p[UDP].sport, self.ipfix_src_port)
-            self.assertEqual(p[UDP].dport, 4739)
-            self.assertEqual(p[IPFIX].observationDomainID,
-                             self.ipfix_domain_id)
-            if p.haslayer(Template):
-                ipfix.add_template(p.getlayer(Template))
-        # verify events in data set
-        for p in capture:
-            if p.haslayer(Data):
-                data = ipfix.decode_data_set(p.getlayer(Set))
-                self.verify_ipfix_max_fragments_ip4(data, 1,
-                                                    self.pg0.remote_ip4n)
 
     def test_multiple_outside_vrf(self):
         """ Multiple outside VRF """
@@ -4323,7 +4221,6 @@ class TestNAT44(MethodHolder):
         self.logger.info(self.vapi.cli("show nat44 static mappings"))
         self.logger.info(self.vapi.cli("show nat44 interface address"))
         self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-        self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
         self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
         self.logger.info(self.vapi.cli("show nat timeouts"))
         self.logger.info(
@@ -4565,17 +4462,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.vapi.nat44_forwarding_enable_disable(enable=True)
-        reas_cfg1 = self.vapi.nat_get_reass()
-        # this test was intermittently failing in some cases
-        # until we temporarily bump the reassembly timeouts
-        self.vapi.nat_set_reass(timeout=20, max_reass=1024, max_frag=5,
-                                drop_frag=0)
         self.frag_in_order(proto=IP_PROTOS.tcp, dont_translate=True)
-        # restore the reassembly timeouts
-        self.vapi.nat_set_reass(timeout=reas_cfg1.ip4_timeout,
-                                max_reass=reas_cfg1.ip4_max_reass,
-                                max_frag=reas_cfg1.ip4_max_frag,
-                                drop_frag=reas_cfg1.ip4_drop_frag)
 
     def test_frag_out_of_order(self):
         """ NAT44 translate fragments arriving out of order """
@@ -4643,9 +4530,6 @@ class TestNAT44EndpointDependent(MethodHolder):
                                       self.server_out_addr,
                                       proto=IP_PROTOS.icmp)
 
-        self.vapi.nat_set_reass(timeout=10, max_reass=1024, max_frag=5,
-                                drop_frag=0)
-
         self.frag_in_order_in_plus_out(proto=IP_PROTOS.tcp)
         self.frag_in_order_in_plus_out(proto=IP_PROTOS.udp)
         self.frag_in_order_in_plus_out(proto=IP_PROTOS.icmp)
@@ -4689,9 +4573,6 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.nat44_add_static_mapping(self.server_in_addr,
                                       self.server_out_addr,
                                       proto=IP_PROTOS.icmp)
-
-        self.vapi.nat_set_reass(timeout=10, max_reass=1024, max_frag=5,
-                                drop_frag=0)
 
         self.frag_out_of_order_in_plus_out(proto=IP_PROTOS.tcp)
         self.frag_out_of_order_in_plus_out(proto=IP_PROTOS.udp)
@@ -8756,9 +8637,6 @@ class TestNAT64(MethodHolder):
         self.vapi.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        reass = self.vapi.nat_reass_dump()
-        reass_n_start = len(reass)
-
         # in2out
         data = b'a' * 200
         pkts = self.create_stream_frag_ip6(self.pg0, self.pg1.remote_ip4,
@@ -8786,16 +8664,12 @@ class TestNAT64(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         frags = self.pg0.get_capture(len(pkts))
+        self.logger.debug(ppc("Captured:", frags))
         src = self.compose_ip6(self.pg1.remote_ip4, '64:ff9b::', 96)
         p = self.reass_frags_and_verify_ip6(frags, src, self.pg0.remote_ip6)
         self.assertEqual(p[TCP].sport, 20)
         self.assertEqual(p[TCP].dport, self.tcp_port_in)
         self.assertEqual(data, p[Raw].load)
-
-        reass = self.vapi.nat_reass_dump()
-        reass_n_end = len(reass)
-
-        self.assertEqual(reass_n_end - reass_n_start, 2)
 
     def test_reass_hairpinning(self):
         """ NAT64 fragments hairpinning """
@@ -8835,6 +8709,7 @@ class TestNAT64(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         frags = self.pg0.get_capture(len(pkts))
+        self.logger.debug(ppc("Captured:", frags))
         p = self.reass_frags_and_verify_ip6(frags, nat_addr_ip6, server.ip6)
         self.assertNotEqual(p[TCP].sport, client_in_port)
         self.assertEqual(p[TCP].dport, server_in_port)
@@ -9006,57 +8881,6 @@ class TestNAT64(MethodHolder):
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_max_bibs(data, max_bibs)
-
-    def test_ipfix_max_frags(self):
-        """ IPFIX logging maximum fragments pending reassembly exceeded """
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
-                                                end_addr=self.nat_addr,
-                                                vrf_id=0xFFFFFFFF,
-                                                is_add=1)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
-                                          sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
-                                          sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat_set_reass(timeout=2, max_reass=1024, max_frag=1,
-                                drop_frag=0, is_ip6=1)
-        self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
-                                     src_address=self.pg3.local_ip4,
-                                     path_mtu=512,
-                                     template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=1)
-
-        data = b'a' * 200
-        pkts = self.create_stream_frag_ip6(self.pg0, self.pg1.remote_ip4,
-                                           self.tcp_port_in, 20, data)
-        pkts.reverse()
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
-        sleep(1)
-        self.vapi.ipfix_flush()
-        capture = self.pg3.get_capture(9)
-        ipfix = IPFIXDecoder()
-        # first load template
-        for p in capture:
-            self.assertTrue(p.haslayer(IPFIX))
-            self.assertEqual(p[IP].src, self.pg3.local_ip4)
-            self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
-            self.assertEqual(p[UDP].sport, self.ipfix_src_port)
-            self.assertEqual(p[UDP].dport, 4739)
-            self.assertEqual(p[IPFIX].observationDomainID,
-                             self.ipfix_domain_id)
-            if p.haslayer(Template):
-                ipfix.add_template(p.getlayer(Template))
-        # verify events in data set
-        for p in capture:
-            if p.haslayer(Data):
-                data = ipfix.decode_data_set(p.getlayer(Set))
-                self.verify_ipfix_max_fragments_ip6(data, 1,
-                                                    self.pg0.remote_ip6n)
 
     def test_ipfix_bib_ses(self):
         """ IPFIX logging NAT64 BIB/session create and delete events """
@@ -9257,7 +9081,6 @@ class TestNAT64(MethodHolder):
         self.logger.info(self.vapi.cli("show nat64 prefix"))
         self.logger.info(self.vapi.cli("show nat64 bib all"))
         self.logger.info(self.vapi.cli("show nat64 session table all"))
-        self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
 
 
 class TestDSlite(MethodHolder):
@@ -9625,6 +9448,7 @@ class TestNAT66(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
+
         for packet in capture:
             try:
                 self.assertEqual(packet[IPv6].src, self.nat_addr)

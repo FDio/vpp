@@ -23,7 +23,6 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/dslite.h>
-#include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_ha.h>
 #include <vlibapi/api.h>
@@ -299,156 +298,6 @@ vl_api_nat_ipfix_enable_disable_t_print (vl_api_nat_ipfix_enable_disable_t *
     s = format (s, "src_port %d ", clib_net_to_host_u16 (mp->src_port));
   if (!mp->enable)
     s = format (s, "disable ");
-
-  FINISH;
-}
-
-static void
-vl_api_nat_set_reass_t_handler (vl_api_nat_set_reass_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat_set_reass_reply_t *rmp;
-  int rv = 0;
-
-  rv =
-    nat_reass_set (ntohl (mp->timeout), ntohs (mp->max_reass), mp->max_frag,
-		   mp->drop_frag, mp->is_ip6);
-
-  REPLY_MACRO (VL_API_NAT_SET_REASS_REPLY);
-}
-
-static void *
-vl_api_nat_set_reass_t_print (vl_api_nat_set_reass_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_set_reass ");
-  s = format (s, "timeout %d max_reass %d max_frag %d drop_frag %d is_ip6 %d",
-	      clib_host_to_net_u32 (mp->timeout),
-	      clib_host_to_net_u16 (mp->max_reass),
-	      mp->max_frag, mp->drop_frag, mp->is_ip6);
-
-  FINISH;
-}
-
-static void
-vl_api_nat_get_reass_t_handler (vl_api_nat_get_reass_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat_get_reass_reply_t *rmp;
-  int rv = 0;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_GET_REASS_REPLY,
-  ({
-    rmp->ip4_timeout = htonl (nat_reass_get_timeout(0));
-    rmp->ip4_max_reass = htons (nat_reass_get_max_reass(0));
-    rmp->ip4_max_frag = nat_reass_get_max_frag(0);
-    rmp->ip4_drop_frag = nat_reass_is_drop_frag(0);
-    rmp->ip6_timeout = htonl (nat_reass_get_timeout(1));
-    rmp->ip6_max_reass = htons (nat_reass_get_max_reass(1));
-    rmp->ip6_max_frag = nat_reass_get_max_frag(1);
-    rmp->ip6_drop_frag = nat_reass_is_drop_frag(1);
-  }))
-  /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat_get_reass_t_print (vl_api_nat_get_reass_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_get_reass");
-
-  FINISH;
-}
-
-typedef struct nat_api_walk_ctx_t_
-{
-  vl_api_registration_t *reg;
-  u32 context;
-} nat_api_walk_ctx_t;
-
-static int
-nat_ip4_reass_walk_api (nat_reass_ip4_t * reass, void *arg)
-{
-  vl_api_nat_reass_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat_api_walk_ctx_t *ctx = arg;
-  ip46_address_t ip_address;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT_REASS_DETAILS + sm->msg_id_base);
-  rmp->context = ctx->context;
-
-  clib_memcpy (&ip_address.ip4, &reass->key.src, 4);
-  ip_address_encode (&ip_address, IP46_TYPE_IP4, &rmp->src_addr);
-
-  clib_memcpy (&ip_address.ip4, &reass->key.dst, 4);
-  ip_address_encode (&ip_address, IP46_TYPE_IP4, &rmp->dst_addr);
-
-  rmp->proto = reass->key.proto;
-  rmp->frag_id = ntohl (reass->key.frag_id);
-  rmp->frag_n = reass->frag_n;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static int
-nat_ip6_reass_walk_api (nat_reass_ip6_t * reass, void *arg)
-{
-  vl_api_nat_reass_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat_api_walk_ctx_t *ctx = arg;
-  ip46_address_t ip_address;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT_REASS_DETAILS + sm->msg_id_base);
-  rmp->context = ctx->context;
-
-  clib_memcpy (&ip_address.ip6, &reass->key.src, 16);
-  ip_address_encode (&ip_address, IP46_TYPE_IP6, &rmp->src_addr);
-
-  clib_memcpy (&ip_address.ip6, &reass->key.dst, 16);
-  ip_address_encode (&ip_address, IP46_TYPE_IP6, &rmp->dst_addr);
-
-  rmp->proto = reass->key.proto;
-  rmp->frag_id = ntohl (reass->key.frag_id);
-  rmp->frag_n = reass->frag_n;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat_reass_dump_t_handler (vl_api_nat_reass_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  nat_ip4_reass_walk (nat_ip4_reass_walk_api, &ctx);
-  nat_ip6_reass_walk (nat_ip6_reass_walk_api, &ctx);
-}
-
-static void *
-vl_api_nat_reass_dump_t_print (vl_api_nat_reass_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_reass_dump");
 
   FINISH;
 }
@@ -3471,9 +3320,6 @@ _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
-_(NAT_SET_REASS, nat_set_reass)                                         \
-_(NAT_GET_REASS, nat_get_reass)                                         \
-_(NAT_REASS_DUMP, nat_reass_dump)                                       \
 _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \
 _(NAT_GET_TIMEOUTS, nat_get_timeouts)                                   \
 _(NAT_SET_ADDR_AND_PORT_ALLOC_ALG, nat_set_addr_and_port_alloc_alg)     \
