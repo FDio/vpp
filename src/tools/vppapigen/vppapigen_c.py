@@ -661,6 +661,7 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
             write('/* Only autoreply is supported (vl_api_{n}_t_hander()) */\n'
                   .format(n=s.reply))
             continue
+        write('#ifndef VL_API_{n}_T_HANLDER\n'.format(n=s.reply.upper()))
         write('static void\n')
         write('vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n'.format(n=s.reply))
         write('   vat_main_t * vam = {}_test_main.vat_main;\n'.format(module))
@@ -672,6 +673,7 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
         write('      vam->result_ready = 1;\n')
         write('   }\n')
         write('}\n')
+        write('#endif\n')
 
         for e in s.events:
             if define_hash[e].manual_print:
@@ -716,6 +718,9 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
     write('   if (mainp->msg_id_base == (u16) ~0)\n')
     write('      return clib_error_return (0, "{} plugin not loaded...");\n'.format(module))
     write('   setup_message_id_table (vam, mainp->msg_id_base);\n')
+    write('#ifdef VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE\n')
+    write('    VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE(vam);\n')
+    write('#endif\n')
     write('   return 0;\n')
     write('}\n')
 
