@@ -333,20 +333,6 @@ format_det_map_ses (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
-format_nat44_reass_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nat44_reass_trace_t *t = va_arg (*args, nat44_reass_trace_t *);
-
-  s = format (s, "NAT44_REASS: sw_if_index %d, next index %d, status %s",
-	      t->sw_if_index, t->next_index,
-	      t->cached ? "cached" : "translated");
-
-  return s;
-}
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
