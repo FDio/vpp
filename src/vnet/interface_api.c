@@ -359,7 +359,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   if (mp->name_filter_valid)
     {
       filter =
-	format (0, ".*%s", vl_api_string_len (&mp->name_filter),
+	format (0, "%.*s%c", vl_api_string_len (&mp->name_filter),
 		vl_api_from_api_string (&mp->name_filter), 0);
     }
 
