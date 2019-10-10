@@ -22,6 +22,30 @@
       "revId": "16193aa39acdc440bb9eb5239fc439e7f696ab14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59ed955d_75c36a6a",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 12477,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-10-10T08:02:20Z",
+      "side": 1,
+      "message": "yes, but vnet is not linked to vat",
+      "parentUuid": "2bfc2b68_cbace624",
+      "range": {
+        "startLine": 12465,
+        "startChar": 2,
+        "endLine": 12477,
+        "endChar": 5
+      },
+      "revId": "16193aa39acdc440bb9eb5239fc439e7f696ab14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
