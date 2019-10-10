@@ -67,6 +67,13 @@ define gre_tunnel_add_del_reply
   vl_api_interface_index_t sw_if_index;
 };
 
+autoreply define gre_tunnel_del
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
 define gre_tunnel_dump
 {
   u32 client_index;
