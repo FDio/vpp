@@ -142,11 +142,13 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   slave_if_t *sif;
   bond_if_t *bif;
 
+  *next_index = BOND_INPUT_NEXT_DROP;
+  *error = 0;
+
   if (PREDICT_TRUE (*last_slave_sw_if_index == slave_sw_if_index))
-    return;
+    goto next;
 
   *last_slave_sw_if_index = slave_sw_if_index;
-  *next_index = BOND_INPUT_NEXT_DROP;
 
   sif = bond_get_slave_by_sw_if_index (slave_sw_if_index);
   ASSERT (sif);
@@ -163,7 +165,8 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   *bond_sw_if_index = bif->sw_if_index;
-  *error = 0;
+
+next:
   vnet_feature_next (next_index, b);
 }
 
@@ -223,6 +226,15 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 
       if (PREDICT_TRUE (x == 0))
 	{
+	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[0],
+			    &bond_sw_if_index, b[0], &next_index, &error);
+	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[1],
+			    &bond_sw_if_index, b[1], &next_index, &error);
+	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[2],
+			    &bond_sw_if_index, b[2], &next_index, &error);
+	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[3],
+			    &bond_sw_if_index, b[3], &next_index, &error);
+
 	  next[0] = next[1] = next[2] = next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    {
