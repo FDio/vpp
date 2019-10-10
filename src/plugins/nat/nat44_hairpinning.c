@@ -22,7 +22,6 @@
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat_reass.h>
 
 typedef enum
 {
@@ -211,7 +210,8 @@ snat_icmp_hairpinning (snat_main_t * sm,
   snat_session_t *s0;
   snat_static_mapping_t *m0;
 
-  if (icmp_is_error_message (icmp0))
+  if (icmp_type_is_error_message
+      (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags))
     {
       ip4_header_t *inner_ip0 = 0;
       tcp_udp_header_t *l4_header = 0;
@@ -391,7 +391,7 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
   snat_main_per_thread_data_t *tsm;
 
   if (sm->num_workers > 1)
-    ti = sm->worker_out2in_cb (ip, sm->outside_fib_index, 0);
+    ti = sm->worker_out2in_cb (b, ip, sm->outside_fib_index, 0);
   else
     ti = sm->num_workers;
   tsm = &sm->per_thread_data[ti];

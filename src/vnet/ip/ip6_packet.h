@@ -579,6 +579,67 @@ ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
   return result;
 }
 
+/*
+ * walk extension headers, looking for a specific extension header and last
+ * extension header, calculating length of all extension headers
+ *
+ * @param vm
+ * @param b buffer to limit search to
+ * @param ip6_header ipv6 header
+ * @param find_hdr extension header to look for (ignored if ext_hdr is NULL)
+ * @param length[out] length of all extension headers
+ * @param ext_hdr[out] extension header of type find_hdr (may be NULL)
+ * @param last_ext_hdr[out] last extension header (may be NULL)
+ *
+ * @return 0 on success, -1 on failure (ext headers crossing buffer boundary)
+ */
+always_inline int
+ip6_walk_ext_hdr (vlib_main_t * vm, vlib_buffer_t * b,
+		  const ip6_header_t * ip6_header, u8 find_hdr, u32 * length,
+		  ip6_ext_header_t ** ext_hdr,
+		  ip6_ext_header_t ** last_ext_hdr)
+{
+  if (!ip6_ext_hdr (ip6_header->protocol))
+    {
+      *length = 0;
+      *ext_hdr = NULL;
+      *last_ext_hdr = NULL;
+      return 0;
+    }
+  *length = 0;
+  ip6_ext_header_t *h = (void *) (ip6_header + 1);
+  if (!vlib_object_within_buffer_data (vm, b, h, ip6_ext_header_len (h)))
+    {
+      return -1;
+    }
+  *length += ip6_ext_header_len (h);
+  *last_ext_hdr = h;
+  *ext_hdr = NULL;
+  if (ip6_header->protocol == find_hdr)
+    {
+      *ext_hdr = h;
+    }
+  while (ip6_ext_hdr (h->next_hdr))
+    {
+      if (h->next_hdr == find_hdr)
+	{
+	  h = ip6_ext_next_header (h);
+	  *ext_hdr = h;
+	}
+      else
+	{
+	  h = ip6_ext_next_header (h);
+	}
+      if (!vlib_object_within_buffer_data (vm, b, h, ip6_ext_header_len (h)))
+	{
+	  return -1;
+	}
+      *length += ip6_ext_header_len (h);
+      *last_ext_hdr = h;
+    }
+  return 0;
+}
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
