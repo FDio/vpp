@@ -51,7 +51,7 @@ format_gre_tunnel (u8 * s, va_list * args)
 }
 
 static gre_tunnel_t *
-gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
+gre_tunnel_db_find (const vnet_gre_tunnel_add_args_t * a,
 		    u32 outer_fib_index, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
@@ -171,9 +171,8 @@ gre_tunnel_restack (gre_tunnel_t * gt)
   }
 }
 
-static int
-vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
-		     u32 outer_fib_index, u32 * sw_if_indexp)
+int
+vnet_gre_tunnel_add (vnet_gre_tunnel_add_args_t * a, u32 * sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -185,6 +184,18 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   clib_error_t *error;
   u8 is_ipv6 = a->is_ipv6;
   gre_tunnel_key_t key;
+  u32 outer_fib_index;
+
+  if (!a->is_ipv6)
+    outer_fib_index = ip4_fib_index_from_table_id (a->outer_fib_id);
+  else
+    outer_fib_index = ip6_fib_index_from_table_id (a->outer_fib_id);
+
+  if (~0 == outer_fib_index)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  if (a->session_id > GTK_SESSION_ID_MAX)
+    return VNET_API_ERROR_INVALID_SESSION_ID;
 
   t = gre_tunnel_db_find (a, outer_fib_index, &key);
   if (NULL != t)
@@ -313,21 +324,24 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   return 0;
 }
 
-static int
-vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
-			u32 outer_fib_index, u32 * sw_if_indexp)
+int
+vnet_gre_tunnel_del (u32 sw_if_index)
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
   gre_tunnel_t *t;
-  gre_tunnel_key_t key;
-  u32 sw_if_index;
+  u32 ti;
 
-  t = gre_tunnel_db_find (a, outer_fib_index, &key);
+  if (NULL == gm->tunnel_index_by_sw_if_index ||
+      sw_if_index >= vec_len (gm->tunnel_index_by_sw_if_index) ||
+      (ti = gm->tunnel_index_by_sw_if_index[sw_if_index]) == ~0)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  t = pool_elt_at_index (gm->tunnels, ti);
+
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  sw_if_index = t->sw_if_index;
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
 
   /* make sure tunnel is removed from l2 bd or xconnect */
@@ -359,33 +373,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
   gre_tunnel_db_remove (t);
   pool_put (gm->tunnels, t);
 
-  if (sw_if_indexp)
-    *sw_if_indexp = sw_if_index;
-
   return 0;
-}
-
-int
-vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
-			 u32 * sw_if_indexp)
-{
-  u32 outer_fib_index;
-
-  if (!a->is_ipv6)
-    outer_fib_index = ip4_fib_index_from_table_id (a->outer_fib_id);
-  else
-    outer_fib_index = ip6_fib_index_from_table_id (a->outer_fib_id);
-
-  if (~0 == outer_fib_index)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-
-  if (a->session_id > GTK_SESSION_ID_MAX)
-    return VNET_API_ERROR_INVALID_SESSION_ID;
-
-  if (a->is_add)
-    return (vnet_gre_tunnel_add (a, outer_fib_index, sw_if_indexp));
-  else
-    return (vnet_gre_tunnel_delete (a, outer_fib_index, sw_if_indexp));
 }
 
 clib_error_t *
@@ -427,7 +415,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_gre_tunnel_add_del_args_t _a, *a = &_a;
+  vnet_gre_tunnel_add_args_t _a, *a = &_a;
   ip46_address_t src, dst;
   u32 instance = ~0;
   u32 outer_fib_id = 0;
@@ -435,7 +423,6 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u32 session_id = 0;
   int rv;
   u32 num_m_args = 0;
-  u8 is_add = 1;
   u32 sw_if_index;
   clib_error_t *error = NULL;
   u8 ipv4_set = 0;
@@ -447,9 +434,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "instance %d", &instance))
+      if (unformat (line_input, "instance %d", &instance))
 	;
       else
 	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
@@ -514,7 +499,6 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
     }
 
   clib_memset (a, 0, sizeof (*a));
-  a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
   a->type = t_type;
   a->session_id = session_id;
@@ -531,7 +515,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       clib_memcpy (&a->dst.ip6, &dst.ip6, sizeof (dst.ip6));
     }
 
-  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
+  rv = vnet_gre_tunnel_add (a, &sw_if_index);
 
   switch (rv)
     {
@@ -557,8 +541,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "Instance is in use");
       goto done;
     default:
-      error =
-	clib_error_return (0, "vnet_gre_tunnel_add_del returned %d", rv);
+      error = clib_error_return (0, "vnet_gre_tunnel_add returned %d", rv);
       goto done;
     }
 
@@ -572,8 +555,72 @@ done:
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> [instance <n>] "
-                "[outer-fib-id <fib>] [teb | erspan <session-id>] [del]",
+                "[outer-fib-id <fib>] [teb | erspan <session-id>]",
   .function = create_gre_tunnel_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+delete_gre_tunnel_command_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv;
+  u32 sw_if_index = ~0;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnm, &sw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      error = clib_error_return (0, "invalid sw_if_index");
+      goto done;
+    }
+
+  rv = vnet_gre_tunnel_del (sw_if_index);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      error = clib_error_return (0, "GRE tunnel doesn't exist");
+      goto done;
+    default:
+      error = clib_error_return (0, "vnet_gre_tunnel_del returned %d", rv);
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (delete_gre_tunnel_command, static) = {
+  .path = "delete gre tunnel",
+  .short_help = "delete gre tunnel {<interface> | sw_if_index <sw_idx>}",
+  .function = delete_gre_tunnel_command_fn,
 };
 /* *INDENT-ON* */
 

@@ -1749,12 +1749,12 @@ static void *vl_api_geneve_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_gre_tunnel_add_del_t_print
-  (vl_api_gre_tunnel_add_del_t * mp, void *handle)
+static void *vl_api_gre_tunnel_add_t_print
+  (vl_api_gre_tunnel_add_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: gre_tunnel_add_del ");
+  s = format (0, "SCRIPT: gre_tunnel_add ");
 
   s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
   s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
@@ -1770,8 +1770,17 @@ static void *vl_api_gre_tunnel_add_del_t_print
   if (mp->tunnel.outer_fib_id)
     s = format (s, "outer-fib-id %d ", (mp->tunnel.outer_fib_id));
 
-  if (mp->is_add == 0)
-    s = format (s, "del ");
+  FINISH;
+}
+
+static void *vl_api_gre_tunnel_del_t_print
+  (vl_api_gre_tunnel_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: gre_tunnel_del ");
+
+  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }
@@ -3770,7 +3779,8 @@ _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
 _(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
 _(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
-_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)                               \
+_(GRE_TUNNEL_ADD, gre_tunnel_add)                                       \
+_(GRE_TUNNEL_DEL, gre_tunnel_del)                                       \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \

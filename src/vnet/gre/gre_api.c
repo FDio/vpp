@@ -46,7 +46,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
-_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)               \
+_(GRE_TUNNEL_ADD, gre_tunnel_add)                       \
+_(GRE_TUNNEL_DEL, gre_tunnel_del)                       \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)
 
 static int
@@ -93,11 +94,11 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
   return (out);
 }
 
-static void vl_api_gre_tunnel_add_del_t_handler
-  (vl_api_gre_tunnel_add_del_t * mp)
+static void
+vl_api_gre_tunnel_add_t_handler (vl_api_gre_tunnel_add_t * mp)
 {
-  vnet_gre_tunnel_add_del_args_t _a = { }, *a = &_a;
-  vl_api_gre_tunnel_add_del_reply_t *rmp;
+  vnet_gre_tunnel_add_args_t _a = { }, *a = &_a;
+  vl_api_gre_tunnel_add_reply_t *rmp;
   u32 sw_if_index = ~0;
   ip46_type_t itype[2];
   int rv = 0;
@@ -122,21 +123,32 @@ static void vl_api_gre_tunnel_add_del_t_handler
   if (rv)
     goto out;
 
-  a->is_add = mp->is_add;
   a->is_ipv6 = (itype[0] == IP46_TYPE_IP6);
   a->instance = ntohl (mp->tunnel.instance);
   a->session_id = ntohs (mp->tunnel.session_id);
   a->outer_fib_id = ntohl (mp->tunnel.outer_fib_id);
 
-  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
+  rv = vnet_gre_tunnel_add (a, &sw_if_index);
 
 out:
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
+  REPLY_MACRO2(VL_API_GRE_TUNNEL_ADD_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_gre_tunnel_del_t_handler (vl_api_gre_tunnel_del_t * mp)
+{
+  vl_api_gre_tunnel_del_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+  rv = vnet_gre_tunnel_del (ntohl (mp->sw_if_index));
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_GRE_TUNNEL_DEL_REPLY);
 }
 
 static void send_gre_tunnel_details

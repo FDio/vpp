@@ -346,17 +346,18 @@ gre_register_input_protocol (vlib_main_t * vm, gre_protocol_t protocol,
 
 typedef struct
 {
-  u8 is_add;
   gre_tunnel_type_t type;
   u8 is_ipv6;
   u32 instance;
   ip46_address_t src, dst;
   u32 outer_fib_id;
   u16 session_id;
-} vnet_gre_tunnel_add_del_args_t;
+} vnet_gre_tunnel_add_args_t;
 
-extern int vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
-				    u32 * sw_if_indexp);
+extern int vnet_gre_tunnel_add (vnet_gre_tunnel_add_args_t * a,
+				u32 * sw_if_indexp);
+
+extern int vnet_gre_tunnel_del (u32 sw_if_index);
 
 static inline void
 gre_mk_key4 (ip4_address_t src,

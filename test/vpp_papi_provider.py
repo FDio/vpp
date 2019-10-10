@@ -49,7 +49,7 @@ defaultmapping = {
     'gbp_subnet_add_del': {'sw_if_index': 4294967295, 'epg_id': 65535, },
     'geneve_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                               'decap_next_index': 4294967295, },
-    'gre_tunnel_add_del': {'instance': 4294967295, 'is_add': 1, },
+    'gre_tunnel_add': {'instance': 4294967295, },
     'gtpu_add_del_tunnel': {'is_add': 1, 'mcast_sw_if_index': 4294967295,
                             'decap_next_index': 4294967295, },
     'input_acl_set_interface': {'ip4_table_index': 4294967295,
@@ -556,14 +556,13 @@ class VppPapiProvider(object):
              }
         )
 
-    def gre_tunnel_add_del(self,
-                           src,
-                           dst,
-                           outer_fib_id=0,
-                           tunnel_type=0,
-                           instance=0xFFFFFFFF,
-                           session_id=0,
-                           is_add=1):
+    def gre_tunnel_add(self,
+                       src,
+                       dst,
+                       outer_fib_id=0,
+                       tunnel_type=0,
+                       instance=0xFFFFFFFF,
+                       session_id=0):
         """ Add a GRE tunnel
 
         :param src_address:
@@ -572,14 +571,12 @@ class VppPapiProvider(object):
         :param tunnel_type:  (Default value = 0)
         :param instance:  (Default value = 0xFFFFFFFF)
         :param session_id: (Default value = 0)
-        :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
         """
 
         return self.api(
-            self.papi.gre_tunnel_add_del,
-            {'is_add': is_add,
-             'tunnel':
+            self.papi.gre_tunnel_add,
+            {'tunnel':
              {
                  'type': tunnel_type,
                  'instance': instance,

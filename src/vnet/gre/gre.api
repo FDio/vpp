@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -52,18 +52,24 @@ typedef gre_tunnel
   vl_api_address_t dst;
 };
 
-define gre_tunnel_add_del
+define gre_tunnel_add
 {
   u32 client_index;
   u32 context;
-  bool is_add;
   vl_api_gre_tunnel_t tunnel;
 };
 
-define gre_tunnel_add_del_reply
+define gre_tunnel_add_reply
 {
   u32 context;
   i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoreply define gre_tunnel_del
+{
+  u32 client_index;
+  u32 context;
   vl_api_interface_index_t sw_if_index;
 };
 

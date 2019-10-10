@@ -23,11 +23,11 @@ class VppGreInterface(VppInterface):
                            GRE_API_TUNNEL_TYPE_L3)
 
     def add_vpp_config(self):
-        r = self.test.vapi.gre_tunnel_add_del(self.t_src,
-                                              self.t_dst,
-                                              outer_fib_id=self.t_outer_fib,
-                                              tunnel_type=self.t_type,
-                                              session_id=self.t_session)
+        r = self.test.vapi.gre_tunnel_add(self.t_src,
+                                          self.t_dst,
+                                          outer_fib_id=self.t_outer_fib,
+                                          tunnel_type=self.t_type,
+                                          session_id=self.t_session)
         self.set_sw_if_index(r.sw_if_index)
         self.generate_remote_hosts()
         self.test.registry.register(self, self.test.logger)
@@ -35,12 +35,7 @@ class VppGreInterface(VppInterface):
 
     def remove_vpp_config(self):
         self.unconfig()
-        self.test.vapi.gre_tunnel_add_del(self.t_src,
-                                          self.t_dst,
-                                          outer_fib_id=self.t_outer_fib,
-                                          tunnel_type=self.t_type,
-                                          session_id=self.t_session,
-                                          is_add=0)
+        self.test.vapi.gre_tunnel_del(sw_if_index=self.sw_if_index)
 
     def object_id(self):
         return "gre-%d" % self.sw_if_index

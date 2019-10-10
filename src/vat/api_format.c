@@ -2515,8 +2515,8 @@ static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_gre_tunnel_add_del_reply_t_handler
-  (vl_api_gre_tunnel_add_del_reply_t * mp)
+static void vl_api_gre_tunnel_add_reply_t_handler
+  (vl_api_gre_tunnel_add_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -2532,8 +2532,8 @@ static void vl_api_gre_tunnel_add_del_reply_t_handler
     }
 }
 
-static void vl_api_gre_tunnel_add_del_reply_t_handler_json
-  (vl_api_gre_tunnel_add_del_reply_t * mp)
+static void vl_api_gre_tunnel_add_reply_t_handler_json
+  (vl_api_gre_tunnel_add_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
@@ -2541,6 +2541,38 @@ static void vl_api_gre_tunnel_add_del_reply_t_handler_json
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
   vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void vl_api_gre_tunnel_del_reply_t_handler
+  (vl_api_gre_tunnel_del_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_gre_tunnel_del_reply_t_handler_json
+  (vl_api_gre_tunnel_del_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -5324,7 +5356,8 @@ _(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
 _(GENEVE_ADD_DEL_TUNNEL_REPLY, geneve_add_del_tunnel_reply)             \
 _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
 _(GENEVE_TUNNEL_DETAILS, geneve_tunnel_details)                         \
-_(GRE_TUNNEL_ADD_DEL_REPLY, gre_tunnel_add_del_reply)                   \
+_(GRE_TUNNEL_ADD_REPLY, gre_tunnel_add_reply)                           \
+_(GRE_TUNNEL_DEL_REPLY, gre_tunnel_del_reply)                           \
 _(GRE_TUNNEL_DETAILS, gre_tunnel_details)                               \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
 _(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
@@ -12578,15 +12611,14 @@ api_geneve_tunnel_dump (vat_main_t * vam)
 }
 
 static int
-api_gre_tunnel_add_del (vat_main_t * vam)
+api_gre_tunnel_add (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_address_t src = { }, dst =
   {
   };
-  vl_api_gre_tunnel_add_del_t *mp;
+  vl_api_gre_tunnel_add_t *mp;
   vl_api_gre_tunnel_type_t t_type;
-  u8 is_add = 1;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
@@ -12598,9 +12630,7 @@ api_gre_tunnel_add_del (vat_main_t * vam)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "instance %d", &instance))
+      if (unformat (line_input, "instance %d", &instance))
 	;
       else if (unformat (line_input, "src %U", unformat_vl_api_address, &src))
 	{
@@ -12634,18 +12664,56 @@ api_gre_tunnel_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (GRE_TUNNEL_ADD_DEL, mp);
+  M (GRE_TUNNEL_ADD, mp);
 
   clib_memcpy (&mp->tunnel.src, &src, sizeof (mp->tunnel.src));
   clib_memcpy (&mp->tunnel.dst, &dst, sizeof (mp->tunnel.dst));
 
   mp->tunnel.instance = htonl (instance);
   mp->tunnel.outer_fib_id = htonl (outer_fib_id);
-  mp->is_add = is_add;
   mp->tunnel.session_id = htons ((u16) session_id);
   mp->tunnel.type = htonl (t_type);
 
   S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_gre_tunnel_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_gre_tunnel_del_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing vpp interface name. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (GRE_TUNNEL_DEL, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
   W (ret);
   return ret;
 }
@@ -21610,9 +21678,10 @@ _(geneve_add_del_tunnel,                                                \
   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(geneve_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                   \
-_(gre_tunnel_add_del,                                                   \
+_(gre_tunnel_add,                                                       \
   "src <ip-addr> dst <ip-addr> [outer-fib-id <nn>] [instance <n>]\n"    \
-  "[teb | erspan <session-id>] [del]")                                	\
+  "[teb | erspan <session-id>]")                                	\
+_(gre_tunnel_del, "[<intfc> | sw_if_index <nn>]")                       \
 _(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
