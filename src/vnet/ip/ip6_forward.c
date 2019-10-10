@@ -1011,11 +1011,10 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				   ip6_header_t * ip0, int *bogus_lengthp)
 {
   ip_csum_t sum0;
-  u16 sum16, payload_length_host_byte_order;
-  u32 i, n_this_buffer, n_bytes_left;
+  u16 payload_length_host_byte_order;
+  u32 i;
   u32 headers_size = sizeof (ip0[0]);
   u8 *data_this_buffer;
-  u8 length_odd;
 
   ASSERT (bogus_lengthp);
   *bogus_lengthp = 0;
@@ -1027,14 +1026,10 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
   for (i = 0; i < ARRAY_LEN (ip0->src_address.as_uword); i++)
     {
-      sum0 = ip_csum_with_carry (sum0,
-				 clib_mem_unaligned (&ip0->
-						     src_address.as_uword[i],
-						     uword));
-      sum0 =
-	ip_csum_with_carry (sum0,
-			    clib_mem_unaligned (&ip0->dst_address.as_uword[i],
-						uword));
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&ip0->src_address.as_uword[i], uword));
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&ip0->dst_address.as_uword[i], uword));
     }
 
   /* some icmp packets may come with a "router alert" hop-by-hop extension header (e.g., mldv2 packets)
@@ -1056,52 +1051,14 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       headers_size += skip_bytes;
     }
 
-  n_bytes_left = n_this_buffer = payload_length_host_byte_order;
-
   if (p0)
-    {
-      u32 n_ip_bytes_this_buffer =
-	p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
-      if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
-	{
-	  n_this_buffer = p0->current_length > headers_size ?
-	    n_ip_bytes_this_buffer - headers_size : 0;
-	}
-    }
-
-  while (1)
-    {
-      sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
-      n_bytes_left -= n_this_buffer;
-      if (n_bytes_left == 0)
-	break;
-
-      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
-      if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
-	{
-	  *bogus_lengthp = 1;
-	  return 0xfefe;
-	}
-
-      length_odd = (n_this_buffer & 1);
-
-      p0 = vlib_get_buffer (vm, p0->next_buffer);
-      data_this_buffer = vlib_buffer_get_current (p0);
-      n_this_buffer = clib_min (p0->current_length, n_bytes_left);
-
-      if (PREDICT_FALSE (length_odd))
-	{
-	  /* Prepend a 0 or the resulting checksum will be incorrect. */
-	  data_this_buffer--;
-	  n_this_buffer++;
-	  n_bytes_left++;
-	  data_this_buffer[0] = 0;
-	}
-    }
-
-  sum16 = ~ip_csum_fold (sum0);
-
-  return sum16;
+    return ip_calculate_l4_checksum (vm, p0, sum0,
+				     payload_length_host_byte_order,
+				     (u8 *) ip0, headers_size, NULL);
+  else
+    return ip_calculate_l4_checksum (vm, 0, sum0,
+				     payload_length_host_byte_order, NULL, 0,
+				     data_this_buffer);
 }
 
 u32
