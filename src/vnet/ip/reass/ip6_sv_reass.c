@@ -96,6 +96,9 @@ typedef struct
   bool is_complete;
   // ip protocol
   u8 ip_proto;
+  u8 icmp_type_or_tcp_flags;
+  u32 tcp_ack_number;
+  u32 tcp_seq_number;
   // l4 src port
   u16 l4_src_port;
   // l4 dst port
@@ -170,6 +173,7 @@ typedef enum
   REASS_FRAGMENT_CACHE,
   REASS_FINISH,
   REASS_FRAGMENT_FORWARD,
+  REASS_PASSTHROUGH,
 } ip6_sv_reass_trace_operation_e;
 
 typedef struct
@@ -188,7 +192,10 @@ format_ip6_sv_reass_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip6_sv_reass_trace_t *t = va_arg (*args, ip6_sv_reass_trace_t *);
-  s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
+  if (REASS_PASSTHROUGH != t->action)
+    {
+      s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
+    }
   switch (t->action)
     {
     case REASS_FRAGMENT_CACHE:
@@ -206,6 +213,9 @@ format_ip6_sv_reass_trace (u8 * s, va_list * args)
 		t->ip_proto, clib_net_to_host_u16 (t->l4_src_port),
 		clib_net_to_host_u16 (t->l4_dst_port));
       break;
+    case REASS_PASSTHROUGH:
+      s = format (s, "[not-fragmented]");
+      break;
     }
   return s;
 }
@@ -219,13 +229,16 @@ ip6_sv_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   ip6_sv_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-  t->reass_id = reass->id;
+  if (reass)
+    {
+      t->reass_id = reass->id;
+      t->op_id = reass->trace_op_counter;
+      ++reass->trace_op_counter;
+    }
   t->action = action;
-  t->op_id = reass->trace_op_counter;
   t->ip_proto = ip_proto;
   t->l4_src_port = l4_src_port;
   t->l4_dst_port = l4_dst_port;
-  ++reass->trace_op_counter;
 #if 0
   static u8 *s = NULL;
   s = format (s, "%U", format_ip6_sv_reass_trace, NULL, NULL, t);
@@ -391,18 +404,13 @@ ip6_sv_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   fvnb->ip.reass.next_range_bi = ~0;
   if (0 == fragment_first)
     {
-      ip6_ext_header_t *ext_hdr = (void *) frag_hdr;
-      while (ip6_ext_hdr (ext_hdr->next_hdr)
-	     && vlib_object_within_buffer_data (vm, fb, ext_hdr,
-						ext_hdr->n_data_u64s * 8))
-	{
-	  ext_hdr = ip6_ext_next_header (ext_hdr);
-	}
-      reass->ip_proto = ext_hdr->next_hdr;
-      reass->l4_src_port = ip6_get_port (fip, 1, fb->current_length);
-      reass->l4_dst_port = ip6_get_port (fip, 0, fb->current_length);
-      if (!reass->l4_src_port || !reass->l4_dst_port)
+      if (!ip6_get_port
+	  (vm, fb, fip, fb->current_length, &reass->ip_proto,
+	   &reass->l4_src_port, &reass->l4_dst_port,
+	   &reass->icmp_type_or_tcp_flags, &reass->tcp_ack_number,
+	   &reass->tcp_seq_number))
 	return IP6_SV_REASS_RC_UNSUPP_IP_PROTO;
+
       reass->is_complete = true;
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -538,12 +546,34 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	  if (!frag_hdr)
 	    {
 	      // this is a regular packet - no fragmentation
-	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-	      vnet_buffer (b0)->ip.reass.l4_src_port =
-		ip6_get_port (ip0, 1, b0->current_length);
-	      vnet_buffer (b0)->ip.reass.l4_dst_port =
-		ip6_get_port (ip0, 0, b0->current_length);
+	      if (!ip6_get_port
+		  (vm, b0, ip0, b0->current_length,
+		   &(vnet_buffer (b0)->ip.reass.ip_proto),
+		   &(vnet_buffer (b0)->ip.reass.l4_src_port),
+		   &(vnet_buffer (b0)->ip.reass.l4_dst_port),
+		   &(vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags),
+		   &(vnet_buffer (b0)->ip.reass.tcp_ack_number),
+		   &(vnet_buffer (b0)->ip.reass.tcp_seq_number)))
+		{
+		  error0 = IP6_ERROR_REASS_UNSUPP_IP_PROTO;
+		  next0 = IP6_SV_REASSEMBLY_NEXT_DROP;
+		  goto packet_enqueue;
+		}
+	      ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
+	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
+		vnet_buffer (b0)->ip.save_rewrite_length;
+	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      next0 = IP6_SV_REASSEMBLY_NEXT_INPUT;
+	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip6_sv_reass_add_trace (vm, node, rm, NULL, bi0,
+					  REASS_PASSTHROUGH,
+					  vnet_buffer (b0)->ip.reass.ip_proto,
+					  vnet_buffer (b0)->ip.
+					  reass.l4_src_port,
+					  vnet_buffer (b0)->ip.
+					  reass.l4_dst_port);
+		}
 	      goto packet_enqueue;
 	    }
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
@@ -601,7 +631,18 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 
 	  if (reass->is_complete)
 	    {
+	      ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
+	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
+		vnet_buffer (b0)->ip.save_rewrite_length;
+	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
+		! !ip6_frag_hdr_offset (frag_hdr);
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
+	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		reass->icmp_type_or_tcp_flags;
+	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
+		reass->tcp_ack_number;
+	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
+		reass->tcp_seq_number;
 	      vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
 	      next0 = IP6_SV_REASSEMBLY_NEXT_INPUT;
@@ -668,7 +709,21 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		  {
 		    vnet_feature_next (&next0, b0);
 		  }
+		frag_hdr =
+		  vlib_buffer_get_current (b0) +
+		  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset;
+		ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
+		vnet_buffer (b0)->ip.reass.save_rewrite_length =
+		  vnet_buffer (b0)->ip.save_rewrite_length;
+		vnet_buffer (b0)->ip.reass.is_non_first_fragment =
+		  ! !ip6_frag_hdr_offset (frag_hdr);
 		vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
+		vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		  reass->icmp_type_or_tcp_flags;
+		vnet_buffer (b0)->ip.reass.tcp_ack_number =
+		  reass->tcp_ack_number;
+		vnet_buffer (b0)->ip.reass.tcp_seq_number =
+		  reass->tcp_seq_number;
 		vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 		vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
 		if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1124,9 +1179,8 @@ VLIB_CLI_COMMAND (show_ip6_sv_reassembly_cmd, static) = {
 vnet_api_error_t
 ip6_sv_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
-  return vnet_feature_enable_disable ("ip6-unicast",
-				      "ip6-sv-reassembly-feature",
-				      sw_if_index, enable_disable, 0, 0);
+  return ip6_sv_reass_enable_disable_with_refcnt (sw_if_index,
+						  enable_disable);
 }
 #endif /* CLIB_MARCH_VARIANT */
 

@@ -145,9 +145,11 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	  d0 =
 	    pool_elt_at_index (map_main.domains,
 			       vnet_buffer (p0)->map_t.map_domain_index);
-	  ctx0.sender_port = ip6_get_port (ip60, 0, p0->current_length);
 	  ctx0.d = d0;
-	  if (ctx0.sender_port == 0)
+	  ctx0.sender_port = 0;
+	  if (!ip6_get_port
+	      (vm, p0, ip60, p0->current_length, NULL, &ctx0.sender_port,
+	       NULL, NULL, NULL, NULL))
 	    {
 	      // In case of 1:1 mapping, we don't care about the port
 	      if (!(d0->ea_bits_len == 0 && d0->rules))
@@ -157,9 +159,8 @@ ip6_map_t_icmp (vlib_main_t * vm,
 		}
 	    }
 
-	  if (icmp6_to_icmp
-	      (p0, ip6_to_ip4_set_icmp_cb, &ctx0,
-	       ip6_to_ip4_set_inner_icmp_cb, &ctx0))
+	  if (icmp6_to_icmp (vm, p0, ip6_to_ip4_set_icmp_cb, &ctx0,
+			     ip6_to_ip4_set_inner_icmp_cb, &ctx0))
 	    {
 	      error0 = MAP_ERROR_ICMP;
 	      goto err0;
@@ -200,7 +201,7 @@ ip6_map_t_icmp (vlib_main_t * vm,
  * Translate IPv6 fragmented packet to IPv4.
  */
 always_inline int
-map_ip6_to_ip4_fragmented (vlib_buffer_t * p)
+map_ip6_to_ip4_fragmented (vlib_main_t * vm, vlib_buffer_t * p)
 {
   ip6_header_t *ip6;
   ip6_frag_hdr_t *frag;
@@ -214,7 +215,7 @@ map_ip6_to_ip4_fragmented (vlib_buffer_t * p)
   ip6 = vlib_buffer_get_current (p);
 
   if (ip6_parse
-      (ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
+      (vm, p, ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
     return -1;
 
   frag = (ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset);
@@ -230,7 +231,7 @@ map_ip6_to_ip4_fragmented (vlib_buffer_t * p)
 
   ip4->ip_version_and_header_length =
     IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
-  ip4->tos = ip6_translate_tos (ip6);
+  ip4->tos = ip6_translate_tos (ip6->ip_version_traffic_class_and_flow_label);
   ip4->length =
     u16_net_add (ip6->payload_length,
 		 sizeof (*ip4) - l4_offset + sizeof (*ip6));
@@ -276,7 +277,7 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  if (map_ip6_to_ip4_fragmented (p0))
+	  if (map_ip6_to_ip4_fragmented (vm, p0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_FRAGMENT_DROPPED];
 	      next0 = IP6_MAPT_FRAGMENTED_NEXT_DROP;
@@ -306,7 +307,8 @@ ip6_map_t_fragmented (vlib_main_t * vm,
  * Translate IPv6 UDP/TCP packet to IPv4.
  */
 always_inline int
-map_ip6_to_ip4_tcp_udp (vlib_buffer_t * p, bool udp_checksum)
+map_ip6_to_ip4_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p,
+			bool udp_checksum)
 {
   map_main_t *mm = &map_main;
   ip6_header_t *ip6;
@@ -323,7 +325,7 @@ map_ip6_to_ip4_tcp_udp (vlib_buffer_t * p, bool udp_checksum)
   ip6 = vlib_buffer_get_current (p);
 
   if (ip6_parse
-      (ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
+      (vm, p, ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
     return -1;
 
   if (l4_protocol == IP_PROTOCOL_TCP)
@@ -370,7 +372,7 @@ map_ip6_to_ip4_tcp_udp (vlib_buffer_t * p, bool udp_checksum)
 
   ip4->ip_version_and_header_length =
     IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
-  ip4->tos = ip6_translate_tos (ip6);
+  ip4->tos = ip6_translate_tos (ip6->ip_version_traffic_class_and_flow_label);
   ip4->length =
     u16_net_add (ip6->payload_length,
 		 sizeof (*ip4) + sizeof (*ip6) - l4_offset);
@@ -429,7 +431,7 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  if (map_ip6_to_ip4_tcp_udp (p0, true))
+	  if (map_ip6_to_ip4_tcp_udp (vm, p0, true))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_UNKNOWN];
 	      next0 = IP6_MAPT_TCP_UDP_NEXT_DROP;
@@ -512,7 +514,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
 	  if (PREDICT_FALSE
-	      (ip6_parse (ip60, p0->current_length,
+	      (ip6_parse (vm, p0, ip60, p0->current_length,
 			  &(vnet_buffer (p0)->map_t.v6.l4_protocol),
 			  &(vnet_buffer (p0)->map_t.v6.l4_offset),
 			  &(vnet_buffer (p0)->map_t.v6.frag_offset))))

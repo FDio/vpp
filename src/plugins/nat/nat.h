@@ -58,11 +58,8 @@ typedef enum
   NAT_NEXT_IN2OUT_ED_FAST_PATH,
   NAT_NEXT_IN2OUT_ED_SLOW_PATH,
   NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH,
-  NAT_NEXT_IN2OUT_ED_REASS,
-  NAT_NEXT_IN2OUT_ED_OUTPUT_REASS,
   NAT_NEXT_OUT2IN_ED_FAST_PATH,
   NAT_NEXT_OUT2IN_ED_SLOW_PATH,
-  NAT_NEXT_OUT2IN_ED_REASS,
   NAT_N_NEXT,
 } nat_next_t;
 
@@ -534,8 +531,14 @@ typedef u32 (snat_icmp_match_function_t) (struct snat_main_s * sm,
 					  void *e);
 
 /* Return worker thread index for given packet */
-typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip,
-					  u32 rx_fib_index, u8 is_output);
+typedef u32 (snat_get_worker_in2out_function_t) (ip4_header_t * ip,
+						 u32 rx_fib_index,
+						 u8 is_output);
+
+typedef u32 (snat_get_worker_out2in_function_t) (vlib_buffer_t * b,
+						 ip4_header_t * ip,
+						 u32 rx_fib_index,
+						 u8 is_output);
 
 /* NAT address and port allacotaion function */
 typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
@@ -556,8 +559,8 @@ typedef struct snat_main_s
   u32 num_workers;
   u32 first_worker_index;
   u32 *workers;
-  snat_get_worker_function_t *worker_in2out_cb;
-  snat_get_worker_function_t *worker_out2in_cb;
+  snat_get_worker_in2out_function_t *worker_in2out_cb;
+  snat_get_worker_out2in_function_t *worker_out2in_cb;
   u16 port_per_thread;
   u32 num_snat_thread;
 
@@ -629,16 +632,12 @@ typedef struct snat_main_s
   u32 in2out_fast_node_index;
   u32 in2out_slowpath_node_index;
   u32 in2out_slowpath_output_node_index;
-  u32 in2out_reass_node_index;
   u32 ed_in2out_node_index;
   u32 ed_in2out_slowpath_node_index;
-  u32 ed_in2out_reass_node_index;
   u32 out2in_node_index;
   u32 out2in_fast_node_index;
-  u32 out2in_reass_node_index;
   u32 ed_out2in_node_index;
   u32 ed_out2in_slowpath_node_index;
-  u32 ed_out2in_reass_node_index;
   u32 det_in2out_node_index;
   u32 det_out2in_node_index;
 
@@ -756,7 +755,6 @@ format_function_t format_snat_key;
 format_function_t format_static_mapping_key;
 format_function_t format_snat_protocol;
 format_function_t format_nat_addr_and_port_alloc_alg;
-format_function_t format_nat44_reass_trace;
 /* unformat functions */
 unformat_function_t unformat_snat_protocol;
 
@@ -848,7 +846,11 @@ unformat_function_t unformat_snat_protocol;
     @param t TCP header
     @return 1 if client initiating TCP connection
 */
-#define tcp_is_init(t) ((t->flags & TCP_FLAG_SYN) && !(t->flags & TCP_FLAG_ACK))
+always_inline bool
+tcp_flags_is_init (u8 f)
+{
+  return (f & TCP_FLAG_SYN) && !(f & TCP_FLAG_ACK);
+}
 
 /* logging */
 #define nat_log_err(...) \
