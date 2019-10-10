@@ -16,6 +16,24 @@
       "revId": "14fbc8756cbb6c2e4d5d3e6653d56580ffc9e14d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9cad9aa1_c663a977",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2019-10-10T13:02:00Z",
+      "side": 1,
+      "message": "I\u0027ll investigate. Probably, here should be some kind of choice.",
+      "parentUuid": "61bc49f7_ded55771",
+      "revId": "14fbc8756cbb6c2e4d5d3e6653d56580ffc9e14d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
