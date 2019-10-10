@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "61bc49f7_ded55771",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-10T12:56:02Z",
+      "side": 1,
+      "message": "How does this work in the case of non TCP packets?",
+      "revId": "14fbc8756cbb6c2e4d5d3e6653d56580ffc9e14d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
