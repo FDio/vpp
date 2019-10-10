@@ -96,7 +96,7 @@ typedef struct
 /* *INDENT-OFF* */
 typedef struct
 {
-  BITALIGN2 (u8 ppi:3;
+  BITALIGN2 (u8 ppi:3,
              u8 spare:5);
 
   u8 padding[3];
@@ -107,12 +107,12 @@ typedef struct
 typedef struct
 {
   u8 exthdrlen;
-  BITALIGN2(u8 type:4;
+  BITALIGN2(u8 type:4,
             u8 spare:4);
   union {
     struct gtpu_qfi_bits {
-      BITALIGN3(u8 p:1;
-                u8 r:1;
+      BITALIGN3(u8 p:1,
+                u8 r:1,
                 u8 qfi:6);
     } bits;
 
