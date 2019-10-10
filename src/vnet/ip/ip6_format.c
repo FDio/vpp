@@ -417,6 +417,25 @@ format_ip46_address (u8 * s, va_list * args)
     format (s, "%U", format_ip6_address, &ip46->ip6);
 }
 
+u8 *
+format_ip6_frag_hdr (u8 * s, va_list * args)
+{
+  ip6_frag_hdr_t *h = va_arg (*args, ip6_frag_hdr_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  u32 header_bytes;
+
+  header_bytes = sizeof (h[0]);
+  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
+    return format (s, "ipv6 frag header truncated");
+
+  s =
+    format (s,
+	    "IPV6_FRAG_HDR: next_hdr: %u, rsv: %u, frag_offset_and_more: %u, id: %u",
+	    h->next_hdr, h->rsv, h->fragment_offset_and_more,
+	    clib_net_to_host_u32 (h->identification));
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
