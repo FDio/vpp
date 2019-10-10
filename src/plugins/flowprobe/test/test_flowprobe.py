@@ -57,8 +57,8 @@ class VppCFLOW(VppObject):
 
     def enable_exporter(self):
         self._test.vapi.set_ipfix_exporter(
-            collector_address=self._test.pg0.remote_ip4n,
-            src_address=self._test.pg0.local_ip4n,
+            collector_address=self._test.pg0.remote_ip4,
+            src_address=self._test.pg0.local_ip4,
             path_mtu=self._mtu,
             template_interval=self._timeout)
 

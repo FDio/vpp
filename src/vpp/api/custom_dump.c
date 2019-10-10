@@ -2556,10 +2556,10 @@ static void *vl_api_set_ipfix_exporter_t_print
   s = format (0, "SCRIPT: set_ipfix_exporter ");
 
   s = format (s, "collector-address %U ", format_ip4_address,
-	      (ip4_address_t *) mp->collector_address);
+	      (ip4_address_t *) mp->collector_address.un.ip4);
   s = format (s, "collector-port %d ", (mp->collector_port));
   s = format (s, "src-address %U ", format_ip4_address,
-	      (ip4_address_t *) mp->src_address);
+	      (ip4_address_t *) mp->src_address.un.ip4);
   s = format (s, "vrf-id %d ", (mp->vrf_id));
   s = format (s, "path-mtu %d ", (mp->path_mtu));
   s = format (s, "template-interval %d ", (mp->template_interval));

@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
+option version = "2.0.1";
+
+import "vnet/ip/ip_types.api";
 
 /** \brief Configure IPFIX exporter process request
     @param client_index - opaque cookie to identify the sender
@@ -30,13 +32,13 @@ autoreply define set_ipfix_exporter
 {
   u32 client_index;
   u32 context;
-  u8 collector_address[16];
+  vl_api_address_t collector_address;
   u16 collector_port;
-  u8 src_address[16];
+  vl_api_address_t src_address;
   u32 vrf_id;
   u32 path_mtu;
   u32 template_interval;
-  u8 udp_checksum;
+  bool udp_checksum;
 };
 
 /** \brief IPFIX exporter dump request
@@ -62,13 +64,13 @@ define ipfix_exporter_dump
 define ipfix_exporter_details
 {
   u32 context;
-  u8 collector_address[16];
+  vl_api_address_t collector_address;
   u16 collector_port;
-  u8 src_address[16];
+  vl_api_address_t src_address;
   u32 vrf_id;
   u32 path_mtu;
   u32 template_interval;
-  u8 udp_checksum;
+  bool udp_checksum;
 };
 
 /** \brief IPFIX classify stream configure request
@@ -115,9 +117,9 @@ autoreply define ipfix_classify_table_add_del {
     u32 client_index;
     u32 context;
     u32 table_id;
-    u8 ip_version;
-    u8 transport_protocol;
-    u8 is_add;
+    vl_api_address_family_t ip_version;
+    vl_api_ip_proto_t transport_protocol;
+    bool is_add;
 };
 
 /** \brief IPFIX classify tables dump request
@@ -138,8 +140,8 @@ define ipfix_classify_table_dump {
 define ipfix_classify_table_details {
     u32 context;
     u32 table_id;
-    u8 ip_version;
-    u8 transport_protocol;
+    vl_api_address_family_t ip_version;
+    vl_api_ip_proto_t transport_protocol;
 };
 
 autoreply define ipfix_flush {
