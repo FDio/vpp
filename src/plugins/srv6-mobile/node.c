@@ -663,9 +663,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
@@ -674,9 +674,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
@@ -707,9 +707,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
@@ -718,9 +718,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
@@ -1222,9 +1222,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
@@ -1233,9 +1233,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
@@ -1265,9 +1265,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
@@ -1276,9 +1276,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 			{
 			  // Bad encap packet.
-              		  next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-              		  bad_n++;
-			  goto DONE;
+                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                          bad_n++;
+                          goto DONE;
 			}
 		    }
 		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
@@ -1554,9 +1554,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
 	  	    {
 		      // Bad encap packet.
-              	      next0 = SRV6_END_M_GTP6_D_DI_NEXT_DROP;
+                      next0 = SRV6_END_M_GTP6_D_DI_NEXT_DROP;
               	      bad_n++;
-		      goto DONE;
+                      goto DONE;
 		    }
 		}
 	      else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
@@ -1565,9 +1565,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 	  	    {
 		      // Bad encap packet.
-              	      next0 = SRV6_END_M_GTP6_D_DI_NEXT_DROP;
+                      next0 = SRV6_END_M_GTP6_D_DI_NEXT_DROP;
               	      bad_n++;
-		      goto DONE;
+                      goto DONE;
 		    }
 	        }
 	      else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
