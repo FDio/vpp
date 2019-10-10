@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "02d54799_7d36a9e0",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 159
+      },
+      "writtenOn": "2019-10-10T04:23:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ebe2e579_bc6be778",
+      "range": {
+        "startLine": 243,
+        "startChar": 0,
+        "endLine": 243,
+        "endChar": 2
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55381419_51e2ad1d",
         "filename": "src/vnet/tcp/tcp_output.c",
         "patchSetId": 6
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "d56d5cbf_c2696eb9",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 159
+      },
+      "writtenOn": "2019-10-10T04:23:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "55381419_51e2ad1d",
+      "range": {
+        "startLine": 526,
+        "startChar": 19,
+        "endLine": 526,
+        "endChar": 22
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd75509a_79a44f15",
         "filename": "src/vnet/tcp/tcp_output.c",
         "patchSetId": 6
@@ -59,6 +107,30 @@
       "writtenOn": "2019-10-10T00:52:37Z",
       "side": 1,
       "message": "Move to vlib_buffer_push_ip4/6. Also make sure vlib_buffer_push_ip4 doesn\u0027t set VNET_BUFFER_F_L4_HDR_OFFSET_VALID",
+      "range": {
+        "startLine": 2251,
+        "startChar": 0,
+        "endLine": 2252,
+        "endChar": 49
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49031407_fc9a95cd",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2252,
+      "author": {
+        "id": 159
+      },
+      "writtenOn": "2019-10-10T04:23:17Z",
+      "side": 1,
+      "message": "Its already updated as part of the push_ip4( when offload is set), For IPv6 is it needed ? I have moved it as part of ipv6  ( we can remove them if you think its no more needed)",
+      "parentUuid": "dd75509a_79a44f15",
       "range": {
         "startLine": 2251,
         "startChar": 0,
