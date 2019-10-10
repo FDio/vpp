@@ -81,8 +81,6 @@ handle_get_interface_stats (u8 * request, http_session_t * hs)
   p = hash_get (vnm->interface_main.hw_interface_by_name, request);
   if (!p)
     {
-      clib_warning ("Couldn't find interface '%v'", request);
-
       s = format (s, "{\"interface_stats\": {");
       s = format (s, "   \"name\": \"%s\",", request);
       s = format (s, "   \"stats\": \"%s\"", "ERRORUnknownInterface");
@@ -95,6 +93,16 @@ handle_get_interface_stats (u8 * request, http_session_t * hs)
 
   stats = format_vnet_sw_interface_cntrs (stats, &vnm->interface_main, si,
 					  1 /* want json */ );
+
+  /* No active counters */
+  if (stats == 0)
+    {
+      s = format (s, "{\"interface_stats\": {");
+      s = format (s, "   \"name\": \"%s\"", request);
+      s = format (s, "}}\r\n");
+      goto out;
+    }
+
   /* Build answer */
   s = format (s, "{\"interface_stats\": {");
   s = format (s, "\"name\": \"%s\",\n", request);
@@ -110,11 +118,54 @@ out:
   return 0;
 }
 
+int
+handle_get_interface_list (u8 * request, http_session_t * hs)
+{
+  u8 *s = 0;
+  int i;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_interface_t *hi;
+  u32 *hw_if_indices = 0;
+  int need_comma = 0;
+
+  /* Construct vector of active hw_if_indexes ... */
+  /* *INDENT-OFF* */
+  pool_foreach (hi, im->hw_interfaces,
+  ({
+    /* No point in mentioning "local0"... */
+    if (hi - im->hw_interfaces)
+      vec_add1 (hw_if_indices, hi - im->hw_interfaces);
+  }));
+  /* *INDENT-ON* */
+
+  /* Build answer */
+  s = format (s, "{\"interface_list\": [\n");
+  for (i = 0; i < vec_len (hw_if_indices); i++)
+    {
+      if (need_comma)
+	s = format (s, ",\n");
+      hi = pool_elt_at_index (im->hw_interfaces, hw_if_indices[i]);
+      s = format (s, "\"%v\"", hi->name);
+      need_comma = 1;
+    }
+  s = format (s, "]}\n");
+  vec_free (hw_if_indices);
+
+  hs->data = s;
+  hs->data_offset = 0;
+  hs->cache_pool_index = ~0;
+  hs->free_data = 1;
+  return 0;
+}
+
 void
 builtinurl_handler_init (builtinurl_main_t * bm)
 {
 
   bm->register_handler (handle_get_version, "version.json",
+			HTTP_BUILTIN_METHOD_GET);
+  bm->register_handler (handle_get_interface_list, "interface_list.json",
 			HTTP_BUILTIN_METHOD_GET);
   bm->register_handler (handle_get_interface_stats,
 			"interface_stats.json", HTTP_BUILTIN_METHOD_POST);
