@@ -48,7 +48,7 @@ move_pages (int pid, unsigned long count, void **pages, const int *nodes,
 }
 
 #ifndef HAVE_MEMFD_CREATE
-#ifndef MFD_CLOEXEC
+#ifndef MFD_CLOEXEC /* for "make pkg-deb" on debian */
 static inline int
 memfd_create (const char *name, unsigned int flags)
 {
