@@ -26,13 +26,13 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/dslite.h>
-#include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_affinity.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/ip/reass/ip4_sv_reass.h>
 
 #include <vpp/app/version.h>
 
@@ -46,13 +46,15 @@ fib_source_t nat_fib_src_low;
 VNET_FEATURE_INIT (nat_pre_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat-pre-in2out",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+			       "ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (nat_pre_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat-pre-out2in",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-dhcp-client-detect"),
+                               "ip4-dhcp-client-detect",
+			       "ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (snat_in2out_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
@@ -68,103 +70,103 @@ VNET_FEATURE_INIT (snat_out2in_worker_handoff, static) = {
 VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_det_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-in2out",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_det_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat_det_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-in2out",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-handoff-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_snat_hairpin_dst, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-hairpin-dst",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_hairpin_dst, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-hairpin-dst",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
 
 /* Hook up output features */
 VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-in2out-output",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_output_worker_handoff, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-in2out-output-worker-handoff",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
 VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-hairpin-src",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ed-in2out-output",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_hairpin_src, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ed-hairpin-src",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
 
 /* Hook up ip4-local features */
@@ -1963,6 +1965,10 @@ feature_set:
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0,
 			       0);
 
+  int rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 1);
+  if (rv)
+    return rv;
+
   if (is_inside && !sm->out2in_dpo)
     {
       if (sm->endpoint_dependent)
@@ -2062,6 +2068,15 @@ feature_set:
     {
       if (sm->endpoint_dependent)
 	{
+	  int rv =
+	    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, !is_del);
+	  if (rv)
+	    return rv;
+	  rv =
+	    ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index,
+							    !is_del);
+	  if (rv)
+	    return rv;
 	  vnet_feature_enable_disable ("ip4-unicast", "nat44-ed-hairpin-dst",
 				       sw_if_index, !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-hairpin-src",
@@ -2069,6 +2084,15 @@ feature_set:
 	}
       else
 	{
+	  int rv =
+	    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, !is_del);
+	  if (rv)
+	    return rv;
+	  rv =
+	    ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index,
+							    !is_del);
+	  if (rv)
+	    return rv;
 	  vnet_feature_enable_disable ("ip4-unicast", "nat44-hairpin-dst",
 				       sw_if_index, !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-hairpin-src",
@@ -2079,6 +2103,13 @@ feature_set:
 
   if (sm->num_workers > 1)
     {
+      int rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, !is_del);
+      if (rv)
+	return rv;
+      rv =
+	ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index, !is_del);
+      if (rv)
+	return rv;
       vnet_feature_enable_disable ("ip4-unicast",
 				   "nat44-out2in-worker-handoff",
 				   sw_if_index, !is_del, 0, 0);
@@ -2090,6 +2121,15 @@ feature_set:
     {
       if (sm->endpoint_dependent)
 	{
+	  int rv =
+	    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, !is_del);
+	  if (rv)
+	    return rv;
+	  rv =
+	    ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index,
+							    !is_del);
+	  if (rv)
+	    return rv;
 	  vnet_feature_enable_disable ("ip4-unicast", "nat-pre-out2in",
 				       sw_if_index, !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-in2out-output",
@@ -2097,6 +2137,15 @@ feature_set:
 	}
       else
 	{
+	  int rv =
+	    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, !is_del);
+	  if (rv)
+	    return rv;
+	  rv =
+	    ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index,
+							    !is_del);
+	  if (rv)
+	    return rv;
 	  vnet_feature_enable_disable ("ip4-unicast", "nat44-out2in",
 				       sw_if_index, !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-in2out-output",
@@ -2355,29 +2404,21 @@ snat_init (vlib_main_t * vm)
   sm->in2out_slowpath_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-output-slowpath");
   sm->in2out_slowpath_output_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-reass");
-  sm->in2out_reass_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
   sm->ed_in2out_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-slowpath");
   sm->ed_in2out_slowpath_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-reass");
-  sm->ed_in2out_reass_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in");
   sm->out2in_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in-fast");
   sm->out2in_fast_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in-reass");
-  sm->out2in_reass_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
   sm->ed_out2in_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in-slowpath");
   sm->ed_out2in_slowpath_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in-reass");
-  sm->ed_out2in_reass_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-det-in2out");
   sm->det_in2out_node_index = node->index;
@@ -2474,8 +2515,7 @@ snat_init (vlib_main_t * vm)
 					 FIB_SOURCE_PRIORITY_LOW,
 					 FIB_SOURCE_BH_SIMPLE);
 
-  /* Init virtual fragmenentation reassembly */
-  return nat_reass_init (vm);
+  return error;
 }
 
 VLIB_INIT_FUNCTION (snat_init);
@@ -3015,8 +3055,8 @@ snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0,
 }
 
 static u32
-snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0,
-			   u8 is_output)
+snat_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip0,
+			   u32 rx_fib_index0, u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   udp_header_t *udp;
@@ -3047,52 +3087,6 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0,
   udp = ip4_next_header (ip0);
   port = udp->dst_port;
 
-  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
-    {
-      if (PREDICT_FALSE (nat_reass_is_drop_frag (0)))
-	return vlib_get_thread_index ();
-
-      nat_reass_ip4_t *reass;
-      reass = nat_ip4_reass_find (ip0->src_address, ip0->dst_address,
-				  ip0->fragment_id, ip0->protocol);
-
-      if (reass && (reass->thread_index != (u32) ~ 0))
-	return reass->thread_index;
-
-      if (ip4_is_first_fragment (ip0))
-	{
-	  reass =
-	    nat_ip4_reass_create (ip0->src_address, ip0->dst_address,
-				  ip0->fragment_id, ip0->protocol);
-	  if (!reass)
-	    goto no_reass;
-
-	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
-	    {
-	      m_key.addr = ip0->dst_address;
-	      m_key.port = clib_net_to_host_u16 (port);
-	      m_key.protocol = proto;
-	      m_key.fib_index = rx_fib_index0;
-	      kv.key = m_key.as_u64;
-	      if (!clib_bihash_search_8_8
-		  (&sm->static_mapping_by_external, &kv, &value))
-		{
-		  m = pool_elt_at_index (sm->static_mappings, value.value);
-		  reass->thread_index = m->workers[0];
-		  return reass->thread_index;
-		}
-	    }
-	  reass->thread_index = sm->first_worker_index;
-	  reass->thread_index +=
-	    sm->workers[(clib_net_to_host_u16 (port) - 1024) /
-			sm->port_per_thread];
-	  return reass->thread_index;
-	}
-      else
-	return vlib_get_thread_index ();
-    }
-
-no_reass:
   /* unknown protocol */
   if (PREDICT_FALSE (proto == ~0))
     {
@@ -3104,10 +3098,12 @@ no_reass:
     {
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
       icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
-      if (!icmp_is_error_message (icmp))
-	port = echo->identifier;
+      if (!icmp_type_is_error_message
+	  (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
+	port = vnet_buffer (b)->ip.reass.l4_src_port;
       else
 	{
+	  /* if error message, then it's not fragmented and we can access it */
 	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
 	  proto = ip_proto_to_snat_proto (inner_ip->protocol);
 	  void *l4_header = ip4_next_header (inner_ip);
@@ -3255,8 +3251,8 @@ nat44_ed_get_worker_in2out_cb (ip4_header_t * ip, u32 rx_fib_index,
 }
 
 static u32
-nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index,
-			       u8 is_output)
+nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
+			       u32 rx_fib_index, u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   clib_bihash_kv_8_8_t kv, value;
@@ -3298,7 +3294,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index,
     {
       nat_ed_ses_key_t key;
 
-      if (!get_icmp_o2i_ed_key (ip, &key))
+      if (!get_icmp_o2i_ed_key (b, ip, &key))
 	{
 
 	  key.fib_index = rx_fib_index;
@@ -3352,10 +3348,12 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index,
     {
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
       icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
-      if (!icmp_is_error_message (icmp))
-	port = echo->identifier;
+      if (!icmp_type_is_error_message
+	  (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
+	port = vnet_buffer (b)->ip.reass.l4_src_port;
       else
 	{
+	  /* if error message, then it's not fragmented and we can access it */
 	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
 	  proto = ip_proto_to_snat_proto (inner_ip->protocol);
 	  void *l4_header = ip4_next_header (inner_ip);
@@ -4335,11 +4333,8 @@ VLIB_REGISTER_NODE (nat_default_node) = {
     [NAT_NEXT_IN2OUT_ED_FAST_PATH] = "nat44-ed-in2out",
     [NAT_NEXT_IN2OUT_ED_SLOW_PATH] = "nat44-ed-in2out-slowpath",
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
-    [NAT_NEXT_IN2OUT_ED_REASS] = "nat44-ed-in2out-reass",
-    [NAT_NEXT_IN2OUT_ED_OUTPUT_REASS] = "nat44-ed-in2out-reass-output",
     [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
     [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
-    [NAT_NEXT_OUT2IN_ED_REASS] = "nat44-ed-out2in-reass",
   },
 };
 /* *INDENT-ON* */

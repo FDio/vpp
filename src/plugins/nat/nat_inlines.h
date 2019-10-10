@@ -171,9 +171,9 @@ snat_proto_to_ip_proto (snat_protocol_t snat_proto)
 }
 
 static_always_inline u8
-icmp_is_error_message (icmp46_header_t * icmp)
+icmp_type_is_error_message (u8 icmp_type)
 {
-  switch (icmp->type)
+  switch (icmp_type)
     {
     case ICMP4_destination_unreachable:
     case ICMP4_time_exceeded:
@@ -323,25 +323,28 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 */
 always_inline int
 nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
-				 tcp_header_t * tcp, u32 thread_index)
+				 vlib_buffer_t * b, u32 thread_index)
 {
-  if ((ses->state == 0) && (tcp->flags & TCP_FLAG_RST))
+  u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
+  u32 tcp_ack_number = vnet_buffer (b)->ip.reass.tcp_ack_number;
+  u32 tcp_seq_number = vnet_buffer (b)->ip.reass.tcp_seq_number;
+  if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
     ses->state = NAT44_SES_RST;
-  if ((ses->state == NAT44_SES_RST) && !(tcp->flags & TCP_FLAG_RST))
+  if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
     ses->state = 0;
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
+  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
       (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;
-  if (tcp->flags & TCP_FLAG_SYN)
+  if (tcp_flags & TCP_FLAG_SYN)
     ses->state |= NAT44_SES_I2O_SYN;
-  if (tcp->flags & TCP_FLAG_FIN)
+  if (tcp_flags & TCP_FLAG_FIN)
     {
-      ses->i2o_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
+      ses->i2o_fin_seq = clib_net_to_host_u32 (tcp_seq_number);
       ses->state |= NAT44_SES_I2O_FIN;
     }
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_O2I_FIN))
+  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_O2I_FIN))
     {
-      if (clib_net_to_host_u32 (tcp->ack_number) > ses->o2i_fin_seq)
+      if (clib_net_to_host_u32 (tcp_ack_number) > ses->o2i_fin_seq)
 	ses->state |= NAT44_SES_O2I_FIN_ACK;
     }
   if (nat44_is_ses_closed (ses)
@@ -356,25 +359,26 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
 
 always_inline int
 nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
-				 tcp_header_t * tcp, u32 thread_index)
+				 u8 tcp_flags, u32 tcp_ack_number,
+				 u32 tcp_seq_number, u32 thread_index)
 {
-  if ((ses->state == 0) && (tcp->flags & TCP_FLAG_RST))
+  if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
     ses->state = NAT44_SES_RST;
-  if ((ses->state == NAT44_SES_RST) && !(tcp->flags & TCP_FLAG_RST))
+  if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
     ses->state = 0;
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
+  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
       (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;
-  if (tcp->flags & TCP_FLAG_SYN)
+  if (tcp_flags & TCP_FLAG_SYN)
     ses->state |= NAT44_SES_O2I_SYN;
-  if (tcp->flags & TCP_FLAG_FIN)
+  if (tcp_flags & TCP_FLAG_FIN)
     {
-      ses->o2i_fin_seq = clib_net_to_host_u32 (tcp->seq_number);
+      ses->o2i_fin_seq = clib_net_to_host_u32 (tcp_seq_number);
       ses->state |= NAT44_SES_O2I_FIN;
     }
-  if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_FIN))
+  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_FIN))
     {
-      if (clib_net_to_host_u32 (tcp->ack_number) > ses->i2o_fin_seq)
+      if (clib_net_to_host_u32 (tcp_ack_number) > ses->i2o_fin_seq)
 	ses->state |= NAT44_SES_I2O_FIN_ACK;
     }
   if (nat44_is_ses_closed (ses))
@@ -466,7 +470,8 @@ make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
 }
 
 static_always_inline int
-get_icmp_i2o_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
+get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0,
+		     nat_ed_ses_key_t * p_key0)
 {
   icmp46_header_t *icmp0;
   nat_ed_ses_key_t key0;
@@ -478,12 +483,13 @@ get_icmp_i2o_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 
-  if (!icmp_is_error_message (icmp0))
+  if (!icmp_type_is_error_message
+      (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
       key0.proto = IP_PROTOCOL_ICMP;
       key0.l_addr = ip0->src_address;
       key0.r_addr = ip0->dst_address;
-      key0.l_port = echo0->identifier;
+      key0.l_port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO should this be src or dst?
       key0.r_port = 0;
     }
   else
@@ -516,7 +522,8 @@ get_icmp_i2o_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
 
 
 static_always_inline int
-get_icmp_o2i_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
+get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0,
+		     nat_ed_ses_key_t * p_key0)
 {
   icmp46_header_t *icmp0;
   nat_ed_ses_key_t key0;
@@ -528,12 +535,13 @@ get_icmp_o2i_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 
-  if (!icmp_is_error_message (icmp0))
+  if (!icmp_type_is_error_message
+      (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
       key0.proto = IP_PROTOCOL_ICMP;
       key0.l_addr = ip0->dst_address;
       key0.r_addr = ip0->src_address;
-      key0.l_port = echo0->identifier;
+      key0.l_port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO should this be src or dst?
       key0.r_port = 0;
     }
   else

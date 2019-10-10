@@ -23,7 +23,6 @@ add_vpp_plugin(nat
   nat_det.c
   nat_det_in2out.c
   nat_det_out2in.c
-  nat_reass.c
   nat_dpo.c
   nat44_cli.c
   nat44_handoff.c
