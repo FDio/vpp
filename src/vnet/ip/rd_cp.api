@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
+
+import "vnet/interface_types.api";
 
 /** \brief Enable/disable IPv6 ND address autoconfiguration
            and setting up default routes
@@ -30,9 +32,9 @@ autoreply define ip6_nd_address_autoconfig
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable;
-  u8 install_default_routes;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;
+  bool install_default_routes;
 };
 
 /*
