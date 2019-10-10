@@ -11281,10 +11281,11 @@ api_set_ipfix_exporter (vat_main_t * vam)
 
   M (SET_IPFIX_EXPORTER, mp);
 
-  memcpy (mp->collector_address, collector_address.data,
+  memcpy (mp->collector_address.un.ip4, collector_address.data,
 	  sizeof (collector_address.data));
   mp->collector_port = htons ((u16) collector_port);
-  memcpy (mp->src_address, src_address.data, sizeof (src_address.data));
+  memcpy (mp->src_address.un.ip4, src_address.data,
+	  sizeof (src_address.data));
   mp->vrf_id = htonl (vrf_id);
   mp->path_mtu = htonl (path_mtu);
   mp->template_interval = htonl (template_interval);
