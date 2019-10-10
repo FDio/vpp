@@ -836,6 +836,11 @@ class TestIPv4MWReassembly(VppTestCase):
         for send_if in self.send_ifs:
             send_if.assert_nothing_captured()
 
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.vapi.cli("clear trace")
+
         self.pg_enable_capture()
         self.send_packets(first_packets)
         self.send_packets(second_packets)
@@ -1463,6 +1468,11 @@ class TestIPv6MWReassembly(VppTestCase):
         self.verify_capture(packets)
         for send_if in self.send_ifs:
             send_if.assert_nothing_captured()
+
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.vapi.cli("clear trace")
 
         self.pg_enable_capture()
         self.send_packets(first_packets)
