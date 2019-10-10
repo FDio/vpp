@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ebe2e579_bc6be778",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-10T00:52:37Z",
+      "side": 1,
+      "message": "Run make fixstyle to clear these",
+      "range": {
+        "startLine": 243,
+        "startChar": 0,
+        "endLine": 243,
+        "endChar": 2
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55381419_51e2ad1d",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-10T00:52:37Z",
+      "side": 1,
+      "message": "no need for this",
+      "range": {
+        "startLine": 526,
+        "startChar": 19,
+        "endLine": 526,
+        "endChar": 22
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd75509a_79a44f15",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2252,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-10T00:52:37Z",
+      "side": 1,
+      "message": "Move to vlib_buffer_push_ip4/6. Also make sure vlib_buffer_push_ip4 doesn\u0027t set VNET_BUFFER_F_L4_HDR_OFFSET_VALID",
+      "range": {
+        "startLine": 2251,
+        "startChar": 0,
+        "endLine": 2252,
+        "endChar": 49
+      },
+      "revId": "3cc8c53a86953145b7714485eeccc7fbfb84f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
