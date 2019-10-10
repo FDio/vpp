@@ -405,7 +405,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 
   tcp_update_rcv_wnd (tc);
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tc->flags |= TCP_CONN_TRACK_BURST;
 
   if (tc->snd_una == tc->snd_nxt)
@@ -499,7 +499,7 @@ static inline u16
 tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u16 checksum = 0;
-  if (PREDICT_FALSE (tc->flags & TCP_CONN_NO_CSUM_OFFLOAD))
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
     {
       tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
       vlib_main_t *vm = wrk->vm;
@@ -867,7 +867,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
       ASSERT ((pkt_ih4->ip_version_and_header_length & 0xF0) == 0x40);
       ih4 = vlib_buffer_push_ip4 (vm, b, &pkt_ih4->dst_address,
 				  &pkt_ih4->src_address, IP_PROTOCOL_TCP,
-				  (!(tc->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
+				  tcp_csum_offload (tc));
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
     }
   else
@@ -934,7 +934,7 @@ tcp_push_ip_hdr (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       ip4_header_t *ih;
       ih = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip4,
 				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP,
-				 (!(tc->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
+				 tcp_csum_offload (tc));
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih);
     }
   else
@@ -1445,7 +1445,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   tc->snd_rxt_bytes += n_bytes;
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
@@ -1777,7 +1777,7 @@ tcp_timer_persist_handler (u32 index)
 			   || tc->snd_nxt == tc->snd_una_max
 			   || tc->rto_boff > 1));
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     {
       tcp_bt_check_app_limited (tc);
       tcp_bt_track_tx (tc);
@@ -2301,8 +2301,7 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 
   if (is_ip4)
     ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-				IP_PROTOCOL_TCP,
-				(!(tc0->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
+				IP_PROTOCOL_TCP, tcp_csum_offload (tc0));
   else
     ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
 				IP_PROTOCOL_TCP);
@@ -2312,8 +2311,9 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 always_inline void
 tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  if (!tc->is_tso)
+  if (PREDICT_TRUE (!(tc->cfg_flags & TCP_CFG_F_TSO)))
     return;
+
   u16 data_len = b->current_length - sizeof (tcp_header_t) - tc->snd_opts_len;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))

@@ -503,7 +503,8 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if ((tc->flags & TCP_CONN_RATE_SAMPLE) && !(rs->flags & TCP_BTS_IS_RXT))
+      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	  && !(rs->flags & TCP_BTS_IS_RXT))
 	{
 	  mrtt = rs->rtt_time * THZ;
 	  goto estimate_rtt;
@@ -1604,7 +1605,7 @@ process_ack:
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
 
   tcp_program_dequeue (wrk, tc);
@@ -2361,10 +2362,9 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
   sw_if_idx = dpo->dpoi_index;
   hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
 
-  tc->is_tso =
-    ((hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0) ? 0 : 1;
+  if (hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+    tc->cfg_flags |= TCP_CFG_F_TSO;
 }
-
 
 always_inline uword
 tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -2582,7 +2582,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
-      tcp_check_tx_offload (new_tc0, is_ip4);
+      if (!(new_tc0->cfg_flags & TCP_CFG_F_NO_TSO))
+	tcp_check_tx_offload (new_tc0, is_ip4);
 
       /* Read data, if any */
       if (PREDICT_FALSE (vnet_buffer (b0)->tcp.data_len))
@@ -2771,7 +2772,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tc0->state = TCP_STATE_ESTABLISHED;
 	  TCP_EVT (TCP_EVT_STATE_CHANGE, tc0);
 
-	  tcp_check_tx_offload (tc0, is_ip4);
+	  if (!(tc0->cfg_flags & TCP_CFG_F_NO_TSO))
+	    tcp_check_tx_offload (tc0, is_ip4);
 
 	  /* Initialize session variables */
 	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
