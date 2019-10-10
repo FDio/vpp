@@ -219,6 +219,13 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
+static_always_inline u32
+vnet_get_feature_count (u8 arc, u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  return (fm->feature_count_by_sw_if_index[arc][sw_if_index]);
+}
+
 static inline vnet_feature_config_main_t *
 vnet_get_feature_arc_config_main (u8 arc_index)
 {
