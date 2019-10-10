@@ -47,6 +47,7 @@
 
 #define foreach_vpe_api_msg                             \
 _(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)               \
+_(GRE_TUNNEL_DEL, gre_tunnel_del)                       \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)
 
 static int
@@ -137,6 +138,18 @@ out:
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_gre_tunnel_del_t_handler (vl_api_gre_tunnel_del_t * mp)
+{
+  vl_api_gre_tunnel_del_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+  rv = vnet_gre_tunnel_delete_by_sw_if_index (ntohl (mp->sw_if_index));
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_GRE_TUNNEL_DEL_REPLY);
 }
 
 static void send_gre_tunnel_details
