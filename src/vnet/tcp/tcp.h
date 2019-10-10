@@ -103,6 +103,29 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
 #define TCP_ESTABLISH_TIME (60 * THZ)	/* Connection establish timeout */
 
+/** Connection configuration flags */
+#define foreach_tcp_cfg_flag 			\
+  _(RATE_SAMPLE, "Rate sampling")		\
+  _(NO_CSUM_OFFLOAD, "No csum offload")    	\
+  _(NO_TSO, "TSO off")				\
+  _(TSO, "TSO")					\
+
+typedef enum tcp_cfg_flag_bits_
+{
+#define _(sym, str) TCP_CFG_F_##sym##_BIT,
+  foreach_tcp_cfg_flag
+#undef _
+  TCP_CFG_N_FLAG_BITS
+} tcp_cfg_flag_bits_e;
+
+typedef enum tcp_cfg_flag_
+{
+#define _(sym, str) TCP_CFG_F_##sym = 1 << TCP_CFG_F_##sym##_BIT,
+  foreach_tcp_cfg_flag
+#undef _
+  TCP_CFG_N_FLAGS
+} tcp_cfg_flags_e;
+
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
@@ -113,16 +136,14 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
   _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Fast-retransmit first again")	\
-  _(DEQ_PENDING, "Pending dequeue acked")	\
+  _(FRXT_FIRST, "Retransmit first")		\
+  _(DEQ_PENDING, "Dequeue pending ")		\
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
-  _(RATE_SAMPLE, "Conn does rate sampling")	\
   _(TRACK_BURST, "Track burst")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
-  _(NO_CSUM_OFFLOAD, "No Checksum Offload")     \
 
-typedef enum _tcp_connection_flag_bits
+typedef enum tcp_connection_flag_bits_
 {
 #define _(sym, str) TCP_CONN_##sym##_BIT,
   foreach_tcp_connection_flag
@@ -130,7 +151,7 @@ typedef enum _tcp_connection_flag_bits
   TCP_CONN_N_FLAG_BITS
 } tcp_connection_flag_bits_e;
 
-typedef enum _tcp_connection_flag
+typedef enum tcp_connection_flag_
 {
 #define _(sym, str) TCP_CONN_##sym = 1 << TCP_CONN_##sym##_BIT,
   foreach_tcp_connection_flag
@@ -310,7 +331,7 @@ typedef struct _tcp_connection
   transport_connection_t connection;  /**< Common transport data. First! */
 
   u8 state;			/**< TCP state as per tcp_state_t */
-  u8 is_tso;	  /** is connection could use tso */
+  u8 cfg_flags;			/**< Connection configuration flags */
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
 
@@ -451,6 +472,8 @@ struct _tcp_cc_algorithm
 #define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
 	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
 
+#define tcp_csum_offload(tc) (!((tc)->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+
 always_inline void
 tcp_cong_recovery_off (tcp_connection_t * tc)
 {
@@ -533,6 +556,9 @@ typedef struct tcp_configuration_
 
   /** Enable tx pacing for new connections */
   u8 enable_tx_pacing;
+
+  /** Allow use of TSO whenever available */
+  u8 allow_tso;
 
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
