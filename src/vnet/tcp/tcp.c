@@ -271,7 +271,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
-      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
 
       /* Poison the entry */
@@ -737,8 +737,11 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
+
+  if (!tcp_cfg.allow_tso)
+    tc->cfg_flags |= TCP_CFG_F_NO_TSO;
 
   tc->start_ts = tcp_time_now_us (tc->c_thread_index);
 }
@@ -1209,10 +1212,8 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
    * the current state of the connection. */
   tcp_update_burst_snd_vars (tc);
 
-  if (PREDICT_FALSE (tc->is_tso))
-    {
-      return tcp_session_cal_goal_size (tc);
-    }
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
+    return tcp_session_cal_goal_size (tc);
 
   return tc->snd_mss;
 }
@@ -1611,6 +1612,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.allow_tso = 0;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
   tcp_cfg.rwnd_min_update_ack = 1;
 
@@ -1734,6 +1736,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.initial_cwnd_multiplier = cwnd_multiplier;
       else if (unformat (input, "no-tx-pacing"))
 	tcp_cfg.enable_tx_pacing = 0;
+      else if (unformat (input, "tso"))
+	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tcp_cfg.cc_algo))
 	;
