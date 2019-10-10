@@ -57,6 +57,14 @@
 #define GTPU_EXTHDR_FLAG		0x04
 #define GTPU_EXTHDR_PDU_SESSION		0x85
 
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define BITALIGN2(A,B)		A; B
+#define BITALIGN3(A,B,C)	A; B; C
+#else
+#define BITALIGN2(A,B)		B; A
+#define BITALIGN3(A,B,C)	C; B; A
+#endif
+
 /* *INDENT-OFF* */
 typedef struct
 {
@@ -88,8 +96,9 @@ typedef struct
 /* *INDENT-OFF* */
 typedef struct
 {
-  u8 ppi:3;
-  u8 spare:5;
+  BITALIGN2 (u8 ppi:3;
+             u8 spare:5);
+
   u8 padding[3];
 } __attribute__ ((packed)) gtpu_paging_policy_t;
 /* *INDENT-ON* */
@@ -98,13 +107,13 @@ typedef struct
 typedef struct
 {
   u8 exthdrlen;
-  u8 type:4;
-  u8 spare:4;
+  BITALIGN2(u8 type:4;
+            u8 spare:4);
   union {
     struct gtpu_qfi_bits {
-      u8 p:1;
-      u8 r:1;
-      u8 qfi:6;
+      BITALIGN3(u8 p:1;
+                u8 r:1;
+                u8 qfi:6);
     } bits;
 
     u8 val;
