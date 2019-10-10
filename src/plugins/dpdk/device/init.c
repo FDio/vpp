@@ -748,22 +748,21 @@ dpdk_lib_init (dpdk_main_t * dm)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 
-    if (devconf->tso == DPDK_DEVICE_TSO_ON)
-    {
-      if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
-      {
-        /*tcp_udp checksum must be enabled*/
-        if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
-        {
-          hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-          vnm->interface_main.gso_interface_count++;
-          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
-                                   DEV_TX_OFFLOAD_UDP_TSO;
-        }
-        else
-          return clib_error_return (0, "TSO: TCP/UDP checksum offload must be enabled");
-      }
-    }
+      if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
+	{
+	  /*tcp_udp checksum must be enabled*/
+	  if ((dm->conf->enable_tcp_udp_checksum) &&
+	      (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD))
+	    {
+		hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+		vnm->interface_main.gso_interface_count++;
+		xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
+		  DEV_TX_OFFLOAD_UDP_TSO;
+	    }
+	  else
+	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",
+	      hi->name);
+	}
 
       dpdk_device_setup (xd);
 
