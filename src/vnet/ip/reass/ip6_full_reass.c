@@ -215,6 +215,9 @@ typedef struct
   u32 total_data_len;
   u32 thread_id;
   u32 thread_id_to;
+  bool is_after_handoff;
+  ip6_header_t ip6_header;
+  ip6_frag_hdr_t ip6_frag_header;
 } ip6_full_reass_trace_t;
 
 static void
@@ -251,7 +254,19 @@ format_ip6_full_reass_trace (u8 * s, va_list * args)
   u32 indent = 0;
   if (~0 != t->reass_id)
     {
-      s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
+      if (t->is_after_handoff)
+	{
+	  s =
+	    format (s, "%U\n", format_ip6_header, &t->ip6_header,
+		    sizeof (t->ip6_header));
+	  s =
+	    format (s, "  %U\n", format_ip6_frag_hdr, &t->ip6_frag_header,
+		    sizeof (t->ip6_frag_header));
+	  indent = 2;
+	}
+      s =
+	format (s, "%Ureass id: %u, op id: %u, ", format_white_space, indent,
+		t->reass_id, t->op_id);
       indent = format_get_indent (s);
       s = format (s, "first bi: %u, data len: %u, ip/fragment[%u, %u]",
 		  t->trace_range.first_bi, t->total_data_len,
@@ -297,12 +312,33 @@ static void
 ip6_full_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  ip6_full_reass_main_t * rm,
 			  ip6_full_reass_t * reass, u32 bi,
+			  ip6_frag_hdr_t * ip6_frag_header,
 			  ip6_full_reass_trace_operation_e action,
 			  u32 thread_id_to)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  bool is_after_handoff = false;
+  if (vlib_buffer_get_trace_thread (b) != vm->thread_index)
+    {
+      is_after_handoff = true;
+    }
   ip6_full_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+  t->is_after_handoff = is_after_handoff;
+  if (t->is_after_handoff)
+    {
+      clib_memcpy (&t->ip6_header, vlib_buffer_get_current (b),
+		   clib_min (sizeof (t->ip6_header), b->current_length));
+      if (ip6_frag_header)
+	{
+	  clib_memcpy (&t->ip6_frag_header, ip6_frag_header,
+		       sizeof (t->ip6_frag_header));
+	}
+      else
+	{
+	  clib_memset (&t->ip6_frag_header, 0, sizeof (t->ip6_frag_header));
+	}
+    }
   if (reass)
     {
       t->reass_id = reass->id;
@@ -434,7 +470,7 @@ ip6_full_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ip6_full_reass_add_trace (vm, node, rm, reass, reass->first_bi,
-					ICMP_ERROR_RT_EXCEEDED, ~0);
+					NULL, ICMP_ERROR_RT_EXCEEDED, ~0);
 	    }
 	  // fragment with offset zero received - send icmp message back
 	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -721,7 +757,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   first_b->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
-      ip6_full_reass_add_trace (vm, node, rm, reass, reass->first_bi,
+      ip6_full_reass_add_trace (vm, node, rm, reass, reass->first_bi, NULL,
 				FINALIZE, ~0);
 #if 0
       // following code does a hexdump of packet fragments to stdout ...
@@ -889,7 +925,7 @@ ip6_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  // overlapping fragment - not allowed by RFC 8200
 	  if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ip6_full_reass_add_trace (vm, node, rm, reass, *bi0,
+	      ip6_full_reass_add_trace (vm, node, rm, reass, *bi0, frag_hdr,
 					RANGE_OVERLAP, ~0);
 	    }
 	  ip6_full_reass_drop_all (vm, node, rm, reass);
@@ -906,7 +942,8 @@ check_if_done_maybe:
     {
       if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip6_full_reass_add_trace (vm, node, rm, reass, *bi0, RANGE_NEW, ~0);
+	  ip6_full_reass_add_trace (vm, node, rm, reass, *bi0, frag_hdr,
+				    RANGE_NEW, ~0);
 	}
     }
   if (~0 != reass->last_packet_octet &&
@@ -1175,7 +1212,7 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		    {
 		      ip6_full_reass_add_trace (vm, node, rm, NULL, bi0,
-						HANDOFF,
+						frag_hdr, HANDOFF,
 						vnet_buffer (b0)->ip.
 						reass.owner_thread_index);
 		    }

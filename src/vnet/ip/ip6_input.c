@@ -247,25 +247,6 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
 };
 /* *INDENT-ON* */
 
-static u8 *
-format_ipv6_fragmentation (u8 * s, va_list * args)
-{
-  ip6_frag_hdr_t *h = va_arg (*args, ip6_frag_hdr_t *);
-  u32 max_header_bytes = va_arg (*args, u32);
-  u32 header_bytes;
-
-  header_bytes = sizeof (h[0]);
-  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
-    return format (s, "ipv6 frag header truncated");
-
-  s =
-    format (s,
-	    "fragmentation header: next_hdr: %u, rsv: %u, frag_offset_and_more: %u, id: %u",
-	    h->next_hdr, h->rsv, h->fragment_offset_and_more,
-	    clib_net_to_host_u32 (h->identification));
-  return s;
-}
-
 static clib_error_t *
 ip6_init (vlib_main_t * vm)
 {
@@ -292,7 +273,7 @@ ip6_init (vlib_main_t * vm)
       ip_protocol_info_t *info =
 	vec_elt_at_index (ip_main.protocol_infos, *u);
       ASSERT (NULL == info->format_header);
-      info->format_header = format_ipv6_fragmentation;
+      info->format_header = format_ip6_frag_hdr;
     }
   return /* no error */ 0;
 }
