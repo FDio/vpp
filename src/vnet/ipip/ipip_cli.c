@@ -160,7 +160,7 @@ VLIB_CLI_COMMAND(create_ipip_tunnel_command, static) = {
 };
 VLIB_CLI_COMMAND(delete_ipip_tunnel_command, static) = {
     .path = "delete ipip tunnel",
-    .short_help = "delete ipip tunnel sw_if_index <sw_if_index ",
+    .short_help = "delete ipip tunnel sw_if_index <sw_if_index>",
     .function = delete_ipip_tunnel_command_fn,
 };
 /* *INDENT-ON* */
@@ -345,13 +345,13 @@ done:
 VLIB_CLI_COMMAND(create_sixrd_tunnel_command, static) = {
     .path = "create 6rd tunnel",
     .short_help = "create 6rd tunnel ip6-pfx <ip6-pfx> ip4-pfx <ip4-pfx> "
-                  "ip4-src <ip4-addr> ip4-table-id <ID> ip6-table-id <ID>"
+                  "ip4-src <ip4-addr> ip4-table-id <ID> ip6-table-id <ID> "
                   "[security-check]",
     .function = create_sixrd_tunnel_command_fn,
 };
 VLIB_CLI_COMMAND(delete_sixrd_tunnel_command, static) = {
     .path = "delete 6rd tunnel",
-    .short_help = "delete 6rd tunnel sw_if_index <sw_if_index",
+    .short_help = "delete 6rd tunnel sw_if_index <sw_if_index>",
     .function = delete_sixrd_tunnel_command_fn,
 };
 /* *INDENT-ON* */
