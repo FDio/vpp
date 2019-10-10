@@ -274,6 +274,11 @@ I:	geneve
 M:	N/A
 F:	src/vnet/geneve/
 
+VNET GRE
+I:	gre
+M:	N/A
+F:	src/vnet/gre/
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
