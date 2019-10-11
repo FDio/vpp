@@ -240,7 +240,7 @@ class TestIPv6(TestIPv6ND):
         :param int packet_size: Required packet size.
         :param Scapy pkt: Packet to be modified.
         """
-        dst_if_idx = packet_size / 10 % 2
+        dst_if_idx = int(packet_size / 10 % 2)
         dst_if = self.flows[src_if][dst_if_idx]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
@@ -884,7 +884,8 @@ class TestIPv6(TestIPv6ND):
             A=1),
             ICMPv6NDOptPrefixInfo(
                 prefixlen=self.pg1.local_ip6_prefix_len,
-                prefix=self.pg1.local_ip6,
+                prefix=self.pg1.local_ip6,:1
+
                 L=0,
                 A=0)]
 
