@@ -299,8 +299,8 @@ typedef struct
   u64 bytes_to_receive;		/* target per stream */
   u32 fifo_size;
   u32 prealloc_fifo_pairs;
-  u32 rx_buf_size;
-  u32 tx_buf_size;
+  u64 rx_buf_size;
+  u64 tx_buf_size;
   data_source_t data_source;	/* Use no/dummy/mirrored data */
   u8 send_stream_disconnects;	/* actively send disconnect */
   u8 output_json;		/* Output stats as JSON */
@@ -371,7 +371,6 @@ typedef struct
 u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ip6_address (u8 * s, va_list * args);
 u8 *format_ip46_address (u8 * s, va_list * args);
-uword unformat_data (unformat_input_t * input, va_list * args);
 u8 *format_api_error (u8 * s, va_list * args);
 void init_error_string_table ();
 u8 *echo_format_session (u8 * s, va_list * args);
