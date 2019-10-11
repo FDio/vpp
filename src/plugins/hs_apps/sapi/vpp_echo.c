@@ -950,9 +950,11 @@ echo_process_opts (int argc, char **argv)
 	em->fifo_size = tmp << 10;
       else if (unformat (a, "prealloc-fifos %u", &em->prealloc_fifo_pairs))
 	;
-      else if (unformat (a, "rx-buf %U", unformat_data, &em->rx_buf_size))
+      else
+	if (unformat (a, "rx-buf %U", unformat_data_size, &em->rx_buf_size))
 	;
-      else if (unformat (a, "tx-buf %U", unformat_data, &em->tx_buf_size))
+      else
+	if (unformat (a, "tx-buf %U", unformat_data_size, &em->tx_buf_size))
 	;
       else if (unformat (a, "mq-size %d", &em->evt_q_size))
 	;
@@ -981,9 +983,10 @@ echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "TX=RX"))
 	em->data_source = ECHO_RX_DATA_SOURCE;
-      else if (unformat (a, "TX=%U", unformat_data, &em->bytes_to_send))
+      else if (unformat (a, "TX=%U", unformat_data_size, &em->bytes_to_send))
 	;
-      else if (unformat (a, "RX=%U", unformat_data, &em->bytes_to_receive))
+      else if (unformat (a, "RX=%U", unformat_data_size,
+			 &em->bytes_to_receive))
 	;
       else if (unformat (a, "rx-results-diff"))
 	em->rx_results_diff = 1;
