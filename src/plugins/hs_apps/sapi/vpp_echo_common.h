@@ -108,15 +108,15 @@ extern char *echo_fail_code_str[];
 #define CHECK_SAME(fail, expected, result, _fmt, _args...)      \
 do {                                                            \
   if ((expected) != (result))                                   \
-    ECHO_FAIL ((fail), "expected same (%d, got %d) : "_fmt,     \
-               (expected), (result), ##_args);                  \
+    ECHO_FAIL ((fail), "expected same (%lld, got %lld) : "_fmt, \
+               (u64)(expected), (u64)(result), ##_args);        \
 } while (0)
 
 #define CHECK_DIFF(fail, expected, result, _fmt, _args...)      \
 do {                                                            \
   if ((expected) == (result))                                   \
-    ECHO_FAIL ((fail), "expected different (both %d) : "_fmt,   \
-               (expected), ##_args);                            \
+    ECHO_FAIL ((fail), "expected different (both %lld) : "_fmt, \
+               (u64)(expected), ##_args);                       \
 } while (0)
 
 #define ECHO_FAIL(fail, _fmt, _args...)                                 \
@@ -124,10 +124,10 @@ do {                                                                    \
     echo_main_t *em = &echo_main;                                       \
     em->has_failed = (fail);                                            \
     if (vec_len(em->fail_descr))                                        \
-      em->fail_descr = format(em->fail_descr, " | %s (%d): "_fmt,       \
+      em->fail_descr = format(em->fail_descr, " | %s (%u): "_fmt,       \
                               echo_fail_code_str[fail], fail, ##_args); \
     else                                                                \
-      em->fail_descr = format(0, "%s (%d): "_fmt,                       \
+      em->fail_descr = format(0, "%s (%u): "_fmt,                       \
                               echo_fail_code_str[fail], fail, ##_args); \
     em->time_to_stop = 1;                                               \
     if (em->log_lvl > 0)                                                \
@@ -333,6 +333,8 @@ typedef struct
   {
     u64 tx_total;
     u64 rx_total;
+    u64 tx_expected;
+    u64 rx_expected;
     teardown_stat_t reset_count;	/* received reset from vpp */
     teardown_stat_t close_count;	/* received close from vpp */
     teardown_stat_t active_count;	/* sent close to vpp */

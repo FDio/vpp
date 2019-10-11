@@ -43,22 +43,18 @@ static void
 echo_assert_test_suceeded (echo_main_t * em)
 {
   if (em->rx_results_diff)
-    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
-		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
-		"Invalid amount of data received");
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_RX_TOTAL, em->stats.rx_expected,
+		em->stats.rx_total, "Invalid amount of data received");
   else
-    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
-		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
-		"Invalid amount of data received");
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_RX_TOTAL, em->stats.rx_expected,
+		em->stats.rx_total, "Invalid amount of data received");
 
   if (em->tx_results_diff)
-    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
-		em->n_clients * em->bytes_to_send, em->stats.tx_total,
-		"Invalid amount of data sent");
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_TX_TOTAL, em->stats.tx_expected,
+		em->stats.tx_total, "Invalid amount of data sent");
   else
-    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
-		em->n_clients * em->bytes_to_send, em->stats.tx_total,
-		"Invalid amount of data sent");
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_TX_TOTAL, em->stats.tx_expected,
+		em->stats.tx_total, "Invalid amount of data sent");
 
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
   CHECK_SAME (ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,
@@ -242,8 +238,7 @@ echo_update_count_on_session_close (echo_main_t * em, echo_session_t * s)
   clib_atomic_fetch_add (&em->stats.tx_total, s->bytes_sent);
   clib_atomic_fetch_add (&em->stats.rx_total, s->bytes_received);
 
-  if (PREDICT_FALSE (em->stats.rx_total ==
-		     em->n_clients * em->bytes_to_receive))
+  if (PREDICT_FALSE (em->stats.rx_total == em->stats.rx_expected))
     echo_notify_event (em, ECHO_EVT_LAST_BYTE);
 }
 
@@ -1117,6 +1112,9 @@ main (int argc, char **argv)
     }
   if (em->proto_cb_vft->set_defaults_after_opts_cb)
     em->proto_cb_vft->set_defaults_after_opts_cb ();
+
+  em->stats.rx_expected = em->bytes_to_receive * em->n_clients;
+  em->stats.tx_expected = em->bytes_to_send * em->n_clients;
 
   vec_validate (em->data_thread_handles, em->n_rx_threads);
   vec_validate (em->data_thread_args, em->n_clients);
