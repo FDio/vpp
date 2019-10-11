@@ -228,7 +228,6 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 	      n_this_buffer = n_ip_bytes_this_buffer - ip_header_size;
 	      if (PREDICT_FALSE (n_this_buffer >> 31))
 		{		/*  error - ip header don't fit this buffer */
-		  ASSERT (0);
 		  return 0xfefe;
 		}
 	    }
@@ -250,7 +249,6 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
       if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
-	  ASSERT (0);		/* error - more buffer expected */
 	  return 0xfefe;
 	}
 
