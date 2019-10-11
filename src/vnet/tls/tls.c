@@ -386,7 +386,10 @@ tls_session_disconnect_callback (session_t * tls_session)
   TLS_DBG (1, "TCP disconnecting handle %x session %u", tls_session->opaque,
 	   tls_session->session_index);
 
-  ctx = tls_ctx_get (tls_session->opaque);
+  ASSERT (tls_session->thread_index == vlib_get_thread_index ()
+	  || vlib_thread_is_main_w_barrier ());
+
+  ctx = tls_ctx_get_w_thread (tls_session->opaque, tls_session->thread_index);
   ctx->is_passive_close = 1;
   tls_ctx_transport_close (ctx);
 }
