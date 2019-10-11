@@ -100,7 +100,7 @@ class TestIPv4(VppTestCase):
         :param int packet_size: Required packet size.
         :param Scapy pkt: Packet to be modified.
         """
-        dst_if_idx = packet_size / 10 % 2
+        dst_if_idx = int(packet_size / 10 % 2)
         dst_if = self.flows[src_if][dst_if_idx]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
@@ -1938,7 +1938,7 @@ class TestIPv4Frag(VppTestCase):
         packets = self.dst_if.get_capture(3)
 
         # Assume VPP sends the fragments in order
-        payload = ''
+        payload = b''
         for p in packets:
             payload_offset = p.frag * 8
             if payload_offset > 0:
