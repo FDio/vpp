@@ -241,7 +241,7 @@ class TestIPv6(TestIPv6ND):
         :param Scapy pkt: Packet to be modified.
         """
         dst_if_idx = packet_size / 10 % 2
-        dst_if = self.flows[src_if][dst_if_idx]
+        dst_if = self.flows[src_if][int(dst_if_idx)]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
         p = pkt / Raw(payload)
