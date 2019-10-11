@@ -1579,7 +1579,7 @@ class Program(object):
         self.containers.build(self.path, self.vpp_path)
 
     def release_image(self):
-        print("VPP Path (release): {}".format(self.vpppath))
+        print("VPP Path (release): {}".format(self.vpp_path))
         instance = self.containers.new("release-build")
 
         system("docker cp release-build:{}/vpp-package.tgz {}/".format(self.vpp_path, self.vpp_path))
