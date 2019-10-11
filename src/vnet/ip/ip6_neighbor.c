@@ -4877,35 +4877,48 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *error = 0;
   ip6_address_t addr;
   u32 sw_if_index;
   u8 is_del = 0;
+  int rv;
 
-  if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "Missing interface");
+
+  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    return unformat_parse_error (input);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      /* get the rest of the command */
-      while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (input, "%U", unformat_ip6_address, &addr))
-	    break;
-	  else if (unformat (input, "delete") || unformat (input, "del"))
-	    is_del = 1;
-	  else
-	    return (unformat_parse_error (input));
-	}
+      if (unformat (input, "%U", unformat_ip6_address, &addr))
+        goto done;
+      else if (unformat (input, "delete") || unformat (input, "del"))
+        is_del = 1;
+      else
+        return unformat_parse_error (input);
+    }
+  return clib_error_return (0, "Missing ip6 address");
+
+done:
+  rv = ip6_neighbor_proxy_add_del (sw_if_index, &addr, is_del);
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_NO_SUCH_FIB:
+      return clib_error_return (0, "No such FIB");
+    default:
+      return clib_error_return (0, "Unknown error");
     }
 
-  ip6_neighbor_proxy_add_del (sw_if_index, &addr, is_del);
-
-  return error;
+  return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
 {
   .path = "set ip6 nd proxy",
-  .short_help = "set ip6 nd proxy <HOST> <INTERFACE>",
+  .short_help = "set ip6 nd proxy <interface> [del] <host>",
   .function = set_ip6_nd_proxy_cmd,
 };
 /* *INDENT-ON* */
