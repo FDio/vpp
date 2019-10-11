@@ -420,8 +420,8 @@ class QUICEchoExtServerStreamWorkersTestCase(QUICEchoExtTestCase):
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_ext_transfer_server_stream_multi_workers(self):
-        self.server("nclients", "4/4", "TX=10Mb", "RX=0")
-        self.client("nclients", "4/4", "TX=0", "RX=10Mb")
+        self.server("nclients", "4", "quic-streams", "4", "TX=10Mb", "RX=0")
+        self.client("nclients", "4", "quic-streams", "4", "TX=0", "RX=10Mb")
         self.validate_ext_test_results()
 
 

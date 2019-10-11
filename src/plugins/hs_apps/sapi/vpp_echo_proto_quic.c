@@ -433,9 +433,8 @@ quic_echo_unformat_setup_vft (unformat_input_t * input, va_list * args)
 static int
 quic_echo_process_opts_cb (unformat_input_t * a)
 {
-  echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  if (unformat (a, "nclients %d/%d", &em->n_clients, &eqm->n_stream_clients))
+  if (unformat (a, "quic-streams %d", &eqm->n_stream_clients))
     ;
   else if (unformat (a, "quic-setup %U", quic_echo_unformat_setup_vft))
     ;
