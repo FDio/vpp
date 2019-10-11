@@ -1017,7 +1017,7 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
 					   mp->queue_id_valid,
 					   ntohl (mp->queue_id),
 					   (vnet_hw_interface_rx_mode)
-					   mp->mode);
+					   ntohl(mp->mode));
 
   if (error)
     {
