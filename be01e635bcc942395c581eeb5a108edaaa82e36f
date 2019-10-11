@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1db761ed_2a0812c9",
+        "filename": "src/vnet/ip/rd_cp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-11T16:37:14Z",
+      "side": 1,
+      "message": "Alright, this type of error is frequent enough to warrant a measure of prevention.\nOpened VPP-1789.",
+      "range": {
+        "startLine": 646,
+        "startChar": 2,
+        "endLine": 646,
+        "endChar": 13
+      },
+      "revId": "be01e635bcc942395c581eeb5a108edaaa82e36f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
