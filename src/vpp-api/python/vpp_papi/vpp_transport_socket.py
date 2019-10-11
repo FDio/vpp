@@ -188,31 +188,37 @@ class VppTransport(object):
 
         # Send header
         header = self.header.pack(0, len(buf), 0)
-        n = self.socket.send(header)
-        n = self.socket.send(buf)
-        if n == 0:
-            raise VppTransportSocketIOError(1, 'Not connected')
+        if self.socket.sendall(header) is None:
+            raise VppTransportSocketIOError(1, 'Failed to send')
+        if self.socket.sendall(buf) is None:
+            raise VppTransportSocketIOError(1, 'Failed to send')
+
+    def _read_fixed(self, size):
+        """Repeat receive until fixed size is read. Return empty on error."""
+        buf = bytearray(size)
+        view = memoryview(buf)
+        left = size
+        while 1:
+            got = self.socket.recv_into(view, left)
+            if got <= 0:
+                # Read error.
+                return ""
+            if got >= left:
+                # TODO: Raise if got > left?
+                break
+            left -= got
+            view = view[got:]
+        return buf
 
     def _read(self):
-        hdr = self.socket.recv(16)
+        """Read single complete message, return it or empty on error."""
+        hdr = self._read_fixed(16)
         if not hdr:
             return
         (_, hdrlen, _) = self.header.unpack(hdr)  # If at head of message
 
         # Read rest of message
-        msg = self.socket.recv(hdrlen)
-        if hdrlen > len(msg):
-            nbytes = len(msg)
-            buf = bytearray(hdrlen)
-            view = memoryview(buf)
-            view[:nbytes] = msg
-            view = view[nbytes:]
-            left = hdrlen - nbytes
-            while left:
-                nbytes = self.socket.recv_into(view, left)
-                view = view[nbytes:]
-                left -= nbytes
-            return buf
+        msg = self._read_fixed(hdrlen)
         if hdrlen == len(msg):
             return msg
         raise VppTransportSocketIOError(1, 'Unknown socket read error')
