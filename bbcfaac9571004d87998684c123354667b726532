@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "330a7cfe_6445390d",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1137,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-11T18:47:46Z",
+      "side": 0,
+      "message": "Can you explain how this parses a generic IPV6 extension header chain?",
+      "revId": "bbcfaac9571004d87998684c123354667b726532",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
