@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9fc2da9d_121b809f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-11T13:36:21Z",
+      "side": 1,
+      "message": "Not tested yet. Maybe this is not the fix needed, but should not hurt.",
+      "range": {
+        "startLine": 19,
+        "startChar": 8,
+        "endLine": 19,
+        "endChar": 16
+      },
+      "revId": "1f600f8354843544cd020c8846b529e18376f54e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
