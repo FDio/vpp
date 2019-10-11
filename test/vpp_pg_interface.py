@@ -295,6 +295,20 @@ class VppPGInterface(VppInterface):
                 raise AssertionError("Capture file present for interface %s" %
                                      self.name)
 
+    def wait_for_pg_stop(self):
+        # wait till packet-generator is stopped
+        # "show packet-generator" while it is still running gives this:
+        # Name               Enabled        Count     Parameters
+        # pcap0-sw_if_inde     Yes           64       limit 64, ...
+        #
+        # also have a 5-minute timeout just in case things go terribly wrong...
+        deadline = time.time() + 300
+        while self.test.vapi.cli('show packet-generator').find("Yes") != -1:
+            self._test.sleep(0.01)  # yield
+            if time.time() > deadline:
+                self.test.logger.debug("Timeout waiting for pg to stop")
+                break
+
     def wait_for_capture_file(self, timeout=1):
         """
         Wait until pcap capture file appears
@@ -303,6 +317,7 @@ class VppPGInterface(VppInterface):
 
         :returns: True/False if the file is present or appears within timeout
         """
+        self.wait_for_pg_stop()
         deadline = time.time() + timeout
         if not os.path.isfile(self.out_path):
             self.test.logger.debug("Waiting for capture file %s to appear, "
