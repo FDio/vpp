@@ -863,7 +863,8 @@ session_transport_delete_notify (transport_connection_t * tc)
       /* Session was created but accept notification was not yet sent to the
        * app. Cleanup everything. */
       session_lookup_del_session (s);
-      session_free_w_fifos (s);
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      session_free (s);
       break;
     case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
