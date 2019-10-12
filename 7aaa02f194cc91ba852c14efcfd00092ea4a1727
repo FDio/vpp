@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "adf808d2_fa20dc75",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 963,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-12T17:16:51Z",
+      "side": 1,
+      "message": "There should be no reset notification on a session that doesn\u0027t have fifos. So what is the exact scenario?\n\nIf this is a reset that wants to propagate from tls to the app on a session that\u0027s not yet been established, i.e., handshake has not completed, that needs to be handled in tls. For instance, if a connect from the app into tls is about to be reset, tls needs to generate a connect failed, not a reset notify. TLS can generate a reset notify only if the session was previously established, i.e., the app was notified that the session was connected.",
+      "range": {
+        "startLine": 959,
+        "startChar": 0,
+        "endLine": 963,
+        "endChar": 5
+      },
+      "revId": "7aaa02f194cc91ba852c14efcfd00092ea4a1727",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c1d525d9_21667bc6",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-12T17:16:51Z",
+      "side": 1,
+      "message": "How could the tcp session be in created state? If the session is reset before it\u0027s established, tls should get a connect fail.",
+      "range": {
+        "startLine": 501,
+        "startChar": 1,
+        "endLine": 502,
+        "endChar": 11
+      },
+      "revId": "7aaa02f194cc91ba852c14efcfd00092ea4a1727",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
