@@ -956,6 +956,11 @@ session_transport_reset_notify (transport_connection_t * tc)
   session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (!s->tx_fifo))
+    {
+      session_free (s);
+      return;
+    }
   svm_fifo_dequeue_drop_all (s->tx_fifo);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;

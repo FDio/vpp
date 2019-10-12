@@ -498,6 +498,9 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     return;
 
+  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CREATED))
+    return;
+
   ctx = tls_ctx_get (s->opaque);
   if (!ctx->no_app_session)
     session_transport_delete_notify (&ctx->connection);
