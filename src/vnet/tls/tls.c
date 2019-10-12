@@ -358,10 +358,18 @@ void
 tls_session_reset_callback (session_t * s)
 {
   tls_ctx_t *ctx;
+  transport_connection_t *tc;
+  session_t *app_session;
 
   ctx = tls_ctx_get (s->opaque);
-  session_transport_reset_notify (&ctx->connection);
-  session_transport_closed_notify (&ctx->connection);
+  tc = &ctx->connection;
+  if (tls_ctx_handshake_is_over (ctx))
+    {
+      session_transport_reset_notify (tc);
+      session_transport_closed_notify (tc);
+    }
+  else if ((app_session = session_get (tc->s_index, tc->thread_index)))
+    session_free (app_session);
   tls_disconnect_transport (ctx);
 }
 
