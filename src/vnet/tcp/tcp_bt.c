@@ -154,17 +154,24 @@ bt_fix_overlapped (tcp_byte_tracker_t * bt, tcp_bt_sample_t * start,
   tcp_bt_sample_t *cur, *next;
 
   cur = start;
-  while ((next = bt_next_sample (bt, cur)) && seq_lt (next->min_seq, seq))
+  while ((next = bt_next_sample (bt, cur)))
     {
+      if (seq_gt (next->min_seq, seq))
+	break;
+
       bt_free_sample (bt, cur);
+
+      if (next->min_seq == seq)
+	return next;
+
       cur = next;
     }
 
-  if (next)
-    {
-      bt_free_sample (bt, cur);
-      return next;
-    }
+//  if (next)
+//    {
+//      bt_free_sample (bt, cur);
+//      return next;
+//    }
 
   /* Overlapping current entirely */
   if (is_end)
@@ -298,16 +305,18 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   u32 bts_index, cur_index, next_index, prev_index, min_seq;
   u8 is_end = end == tc->snd_nxt;
 
-  bts = bt_get_sample (bt, bt->last_ooo);
-  if (bts && bts->max_seq == start)
-    {
-      bts->max_seq = end;
-      next = bt_next_sample (bt, bts);
-      if (next)
-	bt_fix_overlapped (bt, next, end, is_end);
-
-      return;
-    }
+  /* Contiguous blocks retransmitted at the same time */
+//  bts = bt_get_sample (bt, bt->last_ooo);
+//  if (bts && bts->max_seq == start
+//      && bts->tx_time == tcp_time_now_us (tc->c_thread_index))
+//    {
+//      bts->max_seq = end;
+//      next = bt_next_sample (bt, bts);
+//      if (next)
+//      bt_fix_overlapped (bt, next, end, is_end);
+//
+//      return;
+//    }
 
   /* Find original tx sample */
   bts = bt_lookup_seq (bt, start);
@@ -422,12 +431,24 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
   if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
     return;
 
+  if (bts->flags & 4)
+    return;
+
   rs->prior_delivered = bts->delivered;
   rs->prior_time = bts->delivered_time;
   rs->interval_time = bts->tx_time - bts->first_tx_time;
   rs->rtt_time = bts->tx_time;
   rs->flags = bts->flags;
   tc->first_tx_time = bts->tx_time;
+
+  f64 ackt = tc->delivered_time - rs->prior_time;
+  if (clib_max (ackt, rs->interval_time) < 0.07)
+    {
+      clib_warning("ack time %.3f send time %.3f rxt %u acked %u", ackt,
+	           rs->interval_time, rs->flags & TCP_BTS_IS_RXT,
+	           tc->bytes_acked);
+      os_panic ();
+    }
 }
 
 static void
@@ -484,27 +505,40 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       if (!cur)
 	continue;
 
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
-
       /* Current shouldn't be removed */
       if (cur->min_seq != blk->start)
 	{
+	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
 	  cur = bt_next_sample (bt, cur);
-	  if (!cur)
+	  if (!cur || seq_geq (cur->min_seq, blk->end))
 	    continue;
 	}
 
-      while ((next = bt_get_sample (bt, cur->next))
-	     && seq_lt (next->min_seq, blk->end))
+      while (cur)
 	{
-	  bt_free_sample (bt, cur);
-	  tcp_bt_sample_to_rate_sample (tc, next, rs);
+	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
+
+	  next = bt_next_sample (bt, cur);
+	  if (!next || seq_gt (next->min_seq, blk->end))
+	    break;
+
+	  cur->flags |= 4;
+//	  bt_free_sample (bt, cur);
+
+	  if (next->min_seq == blk->end)
+	    break;
+
 	  cur = next;
 	}
 
       /* Current consumed entirely */
-      if (next && next->min_seq == blk->end)
-	bt_free_sample (bt, cur);
+      if (((cur->flags & TCP_BTS_IS_RXT) && seq_leq (cur->max_seq, blk->end))
+	  || blk->end == tc->snd_nxt)
+	cur->flags |= 4;
+//	bt_free_sample (bt, cur);
+
+//      if (cur && cur->min_seq == blk->end)
+//      bt_free_sample (bt, cur);
     }
 }
 
@@ -532,6 +566,12 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tc->sack_sb.last_sacked_bytes)
     tcp_bt_walk_samples_ooo (tc, rs);
+
+  f64 ackt = tc->delivered_time - rs->prior_time;
+  f64 sendt = rs->interval_time;
+  if (clib_max (ackt, sendt) < 0.07)
+    clib_warning ("ack time %.3f send time %.3f rxt %u acked %u", ackt, sendt,
+		  rs->flags & TCP_BTS_IS_RXT, tc->bytes_acked);
 
   rs->interval_time = clib_max (tc->delivered_time - rs->prior_time,
 				rs->interval_time);
