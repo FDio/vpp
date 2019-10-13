@@ -1284,8 +1284,8 @@ class TestIPv6RDControlPlane(TestIPv6ND):
             self.pg0) / ICMPv6NDOptPrefixInfo(
             prefix="1::",
             prefixlen=64,
-            validlifetime=2,
-            preferredlifetime=2,
+            validlifetime=5,
+            preferredlifetime=5,
             L=1,
             A=1,
         ) / ICMPv6NDOptPrefixInfo(
@@ -1362,7 +1362,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
         self.assertEqual(dr['next_hop'], router_address)
 
-        self.sleep(1)
+        self.sleep(2)
 
         # check that default route is deleted
         fib = self.vapi.ip_route_dump(0, True)
@@ -1378,7 +1378,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
                              strict=False)
         self.assertEqual(prefix, IPv6Network(text_type('1::/20')))
 
-        self.sleep(1)
+        self.sleep(5)
 
         # check that SLAAC address is deleted
         fib = self.vapi.ip_route_dump(0, True)
