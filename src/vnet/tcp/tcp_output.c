@@ -406,7 +406,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   tcp_update_rcv_wnd (tc);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tc->flags |= TCP_CONN_TRACK_BURST;
+    tcp_bt_check_app_limited (tc);
 
   if (tc->snd_una == tc->snd_nxt)
     {
@@ -1171,17 +1171,22 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   TCP_EVT (TCP_EVT_PKTIZE, tc);
 }
 
+always_inline u32
+tcp_buffer_len (vlib_buffer_t * b)
+{
+  u32 data_len = b->current_length;
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+    data_len += b->total_length_not_including_first_buffer;
+  return data_len;
+}
+
 u32
 tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
 
-  if (tc->flags & TCP_CONN_TRACK_BURST)
-    {
-      tcp_bt_check_app_limited (tc);
-      tcp_bt_track_tx (tc);
-      tc->flags &= ~TCP_CONN_TRACK_BURST;
-    }
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+    tcp_bt_track_tx (tc, tcp_buffer_len (b));
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
 		  /* update_snd_nxt */ 1);
@@ -1780,7 +1785,7 @@ tcp_timer_persist_handler (u32 index)
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     {
       tcp_bt_check_app_limited (tc);
-      tcp_bt_track_tx (tc);
+      tcp_bt_track_tx (tc, n_bytes);
     }
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0,
@@ -1827,6 +1832,9 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   available_wnd = tc->snd_wnd - offset;
   burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
 
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+    tcp_bt_check_app_limited (tc);
+
   while (n_segs < burst_size)
     {
       n_written = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
@@ -1837,6 +1845,9 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
       offset += n_written;
       n_segs += 1;
+
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	tcp_bt_track_tx (tc, n_written);
 
       tc->snd_nxt += n_written;
       tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
