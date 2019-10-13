@@ -742,6 +742,20 @@ class VppTestCase(unittest.TestCase):
         cls._captures.append((time.time(), cap_name))
 
     @classmethod
+    def get_vpp_time(cls):
+        return float(cls.vapi.cli('show clock').replace("Time now ", ""))
+
+    @classmethod
+    def sleep_on_vpp_time(cls, sec):
+        """ Sleep according to time in VPP world """
+        # On a busy system with many processes
+        # we might end up with VPP time being slower than real world
+        # So take that into account when waiting for VPP to do something
+        start_time = cls.get_vpp_time()
+        while cls.get_vpp_time() - start_time < sec:
+            cls.sleep(0.1)
+
+    @classmethod
     def pg_start(cls):
         """ Enable the PG, wait till it is done, then clean up """
         cls.vapi.cli("trace add pg-input 1000")
