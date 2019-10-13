@@ -981,7 +981,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 4, "there should be 4 samples");
+  TCP_TEST (pool_elts (bt->samples) == 4, "there should be 4 samples %u",
+	    pool_elts (bt->samples));
   TCP_TEST (tc->delivered_time == 8, "delivered time should be 8");
   TCP_TEST (tc->delivered == 3 * burst + 30, "delivered should be %u is %u",
 	    3 * burst + 30, tc->delivered);
@@ -1022,7 +1023,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /* Retransmit covers last sample entirely so it should be removed */
   tcp_bt_track_rxt (tc, snd_una + 2 * burst + 20, snd_una + 4 * burst);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples");
+  TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples %u",
+	    pool_elts (bt->samples));
 
   vec_validate (min_seqs, 4);
   min_seqs[0] = snd_una + 10;

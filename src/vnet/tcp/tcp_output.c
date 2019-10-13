@@ -1539,6 +1539,8 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  return;
 	}
 
+      clib_warning ("rxt handler");
+
       /* We're not in recovery so make sure rto_boff is 0. Can be non 0 due
        * to persist timer timeout */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
@@ -1936,6 +1938,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       && tc->rxt_head != tc->snd_una
       && tcp_retransmit_should_retry_head (tc, sb))
     {
+      clib_warning ("retry head");
+
       n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss,
 						  &b);
       if (!n_written)
