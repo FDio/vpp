@@ -859,7 +859,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    */
 
   /* 1) track first burst a time 1 */
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 1, "should have 1 sample");
@@ -890,12 +890,12 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->first_tx_time == 1, "first_tx_time %u", tc->first_tx_time);
 
   /* 3) track second burst at time 2 */
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 4) track second burst at time 3 */
   session_main.wrk[thread_index].last_vlib_time = 3;
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   TCP_TEST (pool_elts (bt->samples) == 2, "should have 2 samples");
@@ -937,24 +937,24 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   snd_una = tc->snd_una;
 
   /* 1) track first burst at time 4 */
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 2) track second burst at time 5 */
   session_main.wrk[thread_index].last_vlib_time = 5;
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 3) track third burst at time 6 */
   session_main.wrk[thread_index].last_vlib_time = 6;
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 4) track fourth burst at time 7 */
   session_main.wrk[thread_index].last_vlib_time = 7;
   /* Limited until last burst is acked */
   tc->app_limited = snd_una + 4 * burst - 1;
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 5) check delivery rate at time 8
@@ -981,7 +981,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 4, "there should be 4 samples");
+  TCP_TEST (pool_elts (bt->samples) == 7, "there should be 7 samples %u",
+	    pool_elts (bt->samples));
   TCP_TEST (tc->delivered_time == 8, "delivered time should be 8");
   TCP_TEST (tc->delivered == 3 * burst + 30, "delivered should be %u is %u",
 	    3 * burst + 30, tc->delivered);
@@ -1013,16 +1014,19 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_track_rxt (tc, snd_una + 10, snd_una + burst);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   /* The retransmit covers everything left from first burst */
-  TCP_TEST (pool_elts (bt->samples) == 4, "there should be 4 samples");
+  TCP_TEST (pool_elts (bt->samples) == 7, "there should be 7 samples %u",
+	    pool_elts (bt->samples));
 
   tcp_bt_track_rxt (tc, snd_una + burst + 10, snd_una + 2 * burst + 10);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples");
+  TCP_TEST (pool_elts (bt->samples) == 6, "there should be 6 samples %u",
+	    pool_elts (bt->samples));
 
   /* Retransmit covers last sample entirely so it should be removed */
   tcp_bt_track_rxt (tc, snd_una + 2 * burst + 20, snd_una + 4 * burst);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples");
+  TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples %u",
+	    pool_elts (bt->samples));
 
   vec_validate (min_seqs, 4);
   min_seqs[0] = snd_una + 10;
@@ -1064,7 +1068,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 3, "num samples should be 3 is %u",
+  TCP_TEST (pool_elts (bt->samples) == 5, "num samples should be 5 is %u",
 	    pool_elts (bt->samples));
   TCP_TEST (tc->delivered_time == 10, "delivered time should be 10");
   TCP_TEST (tc->delivered == 5 * burst + 40, "delivered should be %u is %u",
@@ -1124,11 +1128,11 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    * 9) test flush
    */
 
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   session_main.wrk[thread_index].last_vlib_time = 12;
-  tcp_bt_track_tx (tc);
+  tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   tcp_bt_flush_samples (tc);
