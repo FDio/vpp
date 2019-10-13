@@ -763,6 +763,16 @@ class VppTestCase(unittest.TestCase):
         cls.vapi.cli('packet-generator enable')
         cls._zombie_captures = cls._captures
         cls._captures = []
+        # once started, the PG runs to completion
+        # so we might as well avoid a race condition
+        # and wait until it is done
+        # cls.wait_pg_stop()
+        deadline = time.time() + 300
+        while cls.vapi.cli('show packet-generator').find("Yes") != -1:
+            cls.sleep(0.01)  # yield
+            if time.time() > deadline:
+                cls.logger.debug("Timeout waiting for pg to stop")
+                break
 
     @classmethod
     def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
