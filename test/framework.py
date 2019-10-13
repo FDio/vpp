@@ -451,7 +451,7 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def wait_for_stats_socket(cls):
-        deadline = time.time() + 3
+        deadline = time.time() + 300
         ok = False
         while time.time() < deadline or \
                 cls.debug_gdb or cls.debug_gdbserver:
@@ -570,7 +570,8 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except Exception:
+        except Exception as e:
+            cls.logger.debug("Exception connecting to VPP: %s" % e)
 
             cls.quit()
             raise
