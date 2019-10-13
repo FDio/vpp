@@ -160,7 +160,7 @@ bt_fix_overlapped (tcp_byte_tracker_t * bt, tcp_bt_sample_t * start,
       cur = next;
     }
 
-  if (next)
+  if (next && next->min_seq == seq)
     {
       bt_free_sample (bt, cur);
       return next;
@@ -298,8 +298,10 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   u32 bts_index, cur_index, next_index, prev_index, min_seq;
   u8 is_end = end == tc->snd_nxt;
 
+  /* Contiguous blocks retransmitted at the same time */
   bts = bt_get_sample (bt, bt->last_ooo);
-  if (bts && bts->max_seq == start)
+  if (bts && bts->max_seq == start
+      && bts->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       bts->max_seq = end;
       next = bt_next_sample (bt, bts);
@@ -422,6 +424,9 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
   if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
     return;
 
+  if (bts->flags & TCP_BTS_IS_CONSUMED)
+    return;
+
   rs->prior_delivered = bts->delivered;
   rs->prior_time = bts->delivered_time;
   rs->interval_time = bts->tx_time - bts->first_tx_time;
@@ -484,27 +489,36 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       if (!cur)
 	continue;
 
+      ASSERT (seq_geq (blk->start, cur->min_seq));
       tcp_bt_sample_to_rate_sample (tc, cur, rs);
 
-      /* Current shouldn't be removed */
+      /* Current shouldn't be consumed */
       if (cur->min_seq != blk->start)
 	{
 	  cur = bt_next_sample (bt, cur);
-	  if (!cur)
+	  if (!cur || seq_geq (cur->min_seq, blk->end))
 	    continue;
 	}
 
-      while ((next = bt_get_sample (bt, cur->next))
+      /* Mark as "consumed" all samples entirely covered by block */
+      while ((next = bt_next_sample (bt, cur))
 	     && seq_lt (next->min_seq, blk->end))
 	{
-	  bt_free_sample (bt, cur);
+	  cur->flags |= TCP_BTS_IS_CONSUMED;
 	  tcp_bt_sample_to_rate_sample (tc, next, rs);
 	  cur = next;
 	}
 
-      /* Current consumed entirely */
       if (next && next->min_seq == blk->end)
-	bt_free_sample (bt, cur);
+	{
+	  cur->flags |= TCP_BTS_IS_CONSUMED;
+	  continue;
+	}
+
+      /* Current is last sample and is consumed entirely */
+      if (((cur->flags & TCP_BTS_IS_RXT) && seq_leq (cur->max_seq, blk->end))
+	  || blk->end == tc->snd_nxt)
+	cur->flags |= TCP_BTS_IS_CONSUMED;
     }
 }
 
