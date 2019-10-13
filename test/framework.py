@@ -517,7 +517,6 @@ class VppTestCase(unittest.TestCase):
         cls.setUpConstants()
         cls.reset_packet_infos()
         cls._captures = []
-        cls._zombie_captures = []
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
@@ -740,29 +739,24 @@ class VppTestCase(unittest.TestCase):
         """ Register a capture in the testclass """
         # add to the list of captures with current timestamp
         cls._captures.append((time.time(), cap_name))
-        # filter out from zombies
-        cls._zombie_captures = [(stamp, name)
-                                for (stamp, name) in cls._zombie_captures
-                                if name != cap_name]
 
     @classmethod
     def pg_start(cls):
-        """ Remove any zombie captures and enable the packet generator """
-        # how long before capture is allowed to be deleted - otherwise vpp
-        # crashes - 100ms seems enough (this shouldn't be needed at all)
-        capture_ttl = 0.1
-        now = time.time()
-        for stamp, cap_name in cls._zombie_captures:
-            wait = stamp + capture_ttl - now
-            if wait > 0:
-                cls.sleep(wait, "before deleting capture %s" % cap_name)
-                now = time.time()
-            cls.logger.debug("Removing zombie capture %s" % cap_name)
-            cls.vapi.cli('packet-generator delete %s' % cap_name)
-
+        """ Enable the PG, wait till it is done, then clean up """
         cls.vapi.cli("trace add pg-input 1000")
         cls.vapi.cli('packet-generator enable')
-        cls._zombie_captures = cls._captures
+        # PG, when starts, runs to completion -
+        # so let's avoid a race condition,
+        # and wait a little till it's done.
+        # Then clean it up  - and then be gone.
+        deadline = time.time() + 300
+        while cls.vapi.cli('show packet-generator').find("Yes") != -1:
+            cls.sleep(0.01)  # yield
+            if time.time() > deadline:
+                cls.logger.error("Timeout waiting for pg to stop")
+                break
+        for stamp, cap_name in cls._captures:
+            cls.vapi.cli('packet-generator delete %s' % cap_name)
         cls._captures = []
 
     @classmethod
