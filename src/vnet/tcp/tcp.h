@@ -256,6 +256,7 @@ typedef enum tcp_bts_flags_
 {
   TCP_BTS_IS_RXT = 1,
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
+  TCP_BTS_IS_CONSUMED = 1 << 2,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
