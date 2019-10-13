@@ -91,6 +91,31 @@ bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
 }
 
 static tcp_bt_sample_t *
+bt_split_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts, u32 seq)
+{
+  tcp_bt_sample_t *ns, *next;
+
+  ASSERT (seq_leq (bts->min_seq, seq) && seq_lt (seq, bts->max_seq));
+
+  ns = bt_alloc_sample (bt, seq);
+
+  *ns = *bts;
+  ns->min_seq = seq;
+  bts->max_seq = seq;
+
+  next = bt_next_sample (bt, bts);
+  if (next)
+    next->prev = bt_sample_index (bt, ns);
+  else
+    bt->tail = bt_sample_index (bt, ns);
+
+  bts->next = bt_sample_index (bt, ns);
+  ns->prev = bt_sample_index (bt, bts);
+
+  return ns;
+}
+
+static tcp_bt_sample_t *
 bt_lookup_seq (tcp_byte_tracker_t * bt, u32 seq)
 {
   rb_tree_t *rt = &bt->sample_lookup;
@@ -154,28 +179,40 @@ bt_fix_overlapped (tcp_byte_tracker_t * bt, tcp_bt_sample_t * start,
   tcp_bt_sample_t *cur, *next;
 
   cur = start;
-  while ((next = bt_next_sample (bt, cur)) && seq_lt (next->min_seq, seq))
+  while (cur && seq_leq (cur->max_seq, seq))
     {
+      next = bt_next_sample (bt, cur);
       bt_free_sample (bt, cur);
       cur = next;
     }
 
-  if (next)
-    {
-      bt_free_sample (bt, cur);
-      return next;
-    }
+  if (cur && seq_lt (cur->min_seq, seq))
+    bt_update_sample (bt, cur, seq);
 
-  /* Overlapping current entirely */
-  if (is_end)
-    {
-      bt_free_sample (bt, cur);
-      return 0;
-    }
-
-  /* Overlapping head of current but not all */
-  bt_update_sample (bt, cur, seq);
   return cur;
+
+//  while ((next = bt_next_sample (bt, cur)) && seq_lt (next->min_seq, seq))
+//    {
+//      bt_free_sample (bt, cur);
+//      cur = next;
+//    }
+//
+//  if (next && next->min_seq == seq)
+//    {
+//      bt_free_sample (bt, cur);
+//      return next;
+//    }
+//
+//  /* Overlapping current entirely */
+//  if (is_end)
+//    {
+//      bt_free_sample (bt, cur);
+//      return 0;
+//    }
+//
+//  /* Overlapping head of current but not all */
+//  bt_update_sample (bt, cur, seq);
+//  return cur;
 }
 
 int
@@ -263,7 +300,7 @@ tcp_bt_check_app_limited (tcp_connection_t * tc)
 }
 
 void
-tcp_bt_track_tx (tcp_connection_t * tc)
+tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *tail;
@@ -276,6 +313,7 @@ tcp_bt_track_tx (tcp_connection_t * tc)
     }
 
   bts = tcp_bt_alloc_tx_sample (tc, tc->snd_nxt);
+  bts->max_seq = tc->snd_nxt + len;
   bts_index = bt_sample_index (bt, bts);
   tail = bt_get_sample (bt, bt->tail);
   if (tail)
@@ -298,16 +336,18 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   u32 bts_index, cur_index, next_index, prev_index, min_seq;
   u8 is_end = end == tc->snd_nxt;
 
-  bts = bt_get_sample (bt, bt->last_ooo);
-  if (bts && bts->max_seq == start)
-    {
-      bts->max_seq = end;
-      next = bt_next_sample (bt, bts);
-      if (next)
-	bt_fix_overlapped (bt, next, end, is_end);
-
-      return;
-    }
+  /* Contiguous blocks retransmitted at the same time */
+//  bts = bt_get_sample (bt, bt->last_ooo);
+//  if (bts && bts->max_seq == start
+//      && bts->tx_time == tcp_time_now_us (tc->c_thread_index))
+//    {
+//      bts->max_seq = end;
+//      next = bt_next_sample (bt, bts);
+//      if (next)
+//	bt_fix_overlapped (bt, next, end, is_end);
+//
+//      return;
+//    }
 
   /* Find original tx sample */
   bts = bt_lookup_seq (bt, start);
@@ -393,12 +433,17 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
       bts->next = nbts->prev = cur_index;
       cur->next = bt_sample_index (bt, nbts);
 
+      //
+      bts->max_seq = start;
+
       bt->last_ooo = cur_index;
     }
   /* Tail completely overlapped */
   else
     {
       bts = bt_get_sample (bt, bts_index);
+      //
+      bts->max_seq = start;
 
       if (bts->next != TCP_BTS_INVALID_INDEX)
 	{
@@ -422,12 +467,30 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
   if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
     return;
 
+  if (bts->flags & TCP_BTS_IS_CONSUMED)
+    return;
+
   rs->prior_delivered = bts->delivered;
   rs->prior_time = bts->delivered_time;
   rs->interval_time = bts->tx_time - bts->first_tx_time;
-  rs->rtt_time = bts->tx_time;
+//  rs->rtt_time = bts->tx_time;
+  rs->rtt_time = tc->delivered_time - bts->tx_time;
   rs->flags = bts->flags;
   tc->first_tx_time = bts->tx_time;
+
+ f64 ackt = tc->delivered_time - rs->prior_time;
+ if (clib_max (ackt, rs->interval_time) < 0.07)
+   {
+     clib_warning("ack time %.3f send time %.3f rxt %u acked %u start %u", ackt,
+               rs->interval_time, rs->flags & TCP_BTS_IS_RXT,
+               tc->bytes_acked, bts->min_seq);
+//     os_panic ();
+   }
+// if (tc->delivered_time - bts->tx_time > 1.0)
+ if (rs->rtt_time > 1.0)
+   {
+     clib_warning("bad rtt %.3f", rs->rtt_time);
+   }
 }
 
 static void
@@ -469,10 +532,10 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   sack_block_t *blks = tc->rcv_opts.sacks, *blk;
   tcp_byte_tracker_t *bt = tc->bt;
-  tcp_bt_sample_t *next, *cur;
+  tcp_bt_sample_t *cur;
   int i;
 
-  for (i = 0; i < vec_len (blks); i++)
+  for (i = 0; i < tc->rcv_opts.n_sack_blocks; i++)
     {
       blk = &blks[i];
 
@@ -484,27 +547,36 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       if (!cur)
 	continue;
 
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+      ASSERT (seq_geq (blk->start, cur->min_seq)
+              && seq_lt (blk->start, cur->max_seq));
 
-      /* Current shouldn't be removed */
-      if (cur->min_seq != blk->start)
+      /* Current should be split. Second part will be consumed */
+      if (PREDICT_FALSE (cur->min_seq != blk->start))
+	cur = bt_split_sample (bt, cur, blk->start);
+
+      while (cur && seq_leq (cur->max_seq, blk->end))
 	{
+	  cur->flags |= TCP_BTS_IS_CONSUMED;
+	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
 	  cur = bt_next_sample (bt, cur);
-	  if (!cur)
-	    continue;
 	}
 
-      while ((next = bt_get_sample (bt, cur->next))
-	     && seq_lt (next->min_seq, blk->end))
+      if (cur && seq_lt (cur->min_seq, blk->end))
 	{
-	  bt_free_sample (bt, cur);
-	  tcp_bt_sample_to_rate_sample (tc, next, rs);
-	  cur = next;
+	  tcp_bt_sample_t *prev = bt_prev_sample (bt, cur);
+	  /* Extend previous to include the newly sacked bytes */
+	  if (prev && (prev->flags & TCP_BTS_IS_CONSUMED))
+	    {
+	      prev->max_seq = blk->end;
+	      bt_update_sample (bt, cur, blk->end);
+	    }
+	  /* Split sample into two. First part is consumed */
+	  else
+	    {
+	      bt_split_sample (bt, cur, blk->end);
+	      cur->flags |= TCP_BTS_IS_CONSUMED;
+	    }
 	}
-
-      /* Current consumed entirely */
-      if (next && next->min_seq == blk->end)
-	bt_free_sample (bt, cur);
     }
 }
 
@@ -536,9 +608,20 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   rs->interval_time = clib_max (tc->delivered_time - rs->prior_time,
 				rs->interval_time);
   rs->delivered = tc->delivered - rs->prior_delivered;
-  rs->rtt_time = tc->delivered_time - rs->rtt_time;
+//  rs->rtt_time = tc->delivered_time - rs->rtt_time;
   rs->acked_and_sacked = delivered;
   rs->lost = tc->sack_sb.last_lost_bytes;
+
+
+
+  if (rs->interval_time < 0.07)
+    {
+      clib_warning("FINAL interval %.3f rtt %.3f", rs->interval_time, rs->rtt_time);
+    }
+  if (rs->rtt_time > 1.0)
+    {
+      clib_warning("FINAL bad rtt %.3f", rs->rtt_time);
+    }
 }
 
 void
