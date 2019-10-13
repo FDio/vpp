@@ -192,6 +192,7 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
     memset (ep, 0, message_size);
     ep->_vl_msg_id = clib_host_to_net_u16 (VL_API_MACTIME_DETAILS
                                            + mm->msg_id_base);
+    ep->context = mp->context;
     /* Index is the key for the stats segment combined counters */
     ep->pool_index = clib_host_to_net_u32 (dev - mm->devices);
 
