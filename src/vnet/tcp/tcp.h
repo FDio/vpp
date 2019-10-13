@@ -140,7 +140,6 @@ typedef enum tcp_cfg_flag_
   _(DEQ_PENDING, "Dequeue pending ")		\
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
-  _(TRACK_BURST, "Track burst")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
 
 typedef enum tcp_connection_flag_bits_
@@ -256,6 +255,7 @@ typedef enum tcp_bts_flags_
 {
   TCP_BTS_IS_RXT = 1,
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
+  TCP_BTS_IS_SACKED = 1 << 2,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -824,7 +824,7 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
  *
  * @param tc	tcp connection
  */
-void tcp_bt_track_tx (tcp_connection_t * tc);
+void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
 /**
  * Track a tcp retransmission
  *
