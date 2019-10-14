@@ -469,9 +469,12 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
 
         if (NULL == fed)
         {
-            fed = fib_entry_delegate_find_or_add(
-                      fib_entry,
-                      fib_entry_chain_type_to_delegate_type(fct));
+            /*
+             * use a temporary DPO lest the delegate realloc in the recursive
+             * calculation.
+             */
+            dpo_id_t tmp = DPO_INVALID;
+
             /*
              * on-demand create eos/non-eos.
              * There is no on-demand delete because:
@@ -482,7 +485,14 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
             fib_entry_src_mk_lb(fib_entry,
                                 fib_entry_get_best_src_i(fib_entry),
                                 fct,
-                                &fed->fd_dpo);
+                                &tmp);
+
+            fed = fib_entry_delegate_find_or_add(
+                fib_entry,
+                fib_entry_chain_type_to_delegate_type(fct));
+
+            dpo_copy(&fed->fd_dpo, &tmp);
+            dpo_reset(&tmp);
         }
 
         dpo_copy(dpo, &fed->fd_dpo);
