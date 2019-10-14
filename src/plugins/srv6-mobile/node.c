@@ -706,7 +706,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		  ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
-		  ip6srv->sr.tag = srh_tagfield[gtpu_type];
+		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
 		  ip6srv->sr.segments_left += 1;
 		  ip6srv->sr.last_entry += 1;
@@ -1296,7 +1296,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	          ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
-		  ip6srv->sr.tag = srh_tagfield[gtpu_type];
+		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
 	          ip6srv->sr.segments_left += 1;
 	          ip6srv->sr.last_entry += 1;
@@ -1639,7 +1639,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		{
 	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
-		  ip6srv->sr.tag = srh_tagfield[gtpu_type];
+		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
 	          ip6srv->sr.segments_left += 2;
 	          ip6srv->sr.last_entry += 2;
@@ -1651,7 +1651,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  ip6srv->ip.src_address = sr_pr_encaps_src;
 		  ip6srv->ip.dst_address = seg0;
 
-		  ip6srv->sr.tag = srh_tagfield[gtpu_type];
+		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
 		  ip6srv->sr.segments_left += 1;
 	          ip6srv->sr.last_entry += 1;
