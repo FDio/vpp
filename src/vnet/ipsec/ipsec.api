@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.0.1";
 
+import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 
@@ -30,7 +31,7 @@ autoreply define ipsec_spd_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   u32 spd_id;
 };
 
@@ -49,8 +50,8 @@ autoreply define ipsec_interface_add_del_spd
   u32 client_index;
   u32 context;
 
-  u8 is_add;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
   u32 spd_id;
 };
 
@@ -90,10 +91,11 @@ typedef ipsec_spd_entry
 {
   u32 spd_id;
   i32 priority;
-  u8 is_outbound;
+  bool is_outbound;
 
   u32 sa_id;
   vl_api_ipsec_spd_action_t policy;
+  /* Which protocol?? */
   u8 protocol;
 
   // Selector
@@ -119,7 +121,7 @@ define ipsec_spd_entry_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_ipsec_spd_entry_t entry;
 };
 
@@ -154,7 +156,7 @@ define ipsec_spds_details {
   u32 context;
   u32 spd_id;
   u32 npolicies;
-}; 
+};
 
 /** \brief Dump ipsec policy database data
     @param client_index - opaque cookie to identify the sender
@@ -296,7 +298,7 @@ define ipsec_sad_entry_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_ipsec_sad_entry_t entry;
 };
 define ipsec_sad_entry_add_del_reply
@@ -406,7 +408,7 @@ define ipsec_spd_interface_dump {
 define ipsec_spd_interface_details {
     u32 context;
     u32 spd_index;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add or delete IPsec tunnel interface
@@ -443,9 +445,9 @@ define ipsec_spd_interface_details {
 define ipsec_tunnel_if_add_del {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 esn;
-  u8 anti_replay;
+  bool is_add;
+  bool esn;
+  bool anti_replay;
   vl_api_address_t local_ip;
   vl_api_address_t remote_ip;
   u32 local_spi;
@@ -460,9 +462,9 @@ define ipsec_tunnel_if_add_del {
   u8 local_integ_key[128];
   u8 remote_integ_key_len;
   u8 remote_integ_key[128];
-  u8 renumber;
+  bool renumber;
   u32 show_instance;
-  u8 udp_encap;
+  bool udp_encap;
   u32 tx_table_id;
   u32 salt;
 };
@@ -475,7 +477,7 @@ define ipsec_tunnel_if_add_del {
 define ipsec_tunnel_if_add_del_reply {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump IPsec security association
@@ -491,7 +493,7 @@ define ipsec_sa_dump {
 
 /** \brief IPsec security association database response
     @param context - sender context which was passed in the request
-    @param sa_id - SA ID, policy-based SAs >=0, tunnel interface SAs = 0 
+    @param sa_id - SA ID, policy-based SAs >=0, tunnel interface SAs = 0
     @param sw_if_index - sw_if_index of tunnel interface, policy-based SAs = ~0
     @param spi - security parameter index
     @param protocol - IPsec protocol (value from ipsec_protocol_t)
@@ -507,9 +509,9 @@ define ipsec_sa_dump {
     @param is_tunnel_ipv6 - If using tunnel mode, endpoints are IPv6
     @param tunnel_src_addr - Tunnel source address if using tunnel mode
     @param tunnel_dst_addr - Tunnel destination address is using tunnel mode
-    @param salt - 4 byte salt 
+    @param salt - 4 byte salt
     @param seq - current sequence number for outbound
-    @param seq_hi - high 32 bits of ESN for outbound 
+    @param seq_hi - high 32 bits of ESN for outbound
     @param last_seq - highest sequence number received inbound
     @param last_seq_hi - high 32 bits of highest ESN received inbound
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
@@ -520,7 +522,7 @@ define ipsec_sa_details {
   u32 context;
   vl_api_ipsec_sad_entry_t entry;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 salt;
   u64 seq_outbound;
   u64 last_seq_inbound;
@@ -542,7 +544,7 @@ define ipsec_sa_details {
 autoreply define ipsec_tunnel_if_set_sa {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 sa_id;
   u8 is_outbound;
 };
@@ -564,10 +566,10 @@ define ipsec_backend_dump {
 */
 define ipsec_backend_details {
   u32 context;
-  u8 name[128];
+  string name[128];
   vl_api_ipsec_proto_t protocol;
   u8 index;
-  u8 active;
+  bool active;
 };
 
 /** \brief Select IPsec backend
@@ -588,4 +590,3 @@ autoreply define ipsec_select_backend {
  * eval: (c-set-style "gnu")
  * End:
  */
- 
