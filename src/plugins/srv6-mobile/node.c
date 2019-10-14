@@ -336,27 +336,32 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      offset = ls0->localsid_len / 8;
 	      shift = ls0->localsid_len % 8;
 
-	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast (&dst4.as_u8[0], &dst0.as_u8[offset], 4);
+	      if (PREDICT_TRUE(shift == 0))
+	        {
+	  	  clib_memcpy_fast (&dst4.as_u8[0], &dst0.as_u8[offset], 4);
 
-		qfi = dst0.as_u8[offset + 4];
+		  qfi = dst0.as_u8[offset + 4];
 
-		clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 5], 4);
-	      } else {
-		for (index = 0; index < 4; index ++) {
-		  dst4.as_u8[index] = dst0.as_u8[offset + index] << shift;
-		  dst4.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
-		}
+		  clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 5], 4);
+	        }
+	      else
+	        {
+	  	  for (index = 0; index < 4; index ++)
+		    {
+		      dst4.as_u8[index] = dst0.as_u8[offset + index] << shift;
+		      dst4.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
+		    }
 
-		qfi |= dst0.as_u8[offset + 4] << shift;
-		qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
+		  qfi |= dst0.as_u8[offset + 4] << shift;
+		  qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
 
-		for (index = 0; index < 4; index ++) {
-		  *teid8p = dst0.as_u8[offset + 5 + index] << shift;
-		  *teid8p |= dst0.as_u8[offset + 6 + index] >> (8 - shift);
-		  teid8p++;
-		}
-	      }
+		  for (index = 0; index < 4; index ++)
+		    {
+		      *teid8p = dst0.as_u8[offset + 5 + index] << shift;
+		      *teid8p |= dst0.as_u8[offset + 6 + index] >> (8 - shift);
+		      teid8p++;
+		    }
+	        }
 
 	      if (qfi)
 		{
