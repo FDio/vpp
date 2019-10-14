@@ -759,6 +759,34 @@ class VPPApiClient(object):
             if self.event_callback:
                 self.event_callback(msgname, r)
 
+    def validate_message_table(self, namecrctable):
+        """Take a dictionary of name_crc message names
+        and returns an array of missing messages"""
+
+        missing_table = []
+        for name_crc in namecrctable:
+            i = self.transport.get_msg_index(name_crc)
+            if i <= 0:
+                missing_table.append(name_crc)
+        return missing_table
+
+    def dump_message_table(self):
+        """Return VPPs API message table as name_crc dictionary"""
+        return self.transport.message_table
+
+    def dump_message_table_filtered(self, msglist):
+        """Return VPPs API message table as name_crc dictionary,
+        filtered by message name list."""
+
+        replies = [self.services[n]['reply'] for n in msglist]
+        message_table_filtered = {}
+        for name in msglist + replies:
+            for k,v in self.transport.message_table.items():
+                if k.startswith(name):
+                    message_table_filtered[k] = v
+                    break
+        return message_table_filtered
+
     def __repr__(self):
         return "<VPPApiClient apifiles=%s, testmode=%s, async_thread=%s, " \
                "logger=%s, read_timeout=%s, use_socket=%s, " \
