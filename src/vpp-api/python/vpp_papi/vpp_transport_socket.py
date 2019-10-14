@@ -188,10 +188,12 @@ class VppTransport(object):
 
         # Send header
         header = self.header.pack(0, len(buf), 0)
-        if self.socket.sendall(header) is None:
-            raise VppTransportSocketIOError(1, 'Failed to send')
-        if self.socket.sendall(buf) is None:
-            raise VppTransportSocketIOError(1, 'Failed to send')
+        try:
+            self.socket.sendall(header)
+            self.socket.sendall(buf)
+        except socket.error as err:
+            raise VppTransportSocketIOError(1, 'Sendall error: {err!r}'.format(
+                err=err))
 
     def _read_fixed(self, size):
         """Repeat receive until fixed size is read. Return empty on error."""
