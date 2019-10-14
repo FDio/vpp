@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da8ba5aa_fece294c",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-14T11:01:57Z",
+      "side": 1,
+      "message": "I read [0], then forgot to add \"not\" here, and then relied on a verify job that is currently disabled.\n\n[0] https://docs.python.org/2/library/socket.html#socket.socket.sendall",
+      "range": {
+        "startLine": 191,
+        "startChar": 39,
+        "endLine": 191,
+        "endChar": 41
+      },
+      "revId": "6df2c7954126a316f86908526c3bb4d649f06597",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
