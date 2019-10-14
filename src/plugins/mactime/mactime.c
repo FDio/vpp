@@ -64,6 +64,7 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
 {
   vnet_sw_interface_t *sw;
   int rv = 0;
+  static u8 url_init_done;
 
   feature_init (mm);
 
@@ -81,6 +82,12 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
 			       sw_if_index, enable_disable, 0, 0);
   vnet_feature_enable_disable ("interface-output", "mactime-tx",
 			       sw_if_index, enable_disable, 0, 0);
+  if (url_init_done == 0)
+    {
+      mactime_url_init (mm->vlib_main);
+      url_init_done = 1;
+    }
+
   return rv;
 }
 

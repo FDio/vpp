@@ -432,7 +432,6 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
   clib_warning ("WARNING: stub called...");
 }
 
-
 #include <mactime/mactime.api_test.c>
 
 /*
