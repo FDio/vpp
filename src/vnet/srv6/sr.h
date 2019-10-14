@@ -65,6 +65,11 @@
 #define BITALIGN3(A,B,C)	C; B; A
 #endif
 
+#define SRH_TAG_ECHO_REPLY		0x0008
+#define SRH_TAG_ECHO_REQUEST		0x0004
+#define SRH_TAG_ERROR_INDICATION	0x0002
+#define SRH_TAG_END_MARKER		0x0001
+
 /* *INDENT-OFF* */
 typedef struct
 {
@@ -92,6 +97,12 @@ typedef struct
   gtpu_exthdr_t ext[0];
 } __attribute__ ((packed)) gtpu_header_t;
 /* *INDENT-ON* */
+
+#define GTPU_TYPE_ECHO_REQUEST		1
+#define GTPU_TYPE_ECHO_REPLY		2
+#define GTPU_TYPE_ERROR_INDICATION	26
+#define GTPU_TYPE_END_MARKER		254
+#define GTPU_TYPE_GTPU 			255
 
 /* *INDENT-OFF* */
 typedef struct
@@ -152,7 +163,6 @@ typedef struct
 #define GTPU_V1_VER   (1<<5)
 
 #define GTPU_PT_GTP    (1<<4)
-#define GTPU_TYPE_GTPU  255
 
 /**
  * @brief SR Segment List (SID list)

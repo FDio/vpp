@@ -884,6 +884,64 @@ class Program(object):
         for p in c4.pg_read_packets():
             p.show2()
 
+    def test_gtp4_echo(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface4(local_ip="172.16.0.1/30", remote_ip="172.16.0.2/30",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface4(local_ip="1.0.0.2/30", remote_ip="1.0.0.1",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
+
+        c1.vppctl_exec("set sr encaps source addr A1::1")
+        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
+        c1.vppctl_exec("sr localsid prefix 172.20.0.1/32 behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+
+        c2.vppctl_exec("sr localsid address D2:: behavior end")
+
+        c3.vppctl_exec("sr localsid address D3:: behavior end")
+
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ip_pgroute("pg0", "1.0.0.1", "172.20.0.1/32")
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+             IP(src="172.20.0.2", dst="172.20.0.1")/
+             UDP(sport=2152, dport=2152)/
+             GTP_U_Header(gtp_type="echo_request", teid=200))
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+        print("Sleeping")
+        time.sleep(5)
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
     def test_gtp4_ipv6(self):
         # TESTS:
         # trace add af-packet-input 10
@@ -1124,6 +1182,72 @@ class Program(object):
              GTPPDUSessionContainer(type=1, R=1, QFI=3)/
              IP(src="172.99.0.1", dst="172.99.0.2")/
              ICMP())
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+        print("Sleeping")
+        time.sleep(5)
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
+    def test_gtp6_drop_in_echo(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+        print("Deleting the old containers...")
+        time.sleep(30)
+        print("Starting the new containers...")
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
+
+        c1.vppctl_exec("set sr encaps source addr A1::1")
+        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
+
+        c1.vppctl_exec("sr localsid prefix D::/64 behavior end.m.gtp6.d.di D4::/64")
+
+        c2.vppctl_exec("sr localsid address D2:: behavior end")
+
+        c3.vppctl_exec("sr localsid address D3:: behavior end")
+
+        c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.m.gtp6.e")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ip_pgroute("pg0", "B::2", "D::2/128")
+
+        print("Waiting...")
+        time.sleep(30)
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+                IPv6(src="C::2", dst="D::2")/
+             UDP(sport=2152, dport=2152)/
+             GTP_U_Header(gtp_type="echo_request", teid=200))
 
         print("Sending packet on {}:".format(c1.name))
         p.show2()
@@ -1643,7 +1767,7 @@ def get_args():
             help="Test related commands.")
 
     p3.add_argument("op", choices=[
-        "ping", "srv6", "tmap", "tmap_5g", "tmap_ipv6", "tmap_ipv6_5g", "gtp4", "gtp4_5g", "gtp4_ipv6", "gtp4_ipv6_5g", "gtp6_drop_in", "gtp6_drop_in_5g", "gtp6_drop_in_ipv6", "gtp6_drop_in_ipv6_5g", "gtp6", "gtp6_5g", "gtp6_ipv6", "gtp6_ipv6_5g"])
+        "ping", "srv6", "tmap", "tmap_5g", "tmap_ipv6", "tmap_ipv6_5g", "gtp4", "gtp4_5g", "gtp4_echo", "gtp4_ipv6", "gtp4_ipv6_5g", "gtp6_drop_in", "gtp6_drop_in_5g", "gtp6_drop_in_echo",  "gtp6_drop_in_ipv6", "gtp6_drop_in_ipv6_5g", "gtp6", "gtp6_5g", "gtp6_ipv6", "gtp6_ipv6_5g"])
 
     args = parser.parse_args()
     if not hasattr(args, "op") or not args.op:
@@ -1698,6 +1822,8 @@ def main(op=None, prefix=None, verbose=None, image=None, index=None, command=Non
             program.test_gtp4()
         elif op == 'gtp4_5g':
             program.test_gtp4_5g()
+        elif op == 'gtp4_echo':
+            program.test_gtp4_echo()
         elif op == 'gtp4_ipv6':
             program.test_gtp4_ipv6()
         elif op == 'gtp4_ipv6_5g':
@@ -1706,6 +1832,8 @@ def main(op=None, prefix=None, verbose=None, image=None, index=None, command=Non
             program.test_gtp6_drop_in()
         elif op == 'gtp6_drop_in_5g':
             program.test_gtp6_drop_in_5g()
+        elif op == 'gtp6_drop_in_echo':
+            program.test_gtp6_drop_in_echo()
         elif op == 'gtp6_drop_in_ipv6':
             program.test_gtp6_drop_in_ipv6()
         elif op == 'gtp6_drop_in_ipv6_5g':
