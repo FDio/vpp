@@ -75,8 +75,8 @@ enum ipsec_sad_flags
 
 enum ipsec_proto
 {
-  IPSEC_API_PROTO_ESP,
-  IPSEC_API_PROTO_AH,
+  IPSEC_API_PROTO_ESP = 50,
+  IPSEC_API_PROTO_AH = 51,
 };
 
 typedef key
