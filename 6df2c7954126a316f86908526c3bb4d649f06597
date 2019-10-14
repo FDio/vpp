@@ -22,6 +22,30 @@
       "revId": "6df2c7954126a316f86908526c3bb4d649f06597",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06ee6103_81ed16d1",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-14T11:31:55Z",
+      "side": 1,
+      "message": "Fixed in https://gerrit.fd.io/r/c/vpp/+/22699",
+      "parentUuid": "da8ba5aa_fece294c",
+      "range": {
+        "startLine": 191,
+        "startChar": 39,
+        "endLine": 191,
+        "endChar": 41
+      },
+      "revId": "6df2c7954126a316f86908526c3bb4d649f06597",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
