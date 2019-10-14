@@ -14,6 +14,7 @@
 add_vpp_plugin(mactime
   SOURCES
   mactime.c
+  builtins.c
   node.c
 
   API_FILES
