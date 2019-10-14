@@ -695,6 +695,12 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 	      else
 	        {
 		  hdr_len = sizeof(ip6_header_t);
+
+		  if (PREDICT_FALSE(gtpu_type != GTPU_TYPE_GTPU))
+		    {
+		      hdr_len += sizeof(ip6_sr_header_t);
+		      hdr_len += sizeof(ip6_address_t);
+		    }
 		}
 
 	      vlib_buffer_advance (b0, - (word) hdr_len);
@@ -761,49 +767,59 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (PREDICT_FALSE(encap == NULL))
-		    {
-		      next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-		      bad_n++;
-		      goto DONE;
-		    }
-
 		  clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
 		  ip6srv->ip.dst_address = seg;
 
-		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
-	 	    {
-		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
-		        ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
-		      else
-		        ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
-		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		  if (PREDICT_FALSE(gtpu_type != GTPU_TYPE_GTPU))
 		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
-		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
-			{
-			  // Bad encap packet.
-                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-                          bad_n++;
-                          goto DONE;
-			}
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+
+		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
+
+		      ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
+
+		      ip6srv->sr.segments_left = 1;
+		      ip6srv->sr.last_entry = 1;
+
+		      ip6srv->sr.length = sizeof(ip6_address_t) / 8;
+		      ip6srv->sr.segments[0] = seg;
 		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		  else
 		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
-		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
-			{
-			  // Bad encap packet.
-                          next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
-                          bad_n++;
-                          goto DONE;
-			}
-		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
-		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		      if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+	 	        {
+		          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
+		            ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		          else
+		            ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			    {
+			      // Bad encap packet.
+                              next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                              bad_n++;
+                              goto DONE;
+			    }
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			    {
+			      // Bad encap packet.
+                              next0 = SRV6_END_M_GTP4_D_NEXT_DROP;
+                              bad_n++;
+                              goto DONE;
+			    }
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		        }
 		    }
 		}
 
@@ -1283,6 +1299,11 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      else
 		{
 		  hdr_len = sizeof (ip6_header_t);
+		  if (PREDICT_FALSE(gtpu_type) != GTPU_TYPE_GTPU)
+		    {
+		      hdr_len += sizeof(ip6_sr_header_t);
+		      hdr_len += sizeof(ip6_address_t);
+		    }
 		}
 
               // jump back to data[0] or pre_data if required
@@ -1351,48 +1372,58 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (PREDICT_FALSE(encap == NULL)) 
-		    {
-		      next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-		      bad_n++;
-		      goto DONE;
-		    }
-
 	          clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
 		  ip6srv->ip.src_address = dst0;
 		  ip6srv->ip.dst_address = seg0;
 
-		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+		  if (PREDICT_FALSE(gtpu_type) != GTPU_TYPE_GTPU)
 		    {
-	              if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
-	 	        ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+
+		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
+
+		      ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
+
+		      ip6srv->sr.segments_left = 1;
+		      ip6srv->sr.last_entry = 1;
+
+		      ip6srv->sr.length = sizeof(ip6_address_t) / 8;
+		      ip6srv->sr.segments[0] = seg0;
 		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		  else
 		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
-		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
-			{
-			  // Bad encap packet.
-                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-                          bad_n++;
-                          goto DONE;
-			}
-		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
-		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
-		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
-			{
-			  // Bad encap packet.
-                          next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
-                          bad_n++;
-                          goto DONE;
-			}
-		    }
-		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
-		    {
-		      ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		      if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+		        {
+	                  if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+	 	            ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			    {
+			      // Bad encap packet.
+                              next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                              bad_n++;
+                              goto DONE;
+			    }
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			    {
+			      // Bad encap packet.
+                              next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
+                              bad_n++;
+                              goto DONE;
+			    }
+		        }
+		      else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+		        {
+		          ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		        }
 		    }
 		}
 
