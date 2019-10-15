@@ -590,6 +590,99 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
       f->flags |= SVM_FIFO_F_MULTI_CHUNK;
     }
 
+  /* If fifo is not wrapped, update the size now */
+  if (!svm_fifo_is_wrapped (f))
+    {
+      /* Initialize chunks and add to lookup rbtree */
+      cur = c;
+      if (f->new_chunks)
+	{
+	  prev = f->new_chunks;
+	  while (prev->next)
+	    prev = prev->next;
+	  prev->next = c;
+	}
+      else
+	prev = f->end_chunk;
+
+      while (cur)
+	{
+	  cur->start_byte = prev->start_byte + prev->length;
+	  rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+			pointer_to_uword (cur));
+	  prev = cur;
+	  cur = cur->next;
+	}
+
+      ASSERT (!f->new_chunks);
+      svm_fifo_grow (f, c);
+      return;
+    }
+
+  /* Wrapped */
+  if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
+    {
+      ASSERT (f->pid == getpid () && f->tid == os_get_thread_index ());
+
+      if (!f->new_chunks && f->head_chunk != f->tail_chunk)
+	{
+	  u32 head = 0, tail = 0;
+	  f_load_head_tail_cons (f, &head, &tail);
+
+	  svm_fifo_chunk_t *tmp = f->tail_chunk->next;
+
+	  prev = f->tail_chunk;
+	  u32 add_bytes = 0;
+	  cur = prev->next;
+	  while (cur != f->start_chunk)
+	    {
+	      rb_tree_del (&f->chunk_lookup, cur->start_byte);	/* remove any existing rb_tree entry */
+	      cur = cur->next;
+	    }
+
+	  /* insert new chunk after the tail_chunk */
+	  f->tail_chunk->next = c;
+	  while (c)
+	    {
+	      add_bytes += c->length;
+	      c->start_byte = prev->start_byte + prev->length;
+	      rb_tree_add2 (&f->chunk_lookup, c->start_byte,
+			    pointer_to_uword (c));
+
+	      prev = c;
+	      c = c->next;
+	    }
+	  prev->next = tmp;
+
+	  /* shift existing chunks along */
+	  cur = tmp;
+	  while (cur != f->start_chunk)
+	    {
+	      cur->start_byte = prev->start_byte + prev->length;
+	      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+			    pointer_to_uword (cur));
+	      prev = cur;
+	      cur = cur->next;
+	    }
+
+	  f->size += add_bytes;
+	  f->nitems = f->size - 1;
+	  f->new_chunks = 0;
+	  head += add_bytes;
+
+	  clib_atomic_store_rel_n (&f->head, head);
+	  cur = f->start_chunk;
+	  do
+	    {
+	      cur = cur->next;
+	    }
+	  while (cur != f->end_chunk);
+
+	  return;
+	}
+    }
+
+  /* Wrapped, and optimization of single-thread-owned fifo cannot be applied */
   /* Initialize chunks and add to lookup rbtree */
   cur = c;
   if (f->new_chunks)
@@ -609,14 +702,6 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 		    pointer_to_uword (cur));
       prev = cur;
       cur = cur->next;
-    }
-
-  /* If fifo is not wrapped, update the size now */
-  if (!svm_fifo_is_wrapped (f))
-    {
-      ASSERT (!f->new_chunks);
-      svm_fifo_grow (f, c);
-      return;
     }
 
   /* Postpone size update */
