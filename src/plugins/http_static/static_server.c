@@ -1657,6 +1657,81 @@ VLIB_CLI_COMMAND (http_show_static_server_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
+http_clear_static_cache_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  http_static_server_main_t *hsm = &http_static_server_main;
+  file_data_cache_t *dp;
+  u32 free_index;
+  u32 busy_items = 0;
+  BVT (clib_bihash_kv) kv;
+
+  if (hsm->www_root == 0)
+    return clib_error_return (0, "Static server disabled");
+
+  http_static_server_sessions_reader_lock ();
+
+  /* Walk the LRU list to find active entries */
+  free_index = hsm->last_index;
+  while (free_index != ~0)
+    {
+      dp = pool_elt_at_index (hsm->cache_pool, free_index);
+      free_index = dp->prev_index;
+      /* Which could be in use... */
+      if (dp->inuse)
+	{
+	  busy_items++;
+	  free_index = dp->next_index;
+	  continue;
+	}
+      kv.key = (u64) (dp->filename);
+      kv.value = ~0ULL;
+      if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
+				    0 /* is_add */ ) < 0)
+	{
+	  clib_warning ("BUG: cache clear delete '%s' FAILED!", dp->filename);
+	}
+
+      lru_remove (hsm, dp);
+      hsm->cache_size -= vec_len (dp->data);
+      hsm->cache_evictions++;
+      vec_free (dp->filename);
+      vec_free (dp->data);
+      if (hsm->debug_level > 1)
+	clib_warning ("pool put index %d", dp - hsm->cache_pool);
+      pool_put (hsm->cache_pool, dp);
+      free_index = hsm->last_index;
+    }
+  http_static_server_sessions_reader_unlock ();
+  if (busy_items > 0)
+    vlib_cli_output (vm, "Note: %d busy items still in cache...", busy_items);
+  else
+    vlib_cli_output (vm, "Cache cleared...");
+  return 0;
+}
+
+/*?
+ * Clear the static http server cache, to force the server to
+ * reload content from backing files
+ *
+ * @cliexpar
+ * This command clear the static http server cache
+ * @clistart
+ * clear http static cache
+ * @cliend
+ * @cliexcmd{clear http static cache}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_http_static_cache_command, static) =
+{
+  .path = "clear http static cache",
+  .short_help = "clear http static cache",
+  .function = http_clear_static_cache_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 http_static_server_main_init (vlib_main_t * vm)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
