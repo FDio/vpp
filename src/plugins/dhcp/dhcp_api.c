@@ -269,10 +269,12 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
   clib_memcpy (&lease->hostname, client->hostname, len);
   lease->hostname[len] = 0;
 
-  lease->mask_width = client->subnet_mask_width;
-  clib_memcpy (&lease->host_address.un, (u8 *) & client->leased_address,
+  lease->mask_width = client->installed.subnet_mask_width;
+  clib_memcpy (&lease->host_address.un,
+	       (u8 *) & client->installed.leased_address,
 	       sizeof (ip4_address_t));
-  clib_memcpy (&lease->router_address.un, (u8 *) & client->router_address,
+  clib_memcpy (&lease->router_address.un,
+	       (u8 *) & client->installed.router_address,
 	       sizeof (ip4_address_t));
 
   lease->count = vec_len (client->domain_server_address);
