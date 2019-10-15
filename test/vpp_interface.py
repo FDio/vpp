@@ -260,9 +260,8 @@ class VppInterface(object):
         r = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
         for intf in r:
             if intf.sw_if_index == self.sw_if_index:
-                self._name = intf.interface_name.split(b'\0',
-                                                       1)[0].decode('utf8')
-                self._local_mac = bytes(intf.l2_address)
+                self._name = intf.interface_name
+                self._local_mac = intf.l2_address
                 self._dump = intf
                 break
         else:

@@ -58,7 +58,7 @@ def ip4n_range(ip4n, s, e):
 
 # wrapper around scapy library function.
 def mk_ll_addr(mac):
-    euid = in6_mactoifaceid(mac)
+    euid = in6_mactoifaceid(str(mac))
     addr = "fe80::" + euid
     return addr
 
