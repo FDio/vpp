@@ -187,10 +187,7 @@ VLIB_REGISTER_NODE (ip4_not_enabled_node) =
   .name = "ip4-not-enabled",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
+  .sibling_of = "ip4-drop",
 };
 
 VLIB_REGISTER_NODE (ip4_punt_node) =

@@ -19,9 +19,16 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/qos/qos_types.h>
 
+vlib_log_class_t dhcp_logger;
+
 dhcp_client_main_t dhcp_client_main;
-static u8 *format_dhcp_client_state (u8 * s, va_list * va);
 static vlib_node_registration_t dhcp_client_process_node;
+
+#define DHCP_DBG(...)                           \
+    vlib_log_debug (dhcp_logger, __VA_ARGS__);
+
+#define DHCP_INFO(...)                          \
+    vlib_log_notice (dhcp_logger, __VA_ARGS__);
 
 #define foreach_dhcp_sent_packet_stat           \
 _(DISCOVER, "DHCP discover packets sent")       \
@@ -52,15 +59,124 @@ static char *dhcp_client_process_stat_strings[] = {
     "DHCP unknown packets sent",
 };
 
+static u8 *
+format_dhcp_client_state (u8 * s, va_list * va)
+{
+  dhcp_client_state_t state = va_arg (*va, dhcp_client_state_t);
+  char *str = "BOGUS!";
+
+  switch (state)
+    {
+#define _(a)                                    \
+    case a:                                     \
+      str = #a;                                 \
+        break;
+      foreach_dhcp_client_state;
+#undef _
+    default:
+      break;
+    }
+
+  s = format (s, "%s", str);
+  return s;
+}
+
+static u8 *
+format_dhcp_client (u8 * s, va_list * va)
+{
+  dhcp_client_main_t *dcm = va_arg (*va, dhcp_client_main_t *);
+  dhcp_client_t *c = va_arg (*va, dhcp_client_t *);
+  int verbose = va_arg (*va, int);
+  ip4_address_t *addr;
+
+  s = format (s, "[%d] %U state %U installed %d", c - dcm->clients,
+	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
+	      format_dhcp_client_state, c->state, c->addresses_installed);
+
+  if (0 != c->dscp)
+    s = format (s, " dscp %d", c->dscp);
+
+  if (c->installed.leased_address.as_u32)
+    {
+      s = format (s, " addr %U/%d gw %U server %U",
+		  format_ip4_address, &c->installed.leased_address,
+		  c->installed.subnet_mask_width,
+		  format_ip4_address, &c->installed.router_address,
+		  format_ip4_address, &c->installed.dhcp_server);
+
+      vec_foreach (addr, c->domain_server_address)
+	s = format (s, " dns %U", format_ip4_address, addr);
+    }
+  else
+    {
+      s = format (s, " no address");
+    }
+
+  if (verbose)
+    {
+      s =
+	format (s,
+		"\n lease: lifetime:%d renewal-interval:%d expires:%.2f (now:%.2f)",
+		c->lease_lifetime, c->lease_renewal_interval,
+		c->lease_expires, vlib_time_now (dcm->vlib_main));
+      s =
+	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
+		c->next_transmit);
+      s =
+	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
+		c->ai_bcast);
+    }
+  return s;
+}
+
 static void
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
   /*
    * Install any/all info gleaned from dhcp, right here
    */
-  ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
-				 (void *) &c->leased_address,
-				 c->subnet_mask_width, 0 /*is_del */ );
+  if (!c->addresses_installed)
+    {
+      ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
+				     (void *) &c->learned.leased_address,
+				     c->learned.subnet_mask_width,
+				     0 /*is_del */ );
+      if (c->learned.router_address.as_u32)
+	{
+	  fib_prefix_t all_0s = {
+	    .fp_len = 0,
+	    .fp_proto = FIB_PROTOCOL_IP4,
+	  };
+	  ip46_address_t nh = {
+	    .ip4 = c->learned.router_address,
+	  };
+
+          /* *INDENT-OFF* */
+          fib_table_entry_path_add (
+              fib_table_get_index_for_sw_if_index (
+                  FIB_PROTOCOL_IP4,
+                  c->sw_if_index),
+              &all_0s,
+              FIB_SOURCE_DHCP,
+              FIB_ENTRY_FLAG_NONE,
+              DPO_PROTO_IP4,
+              &nh, c->sw_if_index,
+              ~0, 1, NULL,	// no label stack
+              FIB_ROUTE_PATH_FLAG_NONE);
+          /* *INDENT-ON* */
+	}
+      if (c->learned.dhcp_server.as_u32)
+	{
+	  ip46_address_t dst = {
+	    .ip4 = c->learned.dhcp_server,
+	  };
+	  c->ai_ucast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+					     VNET_LINK_IP4, &dst,
+					     c->sw_if_index);
+	}
+    }
+  clib_memcpy (&c->installed, &c->learned, sizeof (c->installed));
+  c->addresses_installed = 1;
 }
 
 static void
@@ -70,10 +186,35 @@ dhcp_client_release_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
    * Remove any/all info gleaned from dhcp, right here. Caller(s)
    * have not wiped out the info yet.
    */
+  if (c->addresses_installed)
+    {
+      ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
+				     (void *) &c->installed.leased_address,
+				     c->installed.subnet_mask_width,
+				     1 /*is_del */ );
 
-  ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
-				 (void *) &c->leased_address,
-				 c->subnet_mask_width, 1 /*is_del */ );
+      /* Remove the default route */
+      if (c->installed.router_address.as_u32)
+	{
+	  fib_prefix_t all_0s = {
+	    .fp_len = 0,
+	    .fp_proto = FIB_PROTOCOL_IP4,
+	  };
+	  ip46_address_t nh = {
+	    .ip4 = c->installed.router_address,
+	  };
+
+	  fib_table_entry_path_remove (fib_table_get_index_for_sw_if_index
+				       (FIB_PROTOCOL_IP4, c->sw_if_index),
+				       &all_0s, FIB_SOURCE_DHCP,
+				       DPO_PROTO_IP4, &nh, c->sw_if_index, ~0,
+				       1, FIB_ROUTE_PATH_FLAG_NONE);
+	}
+      adj_unlock (c->ai_ucast);
+      c->ai_ucast = ADJ_INDEX_INVALID;
+    }
+  clib_memset (&c->installed, 0, sizeof (c->installed));
+  c->addresses_installed = 0;
 }
 
 static void
@@ -86,9 +227,12 @@ dhcp_client_proc_callback (uword * client_index)
 }
 
 static void
-dhcp_client_addr_callback (dhcp_client_t * c)
+dhcp_client_addr_callback (u32 * cindex)
 {
   dhcp_client_main_t *dcm = &dhcp_client_main;
+  dhcp_client_t *c;
+
+  c = pool_elt_at_index (dcm->clients, *cindex);
 
   /* disable the feature */
   vnet_feature_enable_disable ("ip4-unicast",
@@ -96,48 +240,11 @@ dhcp_client_addr_callback (dhcp_client_t * c)
 			       c->sw_if_index, 0 /* disable */ , 0, 0);
   c->client_detect_feature_enabled = 0;
 
-  /* if renewing the lease, the address and route have already been added */
-  if (c->state == DHCP_BOUND)
-    return;
-
-  /* add the address to the interface */
-  dhcp_client_acquire_address (dcm, c);
-
-  /*
-   * Configure default IP route:
-   */
-  if (c->router_address.as_u32)
+  /* add the address to the interface if they've changed since the last time */
+  if (0 != clib_memcmp (&c->installed, &c->learned, sizeof (c->learned)))
     {
-      fib_prefix_t all_0s = {
-	.fp_len = 0,
-	.fp_addr.ip4.as_u32 = 0x0,
-	.fp_proto = FIB_PROTOCOL_IP4,
-      };
-      ip46_address_t nh = {
-	.ip4 = c->router_address,
-      };
-
-      /* *INDENT-OFF* */
-      fib_table_entry_path_add (
-	fib_table_get_index_for_sw_if_index (
-	  FIB_PROTOCOL_IP4,
-	  c->sw_if_index),
-	  &all_0s,
-	  FIB_SOURCE_DHCP,
-	  FIB_ENTRY_FLAG_NONE,
-          DPO_PROTO_IP4,
-          &nh, c->sw_if_index,
-          ~0, 1, NULL,	// no label stack
-          FIB_ROUTE_PATH_FLAG_NONE);
-      /* *INDENT-ON* */
-    }
-  if (c->dhcp_server.as_u32)
-    {
-      ip46_address_t dst = {
-	.ip4 = c->dhcp_server,
-      };
-      c->ai_ucast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-					 VNET_LINK_IP4, &dst, c->sw_if_index);
+      dhcp_client_release_address (dcm, c);
+      dhcp_client_acquire_address (dcm, c);
     }
 
   /*
@@ -145,6 +252,28 @@ dhcp_client_addr_callback (dhcp_client_t * c)
    */
   if (c->event_callback)
     c->event_callback (c->client_index, c);
+
+  DHCP_INFO ("update: %U", format_dhcp_client, dcm, c);
+}
+
+static void
+dhcp_client_reset (dhcp_client_main_t * dcm, dhcp_client_t * c)
+{
+  if (c->client_detect_feature_enabled == 1)
+    {
+      vnet_feature_enable_disable ("ip4-unicast",
+				   "ip4-dhcp-client-detect",
+				   c->sw_if_index, 0, 0, 0);
+      c->client_detect_feature_enabled = 0;
+    }
+
+  dhcp_client_release_address (dcm, c);
+  clib_memset (&c->learned, 0, sizeof (c->installed));
+  c->state = DHCP_DISCOVER;
+  c->next_transmit = vlib_time_now (dcm->vlib_main);
+  c->retry_count = 0;
+  c->lease_renewal_interval = 0;
+  vec_free (c->domain_server_address);
 }
 
 /*
@@ -194,9 +323,9 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 
   /* parse through the packet, learn what we can */
   if (dhcp->your_ip_address.as_u32)
-    c->leased_address.as_u32 = dhcp->your_ip_address.as_u32;
+    c->learned.leased_address.as_u32 = dhcp->your_ip_address.as_u32;
 
-  c->dhcp_server.as_u32 = dhcp->server_ip_address.as_u32;
+  c->learned.dhcp_server.as_u32 = dhcp->server_ip_address.as_u32;
 
   o = (dhcp_option_t *) dhcp->options;
 
@@ -230,19 +359,19 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  break;
 
 	case 54:		/* dhcp server address */
-	  c->dhcp_server.as_u32 = o->data_as_u32[0];
+	  c->learned.dhcp_server.as_u32 = o->data_as_u32[0];
 	  break;
 
 	case 1:		/* subnet mask */
 	  {
 	    u32 subnet_mask = clib_host_to_net_u32 (o->data_as_u32[0]);
-	    c->subnet_mask_width = count_set_bits (subnet_mask);
+	    c->learned.subnet_mask_width = count_set_bits (subnet_mask);
 	  }
 	  break;
 	case 3:		/* router address */
 	  {
 	    u32 router_address = o->data_as_u32[0];
-	    c->router_address.as_u32 = router_address;
+	    c->learned.router_address.as_u32 = router_address;
 	  }
 	  break;
 	case 6:		/* domain server address */
@@ -297,29 +426,9 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	{
 	  vlib_node_increment_counter (vm, dhcp_client_process_node.index,
 				       DHCP_STAT_NAK, 1);
-	  /* Probably never happens in bound state, but anyhow... */
-	  if (c->state == DHCP_BOUND)
-	    {
-	      ip4_add_del_interface_address (dcm->vlib_main, c->sw_if_index,
-					     (void *) &c->leased_address,
-					     c->subnet_mask_width,
-					     1 /*is_del */ );
-	      vnet_feature_enable_disable ("ip4-unicast",
-					   "ip4-dhcp-client-detect",
-					   c->sw_if_index, 1 /* enable */ ,
-					   0, 0);
-	      c->client_detect_feature_enabled = 1;
-	    }
-	  /* Wipe out any memory of the address we had... */
-	  c->state = DHCP_DISCOVER;
-	  c->next_transmit = now;
-	  c->retry_count = 0;
-	  c->leased_address.as_u32 = 0;
-	  c->subnet_mask_width = 0;
-	  c->router_address.as_u32 = 0;
-	  c->lease_renewal_interval = 0;
-	  c->dhcp_server.as_u32 = 0;
-	  vec_free (c->domain_server_address);
+	  /* Probably never happens in bound state, but anyhow...
+	     Wipe out any memory of the address we had... */
+	  dhcp_client_reset (dcm, c);
 	  break;
 	}
 
@@ -335,8 +444,13 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  break;
 	}
       /* OK, we own the address (etc), add to the routing table(s) */
-      vl_api_rpc_call_main_thread (dhcp_client_addr_callback,
-				   (u8 *) c, sizeof (*c));
+      {
+	/* Send the index over to the main thread, where it can retrieve
+	 * the original client */
+	u32 cindex = c - dcm->clients;
+	vl_api_force_rpc_call_main_thread (dhcp_client_addr_callback,
+					   (u8 *) & cindex, sizeof (u32));
+      }
 
       c->state = DHCP_BOUND;
       c->retry_count = 0;
@@ -351,8 +465,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
       break;
     }
 
-  /* drop the pkt, return 1 */
-  vlib_buffer_free (vm, &bi, 1);
+  /* return 1 so the call disposes of this packet */
   return 1;
 }
 
@@ -377,6 +490,10 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   u16 udp_length, ip_length;
   u32 counter_index, node_index;
 
+  DHCP_INFO ("send: type:%U bcast:%d %U",
+	     format_dhcp_packet_type, type,
+	     is_broadcast, format_dhcp_client, dcm, c);
+
   /* Interface(s) down? */
   if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
     return;
@@ -399,6 +516,9 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   ASSERT (b->current_data == 0);
 
   vnet_buffer (b)->sw_if_index[VLIB_RX] = c->sw_if_index;
+
+  if (ADJ_INDEX_INVALID == c->ai_ucast)
+    is_broadcast = 1;
 
   if (is_broadcast)
     {
@@ -456,8 +576,8 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   else
     {
       /* Renewing an active lease, plain old ip4 src/dst */
-      ip->src_address.as_u32 = c->leased_address.as_u32;
-      ip->dst_address.as_u32 = c->dhcp_server.as_u32;
+      ip->src_address.as_u32 = c->learned.leased_address.as_u32;
+      ip->dst_address.as_u32 = c->learned.dhcp_server.as_u32;
     }
 
   udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client);
@@ -473,7 +593,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 
   /* Lease renewal, set up client_ip_address */
   if (is_broadcast == 0)
-    dhcp->client_ip_address.as_u32 = c->leased_address.as_u32;
+    dhcp->client_ip_address.as_u32 = c->learned.leased_address.as_u32;
 
   dhcp->opcode = 1;		/* request, all we send */
   dhcp->hardware_type = 1;	/* ethernet */
@@ -508,20 +628,20 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
    * If server ip address is available with non-zero value,
    * option 54 (DHCP Server Identifier) is sent.
    */
-  if (c->dhcp_server.as_u32)
+  if (c->learned.dhcp_server.as_u32)
     {
       o->option = 54;
       o->length = 4;
-      clib_memcpy (o->data, &c->dhcp_server.as_u32, 4);
+      clib_memcpy (o->data, &c->learned.dhcp_server.as_u32, 4);
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
   /* send option 50, requested IP address */
-  if (c->leased_address.as_u32)
+  if (c->learned.leased_address.as_u32)
     {
       o->option = 50;
       o->length = 4;
-      clib_memcpy (o->data, &c->leased_address.as_u32, 4);
+      clib_memcpy (o->data, &c->learned.leased_address.as_u32, 4);
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
@@ -594,7 +714,17 @@ dhcp_discover_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "DISCOVER" state. Send a dhcp discover packet,
    * eventually back off the retry rate.
    */
+  DHCP_INFO ("enter discover: %U", format_dhcp_client, dcm, c);
 
+  /*
+   * In order to accept any OFFER, whether broadcasted or unicasted, we
+   * need to configure the dhcp-client-detect feature as an input feature
+   * so the DHCP OFFER is sent to the ip4-local node. Without this a
+   * broadcasted OFFER hits the 255.255.255.255/32 address and a unicast
+   * hits 0.0.0.0/0 both of which default to drop and the latter may forward
+   * of box - not what we want. Nor to we want to change these route for
+   * all interfaces in this table
+   */
   if (c->client_detect_feature_enabled == 0)
     {
       vnet_feature_enable_disable ("ip4-unicast",
@@ -620,6 +750,8 @@ dhcp_request_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "REQUEST" state. Send a dhcp request packet,
    * eventually drop back to the discover state.
    */
+  DHCP_INFO ("enter request: %U", format_dhcp_client, dcm, c);
+
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 1 /* is_broadcast */ );
 
   c->retry_count++;
@@ -638,13 +770,6 @@ static int
 dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
 {
   /*
-   * State machine "BOUND" state. Send a dhcp request packet to renew
-   * the lease.
-   * Eventually, when the lease expires, forget the dhcp data
-   * and go back to the stone age.
-   */
-
-  /*
    * We disable the client detect feature when we bind a
    * DHCP address. Turn it back on again on first renew attempt.
    * Otherwise, if the DHCP server replies we'll never see it.
@@ -657,6 +782,23 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
       c->client_detect_feature_enabled = 1;
     }
 
+  /*
+   * State machine "BOUND" state. Send a dhcp request packet to renew
+   * the lease.
+   * Eventually, when the lease expires, forget the dhcp data
+   * and go back to the stone age.
+   */
+  if (now > c->lease_expires)
+    {
+      DHCP_INFO ("lease expired: %U", format_dhcp_client, dcm, c);
+
+      /* reset all data for the client. do not send any more messages
+       * since the objects to do so have been lost */
+      dhcp_client_reset (dcm, c);
+      return 1;
+    }
+
+  DHCP_INFO ("enter bound: %U", format_dhcp_client, dcm, c);
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 0 /* is_broadcast */ );
 
   c->retry_count++;
@@ -665,39 +807,6 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
   else
     c->next_transmit = now + 1.0;
 
-  if (now > c->lease_expires)
-    {
-      /* Remove the default route */
-      if (c->router_address.as_u32)
-	{
-	  fib_prefix_t all_0s = {
-	    .fp_len = 0,
-	    .fp_addr.ip4.as_u32 = 0x0,
-	    .fp_proto = FIB_PROTOCOL_IP4,
-	  };
-	  ip46_address_t nh = {
-	    .ip4 = c->router_address,
-	  };
-
-	  fib_table_entry_path_remove (fib_table_get_index_for_sw_if_index
-				       (FIB_PROTOCOL_IP4, c->sw_if_index),
-				       &all_0s, FIB_SOURCE_DHCP,
-				       DPO_PROTO_IP4, &nh, c->sw_if_index, ~0,
-				       1, FIB_ROUTE_PATH_FLAG_NONE);
-	}
-      /* Remove the interface address */
-      dhcp_client_release_address (dcm, c);
-      c->state = DHCP_DISCOVER;
-      c->next_transmit = now;
-      c->retry_count = 0;
-      /* Wipe out any memory of the address we had... */
-      c->leased_address.as_u32 = 0;
-      c->subnet_mask_width = 0;
-      c->router_address.as_u32 = 0;
-      c->lease_renewal_interval = 0;
-      c->dhcp_server.as_u32 = 0;
-      return 1;
-    }
   return 0;
 }
 
@@ -776,6 +885,7 @@ dhcp_client_process (vlib_main_t * vm,
 
 	case ~0:
           /* *INDENT-OFF* */
+          DHCP_INFO ("timeout");
 	  pool_foreach (c, dcm->clients,
           ({
             timeout = dhcp_client_sm (now, timeout,
@@ -804,75 +914,6 @@ VLIB_REGISTER_NODE (dhcp_client_process_node,static) = {
     .error_strings = dhcp_client_process_stat_strings,
 };
 /* *INDENT-ON* */
-
-static u8 *
-format_dhcp_client_state (u8 * s, va_list * va)
-{
-  dhcp_client_state_t state = va_arg (*va, dhcp_client_state_t);
-  char *str = "BOGUS!";
-
-  switch (state)
-    {
-#define _(a)                                    \
-    case a:                                     \
-      str = #a;                                 \
-        break;
-      foreach_dhcp_client_state;
-#undef _
-    default:
-      break;
-    }
-
-  s = format (s, "%s", str);
-  return s;
-}
-
-static u8 *
-format_dhcp_client (u8 * s, va_list * va)
-{
-  dhcp_client_main_t *dcm = va_arg (*va, dhcp_client_main_t *);
-  dhcp_client_t *c = va_arg (*va, dhcp_client_t *);
-  int verbose = va_arg (*va, int);
-  ip4_address_t *addr;
-
-  s = format (s, "[%d] %U state %U ", c - dcm->clients,
-	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
-	      format_dhcp_client_state, c->state);
-
-  if (0 != c->dscp)
-    s = format (s, "dscp %d ", c->dscp);
-
-  if (c->leased_address.as_u32)
-    {
-      s = format (s, "addr %U/%d gw %U",
-		  format_ip4_address, &c->leased_address,
-		  c->subnet_mask_width, format_ip4_address,
-		  &c->router_address);
-
-      vec_foreach (addr, c->domain_server_address)
-	s = format (s, " dns %U", format_ip4_address, addr);
-    }
-  else
-    {
-      s = format (s, "no address\n");
-    }
-
-  if (verbose)
-    {
-      s =
-	format (s,
-		"\n lease: lifetime:%d renewal-interval:%d expires:%.2f (now:%.2f)",
-		c->lease_lifetime, c->lease_renewal_interval,
-		c->lease_expires, vlib_time_now (dcm->vlib_main));
-      s =
-	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
-		c->next_transmit);
-      s =
-	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
-		c->ai_bcast);
-    }
-  return s;
-}
 
 static clib_error_t *
 show_dhcp_client_command_fn (vlib_main_t * vm,
@@ -934,11 +975,6 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   vlib_main_t *vm = dcm->vlib_main;
   dhcp_client_t *c;
   uword *p;
-  fib_prefix_t all_0s = {
-    .fp_len = 0,
-    .fp_addr.ip4.as_u32 = 0x0,
-    .fp_proto = FIB_PROTOCOL_IP4,
-  };
 
   p = hash_get (dcm->client_by_sw_if_index, a->sw_if_index);
 
@@ -973,42 +1009,17 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 
       hash_set (dcm->client_by_sw_if_index, a->sw_if_index, c - dcm->clients);
 
-      /*
-       * In order to accept any OFFER, whether broadcasted or unicasted, we
-       * need to configure the dhcp-client-detect feature as an input feature
-       * so the DHCP OFFER is sent to the ip4-local node. Without this a
-       * broadcasted OFFER hits the 255.255.255.255/32 address and a unicast
-       * hits 0.0.0.0/0 both of which default to drop and the latter may forward
-       * of box - not what we want. Nor to we want to change these route for
-       * all interfaces in this table
-       */
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "ip4-dhcp-client-detect",
-				   c->sw_if_index, 1 /* enable */ , 0, 0);
-      c->client_detect_feature_enabled = 1;
-
       vlib_process_signal_event (vm, dhcp_client_process_node.index,
 				 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
+
+      DHCP_INFO ("create: %U", format_dhcp_client, dcm, c);
     }
   else
     {
       c = pool_elt_at_index (dcm->clients, p[0]);
 
-      if (c->router_address.as_u32)
-	{
-	  ip46_address_t nh = {
-	    .ip4 = c->router_address,
-	  };
+      dhcp_client_reset (dcm, c);
 
-	  fib_table_entry_path_remove (fib_table_get_index_for_sw_if_index
-				       (FIB_PROTOCOL_IP4, c->sw_if_index),
-				       &all_0s, FIB_SOURCE_DHCP,
-				       DPO_PROTO_IP4, &nh, c->sw_if_index, ~0,
-				       1, FIB_ROUTE_PATH_FLAG_NONE);
-	}
-      dhcp_client_release_address (dcm, c);
-
-      adj_unlock (c->ai_ucast);
       adj_unlock (c->ai_bcast);
 
       vec_free (c->domain_server_address);
@@ -1241,6 +1252,9 @@ dhcp_client_init (vlib_main_t * vm)
   dcm->vlib_main = vm;
   dcm->vnet_main = vnet_get_main ();
   dcm->seed = (u32) clib_cpu_time_now ();
+
+  dhcp_logger = vlib_log_register_class ("dhcp", "client");
+
   return 0;
 }
 
