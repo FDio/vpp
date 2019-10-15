@@ -323,6 +323,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "buffer-advance %d",
 			 &flow.buffer_advance))
 	flow.actions |= VNET_FLOW_ACTION_BUFFER_ADVANCE;
+      else if (unformat (line_input, "redirect-to-queue %d",
+			 &flow.redirect_queue))
+	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
+      else if (unformat (line_input, "drop"))
+	flow.actions |= VNET_FLOW_ACTION_DROP;
       else if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
 			 &hw_if_index))
 	;
