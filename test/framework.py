@@ -175,14 +175,16 @@ def pump_output(testclass):
         if testclass.vpp.stderr.fileno() in readable:
             read = os.read(testclass.vpp.stderr.fileno(), 102400)
             if len(read) > 0:
-                split = read.splitlines(True)
+                split = read.decode('ascii',
+                                    errors='backslashreplace').splitlines(True)
                 if len(stderr_fragment) > 0:
                     split[0] = "%s%s" % (stderr_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith(b"\n"):
+                if len(split) > 0 and split[-1].endswith("\n"):
                     limit = None
                 else:
                     limit = -1
                     stderr_fragment = split[-1]
+
                 testclass.vpp_stderr_deque.extend(split[:limit])
                 if not testclass.cache_vpp_output:
                     for line in split[:limit]:
