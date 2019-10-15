@@ -16,10 +16,7 @@
  */
 
 #include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlib/pci/pci.h>
-#include <vnet/ethernet/ethernet.h>
-
+#include <vnet/vnet.h>
 #include <rdma/rdma.h>
 
 u8 *
