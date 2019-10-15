@@ -1465,6 +1465,25 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
         #
+        # read the DHCP client details from a dump
+        #
+        clients = self.vapi.dhcp_client_dump()
+
+        self.assertEqual(clients[0].client.sw_if_index,
+                         self.pg3.sw_if_index)
+        self.assertEqual(clients[0].lease.sw_if_index,
+                         self.pg3.sw_if_index)
+        self.assertEqual(clients[0].client.hostname, hostname)
+        self.assertEqual(clients[0].lease.hostname, hostname)
+        # 0 = DISCOVER, 1 = REQUEST, 2 = BOUND
+        self.assertEqual(clients[0].lease.state, 2)
+        self.assertEqual(clients[0].lease.mask_width, 24)
+        self.assertEqual(str(clients[0].lease.router_address),
+                         self.pg3.remote_ip4)
+        self.assertEqual(str(clients[0].lease.host_address),
+                         self.pg3.local_ip4)
+
+        #
         # wait for the unicasted renewal
         #  the first attempt will be an ARP packet, since we have not yet
         #  responded to VPP's request
@@ -1492,6 +1511,25 @@ class TestDHCP(VppTestCase):
                                       l2_bc=False,
                                       broadcast=False)
 
+        # send an ACK with different data from the original offer *
+        self.pg3.generate_remote_hosts(4)
+        p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
+                 IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
+                 UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
+                 BOOTP(op=1, yiaddr=self.pg3.remote_hosts[3].ip4,
+                       chaddr=mac_pton(self.pg3.local_mac)) /
+                 DHCP(options=[('message-type', 'ack'),
+                               ('subnet_mask', "255.255.255.0"),
+                               ('router', self.pg3.remote_hosts[1].ip4),
+                               ('server_id', self.pg3.remote_hosts[2].ip4),
+                               ('lease_time', 43200),
+                               ('renewal_time', 2),
+                               'end']))
+
+        self.pg3.add_stream(p_ack)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
         #
         # read the DHCP client details from a dump
         #
@@ -1501,23 +1539,15 @@ class TestDHCP(VppTestCase):
                          self.pg3.sw_if_index)
         self.assertEqual(clients[0].lease.sw_if_index,
                          self.pg3.sw_if_index)
-        self.assertEqual(clients[0].client.hostname.rstrip('\0'),
-                         hostname)
-        self.assertEqual(clients[0].lease.hostname.rstrip('\0'),
-                         hostname)
+        self.assertEqual(clients[0].client.hostname, hostname)
+        self.assertEqual(clients[0].lease.hostname, hostname)
         # 0 = DISCOVER, 1 = REQUEST, 2 = BOUND
         self.assertEqual(clients[0].lease.state, 2)
         self.assertEqual(clients[0].lease.mask_width, 24)
         self.assertEqual(str(clients[0].lease.router_address),
-                         self.pg3.remote_ip4)
+                         self.pg3.remote_hosts[1].ip4)
         self.assertEqual(str(clients[0].lease.host_address),
-                         self.pg3.local_ip4)
-
-        # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      self.pg3.remote_mac,
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
+                         self.pg3.remote_hosts[3].ip4)
 
         #
         # remove the DHCP config
@@ -1532,6 +1562,8 @@ class TestDHCP(VppTestCase):
 
         #
         # Start the procedure again. Use requested lease time option.
+        # this time wait for the lease to expire and the client to
+        # self-destruct
         #
         hostname += "-2"
         self.pg3.admin_down()
@@ -1600,12 +1632,6 @@ class TestDHCP(VppTestCase):
         #
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
         self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
-
-        # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      self.pg3.remote_mac,
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
 
         #
         # the route should be gone after the lease expires
