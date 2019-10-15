@@ -274,6 +274,11 @@ I:	geneve
 M:	N/A
 F:	src/vnet/geneve/
 
+VNET FLOW
+I:	flow
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/flow/
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
