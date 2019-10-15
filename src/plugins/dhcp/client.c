@@ -19,9 +19,16 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/qos/qos_types.h>
 
+vlib_log_class_t dhcp_logger;
+
 dhcp_client_main_t dhcp_client_main;
-static u8 *format_dhcp_client_state (u8 * s, va_list * va);
 static vlib_node_registration_t dhcp_client_process_node;
+
+#define DHCP_DBG(...)                           \
+    vlib_log_debug (dhcp_logger, __VA_ARGS__);
+
+#define DHCP_INFO(...)                          \
+    vlib_log_notice (dhcp_logger, __VA_ARGS__);
 
 #define foreach_dhcp_sent_packet_stat           \
 _(DISCOVER, "DHCP discover packets sent")       \
@@ -51,6 +58,75 @@ static char *dhcp_client_process_stat_strings[] = {
 #undef _
     "DHCP unknown packets sent",
 };
+
+static u8 *
+format_dhcp_client_state (u8 * s, va_list * va)
+{
+  dhcp_client_state_t state = va_arg (*va, dhcp_client_state_t);
+  char *str = "BOGUS!";
+
+  switch (state)
+    {
+#define _(a)                                    \
+    case a:                                     \
+      str = #a;                                 \
+        break;
+      foreach_dhcp_client_state;
+#undef _
+    default:
+      break;
+    }
+
+  s = format (s, "%s", str);
+  return s;
+}
+
+static u8 *
+format_dhcp_client (u8 * s, va_list * va)
+{
+  dhcp_client_main_t *dcm = va_arg (*va, dhcp_client_main_t *);
+  dhcp_client_t *c = va_arg (*va, dhcp_client_t *);
+  int verbose = va_arg (*va, int);
+  ip4_address_t *addr;
+
+  s = format (s, "[%d] %U state %U ", c - dcm->clients,
+	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
+	      format_dhcp_client_state, c->state);
+
+  if (0 != c->dscp)
+    s = format (s, "dscp %d ", c->dscp);
+
+  if (c->leased_address.as_u32)
+    {
+      s = format (s, "addr %U/%d gw %U",
+		  format_ip4_address, &c->leased_address,
+		  c->subnet_mask_width, format_ip4_address,
+		  &c->router_address);
+
+      vec_foreach (addr, c->domain_server_address)
+	s = format (s, " dns %U", format_ip4_address, addr);
+    }
+  else
+    {
+      s = format (s, "no address\n");
+    }
+
+  if (verbose)
+    {
+      s =
+	format (s,
+		"\n lease: lifetime:%d renewal-interval:%d expires:%.2f (now:%.2f)",
+		c->lease_lifetime, c->lease_renewal_interval,
+		c->lease_expires, vlib_time_now (dcm->vlib_main));
+      s =
+	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
+		c->next_transmit);
+      s =
+	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
+		c->ai_bcast);
+    }
+  return s;
+}
 
 static void
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
@@ -145,6 +221,8 @@ dhcp_client_addr_callback (dhcp_client_t * c)
    */
   if (c->event_callback)
     c->event_callback (c->client_index, c);
+
+  DHCP_INFO ("update: %U", format_dhcp_client, dcm, c);
 }
 
 /*
@@ -356,6 +434,32 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
   return 1;
 }
 
+u8 *
+format_dhcp_packet_type (u8 * s, va_list * args)
+{
+  dhcp_packet_type_t pt = va_arg (*args, dhcp_packet_type_t);
+
+  switch (pt)
+    {
+    case DHCP_PACKET_DISCOVER:
+      s = format (s, "discover");
+      break;
+    case DHCP_PACKET_OFFER:
+      s = format (s, "offer");
+      break;
+    case DHCP_PACKET_REQUEST:
+      s = format (s, "request");
+      break;
+    case DHCP_PACKET_ACK:
+      s = format (s, "ack");
+      break;
+    case DHCP_PACKET_NAK:
+      s = format (s, "nack");
+      break;
+    }
+  return (s);
+}
+
 static void
 send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 	       dhcp_packet_type_t type, int is_broadcast)
@@ -376,6 +480,10 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   dhcp_option_t *o;
   u16 udp_length, ip_length;
   u32 counter_index, node_index;
+
+  DHCP_INFO ("send: type:%U bcast:%d %U",
+	     format_dhcp_packet_type, type,
+	     is_broadcast, format_dhcp_client, dcm, c);
 
   /* Interface(s) down? */
   if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
@@ -408,6 +516,14 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   else
     {
       ip_adjacency_t *adj = adj_get (c->ai_ucast);
+
+      if (NULL == adj)
+	{
+	  clib_warning ("No unicast adjacency for DHCP server: %U",
+			format_ip4_address, &c->dhcp_server);
+	  c->next_transmit = 0;
+	  return;
+	}
 
       if (IP_LOOKUP_NEXT_ARP == adj->lookup_next_index)
 	node_index = ip4_arp_node.index;
@@ -594,6 +710,7 @@ dhcp_discover_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "DISCOVER" state. Send a dhcp discover packet,
    * eventually back off the retry rate.
    */
+  DHCP_INFO ("enter discover: %U", format_dhcp_client, dcm, c);
 
   if (c->client_detect_feature_enabled == 0)
     {
@@ -620,6 +737,8 @@ dhcp_request_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "REQUEST" state. Send a dhcp request packet,
    * eventually drop back to the discover state.
    */
+  DHCP_INFO ("enter request: %U", format_dhcp_client, dcm, c);
+
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 1 /* is_broadcast */ );
 
   c->retry_count++;
@@ -643,6 +762,7 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * Eventually, when the lease expires, forget the dhcp data
    * and go back to the stone age.
    */
+  DHCP_INFO ("enter bound: %U", format_dhcp_client, dcm, c);
 
   /*
    * We disable the client detect feature when we bind a
@@ -805,75 +925,6 @@ VLIB_REGISTER_NODE (dhcp_client_process_node,static) = {
 };
 /* *INDENT-ON* */
 
-static u8 *
-format_dhcp_client_state (u8 * s, va_list * va)
-{
-  dhcp_client_state_t state = va_arg (*va, dhcp_client_state_t);
-  char *str = "BOGUS!";
-
-  switch (state)
-    {
-#define _(a)                                    \
-    case a:                                     \
-      str = #a;                                 \
-        break;
-      foreach_dhcp_client_state;
-#undef _
-    default:
-      break;
-    }
-
-  s = format (s, "%s", str);
-  return s;
-}
-
-static u8 *
-format_dhcp_client (u8 * s, va_list * va)
-{
-  dhcp_client_main_t *dcm = va_arg (*va, dhcp_client_main_t *);
-  dhcp_client_t *c = va_arg (*va, dhcp_client_t *);
-  int verbose = va_arg (*va, int);
-  ip4_address_t *addr;
-
-  s = format (s, "[%d] %U state %U ", c - dcm->clients,
-	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
-	      format_dhcp_client_state, c->state);
-
-  if (0 != c->dscp)
-    s = format (s, "dscp %d ", c->dscp);
-
-  if (c->leased_address.as_u32)
-    {
-      s = format (s, "addr %U/%d gw %U",
-		  format_ip4_address, &c->leased_address,
-		  c->subnet_mask_width, format_ip4_address,
-		  &c->router_address);
-
-      vec_foreach (addr, c->domain_server_address)
-	s = format (s, " dns %U", format_ip4_address, addr);
-    }
-  else
-    {
-      s = format (s, "no address\n");
-    }
-
-  if (verbose)
-    {
-      s =
-	format (s,
-		"\n lease: lifetime:%d renewal-interval:%d expires:%.2f (now:%.2f)",
-		c->lease_lifetime, c->lease_renewal_interval,
-		c->lease_expires, vlib_time_now (dcm->vlib_main));
-      s =
-	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
-		c->next_transmit);
-      s =
-	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
-		c->ai_bcast);
-    }
-  return s;
-}
-
 static clib_error_t *
 show_dhcp_client_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
@@ -989,6 +1040,8 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 
       vlib_process_signal_event (vm, dhcp_client_process_node.index,
 				 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
+
+      DHCP_INFO ("create: %U", format_dhcp_client, dcm, c);
     }
   else
     {
@@ -1241,6 +1294,9 @@ dhcp_client_init (vlib_main_t * vm)
   dcm->vlib_main = vm;
   dcm->vnet_main = vnet_get_main ();
   dcm->seed = (u32) clib_cpu_time_now ();
+
+  dhcp_logger = vlib_log_register_class ("dhcp", "dhcp");
+
   return 0;
 }
 

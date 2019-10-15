@@ -60,6 +60,8 @@ typedef enum
   DHCP_PACKET_NAK,
 } dhcp_packet_type_t;
 
+extern u8 *format_dhcp_packet_type (u8 * s, va_list * args);
+
 typedef enum dhcp_packet_option_t_
 {
   DHCP_PACKET_OPTION_MSG_TYPE = 53,
