@@ -48,7 +48,11 @@ typedef struct
   u32 error;
   u32 sw_if_index;
   u32 original_sw_if_index;
-} dhcp_proxy_trace_t;
+
+  /* enough space for the DHCP header plus some options */
+  u8 packet_data[2 * sizeof (dhcp_header_t)];
+}
+dhcp_proxy_trace_t;
 
 #define VPP_DHCP_OPTION82_SUB1_SIZE   6
 #define VPP_DHCP_OPTION82_SUB5_SIZE   6
@@ -79,6 +83,8 @@ format_dhcp_proxy_trace (u8 * s, va_list * args)
 
   s = format (s, "  original_sw_if_index: %d, sw_if_index: %d\n",
 	      t->original_sw_if_index, t->sw_if_index);
+  s = format (s, "  %U",
+	      format_dhcp_header, t->packet_data, sizeof (t->packet_data));
 
   return s;
 }
@@ -393,6 +399,10 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 		      if (next0 == DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP)
 			tr->trace_ip4_address.as_u32 =
 			  server->dhcp_server.ip4.as_u32;
+
+		      clib_memcpy_fast (tr->packet_data, h0,
+					sizeof (tr->packet_data));
+
 		    }
 
 		  if (PREDICT_FALSE (0 == n_left_to_next))
@@ -416,6 +426,8 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	      if (next0 == DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP)
 		tr->trace_ip4_address.as_u32 =
 		  proxy->dhcp_servers[0].dhcp_server.ip4.as_u32;
+	      clib_memcpy_fast (tr->packet_data, h0,
+				sizeof (tr->packet_data));
 	    }
 
 	do_enqueue:
@@ -471,70 +483,86 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_server_node, static) = {
 };
 /* *INDENT-ON* */
 
+typedef enum
+{
+  DHCP4_PROXY_NEXT_DROP,
+  DHCP4_PROXY_NEXT_TX,
+  DHCP4_PROXY_N_NEXT,
+} dhcp4_next_t;
+
 static uword
 dhcp_proxy_to_client_input (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
 			    vlib_frame_t * from_frame)
 {
-  u32 n_left_from, *from;
+  u32 n_left_from, *from, *to_next, n_left_to_next;
   ethernet_main_t *em = vnet_get_ethernet_main ();
   dhcp_proxy_main_t *dpm = &dhcp_proxy_main;
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
+  u32 next_index;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  next_index = node->cached_next_index;
 
   while (n_left_from > 0)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      udp_header_t *u0;
-      dhcp_header_t *h0;
-      ip4_header_t *ip0 = 0;
-      ip4_address_t *ia0 = 0;
-      u32 old0, new0;
-      ip_csum_t sum0;
-      ethernet_interface_t *ei0;
-      ethernet_header_t *mac0;
-      vnet_hw_interface_t *hi0;
-      vlib_frame_t *f0;
-      u32 *to_next0;
-      u32 sw_if_index = ~0;
-      vnet_sw_interface_t *si0;
-      u32 error0 = (u32) ~ 0;
-      vnet_sw_interface_t *swif;
-      u32 fib_index;
-      dhcp_proxy_t *proxy;
-      dhcp_server_t *server;
-      u32 original_sw_if_index = (u32) ~ 0;
-      ip4_address_t relay_addr = {
-	.as_u32 = 0,
-      };
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      h0 = vlib_buffer_get_current (b0);
-
-      /*
-       * udp_local hands us the DHCP header, need udp hdr,
-       * ip hdr to relay to client
-       */
-      vlib_buffer_advance (b0, -(sizeof (*u0)));
-      u0 = vlib_buffer_get_current (b0);
-
-      vlib_buffer_advance (b0, -(sizeof (*ip0)));
-      ip0 = vlib_buffer_get_current (b0);
-
-      /* Consumed by dhcp client code? */
-      if (dhcp_client_for_us (bi0, b0, ip0, u0, h0))
-	continue;
-
-      if (1 /* dpm->insert_option_82 */ )
+      while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  udp_header_t *u0;
+	  dhcp_header_t *h0;
+	  ip4_header_t *ip0 = 0;
+	  ip4_address_t *ia0 = 0;
+	  u32 old0, new0;
+	  ip_csum_t sum0;
+	  ethernet_interface_t *ei0;
+	  ethernet_header_t *mac0;
+	  vnet_hw_interface_t *hi0;
+	  u32 sw_if_index = ~0;
+	  vnet_sw_interface_t *si0;
+	  u32 error0 = (u32) ~ 0;
+	  vnet_sw_interface_t *swif;
+	  u32 fib_index;
+	  dhcp_proxy_t *proxy;
+	  dhcp_server_t *server;
+	  u32 original_sw_if_index = (u32) ~ 0;
+	  dhcp4_next_t next0 = DHCP4_PROXY_NEXT_TX;
+	  ip4_address_t relay_addr = {
+	    .as_u32 = 0,
+	  };
+
+	  bi0 = to_next[0] = from[0];
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  h0 = vlib_buffer_get_current (b0);
+
+	  /*
+	   * udp_local hands us the DHCP header, need udp hdr,
+	   * ip hdr to relay to client
+	   */
+	  vlib_buffer_advance (b0, -(sizeof (*u0)));
+	  u0 = vlib_buffer_get_current (b0);
+
+	  vlib_buffer_advance (b0, -(sizeof (*ip0)));
+	  ip0 = vlib_buffer_get_current (b0);
+
+	  /* Consumed by dhcp client code? */
+	  if (dhcp_client_for_us (bi0, b0, ip0, u0, h0))
+	    {
+	      error0 = DHCP_PROXY_ERROR_FOR_US;
+	      goto drop_packet;
+	    }
+
+	  // if (1 /* dpm->insert_option_82 */ )
 	  /* linearize needed to "unclone" and scan options */
 	  int rv = vlib_buffer_chain_linearize (vm, b0);
 	  if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) != 0 || !rv)
@@ -594,134 +622,135 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 		}
 	      o = (dhcp_option_t *) (o->data + o->length);
 	    }
-	}
 
-      if (sw_if_index == (u32) ~ 0)
-	{
-	  error0 = DHCP_PROXY_ERROR_NO_OPTION_82;
+	  if (sw_if_index == (u32) ~ 0)
+	    {
+	      error0 = DHCP_PROXY_ERROR_NO_OPTION_82;
 
-	drop_packet:
-	  vlib_node_increment_counter (vm, dhcp_proxy_to_client_node.index,
-				       error0, 1);
-	  f0 = vlib_get_frame_to_node (vm, dpm->error_drop_node_index);
-	  to_next0 = vlib_frame_vector_args (f0);
-	  to_next0[0] = bi0;
-	  f0->n_vectors = 1;
-	  vlib_put_frame_to_node (vm, dpm->error_drop_node_index, f0);
-	  goto do_trace;
-	}
+	    drop_packet:
+	      vlib_node_increment_counter (vm,
+					   dhcp_proxy_to_client_node.index,
+					   error0, 1);
+	      b0->error = node->errors[error0];
+	      next0 = DHCP4_PROXY_NEXT_DROP;
+	      goto do_trace;
+	    }
 
-      if (relay_addr.as_u32 == 0)
-	{
-	  error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ADDR;
-	  goto drop_packet;
-	}
+	  if (relay_addr.as_u32 == 0)
+	    {
+	      error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ADDR;
+	      goto drop_packet;
+	    }
 
-      if (sw_if_index >= vec_len (im->fib_index_by_sw_if_index))
-	{
-	  error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ITF;
-	  goto drop_packet;
-	}
+	  if (sw_if_index >= vec_len (im->fib_index_by_sw_if_index))
+	    {
+	      error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ITF;
+	      goto drop_packet;
+	    }
 
-      fib_index = im->fib_index_by_sw_if_index[sw_if_index];
-      proxy = dhcp_get_proxy (dpm, fib_index, FIB_PROTOCOL_IP4);
+	  fib_index = im->fib_index_by_sw_if_index[sw_if_index];
+	  proxy = dhcp_get_proxy (dpm, fib_index, FIB_PROTOCOL_IP4);
 
-      if (PREDICT_FALSE (NULL == proxy))
-	{
-	  error0 = DHCP_PROXY_ERROR_NO_SERVER;
-	  goto drop_packet;
-	}
+	  if (PREDICT_FALSE (NULL == proxy))
+	    {
+	      error0 = DHCP_PROXY_ERROR_NO_SERVER;
+	      goto drop_packet;
+	    }
 
-      vec_foreach (server, proxy->dhcp_servers)
-      {
-	if (ip0->src_address.as_u32 == server->dhcp_server.ip4.as_u32)
+	  vec_foreach (server, proxy->dhcp_servers)
 	  {
-	    goto server_found;
+	    if (ip0->src_address.as_u32 == server->dhcp_server.ip4.as_u32)
+	      {
+		goto server_found;
+	      }
 	  }
-      }
 
-      error0 = DHCP_PROXY_ERROR_BAD_SVR_FIB_OR_ADDRESS;
-      goto drop_packet;
-
-    server_found:
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
-
-      swif = vnet_get_sw_interface (vnm, sw_if_index);
-      original_sw_if_index = sw_if_index;
-      if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
-	sw_if_index = swif->unnumbered_sw_if_index;
-
-      ia0 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
-      if (ia0 == 0)
-	{
-	  error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
+	  error0 = DHCP_PROXY_ERROR_BAD_SVR_FIB_OR_ADDRESS;
 	  goto drop_packet;
+
+	server_found:
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
+
+	  swif = vnet_get_sw_interface (vnm, sw_if_index);
+	  original_sw_if_index = sw_if_index;
+	  if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+	    sw_if_index = swif->unnumbered_sw_if_index;
+
+	  ia0 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
+	  if (ia0 == 0)
+	    {
+	      error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
+	      goto drop_packet;
+	    }
+
+	  if (relay_addr.as_u32 != ia0->as_u32)
+	    {
+	      error0 = DHCP_PROXY_ERROR_BAD_YIADDR;
+	      goto drop_packet;
+	    }
+
+	  u0->checksum = 0;
+	  u0->dst_port = clib_net_to_host_u16 (UDP_DST_PORT_dhcp_to_client);
+	  sum0 = ip0->checksum;
+	  old0 = ip0->dst_address.as_u32;
+	  new0 = 0xFFFFFFFF;
+	  ip0->dst_address.as_u32 = new0;
+	  sum0 =
+	    ip_csum_update (sum0, old0, new0, ip4_header_t /* structure */ ,
+			    dst_address /* offset of changed member */ );
+	  ip0->checksum = ip_csum_fold (sum0);
+
+	  sum0 = ip0->checksum;
+	  old0 = ip0->src_address.as_u32;
+	  new0 = ia0->as_u32;
+	  ip0->src_address.as_u32 = new0;
+	  sum0 =
+	    ip_csum_update (sum0, old0, new0, ip4_header_t /* structure */ ,
+			    src_address /* offset of changed member */ );
+	  ip0->checksum = ip_csum_fold (sum0);
+
+	  vlib_buffer_advance (b0, -(sizeof (ethernet_header_t)));
+	  si0 = vnet_get_sw_interface (vnm, original_sw_if_index);
+	  if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
+	    vlib_buffer_advance (b0, -4 /* space for VLAN tag */ );
+
+	  mac0 = vlib_buffer_get_current (b0);
+
+	  hi0 = vnet_get_sup_hw_interface (vnm, original_sw_if_index);
+	  ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
+	  clib_memcpy (mac0->src_address, ei0->address,
+		       sizeof (ei0->address));
+	  clib_memset (mac0->dst_address, 0xff, sizeof (mac0->dst_address));
+	  mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
+	    clib_net_to_host_u16 (0x8100) : clib_net_to_host_u16 (0x0800);
+
+	  if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
+	    {
+	      u32 *vlan_tag = (u32 *) (mac0 + 1);
+	      u32 tmp;
+	      tmp = (si0->sub.id << 16) | 0x0800;
+	      *vlan_tag = clib_host_to_net_u32 (tmp);
+	    }
+
+	do_trace:
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      dhcp_proxy_trace_t *tr = vlib_add_trace (vm, node,
+						       b0, sizeof (*tr));
+	      tr->which = 1;	/* to client */
+	      tr->trace_ip4_address.as_u32 = ia0 ? ia0->as_u32 : 0;
+	      tr->error = error0;
+	      tr->original_sw_if_index = original_sw_if_index;
+	      tr->sw_if_index = sw_if_index;
+	      clib_memcpy_fast (tr->packet_data, h0,
+				sizeof (tr->packet_data));
+	    }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
 	}
-
-      if (relay_addr.as_u32 != ia0->as_u32)
-	{
-	  error0 = DHCP_PROXY_ERROR_BAD_YIADDR;
-	  goto drop_packet;
-	}
-
-      u0->checksum = 0;
-      u0->dst_port = clib_net_to_host_u16 (UDP_DST_PORT_dhcp_to_client);
-      sum0 = ip0->checksum;
-      old0 = ip0->dst_address.as_u32;
-      new0 = 0xFFFFFFFF;
-      ip0->dst_address.as_u32 = new0;
-      sum0 = ip_csum_update (sum0, old0, new0, ip4_header_t /* structure */ ,
-			     dst_address /* offset of changed member */ );
-      ip0->checksum = ip_csum_fold (sum0);
-
-      sum0 = ip0->checksum;
-      old0 = ip0->src_address.as_u32;
-      new0 = ia0->as_u32;
-      ip0->src_address.as_u32 = new0;
-      sum0 = ip_csum_update (sum0, old0, new0, ip4_header_t /* structure */ ,
-			     src_address /* offset of changed member */ );
-      ip0->checksum = ip_csum_fold (sum0);
-
-      vlib_buffer_advance (b0, -(sizeof (ethernet_header_t)));
-      si0 = vnet_get_sw_interface (vnm, original_sw_if_index);
-      if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
-	vlib_buffer_advance (b0, -4 /* space for VLAN tag */ );
-
-      mac0 = vlib_buffer_get_current (b0);
-
-      hi0 = vnet_get_sup_hw_interface (vnm, original_sw_if_index);
-      ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
-      clib_memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
-      clib_memset (mac0->dst_address, 0xff, sizeof (mac0->dst_address));
-      mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
-	clib_net_to_host_u16 (0x8100) : clib_net_to_host_u16 (0x0800);
-
-      if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
-	{
-	  u32 *vlan_tag = (u32 *) (mac0 + 1);
-	  u32 tmp;
-	  tmp = (si0->sub.id << 16) | 0x0800;
-	  *vlan_tag = clib_host_to_net_u32 (tmp);
-	}
-
-      /* $$$ This needs to be rewritten, for sure */
-      f0 = vlib_get_frame_to_node (vm, hi0->output_node_index);
-      to_next0 = vlib_frame_vector_args (f0);
-      to_next0[0] = bi0;
-      f0->n_vectors = 1;
-      vlib_put_frame_to_node (vm, hi0->output_node_index, f0);
-
-    do_trace:
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  dhcp_proxy_trace_t *tr = vlib_add_trace (vm, node,
-						   b0, sizeof (*tr));
-	  tr->which = 1;	/* to client */
-	  tr->trace_ip4_address.as_u32 = ia0 ? ia0->as_u32 : 0;
-	  tr->error = error0;
-	  tr->original_sw_if_index = original_sw_if_index;
-	  tr->sw_if_index = sw_if_index;
-	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
   return from_frame->n_vectors;
@@ -741,6 +770,11 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_client_node, static) = {
 #if 0
   .unformat_buffer = unformat_dhcp_proxy_header,
 #endif
+  .n_next_nodes = DHCP4_PROXY_N_NEXT,
+  .next_nodes = {
+    [DHCP4_PROXY_NEXT_DROP] = "error-drop",
+    [DHCP4_PROXY_NEXT_TX] = "interface-output",
+  },
 };
 /* *INDENT-ON* */
 

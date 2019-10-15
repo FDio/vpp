@@ -17,6 +17,7 @@ add_vpp_plugin(dhcp
   dhcp_api.c
   dhcp_client_detect.c
   dhcp_proxy.c
+  dhcp4_packet.c
   dhcp4_proxy_node.c
   dhcp6_client_common_dp.c
   dhcp6_ia_na_client_dp.c
