@@ -43,16 +43,25 @@ include_directories(${IBVERBS_INCLUDE_DIR})
 
 add_vpp_plugin(rdma
   SOURCES
+  api.c
   cli.c
   device.c
   format.c
   plugin.c
+  unformat.c
   input.c
   output.c
 
   MULTIARCH_SOURCES
   input.c
   output.c
+
+  API_FILES
+  rdma.api
+
+  API_TEST_SOURCES
+  unformat.c
+  test_api.c
 
   LINK_FLAGS
   "${RDMA_LINK_FLAGS}"
