@@ -779,8 +779,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		      ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
-		      ip6srv->sr.segments_left = 1;
-		      ip6srv->sr.last_entry = 1;
+		      ip6srv->sr.segments_left = 0;
+		      ip6srv->sr.last_entry = 0;
 
 		      ip6srv->sr.length = sizeof(ip6_address_t) / 8;
 		      ip6srv->sr.segments[0] = seg;
@@ -1385,8 +1385,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 		      ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
-		      ip6srv->sr.segments_left = 1;
-		      ip6srv->sr.last_entry = 1;
+		      ip6srv->sr.segments_left = 0;
+		      ip6srv->sr.last_entry = 0;
 
 		      ip6srv->sr.length = sizeof(ip6_address_t) / 8;
 		      ip6srv->sr.segments[0] = seg0;
