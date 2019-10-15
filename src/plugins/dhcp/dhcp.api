@@ -1,0 +1,513 @@
+<<<<<<< HEAD   (fea071 tcp: rate sample for persist segments)
+=======
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "3.0.1";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+
+enum vss_type {
+  VSS_TYPE_API_ASCII = 0,
+  VSS_TYPE_API_VPN_ID = 1,
+  VSS_TYPE_API_INVALID = 123,
+  VSS_TYPE_API_DEFAULT = 255,
+};
+
+enum dhcp_client_state {
+  DHCP_CLIENT_STATE_API_DISCOVER,
+  DHCP_CLIENT_STATE_API_REQUEST,
+  DHCP_CLIENT_STATE_API_BOUND,
+};
+
+enum dhcpv6_msg_type
+{
+  DHCPV6_MSG_API_SOLICIT = 1,
+  DHCPV6_MSG_API_ADVERTISE = 2,
+  DHCPV6_MSG_API_REQUEST = 3,
+  DHCPV6_MSG_API_CONFIRM = 4,
+  DHCPV6_MSG_API_RENEW = 5,
+  DHCPV6_MSG_API_REBIND = 6,
+  DHCPV6_MSG_API_REPLY = 7,
+  DHCPV6_MSG_API_RELEASE = 8,
+  DHCPV6_MSG_API_DECLINE = 9,
+  DHCPV6_MSG_API_RECONFIGURE = 10,
+  DHCPV6_MSG_API_INFORMATION_REQUEST = 11,
+  DHCPV6_MSG_API_RELAY_FORW = 12,
+  DHCPV6_MSG_API_RELAY_REPL = 13,
+};
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define dhcp_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+
+define dhcp_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dhcp_plugin_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define dhcp_plugin_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+/** \brief DHCP Proxy config add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param rx_vrf_id - Rx/interface vrf id
+    @param server_vrf_id - server vrf id
+    @param is_add - add the config if non-zero, else delete
+    @param insert_circuit_id - option82 suboption 1 fib number
+    @param dhcp_server[] - server address
+    @param dhcp_src_address[] - sc address for packets sent to the server
+*/
+autoreply define dhcp_proxy_config
+{
+  u32 client_index;
+  u32 context;
+  u32 rx_vrf_id;
+  u32 server_vrf_id;
+  bool is_add;
+  vl_api_address_t dhcp_server;
+  vl_api_address_t dhcp_src_address;
+};
+
+/** \brief DHCP Proxy set / unset vss request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param tbl_id - table id
+    @vss_type - 0: use ASCI vpn_id; 1: use oui/vpn_index; 255: global vpn
+    @vpn_ascii - null terminated ASCII VPN ID up to 128 characters
+    @param oui - first part of rfc2685 vpn id, 3 bytes oui
+    @param vpn_index - second part of rfc2685 vpn id, 4 bytes vpn index
+    @param is_ipv6 - ip6 if non-zero, else ip4
+    @param is_add - set vss if non-zero, else delete
+*/
+autoreply define dhcp_proxy_set_vss
+{
+  u32 client_index;
+  u32 context;
+  u32 tbl_id;
+  vl_api_vss_type_t vss_type;
+  string vpn_ascii_id[129];
+  u32 oui;
+  u32 vpn_index;
+  bool is_ipv6;
+  bool is_add;
+};
+
+/** \brief DHCP Client config data
+    @param sw_if_index - index of the interface for DHCP client
+    @param hostname - hostname
+    @param id - Client ID - option 61
+    @param want_dhcp_event - DHCP event sent to the sender
+           via dhcp_compl_event API message if non-zero
+    @param set_broadcast_flag - in the DHCP Discover to control
+                                how the resulting OFFER is addressed.
+    @param dscp - DSCP value set in IP packets sent by the client
+    @param pid - sender's pid
+*/
+typedef dhcp_client
+{
+  vl_api_interface_index_t sw_if_index;
+  string hostname[64];
+  u8 id[64];
+  bool want_dhcp_event;
+  bool set_broadcast_flag;
+  vl_api_ip_dscp_t dscp;
+  u32 pid;
+};
+
+/** \brief DHCP Client config add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add the config if non-zero, else delete
+    @param client - client configuration data
+*/
+autoreply define dhcp_client_config
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_dhcp_client_t client;
+};
+
+/** \brief Struct representing domain server
+    @param address - IP address
+*/
+typedef domain_server
+{
+  vl_api_address_t address;
+};
+
+/** \brief Data learned by the client during the DHCP process
+    @param sw_if_index - the interface on which the client is configured
+    @param state - the state of the lease
+    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param mask_width - The length of the subnet mask assigned
+    @param host_address - Host IP address
+    @param router_address - Router IP address
+    @param host_mac - Host MAC address
+*/
+typedef dhcp_lease
+{
+  vl_api_interface_index_t sw_if_index;
+  vl_api_dhcp_client_state_t state;
+  bool is_ipv6;
+  string hostname[64];
+  u8 mask_width;
+  vl_api_address_t host_address;
+  vl_api_address_t router_address;
+  vl_api_mac_address_t host_mac;
+  u8 count;
+  vl_api_domain_server_t domain_server[count];
+};
+
+/** \brief Tell client about a DHCP completion event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param lease - Data learned during the DHCP process;
+*/
+define dhcp_compl_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_dhcp_lease_t lease;
+};
+
+service {
+  rpc dhcp_client_config returns dhcp_client_config_reply events dhcp_compl_event;
+};
+
+/** \brief Dump the DHCP client configurations
+ */
+define dhcp_client_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief DHCP Client details returned from dump
+ *  @param client - The configured client
+ *  @param lease - The learned lease data
+ */
+define dhcp_client_details
+{
+  u32 context;
+  vl_api_dhcp_client_t client;
+  vl_api_dhcp_lease_t lease;
+};
+
+/** \brief Dump DHCP proxy table
+    @param client_index - opaque cookie to identify the sender
+    @param True for IPv6 proxy table
+*/
+define dhcp_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+  bool  is_ip6;
+};
+
+typedef dhcp_server
+{
+  u32 server_vrf_id;
+  vl_api_address_t dhcp_server;
+};
+
+/** \brief Tell client about a DHCP completion event
+    @param client_index - opaque cookie to identify the sender
+*/
+manual_endian manual_print define dhcp_proxy_details
+{
+  u32 context;
+  u32 rx_vrf_id;
+  u32 vss_oui;
+  u32 vss_fib_id;
+  vl_api_vss_type_t vss_type;
+  bool is_ipv6;
+  string vss_vpn_ascii_id[129];
+  vl_api_address_t dhcp_src_address;
+  u8 count;
+  vl_api_dhcp_server_t servers[count];
+};
+
+/** \brief Set DHCPv6 DUID-LL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param duid_ll - DUID-LL binary string
+*/
+autoreply define dhcp6_duid_ll_set
+{
+  u32 client_index;
+  u32 context;
+  u8 duid_ll[10];
+};
+
+/** \brief Enable/disable listening on DHCPv6 client port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define dhcp6_clients_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+};
+
+/** \brief Struct representing DHCPv6 address
+    @param address - address
+    @param valid_time - valid lifetime
+    @param preferred_time - preferred lifetime
+*/
+typedef dhcp6_address_info
+{
+  vl_api_ip6_address_t address;
+  u32 valid_time;
+  u32 preferred_time;
+};
+
+/** \brief Struct representing DHCPv6 PD prefix
+    @param prefix - prefix
+    @param valid_time - valid lifetime
+    @param preferred_time - preferred lifetime
+*/
+typedef dhcp6_pd_prefix_info
+{
+  vl_api_ip6_prefix_t prefix;
+  u32 valid_time;
+  u32 preferred_time;
+};
+
+/** \brief Send DHCPv6 client message of specified type
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of TX interface, also identifies IAID
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link,
+                          value obrtained from dhcp6_reply_event API message,
+                          use ~0 to send message to all DHCPv6 servers
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+                         for sending the message
+    @param stop - if non-zero then stop resending the message,
+                  otherwise start sending the message
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_NA option
+    @param T2 - value of T2 in IA_NA option
+    @param n_addresses - number of addresses in IA_NA option
+    @param addresses - list of addresses in IA_NA option
+*/
+autoreply define dhcp6_send_client_message
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 server_index;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  bool stop;
+  vl_api_dhcpv6_msg_type_t msg_type;
+  u32 T1;
+  u32 T2;
+  u32 n_addresses;
+  vl_api_dhcp6_address_info_t addresses[n_addresses];
+};
+
+/** \brief Send DHCPv6 PD client message of specified type
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of TX interface
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link,
+                          value obrtained from dhcp6_pd_reply_event API message,
+                          use ~0 to send message to all DHCPv6 servers
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+                         for sending the message
+    @param stop - if non-zero then stop resending the message,
+                  otherwise start sending the message
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_PD option
+    @param T2 - value of T2 in IA_PD option
+    @param n_prefixes - number of addresses in IA_PD option
+    @param prefixes - list of prefixes in IA_PD option
+*/
+autoreply define dhcp6_pd_send_client_message
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 server_index;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  bool stop;
+  vl_api_dhcpv6_msg_type_t msg_type;
+  u32 T1;
+  u32 T2;
+  u32 n_prefixes;
+  vl_api_dhcp6_pd_prefix_info_t prefixes[n_prefixes];
+};
+
+service {
+  rpc want_dhcp6_reply_events returns want_dhcp6_reply_events_reply
+    events dhcp6_reply_event;
+};
+
+service {
+  rpc want_dhcp6_pd_reply_events returns want_dhcp6_pd_reply_events_reply
+    events dhcp6_pd_reply_event;
+};
+
+/** \brief Register for DHCPv6 reply events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_dhcp6_reply_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+};
+
+/** \brief Register for DHCPv6 PD reply events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_dhcp6_pd_reply_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable_disable;
+  u32 pid;
+};
+
+/** \brief Tell client about a DHCPv6 server reply event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - index of RX interface, also identifies IAID
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_NA option
+    @param T2 - value of T2 in IA_NA option
+    @param inner_status_code - value of status code inside IA_NA option
+    @param status_code - value of status code
+    @param preference - value of preference option in reply message
+    @param n_addresses - number of addresses in IA_NA option
+    @param addresses - list of addresses in IA_NA option
+*/
+define dhcp6_reply_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_interface_index_t sw_if_index;
+  u32 server_index;
+  vl_api_dhcpv6_msg_type_t msg_type;
+  u32 T1;
+  u32 T2;
+  u16 inner_status_code;
+  u16 status_code;
+  u8 preference;
+  u32 n_addresses;
+  vl_api_dhcp6_address_info_t addresses[n_addresses];
+};
+
+/** \brief Tell client about a DHCPv6 PD server reply event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - index of RX interface
+    @param server_index - used to dentify DHCPv6 server,
+                          unique for each DHCPv6 server on the link
+    @param msg_type - message type
+    @param T1 - value of T1 in IA_PD option
+    @param T2 - value of T2 in IA_PD option
+    @param inner_status_code - value of status code inside IA_PD option
+    @param status_code - value of the main status code of DHCPv6 message
+    @param preference - value of preference option in reply message
+    @param n_prefixes - number of prefixes in IA_PD option
+    @param prefixes - list of prefixes in IA_PD option
+*/
+define dhcp6_pd_reply_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_interface_index_t sw_if_index;
+  u32 server_index;
+  vl_api_dhcpv6_msg_type_t msg_type;
+  u32 T1;
+  u32 T2;
+  u16 inner_status_code;
+  u16 status_code;
+  u8 preference;
+  u32 n_prefixes;
+  vl_api_dhcp6_pd_prefix_info_t prefixes[n_prefixes];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+>>>>>>> CHANGE (6264ac dhcp: fix crash on unicast renewal send)
