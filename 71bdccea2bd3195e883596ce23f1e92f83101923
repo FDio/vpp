@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5156b9b2_ba0a924c",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "f-\u003emaster_thread_index \u003d\u003d os_get_thread_index()",
+      "range": {
+        "startLine": 625,
+        "startChar": 14,
+        "endLine": 625,
+        "endChar": 69
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "01d7400d_39ea1b4c",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "Move comment to the line above to avoid going over the 79 character limit",
+      "range": {
+        "startLine": 639,
+        "startChar": 56,
+        "endLine": 639,
+        "endChar": 80
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c900a62a_54a6450f",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 679,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "Check to see if the linked list is sane? In that case, you could add a static helper function above, say svm_fifo_chunk_ll_is_sane, and here do ASSERT (svm_fifo_chunk_ll_is_sane (f));",
+      "range": {
+        "startLine": 674,
+        "startChar": 0,
+        "endLine": 679,
+        "endChar": 31
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c28c2ef5_76a69b3f",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "At least for now, vpp is always the one to allocate the fifos. So is this needed?",
+      "range": {
+        "startLine": 86,
+        "startChar": 6,
+        "endLine": 86,
+        "endChar": 9
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93864649_d3f3a9db",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "This is the master_thread_index.",
+      "range": {
+        "startLine": 87,
+        "startChar": 8,
+        "endLine": 87,
+        "endChar": 11
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "630d276c_5f2e8944",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "svm_fifo_set_single_thread_owned?\n\nAlso, I guess this will be called only once after fifo is allocated. If so, could you move it to svm_fifo.c?",
+      "range": {
+        "startLine": 865,
+        "startChar": 0,
+        "endLine": 865,
+        "endChar": 22
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90e04554_3e5e5cc8",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 869,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T00:38:02Z",
+      "side": 1,
+      "message": "f-\u003emaster_thread_index \u003d\u003d os_get_thread_index()\n\nAs per my previous comment, that fifos are managed by vpp, this should work. Otherwise, this won\u0027t work if called from external applications that do not use vppinfra to manage their threads.",
+      "range": {
+        "startLine": 869,
+        "startChar": 10,
+        "endLine": 869,
+        "endChar": 40
+      },
+      "revId": "71bdccea2bd3195e883596ce23f1e92f83101923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
