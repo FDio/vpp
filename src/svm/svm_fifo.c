@@ -575,6 +575,31 @@ svm_fifo_try_grow (svm_fifo_t * f, u32 new_head)
   f->flags &= ~SVM_FIFO_F_GROW;
 }
 
+static u8
+svm_fifo_chunk_ll_is_sane (svm_fifo_t * f)
+{
+  svm_fifo_chunk_t *cur;
+  u8 i;
+
+  if (!f || !f->start_chunk || !f->end_chunk || f->end_chunk->next != f->start_chunk)
+    return 0;
+
+  cur = f->start_chunk;
+  i = 0;
+  while (i < f->size)
+    {
+      if (i != cur->start_byte)
+        return 0;
+      i += cur->length;
+      cur = cur->next;
+    }
+  
+  if (i != f->size || cur != f->start_chunk)
+    return 0;
+
+  return 1;
+}
+
 void
 svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 {
@@ -590,6 +615,101 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
       f->flags |= SVM_FIFO_F_MULTI_CHUNK;
     }
 
+  /* If fifo is not wrapped, update the size now */
+  if (!svm_fifo_is_wrapped (f))
+    {
+      /* Initialize chunks and add to lookup rbtree */
+      cur = c;
+      if (f->new_chunks)
+	{
+	  prev = f->new_chunks;
+	  while (prev->next)
+	    prev = prev->next;
+	  prev->next = c;
+	}
+      else
+	prev = f->end_chunk;
+
+      while (cur)
+	{
+	  cur->start_byte = prev->start_byte + prev->length;
+	  rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+			pointer_to_uword (cur));
+	  prev = cur;
+	  cur = cur->next;
+	}
+
+      ASSERT (!f->new_chunks);
+      svm_fifo_grow (f, c);
+      return;
+    }
+
+  /* Wrapped */
+  if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
+    {
+      ASSERT (f->master_thread_index == os_get_thread_index ());
+
+      if (!f->new_chunks && f->head_chunk != f->tail_chunk)
+	{
+	  u32 head = 0, tail = 0;
+	  f_load_head_tail_cons (f, &head, &tail);
+
+	  svm_fifo_chunk_t *tmp = f->tail_chunk->next;
+
+	  prev = f->tail_chunk;
+	  u32 add_bytes = 0;
+	  cur = prev->next;
+	  while (cur != f->start_chunk)
+	    {
+              /* remove any existing rb_tree entry */
+	      rb_tree_del (&f->chunk_lookup, cur->start_byte);
+	      cur = cur->next;
+	    }
+
+	  /* insert new chunk after the tail_chunk */
+	  f->tail_chunk->next = c;
+	  while (c)
+	    {
+	      add_bytes += c->length;
+	      c->start_byte = prev->start_byte + prev->length;
+	      rb_tree_add2 (&f->chunk_lookup, c->start_byte,
+			    pointer_to_uword (c));
+
+	      prev = c;
+	      c = c->next;
+	    }
+	  prev->next = tmp;
+
+	  /* shift existing chunks along */
+	  cur = tmp;
+	  while (cur != f->start_chunk)
+	    {
+	      cur->start_byte = prev->start_byte + prev->length;
+	      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+			    pointer_to_uword (cur));
+	      prev = cur;
+	      cur = cur->next;
+	    }
+
+	  f->size += add_bytes;
+	  f->nitems = f->size - 1;
+	  f->new_chunks = 0;
+	  head += add_bytes;
+
+	  clib_atomic_store_rel_n (&f->head, head);
+	  cur = f->start_chunk;
+	  do
+	    {
+	      cur = cur->next;
+	    }
+	  while (cur != f->end_chunk);
+          ASSERT (svm_fifo_chunk_ll_is_sane (f));
+
+	  return;
+	}
+    }
+
+  /* Wrapped, and optimization of single-thread-owned fifo cannot be applied */
   /* Initialize chunks and add to lookup rbtree */
   cur = c;
   if (f->new_chunks)
@@ -609,14 +729,6 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 		    pointer_to_uword (cur));
       prev = cur;
       cur = cur->next;
-    }
-
-  /* If fifo is not wrapped, update the size now */
-  if (!svm_fifo_is_wrapped (f))
-    {
-      ASSERT (!f->new_chunks);
-      svm_fifo_grow (f, c);
-      return;
     }
 
   /* Postpone size update */
@@ -1150,6 +1262,25 @@ svm_fifo_is_sane (svm_fifo_t * f)
     }
 
   return 1;
+}
+
+u8
+svm_fifo_set_single_thread_owned (svm_fifo_t * f)
+{
+  if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
+    {
+      if (f->master_thread_index == os_get_thread_index ())
+        {
+          /* just a duplicate call */
+          return 0;
+        }
+
+      /* already owned by another thread */
+      return 1;
+    }
+
+  f->flags |= SVM_FIFO_F_SINGLE_THREAD_OWNED;
+  return 0;
 }
 
 u8 *
