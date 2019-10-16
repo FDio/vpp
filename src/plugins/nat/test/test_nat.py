@@ -1922,7 +1922,7 @@ class TestNAT44(MethodHolder):
         self.tcp_port_out = 6303
         self.udp_port_out = 6304
         self.icmp_id_out = 6305
-        tag = b"testTAG"
+        tag = "testTAG"
 
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip, tag=tag)
         flags = self.config_flags.NAT_IS_INSIDE
@@ -1934,7 +1934,7 @@ class TestNAT44(MethodHolder):
             is_add=1)
         sm = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(len(sm), 1)
-        self.assertEqual((sm[0].tag).split(b'\0', 1)[0], tag)
+        self.assertEqual(sm[0].tag, tag)
 
         # out2in
         pkts = self.create_stream_out(self.pg1, nat_ip)
@@ -2688,7 +2688,7 @@ class TestNAT44(MethodHolder):
 
     def test_interface_addr_static_mapping(self):
         """ Static mapping with addresses from interface """
-        tag = b"testTAG"
+        tag = "testTAG"
 
         self.vapi.nat44_add_del_interface_addr(
             is_add=1,
@@ -2703,7 +2703,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
-        self.assertEqual((static_mappings[0].tag).split(b'\0', 1)[0], tag)
+        self.assertEqual(static_mappings[0].tag, tag)
 
         # configure interface address and check static mappings
         self.pg7.config_ip4()
@@ -2714,7 +2714,7 @@ class TestNAT44(MethodHolder):
             if sm.external_sw_if_index == 0xFFFFFFFF:
                 self.assertEqual(str(sm.external_ip_address),
                                  self.pg7.local_ip4)
-                self.assertEqual((sm.tag).split(b'\0', 1)[0], tag)
+                self.assertEqual(sm.tag, tag)
                 resolved = True
         self.assertTrue(resolved)
 
@@ -2724,7 +2724,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
-        self.assertEqual((static_mappings[0].tag).split(b'\0', 1)[0], tag)
+        self.assertEqual(static_mappings[0].tag, tag)
 
         # configure interface address again and check static mappings
         self.pg7.config_ip4()
@@ -2735,7 +2735,7 @@ class TestNAT44(MethodHolder):
             if sm.external_sw_if_index == 0xFFFFFFFF:
                 self.assertEqual(str(sm.external_ip_address),
                                  self.pg7.local_ip4)
-                self.assertEqual((sm.tag).split(b'\0', 1)[0], tag)
+                self.assertEqual(sm.tag, tag)
                 resolved = True
         self.assertTrue(resolved)
 
@@ -8441,8 +8441,7 @@ class TestNAT64(MethodHolder):
 
         prefix = self.vapi.nat64_prefix_dump()
         self.assertEqual(len(prefix), 1)
-        self.assertEqual(prefix[0].prefix,
-                         IPv6Network(unicode(global_pref64_str)))
+        self.assertEqual(str(prefix[0].prefix), global_pref64_str)
         self.assertEqual(prefix[0].vrf_id, 0)
 
         # Add tenant specific prefix
@@ -8767,7 +8766,7 @@ class TestNAT64(MethodHolder):
 
     def test_reass_hairpinning(self):
         """ NAT64 fragments hairpinning """
-        data = 'a' * 200
+        data = b'a' * 200
         server = self.pg0.remote_hosts[1]
         server_in_port = random.randint(1025, 65535)
         server_out_port = random.randint(1025, 65535)
