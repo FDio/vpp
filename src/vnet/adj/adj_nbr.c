@@ -823,12 +823,15 @@ adj_nbr_interface_delete_one (adj_index_t ai,
     };
     ip_adjacency_t *adj;
 
+    adj_lock(ai);
+
     adj = adj_get(ai);
 
     adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
     fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
     adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
+    adj_unlock(ai);
     return (ADJ_WALK_RC_CONTINUE);
 }
 
