@@ -133,7 +133,7 @@ class TestACLplugin(VppTestCase):
                 end_nr = count + start if i == (n_int - 1) \
                     else macs_per_if * (i + 1) + start
                 hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
-                for j in range(start_nr, end_nr):
+                for j in range(int(start_nr), int(end_nr)):
                     host = Host(
                         "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                         "172.17.1%02x.%u" % (pg_if.sw_if_index, j),
@@ -175,8 +175,8 @@ class TestACLplugin(VppTestCase):
                                          % self.bd_id))
 
     def create_rule(self, ip=0, permit_deny=0, ports=PORTS_ALL, proto=-1,
-                    s_prefix=0, s_ip='\x00\x00\x00\x00',
-                    d_prefix=0, d_ip='\x00\x00\x00\x00'):
+                    s_prefix=0, s_ip=b'\x00\x00\x00\x00',
+                    d_prefix=0, d_ip=b'\x00\x00\x00\x00'):
         if proto == -1:
             return
         if ports == self.PORTS_ALL:
@@ -314,7 +314,7 @@ class TestACLplugin(VppTestCase):
                 dst_hosts = self.hosts_by_pg_idx[dst_if.sw_if_index]
                 n_int = len(dst_hosts) * len(src_hosts)
                 for i in range(0, n_int):
-                    dst_host = dst_hosts[i / len(src_hosts)]
+                    dst_host = dst_hosts[int(i / len(src_hosts))]
                     src_host = src_hosts[i % len(src_hosts)]
                     pkt_info = self.create_packet_info(src_if, dst_if)
                     if ipv6 == 1:
