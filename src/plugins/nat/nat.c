@@ -309,6 +309,164 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 				      &s->out2in);
 }
 
+static_always_inline int
+nat_free_session_inline (clib_bihash_kv_8_8_t *kv, u8 is_in2out)
+{
+  snat_session_t *s;
+  clib_bihash_8_8_t *t;
+  clib_bihash_kv_8_8_t value;
+
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  int rc = 1;
+
+  if (sm->num_workers > 1)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          t = is_in2out ? &tsm->in2out : &tsm->out2in;
+          if (!clib_bihash_search_8_8 (t, kv, &value) &&
+              !pool_is_free_index (tsm->sessions, value.value))
+            {
+              rc = 0;
+              break;
+            }
+        }
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
+      t = is_in2out ? &tsm->in2out : &tsm->out2in;
+      if (!clib_bihash_search_8_8 (t, kv, &value) &&
+          !pool_is_free_index (tsm->sessions, value.value))
+        {
+          rc = 0;
+        }
+    }
+
+  if (!rc)
+    {
+      s = pool_elt_at_index (tsm->sessions, value.value);
+      nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+      nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+    }
+
+  return rc;
+}
+
+static_always_inline int
+nat_free_ed_session_inline (clib_bihash_kv_16_8_t *kv, u8 is_in2out)
+{
+  snat_session_t *s;
+  clib_bihash_16_8_t *t;
+  clib_bihash_kv_16_8_t value;
+
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  int rc = 1;
+
+  if (sm->num_workers > 1)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          t = is_in2out ? &tsm->in2out_ed : &tsm->out2in_ed;
+          if (!clib_bihash_search_16_8 (t, kv, &value) &&
+              !pool_is_free_index (tsm->sessions, value.value))
+            {
+              rc = 0;
+              break;
+            }
+        }
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
+      t = is_in2out ? &tsm->in2out_ed : &tsm->out2in_ed;
+      if (!clib_bihash_search_16_8 (t, kv, &value) &&
+          !pool_is_free_index (tsm->sessions, value.value))
+        {
+          rc = 0;
+        }
+    }
+
+  if (!rc)
+    {
+      s = pool_elt_at_index (tsm->sessions, value.value);
+      nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+      nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+    }
+
+  return rc;
+}
+
+int
+nat44_free_session (ip4_address_t * src_addr, ip4_address_t * dst_addr,
+                    u16 src_port, u16 dst_port, u32 proto, u32 fib_index)
+{
+  //u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+
+  snat_session_key_t key;
+  nat_ed_ses_key_t ed_key;
+
+  clib_bihash_kv_8_8_t kv;
+  clib_bihash_kv_16_8_t ed_kv;  
+
+  snat_main_t *sm = &snat_main;
+
+  proto = ip_proto_to_snat_proto (proto);
+  // we only support UDP/TCP/ICMP
+  if (proto != SNAT_PROTOCOL_UDP ||
+      proto != SNAT_PROTOCOL_TCP ||
+      proto != SNAT_PROTOCOL_ICMP)
+    return 1;
+
+  if (sm->endpoint_dependent)
+    {
+      ed_key.proto = proto;
+      ed_key.fib_index = fib_index; 
+  
+      ed_key.r_addr.as_u32 = src_addr->as_u32;
+      ed_key.l_addr.as_u32 = dst_addr->as_u32;
+      ed_key.r_port = src_port;
+      ed_key.l_port = dst_port;
+  
+      ed_kv.key[0] = ed_key.as_u64[0];
+      ed_kv.key[1] = ed_key.as_u64[1];
+
+      if (nat_free_ed_session_inline (&ed_kv, 1))
+        return nat_free_ed_session_inline (&ed_kv, 0);
+    }
+  else
+    {
+      key.protocol = proto;
+      key.fib_index = fib_index;
+
+      key.addr.as_u32 = src_addr->as_u32;
+      key.port = src_port;
+      kv.key = key.as_u64;
+
+      if (nat_free_session_inline (&kv, 1))
+        {
+          key.addr.as_u32 = dst_addr->as_u32;
+          key.port = dst_port;
+          kv.key = key.as_u64;
+
+          return nat_free_session_inline (&kv, 0);
+        }
+    }
+  return 0;
+}
+
+
+
 snat_user_t *
 nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
 			u32 thread_index)
