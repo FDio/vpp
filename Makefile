@@ -408,6 +408,9 @@ endef
 test:
 	$(call test,vpp,vpp,test)
 
+test-pack:
+	$(call test,vpp,vpp,test-pack)
+
 test-debug:
 	$(call test,vpp,vpp_debug,test)
 

@@ -129,6 +129,8 @@ class VPPApiJSONFiles(object):
         # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
         # in which case, plot a course to likely places in the src tree
         import __main__ as main
+        if os.environ.has_key('VPP_API_JSON_DIR'):
+            return os.environ['VPP_API_JSON_DIR']
         if hasattr(main, '__file__'):
             # get the path of the calling script
             localdir = os.path.dirname(os.path.realpath(main.__file__))

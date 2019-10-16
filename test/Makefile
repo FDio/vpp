@@ -198,6 +198,18 @@ test-dep: verify-test-dir $(PAPI_INSTALL_DONE)
 test: verify-test-dir $(PAPI_INSTALL_DONE) ext sanity reset
 	$(call retest-func)
 
+test-pack: verify-test-dir $(PAPI_INSTALL_DONE) ext sanity reset
+	bash -c "source $(VENV_PATH)/bin/activate && pip install pyinstaller"
+	bash -c "source $(VENV_PATH)/bin/activate && pip install psutil"
+	bash -c "source $(VENV_PATH)/bin/activate && pip install six"
+	bash -c "source $(VENV_PATH)/bin/activate && pip install mock"
+	bash -c "source $(VENV_PATH)/bin/activate && pyinstaller --hidden-import=psutil --hidden-import=vpp_papi --hidden-import=scapy.contrib.mpls --hidden-import=scapy.contrib.ospf --hidden-import=scapy.all --hidden-import=ast --hidden-import=scapy.layers.vxlan --hidden-import=parameterized --hidden-import=scapy.layers.all --hidden-import=psutil.tests --hidden-import=mock --hidden-import=pyflakes.api --hidden-import=pyflakes.test.harness --hidden-import=pyflakes.test.test_other --hidden-import=pyflakes.test.test_imports --hidden-import=pyflakes.test.test_undefined_names --hidden-import=vpp_l2 run_tests.py"
+	bash -c "cp $(git rev-parse --show-toplevel)/build-root/install-vpp-native/vpp/share/vpp/api test/dist/"
+	bash -c "cp $(git rev-parse --show-toplevel)/build-root/install-vpp-native/vpp/lib/libvppapiclient.so test/dist/run_tests/"
+	# /home/ubuntu/vpp/build-root/install-vpp-native/vpp/lib/libvppapiclient.so test/dist/run_tests/
+	# VPP_BIN=$(git rev-parse --show-toplevel)/build-root/install-vpp-native/vpp/bin/vpp
+	# VPP_API_JSON_DIR=$(git rev-parse --show-toplevel)/test/dist/api
+
 retest: verify-test-dir sanity reset
 	$(call retest-func)
 
