@@ -1932,7 +1932,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   sb = &tc->sack_sb;
 
   /* Check if snd_una is a lost retransmit */
-  if (seq_gt (sb->high_sacked, tc->snd_congestion)
+  if (pool_elts (sb->holes)
+      && seq_gt (sb->high_sacked, tc->snd_congestion)
       && tc->rxt_head != tc->snd_una
       && tcp_retransmit_should_retry_head (tc, sb))
     {
