@@ -159,7 +159,8 @@ def pump_output(testclass):
         if testclass.vpp.stdout.fileno() in readable:
             read = os.read(testclass.vpp.stdout.fileno(), 102400)
             if len(read) > 0:
-                split = read.splitlines(True)
+                split = read.decode('ascii',
+                                    errors='backslashreplace').splitlines(True)
                 if len(stdout_fragment) > 0:
                     split[0] = "%s%s" % (stdout_fragment, split[0])
                 if len(split) > 0 and split[-1].endswith("\n"):
