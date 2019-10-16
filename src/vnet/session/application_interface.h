@@ -298,12 +298,18 @@ typedef struct session_listen_msg_
   u32 ckpair_index;
 } __clib_packed session_listen_msg_t;
 
+STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
+
 typedef struct session_listen_uri_msg_
 {
   u32 client_index;
   u32 context;
   u8 uri[56];
 } __clib_packed session_listen_uri_msg_t;
+
+STATIC_ASSERT (sizeof (session_listen_uri_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
 
 typedef struct session_bound_msg_
 {
@@ -371,12 +377,18 @@ typedef struct session_connect_msg_
   u32 ckpair_index;
 } __clib_packed session_connect_msg_t;
 
+STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
+
 typedef struct session_connect_uri_msg_
 {
   u32 client_index;
   u32 context;
   u8 uri[56];
 } __clib_packed session_connect_uri_msg_t;
+
+STATIC_ASSERT (sizeof (session_connect_uri_msg_t) <=
+	       SESSION_CTRL_MSG_MAX_SIZE, "msg too large");
 
 typedef struct session_connected_msg_
 {
