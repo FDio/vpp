@@ -575,6 +575,32 @@ svm_fifo_try_grow (svm_fifo_t * f, u32 new_head)
   f->flags &= ~SVM_FIFO_F_GROW;
 }
 
+static u8
+svm_fifo_chunk_ll_is_sane (svm_fifo_t * f)
+{
+  svm_fifo_chunk_t *cur;
+  u8 i;
+
+  if (!f || !f->start_chunk || !f->end_chunk
+      || f->end_chunk->next != f->start_chunk)
+    return 0;
+
+  cur = f->start_chunk;
+  i = 0;
+  while (i < f->size)
+    {
+      if (i != cur->start_byte)
+	return 0;
+      i += cur->length;
+      cur = cur->next;
+    }
+
+  if (i != f->size || cur != f->start_chunk)
+    return 0;
+
+  return 1;
+}
+
 void
 svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 {
@@ -622,7 +648,7 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
   /* Wrapped */
   if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
     {
-      ASSERT (f->pid == getpid () && f->tid == os_get_thread_index ());
+      ASSERT (f->master_thread_index == os_get_thread_index ());
 
       if (!f->new_chunks && f->head_chunk != f->tail_chunk)
 	{
@@ -636,7 +662,8 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 	  cur = prev->next;
 	  while (cur != f->start_chunk)
 	    {
-	      rb_tree_del (&f->chunk_lookup, cur->start_byte);	/* remove any existing rb_tree entry */
+	      /* remove any existing rb_tree entry */
+	      rb_tree_del (&f->chunk_lookup, cur->start_byte);
 	      cur = cur->next;
 	    }
 
@@ -677,6 +704,7 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 	      cur = cur->next;
 	    }
 	  while (cur != f->end_chunk);
+	  ASSERT (svm_fifo_chunk_ll_is_sane (f));
 
 	  return;
 	}
@@ -1235,6 +1263,25 @@ svm_fifo_is_sane (svm_fifo_t * f)
     }
 
   return 1;
+}
+
+u8
+svm_fifo_set_single_thread_owned (svm_fifo_t * f)
+{
+  if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
+    {
+      if (f->master_thread_index == os_get_thread_index ())
+	{
+	  /* just a duplicate call */
+	  return 0;
+	}
+
+      /* already owned by another thread */
+      return 1;
+    }
+
+  f->flags |= SVM_FIFO_F_SINGLE_THREAD_OWNED;
+  return 0;
 }
 
 u8 *

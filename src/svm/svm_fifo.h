@@ -83,8 +83,6 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
   rb_tree_t chunk_lookup;
-  int pid;			/**< process id, for single-thread-owned fifo */
-  uword tid;			/**< thread id, for single-thread-owned fifo */
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
@@ -480,6 +478,14 @@ ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
  * @return 	1 if sane, 0 otherwise
  */
 u8 svm_fifo_is_sane (svm_fifo_t * f);
+/**
+ * Declare this fifo is used by only a single thread.
+ * In this special case, fifo-growth can be done in an efficient way without delay.
+ *
+ * @param f             fifo
+ * @return              1 if the fifo is already owned by another thread, 0 otherwise
+ */
+u8 svm_fifo_set_single_thread_owned (svm_fifo_t * f);
 format_function_t format_svm_fifo;
 
 /**
@@ -851,34 +857,6 @@ svm_fifo_needs_deq_ntf (svm_fifo_t * f, u32 n_last_deq)
       if (!f->has_deq_ntf && svm_fifo_is_empty (f))
 	return 1;
     }
-  return 0;
-}
-
-/**
- * Declare this fifo is used by only a single thread on a single process.
- * In this special case, fifo-growth can be done in an efficient way without delay.
- *
- * @param f             fifo
- * @return              1 if the fifo is already owned by another thread, 0 otherwise
- */
-static inline u8
-svm_fifo_exclusive_use (svm_fifo_t * f)
-{
-  if (f->flags & SVM_FIFO_F_SINGLE_THREAD_OWNED)
-    {
-      if (f->pid == getpid () && f->tid == os_get_thread_index ())
-	{
-	  /* just a duplicate call */
-	  return 0;
-	}
-
-      /* already owned by another thread */
-      return 1;
-    }
-
-  f->pid = getpid ();
-  f->tid = os_get_thread_index ();
-  f->flags |= SVM_FIFO_F_SINGLE_THREAD_OWNED;
   return 0;
 }
 
