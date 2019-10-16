@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f72f7a74_6ce19c39",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T05:55:52Z",
+      "side": 1,
+      "message": "\"make fixstyle\" to remove these",
+      "range": {
+        "startLine": 596,
+        "startChar": 0,
+        "endLine": 596,
+        "endChar": 2
+      },
+      "revId": "e8c0409fbd25991e8a5c0174dd62be33356f507a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d432bed0_d09380c9",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-16T05:55:52Z",
+      "side": 1,
+      "message": "I guess this is not needed anymore",
+      "range": {
+        "startLine": 700,
+        "startChar": 0,
+        "endLine": 705,
+        "endChar": 31
+      },
+      "revId": "e8c0409fbd25991e8a5c0174dd62be33356f507a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
