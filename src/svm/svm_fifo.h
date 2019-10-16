@@ -70,6 +70,7 @@ typedef enum svm_fifo_flag_
   SVM_FIFO_F_SHRINK = 1 << 2,
   SVM_FIFO_F_COLLECT_CHUNKS = 1 << 3,
   SVM_FIFO_F_LL_TRACKED = 1 << 4,
+  SVM_FIFO_F_SINGLE_THREAD_OWNED = 1 << 5,
 } svm_fifo_flag_t;
 
 typedef struct _svm_fifo
@@ -477,6 +478,14 @@ ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
  * @return 	1 if sane, 0 otherwise
  */
 u8 svm_fifo_is_sane (svm_fifo_t * f);
+/**
+ * Declare this fifo is used by only a single thread.
+ * In this special case, fifo-growth can be done in an efficient way without delay.
+ *
+ * @param f             fifo
+ * @return              1 if the fifo is already owned by another thread, 0 otherwise
+ */
+u8 svm_fifo_set_single_thread_owned (svm_fifo_t * f);
 format_function_t format_svm_fifo;
 
 /**
