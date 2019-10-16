@@ -62,8 +62,6 @@ typedef struct session_tx_context_
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
 
-#define SESSION_CTRL_MSG_MAX_SIZE 64
-
 typedef struct session_evt_elt
 {
   clib_llist_anchor_t evt_list;
