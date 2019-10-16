@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "348b821e_88fb4eb4",
+        "filename": "test/remote_test.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-16T11:26:28Z",
+      "side": 1,
+      "message": "Here [0] is a better tested import logic.\n\n[0] https://github.com/FDio/vpp/blob/v20.01-rc0/src/vpp-api/python/vpp_papi/vpp_serializer.py#L21-L30",
+      "range": {
+        "startLine": 13,
+        "startChar": 22,
+        "endLine": 13,
+        "endChar": 26
+      },
+      "revId": "d6df3acf5cf31b603241574cadbf9863e27b2d60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
