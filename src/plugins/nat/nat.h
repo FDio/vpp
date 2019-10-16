@@ -1362,6 +1362,14 @@ int snat_static_mapping_match (snat_main_t * sm,
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
 			       u8 p_len, u32 sw_if_index, int is_add);
 
+/**
+ *
+ */
+int
+nat44_free_session (ip4_address_t * src_addr, ip4_address_t * dst_addr,
+		    u16 src_port, u16 dst_port, u32 proto, u32 fib_index);
+
+
 /*
  * Why is this here? Because we don't need to touch this layer to
  * simply reply to an icmp. We need to change id to a unique
