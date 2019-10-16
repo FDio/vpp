@@ -60,8 +60,8 @@ RTT (mma_rule) * RT (mma_rules_table_rule_alloc) (RTT (mma_rules_table) * srt)
 RTT (mma_rule) *
 RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
 {
-  pool_put (srt->rules, rule);
   clib_memset (rule, 0xfa, sizeof (*rule));
+  pool_put (srt->rules, rule);
   return rule;
 }
 
