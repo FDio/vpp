@@ -1234,6 +1234,17 @@ session_evt_add_to_list (session_worker_t * wrk, session_event_t * evt)
     }
 }
 
+static void
+session_flush_pending_tx_buffers (session_worker_t * wrk,
+				  vlib_node_runtime_t * node)
+{
+  vlib_buffer_enqueue_to_next (wrk->vm, node, wrk->pending_tx_buffers,
+			       wrk->pending_tx_nexts,
+			       vec_len (wrk->pending_tx_nexts));
+  vec_reset_length (wrk->pending_tx_buffers);
+  vec_reset_length (wrk->pending_tx_nexts);
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1338,6 +1349,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    break;
 	};
     }
+
+  if (vec_len (wrk->pending_tx_buffers))
+    session_flush_pending_tx_buffers (wrk, node);
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
