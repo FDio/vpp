@@ -21,7 +21,7 @@
 
 #define SESSION_INVALID_INDEX ((u32)~0)
 #define SESSION_INVALID_HANDLE ((u64)~0)
-#define SESSION_CTRL_MSG_MAX_SIZE 68
+#define SESSION_CTRL_MSG_MAX_SIZE 84
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
