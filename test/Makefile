@@ -84,6 +84,10 @@ PIP_VERSION=19.1.1
 PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_INTERP) -name site-packages)
+ifeq ($(SCAPY_SOURCE),)
+PYTHON_VER = $(shell $(PYTHON) -c '''import sys;print("python{major}.{minor}".format(major = sys.version_info.major, minor = sys.version_info.minor))''')
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_VER) -name site-packages)
+endif
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 PIP_TOOLS_INSTALL_DONE=$(TEST_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION).done
