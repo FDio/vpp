@@ -144,6 +144,9 @@ typedef struct
   u8 *sk_ei;
   u8 *sk_er;
 
+  u32 salt_ei;
+  u32 salt_er;
+
   /* lifetime data */
   f64 time_to_expiration;
   u8 is_expired;

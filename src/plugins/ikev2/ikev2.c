@@ -439,12 +439,16 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   u8 *skeyseed = 0;
   u8 *s = 0;
   ikev2_sa_transform_t *tr_encr, *tr_prf, *tr_integ;
+  u16 integ_key_len = 0;
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
   tr_integ =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+
+  if (tr_integ)
+    integ_key_len = tr_integ->key_len;
 
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
@@ -460,7 +464,7 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   /* calculate PRFplus */
   u8 *keymat;
   int len = tr_prf->key_trunc +	/* SK_d */
-    tr_integ->key_len * 2 +	/* SK_ai, SK_ar */
+    integ_key_len * 2 +		/* SK_ai, SK_ar */
     tr_encr->key_len * 2 +	/* SK_ei, SK_er */
     tr_prf->key_len * 2;	/* SK_pi, SK_pr */
 
@@ -475,15 +479,18 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   clib_memcpy_fast (sa->sk_d, keymat + pos, tr_prf->key_trunc);
   pos += tr_prf->key_trunc;
 
-  /* SK_ai */
-  sa->sk_ai = vec_new (u8, tr_integ->key_len);
-  clib_memcpy_fast (sa->sk_ai, keymat + pos, tr_integ->key_len);
-  pos += tr_integ->key_len;
+  if (integ_key_len)
+    {
+      /* SK_ai */
+      sa->sk_ai = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (sa->sk_ai, keymat + pos, integ_key_len);
+      pos += integ_key_len;
 
-  /* SK_ar */
-  sa->sk_ar = vec_new (u8, tr_integ->key_len);
-  clib_memcpy_fast (sa->sk_ar, keymat + pos, tr_integ->key_len);
-  pos += tr_integ->key_len;
+      /* SK_ar */
+      sa->sk_ar = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (sa->sk_ar, keymat + pos, integ_key_len);
+      pos += integ_key_len;
+    }
 
   /* SK_ei */
   sa->sk_ei = vec_new (u8, tr_encr->key_len);
@@ -512,6 +519,9 @@ static void
 ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
 {
   u8 *s = 0;
+  u16 integ_key_len = 0;
+  u8 salt_len = 0;
+
   ikev2_sa_transform_t *tr_prf, *ctr_encr, *ctr_integ;
   tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
@@ -520,11 +530,16 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
   ctr_integ =
     ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
 
+  if (ctr_integ)
+    integ_key_len = ctr_integ->key_len;
+  else
+    salt_len = sizeof (u32);
+
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
   /* calculate PRFplus */
   u8 *keymat;
-  int len = ctr_encr->key_len * 2 + ctr_integ->key_len * 2;
+  int len = ctr_encr->key_len * 2 + integ_key_len * 2 + salt_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, sa->sk_d, s, len);
 
@@ -535,20 +550,36 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
   clib_memcpy_fast (child->sk_ei, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
-  /* SK_ai */
-  child->sk_ai = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy_fast (child->sk_ai, keymat + pos, ctr_integ->key_len);
-  pos += ctr_integ->key_len;
+  if (ctr_integ)
+    {
+      /* SK_ai */
+      child->sk_ai = vec_new (u8, ctr_integ->key_len);
+      clib_memcpy_fast (child->sk_ai, keymat + pos, ctr_integ->key_len);
+      pos += ctr_integ->key_len;
+    }
+  else
+    {
+      clib_memcpy (&child->salt_ei, keymat + pos, salt_len);
+      pos += salt_len;
+    }
 
   /* SK_er */
   child->sk_er = vec_new (u8, ctr_encr->key_len);
   clib_memcpy_fast (child->sk_er, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
-  /* SK_ar */
-  child->sk_ar = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy_fast (child->sk_ar, keymat + pos, ctr_integ->key_len);
-  pos += ctr_integ->key_len;
+  if (ctr_integ)
+    {
+      /* SK_ar */
+      child->sk_ar = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (child->sk_ar, keymat + pos, integ_key_len);
+      pos += integ_key_len;
+    }
+  else
+    {
+      clib_memcpy (&child->salt_er, keymat + pos, salt_len);
+      pos += salt_len;
+    }
 
   ASSERT (pos == len);
 
@@ -1486,6 +1517,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   ikev2_sa_proposal_t *proposals;
   u8 encr_type = 0;
   u8 integ_type = 0;
+  u8 is_gcm = 0;
 
   if (!child->r_proposals)
     {
@@ -1541,7 +1573,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      break;
 	    }
 	}
-      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16
 	       && tr->key_len)
 	{
 	  switch (tr->key_len)
@@ -1560,6 +1592,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      return 1;
 	      break;
 	    }
+	  is_gcm = 1;
 	}
       else
 	{
@@ -1573,32 +1606,39 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       return 1;
     }
 
-  tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-  if (tr)
+  if (!is_gcm)
     {
-      switch (tr->integ_type)
+      tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+      if (tr)
 	{
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
-	  integ_type = IPSEC_INTEG_ALG_SHA_256_128;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192:
-	  integ_type = IPSEC_INTEG_ALG_SHA_384_192;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256:
-	  integ_type = IPSEC_INTEG_ALG_SHA_512_256;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96:
-	  integ_type = IPSEC_INTEG_ALG_SHA1_96;
-	  break;
-	default:
+	  switch (tr->integ_type)
+	    {
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
+	      integ_type = IPSEC_INTEG_ALG_SHA_256_128;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192:
+	      integ_type = IPSEC_INTEG_ALG_SHA_384_192;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256:
+	      integ_type = IPSEC_INTEG_ALG_SHA_512_256;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96:
+	      integ_type = IPSEC_INTEG_ALG_SHA1_96;
+	      break;
+	    default:
+	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+	      return 1;
+	    }
+	}
+      else
+	{
 	  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
 	  return 1;
 	}
     }
   else
     {
-      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
-      return 1;
+      integ_type = IPSEC_INTEG_ALG_NONE;
     }
 
   ikev2_calc_child_keys (sa, child);
@@ -1610,6 +1650,11 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       rem_ikey = child->sk_ar;
       loc_ckey = child->sk_ei;
       rem_ckey = child->sk_er;
+      if (is_gcm)
+	{
+	  a.salt_remote = child->salt_er;
+	  a.salt_local = child->salt_ei;
+	}
     }
   else
     {
@@ -1617,6 +1662,11 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       rem_ikey = child->sk_ai;
       loc_ckey = child->sk_er;
       rem_ckey = child->sk_ei;
+      if (is_gcm)
+	{
+	  a.salt_remote = child->salt_ei;
+	  a.salt_local = child->salt_er;
+	}
     }
 
   a.integ_alg = integ_type;

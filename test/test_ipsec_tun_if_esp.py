@@ -283,7 +283,8 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                         p.crypt_key, p.crypt_key,
                                         p.auth_algo_vpp_id, p.auth_key,
                                         p.auth_key,
-                                        salt=p.salt)
+                                        salt_remote=p.salt,
+                                        salt_local=p.salt)
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip4()

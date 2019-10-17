@@ -8,8 +8,8 @@ class VppIpsecTunInterface(VppTunnelInterface):
 
     def __init__(self, test, parent_if, local_spi,
                  remote_spi, crypto_alg, local_crypto_key, remote_crypto_key,
-                 integ_alg, local_integ_key, remote_integ_key, salt=0,
-                 udp_encap=False,
+                 integ_alg, local_integ_key, remote_integ_key, salt_local=0,
+                 salt_remote=0, udp_encap=False,
                  is_ip6=False):
         super(VppIpsecTunInterface, self).__init__(test, parent_if)
         self.local_spi = local_spi
@@ -20,7 +20,8 @@ class VppIpsecTunInterface(VppTunnelInterface):
         self.integ_alg = integ_alg
         self.local_integ_key = local_integ_key
         self.remote_integ_key = remote_integ_key
-        self.salt = salt
+        self.salt_local = salt_local
+        self.salt_remote = salt_remote
         if is_ip6:
             self.local_ip = self.parent_if.local_ip6
             self.remote_ip = self.parent_if.remote_ip6
@@ -35,7 +36,8 @@ class VppIpsecTunInterface(VppTunnelInterface):
             self.remote_spi, self.local_spi,
             self.crypto_alg, self.local_crypto_key, self.remote_crypto_key,
             self.integ_alg, self.local_integ_key, self.remote_integ_key,
-            salt=self.salt,
+            salt_local=self.salt_local,
+            salt_remote=self.salt_remote,
             udp_encap=self.udp_encap)
         self.set_sw_if_index(r.sw_if_index)
         self.generate_remote_hosts()

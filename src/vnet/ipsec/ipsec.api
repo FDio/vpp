@@ -431,7 +431,8 @@ define ipsec_spd_interface_details {
     @param show_instance - instance to display for intf if renumber is set
     @param udp_encap - enable UDP encapsulation for NAT traversal
     @param tx_table_id - the FIB id used after packet encap
-    @param salt - for use with counter mode ciphers
+    @param salt_remote - for use with counter mode ciphers during decryption
+    @param salt_local - for use with counter mode ciphers during encryption
 */
 define ipsec_tunnel_if_add_del {
   u32 client_index;
@@ -457,7 +458,8 @@ define ipsec_tunnel_if_add_del {
   u32 show_instance;
   u8 udp_encap;
   u32 tx_table_id;
-  u32 salt;
+  u32 salt_remote;
+  u32 salt_local;
 };
 
 /** \brief Add/delete IPsec tunnel interface response
