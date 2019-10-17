@@ -346,6 +346,7 @@ typedef struct session_connect_msg_
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
+  ip46_address_t lcl_ip;
   u8 hostname_len;
   u8 hostname[16];
   u64 parent_handle;

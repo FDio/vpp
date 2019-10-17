@@ -235,6 +235,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->is_ip4 = s->transport.is_ip4;
   mp->parent_handle = s->parent_handle;
   clib_memcpy_fast (&mp->ip, &s->transport.rmt_ip, sizeof (mp->ip));
+  clib_memcpy_fast (&mp->lcl_ip, &s->transport.lcl_ip, sizeof (mp->lcl_ip));
   mp->port = s->transport.rmt_port;
   mp->proto = s->session_type;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -1537,6 +1538,25 @@ handle:
   return vcl_session_handle (client_session);
 }
 
+static void
+vcl_ip_copy_from_ep (ip46_address_t * ip, vppcom_endpt_t * ep)
+{
+  if (ep->is_ip4)
+    clib_memcpy_fast (&ip->ip4, ep->ip, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (&ip->ip6, ep->ip, sizeof (ip6_address_t));
+}
+
+void
+vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
+{
+  ep->is_ip4 = is_ip4;
+  if (is_ip4)
+    clib_memcpy_fast (ep->ip, &ip->ip4, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
+}
+
 int
 vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 {
@@ -1572,12 +1592,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     }
 
   session->transport.is_ip4 = server_ep->is_ip4;
-  if (session->transport.is_ip4)
-    clib_memcpy_fast (&session->transport.rmt_ip.ip4, server_ep->ip,
-		      sizeof (ip4_address_t));
-  else
-    clib_memcpy_fast (&session->transport.rmt_ip.ip6, server_ep->ip,
-		      sizeof (ip6_address_t));
+  vcl_ip_copy_from_ep (&session->transport.rmt_ip, server_ep);
   session->transport.rmt_port = server_ep->port;
   session->parent_handle = VCL_INVALID_SESSION_HANDLE;
 
@@ -2921,6 +2936,24 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 			      sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  VDBG (1, "VPPCOM_ATTR_GET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
+		" port %d", session_handle, ep->is_ip4, format_ip46_address,
+		&session->transport.lcl_ip,
+		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+		clib_net_to_host_u16 (ep->port));
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_LCL_ADDR:
+      if (PREDICT_TRUE (buffer && buflen &&
+			(*buflen >= sizeof (*ep)) && ep->ip))
+	{
+	  session->transport.is_ip4 = ep->is_ip4;
+	  session->transport.lcl_port = ep->port;
+	  vcl_ip_copy_from_ep (&session->transport.lcl_ip, ep);
+	  *buflen = sizeof (*ep);
+	  VDBG (1, "VPPCOM_ATTR_SET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
 		" port %d", session_handle, ep->is_ip4, format_ip46_address,
 		&session->transport.lcl_ip,
 		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
