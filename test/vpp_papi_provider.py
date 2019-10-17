@@ -744,9 +744,8 @@ class VppPapiProvider(object):
         :param current_data_flag:  (Default value = 0)
         :param current_data_offset:  (Default value = 0)
         """
-
-        mask_len = ((len(mask) - 1) / 16 + 1) * 16
-        mask = mask + '\0' * (mask_len - len(mask))
+        mask_len = ((len(mask) - 1) // 16 + 1) * 16
+        mask = mask + b'\0' * (mask_len - len(mask))
         return self.api(
             self.papi.classify_add_del_table,
             {'is_add': is_add,
@@ -783,8 +782,8 @@ class VppPapiProvider(object):
         :param metadata:  (Default value = 0)
         """
 
-        match_len = ((len(match) - 1) / 16 + 1) * 16
-        match = match + '\0' * (match_len - len(match))
+        match_len = ((len(match) - 1) // 16 + 1) * 16
+        match = match + b'\0' * (match_len - len(match))
         return self.api(
             self.papi.classify_add_del_session,
             {'is_add': is_add,
