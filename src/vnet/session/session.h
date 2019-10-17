@@ -116,6 +116,12 @@ typedef struct session_worker_
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
 
+  /** Vector of buffers to be sent */
+  u32 *pending_tx_buffers;
+
+  /** Vector of nexts for the pending tx buffers */
+  u16 *pending_tx_nexts;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   f64 last_event_poll;
@@ -611,6 +617,15 @@ do {									\
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
 int session_main_flush_all_enqueue_events (u8 transport_proto);
 void session_flush_frames_main_thread (vlib_main_t * vm);
+
+always_inline void
+session_add_pending_tx_buffer (session_type_t st, u32 thread_index, u32 bi)
+{
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+  vec_add1 (wrk->pending_tx_buffers, bi);
+  vec_add1 (wrk->pending_tx_nexts, session_main.session_type_to_next[st]);
+}
+
 ssvm_private_t *session_main_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);

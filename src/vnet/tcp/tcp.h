@@ -511,9 +511,6 @@ typedef struct tcp_worker_ctx_
   /** tx buffer free list */
   u32 *tx_buffers;
 
-  /** tx frames for tcp 4/6 output nodes */
-  vlib_frame_t *tx_frames[2];
-
   /** tx frames for ip 4/6 lookup nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];
 
@@ -790,7 +787,6 @@ void tcp_send_fin (tcp_connection_t * tc);
 void tcp_send_ack (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
-void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4);
 void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
