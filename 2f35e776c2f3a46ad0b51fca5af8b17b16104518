@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aeb5f62c_248b5a31",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-17T12:58:44Z",
+      "side": 1,
+      "message": "Please don\u0027t leave commented-out junk around.",
+      "revId": "2f35e776c2f3a46ad0b51fca5af8b17b16104518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
