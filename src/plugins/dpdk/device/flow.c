@@ -30,16 +30,17 @@
 
 /* constant structs */
 static const struct rte_flow_attr ingress = {.ingress = 1 };
-static const struct rte_flow_item_eth any_eth[2] = { };
-static const struct rte_flow_item_vlan any_vlan[2] = { };
 
 static int
 dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
   struct rte_flow_item_ipv4 ip4[2] = { };
+  struct rte_flow_item_ipv4 inner_ip4[2] = { };
   struct rte_flow_item_ipv6 ip6[2] = { };
+  struct rte_flow_item_ipv6 inner_ip6[2] = { };
   struct rte_flow_item_udp udp[2] = { };
   struct rte_flow_item_tcp tcp[2] = { };
+  struct rte_flow_item_gtp gtp[2] = { };
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_item *item, *items = 0;
@@ -69,30 +70,45 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   /* Ethernet */
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_ETH;
-  item->spec = any_eth;
-  item->mask = any_eth + 1;
+  item->spec = NULL;
+  item->mask = NULL;
 
   /* VLAN */
-  if (f->type != VNET_FLOW_TYPE_IP4_VXLAN)
+  if ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||
+      (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE))
     {
       vec_add2 (items, item, 1);
       item->type = RTE_FLOW_ITEM_TYPE_VLAN;
-      item->spec = any_vlan;
-      item->mask = any_vlan + 1;
+      item->spec = NULL;
+      item->mask = NULL;
     }
 
   /* IP */
   vec_add2 (items, item, 1);
-  if (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE)
+  if ((f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||
+      (f->type == VNET_FLOW_TYPE_IP6_GTPC) ||
+      (f->type == VNET_FLOW_TYPE_IP6_GTPU) ||
+      (f->type == VNET_FLOW_TYPE_IP6_GTPU_IP4) ||
+      (f->type == VNET_FLOW_TYPE_IP6_GTPU_IP6))
     {
       vnet_flow_ip6_n_tuple_t *t6 = &f->ip6_n_tuple;
-      clib_memcpy_fast (ip6[0].hdr.src_addr, &t6->src_addr.addr, 16);
-      clib_memcpy_fast (ip6[1].hdr.src_addr, &t6->src_addr.mask, 16);
-      clib_memcpy_fast (ip6[0].hdr.dst_addr, &t6->dst_addr.addr, 16);
-      clib_memcpy_fast (ip6[1].hdr.dst_addr, &t6->dst_addr.mask, 16);
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
-      item->spec = ip6;
-      item->mask = ip6 + 1;
+
+      if (!clib_memcmp (&t6->src_addr.mask, &zero_addr, 16) &&
+	  !clib_memcmp (&t6->dst_addr.mask, &zero_addr, 16))
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+      else
+	{
+	  clib_memcpy_fast (ip6[0].hdr.src_addr, &t6->src_addr.addr, 16);
+	  clib_memcpy_fast (ip6[1].hdr.src_addr, &t6->src_addr.mask, 16);
+	  clib_memcpy_fast (ip6[0].hdr.dst_addr, &t6->dst_addr.addr, 16);
+	  clib_memcpy_fast (ip6[1].hdr.dst_addr, &t6->dst_addr.mask, 16);
+	  item->spec = ip6;
+	  item->mask = ip6 + 1;
+	}
 
       src_port = t6->src_port.port;
       dst_port = t6->dst_port.port;
@@ -100,16 +116,29 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       dst_port_mask = t6->dst_port.mask;
       protocol = t6->protocol;
     }
-  else if (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE)
+  else if ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||
+	   (f->type == VNET_FLOW_TYPE_IP4_GTPC) ||
+	   (f->type == VNET_FLOW_TYPE_IP4_GTPU) ||
+	   (f->type == VNET_FLOW_TYPE_IP4_GTPU_IP4) ||
+	   (f->type == VNET_FLOW_TYPE_IP4_GTPU_IP6))
     {
       vnet_flow_ip4_n_tuple_t *t4 = &f->ip4_n_tuple;
-      ip4[0].hdr.src_addr = t4->src_addr.addr.as_u32;
-      ip4[1].hdr.src_addr = t4->src_addr.mask.as_u32;
-      ip4[0].hdr.dst_addr = t4->dst_addr.addr.as_u32;
-      ip4[1].hdr.dst_addr = t4->dst_addr.mask.as_u32;
       item->type = RTE_FLOW_ITEM_TYPE_IPV4;
-      item->spec = ip4;
-      item->mask = ip4 + 1;
+
+      if (!t4->src_addr.mask.as_u32 && !t4->dst_addr.mask.as_u32)
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+      else
+	{
+	  ip4[0].hdr.src_addr = t4->src_addr.addr.as_u32;
+	  ip4[1].hdr.src_addr = t4->src_addr.mask.as_u32;
+	  ip4[0].hdr.dst_addr = t4->dst_addr.addr.as_u32;
+	  ip4[1].hdr.dst_addr = t4->dst_addr.mask.as_u32;
+	  item->spec = ip4;
+	  item->mask = ip4 + 1;
+	}
 
       src_port = t4->src_port.port;
       dst_port = t4->dst_port.port;
@@ -144,21 +173,37 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   vec_add2 (items, item, 1);
   if (protocol == IP_PROTOCOL_UDP)
     {
-      udp[0].hdr.src_port = clib_host_to_net_u16 (src_port);
-      udp[1].hdr.src_port = clib_host_to_net_u16 (src_port_mask);
-      udp[0].hdr.dst_port = clib_host_to_net_u16 (dst_port);
-      udp[1].hdr.dst_port = clib_host_to_net_u16 (dst_port_mask);
       item->type = RTE_FLOW_ITEM_TYPE_UDP;
-      item->spec = udp;
-      item->mask = udp + 1;
+
+      if ((src_port_mask == 0) && (dst_port_mask == 0))
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+      else
+	{
+	  udp[0].hdr.src_port = clib_host_to_net_u16 (src_port);
+	  udp[1].hdr.src_port = clib_host_to_net_u16 (src_port_mask);
+	  udp[0].hdr.dst_port = clib_host_to_net_u16 (dst_port);
+	  udp[1].hdr.dst_port = clib_host_to_net_u16 (dst_port_mask);
+	  item->spec = udp;
+	  item->mask = udp + 1;
+	}
     }
   else if (protocol == IP_PROTOCOL_TCP)
     {
+      item->type = RTE_FLOW_ITEM_TYPE_TCP;
+
+      if ((src_port_mask == 0) && (dst_port_mask == 0))
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+
       tcp[0].hdr.src_port = clib_host_to_net_u16 (src_port);
       tcp[1].hdr.src_port = clib_host_to_net_u16 (src_port_mask);
       tcp[0].hdr.dst_port = clib_host_to_net_u16 (dst_port);
       tcp[1].hdr.dst_port = clib_host_to_net_u16 (dst_port_mask);
-      item->type = RTE_FLOW_ITEM_TYPE_TCP;
       item->spec = tcp;
       item->mask = tcp + 1;
     }
@@ -194,6 +239,185 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       item->type = RTE_FLOW_ITEM_TYPE_RAW;
       item->spec = raw;
       item->mask = raw + 1;
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP4_GTPC)
+    {
+      vnet_flow_ip4_gtpc_t *gc = &f->ip4_gtpc;
+      gtp[0].teid = clib_host_to_net_u32 (gc->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPC;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP4_GTPU)
+    {
+      vnet_flow_ip4_gtpu_t *gu = &f->ip4_gtpu;
+      gtp[0].teid = clib_host_to_net_u32 (gu->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPU;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+    }
+  else if ((f->type == VNET_FLOW_TYPE_IP4_GTPU_IP4) ||
+	   (f->type == VNET_FLOW_TYPE_IP4_GTPU_IP6))
+    {
+      vnet_flow_ip4_gtpu_t *gu = &f->ip4_gtpu;
+      gtp[0].teid = clib_host_to_net_u32 (gu->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPU;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+
+      /* inner IP4 header */
+      if (f->type == VNET_FLOW_TYPE_IP4_GTPU_IP4)
+	{
+	  vec_add2 (items, item, 1);
+	  item->type = RTE_FLOW_ITEM_TYPE_IPV4;
+
+	  vnet_flow_ip4_gtpu_ip4_t *gu4 = &f->ip4_gtpu_ip4;
+	  if (!gu4->inner_src_addr.mask.as_u32 &&
+	      !gu4->inner_dst_addr.mask.as_u32)
+	    {
+	      item->spec = NULL;
+	      item->mask = NULL;
+	    }
+	  else
+	    {
+	      inner_ip4[0].hdr.src_addr = gu4->inner_src_addr.addr.as_u32;
+	      inner_ip4[1].hdr.src_addr = gu4->inner_src_addr.mask.as_u32;
+	      inner_ip4[0].hdr.dst_addr = gu4->inner_dst_addr.addr.as_u32;
+	      inner_ip4[1].hdr.dst_addr = gu4->inner_dst_addr.mask.as_u32;
+	      item->spec = inner_ip4;
+	      item->mask = inner_ip4 + 1;
+	    }
+	}
+      else if (f->type == VNET_FLOW_TYPE_IP4_GTPU_IP6)
+	{
+	  ip6_address_t zero_addr;
+	  vnet_flow_ip4_gtpu_ip6_t *gu6 = &f->ip4_gtpu_ip6;
+
+	  clib_memset (&zero_addr, 0, sizeof (ip6_address_t));
+
+	  vec_add2 (items, item, 1);
+	  item->type = RTE_FLOW_ITEM_TYPE_IPV6;
+
+	  if (!clib_memcmp (&gu6->inner_src_addr.mask, &zero_addr, 16) &&
+	      !clib_memcmp (&gu6->inner_dst_addr.mask, &zero_addr, 16))
+	    {
+	      item->spec = NULL;
+	      item->mask = NULL;
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (inner_ip6[0].hdr.src_addr,
+				&gu6->inner_src_addr.addr, 16);
+	      clib_memcpy_fast (inner_ip6[1].hdr.src_addr,
+				&gu6->inner_src_addr.mask, 16);
+	      clib_memcpy_fast (inner_ip6[0].hdr.dst_addr,
+				&gu6->inner_dst_addr.addr, 16);
+	      clib_memcpy_fast (inner_ip6[1].hdr.dst_addr,
+				&gu6->inner_dst_addr.mask, 16);
+	      item->spec = inner_ip6;
+	      item->mask = inner_ip6 + 1;
+	    }
+	}
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP6_GTPC)
+    {
+      vnet_flow_ip6_gtpc_t *gc = &f->ip6_gtpc;
+      gtp[0].teid = clib_host_to_net_u32 (gc->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPC;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP6_GTPU)
+    {
+      vnet_flow_ip6_gtpu_t *gu = &f->ip6_gtpu;
+      gtp[0].teid = clib_host_to_net_u32 (gu->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPU;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+    }
+  else if ((f->type == VNET_FLOW_TYPE_IP6_GTPU_IP4) ||
+	   (f->type == VNET_FLOW_TYPE_IP6_GTPU_IP6))
+    {
+      vnet_flow_ip6_gtpu_t *gu = &f->ip6_gtpu;
+      gtp[0].teid = clib_host_to_net_u32 (gu->teid);
+      gtp[1].teid = ~0;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_GTPU;
+      item->spec = gtp;
+      item->mask = gtp + 1;
+
+      /* inner IP4 header */
+      if (f->type == VNET_FLOW_TYPE_IP6_GTPU_IP4)
+	{
+	  vec_add2 (items, item, 1);
+	  item->type = RTE_FLOW_ITEM_TYPE_IPV4;
+
+	  vnet_flow_ip6_gtpu_ip4_t *gu4 = &f->ip6_gtpu_ip4;
+
+	  if (!gu4->inner_src_addr.mask.as_u32 &&
+	      !gu4->inner_dst_addr.mask.as_u32)
+	    {
+	      item->spec = NULL;
+	      item->mask = NULL;
+	    }
+	  else
+	    {
+	      inner_ip4[0].hdr.src_addr = gu4->inner_src_addr.addr.as_u32;
+	      inner_ip4[1].hdr.src_addr = gu4->inner_src_addr.mask.as_u32;
+	      inner_ip4[0].hdr.dst_addr = gu4->inner_dst_addr.addr.as_u32;
+	      inner_ip4[1].hdr.dst_addr = gu4->inner_dst_addr.mask.as_u32;
+	      item->spec = inner_ip4;
+	      item->mask = inner_ip4 + 1;
+	    }
+	}
+
+      if (f->type == VNET_FLOW_TYPE_IP6_GTPU_IP6)
+	{
+	  ip6_address_t zero_addr;
+	  vnet_flow_ip6_gtpu_ip6_t *gu6 = &f->ip6_gtpu_ip6;
+
+	  clib_memset (&zero_addr, 0, sizeof (ip6_address_t));
+
+	  vec_add2 (items, item, 1);
+	  item->type = RTE_FLOW_ITEM_TYPE_IPV6;
+
+	  if (!clib_memcmp (&gu6->inner_src_addr.mask, &zero_addr, 16) &&
+	      !clib_memcmp (&gu6->inner_dst_addr.mask, &zero_addr, 16))
+	    {
+	      item->spec = NULL;
+	      item->mask = NULL;
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (inner_ip6[0].hdr.src_addr,
+				&gu6->inner_src_addr.addr, 16);
+	      clib_memcpy_fast (inner_ip6[1].hdr.src_addr,
+				&gu6->inner_src_addr.mask, 16);
+	      clib_memcpy_fast (inner_ip6[0].hdr.dst_addr,
+				&gu6->inner_dst_addr.addr, 16);
+	      clib_memcpy_fast (inner_ip6[1].hdr.dst_addr,
+				&gu6->inner_dst_addr.mask, 16);
+	      item->spec = inner_ip6;
+	      item->mask = inner_ip6 + 1;
+	    }
+
+	}
     }
 
   vec_add2 (items, item, 1);
@@ -359,6 +583,14 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
     case VNET_FLOW_TYPE_IP6_N_TUPLE:
     case VNET_FLOW_TYPE_IP4_VXLAN:
+    case VNET_FLOW_TYPE_IP4_GTPC:
+    case VNET_FLOW_TYPE_IP4_GTPU:
+    case VNET_FLOW_TYPE_IP4_GTPU_IP4:
+    case VNET_FLOW_TYPE_IP4_GTPU_IP6:
+    case VNET_FLOW_TYPE_IP6_GTPC:
+    case VNET_FLOW_TYPE_IP6_GTPU:
+    case VNET_FLOW_TYPE_IP6_GTPU_IP4:
+    case VNET_FLOW_TYPE_IP6_GTPU_IP6:
       if ((rv = dpdk_flow_add (xd, flow, fe)))
 	goto done;
       break;
