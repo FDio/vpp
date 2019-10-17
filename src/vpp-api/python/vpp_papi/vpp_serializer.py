@@ -188,8 +188,12 @@ class FixedList_u8(object):
                 ' expected: {}'
                 .format(self.name, len(data), self.num))
 
-        return self.packer.pack(data)
-
+        try:
+            return self.packer.pack(data)
+        except struct.error:
+            raise VPPSerializerValueError(
+                'Packing failed for "{}" {}'
+                .format(self.name, kwargs))
     def unpack(self, data, offset=0, result=None, ntc=False):
         if len(data[offset:]) < self.num:
             raise VPPSerializerValueError(
