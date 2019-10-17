@@ -1681,6 +1681,7 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
   /* Account for the FIN and send ack */
   tc->rcv_nxt += 1;
+  tc->flags |= TCP_CONN_FINRCVD;
   tcp_program_ack (tc);
   /* Enter CLOSE-WAIT and notify session. To avoid lingering
    * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
@@ -2593,7 +2594,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  tcp_program_ack (new_tc0);
+	  /* Ack needs to go out now because connection is established */
+//        tcp_program_ack (new_tc0);
+	  tcp_send_ack (new_tc0);
 	}
 
     drop:
