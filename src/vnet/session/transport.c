@@ -33,16 +33,6 @@ static u32 port_allocator_seed;
 static transport_endpoint_table_t local_endpoints_table;
 
 /*
- * Pool of local endpoints
- */
-static transport_endpoint_t *local_endpoints;
-
-/*
- * Local endpoints pool lock
- */
-static clib_spinlock_t local_endpoints_lock;
-
-/*
  * Period used by transport pacers. Initialized by session layer
  */
 static double transport_pacer_period;
@@ -157,7 +147,7 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     return 0;
 }
 
-u32
+static u32
 transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
 			   ip46_address_t * ip, u16 port)
 {
@@ -175,29 +165,29 @@ transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
   return ENDPOINT_INVALID_INDEX;
 }
 
-void
+static void
 transport_endpoint_table_add (transport_endpoint_table_t * ht, u8 proto,
-			      transport_endpoint_t * te, u32 value)
+			      ip46_address_t * ip, u16 port)
 {
   clib_bihash_kv_24_8_t kv;
 
-  kv.key[0] = te->ip.as_u64[0];
-  kv.key[1] = te->ip.as_u64[1];
-  kv.key[2] = (u64) te->port << 8 | (u64) proto;
-  kv.value = value;
+  kv.key[0] = ip->as_u64[0];
+  kv.key[1] = ip->as_u64[1];
+  kv.key[2] = (u64) port << 8 | (u64) proto;
+  kv.value = 1;
 
   clib_bihash_add_del_24_8 (ht, &kv, 1);
 }
 
-void
+static void
 transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
-			      transport_endpoint_t * te)
+			      ip46_address_t * ip, u16 port)
 {
   clib_bihash_kv_24_8_t kv;
 
-  kv.key[0] = te->ip.as_u64[0];
-  kv.key[1] = te->ip.as_u64[1];
-  kv.key[2] = (u64) te->port << 8 | (u64) proto;
+  kv.key[0] = ip->as_u64[0];
+  kv.key[1] = ip->as_u64[1];
+  kv.key[2] = (u64) port << 8 | (u64) proto;
 
   clib_bihash_add_del_24_8 (ht, &kv, 0);
 }
@@ -352,49 +342,16 @@ transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
 #define PORT_MASK ((1 << 16)- 1)
 
 void
-transport_endpoint_del (u32 tepi)
-{
-  clib_spinlock_lock_if_init (&local_endpoints_lock);
-  pool_put_index (local_endpoints, tepi);
-  clib_spinlock_unlock_if_init (&local_endpoints_lock);
-}
-
-always_inline transport_endpoint_t *
-transport_endpoint_new (void)
-{
-  transport_endpoint_t *tep;
-  pool_get_zero (local_endpoints, tep);
-  return tep;
-}
-
-void
 transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
 {
-  u32 tepi;
-  transport_endpoint_t *tep;
-
   /* Cleanup local endpoint if this was an active connect */
-  tepi = transport_endpoint_lookup (&local_endpoints_table, proto, lcl_ip,
-				    clib_net_to_host_u16 (port));
-  if (tepi != ENDPOINT_INVALID_INDEX)
-    {
-      tep = pool_elt_at_index (local_endpoints, tepi);
-      transport_endpoint_table_del (&local_endpoints_table, proto, tep);
-      transport_endpoint_del (tepi);
-    }
+  transport_endpoint_table_del (&local_endpoints_table, proto, lcl_ip, port);
 }
 
 static void
 transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
 {
-  transport_endpoint_t *tep;
-  clib_spinlock_lock_if_init (&local_endpoints_lock);
-  tep = transport_endpoint_new ();
-  clib_memcpy_fast (&tep->ip, ip, sizeof (*ip));
-  tep->port = port;
-  transport_endpoint_table_add (&local_endpoints_table, proto, tep,
-				tep - local_endpoints);
-  clib_spinlock_unlock_if_init (&local_endpoints_lock);
+  transport_endpoint_table_add (&local_endpoints_table, proto, ip, port);
 }
 
 /**
@@ -741,9 +698,7 @@ transport_enable_disable (vlib_main_t * vm, u8 is_en)
 void
 transport_init (void)
 {
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   session_main_t *smm = vnet_get_session_main ();
-  u32 num_threads;
 
   if (smm->local_endpoints_table_buckets == 0)
     smm->local_endpoints_table_buckets = 250000;
@@ -756,9 +711,6 @@ transport_init (void)
   clib_bihash_init_24_8 (&local_endpoints_table, "local endpoints table",
 			 smm->local_endpoints_table_buckets,
 			 smm->local_endpoints_table_memory);
-  num_threads = 1 /* main thread */  + vtm->n_threads;
-  if (num_threads > 1)
-    clib_spinlock_init (&local_endpoints_lock);
 }
 
 /*
