@@ -748,7 +748,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
   tun.tx_table_id = ntohl (mp->tx_table_id);
-  tun.salt = mp->salt;
+  tun.salt_local = mp->salt_local;
+  tun.salt_remote = mp->salt_remote;
   itype = ip_address_decode (&mp->local_ip, &tun.local_ip);
   itype = ip_address_decode (&mp->remote_ip, &tun.remote_ip);
   tun.is_ip6 = (IP46_TYPE_IP6 == itype);
