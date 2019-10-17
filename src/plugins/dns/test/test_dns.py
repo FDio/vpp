@@ -82,7 +82,7 @@ class TestDns(VppTestCase):
         self.logger.info(self.vapi.cli("dns cache add bozo.clown.org 1.2.3.4"))
 
         # Test the binary API
-        rv = self.vapi.dns_resolve_name(name='bozo.clown.org')
+        rv = self.vapi.dns_resolve_name(name=b'bozo.clown.org')
         self.assertEqual(rv.ip4_address, IPv4Address(u'1.2.3.4').packed)
 
         # Configure 127.0.0.1/8 on the pg interface
