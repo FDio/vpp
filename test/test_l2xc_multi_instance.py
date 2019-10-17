@@ -145,8 +145,8 @@ class TestL2xcMultiInst(VppTestCase):
         i = -1
         for pg_if in cls.pg_interfaces:
             i += 1
-            start_nr = macs_per_if * i
-            end_nr = count if i == (n_int - 1) else macs_per_if * (i + 1)
+            start_nr = int(macs_per_if * i)
+            end_nr = count if i == (n_int - 1) else int(macs_per_if * (i + 1))
             hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
             for j in range(start_nr, end_nr):
                 host = Host(
