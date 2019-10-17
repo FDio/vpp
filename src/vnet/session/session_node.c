@@ -935,6 +935,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
+      ASSERT (ctx->left_to_snd != 0);
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
       session_tx_fill_buffer (vm, ctx, b1, &n_bufs, peek_data);
 

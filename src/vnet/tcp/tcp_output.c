@@ -518,7 +518,6 @@ tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
   return checksum;
 }
 
-
 /**
  * Prepare ACK
  */
@@ -1086,6 +1085,9 @@ tcp_send_fin (tcp_connection_t * tc)
       return;
     }
 
+  /* If we have acks programmed, don't send them */
+  tc->flags &= ~TCP_CONN_SNDACK;
+
   tcp_retransmit_timer_force_update (tc);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
@@ -1164,7 +1166,6 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 
   tc->bytes_out += data_len;
   tc->data_segs_out += 1;
-
 
   th->checksum = tcp_compute_checksum (tc, b);
 
@@ -1883,6 +1884,13 @@ tcp_retransmit_should_retry_head (tcp_connection_t * tc,
   return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
 }
 
+static inline u8
+tcp_max_tx_deq (tcp_connection_t * tc)
+{
+  return (transport_max_tx_dequeue (&tc->connection)
+	  - (tc->snd_nxt - tc->snd_una));
+}
+
 #define scoreboard_rescue_rxt_valid(_sb, _tc)			\
     (seq_geq (_sb->rescue_rxt, _tc->snd_una) 			\
 	&& seq_leq (_sb->rescue_rxt, _tc->snd_congestion))
@@ -2145,8 +2153,12 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 
   if (!tc->pending_dupacks)
     {
-      tcp_send_ack (tc);
-      return 1;
+      if (!tcp_max_tx_deq (tc) || tc->state != TCP_STATE_ESTABLISHED)
+	{
+	  tcp_send_ack (tc);
+	  return 1;
+	}
+      return 0;
     }
 
   /* If we're supposed to send dupacks but have no ooo data
@@ -2154,6 +2166,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
   if (!vec_len (tc->snd_sacks))
     {
       tcp_send_ack (tc);
+      tc->pending_dupacks = 0;
       return 1;
     }
 
