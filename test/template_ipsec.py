@@ -37,12 +37,12 @@ class IPsecIPv4Params(object):
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
                                  IPSEC_API_INTEG_ALG_SHA1_96)
         self.auth_algo = 'HMAC-SHA1-96'  # scapy name
-        self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
+        self.auth_key = b'C91KUR9GYMm5GfkEvNjX'
 
         self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
                                   IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
-        self.crypt_key = 'JPjyOWBeVEQiMe7h'
+        self.crypt_key = b'JPjyOWBeVEQiMe7h'
         self.salt = 0
         self.flags = 0
         self.nat_header = None
@@ -73,12 +73,12 @@ class IPsecIPv6Params(object):
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
                                  IPSEC_API_INTEG_ALG_SHA1_96)
         self.auth_algo = 'HMAC-SHA1-96'  # scapy name
-        self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
+        self.auth_key = b'C91KUR9GYMm5GfkEvNjX'
 
         self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
                                   IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
-        self.crypt_key = 'JPjyOWBeVEQiMe7h'
+        self.crypt_key = b'JPjyOWBeVEQiMe7h'
         self.salt = 0
         self.flags = 0
         self.nat_header = None
