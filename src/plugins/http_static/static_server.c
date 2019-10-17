@@ -676,10 +676,10 @@ find_end:
   if (p)
     {
       int rv;
-      int (*fp) (u8 *, http_session_t *);
+      int (*fp) (http_builtin_method_type_t, u8 *, http_session_t *);
       fp = (void *) p[0];
       hs->path = path;
-      rv = (*fp) (request, hs);
+      rv = (*fp) (request_type, request, hs);
       if (rv)
 	{
 	  clib_warning ("builtin handler %llx hit on %s '%s' but failed!",
