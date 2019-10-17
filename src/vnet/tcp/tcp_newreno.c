@@ -15,6 +15,15 @@
 
 #include <vnet/tcp/tcp.h>
 
+typedef struct nwreno_cfg_
+{
+  u32 ssthresh;
+} newreno_cfg_t;
+
+static newreno_cfg_t newreno_cfg = {
+  .ssthresh = 0x7FFFFFFFU,
+};
+
 static void
 newreno_congestion (tcp_connection_t * tc)
 {
@@ -82,12 +91,33 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 static void
 newreno_conn_init (tcp_connection_t * tc)
 {
-  tc->ssthresh = tc->snd_wnd;
+  tc->ssthresh = newreno_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
+}
+
+static uword
+newreno_unformat_config (unformat_input_t * input)
+{
+  u32 ssthresh = 0x7FFFFFFFU;
+
+  if (!input)
+    return 0;
+
+  unformat_skip_white_space (input);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ssthresh %u", &ssthresh))
+        newreno_cfg.ssthresh = ssthresh;
+      else
+        return 0;
+    }
+  return 1;
 }
 
 const static tcp_cc_algorithm_t tcp_newreno = {
   .name = "newreno",
+  .unformat_cfg = newreno_unformat_config,
   .congestion = newreno_congestion,
   .loss = newreno_loss,
   .recovered = newreno_recovered,

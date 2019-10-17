@@ -23,10 +23,12 @@
 typedef struct cubic_cfg_
 {
   u8 fast_convergence;
+  u32 ssthresh;
 } cubic_cfg_t;
 
 static cubic_cfg_t cubic_cfg = {
   .fast_convergence = 1,
+  .ssthresh = 0x7FFFFFFFU,
 };
 
 typedef struct cubic_data_
@@ -200,7 +202,7 @@ static void
 cubic_conn_init (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  tc->ssthresh = tc->snd_wnd;
+  tc->ssthresh = cubic_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
   cd->w_max = 0;
   cd->K = 0;
@@ -210,6 +212,8 @@ cubic_conn_init (tcp_connection_t * tc)
 static uword
 cubic_unformat_config (unformat_input_t * input)
 {
+  u32 ssthresh = 0x7FFFFFFFU;
+
   if (!input)
     return 0;
 
@@ -219,6 +223,8 @@ cubic_unformat_config (unformat_input_t * input)
     {
       if (unformat (input, "no-fast-convergence"))
 	cubic_cfg.fast_convergence = 0;
+      else if (unformat (input, "ssthresh %u", &ssthresh))
+        cubic_cfg.ssthresh = ssthresh;
       else
 	return 0;
     }
