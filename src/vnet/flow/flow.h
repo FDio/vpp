@@ -26,7 +26,15 @@
   _(IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple") \
   _(IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple") \
   _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
-  _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan")
+  _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan") \
+  _(IP4_GTPC, ip4_gtpc, "ipv4-gtpc") \
+  _(IP4_GTPU, ip4_gtpu, "ipv4-gtpu") \
+  _(IP4_GTPU_IP4, ip4_gtpu_ip4, "ipv4-gtpu-ipv4") \
+  _(IP4_GTPU_IP6, ip4_gtpu_ip6, "ipv4-gtpu-ipv6") \
+  _(IP6_GTPC, ip6_gtpc, "ipv6-gtpc") \
+  _(IP6_GTPU, ip6_gtpu, "ipv6-gtpu") \
+  _(IP6_GTPU_IP4, ip6_gtpu_ip4, "ipv6-gtpu-ipv4") \
+  _(IP6_GTPU_IP6, ip6_gtpu_ip6, "ipv6-gtpu-ipv6")
 
 #define foreach_flow_entry_ip4_n_tuple \
   _fe(ip4_address_and_mask_t, src_addr) \
@@ -53,6 +61,42 @@
   _fe(ip6_address_t, dst_addr) \
   _fe(u16, dst_port) \
   _fe(u16, vni)
+
+#define foreach_flow_entry_ip4_gtpc \
+  foreach_flow_entry_ip4_n_tuple \
+  _fe(u32, teid)
+
+#define foreach_flow_entry_ip4_gtpu \
+  foreach_flow_entry_ip4_n_tuple \
+  _fe(u32, teid)
+
+#define foreach_flow_entry_ip4_gtpu_ip4 \
+  foreach_flow_entry_ip4_gtpu \
+  _fe(ip4_address_and_mask_t, inner_src_addr) \
+  _fe(ip4_address_and_mask_t, inner_dst_addr)
+
+#define foreach_flow_entry_ip4_gtpu_ip6 \
+  foreach_flow_entry_ip4_gtpu \
+  _fe(ip6_address_and_mask_t, inner_src_addr) \
+  _fe(ip6_address_and_mask_t, inner_dst_addr)
+
+#define foreach_flow_entry_ip6_gtpc \
+  foreach_flow_entry_ip6_n_tuple \
+  _fe(u32, teid)
+
+#define foreach_flow_entry_ip6_gtpu \
+  foreach_flow_entry_ip6_n_tuple \
+  _fe(u32, teid)
+
+#define foreach_flow_entry_ip6_gtpu_ip4 \
+  foreach_flow_entry_ip6_gtpu \
+  _fe(ip4_address_and_mask_t, inner_src_addr) \
+  _fe(ip4_address_and_mask_t, inner_dst_addr)
+
+#define foreach_flow_entry_ip6_gtpu_ip6 \
+  foreach_flow_entry_ip6_gtpu \
+  _fe(ip6_address_and_mask_t, inner_src_addr) \
+  _fe(ip6_address_and_mask_t, inner_dst_addr)
 
 #define foreach_flow_action \
   _(0, COUNT, "count") \
