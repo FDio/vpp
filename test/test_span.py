@@ -144,7 +144,7 @@ class TestSpan(VppTestCase):
 
         for i in range(0, self.pkts_per_burst):
             payload = "span test"
-            size = packet_sizes[(i / 2) % len(packet_sizes)]
+            size = packet_sizes[(i // 2) % len(packet_sizes)]
             p = (Ether(src=src_if.local_mac, dst=dst_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
                  UDP(sport=10000 + src_if.sw_if_index * 1000 + i, dport=1234) /
