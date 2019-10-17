@@ -19,7 +19,8 @@
 #include <vpp/app/version.h>
 
 int
-handle_get_version (u8 * request, http_session_t * hs)
+handle_get_version (http_builtin_method_type_t reqtype,
+		    u8 * request, http_session_t * hs)
 {
   u8 *s = 0;
 
@@ -63,63 +64,87 @@ trim_path_from_request (u8 * s, char *path)
 }
 
 int
-handle_get_interface_stats (u8 * request, http_session_t * hs)
+handle_get_interface_stats (http_builtin_method_type_t reqtype,
+			    u8 * request, http_session_t * hs)
 {
   u8 *s = 0, *stats = 0;
-  u32 sw_if_index;
   uword *p;
+  u32 *sw_if_indices = 0;
+  vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
+  char *q = "\"";
+  int i;
+  int need_comma = 0;
   u8 *format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 				      vnet_sw_interface_t * si, int json);
-
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
 
-  trim_path_from_request (request, "interface_stats.json");
-
-  /* get data */
-
-  p = hash_get (vnm->interface_main.hw_interface_by_name, request);
-  if (!p)
+  /* Get stats for a single interface via http POST */
+  if (reqtype == HTTP_BUILTIN_METHOD_POST)
     {
-      s = format (s, "{\"interface_stats\": {");
-      s = format (s, "   \"name\": \"%s\",", request);
-      s = format (s, "   \"stats\": \"%s\"", "ERRORUnknownInterface");
-      s = format (s, "}}\r\n");
-      goto out;
+      trim_path_from_request (request, "interface_stats.json");
+
+      /* Find the sw_if_index */
+      p = hash_get (im->hw_interface_by_name, request);
+      if (!p)
+	{
+	  s = format (s, "{\"interface_stats\": {[\n");
+	  s = format (s, "   \"name\": \"%s\",", request);
+	  s = format (s, "   \"error\": \"%s\"", "UnknownInterface");
+	  s = format (s, "]}\n");
+	  goto out;
+	}
+
+      vec_add1 (sw_if_indices, p[0]);
+    }
+  else				/* default, HTTP_BUILTIN_METHOD_GET */
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (hi, im->hw_interfaces,
+      ({
+        vec_add1 (sw_if_indices, hi->sw_if_index);
+      }));
+      /* *INDENT-ON* */
     }
 
-  sw_if_index = p[0];
-  si = vnet_get_sw_interface (vnm, sw_if_index);
+  s = format (s, "{%sinterface_stats%s: [\n", q, q);
 
-  stats = format_vnet_sw_interface_cntrs (stats, &vnm->interface_main, si,
-					  1 /* want json */ );
-
-  /* No active counters */
-  if (stats == 0)
+  for (i = 0; i < vec_len (sw_if_indices); i++)
     {
-      s = format (s, "{\"interface_stats\": {");
-      s = format (s, "   \"name\": \"%s\"", request);
-      s = format (s, "}}\r\n");
-      goto out;
+      si = vnet_get_sw_interface (vnm, sw_if_indices[i]);
+      if (need_comma)
+	s = format (s, ",\n");
+
+      need_comma = 1;
+
+      s = format (s, "{%sname%s: %s%U%s, ", q, q, q,
+		  format_vnet_sw_if_index_name, vnm, sw_if_indices[i], q);
+
+      stats = format_vnet_sw_interface_cntrs (stats, &vnm->interface_main, si,
+					      1 /* want json */ );
+      if (vec_len (stats))
+	s = format (s, "%v}", stats);
+      else
+	s = format (s, "%snone%s: %strue%s}", q, q, q, q);
+      vec_reset_length (stats);
     }
 
-  /* Build answer */
-  s = format (s, "{\"interface_stats\": {");
-  s = format (s, "\"name\": \"%s\",\n", request);
-  s = format (s, "%s", stats);
-  s = format (s, "}}\n");
-  vec_free (stats);
+  s = format (s, "]}\n");
 
 out:
   hs->data = s;
   hs->data_offset = 0;
   hs->cache_pool_index = ~0;
   hs->free_data = 1;
+  vec_free (sw_if_indices);
+  vec_free (stats);
   return 0;
 }
 
 int
-handle_get_interface_list (u8 * request, http_session_t * hs)
+handle_get_interface_list (http_builtin_method_type_t reqtype,
+			   u8 * request, http_session_t * hs)
 {
   u8 *s = 0;
   int i;
@@ -167,6 +192,8 @@ builtinurl_handler_init (builtinurl_main_t * bm)
 			HTTP_BUILTIN_METHOD_GET);
   bm->register_handler (handle_get_interface_list, "interface_list.json",
 			HTTP_BUILTIN_METHOD_GET);
+  bm->register_handler (handle_get_interface_stats,
+			"interface_stats.json", HTTP_BUILTIN_METHOD_GET);
   bm->register_handler (handle_get_interface_stats,
 			"interface_stats.json", HTTP_BUILTIN_METHOD_POST);
 }
