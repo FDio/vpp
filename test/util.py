@@ -298,7 +298,7 @@ def fragment_rfc791(packet, fragsize, _logger=None):
     pkts = []
     ihl = packet[IP].ihl
     otl = len(packet[IP])
-    nfb = (fragsize - pre_ip_len - ihl * 4) / 8
+    nfb = int((fragsize - pre_ip_len - ihl * 4) / 8)
     fo = packet[IP].frag
 
     p = packet.__class__(hex_headers + hex_payload[:nfb * 8])
@@ -406,7 +406,7 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     del p[IPv6].nh
     p = p / fragment_ext_hdr
     del p[IPv6ExtHdrFragment].nh
-    first_payload_len_nfb = (fragsize - len(p)) / 8
+    first_payload_len_nfb = int((fragsize - len(p)) / 8)
     p = p / Raw(hex_payload[:first_payload_len_nfb * 8])
     del p[IPv6].plen
     p[IPv6ExtHdrFragment].nh = orig_nh
@@ -424,11 +424,11 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
         del p[IPv6].nh
         p = p / fragment_ext_hdr
         del p[IPv6ExtHdrFragment].nh
-        l_nfb = (fragsize - len(p)) / 8
+        l_nfb = int((fragsize - len(p)) / 8)
         p = p / Raw(hex_payload[offset:offset + l_nfb * 8])
         p[IPv6ExtHdrFragment].nh = orig_nh
         p[IPv6ExtHdrFragment].id = identification
-        p[IPv6ExtHdrFragment].offset = offset / 8
+        p[IPv6ExtHdrFragment].offset = int(offset / 8)
         p[IPv6ExtHdrFragment].m = 1
         p = p.__class__(scapy.compat.raw(p))
         logger.debug(ppp("Fragment %s:" % len(pkts), p))
