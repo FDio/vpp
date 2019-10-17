@@ -667,6 +667,14 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
   return errors;
 }
 
+void
+session_add_pending_tx_buffer (session_type_t st, u32 thread_index, u32 bi)
+{
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+  vec_add1 (wrk->pending_tx_buffers, bi);
+  vec_add1 (wrk->pending_tx_nexts, session_main.session_type_to_next[st]);
+}
+
 static inline int
 session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 				      session_state_t opened_state)
