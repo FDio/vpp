@@ -1602,6 +1602,7 @@ tcp_main_enable (vlib_main_t * vm)
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
+
   return error;
 }
 
