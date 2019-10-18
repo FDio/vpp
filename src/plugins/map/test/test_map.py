@@ -139,7 +139,7 @@ class TestMAP(VppTestCase):
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4) /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         rx = self.send_and_expect(self.pg0, v4*1, self.pg0)
         v4_reply = v4[1]
         v4_reply.ttl -= 1
@@ -152,7 +152,7 @@ class TestMAP(VppTestCase):
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4, dst='192.168.1.1') /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         self.send_and_assert_encapped_one(v4, "3000::1", map_translated_addr)
 
@@ -162,7 +162,7 @@ class TestMAP(VppTestCase):
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(id=1, src=self.pg0.remote_ip4, dst='192.168.1.1') /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 1000))
+              Raw(b'\xa5' * 1000))
 
         frags = fragment_rfc791(v4, 400)
         frags.reverse()
@@ -178,7 +178,7 @@ class TestMAP(VppTestCase):
         v6 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
               IPv6(src=self.pg1.remote_ip6, dst=self.pg1.remote_ip6) /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         rx = self.send_and_expect(self.pg1, v6*1, self.pg1)
         v6_reply = v6[1]
         v6_reply.hlim -= 1
@@ -193,7 +193,7 @@ class TestMAP(VppTestCase):
              IPv6(dst='3000::1', src=map_translated_addr) /
              IP(dst=self.pg0.remote_ip4, src='192.168.1.1') /
              UDP(sport=10000, dport=20000) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.pg1.add_stream(p)
 
@@ -212,7 +212,7 @@ class TestMAP(VppTestCase):
         #
         p = (IP(id=1, dst=self.pg0.remote_ip4, src='192.168.1.1') /
              UDP(sport=10000, dport=20000) /
-             Raw('\xa5' * 1500))
+             Raw(b'\xa5' * 1500))
         frags = fragment_rfc791(p, 400)
         frags.reverse()
 
@@ -332,7 +332,7 @@ class TestMAP(VppTestCase):
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4) /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         rx = self.send_and_expect(self.pg0, v4*1, self.pg0)
         v4_reply = v4[1]
         v4_reply.ttl -= 1
@@ -342,7 +342,7 @@ class TestMAP(VppTestCase):
         v6 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
               IPv6(src=self.pg1.remote_ip6, dst=self.pg1.remote_ip6) /
               UDP(sport=20000, dport=10000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         rx = self.send_and_expect(self.pg1, v6*1, self.pg1)
         v6_reply = v6[1]
         v6_reply.hlim -= 1
