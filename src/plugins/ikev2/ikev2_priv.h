@@ -143,6 +143,13 @@ typedef struct
   u8 *sk_ar;
   u8 *sk_ei;
   u8 *sk_er;
+  u32 salt_ei;
+  u32 salt_er;
+
+  /* installed data */
+  u32 sw_if_index;
+  u32 local_sa;
+  u32 remote_sa;
 
   /* lifetime data */
   f64 time_to_expiration;

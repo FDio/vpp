@@ -163,8 +163,11 @@ ipsec_sa_add_and_lock (u32 id,
   sa->protocol = proto;
   sa->flags = flags;
   sa->salt = salt;
-  ipsec_sa_set_integ_alg (sa, integ_alg);
-  clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
+  if (integ_alg != IPSEC_INTEG_ALG_NONE)
+    {
+      ipsec_sa_set_integ_alg (sa, integ_alg);
+      clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
+    }
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
@@ -179,13 +182,17 @@ ipsec_sa_add_and_lock (u32 id,
       return VNET_API_ERROR_KEY_LENGTH;
     }
 
-  sa->integ_key_index = vnet_crypto_key_add (vm,
-					     im->integ_algs[integ_alg].alg,
-					     (u8 *) ik->data, ik->len);
-  if (~0 == sa->integ_key_index)
+  if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
-      pool_put (im->sad, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      sa->integ_key_index = vnet_crypto_key_add (vm,
+						 im->
+						 integ_algs[integ_alg].alg,
+						 (u8 *) ik->data, ik->len);
+      if (~0 == sa->integ_key_index)
+	{
+	  pool_put (im->sad, sa);
+	  return VNET_API_ERROR_KEY_LENGTH;
+	}
     }
 
   err = ipsec_check_support_cb (im, sa);
@@ -291,7 +298,8 @@ ipsec_sa_del (ipsec_sa_t * sa)
       dpo_reset (&sa->dpo);
     }
   vnet_crypto_key_del (vm, sa->crypto_key_index);
-  vnet_crypto_key_del (vm, sa->integ_key_index);
+  if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
+    vnet_crypto_key_del (vm, sa->integ_key_index);
   pool_put (im->sad, sa);
 }
 
