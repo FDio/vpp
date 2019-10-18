@@ -222,7 +222,7 @@ typedef enum
   _(11, NULL,      "null")     \
   _(12, AES_CBC,   "aes-cbc")  \
   _(13, AES_CTR,   "aes-ctr")  \
-  _(14, AES_GCM,   "aes-gcm")
+  _(20, AES_GCM_16, "aes-gcm-16")
 
 typedef enum
 {

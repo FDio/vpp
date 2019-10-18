@@ -846,21 +846,21 @@ ikev2_crypto_init (ikev2_main_t * km)
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
-  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM;
+  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 256 / 8;
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_256_gcm ();
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
-  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM;
+  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 192 / 8;
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_192_gcm ();
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
-  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM;
+  tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 128 / 8;
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_128_gcm ();
