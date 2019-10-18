@@ -35,8 +35,8 @@ namespace interface_cmds {
 /**
  * Factory method to construct a new interface from the VPP record
  */
-std::unique_ptr<interface> new_interface(
-  const vapi_payload_sw_interface_details& vd);
+std::unique_ptr<interface>
+new_interface(const vapi_payload_sw_interface_details& vd);
 
 /**
  * A command class to create bvi interfaces in VPP
@@ -57,8 +57,8 @@ public:
   rc_t issue(connection& con);
 
   /**
- * convert to string format for debug purposes
- */
+   * convert to string format for debug purposes
+   */
   std::string to_string() const;
 };
 
@@ -81,8 +81,8 @@ public:
   rc_t issue(connection& con);
 
   /**
- * convert to string format for debug purposes
- */
+   * convert to string format for debug purposes
+   */
   std::string to_string() const;
 };
 
@@ -107,6 +107,43 @@ public:
    * convert to string format for debug purposes
    */
   std::string to_string() const;
+};
+
+/**
+ * A command class to create ethernet create interface in VOM DB
+ */
+class ethernet_create_cmd : public cmd
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the name of the interface to create
+   */
+  ethernet_create_cmd(HW::item<handle_t>& item, const std::string& name);
+  ~ethernet_create_cmd() = default;
+
+  void succeeded() { VOM_LOG(log_level_t::DEBUG) << to_string(); }
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Retire/cancel a long running command
+   */
+  void retire(connection& con) {}
+
+protected:
+  /**
+   * The name of the interface to be created
+   */
+  const std::string& m_name;
+
+  const HW::item<handle_t> m_hdl;
 };
 
 /**
@@ -199,6 +236,34 @@ public:
 };
 
 /**
+ * A command class to delete ethernet interfaces from VOM DB
+ */
+class ethernet_delete_cmd : public cmd
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the name of the interface to delete
+   */
+  ethernet_delete_cmd(HW::item<handle_t>& item, const std::string& name);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+  void retire(connection& con) {}
+  void succeeded() {}
+
+private:
+  const std::string& m_name;
+  const HW::item<handle_t> m_hdl;
+};
+
+/**
  * A functor class that deletes a Vhost interface
  */
 class vhost_delete_cmd
@@ -254,8 +319,9 @@ private:
 /**
  * A cmd class that changes the admin state
  */
-class state_change_cmd : public rpc_cmd<HW::item<interface::admin_state_t>,
-                                        vapi::Sw_interface_set_flags>
+class state_change_cmd
+  : public rpc_cmd<HW::item<interface::admin_state_t>,
+                   vapi::Sw_interface_set_flags>
 {
 public:
   /**
