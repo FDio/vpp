@@ -22,6 +22,8 @@
 #include <vppinfra/random.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipip/ipip.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
@@ -438,6 +440,7 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   /* calculate SKEYSEED = prf(Ni | Nr, g^ir) */
   u8 *skeyseed = 0;
   u8 *s = 0;
+  u16 integ_key_len = 0;
   ikev2_sa_transform_t *tr_encr, *tr_prf, *tr_integ;
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
@@ -445,6 +448,9 @@ ikev2_calc_keys (ikev2_sa_t * sa)
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
   tr_integ =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+
+  if (tr_integ)
+    integ_key_len = tr_integ->key_len;
 
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
@@ -460,7 +466,7 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   /* calculate PRFplus */
   u8 *keymat;
   int len = tr_prf->key_trunc +	/* SK_d */
-    tr_integ->key_len * 2 +	/* SK_ai, SK_ar */
+    integ_key_len * 2 +		/* SK_ai, SK_ar */
     tr_encr->key_len * 2 +	/* SK_ei, SK_er */
     tr_prf->key_len * 2;	/* SK_pi, SK_pr */
 
@@ -475,15 +481,18 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   clib_memcpy_fast (sa->sk_d, keymat + pos, tr_prf->key_trunc);
   pos += tr_prf->key_trunc;
 
-  /* SK_ai */
-  sa->sk_ai = vec_new (u8, tr_integ->key_len);
-  clib_memcpy_fast (sa->sk_ai, keymat + pos, tr_integ->key_len);
-  pos += tr_integ->key_len;
+  if (integ_key_len)
+    {
+      /* SK_ai */
+      sa->sk_ai = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (sa->sk_ai, keymat + pos, integ_key_len);
+      pos += integ_key_len;
 
-  /* SK_ar */
-  sa->sk_ar = vec_new (u8, tr_integ->key_len);
-  clib_memcpy_fast (sa->sk_ar, keymat + pos, tr_integ->key_len);
-  pos += tr_integ->key_len;
+      /* SK_ar */
+      sa->sk_ar = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (sa->sk_ar, keymat + pos, integ_key_len);
+      pos += integ_key_len;
+    }
 
   /* SK_ei */
   sa->sk_ei = vec_new (u8, tr_encr->key_len);
@@ -512,6 +521,9 @@ static void
 ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
 {
   u8 *s = 0;
+  u16 integ_key_len = 0;
+  u8 salt_len = 0;
+
   ikev2_sa_transform_t *tr_prf, *ctr_encr, *ctr_integ;
   tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
@@ -520,11 +532,16 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
   ctr_integ =
     ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
 
+  if (ctr_integ)
+    integ_key_len = ctr_integ->key_len;
+  else
+    salt_len = sizeof (u32);
+
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
   /* calculate PRFplus */
   u8 *keymat;
-  int len = ctr_encr->key_len * 2 + ctr_integ->key_len * 2;
+  int len = ctr_encr->key_len * 2 + integ_key_len * 2 + salt_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, sa->sk_d, s, len);
 
@@ -535,20 +552,36 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
   clib_memcpy_fast (child->sk_ei, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
-  /* SK_ai */
-  child->sk_ai = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy_fast (child->sk_ai, keymat + pos, ctr_integ->key_len);
-  pos += ctr_integ->key_len;
+  if (ctr_integ)
+    {
+      /* SK_ai */
+      child->sk_ai = vec_new (u8, ctr_integ->key_len);
+      clib_memcpy_fast (child->sk_ai, keymat + pos, ctr_integ->key_len);
+      pos += ctr_integ->key_len;
+    }
+  else
+    {
+      clib_memcpy (&child->salt_ei, keymat + pos, salt_len);
+      pos += salt_len;
+    }
 
   /* SK_er */
   child->sk_er = vec_new (u8, ctr_encr->key_len);
   clib_memcpy_fast (child->sk_er, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
-  /* SK_ar */
-  child->sk_ar = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy_fast (child->sk_ar, keymat + pos, ctr_integ->key_len);
-  pos += ctr_integ->key_len;
+  if (ctr_integ)
+    {
+      /* SK_ar */
+      child->sk_ar = vec_new (u8, integ_key_len);
+      clib_memcpy_fast (child->sk_ar, keymat + pos, integ_key_len);
+      pos += integ_key_len;
+    }
+  else
+    {
+      clib_memcpy (&child->salt_er, keymat + pos, salt_len);
+      pos += salt_len;
+    }
 
   ASSERT (pos == len);
 
@@ -1474,6 +1507,17 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
   vec_free (authmsg);
 }
 
+static u32
+ikev2_mk_local_sa_id (u32 ti)
+{
+  return (0x80000000 | ti);
+}
+
+static u32
+ikev2_mk_remote_sa_id (u32 ti)
+{
+  return (0xc0000000 | ti);
+}
 
 static int
 ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
@@ -1481,11 +1525,17 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p = 0;
-  ipsec_add_del_tunnel_args_t a;
+  ipsec_key_t loc_ckey, rem_ckey, loc_ikey, rem_ikey;
   ikev2_sa_transform_t *tr;
   ikev2_sa_proposal_t *proposals;
-  u8 encr_type = 0;
-  u8 integ_type = 0;
+  ipsec_sa_flags_t flags = 0;
+  ipsec_crypto_alg_t encr_type;
+  ipsec_integ_alg_t integ_type;
+  u32 local_spi, remote_spi;
+  u8 is_aead = 0;
+  u32 salt_local = 0, salt_remote = 0;
+  ip46_address_t local_ip, remote_ip;
+  int rv;
 
   if (!child->r_proposals)
     {
@@ -1493,31 +1543,28 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       return 1;
     }
 
-  clib_memset (&a, 0, sizeof (a));
-  a.is_add = 1;
   if (sa->is_initiator)
     {
-      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
+      ip46_address_set_ip4 (&local_ip, &sa->iaddr);
+      ip46_address_set_ip4 (&remote_ip, &sa->raddr);
       proposals = child->i_proposals;
-      a.local_spi = child->r_proposals[0].spi;
-      a.remote_spi = child->i_proposals[0].spi;
+      local_spi = child->r_proposals[0].spi;
+      remote_spi = child->i_proposals[0].spi;
     }
   else
     {
-      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
+      ip46_address_set_ip4 (&local_ip, &sa->raddr);
+      ip46_address_set_ip4 (&remote_ip, &sa->iaddr);
       proposals = child->r_proposals;
-      a.local_spi = child->i_proposals[0].spi;
-      a.remote_spi = child->r_proposals[0].spi;
+      local_spi = child->i_proposals[0].spi;
+      remote_spi = child->r_proposals[0].spi;
     }
-  a.anti_replay = 1;
+
+  flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ESN);
-  if (tr)
-    a.esn = tr->esn_type;
-  else
-    a.esn = 0;
+  if (tr && tr->esn_type)
+    flags |= IPSEC_SA_FLAG_USE_ESN;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   if (tr)
@@ -1541,7 +1588,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      break;
 	    }
 	}
-      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16
 	       && tr->key_len)
 	{
 	  switch (tr->key_len)
@@ -1560,6 +1607,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      return 1;
 	      break;
 	    }
+	  is_aead = 1;
 	}
       else
 	{
@@ -1573,63 +1621,67 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       return 1;
     }
 
-  tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-  if (tr)
+  if (!is_aead)
     {
-      switch (tr->integ_type)
+      tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+      if (tr)
 	{
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
-	  integ_type = IPSEC_INTEG_ALG_SHA_256_128;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192:
-	  integ_type = IPSEC_INTEG_ALG_SHA_384_192;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256:
-	  integ_type = IPSEC_INTEG_ALG_SHA_512_256;
-	  break;
-	case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96:
-	  integ_type = IPSEC_INTEG_ALG_SHA1_96;
-	  break;
-	default:
+	  switch (tr->integ_type)
+	    {
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128:
+	      integ_type = IPSEC_INTEG_ALG_SHA_256_128;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192:
+	      integ_type = IPSEC_INTEG_ALG_SHA_384_192;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256:
+	      integ_type = IPSEC_INTEG_ALG_SHA_512_256;
+	      break;
+	    case IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96:
+	      integ_type = IPSEC_INTEG_ALG_SHA1_96;
+	      break;
+	    default:
+	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+	      return 1;
+	    }
+	}
+      else
+	{
 	  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
 	  return 1;
 	}
     }
   else
     {
-      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
-      return 1;
+      integ_type = IPSEC_INTEG_ALG_NONE;
     }
 
   ikev2_calc_child_keys (sa, child);
 
-  u8 *loc_ckey, *rem_ckey, *loc_ikey, *rem_ikey;
   if (sa->is_initiator)
     {
-      loc_ikey = child->sk_ai;
-      rem_ikey = child->sk_ar;
-      loc_ckey = child->sk_ei;
-      rem_ckey = child->sk_er;
+      ipsec_mk_key (&loc_ikey, child->sk_ai, vec_len (child->sk_ai));
+      ipsec_mk_key (&rem_ikey, child->sk_ar, vec_len (child->sk_ar));
+      ipsec_mk_key (&loc_ckey, child->sk_ei, vec_len (child->sk_ei));
+      ipsec_mk_key (&rem_ckey, child->sk_er, vec_len (child->sk_er));
+      if (is_aead)
+	{
+	  salt_remote = child->salt_er;
+	  salt_local = child->salt_ei;
+	}
     }
   else
     {
-      loc_ikey = child->sk_ar;
-      rem_ikey = child->sk_ai;
-      loc_ckey = child->sk_er;
-      rem_ckey = child->sk_ei;
+      ipsec_mk_key (&loc_ikey, child->sk_ar, vec_len (child->sk_ar));
+      ipsec_mk_key (&rem_ikey, child->sk_ai, vec_len (child->sk_ai));
+      ipsec_mk_key (&loc_ckey, child->sk_er, vec_len (child->sk_er));
+      ipsec_mk_key (&rem_ckey, child->sk_ei, vec_len (child->sk_ei));
+      if (is_aead)
+	{
+	  salt_remote = child->salt_ei;
+	  salt_local = child->salt_er;
+	}
     }
-
-  a.integ_alg = integ_type;
-  a.local_integ_key_len = vec_len (loc_ikey);
-  clib_memcpy_fast (a.local_integ_key, loc_ikey, a.local_integ_key_len);
-  a.remote_integ_key_len = vec_len (rem_ikey);
-  clib_memcpy_fast (a.remote_integ_key, rem_ikey, a.remote_integ_key_len);
-
-  a.crypto_alg = encr_type;
-  a.local_crypto_key_len = vec_len (loc_ckey);
-  clib_memcpy_fast (a.local_crypto_key, loc_ckey, a.local_crypto_key_len);
-  a.remote_crypto_key_len = vec_len (rem_ckey);
-  clib_memcpy_fast (a.remote_crypto_key, rem_ckey, a.remote_crypto_key_len);
 
   if (sa->is_profile_index_set)
     p = pool_elt_at_index (km->profiles, sa->profile_index);
@@ -1652,7 +1704,28 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	}
     }
 
-  ipsec_add_del_tunnel_if (&a);
+  rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
+			&local_ip, &remote_ip, 0, 0, &child->sw_if_index);
+
+  child->local_sa = ikev2_mk_local_sa_id (child->sw_if_index);
+  child->remote_sa = ikev2_mk_remote_sa_id (child->sw_if_index);
+
+  rv |= ipsec_sa_add_and_lock (child->local_sa,
+			       local_spi,
+			       IPSEC_PROTOCOL_ESP, encr_type,
+			       &loc_ckey, integ_type, &loc_ikey, flags,
+			       0, salt_local, &local_ip, &remote_ip, NULL);
+  rv |= ipsec_sa_add_and_lock (child->remote_sa,
+			       remote_spi,
+			       IPSEC_PROTOCOL_ESP, encr_type,
+			       &rem_ckey, integ_type, &rem_ikey,
+			       (flags | IPSEC_SA_FLAG_IS_INBOUND),
+			       0, salt_remote, &remote_ip, &local_ip, NULL);
+
+  u32 *sas_in = NULL;
+  vec_add1 (sas_in, child->remote_sa);
+  rv |=
+    ipsec_tun_protect_update (child->sw_if_index, child->local_sa, sas_in);
 
   return 0;
 }
@@ -1661,32 +1734,10 @@ static int
 ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child)
 {
-  ipsec_add_del_tunnel_args_t a;
-
-  if (sa->is_initiator)
-    {
-      if (!vec_len (child->i_proposals))
-	return 0;
-
-      a.is_add = 0;
-      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.local_spi = child->r_proposals[0].spi;
-      a.remote_spi = child->i_proposals[0].spi;
-    }
-  else
-    {
-      if (!vec_len (child->r_proposals))
-	return 0;
-
-      a.is_add = 0;
-      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.local_spi = child->i_proposals[0].spi;
-      a.remote_spi = child->r_proposals[0].spi;
-    }
-
-  ipsec_add_del_tunnel_if (&a);
+  ipsec_tun_protect_del (child->sw_if_index);
+  ipsec_sa_unlock_id (child->remote_sa);
+  ipsec_sa_unlock_id (child->local_sa);
+  ipip_del_tunnel (child->sw_if_index);
   return 0;
 }
 
