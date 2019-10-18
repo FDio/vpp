@@ -243,17 +243,16 @@ class TestIPv4Reassembly(VppTestCase):
              Raw("X" * 1000))
         valid_fragments = fragment_rfc791(p, 400)
 
+        counter = "/err/ip4-input/ip4 length > l2 length"
+        #counter = "/err/ip4-full-reassembly-feature/malformed packets"
+        error_counter = self.statistics.get_err_counter(counter)
         self.pg_enable_capture()
         self.src_if.add_stream([malformed_packet] + valid_fragments)
         self.pg_start()
 
         self.dst_if.get_capture(1)
         self.logger.debug(self.vapi.ppcli("show error"))
-        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
-        # TODO remove above, uncomment below once clearing of counters
-        # is supported
-        # self.assert_packet_counter_equal(
-        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
+        self.assertEqual(self.statistics.get_err_counter(counter), error_counter + 1)
 
     def test_44924(self):
         """ compress tiny fragments """
