@@ -63,8 +63,7 @@ interface::interface(const std::string& name,
   , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
@@ -83,8 +82,7 @@ interface::interface(const std::string& name,
   , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const interface& o)
   : m_hdl(o.m_hdl)
@@ -99,8 +97,7 @@ interface::interface(const interface& o)
   , m_listener(o.m_listener)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
-{
-}
+{}
 
 bool
 interface::operator==(const interface& i) const
@@ -113,8 +110,7 @@ interface::operator==(const interface& i) const
 
 interface::event_listener::event_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::event_listener::status()
@@ -124,8 +120,7 @@ interface::event_listener::status()
 
 interface::stat_listener::stat_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::stat_listener::status()
@@ -302,6 +297,8 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
   } else if (type_t::VHOST == m_type) {
     q.push(new interface_cmds::vhost_create_cmd(m_hdl, m_name, m_tag));
+  } else if (type_t::ETHERNET == m_type) {
+    q.push(new interface_cmds::ethernet_create_cmd(m_hdl, m_name));
   } else {
     m_hdl.set(rc_t::OK);
   }
@@ -320,6 +317,8 @@ interface::mk_delete_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
   } else if (type_t::VHOST == m_type) {
     q.push(new interface_cmds::vhost_delete_cmd(m_hdl, m_name));
+  } else if (type_t::ETHERNET == m_type) {
+    q.push(new interface_cmds::ethernet_delete_cmd(m_hdl, m_name));
   }
 
   return (q);
@@ -652,8 +651,9 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf = interface_factory::new_interface(payload);
 
-    if (itf && interface::type_t::LOCAL != itf->type()) {
+    if (itf) {
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();
+
       /*
        * Write each of the discovered interfaces into the OM,
        * but disable the HW Command q whilst we do, so that no

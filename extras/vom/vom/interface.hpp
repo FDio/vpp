@@ -32,6 +32,8 @@ namespace VOM {
  */
 namespace interface_cmds {
 class events_cmd;
+class ethernet_create_cmd;
+class ethernet_delete_cmd;
 };
 class stat_reader;
 
@@ -305,15 +307,14 @@ public:
   /**
    * A base class for interface Create commands
    */
-  template <typename MSG>
+  template<typename MSG>
   class create_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     create_cmd(HW::item<handle_t>& item, const std::string& name)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
-    {
-    }
+    {}
 
     /**
      * Destructor
@@ -372,21 +373,19 @@ public:
   /**
    * Base class for intterface Delete commands
    */
-  template <typename MSG>
+  template<typename MSG>
   class delete_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     delete_cmd(HW::item<handle_t>& item, const std::string& name)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
-    {
-    }
+    {}
 
     delete_cmd(HW::item<handle_t>& item)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name()
-    {
-    }
+    {}
 
     /**
      * Destructor
@@ -423,8 +422,7 @@ public:
     event(const interface& itf, const interface::oper_state_t& state)
       : itf(itf)
       , state(state)
-    {
-    }
+    {}
 
     const interface& itf;
     interface::oper_state_t state;
@@ -534,6 +532,7 @@ protected:
   void set(const handle_t& handle);
   friend class interface_factory;
   friend class pipe;
+
   /**
    * The SW interface handle VPP has asigned to the interface
    */
@@ -585,7 +584,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -730,15 +731,18 @@ private:
    * Create commands are firends so they can add interfaces to the
    * handle store.
    */
-  template <typename MSG>
+  template<typename MSG>
   friend class create_cmd;
 
   /**
    * Create commands are firends so they can remove interfaces from the
    * handle store.
    */
-  template <typename MSG>
+  template<typename MSG>
   friend class delete_cmd;
+
+  friend class interface_cmds::ethernet_create_cmd;
+  friend class interface_cmds::ethernet_delete_cmd;
 
   static std::shared_ptr<interface_cmds::events_cmd> m_events_cmd;
 };
@@ -746,7 +750,8 @@ private:
 /**
  *  stream insertion operator for interface stats
  */
-std::ostream& operator<<(std::ostream& os, const interface::stats_t& stats);
+std::ostream&
+operator<<(std::ostream& os, const interface::stats_t& stats);
 };
 /*
  * fd.io coding-style-patch-verification: ON
