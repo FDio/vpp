@@ -43,9 +43,7 @@ class VppSocketFilename(VppObject):
         rv = self._test.vapi.memif_socket_filename_add_del(
             1, self.socket_id, self.socket_filename)
         if self.add_default_folder:
-            self.socket_filename = b"%s/%s" % (
-                six.ensure_binary(self._test.tempdir, encoding='utf-8'),
-                self.socket_filename)
+            self.socket_filename = "%s/%s" % (self._test.tempdir, self.socket_filename)
         return rv
 
     def remove_vpp_config(self):
