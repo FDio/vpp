@@ -3,6 +3,7 @@
 import unittest
 import socket
 import struct
+import six
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
@@ -129,12 +130,13 @@ class TestDHCP(VppTestCase):
                     # The ID space is VPP internal - so no matching value
                     # scapy
                     #
-                    self.assertEqual(ord(data[0]), 1)
-                    self.assertEqual(ord(data[1]), 4)
-                    self.assertEqual(ord(data[2]), 0)
-                    self.assertEqual(ord(data[3]), 0)
-                    self.assertEqual(ord(data[4]), 0)
-                    self.assertEqual(ord(data[5]), intf._sw_if_index)
+                    self.assertEqual(six.byte2int(data[0:1]), 1)
+                    self.assertEqual(six.byte2int(data[1:2]), 4)
+                    self.assertEqual(six.byte2int(data[2:3]), 0)
+                    self.assertEqual(six.byte2int(data[3:4]), 0)
+                    self.assertEqual(six.byte2int(data[4:5]), 0)
+                    self.assertEqual(six.byte2int(data[5:6]),
+                                     intf._sw_if_index)
 
                     #
                     # next sub-option is the IP address of the client side
@@ -143,8 +145,8 @@ class TestDHCP(VppTestCase):
                     #
                     claddr = socket.inet_pton(AF_INET, ip_addr)
 
-                    self.assertEqual(ord(data[6]), 5)
-                    self.assertEqual(ord(data[7]), 4)
+                    self.assertEqual(six.byte2int(data[6:7]), 5)
+                    self.assertEqual(six.byte2int(data[7:8]), 4)
                     self.assertEqual(data[8], claddr[0])
                     self.assertEqual(data[9], claddr[1])
                     self.assertEqual(data[10], claddr[2])
@@ -154,33 +156,38 @@ class TestDHCP(VppTestCase):
                         # sub-option 151 encodes vss_type 1,
                         # the 3 byte oui and the 4 byte fib_id
                         self.assertEqual(id_len, 0)
-                        self.assertEqual(ord(data[12]), 151)
-                        self.assertEqual(ord(data[13]), 8)
-                        self.assertEqual(ord(data[14]), 1)
-                        self.assertEqual(ord(data[15]), 0)
-                        self.assertEqual(ord(data[16]), 0)
-                        self.assertEqual(ord(data[17]), oui)
-                        self.assertEqual(ord(data[18]), 0)
-                        self.assertEqual(ord(data[19]), 0)
-                        self.assertEqual(ord(data[20]), 0)
-                        self.assertEqual(ord(data[21]), fib_id)
+                        self.assertEqual(six.byte2int(data[12:13]), 151)
+                        self.assertEqual(six.byte2int(data[13:14]), 8)
+                        self.assertEqual(six.byte2int(data[14:15]), 1)
+                        self.assertEqual(six.byte2int(data[15:16]), 0)
+                        self.assertEqual(six.byte2int(data[16:17]), 0)
+                        self.assertEqual(six.byte2int(data[17:18]), oui)
+                        self.assertEqual(six.byte2int(data[18:19]), 0)
+                        self.assertEqual(six.byte2int(data[19:20]), 0)
+                        self.assertEqual(six.byte2int(data[20:21]), 0)
+                        self.assertEqual(six.byte2int(data[21:22]), fib_id)
 
                         # VSS control sub-option
-                        self.assertEqual(ord(data[22]), 152)
-                        self.assertEqual(ord(data[23]), 0)
+                        self.assertEqual(six.byte2int(data[22:23]), 152)
+                        self.assertEqual(six.byte2int(data[23:24]), 0)
 
                     if id_len > 0:
                         # sub-option 151 encode vss_type of 0
                         # followerd by vpn_id in ascii
                         self.assertEqual(oui, 0)
-                        self.assertEqual(ord(data[12]), 151)
-                        self.assertEqual(ord(data[13]), id_len + 1)
-                        self.assertEqual(ord(data[14]), 0)
-                        self.assertEqual(data[15:15 + id_len], vpn_id)
+                        self.assertEqual(six.byte2int(data[12:13]), 151)
+                        self.assertEqual(six.byte2int(data[13:14]), id_len + 1)
+                        self.assertEqual(six.byte2int(data[14:15]), 0)
+                        self.assertEqual(data[15:15 + id_len].decode('ascii'),
+                                         vpn_id)
 
                         # VSS control sub-option
-                        self.assertEqual(ord(data[15 + len(vpn_id)]), 152)
-                        self.assertEqual(ord(data[16 + len(vpn_id)]), 0)
+                        self.assertEqual(six.byte2int(data[15 + len(vpn_id):
+                                                           16 + len(vpn_id)]),
+                                         152)
+                        self.assertEqual(six.byte2int(data[16 + len(vpn_id):
+                                                           17 + len(vpn_id)]),
+                                         0)
 
                     found = 1
         self.assertTrue(found)
@@ -241,9 +248,11 @@ class TestDHCP(VppTestCase):
         self.verify_orig_dhcp_pkt(pkt, intf, dscp)
 
         self.verify_dhcp_msg_type(pkt, "discover")
-        self.verify_dhcp_has_option(pkt, "hostname", hostname)
+        self.verify_dhcp_has_option(pkt, "hostname",
+                                    hostname.encode('ascii'))
         if client_id:
-            self.verify_dhcp_has_option(pkt, "client_id", client_id)
+            self.verify_dhcp_has_option(pkt, "client_id",
+                                        client_id.encode('ascii'))
         bootp = pkt[BOOTP]
         self.assertEqual(bootp.ciaddr, "0.0.0.0")
         self.assertEqual(bootp.giaddr, "0.0.0.0")
@@ -259,7 +268,8 @@ class TestDHCP(VppTestCase):
         self.verify_orig_dhcp_pkt(pkt, intf, dscp, l2_bc=l2_bc)
 
         self.verify_dhcp_msg_type(pkt, "request")
-        self.verify_dhcp_has_option(pkt, "hostname", hostname)
+        self.verify_dhcp_has_option(pkt, "hostname",
+                                    hostname.encode('ascii'))
         self.verify_dhcp_has_option(pkt, "requested_addr", ip)
         bootp = pkt[BOOTP]
 
@@ -352,26 +362,27 @@ class TestDHCP(VppTestCase):
             self.assertEqual(vss.type, 1)
             # the OUI and FIB-id are really 3 and 4 bytes resp.
             # but the tested range is small
-            self.assertEqual(ord(vss.data[0]), 0)
-            self.assertEqual(ord(vss.data[1]), 0)
-            self.assertEqual(ord(vss.data[2]), oui)
-            self.assertEqual(ord(vss.data[3]), 0)
-            self.assertEqual(ord(vss.data[4]), 0)
-            self.assertEqual(ord(vss.data[5]), 0)
-            self.assertEqual(ord(vss.data[6]), fib_id)
+            self.assertEqual(six.byte2int(vss.data[0:1]), 0)
+            self.assertEqual(six.byte2int(vss.data[1:2]), 0)
+            self.assertEqual(six.byte2int(vss.data[2:3]), oui)
+            self.assertEqual(six.byte2int(vss.data[3:4]), 0)
+            self.assertEqual(six.byte2int(vss.data[4:5]), 0)
+            self.assertEqual(six.byte2int(vss.data[5:6]), 0)
+            self.assertEqual(six.byte2int(vss.data[6:7]), fib_id)
 
         if id_len > 0:
             self.assertEqual(oui, 0)
             vss = pkt[DHCP6OptVSS]
             self.assertEqual(vss.optlen, id_len + 1)
             self.assertEqual(vss.type, 0)
-            self.assertEqual(vss.data[0:id_len], vpn_id)
+            self.assertEqual(vss.data[0:id_len].decode('ascii'),
+                             vpn_id)
 
         # the relay message should be an encoded Solicit
         msg = pkt[DHCP6OptRelayMsg]
         sol = DHCP6_Solicit()
-        self.assertEqual(msg.optlen, len(str(sol)))
-        self.assertEqual(str(sol), (str(msg[1]))[:msg.optlen])
+        self.assertEqual(msg.optlen, len(sol))
+        self.assertEqual(sol, msg[1])
 
     def verify_dhcp6_advert(self, pkt, intf, peer):
         ether = pkt[Ether]
