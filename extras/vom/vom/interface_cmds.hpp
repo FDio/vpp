@@ -110,6 +110,47 @@ public:
 };
 
 /**
+ * A command class to create ethernet create interface in VPP
+ */
+class ethernet_create_cmd
+  : public cmd
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the name of the interface to create
+   */
+  ethernet_create_cmd(HW::item<handle_t>& item, const std::string& name);
+  ~ethernet_create_cmd() = default;
+
+  void succeeded()
+  {
+    VOM_LOG(log_level_t::DEBUG) << to_string();
+  }
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Retire/cancel a long running command
+   */
+  void retire(connection& con) {}
+
+protected:
+    /**
+     * The name of the interface to be created
+     */
+    const std::string& m_name;
+
+    const HW::item<handle_t> m_hdl;
+};
+
+/**
  * A functor class that creates an interface
  */
 class vhost_create_cmd
@@ -196,6 +237,34 @@ public:
    * convert to string format for debug purposes
    */
   std::string to_string() const;
+};
+
+/**
+ * A command class to delete af-packet interfaces in VPP
+ */
+class ethernet_delete_cmd
+  : public cmd
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the name of the interface to delete
+   */
+  ethernet_delete_cmd(HW::item<handle_t>& item, const std::string& name);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+  void retire(connection& con) {}
+  void succeeded() {}
+private:
+  const std::string& m_name;
+  const HW::item<handle_t> m_hdl;
 };
 
 /**

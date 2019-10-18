@@ -125,6 +125,31 @@ af_packet_create_cmd::to_string() const
   return (s.str());
 }
 
+ethernet_create_cmd::ethernet_create_cmd(HW::item<handle_t>& item, const std::string& name)
+  : cmd()
+  , m_name(name)
+  , m_hdl(item)
+{
+}
+
+rc_t
+ethernet_create_cmd::issue(connection& con)
+{
+  std::shared_ptr<interface> sp = interface::find(m_name);
+  if (sp)
+    interface::add(m_name, HW::item<handle_t>(sp->handle(), rc_t::OK));
+
+  return rc_t::OK;
+}
+std::string
+ethernet_create_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "ethernet-itf-create: " << " name:" << m_name;
+
+  return (s.str());
+}
+
 vhost_create_cmd::vhost_create_cmd(HW::item<handle_t>& item,
                                    const std::string& name,
                                    const std::string& tag)
@@ -264,6 +289,29 @@ af_packet_delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "af_packet-itf-delete: " << m_hw_item.to_string();
+
+  return (s.str());
+}
+
+ethernet_delete_cmd::ethernet_delete_cmd(HW::item<handle_t>& item,
+                                           const std::string& name)
+  : cmd()
+  , m_name(name)
+  , m_hdl(item)
+{
+}
+
+rc_t
+ethernet_delete_cmd::issue(connection& con)
+{
+  interface::remove(m_hdl);
+  return rc_t::OK;
+}
+std::string
+ethernet_delete_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "ethernet-itf-delete: " << m_hdl.to_string();
 
   return (s.str());
 }

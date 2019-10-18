@@ -526,6 +526,16 @@ public:
    */
   static void disable_events();
 
+  /**
+   * Add an interface to the DB keyed on handle
+   */
+  static void add(const key_t& name, const HW::item<handle_t>& item);
+
+  /**
+   * remove an interface from the DB keyed on handle
+   */
+  static void remove(const HW::item<handle_t>& item);
+
 protected:
   /**
    * Set the handle of an interface object. Only called by the interface
@@ -570,16 +580,6 @@ protected:
    * A map of all interfaces key against the interface's name
    */
   static singular_db<key_t, interface> m_db;
-
-  /**
-   * Add an interface to the DB keyed on handle
-   */
-  static void add(const key_t& name, const HW::item<handle_t>& item);
-
-  /**
-   * remove an interface from the DB keyed on handle
-   */
-  static void remove(const HW::item<handle_t>& item);
 
 private:
   /**
