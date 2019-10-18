@@ -23,7 +23,6 @@ from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
 from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
-import six
 from framework import VppTestCase, VppTestRunner
 
 from vpp_ip import DpoProto
@@ -231,11 +230,9 @@ class TestIP4PuntSocket(TestPuntSocket):
         punt_l4 = mk_vpp_cfg4()
 
         self.vapi.punt_socket_register(set_port(punt_l4, 1111),
-                                       b"%s/socket_punt_1111" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_1111" % self.tempdir)
         self.vapi.punt_socket_register(set_port(punt_l4, 2222),
-                                       b"%s/socket_punt_2222" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_2222" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
         self.verify_port(set_port(punt_l4, 1111), punts[0])
@@ -252,11 +249,9 @@ class TestIP4PuntSocket(TestPuntSocket):
         # configure a punt socket again
         #
         self.vapi.punt_socket_register(set_port(punt_l4, 1111),
-                                       b"%s/socket_punt_1111" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_1111" % self.tempdir)
         self.vapi.punt_socket_register(set_port(punt_l4, 3333),
-                                       b"%s/socket_punt_3333" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_3333" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 3)
 
@@ -282,7 +277,7 @@ class TestIP4PuntSocket(TestPuntSocket):
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
              UDP(sport=9876, dport=port) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         pkts = p * self.nr_packets
 
@@ -301,10 +296,9 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        self.socket_client_create(b"%s/socket_%d" % (
-            six.ensure_binary(self.tempdir), port))
-        self.vapi.punt_socket_register(punt_l4, b"%s/socket_%d" % (
-            six.ensure_binary(self.tempdir), port))
+        self.socket_client_create("%s/socket_%d" % (self.tempdir, port))
+        self.vapi.punt_socket_register(punt_l4, "%s/socket_%d" %
+                                       (self.tempdir, port))
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
@@ -346,18 +340,17 @@ class TestIP4PuntSocket(TestPuntSocket):
                          dst=self.pg0.local_mac) /
                    IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
                    UDP(sport=9876, dport=port) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
             cfgs[port]['pkts'] = pkt * self.nr_packets
             cfgs[port]['port'] = port
             cfgs[port]['vpp'] = copy.deepcopy(set_port(punt_l4, port))
 
             # configure punt sockets
             cfgs[port]['sock'] = self.socket_client_create(
-                b"%s/socket_%d" % (six.ensure_binary(self.tempdir), port))
+                "%s/socket_%d" % (self.tempdir, port))
             self.vapi.punt_socket_register(
                 cfgs[port]['vpp'],
-                b"%s/socket_%d" % (six.ensure_binary(self.tempdir),
-                                   port))
+                "%s/socket_%d" % (self.tempdir, port))
 
         #
         # send the packets that get punted
@@ -389,18 +382,16 @@ class TestIP4PuntSocket(TestPuntSocket):
                          dst=self.pg0.local_mac) /
                    IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
                    UDP(sport=9876, dport=port) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
             pkts += pkt * self.nr_packets
 
         #
         # configure a punt socket
         #
-        self.socket_client_create(b"%s/socket_multi" %
-                                  six.ensure_binary(self.tempdir))
+        self.socket_client_create("%s/socket_multi" % self.tempdir)
         for p in self.ports:
             self.vapi.punt_socket_register(set_port(punt_l4, p),
-                                           b"%s/socket_multi" %
-                                           six.ensure_binary(self.tempdir))
+                                           "%s/socket_multi" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
@@ -468,11 +459,9 @@ class TestIP6PuntSocket(TestPuntSocket):
         # configure a punt socket
         #
         self.vapi.punt_socket_register(set_port(punt_l4, 1111),
-                                       b"%s/socket_1111" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_1111" % self.tempdir)
         self.vapi.punt_socket_register(set_port(punt_l4, 2222),
-                                       b"%s/socket_2222" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_2222" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
         self.verify_port(set_port(punt_l4, 1111), punts[0])
@@ -489,8 +478,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         # configure a punt socket again
         #
         self.vapi.punt_socket_register(set_port(punt_l4, 1111),
-                                       b"%s/socket_1111" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_1111" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
 
@@ -525,7 +513,7 @@ class TestIP6PuntSocket(TestPuntSocket):
                    dst=self.pg0.local_mac) /
              IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
              inet6.UDP(sport=9876, dport=port) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         pkts = p * self.nr_packets
 
@@ -548,10 +536,9 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        self.socket_client_create(b"%s/socket_%d" % (
-            six.ensure_binary(self.tempdir), port))
-        self.vapi.punt_socket_register(punt_l4, b"%s/socket_%d" % (
-            six.ensure_binary(self.tempdir), port))
+        self.socket_client_create("%s/socket_%d" % (self.tempdir, port))
+        self.vapi.punt_socket_register(punt_l4, "%s/socket_%d" %
+                                       (self.tempdir, port))
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
@@ -599,18 +586,17 @@ class TestIP6PuntSocket(TestPuntSocket):
                          dst=self.pg0.local_mac) /
                    IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
                    UDP(sport=9876, dport=port) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
             cfgs[port]['pkts'] = pkt * self.nr_packets
             cfgs[port]['port'] = port
             cfgs[port]['vpp'] = copy.deepcopy(set_port(punt_l4, port))
 
             # configure punt sockets
             cfgs[port]['sock'] = self.socket_client_create(
-                b"%s/socket_%d" % (six.ensure_binary(self.tempdir), port))
+                "%s/socket_%d" % (self.tempdir, port))
             self.vapi.punt_socket_register(
                 cfgs[port]['vpp'],
-                b"%s/socket_%d" % (six.ensure_binary(self.tempdir),
-                                   port))
+                "%s/socket_%d" % (self.tempdir, port))
 
         #
         # send the packets that get punted
@@ -652,7 +638,7 @@ class TestIP6PuntSocket(TestPuntSocket):
                          dst=self.pg0.local_mac) /
                    IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
                    UDP(sport=9876, dport=port) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
             pkts += pkt * self.nr_packets
 
         #
@@ -664,12 +650,10 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        self.socket_client_create(b"%s/socket_multi" %
-                                  six.ensure_binary(self.tempdir))
+        self.socket_client_create("%s/socket_multi" % self.tempdir)
         for p in self.ports:
             self.vapi.punt_socket_register(set_port(punt_l4, p),
-                                           b"%s/socket_multi" %
-                                           six.ensure_binary(self.tempdir))
+                                           "%s/socket_multi" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
@@ -736,11 +720,9 @@ class TestExceptionPuntSocket(TestPuntSocket):
         }
 
         self.vapi.punt_socket_register(set_reason(punt_ex, 1),
-                                       b"%s/socket_punt_1" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_1" % self.tempdir)
         self.vapi.punt_socket_register(set_reason(punt_ex, 2),
-                                       b"%s/socket_punt_2" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_2" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_ex)
         self.assertEqual(len(punts), 2)
         self.verify_exception(set_reason(punt_ex, 1), punts[0])
@@ -757,11 +739,9 @@ class TestExceptionPuntSocket(TestPuntSocket):
         # configure a punt socket again
         #
         self.vapi.punt_socket_register(set_reason(punt_ex, 1),
-                                       b"%s/socket_punt_1" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_1" % self.tempdir)
         self.vapi.punt_socket_register(set_reason(punt_ex, 3),
-                                       b"%s/socket_punt_3" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_3" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_ex)
         self.assertEqual(len(punts), 3)
 
@@ -804,21 +784,21 @@ class TestExceptionPuntSocket(TestPuntSocket):
         VppIpsecTunInterface(self, self.pg0, 1000, 1000,
                              (VppEnum.vl_api_ipsec_crypto_alg_t.
                               IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             "0123456701234567",
-                             "0123456701234567",
+                             b"0123456701234567",
+                             b"0123456701234567",
                              (VppEnum.vl_api_ipsec_integ_alg_t.
                               IPSEC_API_INTEG_ALG_SHA1_96),
-                             "0123456701234567",
-                             "0123456701234567").add_vpp_config()
+                             b"0123456701234567",
+                             b"0123456701234567").add_vpp_config()
         VppIpsecTunInterface(self, self.pg0, 1001, 1001,
                              (VppEnum.vl_api_ipsec_crypto_alg_t.
                               IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             "0123456701234567",
-                             "0123456701234567",
+                             b"0123456701234567",
+                             b"0123456701234567",
                              (VppEnum.vl_api_ipsec_integ_alg_t.
                               IPSEC_API_INTEG_ALG_SHA1_96),
-                             "0123456701234567",
-                             "0123456701234567",
+                             b"0123456701234567",
+                             b"0123456701234567",
                              udp_encap=True).add_vpp_config()
 
         #
@@ -846,12 +826,10 @@ class TestExceptionPuntSocket(TestPuntSocket):
         # configure punt sockets
         #
         for cfg in cfgs.values():
-            cfg['sock'] = self.socket_client_create(b"%s/socket_%d" % (
-                six.ensure_binary(self.tempdir), cfg['id']))
+            cfg['sock'] = self.socket_client_create("%s/socket_%d" %
+                                                    (self.tempdir, cfg['id']))
             self.vapi.punt_socket_register(
-                cfg['vpp'],
-                b"%s/socket_%d" % (six.ensure_binary(self.tempdir),
-                                   cfg['id']))
+                cfg['vpp'], "%s/socket_%d" % (self.tempdir, cfg['id']))
 
         #
         # create packet streams for 'no-such-tunnel' exception
@@ -863,7 +841,7 @@ class TestExceptionPuntSocket(TestPuntSocket):
             if (cfg['udp']):
                 pkt = pkt / UDP(sport=666, dport=4500)
             pkt = (pkt / ESP(spi=cfg['spi'], seq=3) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
             cfg['pkts'] = [pkt]
 
         #
@@ -945,11 +923,9 @@ class TestIpProtoPuntSocket(TestPuntSocket):
         }
 
         self.vapi.punt_socket_register(punt_ospf,
-                                       b"%s/socket_punt_1" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_1" % self.tempdir)
         self.vapi.punt_socket_register(punt_eigrp,
-                                       b"%s/socket_punt_2" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_2" % self.tempdir)
         self.logger.info(self.vapi.cli("sh punt sock reg ip"))
         punts = self.vapi.punt_socket_dump(type=pt_ip)
         self.assertEqual(len(punts), 2)
@@ -967,8 +943,7 @@ class TestIpProtoPuntSocket(TestPuntSocket):
         # configure a punt socket again
         #
         self.vapi.punt_socket_register(punt_ospf,
-                                       b"%s/socket_punt_3" %
-                                       six.ensure_binary(self.tempdir))
+                                       "%s/socket_punt_3" % self.tempdir)
         punts = self.vapi.punt_socket_dump(type=pt_ip)
         self.assertEqual(len(punts), 2)
 
@@ -1017,11 +992,9 @@ class TestIpProtoPuntSocket(TestPuntSocket):
                OSPFv3_Hello())
         pkts = pkt * 7
 
-        sock = self.socket_client_create(b"%s/socket_1" % (
-            six.ensure_binary(self.tempdir)))
+        sock = self.socket_client_create("%s/socket_1" % self.tempdir)
         self.vapi.punt_socket_register(
-            punt_ospf,
-            b"%s/socket_1" % (six.ensure_binary(self.tempdir)))
+            punt_ospf, "%s/socket_1" % self.tempdir)
 
         #
         # send packets for each SPI we expect to be punted
@@ -1107,12 +1080,12 @@ class TestPunt(VppTestCase):
                     dst=self.pg2.local_mac) /
               IP(src="1.1.1.1", dst="1.1.1.2") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         p6 = (Ether(src=self.pg2.remote_mac,
                     dst=self.pg2.local_mac) /
               IPv6(src="1::1", dst="1::2") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         self.send_and_expect(self.pg2, p4*1, self.pg3)
         self.send_and_expect(self.pg2, p6*1, self.pg3)
 
