@@ -210,12 +210,12 @@ class TestIPv4Reassembly(VppTestCase):
               IP(id=1000, src=self.src_if.remote_ip4,
                  dst=self.dst_if.remote_ip4) /
               UDP(sport=1234, dport=5678) /
-              Raw("X" * 1000))
+              Raw(b"X" * 1000))
         p2 = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
               IP(id=1001, src=self.src_if.remote_ip4,
                  dst=self.dst_if.remote_ip4) /
               UDP(sport=1234, dport=5678) /
-              Raw("X" * 1000))
+              Raw(b"X" * 1000))
         frags = fragment_rfc791(p1, 200) + fragment_rfc791(p2, 500)
 
         self.pg_enable_capture()
@@ -228,11 +228,9 @@ class TestIPv4Reassembly(VppTestCase):
     def test_5737(self):
         """ fragment length + ip header size > 65535 """
         self.vapi.cli("clear errors")
-        raw = ('E\x00\x00\x88,\xf8\x1f\xfe@\x01\x98\x00\xc0\xa8\n-\xc0\xa8\n'
-               '\x01\x08\x00\xf0J\xed\xcb\xf1\xf5Test-group: IPv4.IPv4.ipv4-'
-               'message.Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Of'
-               'fset; Test-case: 5737')
-
+        raw = b'''E\x00\x00\x88,\xf8\x1f\xfe@\x01\x98\x00\xc0\xa8\n-\xc0\xa8\n\
+\x01\x08\x00\xf0J\xed\xcb\xf1\xf5Test-group: IPv4.IPv4.ipv4-message.\
+Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
         malformed_packet = (Ether(dst=self.src_if.local_mac,
                                   src=self.src_if.remote_mac) /
                             IP(raw))
@@ -240,20 +238,19 @@ class TestIPv4Reassembly(VppTestCase):
              IP(id=1000, src=self.src_if.remote_ip4,
                 dst=self.dst_if.remote_ip4) /
              UDP(sport=1234, dport=5678) /
-             Raw("X" * 1000))
+             Raw(b"X" * 1000))
         valid_fragments = fragment_rfc791(p, 400)
 
+        counter = "/err/ip4-full-reassembly-feature/malformed packets"
+        error_counter = self.statistics.get_err_counter(counter)
         self.pg_enable_capture()
         self.src_if.add_stream([malformed_packet] + valid_fragments)
         self.pg_start()
 
         self.dst_if.get_capture(1)
         self.logger.debug(self.vapi.ppcli("show error"))
-        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
-        # TODO remove above, uncomment below once clearing of counters
-        # is supported
-        # self.assert_packet_counter_equal(
-        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
+        self.assertEqual(self.statistics.get_err_counter(counter),
+                         error_counter + 1)
 
     def test_44924(self):
         """ compress tiny fragments """
@@ -300,14 +297,14 @@ class TestIPv4Reassembly(VppTestCase):
                               IP(id=7, len=21, frag=1, ttl=64,
                                  src=self.src_if.remote_ip4,
                                  dst=self.dst_if.remote_ip4) /
-                              Raw(load='\x08')),
+                              Raw(load=b'\x08')),
                              ]
 
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IP(id=1000, src=self.src_if.remote_ip4,
                 dst=self.dst_if.remote_ip4) /
              UDP(sport=1234, dport=5678) /
-             Raw("X" * 1000))
+             Raw(b"X" * 1000))
         valid_fragments = fragment_rfc791(p, 400)
 
         self.pg_enable_capture()
@@ -1090,7 +1087,7 @@ class TestIPv6Reassembly(VppTestCase):
              IPv6(src=self.src_if.remote_ip6,
                   dst=self.dst_if.remote_ip6) /
              UDP(sport=1234, dport=5678) /
-             Raw("X" * 1000))
+             Raw(b"X" * 1000))
         frags = fragment_rfc8200(p, 1, 300) + fragment_rfc8200(p, 2, 500)
 
         self.pg_enable_capture()
