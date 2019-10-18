@@ -137,7 +137,7 @@ typedef punt_reason
     string name[];
 };
 
-/** \brief Dump all or one of the excpetion punt reasons
+/** \brief Dump all or one of the exception punt reasons
 *   @param - If the string is not set punt dump all reasons
 *            else dump only the one specified
 */
