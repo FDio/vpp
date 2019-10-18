@@ -65,6 +65,24 @@ memif_queue_intfd_close (memif_queue_t * mq)
     }
 }
 
+static void
+memif_disconnect_free_zc_queue_buffer (memif_queue_t * mq, u8 is_rx)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u16 ring_size, n_slots, mask, start;
+
+  ring_size = 1 << mq->log2_ring_size;
+  mask = ring_size - 1;
+  n_slots = mq->ring->head - mq->last_tail;
+  start = mq->last_tail & mask;
+  if (is_rx)
+    vlib_buffer_free_from_ring (vm, mq->buffers, start, ring_size, n_slots);
+  else
+    vlib_buffer_free_from_ring_no_next (vm, mq->buffers, start, ring_size,
+					n_slots);
+  vec_free (mq->buffers);
+}
+
 void
 memif_disconnect (memif_if_t * mif, clib_error_t * err)
 {
@@ -116,10 +134,14 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
-    {
-      mq = vec_elt_at_index (mif->rx_queues, i);
-      if (mq->ring)
+  {
+    mq = vec_elt_at_index (mif->rx_queues, i);
+    if (mq->ring)
 	{
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+      {
+        memif_disconnect_free_zc_queue_buffer(mq, 1);
+      }
 	  int rv;
 	  rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
 	  if (rv)
@@ -128,7 +150,21 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 			   mif->hw_if_index, i, rv);
 	  mq->ring = 0;
 	}
+  }
+
+  /* *INDENT-OFF* */
+  vec_foreach_index (i, mif->tx_queues)
+  {
+    mq = vec_elt_at_index (mif->tx_queues, i);
+    if (mq->ring)
+    {
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+      {
+        memif_disconnect_free_zc_queue_buffer(mq, 0);
+      }
     }
+    mq->ring = 0;
+  }
 
   /* free tx and rx queues */
   vec_foreach (mq, mif->rx_queues)
