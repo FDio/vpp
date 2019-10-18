@@ -73,7 +73,7 @@ class TestGSO(VppTestCase):
               IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
                  flags='DF') /
               TCP(sport=1234, dport=1234) /
-              Raw('\xa5' * 65200))
+              Raw(b'\xa5' * 65200))
 
         rxs = self.send_and_expect(self.pg0, [p4], self.pg0)
 
@@ -102,7 +102,7 @@ class TestGSO(VppTestCase):
                IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
                   flags='DF') /
                TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 65200))
+               Raw(b'\xa5' * 65200))
 
         rxs = self.send_and_expect(self.pg2, [p41], self.pg3)
 
@@ -134,7 +134,7 @@ class TestGSO(VppTestCase):
                IP(src=self.pg2.remote_ip4, dst=self.pg4.remote_ip4,
                   flags='DF') /
                TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 65200))
+               Raw(b'\xa5' * 65200))
 
         rxs = self.send_and_expect(self.pg2, [p42], self.pg4, 45)
         size = 0
@@ -158,7 +158,7 @@ class TestGSO(VppTestCase):
         p43 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg1.remote_ip4) /
                TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 65200))
+               Raw(b'\xa5' * 65200))
 
         rxs = self.send_and_expect(self.pg2, [p43], self.pg1, 119)
         size = 0
@@ -191,7 +191,7 @@ class TestGSO(VppTestCase):
         p44 = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
                IP(src=self.pg5.remote_ip4, dst=self.pg1.remote_ip4) /
                TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 65200))
+               Raw(b'\xa5' * 65200))
 
         self.pg1.enable_capture()
         rxs = self.send_and_expect(self.pg5, [p44], self.pg1, 33)
