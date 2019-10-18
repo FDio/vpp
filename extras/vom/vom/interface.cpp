@@ -652,8 +652,12 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf = interface_factory::new_interface(payload);
 
-    if (itf && interface::type_t::LOCAL != itf->type()) {
+    if (itf) {
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();
+
+      if (interface::type_t::LOCAL == itf->type() ||
+          interface::type_t::ETHERNET == itf->type())
+        interface::add(itf->key(), HW::item<handle_t>(itf->handle(), rc_t::OK));
       /*
        * Write each of the discovered interfaces into the OM,
        * but disable the HW Command q whilst we do, so that no
