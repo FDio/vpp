@@ -1023,7 +1023,7 @@ dispatch_pcap_trace (vlib_main_t * vm,
 {
   int i;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **bufp, *b;
-  pcap_main_t *pm = &vm->dispatch_pcap_main;
+  pcap_main_t *pm = &vlib_global_main.dispatch_pcap_main;
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 capture_size;
   vlib_node_t *n;
@@ -2243,12 +2243,16 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t * a)
       pm->file_name = (char *) a->filename;
       pm->n_packets_captured = 0;
       pm->packet_type = PCAP_PACKET_TYPE_vpp;
-      vm->dispatch_pcap_enable = 1;
       pm->n_packets_to_capture = a->packets_to_capture;
+      /* *INDENT-OFF* */
+      foreach_vlib_main (({this_vlib_main->dispatch_pcap_enable = 1;}));
+      /* *INDENT-ON* */
     }
   else
     {
-      vm->dispatch_pcap_enable = 0;
+      /* *INDENT-OFF* */
+      foreach_vlib_main (({this_vlib_main->dispatch_pcap_enable = 0;}));
+      /* *INDENT-ON* */
       vec_reset_length (vm->dispatch_buffer_trace_nodes);
       if (pm->n_packets_captured)
 	{
