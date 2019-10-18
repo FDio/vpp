@@ -5,7 +5,8 @@
 #include <vlib/unix/plugin.h>
 
 static int
-handle_get_mactime (u8 * request, http_session_t * hs)
+handle_get_mactime (http_builtin_method_type_t reqtype,
+		    u8 * request, http_session_t * hs)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
@@ -24,9 +25,9 @@ handle_get_mactime (u8 * request, http_session_t * hs)
   vec_reset_length (mm->arp_cache_copy);
   pool = ip4_neighbors_pool ();
 
-  pool_foreach (n, pool, (
-			   {
-			   vec_add1 (mm->arp_cache_copy, n[0]);}));
+  /* *INDENT-OFF* */
+  pool_foreach (n, pool, ({ vec_add1 (mm->arp_cache_copy, n[0]);}));
+  /* *INDENT-ON* */
 
   now = clib_timebase_now (&mm->timebase);
 
