@@ -559,10 +559,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
       /*
        * Clients wait for vpp to set up the root / API regioins
        */
-      if (am->root_path)
-	api_name = format (0, "/dev/shm/%s-%s%c", am->root_path,
-			   region_name + 1, 0);
-      else
+
 	api_name = format (0, "/dev/shm%s%c", region_name, 0);
 
       /* Wait up to 100 seconds... */
