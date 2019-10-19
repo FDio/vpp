@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "41a71a13_77460f45",
+        "filename": "src/plugins/dns/test/test_dns.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-19T16:33:54Z",
+      "side": 1,
+      "message": "@Ole: is this better fixed in papi serializer? RFC5395 3.3.1: Text labels can, in fact, include any octet value\n   including zero-value octets, but many current uses involve only\n   [US-ASCII].",
+      "range": {
+        "startLine": 85,
+        "startChar": 8,
+        "endLine": 85,
+        "endChar": 63
+      },
+      "revId": "36bcb4c1defa45e564b2825a530eb0e31d6f450e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
