@@ -22,6 +22,30 @@
       "revId": "a8efc7018a8c8c11b95d9aff7ca2184718d4133d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ec218203_e42db86c",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1921
+      },
+      "writtenOn": "2019-10-19T02:27:59Z",
+      "side": 1,
+      "message": "As I know, memif queue is dealt per thread. I think it is a good idea to free the buffers after the rx thread is unassigned. Updated in version 3 diff.",
+      "parentUuid": "033e8c5f_e278566e",
+      "range": {
+        "startLine": 143,
+        "startChar": 8,
+        "endLine": 143,
+        "endChar": 45
+      },
+      "revId": "a8efc7018a8c8c11b95d9aff7ca2184718d4133d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
