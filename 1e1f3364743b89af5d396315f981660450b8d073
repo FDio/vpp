@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27f02acf_e2dcda95",
+        "filename": "test/test_l2bd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-19T16:00:16Z",
+      "side": 1,
+      "message": "use // here and pls. stop wrapping code with int()",
+      "range": {
+        "startLine": 129,
+        "startChar": 8,
+        "endLine": 129,
+        "endChar": 35
+      },
+      "revId": "1e1f3364743b89af5d396315f981660450b8d073",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9dfc1e1f_0255552f",
+        "filename": "test/test_l2xc_multi_instance.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-19T16:00:16Z",
+      "side": 1,
+      "message": "same comment",
+      "range": {
+        "startLine": 144,
+        "startChar": 8,
+        "endLine": 144,
+        "endChar": 35
+      },
+      "revId": "1e1f3364743b89af5d396315f981660450b8d073",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
