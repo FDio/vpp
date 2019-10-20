@@ -187,11 +187,6 @@ ikev2_payload_add_sa (ikev2_payload_chain_t * c,
     if (spi_size)
       prop->spi[0] = clib_host_to_net_u32 (p->spi);
 
-    DBG_PLD ("proposal num %u protocol_id %u last_or_more %u spi_size %u%s%U",
-	     prop->proposal_num, prop->protocol_id, prop->last_or_more,
-	     prop->spi_size, prop->spi_size ? " spi_data " : "",
-	     format_hex_bytes, prop->spi, prop->spi_size);
-
     vec_foreach (t, p->transforms)
     {
       vec_add2 (tr_data, tmp, sizeof (*tr) + vec_len (t->attrs));
@@ -205,13 +200,6 @@ ikev2_payload_add_sa (ikev2_payload_chain_t * c,
 
       if (vec_len (t->attrs) > 0)
 	clib_memcpy_fast (tr->attributes, t->attrs, vec_len (t->attrs));
-
-      DBG_PLD
-	("transform type %U transform_id %u last_or_more %u attr_size %u%s%U",
-	 format_ikev2_transform_type, tr->transform_type, t->transform_id,
-	 tr->last_or_more, vec_len (t->attrs),
-	 vec_len (t->attrs) ? " attrs " : "", format_hex_bytes,
-	 tr->attributes, vec_len (t->attrs));
     }
 
     prop->proposal_len =
@@ -356,12 +344,6 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
       int i;
       int transform_ptr;
 
-      DBG_PLD ("proposal num %u len %u last_or_more %u id %u "
-	       "spi_size %u num_transforms %u",
-	       sap->proposal_num, clib_net_to_host_u16 (sap->proposal_len),
-	       sap->last_or_more, sap->protocol_id, sap->spi_size,
-	       sap->num_transforms);
-
       /* IKE proposal should not have SPI */
       if (sap->protocol_id == IKEV2_PROTOCOL_IKE && sap->spi_size != 0)
 	goto data_corrupted;
@@ -396,14 +378,6 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
 	  transform->transform_id = clib_net_to_host_u16 (tr->transform_id);
 	  if (tlen > sizeof (*tr))
 	    vec_add (transform->attrs, tr->attributes, tlen - sizeof (*tr));
-
-	  DBG_PLD
-	    ("transform num %u len %u last_or_more %u type %U id %u%s%U", i,
-	     tlen, tr->last_or_more, format_ikev2_sa_transform, transform,
-	     clib_net_to_host_u16 (tr->transform_id),
-	     tlen > sizeof (*tr) ? " attrs " : "", format_hex_bytes,
-	     tr->attributes, tlen - sizeof (*tr));
-
 	  transform_ptr += tlen;
 	}
 
@@ -418,7 +392,7 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
   return v;
 
 data_corrupted:
-  DBG_PLD ("SA payload data corrupted");
+  ikev2_elog_detail ("SA payload data corrupted");
   ikev2_sa_free_proposal_vector (&v);
   return 0;
 }
@@ -433,10 +407,11 @@ ikev2_parse_ts_payload (ike_payload_header_t * ikep)
   for (i = 0; i < tsp->num_ts; i++)
     {
       if (tsp->ts[i].ts_type != 7)	/*  TS_IPV4_ADDR_RANGE */
-	{
-	  DBG_PLD ("unsupported TS type received (%u)", tsp->ts[i].ts_type);
-	  continue;
-	}
+        {
+          ikev2_elog_uint (IKEV2_LOG_ERROR,
+              "unsupported TS type received (%u)", tsp->ts[i].ts_type);
+          continue;
+        }
 
       vec_add2 (r, ts, 1);
       ts->ts_type = tsp->ts[i].ts_type;
@@ -457,11 +432,6 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep)
   ikev2_notify_t *r = 0;
   u32 spi;
 
-  DBG_PLD ("msg_type %U len %u%s%U",
-	   format_ikev2_notify_msg_type, clib_net_to_host_u16 (n->msg_type),
-	   plen, plen > sizeof (*n) ? " data " : "",
-	   format_hex_bytes, n->payload, plen - sizeof (*n));
-
   r = vec_new (ikev2_notify_t, 1);
   r->msg_type = clib_net_to_host_u16 (n->msg_type);
   r->protocol_id = n->protocol_id;
@@ -470,7 +440,6 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep)
     {
       clib_memcpy (&spi, n->payload, n->spi_size);
       r->spi = clib_net_to_host_u32 (spi);
-      DBG_PLD ("spi %lx", r->spi);
     }
   else if (n->spi_size == 0)
     {
@@ -494,33 +463,16 @@ void
 ikev2_parse_vendor_payload (ike_payload_header_t * ikep)
 {
   u32 plen = clib_net_to_host_u16 (ikep->length);
-  int i;
-  int is_string = 1;
-
-  for (i = 0; i < plen - 4; i++)
-    if (!isprint (ikep->payload[i]))
-      is_string = 0;
-
-  DBG_PLD ("len %u data %s:%U",
-	   plen,
-	   is_string ? "string" : "hex",
-	   is_string ? format_ascii_bytes : format_hex_bytes,
-	   ikep->payload, plen - sizeof (*ikep));
+  ikev2_elog_uint (IKEV2_LOG_DEBUG, "vendor payload skipped, len %d", plen);
 }
 
 ikev2_delete_t *
 ikev2_parse_delete_payload (ike_payload_header_t * ikep)
 {
   ike_delete_payload_header_t *d = (ike_delete_payload_header_t *) ikep;
-  u32 plen = clib_net_to_host_u16 (ikep->length);
   ikev2_delete_t *r = 0, *del;
   u16 num_of_spi = clib_net_to_host_u16 (d->num_of_spi);
   u16 i = 0;
-
-  DBG_PLD ("protocol_id %u spi_size %u num_of_spi %u len %u%s%U",
-	   d->protocol_id, d->spi_size, num_of_spi,
-	   plen, plen > sizeof (d) ? " data " : "",
-	   format_hex_bytes, d->spi, plen - sizeof (*d));
 
   if (d->protocol_id == IKEV2_PROTOCOL_IKE)
     {

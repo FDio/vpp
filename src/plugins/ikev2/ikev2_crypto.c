@@ -342,11 +342,11 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 
   if (tr->md == EVP_sha1 ())
     {
-      clib_warning ("integrity checking with sha1");
+      ikev2_elog_debug ("integrity checking with sha1");
     }
   else if (tr->md == EVP_sha256 ())
     {
-      clib_warning ("integrity checking with sha256");
+      ikev2_elog_debug ("integrity checking with sha256");
     }
 
   /* verify integrity of data */
@@ -389,7 +389,7 @@ ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
   /* check if data is multiplier of cipher block size */
   if (len % block_size)
     {
-      clib_warning ("wrong data length");
+      ikev2_elog_error ("wrong data length");
       return 0;
     }
 
@@ -772,7 +772,7 @@ ikev2_load_cert_file (u8 * file)
   fp = fopen ((char *) file, "r");
   if (!fp)
     {
-      clib_warning ("open %s failed", file);
+      ikev2_log_error ("open %s failed", file);
       goto end;
     }
 
@@ -780,13 +780,13 @@ ikev2_load_cert_file (u8 * file)
   fclose (fp);
   if (x509 == NULL)
     {
-      clib_warning ("read cert %s failed", file);
+      ikev2_log_error ("read cert %s failed", file);
       goto end;
     }
 
   pkey = X509_get_pubkey (x509);
   if (pkey == NULL)
-    clib_warning ("get pubkey %s failed", file);
+    ikev2_log_error ("get pubkey %s failed", file);
 
 end:
   return pkey;
@@ -801,14 +801,14 @@ ikev2_load_key_file (u8 * file)
   fp = fopen ((char *) file, "r");
   if (!fp)
     {
-      clib_warning ("open %s failed", file);
+      ikev2_log_error ("open %s failed", file);
       goto end;
     }
 
   pkey = PEM_read_PrivateKey (fp, NULL, NULL, NULL);
   fclose (fp);
   if (pkey == NULL)
-    clib_warning ("read %s failed", file);
+    ikev2_log_error ("read %s failed", file);
 
 end:
   return pkey;
