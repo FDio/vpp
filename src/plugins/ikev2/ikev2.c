@@ -37,7 +37,7 @@ static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,
 
 #define ikev2_set_state(sa, v) do { \
     (sa)->state = v; \
-    clib_warning("sa state changed to " #v); \
+    ikev2_elog_sa_state("ispi %lx SA state changed to " #v, sa->ispi); \
   } while(0);
 
 typedef struct
@@ -170,9 +170,6 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
 	  new_t->attrs = vec_dup (transform->attrs);
 	}
     }
-
-    clib_warning ("bitmap is %x mandatory is %x optional is %x",
-		  bitmap, mandatory_bitmap, optional_bitmap);
 
     if ((bitmap & mandatory_bitmap) == mandatory_bitmap &&
 	(bitmap & ~optional_bitmap) == 0)
@@ -346,8 +343,6 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
 
   if (!t)
     {
-      clib_warning ("unknown dh data group %u (data len %u)", sa->dh_group,
-		    vec_len (sa->i_dh_data));
       sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
       return;
     }
@@ -421,8 +416,6 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
 
   if (!t)
     {
-      clib_warning ("unknown dh data group %u (data len %u)", sa->dh_group,
-		    vec_len (sa->i_dh_data));
       sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
       return;
     }
@@ -596,13 +589,10 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
   u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
 
-  clib_warning ("ispi %lx rspi %lx nextpayload %x version %x "
-		"exchange %x flags %x msgid %x length %u",
-		clib_net_to_host_u64 (ike->ispi),
-		clib_net_to_host_u64 (ike->rspi),
-		payload, ike->version,
-		ike->exchange, ike->flags,
-		clib_net_to_host_u32 (ike->msgid), len);
+  ikev2_elog_exchange ("ispi %lx rspi %lx IKE_INIT request received "
+		       "from %d.%d.%d.%d",
+		       clib_net_to_host_u64 (ike->ispi),
+		       clib_net_to_host_u64 (ike->rspi), sa->iaddr.as_u32);
 
   sa->ispi = clib_net_to_host_u64 (ike->ispi);
 
@@ -646,8 +636,8 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u", payload,
-			ikep->flags, plen);
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
@@ -671,16 +661,12 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
   u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
 
-  clib_warning ("ispi %lx rspi %lx nextpayload %x version %x "
-		"exchange %x flags %x msgid %x length %u",
-		clib_net_to_host_u64 (ike->ispi),
-		clib_net_to_host_u64 (ike->rspi),
-		payload, ike->version,
-		ike->exchange, ike->flags,
-		clib_net_to_host_u32 (ike->msgid), len);
-
   sa->ispi = clib_net_to_host_u64 (ike->ispi);
   sa->rspi = clib_net_to_host_u64 (ike->rspi);
+
+  ikev2_elog_exchange ("ispi %lx rspi %lx IKE_INIT response received "
+		       "from %d.%d.%d.%d", sa->ispi, sa->rspi,
+		       sa->raddr.as_u32);
 
   /* store whole IKE payload - needed for PSK auth */
   vec_free (sa->last_sa_init_res_packet_data);
@@ -728,8 +714,8 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u", payload,
-			ikep->flags, plen);
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
@@ -767,13 +753,12 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
 
       if (*payload == IKEV2_PAYLOAD_SK)
 	{
-	  clib_warning ("received IKEv2 payload SK, len %u", plen - 4);
 	  last_payload = *payload;
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u", payload,
-			ikep->flags, plen);
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   *payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      sa->unsupported_cp = *payload;
@@ -787,7 +772,7 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
 
   if (last_payload != IKEV2_PAYLOAD_SK)
     {
-      clib_warning ("Last payload must be SK");
+      ikev2_elog_error ("Last payload must be SK");
       return 0;
     }
 
@@ -799,7 +784,7 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
 
   if (memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc))
     {
-      clib_warning ("message integrity check failed");
+      ikev2_elog_error ("message integrity check failed");
       vec_free (hmac);
       return 0;
     }
@@ -845,6 +830,9 @@ ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
 
   vec_free (delete);
   sa->initial_contact = 0;
+
+  km->log_level = IKEV2_LOG_ERROR;
+  km->log_class = vlib_log_register_class ("ikev2", 0);
 }
 
 static void
@@ -852,20 +840,16 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 {
   ikev2_child_sa_t *first_child_sa;
   int p = 0;
-  u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
   u8 *plaintext = 0;
-
   ike_payload_header_t *ikep;
   u32 plen;
 
-  clib_warning ("ispi %lx rspi %lx nextpayload %x version %x "
-		"exchange %x flags %x msgid %x length %u",
-		clib_net_to_host_u64 (ike->ispi),
-		clib_net_to_host_u64 (ike->rspi),
-		payload, ike->version,
-		ike->exchange, ike->flags,
-		clib_net_to_host_u32 (ike->msgid), len);
+  ikev2_elog_exchange ("ispi %lx rspi %lx EXCHANGE_IKE_AUTH received "
+		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
+		       clib_host_to_net_u64 (ike->rspi),
+		       sa->is_initiator ? sa->raddr.as_u32 : sa->
+		       iaddr.as_u32);
 
   ikev2_calc_keys (sa);
 
@@ -902,7 +886,6 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 
       if (payload == IKEV2_PAYLOAD_SA)	/* 33 */
 	{
-	  clib_warning ("received payload SA, len %u", plen - sizeof (*ikep));
 	  if (sa->is_initiator)
 	    {
 	      ikev2_sa_free_proposal_vector (&first_child_sa->r_proposals);
@@ -921,9 +904,6 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 	  sa->i_id.type = id->id_type;
 	  vec_free (sa->i_id.data);
 	  vec_add (sa->i_id.data, id->payload, plen - sizeof (*id));
-
-	  clib_warning ("received payload IDi, len %u id_type %u",
-			plen - sizeof (*id), id->id_type);
 	}
       else if (payload == IKEV2_PAYLOAD_IDR)	/* 36 */
 	{
@@ -932,9 +912,6 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 	  sa->r_id.type = id->id_type;
 	  vec_free (sa->r_id.data);
 	  vec_add (sa->r_id.data, id->payload, plen - sizeof (*id));
-
-	  clib_warning ("received payload IDr len %u id_type %u",
-			plen - sizeof (*id), id->id_type);
 	}
       else if (payload == IKEV2_PAYLOAD_AUTH)	/* 39 */
 	{
@@ -952,9 +929,6 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 	      vec_free (sa->i_auth.data);
 	      vec_add (sa->i_auth.data, a->payload, plen - sizeof (*a));
 	    }
-
-	  clib_warning ("received payload AUTH, len %u auth_type %u",
-			plen - sizeof (*a), a->auth_method);
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)	/* 41 */
 	{
@@ -971,25 +945,18 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 	}
       else if (payload == IKEV2_PAYLOAD_TSI)	/* 44 */
 	{
-	  clib_warning ("received payload TSi, len %u",
-			plen - sizeof (*ikep));
-
 	  vec_free (first_child_sa->tsi);
 	  first_child_sa->tsi = ikev2_parse_ts_payload (ikep);
 	}
       else if (payload == IKEV2_PAYLOAD_TSR)	/* 45 */
 	{
-	  clib_warning ("received payload TSr, len %u",
-			plen - sizeof (*ikep));
-
 	  vec_free (first_child_sa->tsr);
 	  first_child_sa->tsr = ikev2_parse_ts_payload (ikep);
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u data %u",
-			payload, ikep->flags, plen - 4,
-			format_hex_bytes, ikep->payload, plen - 4);
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   payload);
 
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
@@ -1012,20 +979,14 @@ ikev2_process_informational_req (vlib_main_t * vm, ikev2_sa_t * sa,
 				 ike_header_t * ike)
 {
   int p = 0;
-  u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
   u8 *plaintext = 0;
-
   ike_payload_header_t *ikep;
   u32 plen;
 
-  clib_warning ("ispi %lx rspi %lx nextpayload %x version %x "
-		"exchange %x flags %x msgid %x length %u",
-		clib_net_to_host_u64 (ike->ispi),
-		clib_net_to_host_u64 (ike->rspi),
-		payload, ike->version,
-		ike->exchange, ike->flags,
-		clib_net_to_host_u32 (ike->msgid), len);
+  ikev2_elog_exchange ("ispi %lx rspi %lx INFORMATIONAL received "
+		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
+		       clib_host_to_net_u64 (ike->rspi), sa->iaddr.as_u32);
 
   plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload);
 
@@ -1059,10 +1020,8 @@ ikev2_process_informational_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u data %u",
-			payload, ikep->flags, plen - 4,
-			format_hex_bytes, ikep->payload, plen - 4);
-
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      sa->unsupported_cp = payload;
@@ -1083,7 +1042,6 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 				   ike_header_t * ike)
 {
   int p = 0;
-  u32 len = clib_net_to_host_u32 (ike->length);
   u8 payload = ike->nextpayload;
   u8 *plaintext = 0;
   u8 rekeying = 0;
@@ -1097,13 +1055,9 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
   ikev2_sa_proposal_t *proposal = 0;
   ikev2_child_sa_t *child_sa;
 
-  clib_warning ("ispi %lx rspi %lx nextpayload %x version %x "
-		"exchange %x flags %x msgid %x length %u",
-		clib_net_to_host_u64 (ike->ispi),
-		clib_net_to_host_u64 (ike->rspi),
-		payload, ike->version,
-		ike->exchange, ike->flags,
-		clib_net_to_host_u32 (ike->msgid), len);
+  ikev2_elog_exchange ("ispi %lx rspi %lx CREATE_CHILD_SA received "
+		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
+		       clib_host_to_net_u64 (ike->rspi), sa->raddr.as_u32);
 
   plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload);
 
@@ -1154,10 +1108,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else
 	{
-	  clib_warning ("unknown payload %u flags %x length %u data %u",
-			payload, ikep->flags, plen - 4,
-			format_hex_bytes, ikep->payload, plen - 4);
-
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "Unknown payload! type=%d",
+			   payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      sa->unsupported_cp = payload;
@@ -1194,7 +1146,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
       child_sa = ikev2_sa_get_child (sa, n->spi, n->protocol_id, 1);
       if (!child_sa)
 	{
-	  clib_warning ("child SA spi %lx not found", n->spi);
+	  ikev2_elog_uint (IKEV2_LOG_ERROR, "child SA spi %lx not found",
+			   n->spi);
 	  goto cleanup_and_exit;
 	}
       vec_add2 (sa->rekey, rekey, 1);
@@ -1356,8 +1309,9 @@ ikev2_sa_auth (ikev2_sa_t * sa)
   if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
 	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
     {
-      clib_warning ("unsupported authentication method %u",
-		    sa->i_auth.method);
+      ikev2_elog_uint (IKEV2_LOG_ERROR,
+		       "unsupported authentication method %u",
+		       sa->i_auth.method);
       ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
       return;
     }
@@ -1457,6 +1411,8 @@ ikev2_sa_auth (ikev2_sa_t * sa)
     }
   else
     {
+      ikev2_elog_uint (IKEV2_LOG_ERROR, "authentication failed, no matching "
+		       "profile found! ispi %lx", sa->ispi);
       ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
     }
   vec_free (psk);
@@ -1478,8 +1434,9 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
   if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
 	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
     {
-      clib_warning ("unsupported authentication method %u",
-		    sa->i_auth.method);
+      ikev2_elog_uint (IKEV2_LOG_ERROR,
+		       "unsupported authentication method %u",
+		       sa->i_auth.method);
       ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
       return;
     }
@@ -1558,9 +1515,9 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 
   if (rv)
     {
-      clib_warning ("installing ipip tunnel failed! loc:%U rem:%U",
-		    format_ip4_address, &a->local_ip,
-		    format_ip4_address, &a->remote_ip);
+      ikev2_elog_peers (IKEV2_LOG_ERROR, "installing ipip tunnel failed! "
+			"loc:%d.%d.%d.%d rem:%d.%d.%d.%d",
+			a->local_ip.ip4.as_u32, a->remote_ip.ip4.as_u32);
       return;
     }
 
@@ -1771,10 +1728,10 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
     }
 
   if (thread_index & 0xffffffc0)
-    clib_warning ("error: thread index exceeds max range 0x3f!");
+    ikev2_elog_error ("error: thread index exceeds max range 0x3f!");
 
   if (child_index & 0xfffff000 || sa_index & 0xfffff000)
-    clib_warning ("error: sa/child index exceeds max range 0xfff!");
+    ikev2_elog_error ("error: sa/child index exceeds max range 0xfff!");
 
   child->local_sa_id =
     a.local_sa_id =
@@ -2174,17 +2131,21 @@ ikev2_retransmit_sa_init (ike_header_t * ike,
                       ike->length = tmp->length;
                       clib_memcpy_fast(ike->payload, tmp->payload,
                              clib_net_to_host_u32(tmp->length) - sizeof(*ike));
-                      clib_warning("IKE_SA_INIT retransmit from %U to %U",
-                                   format_ip4_address, &raddr,
-                                   format_ip4_address, &iaddr);
+                      ikev2_elog_uint_peers (IKEV2_LOG_DEBUG,
+                                             "ispi %lx IKE_SA_INIT retransmit "
+                                             "from %d.%d.%d.%d to %d.%d.%d.%d",
+                                             ike->ispi,
+                                             raddr.as_u32, iaddr.as_u32);
                       return 1;
                     }
                   /* else ignore req */
                   else
                     {
-                      clib_warning("IKE_SA_INIT ignore from %U to %U",
-                                   format_ip4_address, &raddr,
-                                   format_ip4_address, &iaddr);
+                      ikev2_elog_uint_peers (IKEV2_LOG_DEBUG,
+                                             "ispi %lx IKE_SA_INIT ignore "
+                                             "from %d.%d.%d.%d to %d.%d.%d.%d",
+                                             ike->ispi,
+                                             raddr.as_u32, iaddr.as_u32);
                       return -1;
                     }
                 }
@@ -2226,21 +2187,17 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
       ike->length = tmp->length;
       clib_memcpy_fast (ike->payload, tmp->payload,
 			clib_net_to_host_u32 (tmp->length) - sizeof (*ike));
-      clib_warning ("IKE msgid %u retransmit from %U to %U",
-		    msg_id,
-		    format_ip4_address, &sa->raddr,
-		    format_ip4_address, &sa->iaddr);
+      ikev2_elog_uint_peers (IKEV2_LOG_DEBUG, "IKE retransmit msgid %d",
+			     msg_id, sa->raddr.as_u32, sa->iaddr.as_u32);
       return 1;
     }
   /* old req ignore */
   else
     {
-      clib_warning ("IKE msgid %u req ignore from %U to %U",
-		    msg_id,
-		    format_ip4_address, &sa->raddr,
-		    format_ip4_address, &sa->iaddr);
-      return -1;
+      ikev2_elog_uint_peers (IKEV2_LOG_DEBUG, "IKE req ignore msgid %d",
+			     msg_id, sa->raddr.as_u32, sa->iaddr.as_u32);
     }
+  return -1;
 }
 
 
@@ -2583,10 +2540,11 @@ ikev2_node_fn (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      clib_warning ("IKEv2 exchange %u packet received from %U to %U",
-			    ike0->exchange,
-			    format_ip4_address, ip40->src_address.as_u8,
-			    format_ip4_address, ip40->dst_address.as_u8);
+	      ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
+				     "received from %d.%d.%d.%d to %d.%d.%d.%d",
+				     ike0->exchange,
+				     ip40->src_address.as_u32,
+				     ip40->dst_address.as_u32);
 	    }
 
 	dispatch0:
@@ -2717,7 +2675,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
   }
   if (error)
     {
-      clib_warning
+      ikev2_elog_error
 	("Didn't find any supported algorithm for IKEV2_TRANSFORM_TYPE_INTEG");
       r = clib_error_return (0, "Unsupported algorithm");
       return r;
@@ -3256,6 +3214,9 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 
     ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len);
 
+    ikev2_elog_exchange ("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to "
+			 "%d.%d.%d.%d", clib_host_to_net_u64 (sa0->ispi), 0,
+			 p->responder.ip4.as_u32);
   }
 
   return 0;
@@ -3548,8 +3509,8 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
 	  else if (csa->rekey_retries > 0)
 	    {
 	      csa->rekey_retries--;
-	      clib_warning ("Rekeying Child SA 0x%x, retries left %d",
-			    csa->i_proposals->spi, csa->rekey_retries);
+	      ikev2_log_debug ("Rekeying Child SA 0x%x, retries left %d",
+			       csa->i_proposals->spi, csa->rekey_retries);
 	      if (csa->rekey_retries == 0)
 		{
 		  csa->rekey_retries = -1;
@@ -3566,6 +3527,21 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
     }
 
   return res;
+}
+
+int
+ikev2_set_log_level (ikev2_log_level_t log_level)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  if (log_level >= IKEV2_LOG_MAX)
+    {
+      ikev2_log_error ("unknown logging level %d", log_level);
+      return -1;
+    }
+
+  km->log_level = log_level;
+  return 0;
 }
 
 static void
