@@ -147,9 +147,8 @@ typedef struct
   u32 salt_er;
 
   /* installed data */
-  u32 sw_if_index;
-  u32 local_sa;
-  u32 remote_sa;
+  u32 local_sa_id;
+  u32 remote_sa_id;
 
   /* lifetime data */
   f64 time_to_expiration;
