@@ -362,7 +362,8 @@ echo_clients_init (vlib_main_t * vm)
 
 static int
 quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
-					       session_t * s, u8 is_fail)
+					       session_t * s,
+					       session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t *a = 0;
@@ -406,7 +407,8 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 
 static int
 quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					      session_t * s, u8 is_fail)
+					      session_t * s,
+					      session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -416,7 +418,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
 
-  if (is_fail)
+  if (err)
     {
       clib_warning ("connection %d failed!", api_context);
       ecm->run_test = ECHO_CLIENTS_EXITING;
@@ -427,7 +429,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (s->listener_handle == SESSION_INVALID_HANDLE)
     return quic_echo_clients_qsession_connected_callback (app_index,
 							  api_context, s,
-							  is_fail);
+							  err);
   DBG ("STREAM Connection callback %d", api_context);
 
   thread_index = s->thread_index;
@@ -479,7 +481,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					 session_t * s, u8 is_fail)
+					 session_t * s, session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -489,7 +491,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
 
-  if (is_fail)
+  if (err)
     {
       clib_warning ("connection %d failed!", api_context);
       ecm->run_test = ECHO_CLIENTS_EXITING;
