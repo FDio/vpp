@@ -90,6 +90,7 @@ typedef struct tls_main_
   clib_rwlock_t half_open_rwlock;
   u8 **rx_bufs;
   u8 **tx_bufs;
+  u8 tls_last_engine;
 
   /*
    * Config

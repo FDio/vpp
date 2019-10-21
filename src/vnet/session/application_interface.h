@@ -166,7 +166,7 @@ typedef enum crypto_engine_type_
   CRYPTO_ENGINE_OPENSSL,
   CRYPTO_ENGINE_VPP,
   CRYPTO_ENGINE_PICOTLS,
-  CRYPTO_N_ENGINES
+  CRYPTO_ENGINE_LAST = CRYPTO_ENGINE_PICOTLS,
 } crypto_engine_type_t;
 
 typedef struct _vnet_app_add_cert_key_pair_args_
