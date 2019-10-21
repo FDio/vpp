@@ -223,7 +223,7 @@ class TemplateIpsec(VppTestCase):
                          payload_size=54):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 sa.encrypt(IP(src=src, dst=dst) /
-                           ICMP() / Raw('X' * payload_size))
+                           ICMP() / Raw(b'X' * payload_size))
                 for i in range(count)]
 
     def gen_encrypt_pkts6(self, sa, sw_intf, src, dst, count=1,
@@ -236,7 +236,7 @@ class TemplateIpsec(VppTestCase):
 
     def gen_pkts(self, sw_intf, src, dst, count=1, payload_size=54):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                IP(src=src, dst=dst) / ICMP() / Raw('X' * payload_size)
+                IP(src=src, dst=dst) / ICMP() / Raw(b'X' * payload_size)
                 for i in range(count)]
 
     def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
@@ -812,7 +812,7 @@ class IpsecTun4(object):
         pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
                UDP(sport=333, dport=4500) /
-               Raw(0xff))
+               Raw(b'\xff'))
         self.send_and_assert_no_replies(self.tun_if, pkt*31)
         self.assert_error_counter_equal(
             '/err/%s/NAT Keepalive' % self.tun4_input_node, 31)
@@ -820,7 +820,7 @@ class IpsecTun4(object):
         pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
                UDP(sport=333, dport=4500) /
-               Raw(0xfe))
+               Raw(b'\xfe'))
         self.send_and_assert_no_replies(self.tun_if, pkt*31)
         self.assert_error_counter_equal(
             '/err/%s/Too Short' % self.tun4_input_node, 31)
