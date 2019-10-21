@@ -72,7 +72,7 @@
  */
 #define foreach_vlib_buffer_flag \
   _( 0, IS_TRACED, 0)					\
-  _( 1, NEXT_PRESENT, 0)				\
+  _( 1, NEXT_PRESENT, "next-present")			\
   _( 2, TOTAL_LENGTH_VALID, 0)				\
   _( 3, EXT_HDR_VALID, "ext-hdr-valid")
 

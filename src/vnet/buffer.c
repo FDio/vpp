@@ -45,7 +45,7 @@ format_vnet_buffer (u8 * s, va_list * args)
   if (b->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)
     a = format (a, "loop-counter %d ", vnet_buffer2 (b)->loop_counter);
 
-  s = format (s, "%U", format_vlib_buffer, b);
+  s = format (s, "%U", format_vlib_buffer_no_chain, b);
   if (a)
     s = format (s, "\n%U%v", format_white_space, indent, a);
   vec_free (a);

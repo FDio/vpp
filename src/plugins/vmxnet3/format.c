@@ -164,7 +164,7 @@ format_vmxnet3_input_trace (u8 * s, va_list * args)
   s = format (s, "vmxnet3: %v (%d) next-node %U",
 	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
 	      node->index, t->next_index);
-  s = format (s, "\n  buffer %U", format_vlib_buffer, &t->buffer);
+  s = format (s, "\n  buffer %U", format_vnet_buffer, &t->buffer);
 
   return s;
 }
