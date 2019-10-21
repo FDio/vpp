@@ -685,7 +685,8 @@ class VppTestCase(unittest.TestCase):
                 self.show_commands_at_teardown()
                 self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
-            api_trace = "vpp_api_trace.%s.log" % self._testMethodName
+            m = self._testMethodName
+            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
             tmp_api_trace = "/tmp/%s" % api_trace
             vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
             self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
