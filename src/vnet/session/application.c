@@ -1630,6 +1630,7 @@ cert_key_pair_store_init (vlib_main_t * vm)
 {
   /* Add a certificate with index 0 to support legacy apis */
   (void) app_cert_key_pair_alloc ();
+  app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
   return 0;
 }
 
@@ -1650,6 +1651,18 @@ VLIB_CLI_COMMAND (show_certificate_command, static) =
   .function = show_certificate_command_fn,
 };
 /* *INDENT-ON* */
+
+crypto_engine_type_t
+app_crypto_engine_type_add (void)
+{
+  return (++app_main.last_crypto_engine);
+}
+
+u8
+app_crypto_engine_n_types (void)
+{
+  return (app_main.last_crypto_engine + 1);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
