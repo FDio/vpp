@@ -13,7 +13,6 @@ from scapy.utils import atol
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
-
 class TestGeneve(BridgeDomain, VppTestCase):
     """ GENEVE Test Case """
 
@@ -137,7 +136,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
         for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
                                   ip_range_end):
-            vni = bytearray(dest_ip4)[3]
+            vni = int(dest_ip4.split('.')[3])
             cls.vapi.geneve_add_del_tunnel(local_address=cls.pg0.local_ip4,
                                            remote_address=dest_ip4,
                                            mcast_sw_if_index=1, is_add=is_add,
