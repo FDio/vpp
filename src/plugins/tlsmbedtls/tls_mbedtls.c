@@ -414,11 +414,11 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 	   */
 	  if (ctx->srv_hostname)
 	    {
-	      tls_notify_app_connected (ctx, /* is failed */ 0);
+	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
 	      return -1;
 	    }
 	}
-      tls_notify_app_connected (ctx, /* is failed */ 0);
+      tls_notify_app_connected (ctx, SESSION_E_NONE);
     }
   else
     {

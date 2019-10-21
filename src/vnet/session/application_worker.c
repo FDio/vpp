@@ -180,8 +180,8 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      if (!ls->rx_fifo && app_worker_alloc_session_fifos (sm, ls))
-	return -1;
+      if (!ls->rx_fifo)
+	return app_worker_alloc_session_fifos (sm, ls);
     }
   return 0;
 }
@@ -193,7 +193,7 @@ app_worker_start_listen (app_worker_t * app_wrk,
   session_t *ls;
 
   if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
-    return VNET_API_ERROR_ADDRESS_IN_USE;
+    return SESSION_E_ALREADY_LISTENING;
 
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);
@@ -303,18 +303,18 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
   if (!application_is_builtin_proxy (app))
     {
       sm = app_worker_get_connect_segment_manager (app_wrk);
-      if (app_worker_alloc_session_fifos (sm, s))
-	return -1;
+      return app_worker_alloc_session_fifos (sm, s);
     }
   return 0;
 }
 
 int
-app_worker_connect_notify (app_worker_t * app_wrk, session_t * s, u32 opaque)
+app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
+			   session_error_t err, u32 opaque)
 {
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
-						 s, s == 0 /* is_fail */ );
+						 s, err);
 }
 
 int

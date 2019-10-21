@@ -42,7 +42,7 @@ typedef struct _stream_session_cb_vft
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
+				     session_t * s, session_error_t code);
 
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
