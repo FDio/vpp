@@ -100,7 +100,7 @@ class TestBondInterface(VppTestCase):
         p2 = (Ether(src=bond0_mac, dst=self.pg2.local_mac) /
               IP(src=self.pg2.local_ip4, dst="10.10.10.12") /
               UDP(sport=1235, dport=1235) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         self.pg2.add_stream(p2)
 
         # generate a packet from pg3 -> BondEthernet0 -> pg0
@@ -109,7 +109,7 @@ class TestBondInterface(VppTestCase):
         p3 = (Ether(src=bond0_mac, dst=self.pg3.local_mac) /
               IP(src=self.pg3.local_ip4, dst="10.10.10.11") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         self.pg3.add_stream(p3)
 
         self.pg_enable_capture(self.pg_interfaces)
