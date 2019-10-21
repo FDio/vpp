@@ -14,9 +14,13 @@ class QUICAppWorker(Worker):
     """ QUIC Test Application Worker """
     process = None
 
-    def __init__(self, build_dir, appname, args, logger, env={}):
+    def __init__(self, build_dir, appname, args, logger, role, testcase,
+                 env={}):
         app = "%s/vpp/bin/%s" % (build_dir, appname)
         self.args = [app] + args
+        self.role = role
+        self.wait_for_gdb = 'wait-for-gdb'
+        self.testcase = testcase
         super(QUICAppWorker, self).__init__(self.args, logger, env)
 
     def run(self):
@@ -154,6 +158,7 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
 class QUICEchoExtTestCase(QUICTestCase):
     extra_vpp_punt_config = ["session", "{", "evt_qs_memfd_seg", "}"]
     quic_setup = "default"
+    app = "vpp_echo"
 
     def setUp(self):
         super(QUICEchoExtTestCase, self).setUp()
@@ -170,14 +175,21 @@ class QUICEchoExtTestCase(QUICTestCase):
             ["server", "appns", "server", "quic-setup", self.quic_setup]
         self.client_echo_test_args = common_args + \
             ["client", "appns", "client", "quic-setup", self.quic_setup]
+        error = self.vapi.cli(
+            "quic set fifo-size 4Mb")
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn("failed", error)
 
     def server(self, *args):
         _args = self.server_echo_test_args + list(args)
         self.worker_server = QUICAppWorker(
             self.build_dir,
-            "vpp_echo",
+            self.app,
             _args,
-            self.logger)
+            self.logger,
+            'server',
+            self)
         self.worker_server.start()
         self.sleep(self.pre_test_sleep)
 
@@ -186,12 +198,15 @@ class QUICEchoExtTestCase(QUICTestCase):
         # self.client_echo_test_args += "use-svm-api"
         self.worker_client = QUICAppWorker(
             self.build_dir,
-            "vpp_echo",
+            self.app,
             _args,
-            self.logger)
+            self.logger,
+            'client',
+            self)
         self.worker_client.start()
-        self.worker_client.join(self.timeout)
-        self.worker_server.join(self.timeout)
+        timeout = None if self.debug_all else self.timeout
+        self.worker_client.join(timeout)
+        self.worker_server.join(timeout)
         self.sleep(self.post_test_sleep)
 
     def validate_ext_test_results(self):

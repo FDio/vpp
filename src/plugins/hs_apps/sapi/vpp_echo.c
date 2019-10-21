@@ -394,6 +394,8 @@ echo_handle_data (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 	      clib_atomic_fetch_add (&em->stats.clean_count.s, 1);
 	    }
 	}
+      ECHO_LOG (2, "%U: %U", echo_format_session, s,
+		echo_format_session_state, s->session_state);
       return;
     }
 
@@ -989,6 +991,8 @@ echo_process_opts (int argc, char **argv)
 	em->tx_results_diff = 1;
       else if (unformat (a, "json"))
 	em->output_json = 1;
+      else if (unformat (a, "wait-for-gdb"))
+	em->wait_for_gdb = 1;
       else if (unformat (a, "log=%d", &em->log_lvl))
 	;
       else if (unformat (a, "sclose=%U",
@@ -1029,6 +1033,16 @@ echo_process_opts (int argc, char **argv)
       em->bytes_to_receive == 0 ? ECHO_CLOSE_F_PASSIVE : ECHO_CLOSE_F_ACTIVE;
   if (em->send_stream_disconnects == ECHO_CLOSE_F_INVALID)
     em->send_stream_disconnects = default_f_active;
+
+  if (em->wait_for_gdb)
+    {
+      volatile u64 nop = 0;
+
+      clib_warning ("Waiting for gdb...");
+      while (em->wait_for_gdb)
+	nop++;
+      clib_warning ("Resuming execution (%llu)!", nop);
+    }
 }
 
 void
