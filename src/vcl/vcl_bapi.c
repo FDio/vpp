@@ -360,10 +360,13 @@ void
 vppcom_app_send_attach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  u8 tls_engine = CRYPTO_ENGINE_OPENSSL;
   vl_api_app_attach_t *bmp;
   u8 nsid_len = vec_len (vcm->cfg.namespace_id);
   u8 app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
 		     vcm->cfg.app_proxy_transport_udp);
+
+  tls_engine = vcm->cfg.tls_engine ? vcm->cfg.tls_engine : tls_engine;
 
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
@@ -387,7 +390,7 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     vcm->cfg.preallocated_fifo_pairs;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
-  bmp->options[APP_OPTIONS_TLS_ENGINE] = CRYPTO_ENGINE_OPENSSL;
+  bmp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;
