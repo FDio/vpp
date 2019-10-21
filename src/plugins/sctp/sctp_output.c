@@ -578,7 +578,8 @@ sctp_send_cookie_echo (sctp_connection_t * sctp_conn)
       clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
 
       session_stream_connect_notify (&sctp_conn->sub_conn
-				     [SCTP_PRIMARY_PATH_IDX].connection, 1);
+				     [SCTP_PRIMARY_PATH_IDX].connection,
+				     SESSION_E_REFUSED);
 
       sctp_connection_timers_reset (sctp_conn);
 
@@ -1294,7 +1295,8 @@ sctp_send_init (sctp_connection_t * sctp_conn)
       clib_warning ("Reached MAX_INIT_RETRANS times. Aborting connection.");
 
       session_stream_connect_notify (&sctp_conn->sub_conn
-				     [SCTP_PRIMARY_PATH_IDX].connection, 1);
+				     [SCTP_PRIMARY_PATH_IDX].connection,
+				     SESSION_E_REFUSED);
 
       sctp_connection_timers_reset (sctp_conn);
 

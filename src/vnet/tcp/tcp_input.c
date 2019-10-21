@@ -2588,7 +2588,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Notify app that we have connection. If session layer can't
 	   * allocate session send reset */
-	  if (session_stream_connect_notify (&new_tc0->connection, 0))
+	  if (session_stream_connect_notify (&new_tc0->connection,
+					     SESSION_E_NONE))
 	    {
 	      tcp_send_reset_w_pkt (new_tc0, b0, my_thread_index, is_ip4);
 	      tcp_connection_cleanup (new_tc0);
@@ -2609,7 +2610,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	  /* Notify app that we have connection */
-	  if (session_stream_connect_notify (&new_tc0->connection, 0))
+	  if (session_stream_connect_notify (&new_tc0->connection,
+					     SESSION_E_NONE))
 	    {
 	      tcp_connection_cleanup (new_tc0);
 	      tcp_send_reset_w_pkt (tc0, b0, my_thread_index, is_ip4);

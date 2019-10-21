@@ -351,7 +351,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
-      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
+      session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
@@ -771,10 +771,7 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
     }
   port = transport_alloc_local_port (TRANSPORT_PROTO_TCP, lcl_addr);
   if (port < 1)
-    {
-      clib_warning ("Failed to allocate src port");
-      return -1;
-    }
+    return SESSION_E_NOPORT;
   *lcl_port = port;
   return 0;
 }
@@ -800,7 +797,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
 					 rmt, &lcl_addr, &lcl_port);
 
   if (rv)
-    return -1;
+    return rv;
 
   /*
    * Create connection and send SYN

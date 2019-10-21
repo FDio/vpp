@@ -54,7 +54,7 @@ volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
 dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  session_t * s, u8 is_fail)
+				  session_t * s, session_error_t err)
 {
   if (s)
     {

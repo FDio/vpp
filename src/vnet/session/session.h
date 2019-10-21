@@ -30,9 +30,6 @@ _(NOT_READY, "Session not ready packets")                               \
 _(FIFO_FULL, "Packets dropped for lack of rx fifo space")               \
 _(EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")      \
 _(API_QUEUE_FULL, "Sessions not created for lack of API queue space")   \
-_(NEW_SEG_NO_SPACE, "Created segment, couldn't allocate a fifo pair")   \
-_(NO_SPACE, "Couldn't allocate a fifo pair")				\
-_(SEG_CREATE, "Couldn't create a new segment")
 
 typedef enum
 {
@@ -40,7 +37,7 @@ typedef enum
   foreach_session_input_error
 #undef _
     SESSION_N_ERROR,
-} session_error_t;
+} session_input_error_t;
 
 typedef struct session_tx_context_
 {
@@ -461,7 +458,8 @@ int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
 				      vlib_buffer_t * b, u8 proto,
 				      u8 queue_event);
-int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
+int session_stream_connect_notify (transport_connection_t * tc,
+				   session_error_t err);
 int session_dgram_connect_notify (transport_connection_t * tc,
 				  u32 old_thread_index,
 				  session_t ** new_session);

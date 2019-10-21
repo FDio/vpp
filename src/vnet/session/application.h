@@ -248,7 +248,7 @@ int app_worker_init_accepted (session_t * s);
 int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
-			       u32 opaque);
+			       session_error_t err, u32 opaque);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 					session_t * s);
@@ -294,7 +294,7 @@ app_cert_key_pair_t *app_cert_key_pair_get_default ();
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			      session_handle_t handle, int rv);
 int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-				  session_t * s, u8 is_fail);
+				  session_t * s, session_error_t err);
 void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			     u32 context, int rv);
 

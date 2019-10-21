@@ -433,7 +433,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
   return -1;
 }
 
-static clib_error_t *
+static session_error_t
 transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
 {
   if (is_ip4)
@@ -441,9 +441,7 @@ transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
       ip4_address_t *ip4;
       ip4 = ip_interface_get_first_ip (sw_if_index, 1);
       if (!ip4)
-	return clib_error_return (0, "no routable ip4 address on %U",
-				  format_vnet_sw_if_index_name,
-				  vnet_get_main (), sw_if_index);
+	return SESSION_E_NOIP;
       addr->ip4.as_u32 = ip4->as_u32;
     }
   else
@@ -451,15 +449,13 @@ transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
       ip6_address_t *ip6;
       ip6 = ip_interface_get_first_ip (sw_if_index, 0);
       if (ip6 == 0)
-	return clib_error_return (0, "no routable ip6 addresses on %U",
-				  format_vnet_sw_if_index_name,
-				  vnet_get_main (), sw_if_index);
+	return SESSION_E_NOIP;
       clib_memcpy_fast (&addr->ip6, ip6, sizeof (*ip6));
     }
   return 0;
 }
 
-static clib_error_t *
+static session_error_t
 transport_find_local_ip_for_remote (u32 sw_if_index,
 				    transport_endpoint_t * rmt,
 				    ip46_address_t * lcl_addr)
@@ -479,14 +475,11 @@ transport_find_local_ip_for_remote (u32 sw_if_index,
 
       /* Couldn't find route to destination. Bail out. */
       if (fei == FIB_NODE_INDEX_INVALID)
-	return clib_error_return (0, "no route to %U", format_ip46_address,
-				  &rmt->ip, (rmt->is_ip4 == 0) + 1);
+	return SESSION_E_NOROUTE;
 
       sw_if_index = fib_entry_get_resolving_interface (fei);
       if (sw_if_index == ENDPOINT_INVALID_INDEX)
-	return clib_error_return (0, "no resolving interface for %U",
-				  format_ip46_address, &rmt->ip,
-				  (rmt->is_ip4 == 0) + 1);
+	return SESSION_E_NOINTF;
     }
 
   clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
@@ -498,7 +491,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 				ip46_address_t * lcl_addr, u16 * lcl_port)
 {
   transport_endpoint_t *rmt = (transport_endpoint_t *) rmt_cfg;
-  clib_error_t *error;
+  session_error_t error;
   int port;
   u32 tei;
 
@@ -510,10 +503,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
       error = transport_find_local_ip_for_remote (rmt_cfg->peer.sw_if_index,
 						  rmt, lcl_addr);
       if (error)
-	{
-	  clib_error_report (error);
-	  return -1;
-	}
+	return error;
     }
   else
     {
@@ -529,10 +519,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
     {
       port = transport_alloc_local_port (proto, lcl_addr);
       if (port < 1)
-	{
-	  clib_warning ("Failed to allocate src port");
-	  return -1;
-	}
+	return SESSION_E_NOPORT;
       *lcl_port = port;
     }
   else
@@ -541,7 +528,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
       tei = transport_endpoint_lookup (&local_endpoints_table, proto,
 				       lcl_addr, port);
       if (tei != ENDPOINT_INVALID_INDEX)
-	return -1;
+	return SESSION_E_PORTINUSE;
 
       transport_endpoint_mark_used (proto, lcl_addr, port);
       *lcl_port = port;

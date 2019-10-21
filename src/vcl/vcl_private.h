@@ -624,8 +624,6 @@ void vcl_send_child_worker_del (vcl_worker_t * wrk);
 
 u32 vcl_max_nsid_len (void);
 
-u8 *format_api_error (u8 * s, va_list * args);
-
 void vls_init ();
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 

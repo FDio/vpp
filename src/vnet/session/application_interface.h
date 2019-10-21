@@ -42,7 +42,7 @@ typedef struct _stream_session_cb_vft
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
+				     session_t * s, session_error_t code);
 
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
@@ -699,6 +699,24 @@ app_recv (app_session_t * s, u8 * data, u32 len)
   return app_recv_stream (s, data, len);
 }
 
+/* *INDENT-OFF* */
+static char *session_error_str[] = {
+#define _(sym, str) str,
+    foreach_session_error
+#undef _
+};
+/* *INDENT-ON* */
+
+static inline u8 *
+format_session_error (u8 * s, va_list * args)
+{
+  session_error_t error = va_arg (*args, session_error_t);
+  if (-error >= 0 && -error < SESSION_N_ERRORS)
+    s = format (s, "%s", session_error_str[-error]);
+  else
+    s = format (s, "invalid session err %u", -error);
+  return s;
+}
 #endif /* __included_uri_h__ */
 
 /*
