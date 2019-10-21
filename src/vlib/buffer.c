@@ -118,9 +118,20 @@ format_vlib_buffer (u8 * s, va_list * args)
     s = format (s, "\n%U%v", format_white_space, indent, a);
   vec_free (a);
 
+  return s;
+}
+
+u8 *
+format_vlib_buffer_chain (u8 * s, va_list * args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "%U", format_vlib_buffer, b);
+
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
-      vlib_main_t *vm = vlib_get_main ();
       u32 next_buffer = b->next_buffer;
       b = vlib_get_buffer (vm, next_buffer);
 
