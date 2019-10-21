@@ -760,7 +760,7 @@ if __name__ == '__main__':
                                 % (min_req_shm >> 20))
             else:
                 extra_shm = shm_free - min_req_shm
-                shm_max_processes += extra_shm / shm_per_process
+                shm_max_processes += extra_shm // shm_per_process
             concurrent_tests = min(cpu_count(), shm_max_processes)
             print('Found enough resources to run tests with %s cores'
                   % concurrent_tests)
