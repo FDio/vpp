@@ -499,6 +499,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured with mq with eventfd",
 			getpid ());
 	    }
+	  else if (unformat (line_input, "tls-engine %u",
+			     &vcl_cfg->tls_engine))
+	    {
+	      VCFG_DBG (0, "VCL<%d>: configured tls-engine %u (0x%x)",
+			getpid (), vcl_cfg->tls_engine, vcl_cfg->tls_engine);
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;

@@ -211,6 +211,7 @@ typedef struct vppcom_cfg_t_
   char *event_log_path;
   u8 *vpp_api_filename;
   u8 *vpp_api_socket_name;
+  u32 tls_engine;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
