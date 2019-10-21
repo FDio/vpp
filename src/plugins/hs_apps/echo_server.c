@@ -125,7 +125,7 @@ echo_server_session_reset_callback (session_t * s)
 
 int
 echo_server_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, u8 is_fail)
+					session_t * s, session_error_t err)
 {
   clib_warning ("called...");
   return -1;
