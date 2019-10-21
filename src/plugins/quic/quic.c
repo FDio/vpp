@@ -1472,7 +1472,8 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 
 static int
 quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
-				     session_t * udp_session, u8 is_fail)
+				     session_t * udp_session,
+				     session_error_t err)
 {
   QUIC_DBG (2, "QSession is now connected (id %u)",
 	    udp_session->session_index);
@@ -1492,7 +1493,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 
 
   ctx = quic_ctx_get (ctx_index, thread_index);
-  if (is_fail)
+  if (err)
     {
       u32 api_context;
       app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);

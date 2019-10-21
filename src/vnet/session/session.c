@@ -668,7 +668,8 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
 }
 
 static inline int
-session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
+session_stream_connect_notify_inline (transport_connection_t * tc,
+                                      session_error_t err,
 				      session_state_t opened_state)
 {
   u32 opaque = 0, new_ti, new_si;
@@ -696,7 +697,7 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 
   opaque = tc->s_index;
 
-  if (is_fail)
+  if (err)
     return app_worker_connect_notify (app_wrk, s, opaque);
 
   s = session_alloc_for_connection (tc);
@@ -727,17 +728,17 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 }
 
 int
-session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_stream_connect_notify (transport_connection_t * tc,
+                               session_error_t err)
 {
-  return session_stream_connect_notify_inline (tc, is_fail,
-					       SESSION_STATE_READY);
+  return session_stream_connect_notify_inline (tc, err, SESSION_STATE_READY);
 }
 
 int
-session_ho_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_ho_stream_connect_notify (transport_connection_t * tc,
+                                  session_error_t err)
 {
-  return session_stream_connect_notify_inline (tc, is_fail,
-					       SESSION_STATE_OPENED);
+  return session_stream_connect_notify_inline (tc, err, SESSION_STATE_OPENED);
 }
 
 typedef struct _session_switch_pool_args

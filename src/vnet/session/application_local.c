@@ -366,7 +366,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   table_index = application_local_session_table (app);
   lh = session_lookup_local_endpoint (table_index, sep);
   if (lh == SESSION_DROP_HANDLE)
-    return VNET_API_ERROR_APP_CONNECT_FILTERED;
+    return SESSION_E_FILTERED;
 
   if (lh == SESSION_INVALID_HANDLE)
     goto global_scope;
@@ -391,10 +391,10 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
 
 global_scope:
   if (session_endpoint_is_local (sep))
-    return VNET_API_ERROR_SESSION_CONNECT;
+    return SESSION_E_NOROUTE;
 
   if (!application_has_global_scope (app))
-    return VNET_API_ERROR_APP_CONNECT_SCOPE;
+    return SESSION_E_SCOPE;
 
   fib_proto = session_endpoint_fib_proto (sep);
   table_index = application_session_table (app, fib_proto);

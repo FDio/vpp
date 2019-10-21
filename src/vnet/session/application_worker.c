@@ -180,8 +180,8 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      if (!ls->rx_fifo && app_worker_alloc_session_fifos (sm, ls))
-	return -1;
+      if (!ls->rx_fifo)
+	return app_worker_alloc_session_fifos (sm, ls);
     }
   return 0;
 }
@@ -193,7 +193,7 @@ app_worker_start_listen (app_worker_t * app_wrk,
   session_t *ls;
 
   if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
-    return VNET_API_ERROR_ADDRESS_IN_USE;
+    return SESSION_E_ALREADY_LISTENING;
 
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);

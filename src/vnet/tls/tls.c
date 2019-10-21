@@ -441,7 +441,7 @@ tls_app_rx_callback (session_t * tls_session)
 
 int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
-				session_t * tls_session, u8 is_fail)
+				session_t * tls_session, session_error_t err)
 {
   session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
@@ -449,7 +449,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
 
-  if (is_fail)
+  if (err)
     {
       app_worker_t *app_wrk;
       u32 api_context;
