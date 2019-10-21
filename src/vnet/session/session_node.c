@@ -130,8 +130,7 @@ session_mq_connect_handler (void *data)
     {
       clib_warning ("connect returned: %U", format_vnet_api_errno, rv);
       app_wrk = application_get_worker (app, mp->wrk_index);
-      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0,
-				    /* is_fail */ 1);
+      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
 
   vec_free (a->sep_ext.hostname);
@@ -160,8 +159,7 @@ session_mq_connect_uri_handler (void *data)
     {
       clib_warning ("connect_uri returned: %d", rv);
       app_wrk = application_get_worker (app, 0 /* default wrk only */ );
-      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0,
-				    /* is_fail */ 1);
+      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
 }
 

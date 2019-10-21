@@ -219,7 +219,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
 }
 
 int
-tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
+tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 {
   session_t *app_session;
   app_worker_t *app_wrk;
@@ -231,7 +231,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
       return -1;
     }
 
-  if (is_failed)
+  if (err)
     goto failed;
 
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
@@ -240,12 +240,12 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
 
-  if (app_worker_init_connected (app_wrk, app_session))
+  if ((err = app_worker_init_connected (app_wrk, app_session)))
     goto failed;
 
   app_session->session_state = SESSION_STATE_CONNECTING;
   if (app_worker_connect_notify (app_wrk, app_session,
-				 ctx->parent_app_api_context))
+				 SESSION_E_NONE, ctx->parent_app_api_context))
     {
       TLS_DBG (1, "failed to notify app");
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
@@ -264,7 +264,8 @@ failed:
   session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
   ctx->no_app_session = 1;
   tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
-  return app_worker_connect_notify (app_wrk, 0, ctx->parent_app_api_context);
+  return app_worker_connect_notify (app_wrk, 0, err,
+				    ctx->parent_app_api_context);
 }
 
 static inline void
@@ -449,7 +450,7 @@ tls_app_rx_callback (session_t * tls_session)
 
 int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
-				session_t * tls_session, u8 is_fail)
+				session_t * tls_session, session_error_t err)
 {
   session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
@@ -457,7 +458,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
 
-  if (is_fail)
+  if (err)
     {
       app_worker_t *app_wrk;
       u32 api_context;
@@ -467,7 +468,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
       if (app_wrk)
 	{
 	  api_context = ho_ctx->c_s_index;
-	  app_worker_connect_notify (app_wrk, 0, api_context);
+	  app_worker_connect_notify (app_wrk, 0, err, api_context);
 	}
       tls_ctx_half_open_reader_unlock ();
       tls_ctx_half_open_free (ho_ctx_index);

@@ -448,7 +448,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   if (mp->retval)
     {
       VDBG (0, "ERROR: session index %u: connect failed! %U",
-	    session_index, format_api_error, ntohl (mp->retval));
+	    session_index, format_session_error, mp->retval);
       session->session_state = STATE_FAILED | STATE_DISCONNECT;
       session->vpp_handle = mp->handle;
       return session_index;
@@ -568,7 +568,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   if (mp->retval)
     {
       VERR ("session %u [0x%llx]: bind failed: %U", sid, mp->handle,
-	    format_api_error, mp->retval);
+	    format_session_error, mp->retval);
       if (session)
 	{
 	  session->session_state = STATE_FAILED;
@@ -626,7 +626,7 @@ vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
 
   if (mp->retval)
     VDBG (0, "ERROR: session %u [0xllx]: unlisten failed: %U",
-	  s->session_index, mp->handle, format_api_error, ntohl (mp->retval));
+	  s->session_index, mp->handle, format_session_error, mp->retval);
 
   if (mp->context != wrk->wrk_index)
     VDBG (0, "wrong context");
