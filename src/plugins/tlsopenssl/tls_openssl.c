@@ -317,7 +317,7 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
       /*
        * Also handles cleanup of the pre-allocated session
        */
-      tls_notify_app_connected (ctx, /* is failed */ 1);
+      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
     }
 }
 
@@ -385,11 +385,11 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	   */
 	  if (ctx->srv_hostname)
 	    {
-	      tls_notify_app_connected (ctx, /* is failed */ 0);
+	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
 	      return -1;
 	    }
 	}
-      tls_notify_app_connected (ctx, /* is failed */ 0);
+      tls_notify_app_connected (ctx, SESSION_E_NONE);
     }
   else
     {

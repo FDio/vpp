@@ -1262,18 +1262,19 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   stream_session->session_state = SESSION_STATE_READY;
 
   /* For now we only reset streams. Cleanup will be triggered by timers */
-  if (app_worker_init_connected (app_wrk, stream_session))
+  if ((rv = app_worker_init_connected (app_wrk, stream_session)))
     {
       QUIC_ERR ("failed to app_worker_init_connected");
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
-      return app_worker_connect_notify (app_wrk, NULL, sep->opaque);
+      return app_worker_connect_notify (app_wrk, NULL, rv, sep->opaque);
     }
 
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
-  if (app_worker_connect_notify (app_wrk, stream_session, sep->opaque))
+  if (app_worker_connect_notify (app_wrk, stream_session, SESSION_E_NONE,
+				 sep->opaque))
     {
       QUIC_ERR ("failed to notify app");
       quic_increment_counter (QUIC_ERROR_CLOSED_STREAM, 1);
@@ -1614,17 +1615,17 @@ quic_on_quic_session_connected (quic_ctx_t * ctx)
 
   /* If quic session connected fails, immediatly close connection */
   app_wrk = app_worker_get (ctx->parent_app_wrk_id);
-  if (app_worker_init_connected (app_wrk, quic_session))
+  if ((rv = app_worker_init_connected (app_wrk, quic_session)))
     {
       QUIC_ERR ("failed to app_worker_init_connected");
       quic_proto_on_close (ctx_id, thread_index);
-      app_worker_connect_notify (app_wrk, NULL, ctx->client_opaque);
+      app_worker_connect_notify (app_wrk, NULL, rv, ctx->client_opaque);
       return;
     }
 
   quic_session->session_state = SESSION_STATE_CONNECTING;
   if ((rv = app_worker_connect_notify (app_wrk, quic_session,
-				       ctx->client_opaque)))
+				       SESSION_E_NONE, ctx->client_opaque)))
     {
       QUIC_ERR ("failed to notify app %d", rv);
       quic_proto_on_close (ctx_id, thread_index);
@@ -1741,7 +1742,8 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 
 static int
 quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
-				     session_t * udp_session, u8 is_fail)
+				     session_t * udp_session,
+				     session_error_t err)
 {
   QUIC_DBG (2, "QSession is now connected (id %u)",
 	    udp_session->session_index);
@@ -1761,14 +1763,14 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 
 
   ctx = quic_ctx_get (ctx_index, thread_index);
-  if (is_fail)
+  if (err)
     {
       u32 api_context;
       app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
       if (app_wrk)
 	{
 	  api_context = ctx->c_s_index;
-	  app_worker_connect_notify (app_wrk, 0, api_context);
+	  app_worker_connect_notify (app_wrk, 0, SESSION_E_NONE, api_context);
 	}
       return 0;
     }

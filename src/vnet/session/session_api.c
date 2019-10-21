@@ -114,15 +114,12 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 {
   clib_error_t *error;
   if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-    {
-      clib_warning ("can't send memfd fd");
-      return -1;
-    }
+    return SESSION_E_BAPI_NO_FD;
   error = vl_api_send_fd_msg (reg, fds, n_fds);
   if (error)
     {
       clib_error_report (error);
-      return -1;
+      return SESSION_E_BAPI_SEND_FD;
     }
   return 0;
 }
@@ -140,20 +137,14 @@ send_add_segment_callback (u32 api_client_index, u64 segment_handle)
 
   reg = vl_mem_api_client_index_to_registration (api_client_index);
   if (!reg)
-    {
-      clib_warning ("no api registration for client: %u", api_client_index);
-      return -1;
-    }
+    return SESSION_E_BAPI_NO_REG;
 
   fs = segment_manager_get_segment_w_handle (segment_handle);
   sp = &fs->ssvm;
   if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
     {
       if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-	{
-	  clib_warning ("can't send memfd fd");
-	  return -1;
-	}
+	return SESSION_E_BAPI_NO_FD;
 
       fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
       fds[n_fds] = sp->fd;
@@ -186,10 +177,7 @@ send_del_segment_callback (u32 api_client_index, u64 segment_handle)
 
   reg = vl_mem_api_client_index_to_registration (api_client_index);
   if (!reg)
-    {
-      clib_warning ("no registration: %u", api_client_index);
-      return -1;
-    }
+    return SESSION_E_BAPI_NO_REG;
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -233,7 +221,7 @@ mq_send_session_accepted_cb (session_t * s)
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -352,7 +340,7 @@ mq_send_session_reset_cb (session_t * s)
 
 int
 mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-			      session_t * s, u8 is_fail)
+			      session_t * s, session_error_t err)
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_connected_msg_t *mp;
@@ -371,7 +359,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -380,7 +368,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = api_context;
 
-  if (is_fail)
+  if (err)
     goto done;
 
   if (session_has_transport (s))
@@ -388,7 +376,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       tc = session_get_transport (s);
       if (!tc)
 	{
-	  is_fail = 1;
+	  clib_warning ("failed to retrieve transport!");
+	  err = SESSION_E_REFUSED;
 	  goto done;
 	}
 
@@ -423,8 +412,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
 done:
-  mp->retval = is_fail ?
-    clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT) : 0;
+  mp->retval = err;
 
   svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
@@ -452,7 +440,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -1222,7 +1210,8 @@ done:
   if (app)
     {
       app_worker_t *app_wrk = application_get_worker (app, mp->wrk_index);
-      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, 1);
+      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0,
+				    SESSION_E_REFUSED);
     }
 }
 
