@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "16ec5eb3_6c697f34",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:50:02Z",
+      "side": 1,
+      "message": "move defaults to .api.",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 43
+      },
+      "revId": "483eec1c78a410db12573a3f0aab734b02c2aaad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
