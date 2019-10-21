@@ -418,16 +418,18 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   udp_connection_t *uc;
   ip46_address_t lcl_addr;
   u16 lcl_port;
+  int rv;
 
-  if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
-				      &lcl_port))
-    return -1;
+  rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
+				       &lcl_port);
+  if (rv)
+    return rv;
 
   if (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
     {
       /* If specific source port was requested abort */
       if (rmt->peer.port)
-	return -1;
+	return SESSION_E_PORTINUSE;
 
       /* Try to find a port that's not used */
       while (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
@@ -435,10 +437,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 	  lcl_port = transport_alloc_local_port (TRANSPORT_PROTO_UDP,
 						 &lcl_addr);
 	  if (lcl_port < 1)
-	    {
-	      clib_warning ("Failed to allocate src port");
-	      return -1;
-	    }
+	    return SESSION_E_PORTINUSE;
 	}
     }
 

@@ -173,7 +173,7 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager. */
   if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
-    return -1;
+    return SESSION_E_ALLOC;
 
   /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
@@ -182,12 +182,8 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   if (transport_connection_is_cless (session_get_transport (ls)))
     {
       if (ls->rx_fifo)
-	{
-	  clib_warning ("sharing of connectionless listeners not supported");
-	  return -1;
-	}
-      if (app_worker_alloc_session_fifos (sm, ls))
-	return -1;
+	return SESSION_E_NOSUPPORT;
+      return app_worker_alloc_session_fifos (sm, ls);
     }
   return 0;
 }
@@ -197,9 +193,10 @@ app_worker_start_listen (app_worker_t * app_wrk,
 			 app_listener_t * app_listener)
 {
   session_t *ls;
+  int rv;
 
   if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
-    return VNET_API_ERROR_ADDRESS_IN_USE;
+    return SESSION_E_ALREADY_LISTENING;
 
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);
@@ -207,15 +204,15 @@ app_worker_start_listen (app_worker_t * app_wrk,
   if (app_listener->session_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->session_index, 0);
-      if (app_worker_init_listener (app_wrk, ls))
-	return -1;
+      if ((rv = app_worker_init_listener (app_wrk, ls)))
+	return rv;
     }
 
   if (app_listener->local_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (app_listener->local_index, 0);
-      if (app_worker_init_listener (app_wrk, ls))
-	return -1;
+      if ((rv = app_worker_init_listener (app_wrk, ls)))
+	return rv;
     }
 
   return 0;
@@ -321,8 +318,7 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
   if (!application_is_builtin_proxy (app))
     {
       sm = app_worker_get_connect_segment_manager (app_wrk);
-      if (app_worker_alloc_session_fifos (sm, s))
-	return -1;
+      return app_worker_alloc_session_fifos (sm, s);
     }
 
   if (app->cb_fns.fifo_tuning_callback)
@@ -332,11 +328,12 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
 }
 
 int
-app_worker_connect_notify (app_worker_t * app_wrk, session_t * s, u32 opaque)
+app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
+			   session_error_t err, u32 opaque)
 {
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
-						 s, s == 0 /* is_fail */ );
+						 s, err);
 }
 
 int
