@@ -250,21 +250,22 @@ class VLAList(object):
         self.options = args
         return self
 
-    def pack(self, list, kwargs=None):
-        if not list:
+    def pack(self, lst, kwargs=None):
+        if not lst:
             return b""
-        if len(list) != kwargs[self.length_field]:
+        if len(lst) != kwargs[self.length_field]:
             raise VPPSerializerValueError(
                 'Variable length error, got: {} expected: {}'
-                .format(len(list), kwargs[self.length_field]))
-        b = bytes()
+                .format(len(lst), kwargs[self.length_field]))
 
         # u8 array
-
         if self.packer.size == 1:
-            return bytearray(list)
+            if isinstance(lst, list):
+                return b''.join(lst)
+            return bytes(lst)
 
-        for e in list:
+        b = bytes()
+        for e in lst:
             b += self.packer.pack(e)
         return b
 
