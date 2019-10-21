@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e915a48c_6c53afc1",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-10-21T10:23:00Z",
+      "side": 1,
+      "message": "please decouple this logic from cli parsing in the way that first you just process cli and stores data into temporary variables if needed. Later, after cli parsing loop completes, you can add your custom logic with explanations.",
+      "range": {
+        "startLine": 327,
+        "startChar": 0,
+        "endLine": 342,
+        "endChar": 2
+      },
+      "revId": "4015fd96f1e2262ffb54061b07fef132bed217f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
