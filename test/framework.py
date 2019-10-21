@@ -285,20 +285,24 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def set_debug_flags(cls, d):
+        cls.gdbserver_port = 7777
         cls.debug_core = False
         cls.debug_gdb = False
         cls.debug_gdbserver = False
+        cls.debug_all = False
         if d is None:
             return
         dl = d.lower()
         if dl == "core":
             cls.debug_core = True
-        elif dl == "gdb":
+        elif dl == "gdb" or dl == "gdb-all":
             cls.debug_gdb = True
-        elif dl == "gdbserver":
+        elif dl == "gdbserver" or dl == "gdbserver-all":
             cls.debug_gdbserver = True
         else:
             raise Exception("Unrecognized DEBUG option: '%s'" % d)
+        if dl == "gdb-all" or dl == "gdbserver-all":
+            cls.debug_all = True
 
     @staticmethod
     def get_least_used_cpu():
@@ -401,17 +405,20 @@ class VppTestCase(unittest.TestCase):
             cls.logger.debug("Spawned VPP with PID: %d" % cls.vpp.pid)
             return
         print(single_line_delim)
-        print("You can debug the VPP using e.g.:")
+        print("You can debug VPP using:")
         if cls.debug_gdbserver:
             print("sudo gdb " + cls.vpp_bin +
-                  " -ex 'target remote localhost:7777'")
-            print("Now is the time to attach a gdb by running the above "
-                  "command, set up breakpoints etc. and then resume VPP from "
+                  " -ex 'target remote localhost:{port}'"
+                  .format(port=cls.gdbserver_port))
+            print("Now is the time to attach gdb by running the above "
+                  "command, set up breakpoints etc., then resume VPP from "
                   "within gdb by issuing the 'continue' command")
+            cls.gdbserver_port += 1
         elif cls.debug_gdb:
             print("sudo gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
-            print("Now is the time to attach a gdb by running the above "
-                  "command and set up breakpoints etc.")
+            print("Now is the time to attach gdb by running the above "
+                  "command and set up breakpoints etc., then resume VPP from"
+                  " within gdb by issuing the 'continue' command")
         print(single_line_delim)
         input("Press ENTER to continue running the testcase...")
 
@@ -426,7 +433,8 @@ class VppTestCase(unittest.TestCase):
                 raise Exception("gdbserver binary '%s' does not exist or is "
                                 "not executable" % gdbserver)
 
-            cmdline = [gdbserver, 'localhost:7777'] + cls.vpp_cmdline
+            cmdline = [gdbserver, 'localhost:{port}'
+                       .format(port=cls.gdbserver_port)] + cls.vpp_cmdline
             cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
 
         try:
@@ -583,6 +591,7 @@ class VppTestCase(unittest.TestCase):
         if (cls.debug_gdbserver or cls.debug_gdb) and hasattr(cls, 'vpp'):
             cls.vpp.poll()
             if cls.vpp.returncode is None:
+                print()
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
@@ -1490,11 +1499,55 @@ class Worker(Thread):
     def __init__(self, args, logger, env=None):
         self.logger = logger
         self.args = args
+        if hasattr(self, 'testcase') and self.testcase.debug_all:
+            if self.testcase.debug_gdbserver:
+                self.args = ['/usr/bin/gdbserver', 'localhost:{port}'
+                             .format(port=self.testcase.gdbserver_port)] + args
+            elif self.testcase.debug_gdb and hasattr(self, 'wait_for_gdb'):
+                self.args.append(self.wait_for_gdb)
+        self.app_bin = args[0]
+        self.app_name = os.path.basename(self.app_bin)
+        if hasattr(self, 'role'):
+            self.app_name += ' {role}'.format(role=self.role)
         self.process = None
         self.result = None
         env = {} if env is None else env
         self.env = copy.deepcopy(env)
         super(Worker, self).__init__()
+
+    def wait_for_enter(self):
+        if not hasattr(self, 'testcase'):
+            return
+        if self.testcase.debug_all and self.testcase.debug_gdbserver:
+            print()
+            print(double_line_delim)
+            print("Spawned GDB Server for '{app}' with PID: {pid}"
+                  .format(app=self.app_name, pid=self.process.pid))
+        elif self.testcase.debug_all and self.testcase.debug_gdb:
+            print()
+            print(double_line_delim)
+            print("Spawned '{app}' with PID: {pid}"
+                  .format(app=self.app_name, pid=self.process.pid))
+        else:
+            return
+        print(single_line_delim)
+        print("You can debug '{app}' using:".format(app=self.app_name))
+        if self.testcase.debug_gdbserver:
+            print("sudo gdb " + self.app_bin +
+                  " -ex 'target remote localhost:{port}'"
+                  .format(port=self.testcase.gdbserver_port))
+            print("Now is the time to attach gdb by running the above "
+                  "command, set up breakpoints etc., then resume from "
+                  "within gdb by issuing the 'continue' command")
+            self.testcase.gdbserver_port += 1
+        elif self.testcase.debug_gdb:
+            print("sudo gdb " + self.app_bin +
+                  " -ex 'attach {pid}'".format(pid=self.process.pid))
+            print("Now is the time to attach gdb by running the above "
+                  "command and set up breakpoints etc., then resume from"
+                  " within gdb by issuing the 'continue' command")
+        print(single_line_delim)
+        input("Press ENTER to continue running the testcase...")
 
     def run(self):
         executable = self.args[0]
@@ -1505,22 +1558,26 @@ class Worker(Thread):
             self.result = os.EX_OSFILE
             raise EnvironmentError(
                 "executable '%s' is not found or executable." % executable)
-        self.logger.debug("Running executable w/args `%s'" % self.args)
+        self.logger.debug("Running executable: '{app}'"
+                          .format(app=' '.join(self.args)))
         env = os.environ.copy()
         env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
         self.process = subprocess.Popen(
             self.args, shell=False, env=env, preexec_fn=os.setpgrp,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.wait_for_enter()
         out, err = self.process.communicate()
-        self.logger.debug("Finished running `%s'" % executable)
+        self.logger.debug("Finished running `{app}'".format(app=self.app_name))
         self.logger.info("Return code is `%s'" % self.process.returncode)
         self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stdout:" % executable)
+        self.logger.info("Executable `{app}' wrote to stdout:"
+                         .format(app=self.app_name))
         self.logger.info(single_line_delim)
         self.logger.info(out)
         self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stderr:" % executable)
+        self.logger.info("Executable `{app}' wrote to stderr:"
+                         .format(app=self.app_name))
         self.logger.info(single_line_delim)
         self.logger.info(err)
         self.logger.info(single_line_delim)
