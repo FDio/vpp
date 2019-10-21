@@ -687,7 +687,7 @@ class TestIPNull(VppTestCase):
                            dst=self.pg0.local_mac) /
                      IP(src=self.pg0.remote_ip4, dst="10.0.0.1") /
                      UDP(sport=1234, dport=1234) /
-                     Raw('\xa5' * 100))
+                     Raw(b'\xa5' * 100))
         self.pg0.add_stream(p_unreach)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -720,7 +720,7 @@ class TestIPNull(VppTestCase):
                             dst=self.pg0.local_mac) /
                       IP(src=self.pg0.remote_ip4, dst="10.0.0.2") /
                       UDP(sport=1234, dport=1234) /
-                      Raw('\xa5' * 100))
+                      Raw(b'\xa5' * 100))
 
         self.pg0.add_stream(p_prohibit)
         self.pg_enable_capture(self.pg_interfaces)
@@ -743,7 +743,7 @@ class TestIPNull(VppTestCase):
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst="1.1.1.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         r1 = VppIpRoute(self, "1.1.1.0", 24,
                         [VppRoutePath(self.pg1.remote_ip4,
@@ -819,12 +819,12 @@ class TestIPDisabled(VppTestCase):
                     dst=self.pg1.local_mac) /
               IP(src="10.10.10.10", dst=self.pg0.remote_ip4) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         pm = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
               IP(src="10.10.10.10", dst="232.1.1.1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         #
         # PG1 does not forward IP traffic
@@ -908,7 +908,7 @@ class TestIPSubNets(VppTestCase):
                    dst=self.pg1.local_mac) /
              IP(dst="10.10.10.10", src=self.pg0.local_ip4) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -928,12 +928,12 @@ class TestIPSubNets(VppTestCase):
                     dst=self.pg1.local_mac) /
               IP(dst="10.10.0.0", src=self.pg0.local_ip4) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         pb = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
               IP(dst="10.10.255.255", src=self.pg0.local_ip4) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg1, pn, "IP Network address")
         self.send_and_assert_no_replies(self.pg1, pb, "IP Broadcast address")
@@ -966,7 +966,7 @@ class TestIPSubNets(VppTestCase):
                     dst=self.pg1.local_mac) /
               IP(dst="10.10.10.11", src=self.pg0.local_ip4) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1052,7 +1052,7 @@ class TestIPLoadBalance(VppTestCase):
         for ii in range(NUM_PKTS):
             port_ip_hdr = (IP(dst="10.0.0.1", src="20.0.0.1") /
                            UDP(sport=1234, dport=1234 + ii) /
-                           Raw('\xa5' * 100))
+                           Raw(b'\xa5' * 100))
             port_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                        dst=self.pg0.local_mac) /
                                  port_ip_hdr))
@@ -1063,7 +1063,7 @@ class TestIPLoadBalance(VppTestCase):
 
             src_ip_hdr = (IP(dst="10.0.0.1", src="20.0.0.%d" % ii) /
                           UDP(sport=1234, dport=1234) /
-                          Raw('\xa5' * 100))
+                          Raw(b'\xa5' * 100))
             src_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                       dst=self.pg0.local_mac) /
                                 src_ip_hdr))
@@ -1132,12 +1132,12 @@ class TestIPLoadBalance(VppTestCase):
                                     dst=self.pg0.local_mac) /
                               IP(dst="1.1.1.1", src="20.0.0.1") /
                               UDP(sport=1234, dport=1234 + ii) /
-                              Raw('\xa5' * 100)))
+                              Raw(b'\xa5' * 100)))
             src_pkts.append((Ether(src=self.pg0.remote_mac,
                                    dst=self.pg0.local_mac) /
                              IP(dst="1.1.1.1", src="20.0.0.%d" % ii) /
                              UDP(sport=1234, dport=1234) /
-                             Raw('\xa5' * 100)))
+                             Raw(b'\xa5' * 100)))
 
         route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
                                     [VppRoutePath(self.pg3.remote_ip4,
@@ -1220,7 +1220,7 @@ class TestIPLoadBalance(VppTestCase):
                                     dst=self.pg0.local_mac) /
                               IP(dst="1.1.1.2", src="20.0.0.2") /
                               UDP(sport=1234, dport=1234 + ii) /
-                              Raw('\xa5' * 100)))
+                              Raw(b'\xa5' * 100)))
 
         route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
                                     [VppRoutePath(self.pg3.remote_ip4,
@@ -1256,7 +1256,7 @@ class TestIPLoadBalance(VppTestCase):
                                    dst=self.pg0.local_mac) /
                              IP(dst="10.0.0.3", src="20.0.0.2") /
                              UDP(sport=1234, dport=1234 + ii) /
-                             Raw('\xa5' * 100))
+                             Raw(b'\xa5' * 100))
 
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg4)
 
@@ -1308,7 +1308,7 @@ class TestIPVlan0(VppTestCase):
                 IP(dst=self.pg1.remote_ip4,
                    src=self.pg0.remote_ip4) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100)) * NUM_PKTS
+                Raw(b'\xa5' * 100)) * NUM_PKTS
 
         #
         # Expect that packets sent on VLAN-0 are forwarded on the
@@ -1369,7 +1369,7 @@ class TestIPPunt(VppTestCase):
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         pkts = p * 1025
 
@@ -1534,12 +1534,12 @@ class TestIPDeag(VppTestCase):
                        dst=self.pg0.local_mac) /
                  IP(src="5.5.5.5", dst="1.1.1.1") /
                  TCP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
         p_src = (Ether(src=self.pg0.remote_mac,
                        dst=self.pg0.local_mac) /
                  IP(src="2.2.2.2", dst="1.1.1.2") /
                  TCP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
         pkts_dst = p_dst * 257
         pkts_src = p_src * 257
 
@@ -1582,7 +1582,7 @@ class TestIPDeag(VppTestCase):
                      dst=self.pg0.local_mac) /
                IP(src="2.2.2.4", dst="2.2.2.3") /
                TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))
+               Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, p_l * 257,
                                         "IP lookup loop")
@@ -1630,7 +1630,7 @@ class TestIPInput(VppTestCase):
                       dst=self.pg1.remote_ip4,
                       len=40) /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg0, p_short * NUM_PKTS, self.pg1)
 
@@ -1643,7 +1643,7 @@ class TestIPInput(VppTestCase):
                      dst=self.pg1.remote_ip4,
                      len=400) /
                   UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
+                  Raw(b'\xa5' * 100))
 
         rx = self.send_and_assert_no_replies(self.pg0, p_long * NUM_PKTS,
                                              "too long")
@@ -1657,7 +1657,7 @@ class TestIPInput(VppTestCase):
                        dst=self.pg1.remote_ip4,
                        chksum=400) /
                     UDP(sport=1234, dport=1234) /
-                    Raw('\xa5' * 100))
+                    Raw(b'\xa5' * 100))
 
         rx = self.send_and_assert_no_replies(self.pg0, p_chksum * NUM_PKTS,
                                              "bad checksum")
@@ -1671,7 +1671,7 @@ class TestIPInput(VppTestCase):
                     dst=self.pg1.remote_ip4,
                     version=3) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
         rx = self.send_and_assert_no_replies(self.pg0, p_ver * NUM_PKTS,
                                              "funky version")
@@ -1685,7 +1685,7 @@ class TestIPInput(VppTestCase):
                      dst=self.pg1.remote_ip4,
                      frag=1) /
                   UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
+                  Raw(b'\xa5' * 100))
 
         rx = self.send_and_assert_no_replies(self.pg0, p_frag * NUM_PKTS,
                                              "frag offset")
@@ -1699,7 +1699,7 @@ class TestIPInput(VppTestCase):
                     dst=self.pg1.remote_ip4,
                     ttl=1) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg0, p_ttl * NUM_PKTS, self.pg0)
 
@@ -1721,7 +1721,7 @@ class TestIPInput(VppTestCase):
                     dst=self.pg1.remote_ip4,
                     ttl=10, flags='DF') /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 2000))
+                 Raw(b'\xa5' * 2000))
 
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1500, 0, 0, 0])
 
@@ -1749,7 +1749,7 @@ class TestIPInput(VppTestCase):
                 IP(src="0.0.0.0",
                    dst=self.pg0.local_ip4) /
                 ICMP(id=4, seq=4) /
-                Raw(load='\x0a' * 18))
+                Raw(load=b'\x0a' * 18))
         rx = self.send_and_assert_no_replies(self.pg0, p_s0 * 17)
 
         p_s0 = (Ether(src=self.pg0.remote_mac,
@@ -1757,7 +1757,7 @@ class TestIPInput(VppTestCase):
                 IP(src="255.255.255.255",
                    dst=self.pg0.local_ip4) /
                 ICMP(id=4, seq=4) /
-                Raw(load='\x0a' * 18))
+                Raw(load=b'\x0a' * 18))
         rx = self.send_and_assert_no_replies(self.pg0, p_s0 * 17)
 
 
@@ -1799,13 +1799,13 @@ class TestIPDirectedBroadcast(VppTestCase):
               IP(src="1.1.1.1",
                  dst=self.pg0._local_ip4_bcast) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 2000))
+              Raw(b'\xa5' * 2000))
         p1 = (Ether(src=self.pg0.remote_mac,
                     dst=self.pg0.local_mac) /
               IP(src="1.1.1.1",
                  dst=self.pg1._local_ip4_bcast) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 2000))
+              Raw(b'\xa5' * 2000))
 
         self.pg0.config_ip4()
         self.pg0.resolve_arp()
@@ -1881,13 +1881,13 @@ class TestIPLPM(VppTestCase):
                IP(src="1.1.1.1",
                   dst="10.1.1.1") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 2000))
+               Raw(b'\xa5' * 2000))
         p_24 = (Ether(src=self.pg0.remote_mac,
                       dst=self.pg0.local_mac) /
                 IP(src="1.1.1.1",
                    dst="10.1.2.1") /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 2000))
+                Raw(b'\xa5' * 2000))
 
         self.logger.info(self.vapi.cli("sh ip fib mtrie"))
         rx = self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
