@@ -668,7 +668,8 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
 }
 
 static inline int
-session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
+session_stream_connect_notify_inline (transport_connection_t * tc,
+				      session_error_t err,
 				      session_state_t opened_state)
 {
   u32 opaque = 0, new_ti, new_si;
@@ -696,8 +697,8 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 
   opaque = tc->s_index;
 
-  if (is_fail)
-    return app_worker_connect_notify (app_wrk, s, opaque);
+  if (err)
+    return app_worker_connect_notify (app_wrk, s, err, opaque);
 
   s = session_alloc_for_connection (tc);
   s->session_state = SESSION_STATE_CONNECTING;
@@ -705,10 +706,10 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
   new_si = s->session_index;
   new_ti = s->thread_index;
 
-  if (app_worker_init_connected (app_wrk, s))
+  if ((err = app_worker_init_connected (app_wrk, s)))
     {
       session_free (s);
-      app_worker_connect_notify (app_wrk, 0, opaque);
+      app_worker_connect_notify (app_wrk, 0, err, opaque);
       return -1;
     }
 
@@ -716,7 +717,7 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
   s->session_state = opened_state;
   session_lookup_add_connection (tc, session_handle (s));
 
-  if (app_worker_connect_notify (app_wrk, s, opaque))
+  if (app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque))
     {
       s = session_get (new_si, new_ti);
       session_free_w_fifos (s);
@@ -727,17 +728,17 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 }
 
 int
-session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_stream_connect_notify (transport_connection_t * tc,
+			       session_error_t err)
 {
-  return session_stream_connect_notify_inline (tc, is_fail,
-					       SESSION_STATE_READY);
+  return session_stream_connect_notify_inline (tc, err, SESSION_STATE_READY);
 }
 
 int
-session_ho_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_ho_stream_connect_notify (transport_connection_t * tc,
+				  session_error_t err)
 {
-  return session_stream_connect_notify_inline (tc, is_fail,
-					       SESSION_STATE_OPENED);
+  return session_stream_connect_notify_inline (tc, err, SESSION_STATE_OPENED);
 }
 
 typedef struct _session_switch_pool_args
@@ -1041,7 +1042,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   sh = session_handle (s);
   session_lookup_add_connection (tc, sh);
-  return app_worker_connect_notify (app_wrk, s, opaque);
+  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque);
 }
 
 int

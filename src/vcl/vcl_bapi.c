@@ -33,7 +33,7 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-u8 *
+static u8 *
 format_api_error (u8 * s, va_list * args)
 {
   i32 error = va_arg (*args, u32);
