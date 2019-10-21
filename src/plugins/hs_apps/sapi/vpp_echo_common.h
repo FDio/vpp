@@ -304,6 +304,7 @@ typedef struct
   data_source_t data_source;	/* Use no/dummy/mirrored data */
   u8 send_stream_disconnects;	/* actively send disconnect */
   u8 output_json;		/* Output stats as JSON */
+  volatile u8 wait_for_gdb;	/* Wait for gdb to attach */
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
