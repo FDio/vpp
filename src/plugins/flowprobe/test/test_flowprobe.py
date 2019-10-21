@@ -18,7 +18,8 @@ from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from vpp_ip_route import VppIpRoute, VppRoutePath
-
+from vpp_papi.macaddress import mac_ntop
+from socket import inet_ntop
 
 class VppCFLOW(VppObject):
     """CFLOW object for IPFIX exporter and Flowprobe feature"""
@@ -438,11 +439,9 @@ class Flowprobe(MethodHolder):
             # packets
             self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
             # src mac
-            self.assertEqual(':'.join(re.findall('..', record[56].encode(
-                'hex'))), self.pg8.local_mac)
+            self.assertEqual(mac_ntop(record[56]), self.pg8.local_mac)
             # dst mac
-            self.assertEqual(':'.join(re.findall('..', record[80].encode(
-                'hex'))), self.pg8.remote_mac)
+            self.assertEqual(mac_ntop(record[80]), self.pg8.remote_mac)
             flowTimestamp = int(binascii.hexlify(record[156]), 16) >> 32
             # flow start timestamp
             self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
@@ -452,15 +451,9 @@ class Flowprobe(MethodHolder):
             # ethernet type
             self.assertEqual(int(binascii.hexlify(record[256]), 16), 8)
             # src ip
-            self.assertEqual('.'.join(re.findall('..', record[8].encode(
-                                      'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
-                                      self.pg7.remote_ip4.split('.')))
+            self.assertEqual(inet_ntop(socket.AF_INET, record[8]), self.pg7.remote_ip4)
             # dst ip
-            self.assertEqual('.'.join(re.findall('..', record[12].encode(
-                                      'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
-                                      "9.0.0.100".split('.')))
+            self.assertEqual(inet_ntop(socket.AF_INET, record[12]), "9.0.0.100")
             # protocol (TCP)
             self.assertEqual(int(binascii.hexlify(record[4]), 16), 6)
             # src port
