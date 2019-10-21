@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e795150b_94b4c6e1",
+        "filename": "test/test_tls.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:25:01Z",
+      "side": 1,
+      "message": "The commands module has been removed in Python 3. Use the subprocess module instead.",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 15
+      },
+      "revId": "85e4e1ec64bf18a6d366fabb58b2a5c1e738e797",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
