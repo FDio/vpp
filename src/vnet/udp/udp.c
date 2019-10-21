@@ -296,19 +296,18 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   ip46_address_t lcl_addr;
   u32 node_index;
   u16 lcl_port;
+  int rv;
 
-  if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
-				      &lcl_port))
-    return -1;
+  rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
+				       &lcl_port);
+  if (rv)
+    return rv;
 
   while (udp_get_dst_port_info (um, lcl_port, rmt->is_ip4))
     {
       lcl_port = transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr);
       if (lcl_port < 1)
-	{
-	  clib_warning ("Failed to allocate src port");
-	  return -1;
-	}
+	return SESSION_E_PORTINUSE;
     }
 
   node_index = rmt->is_ip4 ? udp4_input_node.index : udp6_input_node.index;

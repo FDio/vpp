@@ -125,7 +125,7 @@ int tls_add_vpp_q_tx_evt (session_t * s);
 int tls_add_vpp_q_builtin_tx_evt (session_t * s);
 int tls_add_vpp_q_builtin_rx_evt (session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
-int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
+int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 void tls_disconnect_transport (tls_ctx_t * ctx);
 #endif /* SRC_VNET_TLS_TLS_H_ */
