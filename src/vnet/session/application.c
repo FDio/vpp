@@ -1004,7 +1004,7 @@ vnet_connect (vnet_connect_args_t * a)
   ASSERT (vlib_thread_is_main_w_barrier ());
 
   if (session_endpoint_is_zero (&a->sep))
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID_RMT_IP;
 
   client = application_get (a->app_index);
   session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
@@ -1024,13 +1024,12 @@ vnet_connect (vnet_connect_args_t * a)
       rv = app_worker_connect_session (client_wrk, &a->sep, a->api_context);
       if (rv <= 0)
 	return rv;
+      a->sep_ext.transport_proto = a->sep_ext.original_tp;
     }
   /*
    * Not connecting to a local server, propagate to transport
    */
-  if (app_worker_connect_session (client_wrk, &a->sep, a->api_context))
-    return VNET_API_ERROR_SESSION_CONNECT;
-  return 0;
+  return app_worker_connect_session (client_wrk, &a->sep, a->api_context);
 }
 
 int
