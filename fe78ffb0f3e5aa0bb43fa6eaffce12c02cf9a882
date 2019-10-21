@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9655db0_7d1188cc",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:34:59Z",
+      "side": 1,
+      "message": "Should this be an enum of the features?",
+      "range": {
+        "startLine": 102,
+        "startChar": 2,
+        "endLine": 102,
+        "endChar": 15
+      },
+      "revId": "fe78ffb0f3e5aa0bb43fa6eaffce12c02cf9a882",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd972217_947ebf8d",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:34:59Z",
+      "side": 1,
+      "message": "Not in docstring.",
+      "range": {
+        "startLine": 106,
+        "startChar": 2,
+        "endLine": 106,
+        "endChar": 17
+      },
+      "revId": "fe78ffb0f3e5aa0bb43fa6eaffce12c02cf9a882",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f1d1e50b_d9c9f8f6",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:34:59Z",
+      "side": 1,
+      "message": "should this take sw_if_index [default \u003d 0xffffffff] and filter results based on it?",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 112,
+        "endChar": 14
+      },
+      "revId": "fe78ffb0f3e5aa0bb43fa6eaffce12c02cf9a882",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
