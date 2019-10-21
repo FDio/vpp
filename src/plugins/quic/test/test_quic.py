@@ -106,11 +106,12 @@ class QUICTestCase(VppTestCase):
 
 class QUICEchoIntTestCase(QUICTestCase):
     """QUIC Echo Internal Test Case"""
+    test_bytes = ' test-bytes'
 
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
-        self.client_args = "uri %s fifo-size 64 test-bytes appns client" \
-            % self.uri
+        self.client_args = 'uri {uri} fifo-size 64{testbytes} appns client' \
+            .format(uri=self.uri, testbytes=self.test_bytes)
         self.server_args = "uri %s fifo-size 64 appns server" % self.uri
 
     def server(self, *args):
@@ -137,6 +138,16 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
         self.client("no-output", "mbytes", "2")
 
 
+class QUICEchoIntTransferBigTestCase(QUICEchoIntTestCase):
+    """QUIC Echo Internal Transfer Big Test Case"""
+    test_bytes = ''
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_int_transfer_big(self):
+        self.server()
+        self.client("no-output", "gbytes", "10")
+
+
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
     def test_quic_serial_int_transfer(self):
@@ -148,6 +159,19 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
         self.client("no-output", "mbytes", "2")
 
 
+class QUICEchoIntSerialBigTestCase(QUICEchoIntTestCase):
+    """QUIC Echo Internal Serial Transfer Big Test Case"""
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_serial_int_transfer_big(self):
+        self.server()
+        self.client("no-output", "gbytes", "5")
+        self.client("no-output", "gbytes", "5")
+        self.client("no-output", "gbytes", "5")
+        self.client("no-output", "gbytes", "5")
+        self.client("no-output", "gbytes", "5")
+
+
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
     def test_quic_int_multistream_transfer(self):
@@ -155,9 +179,19 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
         self.client("nclients", "10", "mbytes", "1", "no-output")
 
 
+class QUICEchoIntMStreamBigTestCase(QUICEchoIntTestCase):
+    """QUIC Echo Internal MultiStream Big Test Case"""
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_int_multistream_transfer(self):
+        self.server()
+        self.client("nclients", "10", "gbytes", "5", "no-output")
+
+
 class QUICEchoExtTestCase(QUICTestCase):
     extra_vpp_punt_config = ["session", "{", "evt_qs_memfd_seg", "}"]
     quic_setup = "default"
+    test_bytes = "test-bytes:assert"
     app = "vpp_echo"
 
     def setUp(self):
@@ -166,15 +200,14 @@ class QUICEchoExtTestCase(QUICTestCase):
             "uri",
             self.uri,
             "json",
-            "fifo-size",
-            "64",
-            "test-bytes:assert",
-            "socket-name",
-            self.api_sock]
+            "fifo-size", "64",
+            self.test_bytes,
+            "socket-name", self.api_sock,
+            "quic-setup", self.quic_setup]
         self.server_echo_test_args = common_args + \
-            ["server", "appns", "server", "quic-setup", self.quic_setup]
+            ["server", "appns", "server"]
         self.client_echo_test_args = common_args + \
-            ["client", "appns", "client", "quic-setup", self.quic_setup]
+            ["client", "appns", "client"]
         error = self.vapi.cli(
             "quic set fifo-size 4Mb")
         if error:
@@ -195,7 +228,6 @@ class QUICEchoExtTestCase(QUICTestCase):
 
     def client(self, *args):
         _args = self.client_echo_test_args + list(args)
-        # self.client_echo_test_args += "use-svm-api"
         self.worker_client = QUICAppWorker(
             self.build_dir,
             self.app,
@@ -238,6 +270,17 @@ class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     def test_quic_ext_transfer(self):
         self.server()
         self.client()
+        self.validate_ext_test_results()
+
+
+class QUICEchoExtTransferBigTestCase(QUICEchoExtTestCase):
+    """QUIC Echo External Transfer Big Test Case"""
+    test_bytes = ''
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_ext_transfer_big(self):
+        self.server("TX=0", "RX=10Gb")
+        self.client("TX=10Gb", "RX=0")
         self.validate_ext_test_results()
 
 
@@ -333,6 +376,18 @@ class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     def test_quic_ext_transfer_server_stream(self):
         self.server("TX=10Mb", "RX=0")
         self.client("TX=0", "RX=10Mb")
+        self.validate_ext_test_results()
+
+
+class QUICEchoExtBigServerStreamTestCase(QUICEchoExtTestCase):
+    """QUIC Echo External Transfer Big Server Stream Test Case"""
+    quic_setup = "serverstream"
+    test_bytes = ''
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_ext_transfer_big_server_stream(self):
+        self.server("TX=10Gb", "RX=0")
+        self.client("TX=0", "RX=10Gb")
         self.validate_ext_test_results()
 
 
