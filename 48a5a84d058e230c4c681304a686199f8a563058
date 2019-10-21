@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c04736f_aecadba5",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:44:32Z",
+      "side": 1,
+      "message": "Should this be filterable on sw_if_index?",
+      "range": {
+        "startLine": 169,
+        "startChar": 7,
+        "endLine": 169,
+        "endChar": 28
+      },
+      "revId": "48a5a84d058e230c4c681304a686199f8a563058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e80d31f_f03ca1e9",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:44:32Z",
+      "side": 1,
+      "message": "Same. sw_if_index?",
+      "range": {
+        "startLine": 344,
+        "startChar": 7,
+        "endLine": 344,
+        "endChar": 26
+      },
+      "revId": "48a5a84d058e230c4c681304a686199f8a563058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ee6ef7be_1b0252b1",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-21T15:44:32Z",
+      "side": 1,
+      "message": "Can you move these defaults to the .api as [default \u003d \u003cval\u003e]?",
+      "range": {
+        "startLine": 45,
+        "startChar": 3,
+        "endLine": 54,
+        "endChar": 75
+      },
+      "revId": "48a5a84d058e230c4c681304a686199f8a563058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
