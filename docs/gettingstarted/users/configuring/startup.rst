@@ -1328,7 +1328,7 @@ meaning the NAT is not deterministic.
    deterministic
 
 nat64 bib hash buckets <n>
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sets the number of hash buckets in each of the two in/out NAT64 BIB bi-hash
 tables. Defaults to 1024 buckets.
@@ -1338,7 +1338,7 @@ tables. Defaults to 1024 buckets.
    nat64 bib hash buckets 1024
 
 nat64 bib hash memory <n>
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sets the allocated memory size (in bytes) for each of the two in/out NAT64
 BIB bi-hash tables. Defaults to 134217728 (128 << 20) bytes,
@@ -1349,7 +1349,7 @@ which is roughly 128 MB.
    nat64 bib hash memory 134217728
 
 nat64 st hash buckets <n>
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sets the number of hash buckets in each of the two in/out NAT64 session table
 bi-hash tables. Defaults to 2048 buckets.
@@ -1359,7 +1359,7 @@ bi-hash tables. Defaults to 2048 buckets.
    nat64 st hash buckets 2048
 
 nat64 st hash memory <n>
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sets the allocated memory size (in bytes) for each of the two in/out NAT64 session
 table bi-hash tables. Defaults to 268435456 (256 << 20) bytes, which is roughly
@@ -1396,6 +1396,32 @@ Default is 2.04 seconds.
 .. code-block:: console
 
    interval 3.5
+
+physmem Section
+---------------
+
+Configuration parameters used to specify base address and maximum size of
+the memory allocated for the pmalloc module in VPP. pmalloc is a NUMA-aware,
+growable physical memory allocator. pmalloc allocates memory for the DPDK
+memory pool.
+
+base-addr <address>
+^^^^^^^^^^^^^^^^^^^
+
+Specify the base address for pmalloc memory space.
+
+.. code-block:: console
+
+    base-addr 0xfffe00000000
+
+max-size <n>G | <n>M | <n>K | <n>
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the memory size for pmalloc memory space. The default is 16G.
+
+.. code-block:: console
+
+    max-size 4G
 
 tapcli Section
 --------------
