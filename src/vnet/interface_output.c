@@ -38,6 +38,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/gso/gso.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
@@ -163,20 +164,23 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 {
   tcp_header_t *th;
   udp_header_t *uh;
+  gso_header_offset_t gho = { 0 };
 
   int is_ip4 = (b->flags & VNET_BUFFER_F_IS_IP4) != 0;
   int is_ip6 = (b->flags & VNET_BUFFER_F_IS_IP6) != 0;
 
   ASSERT (!(is_ip4 && is_ip6));
 
-  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  gho = vnet_gso_header_offset_parser (b);
+  th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+  uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
 
   if (is_ip4)
     {
       ip4_header_t *ip4;
 
-      ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      ip4 =
+	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
       if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
 	ip4->checksum = ip4_header_checksum (ip4);
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -192,7 +196,8 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
       int bogus;
       ip6_header_t *ip6;
 
-      ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      ip6 =
+	(ip6_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
 	{
 	  th->checksum = 0;

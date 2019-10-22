@@ -20,6 +20,17 @@
 
 typedef struct
 {
+  i16 l2_hdr_offset;
+  i16 l3_hdr_offset;
+  i16 l4_hdr_offset;
+  u16 l4_hdr_sz;
+  i16 outer_l2_hdr_offset;
+  i16 outer_l3_hdr_offset;
+  i16 outer_l4_hdr_offset;
+} gso_header_offset_t;
+
+typedef struct
+{
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   u16 msg_id_base;
@@ -27,6 +38,7 @@ typedef struct
 
 extern gso_main_t gso_main;
 
+extern gso_header_offset_t vnet_gso_header_offset_parser (vlib_buffer_t * b0);
 int vnet_sw_interface_gso_enable_disable (u32 sw_if_index, u8 enable);
 
 #endif /* included_gso_h */

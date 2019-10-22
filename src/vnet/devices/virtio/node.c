@@ -145,11 +145,11 @@ static_always_inline void
 fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 {
   u8 l4_proto = 0;
-  u8 l4_hdr_sz = 0;
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 
     {
-      ethernet_header_t *eh = (ethernet_header_t *) b0->data;
+      ethernet_header_t *eh =
+	(ethernet_header_t *) vlib_buffer_get_current (b0);
       u16 ethertype = clib_net_to_host_u16 (eh->type);
       u16 l2hdr_sz = sizeof (ethernet_header_t);
 
@@ -167,47 +167,29 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 	    }
 	}
 
-      vnet_buffer (b0)->l2_hdr_offset = 0;
-      vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
       if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
 	{
-	  ip4_header_t *ip4 = (ip4_header_t *) (b0->data + l2hdr_sz);
-	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+	  ip4_header_t *ip4 =
+	    (ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
 	  l4_proto = ip4->protocol;
 	  b0->flags |=
-	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID
-	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
 	{
-	  ip6_header_t *ip6 = (ip6_header_t *) (b0->data + l2hdr_sz);
+	  ip6_header_t *ip6 =
+	    (ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
 	  /* FIXME IPv6 EH traversal */
-	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
 	  l4_proto = ip6->protocol;
-	  b0->flags |=
-	    (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID
-	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+	  b0->flags |= VNET_BUFFER_F_IS_IP6;
 	}
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
 	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-	  tcp_header_t *tcp = (tcp_header_t *) (b0->data +
-						vnet_buffer
-						(b0)->l4_hdr_offset);
-	  l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
 	}
       else if (l4_proto == IP_PROTOCOL_UDP)
 	{
 	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-	  udp_header_t *udp = (udp_header_t *) (b0->data +
-						vnet_buffer
-						(b0)->l4_hdr_offset);
-	  l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
 	}
     }
 
@@ -215,20 +197,15 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
     {
       ASSERT (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM);
       vnet_buffer2 (b0)->gso_size = hdr->gso_size;
-      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
-      b0->flags |= VNET_BUFFER_F_GSO;
-      b0->flags |= VNET_BUFFER_F_IS_IP4;
+      b0->flags |= VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4;
     }
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV6)
     {
       ASSERT (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM);
       vnet_buffer2 (b0)->gso_size = hdr->gso_size;
-      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
-      b0->flags |= VNET_BUFFER_F_GSO;
-      b0->flags |= VNET_BUFFER_F_IS_IP6;
+      b0->flags |= VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6;
     }
 }
-
 
 static_always_inline uword
 virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
