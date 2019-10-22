@@ -160,16 +160,21 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 #define vec_max_len(v) (vec_capacity(v,0) / sizeof (v[0]))
 
 /** \brief Set vector length to a user-defined value */
+#ifndef __COVERITY__		/* Coverity gets confused by ASSERT() */
 #define vec_set_len(v, l) do {     \
     ASSERT(v);                     \
     ASSERT((l) <= vec_max_len(v)); \
     _vec_len(v) = (l);             \
 } while (0)
+#else /* __COVERITY__ */
+#define vec_set_len(v, l) do {     \
+    _vec_len(v) = (l);             \
+} while (0)
+#endif /* __COVERITY__ */
 
 /** \brief Reset vector length to zero
     NULL-pointer tolerant
 */
-
 #define vec_reset_length(v) do { if (v) vec_set_len (v, 0); } while (0)
 
 /** \brief End (last data address) of vector. */
