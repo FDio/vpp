@@ -66,13 +66,28 @@ class TestDefaults(unittest.TestCase):
     def test_defaults(self):
         default_type = VPPType('default_type_t',
                                [['u16', 'mtu', {'default': 1500, 'limit': 0}]])
+        without_default_type = VPPType('without_default_type_t',
+                                       [['u16', 'mtu']])
 
         b = default_type.pack({})
         self.assertEqual(len(b), 2)
-
         nt, size = default_type.unpack(b)
         self.assertEqual(len(b), size)
         self.assertEqual(nt.mtu, 1500)
+
+        # distinguish between parameter 0 and parameter not passed
+        b = default_type.pack({'mtu': 0})
+        self.assertEqual(len(b), 2)
+        nt, size = default_type.unpack(b)
+        self.assertEqual(len(b), size)
+        self.assertEqual(nt.mtu, 0)
+
+        # Ensure that basetypes does not inherit default
+        b = without_default_type.pack({})
+        self.assertEqual(len(b), 2)
+        nt, size = default_type.unpack(b)
+        self.assertEqual(len(b), size)
+        self.assertEqual(nt.mtu, 0)
 
 
 class TestAddType(unittest.TestCase):

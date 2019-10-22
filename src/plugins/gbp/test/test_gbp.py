@@ -433,7 +433,7 @@ class VppGbpContractNextHop():
 class VppGbpContractRule():
     def __init__(self, action, hash_mode, nhs=None):
         self.action = action
-        self.hash_mode = hash_mode
+        self.hash_mode = 0 if hash_mode == [] else hash_mode
         self.nhs = [] if nhs is None else nhs
 
     def encode(self):
