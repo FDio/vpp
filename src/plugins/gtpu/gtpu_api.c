@@ -105,13 +105,14 @@ static void send_gtpu_tunnel_details
   (gtpu_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_gtpu_tunnel_details_t *rmp;
+  gtpu_main_t *gtm = &gtpu_main;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
   u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_GTPU_TUNNEL_DETAILS);
+  rmp->_vl_msg_id = ntohs (VL_API_GTPU_TUNNEL_DETAILS + gtm->msg_id_base);
   if (is_ipv6)
     {
       memcpy (rmp->src_address, t->src.ip6.as_u8, 16);
