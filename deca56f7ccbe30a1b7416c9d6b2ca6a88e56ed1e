@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2745ca2b_bbbeed4e",
+        "filename": "test/test_tls.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-22T03:29:36Z",
+      "side": 1,
+      "message": "Fix indentation to get past checkstyle gate.",
+      "range": {
+        "startLine": 27,
+        "startChar": 16,
+        "endLine": 27,
+        "endChar": 51
+      },
+      "revId": "deca56f7ccbe30a1b7416c9d6b2ca6a88e56ed1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
