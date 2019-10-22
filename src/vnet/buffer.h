@@ -185,8 +185,9 @@ typedef struct
 	/* reassembly */
 	union
 	{
-	  /* group input/handoff as handoff is done before input is consumed,
-	   * this way we can handoff while keeping input variables intact */
+	  /* group input/output/handoff to simplify the code, this way:
+	   * we can handoff while keeping input variables intact
+	   * and also we can write the output and still use next_index later */
 	  struct
 	  {
 	    /* input variables */
@@ -200,23 +201,23 @@ typedef struct
 	    {
 	      u16 owner_thread_index;
 	    };
-	  };
-	  /* output variables */
-	  struct
-	  {
-	    union
+	    /* output variables */
+	    struct
 	    {
-	      /* shallow virtual reassembly output variables */
-	      struct
+	      union
 	      {
-		u8 ip_proto;	/* protocol in ip header */
-		u16 l4_src_port;	/* tcp/udp/icmp src port */
-		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
-	      };
-	      /* full reassembly output variables */
-	      struct
-	      {
-		u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+		/* shallow virtual reassembly output variables */
+		struct
+		{
+		  u8 ip_proto;	/* protocol in ip header */
+		  u16 l4_src_port;	/* tcp/udp/icmp src port */
+		  u16 l4_dst_port;	/* tcp/udp/icmp dst port */
+		};
+		/* full reassembly output variables */
+		struct
+		{
+		  u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+		};
 	      };
 	    };
 	  };
