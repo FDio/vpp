@@ -368,6 +368,8 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 
       cur = tcp_bt_alloc_tx_sample (tc, start, end);
       cur->flags |= TCP_BTS_IS_RXT;
+      if (bts->flags & TCP_BTS_IS_RXT)
+	cur->flags |= TCP_BTS_IS_RXT_LOST;
       cur->next = next_index;
       cur->prev = prev_index;
 
@@ -408,6 +410,8 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   /* Have to split or tail overlap */
   cur = tcp_bt_alloc_tx_sample (tc, start, end);
   cur->flags |= TCP_BTS_IS_RXT;
+  if (bts->flags & TCP_BTS_IS_RXT)
+    cur->flags |= TCP_BTS_IS_RXT_LOST;
   cur->prev = bts_index;
   cur_index = bt_sample_index (bt, cur);
 
