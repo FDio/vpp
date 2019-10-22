@@ -229,7 +229,7 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 static clib_error_t *
 vhost_user_callfd_read_ready (clib_file_t * uf)
 {
-  __attribute__ ((unused)) int n;
+  __clib_unused int n;
   u8 buff[8];
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
@@ -252,7 +252,7 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 static clib_error_t *
 vhost_user_kickfd_read_ready (clib_file_t * uf)
 {
-  __attribute__ ((unused)) int n;
+  __clib_unused int n;
   u8 buff[8];
   vhost_user_intf_t *vui =
     pool_elt_at_index (vhost_user_main.vhost_user_interfaces,

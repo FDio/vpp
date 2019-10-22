@@ -282,7 +282,7 @@ defaulted:
   else
     {
       {
-	int rv __attribute__ ((unused)) =
+	int rv __clib_unused =
 	  write (2, "Main heap allocation failure!\r\n", 31);
       }
       return 1;
@@ -355,8 +355,7 @@ os_panic (void)
   abort ();
 }
 
-void vhost_user_unmap_all (void) __attribute__ ((weak));
-void
+void __clib_weak
 vhost_user_unmap_all (void)
 {
 }

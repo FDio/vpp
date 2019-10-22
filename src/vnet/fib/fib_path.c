@@ -110,7 +110,7 @@ typedef enum fib_path_type_t_ {
      * Marker. Add new types before this one, then update it.
      */
     FIB_PATH_TYPE_LAST = FIB_PATH_TYPE_BIER_FMASK,
-} __attribute__ ((packed)) fib_path_type_t;
+} __clib_packed fib_path_type_t;
 
 /**
  * The maximum number of path_types
@@ -166,7 +166,7 @@ typedef enum fib_path_oper_attribute_t_ {
      * Marker. Add new types before this one, then update it.
      */
     FIB_PATH_OPER_ATTRIBUTE_LAST = FIB_PATH_OPER_ATTRIBUTE_DROP,
-} __attribute__ ((packed)) fib_path_oper_attribute_t;
+} __clib_packed fib_path_oper_attribute_t;
 
 /**
  * The maximum number of path operational attributes
@@ -193,7 +193,7 @@ typedef enum fib_path_oper_flags_t_ {
     FIB_PATH_OPER_FLAG_DROP = (1 << FIB_PATH_OPER_ATTRIBUTE_DROP),
     FIB_PATH_OPER_FLAG_RESOLVED = (1 << FIB_PATH_OPER_ATTRIBUTE_RESOLVED),
     FIB_PATH_OPER_FLAG_ATTACHED = (1 << FIB_PATH_OPER_ATTRIBUTE_ATTACHED),
-} __attribute__ ((packed)) fib_path_oper_flags_t;
+} __clib_packed fib_path_oper_flags_t;
 
 /**
  * A FIB path

@@ -45,7 +45,7 @@ typedef struct _eid_prefix_record_hdr
 {
   u8 reserved;
   u8 eid_prefix_length;
-} __attribute__ ((__packed__)) eid_record_hdr_t;
+} __clib_packed eid_record_hdr_t;
 
 void eid_rec_hdr_init (eid_record_hdr_t * ptr);
 
@@ -197,7 +197,7 @@ typedef struct
 #endif
   u8 record_count;
   u64 nonce;
-} __attribute__ ((__packed__)) map_request_hdr_t;
+} __clib_packed map_request_hdr_t;
 
 void map_request_hdr_init (void *ptr);
 char *map_request_hdr_to_char (map_request_hdr_t * h);
@@ -267,7 +267,7 @@ typedef struct
   u8 reserved3;
   u8 record_count;
   u64 nonce;
-} __attribute__ ((__packed__)) map_reply_hdr_t;
+} __clib_packed map_reply_hdr_t;
 
 void map_reply_hdr_init (void *ptr);
 char *map_reply_hdr_to_char (map_reply_hdr_t * h);
@@ -339,7 +339,7 @@ typedef struct _locator_hdr
   u8 probed:1;
   u8 reachable:1;
 #endif
-} __attribute__ ((__packed__)) locator_hdr_t;
+} __clib_packed locator_hdr_t;
 
 #define LOC_CAST(h_) ((locator_hdr_t *)(h_))
 #define LOC_PROBED(h_) LOC_CAST(h_)->probed
@@ -401,7 +401,7 @@ typedef struct _mapping_record_hdr_t
   u8 version_hi:4;
 #endif
   u8 version_low;
-} __attribute__ ((__packed__)) mapping_record_hdr_t;
+} __clib_packed mapping_record_hdr_t;
 
 void mapping_record_init_hdr (mapping_record_hdr_t * h);
 
@@ -446,7 +446,7 @@ typedef struct _lcaf_hdr_t
   u8 type;
   u8 reserved2;
   u16 len;
-} __attribute__ ((__packed__)) lcaf_hdr_t;
+} __clib_packed lcaf_hdr_t;
 
 #define LCAF_TYPE(h) ((lcaf_hdr_t *)(h))->type
 #define LCAF_LENGTH(h) ((lcaf_hdr_t *)(h))->len
@@ -468,7 +468,7 @@ typedef struct _lcaf_src_dst_hdr_t
   u16 reserved;
   u8 src_mask_len;
   u8 dst_mask_len;
-} __attribute__ ((__packed__)) lcaf_src_dst_hdr_t;
+} __clib_packed lcaf_src_dst_hdr_t;
 
 #define LCAF_SD_SRC_ML(_h) (_h)->src_mask_len
 #define LCAF_SD_DST_ML(_h) (_h)->dst_mask_len
@@ -485,7 +485,7 @@ typedef struct _lcaf_src_dst_hdr_t
 typedef struct _lcaf_spi_hdr_t
 {
   u32 spi_si;
-} __attribute__ ((__packed__)) lcaf_spi_hdr_t;
+} __clib_packed lcaf_spi_hdr_t;
 
 #define LCAF_SPI_SI(_h) (_h)->spi_si
 
@@ -547,7 +547,7 @@ typedef struct
   u16 key_id;
   u16 auth_data_len;
   u8 data[0];
-} __attribute__ ((__packed__)) map_register_hdr_t;
+} __clib_packed map_register_hdr_t;
 
 #define MREG_TYPE(h_) (h_)->type
 #define MREG_HDR_CAST(h_) ((map_register_hdr_t *)(h_))
@@ -608,7 +608,7 @@ typedef struct
   u16 key_id;
   u16 auth_data_len;
   u8 data[0];
-} __attribute__ ((__packed__)) map_notify_hdr_t;
+} __clib_packed map_notify_hdr_t;
 
 #define MNOTIFY_TYPE(h_) (h_)->type
 #define MNOTIFY_HDR_CAST(h_) ((map_register_hdr_t *)(h_))
@@ -631,7 +631,7 @@ typedef struct
 {
   u32 header;
   u32 spi_si;
-} __attribute__ ((__packed__)) lisp_nsh_hdr_t;
+} __clib_packed lisp_nsh_hdr_t;
 
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
 

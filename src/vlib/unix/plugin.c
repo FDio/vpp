@@ -22,9 +22,9 @@
 
 plugin_main_t vlib_plugin_main;
 
-char *vlib_plugin_path __attribute__ ((weak));
+char *vlib_plugin_path __clib_weak;
 char *vlib_plugin_path = "";
-char *vlib_plugin_app_version __attribute__ ((weak));
+char *vlib_plugin_app_version __clib_weak;
 char *vlib_plugin_app_version = "";
 
 void *

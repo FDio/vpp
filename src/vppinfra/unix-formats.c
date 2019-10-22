@@ -908,7 +908,7 @@ u8 * format_signal (u8 * s, va_list * args)
 
 u8 * format_ucontext_pc (u8 * s, va_list * args)
 {
-  ucontext_t * uc __attribute__((unused));
+  ucontext_t * uc __clib_unused;
   unsigned long * regs = 0;
   uword reg_no = 0;
 

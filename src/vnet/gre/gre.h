@@ -111,7 +111,7 @@ typedef struct gre_tunnel_key4_t_
    * - Tunnel type, bottom 2 bits
    */
   u32 gtk_fidx_ssid_type;
-} __attribute__ ((packed)) gre_tunnel_key4_t;
+} __clib_packed gre_tunnel_key4_t;
 
 /**
  * @brief Key for a IPv6 GRE Tunnel
@@ -132,7 +132,7 @@ typedef struct gre_tunnel_key6_t_
    * - Tunnel type, bottom 2 bits
    */
   u32 gtk_fidx_ssid_type;
-} __attribute__ ((packed)) gre_tunnel_key6_t;
+} __clib_packed gre_tunnel_key6_t;
 
 #define GTK_FIB_INDEX_SHIFT	12
 #define GTK_FIB_INDEX_MASK	0xfffff000

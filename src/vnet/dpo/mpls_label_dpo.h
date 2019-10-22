@@ -39,7 +39,7 @@ typedef enum mpls_label_dpo_flags_t_
     MPLS_LABEL_DPO_FLAG_NONE = 0,
     MPLS_LABEL_DPO_FLAG_NO_IP_TTL_DECR = (1 << MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR),
     MPLS_LABEL_DPO_FLAG_UNIFORM_MODE = (1 << MPLS_LABEL_DPO_ATTR_UNIFORM_MODE),
-} __attribute__ ((packed)) mpls_label_dpo_flags_t;
+} __clib_packed mpls_label_dpo_flags_t;
 
 #define MPLS_LABEL_DPO_ATTR_NAMES {                               \
     [MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR] = "no-ip-tll-decr",      \

@@ -44,9 +44,7 @@
 socket_client_main_t socket_client_main;
 
 /* Debug aid */
-u32 vl (void *p) __attribute__ ((weak));
-
-u32
+u32 __clib_weak
 vl (void *p)
 {
   return vec_len (p);
@@ -208,9 +206,9 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
   ssize_t size = 0;
   struct ucred *cr = 0;
   struct cmsghdr *cmsg;
-  pid_t pid __attribute__ ((unused));
-  uid_t uid __attribute__ ((unused));
-  gid_t gid __attribute__ ((unused));
+  pid_t pid __clib_unused;
+  uid_t uid __clib_unused;
+  gid_t gid __clib_unused;
   f64 timeout;
 
   iov[0].iov_base = msgbuf;

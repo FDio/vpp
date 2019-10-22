@@ -38,18 +38,18 @@ extern "C" {
 
 struct vapi_ctx_s;
 
-typedef struct __attribute__ ((__packed__))
+typedef struct
 {
   u16 _vl_msg_id;
   u32 context;
-} vapi_type_msg_header1_t;
+} __clib_packed vapi_type_msg_header1_t;
 
-typedef struct __attribute__ ((__packed__))
+typedef struct
 {
   u16 _vl_msg_id;
   u32 client_index;
   u32 context;
-} vapi_type_msg_header2_t;
+} __clib_packed vapi_type_msg_header2_t;
 
 static inline void
 vapi_type_msg_header1_t_hton (vapi_type_msg_header1_t * h)

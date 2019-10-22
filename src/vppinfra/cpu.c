@@ -74,7 +74,7 @@ u8 *
 format_cpu_uarch (u8 * s, va_list * args)
 {
 #if __x86_64__
-  u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
+  u32 __clib_unused eax, ebx, ecx, edx;
   u8 model, family, stepping;
 
   if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)
@@ -138,7 +138,7 @@ u8 *
 format_cpu_model_name (u8 * s, va_list * args)
 {
 #if __x86_64__
-  u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
+  u32 __clib_unused eax, ebx, ecx, edx;
   u8 *name = 0;
   u32 *name_u32;
 

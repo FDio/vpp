@@ -147,7 +147,7 @@ typedef struct
 
   /* The segment elts */
   ip6_address_t segments[0];
-} __attribute__ ((packed)) ip6_sr_header_t;
+} __clib_packed ip6_sr_header_t;
 
 /*
 * fd.io coding-style-patch-verification: ON

@@ -37,7 +37,7 @@ typedef enum fib_protocol_t_ {
     FIB_PROTOCOL_IP4 = DPO_PROTO_IP4,
     FIB_PROTOCOL_IP6 = DPO_PROTO_IP6,
     FIB_PROTOCOL_MPLS = DPO_PROTO_MPLS,
-}  __attribute__ ((packed)) fib_protocol_t;
+}  __clib_packed fib_protocol_t;
 
 #define FIB_PROTOCOLS {			\
     [FIB_PROTOCOL_IP4] = "ipv4",	\
@@ -145,7 +145,7 @@ typedef enum fib_forward_chain_type_t_ {
      * and thus their array of per-chain-type DPOs can be sized smaller.
      */
     FIB_FORW_CHAIN_TYPE_NSH,
-}  __attribute__ ((packed)) fib_forward_chain_type_t;
+}  __clib_packed fib_forward_chain_type_t;
 
 #define FIB_FORW_CHAINS {					\
     [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ethernet",     	\
@@ -298,7 +298,7 @@ typedef enum fib_special_type_t_ {
      * Marker. Add new types before this one, then update it.
      */
     FIB_SPECIAL_TYPE_LAST = FIB_SPECIAL_TYPE_DROP,
-} __attribute__ ((packed)) fib_special_type_t;
+} __clib_packed fib_special_type_t;
 
 /**
  * The maximum number of types
@@ -416,7 +416,7 @@ typedef enum fib_mpls_lsp_mode_t_
      *  TTL and DSCP are copied between the layers
      */
     FIB_MPLS_LSP_MODE_UNIFORM,
-} __attribute__((packed)) fib_mpls_lsp_mode_t;
+} __clib_packed fib_mpls_lsp_mode_t;
 
 #define FIB_MPLS_LSP_MODES {			\
     [FIB_MPLS_LSP_MODE_PIPE]     = "pipe",     	\

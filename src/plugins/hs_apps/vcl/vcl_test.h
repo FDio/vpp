@@ -79,7 +79,7 @@ typedef enum
   VCL_TEST_TYPE_EXIT,
 } vcl_test_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __clib_packed
 {
   uint32_t magic;
   uint32_t seq_num;

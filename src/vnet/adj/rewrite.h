@@ -55,7 +55,7 @@ typedef enum vnet_rewrite_flags_t_
    * This adjacency/interface has output features configured
    */
   VNET_REWRITE_HAS_FEATURES = (1 << 0),
-} __attribute__ ((packed)) vnet_rewrite_flags_t;
+} __clib_packed vnet_rewrite_flags_t;
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {

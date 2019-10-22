@@ -337,7 +337,7 @@ typedef enum vnet_link_t_
   VNET_LINK_ETHERNET,
   VNET_LINK_ARP,
   VNET_LINK_NSH,
-} __attribute__ ((packed)) vnet_link_t;
+} __clib_packed vnet_link_t;
 
 #define VNET_LINKS {                   \
     [VNET_LINK_ETHERNET] = "ethernet", \
@@ -701,7 +701,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface has IP configured directed broadcast */
   VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST = (1 << 7),
 
-} __attribute__ ((packed)) vnet_sw_interface_flags_t;
+} __clib_packed vnet_sw_interface_flags_t;
 
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to

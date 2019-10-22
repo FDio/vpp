@@ -713,10 +713,7 @@ unknown:
 }
 
 
-void vlib_unix_error_report (vlib_main_t *, clib_error_t *)
-  __attribute__ ((weak));
-
-void
+void __clib_weak
 vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
 {
 }
@@ -787,21 +784,18 @@ vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
   vec_free (s);
 }
 
-void *vl_msg_push_heap (void) __attribute__ ((weak));
-void *
+void __clib_weak *
 vl_msg_push_heap (void)
 {
   return 0;
 }
 
-void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
-void
+void __clib_weak
 vl_msg_pop_heap (void *oldheap)
 {
 }
 
-void *vlib_stats_push_heap (void *) __attribute__ ((weak));
-void *
+void __clib_weak *
 vlib_stats_push_heap (void *notused)
 {
   return 0;
@@ -811,7 +805,7 @@ static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  int verbose __attribute__ ((unused)) = 0;
+  int verbose __clib_unused = 0;
   int api_segment = 0, stats_segment = 0, main_heap = 0;
   clib_error_t *error;
   u32 index = 0;
@@ -1522,12 +1516,11 @@ vlib_cli_register_parse_rule (vlib_main_t * vm, vlib_cli_parse_rule_t * r_reg)
 
 #if 0
 /* $$$ turn back on again someday, maybe */
-static clib_error_t *vlib_cli_register_parse_rules (vlib_main_t * vm,
-						    vlib_cli_parse_rule_t *
-						    lo,
-						    vlib_cli_parse_rule_t *
-						    hi)
-  __attribute__ ((unused))
+static clib_error_t *
+vlib_cli_register_parse_rules (vlib_main_t * vm,
+			       vlib_cli_parse_rule_t *
+			       lo, vlib_cli_parse_rule_t * hi)
+  __clib_unused
 {
   clib_error_t *error = 0;
   vlib_cli_parse_rule_t *r;

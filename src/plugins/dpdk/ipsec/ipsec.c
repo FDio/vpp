@@ -405,7 +405,8 @@ done:
   return error;
 }
 
-static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
+static void __clib_unused
+clear_and_free_obj (void *obj)
 {
   struct rte_mempool *mp = rte_mempool_from_obj (obj);
 
@@ -821,8 +822,8 @@ crypto_auto_placement (void)
 
 static void
 crypto_op_init (struct rte_mempool *mempool,
-		void *_arg __attribute__ ((unused)),
-		void *_obj, unsigned i __attribute__ ((unused)))
+		void *_arg __clib_unused,
+		void *_obj, unsigned i __clib_unused)
 {
   struct rte_crypto_op *op = _obj;
 

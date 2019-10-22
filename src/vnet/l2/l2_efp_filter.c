@@ -210,13 +210,13 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
 	  u32 is_l20, is_l21;
-	  __attribute__ ((unused)) u32 matched0, matched1;
+	  __clib_unused u32 matched0, matched1;
 	  u8 error0, error1;
 
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t *p2, *p3, *p4, *p5;
-	    __attribute__ ((unused)) u32 sw_if_index2, sw_if_index3;
+	    __clib_unused u32 sw_if_index2, sw_if_index3;
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
@@ -379,7 +379,7 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
 	  u32 is_l20;
-	  __attribute__ ((unused)) u32 matched0;
+	  __clib_unused u32 matched0;
 	  u8 error0;
 
 	  /* speculatively enqueue b0 to the current next frame */

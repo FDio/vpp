@@ -492,7 +492,7 @@ vlib_put_next_frame (vlib_main_t * vm,
 
       if (!(f->frame_flags & VLIB_FRAME_PENDING))
 	{
-	  __attribute__ ((unused)) vlib_node_t *node;
+	  __clib_unused vlib_node_t *node;
 	  vlib_node_t *next_node;
 	  vlib_node_runtime_t *next_runtime;
 
@@ -566,7 +566,7 @@ vlib_node_runtime_sync_stats (vlib_main_t * vm,
   r->perf_counter_vectors_since_last_overflow = 0ULL;
 }
 
-always_inline void __attribute__ ((unused))
+always_inline void __clib_unused
 vlib_process_sync_stats (vlib_main_t * vm,
 			 vlib_process_t * p,
 			 uword n_calls, uword n_vectors, uword n_clocks,
@@ -971,25 +971,21 @@ add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
 #endif
 }
 
-u8 *format_vnet_buffer_flags (u8 * s, va_list * args) __attribute__ ((weak));
-u8 *
+u8 __clib_weak *
 format_vnet_buffer_flags (u8 * s, va_list * args)
 {
   s = format (s, "BUG STUB %s", __FUNCTION__);
   return s;
 }
 
-u8 *format_vnet_buffer_opaque (u8 * s, va_list * args) __attribute__ ((weak));
-u8 *
+u8 __clib_weak *
 format_vnet_buffer_opaque (u8 * s, va_list * args)
 {
   s = format (s, "BUG STUB %s", __FUNCTION__);
   return s;
 }
 
-u8 *format_vnet_buffer_opaque2 (u8 * s, va_list * args)
-  __attribute__ ((weak));
-u8 *
+u8 __clib_weak *
 format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 {
   s = format (s, "BUG STUB %s", __FUNCTION__);
@@ -1666,8 +1662,7 @@ dispatch_suspended_process (vlib_main_t * vm,
   return t;
 }
 
-void vl_api_send_pending_rpc_requests (vlib_main_t *) __attribute__ ((weak));
-void
+void __clib_weak
 vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
 }
@@ -1981,28 +1976,25 @@ _(vlibmemory_init)                              \
 _(map_api_segment_init)
 
 #define _(name)                                                 \
-clib_error_t *name (vlib_main_t *vm) __attribute__((weak));     \
+clib_error_t *name (vlib_main_t *vm) __clib_weak;     \
 clib_error_t *name (vlib_main_t *vm) { return 0; }
 foreach_weak_reference_stub;
 #undef _
 
-void vl_api_set_elog_main (elog_main_t * m) __attribute__ ((weak));
-void
+void __clib_weak
 vl_api_set_elog_main (elog_main_t * m)
 {
   clib_warning ("STUB");
 }
 
-int vl_api_set_elog_trace_api_messages (int enable) __attribute__ ((weak));
-int
+int __clib_weak
 vl_api_set_elog_trace_api_messages (int enable)
 {
   clib_warning ("STUB");
   return 0;
 }
 
-int vl_api_get_elog_trace_api_messages (void) __attribute__ ((weak));
-int
+int __clib_weak
 vl_api_get_elog_trace_api_messages (void)
 {
   clib_warning ("STUB");

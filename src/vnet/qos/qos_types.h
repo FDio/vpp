@@ -36,7 +36,7 @@ typedef enum qos_source_t_
   QOS_SOURCE_VLAN,
   QOS_SOURCE_MPLS,
   QOS_SOURCE_IP,
-} __attribute__ ((packed)) qos_source_t;
+} __clib_packed qos_source_t;
 
 /**
  * The maximum number of sources. defined outside the enum so switch

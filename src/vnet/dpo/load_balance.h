@@ -96,7 +96,7 @@ typedef enum load_balance_flags_t_ {
     LOAD_BALANCE_FLAG_NONE = 0,
     LOAD_BALANCE_FLAG_USES_MAP = (1 << 0),
     LOAD_BALANCE_FLAG_STICKY = (1 << 1),
-} __attribute__((packed)) load_balance_flags_t;
+} __clib_packed load_balance_flags_t;
 
 /**
  * The FIB DPO provieds;

@@ -3643,7 +3643,7 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
   vnet_sw_interface_t *sw_if0;
 
   int add_radv_info = 1;
-  __attribute__ ((unused)) ip6_radv_t *radv_info = 0;
+  __clib_unused ip6_radv_t *radv_info = 0;
   ip6_address_t ip6_addr;
   u32 addr_len;
 

@@ -125,7 +125,7 @@ typedef enum l2fib_entry_result_flags_t_
 #define _(a,v,s) L2FIB_ENTRY_RESULT_FLAG_##a = (1 << v),
   foreach_l2fib_entry_result_attr
 #undef _
-} __attribute__ ((packed)) l2fib_entry_result_flags_t;
+} __clib_packed l2fib_entry_result_flags_t;
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_result_flags_t, 1);
 

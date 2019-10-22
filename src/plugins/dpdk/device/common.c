@@ -236,8 +236,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 int
 dpdk_port_state_callback (dpdk_portid_t port_id,
 			  enum rte_eth_event_type type,
-			  void *param,
-			  void *ret_param __attribute__ ((unused)))
+			  void *param, void *ret_param __clib_unused)
 {
   return dpdk_port_state_callback_inline (port_id, type, param);
 }

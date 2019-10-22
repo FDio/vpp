@@ -332,7 +332,7 @@ ikev2_payload_add_ts (ikev2_payload_chain_t * c, ikev2_ts_t * ts, u8 type)
 void
 ikev2_payload_chain_add_padding (ikev2_payload_chain_t * c, int bs)
 {
-  u8 *tmp __attribute__ ((unused));
+  u8 *tmp __clib_unused;
   u8 pad_len = (vec_len (c->data) / bs + 1) * bs - vec_len (c->data);
   vec_add2 (c->data, tmp, pad_len);
   c->data[vec_len (c->data) - 1] = pad_len - 1;

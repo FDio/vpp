@@ -1132,8 +1132,7 @@ byte_swap_verneed (elf_main_t * em, elf_dynamic_version_need_union_t * vus)
   clib_bitmap_free (entries_swapped);
 }
 
-static void set_dynamic_verneed (elf_main_t * em) __attribute__ ((unused));
-static void
+static void __clib_unused
 set_dynamic_verneed (elf_main_t * em)
 {
   elf_dynamic_version_need_union_t *vus = em->verneed;
@@ -1150,9 +1149,7 @@ set_dynamic_verneed (elf_main_t * em)
     vec_free (vus);
 }
 
-static void
-set_symbol_table (elf_main_t * em, u32 table_index) __attribute__ ((unused));
-static void
+static void __clib_unused
 set_symbol_table (elf_main_t * em, u32 table_index)
 {
   elf_symbol_table_t *tab = vec_elt_at_index (em->symbol_tables, table_index);
@@ -1421,18 +1418,14 @@ string_table_add_name (string_table_builder_t * b, u8 * n)
   return i;
 }
 
-static u32 string_table_add_name_index (string_table_builder_t * b, u32 index)
-  __attribute__ ((unused));
-static u32
+static u32 __clib_unused
 string_table_add_name_index (string_table_builder_t * b, u32 index)
 {
   u8 *n = b->old_table + index;
   return string_table_add_name (b, n);
 }
 
-static void string_table_init (string_table_builder_t * b, u8 * old_table)
-  __attribute__ ((unused));
-static void
+static void __clib_unused
 string_table_init (string_table_builder_t * b, u8 * old_table)
 {
   clib_memset (b, 0, sizeof (b[0]));
@@ -1440,9 +1433,7 @@ string_table_init (string_table_builder_t * b, u8 * old_table)
   b->hash = hash_create_string (0, sizeof (uword));
 }
 
-static u8 *string_table_done (string_table_builder_t * b)
-  __attribute__ ((unused));
-static u8 *
+static u8 __clib_unused *
 string_table_done (string_table_builder_t * b)
 {
   hash_free (b->hash);

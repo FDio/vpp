@@ -2557,7 +2557,7 @@ more:
 		   format_timeval, 0 /* current bat-time */ ,
 		   0 /* current bat-format */ ,
 		   cli_file_index, cf->current_command);
-      int rv __attribute__ ((unused)) = write (um->log_fd, lv, vec_len (lv));
+      int rv __clib_unused = write (um->log_fd, lv, vec_len (lv));
     }
 
   /* Build an unformat structure around our command */

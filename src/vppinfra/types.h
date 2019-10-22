@@ -148,6 +148,13 @@ typedef __complex__ double cf64;
 /* Floating point word size. */
 typedef f64 fword;
 
+#define __clib_unused __attribute__ ((unused))
+#define __clib_weak __attribute__ ((weak))
+#define __clib_packed __attribute__ ((packed))
+#define __clib_constructor __attribute__ ((constructor))
+#define __clib_destructor __attribute__ ((destructor))
+#define __clib_aligned(x) __attribute__ ((aligned(x)))
+
 /* Can be used as either {r,l}value, e.g. these both work
      clib_mem_unaligned (p, u64) = 99
      clib_mem_unaligned (p, u64) += 99 */

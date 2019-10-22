@@ -28,7 +28,7 @@ typedef struct
     u8 data[0];
     u32 data_as_u32[0];
   };
-} __attribute__ ((packed)) dhcp_option_t;
+} __clib_packed dhcp_option_t;
 
 typedef struct
 {

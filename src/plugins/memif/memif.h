@@ -71,7 +71,10 @@ typedef uint8_t memif_log2_ring_size_t;
  *  Socket messages
  */
 
-typedef struct __attribute__ ((packed))
+#define __memif_packed __attribute__ ((packed))
+#define __memif_aligned(x) __attribute__ ((aligned(x)))
+
+typedef struct __memif_packed
 {
   uint8_t name[32];
   memif_version_t min_version;
@@ -82,7 +85,7 @@ typedef struct __attribute__ ((packed))
   memif_log2_ring_size_t max_log2_ring_size;
 } memif_msg_hello_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   memif_version_t version;
   memif_interface_id_t id;
@@ -91,13 +94,13 @@ typedef struct __attribute__ ((packed))
   uint8_t name[32];
 } memif_msg_init_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   memif_region_index_t index;
   memif_region_size_t size;
 } memif_msg_add_region_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   uint16_t flags;
 #define MEMIF_MSG_ADD_RING_FLAG_S2M	(1 << 0)
@@ -108,23 +111,23 @@ typedef struct __attribute__ ((packed))
   uint16_t private_hdr_size;	/* used for private metadata */
 } memif_msg_add_ring_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   uint8_t if_name[32];
 } memif_msg_connect_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   uint8_t if_name[32];
 } memif_msg_connected_t;
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   uint32_t code;
   uint8_t string[96];
 } memif_msg_disconnect_t;
 
-typedef struct __attribute__ ((packed, aligned (128)))
+typedef struct __clib_packed __clib_aligned(128)
 {
   memif_msg_type_t type:16;
   union
@@ -146,7 +149,7 @@ _Static_assert (sizeof (memif_msg_t) == 128,
  *  Ring and Descriptor Layout
  */
 
-typedef struct __attribute__ ((packed))
+typedef struct __memif_packed
 {
   uint16_t flags;
 #define MEMIF_DESC_FLAG_NEXT (1 << 0)

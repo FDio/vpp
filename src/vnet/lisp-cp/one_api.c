@@ -277,7 +277,7 @@ typedef struct
 {
   u32 spi;
   u8 si;
-} __attribute__ ((__packed__)) lisp_nsh_api_t;
+} __clib_packed lisp_nsh_api_t;
 
 static int
 unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,

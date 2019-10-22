@@ -56,7 +56,7 @@ typedef struct
   ip46_address_t dst;
   ipip_transport_t transport;
   u32 fib_index;
-} __attribute__ ((packed)) ipip_tunnel_key_t;
+} __clib_packed ipip_tunnel_key_t;
 
 typedef enum
 {

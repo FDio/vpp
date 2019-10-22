@@ -355,7 +355,7 @@ format_capture (u8 * s, va_list * args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   perfmon_capture_t *c = va_arg (*args, perfmon_capture_t *);
-  int verbose __attribute__ ((unused)) = va_arg (*args, int);
+  int verbose __clib_unused = va_arg (*args, int);
   f64 ticks_per_pkt;
   int i;
 

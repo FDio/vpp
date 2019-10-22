@@ -63,7 +63,7 @@ typedef enum
 #define _(n,f) IGMP_TYPE_##f = n,
   foreach_igmp_type
 #undef _
-} __attribute__ ((packed)) igmp_type_t;
+} __clib_packed igmp_type_t;
 
 typedef struct
 {
@@ -142,7 +142,7 @@ typedef enum
 #define _(n,f) IGMP_MEMBERSHIP_GROUP_##f = n,
   foreach_igmp_membership_group_v3_type
 #undef _
-} __attribute__ ((packed)) igmp_membership_group_v3_type_t;
+} __clib_packed igmp_membership_group_v3_type_t;
 
 typedef struct
 {

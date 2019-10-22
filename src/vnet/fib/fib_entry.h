@@ -151,7 +151,7 @@ typedef enum fib_source_t_ {
      * Marker. add new entries before this one.
      */
     FIB_SOURCE_LAST = FIB_SOURCE_INTERPOSE,
-} __attribute__ ((packed)) fib_source_t;
+} __clib_packed fib_source_t;
 
 STATIC_ASSERT (sizeof(fib_source_t) == 1,
 	       "FIB too many sources");
@@ -290,7 +290,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
     FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),
     FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
-} __attribute__((packed)) fib_entry_flag_t;
+} __clib_packed fib_entry_flag_t;
 
 extern u8 * format_fib_entry_flags(u8 *s, va_list *args);
 
@@ -343,7 +343,7 @@ typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_CONTRIBUTING = (1 << FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING),
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
     FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
-} __attribute__ ((packed)) fib_entry_src_flag_t;
+} __clib_packed fib_entry_src_flag_t;
 
 extern u8 * format_fib_entry_src_flags(u8 *s, va_list *args);
 

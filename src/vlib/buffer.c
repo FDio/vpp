@@ -310,7 +310,7 @@ static struct
 {
   vec_header_t h;
   vlib_main_t *vm;
-} __attribute__ ((packed)) __bootstrap_vlib_main_vector
+} __clib_packed __bootstrap_vlib_main_vector
   __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
 {
   .h.len = 1,

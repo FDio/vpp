@@ -1303,9 +1303,9 @@ static int
 test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
 {
   int indicator;
-  char *s1 __attribute__ ((unused));
-  char *tok __attribute__ ((unused));
-  char *ptr __attribute__ ((unused));
+  char *s1 __clib_unused;
+  char *tok __clib_unused;
+  char *ptr __clib_unused;
   char str1[40];
   char *p2str;
   char *tok1, *tok2, *tok3, *tok4, *tok5, *tok6, *tok7;

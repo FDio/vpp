@@ -403,7 +403,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
 {
   l2fib_entry_key_t key;
   l2fib_entry_result_t result;
-  __attribute__ ((unused)) u32 bucket_contents;
+  __clib_unused u32 bucket_contents;
   l2fib_main_t *fm = &l2fib_main;
   l2learn_main_t *lm = &l2learn_main;
   BVT (clib_bihash_kv) kv;

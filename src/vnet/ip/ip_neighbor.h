@@ -41,7 +41,7 @@ typedef enum ip_neighbor_flags_t_
   IP_NEIGHBOR_FLAG_STATIC = (1 << 0),
   IP_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
   IP_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
-} __attribute__ ((packed)) ip_neighbor_flags_t;
+} __clib_packed ip_neighbor_flags_t;
 
 extern u8 *format_ip_neighbor_flags (u8 * s, va_list * args);
 

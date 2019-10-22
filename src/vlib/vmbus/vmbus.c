@@ -25,7 +25,8 @@
 #include <net/if.h>
 
 /* this is a stub replaced by the Linux specfic version */
-vlib_vmbus_addr_t * __attribute__ ((weak)) vlib_vmbus_get_all_dev_addrs ()
+vlib_vmbus_addr_t *__clib_weak
+vlib_vmbus_get_all_dev_addrs ()
 {
   return NULL;
 }

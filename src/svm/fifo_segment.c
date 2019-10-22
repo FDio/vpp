@@ -846,7 +846,7 @@ u8 *
 format_fifo_segment (u8 * s, va_list * args)
 {
   fifo_segment_t *fs = va_arg (*args, fifo_segment_t *);
-  int verbose __attribute__ ((unused)) = va_arg (*args, int);
+  int verbose __clib_unused = va_arg (*args, int);
   fifo_segment_header_t *fsh;
   svm_fifo_chunk_t *c;
   u32 count, indent;
