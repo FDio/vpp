@@ -88,12 +88,8 @@ class BaseTypes(object):
         self.size = self.packer.size
         self.options = options
 
-    def __call__(self, args):
-        self.options = args
-        return self
-
     def pack(self, data, kwargs=None):
-        if not data:  # Default to zero if not specified
+        if data is None:  # Default to zero if not specified
             if self.options and 'default' in self.options:
                 data = self.options['default']
             else:
@@ -152,6 +148,7 @@ types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
          'u64': BaseTypes('u64'), 'f64': BaseTypes('f64'),
          'bool': BaseTypes('bool'), 'string': String}
 
+class_types = {}
 
 def vpp_get_type(name):
     try:
@@ -171,10 +168,6 @@ class FixedList_u8(object):
         self.packer = BaseTypes(field_type, num)
         self.size = self.packer.size
         self.field_type = field_type
-
-    def __call__(self, args):
-        self.options = args
-        return self
 
     def pack(self, data, kwargs=None):
         """Packs a fixed length bytestring. Left-pads with zeros
@@ -206,10 +199,6 @@ class FixedList(object):
         self.size = self.packer.size * num
         self.name = name
         self.field_type = field_type
-
-    def __call__(self, args):
-        self.options = args
-        return self
 
     def pack(self, list, kwargs):
         if len(list) != self.num:
@@ -289,10 +278,6 @@ class VLAList_legacy():
         self.packer = types[field_type]
         self.size = self.packer.size
 
-    def __call__(self, args):
-        self.options = args
-        return self
-
     def pack(self, list, kwargs=None):
         if self.packer.size == 1:
             return bytes(list)
@@ -319,9 +304,11 @@ class VLAList_legacy():
 
 
 class VPPEnumType(object):
-    def __init__(self, name, msgdef):
+    def __init__(self, name, msgdef, options=None):
         self.size = types['u32'].size
+        self.name = name
         self.enumtype = 'u32'
+        self.msgdef = msgdef
         e_hash = {}
         for f in msgdef:
             if type(f) is dict and 'enumtype' in f:
@@ -333,10 +320,8 @@ class VPPEnumType(object):
             e_hash[ename] = evalue
         self.enum = IntFlag(name, e_hash)
         types[name] = self
-
-    def __call__(self, args):
-        self.options = args
-        return self
+        class_types[name] = VPPEnumType
+        self.options = options
 
     def __getattr__(self, name):
         return self.enum[name]
@@ -348,6 +333,12 @@ class VPPEnumType(object):
         __nonzero__ = __bool__
 
     def pack(self, data, kwargs=None):
+        if data is None:  # Default to zero if not specified
+            if self.options and 'default' in self.options:
+                data = self.options['default']
+            else:
+                data = 0
+
         return types[self.enumtype].pack(data)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
@@ -380,10 +371,6 @@ class VPPUnionType(object):
 
         types[name] = self
         self.tuple = collections.namedtuple(name, fields, rename=True)
-
-    def __call__(self, args):
-        self.options = args
-        return self
 
     # Union of variable length?
     def pack(self, data, kwargs=None):
@@ -430,10 +417,6 @@ class VPPTypeAlias(object):
 
         types[name] = self
         self.toplevelconversion = False
-
-    def __call__(self, args):
-        self.options = args
-        return self
 
     def pack(self, data, kwargs=None):
         if data and conversion_required(data, self.name):
@@ -512,7 +495,14 @@ class VPPType(object):
                 p = VLAList(f_name, f_type, f[3], length_index)
                 self.packers.append(p)
             else:
-                p = types[f_type](self.options)
+                # Support default for basetypes and enums
+                if 'default' in self.options:
+                    try:
+                        p = BaseTypes(f_type, 0, self.options)
+                    except KeyError:
+                        p = class_types[f_type](f_name, types[f_type].msgdef, self.options)
+                else:
+                    p = types[f_type]
                 self.packers.append(p)
                 size += p.size
 
@@ -520,10 +510,6 @@ class VPPType(object):
         self.tuple = collections.namedtuple(name, self.fields, rename=True)
         types[name] = self
         self.toplevelconversion = False
-
-    def __call__(self, args):
-        self.options = args
-        return self
 
     def pack(self, data, kwargs=None):
         if not kwargs:
