@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d620ae48_e3e75b43",
+        "filename": "src/plugins/gbp/test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-22T13:41:54Z",
+      "side": 1,
+      "message": "Should we massage the data here or enforce the type and raise a TypeError instead?",
+      "range": {
+        "startLine": 436,
+        "startChar": 8,
+        "endLine": 436,
+        "endChar": 60
+      },
+      "revId": "0abef81e68aa14e53e5cf30efe4733048e7a9b59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
