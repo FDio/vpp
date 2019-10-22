@@ -22,6 +22,30 @@
       "revId": "0abef81e68aa14e53e5cf30efe4733048e7a9b59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f908e89_0019f56e",
+        "filename": "src/plugins/gbp/test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-22T15:04:34Z",
+      "side": 1,
+      "message": "Neale fixed GBP tests in separate fix.",
+      "parentUuid": "d620ae48_e3e75b43",
+      "range": {
+        "startLine": 436,
+        "startChar": 8,
+        "endLine": 436,
+        "endChar": 60
+      },
+      "revId": "0abef81e68aa14e53e5cf30efe4733048e7a9b59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
