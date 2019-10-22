@@ -144,6 +144,7 @@ List of Advanced Parameters:
 | mc_
 | nat_
 | oam_
+| physmem_
 | plugins_
 | plugin_path_
 | punt_
@@ -1208,6 +1209,25 @@ allowed before reporting an oam target down to any registered listener.
      Number of misses before declaring an OAM target down. Default is 3 misses.
      
      **Example:** misses-allowed 5
+
+.. _physmem:
+
+"physmem" Parameters
+____________________
+
+Configuration parameters used to specify base address and maximum size of the
+memory allocated for the pmalloc module in VPP. pmalloc is a NUMA-aware, growable
+physical memory allocator. pmalloc allocates memory for the DPDK memory pool.
+
+ * **base-addr <address>**
+     Specify the base address for pmalloc memory space.
+
+     **Example:** base-addr 0xfffe00000000
+
+ * **max-size <n>G|<n>M|<n>K|<n>**
+     Set the memory size for pmalloc memory space. The default is 16G.
+
+     **Example:** max-size 4G
 
 .. _plugins:
 
