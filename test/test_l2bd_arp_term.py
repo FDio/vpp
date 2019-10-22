@@ -458,7 +458,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+        evs = [self.vapi.wait_for_event(20, "ip6_nd_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -474,7 +474,8 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+        # the timeout here is large because... why doesnt this event happen sooner ?
+        evs = [self.vapi.wait_for_event(20, "ip6_nd_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
