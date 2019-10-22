@@ -26,7 +26,7 @@
 typedef enum lookup_input_t_ {
     LOOKUP_INPUT_SRC_ADDR,
     LOOKUP_INPUT_DST_ADDR,
-} __attribute__ ((packed)) lookup_input_t;
+} __clib_packed lookup_input_t;
 
 #define LOOKUP_INPUTS {                         \
     [LOOKUP_INPUT_SRC_ADDR] = "src-address",    \
@@ -39,7 +39,7 @@ typedef enum lookup_input_t_ {
 typedef enum lookup_table_t_ {
     LOOKUP_TABLE_FROM_INPUT_INTERFACE,
     LOOKUP_TABLE_FROM_CONFIG,
-} __attribute__ ((packed)) lookup_table_t;
+} __clib_packed lookup_table_t;
 
 #define LOOKUP_TABLES {                                   \
     [LOOKUP_TABLE_FROM_INPUT_INTERFACE] = "table-input-interface",    \
@@ -52,7 +52,7 @@ typedef enum lookup_table_t_ {
 typedef enum lookup_cast_t_ {
     LOOKUP_UNICAST,
     LOOKUP_MULTICAST,
-} __attribute__ ((packed)) lookup_cast_t;
+} __clib_packed lookup_cast_t;
 
 #define LOOKUP_CASTS {                 \
     [LOOKUP_UNICAST]   = "unicast",    \

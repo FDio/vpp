@@ -482,7 +482,7 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8x16 swapmac = { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   /* See comment below about sending all pkts to the same place... */
-  u16 *next __attribute__ ((unused));
+  u16 *next __clib_unused;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

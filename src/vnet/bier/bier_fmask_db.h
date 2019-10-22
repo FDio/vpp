@@ -36,7 +36,7 @@ typedef enum bier_hdr_type_t_ {
      * BIER header in non-MPLS networks
      */
     BIER_HDR_O_OTHER,
-} __attribute__((packed)) bier_hdr_type_t;
+} __clib_packed bier_hdr_type_t;
 
 /**
  * BIER next-hop type
@@ -51,7 +51,7 @@ typedef enum bier_nh_type_t_ {
      * BIER header in non-MPLS networks
      */
     BIER_NH_UDP,
-} __attribute__((packed)) bier_nh_type_t;
+} __clib_packed bier_nh_type_t;
 
 /**
  * A key/ID for a BIER forwarding Mas (FMask).
@@ -83,7 +83,7 @@ typedef struct bier_fmask_id_t_ {
      * Union discriminator
      */
     bier_nh_type_t bfmi_nh_type;
-} __attribute__((packed)) bier_fmask_id_t;
+} __clib_packed bier_fmask_id_t;
 
 extern index_t
 bier_fmask_db_find_or_create_and_lock(index_t bti,

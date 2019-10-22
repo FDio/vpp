@@ -782,7 +782,7 @@ static inline u8 *
 format_dpdk_pkt_types (u8 * s, va_list * va)
 {
   u32 *pkt_types = va_arg (*va, u32 *);
-  u32 indent __attribute__ ((unused)) = format_get_indent (s) + 2;
+  u32 indent __clib_unused = format_get_indent (s) + 2;
 
   if (!*pkt_types)
     return s;

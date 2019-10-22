@@ -60,7 +60,7 @@ typedef struct
   u32 sequence_number;
   /* thread index where events originated */
   u32 thread_index;
-} __attribute__ ((packed)) nat_ha_message_header_t;
+} __clib_packed nat_ha_message_header_t;
 
 /* NAT HA protocol event data */
 typedef struct
@@ -81,7 +81,7 @@ typedef struct
   u32 fib_index;
   u32 total_pkts;
   u64 total_bytes;
-} __attribute__ ((packed)) nat_ha_event_t;
+} __clib_packed nat_ha_event_t;
 
 typedef enum
 {

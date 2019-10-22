@@ -1201,7 +1201,7 @@ _(nat_det_session_dump, "ip_address <user_addr>")
 static void
 snat_vat_api_hookup (vat_main_t *vam)
 {
-  snat_test_main_t * sm __attribute__((unused)) = &snat_test_main;
+  snat_test_main_t * sm __clib_unused = &snat_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
 #define _(N,n)                                                  \
   vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),       \

@@ -60,7 +60,7 @@ typedef enum
   MAP_DOMAIN_PREFIX = 1 << 0,
   MAP_DOMAIN_TRANSLATION = 1 << 1,	// The domain uses MAP-T
   MAP_DOMAIN_RFC6052 = 1 << 2,
-} __attribute__ ((__packed__)) map_domain_flags_e;
+} __clib_packed map_domain_flags_e;
 
 //#define IP6_MAP_T_OVERRIDE_TOS 0
 

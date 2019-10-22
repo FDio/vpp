@@ -394,8 +394,7 @@ vlib_frame_queue_alloc (int nelts)
   return (fq);
 }
 
-void vl_msg_api_handler_no_free (void *) __attribute__ ((weak));
-void
+void __clib_weak
 vl_msg_api_handler_no_free (void *v)
 {
 }
@@ -1321,8 +1320,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-void vnet_main_fixup (vlib_fork_fixup_t which) __attribute__ ((weak));
-void
+void __clib_weak
 vnet_main_fixup (vlib_fork_fixup_t which)
 {
 }

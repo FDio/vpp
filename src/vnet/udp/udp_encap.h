@@ -59,13 +59,13 @@ typedef struct udp_encap_t_
     {
       ip4_header_t ue_ip4;
       udp_header_t ue_udp;
-    } __attribute__ ((packed)) ip4;
+    } __clib_packed ip4;
     struct
     {
       ip6_header_t ue_ip6;
       udp_header_t ue_udp;
-    } __attribute__ ((packed)) ip6;
-  } __attribute__ ((packed)) ue_hdrs;
+    } __clib_packed ip6;
+  } __clib_packed ue_hdrs;
 
   /**
    * Flags controlling fixup behaviour

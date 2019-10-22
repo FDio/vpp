@@ -186,7 +186,7 @@ static int
 proxy_rx_callback (session_t * s)
 {
   u32 max_dequeue;
-  int actual_transfer __attribute__ ((unused));
+  int actual_transfer __clib_unused;
   svm_fifo_t *tx_fifo, *rx_fifo;
   proxy_main_t *pm = &proxy_main;
   u32 thread_index = vlib_get_thread_index ();

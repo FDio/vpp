@@ -636,7 +636,7 @@ static clib_error_t *
 linux_pci_uio_read_ready (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
-  int __attribute__ ((unused)) rv;
+  int __clib_unused rv;
   vlib_pci_dev_handle_t h = uf->private_data;
   linux_pci_device_t *p = linux_pci_get_device (h);
   linux_pci_irq_t *irq = &p->intx_irq;
@@ -671,7 +671,7 @@ static clib_error_t *
 linux_pci_vfio_msix_read_ready (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
-  int __attribute__ ((unused)) rv;
+  int __clib_unused rv;
   vlib_pci_dev_handle_t h = uf->private_data >> 16;
   u16 line = uf->private_data & 0xffff;
   linux_pci_device_t *p = linux_pci_get_device (h);
@@ -690,7 +690,7 @@ static clib_error_t *
 linux_pci_vfio_intx_read_ready (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
-  int __attribute__ ((unused)) rv;
+  int __clib_unused rv;
   vlib_pci_dev_handle_t h = uf->private_data;
   linux_pci_device_t *p = linux_pci_get_device (h);
   linux_pci_irq_t *irq = &p->intx_irq;

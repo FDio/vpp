@@ -130,7 +130,7 @@ typedef struct fib_path_ext_t_
      * position in the path-list.
      */
     fib_node_index_t fpe_path_index;
-} __attribute__ ((packed)) fib_path_ext_t;
+} __clib_packed fib_path_ext_t;
 
 extern u8 * format_fib_path_ext(u8 * s, va_list * args);
 

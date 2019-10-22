@@ -683,7 +683,7 @@ setup_message_id_table (nsh_main_t * nm, api_main_t * am)
 static clib_error_t *
 nsh_plugin_api_hookup (vlib_main_t * vm)
 {
-  nsh_main_t *nm __attribute__ ((unused)) = &nsh_main;
+  nsh_main_t *nm __clib_unused = &nsh_main;
 #define _(N,n)                                                  \
   vl_msg_api_set_handlers((VL_API_##N + nm->msg_id_base),	\
 			  #n,					\

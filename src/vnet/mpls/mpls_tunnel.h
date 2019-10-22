@@ -46,7 +46,7 @@ typedef enum mpls_tunnel_flag_t_ {
     MPLS_TUNNEL_FLAG_NONE   = 0,
     MPLS_TUNNEL_FLAG_L2     = (1 << MPLS_TUNNEL_ATTRIBUTE_L2),
     MPLS_TUNNEL_FLAG_MCAST  = (1 << MPLS_TUNNEL_ATTRIBUTE_MCAST),
-} __attribute__ ((packed)) mpls_tunnel_flags_t;
+} __clib_packed mpls_tunnel_flags_t;
 
 
 /**

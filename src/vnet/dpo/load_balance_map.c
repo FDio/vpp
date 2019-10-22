@@ -39,7 +39,7 @@ typedef enum load_balance_map_path_flags_t_
 {
     LOAD_BALANCE_MAP_PATH_UP     = (1 << 0),
     LOAD_BALANCE_MAP_PATH_USABLE = (1 << 1),
-} __attribute__ ((packed)) load_balance_map_path_flags_t;
+} __clib_packed load_balance_map_path_flags_t;
 
 typedef struct load_balance_map_path_t_ {
     /**

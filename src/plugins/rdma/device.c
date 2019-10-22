@@ -64,7 +64,7 @@ rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
   {
     struct ibv_flow_attr attr;
     struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
+  } __clib_packed fa;
 
   memset (&fa, 0, sizeof (fa));
   fa.attr.num_of_specs = 1;

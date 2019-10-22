@@ -511,8 +511,8 @@ static inline
   u32 *callback_vector;
   u32 fast_wheel_index;
   u32 next_index;
-  u32 slow_wheel_index __attribute__ ((unused));
-  u32 glacier_wheel_index __attribute__ ((unused));
+  u32 slow_wheel_index __clib_unused;
+  u32 glacier_wheel_index __clib_unused;
 
   /* Shouldn't happen */
   if (PREDICT_FALSE (now < tw->next_run_time))

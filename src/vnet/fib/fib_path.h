@@ -103,7 +103,7 @@ typedef enum fib_path_cfg_attribute_t_ {
      * Marker. Add new types before this one, then update it.
      */
     FIB_PATH_CFG_ATTRIBUTE_LAST = FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW,
-} __attribute__ ((packed)) fib_path_cfg_attribute_t;
+} __clib_packed fib_path_cfg_attribute_t;
 
 /**
  * The maximum number of path attributes
@@ -149,7 +149,7 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RPF_ID = (1 << FIB_PATH_CFG_ATTRIBUTE_RPF_ID),
     FIB_PATH_CFG_FLAG_DEAG_SRC = (1 << FIB_PATH_CFG_ATTRIBUTE_DEAG_SRC),
     FIB_PATH_CFG_FLAG_POP_PW_CW = (1 << FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW),
-} __attribute__ ((packed)) fib_path_cfg_flags_t;
+} __clib_packed fib_path_cfg_flags_t;
 
 typedef enum fib_path_format_flags_t_
 {

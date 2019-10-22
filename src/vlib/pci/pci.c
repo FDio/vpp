@@ -52,7 +52,7 @@
 
 vlib_pci_main_t pci_main;
 
-vlib_pci_device_info_t * __attribute__ ((weak))
+vlib_pci_device_info_t __clib_weak *
 vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
 			  clib_error_t ** error)
 {
@@ -61,7 +61,8 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   return 0;
 }
 
-vlib_pci_addr_t * __attribute__ ((weak)) vlib_pci_get_all_dev_addrs ()
+vlib_pci_addr_t *__clib_weak
+vlib_pci_get_all_dev_addrs ()
 {
   return 0;
 }

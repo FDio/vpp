@@ -112,7 +112,7 @@ typedef enum fid_addr_type_t_
   FID_ADDR_IP_PREF,
   FID_ADDR_MAC,
   FID_ADDR_NSH
-} __attribute__ ((packed)) fid_addr_type_t;
+} __clib_packed fid_addr_type_t;
 
 /* flat address type */
 typedef struct

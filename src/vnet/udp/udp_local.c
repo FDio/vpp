@@ -60,7 +60,7 @@ udp46_local_inline (vlib_main_t * vm,
 		    vlib_frame_t * from_frame, int is_ip4)
 {
   udp_main_t *um = &udp_main;
-  __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
+  __clib_unused u32 n_left_from, next_index, *from, *to_next;
   word n_no_listener = 0;
   u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
   u16 *next_by_dst_port = (is_ip4 ?
@@ -566,7 +566,7 @@ unformat_udp_header (unformat_input_t * input, va_list * args)
 {
   u8 **result = va_arg (*args, u8 **);
   udp_header_t *udp;
-  __attribute__ ((unused)) int old_length;
+  __clib_unused int old_length;
   u16 src_port, dst_port;
 
   /* Allocate space for IP header. */

@@ -385,9 +385,7 @@ format_vl_msg_api_trace_status (u8 * s, va_list * args)
   return s;
 }
 
-void vl_msg_api_custom_dump_configure (api_main_t * am)
-  __attribute__ ((weak));
-void
+void __clib_weak
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
 }

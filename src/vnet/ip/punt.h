@@ -89,7 +89,7 @@ enum punt_action_e
  * If this header changes, the version must also change to notify clients.
  */
 #define PUNT_PACKETDESC_VERSION 1
-typedef struct __attribute__ ((packed))
+typedef struct __clib_packed
 {
   u32 sw_if_index;		/* RX or TX interface */
   enum punt_action_e action;

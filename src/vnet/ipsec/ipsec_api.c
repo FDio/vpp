@@ -73,7 +73,7 @@ vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
   clib_warning ("unimplemented");
 #else
 
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_spd_add_del_reply_t *rmp;
   int rv;
 
@@ -86,11 +86,11 @@ vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
 static void vl_api_ipsec_interface_add_del_spd_t_handler
   (vl_api_ipsec_interface_add_del_spd_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_interface_add_del_spd_reply_t *rmp;
   int rv;
-  u32 sw_if_index __attribute__ ((unused));
-  u32 spd_id __attribute__ ((unused));
+  u32 sw_if_index __clib_unused;
+  u32 spd_id __clib_unused;
 
   sw_if_index = ntohl (mp->sw_if_index);
   spd_id = ntohl (mp->spd_id);
@@ -111,7 +111,7 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
 static void vl_api_ipsec_tunnel_protect_update_t_handler
   (vl_api_ipsec_tunnel_protect_update_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_tunnel_protect_update_reply_t *rmp;
   u32 sw_if_index, ii, *sa_ins = NULL;
   int rv;
@@ -139,7 +139,7 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
 static void vl_api_ipsec_tunnel_protect_del_t_handler
   (vl_api_ipsec_tunnel_protect_del_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_tunnel_protect_del_reply_t *rmp;
   int rv;
   u32 sw_if_index;
@@ -254,7 +254,7 @@ ipsec_spd_action_decode (vl_api_ipsec_spd_action_t in,
 static void vl_api_ipsec_spd_entry_add_del_t_handler
   (vl_api_ipsec_spd_entry_add_del_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
   ip46_type_t itype;
   u32 stat_index;
@@ -471,7 +471,7 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 static void vl_api_ipsec_sad_entry_add_del_t_handler
   (vl_api_ipsec_sad_entry_add_del_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __clib_unused = vlib_get_main ();
   vl_api_ipsec_sad_entry_add_del_reply_t *rmp;
   ip46_address_t tun_src = { }, tun_dst =
   {

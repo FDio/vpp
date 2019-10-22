@@ -2905,7 +2905,7 @@ typedef struct
 {
   u32 spi;
   u8 si;
-} __attribute__ ((__packed__)) lisp_nsh_api_t;
+} __clib_packed lisp_nsh_api_t;
 
 uword
 unformat_nsh_address (unformat_input_t * input, va_list * args)
@@ -9144,14 +9144,14 @@ api_create_subif (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 sub_id;
   u8 sub_id_set = 0;
-  u32 __attribute__ ((unused)) no_tags = 0;
-  u32 __attribute__ ((unused)) one_tag = 0;
-  u32 __attribute__ ((unused)) two_tags = 0;
-  u32 __attribute__ ((unused)) dot1ad = 0;
-  u32 __attribute__ ((unused)) exact_match = 0;
-  u32 __attribute__ ((unused)) default_sub = 0;
-  u32 __attribute__ ((unused)) outer_vlan_id_any = 0;
-  u32 __attribute__ ((unused)) inner_vlan_id_any = 0;
+  u32 __clib_unused no_tags = 0;
+  u32 __clib_unused one_tag = 0;
+  u32 __clib_unused two_tags = 0;
+  u32 __clib_unused dot1ad = 0;
+  u32 __clib_unused exact_match = 0;
+  u32 __clib_unused default_sub = 0;
+  u32 __clib_unused outer_vlan_id_any = 0;
+  u32 __clib_unused inner_vlan_id_any = 0;
   u32 tmp;
   u16 outer_vlan_id = 0;
   u16 inner_vlan_id = 0;

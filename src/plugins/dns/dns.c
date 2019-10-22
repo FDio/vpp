@@ -356,7 +356,7 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
   u8 *dns_request;
   vlib_frame_t *f;
   u32 *to_next;
-  int junk __attribute__ ((unused));
+  int junk __clib_unused;
 
   ASSERT (ep->dns_request);
 
@@ -1314,7 +1314,7 @@ vnet_dns_response_to_name (u8 * response,
   u16 rcode;
   u8 *name;
   u32 ttl;
-  u8 *junk __attribute__ ((unused));
+  u8 *junk __clib_unused;
   int name_set = 0;
   int pointer_chase;
 

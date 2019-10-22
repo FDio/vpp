@@ -963,7 +963,7 @@ compute_policer_params (u64 hz,	// CPU speed in clocks per second
   u32 max;
   u32 scale_shift;
   u32 scale_amount;
-  u32 __attribute__ ((unused)) orig_current_limit = *current_limit;
+  u32 __clib_unused orig_current_limit = *current_limit;
 
   // Compute period. For 1Ghz-to-8Ghz CPUs, the period will be in
   // the range of 16 to 116 usec.

@@ -65,7 +65,7 @@ typedef enum dpo_proto_t_
     DPO_PROTO_ETHERNET,
     DPO_PROTO_BIER,
     DPO_PROTO_NSH,
-} __attribute__((packed)) dpo_proto_t;
+} __clib_packed dpo_proto_t;
 
 #define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_NSH+1))
 #define DPO_PROTO_NONE ((dpo_proto_t)(DPO_PROTO_NUM+1))
@@ -126,7 +126,7 @@ typedef enum dpo_type_t_ {
     DPO_IP6_LL,
     DPO_PW_CW,
     DPO_LAST,
-} __attribute__((packed)) dpo_type_t;
+} __clib_packed dpo_type_t;
 
 #define DPO_TYPE_NUM DPO_LAST
 

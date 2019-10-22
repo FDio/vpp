@@ -102,7 +102,7 @@ typedef enum
 #define _(n,f) VXLAN_GBP_FLAGS_##f = n,
   foreach_vxlan_gbp_flags
 #undef _
-} __attribute__ ((packed)) vxlan_gbp_flags_t;
+} __clib_packed vxlan_gbp_flags_t;
 
 #define VXLAN_GBP_FLAGS_GI (VXLAN_GBP_FLAGS_G|VXLAN_GBP_FLAGS_I)
 
@@ -119,7 +119,7 @@ typedef enum
 #define _(n,f) VXLAN_GBP_GPFLAGS_##f = n,
   foreach_vxlan_gbp_gpflags
 #undef _
-} __attribute__ ((packed)) vxlan_gbp_gpflags_t;
+} __clib_packed vxlan_gbp_gpflags_t;
 
 static inline u32
 vxlan_gbp_get_vni (vxlan_gbp_header_t * h)

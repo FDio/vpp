@@ -89,7 +89,7 @@ typedef enum
   IP_LOOKUP_NEXT_MCAST_MIDCHAIN,
 
   IP_LOOKUP_N_NEXT,
-} __attribute__ ((packed)) ip_lookup_next_t;
+} __clib_packed ip_lookup_next_t;
 
 typedef enum
 {
@@ -205,7 +205,7 @@ typedef enum adj_flags_t_
     ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << ADJ_ATTR_MIDCHAIN_NO_COUNT),
     ADJ_FLAG_MIDCHAIN_IP_STACK = (1 << ADJ_ATTR_MIDCHAIN_IP_STACK),
     ADJ_FLAG_MIDCHAIN_LOOPED = (1 << ADJ_ATTR_MIDCHAIN_LOOPED),
-}  __attribute__ ((packed)) adj_flags_t;
+}  __clib_packed adj_flags_t;
 
 /**
  * @brief Format adjacency flags

@@ -20,39 +20,39 @@
 
 #ifndef included_stat_weak_inlines_h
 #define included_stat_weak_inlines_h
-void *vlib_stats_push_heap (void *) __attribute__ ((weak));
+void *vlib_stats_push_heap (void *) __clib_weak;
 void *
 vlib_stats_push_heap (void *unused)
 {
   return 0;
 };
 
-void vlib_stats_pop_heap (void *, void *, u32, int) __attribute__ ((weak));
+void vlib_stats_pop_heap (void *, void *, u32, int) __clib_weak;
 void
 vlib_stats_pop_heap (void *notused, void *notused2, u32 i, int type)
 {
 };
 void vlib_stats_register_error_index (void *, u8 *, u64 *, u64)
-  __attribute__ ((weak));
+  __clib_weak;
 void
 vlib_stats_register_error_index (void * notused, u8 * notused2, u64 * notused3, u64 notused4)
 {
 };
 
-void vlib_stats_pop_heap2 (void *, u32, void *, int) __attribute__ ((weak));
+void vlib_stats_pop_heap2 (void *, u32, void *, int) __clib_weak;
 void
 vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3,
 		      int notused4)
 {
 };
 
-void vlib_stat_segment_lock (void) __attribute__ ((weak));
+void vlib_stat_segment_lock (void) __clib_weak;
 void
 vlib_stat_segment_lock (void)
 {
 }
 
-void vlib_stat_segment_unlock (void) __attribute__ ((weak));
+void vlib_stat_segment_unlock (void) __clib_weak;
 void
 vlib_stat_segment_unlock (void)
 {

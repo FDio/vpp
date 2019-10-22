@@ -43,7 +43,7 @@ typedef enum
 } flowprobe_record_t;
 
 /* *INDENT-OFF* */
-typedef enum __attribute__ ((__packed__))
+typedef enum __clib_packed
 {
   FLOW_VARIANT_IP4,
   FLOW_VARIANT_IP6,

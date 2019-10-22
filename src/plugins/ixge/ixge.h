@@ -161,7 +161,7 @@ typedef struct
   u8 payload_offset;
 
   u16 max_tcp_segment_size;
-} __attribute__ ((packed)) ixge_tx_context_descriptor_t;
+} __clib_packed ixge_tx_context_descriptor_t;
 
 typedef union
 {

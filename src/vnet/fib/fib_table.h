@@ -60,7 +60,7 @@ typedef enum fib_table_attribute_t_ {
 typedef enum fib_table_flags_t_ {
     FIB_TABLE_FLAG_NONE   = 0,
     FIB_TABLE_FLAG_IP6_LL  = (1 << FIB_TABLE_ATTRIBUTE_IP6_LL),
-} __attribute__ ((packed)) fib_table_flags_t;
+} __clib_packed fib_table_flags_t;
 
 /**
  * @brief 

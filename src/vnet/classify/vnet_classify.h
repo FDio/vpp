@@ -49,7 +49,7 @@ typedef enum vnet_classify_action_t_
   CLASSIFY_ACTION_SET_IP4_FIB_INDEX = 1,
   CLASSIFY_ACTION_SET_IP6_FIB_INDEX = 2,
   CLASSIFY_ACTION_SET_METADATA = 3,
-} __attribute__ ((packed)) vnet_classify_action_t;
+} __clib_packed vnet_classify_action_t;
 
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;

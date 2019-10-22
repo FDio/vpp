@@ -56,7 +56,7 @@
 /** Default CLI history depth if not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_HISTORY 50
 
-char *vlib_default_runtime_dir __attribute__ ((weak));
+char *vlib_default_runtime_dir __clib_weak;
 char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
@@ -341,16 +341,14 @@ startup_config_process (vlib_main_t * vm,
 		       0 /* current bat-format */ ,
 		       buf);
 	  {
-	    int rv __attribute__ ((unused)) =
-	      write (um->log_fd, lv, vec_len (lv));
+	    int rv __clib_unused = write (um->log_fd, lv, vec_len (lv));
 	  }
 	  vec_reset_length (lv);
 	  lv = format (lv, "%U: ***** End Startup Config *****\n",
 		       format_timeval, 0 /* current bat-time */ ,
 		       0 /* current bat-format */ );
 	  {
-	    int rv __attribute__ ((unused)) =
-	      write (um->log_fd, lv, vec_len (lv));
+	    int rv __clib_unused = write (um->log_fd, lv, vec_len (lv));
 	  }
 	  vec_free (lv);
 	}
@@ -471,8 +469,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 			   0 /* current bat-format */ ,
 			   getpid ());
 	      {
-		int rv __attribute__ ((unused)) =
-		  write (um->log_fd, lv, vec_len (lv));
+		int rv __clib_unused = write (um->log_fd, lv, vec_len (lv));
 	      }
 	      vec_free (lv);
 	    }

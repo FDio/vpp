@@ -47,7 +47,7 @@ void cj_log (u32 type, void *data0, void *data1);
 
 #define DECLARE_CJ_GLOBAL_LOG                                   \
 void cj_global_log (unsigned type, void * data0, void * data1)  \
-  __attribute__ ((weak));                                       \
+  __clib_weak;                                       \
                                                                 \
 unsigned __cj_type;                                             \
 void * __cj_data0;                                              \
@@ -62,9 +62,7 @@ cj_global_log (unsigned type, void * data0, void * data1)       \
 }
 
 #define CJ_GLOBAL_LOG_PROTOTYPE
-void
-cj_global_log (unsigned type, void *data0, void *data1)
-__attribute__ ((weak));
+void __clib_weak cj_global_log (unsigned type, void *data0, void *data1);
 
 void cj_stop (void);
 

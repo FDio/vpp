@@ -72,7 +72,7 @@ typedef struct _tcp_header
 
   u16 checksum;		/**< Checksum of TCP pseudo header and data. */
   u16 urgent_pointer;	/**< Seq number of the byte after the urgent data. */
-} __attribute__ ((packed)) tcp_header_t;
+} __clib_packed tcp_header_t;
 
 /* Flag tests that return 0 or !0 */
 #define tcp_doff(_th) ((_th)->data_offset_and_reserved >> 4)

@@ -36,7 +36,7 @@ typedef struct
 {
   u32 length;
   u8 buf[0];
-} __attribute__ ((packed)) vl_api_string_t;
+} __clib_packed vl_api_string_t;
 
 extern int vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str);
 extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);

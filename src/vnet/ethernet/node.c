@@ -2146,8 +2146,8 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
 void
 ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em)
 {
-  __attribute__ ((unused)) vlan_table_t *invalid_vlan_table;
-  __attribute__ ((unused)) qinq_table_t *invalid_qinq_table;
+  __clib_unused vlan_table_t *invalid_vlan_table;
+  __clib_unused qinq_table_t *invalid_qinq_table;
 
   ethernet_setup_node (vm, ethernet_input_node.index);
   ethernet_setup_node (vm, ethernet_input_type_node.index);

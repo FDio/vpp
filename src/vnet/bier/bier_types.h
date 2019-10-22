@@ -40,7 +40,7 @@ typedef enum bier_table_type_t_ {
      * BIER over MPLS for TE
      */
     BIER_TABLE_MPLS_TE,
-} __attribute__((packed)) bier_table_type_t;
+} __clib_packed bier_table_type_t;
 
 #define BIER_TABLE_TYPES {              \
     [BIER_TABLE_MPLS_SPF] = "mpls-spf", \
@@ -64,7 +64,7 @@ typedef enum bier_hdr_len_id_t_ {
     BIER_HDR_LEN_2048,
     BIER_HDR_LEN_4096,
     BIER_HDR_LEN_INVALID,
-} __attribute__((packed)) bier_hdr_len_id_t;
+} __clib_packed bier_hdr_len_id_t;
 
 #define BIER_HDR_LEN_IDS {             \
     [BIER_HDR_LEN_INVALID] = "invalid",\
@@ -187,7 +187,7 @@ typedef enum bier_hdr_proto_id_t_ {
     BIER_HDR_PROTO_VXLAN,
     BIER_HDR_PROTO_CTRL,
     BIER_HDR_PROTO_OAM,
-} __attribute__((packed)) bier_hdr_proto_id_t;
+} __clib_packed bier_hdr_proto_id_t;
 
 #define BIER_HDR_N_PROTO (BIER_HDR_PROTO_OAM + 1)
 
@@ -223,7 +223,7 @@ extern dpo_proto_t bier_hdr_proto_to_dpo(bier_hdr_proto_id_t bproto);
  **/
 typedef enum bier_hdr_version_t_ {
     BIER_HDR_VERSION_1 = 0,
-} __attribute__((packed)) bier_hdr_version_t;
+} __clib_packed bier_hdr_version_t;
 
 /**
  * bier_hdr_code_t enumerator
@@ -233,7 +233,7 @@ typedef enum bier_hdr_code_t_ {
     BIER_HDR_CODE_OAM_IPV6 = 1,
     BIER_HDR_CODE_CTRL_IPV4 = 2,
     BIER_HDR_CODE_CTRL_IPV6 = 3,
-} __attribute__((packed)) bier_hdr_code_t;
+} __clib_packed bier_hdr_code_t;
 
 /**
  * bier_hdr_oam_sub_code_t enumerator
@@ -241,7 +241,7 @@ typedef enum bier_hdr_code_t_ {
 typedef enum bier_hdr_oam_sub_code_t_ {
     BIER_HDR_SUB_CODE_OAM_PING_REQ = 0,
     BIER_HDR_SUB_CODE_OAM_PING_RESP = 1,
-} __attribute__((packed)) bier_hdr_oam_sub_code_t;
+} __clib_packed bier_hdr_oam_sub_code_t;
 
 /**
  * bier_hdr_ctrl_sub_code_t enumerator
@@ -249,7 +249,7 @@ typedef enum bier_hdr_oam_sub_code_t_ {
 typedef enum bier_hdr_ctrl_sub_code_t_ {
     BIER_HDR_SUB_CODE_CTRL_MEMBER_REQ = 0,
     BIER_HDR_SUB_CODE_CTRL_ATTACHED_NET = 1,
-} __attribute__((packed)) bier_hdr_ctrl_sub_code_t;
+} __clib_packed bier_hdr_ctrl_sub_code_t;
 
 /**
  * A bucket is a byte. The byte string is thus always in network byte order.
