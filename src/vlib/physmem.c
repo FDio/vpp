@@ -178,6 +178,9 @@ vlib_physmem_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "base-addr 0x%lx", &vpm->base_addr))
 	;
+      else if (unformat (input, "max-size %U",
+			 unformat_memory_size, &vpm->max_size))
+	;
       else
 	return unformat_parse_error (input);
     }
