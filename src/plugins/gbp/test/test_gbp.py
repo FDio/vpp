@@ -4950,10 +4950,12 @@ class TestGBP(VppTestCase):
             self, 44, 4220, 4221, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
-                VppGbpContractRule(
-                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
-                    [])],
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                 [])],
             [ETH_P_IP, ETH_P_IPV6])
         c_44.add_vpp_config()
         self.send_and_assert_no_replies(self.pg0, p * 1)
