@@ -152,7 +152,7 @@ void transport_register_protocol (transport_proto_t transport_proto,
 				  const transport_proto_vft_t * vft,
 				  fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
-void transport_update_time (f64 time_now, u8 thread_index);
+void transport_update_time (clib_time_type_t time_now, u8 thread_index);
 
 int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
 int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
@@ -173,8 +173,8 @@ transport_elog_track_index (transport_connection_t * tc)
 }
 
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
-					  u32 rate_bytes_per_sec,
-					  u32 initial_bucket, u64 time_now);
+					  u64 rate_bytes_per_sec,
+					  u32 initial_bucket);
 /**
  * Initialize tx pacer for connection
  *
@@ -183,7 +183,7 @@ void transport_connection_tx_pacer_reset (transport_connection_t * tc,
  * @param burst_bytes			initial burst size in bytes
  */
 void transport_connection_tx_pacer_init (transport_connection_t * tc,
-					 u32 rate_bytes_per_sec,
+					 u64 rate_bytes_per_sec,
 					 u32 initial_bucket);
 
 /**
@@ -202,8 +202,7 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
  * @param time_now	current cpu time as returned by @ref clib_cpu_time_now
  * @param mss		transport's mss
  */
-u32 transport_connection_snd_space (transport_connection_t * tc,
-				    u64 time_now, u16 mss);
+u32 transport_connection_snd_space (transport_connection_t * tc, u16 mss);
 
 /**
  * Get tx pacer max burst
@@ -212,8 +211,7 @@ u32 transport_connection_snd_space (transport_connection_t * tc,
  * @param time_now	current cpu time
  * @return		max burst for connection
  */
-u32 transport_connection_tx_pacer_burst (transport_connection_t * tc,
-					 u64 time_now);
+u32 transport_connection_tx_pacer_burst (transport_connection_t * tc);
 
 /**
  * Get tx pacer current rate
@@ -229,16 +227,7 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * @param tc		transport connection
  * @param time_now	current cpu time
  */
-void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
-						 u64 time_now);
-
-/**
- * Initialize period for tx pacers
- *
- * Defines a unit of time with respect to number of cpu cycles that is to
- * be used by all tx pacers.
- */
-void transport_init_tx_pacers_period (void);
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc);
 
 /**
  * Check if transport connection is paced
