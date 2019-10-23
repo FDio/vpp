@@ -206,6 +206,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   if (sif->last_packet_signature_valid &&
       (sif->last_packet_signature == last_packet_signature) &&
+      ((sif->actor.state & LACP_STEADY_STATE) == LACP_STEADY_STATE) &&
       hash_get (bif->active_slave_by_sw_if_index, sif->sw_if_index))
     {
       lacp_start_current_while_timer (lm->vlib_main, sif,
