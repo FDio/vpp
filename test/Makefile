@@ -78,7 +78,7 @@ TEST_RUN_DIR:=$(VENV_PATH)/run
 endif
 
 ifeq ($(PYTHON),)
-PYTHON_INTERP=python2.7
+PYTHON_INTERP=python3.6
 else
 PYTHON_INTERP=$(PYTHON)
 endif
@@ -234,8 +234,8 @@ wipe: reset
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-test-dir $(PIP_PATCH_DONE)
-	@virtualenv $(VENV_PATH) -p python3
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install sphinx sphinx-rtd-theme"
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) html"
 
 .PHONY: wipe-doc
@@ -267,9 +267,9 @@ papi-wipe:
 	@rm -rf $(PAPI_INSTALL_DONE)
 
 .PHONY: checkstyle
-checkstyle: verify-test-dir
-	@virtualenv $(VENV_PATH) -p python3
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle"
+checkstyle: verify-test-dir $(PIP_INSTALL_DONE)
+	@bash -c "source $(VENV_PATH)/bin/activate &&\
+		  $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py $(PLUGIN_SRC_DIR)/*/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
