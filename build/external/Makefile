@@ -34,6 +34,7 @@ CMAKE?=cmake
 endif
 
 include packages.mk
+include packages/indent.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
@@ -45,7 +46,7 @@ clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: dpdk-install rdma-core-install quicly-install
+install: indent-install dpdk-install rdma-core-install quicly-install
 
 .PHONY: config
 config: dpdk-config rdma-core-config
