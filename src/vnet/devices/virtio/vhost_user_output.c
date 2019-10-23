@@ -51,9 +51,12 @@
  * entries. In order to not corrupt memory, we have to do the copy when the
  * static array reaches the copy threshold. We subtract 40 in case the code
  * goes into the inner loop for a maximum of 64k frames which may require
- * more array entries.
+ * more array entries. We subtract 200 because our default buffer size is
+ * 2048 and the default desc len is likely 1536. While it takes less than 40
+ * vlib buffers for the jumbo frame, it may take twice as much descriptors
+ * for the same jumbo frame. Use 200 for the extra head room.
  */
-#define VHOST_USER_TX_COPY_THRESHOLD (VHOST_USER_COPY_ARRAY_N - 40)
+#define VHOST_USER_TX_COPY_THRESHOLD (VHOST_USER_COPY_ARRAY_N - 200)
 
 extern vnet_device_class_t vhost_user_device_class;
 
@@ -390,6 +393,7 @@ retry:
 	  vhost_user_handle_tx_offload (vui, b0, &hdr->hdr);
 
 	// Prepare a copy order executed later for the header
+	ASSERT (copy_len < VHOST_USER_COPY_ARRAY_N);
 	vhost_copy_t *cpy = &cpu->copy[copy_len];
 	copy_len++;
 	cpy->len = vui->virtio_net_hdr_sz;
@@ -477,6 +481,7 @@ retry:
 	    }
 
 	  {
+	    ASSERT (copy_len < VHOST_USER_COPY_ARRAY_N);
 	    vhost_copy_t *cpy = &cpu->copy[copy_len];
 	    copy_len++;
 	    cpy->len = bytes_left;
