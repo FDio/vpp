@@ -871,10 +871,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_DATA;
     }
 
-  ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   vm->clib_time.
-						   last_cpu_time,
-						   ctx->snd_mss);
+  ctx->snd_space = transport_connection_snd_space (ctx->tc, ctx->snd_mss);
 
   /* This flow queue is "empty" so it should be re-evaluated before
    * the ones that have data to send. */
@@ -892,9 +889,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
-      transport_connection_tx_pacer_reset_bucket (ctx->tc,
-						  vm->clib_time.
-						  last_cpu_time);
+      transport_connection_tx_pacer_reset_bucket (ctx->tc);
       return SESSION_TX_NO_DATA;
     }
 
@@ -1257,6 +1252,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
   wrk->last_vlib_time = vlib_time_now (vm);
+  wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
 
   /*
    *  Update transport time
