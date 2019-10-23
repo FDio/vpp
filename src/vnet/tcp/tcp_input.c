@@ -427,6 +427,7 @@ tcp_rcv_ack_no_cc (tcp_connection_t * tc, vlib_buffer_t * b, u32 * error)
       if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max)
 	  && seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
 	{
+	  os_panic ();
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  goto acceptable;
 	}
@@ -629,9 +630,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
        * we're in recovery and snd space constrained */
       if (tc->data_segs_out == tc->prev_dsegs_out
 	  || tcp_recovery_no_snd_space (tc))
-	transport_connection_tx_pacer_reset_bucket (&tc->connection,
-						    wrk->vm->clib_time.
-						    last_cpu_time);
+	transport_connection_tx_pacer_reset_bucket (&tc->connection);
       tc->prev_dsegs_out = tc->data_segs_out;
     }
   _vec_len (wrk->pending_deq_acked) = 0;
@@ -1569,10 +1568,15 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max)
 	  && seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
 	{
+	  os_panic ();
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  goto process_ack;
 	}
 
+      clib_warning ("ack %u diff snd-nxt %u",
+		    vnet_buffer (b)->tcp.ack_number - tc->iss,
+		    vnet_buffer (b)->tcp.ack_number - tc->snd_nxt);
+      clib_warning ("%U", format_tcp_connection, tc, 2);
       tc->errors.above_ack_wnd += 1;
       *error = TCP_ERROR_ACK_FUTURE;
       TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 0, vnet_buffer (b)->tcp.ack_number);
