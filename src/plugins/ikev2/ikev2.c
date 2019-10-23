@@ -246,18 +246,24 @@ ikev2_sa_free_proposal_vector (ikev2_sa_proposal_t ** v)
 };
 
 static void
+ikev2_sa_free_child_sa (ikev2_child_sa_t *c)
+{
+  ikev2_sa_free_proposal_vector (&c->r_proposals);
+  ikev2_sa_free_proposal_vector (&c->i_proposals);
+  vec_free (c->sk_ai);
+  vec_free (c->sk_ar);
+  vec_free (c->sk_ei);
+  vec_free (c->sk_er);
+  vec_free (c->tsi);
+  vec_free (c->tsr);
+}
+
+static void
 ikev2_sa_free_all_child_sa (ikev2_child_sa_t ** childs)
 {
   ikev2_child_sa_t *c;
   vec_foreach (c, *childs)
-  {
-    ikev2_sa_free_proposal_vector (&c->r_proposals);
-    ikev2_sa_free_proposal_vector (&c->i_proposals);
-    vec_free (c->sk_ai);
-    vec_free (c->sk_ar);
-    vec_free (c->sk_ei);
-    vec_free (c->sk_er);
-  }
+    ikev2_sa_free_child_sa (c);
 
   vec_free (*childs);
 }
@@ -265,13 +271,7 @@ ikev2_sa_free_all_child_sa (ikev2_child_sa_t ** childs)
 static void
 ikev2_sa_del_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * child)
 {
-  ikev2_sa_free_proposal_vector (&child->r_proposals);
-  ikev2_sa_free_proposal_vector (&child->i_proposals);
-  vec_free (child->sk_ai);
-  vec_free (child->sk_ar);
-  vec_free (child->sk_ei);
-  vec_free (child->sk_er);
-
+  ikev2_sa_free_child_sa (child);
   vec_del1 (sa->childs, child - sa->childs);
 }
 
