@@ -188,9 +188,6 @@ typedef struct
   /* Slaves that are in DISTRIBUTING state */
   u32 *active_slaves;
 
-  /* rapidly find an active slave */
-  uword *active_slave_by_sw_if_index;
-
   lacp_port_info_t partner;
   lacp_port_info_t actor;
   u8 individual_aggregator;
