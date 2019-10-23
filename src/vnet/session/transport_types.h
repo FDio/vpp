@@ -51,7 +51,7 @@ typedef struct _spacer
 {
   u64 bytes_per_sec;
   u64 bucket;
-  u64 last_update;
+  clib_us_time_t last_update;
   f32 tokens_per_period;
 } spacer_t;
 
