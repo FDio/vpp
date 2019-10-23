@@ -84,7 +84,10 @@ typedef struct session_worker_
   svm_msg_q_t *vpp_event_queue;
 
   /** vlib_time_now last time around the track */
-  f64 last_vlib_time;
+  clib_time_type_t last_vlib_time;
+
+  /** vlib_time_now rounded to us precision and as u64 */
+  clib_us_time_t last_vlib_us_time;
 
   /** Convenience pointer to this worker's vlib_main */
   vlib_main_t *vm;
@@ -124,7 +127,7 @@ typedef struct session_worker_
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
-  f64 last_event_poll;
+  clib_time_type_t last_event_poll;
 #endif
 } session_worker_t;
 
@@ -508,10 +511,16 @@ transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
   return svm_fifo_has_ooo_data (s->rx_fifo);
 }
 
-always_inline f64
+always_inline clib_time_type_t
 transport_time_now (u32 thread_index)
 {
   return session_main.wrk[thread_index].last_vlib_time;
+}
+
+always_inline clib_us_time_t
+transport_us_time_now (u32 thread_index)
+{
+  return session_main.wrk[thread_index].last_vlib_us_time;
 }
 
 always_inline void

@@ -193,6 +193,13 @@ clib_cpu_time_now (void)
 
 void clib_time_verify_frequency (clib_time_t * c);
 
+/* Define it as the type returned by clib_time_now */
+typedef f64 clib_time_type_t;
+typedef u64 clib_us_time_t;
+
+#define CLIB_US_TIME_PERIOD (1e-6)
+#define CLIB_US_TIME_FREQ (1.0/CLIB_US_TIME_PERIOD)
+
 always_inline f64
 clib_time_now_internal (clib_time_t * c, u64 n)
 {
