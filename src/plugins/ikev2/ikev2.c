@@ -1308,7 +1308,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
       {
         if (ikev2_ts_cmp(p_tsi, ts))
           {
-            tsi = vec_dup(ts);
+            vec_add1 (tsi, ts[0]);
             break;
           }
       }
@@ -1317,7 +1317,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
       {
         if (ikev2_ts_cmp(p_tsr, ts))
           {
-            tsr = vec_dup(ts);
+            vec_add1 (tsr, ts[0]);
             break;
           }
       }
