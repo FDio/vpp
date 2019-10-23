@@ -1208,13 +1208,17 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 
 	packet_enqueue:
-	  b0->error = node->errors[error0];
 
 	  if (bi0 != ~0)
 	    {
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
+
+	      /* bi0 might have been updated by reass_finalize, reload */
+	      b0 = vlib_get_buffer (vm, bi0);
+	      b0->error = node->errors[error0];
+
 	      if (next0 == IP4_FULL_REASS_NEXT_HANDOFF)
 		{
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1233,7 +1237,6 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else if (is_feature && IP4_ERROR_NONE == error0)
 		{
-		  b0 = vlib_get_buffer (vm, bi0);
 		  vnet_feature_next (&next0, b0);
 		}
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

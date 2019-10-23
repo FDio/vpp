@@ -1168,14 +1168,17 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      error0 = IP6_ERROR_REASS_LIMIT_REACHED;
 	    }
 
-	  b0->error = node->errors[error0];
-
 	  if (~0 != bi0)
 	    {
 	    skip_reass:
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
+
+	      /* bi0 might have been updated by reass_finalize, reload */
+	      b0 = vlib_get_buffer (vm, bi0);
+	      b0->error = node->errors[error0];
+
 	      if (next0 == IP6_FULL_REASSEMBLY_NEXT_HANDOFF)
 		{
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1194,7 +1197,6 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 		}
 	      else if (is_feature && IP6_ERROR_NONE == error0)
 		{
-		  b0 = vlib_get_buffer (vm, bi0);
 		  vnet_feature_next (&next0, b0);
 		}
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
