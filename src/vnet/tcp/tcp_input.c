@@ -890,6 +890,12 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
       /* Rule (3): if hole not lost */
       else if (seq_lt (hole->start, sb->high_sacked))
 	{
+	  /* And we didn't already retransmit it */
+	  if (seq_leq (hole->end, sb->high_rxt))
+	    {
+	      sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+	      return 0;
+	    }
 	  *snd_limited = 0;
 	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
 	}
