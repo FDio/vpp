@@ -654,6 +654,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	    }
 
 	  /* Prepare a copy order executed later for the data */
+	  ASSERT (copy_len < VHOST_USER_COPY_ARRAY_N);
 	  vhost_copy_t *cpy = &cpu->copy[copy_len];
 	  copy_len++;
 	  u32 desc_data_l = desc_table[desc_current].len - desc_data_offset;
