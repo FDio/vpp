@@ -43,11 +43,18 @@ fi
 
 # Check to make sure we have indent.  Exit if we don't with an error message, but
 # don't *fail*.
+command -v dirname > /dev/null
+if [ $? != 0 ]; then
+    echo "Cound not find required command \"dirname\".  Checkstyle aborted"
+    exit ${EXIT_CODE}
+fi
 command -v indent > /dev/null
 if [ $? != 0 ]; then
     echo "Cound not find required command \"indent\".  Checkstyle aborted"
     exit ${EXIT_CODE}
 fi
+# FIXME-DISCUSS: find indent within our tree, and use it
+PATH=$(dirname $(find $(pwd) -name indent -type f | head -n 1)):$PATH
 indent --version
 
 # Check to make sure we have clang-format.  Exit if we don't with an error message, but

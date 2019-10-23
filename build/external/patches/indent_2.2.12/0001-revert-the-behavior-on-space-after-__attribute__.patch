@@ -1,0 +1,25 @@
+From f9ac8d899984eda721706d4f3cea1a1d28a2fba7 Mon Sep 17 00:00:00 2001
+From: Andrew Yourtchenko <ayourtch@gmail.com>
+Date: Wed, 23 Oct 2019 18:20:28 +0200
+Subject: [PATCH] revert the behavior on space after __attribute__
+
+---
+ src/handletoken.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/handletoken.c b/src/handletoken.c
+index 919fba9..05186bb 100644
+--- a/src/handletoken.c
++++ b/src/handletoken.c
+@@ -2207,7 +2207,7 @@ static void handle_token_attribute(void)
+     }
+ 
+     parser_state_tos->in_decl = false;
+-    parser_state_tos->want_blank = settings.blank_after_sizeof;
++    parser_state_tos->want_blank = true;
+ }
+ 
+ /**
+-- 
+2.17.1
+
