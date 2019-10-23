@@ -98,13 +98,9 @@ class TestCDP(VppTestCase):
         self.assert_equal(system[:length], self.device_id[:length],
                           "CDP received invalid device id")
 
-    @unittest.skipIf(sys.version_info[0] > 2,
-                     "not supported in python3/scapy")
     def test_cdp_underflow_tlv(self):
         self.send_bad_packet(3, ".")
 
-    @unittest.skipIf(sys.version_info[0] > 2,
-                     "not supported in python3/scapy")
     def test_cdp_overflow_tlv(self):
         self.send_bad_packet(8, ".")
 
