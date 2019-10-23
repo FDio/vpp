@@ -1494,6 +1494,7 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
+      wrk->last_vlib_us_time = wrk->last_vlib_time * 1e6;
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
@@ -1537,7 +1538,6 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
-  transport_init_tx_pacers_period ();
   return 0;
 }
 
