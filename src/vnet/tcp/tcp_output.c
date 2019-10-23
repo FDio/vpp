@@ -1439,6 +1439,8 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
 
   start = tc->snd_una + offset;
+  ASSERT (seq_leq (start + max_deq_bytes, tc->snd_nxt));
+
   n_bytes = tcp_prepare_segment (wrk, tc, offset, max_deq_bytes, b);
   if (!n_bytes)
     return 0;
@@ -1568,7 +1570,8 @@ tcp_timer_retransmit_handler (u32 tc_index)
 
       /* Send the first unacked segment. If we're short on buffers, return
        * as soon as possible */
-      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
+      n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
 	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
@@ -1962,7 +1965,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   while (snd_space > 0 && n_segs < burst_size)
     {
-      hole = scoreboard_next_rxt_hole (sb, hole, max_deq, &can_rescue,
+      hole = scoreboard_next_rxt_hole (sb, hole, max_deq != 0, &can_rescue,
 				       &snd_limited);
       if (!hole)
 	{
@@ -2030,6 +2033,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
       sb->high_rxt += n_written;
+      ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
+
       snd_space -= n_written;
       n_segs += 1;
     }
