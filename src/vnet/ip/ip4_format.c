@@ -165,7 +165,7 @@ format_ip4_header (u8 * s, va_list * args)
 
     /* Fragment offset. */
     o = 8 * (f & 0x1fff);
-    f ^= o;
+    f ^= f & 0x1fff;
     if (o != 0)
       s = format (s, " offset %d", o);
 
