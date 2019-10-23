@@ -98,16 +98,22 @@ for i in ${FILELIST}; do
                 fi
                 # Remove trailing whitespace
                 sed -i -e 's/[[:space:]]*$//' ${i}.out2
+		# fix up the __attribute__ space issue with gnu indent 2.2.12+
+		sed -i -e 's/__attribute__[(][(]/__attribute__ ((/' ${i}
+		sed -i -e 's/__attribute__[(][(]/__attribute__ ((/' ${i}.out2
                 diff -q ${i} ${i}.out2
             else
                 if [ "${CMD}" == "clang-format" ]; then
                     clang-format -i ${i} > /dev/null 2>&1
                 else
+		    echo FIXING ${i}
                     indent ${i}
                     indent ${i}
                 fi
                 # Remove trailing whitespace
                 sed -i -e 's/[[:space:]]*$//' ${i}
+		# fix up the __attribute__ space issue with gnu indent 2.2.12+
+		sed -i -e 's/__attribute__[(][(]/__attribute__ ((/' ${i}
             fi
             if [ $? != 0 ]; then
                 EXIT_CODE=1
