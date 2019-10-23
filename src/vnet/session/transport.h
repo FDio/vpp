@@ -203,7 +203,7 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
  * @param mss		transport's mss
  */
 u32 transport_connection_snd_space (transport_connection_t * tc,
-				    u64 time_now, u16 mss);
+				    clib_time_type_t time_now, u16 mss);
 
 /**
  * Get tx pacer max burst
@@ -213,7 +213,7 @@ u32 transport_connection_snd_space (transport_connection_t * tc,
  * @return		max burst for connection
  */
 u32 transport_connection_tx_pacer_burst (transport_connection_t * tc,
-					 u64 time_now);
+					 clib_time_type_t time_now);
 
 /**
  * Get tx pacer current rate
@@ -230,7 +230,7 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * @param time_now	current cpu time
  */
 void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
-						 u64 time_now);
+						 clib_time_type_t time_now);
 
 /**
  * Initialize period for tx pacers

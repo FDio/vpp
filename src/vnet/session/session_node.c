@@ -866,8 +866,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   vm->clib_time.
-						   last_cpu_time,
+                                                   wrk->last_vlib_time,
 						   ctx->snd_mss);
 
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
@@ -885,8 +884,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
       transport_connection_tx_pacer_reset_bucket (ctx->tc,
-						  vm->clib_time.
-						  last_cpu_time);
+                                                  wrk->last_vlib_time);
       return SESSION_TX_NO_DATA;
     }
 

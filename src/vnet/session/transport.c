@@ -47,6 +47,11 @@ static clib_spinlock_t local_endpoints_lock;
  */
 static double transport_pacer_period;
 
+/*
+ * Period used by transport pacers (1us)
+ */
+#define TRANSPORT_PACER_PERIOD 1e-6
+
 u8 *
 format_transport_proto (u8 * s, va_list * args)
 {
@@ -107,7 +112,7 @@ format_transport_connection (u8 * s, va_list * args)
     {
       indent = format_get_indent (s) + 1;
       s = format (s, "%Upacer: %U\n", format_white_space, indent,
-		  format_transport_pacer, &tc->pacer);
+		  format_transport_pacer, &tc->pacer, tc->thread_index);
     }
   return s;
 }
@@ -562,26 +567,31 @@ u8 *
 format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
-  vlib_main_t *vm = vlib_get_main ();
-  u64 now, diff;
+  u32 thread_index = va_arg (*args, int);
+//  vlib_main_t *vm = vlib_get_main ();
+//  u64 now, diff;
+  clib_time_type_t now, diff;
 
-  now = vm->clib_time.last_cpu_time;
-  diff = now - (pacer->last_update << SPACER_CPU_TICKS_PER_PERIOD_SHIFT);
+//  now = vm->clib_time.last_cpu_time;
+  now = transport_time_now (thread_index);
+//  diff = now - (pacer->last_update << SPACER_CPU_TICKS_PER_PERIOD_SHIFT);
+  diff = now - pacer->last_update;
   s = format (s, "rate %u bucket %u t/p %.3f last_update %.3f",
 	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
-	      diff * vm->clib_time.seconds_per_clock);
+	      diff);
+//	      diff * vm->clib_time.seconds_per_clock);
   return s;
 }
 
 static inline u32
-spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
+spacer_max_burst (spacer_t * pacer, clib_time_type_t time_now)
 {
-  u64 n_periods = norm_time_now - pacer->last_update;
+  u64 n_periods = (time_now - pacer->last_update) / TRANSPORT_PACER_PERIOD;
   u64 inc;
 
   if (PREDICT_FALSE (n_periods > 5e5))
     {
-      pacer->last_update = norm_time_now;
+      pacer->last_update = time_now;
       pacer->bucket = TRANSPORT_PACER_MIN_BURST;
       return TRANSPORT_PACER_MIN_BURST;
     }
@@ -589,7 +599,7 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
   if (n_periods > 0
       && (inc = (f32) n_periods * pacer->tokens_per_period) > 10)
     {
-      pacer->last_update = norm_time_now;
+      pacer->last_update = time_now;
       pacer->bucket = clib_min (pacer->bucket + inc, pacer->bytes_per_sec);
     }
 
@@ -608,7 +618,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
 {
   ASSERT (rate_bytes_per_sec != 0);
   pacer->bytes_per_sec = rate_bytes_per_sec;
-  pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
+  pacer->tokens_per_period = rate_bytes_per_sec * TRANSPORT_PACER_PERIOD;
 }
 
 static inline u64
@@ -631,7 +641,8 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 {
   spacer_t *pacer = &tc->pacer;
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec);
-  pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+//  pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+  pacer->last_update = time_now;
   pacer->bucket = start_bucket;
 }
 
@@ -656,22 +667,23 @@ transport_connection_tx_pacer_update (transport_connection_t * tc,
 
 u32
 transport_connection_tx_pacer_burst (transport_connection_t * tc,
-				     u64 time_now)
+				     clib_time_type_t time_now)
 {
-  time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+//  time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
   return spacer_max_burst (&tc->pacer, time_now);
 }
 
 void
 transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
-					    u64 time_now)
+					    clib_time_type_t time_now)
 {
-  time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+//  time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
   spacer_reset_bucket (&tc->pacer, time_now);
 }
 
 u32
-transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
+transport_connection_snd_space (transport_connection_t * tc,
+                                clib_time_type_t time_now,
 				u16 mss)
 {
   u32 snd_space, max_paced_burst;
@@ -679,7 +691,7 @@ transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
   snd_space = tp_vfts[tc->proto].send_space (tc);
   if (snd_space && transport_connection_is_tx_paced (tc))
     {
-      time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
+//      time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
       max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
       max_paced_burst =
 	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;

@@ -1876,11 +1876,13 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   vlib_buffer_t *b = 0;
   sack_scoreboard_t *sb;
   int snd_space;
-  u64 time_now;
+//  u64 time_now;
+  clib_time_type_t time_now;
 
   ASSERT (tcp_in_cong_recovery (tc));
 
-  time_now = wrk->vm->clib_time.last_cpu_time;
+//  time_now = wrk->vm->clib_time.last_cpu_time;
+  time_now = tcp_time_now_us (tc->c_thread_index);
   burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
 						     time_now);
   burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
@@ -2018,8 +2020,7 @@ done:
   if (reset_pacer)
     {
       transport_connection_tx_pacer_reset_bucket (&tc->connection,
-						  vm->clib_time.
-						  last_cpu_time);
+                                                  tcp_time_now_us (tc->c_thread_index));
     }
   else
     {
@@ -2044,12 +2045,14 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   int snd_space, n_segs = 0;
   u8 cc_limited = 0;
   vlib_buffer_t *b;
-  u64 time_now;
+//  u64 time_now;
+  clib_time_type_t time_now;
 
   ASSERT (tcp_in_fastrecovery (tc));
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
 
-  time_now = wrk->vm->clib_time.last_cpu_time;
+//  time_now = wrk->vm->clib_time.last_cpu_time;
+  time_now = tcp_time_now_us (tc->c_thread_index);
   burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
 						     time_now);
   burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
