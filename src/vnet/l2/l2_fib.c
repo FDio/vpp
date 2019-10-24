@@ -1081,6 +1081,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		      mp->mac[evt_idx].action =
 			l2fib_entry_result_is_set_LRN_MOV (&result) ?
 			MAC_EVENT_ACTION_MOVE : MAC_EVENT_ACTION_ADD;
+		      mp->mac[evt_idx].action =
+			htonl (mp->mac[evt_idx].action);
 		      mp->mac[evt_idx].sw_if_index =
 			htonl (result.fields.sw_if_index);
 		      /* clear event bits and update mac entry */
@@ -1124,6 +1126,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		  clib_memcpy_fast (mp->mac[evt_idx].mac_addr, key.fields.mac,
 				    6);
 		  mp->mac[evt_idx].action = MAC_EVENT_ACTION_DELETE;
+		  mp->mac[evt_idx].action = htonl (mp->mac[evt_idx].action);
 		  mp->mac[evt_idx].sw_if_index =
 		    htonl (result.fields.sw_if_index);
 		  evt_idx++;
