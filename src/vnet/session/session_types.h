@@ -147,12 +147,25 @@ typedef enum
     SESSION_N_STATES,
 } session_state_t;
 
+#define foreach_session_flag				\
+  _(RX_EVT, "rx-event")					\
+  _(PROXY, "proxy")					\
+  _(CUSTOM_TX, "custom-tx")				\
+  _(IS_MIGRATING, "migrating")				\
+
+typedef enum session_flags_bits_
+{
+#define _(sym, str) SESSION_F_BIT_ ## sym,
+  foreach_session_flag
+#undef _
+  SESSION_N_FLAGS
+} session_flag_bits_t;
+
 typedef enum session_flags_
 {
-  SESSION_F_RX_EVT = 1,
-  SESSION_F_PROXY = (1 << 1),
-  SESSION_F_CUSTOM_TX = (1 << 2),
-  SESSION_F_IS_MIGRATING = (1 << 3),
+#define _(sym, str) SESSION_F_ ## sym = 1 << SESSION_F_BIT_ ## sym,
+  foreach_session_flag
+#undef _
 } session_flags_t;
 
 typedef struct session_
