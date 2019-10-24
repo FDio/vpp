@@ -149,7 +149,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   mp->bd_id =
     ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
 
-  clib_memcpy (mp->mac, l2fe_key->fields.mac, 6);
+  mac_address_encode ((mac_address_t *) l2fe_key->fields.mac, mp->mac);
   mp->sw_if_index = ntohl (l2fe_res->fields.sw_if_index);
   mp->static_mac = (l2fib_entry_result_is_set_STATIC (l2fe_res) ? 1 : 0);
   mp->filter_mac = (l2fib_entry_result_is_set_FILTER (l2fe_res) ? 1 : 0);
@@ -215,13 +215,13 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
     }
   u32 bd_index = p[0];
 
-  u8 mac[6];
+  mac_address_t mac;
 
-  clib_memcpy (mac, mp->mac, 6);
+  mac_address_decode (mp->mac, &mac);
   if (mp->is_add)
     {
       if (mp->filter_mac)
-	l2fib_add_filter_entry (mac, bd_index);
+	l2fib_add_filter_entry (mac.bytes, bd_index);
       else
 	{
 	  l2fib_entry_result_flags_t flags = L2FIB_ENTRY_RESULT_FLAG_NONE;
@@ -246,13 +246,13 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 	    flags |= L2FIB_ENTRY_RESULT_FLAG_STATIC;
 	  if (mp->bvi_mac)
 	    flags |= L2FIB_ENTRY_RESULT_FLAG_BVI;
-	  l2fib_add_entry (mac, bd_index, sw_if_index, flags);
+	  l2fib_add_entry (mac.bytes, bd_index, sw_if_index, flags);
 	}
     }
   else
     {
       u32 sw_if_index = ntohl (mp->sw_if_index);
-      if (l2fib_del_entry (mac, bd_index, sw_if_index))
+      if (l2fib_del_entry (mac.bytes, bd_index, sw_if_index))
 	rv = VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
@@ -281,18 +281,27 @@ vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
 	  if (mp->max_macs_in_event)
 	    fm->max_macs_in_event = mp->max_macs_in_event * 10;
 	  else
-	    fm->max_macs_in_event = L2FIB_EVENT_MAX_MACS_DEFAULT;
+	    {
+	      rv = VNET_API_ERROR_INVALID_VALUE;
+	      goto exit;
+	    }
 
 	  if (mp->scan_delay)
 	    fm->event_scan_delay = (f64) (mp->scan_delay) * 10e-3;
 	  else
-	    fm->event_scan_delay = L2FIB_EVENT_SCAN_DELAY_DEFAULT;
+	    {
+	      rv = VNET_API_ERROR_INVALID_VALUE;
+	      goto exit;
+	    }
 
 	  /* change learn limit and flush all learned MACs */
 	  if (learn_limit && (learn_limit < L2LEARN_DEFAULT_LIMIT))
 	    lm->global_learn_limit = learn_limit;
 	  else
-	    lm->global_learn_limit = L2FIB_EVENT_LEARN_LIMIT_DEFAULT;
+	    {
+	      rv = VNET_API_ERROR_INVALID_VALUE;
+	      goto exit;
+	    }
 
 	  l2fib_flush_all_mac (vlib_get_main ());
 	}
@@ -506,11 +515,15 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
   vl_api_registration_t *reg;
-  u32 bd_id, bd_index, end;
+  u32 bd_id, bd_index, end, filter_sw_if_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
+
+  filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index != ~0)
+    return;			/* UNIMPLEMENTED */
 
   bd_id = ntohl (mp->bd_id);
   if (bd_id == 0)
@@ -648,6 +661,7 @@ static void
   vlib_main_t *vm = vlib_get_main ();
   u32 vtr_op;
   int rv = 0;
+  mac_address_t b_dmac, b_smac;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -666,8 +680,11 @@ static void
       goto bad_sw_if_index;
     }
 
+  mac_address_decode (mp->b_dmac, &b_dmac);
+  mac_address_decode (mp->b_smac, &b_smac);
+
   rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
-			mp->b_dmac, mp->b_smac, ntohs (mp->b_vlanid),
+			b_dmac.bytes, b_smac.bytes, ntohs (mp->b_vlanid),
 			ntohl (mp->i_sid), ntohs (mp->outer_tag));
 
   BAD_SW_IF_INDEX_LABEL;
