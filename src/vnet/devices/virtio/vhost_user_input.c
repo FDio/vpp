@@ -628,20 +628,29 @@ vhost_user_if_input (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (cpu->rx_buffers_len == 0))
 		{
-		  /* Cancel speculation */
-		  to_next--;
-		  n_left_to_next++;
+		  cpu->rx_buffers_len =
+		    vlib_buffer_alloc (vm, cpu->rx_buffers,
+				       VHOST_USER_RX_BUFFERS_N);
+		  if (PREDICT_FALSE (cpu->rx_buffers_len == 0))
+		    {
+		      /* Cancel speculation */
+		      to_next--;
+		      n_left_to_next++;
 
-		  /*
-		   * Checking if there are some left buffers.
-		   * If not, just rewind the used buffers and stop.
-		   * Note: Scheduled copies are not cancelled. This is
-		   * not an issue as they would still be valid. Useless,
-		   * but valid.
-		   */
-		  vhost_user_input_rewind_buffers (vm, cpu, b_head);
-		  n_left = 0;
-		  goto stop;
+		      /*
+		       * Checking if there are some left buffers.
+		       * If not, just rewind the used buffers and stop.
+		       * Note: Scheduled copies are not cancelled. This is
+		       * not an issue as they would still be valid. Useless,
+		       * but valid.
+		       */
+		      vhost_user_input_rewind_buffers (vm, cpu, b_head);
+		      vlib_error_count (vm, node->node_index,
+					VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER,
+					n_left);
+		      n_left = 0;
+		      goto stop;
+		    }
 		}
 
 	      /* Get next output */
