@@ -430,6 +430,11 @@ I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
+Plugin - Buffer Metadata Modification Tracker
+I:	mdata
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/mdata/
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <ksekera@cisco.com>

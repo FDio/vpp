@@ -1004,14 +1004,17 @@ format_buffer_metadata (u8 * s, va_list * args)
   s = format (s, "flags: %U\n", format_vnet_buffer_flags, b);
   s = format (s, "current_data: %d, current_length: %d\n",
 	      (i32) (b->current_data), (i32) (b->current_length));
-  s = format (s, "current_config_index: %d, flow_id: %x, next_buffer: %x\n",
-	      b->current_config_index, b->flow_id, b->next_buffer);
-  s = format (s, "error: %d, ref_count: %d, buffer_pool_index: %d\n",
-	      (u32) (b->error), (u32) (b->ref_count),
-	      (u32) (b->buffer_pool_index));
-  s = format (s,
-	      "trace_handle: 0x%x, len_not_first_buf: %d\n",
-	      b->trace_handle, b->total_length_not_including_first_buffer);
+  s = format
+    (s,
+     "current_config_index/punt_reason: %d, flow_id: %x, next_buffer: %x\n",
+     b->current_config_index, b->flow_id, b->next_buffer);
+  s =
+    format (s, "error: %d, ref_count: %d, buffer_pool_index: %d\n",
+	    (u32) (b->error), (u32) (b->ref_count),
+	    (u32) (b->buffer_pool_index));
+  s =
+    format (s, "trace_handle: 0x%x, len_not_first_buf: %d\n", b->trace_handle,
+	    b->total_length_not_including_first_buffer);
   return s;
 }
 
