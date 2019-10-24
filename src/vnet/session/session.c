@@ -142,6 +142,11 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	  elt->evt.event_type = SESSION_IO_EVT_TX;
 	}
     }
+  else
+    {
+      session_event_t _e, *e = &_e;
+      ASSERT (session_node_lookup_fifo_event (s->tx_fifo, e));
+    }
 }
 
 static void
