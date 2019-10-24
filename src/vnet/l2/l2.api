@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-option version = "2.2.2";
+option version = "3.0.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
 
-/** \brief Reply to l2_xconnect_dump 
+/** \brief Reply to l2_xconnect_dump
     @param context - sender context which was passed in the request
     @param rx_sw_if_index - Receive interface index
     @param tx_sw_if_index - Transmit interface index
@@ -27,8 +28,8 @@ import "vnet/ethernet/ethernet_types.api";
 define l2_xconnect_details
 {
   u32 context;
-  u32 rx_sw_if_index;
-  u32 tx_sw_if_index;
+  vl_api_interface_index_t rx_sw_if_index;
+  vl_api_interface_index_t tx_sw_if_index;
 };
 
 /** \brief Dump L2 XConnects
@@ -53,11 +54,11 @@ define l2_fib_table_details
 {
   u32 context;
   u32 bd_id;
-  u8 mac[6];
-  u32 sw_if_index;
-  u8 static_mac;
-  u8 filter_mac;
-  u8 bvi_mac;
+  vl_api_mac_address_t mac;
+  vl_api_interface_index_t sw_if_index;
+  bool static_mac;
+  bool filter_mac;
+  bool bvi_mac;
 };
 
 /** \brief Dump l2 fib (aka bridge domain) table
@@ -112,7 +113,7 @@ autoreply define l2fib_flush_int
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief L2 FIB add entry request
@@ -122,20 +123,21 @@ autoreply define l2fib_flush_int
     @param bd_id - the entry's bridge domain id
     @param sw_if_index - the interface
     @param is_add - If non zero add the entry, else delete it
-    @param static_mac - 
+    @param static_mac -
     @param filter_mac -
+    @param bvi_mac -
 */
 autoreply define l2fib_add_del
 {
   u32 client_index;
   u32 context;
-  u8 mac[6];
+  vl_api_mac_address_t mac;
   u32 bd_id;
-  u32 sw_if_index;
-  u8 is_add;
-  u8 static_mac;
-  u8 filter_mac;
-  u8 bvi_mac;
+  vl_api_interface_index_t sw_if_index;
+  bool is_add [default=true];
+  bool static_mac;
+  bool filter_mac;
+  bool bvi_mac;
 };
 
 /** \brief Register to receive L2 MAC events for learned and aged MAC
@@ -151,25 +153,32 @@ autoreply define want_l2_macs_events
 {
   u32 client_index;
   u32 context;
-  u32 learn_limit;
-  u8  scan_delay;
-  u8  max_macs_in_event;
-  u8  enable_disable;
+  u32 learn_limit [default=1000];
+  u8  scan_delay [default=1000];
+  u8  max_macs_in_event [default=100];
+  bool enable_disable [default=true];
   u32 pid;
+};
+
+enum mac_event_action
+{
+	MAC_EVENT_ACTION_API_ADD = 0,
+	MAC_EVENT_ACTION_API_DELETE = 1,
+	MAC_EVENT_ACTION_API_MOVE = 2,
 };
 
 /** \brief Entry for learned or aged MAC in L2 MAC Events
     @param sw_if_index - sw_if_index in the domain
     @param mac_addr - mac_address
     @param action - 0 => newly learned MAC, 1 => MAC deleted by ager
-                    3 => MAC move (sw_if_index changed)
+                    2 => MAC move (sw_if_index changed)
     @param flags - flag bits to provide other info, not yet used
 */
 typedef mac_entry
 {
-  u32 sw_if_index;
-  u8  mac_addr[6];
-  u8  action;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_mac_address_t  mac_addr;
+  vl_api_mac_event_action_t  action;
   u8  flags;
 };
 
@@ -192,14 +201,14 @@ service {
     events l2_macs_event;
 };
 
-/** \brief Set interface L2 flags (such as L2_LEARN, L2_FWD, 
+/** \brief Set interface L2 flags (such as L2_LEARN, L2_FWD,
     L2_FLOOD, L2_UU_FLOOD, or L2_ARP_TERM bits). This can be used
     to disable one or more of the features represented by the
     flag bits on an interface to override what is set as default
     for all interfaces in the bridge domain
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface 
+    @param sw_if_index - interface
     @param is_set - if non-zero, set the bits, else clear them
     @param feature_bitmap - non-zero bits (as above) to set or clear
 */
@@ -207,8 +216,8 @@ define l2_flags
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_set;
+  vl_api_interface_index_t sw_if_index;
+  bool is_set;
   u32 feature_bitmap;
 };
 
@@ -256,27 +265,29 @@ autoreply define bridge_domain_add_del
   u32 client_index;
   u32 context;
   u32 bd_id;
-  u8 flood;
-  u8 uu_flood;
-  u8 forward;
-  u8 learn;
-  u8 arp_term;
-  u8 arp_ufwd;
+  bool flood;
+  bool uu_flood;
+  bool forward;
+  bool learn;
+  bool arp_term;
+  bool arp_ufwd;
   u8 mac_age;
-  u8 bd_tag[64];
-  u8 is_add;
+  string bd_tag[64];
+  bool is_add [default=true];
 };
 
 /** \brief L2 bridge domain request operational state details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param bd_id - the bridge domain id desired or ~0 to request all bds
+    @param sw_if_index - filter by sw_if_index UNIMPLEMENTED
 */
 define bridge_domain_dump
 {
   u32 client_index;
   u32 context;
-  u32 bd_id;
+  u32 bd_id [default=0xffffffff];
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief L2 bridge domain sw interface operational state response
@@ -287,7 +298,8 @@ define bridge_domain_dump
 typedef bridge_domain_sw_if
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  /* FIXME: set_int_l2_mode() u32/ api u8 */
   u8 shg;
 };
 
@@ -307,16 +319,16 @@ manual_print manual_endian define bridge_domain_details
 {
   u32 context;
   u32 bd_id;
-  u8 flood;
-  u8 uu_flood;
-  u8 forward;
-  u8 learn;
-  u8 arp_term;
-  u8 arp_ufwd;
-  u8 mac_age;
-  u8 bd_tag[64];
-  u32 bvi_sw_if_index;
-  u32 uu_fwd_sw_if_index;
+  bool flood;
+  bool uu_flood;
+  bool forward;
+  bool learn;
+  bool arp_term;
+  bool arp_ufwd;
+  bool mac_age;
+  string bd_tag[64];
+  vl_api_interface_index_t bvi_sw_if_index;
+  vl_api_interface_index_t uu_fwd_sw_if_index;
   u32 n_sw_ifs;
   vl_api_bridge_domain_sw_if_t sw_if_details[n_sw_ifs];
 };
@@ -345,7 +357,7 @@ define bridge_flags
   u32 client_index;
   u32 context;
   u32 bd_id;
-  u8 is_set;
+  bool is_set;
   vl_api_bd_flags_t flags;
 };
 
@@ -374,7 +386,7 @@ autoreply define l2_interface_vlan_tag_rewrite
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vtr_op;
   u32 push_dot1q;		// ethertype of first pushed tag is dot1q/dot1ad
   u32 tag1;			// first pushed tag
@@ -387,7 +399,7 @@ autoreply define l2_interface_vlan_tag_rewrite
     @param sw_if_index - interface the operation is applied to
     @param vtr_op - Choose from l2_vtr_op_t enum values
     @param inner_tag - needed for translate_qinq vtr op only
-    @param outer_tag - needed for translate_qinq vtr op only 
+    @param outer_tag - needed for translate_qinq vtr op only
     @param b_dmac - B-tag remote mac address, needed for any push or translate_qinq vtr op
     @param b_smac - B-tag local mac address, needed for any push or translate qinq vtr op
     @param b_vlanid - B-tag vlanid, needed for any push or translate qinq vtr op
@@ -397,11 +409,11 @@ autoreply define l2_interface_pbb_tag_rewrite
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vtr_op;
   u16 outer_tag;
-  u8  b_dmac[6];
-  u8  b_smac[6];
+  vl_api_mac_address_t  b_dmac;
+  vl_api_mac_address_t  b_smac;
   u16 b_vlanid;
   u32 i_sid;
 };
@@ -409,7 +421,7 @@ autoreply define l2_interface_pbb_tag_rewrite
 /** \brief L2 interface patch add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param rx_sw_if_index - receive side interface 
+    @param rx_sw_if_index - receive side interface
     @param tx_sw_if_index - transmit side interface
     @param is_add - if non-zero set up the interface patch, else remove it
 */
@@ -417,9 +429,9 @@ autoreply define l2_patch_add_del
 {
   u32 client_index;
   u32 context;
-  u32 rx_sw_if_index;
-  u32 tx_sw_if_index;
-  u8 is_add;
+  vl_api_interface_index_t rx_sw_if_index;
+  vl_api_interface_index_t tx_sw_if_index;
+  bool is_add [default=true];
 };
 
 /** \brief Set L2 XConnect between two interfaces request
@@ -433,9 +445,9 @@ autoreply define sw_interface_set_l2_xconnect
 {
   u32 client_index;
   u32 context;
-  u32 rx_sw_if_index;
-  u32 tx_sw_if_index;
-  u8 enable;
+  vl_api_interface_index_t rx_sw_if_index;
+  vl_api_interface_index_t tx_sw_if_index;
+  bool enable [default=true];
 };
 
 /**
@@ -467,11 +479,11 @@ autoreply define sw_interface_set_l2_bridge
 {
   u32 client_index;
   u32 context;
-  u32 rx_sw_if_index;
+  vl_api_interface_index_t rx_sw_if_index;
   u32 bd_id;
   vl_api_l2_port_type_t port_type;
   u8 shg;
-  u8 enable;
+  bool enable [default=true];
 };
 
 /** \brief Set bridge domain ip to mac entry request
@@ -494,7 +506,7 @@ autoreply define bd_ip_mac_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   vl_api_bd_ip_mac_t entry;
 };
 
@@ -542,8 +554,8 @@ autoreply define l2_interface_efp_filter
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable_disable;
+  vl_api_interface_index_t sw_if_index;
+  bool enable_disable [default=true];
 };
 
 /** \brief Interface set vpath request
@@ -556,8 +568,8 @@ autoreply define sw_interface_set_vpath
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable;
+  vl_api_interface_index_t sw_if_index;
+  bool enable [default=0xffffffff];
 };
 
 /** \brief Create BVI interface instance request
@@ -571,7 +583,7 @@ define bvi_create
   u32 client_index;
   u32 context;
   vl_api_mac_address_t mac;
-  u32 user_instance;
+  u32 user_instance [default=0xffffffff];
 };
 
 /** \brief Create BVI interface instance response
@@ -583,7 +595,7 @@ define bvi_create_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Delete BVI interface request
@@ -595,7 +607,7 @@ autoreply define bvi_delete
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /*
