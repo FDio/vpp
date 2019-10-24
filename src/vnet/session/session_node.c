@@ -847,6 +847,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       e->event_type = SESSION_IO_EVT_TX;
     }
 
+  /* Custom tx should be done prior to resetting the tx fifo event to avoid
+   * generating a new session event. That is, the transport is allowed to
+   * re-set the SESSION_F_CUSTOM_TX flag, which is interpreted as a request
+   * to re-inject the event, but not to generate and insert a new event in
+   * the old events linked list */
   if (ctx->s->flags & SESSION_F_CUSTOM_TX)
     {
       u32 n_custom_tx;
@@ -884,6 +889,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
+      /* Make sure we honor the custom tx request */
+      if (ctx->s->flags & SESSION_F_CUSTOM_TX)
+	session_evt_add_old (wrk, elt);
+
       transport_connection_tx_pacer_reset_bucket (ctx->tc,
 						  vm->clib_time.
 						  last_cpu_time);
@@ -982,9 +991,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
 
-  /* If we couldn't dequeue all bytes mark as partially read */
   ASSERT (ctx->left_to_snd == 0);
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
+
+  /* If 1) we couldn't dequeue all bytes or 2) we have a request to do custom
+   * tx, re-inject the event in the old events linked list, if needed */
+  if (ctx->max_len_to_snd < ctx->max_dequeue
+      || (ctx->s->flags & SESSION_F_CUSTOM_TX))
     if (svm_fifo_set_event (ctx->s->tx_fifo))
       session_evt_add_old (wrk, elt);
 
