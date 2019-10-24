@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e74ba4d0_d4a93e3a",
+        "filename": "test/test_stats_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-24T03:28:04Z",
+      "side": 1,
+      "message": "Does this need to be python3?",
+      "range": {
+        "startLine": 1,
+        "startChar": 15,
+        "endLine": 1,
+        "endChar": 21
+      },
+      "revId": "5995573f392b0ac2df898bfb627ef8083c3ef2f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
