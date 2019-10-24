@@ -69,12 +69,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_papi import mac_pton
-
-# from src/vnet/l2/l2_fib.h
-MAC_EVENT_ACTION_ADD = 0
-MAC_EVENT_ACTION_DELETE = 1
-MAC_EVENT_ACTION_MOVE = 2
+from vpp_papi import mac_pton, VppEnum
 
 
 class TestL2fib(VppTestCase):
@@ -325,7 +320,7 @@ class TestL2fib(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
@@ -494,9 +489,10 @@ class TestL2fib(VppTestCase):
         self.sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
+        action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
         learned_macs = {
-            e.mac[i].mac_addr for e in evs for i in range(e.n_macs)
-            if e.mac[i].action == MAC_EVENT_ACTION_ADD}
+            e.mac[i].mac_addr.packed for e in evs for i in range(e.n_macs)
+            if e.mac[i].action == action}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
         self.vapi.want_l2_macs_events(enable_disable=0)
@@ -518,9 +514,10 @@ class TestL2fib(VppTestCase):
         self.vapi.want_l2_macs_events(enable_disable=0)
 
         self.assertGreater(len(evs), 0)
+        action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
         learned_macs = {
-            e.mac[i].mac_addr for e in evs for i in range(e.n_macs)
-            if e.mac[i].action == MAC_EVENT_ACTION_ADD}
+            e.mac[i].mac_addr.packed for e in evs for i in range(e.n_macs)
+            if e.mac[i].action == action}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
 
