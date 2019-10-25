@@ -467,7 +467,7 @@ class TestL2bdArpTerm(VppTestCase):
         """ L2BD ND term - send duplicate ns, verify suppression
         """
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
-        macs = self.mac_list(range(10, 11))
+        macs = self.mac_list(range(16, 17))
         hosts = self.ip6_hosts(5, 1, macs)
         reqs = self.ns_reqs_dst(hosts, dst_host) * 5
         self.bd_swifs(1)[0].add_stream(reqs)
