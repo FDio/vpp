@@ -887,7 +887,7 @@ session_transport_delete_notify (transport_connection_t * tc)
        * session is just removed because both transport and app have
        * confirmed the close*/
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_CLOSED;
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
