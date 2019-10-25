@@ -110,7 +110,7 @@ gtpu_input (vlib_main_t * vm,
           ip4_header_t * ip4_0, * ip4_1;
           ip6_header_t * ip6_0, * ip6_1;
           gtpu_header_t * gtpu0, * gtpu1;
-          u32 gtpu_hdr_len0 = 0, gtpu_hdr_len1 =0 ;
+          u32 gtpu_hdr_len0, gtpu_hdr_len1;
 	  uword * p0, * p1;
           u32 tunnel_index0, tunnel_index1;
           gtpu_tunnel_t * t0, * t1, * mt0 = NULL, * mt1 = NULL;
@@ -118,6 +118,8 @@ gtpu_input (vlib_main_t * vm,
           gtpu6_tunnel_key_t key6_0, key6_1;
           u32 error0, error1;
 	  u32 sw_if_index0, sw_if_index1, len0, len1;
+          u8 has_space0, has_space1;
+          u8 ver0, ver1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -148,34 +150,16 @@ gtpu_input (vlib_main_t * vm,
           /* udp leaves current_data pointing at the gtpu header */
           gtpu0 = vlib_buffer_get_current (b0);
           gtpu1 = vlib_buffer_get_current (b1);
-          if (is_ip4) {
-	    vlib_buffer_advance
-	      (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
-	    vlib_buffer_advance
-	      (b1, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
-            ip4_0 = vlib_buffer_get_current (b0);
-            ip4_1 = vlib_buffer_get_current (b1);
-	  } else {
-            vlib_buffer_advance
-              (b0, -(word)(sizeof(udp_header_t)+sizeof(ip6_header_t)));
-            vlib_buffer_advance
-              (b1, -(word)(sizeof(udp_header_t)+sizeof(ip6_header_t)));
-            ip6_0 = vlib_buffer_get_current (b0);
-            ip6_1 = vlib_buffer_get_current (b1);
-	  }
-
-          /* pop (ip, udp, gtpu) */
-          if (is_ip4) {
-            vlib_buffer_advance
-              (b0, sizeof(*ip4_0)+sizeof(udp_header_t));
-	    vlib_buffer_advance
-              (b1, sizeof(*ip4_1)+sizeof(udp_header_t));
-          } else {
-	    vlib_buffer_advance
-              (b0, sizeof(*ip6_0)+sizeof(udp_header_t));
-            vlib_buffer_advance
-              (b1, sizeof(*ip6_1)+sizeof(udp_header_t));
-          }
+          if (is_ip4)
+            {
+              ip4_0 = (void *)((u8*)gtpu0 - sizeof(udp_header_t) - sizeof(ip4_header_t));
+              ip4_1 = (void *)((u8*)gtpu1 - sizeof(udp_header_t) - sizeof(ip4_header_t));
+            }
+          else
+            {
+              ip6_0 = (void *)((u8*)gtpu0 - sizeof(udp_header_t) - sizeof(ip6_header_t));
+              ip6_1 = (void *)((u8*)gtpu1 - sizeof(udp_header_t) - sizeof(ip6_header_t));
+            }
 
           tunnel_index0 = ~0;
           error0 = 0;
@@ -183,9 +167,24 @@ gtpu_input (vlib_main_t * vm,
           tunnel_index1 = ~0;
           error1 = 0;
 
-	  if (PREDICT_FALSE ((gtpu0->ver_flags & GTPU_VER_MASK) != GTPU_V1_VER))
+          /* speculatively load gtp header version field */
+          ver0 = gtpu0->ver_flags;
+          ver1 = gtpu1->ver_flags;
+
+	  /*
+           * Manipulate gtpu header
+           * TBD: Manipulate Sequence Number and N-PDU Number
+           * TBD: Manipulate Next Extension Header
+           */
+          gtpu_hdr_len0 = sizeof(gtpu_header_t) - (((ver0 & GTPU_E_S_PN_BIT) == 0) * 4);
+          gtpu_hdr_len1 = sizeof(gtpu_header_t) - (((ver1 & GTPU_E_S_PN_BIT) == 0) * 4);
+
+          has_space0 = vlib_buffer_has_space (b0, gtpu_hdr_len0);
+          has_space1 = vlib_buffer_has_space (b1, gtpu_hdr_len1);
+
+	  if (PREDICT_FALSE (((ver0 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space0)))
 	    {
-	      error0 = GTPU_ERROR_BAD_VER;
+	      error0 = has_space0 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
 	      next0 = GTPU_INPUT_NEXT_DROP;
 	      goto trace0;
 	    }
@@ -293,22 +292,6 @@ gtpu_input (vlib_main_t * vm,
           }
 
 	next0:
-	  /* Manipulate gtpu header */
-	  if (PREDICT_FALSE((gtpu0->ver_flags & GTPU_E_S_PN_BIT) != 0))
-	    {
-	      gtpu_hdr_len0 = sizeof(gtpu_header_t);
-
-	      /* Manipulate Sequence Number and N-PDU Number */
-	      /* TBD */
-
-	      /* Manipulate Next Extension Header */
-	      /* TBD */
-	    }
-	  else
-	    {
-	      gtpu_hdr_len0 = sizeof(gtpu_header_t) - 4;
-	    }
-
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b0, gtpu_hdr_len0);
 
@@ -354,12 +337,12 @@ gtpu_input (vlib_main_t * vm,
               tr->next_index = next0;
               tr->error = error0;
               tr->tunnel_index = tunnel_index0;
-              tr->teid = clib_net_to_host_u32(gtpu0->teid);
+              tr->teid = has_space0 ? clib_net_to_host_u32(gtpu0->teid) : ~0;
             }
 
-          if (PREDICT_FALSE ((gtpu1->ver_flags & GTPU_VER_MASK) != GTPU_V1_VER))
+	  if (PREDICT_FALSE (((ver1 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space1)))
 	    {
-	      error1 = GTPU_ERROR_BAD_VER;
+	      error1 = has_space1 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
 	      next1 = GTPU_INPUT_NEXT_DROP;
 	      goto trace1;
 	    }
@@ -469,22 +452,6 @@ gtpu_input (vlib_main_t * vm,
 	  }
 
 	next1:
-	  /* Manipulate gtpu header */
-	  if (PREDICT_FALSE((gtpu1->ver_flags & GTPU_E_S_PN_BIT) != 0))
-	    {
-	      gtpu_hdr_len1 = sizeof(gtpu_header_t);
-
-	      /* Manipulate Sequence Number and N-PDU Number */
-	      /* TBD */
-
-	      /* Manipulate Next Extension Header */
-	      /* TBD */
-	    }
-	  else
-	    {
-	      gtpu_hdr_len1 = sizeof(gtpu_header_t) - 4;
-	    }
-
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b1, gtpu_hdr_len1);
 
@@ -530,7 +497,7 @@ gtpu_input (vlib_main_t * vm,
               tr->next_index = next1;
               tr->error = error1;
               tr->tunnel_index = tunnel_index1;
-              tr->teid = clib_net_to_host_u32(gtpu1->teid);
+              tr->teid = has_space1 ? clib_net_to_host_u32(gtpu1->teid) : ~0;
             }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -546,7 +513,7 @@ gtpu_input (vlib_main_t * vm,
           ip4_header_t * ip4_0;
           ip6_header_t * ip6_0;
           gtpu_header_t * gtpu0;
-          u32 gtpu_hdr_len0 = 0;
+          u32 gtpu_hdr_len0;
 	  uword * p0;
           u32 tunnel_index0;
           gtpu_tunnel_t * t0, * mt0 = NULL;
@@ -554,6 +521,8 @@ gtpu_input (vlib_main_t * vm,
           gtpu6_tunnel_key_t key6_0;
           u32 error0;
 	  u32 sw_if_index0, len0;
+          u8 has_space0;
+          u8 ver0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -567,32 +536,32 @@ gtpu_input (vlib_main_t * vm,
           /* udp leaves current_data pointing at the gtpu header */
           gtpu0 = vlib_buffer_get_current (b0);
           if (is_ip4) {
-	    vlib_buffer_advance
-	      (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
-            ip4_0 = vlib_buffer_get_current (b0);
+            ip4_0 = (void *)((u8*)gtpu0 - sizeof(udp_header_t) - sizeof(ip4_header_t));
           } else {
-            vlib_buffer_advance
-              (b0, -(word)(sizeof(udp_header_t)+sizeof(ip6_header_t)));
-            ip6_0 = vlib_buffer_get_current (b0);
-          }
-
-          /* pop (ip, udp) */
-          if (is_ip4) {
-            vlib_buffer_advance
-              (b0, sizeof(*ip4_0)+sizeof(udp_header_t));
-          } else {
-	    vlib_buffer_advance
-              (b0, sizeof(*ip6_0)+sizeof(udp_header_t));
+            ip6_0 = (void *)((u8*)gtpu0 - sizeof(udp_header_t) - sizeof(ip6_header_t));
           }
 
           tunnel_index0 = ~0;
           error0 = 0;
-          if (PREDICT_FALSE ((gtpu0->ver_flags & GTPU_VER_MASK) != GTPU_V1_VER))
-	    {
-	      error0 = GTPU_ERROR_BAD_VER;
-	      next0 = GTPU_INPUT_NEXT_DROP;
-	      goto trace00;
-	    }
+
+          /* speculatively load gtp header version field */
+          ver0 = gtpu0->ver_flags;
+
+	  /*
+           * Manipulate gtpu header
+           * TBD: Manipulate Sequence Number and N-PDU Number
+           * TBD: Manipulate Next Extension Header
+           */
+          gtpu_hdr_len0 = sizeof(gtpu_header_t) - (((ver0 & GTPU_E_S_PN_BIT) == 0) * 4);
+
+          has_space0 = vlib_buffer_has_space (b0, gtpu_hdr_len0);
+
+	  if (PREDICT_FALSE (((ver0 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space0)))
+            {
+	      error0 = has_space0 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
+              next0 = GTPU_INPUT_NEXT_DROP;
+              goto trace00;
+            }
 
           if (is_ip4) {
             key4_0.src = ip4_0->src_address.as_u32;
@@ -696,22 +665,6 @@ gtpu_input (vlib_main_t * vm,
           }
 
 	next00:
-	  /* Manipulate gtpu header */
-	  if (PREDICT_FALSE((gtpu0->ver_flags & GTPU_E_S_PN_BIT) != 0))
-	    {
-	      gtpu_hdr_len0 = sizeof(gtpu_header_t);
-
-	      /* Manipulate Sequence Number and N-PDU Number */
-	      /* TBD */
-
-	      /* Manipulate Next Extension Header */
-	      /* TBD */
-	    }
-	  else
-	    {
-	      gtpu_hdr_len0 = sizeof(gtpu_header_t) - 4;
-	    }
-
 	  /* Pop gtpu header */
 	  vlib_buffer_advance (b0, gtpu_hdr_len0);
 
@@ -757,7 +710,7 @@ gtpu_input (vlib_main_t * vm,
               tr->next_index = next0;
               tr->error = error0;
               tr->tunnel_index = tunnel_index0;
-              tr->teid = clib_net_to_host_u32(gtpu0->teid);
+              tr->teid = has_space0 ? clib_net_to_host_u32(gtpu0->teid) : ~0;
             }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
