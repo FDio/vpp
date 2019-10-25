@@ -133,8 +133,8 @@ typedef enum
   _(CLOSING, "closing")					\
   _(APP_CLOSED, "app-closed")				\
   _(TRANSPORT_CLOSED, "transport-closed")		\
-  _(TRANSPORT_DELETED, "transport-deleted")		\
   _(CLOSED, "closed")					\
+  _(TRANSPORT_DELETED, "transport-deleted")		\
 
 typedef enum
 {
