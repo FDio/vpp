@@ -130,7 +130,7 @@ static char *icmp_error_strings[] = {
 
 typedef enum
 {
-  ICMP_INPUT_NEXT_DROP,
+  ICMP_INPUT_NEXT_PUNT,
   ICMP_INPUT_N_NEXT,
 } icmp_input_next_t;
 
@@ -199,7 +199,7 @@ ip6_icmp_input (vlib_main_t * vm,
 
 	  next0 = im->input_next_index_by_type[type0];
 	  error0 =
-	    next0 == ICMP_INPUT_NEXT_DROP ? ICMP6_ERROR_UNKNOWN_TYPE : error0;
+	    next0 == ICMP_INPUT_NEXT_PUNT ? ICMP6_ERROR_UNKNOWN_TYPE : error0;
 
 	  /* Check code is valid for type. */
 	  error0 =
@@ -223,7 +223,7 @@ ip6_icmp_input (vlib_main_t * vm,
 
 	  b0->error = node->errors[error0];
 
-	  next0 = error0 != ICMP6_ERROR_NONE ? ICMP_INPUT_NEXT_DROP : next0;
+	  next0 = error0 != ICMP6_ERROR_NONE ? ICMP_INPUT_NEXT_PUNT : next0;
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -250,7 +250,7 @@ VLIB_REGISTER_NODE (ip6_icmp_input_node) = {
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [ICMP_INPUT_NEXT_DROP] = "ip6-drop",
+    [ICMP_INPUT_NEXT_PUNT] = "ip6-punt",
   },
 };
 /* *INDENT-ON* */
@@ -784,7 +784,7 @@ icmp6_init (vlib_main_t * vm)
 #undef _
 
   clib_memset (cm->input_next_index_by_type,
-	       ICMP_INPUT_NEXT_DROP, sizeof (cm->input_next_index_by_type));
+	       ICMP_INPUT_NEXT_PUNT, sizeof (cm->input_next_index_by_type));
   clib_memset (cm->max_valid_code_by_type, 0,
 	       sizeof (cm->max_valid_code_by_type));
 
