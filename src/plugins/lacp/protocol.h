@@ -61,6 +61,10 @@ typedef enum
   _(6, DEFAULTED, "defaulted")               \
   _(7, EXPIRED, "expired")
 
+#define LACP_STEADY_STATE (LACP_STATE_SYNCHRONIZATION | \
+			   LACP_STATE_COLLECTING |      \
+			   LACP_STATE_DISTRIBUTING)
+
 typedef enum
 {
 #define _(a, b, c) LACP_STATE_##b = (1 << a),
