@@ -296,6 +296,7 @@ VLIB_NODE_FN (dpdk_crypto_input_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
+  return 0;
   return dpdk_crypto_input_inline (vm, node, from_frame);
 }
 

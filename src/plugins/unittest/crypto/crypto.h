@@ -45,8 +45,10 @@ typedef struct
   u32 rounds;
   u32 buffer_size;
   u32 n_buffers;
+  u32 burst_sz;
 
   unittest_crypto_test_registration_t *test_registrations;
+  unittest_crypto_test_registration_t *test_registrations_async;
 } crypto_test_main_t;
 
 extern crypto_test_main_t crypto_test_main;
@@ -63,6 +65,17 @@ __unittest_crypto_test_registration_##x (void)                               \
     cm->test_registrations = & __unittest_crypto_test_##x;                   \
 }                                                                            \
 unittest_crypto_test_registration_t __unittest_crypto_test_##x
+
+#define UNITTEST_REGISTER_CRYPTO_TEST_ASYNC(x)                               \
+  unittest_crypto_test_registration_t __unittest_crypto_test_async_##x;      \
+static void __clib_constructor                                               \
+__unittest_crypto_test_registration_async_##x (void)                         \
+{                                                                            \
+  crypto_test_main_t * cm = &crypto_test_main;                               \
+  __unittest_crypto_test_async_##x.next = cm->test_registrations_async;      \
+    cm->test_registrations_async = & __unittest_crypto_test_async_##x;       \
+}                                                                            \
+unittest_crypto_test_registration_t __unittest_crypto_test_async_##x
 
 #endif
 

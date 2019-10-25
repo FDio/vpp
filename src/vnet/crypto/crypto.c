@@ -82,65 +82,20 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
 }
 
 u32
-vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
-			u32 n_jobs)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, vm->thread_index);
-  u32 n_enq = 0;
-  u32 head = 0, mask = 0;
-  vnet_crypto_queue_t *q = 0;
-  vnet_crypto_op_id_t last_opt = ~0;
-
-  while (n_enq < n_jobs)
-    {
-      vnet_crypto_op_t *j = jobs[n_enq];
-      vnet_crypto_op_id_t opt = j->op;
-
-      if (opt != last_opt)
-	{
-	  if (q)
-	    {
-	      CLIB_MEMORY_STORE_BARRIER ();
-	      q->head = head;
-	      clib_bitmap_set_no_check (ct->act_queues, opt, 1);
-	    }
-
-	  q = ct->queues[opt];
-	  head = q->head;
-	  mask = q->size - 1;
-	  last_opt = opt;
-	}
-
-      /* job is not taken from the queue if pointer is still set */
-      if (q->jobs[head & mask])
-	break;
-
-      q->jobs[head & mask] = j;
-      head += 1;
-      n_enq += 1;
-    }
-
-  if (n_enq)
-    {
-      CLIB_MEMORY_STORE_BARRIER ();
-      q->head = head;
-      clib_bitmap_set_no_check (ct->act_queues, last_opt, 1);
-    }
-  return n_enq;
-}
-
-vnet_crypto_op_t *
-vnet_crypto_no_handler_handler (vlib_main_t * vm, vnet_crypto_queue_t * q)
+vnet_crypto_no_handler_handler (vlib_main_t * vm, u32 thread_idx,
+				vnet_crypto_queue_t * q)
 {
   vnet_crypto_op_t *j;
-  if ((j = vnet_crypto_dequeue_one_job (q)))
+  u32 atomic = (vm->thread_index != thread_idx);
+
+  if ((j = vnet_crypto_async_get_one_op (q, atomic)))
     {
-      clib_atomic_store_rel_n (&j->status, VNET_CRYPTO_OP_STATUS_COMPLETED);
+      clib_atomic_store_rel_n (&j->status,
+			       VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
       clib_warning ("got one %U %U on thread %u",
 		    format_vnet_crypto_alg, q->alg,
 		    format_vnet_crypto_op, q->op, vm->thread_index);
-      return j;
+      return 1;
     }
 
   return 0;

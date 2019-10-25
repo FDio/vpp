@@ -244,7 +244,7 @@ esp_submit_async_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_fail, i;
   vlib_buffer_t *b0;
 
-  n_fail = n - vnet_crypto_submit_ops (vm, jobs, n);
+  n_fail = n - vnet_crypto_async_enqueue_ops (vm, jobs, n);
 
   for (i = n - n_fail; i < n; i++)
     {

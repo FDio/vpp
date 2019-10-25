@@ -65,6 +65,18 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc) = {
 
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+UNITTEST_REGISTER_CRYPTO_TEST_ASYNC (nist_aes128_cbc) = {
+  .name = "NIST SP 800-38A",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (key128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
+};
+/* *INDENT-ON* */
+
+
 static u8 key192[24] = {
   0x8E, 0x73, 0xB0, 0xF7, 0xDA, 0x0E, 0x64, 0x52,
   0xC8, 0x10, 0xF3, 0x2B, 0x80, 0x90, 0x79, 0xE5,
@@ -85,6 +97,16 @@ static u8 ciphertext192[64] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_cbc) = {
   .name = "NIST SP 800-38A",
+  .alg = VNET_CRYPTO_ALG_AES_192_CBC,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (key192),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext192),
+};
+
+/* *INDENT-OFF* */
+UNITTEST_REGISTER_CRYPTO_TEST_ASYNC (nist_aes192_cbc) = {
+  .name = "NIST SP 800-38A-192",
   .alg = VNET_CRYPTO_ALG_AES_192_CBC,
   .iv = TEST_DATA (iv),
   .key = TEST_DATA (key192),
@@ -121,8 +143,13 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .plaintext = TEST_DATA (plaintext),
   .ciphertext = TEST_DATA (ciphertext256),
 };
-
 /* *INDENT-ON* */
+
+UNITTEST_REGISTER_CRYPTO_TEST_ASYNC (nist_aes256_cbc) =
+{
+.name = "NIST SP 800-38A-256",.alg = VNET_CRYPTO_ALG_AES_256_CBC,.iv =
+    TEST_DATA (iv),.key = TEST_DATA (key256),.plaintext =
+    TEST_DATA (plaintext),.ciphertext = TEST_DATA (ciphertext256),};
 
 /*
  * fd.io coding-style-patch-verification: ON
