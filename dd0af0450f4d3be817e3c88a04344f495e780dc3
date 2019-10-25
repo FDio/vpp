@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a135ce5a_5013859d",
+        "filename": "src/vppinfra/time.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-25T17:22:12Z",
+      "side": 1,
+      "message": "parens around (1e-6)?",
+      "revId": "dd0af0450f4d3be817e3c88a04344f495e780dc3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56579944_03516192",
+        "filename": "src/vppinfra/time.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-25T17:22:12Z",
+      "side": 1,
+      "message": "(1.0 / CLIB_US_TIME_PERIOD)?",
+      "revId": "dd0af0450f4d3be817e3c88a04344f495e780dc3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
