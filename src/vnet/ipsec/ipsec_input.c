@@ -195,6 +195,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  ip4_ipsec_config_t *c0;
 	  ipsec_spd_t *spd0;
 	  ipsec_policy_t *p0 = 0;
+	  u8 has_space0;
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -230,8 +231,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		  esp0 =
 		    (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
 		}
-	      /* FIXME TODO missing check whether there is enough data inside
-	       * IP/UDP to contain ESP header & stuff ? */
+
 	      p0 = ipsec_input_protect_policy_match (spd0,
 						     clib_net_to_host_u32
 						     (ip0->src_address.
@@ -242,7 +242,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 						     clib_net_to_host_u32
 						     (esp0->spi));
 
-	      if (PREDICT_TRUE (p0 != NULL))
+	      has_space0 =
+		vlib_buffer_has_space (b0,
+				       (clib_address_t) (esp0 + 1) -
+				       (clib_address_t) ip0);
+
+	      if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
 		{
 		  ipsec_matched += 1;
 
@@ -259,6 +264,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		}
 	      else
 		{
+		  p0 = 0;
 		  pi0 = ~0;
 		};
 
@@ -271,10 +277,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 
 		  tr->proto = ip0->protocol;
-		  if (p0)
-		    tr->sa_id = p0->sa_id;
-		  tr->spi = clib_net_to_host_u32 (esp0->spi);
-		  tr->seq = clib_net_to_host_u32 (esp0->seq);
+		  tr->sa_id = p0 ? p0->sa_id : ~0;
+		  tr->spi =
+		    has_space0 ? clib_net_to_host_u32 (esp0->spi) : ~0;
+		  tr->seq =
+		    has_space0 ? clib_net_to_host_u32 (esp0->seq) : ~0;
 		  tr->spd = spd0->id;
 		  tr->policy_index = pi0;
 		}
@@ -292,7 +299,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 						     clib_net_to_host_u32
 						     (ah0->spi));
 
-	      if (PREDICT_TRUE (p0 != 0))
+	      has_space0 =
+		vlib_buffer_has_space (b0,
+				       (clib_address_t) (ah0 + 1) -
+				       (clib_address_t) ip0);
+
+	      if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
 		{
 		  ipsec_matched += 1;
 
@@ -308,6 +320,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		}
 	      else
 		{
+		  p0 = 0;
 		  pi0 = ~0;
 		}
 	      /* FIXME bypass and discard */
@@ -319,10 +332,10 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 
 		  tr->proto = ip0->protocol;
-		  if (p0)
-		    tr->sa_id = p0->sa_id;
-		  tr->spi = clib_net_to_host_u32 (ah0->spi);
-		  tr->seq = clib_net_to_host_u32 (ah0->seq_no);
+		  tr->sa_id = p0 ? p0->sa_id : ~0;
+		  tr->spi = has_space0 ? clib_net_to_host_u32 (ah0->spi) : ~0;
+		  tr->seq =
+		    has_space0 ? clib_net_to_host_u32 (ah0->seq_no) : ~0;
 		  tr->spd = spd0->id;
 		  tr->policy_index = pi0;
 		}
