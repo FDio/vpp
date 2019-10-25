@@ -150,7 +150,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 	    pointer_to_uword (va) : pm->page_table[i];
 
 	  if (do_vfio_map &&
-	      rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
+	      rte_vfio_container_dma_map (RTE_VFIO_DEFAULT_CONTAINER_FD,
+					  pointer_to_uword (va), pa, page_sz))
 	    do_vfio_map = 0;
 
 	  struct rte_mempool_memhdr *memhdr;
