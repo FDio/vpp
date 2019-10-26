@@ -64,7 +64,7 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   EVP_CIPHER_CTX *ctx = ptd->evp_cipher_ctx;
-  u32 i;
+  u32 i, j;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -81,9 +81,25 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 	RAND_bytes (op->iv, iv_len);
 
       EVP_EncryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
+
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	EVP_CIPHER_CTX_set_padding (ctx, 0);
+
       EVP_EncryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-      if (out_len < op->len)
-	EVP_EncryptFinal_ex (ctx, op->dst + out_len, &out_len);
+      u32 curr_len = op->len;
+      u8 *last_chunk = op->dst;
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  for (j = 0; j < op->n_bufs; j++)
+	    {
+	      EVP_EncryptUpdate (ctx, op->dsts[j], &out_len, op->srcs[j],
+				 op->lengths[j]);
+	      last_chunk = op->dsts[j];
+	      curr_len = op->lengths[j];
+	    }
+	}
+      if (out_len < curr_len)
+	EVP_EncryptFinal_ex (ctx, last_chunk + out_len, &out_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
@@ -96,7 +112,7 @@ openssl_ops_dec_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   EVP_CIPHER_CTX *ctx = ptd->evp_cipher_ctx;
-  u32 i;
+  u32 i, j;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -104,9 +120,25 @@ openssl_ops_dec_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       int out_len;
 
       EVP_DecryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
+
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	EVP_CIPHER_CTX_set_padding (ctx, 0);
+
       EVP_DecryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-      if (out_len < op->len)
-	EVP_DecryptFinal_ex (ctx, op->dst + out_len, &out_len);
+      u32 curr_len = op->len;
+      u8 *last_chunk = op->dst;
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  for (j = 0; j < op->n_bufs; j++)
+	    {
+	      EVP_DecryptUpdate (ctx, op->dsts[j], &out_len, op->srcs[j],
+				 op->lengths[j]);
+	      last_chunk = op->dsts[j];
+	      curr_len = op->lengths[j];
+	    }
+	}
+      if (out_len < curr_len)
+	EVP_DecryptFinal_ex (ctx, last_chunk + out_len, &out_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
@@ -119,7 +151,7 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   EVP_CIPHER_CTX *ctx = ptd->evp_cipher_ctx;
-  u32 i;
+  u32 i, j;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -135,6 +167,14 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       if (op->aad_len)
 	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
       EVP_EncryptUpdate (ctx, op->dst, &len, op->src, op->len);
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  for (j = 0; j < op->n_bufs; j++)
+	    {
+	      EVP_EncryptUpdate (ctx, op->dsts[j], &len, op->srcs[j],
+				 op->lengths[j]);
+	    }
+	}
       EVP_EncryptFinal_ex (ctx, op->dst + len, &len);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_GET_TAG, op->tag_len, op->tag);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
@@ -149,7 +189,7 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   EVP_CIPHER_CTX *ctx = ptd->evp_cipher_ctx;
-  u32 i, n_fail = 0;
+  u32 i, j, n_fail = 0;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -162,6 +202,14 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       if (op->aad_len)
 	EVP_DecryptUpdate (ctx, 0, &len, op->aad, op->aad_len);
       EVP_DecryptUpdate (ctx, op->dst, &len, op->src, op->len);
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  for (j = 0; j < op->n_bufs; j++)
+	    {
+	      EVP_DecryptUpdate (ctx, op->dsts[j], &len, op->srcs[j],
+				 op->lengths[j]);
+	    }
+	}
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_TAG, op->tag_len, op->tag);
 
       if (EVP_DecryptFinal_ex (ctx, op->dst + len, &len) > 0)
@@ -183,7 +231,7 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   HMAC_CTX *ctx = ptd->hmac_ctx;
-  u32 i, n_fail = 0;
+  u32 i, j, n_fail = 0;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -193,6 +241,11 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 
       HMAC_Init_ex (ctx, key->data, vec_len (key->data), md, NULL);
       HMAC_Update (ctx, op->src, op->len);
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	{
+	  for (j = 0; j < op->n_bufs; j++)
+	    HMAC_Update (ctx, op->srcs[j], op->lengths[j]);
+	}
       HMAC_Final (ctx, buffer, &out_len);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)

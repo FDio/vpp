@@ -63,6 +63,16 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc) = {
   .ciphertext = TEST_DATA (ciphertext128),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_chain) = {
+  .name = "NIST SP 800-38A [chained]",
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (key128),
+  .plaintext = TEST_DATA_CHUNK (plaintext, 0, 32),
+  .ciphertext = TEST_DATA_CHUNK (ciphertext128, 0, 32),
+  .extra_pt = { TEST_DATA_CHUNK (plaintext, 32, 32) },
+  .extra_ct = { TEST_DATA_CHUNK (ciphertext128, 32, 32) },
+};
 /* *INDENT-ON* */
 
 static u8 key192[24] = {
@@ -122,6 +132,22 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .ciphertext = TEST_DATA (ciphertext256),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc_chain) = {
+  .name = "NIST SP 800-38A [chained]",
+  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (key256),
+  .plaintext = TEST_DATA_CHUNK (plaintext, 0, 16),
+  .ciphertext = TEST_DATA_CHUNK (ciphertext256, 0, 16),
+  .extra_pt = {
+    TEST_DATA_CHUNK (plaintext, 16, 16),
+    TEST_DATA_CHUNK (plaintext, 32, 32),
+  },
+  .extra_ct = {
+    TEST_DATA_CHUNK (ciphertext256, 16, 16),
+    TEST_DATA_CHUNK (ciphertext256, 32, 32),
+  },
+};
 /* *INDENT-ON* */
 
 /*

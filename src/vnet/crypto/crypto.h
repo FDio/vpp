@@ -17,6 +17,7 @@
 #define included_vnet_crypto_crypto_h
 
 #define VNET_CRYPTO_RING_SIZE 512
+#define VNET_CRYPTO_OP_N_CHAINED_BUFS 4
 
 #include <vlib/vlib.h>
 
@@ -130,6 +131,7 @@ typedef struct
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
+#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 2)
   u32 key_index;
   u32 len;
   u16 aad_len;
@@ -141,6 +143,12 @@ typedef struct
   u8 *tag;
   u8 *digest;
   uword user_data;
+
+  /* for chained buffers */
+  u8 n_bufs;
+  u8 *srcs[VNET_CRYPTO_OP_N_CHAINED_BUFS];
+  u8 *dsts[VNET_CRYPTO_OP_N_CHAINED_BUFS];
+  u16 lengths[VNET_CRYPTO_OP_N_CHAINED_BUFS];
 } vnet_crypto_op_t;
 
 typedef struct
@@ -225,6 +233,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
+  op->n_bufs = 0;
 }
 
 static_always_inline vnet_crypto_op_type_t
