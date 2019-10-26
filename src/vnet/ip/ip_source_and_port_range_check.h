@@ -78,7 +78,7 @@ typedef struct
  *
  *   struct B {
  *     u16 n_ranges;
- *     range_t *ragnes; // vector of ranges.
+ *     range_t *ranges; // vector of ranges.
  *   }
  *
  *   so to read ranges[0] we would first d-cache miss on the address
@@ -88,7 +88,7 @@ typedef struct
  *
  *  struct B {
  *    u16 n_ranges;
- *    range_t ragnes[N];
+ *    range_t ranges[N];
  *  }
  *
  * memory:
@@ -108,7 +108,7 @@ typedef struct protocol_port_range_dpo_t_
 
   /**
    * The number of blocks from the 'block' array below
-   * that have rnages configured. We keep this count so that in the data-path
+   * that have ranges configured. We keep this count so that in the data-path
    * we can limit the loop to be only over the blocks we need
    */
   u16 n_used_blocks;
