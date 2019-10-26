@@ -149,7 +149,7 @@ ip_address_union_decode (const vl_api_address_union_t * in,
       type = IP46_TYPE_IP6;
       break;
     default:
-      ASSERT (!"Unkown address family in API address type");
+      ASSERT (!"Unknown address family in API address type");
       type = IP46_TYPE_ANY;
       break;
     }
