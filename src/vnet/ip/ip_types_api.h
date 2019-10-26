@@ -27,7 +27,7 @@
 #include <vnet/ip/ip.api_types.h>
 
 /**
- * These enum decode/encodes use 'int' as the type for the enum becuase
+ * These enum decode/encodes use 'int' as the type for the enum because
  * one cannot forward declare an enum
  */
 extern int ip_address_family_decode (int _af, ip_address_family_t * out);
