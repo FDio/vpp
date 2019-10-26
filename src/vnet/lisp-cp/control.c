@@ -2784,7 +2784,7 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
 
   op->key_index = ki;
 
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
+  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
   vnet_crypto_key_del (lcm->vlib_main, ki);
 
   return 0;
@@ -3982,7 +3982,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
 
   op->key_index = ki;
 
-  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
+  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
   vnet_crypto_key_del (lcm->vlib_main, ki);
 
   result = memcmp (out, auth_data, auth_data_len);

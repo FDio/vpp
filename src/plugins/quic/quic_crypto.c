@@ -83,7 +83,7 @@ quic_crypto_cipher_encrypt (ptls_cipher_context_t * _ctx, void *output,
   ctx->op.dst = output;
   ctx->op.len = _len;
 
-  vnet_crypto_process_ops (vm, &ctx->op, 1);
+  vnet_crypto_process_ops (vm, &ctx->op, 0, 1);
 }
 
 static int
@@ -171,7 +171,7 @@ quic_crypto_aead_encrypt (ptls_aead_context_t * _ctx, void *output,
   ctx->op.tag_len = ctx->super.algo->tag_size;
   ctx->op.tag = ctx->op.src + inlen;
 
-  vnet_crypto_process_ops (vm, &ctx->op, 1);
+  vnet_crypto_process_ops (vm, &ctx->op, 0, 1);
 
   return ctx->op.len + ctx->op.tag_len;
 }
@@ -211,7 +211,7 @@ quic_crypto_aead_decrypt (ptls_aead_context_t * _ctx, void *_output,
   ctx->op.tag_len = ctx->super.algo->tag_size;
   ctx->op.tag = ctx->op.src + ctx->op.len;
 
-  vnet_crypto_process_ops (vm, &ctx->op, 1);
+  vnet_crypto_process_ops (vm, &ctx->op, 0, 1);
 
   return ctx->op.len;
 }

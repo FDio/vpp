@@ -244,6 +244,25 @@ UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4) = {
   .aad = TEST_DATA(tc4_aad),
   .tag = TEST_DATA (tc4_tag256),
 };
+
+UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_tc4_chain) = {
+  .name = "256-GCM Spec. TC4 [chained]",
+  .alg = VNET_CRYPTO_ALG_AES_256_GCM,
+  .iv = TEST_DATA (tc3_iv),
+  .key = TEST_DATA (tc3_key256),
+  .plaintext = TEST_DATA_CHUNK (tc4_plaintext, 0, 20),
+  .ciphertext = TEST_DATA_CHUNK (tc4_ciphertext256, 0, 20),
+  .aad = TEST_DATA(tc4_aad),
+  .tag = TEST_DATA (tc4_tag256),
+  .extra_pt = {
+    TEST_DATA_CHUNK (tc4_plaintext, 20, 20),
+    TEST_DATA_CHUNK (tc4_plaintext, 40, 20),
+  },
+  .extra_ct = {
+    TEST_DATA_CHUNK (tc4_ciphertext256, 20, 20),
+    TEST_DATA_CHUNK (tc4_ciphertext256, 40, 20),
+  },
+};
 /* *INDENT-ON* */
 
 /*

@@ -413,7 +413,7 @@ aesni_gcm_ghash_last (__m128i T, aes_gcm_key_data_t * kd, __m128i * d,
 
 
 static_always_inline __m128i
-aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
+aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i * Y, const u8 * in,
 	       const u8 * out, u32 n_left, int rounds)
 {
   __m128i *inv = (__m128i *) in, *outv = (__m128i *) out;
@@ -428,34 +428,34 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
       if (n_left > 48)
 	{
 	  n_left &= 0x0f;
-	  aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4, n_left,
+	  aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4, n_left,
 			  /* with_ghash */ 0, /* is_encrypt */ 1);
 	  return aesni_gcm_ghash_last (T, kd, d, 4, n_left);
 	}
       else if (n_left > 32)
 	{
 	  n_left &= 0x0f;
-	  aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 3, n_left,
+	  aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 3, n_left,
 			  /* with_ghash */ 0, /* is_encrypt */ 1);
 	  return aesni_gcm_ghash_last (T, kd, d, 3, n_left);
 	}
       else if (n_left > 16)
 	{
 	  n_left &= 0x0f;
-	  aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 2, n_left,
+	  aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 2, n_left,
 			  /* with_ghash */ 0, /* is_encrypt */ 1);
 	  return aesni_gcm_ghash_last (T, kd, d, 2, n_left);
 	}
       else
 	{
 	  n_left &= 0x0f;
-	  aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 1, n_left,
+	  aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 1, n_left,
 			  /* with_ghash */ 0, /* is_encrypt */ 1);
 	  return aesni_gcm_ghash_last (T, kd, d, 1, n_left);
 	}
     }
 
-  aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4, 0,
+  aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4, 0,
 		  /* with_ghash */ 0, /* is_encrypt */ 1);
 
   /* next */
@@ -465,7 +465,7 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
 
   while (n_left >= 128)
     {
-      T = aesni_gcm_calc_double (T, kd, d, &Y, &ctr, inv, outv, rounds,
+      T = aesni_gcm_calc_double (T, kd, d, Y, &ctr, inv, outv, rounds,
 				 /* is_encrypt */ 1);
 
       /* next */
@@ -476,7 +476,7 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
 
   if (n_left >= 64)
     {
-      T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4, 0,
+      T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4, 0,
 			  /* with_ghash */ 1, /* is_encrypt */ 1);
 
       /* next */
@@ -491,7 +491,7 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
   if (n_left > 48)
     {
       n_left &= 0x0f;
-      T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4, n_left,
+      T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4, n_left,
 			  /* with_ghash */ 1, /* is_encrypt */ 1);
       return aesni_gcm_ghash_last (T, kd, d, 4, n_left);
     }
@@ -499,7 +499,7 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
   if (n_left > 32)
     {
       n_left &= 0x0f;
-      T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 3, n_left,
+      T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 3, n_left,
 			  /* with_ghash */ 1, /* is_encrypt */ 1);
       return aesni_gcm_ghash_last (T, kd, d, 3, n_left);
     }
@@ -507,19 +507,19 @@ aesni_gcm_enc (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
   if (n_left > 16)
     {
       n_left &= 0x0f;
-      T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 2, n_left,
+      T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 2, n_left,
 			  /* with_ghash */ 1, /* is_encrypt */ 1);
       return aesni_gcm_ghash_last (T, kd, d, 2, n_left);
     }
 
   n_left &= 0x0f;
-  T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 1, n_left,
+  T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 1, n_left,
 		      /* with_ghash */ 1, /* is_encrypt */ 1);
   return aesni_gcm_ghash_last (T, kd, d, 1, n_left);
 }
 
 static_always_inline __m128i
-aesni_gcm_dec (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
+aesni_gcm_dec (__m128i T, aes_gcm_key_data_t * kd, __m128i * Y, const u8 * in,
 	       const u8 * out, u32 n_left, int rounds)
 {
   __m128i *inv = (__m128i *) in, *outv = (__m128i *) out;
@@ -528,7 +528,7 @@ aesni_gcm_dec (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
 
   while (n_left >= 128)
     {
-      T = aesni_gcm_calc_double (T, kd, d, &Y, &ctr, inv, outv, rounds,
+      T = aesni_gcm_calc_double (T, kd, d, Y, &ctr, inv, outv, rounds,
 				 /* is_encrypt */ 0);
 
       /* next */
@@ -539,7 +539,7 @@ aesni_gcm_dec (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
 
   if (n_left >= 64)
     {
-      T = aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4, 0, 1, 0);
+      T = aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4, 0, 1, 0);
 
       /* next */
       n_left -= 64;
@@ -551,21 +551,21 @@ aesni_gcm_dec (__m128i T, aes_gcm_key_data_t * kd, __m128i Y, const u8 * in,
     return T;
 
   if (n_left > 48)
-    return aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 4,
+    return aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 4,
 			   n_left - 48,
 			   /* with_ghash */ 1, /* is_encrypt */ 0);
 
   if (n_left > 32)
-    return aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 3,
+    return aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 3,
 			   n_left - 32,
 			   /* with_ghash */ 1, /* is_encrypt */ 0);
 
   if (n_left > 16)
-    return aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 2,
+    return aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 2,
 			   n_left - 16,
 			   /* with_ghash */ 1, /* is_encrypt */ 0);
 
-  return aesni_gcm_calc (T, kd, d, &Y, &ctr, inv, outv, rounds, 1, n_left,
+  return aesni_gcm_calc (T, kd, d, Y, &ctr, inv, outv, rounds, 1, n_left,
 			 /* with_ghash */ 1, /* is_encrypt */ 0);
 }
 
@@ -575,7 +575,7 @@ aes_gcm (const u8 * in, u8 * out, const u8 * addt, const u8 * iv, u8 * tag,
 	 int aes_rounds, int is_encrypt)
 {
   int i;
-  __m128i r, Y0, T = { };
+  __m128i r, Y0, Y0_out, T = { };
   ghash_data_t _gd, *gd = &_gd;
 
   _mm_prefetch (iv, _MM_HINT_T0);
@@ -594,11 +594,13 @@ aes_gcm (const u8 * in, u8 * out, const u8 * addt, const u8 * iv, u8 * tag,
   Y0 = _mm_loadu_si128 ((__m128i *) iv);
   Y0 = _mm_insert_epi32 (Y0, clib_host_to_net_u32 (1), 3);
 
+  Y0_out = Y0;
+
   /* ghash and encrypt/edcrypt  */
   if (is_encrypt)
-    T = aesni_gcm_enc (T, kd, Y0, in, out, data_bytes, aes_rounds);
+    T = aesni_gcm_enc (T, kd, &Y0_out, in, out, data_bytes, aes_rounds);
   else
-    T = aesni_gcm_dec (T, kd, Y0, in, out, data_bytes, aes_rounds);
+    T = aesni_gcm_dec (T, kd, &Y0_out, in, out, data_bytes, aes_rounds);
 
   _mm_prefetch (tag, _MM_HINT_T0);
 
@@ -643,23 +645,43 @@ aes_gcm (const u8 * in, u8 * out, const u8 * addt, const u8 * iv, u8 * tag,
       if (_mm_movemask_epi8 (r == T) != tag_mask)
 	return 0;
     }
+
+  _mm_storeu_si128 ((__m128i *) iv, Y0_out);
   return 1;
 }
 
 static_always_inline u32
 aesni_ops_enc_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+		       vnet_crypto_op_data_chunk_t chunks[],
 		       u32 n_ops, aesni_key_size_t ks)
 {
   crypto_ia32_main_t *cm = &crypto_ia32_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
-  u32 n_left = n_ops;
-
+  u32 n_left = n_ops, i;
+  vnet_crypto_op_data_chunk_t *chp;
+  u8 iv[16];
 
 next:
+  if (op->iv)
+    clib_memcpy_fast (iv, op->iv, sizeof (iv));
+  else
+    clib_memset (iv, 0, sizeof (iv));
+
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
-  aes_gcm (op->src, op->dst, op->aad, op->iv, op->tag, op->len, op->aad_len,
+  aes_gcm (op->src, op->dst, op->aad, iv, op->tag, op->len, op->aad_len,
 	   op->tag_len, kd, AESNI_KEY_ROUNDS (ks), /* is_encrypt */ 1);
+  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      chp = vec_elt_at_index (chunks, op->chunk_index);
+      for (i = 0; i < op->n_chunks; i++)
+	{
+	  aes_gcm (op->src, op->dst, op->aad, iv, op->tag, op->len,
+		   op->aad_len, op->tag_len, kd, AESNI_KEY_ROUNDS (ks),
+		   /* is_encrypt */ 1);
+	  chp += 1;
+	}
+    }
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   if (--n_left)
@@ -673,19 +695,38 @@ next:
 
 static_always_inline u32
 aesni_ops_dec_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		       u32 n_ops, aesni_key_size_t ks)
+		       u32 n_ops, vnet_crypto_op_data_chunk_t chunks[],
+		       aesni_key_size_t ks)
 {
   crypto_ia32_main_t *cm = &crypto_ia32_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
-  u32 n_left = n_ops;
+  u32 n_left = n_ops, i;
   int rv;
+  vnet_crypto_op_data_chunk_t *chp;
+  u8 iv[16];
 
 next:
+  if (op->iv)
+    clib_memcpy_fast (iv, op->iv, sizeof (iv));
+  else
+    clib_memset (iv, 0, sizeof (iv));
+
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
-  rv = aes_gcm (op->src, op->dst, op->aad, op->iv, op->tag, op->len,
+  rv = aes_gcm (op->src, op->dst, op->aad, iv, op->tag, op->len,
 		op->aad_len, op->tag_len, kd, AESNI_KEY_ROUNDS (ks),
 		/* is_encrypt */ 0);
+  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      chp = vec_elt_at_index (chunks, op->chunk_index);
+      for (i = 0; i < op->n_chunks; i++)
+	{
+	  rv = aes_gcm (op->src, op->dst, op->aad, iv, op->tag, op->len,
+			op->aad_len, op->tag_len, kd, AESNI_KEY_ROUNDS (ks),
+			/* is_encrypt */ 0);
+	  chp += 1;
+	}
+    }
 
   if (rv)
     {
@@ -731,13 +772,15 @@ aesni_gcm_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 #define foreach_aesni_gcm_handler_type _(128) _(192) _(256)
 
 #define _(x) \
-static u32 aesni_ops_dec_aes_gcm_##x                                         \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
-{ return aesni_ops_dec_aes_gcm (vm, ops, n_ops, AESNI_KEY_##x); }            \
-static u32 aesni_ops_enc_aes_gcm_##x                                         \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
-{ return aesni_ops_enc_aes_gcm (vm, ops, n_ops, AESNI_KEY_##x); }            \
-static void * aesni_gcm_key_exp_##x (vnet_crypto_key_t *key)                 \
+static u32 aesni_ops_dec_aes_gcm_##x                                          \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[],                                  \
+ vnet_crypto_op_data_chunk_t chunks[], u32 n_ops)                             \
+{ return aesni_ops_dec_aes_gcm (vm, ops, n_ops, chunks, AESNI_KEY_##x); }     \
+static u32 aesni_ops_enc_aes_gcm_##x                                          \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[],                                  \
+  vnet_crypto_op_data_chunk_t chunks[], u32 n_ops)                            \
+{ return aesni_ops_enc_aes_gcm (vm, ops, chunks, n_ops, AESNI_KEY_##x); }     \
+static void * aesni_gcm_key_exp_##x (vnet_crypto_key_t *key)                  \
 { return aesni_gcm_key_exp (key, AESNI_KEY_##x); }
 
 foreach_aesni_gcm_handler_type;

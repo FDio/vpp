@@ -218,6 +218,17 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7) = {
 };
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_chined) = {
+  .name = "RFC2202 HMAC-SHA-1 TC7 [chained]",
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .key = TEST_DATA (sha1_tc6_key),
+  .plaintext = TEST_DATA_CHUNK (sha1_tc7_data, 0, 40),
+  .digest = TEST_DATA (sha1_tc7_digest),
+  .extra_pt = { TEST_DATA_CHUNK (sha1_tc7_data, 40, 33) },
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

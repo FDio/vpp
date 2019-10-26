@@ -17,6 +17,7 @@
 #define included_vnet_crypto_crypto_h
 
 #define VNET_CRYPTO_RING_SIZE 512
+#define VNET_CRYPTO_OP_N_CHAINED_BUFS 4
 
 #include <vlib/vlib.h>
 
@@ -124,12 +125,22 @@ typedef struct
 
 typedef struct
 {
+  u8 *src;
+  u8 *dst;
+  u16 len;
+} vnet_crypto_op_data_chunk_t;
+
+#define VNET_CRYPTO_OP_DATA_CHUNK_INIT {0, 0, 0, ~0}
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_id_t op:16;
   vnet_crypto_op_status_t status:8;
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
+#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 2)
   u32 key_index;
   u32 len;
   u16 aad_len;
@@ -141,6 +152,11 @@ typedef struct
   u8 *tag;
   u8 *digest;
   uword user_data;
+
+  /* valid only if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
+  u16 n_chunks;
+  u32 chunk_index;
+
 } vnet_crypto_op_t;
 
 typedef struct
@@ -159,7 +175,9 @@ typedef struct
 typedef u32 vnet_crypto_key_index_t;
 
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
-					 vnet_crypto_op_t * ops[], u32 n_ops);
+					 vnet_crypto_op_t * ops[],
+					 vnet_crypto_op_data_chunk_t chunks[],
+					 u32 n_ops);
 
 typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
 					  vnet_crypto_key_op_t kop,
@@ -201,7 +219,7 @@ u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
 			    u32 n_jobs);
 
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
-			     u32 n_ops);
+			     vnet_crypto_op_data_chunk_t chunks[], u32 n_ops);
 
 int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
@@ -225,6 +243,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
+  op->n_chunks = 0;
 }
 
 static_always_inline vnet_crypto_op_type_t

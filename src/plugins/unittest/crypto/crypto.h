@@ -17,6 +17,9 @@
 #ifndef included_unittest_crypto_crypto_h
 #define included_unittest_crypto_crypto_h
 
+// TODO remove
+#define CRYPTO_TEST_N_EXTRA_DATA 4
+
 typedef struct
 {
   u32 length;
@@ -29,6 +32,10 @@ typedef struct unittest_crypto_test_registration
   vnet_crypto_alg_t alg;
   unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
     tag;
+
+  /* extra plaintext and cipher text data used for testing chained buffers */
+  unittest_crypto_test_data_t extra_pt[CRYPTO_TEST_N_EXTRA_DATA + 1];
+  unittest_crypto_test_data_t extra_ct[CRYPTO_TEST_N_EXTRA_DATA + 1];
 
   /* next */
   struct unittest_crypto_test_registration *next;
@@ -52,6 +59,7 @@ typedef struct
 extern crypto_test_main_t crypto_test_main;
 
 #define TEST_DATA(n) { .data = (u8 *) n, .length = sizeof (n)}
+#define TEST_DATA_CHUNK(s,off,n) { .data = (u8 *) s + off, .length = n}
 
 #define UNITTEST_REGISTER_CRYPTO_TEST(x)                                     \
   unittest_crypto_test_registration_t __unittest_crypto_test_##x;            \

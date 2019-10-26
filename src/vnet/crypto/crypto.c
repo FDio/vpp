@@ -23,7 +23,9 @@ static_always_inline u32
 vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 				      vnet_crypto_main_t * cm,
 				      vnet_crypto_op_id_t opt,
-				      vnet_crypto_op_t * ops[], u32 n_ops)
+				      vnet_crypto_op_t * ops[],
+				      vnet_crypto_op_data_chunk_t chunks[],
+				      u32 n_ops)
 {
   if (n_ops == 0)
     return 0;
@@ -38,12 +40,13 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
       return 0;
     }
 
-  return (cm->ops_handlers[opt]) (vm, ops, n_ops);
+  return (cm->ops_handlers[opt]) (vm, ops, chunks, n_ops);
 }
 
 
 u32
-vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
+vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
+			 vnet_crypto_op_data_chunk_t chunks[], u32 n_ops)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   const int op_q_size = VLIB_FRAME_SIZE;
@@ -61,7 +64,8 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
       if (current_op_type != opt || n_op_queue >= op_q_size)
 	{
 	  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-						      op_queue, n_op_queue);
+						      op_queue, chunks,
+						      n_op_queue);
 	  n_op_queue = 0;
 	  current_op_type = opt;
 	}
@@ -70,7 +74,7 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
     }
 
   rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-					      op_queue, n_op_queue);
+					      op_queue, chunks, n_op_queue);
   return rv;
 }
 
