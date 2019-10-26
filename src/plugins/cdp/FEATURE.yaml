@@ -1,0 +1,12 @@
+name: Cisco Discovery Protocol (CDP)
+maintainer: Not identified
+features:
+  - send/receive CDP messages
+description: "Basic CDPv2 functionality to send/discover connected neighbor port information."
+missing:
+  - IP6 support
+  - Configure CDP properties
+  - Enabling/disabling CDP on a per-port basis
+  - cdp_dump api
+state: production
+properties: [API, CLI, STATS]

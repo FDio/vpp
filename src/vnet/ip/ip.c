@@ -309,7 +309,7 @@ format_ip_dscp (u8 * s, va_list * va)
 #undef _
     }
 
-  return (format (s, "unknon"));
+  return (format (s, "unknown"));
 }
 
 /*
