@@ -1,5 +1,5 @@
 /*
- * src/vnet/ip/ip_neighboor.c: ip neighbor generic handling
+ * src/vnet/ip/ip_neighbor.c: ip neighbor generic handling
  *
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
  *   - Max processing allowed per run      : 20 usec
  *   - Max probe/delete operations per run : 10
  *   - Scan interrupt delay to resume scan : 1 msec
- *   - Neighbor stale threashold           : 4 x scan-interval
+ *   - Neighbor stale threshold            : 4 x scan-interval
  */
 #define IP_NEIGHBOR_DEF_SCAN_INTERVAL (60.0)
 #define IP_NEIGHBOR_DEF_MAX_PROC_TIME (20e-6)
@@ -407,11 +407,11 @@ done:
 
 /*?
  * The '<em>ip scan-neighbor</em>' command can be used to enable and disable
- * periodic IP neighbor scan and change various scan parameneters.
+ * periodic IP neighbor scan and change various scan parameters.
  *
  * @note The default parameters used for IP neighbor scan should work fine
  * under normal conditions. They should not be changed from the default unless
- * properly tested to work as desied.
+ * properly tested to work as desired.
  *
  * @cliexpar
  * Example of enabling IP neighbor scan:

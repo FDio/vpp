@@ -1,5 +1,5 @@
 /*
- * ip_neighboor.h: ip neighbor generic services
+ * ip_neighbor.h: ip neighbor generic services
  *
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ typedef struct
   u8 max_proc_time;		/* max processing time per run, in usecs */
   u8 max_update;		/* max probe/delete operations per run */
   u8 scan_int_delay;		/* delay in msecs, to resume scan on max */
-  u8 stale_threshold;		/* Threashold in minutes to delete nei entry */
+  u8 stale_threshold;		/* Threshold in minutes to delete nei entry */
 } ip_neighbor_scan_arg_t;
 
 void ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg);

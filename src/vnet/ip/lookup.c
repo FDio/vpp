@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 /*
- * ip/ip_lookup.c: ip4/6 adjacency and lookup table managment
+ * ip/ip_lookup.c: ip4/6 adjacency and lookup table management
  *
  * Copyright (c) 2008 Eliot Dresselhaus
  *
@@ -55,7 +55,7 @@
 
 /**
  * @file
- * @brief IPv4 and IPv6 adjacency and lookup table managment.
+ * @brief IPv4 and IPv6 adjacency and lookup table management.
  *
  */
 
@@ -1016,7 +1016,7 @@ done:
 }
 
 /*?
- * This command is used to add or delete IPv4 or IPv6  multicastroutes. All
+ * This command is used to add or delete IPv4 or IPv6  multicast routes. All
  * IP Addresses ('<em><dst-ip-addr>/<width></em>',
  * '<em><next-hop-ip-addr></em>' and '<em><adj-hop-ip-addr></em>')
  * can be IPv4 or IPv6, but all must be of the same form in a single
