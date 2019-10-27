@@ -3847,6 +3847,40 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
 };
 /* *INDENT-ON* */
 
+/** CLI command to wait <sec> seconds. Useful for exec script. */
+static clib_error_t *
+unix_wait_cmd (vlib_main_t * vm,
+	       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int sec = 1;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%d", &sec))
+	;
+      else
+	return clib_error_return (0, "unknown parameter: `%U`",
+				  format_unformat_error, input);
+    }
+
+  vlib_process_suspend (vm, sec);
+  vlib_cli_output (vm, "waited %d sec.", sec);
+
+  unformat_free (line_input);
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_unix_wait_cmd, static) = {
+  .path = "wait",
+  .short_help = "wait <sec>",
+  .function = unix_wait_cmd,
+};
+/* *INDENT-ON* */
+
 static clib_error_t *
 unix_cli_init (vlib_main_t * vm)
 {
