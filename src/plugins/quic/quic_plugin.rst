@@ -39,19 +39,19 @@ Source for the internal client lives in ``src/plugins/hs_apps/echo_client.c``
 External client
 ^^^^^^^^^^^^^^^
 
-This setup reflects the use case of an app developper using vpp to create a quic client / server. The application is an external binary that connects to VPP via its binary API.
+This setup reflects the use case of an app developer using vpp to create a quic client / server. The application is an external binary that connects to VPP via its binary API.
 
 After having setup two interconnected vpps, you can attach the quic_echo binary to each of them.
 
 * The binary can be found in ``./build-root/build-vpp[_debug]-native/vpp/bin/quic_echo``
 * To run the client & server use ``quic_echo socket-name /vpp.sock client|server uri quic://1.1.1.1/1234``
-* Several options are available to customize the amount of data sent, number of threads, logging and timinig.
+* Several options are available to customize the amount of data sent, number of threads, logging and timing.
 
 The behavior of this app when run with ``nclient 2/4`` is two first establish 2 connections with the given peer, and once everything has been openend start opening 4 quic streams, and transmit data. Flow is as follows.
 
 .. image:: /_images/quic_plugin_echo_flow.png
 
-This allows timinig of either the whole setup & teardown or specific phases in assessing the protocol's performance
+This allows timing of either the whole setup & teardown or specific phases in assessing the protocol's performance
 
 Source for the internal client lives in ``src/plugins/hs_apps/sapi/quic_echo.c``
 
@@ -121,7 +121,7 @@ Quic relies on the hoststack constructs, namely applications, sessions, transpor
 * Upon receiving a Stream opening request, we create the ``stream_session`` and its transport ``sctx`` and pass the handle to the ``stream_session`` back to the app. Here we don't have any UDP datastructures, as all datagrams are bound to the connection.
 
 
-Thoses structures are linked as follows :
+Those structures are linked as follows :
 
 .. image:: /_images/quic_plugin_datastructures.png
 
