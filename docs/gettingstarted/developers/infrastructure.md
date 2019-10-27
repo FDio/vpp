@@ -161,7 +161,7 @@ format specification. For example:
 
 format\_junk() can invoke other user-format functions if desired. The
 programmer shoulders responsibility for argument type-checking. It is
-typical for user format functions to blow up spectaculary if the
+typical for user format functions to blow up spectacularly if the
 va\_arg(va, type) macros don't match the caller's idea of reality.
 
 Unformat

@@ -62,7 +62,7 @@ Looking further in the :ref:`vppVagrantfile`, you can see more Ruby variables be
       config.vm.network "private_network", type: "dhcp"
     end
 
-    # use http proxy if avaiable
+    # use http proxy if available
     if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
      config.proxy.http     = ENV['http_proxy']
      config.proxy.https    = ENV['https_proxy']

@@ -13,7 +13,7 @@ Extensible and Modular Design
 
 The FD.io VPP packet processing pipeline is decomposed into a ‘packet processing
 graph’.  This modular approach means that anyone can ‘plugin’ new graph
-nodes. This makes VPP easily exensible and means that plugins can be
+nodes. This makes VPP easily extensible and means that plugins can be
 customized for specific purposes. VPP is also configurable through it's
 Low-Level API.
 

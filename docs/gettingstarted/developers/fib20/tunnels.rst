@@ -23,7 +23,7 @@ graph/chain rather than its usual terminal location.
 
 The mid-chain adjacency is contributed by the gre_tunnel_t , which also becomes
 part of the FIB control-plane graph. Consequently it will be visited by a
-back-walk when the forwarding information for the tunnelճ destination changes.
+back-walk when the forwarding information for the tunnel's destination changes.
 This will trigger it to restack the mid-chain adjacency on the new
 *load_balance_t* contributed by the parent *fib_entry_t*.
 

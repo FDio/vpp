@@ -75,7 +75,7 @@ We see that the IP has been assigned, as well as our default gateway.
 Now exit this container and repeat this process with container *ctwo*, except with IP 172.16.2.2/24 and gateway 172.16.2.1.
 
 
-After thats done for *both* containers, exit from the container if you're in one:
+After that's done for *both* containers, exit from the container if you're in one:
 
 .. code-block:: console
     
@@ -261,6 +261,6 @@ At long last you probably want to see some pings:
     rtt min/avg/max/mdev = 0.089/0.098/0.111/0.014 ms
 
 
-Which should send/recieve three packets for each command.
+Which should send/receive three packets for each command.
 
 This is the end of this guide. Great work! 

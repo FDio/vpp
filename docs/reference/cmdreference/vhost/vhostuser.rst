@@ -28,7 +28,7 @@ There are several parameters associated with a vHost interface:
    Interface. In '*client*' mode, VPP can be reset without bringing down
    the VM and tearing down the vHost Interface.
 -  **feature-mask <hex>** - Optional virtio/vhost feature set negotiated
-   at startup. **This is intended for degugging only.** It is
+   at startup. **This is intended for debugging only.** It is
    recommended that this parameter not be used except by experienced
    users. By default, all supported features will be advertised.
    Otherwise, provide the set of features desired.
@@ -91,7 +91,7 @@ Show Vhost-User
 
 Display the attributes of a single vHost User interface (provide
 interface name), multiple vHost User interfaces (provide a list of
-interface names seperated by spaces) or all Vhost User interfaces (omit
+interface names separated by spaces) or all Vhost User interfaces (omit
 an interface name to display all vHost interfaces).
 
 Summary/Usage

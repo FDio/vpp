@@ -27,7 +27,7 @@ These features have been designed to take full advantage of common micro-process
 * Reducing cache and TLS misses by processing packets in vectors
 * Realizing `IPC <https://en.wikipedia.org/wiki/Instructions_per_cycle>`_ gains with vector instructions such as: SSE, AVX and NEON
 * Eliminating mode switching, context switches and blocking, to always be doing useful work
-* Cache-lined aliged buffers for cache and memory efficiency
+* Cache-lined aligned buffers for cache and memory efficiency
 
 
 Packet Throughput Graphs

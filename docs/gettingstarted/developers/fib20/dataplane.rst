@@ -68,7 +68,7 @@ stacking occurs, the necessary VLIB graph arcs are automatically constructed
 from the respected DPO type's registered graph nodes.
 
 The diagrams above show that for any given route the full data-plane graph is
-known before anypacket arrives. If that graph is composed of n objects, then the
+known before any packet arrives. If that graph is composed of n objects, then the
 packet will visit n nodes and thus incur a forwarding cost of approximately n
 times the graph node cost. This could be reduced if the graph were *collapsed*
 into a single DPO and associated node. However, collapsing a graph removes the

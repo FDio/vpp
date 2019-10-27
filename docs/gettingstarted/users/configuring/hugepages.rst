@@ -24,7 +24,7 @@ the hugepage settings, perform the following commands:
     # All groups allowed to access hugepages
     vm.hugetlb_shm_group=0
     
-    # Shared Memory Max must be greator or equal to the total size of hugepages.
+    # Shared Memory Max must be greater or equal to the total size of hugepages.
     # For 2MB pages, TotalHugepageSize = vm.nr_hugepages * 2 * 1024 * 1024
     # If the existing kernel.shmmax setting  (cat /sys/proc/kernel/shmmax)
     # is greater than the calculated TotalHugepageSize then set this parameter

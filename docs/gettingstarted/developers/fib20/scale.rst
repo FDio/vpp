@@ -93,7 +93,7 @@ IP6 Heap
 The IPv6 heap is used to allocate the memory needed for the
 data-structure within which the IPv6 prefixes are stored. IPv6 also
 has the concept of forwarding and non-forwarding entries, however for
-IPv6 all the forwardind entries are stored in a single hash table
+IPv6 all the forwarding entries are stored in a single hash table
 (same goes for the non-forwarding). The key to the hash table includes
 the IPv6 table-id.
 

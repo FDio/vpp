@@ -7,7 +7,7 @@ Progressive VPP Tutorial
 ########################
 
 Learn to run FD.io VPP on a single Ubuntu 16.04 VM using Vagrant with this walkthrough
-covering basic FD.io VPP senarios. Useful FD.io VPP commands will be used, and
+covering basic FD.io VPP scenarios. Useful FD.io VPP commands will be used, and
 will discuss basic operations, and the state of a running FD.io VPP on a system.
 
 .. note::

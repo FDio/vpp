@@ -12,7 +12,7 @@ MAC Layer
 
 Discovery
 ---------
-* Cisco Discovery Protocol
+* Cisco Discovery Protocol v2 (CDP)
 * Link Layer Discovery Protocol (LLDP)
 
 Link Layer Control Protocol

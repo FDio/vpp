@@ -1,9 +1,9 @@
 # Manual Installation
-This document describes how to clone the Contiv respository and then use [kubeadm][1] to manually install Kubernetes
+This document describes how to clone the Contiv repository and then use [kubeadm][1] to manually install Kubernetes
 with Contiv-VPP networking on one or more bare metal or VM hosts. 
 
-## Clone the Contiv Respository
-To clone the Contiv respository enter the following command:
+## Clone the Contiv Repository
+To clone the Contiv repository enter the following command:
 ```
 git clone https://github.com/contiv/vpp/<repository-name>
 ```

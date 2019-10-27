@@ -56,7 +56,7 @@ In the other terminal start the TRex console. With this console we will execute 
     # cd v2.46/
     # ./trex -console
     
-    Using 'python' as Python interpeter
+    Using 'python' as Python interpreter
     
     
     Connecting to RPC server on localhost:4501                   [SUCCESS]
@@ -152,7 +152,7 @@ More statistics can be displayed on the TRex console using the **tui** command.
 
     trex>tui
     
-    Global Statistitcs
+    Global Statistics
     
     connection   : localhost, Port 4501                  total_tx_L2  : 2.45 Gb/sec                    
     version      : STL @ v2.46                           total_tx_L1  : 2.59 Gb/sec                    

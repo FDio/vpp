@@ -13,7 +13,7 @@ Vector packet processing is a common approach among high performance `Userspace
 <https://en.wikipedia.org/wiki/User_space>`_ packet processing applications such
 as developed with FD.io VPP and `DPDK
 <https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_. The scalar based
-aproach tends to be favoured by Operating System `Kernel
+approach tends to be favoured by Operating System `Kernel
 <https://en.wikipedia.org/wiki/Kernel_(operating_system)>`_ Network Stacks and
 Userspace stacks that don't have strict performance requirements.
 
@@ -21,7 +21,7 @@ Userspace stacks that don't have strict performance requirements.
 
 A scalar packet processing network stack typically processes one packet at a
 time: an interrupt handling function takes a single packet from a Network
-Inteface, and processes it through a set of functions: fooA calls fooB calls
+Interface, and processes it through a set of functions: fooA calls fooB calls
 fooC and so on.
 
 .. code-block:: none 
@@ -32,7 +32,7 @@ fooC and so on.
    +---> fooA(packet3) +---> fooB(packet3) +---> fooC(packet3)
 
 
-Scalar packet processing is simple, but inefficent in these ways:
+Scalar packet processing is simple, but inefficient in these ways:
 
 * When the code path length exceeds the size of the Microprocessor's instruction
   cache (I-cache), `thrashing
@@ -46,7 +46,7 @@ Scalar packet processing is simple, but inefficent in these ways:
 
 In contrast, a vector packet processing network stack processes multiple packets
 at a time, called 'vectors of packets' or simply a 'vector'. An interrupt
-handling function takes the vector of packets from a Network Inteface, and
+handling function takes the vector of packets from a Network Interface, and
 processes the vector through a set of functions: fooA calls fooB calls fooC and
 so on.
 
@@ -59,10 +59,10 @@ so on.
 
 This approach fixes: 
 
-* The I-cache thrashing problem described above, by ammoritizing the cost of
+* The I-cache thrashing problem described above, by amortizing the cost of
   I-cache loads across multiple packets.
 
-* The ineffeciences associated with the deep call stack by recieving vectors
+* The inefficiencies associated with the deep call stack by receiving vectors
   of up to 256 packets at a time from the Network Interface, and processes them
   using a directed graph of node. The graph scheduler invokes one node dispatch
   function at a time, restricting stack depth to a few stack frames.
