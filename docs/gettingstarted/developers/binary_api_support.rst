@@ -93,7 +93,7 @@ implement a variety of features:
 * Barrier synchronization of worker threads across thread-unsafe message handlers.
 
 Correctly-coded message handlers know nothing about the transport used
-to deliver messages to/from VPP. It's reasonably straighforward to use
+to deliver messages to/from VPP. It's reasonably straightforward to use
 multiple API message transport types simultaneously.
 
 For historical reasons, binary api messages are (putatively) sent in

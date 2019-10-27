@@ -16,7 +16,7 @@ Bold text can be show with **Bold Text**, Italics with *Italic text*. Bullets li
 Notes
 *****
 
-A note can be used to describe something not in the normal flow of the paragragh. This
+A note can be used to describe something not in the normal flow of the paragraph. This
 is an example of a note.
 
 .. note::
@@ -28,7 +28,7 @@ is an example of a note.
 Code Blocks
 ***********
 
-This paragraph describes how to do **Console Commands**. When showing VPP commands it is reccomended
+This paragraph describes how to do **Console Commands**. When showing VPP commands it is recommended
 that the command be executed from the linux console as shown. The Highlighting in the final documents
 shows up nicely this way.
 

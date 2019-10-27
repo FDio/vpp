@@ -11,15 +11,15 @@ Threads
 -------
 
 It usually is not needed, but VPP can be configured to run on isolated CPUs. In the example shown
-VPP is configured with 2 workers. The main thread is also configured to run on a seperate CPU. The
-stats thread will always run on CPU 0. This utilty will put the worker threads on CPUs that are
+VPP is configured with 2 workers. The main thread is also configured to run on a separate CPU. The
+stats thread will always run on CPU 0. This utility will put the worker threads on CPUs that are
 associated with the ports that are configured.
 
 Grub Command Line
 -----------------
 
 In general the Grub command line does not need to be changed. If the system is running many processes
-it may be neccessary to isolate CPUs for VPP or other processes.
+it may be necessary to isolate CPUs for VPP or other processes.
 
 Huge Pages
 ----------

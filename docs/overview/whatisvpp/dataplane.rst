@@ -16,10 +16,10 @@ This section identifies different components of packet processing and describes 
 
   * Wide support for standard Operating System Interfaces such as AF_Packet, Tun/Tap & Netmap.
 
-* Wide network and cryptograhic hardware support with `DPDK <https://www.dpdk.org/>`_.
+* Wide network and cryptographic hardware support with `DPDK <https://www.dpdk.org/>`_.
 * Container and Virtualization support
 
-  * Para-virtualized intefaces; Vhost and Virtio 
+  * Para-virtualized interfaces; Vhost and Virtio
   * Network Adapters over PCI passthrough
   * Native container interfaces; MemIF
   

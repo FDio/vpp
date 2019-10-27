@@ -244,7 +244,7 @@ attributes.
      **Example:** cli-prompt vpp-2
      
  * **cli-history-limit <n>**
-     Limit commmand history to <n> lines. A value of 0 disables command history.
+     Limit command history to <n> lines. A value of 0 disables command history.
      Default value: 50
      
      **Example:** cli-history-limit 100
@@ -336,7 +336,7 @@ Popular options include:
           for all NICs except VICs, using ENIC driver, which has VLAN stripping on
           by default.
       * **hqos**
-          Enable the Hierarchical Quaity-of-Service (HQoS) scheduler, default is
+          Enable the Hierarchical Quality-of-Service (HQoS) scheduler, default is
           disabled. This enables HQoS on specific output interface.
       * **hqos { .. }**
           HQoS can also have its own set of custom parameters. Setting a custom
@@ -413,7 +413,7 @@ Popular options include:
      **Example:** enable-tcp-udp-checksum
 
  * **no-multi-seg**
-     Disable mutli-segment buffers, improves performance but disables Jumbo MTU
+     Disable multi-segment buffers, improves performance but disables Jumbo MTU
      support.
      
      **Example:** no-multi-seg
@@ -435,7 +435,7 @@ Popular options include:
      **Example:** log-level error
 
  * **dev default { .. }**
-     Change default settings for all intefaces. This sections supports the
+     Change default settings for all interfaces. This sections supports the
      same set of custom parameters described in *'dev <pci-dev> { .. }*'.
      
      **Example:**
@@ -1216,8 +1216,8 @@ ____________________
 
 A plugin can be disabled by default. It may still be in an experimental phase
 or only be needed in special circumstances. If this is the case, the plugin can
-be explicitely enabled in *'startup.conf'*. Also, a plugin that is enabled by
-default can be explicitely disabled in *'startup.conf'*.
+be explicitly enabled in *'startup.conf'*. Also, a plugin that is enabled by
+default can be explicitly disabled in *'startup.conf'*.
 
 Another useful use of this section is to disable all the plugins, then enable
 only the plugins that are desired.

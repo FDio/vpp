@@ -58,7 +58,7 @@ If you are concerned more with configuration not performance the vmxnet3 driver
 can be set to **interrupt** mode in VPP. This will save a great deal on battery
 usage. Do this with the following
 
-VMware Workstatiom PRO 15 for Linux
+VMware Workstation PRO 15 for Linux
 -----------------------------------
 
 VMware Workstation does not have a menu option to change the default driver

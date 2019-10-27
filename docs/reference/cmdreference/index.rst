@@ -27,7 +27,7 @@ The debug CLI can be executed from a su (superuser) shell using the vppctl comma
                                                          drops                       1498
     local0                            0        down
 
-Commands can also be executed from the vppct shell.
+Commands can also be executed from the vppctl shell.
 
 .. code-block:: console
 

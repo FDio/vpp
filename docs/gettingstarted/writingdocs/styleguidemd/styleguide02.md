@@ -11,7 +11,7 @@ Code Blocks
 ===========
 
 This paragraph describes how to do **Console Commands**. When showing
-VPP commands it is reccomended that the command be executed from the
+VPP commands it is recommended that the command be executed from the
 linux console as shown. The Highlighting in the final documents shows up
 nicely this way.
 

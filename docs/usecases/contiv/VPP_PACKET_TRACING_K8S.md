@@ -113,7 +113,7 @@ wildcard-ip4-arp-publisher-pro event wait                0               0      
 
 `tapcli-rx` above is the node-level input queue for incoming packets into all the pods on the node. There is one `tapcli-rx` input queue for every node.
 
-The following are the input and output queueus for each pod and the node:
+The following are the input and output queues for each pod and the node:
 
 ```
 tapcli-0-output

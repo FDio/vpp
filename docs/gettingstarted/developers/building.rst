@@ -164,7 +164,7 @@ Once the packages are built they can be found in the build-root directory.
     vpp-plugins_18.07-rc0~456-gb361076_amd64.deb
 
 Finally, the created packages can be installed using the following commands. Install
-the package that correspnds to OS that VPP will be running on:
+the package that corresponds to OS that VPP will be running on:
 
 For Ubuntu:
 
