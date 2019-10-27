@@ -267,6 +267,7 @@ class VppTestCase(unittest.TestCase):
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
+    vapi_response_timeout = 5
 
     @property
     def packet_infos(self):
@@ -550,11 +551,9 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.daemon = True
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
-                read_timeout = 0
-            else:
-                read_timeout = 5
+                cls.vapi_response_timeout = 0
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
-                                       read_timeout)
+                                       cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
             else:
