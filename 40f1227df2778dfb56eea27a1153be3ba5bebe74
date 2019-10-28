@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6d07181f_f09a85ce",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 898,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-28T03:53:54Z",
+      "side": 1,
+      "message": "If this doesn\u0027t hold, we need to check why. Let\u0027s discuss it over email",
+      "range": {
+        "startLine": 897,
+        "startChar": 1,
+        "endLine": 898,
+        "endChar": 0
+      },
+      "revId": "40f1227df2778dfb56eea27a1153be3ba5bebe74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93199d59_b5b88290",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2721,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-28T03:53:54Z",
+      "side": 1,
+      "message": "At this point, tc0 must be valid (there\u0027s a check above for it).",
+      "range": {
+        "startLine": 2721,
+        "startChar": 7,
+        "endLine": 2721,
+        "endChar": 10
+      },
+      "revId": "40f1227df2778dfb56eea27a1153be3ba5bebe74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
