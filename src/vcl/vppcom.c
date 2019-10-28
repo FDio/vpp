@@ -713,6 +713,24 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
 }
 
 static void
+vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
+{
+  session_cleanup_msg_t *msg;
+  vcl_session_t *session;
+
+  msg = (session_cleanup_msg_t *) data;
+  session = vcl_session_get_w_vpp_handle (wrk, msg->handle);
+  if (!session)
+    {
+      VDBG (0, "disconnect confirmed for unknown handle 0x%llx", msg->handle);
+      return;
+    }
+
+  vcl_session_table_del_vpp_handle (wrk, msg->handle);
+  vcl_session_free (wrk, session);
+}
+
+static void
 vcl_session_req_worker_update_handler (vcl_worker_t * wrk, void *data)
 {
   session_req_worker_update_msg_t *msg;
@@ -844,6 +862,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_MIGRATED:
       vcl_session_migrated_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_CLEANUP:
+      vcl_session_cleanup_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
@@ -1244,52 +1265,52 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 
 	  next_sh = session->vep.next_sh;
 	}
+      goto cleanup;
     }
-  else
+
+  if (session->is_vep_session)
     {
-      if (session->is_vep_session)
-	{
-	  rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
-	  if (rv < 0)
-	    VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
-		  "failed! rv %d (%s)", session->session_index, vpp_handle,
-		  vep_sh, rv, vppcom_retval_str (rv));
-	}
-
-      if (!do_disconnect)
-	{
-	  VDBG (1, "session %u [0x%llx] disconnect skipped",
-		session->session_index, vpp_handle);
-	  goto cleanup;
-	}
-
-      if (state & STATE_LISTEN)
-	{
-	  rv = vppcom_session_unbind (sh);
-	  if (PREDICT_FALSE (rv < 0))
-	    VDBG (0, "session %u [0x%llx]: listener unbind failed! "
-		  "rv %d (%s)", session->session_index, vpp_handle, rv,
-		  vppcom_retval_str (rv));
-	  return rv;
-	}
-      else if ((state & STATE_OPEN)
-	       || (vcl_session_is_connectable_listener (wrk, session)))
-	{
-	  rv = vppcom_session_disconnect (sh);
-	  if (PREDICT_FALSE (rv < 0))
-	    VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
-		  " rv %d (%s)", session->session_index, vpp_handle,
-		  rv, vppcom_retval_str (rv));
-	}
-      else if (state == STATE_DISCONNECT)
-	{
-	  svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
-	  vcl_send_session_reset_reply (mq, wrk->my_client_index,
-					session->vpp_handle, 0);
-	}
+      rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
+      if (rv < 0)
+	VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
+	      "failed! rv %d (%s)", session->session_index, vpp_handle,
+	      vep_sh, rv, vppcom_retval_str (rv));
     }
 
-  VDBG (0, "session %u [0x%llx] removed", session->session_index, vpp_handle);
+  if (!do_disconnect)
+    {
+      VDBG (1, "session %u [0x%llx] disconnect skipped",
+	    session->session_index, vpp_handle);
+      goto cleanup;
+    }
+
+  if (state & STATE_LISTEN)
+    {
+      rv = vppcom_session_unbind (sh);
+      if (PREDICT_FALSE (rv < 0))
+	VDBG (0, "session %u [0x%llx]: listener unbind failed! "
+	      "rv %d (%s)", session->session_index, vpp_handle, rv,
+	      vppcom_retval_str (rv));
+      return rv;
+    }
+  else if ((state & STATE_OPEN)
+	   || (vcl_session_is_connectable_listener (wrk, session)))
+    {
+      rv = vppcom_session_disconnect (sh);
+      if (PREDICT_FALSE (rv < 0))
+	VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
+	      " rv %d (%s)", session->session_index, vpp_handle,
+	      rv, vppcom_retval_str (rv));
+    }
+  else if (state == STATE_DISCONNECT)
+    {
+      svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
+      vcl_send_session_reset_reply (mq, wrk->my_client_index,
+				    session->vpp_handle, 0);
+    }
+
+  /* Session is removed only after vpp confirms the disconnect */
+  return rv;
 
 cleanup:
   vcl_session_table_del_vpp_handle (wrk, vpp_handle);
@@ -2163,6 +2184,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_MIGRATED:
       vcl_session_migrated_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_CLEANUP:
+      vcl_session_cleanup_handler (wrk, e->data);
+      break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
       break;
@@ -2773,6 +2797,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_MIGRATED:
       vcl_session_migrated_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_CLEANUP:
+      vcl_session_cleanup_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
