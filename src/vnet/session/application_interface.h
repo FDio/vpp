@@ -416,6 +416,13 @@ typedef struct session_disconnect_msg_
   session_handle_t handle;
 } __clib_packed session_disconnect_msg_t;
 
+typedef struct session_disconnect_reply_msg_
+{
+  u32 client_index;
+  u32 context;
+  session_handle_t handle;
+} __clib_packed session_disconnect_reply_msg_t;
+
 typedef struct session_disconnected_msg_
 {
   u32 client_index;
