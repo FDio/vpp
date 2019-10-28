@@ -312,6 +312,7 @@ typedef enum
   SESSION_CTRL_EVT_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
   SESSION_CTRL_EVT_DISCONNECT,
+  SESSION_CTRL_EVT_DISCONNECT_REPLY,
   SESSION_CTRL_EVT_CONNECT,
   SESSION_CTRL_EVT_CONNECT_URI,
   SESSION_CTRL_EVT_LISTEN,
@@ -332,6 +333,7 @@ typedef enum
   _(CONNECT_URI, connect_uri)					\
   _(CONNECTED, connected)					\
   _(DISCONNECT, disconnect)					\
+  _(DISCONNECT_REPLY, disconnect_reply)				\
   _(DISCONNECTED, disconnected)					\
   _(DISCONNECTED_REPLY, disconnected_reply)			\
   _(RESET_REPLY, reset_reply)					\
