@@ -589,6 +589,35 @@ mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
   return 0;
 }
 
+static void
+mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_cleanup_msg_t *mp;
+  svm_msg_q_t *app_mq;
+  session_event_t *evt;
+  app_worker_t *app_wrk;
+
+  /* Only propagate session cleanup notification */
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return;
+
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_CLEANUP;
+  mp = (session_cleanup_msg_t *) evt->data;
+  mp->handle = session_handle (s);
+  svm_msg_q_add_and_unlock (app_mq, msg);
+}
+
 /* ### WILL BE DEPRECATED POST 20.01 ### */
 static session_cb_vft_t session_mq_cb_vft_old = {
   .session_accept_callback = mq_send_session_accepted_cb,
@@ -606,6 +635,7 @@ static session_cb_vft_t session_mq_cb_vft = {
   .session_connected_callback = mq_send_session_connected_cb,
   .session_reset_callback = mq_send_session_reset_cb,
   .session_migrate_callback = mq_send_session_migrate_cb,
+  .session_cleanup_callback = mq_send_session_cleanup_cb,
   .add_segment_callback = mq_send_add_segment_cb,
   .del_segment_callback = mq_send_del_segment_cb,
 };

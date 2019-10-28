@@ -786,6 +786,12 @@ del_segment_handler (session_app_del_segment_msg_t * mp)
 }
 
 static void
+cleanup_handler (session_cleanup_msg_t * mp)
+{
+  ECHO_LOG (1, "Cleanup confirmed for 0x%lx", mp->handle);
+}
+
+static void
 handle_mq_event (session_event_t * e)
 {
   switch (e->event_type)
@@ -809,6 +815,9 @@ handle_mq_event (session_event_t * e)
       break;
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       del_segment_handler ((session_app_del_segment_msg_t *) e->data);
+      break;
+    case SESSION_CTRL_EVT_CLEANUP:
+      cleanup_handler ((session_cleanup_msg_t *) e->data);
       break;
     case SESSION_IO_EVT_RX:
       break;
