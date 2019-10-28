@@ -87,7 +87,9 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (r == VNET_API_ERROR_INVALID_INTERFACE)
     {
-      error = clib_error_return (0, "Invalid interface name");
+      error =
+	clib_error_return (0,
+			   "Invalid interface name. Is the host side veth interface created and 'UP'");
       goto done;
     }
 
@@ -96,9 +98,10 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       error = clib_error_return (0, "Interface already exists");
       goto done;
     }
-
-  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
-		   sw_if_index);
+  if (!r)
+    vlib_cli_output (vm, "Created interface %U\n",
+		     format_vnet_sw_if_index_name, vnet_get_main (),
+		     sw_if_index);
 
 done:
   vec_free (host_if_name);
@@ -144,6 +147,7 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
   clib_error_t *error = NULL;
+  int r = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -167,7 +171,11 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  af_packet_delete_if (vm, host_if_name);
+  r = af_packet_delete_if (vm, host_if_name);
+
+  if (!r)
+    vlib_cli_output (vm, "Deleted interface %s\n", host_if_name);
+
 
 done:
   vec_free (host_if_name);
