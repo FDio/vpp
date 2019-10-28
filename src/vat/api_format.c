@@ -11575,17 +11575,17 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
 
   M (L2TPV3_CREATE_TUNNEL, mp);
 
-  clib_memcpy (mp->client_address, client_address.as_u8,
-	       sizeof (mp->client_address));
+  clib_memcpy (mp->client_address.un.ip6, client_address.as_u8,
+	       sizeof (ip6_address_t));
 
-  clib_memcpy (mp->our_address, our_address.as_u8, sizeof (mp->our_address));
+  clib_memcpy (mp->our_address.un.ip6, our_address.as_u8,
+	       sizeof (ip6_address_t));
 
   mp->local_session_id = ntohl (local_session_id);
   mp->remote_session_id = ntohl (remote_session_id);
   mp->local_cookie = clib_host_to_net_u64 (local_cookie);
   mp->remote_cookie = clib_host_to_net_u64 (remote_cookie);
   mp->l2_sublayer_present = l2_sublayer_present;
-  mp->is_ipv6 = 1;
 
   S (mp);
   W (ret);
@@ -11750,9 +11750,9 @@ static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler_json
 
   vat_json_init_object (node);
 
-  clib_memcpy (&addr, mp->our_address, sizeof (addr));
+  clib_memcpy (&addr, mp->our_address.un.ip6, sizeof (addr));
   vat_json_object_add_ip6 (node, "our_address", addr);
-  clib_memcpy (&addr, mp->client_address, sizeof (addr));
+  clib_memcpy (&addr, mp->client_address.un.ip6, sizeof (addr));
   vat_json_object_add_ip6 (node, "client_address", addr);
 
   vat_json_node_t *lc = vat_json_object_add (node, "local_cookie");
