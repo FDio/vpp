@@ -1090,12 +1090,13 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES devices/tap/tapv2.api)
 
 ##############################################################################
-# tap interface (with virtio backend)
+# pipe interface
 ##############################################################################
 
 list(APPEND VNET_SOURCES
   devices/pipe/pipe_api.c
   devices/pipe/pipe.c
+  devices/pipe/cli.c
 )
 
 list(APPEND VNET_HEADERS
@@ -1105,7 +1106,7 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES devices/pipe/pipe.api)
 
 ##############################################################################
-# session managmeent
+# session management
 ##############################################################################
 
 list(APPEND VNET_SOURCES
