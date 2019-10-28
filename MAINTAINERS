@@ -68,7 +68,7 @@ M:	Dave Barach <dave@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
 
-VNET Bidirectonal Forwarding Detection (BFD)
+VNET Bidirectional Forwarding Detection (BFD)
 I:	bfd
 M:	Klement Sekera <ksekera@cisco.com>
 F:	src/vnet/bfd/
@@ -100,7 +100,7 @@ Y:	src/vnet/devices/virtio/FEATURE.yaml
 M:  Mohsin Kazmi <sykazmi@cisco.com>
 F:  src/vnet/devices/virtio/
 
-VNET Etherent
+VNET Ethernet
 I:	ethernet
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
