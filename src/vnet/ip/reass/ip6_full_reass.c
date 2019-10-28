@@ -1092,6 +1092,9 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_INPUT;
 	      goto skip_reass;
 	    }
+	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
+	    (u8 *) frag_hdr - (u8 *) ip0;
+
 	  if (0 == ip6_frag_hdr_offset (frag_hdr))
 	    {
 	      // first fragment - verify upper-layer is present
@@ -1110,9 +1113,6 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
 	      goto skip_reass;
 	    }
-	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
-	    (u8 *) frag_hdr - (u8 *) ip0;
-
 	  ip6_full_reass_kv_t kv;
 	  u8 do_handoff = 0;
 
