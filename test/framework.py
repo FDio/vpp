@@ -384,7 +384,7 @@ class VppTestCase(unittest.TestCase):
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "plugins",
-                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
+                           "{", "plugin", "dpdk_plugin.so", "{", "enable",
                            "}", "plugin", "rdma_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}"] + cls.extra_vpp_plugin_config + ["}", ]
