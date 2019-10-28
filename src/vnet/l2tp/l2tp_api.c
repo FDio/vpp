@@ -23,6 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/l2tp/l2tp.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -75,9 +76,10 @@ send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
   mp->local_cookie[0] = s->local_cookie[0];
   mp->local_cookie[1] = s->local_cookie[1];
   mp->remote_cookie = s->remote_cookie;
-  clib_memcpy (mp->client_address, &s->client_address,
-	       sizeof (s->client_address));
-  clib_memcpy (mp->our_address, &s->our_address, sizeof (s->our_address));
+  ip_address_encode ((ip46_address_t *) & s->client_address, IP46_TYPE_IP6,
+		     &mp->client_address);
+  ip_address_encode ((ip46_address_t *) & s->our_address, IP46_TYPE_IP6,
+		     &mp->our_address);
   mp->l2_sublayer_present = s->l2_sublayer_present;
   mp->context = context;
 
@@ -113,8 +115,9 @@ static void vl_api_l2tpv3_create_tunnel_t_handler
   l2t_main_t *lm = &l2t_main;
   u32 sw_if_index = (u32) ~ 0;
   int rv;
+  ip46_address_t client, our;
 
-  if (mp->is_ipv6 != 1)
+  if (mp->our_address.af == ADDRESS_IP4)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
       goto out;
@@ -140,9 +143,12 @@ static void vl_api_l2tpv3_create_tunnel_t_handler
       encap_fib_index = ~0;
     }
 
+  ip_address_decode (&mp->client_address, &client);
+  ip_address_decode (&mp->our_address, &our);
+
   rv = create_l2tpv3_ipv6_tunnel (lm,
-				  (ip6_address_t *) mp->client_address,
-				  (ip6_address_t *) mp->our_address,
+				  &client.ip6,
+				  &our.ip6,
 				  ntohl (mp->local_session_id),
 				  ntohl (mp->remote_session_id),
 				  clib_net_to_host_u64 (mp->local_cookie),
@@ -202,13 +208,13 @@ static void vl_api_l2tpv3_set_lookup_key_t_handler
   l2t_main_t *lm = &l2t_main;
   vl_api_l2tpv3_set_lookup_key_reply_t *rmp;
 
-  if (mp->key > L2T_LOOKUP_SESSION_ID)
+  if (mp->key > L2T_LOOKUP_KEY_API_SESSION_ID)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;
     }
 
-  lm->lookup_type = mp->key;
+  lm->lookup_type = (ip6_to_l2_lookup_t) mp->key;
 
 out:
   REPLY_MACRO (VL_API_L2TPV3_SET_LOOKUP_KEY_REPLY);

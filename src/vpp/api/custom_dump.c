@@ -1509,8 +1509,9 @@ static void *vl_api_l2tpv3_create_tunnel_t_print
   s = format (0, "SCRIPT: l2tpv3_create_tunnel ");
 
   s = format (s, "client_address %U our_address %U ",
-	      format_ip6_address, (ip6_address_t *) (mp->client_address),
-	      format_ip6_address, (ip6_address_t *) (mp->our_address));
+	      format_ip6_address,
+	      (ip6_address_t *) (mp->client_address.un.ip6),
+	      format_ip6_address, (ip6_address_t *) (mp->our_address.un.ip6));
   s = format (s, "local_session_id %d ", (mp->local_session_id));
   s = format (s, "remote_session_id %d ", (mp->remote_session_id));
   s = format (s, "local_cookie %lld ",
