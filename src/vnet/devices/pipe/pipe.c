@@ -30,7 +30,7 @@ const static pipe_t PIPE_INVALID = {
 };
 
 /**
- * Various 'module' lavel variables
+ * Various 'module' level variables
  */
 typedef struct pipe_main_t_
 {
@@ -40,7 +40,7 @@ typedef struct pipe_main_t_
   uword *instances;
 
   /**
-   * the per-swif-index array of pipes. Each end of the pipe is stored againt
+   * the per-swif-index array of pipes. Each end of the pipe is stored against
    * its respective sw_if_index
    */
   pipe_t *pipes;
@@ -51,7 +51,7 @@ static pipe_main_t pipe_main;
 /*
  * The pipe rewrite is the same size as an ethernet header (since it
  * is an ethernet interface and the DP is optimised for writing
- * sizeof(ethernet_header_t) rewrites. Hwoever, there are no MAC addresses
+ * sizeof(ethernet_header_t) rewrites. However, there are no MAC addresses
  * since pipes don't have them.
  */
 static u8 *
@@ -455,7 +455,7 @@ static u32
 pipe_instance_alloc (u8 is_specified, u32 want)
 {
   /*
-   * Check for dynamically allocaetd instance number.
+   * Check for dynamically allocated instance number.
    */
   if (!is_specified)
     {
@@ -658,51 +658,6 @@ pipe_walk (pipe_cb_fn_t fn, void *ctx)
   vnet_hw_interface_walk (vnet_get_main (), pipe_hw_walk, &wctx);
 }
 
-static clib_error_t *
-create_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  int rv;
-  u32 sw_if_index;
-  u32 pipe_sw_if_index[2];
-  u8 is_specified = 0;
-  u32 user_instance = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "instance %d", &user_instance))
-	is_specified = 1;
-      else
-	break;
-    }
-
-  rv = vnet_create_pipe_interface (is_specified, user_instance,
-				   &sw_if_index, pipe_sw_if_index);
-
-  if (rv)
-    return clib_error_return (0, "vnet_create_pipe_interface failed");
-
-  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
-		   vnet_get_main (), sw_if_index);
-  return 0;
-}
-
-/*?
- * Create a pipe interface.
- *
- * @cliexpar
- * The following two command syntaxes are equivalent:
- * @cliexcmd{pipe create-interface [mac <mac-addr>] [instance <instance>]}
- * Example of how to create a pipe interface:
- * @cliexcmd{pipe create}
- ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pipe_create_interface_command, static) = {
-  .path = "pipe create",
-  .short_help = "pipe create [instance <instance>]",
-  .function = create_pipe_interfaces,
-};
-/* *INDENT-ON* */
 
 int
 vnet_delete_pipe_interface (u32 sw_if_index)
@@ -739,50 +694,6 @@ vnet_delete_pipe_interface (u32 sw_if_index)
   return 0;
 }
 
-static clib_error_t *
-delete_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ~0;
-  int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U",
-		    unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "interface not specified");
-
-  rv = vnet_delete_pipe_interface (sw_if_index);
-
-  if (rv)
-    return clib_error_return (0, "vnet_delete_pipe_interface failed");
-
-  return 0;
-}
-
-/*?
- * Delete a pipe interface.
- *
- * @cliexpar
- * The following two command syntaxes are equivalent:
- * @cliexcmd{pipe delete intfc <interface>}
- * Example of how to delete a pipe interface:
- * @cliexcmd{pipe delete-interface intfc loop0}
- ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pipe_delete_interface_command, static) = {
-  .path = "pipe delete",
-  .short_help = "pipe delete <interface>",
-  .function = delete_pipe_interfaces,
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
