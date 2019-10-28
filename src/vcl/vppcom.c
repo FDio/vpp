@@ -689,6 +689,24 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
 }
 
 static void
+vcl_session_disconnect_reply_handler (vcl_worker_t * wrk, void *data)
+{
+  session_disconnect_reply_msg_t *msg;
+  vcl_session_t *session;
+
+  msg = (session_disconnect_reply_msg_t *) data;
+  session = vcl_session_get_w_vpp_handle (wrk, msg->handle);
+  if (!session)
+    {
+      VDBG (0, "disconnect confirmed for unknown handle 0x%llx", msg->handle);
+      return;
+    }
+
+  vcl_session_table_del_vpp_handle (wrk, msg->handle);
+  vcl_session_free (wrk, session);
+}
+
+static void
 vcl_session_req_worker_update_handler (vcl_worker_t * wrk, void *data)
 {
   session_req_worker_update_msg_t *msg;
@@ -766,6 +784,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       VDBG (0, "disconnected session %u [0x%llx]", session->session_index,
 	    session->vpp_handle);
+      break;
+    case SESSION_CTRL_EVT_DISCONNECT_REPLY:
+      vcl_session_disconnect_reply_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_RESET:
       vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
@@ -1174,52 +1195,52 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 
 	  next_sh = session->vep.next_sh;
 	}
+      goto cleanup;
     }
-  else
+
+  if (session->is_vep_session)
     {
-      if (session->is_vep_session)
-	{
-	  rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
-	  if (rv < 0)
-	    VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
-		  "failed! rv %d (%s)", session->session_index, vpp_handle,
-		  vep_sh, rv, vppcom_retval_str (rv));
-	}
-
-      if (!do_disconnect)
-	{
-	  VDBG (1, "session %u [0x%llx] disconnect skipped",
-		session->session_index, vpp_handle);
-	  goto cleanup;
-	}
-
-      if (state & STATE_LISTEN)
-	{
-	  rv = vppcom_session_unbind (sh);
-	  if (PREDICT_FALSE (rv < 0))
-	    VDBG (0, "session %u [0x%llx]: listener unbind failed! "
-		  "rv %d (%s)", session->session_index, vpp_handle, rv,
-		  vppcom_retval_str (rv));
-	  return rv;
-	}
-      else if ((state & STATE_OPEN)
-	       || (vcl_session_is_connectable_listener (wrk, session)))
-	{
-	  rv = vppcom_session_disconnect (sh);
-	  if (PREDICT_FALSE (rv < 0))
-	    VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
-		  " rv %d (%s)", session->session_index, vpp_handle,
-		  rv, vppcom_retval_str (rv));
-	}
-      else if (state == STATE_DISCONNECT)
-	{
-	  svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
-	  vcl_send_session_reset_reply (mq, wrk->my_client_index,
-					session->vpp_handle, 0);
-	}
+      rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
+      if (rv < 0)
+	VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
+	      "failed! rv %d (%s)", session->session_index, vpp_handle,
+	      vep_sh, rv, vppcom_retval_str (rv));
     }
 
-  VDBG (0, "session %u [0x%llx] removed", session->session_index, vpp_handle);
+  if (!do_disconnect)
+    {
+      VDBG (1, "session %u [0x%llx] disconnect skipped",
+	    session->session_index, vpp_handle);
+      goto cleanup;
+    }
+
+  if (state & STATE_LISTEN)
+    {
+      rv = vppcom_session_unbind (sh);
+      if (PREDICT_FALSE (rv < 0))
+	VDBG (0, "session %u [0x%llx]: listener unbind failed! "
+	      "rv %d (%s)", session->session_index, vpp_handle, rv,
+	      vppcom_retval_str (rv));
+      return rv;
+    }
+  else if ((state & STATE_OPEN)
+	   || (vcl_session_is_connectable_listener (wrk, session)))
+    {
+      rv = vppcom_session_disconnect (sh);
+      if (PREDICT_FALSE (rv < 0))
+	VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
+	      " rv %d (%s)", session->session_index, vpp_handle,
+	      rv, vppcom_retval_str (rv));
+    }
+  else if (state == STATE_DISCONNECT)
+    {
+      svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
+      vcl_send_session_reset_reply (mq, wrk->my_client_index,
+				    session->vpp_handle, 0);
+    }
+
+  /* Session is removed only after vpp confirms the disconnect */
+  return rv;
 
 cleanup:
   vcl_session_table_del_vpp_handle (wrk, vpp_handle);
@@ -2077,6 +2098,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  *bits_set += 1;
 	}
       break;
+    case SESSION_CTRL_EVT_DISCONNECT_REPLY:
+      vcl_session_disconnect_reply_handler (wrk, e->data);
+      break;
     case SESSION_CTRL_EVT_RESET:
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
       if (sid < n_bits && except_map)
@@ -2652,6 +2676,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
+      break;
+    case SESSION_CTRL_EVT_DISCONNECT_REPLY:
+      vcl_session_disconnect_reply_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_RESET:
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
