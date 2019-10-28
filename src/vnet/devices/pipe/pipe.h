@@ -33,8 +33,8 @@ typedef struct pipe_t_
 /**
  * Create a new pipe interface
  *
- * @param is_specified Has the user speficied a desired instance number
- * @param user_instance The user's desired instnace
+ * @param is_specified Has the user specified a desired instance number
+ * @param user_instance The user's desired instance
  * @param parent_sw_index OUT the created parent interface
  * @param pipe_sw_if_index OUT the ends of the pipe
  */
@@ -45,7 +45,7 @@ extern int vnet_create_pipe_interface (u8 is_specified,
 extern int vnet_delete_pipe_interface (u32 parent_sw_if_index);
 
 /**
- * Get the pipe instnace based on one end
+ * Get the pipe instance based on one end
  */
 extern pipe_t *pipe_get (u32 sw_if_index);
 

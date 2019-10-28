@@ -51,7 +51,10 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_free (line_input);
 
   virtio_pci_create_if (vm, &args);
-
+  if (args.error)
+    vlib_cli_output (vm, "Created interface %U.\n",
+		     format_vnet_sw_if_index_name, vnet_get_main (),
+		     args.sw_if_index);
   return args.error;
 }
 
@@ -74,6 +77,7 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   virtio_main_t *vim = &virtio_main;
   virtio_if_t *vif;
   vnet_main_t *vnm = vnet_get_main ();
+  u8 *ifname = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -102,8 +106,15 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vif = pool_elt_at_index (vim->interfaces, hw->dev_instance);
 
+  /*  get the interface name now.  After the delete, it shows as DELETED */
+  ifname =
+    format (0, "%U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    sw_if_index);
   if (virtio_pci_delete_if (vm, vif) < 0)
     return clib_error_return (0, "not a virtio pci interface");
+
+  vlib_cli_output (vm, "Deleted interface %v.\n", ifname);
+  vec_free (ifname);
 
   return 0;
 }

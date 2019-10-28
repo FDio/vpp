@@ -106,8 +106,9 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   tap_create_if (vm, &args);
 
   if (!args.rv)
-    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
-		     vnet_get_main (), args.sw_if_index);
+    vlib_cli_output (vm, "Created interface %U.\n",
+		     format_vnet_sw_if_index_name, vnet_get_main (),
+		     args.sw_if_index);
 
   vec_free (args.host_if_name);
   vec_free (args.host_namespace);
@@ -138,6 +139,7 @@ tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
   int rv;
+  u8 *ifname = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -160,11 +162,18 @@ tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
+  /*  get the interface name now.  After the delete, it shows as DELETED */
+  ifname =
+    format (0, "%U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    sw_if_index);
   rv = tap_delete_if (vm, sw_if_index);
   if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
     return clib_error_return (0, "not a tap interface");
   else if (rv != 0)
     return clib_error_return (0, "error on deleting tap interface");
+
+  vlib_cli_output (vm, "Deleted interface %v.\n", ifname);
+  vec_free (ifname);
 
   return 0;
 }
