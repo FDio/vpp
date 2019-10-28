@@ -34,9 +34,8 @@ class TestL2tp(VppTestCase):
         self.assertEqual(err, 0)
         err_count = err
 
-        self.vapi.l2tpv3_create_tunnel(client_address=self.pg0.local_ip6n,
-                                       our_address=self.pg0.remote_ip6n,
-                                       is_ipv6=1)
+        self.vapi.l2tpv3_create_tunnel(client_address=self.pg0.local_ip6,
+                                       our_address=self.pg0.remote_ip6)
 
         self.pg0.add_stream(pkt)
         self.pg_start()

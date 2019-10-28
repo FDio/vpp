@@ -13,7 +13,11 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
 
 /** \brief l2tpv3 tunnel interface create request
     @param client_index - opaque cookie to identify the sender
@@ -31,14 +35,13 @@ define l2tpv3_create_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 client_address[16];
-  u8 our_address[16];
-  u8 is_ipv6;
+  vl_api_address_t client_address;
+  vl_api_address_t our_address;
   u32 local_session_id;
   u32 remote_session_id;
   u64 local_cookie;
   u64 remote_cookie;
-  u8 l2_sublayer_present;
+  bool l2_sublayer_present;
   u32 encap_vrf_id;
 };
 
@@ -51,14 +54,14 @@ define l2tpv3_create_tunnel_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 autoreply define l2tpv3_set_tunnel_cookies
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u64 new_local_cookie;
   u64 new_remote_cookie;
 };
@@ -66,15 +69,15 @@ autoreply define l2tpv3_set_tunnel_cookies
 define sw_if_l2tpv3_tunnel_details
 {
   u32 context;
-  u32 sw_if_index;
-  u8 interface_name[64];
-  u8 client_address[16];
-  u8 our_address[16];
+  vl_api_interface_index_t sw_if_index;
+  string interface_name[64];
+  vl_api_address_t client_address;
+  vl_api_address_t our_address;
   u32 local_session_id;
   u32 remote_session_id;
   u64 local_cookie[2];
   u64 remote_cookie;
-  u8 l2_sublayer_present;
+  bool l2_sublayer_present;
 };
 
 define sw_if_l2tpv3_tunnel_dump
@@ -87,16 +90,22 @@ autoreply define l2tpv3_interface_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 enable_disable;
-  u32 sw_if_index;
+  bool enable_disable;
+  vl_api_interface_index_t sw_if_index;
+};
+
+enum l2t_lookup_key : u8
+{
+	L2T_LOOKUP_KEY_API_SRC_ADDR = 0,
+	L2T_LOOKUP_KEY_API_DST_ADDR = 1,
+	L2T_LOOKUP_KEY_API_SESSION_ID = 2,
 };
 
 autoreply define l2tpv3_set_lookup_key
 {
   u32 client_index;
   u32 context;
-  /* 0 = ip6 src_address, 1 = ip6 dst_address, 2 = session_id */
-  u8 key;
+  vl_api_l2t_lookup_key_t key;
 };
 
 /*
