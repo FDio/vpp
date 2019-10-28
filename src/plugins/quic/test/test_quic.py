@@ -193,6 +193,7 @@ class QUICEchoExtTestCase(QUICTestCase):
     quic_setup = "default"
     test_bytes = "test-bytes:assert"
     app = "vpp_echo"
+    fifo_size = "4M"
 
     def setUp(self):
         super(QUICEchoExtTestCase, self).setUp()
@@ -200,7 +201,7 @@ class QUICEchoExtTestCase(QUICTestCase):
             "uri",
             self.uri,
             "json",
-            "fifo-size", "64",
+            "fifo-size", self.fifo_size,
             self.test_bytes,
             "socket-name", self.api_sock,
             "quic-setup", self.quic_setup]
@@ -209,7 +210,8 @@ class QUICEchoExtTestCase(QUICTestCase):
         self.client_echo_test_args = common_args + \
             ["client", "appns", "client"]
         error = self.vapi.cli(
-            "quic set fifo-size 4Mb")
+            "quic set fifo-size {fifo_size}"
+            .format(fifo_size=self.fifo_size))
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
