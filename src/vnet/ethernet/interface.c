@@ -960,6 +960,48 @@ vnet_delete_loopback_interface (u32 sw_if_index)
 }
 
 int
+vnet_create_sub_interface (u32 sw_if_index, u32 id,
+			   u32 flags, u16 inner_vlan_id, u16 outer_vlan_id,
+			   u32 * sub_sw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_interface_t *hi;
+  u64 sup_and_sub_key = ((u64) (sw_if_index) << 32) | (u64) id;
+  vnet_sw_interface_t template;
+  uword *p;
+  u64 *kp;
+
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+
+  p = hash_get_mem (im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+  if (p)
+    {
+      return (VNET_API_ERROR_VLAN_ALREADY_EXISTS);
+    }
+
+  clib_memset (&template, 0, sizeof (template));
+  template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  template.flood_class = VNET_FLOOD_CLASS_NORMAL;
+  template.sup_sw_if_index = sw_if_index;
+  template.sub.id = id;
+  template.sub.eth.raw_flags = flags;
+  template.sub.eth.outer_vlan_id = outer_vlan_id;
+  template.sub.eth.inner_vlan_id = inner_vlan_id;
+
+  if (vnet_create_sw_interface (vnm, &template, sub_sw_if_index))
+    return (VNET_API_ERROR_UNSPECIFIED);
+
+  kp = clib_mem_alloc (sizeof (*kp));
+  *kp = sup_and_sub_key;
+
+  hash_set (hi->sub_interface_sw_if_index_by_id, id, *sub_sw_if_index);
+  hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, *sub_sw_if_index);
+
+  return (0);
+}
+
+int
 vnet_delete_sub_interface (u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();

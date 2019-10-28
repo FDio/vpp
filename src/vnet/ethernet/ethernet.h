@@ -445,6 +445,9 @@ clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 				    u8 is_specified, u32 user_instance);
 int vnet_delete_loopback_interface (u32 sw_if_index);
+int vnet_create_sub_interface (u32 sw_if_index, u32 id,
+			       u32 flags, u16 inner_vlan_id,
+			       u16 outer_vlan_id, u32 * sub_sw_if_index);
 int vnet_delete_sub_interface (u32 sw_if_index);
 
 // Perform ethernet subinterface classification table lookups given
