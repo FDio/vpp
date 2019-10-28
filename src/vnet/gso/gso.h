@@ -18,8 +18,26 @@
 
 #include <vnet/vnet.h>
 
+#define foreach_gso_flag        \
+  _( 0, VXLAN_TUNNEL)           \
+  _( 1, OUTER_IP4)              \
+  _( 2, OUTER_IP6)              \
+  _( 3, OUTER_UDP)              \
+  _( 4, INNER_IP4)              \
+  _( 5, INNER_IP6)              \
+  _( 6, INNER_TCP)              \
+  _( 7, INNER_UDP)
+
+typedef enum gso_flag_t_
+{
+#define _(bit, name) GSO_F_##name  = (1 << bit),
+  foreach_gso_flag
+#undef _
+} gso_flag_t;
+
 typedef struct
 {
+  gso_flag_t gso_flags;
   i16 l2_hdr_offset;
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;

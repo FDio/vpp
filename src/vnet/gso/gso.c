@@ -19,17 +19,19 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/l2/l2_in_out_feat_arc.h>
+#include <vnet/vxlan/vxlan_packet.h>
 #include <vnet/gso/gso.h>
 
 gso_main_t gso_main;
 
-inline gso_header_offset_t
-vnet_gso_header_offset_parser (vlib_buffer_t * b0)
+static_always_inline void
+vnet_gso_header_offset_parser_inline (vlib_buffer_t * b0,
+				      gso_header_offset_t * gho)
 {
-  gso_header_offset_t gho = { 0 };
   u8 l4_proto = 0;
   u8 l4_hdr_sz = 0;
 
@@ -40,7 +42,6 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0)
   if (ethernet_frame_is_tagged (ethertype))
     {
       ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
-
       ethertype = clib_net_to_host_u16 (vlan->type);
       l2hdr_sz += sizeof (*vlan);
       if (ethertype == ETHERNET_TYPE_VLAN)
@@ -51,14 +52,14 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0)
 	}
     }
 
-  gho.l2_hdr_offset = b0->current_data;
-  gho.l3_hdr_offset = l2hdr_sz;
+  gho->l2_hdr_offset = b0->current_data;
+  gho->l3_hdr_offset = l2hdr_sz;
 
   if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
     {
       ip4_header_t *ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
-      gho.l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+      gho->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
       l4_proto = ip4->protocol;
     }
   else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
@@ -66,27 +67,68 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0)
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
       /* FIXME IPv6 EH traversal */
-      gho.l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+      gho->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
       l4_proto = ip6->protocol;
     }
   if (l4_proto == IP_PROTOCOL_TCP)
     {
       tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho.l4_hdr_offset);
+					    gho->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
       tcp->checksum = 0;
+
+      if (ethertype == ETHERNET_TYPE_IP4)
+	gho->gso_flags |= (GSO_F_INNER_IP4 | GSO_F_INNER_TCP);
+      else if (ethertype == ETHERNET_TYPE_IP6)
+	gho->gso_flags |= (GSO_F_INNER_IP6 | GSO_F_INNER_TCP);
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
       udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho.l4_hdr_offset);
+					    gho->l4_hdr_offset);
       l4_hdr_sz = sizeof (*udp);
       udp->checksum = 0;
+
+      if (UDP_DST_PORT_vxlan == clib_net_to_host_u16 (udp->dst_port))
+	{
+	  if (ethertype == ETHERNET_TYPE_IP4)
+	    gho->gso_flags |=
+	      (GSO_F_OUTER_IP4 | GSO_F_VXLAN_TUNNEL | GSO_F_OUTER_UDP);
+	  else if (ethertype == ETHERNET_TYPE_IP6)
+	    gho->gso_flags |=
+	      (GSO_F_OUTER_IP6 | GSO_F_VXLAN_TUNNEL | GSO_F_OUTER_UDP);
+	}
+      else
+	{
+	  if (ethertype == ETHERNET_TYPE_IP4)
+	    gho->gso_flags |= (GSO_F_INNER_IP4 | GSO_F_INNER_UDP);
+	  else if (ethertype == ETHERNET_TYPE_IP6)
+	    gho->gso_flags |= (GSO_F_INNER_IP6 | GSO_F_INNER_UDP);
+	}
     }
 
   if (b0->flags & (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6))
     {
-      gho.l4_hdr_sz = l4_hdr_sz;
+      gho->l4_hdr_sz = l4_hdr_sz;
+    }
+}
+
+inline gso_header_offset_t
+vnet_gso_header_offset_parser (vlib_buffer_t * b0)
+{
+  gso_header_offset_t gho = { 0 };
+
+  vnet_gso_header_offset_parser_inline (b0, &gho);
+  if (gho.gso_flags & GSO_F_VXLAN_TUNNEL)
+    {
+      gho.outer_l2_hdr_offset = gho.l2_hdr_offset;
+      gho.outer_l3_hdr_offset = gho.l3_hdr_offset;
+      gho.outer_l4_hdr_offset = gho.l4_hdr_offset;
+      i16 outer_header_sz =
+	gho.outer_l4_hdr_offset + gho.l4_hdr_sz + sizeof (vxlan_header_t);
+      b0->current_data += outer_header_sz;
+      vnet_gso_header_offset_parser_inline (b0, &gho);
+      b0->current_data -= outer_header_sz;
     }
 
   return gho;
