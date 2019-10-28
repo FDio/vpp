@@ -487,9 +487,9 @@ quic_echo_print_usage_cb ()
 	   "                       On each one server opens M streams\n"
 	   "                      OPT=default : Client open N connections.\n"
 	   "                       On each one client opens M streams\n"
-	   "  qclose=[Y|N|W]      When a connection is done pass[N] send[Y] or wait[W] for close\n"
+	   "  qclose=[Y|N|W]      When connection is done send[Y]|nop[N]|wait[W] for close\n"
 	   "\n"
-	   "  nclients N[/M]      Open N QUIC connections, each one with M streams (M defaults to 1)\n");
+	   "  quic-streams N      Open N QUIC streams (defaults to 1)\n");
 }
 
 echo_proto_cb_vft_t quic_echo_proto_cb_vft = {
