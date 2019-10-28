@@ -1971,6 +1971,8 @@ vppcom_session_write_msg (uint32_t session_handle, void *buf, size_t n)
 }
 
 #define vcl_fifo_rx_evt_valid_or_break(_s)				\
+if (PREDICT_FALSE (!_s->rx_fifo))					\
+  break;								\
 if (PREDICT_FALSE (svm_fifo_is_empty (_s->rx_fifo)))			\
   {									\
     if (!vcl_session_is_ct (_s))					\
