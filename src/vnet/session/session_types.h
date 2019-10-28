@@ -337,6 +337,7 @@ typedef enum
   SESSION_CTRL_EVT_APP_ADD_SEGMENT,
   SESSION_CTRL_EVT_APP_DEL_SEGMENT,
   SESSION_CTRL_EVT_MIGRATED,
+  SESSION_CTRL_EVT_CLEANUP,
 } session_evt_type_t;
 
 #define foreach_session_ctrl_evt				\
@@ -352,7 +353,7 @@ typedef enum
   _(CONNECTED, connected)					\
   _(DISCONNECT, disconnect)					\
   _(DISCONNECTED, disconnected)					\
-  _(DISCONNECTED_REPLY, disconnected_reply)			\
+  _(DISCONNECTED_REPLY, disconnected_reply)                    	\
   _(RESET_REPLY, reset_reply)					\
   _(REQ_WORKER_UPDATE, req_worker_update)			\
   _(WORKER_UPDATE, worker_update)				\
@@ -360,6 +361,8 @@ typedef enum
   _(APP_DETACH, app_detach)					\
   _(APP_ADD_SEGMENT, app_add_segment)				\
   _(APP_DEL_SEGMENT, app_del_segment)				\
+  _(MIGRATED, migrated)						\
+  _(CLEANUP, cleanup)						\
 
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX

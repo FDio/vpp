@@ -510,6 +510,11 @@ typedef struct session_migrate_msg_
   u32 vpp_thread_index;
 } __clib_packed session_migrated_msg_t;
 
+typedef struct session_cleanup_msg_
+{
+  session_handle_t handle;
+} __clib_packed session_cleanup_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
