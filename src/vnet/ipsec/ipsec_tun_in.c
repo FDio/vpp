@@ -376,7 +376,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	      tr->seq =
+		len0 >=
+		sizeof (*esp0) ? clib_host_to_net_u32 (esp0->seq) : ~0;
 	    }
 	}
 
