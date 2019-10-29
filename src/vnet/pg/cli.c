@@ -185,10 +185,10 @@ format_pg_stream (u8 * s, va_list * va)
   int verbose = va_arg (*va, int);
 
   if (!t)
-    return format (s, "%-16s%=12s%=16s%s",
+    return format (s, "%-26s%=12s%=16s%s",
 		   "Name", "Enabled", "Count", "Parameters");
 
-  s = format (s, "%-16v%=12s%=16Ld",
+  s = format (s, "%-26v%=12s%=16Ld",
 	      t->name,
 	      pg_stream_is_enabled (t) ? "Yes" : "No",
 	      t->n_packets_generated);
