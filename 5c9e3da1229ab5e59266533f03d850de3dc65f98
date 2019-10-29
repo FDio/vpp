@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3f7c11d_8d70eacf",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 988,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-10-29T16:38:58Z",
+      "side": 1,
+      "message": "This looks ugly. Why unaligned? What\u0027s wrong with:\n\nu16x8 stairs8  \u003d (u16x8) { 0, 1, 2, 3, 4, 5, 6, 7 };",
+      "range": {
+        "startLine": 987,
+        "startChar": 0,
+        "endLine": 988,
+        "endChar": 59
+      },
+      "revId": "5c9e3da1229ab5e59266533f03d850de3dc65f98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
