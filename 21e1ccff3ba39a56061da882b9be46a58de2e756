@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5c7f90e9_c7761faf",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-10-29T16:44:48Z",
+      "side": 1,
+      "message": "Why unaligned? Why not setting value directly?",
+      "range": {
+        "startLine": 364,
+        "startChar": 0,
+        "endLine": 373,
+        "endChar": 59
+      },
+      "revId": "21e1ccff3ba39a56061da882b9be46a58de2e756",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "647e7fa4_f8e189ed",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-10-29T16:44:48Z",
+      "side": 1,
+      "message": "too much... I don\u0027t think this is needed....",
+      "range": {
+        "startLine": 390,
+        "startChar": 0,
+        "endLine": 409,
+        "endChar": 10
+      },
+      "revId": "21e1ccff3ba39a56061da882b9be46a58de2e756",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
