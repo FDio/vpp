@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "dcaf288d_ec3cf25e",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-29T23:55:35Z",
+      "side": 1,
+      "message": "default to 0xffffffff",
+      "range": {
+        "startLine": 64,
+        "startChar": 6,
+        "endLine": 64,
+        "endChar": 9
+      },
+      "revId": "483eec1c78a410db12573a3f0aab734b02c2aaad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "16ec5eb3_6c697f34",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 13
