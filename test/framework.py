@@ -1574,12 +1574,12 @@ class Worker(Thread):
         self.logger.info("Executable `{app}' wrote to stdout:"
                          .format(app=self.app_name))
         self.logger.info(single_line_delim)
-        self.logger.info(out)
+        self.logger.info(out.decode('utf-8'))
         self.logger.info(single_line_delim)
         self.logger.info("Executable `{app}' wrote to stderr:"
                          .format(app=self.app_name))
         self.logger.info(single_line_delim)
-        self.logger.info(err)
+        self.logger.info(err.decode('utf-8'))
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
 
