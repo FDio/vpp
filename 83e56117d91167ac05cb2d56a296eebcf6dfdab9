@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "70c8c358_33f8b188",
+        "filename": "src/vnet/crypto/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-10-29T14:06:00Z",
+      "side": 1,
+      "message": "I\u0027m not entirely sure but I think this is not going to work. The packet enqueue should be done from the thread that owns the buffers - see the original code.",
+      "range": {
+        "startLine": 68,
+        "startChar": 10,
+        "endLine": 68,
+        "endChar": 50
+      },
+      "revId": "83e56117d91167ac05cb2d56a296eebcf6dfdab9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
