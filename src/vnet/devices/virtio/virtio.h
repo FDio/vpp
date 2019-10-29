@@ -49,7 +49,7 @@
   _ (VIRTIO_NET_F_CTRL_MAC_ADDR, 23)	/* Set MAC address */ \
   _ (VIRTIO_F_NOTIFY_ON_EMPTY, 24) \
   _ (VHOST_F_LOG_ALL, 26)      /* Log all write descriptors */ \
-  _ (VIRTIO_F_ANY_LAYOUT, 27)  /* Can the device handle any descripor layout */ \
+  _ (VIRTIO_F_ANY_LAYOUT, 27)  /* Can the device handle any descriptor layout */ \
   _ (VIRTIO_RING_F_INDIRECT_DESC, 28)   /* Support indirect buffer descriptors */ \
   _ (VIRTIO_RING_F_EVENT_IDX, 29)       /* The Guest publishes the used index for which it expects an interrupt \
  * at the end of the avail ring. Host should ignore the avail->flags field. */ \

@@ -426,7 +426,7 @@ vhost_user_if_input (vlib_main_t * vm,
 
   /*
    * For small packets (<2kB), we will not need more than one vlib buffer
-   * per packet. In case packets are bigger, we will just yeld at some point
+   * per packet. In case packets are bigger, we will just yield at some point
    * in the loop and come back later. This is not an issue as for big packet,
    * processing cost really comes from the memory copy.
    * The assumption is that big packets will fit in 40 buffers.

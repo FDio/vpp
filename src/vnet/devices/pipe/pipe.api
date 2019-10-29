@@ -23,7 +23,7 @@ option version = "1.0.1";
 
 import "vnet/interface_types.api";
 
-/** \brief Initialize a new pipe interface with the given paramters
+/** \brief Initialize a new pipe interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_specified - if non-0, a specific user_instance is being requested
@@ -55,7 +55,7 @@ define pipe_create_reply
 /** \brief Delete pipe interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface index of existing pipe interface
+    @param sw_if_index - interface index of existing parent pipe interface
 */
 autoreply define pipe_delete
 {

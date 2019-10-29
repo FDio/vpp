@@ -15,13 +15,13 @@
 
 option version = "1.0.0";
 
-/** \brief Initialize a new virtio pci interface with the given paramters
+/** \brief Initialize a new virtio pci interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param pci_addr - pci address as unsigned 32bit integer:
                       0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
     @param use_random_mac - let the system generate a unique mac address
-    @param mac_address - mac addr to assign to the interface if use_radom not set
+    @param mac_address - mac addr to assign to the interface if use_random not set
     @param gso_enabled - enable gso feature if available, 1 to enable
     @param features - the virtio features which driver should negotiate with device
 */

@@ -36,7 +36,7 @@
 #define VHOST_USER_PROTOCOL_FEATURES   ((1ULL << VHOST_USER_PROTOCOL_F_MQ) |	\
 					(1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
 
-/* If multiqueue is provided by host, then we suppport it. */
+/* If multiqueue is provided by host, then we support it. */
 #define VIRTIO_NET_CTRL_MQ   4
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1

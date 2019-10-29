@@ -21,7 +21,7 @@
  * @file
  * @brief Pipe Interfaces.
  *
- * A pipe interface, like the UNIX pipe, is a pair of interfaces
+ * A pipe interface, like the UNIX pipe, is a pair of vpp interfaces
  * that are joined.
  */
 const static pipe_t PIPE_INVALID = {
@@ -30,7 +30,7 @@ const static pipe_t PIPE_INVALID = {
 };
 
 /**
- * Various 'module' lavel variables
+ * Various 'module' level variables
  */
 typedef struct pipe_main_t_
 {
@@ -40,7 +40,7 @@ typedef struct pipe_main_t_
   uword *instances;
 
   /**
-   * the per-swif-index array of pipes. Each end of the pipe is stored againt
+   * the per-swif-index array of pipes. Each end of the pipe is stored against
    * its respective sw_if_index
    */
   pipe_t *pipes;
@@ -51,7 +51,7 @@ static pipe_main_t pipe_main;
 /*
  * The pipe rewrite is the same size as an ethernet header (since it
  * is an ethernet interface and the DP is optimised for writing
- * sizeof(ethernet_header_t) rewrites. Hwoever, there are no MAC addresses
+ * sizeof(ethernet_header_t) rewrites. However, there are no MAC addresses
  * since pipes don't have them.
  */
 static u8 *
