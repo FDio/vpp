@@ -927,7 +927,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	  ip6_sr_localsid_t *ls0;
 
           ip6srv_combo_header_t *ip6srv0;
-          ip6_address_t dst0, seg0;
+          ip6_address_t dst0, src0, seg0;
 
           ip6_gtpu_header_t *hdr0 = NULL;
           uword len0;
@@ -953,6 +953,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 
           ip6srv0 = vlib_buffer_get_current (b0);
           dst0 = ip6srv0->ip.dst_address;
+	  src0 = ip6srv0->ip.src_address;
 	  seg0 = ip6srv0->sr.segments[0];
 
 	  tag = ip6srv0->sr.tag;
@@ -1003,7 +1004,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		for (index = offset; index < offset + 4; index++)	      
 		  {
 		    *teid8p = dst0.as_u8[index] << shift;
-		    *teid8p |= dst0.as_u8[index+1] >> (8 - shift);
+		    *teid8p |= dst0.as_u8[index + 1] >> (8 - shift);
 		    teid8p++;
 		  }
 
@@ -1057,7 +1058,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
               hdr0->udp.length = clib_host_to_net_u16 (len0 +
                   sizeof (udp_header_t) + sizeof (gtpu_header_t));
 
-	      clib_memcpy_fast (hdr0->ip6.src_address.as_u8, dst0.as_u8,
+	      clib_memcpy_fast (hdr0->ip6.src_address.as_u8, src0.as_u8,
 			   sizeof(ip6_address_t));
 	      clib_memcpy_fast (hdr0->ip6.dst_address.as_u8, &seg0.as_u8,
 			   sizeof(ip6_address_t));
@@ -1141,7 +1142,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
           ip6_gtpu_header_t *hdr0 = NULL;
 	  uword len0;
 
-	  ip6_address_t seg0, dst0;
+	  ip6_address_t seg0, src0;
 	  u32 teid = 0;
 	  u8 *teidp;
 	  u8 gtpu_type = 0;
@@ -1186,7 +1187,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
           else
             {
 	      seg0 = ls_param->sr_prefix;
-	      dst0 = hdr0->ip6.dst_address;
+	      src0 = hdr0->ip6.src_address;
 
 	      gtpu_type = hdr0->gtpu.type;
 
@@ -1315,6 +1316,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		{
 	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
+		  ip6srv->ip.src_address = src0;
 	          ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
 		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
@@ -1374,7 +1376,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		{
 	          clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
-		  ip6srv->ip.src_address = dst0;
+		  ip6srv->ip.src_address = src0;
 		  ip6srv->ip.dst_address = seg0;
 
 		  if (PREDICT_FALSE(gtpu_type) != GTPU_TYPE_GTPU)
@@ -1504,6 +1506,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  uword len0;
 
           ip6_address_t dst0;
+          ip6_address_t src0;
 	  ip6_address_t seg0;
 	  u32 teid = 0;
 	  u8 *teidp;
@@ -1549,6 +1552,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
           else
             {
 	      dst0 = hdr0->ip6.dst_address;
+	      src0 = hdr0->ip6.src_address;
 
 	      gtpu_type = hdr0->gtpu.type;
 
@@ -1670,6 +1674,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		{
 	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
+		  ip6srv->ip.src_address = src0;
+
 		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
 
 	          ip6srv->sr.segments_left += 2;
@@ -1679,7 +1685,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		{
 	          clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
-		  ip6srv->ip.src_address = sr_pr_encaps_src;
+		  ip6srv->ip.src_address = src0;
 		  ip6srv->ip.dst_address = seg0;
 
 		  ip6srv->sr.tag = clib_host_to_net_u16(srh_tagfield[gtpu_type]);
