@@ -181,7 +181,7 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
 							  FIB_SOURCE_RR,
 							  FIB_ENTRY_FLAG_NONE);
 
-      hash_set_mem (lisp_gpe_tunnel_db, &lgt->key,
+      hash_set_mem (lisp_gpe_tunnel_db, lgt->key,
 		    (lgt - lisp_gpe_tunnel_pool));
     }
 
@@ -200,7 +200,7 @@ lisp_gpe_tunnel_unlock (index_t lgti)
 
   if (0 == lgt->locks)
     {
-      hash_unset_mem (lisp_gpe_tunnel_db, &lgt->key);
+      hash_unset_mem (lisp_gpe_tunnel_db, lgt->key);
       clib_mem_free (lgt->key);
       pool_put (lisp_gpe_tunnel_pool, lgt);
     }
