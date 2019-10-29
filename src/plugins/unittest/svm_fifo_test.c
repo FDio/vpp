@@ -706,7 +706,6 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       SFIFO_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
 		  data_pattern[j]);
     }
-  vec_reset_length (data_buf);
 
   /*
    * Dequeue or drop all data
@@ -717,6 +716,7 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
     }
   else
     {
+      memset (data_buf, 0, vec_len (data_pattern));
       svm_fifo_dequeue (f, vec_len (data_pattern), data_buf);
       if (compare_data
 	  (data_buf, data_pattern, 0, vec_len (data_pattern), &j))

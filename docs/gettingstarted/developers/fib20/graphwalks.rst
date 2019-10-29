@@ -15,8 +15,8 @@ child to parent relationship is thus fully known to the child, and hence a forwa
 walk of the graph (from child to parent) is trivial. However, a parent does not choose
 its children, it does not even choose the type. All object types that form part of the
 FIB control plane graph all inherit from a single base class14; *fib_node_t*. A *fib_node_t*
-indentifies the object's index and its associated virtual function table provides the
-parent a mechanism to Զisitՠthat object during the walk. The reason for a back-walk
+identifies the object's index and its associated virtual function table provides the
+parent a mechanism to visit that object during the walk. The reason for a back-walk
 is to inform all children that the state of the parent has changed in some way, and
 that the child may itself need to update.
 
@@ -65,7 +65,7 @@ Choosing between a synchronous and an asynchronous walk is therefore a trade-off
 time it takes to propagate a change in the parent to all of its children, versus the
 time it takes to act on a single route update. For example, if a route update where to
 affect millions of child recursive routes, then the rate at which such updates could be
-processed would be dependent on the number of child recursive route Рwhich would not be
+processed would be dependent on the number of child recursive route which would not be
 good. At the time of writing FIB2.0 uses synchronous walk in all locations except when
 walking the children of a path-list, and it has more than 32 [#f15]_ children. This avoids the
 case mentioned above.

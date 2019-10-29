@@ -65,12 +65,29 @@ memif_queue_intfd_close (memif_queue_t * mq)
     }
 }
 
+static void
+memif_disconnect_free_zc_queue_buffer (memif_queue_t * mq, u8 is_rx)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u16 ring_size, n_slots, mask, start;
+
+  ring_size = 1 << mq->log2_ring_size;
+  mask = ring_size - 1;
+  n_slots = mq->ring->head - mq->last_tail;
+  start = mq->last_tail & mask;
+  if (is_rx)
+    vlib_buffer_free_from_ring (vm, mq->buffers, start, ring_size, n_slots);
+  else
+    vlib_buffer_free_from_ring_no_next (vm, mq->buffers, start, ring_size,
+					n_slots);
+  vec_free (mq->buffers);
+}
+
 void
 memif_disconnect (memif_if_t * mif, clib_error_t * err)
 {
   memif_main_t *mm = &memif_main;
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
   memif_region_t *mr;
   memif_queue_t *mq;
   int i;
@@ -128,20 +145,26 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 			   "Unable to unassign interface %d, queue %d: rc=%d",
 			   mif->hw_if_index, i, rv);
 	  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
-            {
-
-              u16 cur_slot,last_slot, start;
-              u16 ring_size = 1 << mq->log2_ring_size;
-              u16 mask = ring_size - 1;
-              cur_slot =  mq->last_tail;
-              last_slot = mq->ring->head - 1 ;
-              start = (mq->last_tail & mask);
-              u16 n_slots = ((last_slot - cur_slot) & mask) + 1;
-              vlib_buffer_free_from_ring(vm,mq->buffers,start,ring_size,n_slots);
-            }
-          mq->ring = 0;
+	  {
+	    memif_disconnect_free_zc_queue_buffer(mq, 1);
+	  }
+	  mq->ring = 0;
 	}
     }
+
+  /* *INDENT-OFF* */
+  vec_foreach_index (i, mif->tx_queues)
+  {
+    mq = vec_elt_at_index (mif->tx_queues, i);
+    if (mq->ring)
+    {
+      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+      {
+        memif_disconnect_free_zc_queue_buffer(mq, 0);
+      }
+    }
+    mq->ring = 0;
+  }
 
   /* free tx and rx queues */
   vec_foreach (mq, mif->rx_queues)
@@ -149,28 +172,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   vec_free (mif->rx_queues);
 
   vec_foreach (mq, mif->tx_queues)
-    {
-      if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
-        {
-          memif_ring_t *ring = mq->ring;
-          u16 cur_slot,last_slot, start;
-          u16 ring_size = 1 << mq->log2_ring_size;
-          u16 mask = ring_size - 1;
-          u16 n_slots = ring->tail - mq->last_tail;
-          cur_slot =  mq->last_tail;
-          last_slot = mq->ring->head;
-          start = (mq->last_tail & mask);
-          if(last_slot > cur_slot)
-             n_slots = n_slots + ((last_slot - cur_slot)) ;
-          else if (last_slot < cur_slot)
-             n_slots = n_slots + (cur_slot - last_slot);
-          vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
-                      start,
-                      ring_size, n_slots);
-        }
-      memif_queue_intfd_close (mq);
-    }
-
+    memif_queue_intfd_close (mq);
   vec_free (mif->tx_queues);
 
   /* free memory regions */

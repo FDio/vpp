@@ -139,6 +139,11 @@ typedef struct app_main_
    * Pool from which we allocate certificates (key, cert)
    */
   app_cert_key_pair_t *cert_key_pair_store;
+
+  /*
+   * Last registered crypto engine type
+   */
+  crypto_engine_type_t last_crypto_engine;
 } app_main_t;
 
 typedef struct app_init_args_
@@ -290,6 +295,9 @@ int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 				  session_t * s, u8 is_fail);
 void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			     u32 context, int rv);
+
+crypto_engine_type_t app_crypto_engine_type_add (void);
+u8 app_crypto_engine_n_types (void);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

@@ -172,7 +172,7 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 	    mac_address_to_bytes (gbp_route_domain_get_local_mac (),
 				  eth->src_address);
 	    mac_address_to_bytes (gbp_route_domain_get_remote_mac (),
-				  eth->src_address);
+				  eth->dst_address);
 
 	    /*
 	     * create an adjacency out of the uu-fwd interfaces that will

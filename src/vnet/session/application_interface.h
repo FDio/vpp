@@ -162,11 +162,11 @@ typedef struct _vnet_application_add_tls_key_args_t
 typedef enum crypto_engine_type_
 {
   CRYPTO_ENGINE_NONE,
-  CRYPTO_ENGINE_MBEDTLS,
   CRYPTO_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_MBEDTLS,
   CRYPTO_ENGINE_VPP,
   CRYPTO_ENGINE_PICOTLS,
-  CRYPTO_N_ENGINES
+  CRYPTO_ENGINE_LAST = CRYPTO_ENGINE_PICOTLS,
 } crypto_engine_type_t;
 
 typedef struct _vnet_app_add_cert_key_pair_args_
@@ -256,7 +256,8 @@ clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
 int vnet_app_del_cert_key_pair (u32 index);
-int vent_app_add_cert_key_interest (u32 index, u32 app_index);	/* Ask for app cb on pair deletion */
+/** Ask for app cb on pair deletion */
+int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 
 typedef struct app_session_transport_
 {
@@ -297,12 +298,18 @@ typedef struct session_listen_msg_
   u32 ckpair_index;
 } __clib_packed session_listen_msg_t;
 
+STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
+
 typedef struct session_listen_uri_msg_
 {
   u32 client_index;
   u32 context;
   u8 uri[56];
 } __clib_packed session_listen_uri_msg_t;
+
+STATIC_ASSERT (sizeof (session_listen_uri_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
 
 typedef struct session_bound_msg_
 {
@@ -364,11 +371,15 @@ typedef struct session_connect_msg_
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
+  ip46_address_t lcl_ip;
   u8 hostname_len;
   u8 hostname[16];
   u64 parent_handle;
   u32 ckpair_index;
 } __clib_packed session_connect_msg_t;
+
+STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
 
 typedef struct session_connect_uri_msg_
 {
@@ -376,6 +387,9 @@ typedef struct session_connect_uri_msg_
   u32 context;
   u8 uri[56];
 } __clib_packed session_connect_uri_msg_t;
+
+STATIC_ASSERT (sizeof (session_connect_uri_msg_t) <=
+	       SESSION_CTRL_MSG_MAX_SIZE, "msg too large");
 
 typedef struct session_connected_msg_
 {

@@ -482,7 +482,7 @@ Match an IPv6….
 Links
 ~~~~~
 
--  `Overview of classifers <https://wiki.fd.io/view/VPP/SecurityGroups#Existing_functionality>`__
+-  `Overview of classifiers <https://wiki.fd.io/view/VPP/SecurityGroups#Existing_functionality>`__
 -  `FD.io VPP Classifiers Overview <https://wiki.fd.io/view/VPP/Introduction_To_N-tuple_Classifiers>`__
 -  `FD.io VPP Classifiers CLI <https://docs.fd.io/vpp/19.04/clicmd_src_vnet_classify.html>`__
 -  `Sample Code from Andrew Yourt <http://stdio.be/vpp/t/aytest-bridge-tap-py.txt>`__

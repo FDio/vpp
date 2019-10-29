@@ -271,7 +271,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
-      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
 
       /* Poison the entry */
@@ -737,8 +737,11 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
+
+  if (!tcp_cfg.allow_tso)
+    tc->cfg_flags |= TCP_CFG_F_NO_TSO;
 
   tc->start_ts = tcp_time_now_us (tc->c_thread_index);
 }
@@ -839,6 +842,31 @@ format_tcp_state (u8 * s, va_list * args)
   return s;
 }
 
+const char *tcp_cfg_flags_str[] = {
+#define _(sym, str) str,
+  foreach_tcp_cfg_flag
+#undef _
+};
+
+static u8 *
+format_tcp_cfg_flags (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  int i, last = -1;
+
+  for (i = 0; i < TCP_CFG_N_FLAG_BITS; i++)
+    if (tc->cfg_flags & (1 << i))
+      last = i;
+  for (i = 0; i < last; i++)
+    {
+      if (tc->cfg_flags & (1 << i))
+	s = format (s, "%s, ", tcp_cfg_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", tcp_cfg_flags_str[last]);
+  return s;
+}
+
 const char *tcp_connection_flags_str[] = {
 #define _(sym, str) str,
   foreach_tcp_connection_flag
@@ -915,17 +943,26 @@ static u8 *
 format_tcp_congestion (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  u32 indent = format_get_indent (s);
+  u32 indent = format_get_indent (s), prr_space = 0;
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
   s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
 	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rxt_bytes %u\n",
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
-	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
-  s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
+	      tc->prev_cwnd, tc->prev_ssthresh);
+  s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
 	      format_white_space, indent, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
+  s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_head %u rxt_ts %u\n",
+	      format_white_space, indent, tc->snd_rxt_bytes,
+	      tc->rxt_delivered, tc->rxt_head - tc->iss,
+	      tcp_time_now_w_thread (tc->c_thread_index) - tc->snd_rxt_ts);
+  if (tcp_in_fastrecovery (tc))
+    prr_space = tcp_fastrecovery_prr_snd_space (tc);
+  s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",
+	      format_white_space, indent, tc->prr_start - tc->iss,
+	      tc->prr_delivered, prr_space);
   return s;
 }
 
@@ -954,8 +991,9 @@ static u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  s = format (s, " index: %u flags: %U timers: %U\n", tc->c_c_index,
-	      format_tcp_connection_flags, tc, format_tcp_timers, tc);
+  s = format (s, " index: %u cfg: %U flags: %U timers: %U\n", tc->c_c_index,
+	      format_tcp_cfg_flags, tc, format_tcp_connection_flags, tc,
+	      format_tcp_timers, tc);
   s = format (s, " snd_una %u snd_nxt %u snd_una_max %u",
 	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
 	      tc->snd_una_max - tc->iss);
@@ -1140,10 +1178,11 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u\n",
+  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u"
+	      " rxt_sacked %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
-	      sb->last_lost_bytes);
-  s = format (s, "%Ulast_bytes_delivered %u high_sacked %u is_reneging %u\n",
+	      sb->last_lost_bytes, sb->rxt_sacked);
+  s = format (s, "%Ulast_delivered %u high_sacked %u is_reneging %u\n",
 	      format_white_space, indent, sb->last_bytes_delivered,
 	      sb->high_sacked - tc->iss, sb->is_reneging);
   s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
@@ -1209,10 +1248,8 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
    * the current state of the connection. */
   tcp_update_burst_snd_vars (tc);
 
-  if (PREDICT_FALSE (tc->is_tso))
-    {
-      return tcp_session_cal_goal_size (tc);
-    }
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
+    return tcp_session_cal_goal_size (tc);
 
   return tc->snd_mss;
 }
@@ -1611,6 +1648,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.allow_tso = 0;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
   tcp_cfg.rwnd_min_update_ack = 1;
 
@@ -1734,6 +1772,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.initial_cwnd_multiplier = cwnd_multiplier;
       else if (unformat (input, "no-tx-pacing"))
 	tcp_cfg.enable_tx_pacing = 0;
+      else if (unformat (input, "tso"))
+	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tcp_cfg.cc_algo))
 	;

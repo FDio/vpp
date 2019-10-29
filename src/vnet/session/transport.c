@@ -47,10 +47,6 @@ static clib_spinlock_t local_endpoints_lock;
  */
 static double transport_pacer_period;
 
-#define TRANSPORT_PACER_MIN_MSS 	1460
-#define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
-#define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
-
 u8 *
 format_transport_proto (u8 * s, va_list * args)
 {
@@ -566,9 +562,14 @@ u8 *
 format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
+  vlib_main_t *vm = vlib_get_main ();
+  u64 now, diff;
 
-  s = format (s, "bucket %u tokens/period %.3f last_update %x",
-	      pacer->bucket, pacer->tokens_per_period, pacer->last_update);
+  now = vm->clib_time.last_cpu_time;
+  diff = now - (pacer->last_update << SPACER_CPU_TICKS_PER_PERIOD_SHIFT);
+  s = format (s, "rate %u bucket %u t/p %.3f last_update %.3f",
+	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
+	      diff * vm->clib_time.seconds_per_clock);
   return s;
 }
 
@@ -577,6 +578,13 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
 {
   u64 n_periods = norm_time_now - pacer->last_update;
   u64 inc;
+
+  if (PREDICT_FALSE (n_periods > 5e5))
+    {
+      pacer->last_update = norm_time_now;
+      pacer->bucket = TRANSPORT_PACER_MIN_BURST;
+      return TRANSPORT_PACER_MIN_BURST;
+    }
 
   if (n_periods > 0
       && (inc = (f32) n_periods * pacer->tokens_per_period) > 10)
@@ -669,7 +677,7 @@ transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
   u32 snd_space, max_paced_burst;
 
   snd_space = tp_vfts[tc->proto].send_space (tc);
-  if (transport_connection_is_tx_paced (tc))
+  if (snd_space && transport_connection_is_tx_paced (tc))
     {
       time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
       max_paced_burst = spacer_max_burst (&tc->pacer, time_now);

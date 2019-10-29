@@ -142,7 +142,6 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   lacp_error_t e;
   marker_pdu_t *marker;
   uword last_packet_signature;
-  bond_if_t *bif;
 
   sif =
     bond_get_slave_by_sw_if_index (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
@@ -203,10 +202,9 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   last_packet_signature =
     hash_memory (sif->last_rx_pkt, vec_len (sif->last_rx_pkt), 0xd00b);
 
-  bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   if (sif->last_packet_signature_valid &&
       (sif->last_packet_signature == last_packet_signature) &&
-      hash_get (bif->active_slave_by_sw_if_index, sif->sw_if_index))
+      ((sif->actor.state & LACP_STEADY_STATE) == LACP_STEADY_STATE))
     {
       lacp_start_current_while_timer (lm->vlib_main, sif,
 				      sif->ttl_in_seconds);

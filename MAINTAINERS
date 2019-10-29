@@ -194,6 +194,7 @@ F:	src/vnet/lisp-gpe/
 VNET GSO
 I: gso
 M: Andrew Yourtchenko <ayourtch@gmail.com>
+M: Mohsin Kazmi <sykazmi@cisco.com>
 F: src/vnet/interface_output.c
 
 Plugin - MAP
@@ -272,6 +273,11 @@ VNET GENEVE
 I:	geneve
 M:	N/A
 F:	src/vnet/geneve/
+
+VNET FLOW
+I:	flow
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/flow/
 
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
@@ -376,6 +382,11 @@ I:	pppoe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/pppoe/
 
+Plugin - Ping
+I:	ping
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/ping
+
 Plugin - IPv6 Segment Routing Dynamic Proxy
 I:	srv6-ad
 M:	Francois Clad <fclad@cisco.com>
@@ -418,6 +429,11 @@ Plugin - Network Delay Simulator
 I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
+
+Plugin - Buffer Metadata Modification Tracker
+I:	mdata
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/mdata/
 
 Test Infrastructure
 I:	tests
@@ -522,7 +538,6 @@ F:	src/plugins/hs_apps/
 Python binding for the VPP API
 I:	papi
 M:	Ole Troan <ot@cisco.com>
-M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
 Plugin - SCTP

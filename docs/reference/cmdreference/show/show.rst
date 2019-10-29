@@ -64,7 +64,7 @@ This command displays the IPv4 FIB Tables (VRF Tables) and the route entries for
 
 .. note:: 
 	This command will run for a long time when the FIB tables are comprised of
-	millions of entries. For those senarios, consider displaying a single table or summary mode.
+	millions of entries. For those scenarios, consider displaying a single table or summary mode.
 
 Example Usage
 --------------

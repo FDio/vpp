@@ -202,12 +202,12 @@ vlib_pci_device_info_t *
 vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
 			  clib_error_t ** error)
 {
-  linux_vfio_main_t *lvm = &vfio_main;
   clib_error_t *err;
   vlib_pci_device_info_t *di;
   u8 *f = 0;
   u32 tmp;
   int fd;
+  u8 *tmpstr;
 
   di = clib_mem_alloc (sizeof (vlib_pci_device_info_t));
   clib_memset (di, 0, sizeof (vlib_pci_device_info_t));
@@ -295,29 +295,26 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
     di->driver_name = format (0, "<NONE>%c", 0);
 
   di->iommu_group = -1;
-  if (lvm->container_fd != -1)
+  vec_reset_length (f);
+  f = format (f, "%v/iommu_group%c", dev_dir_name, 0);
+  tmpstr = clib_sysfs_link_to_name ((char *) f);
+  if (tmpstr)
     {
-      u8 *tmpstr;
-      vec_reset_length (f);
-      f = format (f, "%v/iommu_group%c", dev_dir_name, 0);
-      tmpstr = clib_sysfs_link_to_name ((char *) f);
-      if (tmpstr)
-	{
-	  di->iommu_group = atoi ((char *) tmpstr);
-	  vec_free (tmpstr);
-	}
-      vec_reset_length (f);
-      f = format (f, "%v/iommu_group/name%c", dev_dir_name, 0);
-      err = clib_sysfs_read ((char *) f, "%s", &tmpstr);
-      if (err == 0)
-	{
-	  if (strncmp ((char *) tmpstr, "vfio-noiommu", 12) == 0)
-	    di->flags |= VLIB_PCI_DEVICE_INFO_F_NOIOMMU;
-	  vec_free (tmpstr);
-	}
-      else
-	clib_error_free (err);
+      di->iommu_group = atoi ((char *) tmpstr);
+      vec_free (tmpstr);
     }
+
+  vec_reset_length (f);
+  f = format (f, "%v/iommu_group/name%c", dev_dir_name, 0);
+  err = clib_sysfs_read ((char *) f, "%s", &tmpstr);
+  if (err == 0)
+    {
+      if (strncmp ((char *) tmpstr, "vfio-noiommu", 12) == 0)
+	di->flags |= VLIB_PCI_DEVICE_INFO_F_NOIOMMU;
+      vec_free (tmpstr);
+    }
+  else
+    clib_error_free (err);
 
   close (fd);
 

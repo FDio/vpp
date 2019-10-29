@@ -32,7 +32,7 @@ or abort signal, then you can run the VPP debug binary and then execute **backtr
     (gdb) bt
     #0  ip4_icmp_input (vm=0x7ffff7b89a40 <vlib_global_main>, node=0x7fffb6bb6900, frame=0x7fffb6725ac0) at /scratch/vpp-master/build-data/../src/vnet/ip/icmp4.c:187
     #1  0x00007ffff78da4be in dispatch_node (vm=0x7ffff7b89a40 <vlib_global_main>, node=0x7fffb6bb    6900, type=VLIB_NODE_TYPE_INTERNAL, dispatch_state=VLIB_NODE_STATE_POLLING, frame=0x7fffb6725ac0, last_time_stamp=10581236529    65565) at /scratch/vpp-master/build-data/../src/vlib/main.c:988
-    #2  0x00007ffff78daa77 in dispatch_pending_node (vm=0x7ffff7b89a40 <vlib_global_main>, pending_f    rame_index=6, last_time_stamp=1058123652965565) at /scratch/vpp-master/build-data/../src/vlib/main.c:1138
+    #2  0x00007ffff78daa77 in dispatch_pending_node (vm=0x7ffff7b89a40 <vlib_global_main>, pending_frame_index=6, last_time_stamp=1058123652965565) at /scratch/vpp-master/build-data/../src/vlib/main.c:1138
     ....
 
 Get to the GDB prompt

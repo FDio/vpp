@@ -283,7 +283,7 @@ Prerequisites:
   access to sudo.
   
 #### Setting up Prerequisites
-To enable looging into a node without a password, copy your public key to the following
+To enable logging into a node without a password, copy your public key to the following
 node:
 ```
 ssh-copy-id <user-id>@<node-name-or-ip-address>

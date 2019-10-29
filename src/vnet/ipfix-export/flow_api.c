@@ -19,6 +19,7 @@
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
@@ -74,11 +75,18 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
   if (!reg)
     return;
 
-  memcpy (collector.data, mp->collector_address, sizeof (collector.data));
+  if (mp->src_address.af == ADDRESS_IP6
+      || mp->collector_address.af == ADDRESS_IP6)
+    {
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+
+  ip4_address_decode (mp->collector_address.un.ip4, &collector);
   collector_port = ntohs (mp->collector_port);
   if (collector_port == (u16) ~ 0)
     collector_port = UDP_DST_PORT_ipfix;
-  memcpy (src.data, mp->src_address, sizeof (src.data));
+  ip4_address_decode (mp->src_address.un.ip4, &src);
   fib_id = ntohl (mp->vrf_id);
 
   ip4_main_t *im = &ip4_main;
@@ -157,6 +165,8 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
   vl_api_registration_t *reg;
   vl_api_ipfix_exporter_details_t *rmp;
   ip4_main_t *im = &ip4_main;
+  ip46_address_t collector = {.as_u64[0] = 0,.as_u64[1] = 0 };
+  ip46_address_t src = {.as_u64[0] = 0,.as_u64[1] = 0 };
   u32 vrf_id;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -167,11 +177,15 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_IPFIX_EXPORTER_DETAILS);
   rmp->context = mp->context;
-  memcpy (rmp->collector_address, frm->ipfix_collector.data,
-	  sizeof (frm->ipfix_collector.data));
+
+  memcpy (&collector.ip4, &frm->ipfix_collector, sizeof (ip4_address_t));
+  ip_address_encode (&collector, IP46_TYPE_IP4, &rmp->collector_address);
+
   rmp->collector_port = htons (frm->collector_port);
-  memcpy (rmp->src_address, frm->src_address.data,
-	  sizeof (frm->src_address.data));
+
+  memcpy (&src.ip4, &frm->src_address, sizeof (ip4_address_t));
+  ip_address_encode (&src, IP46_TYPE_IP4, &rmp->src_address);
+
   if (frm->fib_index == ~0)
     vrf_id = ~0;
   else
@@ -255,8 +269,8 @@ static void
     return;
 
   classify_table_index = ntohl (mp->table_id);
-  ip_version = mp->ip_version;
-  transport_protocol = mp->transport_protocol;
+  ip_version = ntohl (mp->ip_version);
+  transport_protocol = ntohl (mp->transport_protocol);
   is_add = mp->is_add;
 
   if (fcm->src_port == 0)
@@ -331,8 +345,8 @@ send_ipfix_classify_table_details (u32 table_index,
   mp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_TABLE_DETAILS);
   mp->context = context;
   mp->table_id = htonl (table->classify_table_index);
-  mp->ip_version = table->ip_version;
-  mp->transport_protocol = table->transport_protocol;
+  mp->ip_version = htonl (table->ip_version);
+  mp->transport_protocol = htonl (table->transport_protocol);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }

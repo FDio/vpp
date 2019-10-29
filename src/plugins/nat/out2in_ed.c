@@ -919,11 +919,11 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 				   src_address);
 	  ip0->checksum = ip_csum_fold (sum0);
 
+	  old_port0 = udp0->dst_port;
+	  new_port0 = udp0->dst_port = s0->in2out.port;
+
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
-	      old_port0 = tcp0->dst_port;
-	      new_port0 = tcp0->dst_port = s0->in2out.port;
-
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
 				     dst_address);
@@ -946,15 +946,34 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  (sm, s0, tcp0, thread_index))
 		goto trace00;
 	    }
+	  else if (udp0->checksum)
+	    {
+	      sum0 = udp0->checksum;
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address);
+	      sum0 = ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
+				     length);
+	      if (PREDICT_FALSE (is_twice_nat_session (s0)))
+		{
+		  sum0 = ip_csum_update (sum0, ip0->src_address.as_u32,
+					 s0->ext_host_nat_addr.as_u32,
+					 ip4_header_t, dst_address);
+		  sum0 = ip_csum_update (sum0, udp0->src_port,
+					 s0->ext_host_nat_port, ip4_header_t,
+					 length);
+		  udp0->src_port = s0->ext_host_nat_port;
+		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
+		}
+	      udp0->checksum = ip_csum_fold (sum0);
+	      udp_packets++;
+	    }
 	  else
 	    {
-	      udp0->dst_port = s0->in2out.port;
-	      if (is_twice_nat_session (s0))
+	      if (PREDICT_FALSE (is_twice_nat_session (s0)))
 		{
 		  udp0->src_port = s0->ext_host_nat_port;
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
-	      udp0->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1157,11 +1176,11 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 				   src_address);
 	  ip1->checksum = ip_csum_fold (sum1);
 
+	  old_port1 = udp1->dst_port;
+	  new_port1 = udp1->dst_port = s1->in2out.port;
+
 	  if (PREDICT_TRUE (proto1 == SNAT_PROTOCOL_TCP))
 	    {
-	      old_port1 = tcp1->dst_port;
-	      new_port1 = tcp1->dst_port = s1->in2out.port;
-
 	      sum1 = tcp1->checksum;
 	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
 				     dst_address);
@@ -1184,15 +1203,34 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  (sm, s1, tcp1, thread_index))
 		goto trace01;
 	    }
+	  else if (udp1->checksum)
+	    {
+	      sum1 = udp1->checksum;
+	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
+				     dst_address);
+	      sum1 = ip_csum_update (sum1, old_port1, new_port1, ip4_header_t,
+				     length);
+	      if (PREDICT_FALSE (is_twice_nat_session (s1)))
+		{
+		  sum1 = ip_csum_update (sum1, ip1->src_address.as_u32,
+					 s1->ext_host_nat_addr.as_u32,
+					 ip4_header_t, dst_address);
+		  sum1 = ip_csum_update (sum1, udp1->src_port,
+					 s1->ext_host_nat_port, ip4_header_t,
+					 length);
+		  udp1->src_port = s1->ext_host_nat_port;
+		  ip1->src_address.as_u32 = s1->ext_host_nat_addr.as_u32;
+		}
+	      udp1->checksum = ip_csum_fold (sum1);
+	      udp_packets++;
+	    }
 	  else
 	    {
-	      udp1->dst_port = s1->in2out.port;
-	      if (is_twice_nat_session (s1))
+	      if (PREDICT_FALSE (is_twice_nat_session (s1)))
 		{
 		  udp1->src_port = s1->ext_host_nat_port;
 		  ip1->src_address.as_u32 = s1->ext_host_nat_addr.as_u32;
 		}
-	      udp1->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1429,11 +1467,11 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 				   src_address);
 	  ip0->checksum = ip_csum_fold (sum0);
 
+	  old_port0 = udp0->dst_port;
+	  new_port0 = udp0->dst_port = s0->in2out.port;
+
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
-	      old_port0 = tcp0->dst_port;
-	      new_port0 = tcp0->dst_port = s0->in2out.port;
-
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
 				     dst_address);
@@ -1456,15 +1494,34 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  (sm, s0, tcp0, thread_index))
 		goto trace0;
 	    }
+	  else if (udp0->checksum)
+	    {
+	      sum0 = udp0->checksum;
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address);
+	      sum0 = ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
+				     length);
+	      if (PREDICT_FALSE (is_twice_nat_session (s0)))
+		{
+		  sum0 = ip_csum_update (sum0, ip0->src_address.as_u32,
+					 s0->ext_host_nat_addr.as_u32,
+					 ip4_header_t, dst_address);
+		  sum0 = ip_csum_update (sum0, udp0->src_port,
+					 s0->ext_host_nat_port, ip4_header_t,
+					 length);
+		  udp0->src_port = s0->ext_host_nat_port;
+		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
+		}
+	      udp0->checksum = ip_csum_fold (sum0);
+	      udp_packets++;
+	    }
 	  else
 	    {
-	      udp0->dst_port = s0->in2out.port;
-	      if (is_twice_nat_session (s0))
+	      if (PREDICT_FALSE (is_twice_nat_session (s0)))
 		{
 		  udp0->src_port = s0->ext_host_nat_port;
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
-	      udp0->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1818,12 +1875,11 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip4_is_first_fragment (ip0)))
 	    {
+	      old_port0 = udp0->dst_port;
+	      new_port0 = udp0->dst_port = s0->in2out.port;
+
 	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 		{
-		  old_port0 = tcp0->dst_port;
-		  tcp0->dst_port = s0->in2out.port;
-		  new_port0 = tcp0->dst_port;
-
 		  sum0 = tcp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
@@ -1845,16 +1901,35 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 		    }
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
+	      else if (udp0->checksum)
+		{
+		  sum0 = udp0->checksum;
+		  sum0 =
+		    ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				    dst_address);
+		  sum0 =
+		    ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
+				    length);
+		  if (PREDICT_FALSE (is_twice_nat_session (s0)))
+		    {
+		      sum0 = ip_csum_update (sum0, ip0->src_address.as_u32,
+					     s0->ext_host_nat_addr.as_u32,
+					     ip4_header_t, dst_address);
+		      sum0 = ip_csum_update (sum0, udp0->src_port,
+					     s0->ext_host_nat_port,
+					     ip4_header_t, length);
+		      udp0->src_port = s0->ext_host_nat_port;
+		      ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
+		    }
+		  udp0->checksum = ip_csum_fold (sum0);
+		}
 	      else
 		{
-		  old_port0 = udp0->dst_port;
-		  udp0->dst_port = s0->in2out.port;
-		  if (is_twice_nat_session (s0))
+		  if (PREDICT_FALSE (is_twice_nat_session (s0)))
 		    {
 		      udp0->src_port = s0->ext_host_nat_port;
 		      ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		    }
-		  udp0->checksum = 0;
 		}
 	    }
 

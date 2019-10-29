@@ -274,7 +274,7 @@ class TestClassifyAcl(VppTestCase):
         :param int start: Number to start numbering from.
         """
         n_int = len(self.pg_interfaces)
-        macs_per_if = count / n_int
+        macs_per_if = count // n_int
         i = -1
         for pg_if in self.pg_interfaces:
             i += 1
@@ -328,7 +328,7 @@ class TestClassifyAcl(VppTestCase):
                 dst_hosts = self.hosts_by_pg_idx[dst_if.sw_if_index]
                 n_int = len(dst_hosts) * len(src_hosts)
                 for i in range(0, n_int):
-                    dst_host = dst_hosts[i / len(src_hosts)]
+                    dst_host = dst_hosts[i // len(src_hosts)]
                     src_host = src_hosts[i % len(src_hosts)]
                     pkt_info = self.create_packet_info(src_if, dst_if)
                     if ipv6 == 1:

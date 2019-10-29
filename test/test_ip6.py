@@ -240,7 +240,7 @@ class TestIPv6(TestIPv6ND):
         :param int packet_size: Required packet size.
         :param Scapy pkt: Packet to be modified.
         """
-        dst_if_idx = packet_size / 10 % 2
+        dst_if_idx = int(packet_size / 10 % 2)
         dst_if = self.flows[src_if][dst_if_idx]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
@@ -1299,7 +1299,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.pg0.add_stream([packet])
         self.pg_start()
 
-        self.sleep(0.1)
+        self.sleep_on_vpp_time(0.1)
 
         fib = self.vapi.ip_route_dump(0, True)
 
@@ -1323,21 +1323,21 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.pg0.add_stream([packet])
         self.pg_start()
 
-        self.sleep(0.1)
+        self.sleep_on_vpp_time(0.1)
 
         # check that default route is deleted
         fib = self.vapi.ip_route_dump(0, True)
         default_routes = self.get_default_routes(fib)
         self.assertEqual(len(default_routes), 0)
 
-        self.sleep(0.1)
+        self.sleep_on_vpp_time(0.1)
 
         # send RA
         packet = self.create_ra_packet(self.pg0)
         self.pg0.add_stream([packet])
         self.pg_start()
 
-        self.sleep(0.1)
+        self.sleep_on_vpp_time(0.1)
 
         # check FIB for new default route
         fib = self.vapi.ip_route_dump(0, True)
@@ -1352,7 +1352,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.pg0.add_stream([packet])
         self.pg_start()
 
-        self.sleep(0.1)
+        self.sleep_on_vpp_time(0.1)
 
         # check that default route still exists
         fib = self.vapi.ip_route_dump(0, True)
@@ -1362,7 +1362,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
         self.assertEqual(dr['next_hop'], router_address)
 
-        self.sleep(1)
+        self.sleep_on_vpp_time(1)
 
         # check that default route is deleted
         fib = self.vapi.ip_route_dump(0, True)
@@ -1378,7 +1378,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
                              strict=False)
         self.assertEqual(prefix, IPv6Network(text_type('1::/20')))
 
-        self.sleep(1)
+        self.sleep_on_vpp_time(1)
 
         # check that SLAAC address is deleted
         fib = self.vapi.ip_route_dump(0, True)

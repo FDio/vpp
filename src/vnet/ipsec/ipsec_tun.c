@@ -125,7 +125,7 @@ ipsec_tun_protect_db_remove (ipsec_main_t * im,
             .remote_ip = itp->itp_crypto.dst.ip4,
             .spi = clib_host_to_net_u32 (sa->spi),
           };
-          hash_unset (im->tun4_protect_by_key, &key);
+          hash_unset (im->tun4_protect_by_key, key.as_u64);
           if (0 == hash_elts(im->tun4_protect_by_key))
             udp_unregister_dst_port (vlib_get_main(),
                                      UDP_DST_PORT_ipsec,

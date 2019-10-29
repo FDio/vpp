@@ -1593,7 +1593,7 @@ vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a)
 }
 
 int
-vent_app_add_cert_key_interest (u32 index, u32 app_index)
+vnet_app_add_cert_key_interest (u32 index, u32 app_index)
 {
   app_cert_key_pair_t *ckpair;
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
@@ -1630,14 +1630,12 @@ cert_key_pair_store_init (vlib_main_t * vm)
 {
   /* Add a certificate with index 0 to support legacy apis */
   (void) app_cert_key_pair_alloc ();
+  app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (cert_key_pair_store_init) =
-{
-  .runs_after = VLIB_INITS("unix_physmem_init"),
-};
+VLIB_INIT_FUNCTION (cert_key_pair_store_init);
 
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
@@ -1653,6 +1651,18 @@ VLIB_CLI_COMMAND (show_certificate_command, static) =
   .function = show_certificate_command_fn,
 };
 /* *INDENT-ON* */
+
+crypto_engine_type_t
+app_crypto_engine_type_add (void)
+{
+  return (++app_main.last_crypto_engine);
+}
+
+u8
+app_crypto_engine_n_types (void)
+{
+  return (app_main.last_crypto_engine + 1);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

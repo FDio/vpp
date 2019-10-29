@@ -142,11 +142,13 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   slave_if_t *sif;
   bond_if_t *bif;
 
+  *next_index = BOND_INPUT_NEXT_DROP;
+  *error = 0;
+
   if (PREDICT_TRUE (*last_slave_sw_if_index == slave_sw_if_index))
-    return;
+    goto next;
 
   *last_slave_sw_if_index = slave_sw_if_index;
-  *next_index = BOND_INPUT_NEXT_DROP;
 
   sif = bond_get_slave_by_sw_if_index (slave_sw_if_index);
   ASSERT (sif);
@@ -163,8 +165,22 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   *bond_sw_if_index = bif->sw_if_index;
-  *error = 0;
+
+next:
   vnet_feature_next (next_index, b);
+}
+
+static_always_inline void
+bond_update_next_x4 (vlib_buffer_t * b0, vlib_buffer_t * b1,
+		     vlib_buffer_t * b2, vlib_buffer_t * b3)
+{
+  u32 tmp0, tmp1, tmp2, tmp3;
+
+  tmp0 = tmp1 = tmp2 = tmp3 = BOND_INPUT_NEXT_DROP;
+  vnet_feature_next (&tmp0, b0);
+  vnet_feature_next (&tmp1, b1);
+  vnet_feature_next (&tmp2, b2);
+  vnet_feature_next (&tmp3, b3);
 }
 
 VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
@@ -223,6 +239,22 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 
       if (PREDICT_TRUE (x == 0))
 	{
+	  /*
+	   * Optimize to call update_next only if there is a feature arc
+	   * after bond-input. Test feature count greater than 1 because
+	   * bond-input itself is a feature arc for this slave interface.
+	   */
+	  ASSERT ((vnet_buffer (b[0])->feature_arc_index ==
+		   vnet_buffer (b[1])->feature_arc_index) &&
+		  (vnet_buffer (b[0])->feature_arc_index ==
+		   vnet_buffer (b[2])->feature_arc_index) &&
+		  (vnet_buffer (b[0])->feature_arc_index ==
+		   vnet_buffer (b[3])->feature_arc_index));
+	  if (PREDICT_FALSE (vnet_get_feature_count
+			     (vnet_buffer (b[0])->feature_arc_index,
+			      last_slave_sw_if_index) > 1))
+	    bond_update_next_x4 (b[0], b[1], b[2], b[3]);
+
 	  next[0] = next[1] = next[2] = next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    {

@@ -83,7 +83,7 @@ socket **/run/vpp/cli-vpp1.sock**
    vpp# create interface memif id 0 master
 
 This will create an interface on vpp1 memif0/0 using /run/vpp/memif as
-its socket file. The role of vpp1 for this memif inteface is 'master'.
+its socket file. The role of vpp1 for this memif interface is 'master'.
 
 With what you have learned:
 
@@ -104,7 +104,7 @@ run/vpp/memif-vpp1vpp2 socket file
    vpp# create interface memif id 0 slave
 
 This will create an interface on vpp2 memif0/0 using /run/vpp/memif as
-its socket file. The role of vpp1 for this memif inteface is 'slave'.
+its socket file. The role of vpp1 for this memif interface is 'slave'.
 
 Use your previously used skills to:
 

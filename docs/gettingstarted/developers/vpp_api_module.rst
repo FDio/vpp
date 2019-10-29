@@ -56,7 +56,7 @@ _______
 
 **Low-level API**
 
-Refer to inline API documentation in doxygen format in vapi.h header for description of functions. It's recommened to use the safer, high-level API provided by specialized headers (e.g. vpe.api.vapi.h or vpe.api.vapi.hpp).
+Refer to inline API documentation in doxygen format in vapi.h header for description of functions. It's recommended to use the safer, high-level API provided by specialized headers (e.g. vpe.api.vapi.h or vpe.api.vapi.hpp).
 
 **C high-level API**
 
@@ -113,7 +113,7 @@ _________
 
 *Create a Connection and execute the appropriate Request to subscribe to events (e.g. Want_stats)*
 
-#. Create an Event_registration with a template argument being the type of event you are insterested in.
+#. Create an Event_registration with a template argument being the type of event you are interested in.
 #. Call dispatch() or wait_for_response() to wait for the event. A callback will be called when an event occurs (if passed to Event_registration() constructor). Alternatively, read the result set.
 
 .. note::

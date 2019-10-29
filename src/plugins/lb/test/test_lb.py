@@ -200,7 +200,7 @@ class TestLB(VppTestCase):
         # This is just to roughly check that the balancing algorithm
         # is not completely biased.
         for asid in self.ass:
-            if load[asid] < len(self.packets) / (len(self.ass) * 2):
+            if load[asid] < int(len(self.packets) / (len(self.ass) * 2)):
                 self.logger.error(
                     "ASS is not balanced: load[%d] = %d" % (asid, load[asid]))
                 raise Exception("Load Balancer algorithm is biased")

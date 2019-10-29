@@ -5,7 +5,7 @@
 Interconnecting VPCs with Segment Routing & Performance Evaluation
 ____________________________________________________________________
 
-Before reading this part, you should have a minimum understading of AWS, especially on `VPC concepts <https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html>`_.
+Before reading this part, you should have a minimum understanding of AWS, especially on `VPC concepts <https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html>`_.
 
 
 
@@ -22,7 +22,7 @@ In our VPC we will have two instances: one, in which we will install VPP and the
 
 .. figure:: /_images/vpc_scheme.svg
 
-Figure 2: Example of the resourses present inside our VPC
+Figure 2: Example of the resources present inside our VPC
 
 
 Notice that the following example works with two VPCs, where in each of them there are a VM with VPP and a VM. Hence,  you will have to execute the same commands also in the other VPC to make the connection between the two VPC possibile.

@@ -108,7 +108,7 @@ class TestIp4VrfMultiInst(VppTestCase):
             # Packet flows mapping pg0 -> pg1, pg2 etc.
             cls.flows = dict()
             for i in range(len(cls.pg_interfaces)):
-                multiplicand = i / cls.pg_ifs_per_vrf
+                multiplicand = i // cls.pg_ifs_per_vrf
                 pg_list = [
                     cls.pg_interfaces[multiplicand * cls.pg_ifs_per_vrf + j]
                     for j in range(cls.pg_ifs_per_vrf)
@@ -351,12 +351,6 @@ class TestIp4VrfMultiInst(VppTestCase):
                         vrf_count += 1
                         found = True
                         break
-                    for host in pg_if.remote_hosts:
-                        if scapy.compat.raw(addr) == \
-                                scapy.compat.raw(host.ip4):
-                            vrf_count += 1
-                            found = True
-                            break
         if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv4 VRF ID %d is not configured" % vrf_id)
             return VRFState.not_configured

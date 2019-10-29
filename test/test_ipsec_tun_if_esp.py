@@ -312,7 +312,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
         #
         # change the key and the SPI
         #
-        p.crypt_key = 'X' + p.crypt_key[1:]
+        p.crypt_key = b'X' + p.crypt_key[1:]
         p.scapy_tun_spi += 1
         p.scapy_tun_sa_id += 1
         p.vpp_tun_spi += 1
@@ -370,7 +370,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                 IPSEC_API_INTEG_ALG_NONE),
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
-                  'key': "JPjyOWBeVEQiMe7h",
+                  'key': b"JPjyOWBeVEQiMe7h",
                   'salt': 3333},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_192),
@@ -378,7 +378,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                 IPSEC_API_INTEG_ALG_NONE),
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBe",
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBe",
                   'salt': 0},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_256),
@@ -386,7 +386,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                 IPSEC_API_INTEG_ALG_NONE),
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
                   'salt': 9999},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128),
@@ -395,7 +395,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7h"},
+                  'key': b"JPjyOWBeVEQiMe7h"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_192),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -403,7 +403,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBe"},
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBe"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -411,7 +411,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_NONE),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -419,7 +419,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "NULL",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
         for engine in engines:
             self.vapi.cli("set crypto handler all %s" % engine)
@@ -846,7 +846,7 @@ class TestIpsec4TunProtect(TemplateIpsec,
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
-        np.crypt_key = 'X' + p.crypt_key[1:]
+        np.crypt_key = b'X' + p.crypt_key[1:]
         np.scapy_tun_spi += 100
         np.scapy_tun_sa_id += 1
         np.vpp_tun_spi += 100
@@ -990,7 +990,7 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
-        np.crypt_key = 'X' + p.crypt_key[1:]
+        np.crypt_key = b'X' + p.crypt_key[1:]
         np.scapy_tun_spi += 100
         np.scapy_tun_sa_id += 1
         np.vpp_tun_spi += 100
@@ -1123,7 +1123,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
-        np.crypt_key = 'X' + p.crypt_key[1:]
+        np.crypt_key = b'X' + p.crypt_key[1:]
         np.scapy_tun_spi += 100
         np.scapy_tun_sa_id += 1
         np.vpp_tun_spi += 100
@@ -1146,7 +1146,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         #  2) swap output SA to [new]
         #  3) use only [new] input SA
         np3 = copy.copy(np)
-        np3.crypt_key = 'Z' + p.crypt_key[1:]
+        np3.crypt_key = b'Z' + p.crypt_key[1:]
         np3.scapy_tun_spi += 100
         np3.scapy_tun_sa_id += 1
         np3.vpp_tun_spi += 100
@@ -1285,7 +1285,7 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
-        np.crypt_key = 'X' + p.crypt_key[1:]
+        np.crypt_key = b'X' + p.crypt_key[1:]
         np.scapy_tun_spi += 100
         np.scapy_tun_sa_id += 1
         np.vpp_tun_spi += 100

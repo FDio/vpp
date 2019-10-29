@@ -3,7 +3,7 @@
 
 ## Overview
 
-Kubernates is a container orchestration system that efficiently manages Docker containers. The Docker containers and container platforms provide many advantages over traditional virtualization. Container isolation is done on the kernel level, which eliminates the need for a guest virtual operating system, and therefore makes containers much more efficient, faster, and lightweight. The containers in Contiv/VPP are referred to as PODs.
+Kubernetes is a container orchestration system that efficiently manages Docker containers. The Docker containers and container platforms provide many advantages over traditional virtualization. Container isolation is done on the kernel level, which eliminates the need for a guest virtual operating system, and therefore makes containers much more efficient, faster, and lightweight. The containers in Contiv/VPP are referred to as PODs.
 
 Contiv/VPP is a Kubernetes network plugin that uses [FD.io VPP](https://fd.io/) 
 to provide network connectivity between PODs in a k8s cluster (k8s is an abbreviated reference for kubernates).

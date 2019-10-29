@@ -31,7 +31,7 @@ the pre-data (rewrite space) area.
     * VNET_BUFFER_F_L4_CHECKSUM_COMPUTED: tcp/udp checksum has been computed
     * VNET_BUFFER_F_L4_CHECKSUM_CORRECT: tcp/udp checksum is correct
     * VNET_BUFFER_F_VLAN_2_DEEP: two vlan tags present
-    * VNET_BUFFER_F_VLAN_1_DEEP: one vlag tag present
+    * VNET_BUFFER_F_VLAN_1_DEEP: one vlan tag present
     * VNET_BUFFER_F_SPAN_CLONE: packet has already been cloned (span feature)
     * VNET_BUFFER_F_LOOP_COUNTER_VALID: packet look-up loop count valid
     * VNET_BUFFER_F_LOCALLY_ORIGINATED: packet built by vpp
@@ -48,13 +48,13 @@ the pre-data (rewrite space) area.
     * VNET_BUFFER_F_IS_DVR: packet to be reinjected into the l2 output path
     * VNET_BUFFER_F_QOS_DATA_VALID: QoS data valid in vnet_buffer_opaque2
     * VNET_BUFFER_F_GSO: generic segmentation offload requested
-    * VNET_BUFFER_F_AVAIL1: avaliable bit
-    * VNET_BUFFER_F_AVAIL2: avaliable bit
-    * VNET_BUFFER_F_AVAIL3: avaliable bit
-    * VNET_BUFFER_F_AVAIL4: avaliable bit
-    * VNET_BUFFER_F_AVAIL5: avaliable bit
-    * VNET_BUFFER_F_AVAIL6: avaliable bit
-    * VNET_BUFFER_F_AVAIL7: avaliable bit
+    * VNET_BUFFER_F_AVAIL1: available bit
+    * VNET_BUFFER_F_AVAIL2: available bit
+    * VNET_BUFFER_F_AVAIL3: available bit
+    * VNET_BUFFER_F_AVAIL4: available bit
+    * VNET_BUFFER_F_AVAIL5: available bit
+    * VNET_BUFFER_F_AVAIL6: available bit
+    * VNET_BUFFER_F_AVAIL7: available bit
 * u32 flow_id: generic flow identifier
 * u8 ref_count: buffer reference / clone count (e.g. for span replication)
 * u8 buffer_pool_index: buffer pool index which owns this buffer

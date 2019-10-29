@@ -43,22 +43,18 @@ static void
 echo_assert_test_suceeded (echo_main_t * em)
 {
   if (em->rx_results_diff)
-    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
-		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
-		"Invalid amount of data received");
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_RX_TOTAL, em->stats.rx_expected,
+		em->stats.rx_total, "Invalid amount of data received");
   else
-    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
-		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
-		"Invalid amount of data received");
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_RX_TOTAL, em->stats.rx_expected,
+		em->stats.rx_total, "Invalid amount of data received");
 
   if (em->tx_results_diff)
-    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
-		em->n_clients * em->bytes_to_send, em->stats.tx_total,
-		"Invalid amount of data sent");
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_TX_TOTAL, em->stats.tx_expected,
+		em->stats.tx_total, "Invalid amount of data sent");
   else
-    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
-		em->n_clients * em->bytes_to_send, em->stats.tx_total,
-		"Invalid amount of data sent");
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_TX_TOTAL, em->stats.tx_expected,
+		em->stats.tx_total, "Invalid amount of data sent");
 
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
   CHECK_SAME (ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,
@@ -242,8 +238,7 @@ echo_update_count_on_session_close (echo_main_t * em, echo_session_t * s)
   clib_atomic_fetch_add (&em->stats.tx_total, s->bytes_sent);
   clib_atomic_fetch_add (&em->stats.rx_total, s->bytes_received);
 
-  if (PREDICT_FALSE (em->stats.rx_total ==
-		     em->n_clients * em->bytes_to_receive))
+  if (PREDICT_FALSE (em->stats.rx_total == em->stats.rx_expected))
     echo_notify_event (em, ECHO_EVT_LAST_BYTE);
 }
 
@@ -399,6 +394,8 @@ echo_handle_data (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 	      clib_atomic_fetch_add (&em->stats.clean_count.s, 1);
 	    }
 	}
+      ECHO_LOG (2, "%U: %U", echo_format_session, s,
+		echo_format_session_state, s->session_state);
       return;
     }
 
@@ -950,9 +947,11 @@ echo_process_opts (int argc, char **argv)
 	em->fifo_size = tmp << 10;
       else if (unformat (a, "prealloc-fifos %u", &em->prealloc_fifo_pairs))
 	;
-      else if (unformat (a, "rx-buf %U", unformat_data, &em->rx_buf_size))
+      else
+	if (unformat (a, "rx-buf %U", unformat_data_size, &em->rx_buf_size))
 	;
-      else if (unformat (a, "tx-buf %U", unformat_data, &em->tx_buf_size))
+      else
+	if (unformat (a, "tx-buf %U", unformat_data_size, &em->tx_buf_size))
 	;
       else if (unformat (a, "mq-size %d", &em->evt_q_size))
 	;
@@ -981,9 +980,10 @@ echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "TX=RX"))
 	em->data_source = ECHO_RX_DATA_SOURCE;
-      else if (unformat (a, "TX=%U", unformat_data, &em->bytes_to_send))
+      else if (unformat (a, "TX=%U", unformat_data_size, &em->bytes_to_send))
 	;
-      else if (unformat (a, "RX=%U", unformat_data, &em->bytes_to_receive))
+      else if (unformat (a, "RX=%U", unformat_data_size,
+			 &em->bytes_to_receive))
 	;
       else if (unformat (a, "rx-results-diff"))
 	em->rx_results_diff = 1;
@@ -991,6 +991,8 @@ echo_process_opts (int argc, char **argv)
 	em->tx_results_diff = 1;
       else if (unformat (a, "json"))
 	em->output_json = 1;
+      else if (unformat (a, "wait-for-gdb"))
+	em->wait_for_gdb = 1;
       else if (unformat (a, "log=%d", &em->log_lvl))
 	;
       else if (unformat (a, "sclose=%U",
@@ -1031,6 +1033,16 @@ echo_process_opts (int argc, char **argv)
       em->bytes_to_receive == 0 ? ECHO_CLOSE_F_PASSIVE : ECHO_CLOSE_F_ACTIVE;
   if (em->send_stream_disconnects == ECHO_CLOSE_F_INVALID)
     em->send_stream_disconnects = default_f_active;
+
+  if (em->wait_for_gdb)
+    {
+      volatile u64 nop = 0;
+
+      clib_warning ("Waiting for gdb...");
+      while (em->wait_for_gdb)
+	nop++;
+      clib_warning ("Resuming execution (%llu)!", nop);
+    }
 }
 
 void
@@ -1114,6 +1126,9 @@ main (int argc, char **argv)
     }
   if (em->proto_cb_vft->set_defaults_after_opts_cb)
     em->proto_cb_vft->set_defaults_after_opts_cb ();
+
+  em->stats.rx_expected = em->bytes_to_receive * em->n_clients;
+  em->stats.tx_expected = em->bytes_to_send * em->n_clients;
 
   vec_validate (em->data_thread_handles, em->n_rx_threads);
   vec_validate (em->data_thread_args, em->n_clients);

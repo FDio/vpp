@@ -454,7 +454,6 @@ list(APPEND VNET_SOURCES
   ip/ip_in_out_acl.c
   ip/ip_punt_drop.c
   ip/lookup.c
-  ip/ping.c
   ip/punt_api.c
   ip/punt.c
   ip/punt_node.c
@@ -940,6 +939,24 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES ipfix-export/ipfix_export.api)
+
+##############################################################################
+# GSO
+##############################################################################
+list(APPEND VNET_SOURCES
+  gso/cli.c
+  gso/gso.c
+  gso/gso_api.c
+  gso/node.c
+)
+
+list(APPEND VNET_HEADERS
+  gso/gso.h
+)
+
+list(APPEND VNET_API_FILES
+  gso/gso.api
+)
 
 ##############################################################################
 # IPFIX classify code

@@ -10,7 +10,7 @@ the Sphinx Markup Constructs used in these documents. The Sphinx style guide can
 For a more detailed list of Sphinx Markup Constructs please refer to:
 `Sphinx Markup Constructs <http://www.sphinx-doc.org/en/stable/markup/index.html>`_
 
-This document is also an example of a directory structure for a document that spans mutliple pages.
+This document is also an example of a directory structure for a document that spans multiple pages.
 Notice we have the file **index.rst** and the then documents that are referenced in index.rst. The
 referenced documents are shown at the bottom of this page.
 

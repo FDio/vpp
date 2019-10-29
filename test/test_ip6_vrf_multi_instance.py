@@ -120,7 +120,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             # Packet flows mapping pg0 -> pg1, pg2 etc.
             cls.flows = dict()
             for i in range(len(cls.pg_interfaces)):
-                multiplicand = i / cls.pg_ifs_per_vrf
+                multiplicand = i // cls.pg_ifs_per_vrf
                 pg_list = [
                     cls.pg_interfaces[multiplicand * cls.pg_ifs_per_vrf + j]
                     for j in range(cls.pg_ifs_per_vrf)

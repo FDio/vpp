@@ -61,7 +61,7 @@ And we reboot the instance:
 
 .. code-block:: console
 
- $ reboot istance
+ $ reboot instance
 
 After the reboot, we type these commands:
 

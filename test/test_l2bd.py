@@ -126,7 +126,7 @@ class TestL2bd(VppTestCase):
         :param count: Integer number of hosts to create MAC/IPv4 addresses for.
         """
         n_int = len(cls.pg_interfaces)
-        macs_per_if = count / n_int
+        macs_per_if = count // n_int
         i = -1
         for pg_if in cls.pg_interfaces:
             i += 1

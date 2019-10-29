@@ -9,7 +9,7 @@ Skills to be Learned
 ----------------------
 
 #. Associate an interface with a bridge domain
-#. Create a loopback interaface
+#. Create a loopback interface
 #. Create a BVI (Bridge Virtual Interface) for a bridge domain
 #. Examine a bridge domain
 
@@ -46,7 +46,7 @@ To clear existing config from previous exercises run:
 
    $ ps -ef | grep vpp | awk '{print $2}'| xargs sudo kill
    $ sudo ip link del dev vpp1host
-   $ # do the next command if you are cleaing up from this example
+   $ # do the next command if you are cleaning up from this example
    $ sudo ip link del dev vpp1vpp2
 
 Run FD.io VPP instances

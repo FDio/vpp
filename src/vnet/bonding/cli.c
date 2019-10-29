@@ -43,7 +43,6 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	  /* deleting the active slave for active-backup */
 	  switching_active = 1;
 	vec_del1 (bif->active_slaves, i);
-	hash_unset (bif->active_slave_by_sw_if_index, sif->sw_if_index);
 	if (sif->lacp_enabled && bif->numa_only)
 	  {
 	    /* For lacp mode, if we check it is a slave on local numa node,
@@ -142,35 +141,39 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+  int i;
+  uword p;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
-  if (!hash_get (bif->active_slave_by_sw_if_index, sif->sw_if_index))
+  vec_foreach_index (i, bif->active_slaves)
+  {
+    p = *vec_elt_at_index (bif->active_slaves, i);
+    if (p == sif->sw_if_index)
+      goto done;
+  }
+
+  if (sif->lacp_enabled && bif->numa_only && (vm->numa_node == hw->numa_node))
     {
-      hash_set (bif->active_slave_by_sw_if_index, sif->sw_if_index,
-		sif->sw_if_index);
-
-      if ((sif->lacp_enabled && bif->numa_only)
-	  && (vm->numa_node == hw->numa_node))
-	{
-	  vec_insert_elts (bif->active_slaves, &sif->sw_if_index, 1,
-			   bif->n_numa_slaves);
-	  bif->n_numa_slaves++;
-	}
-      else
-	vec_add1 (bif->active_slaves, sif->sw_if_index);
-
-      sif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
-      if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
-	{
-	  if (vec_len (bif->active_slaves) == 1)
-	    /* First slave becomes active? */
-	    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-				       BOND_SEND_GARP_NA, bif->hw_if_index);
-	  else
-	    bond_sort_slaves (bif);
-	}
+      vec_insert_elts (bif->active_slaves, &sif->sw_if_index, 1,
+		       bif->n_numa_slaves);
+      bif->n_numa_slaves++;
     }
+  else
+    vec_add1 (bif->active_slaves, sif->sw_if_index);
+
+  sif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
+  if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+    {
+      if (vec_len (bif->active_slaves) == 1)
+	/* First slave becomes active? */
+	vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				   BOND_SEND_GARP_NA, bif->hw_if_index);
+      else
+	bond_sort_slaves (bif);
+    }
+
+done:
   clib_spinlock_unlock_if_init (&bif->lockp);
 
   if (bif->mode == BOND_MODE_LACP)
@@ -287,7 +290,7 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   bond_disable_collecting_distributing (vm, sif);
 
   vnet_feature_enable_disable ("device-input", "bond-input",
-			       sif_hw->hw_if_index, 0, 0, 0);
+			       sif->sw_if_index, 0, 0, 0);
 
   /* Put back the old mac */
   vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
@@ -312,8 +315,7 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
   slave_if_t *sif;
   vnet_hw_interface_t *hw;
   u32 *sif_sw_if_index;
-  u32 **s_list = 0;
-  u32 i;
+  u32 *s_list = 0;
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || bond_dev_class.index != hw->dev_class_index)
@@ -321,21 +323,14 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   bif = bond_get_master_by_dev_instance (hw->dev_instance);
 
-  vec_foreach (sif_sw_if_index, bif->slaves)
+  vec_append (s_list, bif->slaves);
+  vec_foreach (sif_sw_if_index, s_list)
   {
-    vec_add1 (s_list, sif_sw_if_index);
+    sif = bond_get_slave_by_sw_if_index (*sif_sw_if_index);
+    if (sif)
+      bond_delete_neighbor (vm, bif, sif);
   }
-
-  for (i = 0; i < vec_len (s_list); i++)
-    {
-      sif_sw_if_index = s_list[i];
-      sif = bond_get_slave_by_sw_if_index (*sif_sw_if_index);
-      if (sif)
-	bond_delete_neighbor (vm, bif, sif);
-    }
-
-  if (s_list)
-    vec_free (s_list);
+  vec_free (s_list);
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, bif->hw_if_index, 0);
@@ -703,7 +698,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   }
 
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
-					  sif_hw->hw_if_index, 1, 0, 0);
+					  sif->sw_if_index, 1, 0, 0);
 
   if (args->rv)
     {

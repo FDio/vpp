@@ -369,8 +369,7 @@ class VppPapiProvider(object):
         :param cli: CLI to execute
         :returns: CLI output
         """
-        return cli + "\n" + self.cli(cli).encode('ascii',
-                                                 errors='backslashreplace')
+        return cli + "\n" + self.cli(cli)
 
     def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
         return self.api(self.papi.want_ip4_arp_events,
@@ -745,9 +744,8 @@ class VppPapiProvider(object):
         :param current_data_flag:  (Default value = 0)
         :param current_data_offset:  (Default value = 0)
         """
-
-        mask_len = ((len(mask) - 1) / 16 + 1) * 16
-        mask = mask + '\0' * (mask_len - len(mask))
+        mask_len = ((len(mask) - 1) // 16 + 1) * 16
+        mask = mask + b'\0' * (mask_len - len(mask))
         return self.api(
             self.papi.classify_add_del_table,
             {'is_add': is_add,
@@ -784,8 +782,8 @@ class VppPapiProvider(object):
         :param metadata:  (Default value = 0)
         """
 
-        match_len = ((len(match) - 1) / 16 + 1) * 16
-        match = match + '\0' * (match_len - len(match))
+        match_len = ((len(match) - 1) // 16 + 1) * 16
+        match = match + b'\0' * (match_len - len(match))
         return self.api(
             self.papi.classify_add_del_session,
             {'is_add': is_add,
@@ -2049,4 +2047,11 @@ class VppPapiProvider(object):
                             'table_id': table_id,
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
+                        })
+
+    def feature_gso_enable_disable(self, sw_if_index, enable_disable=1):
+        return self.api(self.papi.feature_gso_enable_disable,
+                        {
+                            'sw_if_index': sw_if_index,
+                            'enable_disable': enable_disable,
                         })

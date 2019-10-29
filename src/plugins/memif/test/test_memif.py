@@ -48,7 +48,7 @@ class TestMemif(VppTestCase):
     def _check_socket_filename(self, dump, socket_id, filename):
         for d in dump:
             if (d.socket_id == socket_id) and (
-                    d.socket_filename.rstrip(b"\0") == filename):
+                    d.socket_filename == filename):
                 return True
         return False
 
@@ -59,28 +59,26 @@ class TestMemif(VppTestCase):
         dump = self.vapi.memif_socket_filename_dump()
         self.assertTrue(
             self._check_socket_filename(
-                dump, 0, b"%s/memif.sock" % six.ensure_binary(
-                    self.tempdir, encoding='utf-8')))
+                dump, 0, "%s/memif.sock" % self.tempdir))
 
         memif_sockets = []
         # existing path
         memif_sockets.append(
             VppSocketFilename(
-                self, 1, b"%s/memif1.sock" % six.ensure_binary(
-                    self.tempdir, encoding='utf-8')))
+                self, 1, "%s/memif1.sock" % self.tempdir))
         # default path (test tempdir)
         memif_sockets.append(
             VppSocketFilename(
                 self,
                 2,
-                b"memif2.sock",
+                "memif2.sock",
                 add_default_folder=True))
         # create new folder in default folder
         memif_sockets.append(
             VppSocketFilename(
                 self,
                 3,
-                b"sock/memif3.sock",
+                "sock/memif3.sock",
                 add_default_folder=True))
 
         for sock in memif_sockets:
@@ -98,8 +96,7 @@ class TestMemif(VppTestCase):
         dump = self.vapi.memif_socket_filename_dump()
         self.assertTrue(
             self._check_socket_filename(
-                dump, 0, b"%s/memif.sock" % six.ensure_binary(
-                    self.tempdir, encoding='utf-8')))
+                dump, 0, "%s/memif.sock" % self.tempdir))
 
     def _create_delete_test_one_interface(self, memif):
         memif.add_vpp_config()
@@ -161,21 +158,20 @@ class TestMemif(VppTestCase):
         # existing path
         memif_sockets.append(
             VppSocketFilename(
-                self, 1, b"%s/memif1.sock" % six.ensure_binary(
-                    self.tempdir, encoding='utf-8')))
+                self, 1, "%s/memif1.sock" % self.tempdir))
         # default path (test tempdir)
         memif_sockets.append(
             VppSocketFilename(
                 self,
                 2,
-                b"memif2.sock",
+                "memif2.sock",
                 add_default_folder=True))
         # create new folder in default folder
         memif_sockets.append(
             VppSocketFilename(
                 self,
                 3,
-                b"sock/memif3.sock",
+                "sock/memif3.sock",
                 add_default_folder=True))
 
         memif = VppMemif(
@@ -202,8 +198,7 @@ class TestMemif(VppTestCase):
             secret="abc")
 
         remote_socket = VppSocketFilename(self.remote_test, 1,
-                                          b"%s/memif.sock" % six.ensure_binary(
-                                              self.tempdir, encoding='utf-8'))
+                                          "%s/memif.sock" % self.tempdir)
         remote_socket.add_vpp_config()
 
         remote_memif = VppMemif(
@@ -250,8 +245,7 @@ class TestMemif(VppTestCase):
             VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET)
 
         remote_socket = VppSocketFilename(self.remote_test, 1,
-                                          b"%s/memif.sock" % six.ensure_binary(
-                                              self.tempdir, encoding='utf-8'))
+                                          "%s/memif.sock" % self.tempdir)
         remote_socket.add_vpp_config()
 
         remote_memif = VppMemif(

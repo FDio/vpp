@@ -102,8 +102,10 @@ class VppDHCPClient(VppObject):
         self._pid = pid
 
     def add_vpp_config(self):
+        id = self._id.encode('ascii') if self._id else None
         client = {'sw_if_index': self._sw_if_index, 'hostname': self._hostname,
-                  'id': self._id, 'want_dhcp_event': self._want_dhcp_event,
+                  'id': id,
+                  'want_dhcp_event': self._want_dhcp_event,
                   'set_broadcast_flag': self._set_broadcast_flag,
                   'dscp': self._dscp, 'pid': self._pid}
         self._test.vapi.dhcp_client_config(is_add=1, client=client)

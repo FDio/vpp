@@ -643,7 +643,7 @@ vl_api_ip6_nd_address_autoconfig_t_handler (vl_api_ip6_nd_address_autoconfig_t
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (VL_API_SW_INTERFACE_SET_TABLE_REPLY);
+  REPLY_MACRO (VL_API_IP6_ND_ADDRESS_AUTOCONFIG_REPLY);
 }
 
 #define vl_msg_name_crc_list

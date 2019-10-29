@@ -2556,10 +2556,10 @@ static void *vl_api_set_ipfix_exporter_t_print
   s = format (0, "SCRIPT: set_ipfix_exporter ");
 
   s = format (s, "collector-address %U ", format_ip4_address,
-	      (ip4_address_t *) mp->collector_address);
+	      (ip4_address_t *) mp->collector_address.un.ip4);
   s = format (s, "collector-port %d ", (mp->collector_port));
   s = format (s, "src-address %U ", format_ip4_address,
-	      (ip4_address_t *) mp->src_address);
+	      (ip4_address_t *) mp->src_address.un.ip4);
   s = format (s, "vrf-id %d ", (mp->vrf_id));
   s = format (s, "path-mtu %d ", (mp->path_mtu));
   s = format (s, "template-interval %d ", (mp->template_interval));
@@ -3475,6 +3475,21 @@ static void *vl_api_feature_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_feature_gso_enable_disable_t_print
+  (vl_api_feature_gso_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: feature_gso_enable_disable ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  if (mp->enable_disable)
+    s = format (s, "enable");
+  if (!mp->enable_disable)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_tag_add_del_t_print
   (vl_api_sw_interface_tag_add_del_t * mp, void *handle)
 {
@@ -3866,6 +3881,7 @@ _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_TABLE_DUMP, ip_table_dump)                                         \
 _(IP_ROUTE_DUMP, ip_route_dump)                                         \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
+_(FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)		\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
 _(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \

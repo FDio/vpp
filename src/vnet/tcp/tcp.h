@@ -103,6 +103,29 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
 #define TCP_ESTABLISH_TIME (60 * THZ)	/* Connection establish timeout */
 
+/** Connection configuration flags */
+#define foreach_tcp_cfg_flag 			\
+  _(RATE_SAMPLE, "Rate sampling")		\
+  _(NO_CSUM_OFFLOAD, "No csum offload")    	\
+  _(NO_TSO, "TSO off")				\
+  _(TSO, "TSO")					\
+
+typedef enum tcp_cfg_flag_bits_
+{
+#define _(sym, str) TCP_CFG_F_##sym##_BIT,
+  foreach_tcp_cfg_flag
+#undef _
+  TCP_CFG_N_FLAG_BITS
+} tcp_cfg_flag_bits_e;
+
+typedef enum tcp_cfg_flag_
+{
+#define _(sym, str) TCP_CFG_F_##sym = 1 << TCP_CFG_F_##sym##_BIT,
+  foreach_tcp_cfg_flag
+#undef _
+  TCP_CFG_N_FLAGS
+} tcp_cfg_flags_e;
+
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
@@ -113,16 +136,13 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
   _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Fast-retransmit first again")	\
-  _(DEQ_PENDING, "Pending dequeue acked")	\
+  _(FRXT_FIRST, "Retransmit first")		\
+  _(DEQ_PENDING, "Dequeue pending ")		\
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
-  _(RATE_SAMPLE, "Conn does rate sampling")	\
-  _(TRACK_BURST, "Track burst")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
-  _(NO_CSUM_OFFLOAD, "No Checksum Offload")     \
 
-typedef enum _tcp_connection_flag_bits
+typedef enum tcp_connection_flag_bits_
 {
 #define _(sym, str) TCP_CONN_##sym##_BIT,
   foreach_tcp_connection_flag
@@ -130,7 +150,7 @@ typedef enum _tcp_connection_flag_bits
   TCP_CONN_N_FLAG_BITS
 } tcp_connection_flag_bits_e;
 
-typedef enum _tcp_connection_flag
+typedef enum tcp_connection_flag_
 {
 #define _(sym, str) TCP_CONN_##sym = 1 << TCP_CONN_##sym##_BIT,
   foreach_tcp_connection_flag
@@ -168,7 +188,7 @@ typedef struct _sack_scoreboard
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
   u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
-  u32 rxt_sacked;			/**< Rxt last delivered */
+  u32 rxt_sacked;			/**< Rxt bytes last delivered */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
   u32 rescue_rxt;			/**< Rescue sequence number */
@@ -226,7 +246,7 @@ sack_scoreboard_hole_t *scoreboard_last_hole (sack_scoreboard_t * sb);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end);
 void scoreboard_init (sack_scoreboard_t * sb);
-void scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una);
+void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
@@ -235,6 +255,7 @@ typedef enum tcp_bts_flags_
 {
   TCP_BTS_IS_RXT = 1,
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
+  TCP_BTS_IS_SACKED = 1 << 2,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -310,7 +331,7 @@ typedef struct _tcp_connection
   transport_connection_t connection;  /**< Common transport data. First! */
 
   u8 state;			/**< TCP state as per tcp_state_t */
-  u8 is_tso;	  /** is connection could use tso */
+  u8 cfg_flags;			/**< Connection configuration flags */
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
 
@@ -369,7 +390,10 @@ typedef struct _tcp_connection
   u32 snd_rxt_bytes;	/**< Retransmitted bytes during current cc event */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
   u32 prr_delivered;	/**< RFC6937 bytes delivered during current event */
+  u32 prr_start;	/**< snd_una when prr starts */
   u32 rxt_delivered;	/**< Rxt bytes delivered during current cc event */
+  u32 rxt_head;		/**< snd_una last time we re rxted the head */
+  u32 prev_dsegs_out;	/**< Number of dsegs after last ack */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
@@ -448,6 +472,8 @@ struct _tcp_cc_algorithm
 #define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
 	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
 
+#define tcp_csum_offload(tc) (!((tc)->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+
 always_inline void
 tcp_cong_recovery_off (tcp_connection_t * tc)
 {
@@ -483,9 +509,6 @@ typedef struct tcp_worker_ctx_
 
   /** tx buffer free list */
   u32 *tx_buffers;
-
-  /** tx frames for tcp 4/6 output nodes */
-  vlib_frame_t *tx_frames[2];
 
   /** tx frames for ip 4/6 lookup nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];
@@ -530,6 +553,9 @@ typedef struct tcp_configuration_
 
   /** Enable tx pacing for new connections */
   u8 enable_tx_pacing;
+
+  /** Allow use of TSO whenever available */
+  u8 allow_tso;
 
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
@@ -757,9 +783,9 @@ void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_synack (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
+void tcp_send_ack (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
-void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4);
 void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
@@ -795,7 +821,7 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
  *
  * @param tc	tcp connection
  */
-void tcp_bt_track_tx (tcp_connection_t * tc);
+void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
 /**
  * Track a tcp retransmission
  *
@@ -826,6 +852,7 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  * @param bt	byte tracker
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+u8 *format_tcp_bt (u8 * s, va_list * args);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
@@ -957,8 +984,7 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 }
 
 u32 tcp_snd_space (tcp_connection_t * tc);
-//void tcp_cc_init_congestion (tcp_connection_t * tc);
-//void tcp_cc_fastrecovery_clear (tcp_connection_t * tc);
+int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
 
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 

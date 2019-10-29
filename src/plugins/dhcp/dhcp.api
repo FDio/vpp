@@ -105,7 +105,7 @@ define dhcp_plugin_control_ping_reply
     @param is_add - add the config if non-zero, else delete
     @param insert_circuit_id - option82 suboption 1 fib number
     @param dhcp_server[] - server address
-    @param dhcp_src_address[] - <fix this, need details>
+    @param dhcp_src_address[] - sc address for packets sent to the server
 */
 autoreply define dhcp_proxy_config
 {

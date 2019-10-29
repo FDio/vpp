@@ -444,7 +444,7 @@ format_cdp_neighbors (u8 * s, va_list * va)
     hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
     if (n->disabled == 0)
-      s = format (s, "%=25s %=25s %=25s %=10.1f\n",
+      s = format (s, "%=25v %=25s %=25s %=10.1f\n",
                   hw->name, n->device_name, n->port_id,
                   n->last_heard);
   }));

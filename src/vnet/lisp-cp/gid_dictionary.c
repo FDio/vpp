@@ -555,6 +555,7 @@ add_del_ip4_key (gid_ip4_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 static void
 ip4_lookup_init (gid_ip4_table_t * db)
 {
+  BVT (clib_bihash_init2_args) _a, *a = &_a;
   uword i;
 
   clib_memset (db->ip4_prefix_len_refcount, 0,
@@ -579,9 +580,18 @@ ip4_lookup_init (gid_ip4_table_t * db)
   if (db->ip4_lookup_table_size == 0)
     db->ip4_lookup_table_size = IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
 
-  BV (clib_bihash_init) (&db->ip4_lookup_table, "ip4 lookup table",
-			 db->ip4_lookup_table_nbuckets,
-			 db->ip4_lookup_table_size);
+  /*
+   * Danger Will Robinson, Danger! gid_ip4_table_t's are allocated from
+   * a pool. They MUST NOT be listed on the clib_all_bihashes list...
+   */
+  memset (a, 0, sizeof (*a));
+  a->h = &db->ip4_lookup_table;
+  a->name = "LISP ip4 lookup table";
+  a->nbuckets = db->ip4_lookup_table_nbuckets;
+  a->memory_size = db->ip4_lookup_table_size;
+  a->dont_add_to_all_bihash_list = 1;	/* See comment above */
+
+  BV (clib_bihash_init2) (a);
 }
 
 static u32
@@ -754,6 +764,7 @@ static void
 ip6_lookup_init (gid_ip6_table_t * db)
 {
   uword i;
+  BVT (clib_bihash_init2_args) _a, *a = &_a;
 
   clib_memset (db->ip6_prefix_len_refcount, 0,
 	       sizeof (db->ip6_prefix_len_refcount));
@@ -782,9 +793,18 @@ ip6_lookup_init (gid_ip6_table_t * db)
   if (db->ip6_lookup_table_size == 0)
     db->ip6_lookup_table_size = IP6_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
 
-  BV (clib_bihash_init) (&db->ip6_lookup_table, "ip6 lookup table",
-			 db->ip6_lookup_table_nbuckets,
-			 db->ip6_lookup_table_size);
+  /*
+   * Danger Will Robinson, Danger! gid_ip6_table_t's are allocated from
+   * a pool. They MUST NOT be listed on the clib_all_bihashes list...
+   */
+  memset (a, 0, sizeof (*a));
+  a->h = &db->ip6_lookup_table;
+  a->name = "LISP ip6 lookup table";
+  a->nbuckets = db->ip6_lookup_table_nbuckets;
+  a->memory_size = db->ip6_lookup_table_size;
+  a->dont_add_to_all_bihash_list = 1;	/* See comment above */
+
+  BV (clib_bihash_init2) (a);
 }
 
 static u32

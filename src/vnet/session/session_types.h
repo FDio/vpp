@@ -21,6 +21,7 @@
 
 #define SESSION_INVALID_INDEX ((u32)~0)
 #define SESSION_INVALID_HANDLE ((u64)~0)
+#define SESSION_CTRL_MSG_MAX_SIZE 84
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
@@ -134,8 +135,8 @@ typedef enum
   _(CLOSING, "closing")					\
   _(APP_CLOSED, "app-closed")				\
   _(TRANSPORT_CLOSED, "transport-closed")		\
-  _(TRANSPORT_DELETED, "transport-deleted")		\
   _(CLOSED, "closed")					\
+  _(TRANSPORT_DELETED, "transport-deleted")		\
 
 typedef enum
 {

@@ -235,6 +235,8 @@ typedef struct
   u32 fragment_first;
   u32 fragment_last;
   u32 total_data_len;
+  bool is_after_handoff;
+  ip4_header_t ip4_header;
 } ip4_full_reass_trace_t;
 
 extern vlib_node_registration_t ip4_full_reass_node;
@@ -274,7 +276,16 @@ format_ip4_full_reass_trace (u8 * s, va_list * args)
   u32 indent = 0;
   if (~0 != t->reass_id)
     {
-      s = format (s, "reass id: %u, op id: %u, ", t->reass_id, t->op_id);
+      if (t->is_after_handoff)
+	{
+	  s =
+	    format (s, "%U\n", format_ip4_header, &t->ip4_header,
+		    sizeof (t->ip4_header));
+	  indent = 2;
+	}
+      s =
+	format (s, "%Ureass id: %u, op id: %u, ", format_white_space, indent,
+		t->reass_id, t->op_id);
       indent = format_get_indent (s);
       s =
 	format (s,
@@ -322,7 +333,18 @@ ip4_full_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  bool is_after_handoff = false;
+  if (vlib_buffer_get_trace_thread (b) != vm->thread_index)
+    {
+      is_after_handoff = true;
+    }
   ip4_full_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+  t->is_after_handoff = is_after_handoff;
+  if (t->is_after_handoff)
+    {
+      clib_memcpy (&t->ip4_header, vlib_buffer_get_current (b),
+		   clib_min (sizeof (t->ip4_header), b->current_length));
+    }
   if (reass)
     {
       t->reass_id = reass->id;
@@ -1202,13 +1224,17 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 
 	packet_enqueue:
-	  b0->error = node->errors[error0];
 
 	  if (bi0 != ~0)
 	    {
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
+
+	      /* bi0 might have been updated by reass_finalize, reload */
+	      b0 = vlib_get_buffer (vm, bi0);
+	      b0->error = node->errors[error0];
+
 	      if (next0 == IP4_FULL_REASS_NEXT_HANDOFF)
 		{
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1221,7 +1247,6 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else if (is_feature && IP4_ERROR_NONE == error0)
 		{
-		  b0 = vlib_get_buffer (vm, bi0);
 		  vnet_feature_next (&next0, b0);
 		}
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

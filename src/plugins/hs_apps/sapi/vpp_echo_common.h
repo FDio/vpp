@@ -108,15 +108,15 @@ extern char *echo_fail_code_str[];
 #define CHECK_SAME(fail, expected, result, _fmt, _args...)      \
 do {                                                            \
   if ((expected) != (result))                                   \
-    ECHO_FAIL ((fail), "expected same (%d, got %d) : "_fmt,     \
-               (expected), (result), ##_args);                  \
+    ECHO_FAIL ((fail), "expected same (%lld, got %lld) : "_fmt, \
+               (u64)(expected), (u64)(result), ##_args);        \
 } while (0)
 
 #define CHECK_DIFF(fail, expected, result, _fmt, _args...)      \
 do {                                                            \
   if ((expected) == (result))                                   \
-    ECHO_FAIL ((fail), "expected different (both %d) : "_fmt,   \
-               (expected), ##_args);                            \
+    ECHO_FAIL ((fail), "expected different (both %lld) : "_fmt, \
+               (u64)(expected), ##_args);                       \
 } while (0)
 
 #define ECHO_FAIL(fail, _fmt, _args...)                                 \
@@ -124,10 +124,10 @@ do {                                                                    \
     echo_main_t *em = &echo_main;                                       \
     em->has_failed = (fail);                                            \
     if (vec_len(em->fail_descr))                                        \
-      em->fail_descr = format(em->fail_descr, " | %s (%d): "_fmt,       \
+      em->fail_descr = format(em->fail_descr, " | %s (%u): "_fmt,       \
                               echo_fail_code_str[fail], fail, ##_args); \
     else                                                                \
-      em->fail_descr = format(0, "%s (%d): "_fmt,                       \
+      em->fail_descr = format(0, "%s (%u): "_fmt,                       \
                               echo_fail_code_str[fail], fail, ##_args); \
     em->time_to_stop = 1;                                               \
     if (em->log_lvl > 0)                                                \
@@ -299,11 +299,12 @@ typedef struct
   u64 bytes_to_receive;		/* target per stream */
   u32 fifo_size;
   u32 prealloc_fifo_pairs;
-  u32 rx_buf_size;
-  u32 tx_buf_size;
+  u64 rx_buf_size;
+  u64 tx_buf_size;
   data_source_t data_source;	/* Use no/dummy/mirrored data */
   u8 send_stream_disconnects;	/* actively send disconnect */
   u8 output_json;		/* Output stats as JSON */
+  volatile u8 wait_for_gdb;	/* Wait for gdb to attach */
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
@@ -333,6 +334,8 @@ typedef struct
   {
     u64 tx_total;
     u64 rx_total;
+    u64 tx_expected;
+    u64 rx_expected;
     teardown_stat_t reset_count;	/* received reset from vpp */
     teardown_stat_t close_count;	/* received close from vpp */
     teardown_stat_t active_count;	/* sent close to vpp */
@@ -371,7 +374,6 @@ typedef struct
 u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ip6_address (u8 * s, va_list * args);
 u8 *format_ip46_address (u8 * s, va_list * args);
-uword unformat_data (unformat_input_t * input, va_list * args);
 u8 *format_api_error (u8 * s, va_list * args);
 void init_error_string_table ();
 u8 *echo_format_session (u8 * s, va_list * args);

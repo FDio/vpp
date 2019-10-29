@@ -133,14 +133,13 @@ This command has several variations:
 -  **create sub-interfaces** <*interface*> <*subId*>-<*subId*> - Create a
    range of subinterfaces to handle a range of VLAN IDs.
 -  **create sub-interfaces** <*interface*> <*subId*> dot1q|dot1ad <*vlanId*>|any
-   [exact-match] - Use this command to specify the outer VLAN ID, to
-   either be explicited or to make the VLAN ID different from the
-   *subId*.
+   [exact-match] - Use this command to explicitly specify the outer VLAN ID,
+   or to make the VLAN ID different from the *subId*.
 -  **create sub-interfaces** <*interface*> <*subId*> dot1q|dot1ad <*vlanId*>|any
    inner-dot1q <*vlanId*>|any [exact-match] - Use this command to
-   specify the outer VLAN ID and the innner VLAN ID.
+   specify the outer VLAN ID and the inner VLAN ID.
 
-When *dot1q* or *dot1ad* is explictly entered, subinterfaces can be
+When *dot1q* or *dot1ad* is explicitly entered, subinterfaces can be
 configured as either *exact-match* or *non-exact match*. *Non-exact match* is
 the CLI default. If *exact-match* is specified, packets must have the
 same number of VLAN tags as the configuration. For *non-exact-match*,

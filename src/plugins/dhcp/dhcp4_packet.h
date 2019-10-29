@@ -51,6 +51,8 @@ typedef struct
   dhcp_option_t options[0];
 } dhcp_header_t;
 
+extern u8 *format_dhcp_header (u8 * s, va_list * args);
+
 typedef enum
 {
   DHCP_PACKET_DISCOVER = 1,
@@ -59,6 +61,8 @@ typedef enum
   DHCP_PACKET_ACK = 5,
   DHCP_PACKET_NAK,
 } dhcp_packet_type_t;
+
+extern u8 *format_dhcp_packet_type (u8 * s, va_list * args);
 
 typedef enum dhcp_packet_option_t_
 {

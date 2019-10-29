@@ -137,7 +137,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
         for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
                                   ip_range_end):
-            vni = bytearray(dest_ip4)[3]
+            vni = int(dest_ip4.split('.')[3])
             cls.vapi.geneve_add_del_tunnel(local_address=cls.pg0.local_ip4,
                                            remote_address=dest_ip4,
                                            mcast_sw_if_index=1, is_add=is_add,

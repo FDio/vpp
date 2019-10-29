@@ -44,6 +44,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
+  bool fate = false;
 
   enum
   {
@@ -199,15 +200,31 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   item->type = RTE_FLOW_ITEM_TYPE_END;
 
   /* Actions */
-  vec_add2 (actions, action, 1);
-  action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
-
+  /* Only one 'fate' can be assigned */
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
     {
       vec_add2 (actions, action, 1);
       queue.index = f->redirect_queue;
       action->type = RTE_FLOW_ACTION_TYPE_QUEUE;
       action->conf = &queue;
+      fate = true;
+    }
+  if (f->actions & VNET_FLOW_ACTION_DROP)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_DROP;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	fate = true;
+    }
+  if (fate == false)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
     }
 
   if (f->actions & VNET_FLOW_ACTION_MARK)

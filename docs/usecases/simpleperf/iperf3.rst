@@ -3,7 +3,7 @@
 Introduction
 ============
 
-This tutorial shows how to use VPP use iperf3 and Trex to get some basic peformance
+This tutorial shows how to use VPP use iperf3 and Trex to get some basic performance
 numbers from a few basic configurations. Four examples are shown. In the first two
 examples, the **iperf3** tool is used to generate traffic, and in the last two examples
 the Cisco's `TRex Realistic Traffic Generator <http://trex-tgn.cisco.com/>`_ is used. For
