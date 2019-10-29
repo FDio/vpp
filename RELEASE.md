@@ -2,6 +2,7 @@
 
 * @subpage release_notes_2001
 * @subpage release_notes_1908
+* @subpage release_notes_19043
 * @subpage release_notes_19042
 * @subpage release_notes_19041
 * @subpage release_notes_1904
@@ -717,6 +718,14 @@ Found 319 api message signature differences
 | ------- | ------- |
 | [b'7c91007e1'](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b'7c91007e1') | Make the loss / delay sim available as an output feature |
 
+
+@page release_notes_19043 Release notes for VPP 19.04.3
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1904)
 
 @page release_notes_19042 Release notes for VPP 19.04.2
 
