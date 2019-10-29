@@ -822,7 +822,7 @@ if __name__ == '__main__':
         # don't fork if requiring interactive terminal
         print('Running tests in foreground in the current process')
         full_suite = unittest.TestSuite()
-        map(full_suite.addTests, suites)
+        full_suite.addTests(suites)
         result = VppTestRunner(verbosity=verbose,
                                failfast=failfast,
                                print_summary=True).run(full_suite)
