@@ -457,7 +457,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	      tr->seq =
+		len0 >=
+		sizeof (*esp0) ? clib_host_to_net_u32 (esp0->seq) : ~0;
 	    }
 	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -468,7 +470,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->key4, &key41, sizeof (tr->key4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq = clib_host_to_net_u32 (esp1->seq);
+	      tr->seq =
+		len1 >=
+		sizeof (*esp1) ? clib_host_to_net_u32 (esp1->seq) : ~0;
 	    }
 	}
 
@@ -641,7 +645,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	      tr->seq =
+		len0 >=
+		sizeof (*esp0) ? clib_host_to_net_u32 (esp0->seq) : ~0;
 	    }
 	}
 
