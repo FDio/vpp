@@ -134,7 +134,7 @@ This command has several variations:
    range of subinterfaces to handle a range of VLAN IDs.
 -  **create sub-interfaces** <*interface*> <*subId*> dot1q|dot1ad <*vlanId*>|any
    [exact-match] - Use this command to explicitly specify the outer VLAN ID,
-    or to make the VLAN ID different from the *subId*.
+   or to make the VLAN ID different from the *subId*.
 -  **create sub-interfaces** <*interface*> <*subId*> dot1q|dot1ad <*vlanId*>|any
    inner-dot1q <*vlanId*>|any [exact-match] - Use this command to
    specify the outer VLAN ID and the inner VLAN ID.
