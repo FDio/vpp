@@ -198,7 +198,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
   _IOCTL (vif->fd, VHOST_SET_OWNER, 0);
 
-  /* if namespace is specified, all further netlink messages should be excuted
+  /* if namespace is specified, all further netlink messages should be executed
      after we change our net namespace */
   if (args->host_namespace)
     {

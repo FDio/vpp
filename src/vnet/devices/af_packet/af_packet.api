@@ -59,7 +59,7 @@ autoreply define af_packet_delete
   string host_if_name[64];
 };
 
-/** \brief Set l4 offload ckecksum calculation
+/** \brief Set l4 offload checksum calculation
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */

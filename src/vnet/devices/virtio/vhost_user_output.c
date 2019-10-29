@@ -571,7 +571,7 @@ done:
    * retry.
    * The idea is that it is better to waste some time on packets
    * that have been processed already than dropping them and get
-   * more fresh packets with a good likelyhood that they will be dropped too.
+   * more fresh packets with a good likelihood that they will be dropped too.
    * This technique also gives more time to VM driver to pick-up packets.
    * In case the traffic flows from physical to virtual interfaces, this
    * technique will end-up leveraging the physical NIC buffer in order to

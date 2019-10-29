@@ -80,20 +80,25 @@ F:	src/vnet/classify
 
 VNET Device Drivers
 I:	devices
+Y:	src/vnet/devices/af_packet/FEATURE.yaml
+Y:	src/vnet/devices/netmap/FEATURE.yaml
+Y:	src/vnet/devices/pipe/FEATURE.yaml
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
 VNET TAP Drivers
 I:	tap
+Y:	src/vnet/devices/tap/FEATURE.yaml
 M:	Damjan Marion <damarion@cisco.com>
 M:	Steven Luong <sluong@cisco.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/tap/
 
 VNET Native Virtio Drivers
-I:      virtio
-M:      Mohsin Kazmi <sykazmi@cisco.com>
-F:      src/vnet/devices/virtio/
+I:  virtio
+Y:	src/vnet/devices/virtio/FEATURE.yaml
+M:  Mohsin Kazmi <sykazmi@cisco.com>
+F:  src/vnet/devices/virtio/
 
 VNET Etherent
 I:	ethernet
