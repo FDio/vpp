@@ -200,16 +200,14 @@ class QUICEchoExtTestCase(QUICTestCase):
             "uri",
             self.uri,
             "json",
-            "fifo-size", "64",
             self.test_bytes,
             "socket-name", self.api_sock,
             "quic-setup", self.quic_setup]
         self.server_echo_test_args = common_args + \
-            ["server", "appns", "server"]
+            ["server", "appns", "server"]  # use default fifo-size
         self.client_echo_test_args = common_args + \
-            ["client", "appns", "client"]
-        error = self.vapi.cli(
-            "quic set fifo-size 4Mb")
+            ["client", "appns", "client", "fifo-size", "4M"]
+        error = self.vapi.cli("quic set fifo-size 2M")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
