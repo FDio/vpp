@@ -261,11 +261,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 {
   clib_pmalloc_page_t *pp = 0;
   int status, rv, i, mmap_flags;
-  void *va;
+  void *va = MAP_FAILED;
   int old_mpol = -1;
   long unsigned int mask[16] = { 0 };
   long unsigned int old_mask[16] = { 0 };
-  uword page_size = 1ULL << a->log2_subpage_sz;
   uword size = (uword) n_pages << pm->def_log2_page_sz;
 
   clib_error_free (pm->error);
@@ -304,9 +303,6 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   mmap_flags = MAP_FIXED;
 
-  if ((pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) == 0)
-    mmap_flags |= MAP_LOCKED;
-
   if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
     {
       mmap_flags |= MAP_SHARED;
@@ -338,23 +334,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       goto error;
     }
 
-  /* Check if huge page is not allocated,
-     wrong allocation will generate the SIGBUS */
-  if (a->log2_subpage_sz != pm->sys_log2_page_sz)
+  if (a->log2_subpage_sz != pm->sys_log2_page_sz && mlock (va, size) != 0)
     {
-      for (int i = 0; i < n_pages; i++)
-	{
-	  unsigned char flag;
-	  mincore (va + i * page_size, 1, &flag);
-	  // flag is 1 if the page was successfully allocated and in memory
-	  if (!flag)
-	    {
-	      pm->error =
-		clib_error_return_unix (0,
-					"Unable to fulfill huge page allocation request");
-	      goto error;
-	    }
-	}
+      pm->error = clib_error_return_unix (0, "Unable to lock pages");
+      goto error;
     }
 
   clib_memset (va, 0, size);
@@ -377,10 +360,6 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 	clib_error_return (0, "page allocated on wrong node, numa node "
 			   "%u status %d", numa_node, status);
 
-      /* unmap & reesrve */
-      munmap (va, size);
-      mmap (va, size, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-	    -1, 0);
       goto error;
     }
 
@@ -410,6 +389,13 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   return pp - (n_pages - 1);
 
 error:
+  if (va != MAP_FAILED)
+    {
+      /* unmap & reserve */
+      munmap (va, size);
+      mmap (va, size, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+	    -1, 0);
+    }
   if (a->fd != -1)
     close (a->fd);
   return 0;
