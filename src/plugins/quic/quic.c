@@ -304,14 +304,12 @@ quic_connection_closed (quic_ctx_t * ctx)
       break;
     case QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED:
       /* App already confirmed close, we can delete the connection */
-      session_transport_delete_notify (&ctx->connection);
       quic_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED:
       QUIC_DBG (0, "BUG");
       break;
     case QUIC_CONN_STATE_ACTIVE_CLOSING:
-      session_transport_delete_notify (&ctx->connection);
       quic_connection_delete (ctx);
       break;
     default:
