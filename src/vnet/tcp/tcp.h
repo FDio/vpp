@@ -1172,8 +1172,14 @@ tcp_persist_timer_set (tcp_connection_t * tc)
 always_inline void
 tcp_persist_timer_update (tcp_connection_t * tc)
 {
-  tcp_timer_update (tc, TCP_TIMER_PERSIST,
-		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+  u32 interval;
+
+  if (seq_leq (tc->snd_una, tc->snd_congestion + tc->burst_acked))
+    interval = 1;
+  else
+    interval = clib_max (tc->rto * TCP_TO_TIMER_TICK, 1);
+
+  tcp_timer_update (tc, TCP_TIMER_PERSIST, interval);
 }
 
 always_inline void
