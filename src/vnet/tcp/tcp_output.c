@@ -1850,6 +1850,9 @@ tcp_retransmit_should_retry_head (tcp_connection_t * tc,
   u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
   f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
 
+  if (tcp_fastrecovery_first (tc))
+    return 1;
+
   return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
 }
 
@@ -1927,6 +1930,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       tc->prr_delivered += n_written;
       ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
     }
+
+  tcp_fastrecovery_first_off (tc);
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
