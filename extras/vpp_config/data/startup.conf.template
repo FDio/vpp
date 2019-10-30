@@ -53,7 +53,7 @@ cpu {{
 dpdk {{
 {devices}
 
-        ## Change default settings for all intefaces
+        ## Change default settings for all interfaces
 	# dev default {{
 		## Number of receive queues, enables RSS
 		## Default is 1
@@ -97,7 +97,7 @@ dpdk {{
 	## and uio_pci_generic (default)
 	# uio-driver vfio-pci
 
-	## Disable mutli-segment buffers, improves performance but
+	## Disable multi-segment buffers, improves performance but
 	## disables Jumbo MTU support
 	# no-multi-seg
 
