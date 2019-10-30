@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dccb24cb_3b34de3e",
+        "filename": "src/vnet/devices/netmap/netmap.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-30T01:09:00Z",
+      "side": 1,
+      "message": "should be able to delete by sw_if_index",
+      "range": {
+        "startLine": 62,
+        "startChar": 2,
+        "endLine": 62,
+        "endChar": 14
+      },
+      "revId": "4f237f4d6d2e172257e658f4f96fe67eb0503819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc7cc16a_5fd634a3",
+        "filename": "src/vnet/devices/netmap/netmap.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-30T01:09:00Z",
+      "side": 1,
+      "message": "filter on sw_if_index",
+      "range": {
+        "startLine": 74,
+        "startChar": 2,
+        "endLine": 74,
+        "endChar": 14
+      },
+      "revId": "4f237f4d6d2e172257e658f4f96fe67eb0503819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
