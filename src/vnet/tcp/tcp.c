@@ -1758,10 +1758,26 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
 			 &memory_size))
-	tcp_cfg.max_rx_fifo = memory_size;
+	{
+	  if (memory_size >= 0x100000000)
+	    {
+	      return clib_error_return
+		(0, "max-rx-fifo %llu (0x%llx) too large", memory_size,
+		 memory_size);
+	    }
+	  tcp_cfg.max_rx_fifo = memory_size;
+	}
       else if (unformat (input, "min-rx-fifo %U", unformat_memory_size,
 			 &memory_size))
-	tcp_cfg.min_rx_fifo = memory_size;
+	{
+	  if (memory_size >= 0x100000000)
+	    {
+	      return clib_error_return
+		(0, "min-rx-fifo %llu (0x%llx) too large", memory_size,
+		 memory_size);
+	    }
+	  tcp_cfg.min_rx_fifo = memory_size;
+	}
       else if (unformat (input, "mtu %u", &tcp_cfg.default_mtu))
 	;
       else if (unformat (input, "rwnd-min-update-ack %d",
