@@ -76,7 +76,7 @@ static u32
 bvi_instance_alloc (u32 want)
 {
   /*
-   * Check for dynamically allocaetd instance number.
+   * Check for dynamically allocated instance number.
    */
   if (~0 == want)
     {
@@ -329,7 +329,7 @@ l2_bvi_delete_cli (vlib_main_t * vm,
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{bvi delete <interace>}
+ * @cliexcmd{bvi delete <interface>}
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi delete bvi0}
 ?*/
