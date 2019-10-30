@@ -372,11 +372,17 @@ send_dhcp_client_entry (const dhcp_client_t * client, void *arg)
 {
   dhcp_client_send_walk_ctx_t *ctx;
   vl_api_dhcp_client_details_t *mp;
+  u32 count;
+  size_t n;
 
   ctx = arg;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  count = vec_len (client->domain_server_address);
+  n = sizeof (*mp) + (count * sizeof (vl_api_domain_server_t));
+  mp = vl_msg_api_alloc (n);
+  if (!mp)
+    return 0;
+  clib_memset (mp, 0, n);
 
   mp->_vl_msg_id = ntohs (VL_API_DHCP_CLIENT_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
