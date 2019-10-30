@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d2c80ed3_0dde3051",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2019-10-30T13:42:29Z",
+      "side": 1,
+      "message": "Don\u0027t we need asm volatile to ensure the compiler doesn\u0027t move around the assembler statement?",
+      "revId": "18512b002da5da312aa2638b67a8ec4bb2c10236",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
