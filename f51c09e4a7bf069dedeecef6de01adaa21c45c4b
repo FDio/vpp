@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed027500_d1751c14",
+        "filename": "test/test_classifier_ip6.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T17:16:38Z",
+      "side": 1,
+      "message": "This skips calling TestClassifier.setUpClass(). Why?",
+      "range": {
+        "startLine": 21,
+        "startChar": 8,
+        "endLine": 21,
+        "endChar": 34
+      },
+      "revId": "f51c09e4a7bf069dedeecef6de01adaa21c45c4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
