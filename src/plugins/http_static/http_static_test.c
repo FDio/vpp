@@ -120,6 +120,11 @@ api_http_static_enable (vat_main_t * vam)
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
 			 &tmp))
 	{
+	  if (tmp >= 0x100000000ULL)
+	    {
+	      errmsg ("fifo-size %llu, too large", tmp);
+	      return -99;
+	    }
 	  fifo_size = (u32) tmp;
 	}
       else if (unformat (line_input, "cache-size %U", unformat_memory_size,
