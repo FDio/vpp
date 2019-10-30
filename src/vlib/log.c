@@ -491,7 +491,7 @@ set_log_class (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log, static) = {
   .path = "set logging class",
-  .short_help = "set loggging class <class> [rate-limit <int>] "
+  .short_help = "set logging class <class> [rate-limit <int>] "
     "[level <level>] [syslog-level <level>]",
   .function = set_log_class,
 };
