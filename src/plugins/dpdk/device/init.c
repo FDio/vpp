@@ -158,7 +158,7 @@ dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 }
 
-/* The funciton check_l3cache helps check if Level 3 cache exists or not on current CPUs
+/* The function check_l3cache helps check if Level 3 cache exists or not on current CPUs
   return value 1: exist.
   return value 0: not exist.
 */
@@ -242,7 +242,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   if (nports < 1)
     {
-      dpdk_log_notice ("DPDK drivers found no ports...");
+      dpdk_log_notice ("DPDK drivers found no Ethernet devices...");
     }
 
   if (CLIB_DEBUG > 0)
@@ -284,7 +284,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (dev_info.device == 0)
 	{
-	  clib_warning ("DPDK bug: missing device info. Skipping %s device",
+	  dpdk_log_notice ("DPDK bug: missing device info. Skipping %s device",
 			dev_info.driver_name);
 	  continue;
 	}
@@ -829,7 +829,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
 	  - sizeof (ethernet_header_t);
       else
-	clib_warning ("hi NULL");
+	dpdk_log_warn ("hi NULL");
 
       if (dm->conf->no_multi_seg)
 	mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
@@ -950,7 +950,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
       ;
-    /* Amazen Elastic Network Adapter */
+    /* Amazon Elastic Network Adapter */
     else if (d->vendor_id == 0x1d0f && d->device_id >= 0xec20 && d->device_id <= 0xec21)
       ;
     /* Cavium Network Adapter */
