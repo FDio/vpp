@@ -2210,15 +2210,25 @@ quic_plugin_set_fifo_size_command_fn (vlib_main_t * vm,
 				      unformat_input_t * input,
 				      vlib_cli_command_t * cmd)
 {
+  quic_main_t *qm = &quic_main;
   unformat_input_t _line_input, *line_input = &_line_input;
+  uword tmp;
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_data_size, &quic_main.udp_fifo_size))
-	quic_update_fifo_size ();
+      if (unformat (line_input, "%U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    {
+	      return clib_error_return
+		(0, "fifo-size %llu (0x%llx) too large", tmp, tmp);
+	    }
+	  qm->udp_fifo_size = tmp;
+	  quic_update_fifo_size ();
+	}
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, line_input);
@@ -2278,7 +2288,7 @@ VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) =
 VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
 {
   .path = "quic set fifo-size",
-  .short_help = "quic set fifo-size N[Kb|Mb|GB] (default 64K)",
+  .short_help = "quic set fifo-size N[K|M|G] (default 64K)",
   .function = quic_plugin_set_fifo_size_command_fn,
 };
 VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
@@ -2298,15 +2308,22 @@ VLIB_PLUGIN_REGISTER () =
 static clib_error_t *
 quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
-  quic_main.udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
-  quic_main.udp_fifo_prealloc = 0;
+  quic_main_t *qm = &quic_main;
+  uword tmp;
 
+  qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
+  qm->udp_fifo_prealloc = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "fifo-size %U", unformat_data_size,
-	   &quic_main.udp_fifo_size))
-	;
+      if (unformat (input, "fifo-size %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    {
+	      return clib_error_return
+		(0, "fifo-size %llu (0x%llx) too large", tmp, tmp);
+	    }
+	  qm->udp_fifo_size = tmp;
+	}
       else
 	if (unformat
 	    (input, "fifo-prealloc %u", &quic_main.udp_fifo_prealloc))
