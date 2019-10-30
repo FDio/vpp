@@ -1850,6 +1850,12 @@ tcp_retransmit_should_retry_head (tcp_connection_t * tc,
   u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
   f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
 
+  if (tcp_fastrecovery_first (tc))
+    {
+      tcp_fastrecovery_first_off (tc);
+      return 1;
+    }
+
   return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
 }
 
