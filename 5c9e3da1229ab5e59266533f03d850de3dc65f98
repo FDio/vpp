@@ -22,6 +22,30 @@
       "revId": "5c9e3da1229ab5e59266533f03d850de3dc65f98",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b980469c_bb933029",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 988,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-10-30T01:50:11Z",
+      "side": 1,
+      "message": "It\u0027s again out of endianness concern and following suggestion in chapter \"Compatibility with other vector programming models\" in below link,\nhttps://developer.arm.com/docs/101028/latest/advanced-simd-neon-intrinsics\n\n/////////////////////////\nACLE does not specify how the Advanced SIMD Intrinsics interoperate with alternative vector programming models. Consequently, programmers should take particular care when combining the Advanced SIMD Intrinsics programming model with such programming models.\n\nFor example, the GCC vector extensions permit initialising a variable using array syntax, as so\n\n#include \"arm_neon.h\"\n...\nuint32x2_t x \u003d {0, 1}; // GCC extension.\nuint32_t y \u003d vget_lane_s32 (x, 0); // ACLE Neon Intrinsic.\nBut the definition of the GCC vector extensions is such that the value stored in y will depend on both the target architecture (AArch32 or AArch64) and whether the program is running in big- or little-endian mode.\n\nIt is recommended that Advanced SIMD Intrinsics be used consistently:\n\n#include \"arm_neon.h\"\n...\nconst int temp[2] \u003d {0, 1};\nuint32x2_t x \u003d vld1_s32 (temp);\nuint32_t y \u003d vget_lane_s32 (x, 0);\n////////////////////////////",
+      "parentUuid": "f3f7c11d_8d70eacf",
+      "range": {
+        "startLine": 987,
+        "startChar": 0,
+        "endLine": 988,
+        "endChar": 59
+      },
+      "revId": "5c9e3da1229ab5e59266533f03d850de3dc65f98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
