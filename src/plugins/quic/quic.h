@@ -193,8 +193,8 @@ typedef struct quic_main_
   ptls_handshake_properties_t hs_properties;
   quicly_cid_plaintext_t next_cid;
 
-  u64 udp_fifo_size;
-  u64 udp_fifo_prealloc;
+  u32 udp_fifo_size;
+  u32 udp_fifo_prealloc;
 } quic_main_t;
 
 #endif /* __included_quic_h__ */
