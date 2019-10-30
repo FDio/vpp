@@ -200,6 +200,12 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       clib_memcpy_fast (to_b->data, org_from_packet, sizeof (ip4_header_t));
       to_ip4 = vlib_buffer_get_current (to_b);
       to_data = (void *) (to_ip4 + 1);
+      vnet_buffer (to_b)->l3_hdr_offset = to_b->current_data;
+      vnet_buffer (to_b)->l4_hdr_offset =
+	to_b->current_data + sizeof (ip4_header_t);
+      to_b->flags |=
+	(VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	 VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 
       /* Spin through from buffers filling up the to buffer */
       u16 left_in_to_buffer = len, to_ptr = 0;
@@ -232,6 +238,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 	}
 
       to_b->current_length = len + sizeof (ip4_header_t);
+      to_b->flags |= VNET_BUFFER_F_IS_IP4;
 
       to_ip4->fragment_id = ip_frag_id;
       to_ip4->flags_and_fragment_offset =
@@ -240,6 +247,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 	clib_host_to_net_u16 (((len != rem) || more) << 13);
       to_ip4->length = clib_host_to_net_u16 (len + sizeof (ip4_header_t));
       to_ip4->checksum = ip4_header_checksum (to_ip4);
+
+      /* we've just done the IP checksum .. */
+      to_b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 
       if (vnet_buffer (org_from_b)->ip_frag.flags & IP_FRAG_FLAG_IP4_HEADER)
 	{
@@ -551,6 +561,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
   .n_next_nodes = IP4_FRAG_N_NEXT,
   .next_nodes = {
     [IP4_FRAG_NEXT_IP4_REWRITE] = "ip4-rewrite",
+    [IP4_FRAG_NEXT_IP4_REWRITE_MIDCHAIN] = "ip4-midchain",
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [IP4_FRAG_NEXT_MPLS_OUTPUT] = "mpls-output",
@@ -574,6 +585,7 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
   .n_next_nodes = IP6_FRAG_N_NEXT,
   .next_nodes = {
     [IP6_FRAG_NEXT_IP6_REWRITE] = "ip6-rewrite",
+    [IP6_FRAG_NEXT_IP6_REWRITE_MIDCHAIN] = "ip6-midchain",
     [IP6_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP6_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [IP6_FRAG_NEXT_MPLS_OUTPUT] = "mpls-output",

@@ -102,8 +102,8 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 }
 
 static void
-ipip4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
-	     const void *data)
+ipip4_fixup (vlib_main_t * vm,
+	     const ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
 {
   ip4_header_t *ip4;
   const ipip_tunnel_t *t = data;
@@ -133,8 +133,8 @@ ipip4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
 }
 
 static void
-ipip6_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
-	     const void *data)
+ipip6_fixup (vlib_main_t * vm,
+	     const ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
 {
   ip6_header_t *ip6;
   const ipip_tunnel_t *t = data;

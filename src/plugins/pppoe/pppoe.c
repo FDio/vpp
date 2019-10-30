@@ -138,7 +138,7 @@ pppoe_build_rewrite (vnet_main_t * vnm,
  */
 static void
 pppoe_fixup (vlib_main_t * vm,
-	     ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
+	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   const pppoe_session_t *t;
   pppoe_header_t *pppoe0;

@@ -258,27 +258,10 @@ format_ip_flow_hash_config (u8 * s, va_list * args)
 u8 *
 format_ip_adjacency_packet_data (u8 * s, va_list * args)
 {
-  u32 adj_index = va_arg (*args, u32);
   u8 *packet_data = va_arg (*args, u8 *);
   u32 n_packet_data_bytes = va_arg (*args, u32);
-  ip_adjacency_t *adj;
 
-  if (!adj_is_valid (adj_index))
-    return format (s, "<invalid adjacency>");
-
-  adj = adj_get (adj_index);
-
-  switch (adj->lookup_next_index)
-    {
-    case IP_LOOKUP_NEXT_REWRITE:
-    case IP_LOOKUP_NEXT_MCAST:
-      s =
-	format (s, "%U", format_hex_bytes, packet_data, n_packet_data_bytes);
-      break;
-
-    default:
-      break;
-    }
+  s = format (s, "%U", format_hex_bytes, packet_data, n_packet_data_bytes);
 
   return s;
 }
