@@ -78,6 +78,9 @@ typedef struct
 {
   mrvl_pp2_if_t *interfaces;
   mrvl_pp2_per_thread_data_t *per_thread_data;
+
+  /* API message ID base */
+  u16 msg_id_base;
 } mrvl_pp2_main_t;
 
 extern vnet_device_class_t mrvl_pp2_device_class;
@@ -90,12 +93,14 @@ typedef struct
   u16 tx_q_sz;
 
   /* return */
-  int rv;
+  i32 rv;
+  u32 sw_if_index;
   clib_error_t *error;
 } mrvl_pp2_create_if_args_t;
 
 void mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args);
 void mrvl_pp2_delete_if (mrvl_pp2_if_t * dfif);
+clib_error_t *mrvl_pp2_plugin_api_hookup (vlib_main_t * vm);
 
 /* output.c */
 
