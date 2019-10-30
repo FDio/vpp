@@ -150,7 +150,7 @@ struct ip_adjacency_t_;
  * @brief A function type for post-rewrite fixups on midchain adjacency
  */
 typedef void (*adj_midchain_fixup_t) (vlib_main_t * vm,
-				      struct ip_adjacency_t_ * adj,
+				      const struct ip_adjacency_t_ * adj,
 				      vlib_buffer_t * b0,
                                       const void *data);
 

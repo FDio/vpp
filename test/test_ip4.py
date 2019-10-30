@@ -21,6 +21,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
 from vpp_ip import VppIpAddress
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
+from vpp_neighbor import VppNeighbor
 
 NUM_PKTS = 67
 
@@ -1918,11 +1919,18 @@ class TestIPv4Frag(VppTestCase):
     def test_frag_large_packets(self):
         """ Fragmentation of large packets """
 
+        self.vapi.cli("adjacency counters enable")
+
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IP(src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4) /
              UDP(sport=1234, dport=5678) / Raw())
         self.extend_packet(p, 6000, "abcde")
         saved_payload = p[Raw].load
+
+        nbr = VppNeighbor(self,
+                          self.dst_if.sw_if_index,
+                          self.dst_if.remote_mac,
+                          self.dst_if.remote_ip4).add_vpp_config()
 
         # Force fragmentation by setting MTU of output interface
         # lower than packet size
@@ -1936,6 +1944,9 @@ class TestIPv4Frag(VppTestCase):
         # Expecting 3 fragments because size of created fragments currently
         # cannot be larger then VPP buffer size (which is 2048)
         packets = self.dst_if.get_capture(3)
+
+        # we should show 3 packets thru the neighbor
+        self.assertEqual(3, nbr.get_stats()['packets'])
 
         # Assume VPP sends the fragments in order
         payload = b''

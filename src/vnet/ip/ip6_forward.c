@@ -908,7 +908,7 @@ format_ip6_rewrite_trace (u8 * s, va_list * args)
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
 	      format_ip_adjacency_packet_data,
-	      t->adj_index, t->packet_data, sizeof (t->packet_data));
+	      t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
