@@ -46,6 +46,30 @@
       "revId": "5c9e3da1229ab5e59266533f03d850de3dc65f98",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95ebb5d2_3f71406b",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 988,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-10-30T01:57:22Z",
+      "side": 1,
+      "message": "Hi Damjan,\nI tried to put explanation as above.\nCould you please let me know your suggestion?\nJust follow existing convention, using u16x8 stairs8  \u003d { 0, 1, 2, 3, 4, 5, 6, 7 }?",
+      "parentUuid": "b980469c_bb933029",
+      "range": {
+        "startLine": 987,
+        "startChar": 0,
+        "endLine": 988,
+        "endChar": 59
+      },
+      "revId": "5c9e3da1229ab5e59266533f03d850de3dc65f98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
