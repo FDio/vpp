@@ -1203,7 +1203,7 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
 	      format_ip_adjacency_packet_data,
-	      t->dpo_index, t->packet_data, sizeof (t->packet_data));
+	      t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -2293,7 +2293,8 @@ typedef enum
 
 always_inline void
 ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
-	       u16 adj_packet_bytes, bool df, u16 * next, u32 * error)
+	       u16 adj_packet_bytes, bool df, u16 * next, u32 * error,
+	       u8 is_midchain)
 {
   if (packet_len > adj_packet_bytes)
     {
@@ -2310,10 +2311,37 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	{
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
-				   IP4_FRAG_NEXT_IP4_REWRITE, 0);
+				   (is_midchain ?
+				    IP4_FRAG_NEXT_IP4_REWRITE_MIDCHAIN :
+				    IP4_FRAG_NEXT_IP4_REWRITE), 0);
 	  *next = IP4_REWRITE_NEXT_FRAGMENT;
 	}
     }
+}
+
+/* increment TTL & update checksum.
+   Works either endian, so no need for byte swap. */
+static_always_inline void
+ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
+{
+  i32 ttl;
+  u32 checksum;
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
+    {
+      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
+      return;
+    }
+
+  ttl = ip->ttl;
+
+  checksum = ip->checksum - clib_host_to_net_u16 (0x0100);
+  checksum += checksum >= 0xffff;
+
+  ip->checksum = checksum;
+  ttl += 1;
+  ip->ttl = ttl;
+
+  ASSERT (ip->checksum == ip4_header_checksum (ip));
 }
 
 /* Decrement TTL & update checksum.
@@ -2458,12 +2486,12 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0);
+		     next + 0, &error0, is_midchain);
       ip4_mtu_check (b[1], ip1_len,
 		     adj1[0].rewrite_header.max_l3_packet_bytes,
 		     ip1->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 1, &error1);
+		     next + 1, &error1, is_midchain);
 
       if (is_mcast)
 	{
@@ -2481,6 +2509,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	{
 	  u32 next_index = adj0[0].rewrite_header.next_index;
 	  vlib_buffer_advance (b[0], -(word) rw_len0);
+
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
@@ -2489,10 +2518,14 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
+	  if (is_midchain)
+	    calc_checksums (vm, b[0]);
 	}
       else
 	{
 	  b[0]->error = error_node->errors[error0];
+	  if (error0 == IP4_ERROR_MTU_EXCEEDED)
+	    ip4_ttl_inc (b[0], ip0);
 	}
       if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	{
@@ -2507,57 +2540,58 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index1, &next_index, b[1]);
 	  next[1] = next_index;
+	  if (is_midchain)
+	    calc_checksums (vm, b[1]);
 	}
       else
 	{
 	  b[1]->error = error_node->errors[error1];
+	  if (error1 == IP4_ERROR_MTU_EXCEEDED)
+	    ip4_ttl_inc (b[1], ip1);
 	}
-      if (is_midchain)
-	{
-	  calc_checksums (vm, b[0]);
-	  calc_checksums (vm, b[1]);
-	}
+
       /* Guess we are only writing on simple Ethernet header. */
       vnet_rewrite_two_headers (adj0[0], adj1[0],
 				ip0, ip1, sizeof (ethernet_header_t));
 
-      /*
-       * Bump the per-adjacency counters
-       */
       if (do_counters)
 	{
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     thread_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, b[0]) + rw_len0);
+	  if (error0 == IP4_ERROR_NONE)
+	    vlib_increment_combined_counter
+	      (&adjacency_counters,
+	       thread_index,
+	       adj_index0, 1,
+	       vlib_buffer_length_in_chain (vm, b[0]) + rw_len0);
 
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     thread_index,
-	     adj_index1, 1, vlib_buffer_length_in_chain (vm, b[1]) + rw_len1);
+	  if (error1 == IP4_ERROR_NONE)
+	    vlib_increment_combined_counter
+	      (&adjacency_counters,
+	       thread_index,
+	       adj_index1, 1,
+	       vlib_buffer_length_in_chain (vm, b[1]) + rw_len1);
 	}
 
       if (is_midchain)
 	{
-	  if (adj0->sub_type.midchain.fixup_func)
+	  if (error0 == IP4_ERROR_NONE && adj0->sub_type.midchain.fixup_func)
 	    adj0->sub_type.midchain.fixup_func
 	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	  if (adj1->sub_type.midchain.fixup_func)
+	  if (error1 == IP4_ERROR_NONE && adj1->sub_type.midchain.fixup_func)
 	    adj1->sub_type.midchain.fixup_func
 	      (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
 	}
 
       if (is_mcast)
 	{
-	  /*
-	   * copy bytes from the IP address into the MAC rewrite
-	   */
-	  vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
-				      adj0->rewrite_header.dst_mcast_offset,
-				      &ip0->dst_address.as_u32, (u8 *) ip0);
-	  vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
-				      adj1->rewrite_header.dst_mcast_offset,
-				      &ip1->dst_address.as_u32, (u8 *) ip1);
+	  /* copy bytes from the IP address into the MAC rewrite */
+	  if (error0 == IP4_ERROR_NONE)
+	    vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					adj0->rewrite_header.dst_mcast_offset,
+					&ip0->dst_address.as_u32, (u8 *) ip0);
+	  if (error1 == IP4_ERROR_NONE)
+	    vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					adj1->rewrite_header.dst_mcast_offset,
+					&ip1->dst_address.as_u32, (u8 *) ip1);
 	}
 
       next += 2;
@@ -2626,7 +2660,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0);
+		     next + 0, &error0, is_midchain);
 
       if (is_mcast)
 	{
@@ -2649,44 +2683,38 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
+
+	  if (is_midchain)
+	    calc_checksums (vm, b[0]);
+
+	  /* Guess we are only writing on simple Ethernet header. */
+	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+
+	  /*
+	   * Bump the per-adjacency counters
+	   */
+	  if (do_counters)
+	    vlib_increment_combined_counter
+	      (&adjacency_counters,
+	       thread_index,
+	       adj_index0, 1, vlib_buffer_length_in_chain (vm,
+							   b[0]) + rw_len0);
+
+	  if (is_midchain && adj0->sub_type.midchain.fixup_func)
+	    adj0->sub_type.midchain.fixup_func
+	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+
+	  if (is_mcast)
+	    /* copy bytes from the IP address into the MAC rewrite */
+	    vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					adj0->rewrite_header.dst_mcast_offset,
+					&ip0->dst_address.as_u32, (u8 *) ip0);
 	}
       else
 	{
 	  b[0]->error = error_node->errors[error0];
-	}
-      if (is_midchain)
-	{
-	  calc_checksums (vm, b[0]);
-	}
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
-
-      /*
-       * Bump the per-adjacency counters
-       */
-      if (do_counters)
-	{
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     thread_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, b[0]) + rw_len0);
-	}
-
-      if (is_midchain)
-	{
-	  if (adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	}
-
-      if (is_mcast)
-	{
-	  /*
-	   * copy bytes from the IP address into the MAC rewrite
-	   */
-	  vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
-				      adj0->rewrite_header.dst_mcast_offset,
-				      &ip0->dst_address.as_u32, (u8 *) ip0);
+	  if (error0 == IP4_ERROR_MTU_EXCEEDED)
+	    ip4_ttl_inc (b[0], ip0);
 	}
 
       next += 1;
@@ -2730,7 +2758,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
-		     next + 0, &error0);
+		     next + 0, &error0, is_midchain);
 
       if (is_mcast)
 	{
@@ -2753,39 +2781,36 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
+
+	  if (is_midchain)
+	    /* this acts on the packet that is about to be encapped */
+	    calc_checksums (vm, b[0]);
+
+	  /* Guess we are only writing on simple Ethernet header. */
+	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+
+	  if (do_counters)
+	    vlib_increment_combined_counter
+	      (&adjacency_counters,
+	       thread_index, adj_index0, 1,
+	       vlib_buffer_length_in_chain (vm, b[0]) + rw_len0);
+
+	  if (is_midchain && adj0->sub_type.midchain.fixup_func)
+	    adj0->sub_type.midchain.fixup_func
+	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+
+	  if (is_mcast)
+	    /* copy bytes from the IP address into the MAC rewrite */
+	    vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					adj0->rewrite_header.dst_mcast_offset,
+					&ip0->dst_address.as_u32, (u8 *) ip0);
 	}
       else
 	{
 	  b[0]->error = error_node->errors[error0];
-	}
-      if (is_midchain)
-	{
-	  calc_checksums (vm, b[0]);
-	}
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
-
-      if (do_counters)
-	vlib_increment_combined_counter
-	  (&adjacency_counters,
-	   thread_index, adj_index0, 1,
-	   vlib_buffer_length_in_chain (vm, b[0]) + rw_len0);
-
-      if (is_midchain)
-	{
-	  if (adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	}
-
-      if (is_mcast)
-	{
-	  /*
-	   * copy bytes from the IP address into the MAC rewrite
-	   */
-	  vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
-				      adj0->rewrite_header.dst_mcast_offset,
-				      &ip0->dst_address.as_u32, (u8 *) ip0);
+	  /* undo the TTL decrement - we'll be back to do it again */
+	  if (error0 == IP4_ERROR_MTU_EXCEEDED)
+	    ip4_ttl_inc (b[0], ip0);
 	}
 
       next += 1;
@@ -2943,8 +2968,8 @@ VLIB_REGISTER_NODE (ip4_mcast_midchain_node) = {
 VLIB_REGISTER_NODE (ip4_midchain_node) = {
   .name = "ip4-midchain",
   .vector_size = sizeof (u32),
-  .format_trace = format_ip4_forward_next_trace,
-  .sibling_of =  "ip4-rewrite",
+  .format_trace = format_ip4_rewrite_trace,
+  .sibling_of = "ip4-rewrite",
 };
 /* *INDENT-ON */
 

@@ -101,7 +101,6 @@ class TestMTU(VppTestCase):
                           dst=self.pg0.remote_ip4,
                           ttl=254, len=576, id=0) /
                        p_icmp4 / p_ip4 / p_payload)
-        icmp4_reply[1].ttl -= 1
         n = icmp4_reply.__class__(icmp4_reply)
         s = bytes(icmp4_reply)
         icmp4_reply = s[0:576]
@@ -118,7 +117,7 @@ class TestMTU(VppTestCase):
         p4 = p_ether / p_ip4 / p_payload
         p4.flags = 0
         p4_reply = p_ip4 / p_payload
-        p4_reply.ttl = 62  # check this
+        p4_reply.ttl = p_ip4.ttl - 1
         p4_reply.flags = 0
         p4_reply.id = 256
         self.pg_enable_capture()

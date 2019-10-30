@@ -58,6 +58,7 @@ class VppNeighbor(VppObject):
             flags=self.flags)
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.ip_neighbor_add_del(

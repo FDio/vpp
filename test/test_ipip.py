@@ -2,7 +2,7 @@
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
+from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
@@ -81,7 +81,7 @@ class TestIPIP(VppTestCase):
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip6 = IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=42)
         p_ip4 = IP(src="1.2.3.4", dst="130.67.0.1", tos=42)
-        p_payload = UDP(sport=1234, dport=1234)
+        p_payload = UDP(sport=1234, dport=1234) / Raw(b'X' * 100)
 
         # IPv4 transport
         rv = ipip_add_tunnel(self,
@@ -121,6 +121,7 @@ class TestIPIP(VppTestCase):
         rx = self.send_and_expect(self.pg0, p6 * 10, self.pg1)
         for p in rx:
             self.validate(p[1], p6_reply)
+            self.assert_packet_checksums_valid(p)
 
         # IPv4 in to IPv4 tunnel
         p4 = (p_ether / p_ip4 / p_payload)
@@ -134,6 +135,7 @@ class TestIPIP(VppTestCase):
         rx = self.send_and_expect(self.pg0, p4 * 10, self.pg1)
         for p in rx:
             self.validate(p[1], p4_reply)
+            self.assert_packet_checksums_valid(p)
 
         # Decapsulation
         p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -147,6 +149,7 @@ class TestIPIP(VppTestCase):
         rx = self.send_and_expect(self.pg1, p4 * 10, self.pg0)
         for p in rx:
             self.validate(p[1], p4_reply)
+            self.assert_packet_checksums_valid(p)
 
         err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
@@ -161,6 +164,7 @@ class TestIPIP(VppTestCase):
         rx = self.send_and_expect(self.pg1, p6 * 10, self.pg0)
         for p in rx:
             self.validate(p[1], p6_reply)
+            self.assert_packet_checksums_valid(p)
 
         err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
@@ -222,7 +226,6 @@ class TestIPIP(VppTestCase):
         self.pg_start()
         rx = self.pg0.get_capture(6)
         reass_pkt = reassemble4(rx)
-        p4_reply.ttl -= 1
         p4_reply.id = 256
         self.validate(reass_pkt, p4_reply)
 
@@ -233,9 +236,23 @@ class TestIPIP(VppTestCase):
         self.pg_start()
         rx = self.pg0.get_capture(2)
         reass_pkt = reassemble4(rx)
-        p4_reply.ttl -= 1
         p4_reply.id = 512
         self.validate(reass_pkt, p4_reply)
+
+        # send large packets through the tunnel, expect them to be fragmented
+        self.vapi.sw_interface_set_mtu(sw_if_index, [600, 0, 0, 0])
+
+        p4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+              IP(src="1.2.3.4", dst="130.67.0.1", tos=42) /
+              UDP(sport=1234, dport=1234) / Raw(b'Q' * 1000))
+        rx = self.send_and_expect(self.pg0, p4 * 15, self.pg1, 30)
+        inners = []
+        for p in rx:
+            inners.append(p[IP].payload)
+        reass_pkt = reassemble4(inners)
+        for p in reass_pkt:
+            self.assert_packet_checksums_valid(p)
+            self.assertEqual(p[IP].ttl, 63)
 
     def test_ipip_create(self):
         """ ipip create / delete interface test """
