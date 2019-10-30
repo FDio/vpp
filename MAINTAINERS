@@ -49,6 +49,11 @@ I:	vppinfra
 M:	Dave Barach <dave@barachs.net>
 F:	src/vppinfra/
 
+Physical Memory Allocator
+I:	pmalloc
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vppinfra/pmalloc.[ch]
+
 Vector Library
 I:	vlib
 M:	Dave Barach <dave@barachs.net>
