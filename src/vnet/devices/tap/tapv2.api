@@ -55,7 +55,7 @@ define tap_create_v2
 {
   u32 client_index;
   u32 context;
-  u32 id;
+  u32 id [default= 0xffffffff] ;
   u8 use_random_mac;
   u8 mac_address[6];
   u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
