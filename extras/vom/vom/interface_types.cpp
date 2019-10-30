@@ -45,29 +45,30 @@ interface::type_t::from_string(const std::string& str)
 {
   if ((str.find("Virtual") != std::string::npos) ||
       (str.find("vhost") != std::string::npos) ||
-      (str.find("vhu") != std::string::npos)) {
+      (str.find("vhu") != std::string::npos) ||
+      (str.find("vhost-user") != std::string::npos)) {
     return interface::type_t::VHOST;
-  } else if (str.find("Bond") != std::string::npos) {
+  } else if (str.find("bond") != std::string::npos) {
     return interface::type_t::BOND;
-  } else if (str.find("Ethernet") != std::string::npos) {
+  } else if (str.find("dpdk") != std::string::npos) {
     return interface::type_t::ETHERNET;
-  } else if (str.find("vxlan") != std::string::npos) {
+  } else if (str.find("VXLAN") != std::string::npos) {
     return interface::type_t::VXLAN;
-  } else if ((str.find("loop") != std::string::npos) ||
+  } else if ((str.find("Loopback") != std::string::npos) ||
              (str.find("recirc") != std::string::npos)) {
     return interface::type_t::LOOPBACK;
-  } else if (str.find("host-") != std::string::npos) {
+  } else if (str.find("af-packet") != std::string::npos) {
     return interface::type_t::AFPACKET;
   } else if (str.find("local") != std::string::npos) {
     return interface::type_t::LOCAL;
   } else if ((str.find("tapcli") != std::string::npos) ||
              (str.find("tuntap") != std::string::npos)) {
     return interface::type_t::UNKNOWN;
-  } else if (str.find("tap") != std::string::npos) {
+  } else if (str.find("virtio") != std::string::npos) {
     return interface::type_t::TAPV2;
-  } else if (str.find("bvi") != std::string::npos) {
+  } else if (str.find("BVI") != std::string::npos) {
     return interface::type_t::BVI;
-  } else if (str.find("pipe") != std::string::npos) {
+  } else if (str.find("Pipe") != std::string::npos) {
     return interface::type_t::PIPE;
   }
 
@@ -76,23 +77,19 @@ interface::type_t::from_string(const std::string& str)
 
 interface::type_t::type_t(int v, const std::string& s)
   : enum_base<interface::type_t>(v, s)
-{
-}
+{}
 
 interface::oper_state_t::oper_state_t(int v, const std::string& s)
   : enum_base<interface::oper_state_t>(v, s)
-{
-}
+{}
 
 interface::admin_state_t::admin_state_t(int v, const std::string& s)
   : enum_base<interface::admin_state_t>(v, s)
-{
-}
+{}
 
 interface::stats_type_t::stats_type_t(int v, const std::string& s)
   : enum_base<interface::stats_type_t>(v, s)
-{
-}
+{}
 
 interface::admin_state_t
 interface::admin_state_t::from_int(uint8_t v)

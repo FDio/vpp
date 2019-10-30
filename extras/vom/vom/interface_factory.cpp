@@ -31,7 +31,9 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
    * Determine the interface type from the name and VLAN attributes
    */
   std::string name = reinterpret_cast<const char*>(vd.interface_name);
-  interface::type_t type = interface::type_t::from_string(name);
+  std::string device_type =
+    reinterpret_cast<const char*>(vd.interface_dev_type);
+  interface::type_t type = interface::type_t::from_string(device_type);
   interface::admin_state_t state = interface::admin_state_t::from_int(
     vd.flags & vapi_enum_if_status_flags::IF_STATUS_API_FLAG_ADMIN_UP);
   handle_t hdl(vd.sw_if_index);
@@ -116,8 +118,8 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      * sw_if_index
      */
   } else if (interface::type_t::BOND == type) {
-    sp = bond_interface(name, state, l2_address,
-                        bond_interface::mode_t::UNSPECIFIED)
+    sp = bond_interface(
+           name, state, l2_address, bond_interface::mode_t::UNSPECIFIED)
            .singular();
   } else {
     sp = interface(name, type, state, tag).singular();
@@ -140,10 +142,10 @@ interface_factory::new_vhost_user_interface(
 {
   std::shared_ptr<interface> sp;
   std::string name = reinterpret_cast<const char*>(vd.sock_filename);
-  interface::type_t type = interface::type_t::from_string(name);
   handle_t hdl(vd.sw_if_index);
 
-  sp = interface(name, type, interface::admin_state_t::DOWN).singular();
+  sp = interface(name, interface::type_t::VHOST, interface::admin_state_t::DOWN)
+         .singular();
   sp->set(hdl);
   return (sp);
 }
