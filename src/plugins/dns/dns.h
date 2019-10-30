@@ -139,7 +139,7 @@ _(NONE, "No error")							\
 _(UNIMPLEMENTED, "Unimplemented")                                       \
 _(PROCESSED, "DNS request pkts processed")                              \
 _(IP_OPTIONS, "DNS pkts with ip options (dropped)")                     \
-_(BAD_REQUEST, "DNS pkts with serious discrepanices (dropped)")         \
+_(BAD_REQUEST, "DNS pkts with serious discrepancies (dropped)")         \
 _(TOO_MANY_REQUESTS, "DNS pkts asking too many questions")              \
 _(RESOLUTION_REQUIRED, "DNS pkts pending upstream name resolution")
 
