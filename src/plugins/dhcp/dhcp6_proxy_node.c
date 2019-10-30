@@ -315,8 +315,9 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 	link_address_set:
 
-	  if ((b0->current_length + sizeof (*id1) + sizeof (*vss1) +
-	       sizeof (*cmac)) > vlib_buffer_get_default_data_size (vm))
+	  if ((b0->current_data + b0->current_length + sizeof (*id1) +
+	       sizeof (*vss1) + sizeof (*cmac)) >
+	      vlib_buffer_get_default_data_size (vm))
 	    {
 	      error0 = DHCPV6_PROXY_ERROR_PKT_TOO_BIG;
 	      next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_DROP;
