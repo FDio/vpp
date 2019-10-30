@@ -890,6 +890,7 @@ static clib_error_t *
 tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   tls_main_t *tm = &tls_main;
+  uword tmp;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "use-test-cert-in-ca"))
@@ -899,9 +900,15 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "first-segment-size %U", unformat_memory_size,
 			 &tm->first_seg_size))
 	;
-      else if (unformat (input, "fifo-size %U", unformat_memory_size,
-			 &tm->fifo_size))
-	;
+      else if (unformat (input, "fifo-size %U", unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    {
+	      return clib_error_return
+		(0, "fifo-size %llu (0x%llx) too large", tmp, tmp);
+	    }
+	  tm->fifo_size = tmp;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
