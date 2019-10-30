@@ -580,6 +580,11 @@ Awkward chained buffer geometry tool
 I:	oddbuf
 F:	src/plugins/oddbuf
 
+VPP Config Tooling
+I:  vpp_config
+M:  John DeNisco <jdenisco@cisco.com>
+F:  extras/vpp_config
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
