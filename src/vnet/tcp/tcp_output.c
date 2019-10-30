@@ -1499,6 +1499,8 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  return;
 	}
 
+      clib_warning ("retransmit timeout");
+
       /* We're not in recovery so make sure rto_boff is 0. Can be non 0 due
        * to persist timer timeout */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
@@ -1847,6 +1849,12 @@ tcp_retransmit_should_retry_head (tcp_connection_t * tc,
   u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
   f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
 
+  if (tcp_fastrecovery_first (tc))
+    {
+      tcp_fastrecovery_first_off (tc);
+      return 1;
+    }
+
   return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
 }
 
@@ -1911,6 +1919,9 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       && tc->rxt_head != tc->snd_una
       && tcp_retransmit_should_retry_head (tc, sb))
     {
+      clib_warning ("%.3f rxt snd_una %u",
+		    tcp_time_now_us (tc->c_thread_index) - tc->start_ts,
+		    tc->snd_una - tc->iss);
       n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss,
 						  &b);
       if (!n_written)
