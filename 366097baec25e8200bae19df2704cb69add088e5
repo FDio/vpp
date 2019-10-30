@@ -22,6 +22,30 @@
       "revId": "366097baec25e8200bae19df2704cb69add088e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "967a7956_c6c6b5f7",
+        "filename": "src/plugins/http_static/http_static_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-30T20:09:01Z",
+      "side": 1,
+      "message": "I guess that\u0027s because of how the whole function was written. Note that this is a vat test program.",
+      "parentUuid": "81fe64a6_efb9c1d1",
+      "range": {
+        "startLine": 76,
+        "startChar": 7,
+        "endLine": 76,
+        "endChar": 13
+      },
+      "revId": "366097baec25e8200bae19df2704cb69add088e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
