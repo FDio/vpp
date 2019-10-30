@@ -578,10 +578,16 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 always_inline u8
 tcp_recovery_no_snd_space (tcp_connection_t * tc)
 {
-  return (tcp_in_fastrecovery (tc)
-	  && tcp_fastrecovery_prr_snd_space (tc) < tc->snd_mss)
-    || (tcp_in_recovery (tc)
-	&& tcp_available_output_snd_space (tc) < tc->snd_mss);
+  u32 space;
+
+  ASSERT (tcp_in_cong_recovery (tc));
+
+  if (tcp_in_recovery (tc))
+    space = tcp_available_output_snd_space (tc);
+  else
+    space = tcp_fastrecovery_prr_snd_space (tc);
+
+  return (space < tc->snd_mss + tc->burst_acked);
 }
 
 /**
@@ -608,7 +614,6 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 	{
 	  /* Dequeue the newly ACKed bytes */
 	  session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
-	  tc->burst_acked = 0;
 	  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
 	  if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
@@ -628,9 +633,11 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       /* Reset the pacer if we've been idle, i.e., no data sent or if
        * we're in recovery and snd space constrained */
       if (tc->data_segs_out == tc->prev_dsegs_out
-	  || tcp_recovery_no_snd_space (tc))
+	  || (tcp_in_cong_recovery (tc) && tcp_recovery_no_snd_space (tc)))
 	transport_connection_tx_pacer_reset_bucket (&tc->connection);
+
       tc->prev_dsegs_out = tc->data_segs_out;
+      tc->burst_acked = 0;
     }
   _vec_len (wrk->pending_deq_acked) = 0;
 }
@@ -1348,14 +1355,6 @@ tcp_cc_recover (tcp_connection_t * tc)
       is_spurious = 1;
     }
 
-  tc->rcv_dupacks = 0;
-  tc->prr_delivered = 0;
-  tc->rxt_delivered = 0;
-  tc->snd_rxt_bytes = 0;
-  tc->snd_rxt_ts = 0;
-  tc->rtt_ts = 0;
-  tc->flags &= ~TCP_CONN_RXT_PENDING;
-
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 
   /* Previous recovery left us congested. Continue sending as part
@@ -1363,12 +1362,17 @@ tcp_cc_recover (tcp_connection_t * tc)
   if (tc->sack_sb.sacked_bytes)
     {
       tc->snd_congestion = tc->snd_nxt;
-      tc->snd_rxt_ts = tcp_tstamp (tc);
-      tc->prr_start = tc->snd_una;
-      scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
       tcp_program_retransmit (tc);
       return is_spurious;
     }
+
+  tc->rxt_delivered = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->snd_rxt_ts = 0;
+  tc->rcv_dupacks = 0;
+  tc->prr_delivered = 0;
+  tc->rtt_ts = 0;
+  tc->flags &= ~TCP_CONN_RXT_PENDING;
 
   hole = scoreboard_first_hole (&tc->sack_sb);
   if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
@@ -1444,22 +1448,8 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
     }
 
   /*
-   * Already in recovery. See if we can exit and stop retransmitting
+   * Already in recovery
    */
-
-  if (seq_geq (tc->snd_una, tc->snd_congestion))
-    {
-      /* If spurious return, we've already updated everything */
-      if (tcp_cc_recover (tc))
-	{
-	  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
-	  return;
-	}
-
-      /* Treat as congestion avoidance ack */
-      tcp_cc_rcv_ack (tc, rs);
-      return;
-    }
 
   /*
    * Process (re)transmit feedback. Output path uses this to decide how much
@@ -1467,6 +1457,8 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
   if (has_sack)
     {
+      if (!tc->bytes_acked && tc->sack_sb.rxt_sacked)
+	tcp_fastrecovery_first_on (tc);
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
       tc->prr_delivered += tc->bytes_acked + tc->sack_sb.last_sacked_bytes
 	- tc->sack_sb.last_bytes_delivered;
@@ -1495,6 +1487,23 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	tcp_fastrecovery_first_on (tc);
 
       tcp_program_retransmit (tc);
+    }
+
+  /*
+   * See if we can exit and stop retransmitting
+   */
+  if (seq_geq (tc->snd_una, tc->snd_congestion))
+    {
+      /* If spurious return, we've already updated everything */
+      if (tcp_cc_recover (tc))
+	{
+	  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+	  return;
+	}
+
+      /* Treat as congestion avoidance ack */
+      tcp_cc_rcv_ack (tc, rs);
+      return;
     }
 
   /*
