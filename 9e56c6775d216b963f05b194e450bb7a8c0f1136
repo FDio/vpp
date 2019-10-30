@@ -1,0 +1,349 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a63ff9f_b8ba9058",
+        "filename": "src/plugins/arp/arp.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 71,
+        "startChar": 2,
+        "endLine": 71,
+        "endChar": 4
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6e3d88f_e09958c1",
+        "filename": "src/plugins/arp/arp.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "range": {
+        "startLine": 102,
+        "startChar": 2,
+        "endLine": 102,
+        "endChar": 5
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b5f0544_6ef3229b",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Remove trailing whitespace please.",
+      "range": {
+        "startLine": 20,
+        "startChar": 45,
+        "endLine": 20,
+        "endChar": 46
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42c70537_d1bb5a3d",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Add descriptions of the fields.",
+      "range": {
+        "startLine": 78,
+        "startChar": 20,
+        "endLine": 78,
+        "endChar": 21
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ab7c73cd_6ea7ea6d",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "ip\n\nAlso, use the same field order as in the define body.",
+      "range": {
+        "startLine": 160,
+        "startChar": 11,
+        "endLine": 160,
+        "endChar": 18
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2aa2ce1_a7aacab1",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Missing from description.",
+      "range": {
+        "startLine": 180,
+        "startChar": 23,
+        "endLine": 180,
+        "endChar": 25
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1665a72_9f460270",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Missing from define body.",
+      "range": {
+        "startLine": 186,
+        "startChar": 11,
+        "endLine": 186,
+        "endChar": 22
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86a9c2ea_93a7926d",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "This part can stay in description only, the rest can be shortened.",
+      "range": {
+        "startLine": 275,
+        "startChar": 10,
+        "endLine": 275,
+        "endChar": 18
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "19f7654a_62675222",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Consider adding \" : u8\" as here [0] to save some memory space (and cpu cycles for ntohl).\n\n[0] https://github.com/FDio/vpp/blob/master/src/vnet/ip/ip_types.api#L29",
+      "range": {
+        "startLine": 34,
+        "startChar": 21,
+        "endLine": 34,
+        "endChar": 22
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3544954b_4626b507",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Add the missing description block.",
+      "range": {
+        "startLine": 72,
+        "startChar": 6,
+        "endLine": 72,
+        "endChar": 17
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "78bc96e6_accae554",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Something bad, or just missing field descriptions?",
+      "range": {
+        "startLine": 101,
+        "startChar": 0,
+        "endLine": 101,
+        "endChar": 10
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4fe66829_aa241d63",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "vl_api_ip6_address_t address;",
+      "range": {
+        "startLine": 484,
+        "startChar": 2,
+        "endLine": 484,
+        "endChar": 17
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7111f497_104155fe",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "enable",
+      "range": {
+        "startLine": 605,
+        "startChar": 11,
+        "endLine": 605,
+        "endChar": 25
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aeb776d4_fb1dd1b2",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 616,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "Description lists two more fields.",
+      "range": {
+        "startLine": 616,
+        "startChar": 0,
+        "endLine": 616,
+        "endChar": 1
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15382816_541123d5",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-30T18:28:12Z",
+      "side": 1,
+      "message": "vl_api_ip_neighbor_t would fit, but define body contains separate sub-fields.",
+      "range": {
+        "startLine": 622,
+        "startChar": 11,
+        "endLine": 622,
+        "endChar": 19
+      },
+      "revId": "9e56c6775d216b963f05b194e450bb7a8c0f1136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
