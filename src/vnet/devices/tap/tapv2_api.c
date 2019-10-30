@@ -52,10 +52,15 @@ _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)
 static void
 vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 {
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   vl_api_tap_create_v2_reply_t *rmp;
-  vl_api_registration_t *reg;
+
   tap_create_if_args_t _a, *ap = &_a;
 
   clib_memset (ap, 0, sizeof (*ap));
@@ -119,9 +124,6 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   tap_create_if (vm, ap);
 
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;;
 
   /* If a tag was supplied... */
   if (mp->tag[0])
@@ -145,18 +147,21 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 static void
 vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 {
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   int rv;
   vl_api_tap_delete_v2_reply_t *rmp;
-  vl_api_registration_t *reg;
+
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   rv = tap_delete_if (vm, sw_if_index);
 
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
+
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_DELETE_V2_REPLY);
