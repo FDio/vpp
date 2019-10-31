@@ -509,12 +509,7 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
       /* Streams live on the same thread so (f, stream_data) should stay consistent */
       rlen = svm_fifo_enqueue (f, len, (u8 *) src);
       stream_data->app_rx_data_len += rlen;
-      if (PREDICT_FALSE (rlen != len))
-	{
-	  clib_warning ("ERROR: Could not enqueue all data (rlen %u, len %u)",
-			rlen, len);
-	  ASSERT (rlen == len);
-	}
+      ASSERT (rlen >= len);
       app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
       if (PREDICT_TRUE (app_wrk != 0))
 	app_worker_lock_and_send_event (app_wrk, stream_session,
