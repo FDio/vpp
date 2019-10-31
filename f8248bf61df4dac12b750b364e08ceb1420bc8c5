@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8fc67b78_ebf694d0",
+        "filename": "src/plugins/dhcp/client.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-31T07:30:49Z",
+      "side": 1,
+      "message": "why move to a logger that is globally visible.",
+      "range": {
+        "startLine": 129,
+        "startChar": 19,
+        "endLine": 129,
+        "endChar": 25
+      },
+      "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
