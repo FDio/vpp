@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 import unittest
 
 from framework import VppTestCase, VppTestRunner
