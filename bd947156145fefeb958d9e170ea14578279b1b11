@@ -16,6 +16,24 @@
       "revId": "bd947156145fefeb958d9e170ea14578279b1b11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49f829fe_aae20c04",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1580,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-10-31T09:42:52Z",
+      "side": 1,
+      "message": "good point, is there a way to save sw_if_index from ipip_add_tunnel() in ike\u0027s per thread data? The only way I see is to remove per thread data entirely and do the critical operations in the main thread, but that requires huge refactor",
+      "parentUuid": "c954e85e_c558594b",
+      "revId": "bd947156145fefeb958d9e170ea14578279b1b11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
