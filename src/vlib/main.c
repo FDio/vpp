@@ -845,11 +845,16 @@ VLIB_CLI_COMMAND (elog_resize_cli, static) = {
 #endif /* CLIB_UNIX */
 
 static void
-elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
+elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show, int fmt)
 {
   elog_main_t *em = &vm->elog_main;
   elog_event_t *e, *es;
   f64 dt;
+  f64 it = 0.0;
+
+  /* Initial time */
+  if (fmt)
+    it = em->init_time.os_nsec / 1e9 + 1490885108;
 
   /* Show events in VLIB time since log clock starts after VLIB clock. */
   dt = (em->init_time.cpu - vm->clib_time.init_cpu_time)
@@ -862,14 +867,18 @@ elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 		   "running" : "stopped");
   vec_foreach (e, es)
   {
-    vlib_cli_output (vm, "%18.9f: %U",
-		     e->time + dt, format_elog_event, em, e);
+    f64 t = it + (e->time + dt);
+    if (fmt == 2)
+      vlib_cli_output (vm, "%U: %U",
+		       format_time_float, "y/m/d H:M:S:F", t,
+		       format_elog_event, em, e);
+    else
+      vlib_cli_output (vm, "%18.9f: %U", t, format_elog_event, em, e);
     n_events_to_show--;
     if (n_events_to_show == 0)
       break;
   }
   vec_free (es);
-
 }
 
 static clib_error_t *
@@ -878,6 +887,7 @@ elog_show_buffer (vlib_main_t * vm,
 {
   u32 n_events_to_show;
   clib_error_t *error = 0;
+  int fmt = 0;
 
   n_events_to_show = 250;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -886,17 +896,23 @@ elog_show_buffer (vlib_main_t * vm,
 	;
       else if (unformat (input, "all"))
 	n_events_to_show = ~0;
+      else if (unformat (input, "delta"))
+	;
+      else if (unformat (input, "no-delta"))
+	fmt = 1;
+      else if (unformat (input, "date-time"))
+	fmt = 2;
       else
 	return unformat_parse_error (input);
     }
-  elog_show_buffer_internal (vm, n_events_to_show);
+  elog_show_buffer_internal (vm, n_events_to_show, fmt);
   return error;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (elog_show_cli, static) = {
   .path = "show event-logger",
-  .short_help = "Show event logger info",
+  .short_help = "show event-logger [all] [<nnn>] [delta|no-delta|date-time]",
   .function = elog_show_buffer,
 };
 /* *INDENT-ON* */
@@ -904,7 +920,7 @@ VLIB_CLI_COMMAND (elog_show_cli, static) = {
 void
 vlib_gdb_show_event_log (void)
 {
-  elog_show_buffer_internal (vlib_get_main (), (u32) ~ 0);
+  elog_show_buffer_internal (vlib_get_main (), (u32) ~ 0, 0);
 }
 
 static inline void
