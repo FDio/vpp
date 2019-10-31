@@ -475,7 +475,12 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def wait_for_coredump(cls, corefile, wait_time=60):
-        cls.vpp.send_signal(signal.SIGQUIT)
+        # If we are here, it means VPP has not finished quitting.
+        # It is either in process of quitting or is in process
+        # of dumping the core.
+        # in either case, sending SIGQUIT to force the core
+        # is not what we want.
+        # cls.vpp.send_signal(signal.SIGQUIT)
         if os.path.isfile(corefile):
             cls.logger.error("Waiting %s sec. for coredump to complete: %s",
                              (wait_time, corefile))
