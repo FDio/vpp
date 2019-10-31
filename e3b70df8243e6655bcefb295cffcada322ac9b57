@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f447895a_3a81c896",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 849,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-31T18:07:46Z",
+      "side": 1,
+      "message": "Use the same choice as few chars earlier.\nAlso, the scientifically correct units are either [kB|MB|GB] or [KiB|MiB|GiB].\nhttps://en.wikipedia.org/wiki/Binary_prefix",
+      "range": {
+        "startLine": 849,
+        "startChar": 32,
+        "endLine": 849,
+        "endChar": 42
+      },
+      "revId": "e3b70df8243e6655bcefb295cffcada322ac9b57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
