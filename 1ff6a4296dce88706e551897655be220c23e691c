@@ -48,6 +48,54 @@
     },
     {
       "key": {
+        "uuid": "6d8278e3_01d37e70",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1219,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2019-10-31T03:34:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "277d68bb_616a39e8",
+      "range": {
+        "startLine": 1219,
+        "startChar": 21,
+        "endLine": 1219,
+        "endChar": 29
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c58e4dc_13881d95",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1219,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2019-10-31T03:34:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "271ac73b_1e7ecbdb",
+      "range": {
+        "startLine": 1219,
+        "startChar": 55,
+        "endLine": 1219,
+        "endChar": 67
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4f9dc272_81b30192",
         "filename": "docs/gettingstarted/users/configuring/startup.rst",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2019-10-31T02:21:27Z",
       "side": 1,
       "message": "the",
+      "range": {
+        "startLine": 1220,
+        "startChar": 56,
+        "endLine": 1220,
+        "endChar": 62
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "642b4df1_1aaed710",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1220,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2019-10-31T03:34:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4f9dc272_81b30192",
       "range": {
         "startLine": 1220,
         "startChar": 56,
