@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 
 # Copyright (c) 2015 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");

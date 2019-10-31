@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 
 import time,argparse,sys,cmd, unittest
 from ipaddress import *

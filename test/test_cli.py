@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 """CLI functional tests"""
 
 import unittest

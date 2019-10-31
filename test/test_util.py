@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 """Test framework utility functions tests"""
 
 import unittest

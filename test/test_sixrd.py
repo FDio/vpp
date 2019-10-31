@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 """ 6RD RFC5969 functional tests """
 
 import unittest

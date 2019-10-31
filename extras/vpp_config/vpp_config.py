@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 
 # Copyright (c) 2016 Cisco and/or its affiliates.
 # Copyright (c) 2018 Vinci Consulting Corp.  All rights reserved.

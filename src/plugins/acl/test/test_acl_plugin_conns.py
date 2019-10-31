@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 """ ACL plugin extended stateful tests """
 
 import unittest

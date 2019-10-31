@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env HereIGoAgainOnMyOwn
 from socket import AF_INET, AF_INET6, inet_pton
 import unittest
 
