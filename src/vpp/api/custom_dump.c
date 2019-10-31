@@ -1901,9 +1901,12 @@ static void *vl_api_sw_interface_dump_t_print
 
   s = format (0, "SCRIPT: sw_interface_dump ");
 
-  if (mp->name_filter_valid)
-    s = format (s, "name_filter %s ", mp->name_filter);
-  else
+  if (mp->name_filter_valid) {
+    u8 *v = vl_api_from_api_to_vec (&mp->name_filter);
+    vec_add1 (v, 0);
+    s = format (s, "name_filter %v ", v);
+    vec_free(v);
+  } else
     s = format (s, "all ");
 
   FINISH;
