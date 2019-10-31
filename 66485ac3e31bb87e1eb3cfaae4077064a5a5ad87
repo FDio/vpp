@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1eec6537_497b86cc",
+        "filename": "src/plugins/nat/test/test_nat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2996,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-31T08:00:12Z",
+      "side": 1,
+      "message": "has the symbolic name been removed. \u00271\u0027 has a lot less meaning than \u0027ARP.who_has\u0027.",
+      "revId": "66485ac3e31bb87e1eb3cfaae4077064a5a5ad87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
