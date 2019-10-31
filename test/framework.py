@@ -474,13 +474,12 @@ class VppTestCase(unittest.TestCase):
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
     @classmethod
-    def wait_for_coredump(cls, corefile, wait_time=60):
-        cls.vpp.send_signal(signal.SIGQUIT)
+    def wait_for_coredump(cls):
+        corefile = cls.tempdir + "/core"
         if os.path.isfile(corefile):
-            cls.logger.error("Waiting %s sec. for coredump to complete: %s",
-                             (wait_time, corefile))
+            cls.logger.error("Waiting for coredump to complete: %s", corefile)
             curr_size = os.path.getsize(corefile)
-            deadline = time.time() + wait_time
+            deadline = time.time() + 60
             ok = False
             while time.time() < deadline:
                 cls.sleep(1)
@@ -611,7 +610,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
         if hasattr(cls, 'vpp_stderr_reader_thread'):
-            cls.logger.debug("Waiting for stderr pump to stop")
+            cls.logger.debug("Waiting for stdderr pump to stop")
             cls.vpp_stderr_reader_thread.join()
 
         if hasattr(cls, 'vpp'):
@@ -624,7 +623,7 @@ class VppTestCase(unittest.TestCase):
                 del cls.vapi
             cls.vpp.poll()
             if cls.vpp.returncode is None:
-                cls.wait_for_coredump(cls.tempdir + "/core", wait_time=60)
+                cls.wait_for_coredump()
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
