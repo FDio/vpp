@@ -29,6 +29,7 @@
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/dpo/receive_dpo.h>
@@ -608,21 +609,35 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 			"IP family mismatch (local is ipv6, peer is ipv4)");
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
 	}
-      ip6_main_t *im = &ip6_main;
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (
-          &im->lookup_main, ia, sw_if_index, 0 /* honor unnumbered */, ({
-            ip6_address_t *x =
-                ip_interface_address_get_address (&im->lookup_main, ia);
-            if (local_addr->ip6.as_u64[0] == x->as_u64[0] &&
-                local_addr->ip6.as_u64[1] == x->as_u64[1])
-              {
-                /* valid address for this interface */
-                local_ip_valid = 1;
-                break;
-              }
-          }));
-      /* *INDENT-ON* */
+
+      if (ip6_address_is_link_local_unicast (&local_addr->ip6))
+	{
+	  ip6_address_t ll_addr;
+	  ll_addr = ip6_neighbor_get_link_local_address (sw_if_index);
+	  if (ip6_address_is_equal (&ll_addr, &local_addr->ip6))
+	    {
+	      /* valid address for this interface */
+	      local_ip_valid = 1;
+	    }
+	}
+      else
+	{
+	  ip6_main_t *im = &ip6_main;
+	  /* *INDENT-OFF* */
+	  foreach_ip_interface_address (
+	      &im->lookup_main, ia, sw_if_index, 0 /* honor unnumbered */, ({
+	        ip6_address_t *x =
+	            ip_interface_address_get_address (&im->lookup_main, ia);
+	        if (local_addr->ip6.as_u64[0] == x->as_u64[0] &&
+	            local_addr->ip6.as_u64[1] == x->as_u64[1])
+	          {
+	            /* valid address for this interface */
+	            local_ip_valid = 1;
+	            break;
+	          }
+	      }));
+	  /* *INDENT-ON* */
+	}
     }
 
   if (!local_ip_valid)
