@@ -125,6 +125,9 @@ typedef struct
   uword *client_by_sw_if_index;
   u32 seed;
 
+  /* local logger */
+  vlib_log_class_t logger;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
