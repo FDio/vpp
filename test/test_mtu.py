@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """IP4 and IP6 MTU functional tests"""
 
 #

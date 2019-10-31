@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ACL IRB Test Case HLD:
 
 **config**

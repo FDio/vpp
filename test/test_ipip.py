@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
