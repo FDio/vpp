@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ CDP tests """
 
 from scapy.packet import Packet

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import unittest
 from vpp_papi.vpp_serializer import VPPType, VPPEnumType

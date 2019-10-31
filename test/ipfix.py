@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # IPFIX support for Scapy (RFC7011)
 
 from scapy.all import bind_layers, FieldLenField, IntField, Packet, \

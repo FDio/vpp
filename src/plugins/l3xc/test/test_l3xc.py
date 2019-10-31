@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
