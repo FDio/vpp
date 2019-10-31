@@ -94,6 +94,30 @@
       "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90bdef8a_ac69153b",
+        "filename": "src/plugins/dhcp/client.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-31T13:45:22Z",
+      "side": 1,
+      "message": "i\u0027d rather it remained a static variable. but please don\u0027t consider that a green light to go change all the loggers (or any other non-shared data) that appear in a main_t :) there\u0027s no convention, it\u0027s just my preference as the original author.",
+      "parentUuid": "599f7f27_3d477433",
+      "range": {
+        "startLine": 129,
+        "startChar": 19,
+        "endLine": 129,
+        "endChar": 25
+      },
+      "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
