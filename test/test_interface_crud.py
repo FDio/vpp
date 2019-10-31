@@ -90,11 +90,16 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             i.admin_up()
 
         # read (check sw if dump, ip4 fib, ip6 fib)
-        if_dump = self.vapi.sw_interface_dump()
+        if_dump = self.vapi.sw_interface_dump(name_filter_valid=True,
+                                              name_filter='loop')
         fib4_dump = self.vapi.ip_route_dump(0)
         for i in loopbacks:
             self.assertTrue(i.is_interface_config_in_dump(if_dump))
             self.assertTrue(i.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        if_dump = self.vapi.sw_interface_dump(name_filter_valid=True,
+                                              name_filter='loopXYZ')
+        self.assertEqual(len(if_dump), 0)
 
         # check ping
         stream = self.create_icmp_stream(self.pg0, loopbacks)
