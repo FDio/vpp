@@ -241,7 +241,8 @@ crypto_openssl_init (vlib_main_t * vm)
   time_t t;
   pid_t pid;
 
-  u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
+  u32 eidx =
+    vnet_crypto_register_engine (vm, "openssl", 50, OPENSSL_VERSION_TEXT);
 
 #define _(m, a, b) \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
