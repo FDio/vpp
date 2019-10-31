@@ -310,6 +310,7 @@ class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
     quic_setup = "serverstream"
 
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_ext_transfer_server_stream(self):
         self.server("TX=1Kb", "RX=0")
         self.client("TX=0", "RX=1Kb")
