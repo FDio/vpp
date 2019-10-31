@@ -22,6 +22,30 @@
       "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9666c396_1cc588ae",
+        "filename": "src/plugins/dhcp/client.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T11:27:11Z",
+      "side": 1,
+      "message": "I don\u0027t have a preference. Many components put the logger in main_t. \nIs there a distinction between plugins vs vnet?  \nI\u0027m glad to move it back, but would like to document why/when the logger belongs in/out of main_t.",
+      "parentUuid": "8fc67b78_ebf694d0",
+      "range": {
+        "startLine": 129,
+        "startChar": 19,
+        "endLine": 129,
+        "endChar": 25
+      },
+      "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
