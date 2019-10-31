@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """IP6 VRF Multi-instance Test Case HLD:
 
 **NOTES:**
