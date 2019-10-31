@@ -262,6 +262,7 @@ tso_init_buf_from_template_base (vlib_buffer_t * nb0, vlib_buffer_t * b0,
   nb0->current_data = b0->current_data;
   nb0->total_length_not_including_first_buffer = 0;
   nb0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID | flags;
+  nb0->trace_handle = b0->trace_handle;
   clib_memcpy_fast (&nb0->opaque, &b0->opaque, sizeof (nb0->opaque));
   clib_memcpy_fast (vlib_buffer_get_current (nb0),
 		    vlib_buffer_get_current (b0), length);
