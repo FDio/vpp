@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "277d68bb_616a39e8",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1219,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T02:21:27Z",
+      "side": 1,
+      "message": "the",
+      "range": {
+        "startLine": 1219,
+        "startChar": 21,
+        "endLine": 1219,
+        "endChar": 29
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "271ac73b_1e7ecbdb",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1219,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T02:21:27Z",
+      "side": 1,
+      "message": "a",
+      "range": {
+        "startLine": 1219,
+        "startChar": 55,
+        "endLine": 1219,
+        "endChar": 67
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f9dc272_81b30192",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1220,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T02:21:27Z",
+      "side": 1,
+      "message": "the",
+      "range": {
+        "startLine": 1220,
+        "startChar": 56,
+        "endLine": 1220,
+        "endChar": 62
+      },
+      "revId": "1ff6a4296dce88706e551897655be220c23e691c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
