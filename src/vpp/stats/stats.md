@@ -61,7 +61,7 @@ A new client library can either wrap the C library (libvppapiclient.so) or it ca
 ### Python
 
 ```
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from vpp_papi.vpp_stats import VPPStats
 stats = VPPStats('/run/vpp/stats.sock')
 dir = stats.ls(['^/if', '/err/ip4-input', '/sys/node/ip4-input'])

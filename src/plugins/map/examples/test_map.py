@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import time,argparse,sys,cmd, unittest
 from ipaddress import *
