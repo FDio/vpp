@@ -25,10 +25,10 @@ dhcp_client_main_t dhcp_client_main;
 static vlib_node_registration_t dhcp_client_process_node;
 
 #define DHCP_DBG(...)                           \
-    vlib_log_debug (dhcp_logger, __VA_ARGS__);
+    vlib_log_debug (dhcp_logger, __VA_ARGS__)
 
 #define DHCP_INFO(...)                          \
-    vlib_log_notice (dhcp_logger, __VA_ARGS__);
+    vlib_log_notice (dhcp_logger, __VA_ARGS__)
 
 #define foreach_dhcp_sent_packet_stat           \
 _(DISCOVER, "DHCP discover packets sent")       \
@@ -1105,15 +1105,13 @@ dhcp_client_config (u32 is_add,
       vec_free (a->option_55_data);
 
       if (is_add)
-	clib_warning ("dhcp client already enabled on intf_idx %d",
-		      sw_if_index);
+	DHCP_INFO ("dhcp client already enabled on intf_idx %d", sw_if_index);
       else
-	clib_warning ("dhcp client not enabled on on intf_idx %d",
-		      sw_if_index);
+	DHCP_INFO ("not enabled on on intf_idx %d", sw_if_index);
       break;
 
     default:
-      clib_warning ("dhcp_client_add_del returned %d", rv);
+      DHCP_INFO ("dhcp_client_add_del returned %d", rv);
     }
 
   return rv;
@@ -1254,6 +1252,7 @@ dhcp_client_init (vlib_main_t * vm)
   dcm->seed = (u32) clib_cpu_time_now ();
 
   dhcp_logger = vlib_log_register_class ("dhcp", "client");
+  DHCP_INFO ("plugin initialized");
 
   return 0;
 }
