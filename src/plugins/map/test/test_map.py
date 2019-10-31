@@ -10,7 +10,8 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from util import fragment_rfc791, fragment_rfc8200
 
 import scapy.compat
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP, fragment
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
 

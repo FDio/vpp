@@ -3,7 +3,8 @@ import socket
 import copy
 
 from scapy.layers.ipsec import ESP
-from scapy.layers.l2 import Ether, Raw, GRE
+from scapy.layers.l2 import Ether, GRE
+from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from framework import VppTestRunner

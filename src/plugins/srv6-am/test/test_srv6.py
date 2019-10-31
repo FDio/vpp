@@ -15,7 +15,8 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
-from scapy.utils import inet_pton, inet_ntop
+from scapy.utils import inet_pton
+from scapy.pton_ntop import inet_ntop
 
 from util import ppp
 

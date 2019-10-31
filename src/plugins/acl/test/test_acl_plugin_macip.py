@@ -441,8 +441,7 @@ class MethodHolder(VppTestCase):
                 packet /= IP(src=src_ip4, dst=dst_ip4, frag=0, flags=0)
 
             packet /= UDP(sport=src_port, dport=dst_port)/Raw(payload)
-
-            packet[Raw].load += b" mac:%s" % scapy.compat.raw(src_mac)
+            packet[Raw].load += b" mac:%s" % src_mac.encode('utf-8')
 
             size = self.pg_if_packet_sizes[p % len(self.pg_if_packet_sizes)]
             if isinstance(src_if, VppSubInterface):
