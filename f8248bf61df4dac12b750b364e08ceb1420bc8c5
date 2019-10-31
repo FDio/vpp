@@ -46,6 +46,30 @@
       "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82c50da9_a46a93ea",
+        "filename": "src/plugins/dhcp/client.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-10-31T13:03:24Z",
+      "side": 1,
+      "message": "it\u0027s my opinion that objects used only within one .c file should be static within that file. using static is a way to express that scope of the variable. encapsulation if you will ;)\nadding variables in a main_t is a way to share them across files.",
+      "parentUuid": "9666c396_1cc588ae",
+      "range": {
+        "startLine": 129,
+        "startChar": 19,
+        "endLine": 129,
+        "endChar": 25
+      },
+      "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
