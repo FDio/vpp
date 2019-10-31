@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc5fc391_ab2d49be",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T11:06:07Z",
+      "side": 1,
+      "message": "increment version",
+      "range": {
+        "startLine": 17,
+        "startChar": 17,
+        "endLine": 17,
+        "endChar": 25
+      },
+      "revId": "8356c21366c61b56cbcd9c8d0a4d80b82125f498",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "68cdbfb8_7ebfbb15",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T11:06:07Z",
+      "side": 1,
+      "message": "should the logic be moved to gre_tunnel_add_del, or majke gre_tunnel_add_del _add or _create?",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 31
+      },
+      "revId": "8356c21366c61b56cbcd9c8d0a4d80b82125f498",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
