@@ -95,10 +95,10 @@ M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/tap/
 
 VNET Native Virtio Drivers
-I:  virtio
+I:	virtio
 Y:	src/vnet/devices/virtio/FEATURE.yaml
-M:  Mohsin Kazmi <sykazmi@cisco.com>
-F:  src/vnet/devices/virtio/
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/vnet/devices/virtio/
 
 VNET Ethernet
 I:	ethernet
@@ -197,10 +197,10 @@ F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
 VNET GSO
-I: gso
-M: Andrew Yourtchenko <ayourtch@gmail.com>
-M: Mohsin Kazmi <sykazmi@cisco.com>
-F: src/vnet/interface_output.c
+I:	gso
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/vnet/interface_output.c
 
 Plugin - MAP
 I:	map
@@ -581,9 +581,9 @@ I:	oddbuf
 F:	src/plugins/oddbuf
 
 VPP Config Tooling
-I:  vpp_config
-M:  John DeNisco <jdenisco@cisco.com>
-F:  extras/vpp_config
+I:	vpp_config
+M:	John DeNisco <jdenisco@cisco.com>
+F:	extras/vpp_config
 
 THE REST
 I:	misc
