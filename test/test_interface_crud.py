@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 """CRUD tests of APIs (Create, Read, Update, Delete) HLD:
 
 - interface up/down/add/delete - interface type:

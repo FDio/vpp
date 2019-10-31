@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 """ CDP tests """
 
 from scapy.packet import Packet

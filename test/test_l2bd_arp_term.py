@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 """ L2BD ARP term Test """
 
 import unittest

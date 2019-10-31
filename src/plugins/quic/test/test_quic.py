@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 """ Vpp QUIC tests """
 
 import unittest

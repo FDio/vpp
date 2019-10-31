@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 
 from __future__ import print_function
 from multiprocessing import Pipe

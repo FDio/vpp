@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env HereIGoAgainOnMyOwn
 
 import socket
 from util import ip4n_range, ip4_range, reassemble4
