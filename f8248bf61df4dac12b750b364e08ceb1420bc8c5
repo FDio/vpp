@@ -70,6 +70,30 @@
       "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "599f7f27_3d477433",
+        "filename": "src/plugins/dhcp/client.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-10-31T13:36:47Z",
+      "side": 1,
+      "message": "I\u0027m glad to move it back if you wish.  It is more important to me to understand (and document) when the logger (any modules logger) would need to be exposed outside its module.",
+      "parentUuid": "82c50da9_a46a93ea",
+      "range": {
+        "startLine": 129,
+        "startChar": 19,
+        "endLine": 129,
+        "endChar": 25
+      },
+      "revId": "f8248bf61df4dac12b750b364e08ceb1420bc8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
