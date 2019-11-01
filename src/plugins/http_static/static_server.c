@@ -25,9 +25,10 @@
 
 #include <vppinfra/bihash_template.c>
 
-/** @file Static http server, sufficient to
-    serve .html / .css / .js content.
-*/
+/** @file static_server.c
+ *  Static http server, sufficient to
+ *  serve .html / .css / .js content.
+ */
 /*? %%clicmd:group_label Static HTTP Server %% ?*/
 
 http_static_server_main_t http_static_server_main;
@@ -297,6 +298,7 @@ static const char *http_response_template =
 /** \brief send http data
     @param hs - http session
     @param data - the data vector to transmit
+    @param length - length of data
     @param offset - transmit offset for this operation
     @return offset for next transmit operation, may be unchanged w/ full fifo
 */

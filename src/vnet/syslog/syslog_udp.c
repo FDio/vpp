@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 /**
- * @file syslog protocol UDP transport layer implementation (RFC5426)
+ * @file syslog_udp.c
+ * syslog protocol UDP transport layer implementation (RFC5426)
  */
 
 #include <vnet/syslog/syslog_udp.h>

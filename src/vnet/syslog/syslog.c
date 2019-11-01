@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 /**
- * @file RFC5424 syslog protocol implementation
+ * @file syslog.c
+ * RFC5424 syslog protocol implementation
  */
 
 #include <unistd.h>

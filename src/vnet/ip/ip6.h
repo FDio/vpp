@@ -370,7 +370,7 @@ clib_error_t *ip6_add_del_interface_address (vlib_main_t * vm,
 void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 /**
- * @brie get first IPv6 interface address
+ * @briefget first IPv6 interface address
  */
 ip6_address_t *ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index);
 

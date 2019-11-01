@@ -95,7 +95,6 @@ igmp_timer_compare (const void *_v1, const void *_v2)
 }
 
 /** \brief igmp get next timer
-    @param im - igmp main
 
     Get next timer.
 */
