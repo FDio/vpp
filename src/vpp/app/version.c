@@ -138,6 +138,7 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show version",
   .short_help = "show version [verbose] [cmdline]",
   .function = show_vpe_version_command_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
