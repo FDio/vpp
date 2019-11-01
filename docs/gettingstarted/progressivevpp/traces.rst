@@ -44,6 +44,28 @@ Add Trace
 
   vpp# trace add af-packet-input 10
 
+The following list of nodes are supported under trace add:
+
+* af-packet-input
+* avf-input
+* bond-process
+* dpdk-crypto-input
+* dpdk-input
+* handoff-trace
+* ixge-input
+* memif-input
+* mrvl-pp2-input
+* netmap-input
+* p2p-ethernet-input
+* pg-input
+* punt-socket-rx
+* rdma-input
+* session-queue
+* tuntap-rx
+* vhost-user-input
+* virtio-input
+* vmxnet3-input
+
 Ping from Host to VPP
 ----------------------
 
