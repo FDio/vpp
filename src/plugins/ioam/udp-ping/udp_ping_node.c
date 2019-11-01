@@ -391,8 +391,8 @@ VLIB_CLI_COMMAND (show_udp_ping_cmd, static) =
  * out udp probe packets for all configured sessions.
  *
  * @param vm    vlib_main_t corresponding to the current thread.
- * @param node  vlib_node_runtime_t data for this node.
- * @param frame vlib_frame_t whose contents should be dispatched.
+ * @param rt    vlib_node_runtime_t data for this node.
+ * @param f     vlib_frame_t whose contents should be dispatched.
  *
  */
 uword

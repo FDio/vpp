@@ -37,7 +37,8 @@
 
 #include <vppinfra/random.h>
 
-/** \file Random number support
+/** \file random.c
+    Random number support
  */
 
 /** \brief Default random seed for standalone version of library.

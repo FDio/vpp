@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 /**
- * @file RFC5424 syslog protocol declarations
+ * @file syslog.h
+ * RFC5424 syslog protocol declarations
  */
 #ifndef __included_syslog_h__
 #define __included_syslog_h__

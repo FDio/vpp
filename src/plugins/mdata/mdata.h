@@ -23,7 +23,8 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
-/** @file buffer metadata change tracker definitions
+/** @file mdata.h
+ * buffer metadata change tracker definitions
  */
 
 typedef struct

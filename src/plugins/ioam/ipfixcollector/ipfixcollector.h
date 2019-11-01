@@ -36,7 +36,7 @@ typedef struct
   /** Node index where packets have to be redirected. */
   u32 client_node;
 
-  /** Setid of IPFix for which client is intereseted in getting packets. */
+  /** Setid of IPFix for which client is interested in getting packets. */
   u16 ipfix_setid;
 
   /** Add(0) or del(1) operation. */
@@ -58,7 +58,7 @@ typedef struct
   /** ipfix-collector next index where packets have to be redirected. */
   u32 client_next_node;
 
-  /** Setid of IPFix for which client is intereseted in getting packets. */
+  /** Setid of IPFix for which client is interested in getting packets. */
   u16 set_id;
 } ipfix_client;
 
@@ -91,9 +91,9 @@ extern ipfix_collector_main_t ipfix_collector_main;
  * This function can be used by other VPP graph nodes to receive IP-FIX packets
  * with a particular setid.
  *
- * @param vlib_main_t Vlib main of the graph node which is interseted in
+ * @param vm Vlib main of the graph node which is interested in
  *                    getting IP-Fix packet.
- * @param ipfix_client_add_del_t Structure describing the client node which
+ * @param info Structure describing the client node which
  *                               is interested in getting the IP-Fix packets for
  *                               a SetID.
  *
