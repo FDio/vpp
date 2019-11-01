@@ -46,6 +46,30 @@
       "revId": "3145bf64d8cbb937fbd138ec03212d3358072460",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "76e5c3d0_ba854b7a",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-01T19:42:34Z",
+      "side": 1,
+      "message": "agreed.  work in progress... https://gerrit.fd.io/r/#/c/vpp/+/23168/",
+      "parentUuid": "2835a6c5_a6605f54",
+      "range": {
+        "startLine": 47,
+        "startChar": 5,
+        "endLine": 47,
+        "endChar": 9
+      },
+      "revId": "3145bf64d8cbb937fbd138ec03212d3358072460",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
