@@ -16,15 +16,16 @@ schema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
-        "description": { "type": "string" },
-        "maintainer": { "type": "string" },
+        "description": {"type": "string"},
+        "maintainer": {"type": "string"},
         "state": {"type": "string",
                   "enum": ["production", "experimental"]},
-        "features": { "$ref": "#/definitions/features" },
-        "missing": { "$ref": "#/definitions/features" },
-        "properties": { "type": "array",
-                       "items": { "type": "string",
-                                  "enum": ["API", "CLI", "STATS", "MULTITHREAD"] },
+        "features": {"$ref": "#/definitions/features"},
+        "missing": {"$ref": "#/definitions/features"},
+        "properties": {"type": "array",
+                       "items": {"type": "string",
+                                 "enum": ["API", "CLI", "STATS",
+                                          "MULTITHREAD"]},
                        },
     },
     "additionalProperties": False,
@@ -32,19 +33,18 @@ schema = {
         "featureobject": {
             "type": "object",
             "patternProperties": {
-                "^.*$": { "$ref": "#/definitions/features" },
+                "^.*$": {"$ref": "#/definitions/features"},
             },
         },
         "features": {
             "type": "array",
-            "items": {"anyOf": [{ "$ref": "#/definitions/featureobject" },
-                      { "type": "string" },
-            ]},
+            "items": {"anyOf": [{"$ref": "#/definitions/featureobject"},
+                                {"type": "string"},
+                                ]},
             "minItems": 1,
         },
     },
 }
-
 
 
 def filelist_from_git_status():
@@ -59,6 +59,7 @@ def filelist_from_git_status():
             filelist.append(l.split()[1])
     return filelist
 
+
 def filelist_from_git_ls():
     filelist = []
     git_ls = 'git ls-files :(top)*/FEATURE.yaml'
@@ -71,17 +72,19 @@ def filelist_from_git_ls():
             filelist.append(l)
     return filelist
 
+
 def output_features(indent, fl):
     for f in fl:
         if type(f) is dict:
-            for k,v in f.items():
+            for k, v in f.items():
                 print('{}- {}'.format(' ' * indent, k))
                 output_features(indent + 2, v)
         else:
             print('{}- {}'.format(' ' * indent, f))
 
+
 def output_markdown(features):
-    for k,v in features.items():
+    for k, v in features.items():
         print('# {}'.format(v['name']))
         print('Maintainer: {}  '.format(v['maintainer']))
         print('State: {}\n'.format(v['state']))
@@ -91,6 +94,7 @@ def output_markdown(features):
             print('\n## Missing')
             output_features(0, v['missing'])
         print()
+
 
 def main():
     parser = argparse.ArgumentParser(description='VPP Feature List.')
@@ -120,12 +124,13 @@ def main():
 
         # Load configuration file
         with open(featurefile) as f:
-            cfg = yaml.load(f)
+            cfg = yaml.load(f, Loader=yaml.SafeLoader)
         validate(instance=cfg, schema=schema)
         features[featurefile] = cfg
 
     if args.markdown:
         output_markdown(features)
+
 
 if __name__ == '__main__':
     main()
