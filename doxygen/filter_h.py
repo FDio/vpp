@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 Comcast Cable Communications Management, LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,9 @@
 
 # Filter for .c files to make various preprocessor tricks Doxygenish
 
-import os, sys, re
+import os
+import re
+import sys
 
 if len(sys.argv) < 2:
     sys.stderr.write("Usage: %s <filename>\n" % (sys.argv[0]))
@@ -24,8 +26,9 @@ if len(sys.argv) < 2:
 replace_patterns = [
     # Search for CLIB_PAD_FROM_TO(...); and replace with padding
     # #define CLIB_PAD_FROM_TO(from,to) u8 pad_##from[(to) - (from)]
-    ( re.compile("(?P<m>CLIB_PAD_FROM_TO)\s*[(](?P<from>[^,]+),\s*(?P<to>[^)]+)[)]"),
-        r"/** Padding. */ u8 pad_\g<from>[(\g<to>) - (\g<from>)]" ),
+    (re.compile(r"(?P<m>CLIB_PAD_FROM_TO)\s*[(](?P<from>[^,]+),"
+                r"\s*(?P<to>[^)]+)[)]"),
+     r"/** Padding. */ u8 pad_\g<from>[(\g<to>) - (\g<from>)]"),
 
 ]
 
@@ -42,7 +45,7 @@ with open(filename) as fd:
 
     for line in fd:
         line_num += 1
-        str = line[:-1] # filter \n
+        str = line[:-1]  # filter \n
 
         # Look for search/replace patterns
         for p in replace_patterns:

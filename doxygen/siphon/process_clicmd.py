@@ -14,7 +14,8 @@
 
 # Generate clicmd formatted output
 
-import process, parsers
+from . import process, parsers
+
 
 class SiphonCLICMD(process.Siphon):
 
@@ -24,7 +25,6 @@ class SiphonCLICMD(process.Siphon):
     def __init__(self, *args, **kwargs):
         super(SiphonCLICMD, self).__init__(*args, **kwargs)
         self._parser = parsers.MacroInitializer()
-
 
     # Output renderers
 

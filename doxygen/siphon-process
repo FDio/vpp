@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 Comcast Cable Communications Management, LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,39 +17,45 @@
 # The idea is to siphon off certain initializers so that we can better
 # auto-document the contents of that initializer.
 
-import os, sys, argparse, logging
+import argparse
+import logging
+import os
+import sys
+
 import siphon
 
 DEFAULT_LOGFILE = None
 DEFAULT_LOGLEVEL = "info"
-DEFAULT_SIPHON ="clicmd"
+DEFAULT_SIPHON = "clicmd"
 DEFAULT_FORMAT = "markdown"
 DEFAULT_OUTPUT = None
 DEFAULT_TEMPLATES = os.path.dirname(__file__) + "/siphon_templates"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--log-file", default=DEFAULT_LOGFILE,
-        help="Log file [%s]" % DEFAULT_LOGFILE)
+                help="Log file [%s]" % DEFAULT_LOGFILE)
 ap.add_argument("--log-level", default=DEFAULT_LOGLEVEL,
-        choices=["debug", "info", "warning", "error", "critical"],
-        help="Logging level [%s]" % DEFAULT_LOGLEVEL)
+                choices=["debug", "info", "warning", "error", "critical"],
+                help="Logging level [%s]" % DEFAULT_LOGLEVEL)
 
 ap.add_argument("--type", '-t', metavar="siphon_type", default=DEFAULT_SIPHON,
-        choices=siphon.process.siphons.keys(),
-        help="Siphon type to process [%s]" % DEFAULT_SIPHON)
+                choices=siphon.process.siphons.keys(),
+                help="Siphon type to process [%s]" % DEFAULT_SIPHON)
 ap.add_argument("--format", '-f', default=DEFAULT_FORMAT,
-        choices=siphon.process.formats.keys(),
-        help="Output format to generate [%s]" % DEFAULT_FORMAT)
+                choices=siphon.process.formats.keys(),
+                help="Output format to generate [%s]" % DEFAULT_FORMAT)
 ap.add_argument("--output", '-o', metavar="file", default=DEFAULT_OUTPUT,
-        help="Output file (uses stdout if not defined) [%s]" % DEFAULT_OUTPUT)
+                help="Output file (uses stdout if not defined) [%s]" %
+                     DEFAULT_OUTPUT)
 ap.add_argument("--templates", metavar="directory", default=DEFAULT_TEMPLATES,
-        help="Path to render templates directory [%s]" % DEFAULT_TEMPLATES)
+                help="Path to render templates directory [%s]" %
+                     DEFAULT_TEMPLATES)
 ap.add_argument("input", nargs='+', metavar="input_file",
-        help="Input .siphon files")
+                help="Input .siphon files")
 args = ap.parse_args()
 
 logging.basicConfig(filename=args.log_file,
-        level=getattr(logging, args.log_level.upper(), None))
+                    level=getattr(logging, args.log_level.upper(), None))
 log = logging.getLogger("siphon_process")
 
 # Determine where to send the generated output
