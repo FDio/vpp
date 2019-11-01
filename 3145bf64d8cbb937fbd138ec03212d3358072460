@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb58c9aa_7f137633",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-01T17:54:55Z",
+      "side": 1,
+      "message": "This logs errors in doxygen, I can clean it up in my patch...\nIt now need to be \\file src/vlib/cli.c \u003cdescription\u003e\n\nCan you show me how to update that in your emacs skels?",
+      "range": {
+        "startLine": 47,
+        "startChar": 5,
+        "endLine": 47,
+        "endChar": 9
+      },
+      "revId": "3145bf64d8cbb937fbd138ec03212d3358072460",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
