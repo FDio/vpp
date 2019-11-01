@@ -64,7 +64,8 @@ typedef struct l3xc_t_
 /**
  * Create or update an L3XC Policy
  *
- * @param sw_if_index_index the input interface
+ * @param sw_if_index the input interface
+ * @param is_ipv6 - 0 if ip4, 1 if ip6
  * @param rpaths The set of paths to add to the forwarding set
  * @return error code
  */
@@ -74,7 +75,8 @@ extern int l3xc_update (u32 sw_if_index,
 /**
  * Delete an L3XC.
  *
- * @param sw_if_index_index the input interface
+ * @param sw_if_index the input interface
+ * @param is_ipv6 - 0 if ip4, 1 if ip6
  */
 extern int l3xc_delete (u32 sw_if_index, u8 is_ip6);
 
@@ -89,7 +91,7 @@ typedef int (*l3xc_walk_cb_t) (index_t l3xci, void *ctx);
 extern void l3xc_walk (l3xc_walk_cb_t cb, void *ctx);
 
 /**
- * Find a L3 XC object from an interfce and FIB protocol
+ * Find a L3 XC object from an interface and FIB protocol
  */
 extern index_t l3xc_find (u32 sw_if_index, fib_protocol_t fproto);
 
