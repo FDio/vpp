@@ -39,6 +39,8 @@ macro(add_vpp_plugin name)
     set_property(GLOBAL APPEND PROPERTY VPP_API_FILES ${rpath}/${f})
     install(
       FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
+      ${CMAKE_CURRENT_BINARY_DIR}/${f}_enum.h
+      ${CMAKE_CURRENT_BINARY_DIR}/${f}_types.h
       DESTINATION include/vpp_plugins/${name}/${dir}
       COMPONENT ${PLUGIN_DEV_COMPONENT}
     )

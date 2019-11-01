@@ -44,6 +44,8 @@ foreach(file ${VPP_API_FILES})
   get_filename_component(dir ${file} DIRECTORY)
   install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
     DESTINATION include/vpp/${dir}
     COMPONENT vpp-dev
   )
