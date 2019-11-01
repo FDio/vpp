@@ -32,7 +32,8 @@
 
 mdata_main_t mdata_main;
 
-/** @file buffer metadata change tracker
+/** @file mdata.c
+ * buffer metadata change tracker
  */
 
 static mdata_t mdata_none;

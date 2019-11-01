@@ -33,11 +33,10 @@ int igmp_enable_disable (u32 sw_if_index, u8 enable, u8 mode);
 /**
  * @brief igmp listen (RFC3376 Section 2).
  * @param vm - vlib main
- * @param enable - 0 == remove (S,G), else add (S,G), aka. include/exclue
+ * @param enable - 0 == remove (S,G), else add (S,G), aka. include/exclude
  * @param sw_if_index - interface sw_if_index
  * @param saddr - source address
  * @param gaddr - group address
- * @param cli_api_configured - if zero, an igmp report has been received on interface
  *
  *   Add/del (S,G) on an interface. If user configured,
  *   send a status change report from the interface.

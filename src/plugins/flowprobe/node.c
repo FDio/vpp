@@ -26,7 +26,8 @@
 static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);
 
 /**
- * @file flow record generator graph node
+ * @file node.c
+ * flow record generator graph node
  */
 
 typedef struct

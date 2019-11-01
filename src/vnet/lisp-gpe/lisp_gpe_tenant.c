@@ -272,7 +272,7 @@ lisp_gpe_tenant_flush (void)
 }
 
 /**
- * @brif Show/display one tenant
+ * @brief Show/display one tenant
  */
 static u8 *
 format_lisp_gpe_tenant (u8 * s, va_list * ap)

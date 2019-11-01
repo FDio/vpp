@@ -31,8 +31,9 @@
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 #include <vppinfra/bihash_vec8_8.h>
 
-/** @file Static http server definitions
-*/
+/** @file http_static.h
+ * Static http server definitions
+ */
 
 typedef struct
 {
