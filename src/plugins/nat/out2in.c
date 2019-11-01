@@ -315,6 +315,7 @@ static_always_inline
  * @param[in,out] node           NAT node runtime
  * @param[in] thread_index       thread index
  * @param[in,out] b0             buffer containing packet to be translated
+ * @param[in,out] ip0            ip header
  * @param[out] p_proto           protocol used for matching
  * @param[out] p_value           address and port after NAT translation
  * @param[out] p_dont_translate  if packet should not be translated
@@ -445,6 +446,7 @@ out:
  * @param[in,out] node           NAT node runtime
  * @param[in] thread_index       thread index
  * @param[in,out] b0             buffer containing packet to be translated
+ * @param[in,out] ip0            ip header
  * @param[out] p_proto           protocol used for matching
  * @param[out] p_value           address and port after NAT translation
  * @param[out] p_dont_translate  if packet should not be translated

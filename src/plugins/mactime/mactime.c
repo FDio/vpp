@@ -34,7 +34,8 @@
 
 mactime_main_t mactime_main;
 
-/** \file time-base src-mac filter device-input feature arc implementation
+/** \file mactime.c
+ * time-base src-mac filter device-input feature arc implementation
  */
 
 static void

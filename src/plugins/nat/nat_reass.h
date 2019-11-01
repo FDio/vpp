@@ -265,7 +265,7 @@ int nat_ip4_reass_add_fragment (u32 thread_index, nat_reass_ip4_t * reass,
 void nat_ip4_reass_get_frags (nat_reass_ip4_t * reass, u32 ** bi);
 
 /**
- * @breif Call back function when walking IPv4 reassemblies, non-zero return
+ * @brief Call back function when walking IPv4 reassemblies, non-zero return
  * value stop walk.
  */
 typedef int (*nat_ip4_reass_walk_fn_t) (nat_reass_ip4_t * reass, void *ctx);
@@ -316,7 +316,7 @@ int nat_ip6_reass_add_fragment (u32 thread_index, nat_reass_ip6_t * reass,
 void nat_ip6_reass_get_frags (nat_reass_ip6_t * reass, u32 ** bi);
 
 /**
- * @breif Call back function when walking IPv6 reassemblies, non-zero return
+ * @brief Call back function when walking IPv6 reassemblies, non-zero return
  * value stop walk.
  */
 typedef int (*nat_ip6_reass_walk_fn_t) (nat_reass_ip6_t * reass, void *ctx);

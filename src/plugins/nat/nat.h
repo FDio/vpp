@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 /**
- * @file NAT plugin global declarations
+ * @file nat.c
+ * NAT plugin global declarations
  */
 #ifndef __included_nat_h__
 #define __included_nat_h__
@@ -497,7 +498,7 @@ typedef u32 (snat_icmp_match_function_t) (struct snat_main_s * sm,
 typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip,
 					  u32 rx_fib_index, u8 is_output);
 
-/* NAT address and port allacotaion function */
+/* NAT address and port allocation function */
 typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
 						      addresses,
 						      u32 fib_index,
@@ -554,7 +555,7 @@ typedef struct snat_main_s
   /* vector of outside fibs */
   nat_outside_fib_t *outside_fibs;
 
-  /* Vector of twice NAT addresses for extenal hosts */
+  /* Vector of twice NAT addresses for external hosts */
   snat_address_t *twice_nat_addresses;
 
   /* sw_if_indices whose intfc addresses should be auto-added */
@@ -745,13 +746,13 @@ unformat_function_t unformat_snat_protocol;
 #define is_affinity_sessions(s) (s->flags & SNAT_SESSION_FLAG_AFFINITY)
 
 /** \brief Check if NAT interface is inside.
-    @param i NAT interfce
+    @param i NAT interface
     @return 1 if inside interface
 */
 #define nat_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
 
 /** \brief Check if NAT interface is outside.
-    @param i NAT interfce
+    @param i NAT interface
     @return 1 if outside interface
 */
 #define nat_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
@@ -1067,6 +1068,7 @@ void increment_v4_address (ip4_address_t * a);
 /**
  * @brief Add external address to NAT44 pool
  *
+ * @param sm        snat global configuration data
  * @param addr      IPv4 address
  * @param vrf_id    VRF id of tenant, ~0 means independent of VRF
  * @param twice_nat 1 if twice NAT address
@@ -1079,6 +1081,7 @@ int snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 /**
  * @brief Delete external address from NAT44 pool
  *
+ * @param sm        snat global configuration data
  * @param addr      IPv4 address
  * @param delete_sm 1 if delete static mapping using address
  * @param twice_nat 1 if twice NAT address
@@ -1185,11 +1188,11 @@ int snat_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
 					   int is_del);
 
 /**
- * @brief Add/delete NAT44 pool address from specific interfce
+ * @brief Add/delete NAT44 pool address from specific interface
  *
  * @param sw_if_index software index of the interface
  * @param is_del      1 = delete, 0 = add
- * @param twice_nat   1 = twice NAT address for extenal hosts
+ * @param twice_nat   1 = twice NAT address for external hosts
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -1213,6 +1216,7 @@ int nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
 /**
  * @brief Delete NAT44 endpoint-dependent session
  *
+ * @param sm     snat global configuration data
  * @param addr   IPv4 address
  * @param port   L4 port number
  * @param proto  L4 protocol
@@ -1226,8 +1230,9 @@ int nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
 			  u32 vrf_id, int is_in);
 
 /**
- * @brief Free NAT44 session data (lookup keys, external addrres port)
+ * @brief Free NAT44 session data (lookup keys, external address port)
  *
+ * @param sm           snat global configuration data
  * @param s            NAT session
  * @param thread_index thread index
  * @param is_ha        is HA event
@@ -1238,6 +1243,7 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 /**
  * @brief Find or create NAT user
  *
+ * @param sm           snat global configuration data
  * @param addr         IPv4 address
  * @param fib_index    FIB table index
  * @param thread_index thread index
@@ -1250,8 +1256,10 @@ snat_user_t *nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr,
 /**
  * @brief Allocate new NAT session or recycle last used
  *
+ * @param sm           snat global configuration data
  * @param u            NAT user
  * @param thread_index thread index
+ * @param now          time now
  *
  * @return session data structure on success otherwise zero value
  */
@@ -1262,8 +1270,10 @@ snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 /**
  * @brief Allocate NAT endpoint-dependent session
  *
+ * @param sm           snat global configuration data
  * @param u            NAT user
  * @param thread_index thread index
+ * @param now          time now
  *
  * @return session data structure on success otherwise zero value
  */
@@ -1311,7 +1321,7 @@ void snat_free_outside_address_and_port (snat_address_t * addresses,
  * @param fib_index         FIB table index
  * @param thread_index      thread index
  * @param k                 allocated address and port pair
- * @param port_per_thread   number of ports per threead
+ * @param port_per_thread   number of ports per thread
  * @param snat_thread_index NAT thread index
  *
  * @return 0 on success, non-zero value otherwise

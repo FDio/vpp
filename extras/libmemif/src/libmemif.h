@@ -16,7 +16,7 @@
  */
 
 /** @file
- *  @defgroup libmemif
+ *  @defgroup libmemif Example libmemif App
  */
 
 #ifndef _LIBMEMIF_H_
