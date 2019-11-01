@@ -103,7 +103,6 @@ extern void igmp_clear_config (igmp_config_t * config);
 
 /**
  * @brief igmp config lookup
- *  @param im - igmp main
  *  @param sw_if_index - interface sw_if_index
  */
 extern igmp_config_t *igmp_config_lookup (u32 sw_if_index);

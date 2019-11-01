@@ -20,7 +20,8 @@
 #ifndef included_api_common_h
 #define included_api_common_h
 
-/** \file API common definitions
+/** \file api_common.h
+ *  API common definitions
  * See api_doc.md for more info
  */
 
