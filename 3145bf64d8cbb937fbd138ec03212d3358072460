@@ -22,6 +22,30 @@
       "revId": "3145bf64d8cbb937fbd138ec03212d3358072460",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2835a6c5_a6605f54",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-11-01T19:28:12Z",
+      "side": 1,
+      "message": "This is hardly the only example. I\u0027ll push a new patch set to fix this one.",
+      "parentUuid": "bb58c9aa_7f137633",
+      "range": {
+        "startLine": 47,
+        "startChar": 5,
+        "endLine": 47,
+        "endChar": 9
+      },
+      "revId": "3145bf64d8cbb937fbd138ec03212d3358072460",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
