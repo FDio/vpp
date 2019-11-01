@@ -14,7 +14,8 @@
 
 # Generate syscfg formatted output
 
-import process, parsers
+from . import process, parsers
+
 
 class SiphonSYSCFG(process.Siphon):
 

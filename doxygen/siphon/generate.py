@@ -14,12 +14,14 @@
 
 # Generate .siphon source fragments for later processing
 
+import json
 import logging
-import os, sys, re, json
+import os
+import re
 
 """List of (regexp, siphon_name) tuples for matching the start of C
    initializer blocks in source files. Each siphon class registers
-   themselves on tihs list."""
+   themselves on this list."""
 siphon_patterns = []
 
 class Generate(object):
