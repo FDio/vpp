@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 Comcast Cable Communications Management, LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,8 @@
 
 # Filter for vpe.api to make it Doxygenish.
 
-import sys, re
+import re
+import sys
 
 if len(sys.argv) < 2:
     sys.stderr.write("Usage: %s <filename>\n" % (sys.argv[0]))
@@ -23,15 +24,18 @@ if len(sys.argv) < 2:
 
 patterns = [
     # Search for "define" blocks and treat them as structs
-    ( re.compile(r"^.*(manual_.[^\s]+\s+)?define\s+(?P<name>[^\s]+)"), r"typedef struct vl_api_\g<name>_t"),
+    (re.compile(r"^.*(manual_.[^\s]+\s+)?define\s+(?P<name>[^\s]+)"),
+     r"typedef struct vl_api_\g<name>_t"),
 
     # For every "brief" statement at the start of a comment block, add an
     # xref with whatever is on the same line. This gives us an index page
     # with all the API methods in one place.
     # XXX Commented out for now; works but duplicates the brief text in the
     # struct documentation
-    #( re.compile(r"/\*\*\s*(?P<b>[\\@]brief)\s+(?P<c>.+)(\*/)$"), r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),  # capture inline comment close
-    #( re.compile(r"/\*\*\s*(?P<b>[\\@]brief)\s+(?P<c>.+)$"), r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),
+    # (re.compile(r"/\*\*\s*(?P<b>[\\@]brief)\s+(?P<c>.+)(\*/)$"),
+    #  r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),  # capture inline comment close
+    # (re.compile(r"/\*\*\s*(?P<b>[\\@]brief)\s+(?P<c>.+)$"),
+    #  r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),
 
     # Since structs don't have params, replace @param with @tparam
     ( re.compile("[\\@]param\\b"), "@tparam"),

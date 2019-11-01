@@ -14,11 +14,11 @@
 
 # Siphon classes
 
-import generate
-import generate_clicmd
-import generate_syscfg
+from . import generate
+from . import generate_clicmd
+from . import generate_syscfg
 
-import parsers
-import process
-import process_clicmd
-import process_syscfg
+from . import parsers
+from . import process
+from . import process_clicmd
+from . import process_syscfg

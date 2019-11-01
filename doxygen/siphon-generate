@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 Comcast Cable Communications Management, LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +17,10 @@
 # off into another file for later parsing; ostensibly to generate
 # documentation from struct initializer data.
 
-import os, sys, argparse, logging
+import argparse
+import logging
+import os
+
 import siphon
 
 DEFAULT_LOGFILE = None
@@ -27,26 +30,28 @@ DEFAULT_PREFIX = os.getcwd()
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--log-file", default=DEFAULT_LOGFILE,
-        help="Log file [%s]" % DEFAULT_LOGFILE)
+                help="Log file [%s]" % DEFAULT_LOGFILE)
 ap.add_argument("--log-level", default=DEFAULT_LOGLEVEL,
-        choices=["debug", "info", "warning", "error", "critical"],
-        help="Logging level [%s]" % DEFAULT_LOGLEVEL)
+                choices=["debug", "info", "warning", "error", "critical"],
+                help="Logging level [%s]" % DEFAULT_LOGLEVEL)
 
 ap.add_argument("--output", '-o', metavar="directory", default=DEFAULT_OUTPUT,
-        help="Output directory for .siphon files [%s]" % DEFAULT_OUTPUT)
+                help="Output directory for .siphon files [%s]" %
+                     DEFAULT_OUTPUT)
 ap.add_argument("--input-prefix", metavar="path", default=DEFAULT_PREFIX,
-        help="Prefix to strip from input pathnames [%s]" % DEFAULT_PREFIX)
+                help="Prefix to strip from input pathnames [%s]" %
+                     DEFAULT_PREFIX)
 ap.add_argument("input", nargs='+', metavar="input_file",
-        help="Input C source files")
+                help="Input C source files")
 args = ap.parse_args()
 
 logging.basicConfig(filename=args.log_file,
-        level=getattr(logging, args.log_level.upper(), None))
+                    level=getattr(logging, args.log_level.upper(), None))
 log = logging.getLogger("siphon_generate")
 
 
 generate = siphon.generate.Generate(output_directory=args.output,
-    input_prefix=args.input_prefix)
+                                    input_prefix=args.input_prefix)
 
 # Pre-process file names in case they indicate a file with
 # a list of files

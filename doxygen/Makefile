@@ -33,9 +33,9 @@ endif
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 # Package dependencies
-DOC_DEB_DEPENDS = doxygen graphviz python-pyparsing python-jinja2
-DOC_RPM_DEPENDS = doxygen graphviz pyparsing python-jinja2
-DOC_SUSE_RPM_DEPENDS = doxygen graphviz python-pyparsing python-Jinja2
+DOC_DEB_DEPENDS = doxygen graphviz python3-pyparsing python3-jinja2
+DOC_RPM_DEPENDS = doxygen graphviz python3-pyparsing python3-jinja2
+DOC_SUSE_RPM_DEPENDS = doxygen graphviz python3-pyparsing python3-Jinja2
 DOC_MAC_BIN_DEPENDS = doxygen dot git
 DOC_MAC_PY_DEPENDS = pyparsing jinja2
 
