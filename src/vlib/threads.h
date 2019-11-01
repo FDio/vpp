@@ -416,12 +416,12 @@ vlib_worker_thread_barrier_check (void)
 	  ed->thread_index = thread_index;
 	}
 
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
       if (CLIB_DEBUG > 0)
 	{
 	  vm = vlib_get_main ();
 	  vm->parked_at_barrier = 1;
 	}
+      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
       while (*vlib_worker_threads->wait_at_barrier)
 	;
 
