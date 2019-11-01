@@ -26,7 +26,7 @@ typedef struct
   /* VRF index */
   u32 vrf_id;
 
-  /* upstrema interface */
+  /* upstream interface */
   u32 upstream_if;
 
   /* downstream interfaces */
@@ -41,7 +41,7 @@ typedef struct
  *
  * Add/del IGMP proxy device. Interface must be IGMP enabled in HOST mode.
  */
-int igmp_proxy_device_add_del (u32 vfr_id, u32 sw_if_index, u8 add);
+int igmp_proxy_device_add_del (u32 vrf_id, u32 sw_if_index, u8 add);
 
 /**
  * @brief IGMP proxy device add/del interface

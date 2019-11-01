@@ -400,7 +400,7 @@ fib_walk_advance (fib_node_index_t fwi)
 }
 
 /**
- * @breif Enurmerate the times of sleep between walks
+ * @brief Enurmerate the times of sleep between walks
  */
 typedef enum fib_walk_sleep_type_t_
 {

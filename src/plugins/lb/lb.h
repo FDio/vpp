@@ -592,6 +592,8 @@ extern vlib_node_registration_t lb_nat6_in2out_node;
  * Fix global load-balancer parameters.
  * @param ip4_address IPv4 source address used for encapsulated traffic
  * @param ip6_address IPv6 source address used for encapsulated traffic
+ * @param sticky_buckets FIXME
+ * @param flow_timeout FIXME
  * @return 0 on success. VNET_LB_ERR_XXX on error
  */
 int lb_conf(ip4_address_t *ip4_address, ip6_address_t *ip6_address,

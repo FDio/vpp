@@ -85,6 +85,7 @@ format_nat_det_in2out_trace (u8 * s, va_list * args)
  * @param[in,out] node           NAT node runtime
  * @param[in] thread_index       thread index
  * @param[in,out] b0             buffer containing packet to be translated
+ * @param[in,out] ip0            ip header
  * @param[out] p_proto           protocol used for matching
  * @param[out] p_value           address and port after NAT translation
  * @param[out] p_dont_translate  if packet should not be translated
