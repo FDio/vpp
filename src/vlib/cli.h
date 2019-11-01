@@ -126,6 +126,8 @@ typedef struct vlib_cli_command_t
   /* List of CLI commands, built by constructors */
   struct vlib_cli_command_t *next_cli_command;
 
+  /* Hit counter */
+  u32 hit_counter;
 } vlib_cli_command_t;
 
 typedef void (vlib_cli_output_function_t) (uword arg,
@@ -149,6 +151,10 @@ typedef struct
 
   /* registration list added by constructors */
   vlib_cli_command_t *cli_command_registrations;
+
+  /* index vector, to sort commands, etc. */
+  u32 *sort_vector;
+
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT
