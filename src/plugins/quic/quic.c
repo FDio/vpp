@@ -501,13 +501,25 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
   QUIC_DBG (3, "Enqueuing %u at off %u in %u space", len, off, max_enq);
   if (off - stream_data->app_rx_data_len + len > max_enq)
     {
-      QUIC_DBG (1, "Error RX fifo is full");
+      QUIC_ERR ("Session [idx %u, app_wrk %u, thread %u, rx-fifo 0x%llx]: "
+		"RX fifo is full (max_enq %u, len %u, "
+		"app_rx_data_len %u, off %u, ToBeNQ %u)",
+		stream_session->session_index,
+		stream_session->app_wrk_index,
+		stream_session->thread_index, f,
+		max_enq, len, stream_data->app_rx_data_len, off,
+		off - stream_data->app_rx_data_len + len);
       return 1;
     }
   if (off == stream_data->app_rx_data_len)
     {
       /* Streams live on the same thread so (f, stream_data) should stay consistent */
       rlen = svm_fifo_enqueue (f, len, (u8 *) src);
+      QUIC_DBG (3, "Session [idx %u, app_wrk %u, ti %u, rx-fifo 0x%llx]: "
+		"Enqueuing %u (rlen %u) at off %u in %u space, ",
+		stream_session->session_index,
+		stream_session->app_wrk_index,
+		stream_session->thread_index, f, len, rlen, off, max_enq);
       stream_data->app_rx_data_len += rlen;
       ASSERT (rlen >= len);
       app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
@@ -1872,20 +1884,20 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 
   if (cur_deq < SESSION_CONN_HDR_LEN)
     {
-      QUIC_DBG (1, "Not enough data for even a header in RX");
+      QUIC_ERR ("Not enough data for even a header in RX");
       return 1;
     }
   ret = svm_fifo_peek (f, *fifo_offset, SESSION_CONN_HDR_LEN, (u8 *) & ph);
   if (ret != SESSION_CONN_HDR_LEN)
     {
-      QUIC_DBG (1, "Not enough data for header in RX");
+      QUIC_ERR ("Not enough data for header in RX");
       return 1;
     }
   ASSERT (ph.data_offset == 0);
   full_len = ph.data_length + SESSION_CONN_HDR_LEN;
   if (full_len > cur_deq)
     {
-      QUIC_DBG (1, "Not enough data in fifo RX");
+      QUIC_ERR ("Not enough data in fifo RX");
       return 1;
     }
 
@@ -1895,7 +1907,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 		       ph.data_length, packet_ctx->data);
   if (ret != ph.data_length)
     {
-      QUIC_DBG (1, "Not enough data peeked in RX");
+      QUIC_ERR ("Not enough data peeked in RX");
       return 1;
     }
 
@@ -1920,7 +1932,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
       ctx = quic_ctx_get (packet_ctx->ctx_index, thread_index);
       rv = quicly_receive (ctx->conn, NULL, sa, &packet_ctx->packet);
       if (rv)
-	QUIC_DBG (1, "quicly_receive return error %d", rv);
+	QUIC_ERR ("quicly_receive return error %d", rv);
     }
   else if (packet_ctx->ctx_index != UINT32_MAX)
     {
@@ -1950,6 +1962,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 	  }
       }));
       /* *INDENT-ON* */
+      QUIC_ERR ("Opening ctx not found!");;
     }
   else
     {

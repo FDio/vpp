@@ -65,6 +65,11 @@
 #define QUIC_DBG(_lvl, _fmt, _args...)
 #endif
 
+#define QUIC_ERR(_fmt, _args...)                \
+  do {                                          \
+    clib_warning ("QUIC-ERR: " _fmt, ##_args);  \
+  } while (0)
+
 extern vlib_node_registration_t quic_input_node;
 
 typedef enum
