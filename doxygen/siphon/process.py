@@ -14,7 +14,13 @@
 
 # Generation template class
 
-import logging, os,sys, cgi, json, jinja2, HTMLParser
+import html.parser
+import json
+import logging
+import os
+import sys
+
+import jinja2
 
 # Classes register themselves in this dictionary
 """Mapping of known processors to their classes"""
@@ -24,8 +30,8 @@ siphons = {}
 formats = {}
 
 
-"""Generate rendered output for siphoned data."""
 class Siphon(object):
+    """Generate rendered output for siphoned data."""
 
     # Set by subclasses
     """Our siphon name"""
@@ -79,12 +85,11 @@ class Siphon(object):
             keep_trailing_newline=True)
 
         # Convenience, get a reference to the internal escape and
-        # unescape methods in cgi and HTMLParser. These then become
+        # unescape methods in html.parser. These then become
         # available to templates to use, if needed.
-        self._h = HTMLParser.HTMLParser()
-        self.escape = cgi.escape
-        self.unescape = self._h.unescape
-
+        self._h = html.parser.HTMLParser()
+        self.escape = html.escape
+        self.unescape = html.unescape
 
     # Output renderers
 
@@ -168,11 +173,10 @@ class Siphon(object):
 
     """Template processor"""
     def template(self, name, **kwargs):
-      tpl = self._tplenv.get_template(name + self._format.extension)
-      return tpl.render(
+        tpl = self._tplenv.get_template(name + self._format.extension)
+        return tpl.render(
             this=self,
             **kwargs)
-
 
     # Processing methods
 
@@ -196,11 +200,11 @@ class Siphon(object):
             for item in data["items"]:
                 try:
                     o = self._parser.parse(item['block'])
-                except:
-                    self.log.error("Exception parsing item: %s\n%s" \
-                            % (json.dumps(item, separators=(',', ': '),
-                                indent=4),
-                                item['block']))
+                except Exception:
+                    self.log.error("Exception parsing item: %s\n%s"
+                                   % (json.dumps(item, separators=(',', ': '),
+                                                 indent=4),
+                                      item['block']))
                     raise
 
                 # Augment the item with metadata
@@ -247,8 +251,8 @@ class Siphon(object):
             if group.startswith('_'):
                 continue
 
-            self.log.info("Processing items in group \"%s\" (%s)." % \
-                (group, group_sort_key(group)))
+            self.log.info("Processing items in group \"%s\" (%s)." %
+                          (group, group_sort_key(group)))
 
             # Generate the section index entry (write it now)
             out.write(self.index_section(group))
@@ -260,8 +264,8 @@ class Siphon(object):
                 return self.item_sort_key(self._cmds[group][key])
 
             for key in sorted(self._cmds[group].keys(), key=item_sort_key):
-                self.log.debug("--- Processing key \"%s\" (%s)." % \
-                    (key, item_sort_key(key)))
+                self.log.debug("--- Processing key \"%s\" (%s)." %
+                               (key, item_sort_key(key)))
 
                 o = self._cmds[group][key]
                 meta = {
@@ -283,8 +287,8 @@ class Siphon(object):
         out.write(contents)
 
 
-"""Output format class"""
 class Format(object):
+    """Output format class"""
 
     """Name of this output format"""
     name = None
@@ -293,19 +297,21 @@ class Format(object):
     extension = None
 
 
-"""Markdown output format"""
 class FormatMarkdown(Format):
+    """Markdown output format"""
     name = "markdown"
     extension = ".md"
+
 
 # Register 'markdown'
 formats["markdown"] = FormatMarkdown
 
 
-"""Itemlist output format"""
 class FormatItemlist(Format):
+    """Itemlist output format"""
     name = "itemlist"
     extension = ".itemlist"
+
 
 # Register 'itemlist'
 formats["itemlist"] = FormatItemlist
