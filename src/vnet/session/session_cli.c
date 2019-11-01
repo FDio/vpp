@@ -252,7 +252,7 @@ static void
 session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 {
   session_main_t *smm = &session_main;
-  u32 n_closed = 0, thread_index;
+  u32 n_closed, thread_index;
   session_t *pool, *s;
 
   for (thread_index = 0; thread_index < vec_len (smm->wrk); thread_index++)
@@ -284,6 +284,8 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 	vlib_cli_output (vm, "%s%-50s%-15s%-10s%-10s",
 			 thread_index ? "\n" : "",
 			 "Connection", "State", "Rx-f", "Tx-f");
+
+      n_closed = 0;
 
       /* *INDENT-OFF* */
       pool_foreach(s, pool, ({
