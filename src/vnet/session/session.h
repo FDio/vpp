@@ -215,6 +215,14 @@ session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
 
+static inline void
+session_evt_add_head_old (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  clib_llist_add (wrk->event_elts, evt_list, elt,
+		  pool_elt_at_index (wrk->event_elts, wrk->old_head));
+}
+
+
 static inline u32
 session_evt_ctrl_data_alloc (session_worker_t * wrk)
 {
