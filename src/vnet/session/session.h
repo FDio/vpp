@@ -58,6 +58,7 @@ typedef struct session_tx_context_
   u16 snd_mss;
   u16 n_segs_per_evt;
   u8 n_bufs_per_seg;
+  u8 burst_constrained;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
@@ -220,6 +221,14 @@ session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
+
+static inline void
+session_evt_add_head_old (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  clib_llist_add (wrk->event_elts, evt_list, elt,
+		  pool_elt_at_index (wrk->event_elts, wrk->old_head));
+}
+
 
 static inline u32
 session_evt_ctrl_data_alloc (session_worker_t * wrk)
