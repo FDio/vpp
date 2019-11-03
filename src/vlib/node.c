@@ -201,7 +201,8 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 			      uword next_node_index, uword slot)
 {
   vlib_node_main_t *nm = &vm->node_main;
-  vlib_node_t *node, *next;
+  vlib_node_t *node, *next, *old_next;
+  u32 old_next_index;
   uword *p;
 
   ASSERT (vlib_get_thread_index () == 0);
@@ -227,6 +228,14 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 
   vec_validate_init_empty (node->next_nodes, slot, ~0);
   vec_validate (node->n_vectors_by_next_node, slot);
+
+  if ((old_next_index = node->next_nodes[slot]) != ~0u)
+    {
+      hash_unset (node->next_slot_by_node, old_next_index);
+      old_next = vlib_get_node (vm, old_next_index);
+      old_next->prev_node_bitmap =
+	clib_bitmap_andnoti (old_next->prev_node_bitmap, node_index);
+    }
 
   node->next_nodes[slot] = next_node_index;
   hash_set (node->next_slot_by_node, next_node_index, slot);
