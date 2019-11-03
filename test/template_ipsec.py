@@ -803,6 +803,15 @@ class IpsecTun4(object):
             self.assert_equal(rx[IP].dst, self.pg1.remote_ip4)
             self.assert_packet_checksums_valid(rx)
 
+    def verify_esp_padding(self, sa, esp_payload, decrypt_pkt):
+        align = sa.crypt_algo.block_size
+        if align < 4:
+            align = 4
+        exp_len = (len(decrypt_pkt) + 2 + (align - 1)) & ~(align - 1)
+        exp_len += sa.crypt_algo.iv_size
+        exp_len += sa.crypt_algo.icv_size or sa.auth_algo.icv_size
+        self.assertEqual(exp_len, len(esp_payload))
+
     def verify_encrypted(self, p, sa, rxs):
         decrypt_pkts = []
         for rx in rxs:
@@ -811,9 +820,12 @@ class IpsecTun4(object):
             self.assert_packet_checksums_valid(rx)
             self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
             try:
-                decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IP])
+                rx_ip = rx[IP]
+                decrypt_pkt = p.vpp_tun_sa.decrypt(rx_ip)
                 if not decrypt_pkt.haslayer(IP):
                     decrypt_pkt = IP(decrypt_pkt[Raw].load)
+                if rx_ip.proto == socket.IPPROTO_ESP:
+                    self.verify_esp_padding(sa, rx_ip[ESP].data, decrypt_pkt)
                 decrypt_pkts.append(decrypt_pkt)
                 self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
                 self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)

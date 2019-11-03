@@ -99,12 +99,12 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
   ipsec_main_t *im = &ipsec_main;
   sa->crypto_alg = crypto_alg;
   sa->crypto_iv_size = im->crypto_algs[crypto_alg].iv_size;
-  sa->crypto_block_size = im->crypto_algs[crypto_alg].block_size;
+  sa->esp_block_align = clib_max (4, im->crypto_algs[crypto_alg].block_align);
   sa->sync_op_data.crypto_enc_op_id = im->crypto_algs[crypto_alg].enc_op_id;
   sa->sync_op_data.crypto_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
   sa->crypto_calg = im->crypto_algs[crypto_alg].alg;
   ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
-  ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
+  ASSERT (sa->esp_block_align <= ESP_MAX_BLOCK_SIZE);
   if (IPSEC_CRYPTO_ALG_IS_GCM (crypto_alg))
     {
       sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
