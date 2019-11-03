@@ -330,7 +330,10 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	      /* _aad[3] should always be 0 */
 	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0)))
-		_aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
+		{
+		  _aad[2] = _aad[1];
+		  _aad[1] = clib_host_to_net_u32 (sa0->seq_hi);
+		}
 	      else
 		_aad[2] = 0;
 	    }
