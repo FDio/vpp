@@ -1,7 +1,7 @@
 import socket
 import unittest
 from scapy.layers.ipsec import ESP
-from scapy.layers.inet import UDP
+from scapy.layers.inet import IP, ICMP, UDP
 
 from parameterized import parameterized
 from framework import VppTestRunner
@@ -544,6 +544,8 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.run_a_test(self.engine, self.flag, self.algo)
 
     def run_a_test(self, engine, flag, algo, payload_size=None):
+        if engine == "ia32":
+            engine = "native"
         self.vapi.cli("set crypto handler all %s" % engine)
 
         self.ipv4_params = IPsecIPv4Params()
@@ -579,8 +581,16 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.verify_tra_basic4(count=NUM_PKTS)
         self.verify_tun_66(self.params[socket.AF_INET6],
                            count=NUM_PKTS)
+        #
+        # Use an odd-byte payload size to check for correct padding.
+        #
+        # 49 + 2 == 51 which should pad +1 to 52 for 4 byte alignment, +5
+        # to 56 for 8 byte alignment, and +13 to 64 for 64 byte alignment.
+        # This should catch bugs where the code is incorrectly over-padding
+        # for algorithms that don't require it
+        psz = 49 - len(IP()/ICMP()) if payload_size is None else payload_size
         self.verify_tun_44(self.params[socket.AF_INET],
-                           count=NUM_PKTS)
+                           count=NUM_PKTS, payload_size=psz)
 
         LARGE_PKT_SZ = [
             1970,  # results in 2 chained buffers entering decrypt node
