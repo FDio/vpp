@@ -1,8 +1,9 @@
+---
 name: Mapping of Address and Port (MAP)
 maintainer: Ole Troan <ot@cisco.com>
 features:
   - LW46 BR (RFC7596):
-    - Fragmentation and Reassembly
+      - Fragmentation and Reassembly
   - MAP-E BR (RFC7597)
   - MAP-T BR (RFC7599)
 description: "IPv4 as a service mechanisms. Tunnel or translate

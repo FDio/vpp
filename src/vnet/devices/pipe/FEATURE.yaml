@@ -1,8 +1,12 @@
+---
 name: Pipe Device
 maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - L4 checksum offload
-description: "Create a pipe device interface, which can pass packets bidirectionally in one side of the pipe to the other side of the pipe. While similar in behavior to a unix pipe, it is not a host-based pipe."
+description: "Create a pipe device interface, which can pass packets
+              bidirectionally in one side of the pipe to the other side of
+              the pipe. While similar in behavior to a unix pipe, it is
+              not a host-based pipe."
 missing:
   - does not use hw-address
   - does not support tagged traffic

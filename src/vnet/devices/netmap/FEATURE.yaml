@@ -1,9 +1,12 @@
+---
 name: Netmap Device
 maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - L4 checksum offload
-description: "Create a netmap interface, which is a high speed user-space interface that allows VPP to patch into a linux namespace, a linux container, or a physical NIC without the use of DPDK."
+description: "Create a netmap interface, which is a high speed user-space
+              interface that allows VPP to patch into a linux namespace,
+              a linux container, or a physical NIC without the use of DPDK."
 missing:
- - API dump
+  - API dump
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
