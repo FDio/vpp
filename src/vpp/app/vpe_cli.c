@@ -122,7 +122,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtual_ip_cmd_fn_command, static) = {
   .path = "ip virtual",
-  .short_help = "ip virtual <addr> <interface> [mac <Mi>]+",
+  .short_help = "ip virtual <addr> <interface> [mac <Mi>]+ [next-hop <ip4_address>]+",
   .function = virtual_ip_cmd_fn_command_fn,
 };
 /* *INDENT-ON* */
