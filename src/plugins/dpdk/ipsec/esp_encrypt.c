@@ -530,14 +530,19 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  if (is_aead)
 	    {
 	      aad = (u32 *) priv->aad;
-	      aad[0] = clib_host_to_net_u32 (sa0->spi);
-	      aad[1] = clib_host_to_net_u32 (sa0->seq);
+	      aad[0] = esp0->spi;
 
 	      /* aad[3] should always be 0 */
 	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0)))
-		aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
+		{
+		  aad[1] = clib_host_to_net_u32 (sa0->seq_hi);
+		  aad[2] = esp0->seq;
+		}
 	      else
-		aad[2] = 0;
+		{
+		  aad[1] = esp0->seq;
+		  aad[2] = 0;
+		}
 	    }
 	  else
 	    {
