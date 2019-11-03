@@ -112,7 +112,7 @@ format_esp_post_encrypt_trace (u8 * s, va_list * args)
 /* pad packet in input buffer */
 static_always_inline u8 *
 esp_add_footer_and_icv (vlib_main_t * vm, vlib_buffer_t ** last,
-			u8 block_size, u8 icv_sz,
+			u8 esp_align, u8 icv_sz,
 			u16 * next, vlib_node_runtime_t * node,
 			u16 buffer_data_size, uword total_len)
 {
@@ -122,7 +122,7 @@ esp_add_footer_and_icv (vlib_main_t * vm, vlib_buffer_t ** last,
   };
 
   u16 min_length = total_len + sizeof (esp_footer_t);
-  u16 new_length = round_pow2 (min_length, block_size);
+  u16 new_length = round_pow2 (min_length, esp_align);
   u8 pad_bytes = new_length - min_length;
   esp_footer_t *f = (esp_footer_t *) (vlib_buffer_get_current (last[0]) +
 				      last[0]->current_length + pad_bytes);
@@ -587,7 +587,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 buffer_data_size = vlib_buffer_get_default_data_size (vm);
   u32 current_sa_index = ~0, current_sa_packets = 0;
   u32 current_sa_bytes = 0, spi = 0;
-  u8 block_sz = 0, iv_sz = 0, icv_sz = 0;
+  u8 esp_align = 4, iv_sz = 0, icv_sz = 0;
   ipsec_sa_t *sa0 = 0;
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
@@ -648,7 +648,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 	  current_sa_index = sa_index0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
-	  block_sz = sa0->crypto_block_size;
+	  esp_align = sa0->esp_block_align;
 	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
 
@@ -713,7 +713,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	{
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, block_sz, icv_sz,
+	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, esp_align, icv_sz,
 						 next, node,
 						 buffer_data_size,
 						 vlib_buffer_length_in_chain
@@ -789,7 +789,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  vlib_buffer_advance (b[0], ip_len);
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, block_sz, icv_sz,
+	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, esp_align, icv_sz,
 						 next, node,
 						 buffer_data_size,
 						 vlib_buffer_length_in_chain
