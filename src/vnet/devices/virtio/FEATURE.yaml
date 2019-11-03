@@ -1,7 +1,9 @@
+---
 name: Virtio PCI Device
 maintainer: Mohsin Kazmi <sykazmi@cisco.com>
 features:
-  - connection to the emulated pci interface presented to vpp from the host interface.
+  - connection to the emulated pci interface presented to vpp from
+    the host interface.
 description: "Create a virtio-backed PCI device interface"
 missing:
   - API dump filtering by sw_if_index

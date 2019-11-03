@@ -68,7 +68,7 @@ DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
+DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml yamllint
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -89,6 +89,7 @@ RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
+RPM_DEPENDS += yamllint
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
@@ -558,6 +559,7 @@ cscope: cscope.files
 
 checkstyle:
 	@build-root/scripts/checkstyle.sh
+	yamllint $(WS_ROOT)/src
 
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix

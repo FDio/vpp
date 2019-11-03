@@ -1,8 +1,10 @@
+---
 name: Tap Device
 maintainer: damarion@cisco.com sluong@cisco.com sykazmi@cisco.com
 features:
   - Virtio
-description: "Create a tap v2 device interface, which connects to a tap interface on the host system."
+description: "Create a tap v2 device interface, which connects to a
+              tap interface on the host system."
 missing:
 
   - API dump filtering by sw_if_index
