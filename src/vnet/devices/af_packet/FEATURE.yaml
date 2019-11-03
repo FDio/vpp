@@ -1,9 +1,15 @@
+---
 name: host-interface Device (AF_PACKET)
 maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - L4 checksum offload
-description: "Create a host interface that will attach to a linux AF_PACKET interface, one side of a veth pair. The veth pair must already exist. Once created, a new host interface will exist in VPP with the name 'host-<ifname>', where '<ifname>' is the name of the specified veth pair. Use the 'show interface' command to display host interface details."
+description: "Create a host interface that will attach to a linux AF_PACKET
+              interface, one side of a veth pair. The veth pair must
+              already exist. Once created, a new host interface will
+              exist in VPP with the name 'host-<ifname>', where '<ifname>'
+              is the name of the specified veth pair. Use the 'show interface'
+              command to display host interface details."
 missing:
- - API dump details beyond sw_if_index and name
+  - API dump details beyond sw_if_index and name
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
