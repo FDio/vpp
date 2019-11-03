@@ -78,7 +78,7 @@ typedef struct
   vnet_crypto_op_id_t dec_op_id;
   vnet_crypto_alg_t alg;
   u8 iv_size;
-  u8 block_size;
+  u8 block_align;
   u8 icv_size;
 } ipsec_main_crypto_alg_t;
 
