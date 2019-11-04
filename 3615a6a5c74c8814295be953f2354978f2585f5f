@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b208bd0b_0b34c589",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-04T14:36:41Z",
+      "side": 1,
+      "message": "Should these use a local logger? \n\nvlib_log_class_t quic_logger;\n\n#define QUIC_DBG(...)                           \\\n    vlib_log_debug (quic_logger, __VA_ARGS__)\n\n#define QUIC_INFO(...)                          \\\n    vlib_log_info (quic_logger, __VA_ARGS__)",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 13
+      },
+      "revId": "3615a6a5c74c8814295be953f2354978f2585f5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
