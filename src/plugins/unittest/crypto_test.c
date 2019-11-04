@@ -268,6 +268,35 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   return 0;
 }
 
+static u32
+test_crypto_get_key_sz (vnet_crypto_alg_t alg)
+{
+  switch (alg)
+  {
+#define _(n, s, l) \
+  case VNET_CRYPTO_ALG_##n: \
+    return l;
+  foreach_crypto_cipher_alg
+  foreach_crypto_aead_alg
+#undef _
+  case VNET_CRYPTO_ALG_HMAC_MD5:
+  case VNET_CRYPTO_ALG_HMAC_SHA1:
+    return 20;
+  case VNET_CRYPTO_ALG_HMAC_SHA224:
+    return 28;
+  case VNET_CRYPTO_ALG_HMAC_SHA256:
+    return 32;
+  case VNET_CRYPTO_ALG_HMAC_SHA384:
+    return 48;
+  case VNET_CRYPTO_ALG_HMAC_SHA512:
+    return 64;
+  default:
+    return 0;
+  }
+
+  return 0;
+}
+
 static clib_error_t *
 test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 {
@@ -320,7 +349,8 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   for (i = 0; i < sizeof (key); i++)
     key[i] = i;
 
-  key_index = vnet_crypto_key_add (vm, tm->alg, key, sizeof (key));
+  key_index = vnet_crypto_key_add (vm, tm->alg, key,
+                                   test_crypto_get_key_sz (tm->alg));
 
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
