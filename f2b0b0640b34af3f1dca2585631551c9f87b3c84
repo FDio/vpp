@@ -22,6 +22,30 @@
       "revId": "f2b0b0640b34af3f1dca2585631551c9f87b3c84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ad5fbf05_0b86989c",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-11-04T10:52:24Z",
+      "side": 1,
+      "message": "notice is on by default. debug/info have to be enabled.",
+      "parentUuid": "eb9bb510_19b3695c",
+      "range": {
+        "startLine": 31,
+        "startChar": 4,
+        "endLine": 31,
+        "endChar": 20
+      },
+      "revId": "f2b0b0640b34af3f1dca2585631551c9f87b3c84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
