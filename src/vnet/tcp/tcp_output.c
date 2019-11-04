@@ -1911,8 +1911,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       && tc->rxt_head != tc->snd_una
       && tcp_retransmit_should_retry_head (tc, sb))
     {
-      n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss,
-						  &b);
+      max_bytes = clib_min (tc->snd_mss, tc->snd_congestion - tc->snd_una);
+      n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, max_bytes, &b);
       if (!n_written)
 	{
 	  tcp_program_retransmit (tc);
@@ -2036,14 +2036,14 @@ static int
 tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 			u32 burst_size)
 {
-  u32 n_written = 0, offset = 0, bi, max_deq, n_segs_now;
+  u32 n_written = 0, offset = 0, bi, max_deq, n_segs_now, max_bytes;
   u32 burst_bytes, sent_bytes;
   vlib_main_t *vm = wrk->vm;
   int snd_space, n_segs = 0;
   u8 cc_limited = 0;
   vlib_buffer_t *b;
 
-  ASSERT (tcp_in_fastrecovery (tc));
+  ASSERT (tcp_in_cong_recovery (tc));
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
 
   burst_bytes = transport_connection_tx_pacer_burst (&tc->connection);
@@ -2064,8 +2064,12 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
    * segment. */
   while (snd_space > 0 && n_segs < burst_size)
     {
-      n_written = tcp_prepare_retransmit_segment (wrk, tc, offset,
-						  tc->snd_mss, &b);
+      max_bytes = clib_min (tc->snd_mss,
+			    tc->snd_congestion - tc->snd_una - offset);
+      if (!max_bytes)
+	break;
+      n_written = tcp_prepare_retransmit_segment (wrk, tc, offset, max_bytes,
+						  &b);
 
       /* Nothing left to retransmit */
       if (n_written == 0)
@@ -2094,7 +2098,7 @@ send_unsent:
       snd_space = clib_min (max_deq, snd_space);
       burst_size = clib_min (burst_size - n_segs, snd_space / tc->snd_mss);
       n_segs_now = tcp_transmit_unsent (wrk, tc, burst_size);
-      if (max_deq > n_segs_now * tc->snd_mss)
+      if (n_segs_now && max_deq > n_segs_now * tc->snd_mss)
 	tcp_program_retransmit (tc);
       n_segs += n_segs_now;
     }
