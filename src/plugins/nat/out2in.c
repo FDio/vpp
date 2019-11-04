@@ -893,9 +893,6 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip0->checksum = ip_csum_fold (sum0);
 
-	  old_port0 = udp0->dst_port;
-	  new_port0 = udp0->dst_port = s0->in2out.port;
-
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
 	      old_port0 = tcp0->dst_port;
@@ -915,17 +912,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (udp0->checksum))
-		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
+	      old_port0 = udp0->dst_port;
+	      udp0->dst_port = s0->in2out.port;
+	      udp0->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1070,11 +1059,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip1->checksum = ip_csum_fold (sum1);
 
-	  old_port1 = udp1->dst_port;
-	  new_port1 = udp1->dst_port = s1->in2out.port;
-
 	  if (PREDICT_TRUE (proto1 == SNAT_PROTOCOL_TCP))
 	    {
+	      old_port1 = tcp1->dst_port;
+	      tcp1->dst_port = s1->in2out.port;
+	      new_port1 = tcp1->dst_port;
+
 	      sum1 = tcp1->checksum;
 	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
 				     ip4_header_t,
@@ -1088,17 +1078,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (udp1->checksum))
-		{
-		  sum1 = udp1->checksum;
-		  sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum1 = ip_csum_update (sum1, old_port1, new_port1,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp1->checksum = ip_csum_fold (sum1);
-		}
+	      old_port1 = udp1->dst_port;
+	      udp1->dst_port = s1->in2out.port;
+	      udp1->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1280,11 +1262,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip0->checksum = ip_csum_fold (sum0);
 
-	  old_port0 = udp0->dst_port;
-	  new_port0 = udp0->dst_port = s0->in2out.port;
-
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
+	      old_port0 = tcp0->dst_port;
+	      tcp0->dst_port = s0->in2out.port;
+	      new_port0 = tcp0->dst_port;
+
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 				     ip4_header_t,
@@ -1298,17 +1281,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (udp0->checksum))
-		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
+	      old_port0 = udp0->dst_port;
+	      udp0->dst_port = s0->in2out.port;
+	      udp0->checksum = 0;
 	      udp_packets++;
 	    }
 
@@ -1598,11 +1573,12 @@ VLIB_NODE_FN (nat44_out2in_reass_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip4_is_first_fragment (ip0)))
 	    {
-	      old_port0 = udp0->dst_port;
-	      new_port0 = udp0->dst_port = s0->in2out.port;
-
 	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 		{
+		  old_port0 = tcp0->dst_port;
+		  tcp0->dst_port = s0->in2out.port;
+		  new_port0 = tcp0->dst_port;
+
 		  sum0 = tcp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
@@ -1613,16 +1589,11 @@ VLIB_NODE_FN (nat44_out2in_reass_node) (vlib_main_t * vm,
 					 length /* changed member */ );
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
-	      else if (udp0->checksum)
+	      else
 		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
+		  old_port0 = udp0->dst_port;
+		  udp0->dst_port = s0->in2out.port;
+		  udp0->checksum = 0;
 		}
 	    }
 
@@ -1826,30 +1797,26 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (new_port0 != udp0->dst_port))
 	    {
-	      old_port0 = udp0->dst_port;
-	      udp0->dst_port = new_port0;
-
 	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 		{
+		  old_port0 = tcp0->dst_port;
+		  tcp0->dst_port = new_port0;
+
 		  sum0 = tcp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
 					 dst_address /* changed member */ );
+
 		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
 					 ip4_header_t /* cheat */ ,
 					 length /* changed member */ );
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
-	      else if (udp0->checksum)
+	      else
 		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
+		  old_port0 = udp0->dst_port;
+		  udp0->dst_port = new_port0;
+		  udp0->checksum = 0;
 		}
 	    }
 	  else
@@ -1860,15 +1827,8 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
 					 dst_address /* changed member */ );
+
 		  tcp0->checksum = ip_csum_fold (sum0);
-		}
-	      else if (udp0->checksum)
-		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
 		}
 	    }
 
