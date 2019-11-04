@@ -16,6 +16,24 @@
       "revId": "3101669c613e4d155d2d0ba5f350d9e75fbc7330",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4bd4d929_8faaf0a6",
+        "filename": "src/plugins/dpdk/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-11-04T20:34:28Z",
+      "side": 1,
+      "message": "I don\u0027t believe the salt is actually used in non-AEAD algorithms. For the AEAD algorithms (GCM, CTR) the salt is used to form a nonce, and needs to be known by both sender and receiver so I don\u0027t think its every appropriate for it to be randomly initialized (at the raw ipsec layer at least).",
+      "parentUuid": "b8a9a62f_ea8b8bee",
+      "revId": "3101669c613e4d155d2d0ba5f350d9e75fbc7330",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
