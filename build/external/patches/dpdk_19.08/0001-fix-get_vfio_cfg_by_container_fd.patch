@@ -1,0 +1,26 @@
+From 8a7d90b91d28a8db30766130ea9461dac7b707f0 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Mon, 4 Nov 2019 18:31:27 +0100
+Subject: [PATCH] fix get_vfio_cfg_by_container_fd
+
+---
+ lib/librte_eal/linux/eal/eal_vfio.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lib/librte_eal/linux/eal/eal_vfio.c b/lib/librte_eal/linux/eal/eal_vfio.c
+index d9541b122..d7887388f 100644
+--- a/lib/librte_eal/linux/eal/eal_vfio.c
++++ b/lib/librte_eal/linux/eal/eal_vfio.c
+@@ -412,6 +412,9 @@ get_vfio_cfg_by_container_fd(int container_fd)
+ {
+ 	int i;
+ 
++	if (container_fd == RTE_VFIO_DEFAULT_CONTAINER_FD)
++		return default_vfio_cfg;
++
+ 	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+ 		if (vfio_cfgs[i].vfio_container_fd == container_fd)
+ 			return &vfio_cfgs[i];
+-- 
+2.20.1
+
