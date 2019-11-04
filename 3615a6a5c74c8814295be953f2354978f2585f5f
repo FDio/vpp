@@ -46,6 +46,30 @@
       "revId": "3615a6a5c74c8814295be953f2354978f2585f5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "94a01f2a_941fe981",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-04T23:14:52Z",
+      "side": 1,
+      "message": "\u003e These are worker based logging messages, thus doesn\u0027t make sense to use a vlib_log_class.\n\nSee comment [0] in vlog_log() for details.\n\n[0] https://docs.fd.io/vpp/19.08/d7/df8/log_8c_source.html#l00100",
+      "parentUuid": "320de226_36b3380f",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 13
+      },
+      "revId": "3615a6a5c74c8814295be953f2354978f2585f5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
