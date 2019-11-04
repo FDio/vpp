@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b8a9a62f_ea8b8bee",
+        "filename": "src/plugins/dpdk/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2019-11-04T15:34:32Z",
+      "side": 1,
+      "message": "Removing this section seems to be right; however, this will most likely result in using a predictable salt value (which was already the case for GCM) - on the top level the API must either enforce configuration of a salt value or randomize it if not configured.",
+      "revId": "3101669c613e4d155d2d0ba5f350d9e75fbc7330",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
