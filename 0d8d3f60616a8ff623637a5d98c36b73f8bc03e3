@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b339200_60ef09c9",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-04T12:45:59Z",
+      "side": 1,
+      "message": "This api is awkward in my opinion.  How would you feel about if I submitted a new version without the name_filter_valid option?  On the server side, we could just check if name_filter[0] !\u003d 0.",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 65
+      },
+      "revId": "0d8d3f60616a8ff623637a5d98c36b73f8bc03e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
