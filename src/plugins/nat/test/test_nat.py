@@ -4767,6 +4767,9 @@ class TestNAT44EndpointDependent(MethodHolder):
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-out2in/good out2in packets processed')
         self.assertEqual(err - totaln, 2)
+        err = self.statistics.get_err_counter(
+            '/err/nat44-ed-out2in-finish/good out2in packets processed')
+        self.assertEqual(err - totaln, 3)
 
         users = self.statistics.get_counter('/nat44/total-users')
         self.assertEqual(users[0][0], 1)

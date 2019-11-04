@@ -81,8 +81,13 @@ VNET_FEATURE_INIT (ip4_nat44_ed_in2out, static) = {
 VNET_FEATURE_INIT (ip4_nat44_ed_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-dhcp-client-detect"),
+  .runs_after = VNET_FEATURES ("ip4-dhcp-client-detect"),
+};
+VNET_FEATURE_INIT (ip4_nat44_ed_out2in_finish, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-ed-out2in-finish",
+  .runs_before = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("nat44-ed-out2in"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_classify, static) = {
   .arc_name = "ip4-unicast",
@@ -1746,6 +1751,7 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
   const char *feature_name, *del_feature_name;
+  const char *fin_feature_name, *del_fin_feature_name;
   snat_address_t *ap;
   snat_static_mapping_t *m;
   snat_det_map_t *dm;
@@ -1764,6 +1770,8 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   }));
   /* *INDENT-ON* */
 
+  fin_feature_name = del_fin_feature_name = NULL;
+
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     feature_name = is_inside ? "nat44-in2out-fast" : "nat44-out2in-fast";
   else
@@ -1775,7 +1783,15 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
       else if (sm->deterministic)
 	feature_name = is_inside ? "nat44-det-in2out" : "nat44-det-out2in";
       else if (sm->endpoint_dependent)
-	feature_name = is_inside ? "nat44-ed-in2out" : "nat44-ed-out2in";
+	{
+	  if (is_inside)
+	    feature_name = "nat44-ed-in2out";
+	  else
+	    {
+	      feature_name = "nat44-ed-out2in";
+	      fin_feature_name = "nat44-ed-out2in-finish";
+	    }
+	}
       else
 	feature_name = is_inside ? "nat44-in2out" : "nat44-out2in";
     }
@@ -1844,8 +1860,13 @@ feature_set:
                 else if (sm->endpoint_dependent)
                   {
                     del_feature_name = "nat44-ed-classify";
-                    feature_name = !is_inside ?  "nat44-ed-in2out" :
-                                                 "nat44-ed-out2in";
+		    if (!is_inside)
+			feature_name = "nat44-ed-in2out";
+		    else
+		      {
+			feature_name = "nat44-ed-out2in";
+			fin_feature_name = "nat44-ed-out2in-finish";
+		      }
                   }
                 else
                   {
@@ -1857,6 +1878,11 @@ feature_set:
                                              sw_if_index, 0, 0, 0);
                 vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                              sw_if_index, 1, 0, 0);
+		if (fin_feature_name)
+		  vnet_feature_enable_disable ("ip4-unicast",
+					       fin_feature_name,
+					       sw_if_index, 1, 0, 0);
+
                 if (!is_inside)
                   {
                     if (sm->endpoint_dependent)
@@ -1907,8 +1933,16 @@ feature_set:
               }
             else if (sm->endpoint_dependent)
               {
-                del_feature_name = !is_inside ?  "nat44-ed-in2out" :
-                                                 "nat44-ed-out2in";
+		if (!is_inside)
+		  {
+		    del_feature_name = "nat44-ed-in2out";
+		    del_fin_feature_name = NULL;
+		  }
+		else
+		  {
+		    del_feature_name = "nat44-ed-out2in";
+		    del_fin_feature_name = "nat44-ed-out2in-finish";
+		  }
                 feature_name = "nat44-ed-classify";
               }
             else
@@ -1919,6 +1953,10 @@ feature_set:
 
             vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
                                          sw_if_index, 0, 0, 0);
+	    if (del_fin_feature_name)
+	      vnet_feature_enable_disable ("ip4-unicast", del_fin_feature_name,
+					   sw_if_index, 0, 0, 0);
+
             vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                          sw_if_index, 1, 0, 0);
             if (!is_inside)
@@ -1946,6 +1984,9 @@ feature_set:
   i->flags = 0;
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0,
 			       0);
+  if (fin_feature_name)
+    vnet_feature_enable_disable ("ip4-unicast", fin_feature_name,
+				 sw_if_index, 1, 0, 0);
 
   if (is_inside && !sm->out2in_dpo)
     {
@@ -2076,6 +2117,9 @@ feature_set:
 	{
 	  vnet_feature_enable_disable ("ip4-unicast", "nat44-ed-out2in",
 				       sw_if_index, !is_del, 0, 0);
+	  vnet_feature_enable_disable ("ip4-unicast",
+				       "nat44-ed-out2in-finish", sw_if_index,
+				       !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-in2out-output",
 				       sw_if_index, !is_del, 0, 0);
 	}
