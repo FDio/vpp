@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb9bb510_19b3695c",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-04T02:50:38Z",
+      "side": 1,
+      "message": "why does info point to notice?",
+      "range": {
+        "startLine": 31,
+        "startChar": 4,
+        "endLine": 31,
+        "endChar": 20
+      },
+      "revId": "f2b0b0640b34af3f1dca2585631551c9f87b3c84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
