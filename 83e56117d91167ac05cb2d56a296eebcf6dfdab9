@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "df67b6fd_bcf9714b",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-11-04T14:18:40Z",
+      "side": 1,
+      "message": "My idea is it is better this way - since the buffer index will be used only in async mode and different application may use the user_data with different purposes.",
+      "parentUuid": "efaecef8_9dd3401a",
+      "range": {
+        "startLine": 149,
+        "startChar": 2,
+        "endLine": 149,
+        "endChar": 19
+      },
+      "revId": "83e56117d91167ac05cb2d56a296eebcf6dfdab9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a11f969e_16e48e9c",
         "filename": "src/vnet/crypto/node.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2019-10-30T10:19:33Z",
       "side": 1,
       "message": "please remove",
+      "range": {
+        "startLine": 56,
+        "startChar": 2,
+        "endLine": 56,
+        "endChar": 11
+      },
+      "revId": "83e56117d91167ac05cb2d56a296eebcf6dfdab9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f02f6905_b35dab09",
+        "filename": "src/vnet/crypto/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-11-04T14:18:40Z",
+      "side": 1,
+      "message": "It is for debugging purpose, and will not be here in the formal patch. It is here is because only this way that the crypto perf test will work.... Otherwise this node may dequeue the ops and send the ops to the next node which does not exist... \n\nWill remove it in V2",
+      "parentUuid": "a11f969e_16e48e9c",
       "range": {
         "startLine": 56,
         "startChar": 2,
