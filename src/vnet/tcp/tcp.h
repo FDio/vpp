@@ -885,7 +885,8 @@ tcp_bytes_out (const tcp_connection_t * tc)
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     return tc->sack_sb.sacked_bytes + tc->sack_sb.lost_bytes;
   else
-    return tc->rcv_dupacks * tc->snd_mss;
+    return clib_min (tc->rcv_dupacks * tc->snd_mss,
+		     tc->snd_nxt - tc->snd_una);
 }
 
 /**

@@ -1485,9 +1485,12 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tc->rxt_delivered = clib_max (tc->rxt_delivered + tc->bytes_acked,
 				    tc->snd_rxt_bytes);
       if (is_dack)
-	tc->prr_delivered += 1;
+	tc->prr_delivered += clib_min (tc->snd_mss,
+				       tc->snd_nxt - tc->snd_una);
       else
-	tc->prr_delivered += tc->bytes_acked - tc->snd_mss * tc->rcv_dupacks;
+	tc->prr_delivered += tc->bytes_acked - clib_min (tc->bytes_acked,
+							 tc->snd_mss *
+							 tc->rcv_dupacks);
 
       /* If partial ack, assume that the first un-acked segment was lost */
       if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
