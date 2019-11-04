@@ -46,6 +46,30 @@
       "revId": "f2b0b0640b34af3f1dca2585631551c9f87b3c84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "17034a62_f29517d9",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-04T12:09:29Z",
+      "side": 1,
+      "message": "Thanks.\nbut why does DHCP_INFO go to vlib_log_notice instead of:\nDHCP_NOTICE -\u003e vlib_log_notice or DHCP_INFO -\u003evlib_log_info? Why the remapping?",
+      "parentUuid": "ad5fbf05_0b86989c",
+      "range": {
+        "startLine": 31,
+        "startChar": 4,
+        "endLine": 31,
+        "endChar": 20
+      },
+      "revId": "f2b0b0640b34af3f1dca2585631551c9f87b3c84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
