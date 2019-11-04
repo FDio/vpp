@@ -893,6 +893,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip0->checksum = ip_csum_fold (sum0);
 
+	  old_port0 = udp0->dst_port;
+	  new_port0 = udp0->dst_port = s0->in2out.port;
+
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
 	      old_port0 = tcp0->dst_port;
@@ -914,9 +917,6 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (udp0->checksum))
 		{
-		  old_port0 = udp0->dst_port;
-		  new_port0 = udp0->dst_port = s0->in2out.port;
-
 		  sum0 = udp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
@@ -1070,12 +1070,11 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip1->checksum = ip_csum_fold (sum1);
 
+	  old_port1 = udp1->dst_port;
+	  new_port1 = udp1->dst_port = s1->in2out.port;
+
 	  if (PREDICT_TRUE (proto1 == SNAT_PROTOCOL_TCP))
 	    {
-	      old_port1 = tcp1->dst_port;
-	      tcp1->dst_port = s1->in2out.port;
-	      new_port1 = tcp1->dst_port;
-
 	      sum1 = tcp1->checksum;
 	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
 				     ip4_header_t,
@@ -1091,9 +1090,6 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (udp1->checksum))
 		{
-		  old_port1 = udp1->dst_port;
-		  new_port1 = udp1->dst_port = s1->in2out.port;
-
 		  sum1 = udp1->checksum;
 		  sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
 					 ip4_header_t,
@@ -1284,12 +1280,11 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 				 dst_address /* changed member */ );
 	  ip0->checksum = ip_csum_fold (sum0);
 
+	  old_port0 = udp0->dst_port;
+	  new_port0 = udp0->dst_port = s0->in2out.port;
+
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
-	      old_port0 = tcp0->dst_port;
-	      tcp0->dst_port = s0->in2out.port;
-	      new_port0 = tcp0->dst_port;
-
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 				     ip4_header_t,
@@ -1305,9 +1300,6 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (udp0->checksum))
 		{
-		  old_port0 = udp0->dst_port;
-		  new_port0 = udp0->dst_port = s0->in2out.port;
-
 		  sum0 = udp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
