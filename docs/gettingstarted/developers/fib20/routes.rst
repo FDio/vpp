@@ -27,7 +27,7 @@ The route data is decomposed into three parts; entry, path-list and paths;
 
     * Attached next-hop: the path is described with an interface and a next-hop. The next-hop is in the same sub-net as the router's own address on that interface, hence the peer is considered to be *attached*
 
-    * Attached: the path is described only by an interface. All address covered by the prefix are on the same L2 segment to which that router's interface is attached. This means it is possible to ARP for any address covered by the prefix Рwhich is usually not the case (hence the proxy ARP debacle in IOS). An attached path is only appropriate for a point-to-point (P2P) interface where ARP is not required, i.e. a GRE tunnel.
+    * Attached: the path is described only by an interface. All address covered by the prefix are on the same L2 segment to which that router's interface is attached. This means it is possible to ARP for any address covered by the prefix which is usually not the case (hence the proxy ARP debacle in IOS). An attached path is only appropriate for a point-to-point (P2P) interface where ARP is not required, i.e. a GRE tunnel.
 
     * Recursive: The path is described only via the next-hop and table-id. 
 
@@ -132,7 +132,7 @@ is attached are installed in forwarding. This requires the use of *cover trackin
 where a route maintains a dependency relationship with the route that is its less
 specific cover. When this cover changes (i.e. there is a new covering route) or the
 forwarding information of the cover is updated, then the covered route is notified.
-Adj-fibs that fail this cover check are not installed in the fib_table_tճ forwarding
+Adj-fibs that fail this cover check are not installed in the fib_table_t's forwarding
 table, there are only present in the non-forwarding table.
 
 Overlapping sub-nets are not supported, so no adj-fib has multiple paths. The control

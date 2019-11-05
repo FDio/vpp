@@ -527,7 +527,7 @@ Here is a complete example:
 
 This example implements the "show ip tuple match" debug cli
 command. In ordinary usage, the vlib cli is available via the "vppctl"
-applicationn, which sends traffic to a named pipe. One can configure
+application, which sends traffic to a named pipe. One can configure
 debug CLI telnet access on a configurable port.
 
 The cli implementation has an output redirection facility which makes it

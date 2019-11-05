@@ -55,14 +55,14 @@ Network features
    -  CGN (Deterministic and dynamic)
    -  CGN configurable port allocation algorithm
    -  ICMP support
-   -  Tentant VRF id for SNAT outside addresses
+   -  Tenant VRF id for SNAT outside addresses
    -  Session dump / User dump
    -  Port allocation per protocol
 * Security groups
    -  Routed interface support
    -  L2+L3 unified processing node
    -  Improve fragment handling
-* Segement routing v6
+* Segment routing v6
    -  SR policies with weighted SID lists
    -  Binding SID
    -  SR steering policies

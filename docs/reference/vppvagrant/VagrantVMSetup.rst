@@ -34,7 +34,7 @@ Become the root with:
 
 Now *install* VPP in the VM. Keep in mind that VPP is already built (but not yet installed) at this point based on the commands from the provisioned script *build.sh*. 
 
-When you ssh into your Vagrant box you will be placed in the directory */home/vagrant*. Change directories to */vpp/build-root*, and run these commands to install VPP based on your OS and architechture:
+When you ssh into your Vagrant box you will be placed in the directory */home/vagrant*. Change directories to */vpp/build-root*, and run these commands to install VPP based on your OS and architecture:
 
 For Ubuntu systems:
 
