@@ -244,7 +244,7 @@ class MethodHolder(VppTestCase):
         p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
              IP(src=in_if.remote_ip4, dst=dst_ip, ttl=ttl) /
              TCP(sport=self.tcp_port_in, dport=20))
-        pkts.append(p)
+        pkts.extend([p, p])
 
         # UDP
         p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
@@ -408,7 +408,7 @@ class MethodHolder(VppTestCase):
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
              TCP(dport=tcp_port, sport=20))
-        pkts.append(p)
+        pkts.extend([p, p])
 
         # UDP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
@@ -1575,7 +1575,7 @@ class TestNAT44(MethodHolder):
 
         err = self.statistics.get_err_counter(
             '/err/nat44-in2out-slowpath/TCP packets')
-        self.assertEqual(err - tcpn, 1)
+        self.assertEqual(err - tcpn, 2)
         err = self.statistics.get_err_counter(
             '/err/nat44-in2out-slowpath/UDP packets')
         self.assertEqual(err - udpn, 1)
@@ -1584,7 +1584,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(err - icmpn, 1)
         err = self.statistics.get_err_counter(
             '/err/nat44-in2out-slowpath/good in2out packets processed')
-        self.assertEqual(err - totaln, 3)
+        self.assertEqual(err - totaln, 4)
 
         # out2in
         tcpn = self.statistics.get_err_counter('/err/nat44-out2in/TCP packets')
@@ -1602,14 +1602,14 @@ class TestNAT44(MethodHolder):
         self.verify_capture_in(capture, self.pg0)
 
         err = self.statistics.get_err_counter('/err/nat44-out2in/TCP packets')
-        self.assertEqual(err - tcpn, 1)
+        self.assertEqual(err - tcpn, 2)
         err = self.statistics.get_err_counter('/err/nat44-out2in/UDP packets')
         self.assertEqual(err - udpn, 1)
         err = self.statistics.get_err_counter('/err/nat44-out2in/ICMP packets')
         self.assertEqual(err - icmpn, 1)
         err = self.statistics.get_err_counter(
             '/err/nat44-out2in/good out2in packets processed')
-        self.assertEqual(err - totaln, 3)
+        self.assertEqual(err - totaln, 4)
 
         users = self.statistics.get_counter('/nat44/total-users')
         self.assertEqual(users[0][0], 1)
@@ -4727,7 +4727,7 @@ class TestNAT44EndpointDependent(MethodHolder):
 
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-in2out-slowpath/TCP packets')
-        self.assertEqual(err - tcpn, 1)
+        self.assertEqual(err - tcpn, 2)
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-in2out-slowpath/UDP packets')
         self.assertEqual(err - udpn, 1)
@@ -4736,7 +4736,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertEqual(err - icmpn, 1)
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
-        self.assertEqual(err - totaln, 3)
+        self.assertEqual(err - totaln, 4)
 
         # out2in
         tcpn = self.statistics.get_err_counter(
@@ -4757,7 +4757,7 @@ class TestNAT44EndpointDependent(MethodHolder):
 
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-out2in/TCP packets')
-        self.assertEqual(err - tcpn, 1)
+        self.assertEqual(err - tcpn, 2)
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-out2in/UDP packets')
         self.assertEqual(err - udpn, 1)
@@ -4766,7 +4766,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertEqual(err - icmpn, 1)
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-out2in/good out2in packets processed')
-        self.assertEqual(err - totaln, 2)
+        self.assertEqual(err - totaln, 3)
 
         users = self.statistics.get_counter('/nat44/total-users')
         self.assertEqual(users[0][0], 1)
@@ -4823,7 +4823,7 @@ class TestNAT44EndpointDependent(MethodHolder):
 
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-in2out-slowpath/TCP packets')
-            self.assertEqual(err - tcpn, 1)
+            self.assertEqual(err - tcpn, 2)
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-in2out-slowpath/UDP packets')
             self.assertEqual(err - udpn, 1)
@@ -4832,7 +4832,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.assertEqual(err - icmpn, 1)
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
-            self.assertEqual(err - totaln, 3)
+            self.assertEqual(err - totaln, 4)
 
             # out2in
             tcpn = self.statistics.get_err_counter(
@@ -4853,7 +4853,7 @@ class TestNAT44EndpointDependent(MethodHolder):
 
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-out2in/TCP packets')
-            self.assertEqual(err - tcpn, 1)
+            self.assertEqual(err - tcpn, 2)
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-out2in/UDP packets')
             self.assertEqual(err - udpn, 1)
@@ -4862,7 +4862,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.assertEqual(err - icmpn, 1)
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-out2in/good out2in packets processed')
-            self.assertEqual(err - totaln, 2)
+            self.assertEqual(err - totaln, 3)
 
             users = self.statistics.get_counter('/nat44/total-users')
             self.assertEqual(users[0][0], 1)
@@ -8034,14 +8034,14 @@ class TestNAT64(MethodHolder):
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
 
         err = self.statistics.get_err_counter('/err/nat64-out2in/TCP packets')
-        self.assertEqual(err - tcpn, 1)
+        self.assertEqual(err - tcpn, 2)
         err = self.statistics.get_err_counter('/err/nat64-out2in/UDP packets')
         self.assertEqual(err - udpn, 1)
         err = self.statistics.get_err_counter('/err/nat64-out2in/ICMP packets')
         self.assertEqual(err - icmpn, 1)
         err = self.statistics.get_err_counter(
             '/err/nat64-out2in/good out2in packets processed')
-        self.assertEqual(err - totaln, 3)
+        self.assertEqual(err - totaln, 4)
 
         bibs = self.statistics.get_counter('/nat64/total-bibs')
         self.assertEqual(bibs[0][0], 3)
