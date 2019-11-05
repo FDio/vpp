@@ -6,6 +6,9 @@ import os
 import threading
 import struct
 import copy
+import fcntl
+import time
+
 from struct import unpack, unpack_from
 
 try:
@@ -43,17 +46,26 @@ class serverSocketThread(threading.Thread):
         self.sockName = sockName
         self.sock = None
         self.rx_pkts = []
+        self.keep_running = True
 
     def rx_packets(self):
         # Wait for some packets on socket
-        while True:
-            data = self.sock.recv(65536)
+        while self.keep_running:
+            try:
+                data = self.sock.recv(65536)
 
-            # punt socket metadata
-            # packet_desc = data[0:8]
+                # punt socket metadata
+                # packet_desc = data[0:8]
 
-            # Ethernet
-            self.rx_pkts.append(Ether(data[8:]))
+                # Ethernet
+                self.rx_pkts.append(Ether(data[8:]))
+            except IOError as e:
+                if e.errno == 11:
+                    # nothing to receive, sleep a little
+                    time.sleep(0.1)
+                    pass
+                else:
+                    raise
 
     def run(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -63,12 +75,14 @@ class serverSocketThread(threading.Thread):
             pass
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
+        fcntl.fcntl(self.sock, fcntl.F_SETFL, os.O_NONBLOCK)
         self.sock.bind(self.sockName)
 
         self.rx_packets()
 
     def close(self):
         self.sock.close()
+        self.keep_running = False
         return self.rx_pkts
 
 
@@ -117,6 +131,7 @@ class TestPuntSocket(VppTestCase):
         rx_pkts = []
         for thread in self.sock_servers:
             rx_pkts += thread.close()
+            thread.join()
         return rx_pkts
 
     def verify_port(self, pr, vpr):
