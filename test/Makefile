@@ -341,6 +341,8 @@ help:
 	@echo ""
 	@echo " SOCKET=1             - Communicate with VPP over Unix domain socket instead of SHM"
 	@echo ""
+	@echo " RND_SEED=seed        - Seed RND with given seed"
+	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"

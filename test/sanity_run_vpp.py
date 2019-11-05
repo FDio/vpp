@@ -3,6 +3,7 @@
 from __future__ import print_function
 from multiprocessing import Pipe
 from sys import exit
+import os
 from framework import VppDiedError, VppTestCase, KeepAliveReporter
 
 
@@ -10,7 +11,9 @@ class SanityTestCase(VppTestCase):
     """ Sanity test case - verify whether VPP is able to start """
     pass
 
+
 if __name__ == '__main__':
+    os.environ["RND_SEED"] = "1"
     rc = 0
     tc = SanityTestCase
     x, y = Pipe()
