@@ -16,6 +16,24 @@
       "revId": "fdae6ab0c68a152c0cfbb5522f7ab4b9300244fb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e25dc0d4_e0799720",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-11-05T15:31:02Z",
+      "side": 1,
+      "message": "I\u0027m somewhat to blame for this. The thinking was that instead of adding new functions or renaming this one each time we add one more field, this option is somewhat better, albeit not ideal.\n\nWe also have the \"non-customized\" function, vlib_buffer_push_ip6, that will use default values for most of the fields, which depends on the existence of a \"custom\" function, if we aim to avoid replicating code. \n\nThe alternative would be to have a simple \"default\" header initializer and then in the callers customize the fields at the cost of touching the header again and somewhat messier code.",
+      "parentUuid": "e3fad986_d722da7e",
+      "revId": "fdae6ab0c68a152c0cfbb5522f7ab4b9300244fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
