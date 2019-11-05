@@ -1629,7 +1629,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, stats_node_index,
 			       NAT_IN2OUT_ED_ERROR_TCP_PACKETS, tcp_packets);
   vlib_node_increment_counter (vm, stats_node_index,
-			       NAT_IN2OUT_ED_ERROR_UDP_PACKETS, tcp_packets);
+			       NAT_IN2OUT_ED_ERROR_UDP_PACKETS, udp_packets);
   vlib_node_increment_counter (vm, stats_node_index,
 			       NAT_IN2OUT_ED_ERROR_ICMP_PACKETS,
 			       icmp_packets);
