@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f8072dbf_f4b54195",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-11-05T10:11:04Z",
+      "side": 1,
+      "message": "I am wondering: could we have a common inline function in vnet/gso/ used by both virtio \u0026 pg driver for this?",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74c727c5_b4b8da16",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-11-05T10:11:04Z",
+      "side": 1,
+      "message": "Should be in a vnet/gso/gso.h marked as always_inline. It will not be inlined here.\nAlso, maybe we can use the fact most of the time, l2/l3/l4 header offsets should be valid, eg.\nif (PREDICT_TRUE((b0-\u003eflags \u0026 (VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID) \u003d\u003d (VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID))\n{\n   /* copy offset straight from vlib_buffer */\n} else {\n   /* parse */\n}\nNot sure this is true though.",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0487856d_0e030243",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-11-05T10:11:04Z",
+      "side": 1,
+      "message": "vnet_gso_parser() should take a is_ip6 parameter to compile-out those branches. Both call-sites have the info already.",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
