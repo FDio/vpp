@@ -500,8 +500,9 @@ class VppTestCase(unittest.TestCase):
         """
         super(VppTestCase, cls).setUpClass()
         gc.collect()  # run garbage collection first
-        random.seed()
         cls.logger = get_logger(cls.__name__)
+        seed = os.environ["RND_SEED"]
+        random.seed(seed)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
@@ -522,6 +523,7 @@ class VppTestCase(unittest.TestCase):
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
                         cls.tempdir, cls.shm_prefix)
+        cls.logger.debug("Random seed is %s" % seed)
         cls.setUpConstants()
         cls.reset_packet_infos()
         cls._captures = []

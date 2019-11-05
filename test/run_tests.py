@@ -722,6 +722,11 @@ def parse_digit_env(env_var, default):
 
 if __name__ == '__main__':
 
+    if "RND_SEED" not in os.environ:
+        os.environ["RND_SEED"] = str(time.time())
+        print("Setting RND_SEED=%s" % os.environ["RND_SEED"])
+    else:
+        print("Using provided RND_SEED=%s" % os.environ["RND_SEED"])
     verbose = parse_digit_env("V", 0)
 
     test_timeout = parse_digit_env("TIMEOUT", 600)  # default = 10 minutes
