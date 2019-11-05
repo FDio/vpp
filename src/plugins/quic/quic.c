@@ -52,6 +52,7 @@ quic_ctx_alloc (u32 thread_index)
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
+  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   QUIC_DBG (3, "Allocated quic_ctx %u on thread %u",
 	    ctx - qm->ctx_pool[thread_index], thread_index);
   return ctx - qm->ctx_pool[thread_index];
@@ -62,6 +63,7 @@ quic_ctx_free (quic_ctx_t * ctx)
 {
   QUIC_DBG (2, "Free ctx %u %x", ctx->c_thread_index, ctx->c_c_index);
   u32 thread_index = ctx->c_thread_index;
+  ASSERT (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID);
   if (CLIB_DEBUG)
     clib_memset (ctx, 0xfb, sizeof (*ctx));
   pool_put (quic_main.ctx_pool[thread_index], ctx);
@@ -162,6 +164,18 @@ quic_set_udp_tx_evt (session_t * udp_session)
     clib_warning ("Event enqueue errored %d", rv);
 }
 
+static inline void
+quic_stop_ctx_timer (quic_ctx_t * ctx)
+{
+  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
+  if (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID)
+    return;
+  tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
+  tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
+  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+  QUIC_DBG (4, "Stopping timer for ctx %u", ctx->c_c_index);
+}
+
 /* QUIC protocol actions */
 
 static void
@@ -205,20 +219,13 @@ quic_disconnect_transport (quic_ctx_t * ctx)
 static void
 quic_connection_delete (quic_ctx_t * ctx)
 {
-  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
 
   QUIC_DBG (2, "Deleting connection %u", ctx->c_c_index);
 
   ASSERT (!quic_ctx_is_stream (ctx));
-
-  /*  Stop the timer */
-  if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
-    {
-      tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
-      tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
-    }
+  quic_stop_ctx_timer (ctx);
 
   /*  Delete the connection from the connection map */
   conn = ctx->conn;
@@ -232,9 +239,7 @@ quic_connection_delete (quic_ctx_t * ctx)
   if (ctx->conn)
     quicly_free (ctx->conn);
   ctx->conn = NULL;
-
   session_transport_delete_notify (&ctx->connection);
-  quic_ctx_free (ctx);
 }
 
 void
@@ -243,8 +248,6 @@ quic_increment_counter (u8 evt, u8 val)
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_increment_counter (vm, quic_input_node.index, evt, val);
 }
-
-
 
 /**
  * Called when quicly return an error
@@ -797,9 +800,7 @@ quic_update_timer (quic_ctx_t * ctx)
     {
       if (next_timeout == INT64_MAX)
 	{
-	  tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
-	  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-	  QUIC_DBG (4, "Stopping timer for ctx %u", ctx->c_c_index);
+	  quic_stop_ctx_timer (ctx);
 	}
       else
 	tw_timer_update_1t_3w_1024sl_ov (tw, ctx->timer_handle,
@@ -1460,7 +1461,6 @@ quic_receive_connection (void *arg)
 static void
 quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 {
-  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   quic_ctx_t *ctx, *temp_ctx;
   u32 thread_index = vlib_get_thread_index ();
 
@@ -1472,12 +1472,7 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 
   clib_memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
-  /*  Remove from timer wheel and thread-local pool */
-  if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
-    {
-      tw = &quic_main.wrk_ctx[thread_index].timer_wheel;
-      tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
-    }
+  quic_stop_ctx_timer (ctx);
   quic_ctx_free (ctx);
 
   /*  Send connection to destination thread */
@@ -1563,6 +1558,20 @@ static void
 quic_udp_session_disconnect_callback (session_t * s)
 {
   clib_warning ("UDP session disconnected???");
+}
+
+static void
+quic_udp_session_cleanup_callback (session_t * udp_session,
+				   session_cleanup_ntf_t ntf)
+{
+  quic_ctx_t *ctx;
+
+  if (ntf != SESSION_CLEANUP_SESSION)
+    return;
+
+  ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  quic_stop_ctx_timer (ctx);
+  quic_ctx_free (ctx);
 }
 
 static void
@@ -2070,6 +2079,7 @@ static session_cb_vft_t quic_app_cb_vft = {
   .add_segment_callback = quic_add_segment_callback,
   .del_segment_callback = quic_del_segment_callback,
   .builtin_app_rx_callback = quic_udp_session_rx_callback,
+  .session_cleanup_callback = quic_udp_session_cleanup_callback,
 };
 
 static const transport_proto_vft_t quic_proto = {
@@ -2284,6 +2294,26 @@ quic_plugin_showstats_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+quic_show_ctx_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd)
+{
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx = NULL;
+  u32 num_workers = vlib_num_workers ();
+
+  for (int i = 0; i < num_workers + 1; i++)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (ctx, qm->ctx_pool[i],
+      ({
+        vlib_cli_output (vm, "%U", format_quic_ctx, ctx, 1);
+      }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) =
 {
@@ -2302,6 +2332,12 @@ VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
   .path = "show quic stats",
   .short_help = "show quic stats",
   .function = quic_plugin_showstats_command_fn,
+};
+VLIB_CLI_COMMAND(quic_show_ctx_command, static)=
+{
+  .path = "show quic ctx",
+  .short_help = "show quic ctx",
+  .function = quic_show_ctx_command_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {
