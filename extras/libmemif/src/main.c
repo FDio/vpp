@@ -1663,7 +1663,6 @@ memif_msg_queue_free (libmemif_main_t * lm, memif_msg_queue_elt_t ** e)
 int
 memif_disconnect_internal (memif_connection_t * c)
 {
-  uint16_t num;
   int err = MEMIF_ERR_SUCCESS, i;	/* 0 */
   memif_queue_t *mq;
   libmemif_main_t *lm;
@@ -1695,10 +1694,7 @@ memif_disconnect_internal (memif_connection_t * c)
 
   if (c->tx_queues != NULL)
     {
-      num =
-	(c->args.is_master) ? c->run_args.num_m2s_rings : c->
-	run_args.num_s2m_rings;
-      for (i = 0; i < num; i++)
+      for (i = 0; i < c->tx_queues_num; i++)
 	{
 	  mq = &c->tx_queues[i];
 	  if (mq != NULL)
@@ -1713,13 +1709,11 @@ memif_disconnect_internal (memif_connection_t * c)
       lm->free (c->tx_queues);
       c->tx_queues = NULL;
     }
+  c->tx_queues_num = 0;
 
   if (c->rx_queues != NULL)
     {
-      num =
-	(c->args.is_master) ? c->run_args.num_s2m_rings : c->
-	run_args.num_m2s_rings;
-      for (i = 0; i < num; i++)
+      for (i = 0; i < c->rx_queues_num; i++)
 	{
 	  mq = &c->rx_queues[i];
 	  if (mq != NULL)
@@ -1739,6 +1733,7 @@ memif_disconnect_internal (memif_connection_t * c)
       lm->free (c->rx_queues);
       c->rx_queues = NULL;
     }
+  c->rx_queues_num = 0;
 
   for (i = 0; i < c->regions_num; i++)
     {
@@ -2082,6 +2077,7 @@ memif_init_queues (libmemif_main_t * lm, memif_connection_t * conn)
       mq[x].alloc_bufs = 0;
     }
   conn->tx_queues = mq;
+  conn->tx_queues_num = conn->run_args.num_s2m_rings;
 
   mq =
     (memif_queue_t *) lm->alloc (sizeof (memif_queue_t) *
@@ -2107,6 +2103,7 @@ memif_init_queues (libmemif_main_t * lm, memif_connection_t * conn)
       mq[x].alloc_bufs = 0;
     }
   conn->rx_queues = mq;
+  conn->rx_queues_num = conn->run_args.num_m2s_rings;
 
   return MEMIF_ERR_SUCCESS;
 }
