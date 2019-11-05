@@ -753,15 +753,9 @@ rdma_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
   rdma_main_t *rm = &rdma_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   rdma_device_t *rd = pool_elt_at_index (rm->devices, hw->dev_instance);
-
-  /* Shut off redirection */
-  if (node_index == ~0)
-    {
-      rd->per_interface_next_index = node_index;
-      return;
-    }
-
   rd->per_interface_next_index =
+    ~0 ==
+    node_index ? VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT :
     vlib_node_add_next (vlib_get_main (), rdma_input_node.index, node_index);
 }
 
