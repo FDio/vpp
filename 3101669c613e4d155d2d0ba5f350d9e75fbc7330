@@ -34,6 +34,24 @@
       "revId": "3101669c613e4d155d2d0ba5f350d9e75fbc7330",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83aef6d8_6cb0e7bd",
+        "filename": "src/plugins/dpdk/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2019-11-05T21:59:45Z",
+      "side": 1,
+      "message": "Admittedly we did not do much IKE integration at the time, so if IKE is setting the salt value, this should go away.\nIt also seems a bug that CTR does not follow the same salt initialization as GCM mode.\n\nThat being said, there are some not very clear uses of the salt value in the default case (ie. CBC mode). The lack of comments does not help here, so we (mostly me) are to blame for that.\n\nAfter having a look at the code and trying to remember the intention here, the salt value is used in CBC mode as part of the nonce to generate the first block that is used as the IV in the packet.This is an approach to avoid generating 16B of random data per packet.\n\nI think it is more clear if I just quote the text from NIST SP 800-38a, Appendix C:\n`There are two recommended methods for generating unpredictable IVs. The first method is to\napply the forward cipher function, under the same key that is used for the encryption of the\nplaintext, to a nonce. The nonce must be a data block that is unique to each execution of the\nencryption operation. For example, the nonce may be a counter, as described in Appendix B, or\na message number. The second method is to generate a random data block using a FIPS approved random number generator.`\nNow, it might not be required to initialize the salt value and just use a counter, but the idea here was to imitate what is being done for GCM where part of the ICB is secret shared value derived from the key material, except that in this case it does not need to be shared.",
+      "parentUuid": "4bd4d929_8faaf0a6",
+      "revId": "3101669c613e4d155d2d0ba5f350d9e75fbc7330",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
