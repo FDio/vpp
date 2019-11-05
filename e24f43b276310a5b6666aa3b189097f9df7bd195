@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a9cf03f0_9fc3732b",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1576,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-05T15:49:43Z",
+      "side": 1,
+      "message": "This code is replicated in several places.  It\u0027s probably worth making it into a static inline function.",
+      "range": {
+        "startLine": 1570,
+        "startChar": 0,
+        "endLine": 1576,
+        "endChar": 5
+      },
+      "revId": "e24f43b276310a5b6666aa3b189097f9df7bd195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
