@@ -561,7 +561,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
   vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_TCP_PACKETS, tcp_packets);
   vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_UDP_PACKETS, tcp_packets);
+			       NAT64_OUT2IN_ERROR_UDP_PACKETS, udp_packets);
   vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_ICMP_PACKETS, icmp_packets);
   vlib_node_increment_counter (vm, nm->out2in_node_index,

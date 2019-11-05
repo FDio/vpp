@@ -1573,7 +1573,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, stats_node_index,
 			       SNAT_IN2OUT_ERROR_TCP_PACKETS, tcp_packets);
   vlib_node_increment_counter (vm, stats_node_index,
-			       SNAT_IN2OUT_ERROR_UDP_PACKETS, tcp_packets);
+			       SNAT_IN2OUT_ERROR_UDP_PACKETS, udp_packets);
   vlib_node_increment_counter (vm, stats_node_index,
 			       SNAT_IN2OUT_ERROR_ICMP_PACKETS, icmp_packets);
   vlib_node_increment_counter (vm, stats_node_index,
