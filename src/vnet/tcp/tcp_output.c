@@ -839,8 +839,10 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
       int bogus = ~0;
       ASSERT ((pkt_ih6->ip_version_traffic_class_and_flow_label & 0xF0) ==
 	      0x60);
-      ih6 = vlib_buffer_push_ip6 (vm, b, &pkt_ih6->dst_address,
-				  &pkt_ih6->src_address, IP_PROTOCOL_TCP);
+      ih6 = vlib_buffer_push_ip6_custom (vm, b, &pkt_ih6->dst_address,
+					 &pkt_ih6->src_address,
+					 IP_PROTOCOL_TCP,
+					 tc->ipv6_flow_label);
       th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
       ASSERT (!bogus);
     }
@@ -906,8 +908,9 @@ tcp_push_ip_hdr (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       ip6_header_t *ih;
       int bogus = ~0;
 
-      ih = vlib_buffer_push_ip6 (vm, b, &tc->c_lcl_ip6,
-				 &tc->c_rmt_ip6, IP_PROTOCOL_TCP);
+      ih = vlib_buffer_push_ip6_custom (vm, b, &tc->c_lcl_ip6,
+					&tc->c_rmt_ip6, IP_PROTOCOL_TCP,
+					tc->ipv6_flow_label);
       th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih, &bogus);
       ASSERT (!bogus);
     }
@@ -2262,8 +2265,9 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
     ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
 				IP_PROTOCOL_TCP, tcp_csum_offload (tc0));
   else
-    ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
-				IP_PROTOCOL_TCP);
+    ih0 =
+      vlib_buffer_push_ip6_custom (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
+				   IP_PROTOCOL_TCP, tc0->ipv6_flow_label);
 
 }
 

@@ -656,21 +656,23 @@ void ip6_hbh_set_next_override (uword next);
  * @param src - source IP
  * @param dst - destination IP
  * @param prot - payload proto
+ * @param flow_label - flow label
  *
  * @return - pointer to start of IP header
  */
 always_inline void *
-vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip6_address_t * src, ip6_address_t * dst, int proto)
+vlib_buffer_push_ip6_custom (vlib_main_t * vm, vlib_buffer_t * b,
+			     ip6_address_t * src, ip6_address_t * dst,
+			     int proto, u32 flow_label)
 {
   ip6_header_t *ip6h;
   u16 payload_length;
 
   /* make some room */
   ip6h = vlib_buffer_push_uninit (b, sizeof (ip6_header_t));
-
+  ASSERT (flow_label < 1 << 20);
   ip6h->ip_version_traffic_class_and_flow_label =
-    clib_host_to_net_u32 (0x6 << 28);
+    clib_host_to_net_u32 ((0x6 << 28) | flow_label);
 
   /* calculate ip6 payload length */
   payload_length = vlib_buffer_length_in_chain (vm, b);
@@ -690,6 +692,25 @@ vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
   return ip6h;
 }
 
+/**
+ * Push IPv6 header to buffer
+ *
+ * @param vm - vlib_main
+ * @param b - buffer to write the header to
+ * @param src - source IP
+ * @param dst - destination IP
+ * @param prot - payload proto
+ *
+ * @return - pointer to start of IP header
+ */
+always_inline void *
+vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
+		      ip6_address_t * src, ip6_address_t * dst, int proto)
+{
+  return vlib_buffer_push_ip6_custom (vm, b, src, dst, proto,
+				      0 /* flow label */ );
+
+}
 #endif /* included_ip_ip6_h */
 
 /*

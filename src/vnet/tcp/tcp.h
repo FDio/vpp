@@ -434,6 +434,7 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
   u32 timestamp_delta;	/**< Offset for timestamp */
+  u32 ipv6_flow_label;	/**< flow label for ipv6 header */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
