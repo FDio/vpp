@@ -47,7 +47,7 @@ After having setup two interconnected vpps, you can attach the quic_echo binary 
 * To run the client & server use ``quic_echo socket-name /vpp.sock client|server uri quic://1.1.1.1/1234``
 * Several options are available to customize the amount of data sent, number of threads, logging and timing.
 
-The behavior of this app when run with ``nclient 2/4`` is two first establish 2 connections with the given peer, and once everything has been openend start opening 4 quic streams, and transmit data. Flow is as follows.
+The behavior of this app when run with ``nclient 2/4`` is two first establish 2 connections with the given peer, and once everything has been opened start opening 4 quic streams, and transmit data. Flow is as follows.
 
 .. image:: /_images/quic_plugin_echo_flow.png
 

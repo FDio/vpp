@@ -10,7 +10,7 @@ We will examine vpp buffer metadata in some detail, but folks who need
 to manipulate and/or extend the scheme should expect to do a certain
 level of code inspection.
 
-Vlib (Vector library) primary buffer metatdata
+Vlib (Vector library) primary buffer metadata
 ----------------------------------------------
 
 The first 64 octets of each vlib_buffer_t carries the primary buffer
@@ -119,7 +119,7 @@ Important fields:
   * NAT fields
   * u32 unused[6]
 
-Vnet (network stack) secondary buffer metatdata
+Vnet (network stack) secondary buffer metadata
 -----------------------------------------------
 
 Vnet primary buffer metadata occupies space reserved in the vlib

@@ -33,9 +33,9 @@ Host stack
 * Support for applications with multiple workers
 * Support for binds from multiple app workers to same ip:port
 * Switched to a message queue for io and control event notifications
-* Support for eventfd based notifications as alternative to mutext-condvar pair
+* Support for eventfd based notifications as alternative to mutex-condvar pair
 * VCL refactor to support async event notifications and multiple workers
-* TLS async support in client for HW accleration
+* TLS async support in client for HW acceleration
 * Performance optimizations and bug-fixing
 * A number of binary APIs will be deprecated in favor of using the event message queue. Details in the API section.
 

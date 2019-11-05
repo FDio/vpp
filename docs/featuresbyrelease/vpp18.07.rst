@@ -13,7 +13,7 @@ Infrastructure
 
    - Complete rework of the dpdk-input node
    - Display rx/tx burst function name in "show hardware detail"
-   - Improve buffer alloc perfomance
+   - Improve buffer alloc performance
       + This is ~50% improvement in buffer alloc performance. For a 256 buffer allocation, it was ~10 clocks/buffer, now is < 5 clocks.
    - Add per-numa page allocation info to 'show memory'
    - Vectorized bihash_{48,40,24,16}_8 key compare

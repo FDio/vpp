@@ -14,7 +14,7 @@ Features
 * Performance Improvements
    - Improvements in DPDK input and output nodes
    - Improvements in L2 path
-   - Improvmeents in IPv4 lookup node
+   - Improvements in IPv4 lookup node
 * Feature Arcs Improvements
    - Consolidation of the code
    - New feature arcs
