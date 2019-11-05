@@ -433,7 +433,17 @@ def run_forked(testcase_suites):
                         results) or stop_run
 
             for finished_testcase in finished_testcase_suites:
-                finished_testcase.child.join()
+                # Somewhat surprisingly, the join below may
+                # timeout, even if client signaled that
+                # it finished - so we note it just in case.
+                join_start = time.time()
+                finished_testcase.child.join(test_finished_join_timeout)
+                join_end = time.time()
+                if join_end - join_start >= test_finished_join_timeout:
+                    finished_testcase.logger.error(
+                        "Timeout joining finished test: %s (pid %d)" %
+                        (finished_testcase.last_test,
+                         finished_testcase.child.pid))
                 finished_testcase.close_pipes()
                 wrapped_testcase_suites.remove(finished_testcase)
                 finished_unread_testcases.add(finished_testcase)
@@ -725,6 +735,8 @@ if __name__ == '__main__':
     verbose = parse_digit_env("V", 0)
 
     test_timeout = parse_digit_env("TIMEOUT", 600)  # default = 10 minutes
+
+    test_finished_join_timeout = 15
 
     retries = parse_digit_env("RETRIES", 0)
 
