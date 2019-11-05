@@ -2294,6 +2294,7 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
 	      && tmp->rmt_port == hdr->src_port)
 	    {
 	      TCP_DBG ("half-open is valid!");
+	      is_valid = 1;
 	    }
 	}
     }
