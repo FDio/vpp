@@ -25,7 +25,7 @@ In our VPC we will have two instances: one, in which we will install VPP and the
 Figure 2: Example of the resources present inside our VPC
 
 
-Notice that the following example works with two VPCs, where in each of them there are a VM with VPP and a VM. Hence,  you will have to execute the same commands also in the other VPC to make the connection between the two VPC possibile.
+Notice that the following example works with two VPCs, where in each of them there are a VM with VPP and a VM. Hence,  you will have to execute the same commands also in the other VPC to make the connection between the two VPC possible.
 
 
 Now, create a new VM instance (you can use same setting as before (Ubuntu Server 16.04 and m5 type)) and attach a NIC. Remember that the two Client/Server machine's NICs should stay in two different IPv4 Subnet. Afterwards, on the VM's terminal execute these commands:

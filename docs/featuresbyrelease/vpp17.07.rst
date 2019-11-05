@@ -32,7 +32,7 @@ Interfaces
 
 * memif: IP mode, jumbo frames, multi queue
 * virtio-user support
-* vhost-usr; adaptive (poll/interupt) support.
+* vhost-usr; adaptive (poll/interrupt) support.
 
 Network features
 ++++++++++++++++++
@@ -41,13 +41,13 @@ Network features
 * BFD FIB integration
 * NAT64 support
 * GRE over IPv6
-* Segement routing MPLS
+* Segment routing MPLS
 * IOAM configuration for SRv6 localsid
 * LISP
    -  NSH support
    -  native forward static routes
    -  L2 ARP
-* ACL multi-core suuport
+* ACL multi-core support
 * Flowprobe:
    -  Add flowstartns, flowendns and tcpcontrolbits
    -  Stateful flows and IPv6, L4 recording

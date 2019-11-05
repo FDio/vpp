@@ -6,7 +6,7 @@
 Kubernetes is a container orchestration system that efficiently manages Docker containers. The Docker containers and container platforms provide many advantages over traditional virtualization. Container isolation is done on the kernel level, which eliminates the need for a guest virtual operating system, and therefore makes containers much more efficient, faster, and lightweight. The containers in Contiv/VPP are referred to as PODs.
 
 Contiv/VPP is a Kubernetes network plugin that uses [FD.io VPP](https://fd.io/) 
-to provide network connectivity between PODs in a k8s cluster (k8s is an abbreviated reference for kubernates).
+to provide network connectivity between PODs in a k8s cluster (k8s is an abbreviated reference for kubernetes).
 It deploys itself as a set of system PODs in the `kube-system` namespace,
 some of them (`contiv-ksr`, `contiv-etcd`) on the master node, and some
 of them (`contiv-cni`, `contiv-vswitch`, `contiv-stn`) on each node in the cluster. 
