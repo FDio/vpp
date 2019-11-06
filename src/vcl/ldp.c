@@ -1246,7 +1246,7 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	    vlsh, addr, len);
 
       rv = vls_connect (vlsh, &ep);
-      if (rv != VPPCOM_OK)
+      if (rv != VPPCOM_OK && rv != VPPCOM_EINPROGRESS)
 	{
 	  errno = -rv;
 	  rv = -1;
