@@ -18,14 +18,14 @@
 
 # -- Project information -----------------------------------------------------
 
-project = u'Vector Packet Processor'
+project = u'The Vector Packet Processor'
 copyright = u'2018, Linux Foundation'
 author = u'John DeNisco'
 
 # The short X.Y version
 version = u'master'
 # The full version, including alpha/beta/rc tags
-release = u'01'
+release = u'20.01'
 
 
 # -- General configuration ---------------------------------------------------

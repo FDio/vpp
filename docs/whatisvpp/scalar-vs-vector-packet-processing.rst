@@ -1,21 +1,16 @@
-:orphan:
+.. _scalar_vector:
 
-.. _what-is-vector-packet-processing:
+==================================
+Scalar vs Vector packet processing
+==================================
 
-=================================
-What is vector packet processing?
-=================================
+FD.io VPP is developed using vector packet processing, as opposed to
+scalar packet processing.
 
-FD.io VPP is developed using vector packet processing concepts, as opposed to
-scalar packet processing, these concepts are explained in the following sections. 
-
-Vector packet processing is a common approach among high performance `Userspace
-<https://en.wikipedia.org/wiki/User_space>`_ packet processing applications such
-as developed with FD.io VPP and `DPDK
-<https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_. The scalar based
-approach tends to be favoured by Operating System `Kernel
-<https://en.wikipedia.org/wiki/Kernel_(operating_system)>`_ Network Stacks and
-Userspace stacks that don't have strict performance requirements.
+Vector packet processing is a common approach among high performance packet
+processing applications such FD.io VPP and `DPDK <https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_.
+The scalar based approach tends to be favoured by network stacks that
+don't necessarily have strict performance requirements.
 
 **Scalar Packet Processing**
 
@@ -71,3 +66,4 @@ The further optimizations that this approaches enables are pipelining and
 prefetching to minimize read latency on table data and parallelize packet loads
 needed to process packets.
 
+Press next for more on Packet Processing Graphs.

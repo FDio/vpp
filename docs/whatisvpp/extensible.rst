@@ -1,15 +1,17 @@
 .. _extensible:
 
-=============================
-Extensible and Modular Design
-=============================
+===========================
+The Packet Processing Graph
+===========================
+
+At the core of the FD.io VPP design is the **Packet Procerssing Graph**
+
+This makes the software:
 
 * Pluggable, easy to understand & extend
 * Mature graph node architecture
 * Full control to reorganize the pipeline
 * Fast, plugins are equal citizens
-
-**Modular, Flexible, and Extensible**
 
 The FD.io VPP packet processing pipeline is decomposed into a ‘packet processing
 graph’.  This modular approach means that anyone can ‘plugin’ new graph
@@ -37,3 +39,5 @@ for libraries, and then dynamically loads each one in turn on startup.
 A plugin can introduce new graph nodes or rearrange the packet processing graph. 
 You can build a plugin completely independently of the FD.io VPP source tree,
 which means you can treat it as an independent component.
+
+For more on the network stack press next.
