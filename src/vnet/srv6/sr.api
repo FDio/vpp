@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.2.0";
+option version = "1.2.1";
 
 /** \brief SRv6 SID
 */
@@ -50,6 +50,7 @@ autoreply define sr_localsid_add_del
   u32 context;
   u8 is_del;
   vl_api_srv6_sid_t localsid;
+  u16 prefixlen;
   u8 end_psp;
   u8 behavior;
   u32 sw_if_index;
