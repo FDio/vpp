@@ -632,8 +632,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   pool_get_zero (rm->devices, rd);
   rd->dev_instance = rd - rm->devices;
   rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  rd->name = format (0, "%s", args->name);
   rd->linux_ifname = format (0, "%s", args->ifname);
+
+  if (!args->name || 0 == args->name[0])
+    rd->name = format (0, "%s/%d", args->ifname, rd->dev_instance);
+  else
+    rd->name = format (0, "%s", args->name);
 
   rd->pci = vlib_pci_get_device_info (vm, &pci_addr, &args->error);
   if (!rd->pci)
