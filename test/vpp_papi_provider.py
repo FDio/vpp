@@ -1134,6 +1134,7 @@ class VppPapiProvider(object):
 
     def sr_localsid_add_del(self,
                             localsid,
+                            prefixlen,
                             behavior,
                             nh_addr4,
                             nh_addr6,
@@ -1146,6 +1147,7 @@ class VppPapiProvider(object):
         """ Add/del IPv6 SR local-SID.
 
         :param localsid:
+        :param prefixlen:
         :param behavior: END=1; END.X=2; END.DX2=4; END.DX6=5;
         :param behavior: END.DX4=6; END.DT6=7; END.DT4=8
         :param nh_addr4:
@@ -1160,6 +1162,7 @@ class VppPapiProvider(object):
             self.papi.sr_localsid_add_del,
             {'is_del': is_del,
              'localsid': localsid,
+             'prefixlen': prefixlen,
              'end_psp': end_psp,
              'behavior': behavior,
              'sw_if_index': sw_if_index,

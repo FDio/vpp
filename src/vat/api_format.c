@@ -9763,6 +9763,7 @@ api_sr_localsid_add_del (vat_main_t * vam)
 
   u8 is_del;
   ip6_address_t localsid;
+  u16 prefixlen = 0;
   u8 end_psp = 0;
   u8 behavior = ~0;
   u32 sw_if_index;
@@ -9781,6 +9782,7 @@ api_sr_localsid_add_del (vat_main_t * vam)
       if (unformat (i, "del"))
 	is_del = 1;
       else if (unformat (i, "address %U", unformat_ip6_address, &localsid));
+      else if (unformat (i, "prefixlen %u", &prefixlen));
       else if (unformat (i, "next-hop %U", unformat_ip4_address, &nh_addr4))
 	nexthop_set = 1;
       else if (unformat (i, "next-hop %U", unformat_ip6_address, &nh_addr6))
@@ -9796,6 +9798,9 @@ api_sr_localsid_add_del (vat_main_t * vam)
   M (SR_LOCALSID_ADD_DEL, mp);
 
   clib_memcpy (mp->localsid.addr, &localsid, sizeof (mp->localsid));
+
+  mp->prefixlen = prefixlen;
+
   if (nexthop_set)
     {
       clib_memcpy (mp->nh_addr6, &nh_addr6, sizeof (mp->nh_addr6));
