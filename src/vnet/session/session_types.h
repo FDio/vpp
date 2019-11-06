@@ -46,6 +46,7 @@ typedef struct _session_endpoint_cfg
   u8 *hostname;
   u64 parent_handle;
   u32 ckpair_index;
+  u8 crypto_engine;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\

@@ -1403,7 +1403,7 @@ done:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APP_ADD_CERT_KEY_PAIR_REPLY, ({
     if (!rv)
-      rmp->index = a->index;
+      rmp->index = clib_host_to_net_u32 (a->index);
   }));
   /* *INDENT-ON* */
 }
@@ -1412,16 +1412,18 @@ static void
 vl_api_app_del_cert_key_pair_t_handler (vl_api_app_del_cert_key_pair_t * mp)
 {
   vl_api_app_del_cert_key_pair_reply_t *rmp;
+  u32 ckpair_index;
   int rv = 0;
   if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
-  rv = vnet_app_del_cert_key_pair (mp->index);
+  ckpair_index = clib_net_to_host_u32 (mp->index);
+  rv = vnet_app_del_cert_key_pair (ckpair_index);
 
 done:
-  REPLY_MACRO (VL_API_APP_ADD_CERT_KEY_PAIR_REPLY);
+  REPLY_MACRO (VL_API_APP_DEL_CERT_KEY_PAIR_REPLY);
 }
 
 /* ### WILL BE DEPRECATED POST 20.01 ### */

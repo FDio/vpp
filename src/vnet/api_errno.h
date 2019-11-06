@@ -151,7 +151,8 @@ _(RSRC_IN_USE, -155, "Resource In Use")                                 \
 _(KEY_LENGTH, -156, "invalid Key Length")                               \
 _(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol") \
 _(API_ENDIAN_FAILED, -159, "Endian mismatch detected")			\
-_(NO_CHANGE, -160, "No change in table")
+_(NO_CHANGE, -160, "No change in table")				\
+_(MISSING_CERT_KEY, -161, "Missing certifcate or key")
 
 typedef enum
 {

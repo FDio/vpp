@@ -296,6 +296,7 @@ typedef struct session_listen_msg_
   u8 is_ip4;
   ip46_address_t ip;
   u32 ckpair_index;
+  u8 crypto_engine;
 } __clib_packed session_listen_msg_t;
 
 STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
@@ -376,6 +377,7 @@ typedef struct session_connect_msg_
   u8 hostname[16];
   u64 parent_handle;
   u32 ckpair_index;
+  u8 crypto_engine;
 } __clib_packed session_connect_msg_t;
 
 STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
