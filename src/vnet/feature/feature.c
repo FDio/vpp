@@ -460,20 +460,21 @@ set_interface_features_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (line_input, "%U %v", unformat_vnet_sw_interface, vnm, &sw_if_index,
-	   &feature_name))
-	;
-      else if (unformat (line_input, "arc %v", &arc_name))
+	  (line_input, "%U %s arc %s", unformat_vnet_sw_interface, vnm,
+	   &sw_if_index, &feature_name, &arc_name))
 	;
       else if (unformat (line_input, "disable"))
 	enable = 0;
       else
 	{
-	  if (feature_name && arc_name)
-	    break;
 	  error = unformat_parse_error (line_input);
 	  goto done;
 	}
+    }
+  if (!feature_name || !arc_name)
+    {
+      error = clib_error_return (0, "Both feature name and arc required...");
+      goto done;
     }
 
   if (sw_if_index == ~0)
@@ -485,13 +486,28 @@ set_interface_features_command_fn (vlib_main_t * vm,
   vec_add1 (arc_name, 0);
   vec_add1 (feature_name, 0);
 
+  u8 arc_index;
+
+  arc_index = vnet_get_feature_arc_index ((const char *) arc_name);
+
+  if (arc_index == (u8) ~ 0)
+    {
+      error =
+	clib_error_return (0, "Unknown arc name (%s)... ",
+			   (const char *) arc_name);
+      goto done;
+    }
+
   vnet_feature_registration_t *reg;
   reg =
     vnet_get_feature_reg ((const char *) arc_name,
 			  (const char *) feature_name);
   if (reg == 0)
     {
-      error = clib_error_return (0, "Unknown feature...");
+      error =
+	clib_error_return (0,
+			   "Feature (%s) not registered to arc (%s)... See 'show features verbose' for valid feature/arc combinations. ",
+			   feature_name, arc_name);
       goto done;
     }
   if (reg->enable_disable_cb)
