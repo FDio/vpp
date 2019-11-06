@@ -1,0 +1,326 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30cb0d29_fce6782e",
+        "filename": "src/plugins/arp/arp.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool enable",
+      "range": {
+        "startLine": 105,
+        "startChar": 2,
+        "endLine": 105,
+        "endChar": 19
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6b732724_00057ae1",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool\nAlso, name and description do not match.",
+      "range": {
+        "startLine": 169,
+        "startChar": 2,
+        "endLine": 169,
+        "endChar": 4
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c94e4be3_e54290a6",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "_details usually does not have retval field.",
+      "range": {
+        "startLine": 175,
+        "startChar": 11,
+        "endLine": 175,
+        "endChar": 17
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee5424b2_bbe7d5f1",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "time in seconds?",
+      "range": {
+        "startLine": 199,
+        "startChar": 40,
+        "endLine": 199,
+        "endChar": 44
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "804a2b7a_bfcc5ad9",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 217,
+        "startChar": 2,
+        "endLine": 217,
+        "endChar": 4
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a01898d_9cd7895b",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool enable",
+      "range": {
+        "startLine": 235,
+        "startChar": 2,
+        "endLine": 235,
+        "endChar": 19
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37020dcb_65137ede",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "Use the same order as in definition body.",
+      "range": {
+        "startLine": 43,
+        "startChar": 11,
+        "endLine": 43,
+        "endChar": 22
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8277694_64bbcd22",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 65,
+        "startChar": 2,
+        "endLine": 65,
+        "endChar": 4
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64d2f4c4_d1553565",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "Body has af instead.",
+      "range": {
+        "startLine": 85,
+        "startChar": 11,
+        "endLine": 85,
+        "endChar": 18
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ac0cc7e_ffd8bb95",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "in",
+      "range": {
+        "startLine": 110,
+        "startChar": 38,
+        "endLine": 110,
+        "endChar": 40
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc7065e0_0594ddad",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "enable",
+      "range": {
+        "startLine": 130,
+        "startChar": 11,
+        "endLine": 130,
+        "endChar": 25
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7457c58e_edd43c42",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 139,
+        "startChar": 2,
+        "endLine": 139,
+        "endChar": 4
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9de7cd4c_d1632343",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "Line 158 still says enable_disable.",
+      "range": {
+        "startLine": 148,
+        "startChar": 11,
+        "endLine": 148,
+        "endChar": 17
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2aa10c9b_dc6aed00",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 613,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T15:18:50Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 613,
+        "startChar": 2,
+        "endLine": 613,
+        "endChar": 4
+      },
+      "revId": "aec42d2c8c02c39d2d3286b15ff305cb8df9b9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
