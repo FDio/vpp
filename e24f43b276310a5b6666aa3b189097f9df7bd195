@@ -22,6 +22,30 @@
       "revId": "e24f43b276310a5b6666aa3b189097f9df7bd195",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7bc1eb89_3e965f7b",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1576,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-11-06T09:35:05Z",
+      "side": 1,
+      "message": "Right, sounds better !",
+      "parentUuid": "a9cf03f0_9fc3732b",
+      "range": {
+        "startLine": 1570,
+        "startChar": 0,
+        "endLine": 1576,
+        "endChar": 5
+      },
+      "revId": "e24f43b276310a5b6666aa3b189097f9df7bd195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
