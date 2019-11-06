@@ -55,6 +55,7 @@ session_mq_listen_handler (void *data)
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep.transport_proto = mp->proto;
   a->sep_ext.ckpair_index = mp->ckpair_index;
+  a->sep_ext.crypto_engine = mp->crypto_engine;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
@@ -115,6 +116,7 @@ session_mq_connect_handler (void *data)
   a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep_ext.parent_handle = mp->parent_handle;
   a->sep_ext.ckpair_index = mp->ckpair_index;
+  a->sep_ext.crypto_engine = mp->crypto_engine;
   if (mp->hostname_len)
     {
       vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
