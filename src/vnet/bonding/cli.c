@@ -592,8 +592,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
     }
   if (bif->mode == BOND_MODE_LACP)
     {
-      u8 *name = format (0, "/if/lacp/%u/%u/state", bif->sw_if_index,
-			 args->slave);
+      u8 *name = format (0, "/if/lacp/%u/%u/state%c", bif->sw_if_index,
+			 args->slave, 0);
 
       vec_validate (bm->stats, bif->sw_if_index);
       vec_validate (bm->stats[bif->sw_if_index], args->slave);
