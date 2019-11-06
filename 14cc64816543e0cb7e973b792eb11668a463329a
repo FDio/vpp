@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f2f6311_5c2a2565",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1906,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-06T13:00:06Z",
+      "side": 1,
+      "message": "The %v in the next line means the format functions looks at vector length, so it does not need the trailing zero to work.\nActually, %v would print the zero byte, which is not what we want.",
+      "range": {
+        "startLine": 1906,
+        "startChar": 4,
+        "endLine": 1906,
+        "endChar": 12
+      },
+      "revId": "14cc64816543e0cb7e973b792eb11668a463329a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
