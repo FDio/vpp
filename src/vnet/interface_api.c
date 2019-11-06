@@ -828,8 +828,9 @@ link_up_down_function (vnet_main_t * vm, u32 hw_if_index, u32 flags)
 
   if (vam->link_state_process_up)
     {
-      enum api_events event =
-	flags ? API_LINK_STATE_UP_EVENT : API_LINK_STATE_DOWN_EVENT;
+      enum api_events event = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
+			       API_LINK_STATE_UP_EVENT :
+			       API_LINK_STATE_DOWN_EVENT);
       vlib_process_signal_event (vam->vlib_main,
 				 link_state_process_node.index, event,
 				 hi->sw_if_index);
@@ -849,8 +850,8 @@ admin_up_down_function (vnet_main_t * vm, u32 sw_if_index, u32 flags)
    */
   if (vam->link_state_process_up)
     {
-      enum api_events event =
-	flags ? API_ADMIN_UP_EVENT : API_ADMIN_DOWN_EVENT;
+      enum api_events event = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+			       API_ADMIN_UP_EVENT : API_ADMIN_DOWN_EVENT);
       vlib_process_signal_event (vam->vlib_main,
 				 link_state_process_node.index, event,
 				 sw_if_index);
