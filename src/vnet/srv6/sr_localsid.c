@@ -63,13 +63,15 @@ static dpo_type_t sr_localsid_d_dpo_type;
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
   int rv;
+  u8 pref_length = 128;
+  sr_localsid_fn_registration_t *plugin = 0;
 
   ip6_sr_localsid_t *ls = 0;
 
@@ -84,18 +86,30 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	{
 	  /* Retrieve localsid */
 	  ls = pool_elt_at_index (sm->localsids, p[0]);
+	  if (ls->behavior >= SR_BEHAVIOR_LAST)
+	    {
+	      plugin = pool_elt_at_index (sm->plugin_functions,
+					  ls->behavior - SR_BEHAVIOR_LAST);
+	      pref_length = plugin->prefix_length;
+	    }
+
+	  if (prefixlen != 0)
+	    {
+	      pref_length = prefixlen;
+	    }
+
 	  /* Delete FIB entry */
 	  fib_prefix_t pfx = {
 	    .fp_proto = FIB_PROTOCOL_IP6,
-	    .fp_len = 128,
+	    .fp_len = pref_length,
 	    .fp_addr = {
 			.ip6 = *localsid_addr,
 			}
 	  };
 
-	  fib_table_entry_delete (fib_table_find (FIB_PROTOCOL_IP6,
-						  fib_table),
-				  &pfx, FIB_SOURCE_SR);
+	  fib_table_entry_delete (fib_table_find
+				  (FIB_PROTOCOL_IP6, fib_table), &pfx,
+				  FIB_SOURCE_SR);
 
 	  /* In case it is a Xconnect iface remove the (OIF, NHOP) adj */
 	  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX6
@@ -104,10 +118,6 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
 	    {
-	      sr_localsid_fn_registration_t *plugin = 0;
-	      plugin = pool_elt_at_index (sm->plugin_functions,
-					  ls->behavior - SR_BEHAVIOR_LAST);
-
 	      /* Callback plugin removal function */
 	      rv = plugin->removal (ls);
 	    }
@@ -125,14 +135,27 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   if (is_del)
     return -2;
 
+  if (behavior >= SR_BEHAVIOR_LAST)
+    {
+      sr_localsid_fn_registration_t *plugin = 0;
+      plugin =
+	pool_elt_at_index (sm->plugin_functions, behavior - SR_BEHAVIOR_LAST);
+      pref_length = plugin->prefix_length;
+    }
+
   /* Check whether there exists a FIB entry with such address */
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = 128,
+    .fp_len = pref_length,
   };
 
   pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
   pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
+
+  if (prefixlen != 0)
+    {
+      pfx.fp_len = prefixlen;
+    }
 
   /* Lookup the FIB index associated to the table id provided */
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, fib_table);
@@ -153,6 +176,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   ls->behavior = behavior;
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
+  ls->localsid_len = pfx.fp_len;
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -267,6 +291,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
+  u16 prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
@@ -287,6 +312,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (!address_set
 	       && unformat (input, "address %U", unformat_ip6_address,
 			    &resulting_address))
+	address_set = 1;
+      else if (!address_set
+	       && unformat (input, "prefix %U/%d", unformat_ip6_address,
+			    &resulting_address, &prefix_len))
 	address_set = 1;
       else if (!address_set
 	       && unformat (input, "addr %U", unformat_ip6_address,
@@ -325,12 +354,12 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      sr_localsid_fn_registration_t **plugin_it = 0;
 
 	      /* Create a vector out of the plugin pool as recommended */
-        /* *INDENT-OFF* */
-        pool_foreach (plugin, sm->plugin_functions,
-        {
-          vec_add1 (vec_plugins, plugin);
-        });
-        /* *INDENT-ON* */
+              /* *INDENT-OFF* */
+              pool_foreach (plugin, sm->plugin_functions,
+                {
+                  vec_add1 (vec_plugins, plugin);
+                });
+              /* *INDENT-ON* */
 
 	      vec_foreach (plugin_it, vec_plugins)
 	      {
@@ -373,9 +402,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "Error: SRv6 PSP only compatible with End and End.X");
 
-  rv = sr_cli_localsid (is_del, &resulting_address, end_psp, behavior,
-			sw_if_index, vlan_index, fib_index, &next_hop,
-			ls_plugin_mem);
+  rv =
+    sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
+		     behavior, sw_if_index, vlan_index, fib_index, &next_hop,
+		     ls_plugin_mem);
 
   switch (rv)
     {
@@ -1533,7 +1563,8 @@ const static char *const *const sr_loc_d_nodes[DPO_PROTO_NUM] = {
 int
 sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, dpo_type_t * dpo,
+			       u8 * params_str, u8 prefix_length,
+			       dpo_type_t * dpo,
 			       format_function_t * ls_format,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,
@@ -1562,6 +1593,7 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 
   plugin->sr_localsid_function_number = (plugin - sm->plugin_functions);
   plugin->sr_localsid_function_number += SR_BEHAVIOR_LAST;
+  plugin->prefix_length = prefix_length;
   plugin->ls_format = ls_format;
   plugin->ls_unformat = ls_unformat;
   plugin->creation = creation_fn;

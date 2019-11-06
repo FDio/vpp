@@ -9796,6 +9796,7 @@ api_sr_localsid_add_del (vat_main_t * vam)
   M (SR_LOCALSID_ADD_DEL, mp);
 
   clib_memcpy (mp->localsid.addr, &localsid, sizeof (mp->localsid));
+
   if (nexthop_set)
     {
       clib_memcpy (mp->nh_addr6, &nh_addr6, sizeof (mp->nh_addr6));
