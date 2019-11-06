@@ -54,6 +54,14 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip;
+  ip6_sr_header_t sr;
+} __attribute__ ((packed)) ip6srv_combo_header_t;
+/* *INDENT-ON* */
+
 /**
  * @brief SR Segment List (SID list)
  */
@@ -103,6 +111,8 @@ typedef struct
 {
   ip6_address_t localsid;		/**< LocalSID IPv6 address */
 
+  u16 localsid_len;
+
   char end_psp;					/**< Combined with End.PSP? */
 
   u16 behavior;					/**< Behavior associated to this localsid */
@@ -140,6 +150,8 @@ typedef struct
   u8 *def_str;								/**< Behavior definition (i.e. Endpoint with cross-connect) */
 
   u8 *params_str;							/**< Behavior parameters (i.e. <oif> <IP46next_hop>) */
+
+  u8 prefix_length;
 
   dpo_type_t dpo;							/**< DPO type registration */
 
@@ -250,7 +262,8 @@ extern void sr_dpo_unlock (dpo_id_t * dpo);
 extern int
 sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, dpo_type_t * dpo,
+			       u8 * params_str, u8 prefix_length,
+			       dpo_type_t * dpo,
 			       format_function_t * ls_format,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,
@@ -259,14 +272,13 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
-extern int
-sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-	       u8 operation, ip6_address_t * segments, u32 sl_index,
-	       u32 weight);
+extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
+			  u8 operation, ip6_address_t * segments,
+			  u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
 		 void *ls_plugin_mem);
