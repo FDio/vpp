@@ -33,6 +33,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/srv6/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip4_packet.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj.h>
@@ -63,17 +64,33 @@ static dpo_type_t sr_localsid_d_dpo_type;
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
   int rv;
+  u8 pref_length = 128;
+  u8 is_ipv4 = 0;
+  ip4_address_t localsid_addr4;;
+  u16 prefixlen4;
+  sr_localsid_fn_registration_t *plugin = 0;
 
   ip6_sr_localsid_t *ls = 0;
 
   dpo_id_t dpo = DPO_INVALID;
+
+  if (localsid_addr->as_u32[0] == 0 && localsid_addr->as_u32[1] == 0
+      && localsid_addr->as_u16[4] == 0 && localsid_addr->as_u16[5] == 0xffff)
+    {
+      is_ipv4 = 1;
+      localsid_addr4.as_u32 = localsid_addr->as_u32[3];
+      if (prefixlen != 0)
+	prefixlen4 = prefixlen - 96;
+      else
+	prefixlen4 = 32;
+    }
 
   /* Search for the item */
   p = mhash_get (&sm->sr_localsids_index_hash, localsid_addr);
@@ -84,18 +101,38 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	{
 	  /* Retrieve localsid */
 	  ls = pool_elt_at_index (sm->localsids, p[0]);
+	  if (ls->behavior >= SR_BEHAVIOR_LAST)
+	    {
+	      plugin = pool_elt_at_index (sm->plugin_functions,
+					  ls->behavior - SR_BEHAVIOR_LAST);
+	      pref_length = plugin->prefix_length;
+	    }
+
+	  if (prefixlen != 0)
+	    {
+	      pref_length = prefixlen;
+	    }
+
 	  /* Delete FIB entry */
 	  fib_prefix_t pfx = {
 	    .fp_proto = FIB_PROTOCOL_IP6,
-	    .fp_len = 128,
+	    .fp_len = pref_length,
 	    .fp_addr = {
 			.ip6 = *localsid_addr,
 			}
 	  };
 
-	  fib_table_entry_delete (fib_table_find (FIB_PROTOCOL_IP6,
-						  fib_table),
-				  &pfx, FIB_SOURCE_SR);
+	  if (is_ipv4)
+	    {
+	      pfx.fp_proto = FIB_PROTOCOL_IP4;
+	      pfx.fp_len = prefixlen4;
+	      pfx.fp_addr.ip4 = localsid_addr4;
+	    }
+
+	  fib_table_entry_delete (fib_table_find
+				  ((is_ipv4 ? FIB_PROTOCOL_IP4 :
+				    FIB_PROTOCOL_IP6), fib_table), &pfx,
+				  FIB_SOURCE_SR);
 
 	  /* In case it is a Xconnect iface remove the (OIF, NHOP) adj */
 	  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX6
@@ -103,14 +140,8 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	    adj_unlock (ls->nh_adj);
 
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
-	    {
-	      sr_localsid_fn_registration_t *plugin = 0;
-	      plugin = pool_elt_at_index (sm->plugin_functions,
-					  ls->behavior - SR_BEHAVIOR_LAST);
-
-	      /* Callback plugin removal function */
-	      rv = plugin->removal (ls);
-	    }
+	    /* Callback plugin removal function */
+	    rv = plugin->removal (ls);
 
 	  /* Delete localsid registry */
 	  pool_put (sm->localsids, ls);
@@ -125,17 +156,40 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   if (is_del)
     return -2;
 
+  if (behavior >= SR_BEHAVIOR_LAST)
+    {
+      sr_localsid_fn_registration_t *plugin = 0;
+      plugin =
+	pool_elt_at_index (sm->plugin_functions, behavior - SR_BEHAVIOR_LAST);
+      pref_length = plugin->prefix_length;
+    }
   /* Check whether there exists a FIB entry with such address */
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = 128,
+    .fp_len = pref_length,
   };
 
-  pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
-  pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
+  if (is_ipv4)
+    {
+      pfx.fp_proto = FIB_PROTOCOL_IP4;
+      pfx.fp_len = prefixlen4;
+      pfx.fp_addr.ip4 = localsid_addr4;
+    }
+  else
+    {
+      pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
+      pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
+
+      if (prefixlen != 0)
+	{
+	  pfx.fp_len = prefixlen;
+	}
+    }
 
   /* Lookup the FIB index associated to the table id provided */
-  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, fib_table);
+  u32 fib_index =
+    fib_table_find ((is_ipv4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+		    fib_table);
   if (fib_index == ~0)
     return -3;
 
@@ -153,6 +207,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   ls->behavior = behavior;
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
+  ls->localsid_len = is_ipv4 ? pfx.fp_len + 96 : pfx.fp_len;
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -230,7 +285,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	  pool_put (sm->localsids, ls);
 	  return -6;
 	}
-      dpo_set (&dpo, plugin->dpo, DPO_PROTO_IP6, ls - sm->localsids);
+      dpo_set (&dpo, plugin->dpo, (is_ipv4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6),
+	       ls - sm->localsids);
+      //dpo_set (&dpo, plugin->dpo, DPO_PROTO_IP6, ls - sm->localsids);
     }
 
   /* Set hash key for searching localsid by address */
@@ -267,13 +324,17 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
+  u16 prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
+  ip4_address_t resulting_address4;
   ip46_address_t next_hop;
   char address_set = 0;
+  char ip4_set = 0;
   char behavior = 0;
   void *ls_plugin_mem = 0;
+  sr_localsid_fn_registration_t *result_plugin = 0;
 
   int rv;
 
@@ -289,9 +350,25 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			    &resulting_address))
 	address_set = 1;
       else if (!address_set
+	       && unformat (input, "address %U", unformat_ip4_address,
+			    &resulting_address4))
+	address_set = ip4_set = 1;
+      else if (!address_set
+	       && unformat (input, "prefix %U/%d", unformat_ip6_address,
+			    &resulting_address, &prefix_len))
+	address_set = 1;
+      else if (!address_set
+	       && unformat (input, "prefix %U/%d", unformat_ip4_address,
+			    &resulting_address4, &prefix_len))
+	address_set = ip4_set = 1;
+      else if (!address_set
 	       && unformat (input, "addr %U", unformat_ip6_address,
 			    &resulting_address))
 	address_set = 1;
+      else if (!address_set
+	       && unformat (input, "addr %U", unformat_ip4_address,
+			    &resulting_address4))
+	address_set = ip4_set = 1;
       else if (unformat (input, "fib-table %u", &fib_index));
       else if (vlan_index == (u32) ~ 0
 	       && unformat (input, "vlan %u", &vlan_index));
@@ -325,12 +402,12 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      sr_localsid_fn_registration_t **plugin_it = 0;
 
 	      /* Create a vector out of the plugin pool as recommended */
-        /* *INDENT-OFF* */
-        pool_foreach (plugin, sm->plugin_functions,
-        {
-          vec_add1 (vec_plugins, plugin);
-        });
-        /* *INDENT-ON* */
+              /* *INDENT-OFF* */
+              pool_foreach (plugin, sm->plugin_functions,
+                {
+                  vec_add1 (vec_plugins, plugin);
+                });
+              /* *INDENT-ON* */
 
 	      vec_foreach (plugin_it, vec_plugins)
 	      {
@@ -338,6 +415,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		    (input, "%U", (*plugin_it)->ls_unformat, &ls_plugin_mem))
 		  {
 		    behavior = (*plugin_it)->sr_localsid_function_number;
+		    result_plugin = *plugin_it;
 		    break;
 		  }
 	      }
@@ -373,9 +451,26 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "Error: SRv6 PSP only compatible with End and End.X");
 
-  rv = sr_cli_localsid (is_del, &resulting_address, end_psp, behavior,
-			sw_if_index, vlan_index, fib_index, &next_hop,
-			ls_plugin_mem);
+  if (ip4_set)
+    {
+      if (!behavior || !result_plugin
+	  || strcmp ((char *) result_plugin->keyword_str, "end.m.gtp4.d"))
+	return clib_error_return (0,
+				  "Error: IPv4 address format can be supported with SRv6-End.M.GTP4.D only");
+
+      resulting_address.as_u32[0] = 0x0;
+      resulting_address.as_u32[1] = 0x0;
+      resulting_address.as_u16[4] = 0x0;
+      resulting_address.as_u16[5] = 0xffff;
+      clib_memcpy_fast (&resulting_address.as_u32[3],
+			&resulting_address4.as_u32, 4);
+      prefix_len += 96;
+    }
+
+  rv =
+    sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
+		     behavior, sw_if_index, vlan_index, fib_index, &next_hop,
+		     ls_plugin_mem);
 
   switch (rv)
     {
@@ -1533,7 +1628,8 @@ const static char *const *const sr_loc_d_nodes[DPO_PROTO_NUM] = {
 int
 sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, dpo_type_t * dpo,
+			       u8 * params_str, u8 prefix_length,
+			       dpo_type_t * dpo,
 			       format_function_t * ls_format,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,
@@ -1562,6 +1658,7 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 
   plugin->sr_localsid_function_number = (plugin - sm->plugin_functions);
   plugin->sr_localsid_function_number += SR_BEHAVIOR_LAST;
+  plugin->prefix_length = prefix_length;
   plugin->ls_format = ls_format;
   plugin->ls_unformat = ls_unformat;
   plugin->creation = creation_fn;
