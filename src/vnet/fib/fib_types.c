@@ -102,6 +102,13 @@ fib_prefix_from_mpls_label (mpls_label_t label,
     pfx->fp_eos = eos;
 }
 
+void
+fib_prefix_copy (fib_prefix_t *dst,
+                 const fib_prefix_t *src)
+{
+    memcpy(dst, src, sizeof(*dst));
+}
+
 int
 fib_prefix_cmp (const fib_prefix_t *p1,
 		const fib_prefix_t *p2)
