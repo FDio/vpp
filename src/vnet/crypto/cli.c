@@ -68,7 +68,7 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
       vnet_crypto_engine_t *e;
       vnet_crypto_op_id_t id = d->op_by_type[i];
 
-      if (id == 0)
+      if (id == 0 || !vnet_crypto_is_set_handler(id))
 	continue;
 
       od = vec_elt_at_index (cm->opt_data, id);
