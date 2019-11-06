@@ -864,8 +864,8 @@ quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
   return 0;
 }
 
-static void
-quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
+static int
+quic_store_quicly_ctx (application_t * app, u32 ckpair_index)
 {
   quic_main_t *qm = &quic_main;
   quicly_context_t *quicly_ctx;
@@ -873,7 +873,7 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
   app_cert_key_pair_t *ckpair;
   u64 max_enq;
   if (app->quicly_ctx)
-    return;
+    return 0;
 
   quicly_ctx_data_t *quicly_ctx_data =
     clib_mem_alloc (sizeof (quicly_ctx_data_t));
@@ -927,18 +927,23 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
 				      &ptls_openssl_aes128ecb,
 				      &ptls_openssl_sha256, key_vec);
 
-  ckpair = app_cert_key_pair_get_if_valid (cert_key_index);
-  if (ckpair && ckpair->key != NULL && ckpair->cert != NULL)
+  ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
+  if (!ckpair || !ckpair->key || !ckpair->cert)
     {
-      if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
-	{
-	  QUIC_DBG (1, "failed to read private key from app configuration\n");
-	}
-      if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
-	{
-	  QUIC_DBG (1, "failed to load certificate\n");
-	}
+      QUIC_DBG (1, "Wrong ckpair id %d\n", ckpair_index);
+      return VNET_API_ERROR_MISSING_CERT_KEY;
     }
+  if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
+    {
+      QUIC_DBG (1, "failed to read private key from app configuration\n");
+      return VNET_API_ERROR_MISSING_CERT_KEY;
+    }
+  if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
+    {
+      QUIC_DBG (1, "failed to load certificate\n");
+      return VNET_API_ERROR_MISSING_CERT_KEY;
+    }
+  return 0;
 }
 
 /* Transport proto functions */
@@ -1086,7 +1091,8 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
-  quic_store_quicly_ctx (app, ctx->ckpair_index);
+  if ((error = quic_store_quicly_ctx (app, sep->ckpair_index)))
+    return error;
   /* Also store it in ctx for convenience
    * Waiting for crypto_ctx logic */
   ctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
@@ -1178,7 +1184,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 
-  quic_store_quicly_ctx (app, sep->ckpair_index);
+  if (quic_store_quicly_ctx (app, sep->ckpair_index))
+    return -1;
 
   sep->transport_proto = TRANSPORT_PROTO_UDPC;
   clib_memset (args, 0, sizeof (*args));
