@@ -22,6 +22,30 @@
       "revId": "b6e8b1a7c8bf9f9fbd05cdc3c90111d9e7a6897b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c4700562_c941f06a",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 732,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-11-06T14:50:43Z",
+      "side": 0,
+      "message": "ok. you don\u0027t need to probe neighbours. they resolve automatically since VPP 16.10",
+      "parentUuid": "d4c792c2_c2909d77",
+      "range": {
+        "startLine": 732,
+        "startChar": 17,
+        "endLine": 732,
+        "endChar": 34
+      },
+      "revId": "b6e8b1a7c8bf9f9fbd05cdc3c90111d9e7a6897b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
