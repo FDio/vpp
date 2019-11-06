@@ -366,7 +366,7 @@ show_features_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_features_command, static) = {
   .path = "show features",
-  .short_help = "show features",
+  .short_help = "show features [verbose]",
   .function = show_features_command_fn,
 };
 /* *INDENT-ON* */
