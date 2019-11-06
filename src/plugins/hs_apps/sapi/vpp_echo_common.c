@@ -205,8 +205,6 @@ echo_format_app_state (u8 * s, va_list * args)
     return format (s, "STATE_ATTACHED (%u)", state);
   if (state == STATE_ATTACHED_NO_CERT)
     return format (s, "STATE_ATTACHED_NO_CERT (%u)", state);
-  if (state == STATE_ATTACHED_ONE_CERT)
-    return format (s, "STATE_ATTACHED_ONE_CERT (%u)", state);
   if (state == STATE_LISTEN)
     return format (s, "STATE_LISTEN (%u)", state);
   if (state == STATE_READY)
