@@ -46,6 +46,7 @@ class VppSRv6LocalSID(VppObject):
         self.localsid = localsid
         # keep binary format in _localsid
         self.localsid["addr"] = inet_pton(AF_INET6, self.localsid["addr"])
+        self.prefixlen = 0
         self.behavior = behavior
         self.nh_addr4 = inet_pton(AF_INET, nh_addr4)
         self.nh_addr6 = inet_pton(AF_INET6, nh_addr6)
@@ -58,6 +59,7 @@ class VppSRv6LocalSID(VppObject):
     def add_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
             self.localsid,
+            self.prefixlen,
             self.behavior,
             self.nh_addr4,
             self.nh_addr6,
@@ -71,6 +73,7 @@ class VppSRv6LocalSID(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
             self.localsid,
+            self.prefixlen,
             self.behavior,
             self.nh_addr4,
             self.nh_addr6,
