@@ -188,7 +188,9 @@ typedef struct quic_main_
   f64 tstamp_ticks_per_clock;
 
   ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
-  u8 default_cipher;
+  uword *available_crypto_engines;	/* Bitmap for registered engines */
+  u8 default_crypto_engine;	/* Used if you do connect with CRYPTO_ENGINE_NONE (0) */
+
   quic_session_cache_t session_cache;
 
   /*

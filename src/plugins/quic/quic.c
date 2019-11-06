@@ -865,8 +865,9 @@ quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
   return 0;
 }
 
-static void
-quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
+static int
+quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
+		       u8 crypto_engine)
 {
   quic_main_t *qm = &quic_main;
   quicly_context_t *quicly_ctx;
@@ -874,7 +875,18 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
   app_cert_key_pair_t *ckpair;
   u64 max_enq;
   if (app->quicly_ctx)
-    return;
+    return 0;
+
+  if (crypto_engine == CRYPTO_ENGINE_NONE)
+    {
+      QUIC_DBG (2, "No crypto engine specified, using %d", crypto_engine);
+      crypto_engine = qm->default_crypto_engine;
+    }
+  if (!clib_bitmap_get (qm->available_crypto_engines, crypto_engine))
+    {
+      QUIC_DBG (1, "Quic does not support crypto engine %d", crypto_engine);
+      return VNET_API_ERROR_MISSING_CERT_KEY;
+    }
 
   quicly_ctx_data_t *quicly_ctx_data =
     clib_mem_alloc (sizeof (quicly_ctx_data_t));
@@ -884,7 +896,7 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->get_time = &ptls_get_time;
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
-  ptls_ctx->cipher_suites = qm->quic_ciphers[qm->default_cipher];
+  ptls_ctx->cipher_suites = qm->quic_ciphers[crypto_engine];
   ptls_ctx->certificates.list = NULL;
   ptls_ctx->certificates.count = 0;
   ptls_ctx->esni = NULL;
@@ -928,18 +940,27 @@ quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
 				      &ptls_openssl_aes128ecb,
 				      &ptls_openssl_sha256, key_vec);
 
-  ckpair = app_cert_key_pair_get_if_valid (cert_key_index);
-  if (ckpair && ckpair->key != NULL && ckpair->cert != NULL)
+  ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
+  if (!ckpair || !ckpair->key || !ckpair->cert)
     {
-      if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
-	{
-	  QUIC_DBG (1, "failed to read private key from app configuration\n");
-	}
-      if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
-	{
-	  QUIC_DBG (1, "failed to load certificate\n");
-	}
+      QUIC_DBG (1, "Wrong ckpair id %d\n", ckpair_index);
+      goto error;
     }
+  if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
+    {
+      QUIC_DBG (1, "failed to read private key from app configuration\n");
+      goto error;
+    }
+  if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
+    {
+      QUIC_DBG (1, "failed to load certificate\n");
+      goto error;
+    }
+  return 0;
+
+error:
+  clib_mem_free (quicly_ctx_data);
+  return VNET_API_ERROR_MISSING_CERT_KEY;
 }
 
 /* Transport proto functions */
@@ -1087,7 +1108,9 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
-  quic_store_quicly_ctx (app, ctx->ckpair_index);
+  if ((error =
+       quic_store_quicly_ctx (app, sep->ckpair_index, sep->crypto_engine)))
+    return error;
   /* Also store it in ctx for convenience
    * Waiting for crypto_ctx logic */
   ctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
@@ -1179,7 +1202,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 
-  quic_store_quicly_ctx (app, sep->ckpair_index);
+  if (quic_store_quicly_ctx (app, sep->ckpair_index, sep->crypto_engine))
+    return -1;
 
   sep->transport_proto = TRANSPORT_PROTO_UDPC;
   clib_memset (args, 0, sizeof (*args));
@@ -2110,6 +2134,7 @@ quic_register_cipher_suite (crypto_engine_type_t type,
 {
   quic_main_t *qm = &quic_main;
   vec_validate (qm->quic_ciphers, type);
+  clib_bitmap_set (qm->available_crypto_engines, type, 1);
   qm->quic_ciphers[type] = ciphers;
 }
 
@@ -2191,10 +2216,12 @@ quic_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
+  clib_bitmap_alloc (qm->available_crypto_engines,
+		     app_crypto_engine_n_types ());
   quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_cipher = CRYPTO_ENGINE_PICOTLS;
+  qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   vec_free (a->name);
   return 0;
 }
@@ -2211,9 +2238,9 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "unknown input '%U'",
 			      format_unformat_error, input);
   if (unformat (input, "vpp"))
-    qm->default_cipher = CRYPTO_ENGINE_VPP;
+    qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
   else if (unformat (input, "picotls"))
-    qm->default_cipher = CRYPTO_ENGINE_PICOTLS;
+    qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   else
     return clib_error_return (0, "unknown input '%U'",
 			      format_unformat_error, input);
