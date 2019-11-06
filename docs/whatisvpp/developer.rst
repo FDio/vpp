@@ -1,10 +1,11 @@
 .. _developer-friendly:
 
-==================
-Developer Friendly
-==================
+=======================
+Features for Developers
+=======================
 
-This section describes the different ways VPP is friendly to developers:
+This section describes a little about the VPP environment and some of the features
+that can be used by developers.
 
 * Extensive runtime counters; throughput, `intructions per cycle <https://en.wikipedia.org/wiki/Instructions_per_cycle>`_, errors, events etc.
 * Integrated pipeline tracing facilities
@@ -24,3 +25,5 @@ This section describes the different ways VPP is friendly to developers:
   * Shared-memory segment base address randomization
   * Stack bounds checking
   * Static analysis with `Coverity <https://en.wikipedia.org/wiki/Coverity>`_
+
+For the supported architectures click next.

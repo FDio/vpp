@@ -27,3 +27,5 @@ recent LTS operating systems releases:
    * Ubuntu 
    * CentOS 
    * OpenSUSE
+
+For more about VPP performance press next.

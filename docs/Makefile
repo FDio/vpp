@@ -41,6 +41,7 @@ ifeq ($(OS_ID),ubuntu)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 endif
-	@python3 -m pip install sphinxcontrib-spelling
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" -W -b spelling  $(O)
+# Disable spell checking for now
+#	@python3 -m pip install sphinxcontrib-spelling
+#	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" -W -b spelling  $(O)
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

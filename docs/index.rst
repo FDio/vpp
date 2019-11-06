@@ -3,25 +3,35 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-#########
-FD.io VPP
-#########
+#########################################
+What is the Vector Packet Processor (VPP)
+#########################################
 
-FD.io Vector Packet Processing (VPP) is a fast, scalable layer 2-4
-multi-platform network stack. VPP supports integration with OpenStack
-and Kubernetes. Network management features include configuration,
-counters and sampling. Development tools include plugin extensibility,
-high-performance event-logging, multiple kinds of packet tracing;
-debug images include extensive consistency checking.
+FD.io's Vector Packet Processor (VPP) is a fast, scalable layer 2-4
+multi-platform network stack. It runs in `Linux Userspace <https://en.wikipedia.org/wiki/User_space>`_
+on multiple architectures including x86, ARM, and Power architectures.
+VPP is built using the `Dataplane Development Kit (DPDK) <https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_.
 
-Use-cases include vSwitch, vRouter, Gateways, Firewalls and Load
-Balancers, to name several. Out of the box, VPP works as a software
-development kit or an appliance.
+VPP benefits include high performance, proven technology, modularity,
+and a rich feature set.
+
+VPP supports integration with OpenStack and Kubernetes. Network
+management features include configuration, counters, sampling and
+more. For developers, VPP includes plugin extensibility,
+high-performance event-logging, and multiple kinds of packet
+tracing. Development debug images include complete symbol tables, and
+extensive consistency checking.
+
+Some VPP Use-cases include vSwitches, vRouters, Gateways, Firewalls
+and Load Balancers, to name a few. Out of the box, VPP can work as a
+software development kit or an appliance.
+
+For more details click on the links below or press next.
 
 .. toctree::
    :maxdepth: 2
 
-   overview/index
+   whatisvpp/index.rst
    gettingstarted/index
    links/index
    usecases/index
