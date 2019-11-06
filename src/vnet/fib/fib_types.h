@@ -248,6 +248,12 @@ extern int fib_prefix_cmp(const fib_prefix_t *p1,
 			  const fib_prefix_t *p2);
 
 /**
+ * \brief Copy a prefix
+ */
+extern void fib_prefix_copy(fib_prefix_t *dst,
+                            const fib_prefix_t *src);
+
+/**
  * \brief Compare two prefixes for covering relationship
  *
  * \return non-zero if the first prefix is a cover for the second
