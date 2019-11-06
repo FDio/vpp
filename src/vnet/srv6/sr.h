@@ -54,6 +54,116 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+#define GTPU_EXTHDR_FLAG		0x04
+#define GTPU_EXTHDR_PDU_SESSION		0x85
+
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define BITALIGN2(A,B)		A; B
+#define BITALIGN3(A,B,C)	A; B; C
+#else
+#define BITALIGN2(A,B)		B; A
+#define BITALIGN3(A,B,C)	C; B; A
+#endif
+
+#define SRH_TAG_ECHO_REPLY		0x0008
+#define SRH_TAG_ECHO_REQUEST		0x0004
+#define SRH_TAG_ERROR_INDICATION	0x0002
+#define SRH_TAG_END_MARKER		0x0001
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip;
+  ip6_sr_header_t sr;
+} __attribute__ ((packed)) ip6srv_combo_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u16 seq;
+  u8 npdu_num;
+  u8 nextexthdr;
+} __attribute__ ((packed)) gtpu_exthdr_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u8 ver_flags;
+  u8 type;
+  u16 length;     /* length in octets of the payload */
+  u32 teid;
+  gtpu_exthdr_t ext[0];
+} __attribute__ ((packed)) gtpu_header_t;
+/* *INDENT-ON* */
+
+#define GTPU_TYPE_ECHO_REQUEST		1
+#define GTPU_TYPE_ECHO_REPLY		2
+#define GTPU_TYPE_ERROR_INDICATION	26
+#define GTPU_TYPE_END_MARKER		254
+#define GTPU_TYPE_GTPU 			255
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  BITALIGN2 (u8 ppi:3,
+             u8 spare:5);
+
+  u8 padding[3];
+} __attribute__ ((packed)) gtpu_paging_policy_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u8 exthdrlen;
+  BITALIGN2(u8 type:4,
+            u8 spare:4);
+  union {
+    struct gtpu_qfi_bits {
+      BITALIGN3(u8 p:1,
+                u8 r:1,
+                u8 qfi:6);
+    } bits;
+
+    u8 val;
+  } u;
+  gtpu_paging_policy_t	paging[0];
+  u8 nextexthdr;
+} __attribute__ ((packed)) gtpu_pdu_session_t;
+/* *INDENT-ON* */
+
+#define GTPU_PDU_SESSION_P_BIT_MASK	0x80
+#define GTPU_PDU_SESSION_R_BIT_MASK	0x40
+#define GTPU_PDU_SESSION_QFI_MASK	0x3f
+
+#define SRV6_PDU_SESSION_U_BIT_MASK	0x01
+#define SRV6_PDU_SESSION_R_BIT_MASK	0x02
+#define SRV6_PDU_SESSION_QFI_MASK	0xfC
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip4_header_t ip4;            /* 20 bytes */
+  udp_header_t udp;            /* 8 bytes */
+  gtpu_header_t gtpu;        /* 8 bytes */
+} __attribute__ ((packed)) ip4_gtpu_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip6;          /* 40 bytes */
+  udp_header_t udp;          /* 8 bytes */
+  gtpu_header_t gtpu;        /* 8 bytes */
+} __attribute__ ((packed)) ip6_gtpu_header_t;
+/* *INDENT-ON* */
+
+#define GTPU_V1_VER   (1<<5)
+
+#define GTPU_PT_GTP    (1<<4)
+
 /**
  * @brief SR Segment List (SID list)
  */
@@ -69,6 +179,12 @@ typedef struct
   dpo_id_t bsid_dpo;				/**< DPO for Encaps/Insert for BSID */
   dpo_id_t ip6_dpo;				/**< DPO for Encaps/Insert IPv6 */
   dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
+
+  u8 is_tmap;				     /**< T.M.Tmap dynamically compute node ID */
+  u16 sr_prefixlen;
+  ip6_address_t local_prefix;		/**< T.M.Tmap localsid prefix */
+  u16 localsid_len;
+
 } ip6_sr_sl_t;
 
 /* SR policy types */
@@ -94,6 +210,10 @@ typedef struct
   u32 fib_table;			/**< FIB table */
 
   u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
+  u8 is_tmap;			    /**< T.M.Tmap dynamically compute node ID */
+
+  u16 sr_prefixlen;
+  u16 localsid_len;
 } ip6_sr_policy_t;
 
 /**
@@ -102,6 +222,8 @@ typedef struct
 typedef struct
 {
   ip6_address_t localsid;		/**< LocalSID IPv6 address */
+
+  u16 localsid_len;
 
   char end_psp;					/**< Combined with End.PSP? */
 
@@ -120,6 +242,10 @@ typedef struct
   ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
 
   u32 nh_adj;						/**< Next_adj for xconnect usage only */
+
+  // GTP6.D
+  ip6_address_t sr_prefix;
+  u16 sr_prefixlen;
 
   void *plugin_mem;				/**< Memory to be used by the plugin callback functions */
 } ip6_sr_localsid_t;
@@ -140,6 +266,8 @@ typedef struct
   u8 *def_str;								/**< Behavior definition (i.e. Endpoint with cross-connect) */
 
   u8 *params_str;							/**< Behavior parameters (i.e. <oif> <IP46next_hop>) */
+
+  u8 prefix_length;
 
   dpo_type_t dpo;							/**< DPO type registration */
 
@@ -250,7 +378,8 @@ extern void sr_dpo_unlock (dpo_id_t * dpo);
 extern int
 sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, dpo_type_t * dpo,
+			       u8 * params_str, u8 prefix_length,
+			       dpo_type_t * dpo,
 			       format_function_t * ls_format,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,
@@ -258,15 +387,16 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 
 extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
-extern int
-sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-	       u8 operation, ip6_address_t * segments, u32 sl_index,
-	       u32 weight);
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+	       u8 is_gtp4_removal, u16 sr_prefixlen,
+	       ip6_address_t * gtp4_localsid_prefix, u16 localsid_len);
+extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
+			  u8 operation, ip6_address_t * segments,
+			  u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
 		 void *ls_plugin_mem);
