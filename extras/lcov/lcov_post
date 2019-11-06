@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+cd build-root
+rm -rf html
+mkdir html
+lcov --no-checksum --directory . --capture --output-file out.info
+genhtml out.info -o html
