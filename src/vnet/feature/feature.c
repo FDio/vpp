@@ -460,20 +460,21 @@ set_interface_features_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (line_input, "%U %v", unformat_vnet_sw_interface, vnm, &sw_if_index,
-	   &feature_name))
-	;
-      else if (unformat (line_input, "arc %v", &arc_name))
+	  (line_input, "%U %v arc %v", unformat_vnet_sw_interface, vnm,
+	   &sw_if_index, &feature_name, &arc_name))
 	;
       else if (unformat (line_input, "disable"))
 	enable = 0;
       else
 	{
-	  if (feature_name && arc_name)
-	    break;
 	  error = unformat_parse_error (line_input);
 	  goto done;
 	}
+    }
+  if (!feature_name && !arc_name)
+    {
+      error = clib_error_return (0, "both feature name and arc required...");
+      goto done;
     }
 
   if (sw_if_index == ~0)
