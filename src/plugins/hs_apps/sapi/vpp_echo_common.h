@@ -64,6 +64,7 @@
   _(ECHO_FAIL_1ST_PTHREAD_CREATE, "ECHO_FAIL_1ST_PTHREAD_CREATE")       \
   _(ECHO_FAIL_PTHREAD_CREATE, "ECHO_FAIL_PTHREAD_CREATE")               \
   _(ECHO_FAIL_DETACH, "ECHO_FAIL_DETACH")                               \
+  _(ECHO_FAIL_DEL_CERT_KEY, "ECHO_FAIL_DEL_CERT_KEY")                               \
   _(ECHO_FAIL_MQ_PTHREAD, "ECHO_FAIL_MQ_PTHREAD")                       \
   _(ECHO_FAIL_VL_API_APP_ATTACH, "ECHO_FAIL_VL_API_APP_ATTACH")         \
   _(ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,                              \
@@ -79,10 +80,10 @@
   _(ECHO_FAIL_VL_API_UNBIND_REPLY, "ECHO_FAIL_VL_API_UNBIND_REPLY")     \
   _(ECHO_FAIL_SESSION_DISCONNECT, "ECHO_FAIL_SESSION_DISCONNECT")       \
   _(ECHO_FAIL_SESSION_RESET, "ECHO_FAIL_SESSION_RESET")                 \
-  _(ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,                                \
-    "ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY")                              \
-  _(ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,                                 \
-    "ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY")                               \
+  _(ECHO_FAIL_VL_API_CERT_KEY_ADD_REPLY,                                \
+    "ECHO_FAIL_VL_API_CERT_KEY_ADD_REPLY")                              \
+  _(ECHO_FAIL_VL_API_CERT_KEY_DEL_REPLY,                                \
+    "ECHO_FAIL_VL_API_CERT_KEY_DEL_REPLY")                              \
   _(ECHO_FAIL_GET_SESSION_FROM_HANDLE,                                  \
     "ECHO_FAIL_GET_SESSION_FROM_HANDLE")                                \
   _(ECHO_FAIL_QUIC_WRONG_CONNECT, "ECHO_FAIL_QUIC_WRONG_CONNECT")       \
@@ -203,12 +204,12 @@ typedef enum
 {
   STATE_START,
   STATE_ATTACHED_NO_CERT,
-  STATE_ATTACHED_ONE_CERT,
   STATE_ATTACHED,
   STATE_LISTEN,
   STATE_READY,
   STATE_DATA_DONE,
   STATE_DISCONNECTED,
+  STATE_CLEANED_CERT_KEY,
   STATE_DETACHED
 } connection_state_t;
 
@@ -308,7 +309,8 @@ typedef struct
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
-  u32 crypto_ctx_engine;	/* crypto engine used */
+  u32 ckpair_index;		/* Cert key pair used */
+  u8 crypto_engine;		/* crypto engine used */
 
   u8 *appns_id;
   u64 appns_flags;
@@ -409,7 +411,8 @@ void echo_send_unbind (echo_main_t * em, echo_session_t * s);
 void echo_send_connect (u64 vpp_session_handle, u32 opaque);
 void echo_send_disconnect_session (u64 handle, u32 opaque);
 void echo_api_hookup (echo_main_t * em);
-void echo_send_add_crypto_ctx (echo_main_t * em);
+void echo_send_add_cert_key (echo_main_t * em);
+void echo_send_del_cert_key (echo_main_t * em);
 
 #endif /* __included_vpp_echo_common_h__ */
 

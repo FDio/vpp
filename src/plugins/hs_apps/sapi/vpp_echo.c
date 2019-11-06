@@ -868,6 +868,7 @@ print_usage_and_exit (void)
 	   "  tx-results-diff     Tx results different to pass test\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
+	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
 	   "\n"
 	   "  nclients N          Open N clients sending data\n"
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
@@ -970,11 +971,8 @@ echo_process_opts (int argc, char **argv)
 	}
       else if (unformat (a, "nthreads %d", &em->n_rx_threads))
 	;
-      else
-	if (unformat
-	    (a, "crypto %U", echo_unformat_crypto_engine,
-	     &em->crypto_ctx_engine))
-	;
+      else if (unformat (a, "crypto %U", echo_unformat_crypto_engine, &tmp))
+	em->crypto_engine = tmp;
       else if (unformat (a, "appns %_%v%_", &em->appns_id))
 	;
       else if (unformat (a, "all-scope"))
@@ -1120,7 +1118,7 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
-  em->crypto_ctx_engine = CRYPTO_ENGINE_NONE;
+  em->crypto_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
   echo_process_uri (em);
@@ -1184,14 +1182,14 @@ main (int argc, char **argv)
       goto exit_on_error;
     }
 
-  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
-    /* when no crypto engine specified, dont expect crypto ctx */
+  if (em->uri_elts.transport_proto != TRANSPORT_PROTO_QUIC
+      && em->uri_elts.transport_proto != TRANSPORT_PROTO_TLS)
     em->state = STATE_ATTACHED;
   else
     {
       ECHO_LOG (1, "Adding crypto context %U", echo_format_crypto_engine,
-		em->crypto_ctx_engine);
-      echo_send_add_crypto_ctx (em);
+		em->crypto_engine);
+      echo_send_add_cert_key (em);
       if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
 	{
 	  ECHO_FAIL (ECHO_FAIL_APP_ATTACH,
@@ -1221,6 +1219,13 @@ main (int argc, char **argv)
     clients_run (em);
   echo_notify_event (em, ECHO_EVT_EXIT);
   echo_free_sessions (em);
+  echo_send_del_cert_key (em);
+  if (wait_for_state_change (em, STATE_CLEANED_CERT_KEY, TIMEOUT))
+    {
+      ECHO_FAIL (ECHO_FAIL_DEL_CERT_KEY, "Couldn't cleanup cert and key");
+      goto exit_on_error;
+    }
+
   echo_send_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
