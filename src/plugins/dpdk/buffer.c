@@ -20,6 +20,7 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_vfio.h>
+#include <rte_version.h>
 
 #include <vlib/vlib.h>
 #include <dpdk/buffer.h>
@@ -150,8 +151,12 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 	    pointer_to_uword (va) : pm->page_table[i];
 
 	  if (do_vfio_map &&
+#if RTE_VERSION < RTE_VERSION_NUM(19, 11, 0, 0)
+	      rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
+#else
 	      rte_vfio_container_dma_map (RTE_VFIO_DEFAULT_CONTAINER_FD,
 					  pointer_to_uword (va), pa, page_sz))
+#endif
 	    do_vfio_map = 0;
 
 	  struct rte_mempool_memhdr *memhdr;
