@@ -80,7 +80,7 @@ static void vl_api_sr_localsid_add_del_t_handler
     memcpy (&prefix.ip6, mp->nh_addr6, sizeof (prefix.ip6));
 
   rv = sr_cli_localsid (mp->is_del,
-			(ip6_address_t *) & mp->localsid,
+			(ip6_address_t *) & mp->localsid, mp->prefixlen,
 			mp->end_psp,
 			mp->behavior,
 			ntohl (mp->sw_if_index),
