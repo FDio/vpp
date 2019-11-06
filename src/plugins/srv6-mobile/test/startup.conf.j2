@@ -1,0 +1,14 @@
+unix {
+  nodaemon
+  cli-no-pager
+  cli-listen 0.0.0.0:5002
+}
+plugins {
+  plugin dpdk_plugin.so {
+    disable
+  }
+}
+cpu {
+  workers 2  
+}
+
