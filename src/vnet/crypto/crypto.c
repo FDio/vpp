@@ -134,7 +134,7 @@ vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
 {
   vnet_crypto_main_t *cm = &crypto_main;
 
-  return (NULL != cm->ops_handlers[alg]);
+  return (alg < vec_len (cm->ops_handlers) && NULL != cm->ops_handlers[alg]);
 }
 
 void
