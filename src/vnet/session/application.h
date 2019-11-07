@@ -114,8 +114,6 @@ typedef struct application_
   /** Preferred tls engine */
   u8 tls_engine;
 
-  u64 *quicly_ctx;
-
 } application_t;
 
 typedef struct app_main_
