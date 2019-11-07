@@ -275,6 +275,11 @@ I:	syslog
 M:	Matus Fabian <matfabia@cisco.com>
 F:	src/vnet/syslog
 
+VNET GENEVE
+I:      geneve
+M:      N/A
+F:      src/vnet/geneve/
+
 VNET FLOW
 I:	flow
 M:	Damjan Marion <damarion@cisco.com>
