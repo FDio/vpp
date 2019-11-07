@@ -685,6 +685,18 @@ nat_ha_flush (u8 is_resync)
   nat_ha_event_add (0, 1, 0, is_resync);
 }
 
+int
+nat_ha_resync (u32 client_index, u32 pid,
+               nat_ha_resync_event_cb_t event_callback)
+{
+  nat_ha_main_t *ha = &nat_ha_main;
+
+  ha->client_index = client_index;
+  ha->pid = pid;
+  ha->event_callback = event_callback;
+  return ha->in_resync;
+}
+
 void
 nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 	     u16 out_port, ip4_address_t * eh_addr, u16 eh_port,
