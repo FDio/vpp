@@ -2277,25 +2277,31 @@ tcp_lookup_is_valid (tcp_connection_t * tc, vlib_buffer_t * b,
   if (tc->c_lcl_port == 0 && tc->state == TCP_STATE_LISTEN)
     return 1;
 
+  u8 is_ip_valid = 0, val_l, val_r;
 
-  u8 is_ip_valid = 0;
   if (tc->connection.is_ip4)
     {
       ip4_header_t *ip4_hdr = (ip4_header_t *) vlib_buffer_get_current (b);
-      is_ip_valid =
-	(!(ip4_address_compare
-	   (&ip4_hdr->src_address, &tc->connection.rmt_ip.ip4)
-	   && ip4_address_compare (&ip4_hdr->dst_address,
-				   &tc->connection.lcl_ip.ip4)));
+
+      val_l = !ip4_address_compare (&ip4_hdr->dst_address,
+				    &tc->connection.lcl_ip.ip4);
+      val_l = val_l || ip_is_zero (&tc->connection.lcl_ip, 1);
+      val_r = !ip4_address_compare (&ip4_hdr->src_address,
+				    &tc->connection.rmt_ip.ip4);
+      val_r = val_r || tc->state == TCP_STATE_LISTEN;
+      is_ip_valid = val_l && val_r;
     }
   else
     {
       ip6_header_t *ip6_hdr = (ip6_header_t *) vlib_buffer_get_current (b);
-      is_ip_valid =
-	(!(ip6_address_compare
-	   (&ip6_hdr->src_address, &tc->connection.rmt_ip.ip6)
-	   && ip6_address_compare (&ip6_hdr->dst_address,
-				   &tc->connection.lcl_ip.ip6)));
+
+      val_l = !ip6_address_compare (&ip6_hdr->dst_address,
+				    &tc->connection.lcl_ip.ip6);
+      val_l = val_l || ip_is_zero (&tc->connection.lcl_ip, 0);
+      val_r = !ip6_address_compare (&ip6_hdr->src_address,
+				    &tc->connection.rmt_ip.ip6);
+      val_r = val_r || tc->state == TCP_STATE_LISTEN;
+      is_ip_valid = val_l && val_r;
     }
 
   u8 is_valid = (tc->c_lcl_port == hdr->dst_port
