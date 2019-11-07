@@ -22,6 +22,30 @@
       "revId": "bd2715e75e6b8eb0239453760a1c1e2787b4c218",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e5d8508b_d274d86b",
+        "filename": "docs/troubleshooting/reportingissues/reportingissues.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-07T23:08:01Z",
+      "side": 1,
+      "message": "Interesting:\nDBGvpp# show ip ne\nneighbor-config   neighbor-watcher  neighbors         neighbor          \nDBGvpp# show ip neighbor\nDBGvpp# show ip neighbors\nDBGvpp#",
+      "parentUuid": "1c8b6903_f6c61233",
+      "range": {
+        "startLine": 109,
+        "startChar": 20,
+        "endLine": 109,
+        "endChar": 29
+      },
+      "revId": "bd2715e75e6b8eb0239453760a1c1e2787b4c218",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
