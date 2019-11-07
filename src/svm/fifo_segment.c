@@ -232,6 +232,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
       if (!f)
 	return 0;
       memset (f, 0, sizeof (*f));
+      fsh->n_free_bytes -= sizeof (*f);
     }
   else
     {
