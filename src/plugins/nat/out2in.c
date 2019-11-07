@@ -895,6 +895,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
 	    {
+	      old_port0 = tcp0->dst_port;
+	      tcp0->dst_port = s0->in2out.port;
+	      new_port0 = tcp0->dst_port;
+
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 				     ip4_header_t,
