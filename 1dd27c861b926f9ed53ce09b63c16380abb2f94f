@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fc142e77_9aae15ff",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1663,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-11-07T17:37:32Z",
+      "side": 1,
+      "message": "Over in ip4_forward.c this same call to ip_frag_set_vnet_buffer() in ip5_mtu_check() checks the value of is_midchain to select IP_FRAG_NEXT_IP_REWRITE or IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN here.\nI have no idea if this is important and applicable here in IPv6-land, but it is a\npattern-match difference.",
+      "range": {
+        "startLine": 1663,
+        "startChar": 7,
+        "endLine": 1663,
+        "endChar": 30
+      },
+      "revId": "1dd27c861b926f9ed53ce09b63c16380abb2f94f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
