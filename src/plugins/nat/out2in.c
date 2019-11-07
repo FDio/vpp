@@ -828,12 +828,8 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  key0.addr = ip0->dst_address;
-	  key0.port = udp0->dst_port;
-	  key0.protocol = proto0;
-	  key0.fib_index = rx_fib_index0;
-
-	  kv0.key = key0.as_u64;
+	  kv0.key = snat_calc_session_key (ip0->dst_address, udp0->dst_port,
+					   proto0, rx_fib_index0);
 
 	  if (clib_bihash_search_8_8
 	      (&sm->per_thread_data[thread_index].out2in, &kv0, &value0))

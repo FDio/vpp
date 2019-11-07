@@ -43,20 +43,16 @@
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
-/* session key (4-tuple) */
-typedef struct
+static_always_inline u64
+snat_calc_session_key (ip4_address_t addr, u16 port, u16 protocol, u16 fib_index)
 {
-  union
-  {
-    struct
-    {
-      ip4_address_t addr;
-      u16 port;
-      u16 protocol:3, fib_index:13;
-    };
-    u64 as_u64;
-  };
-} snat_session_key_t;
+  ou64 key;
+  key = addr.as_u32;
+  key |= (u64) port << 32;
+  key |= ((u64) protocol & 0x7) << 48;
+  key |= ((u64) protocol & 0x1fff) << 51;
+  return key;
+}
 
 /* endpoint-dependent session key (6-tuple) */
 typedef struct

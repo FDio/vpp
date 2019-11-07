@@ -2520,8 +2520,8 @@ nat_set_outside_address_and_port (snat_address_t * addresses,
 
 int
 snat_static_mapping_match (snat_main_t * sm,
-			   snat_session_key_t match,
-			   snat_session_key_t * mapping,
+			   u64 match,
+			   u64 * mapping,
 			   u8 by_external,
 			   u8 * is_addr_only,
 			   twice_nat_type_t * twice_nat,
@@ -2530,24 +2530,25 @@ snat_static_mapping_match (snat_main_t * sm,
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
-  snat_session_key_t m_key;
   clib_bihash_8_8_t *mapping_hash = &sm->static_mapping_by_local;
   u32 rand, lo = 0, hi, mid, *tmp = 0, i;
   u8 backend_index;
   nat44_lb_addr_port_t *local;
+  u16 fib_index;
 
-  m_key.fib_index = match.fib_index;
+  fib_index = match.fib_index;
   if (by_external)
     {
       mapping_hash = &sm->static_mapping_by_external;
-      m_key.fib_index = 0;
+      fib_index = 0;
     }
 
   m_key.addr = match.addr;
   m_key.port = clib_net_to_host_u16 (match.port);
   m_key.protocol = match.protocol;
 
-  kv.key = m_key.as_u64;
+  kv.key = snat_calc_session_key(match.addr, clib_net_to_host_u16 (match.port),
+				 match.protocol, fib_index);
 
   if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
     {
@@ -2681,7 +2682,7 @@ int
 snat_alloc_outside_address_and_port (snat_address_t * addresses,
 				     u32 fib_index,
 				     u32 thread_index,
-				     snat_session_key_t * k,
+				     u64 * k,
 				     u16 port_per_thread,
 				     u32 snat_thread_index)
 {
@@ -2695,7 +2696,7 @@ static int
 nat_alloc_addr_and_port_default (snat_address_t * addresses,
 				 u32 fib_index,
 				 u32 thread_index,
-				 snat_session_key_t * k,
+				 u64 * k,
 				 u16 port_per_thread, u32 snat_thread_index)
 {
   int i;
@@ -2782,7 +2783,7 @@ static int
 nat_alloc_addr_and_port_mape (snat_address_t * addresses,
 			      u32 fib_index,
 			      u32 thread_index,
-			      snat_session_key_t * k,
+			      u64 * k,
 			      u16 port_per_thread, u32 snat_thread_index)
 {
   snat_main_t *sm = &snat_main;
@@ -2832,7 +2833,7 @@ static int
 nat_alloc_addr_and_port_range (snat_address_t * addresses,
 			       u32 fib_index,
 			       u32 thread_index,
-			       snat_session_key_t * k,
+			       u64 * k,
 			       u16 port_per_thread, u32 snat_thread_index)
 {
   snat_main_t *sm = &snat_main;
@@ -2985,7 +2986,6 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0,
   snat_main_t *sm = &snat_main;
   udp_header_t *udp;
   u16 port;
-  snat_session_key_t m_key;
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
   u32 proto;
@@ -2994,11 +2994,7 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0,
   /* first try static mappings without port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      m_key.addr = ip0->dst_address;
-      m_key.port = 0;
-      m_key.protocol = 0;
-      m_key.fib_index = rx_fib_index0;
-      kv.key = m_key.as_u64;
+      kv.key = snat_calc_session_key (ip0->dst_address, 0, 0, rx_fib_index0);
       if (!clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv, &value))
 	{
