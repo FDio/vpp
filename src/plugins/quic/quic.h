@@ -126,8 +126,7 @@ typedef struct quic_ctx_
   u32 timer_handle;
   u32 parent_app_wrk_id;
   u32 parent_app_id;
-  u32 ckpair_index;
-  quicly_context_t *quicly_ctx;
+  u32 crypto_context_index;
   u8 flags;
 } quic_ctx_t;
 
@@ -153,7 +152,7 @@ typedef struct quic_stream_data_
 {
   u32 ctx_id;
   u32 thread_index;
-  u32 app_rx_data_len;		/* bytes received, to be read by external app */
+  u32 app_rx_data_len;		/**< bytes received, to be read by external app */
 } quic_stream_data_t;
 
 typedef struct quic_worker_ctx_
@@ -172,33 +171,33 @@ typedef struct quic_rx_packet_ctx_
   u32 thread_index;
 } quic_rx_packet_ctx_t;
 
-typedef struct quicly_ctx_data_
+typedef struct quic_crypto_context_
 {
+  crypto_context_t crctx;	     /**< Needs to be first */
   quicly_context_t quicly_ctx;
   char cid_key[17];
   ptls_context_t ptls_ctx;
-} quicly_ctx_data_t;
+} quic_crypto_context_t;
 
 typedef struct quic_main_
 {
   u32 app_index;
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
-  clib_bihash_16_8_t connection_hash;	/* quic connection id -> conn handle */
+  clib_bihash_16_8_t connection_hash;	/**< quic connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
 
-  ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
-  uword *available_crypto_engines;	/* Bitmap for registered engines */
-  u8 default_crypto_engine;	/* Used if you do connect with CRYPTO_ENGINE_NONE (0) */
+  ptls_cipher_suite_t ***quic_ciphers;	/**< available ciphers by crypto engine */
+  uword *available_crypto_engines;	/**< Bitmap for registered engines */
+  u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
 
-  quic_session_cache_t session_cache;
+  quic_crypto_context_t *crypto_ctx_pool;	/**< Pool of crypto contexes */
+  clib_bihash_24_8_t crypto_context_hash;	/**< params -> crypto ctx hash */
+  clib_spinlock_t crypto_context_lock;		/**< crypto engine pool lock */
 
-  /*
-   * Config
-   */
-  quicly_context_t quicly_ctx;
   ptls_handshake_properties_t hs_properties;
   quicly_cid_plaintext_t next_cid;
+  quic_session_cache_t session_cache;
 
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;
