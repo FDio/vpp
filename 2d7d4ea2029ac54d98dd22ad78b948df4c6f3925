@@ -22,6 +22,30 @@
       "revId": "2d7d4ea2029ac54d98dd22ad78b948df4c6f3925",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aeb24615_3d019d1a",
+        "filename": "docs/usecases/vhost/vhost05.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 180
+      },
+      "writtenOn": "2019-11-07T13:47:15Z",
+      "side": 1,
+      "message": "I used the main release as we run only a small subset of tests for minor releases.",
+      "parentUuid": "55f1e28f_37d9a409",
+      "range": {
+        "startLine": 15,
+        "startChar": 58,
+        "endLine": 15,
+        "endChar": 65
+      },
+      "revId": "2d7d4ea2029ac54d98dd22ad78b948df4c6f3925",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
