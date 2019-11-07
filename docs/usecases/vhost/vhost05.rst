@@ -12,7 +12,7 @@ shows with 2 threads, 2 cores and a Queue size of 1024 the maximum NDR throughpu
 This is about the limit at this time.
 
 For all the details on the CSIT VM vhost connection refer to the 
-`CSIT VM vHost performance tests <https://docs.fd.io/csit/rls1804/report/vpp_performance_tests/packet_throughput_graphs/vm_vhost.html>`_.
+`CSIT VM vHost performance tests <https://docs.fd.io/csit/rls1908/report/vpp_performance_tests/packet_throughput_graphs/vm_vhost.html>`_.
 
 
 Features
