@@ -99,6 +99,13 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
+	RPM_DEPENDS += dnf-utils
+	RPM_DEPENDS += compat-openssl10
+	RPM_DEPENDS += python3-devel python3-ply
+	RPM_DEPENDS += python3-virtualenv python3-jsonschema
+	RPM_DEPENDS += cmake
+	RPM_DEPENDS_GROUPS = 'Development Tools'
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
@@ -306,6 +313,9 @@ ifeq ($(OS_ID),rhel)
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
