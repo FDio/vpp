@@ -534,7 +534,7 @@ class TestIpsecGreTebIfEsp(TemplateIpsec,
                            Ether(dst=self.omac) /
                            IP(src="1.1.1.1", dst="1.1.1.2") /
                            UDP(sport=1144, dport=2233) /
-                           Raw('X' * payload_size))
+                           Raw(b'X' * payload_size))
                 for i in range(count)]
 
     def gen_pkts(self, sw_intf, src, dst, count=1,
@@ -542,7 +542,7 @@ class TestIpsecGreTebIfEsp(TemplateIpsec,
         return [Ether(dst=self.omac) /
                 IP(src="1.1.1.1", dst="1.1.1.2") /
                 UDP(sport=1144, dport=2233) /
-                Raw('X' * payload_size)
+                Raw(b'X' * payload_size)
                 for i in range(count)]
 
     def verify_decrypted(self, p, rxs):
@@ -640,7 +640,7 @@ class TestIpsecGreIfEsp(TemplateIpsec,
                            IP(src=self.pg1.local_ip4,
                               dst=self.pg1.remote_ip4) /
                            UDP(sport=1144, dport=2233) /
-                           Raw('X' * payload_size))
+                           Raw(b'X' * payload_size))
                 for i in range(count)]
 
     def gen_pkts(self, sw_intf, src, dst, count=1,
@@ -648,7 +648,7 @@ class TestIpsecGreIfEsp(TemplateIpsec,
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IP(src="1.1.1.1", dst="1.1.1.2") /
                 UDP(sport=1144, dport=2233) /
-                Raw('X' * payload_size)
+                Raw(b'X' * payload_size)
                 for i in range(count)]
 
     def verify_decrypted(self, p, rxs):
@@ -935,7 +935,7 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
                               dst=sw_intf.local_ip4) /
                            IP(src=src, dst=dst) /
                            UDP(sport=1144, dport=2233) /
-                           Raw('X' * payload_size))
+                           Raw(b'X' * payload_size))
                 for i in range(count)]
 
     def gen_pkts(self, sw_intf, src, dst, count=1,
@@ -943,7 +943,7 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IP(src=src, dst=dst) /
                 UDP(sport=1144, dport=2233) /
-                Raw('X' * payload_size)
+                Raw(b'X' * payload_size)
                 for i in range(count)]
 
     def verify_decrypted(self, p, rxs):
@@ -1230,7 +1230,7 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
                                 dst=sw_intf.local_ip6) /
                            IPv6(src=src, dst=dst) /
                            UDP(sport=1166, dport=2233) /
-                           Raw('X' * payload_size))
+                           Raw(b'X' * payload_size))
                 for i in range(count)]
 
     def gen_pkts6(self, sw_intf, src, dst, count=1,
@@ -1238,7 +1238,7 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst) /
                 UDP(sport=1166, dport=2233) /
-                Raw('X' * payload_size)
+                Raw(b'X' * payload_size)
                 for i in range(count)]
 
     def verify_decrypted6(self, p, rxs):

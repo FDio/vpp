@@ -172,7 +172,7 @@ class P2PEthernetIPV6(VppTestCase):
             pkt_size = random.choice(self.pg_if_packet_sizes)
         p = Ether(src=src_mac, dst=dst_mac)
         p /= IPv6(src=src_ip, dst=dst_ip)
-        p /= (UDP(sport=1234, dport=4321) / Raw('\xa5' * 20))
+        p /= (UDP(sport=1234, dport=4321) / Raw(b'\xa5' * 20))
         self.extend_packet(p, pkt_size)
         return p
 
@@ -199,7 +199,7 @@ class P2PEthernetIPV6(VppTestCase):
                                src=self.pg1.remote_mac) /
                          IPv6(src="3001::1", dst="8000::100") /
                          UDP(sport=1234, dport=1234) /
-                         Raw('\xa5' * 100))]
+                         Raw(b'\xa5' * 100))]
         self.send_packets(self.pg1, self.pg0)
 
         self.logger.info("FFP_TEST_FINISH_0001")
@@ -375,7 +375,7 @@ class P2PEthernetIPV4(VppTestCase):
             pkt_size = random.choice(self.pg_if_packet_sizes)
         p = Ether(src=src_mac, dst=dst_mac)
         p /= IP(src=src_ip, dst=dst_ip)
-        p /= (UDP(sport=1234, dport=4321) / Raw('\xa5' * 20))
+        p /= (UDP(sport=1234, dport=4321) / Raw(b'\xa5' * 20))
         self.extend_packet(p, pkt_size)
         return p
 

@@ -1547,7 +1547,7 @@ class TestMPLSDisabled(VppTestCase):
               MPLS(label=32, ttl=64) /
               IPv6(src="2001::1", dst=self.pg0.remote_ip6) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         #
         # A simple MPLS xconnect - eos label in label out
@@ -1703,7 +1703,7 @@ class TestMPLSPIC(VppTestCase):
                               src=self.pg2.remote_mac) /
                         IP(src=self.pg2.remote_ip4, dst=dst) /
                         UDP(sport=1234, dport=1234) /
-                        Raw('\xa5' * 100))
+                        Raw(b'\xa5' * 100))
 
         #
         # Send the packet stream (one pkt to each VPN route)
@@ -1825,7 +1825,7 @@ class TestMPLSPIC(VppTestCase):
                         MPLS(label=local_label, ttl=64) /
                         IP(src=self.pg0.remote_ip4, dst=dst) /
                         UDP(sport=1234, dport=1234) /
-                        Raw('\xa5' * 100))
+                        Raw(b'\xa5' * 100))
 
         #
         # Send the packet stream (one pkt to each VPN route)
@@ -1947,7 +1947,7 @@ class TestMPLSPIC(VppTestCase):
                         MPLS(label=local_label, ttl=64) /
                         IPv6(src=self.pg0.remote_ip6, dst=dst) /
                         UDP(sport=1234, dport=1234) /
-                        Raw('\xa5' * 100))
+                        Raw(b'\xa5' * 100))
             self.logger.info(self.vapi.cli("sh ip6 fib %s" % dst))
 
         self.pg0.add_stream(pkts)
@@ -2130,7 +2130,7 @@ class TestMPLSL2(VppTestCase):
                        src="00:00:de:ad:be:ef") /
                  IP(src="10.10.10.10", dst="11.11.11.11") /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
         tx0 = pcore * NUM_PKTS
         rx0 = self.send_and_expect(self.pg0, tx0, self.pg1)
@@ -2215,12 +2215,12 @@ class TestMPLSL2(VppTestCase):
                          src="00:00:de:ad:be:ef") /
                    IP(src="10.10.10.10", dst="11.11.11.11") /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
         p_cust2 = (Ether(dst="00:00:de:ad:ba:b2",
                          src="00:00:de:ad:be:ef") /
                    IP(src="10.10.10.10", dst="11.11.11.12") /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
         p_core1 = (Ether(dst=self.pg0.local_mac,
                          src=self.pg0.remote_mac) /
                    MPLS(label=55, ttl=64) /
@@ -2228,16 +2228,16 @@ class TestMPLSL2(VppTestCase):
                          dst="00:00:de:ad:be:ef") /
                    IP(dst="10.10.10.10", src="11.11.11.11") /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
         p_core2 = (Ether(dst=self.pg0.local_mac,
                          src=self.pg0.remote_mac) /
                    MPLS(label=56, ttl=64) /
-                   Raw('\x01' * 4) /  # PW CW
+                   Raw(b'\x01' * 4) /  # PW CW
                    Ether(src="00:00:de:ad:ba:b2",
                          dst="00:00:de:ad:be:ef") /
                    IP(dst="10.10.10.10", src="11.11.11.12") /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
 
         #
         # The BD is learning, so send in one of each packet to learn

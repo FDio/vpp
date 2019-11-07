@@ -236,7 +236,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         frame = (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
                  IP(src='4.3.2.1', dst='1.2.3.4') /
                  UDP(sport=20000, dport=10000) /
-                 Raw('\xa5' * 1450))
+                 Raw(b'\xa5' * 1450))
 
         self.pg1.add_stream([frame])
 

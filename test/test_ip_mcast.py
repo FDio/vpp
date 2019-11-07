@@ -100,7 +100,7 @@ class TestIPMcast(VppTestCase):
              UDP(sport=1234, dport=1234))
         if not payload_size:
             payload_size = 64 - len(p)
-            p = p / Raw('\xa5' * payload_size)
+            p = p / Raw(b'\xa5' * payload_size)
 
         for i in range(0, N_PKTS_IN_STREAM):
             pkts.append(p)
@@ -847,7 +847,7 @@ class TestIPMcast(VppTestCase):
               GRE() /
               IP(src="1.1.1.1", dst="232.2.2.2") /
               UDP(sport=1234, dport=1234) /
-              Raw('\a5' * 64)) * 63
+              Raw(b'\a5' * 64)) * 63
 
         self.vapi.cli("clear trace")
         self.pg1.add_stream(tx)

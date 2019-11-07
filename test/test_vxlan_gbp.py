@@ -24,7 +24,7 @@ class TestVxlanGbp(VppTestCase):
         return (Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02') /
                 IP(src='1.2.3.4', dst='4.3.2.1') /
                 UDP(sport=10000, dport=20000) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
 
     @property
     def frame_reply(self):
@@ -32,7 +32,7 @@ class TestVxlanGbp(VppTestCase):
         return (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
                 IP(src='4.3.2.1', dst='1.2.3.4') /
                 UDP(sport=20000, dport=10000) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
 
     def encapsulate(self, pkt, vni):
         """
@@ -258,7 +258,7 @@ class TestVxlanGbp(VppTestCase):
         frame = (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
                  IP(src='4.3.2.1', dst='1.2.3.4') /
                  UDP(sport=20000, dport=10000) /
-                 Raw('\xa5' * 1450))
+                 Raw(b'\xa5' * 1450))
 
         self.pg1.add_stream([frame])
 
