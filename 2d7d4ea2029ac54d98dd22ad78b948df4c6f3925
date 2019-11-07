@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "55f1e28f_37d9a409",
+        "filename": "docs/usecases/vhost/vhost05.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-07T13:06:30Z",
+      "side": 1,
+      "message": "Why not rls1908_1 ?",
+      "range": {
+        "startLine": 15,
+        "startChar": 58,
+        "endLine": 15,
+        "endChar": 65
+      },
+      "revId": "2d7d4ea2029ac54d98dd22ad78b948df4c6f3925",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
