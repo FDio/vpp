@@ -2169,6 +2169,8 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
   tcp_worker_ctx_t *wrk;
   u32 n_segs;
 
+  ASSERT (tc->state != TCP_STATE_CLOSED);
+
   wrk = tcp_get_worker (tc->c_thread_index);
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
