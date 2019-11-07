@@ -127,7 +127,8 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u32 ckpair_index;
-  quicly_context_t *quicly_ctx;
+  u32 crypto_engine;
+  u32 crypto_context_index;
   u8 flags;
 } quic_ctx_t;
 
@@ -156,12 +157,23 @@ typedef struct quic_stream_data_
   u32 app_rx_data_len;		/**< bytes received, to be read by external app */
 } quic_stream_data_t;
 
+typedef struct quic_crypto_context_
+{
+  crypto_context_t crctx;	     /**< Needs to be first */
+  quicly_context_t quicly_ctx;
+  char cid_key[17];
+  ptls_context_t ptls_ctx;
+} quic_crypto_context_t;
+
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;				   /**< worker time */
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
   u32 *opening_ctx_pool;
+
+  quic_crypto_context_t *crypto_ctx_pool;	/**< per thread pool of crypto contexes */
+  clib_bihash_24_8_t crypto_context_hash;	/**< per thread [params:crypto_ctx_index] hash */
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
@@ -171,13 +183,6 @@ typedef struct quic_rx_packet_ctx_
   u32 ctx_index;
   u32 thread_index;
 } quic_rx_packet_ctx_t;
-
-typedef struct quicly_ctx_data_
-{
-  quicly_context_t quicly_ctx;
-  char cid_key[17];
-  ptls_context_t ptls_ctx;
-} quicly_ctx_data_t;
 
 typedef struct quic_main_
 {
