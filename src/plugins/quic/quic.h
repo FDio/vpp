@@ -31,7 +31,7 @@
  * 4 - timer events
  **/
 
-#define QUIC_DEBUG               0
+#define QUIC_DEBUG               2
 #define QUIC_TSTAMP_RESOLUTION  0.001	/* QUIC tick resolution (1ms) */
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 #define QUIC_SESSION_INVALID ((u32) ~0 - 1)
@@ -40,6 +40,7 @@
 #define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
 #define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
+#define QUIC_IV_LEN 17
 
 #define QUIC_SEND_MAX_BATCH_PACKETS 16
 #define QUIC_RCV_MAX_BATCH_PACKETS 16
@@ -139,7 +140,8 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u32 ckpair_index;
-  quicly_context_t *quicly_ctx;
+  u32 crypto_engine;
+  u32 crypto_context_index;
   u8 flags;
 } quic_ctx_t;
 
@@ -168,11 +170,21 @@ typedef struct quic_stream_data_
   u32 app_rx_data_len;		/**< bytes received, to be read by external app */
 } quic_stream_data_t;
 
+typedef struct quic_crypto_context_data_
+{
+  quicly_context_t quicly_ctx;
+  char cid_key[QUIC_IV_LEN];
+  ptls_context_t ptls_ctx;
+} quic_crypto_context_data_t;
+
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;				   /**< worker time */
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
+
+  crypto_context_t *crypto_ctx_pool;		/**< per thread pool of crypto contexes */
+  clib_bihash_24_8_t crypto_context_hash;	/**< per thread [params:crypto_ctx_index] hash */
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
@@ -190,13 +202,6 @@ typedef struct quic_rx_packet_ctx_
   u8 ptype;
   session_dgram_hdr_t ph;
 } quic_rx_packet_ctx_t;
-
-typedef struct quicly_ctx_data_
-{
-  quicly_context_t quicly_ctx;
-  char cid_key[17];
-  ptls_context_t ptls_ctx;
-} quicly_ctx_data_t;
 
 typedef struct quic_main_
 {
