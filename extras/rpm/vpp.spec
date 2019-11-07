@@ -59,20 +59,26 @@ BuildRequires: python, python-devel, python-virtualenv, python-ply
 BuildRequires: python3, python36-devel, python3-virtualenv
 BuildRequires: cmake
 %else
-%if 0%{rhel} == 7
+%if 0%{rhel} >= 7
 Requires: epel-release
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
 Requires: boost-filesystem mbedtls libffi-devel
 BuildRequires: epel-release
 BuildRequires: mbedtls-devel mbedtls
-BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
 BuildRequires: python36-devel
+%if 0%{rhel} == 7
+BuildRequires: devtoolset-7-toolchain
 BuildRequires: cmake3
+BuildRequires: glibc-static, yum-utils
+%else
+BuildRequires: cmake
+BuildRequires: dnf-utils
+%endif
 %endif
 %endif
 BuildRequires: libffi-devel
-BuildRequires: glibc-static, yum-utils, redhat-lsb
+BuildRequires: redhat-lsb
 BuildRequires: apr-devel
 BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
@@ -165,7 +171,7 @@ This package contains a tailored VPP SELinux policy
 groupadd -f -r vpp
 
 %build
-%if 0%{?rhel}
+%if 0%{rhel} < 8
 . /opt/rh/devtoolset-7/enable
 %endif
 %if %{with aesni}
