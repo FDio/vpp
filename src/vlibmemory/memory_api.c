@@ -666,14 +666,18 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 			vec_delete (am->vlib_private_rps, 1, i);
 			goto found;
 		      }
+		  svm_pop_heap (oldheap);
 		  clib_warning ("private rp %llx AWOL", dead_rp);
+		  oldheap = svm_push_data_heap (svm);
 
 		found:
 		  /* Kill it, accounting for the memfd header page */
+		  svm_pop_heap (oldheap);
 		  if (munmap ((void *) virtual_base, virtual_size) < 0)
 		    clib_unix_warning ("munmap");
 		  /* Reset the queue-length-address cache */
 		  vec_reset_length (vl_api_queue_cursizes);
+		  oldheap = svm_push_data_heap (svm);
 		}
 	      else
 		{
