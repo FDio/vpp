@@ -25,10 +25,7 @@ vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
 vpp_cmake_args ?=
 vpp_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
-vpp_cmake_args += -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)"
-vpp_cmake_args += -DCMAKE_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
-vpp_cmake_args += -DCMAKE_EXE_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
-vpp_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
+vpp_cmake_args += -DCMAKE_BUILD_TYPE="$($(TAG)_TAG_BUILD_TYPE)"
 vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(vpp_cmake_prefix_path)"
 ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
