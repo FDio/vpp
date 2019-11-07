@@ -2261,7 +2261,8 @@ VLIB_REGISTER_NODE (tcp6_established_node) =
 
 
 static u8
-tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
+tcp_lookup_is_valid (tcp_connection_t * tc, vlib_buffer_t * b,
+		     tcp_header_t * hdr)
 {
   transport_connection_t *tmp = 0;
   u64 handle;
@@ -2273,9 +2274,30 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
   if (tc->c_lcl_port == 0 && tc->state == TCP_STATE_LISTEN)
     return 1;
 
+
+  u8 is_ip_valid = 0;
+  if (tc->connection.is_ip4)
+    {
+      ip4_header_t *ip4_hdr = (ip4_header_t *) vlib_buffer_get_current (b);
+      is_ip_valid =
+	(!(ip4_address_compare
+	   (&ip4_hdr->src_address, &tc->connection.rmt_ip.ip4)
+	   && ip4_address_compare (&ip4_hdr->dst_address,
+				   &tc->connection.lcl_ip.ip4)));
+    }
+  else
+    {
+      ip6_header_t *ip6_hdr = (ip6_header_t *) vlib_buffer_get_current (b);
+      is_ip_valid =
+	(!(ip6_address_compare
+	   (&ip6_hdr->src_address, &tc->connection.rmt_ip.ip6)
+	   && ip6_address_compare (&ip6_hdr->dst_address,
+				   &tc->connection.lcl_ip.ip6)));
+    }
+
   u8 is_valid = (tc->c_lcl_port == hdr->dst_port
 		 && (tc->state == TCP_STATE_LISTEN
-		     || tc->c_rmt_port == hdr->src_port));
+		     || tc->c_rmt_port == hdr->src_port) && is_ip_valid);
 
   if (!is_valid)
     {
@@ -2320,7 +2342,7 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 					     TRANSPORT_PROTO_TCP,
 					     thread_index, &is_filtered);
       tc = tcp_get_connection_from_transport (tconn);
-      ASSERT (tcp_lookup_is_valid (tc, tcp));
+      ASSERT (tcp_lookup_is_valid (tc, b, tcp));
     }
   else
     {
@@ -2335,7 +2357,7 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 					     TRANSPORT_PROTO_TCP,
 					     thread_index, &is_filtered);
       tc = tcp_get_connection_from_transport (tconn);
-      ASSERT (tcp_lookup_is_valid (tc, tcp));
+      ASSERT (tcp_lookup_is_valid (tc, b, tcp));
     }
   return tc;
 }
@@ -3548,8 +3570,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (!tc0 + !tc1 == 0))
 	{
-	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
-	  ASSERT (tcp_lookup_is_valid (tc1, tcp_buffer_hdr (b[1])));
+	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
+	  ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
@@ -3561,7 +3583,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (PREDICT_TRUE (tc0 != 0))
 	    {
-	      ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
+	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
 	    }
@@ -3570,7 +3592,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_TRUE (tc1 != 0))
 	    {
-	      ASSERT (tcp_lookup_is_valid (tc1, tcp_buffer_hdr (b[1])));
+	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], &error1);
 	    }
@@ -3598,7 +3620,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     is_nolookup);
       if (PREDICT_TRUE (tc0 != 0))
 	{
-	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
+	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
 	}
