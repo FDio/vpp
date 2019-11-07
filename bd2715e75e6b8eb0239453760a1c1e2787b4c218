@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c8b6903_f6c61233",
+        "filename": "docs/troubleshooting/reportingissues/reportingissues.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-07T22:48:11Z",
+      "side": 1,
+      "message": "I cannot find this command in the codebase, only \u0027show ip6 neighbors\u0027.",
+      "range": {
+        "startLine": 109,
+        "startChar": 20,
+        "endLine": 109,
+        "endChar": 29
+      },
+      "revId": "bd2715e75e6b8eb0239453760a1c1e2787b4c218",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
