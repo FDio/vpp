@@ -22,29 +22,8 @@ endif
 
 vpp_root_packages = vpp vom
 
-vpp_common_cflags = \
-	-g \
-	-DFORTIFY_SOURCE=2 \
-	-fstack-protector \
-	-fPIC \
-	-Wall \
-	-Werror \
-	-fno-common
-
-vpp_debug_TAG_CFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
-vpp_debug_TAG_CXXFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
-vpp_debug_TAG_LDFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
-
-vpp_TAG_CFLAGS = -O2 $(vpp_common_cflags)
-vpp_TAG_CXXFLAGS = -O2 $(vpp_common_cflags)
-vpp_TAG_LDFLAGS = -O2 $(vpp_common_cflags) -pie
-
-vpp_clang_TAG_CFLAGS = -O2 $(vpp_common_cflags)
-vpp_clang_TAG_CXXFLAGS = -O2 $(vpp_common_cflags)
-vpp_clang_TAG_LDFLAGS = -O2 $(vpp_common_cflags)
-
-vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -fprofile-arcs -ftest-coverage
-vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -coverage
-
-vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
-vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
+vpp_debug_TAG_BUILD_TYPE = debug
+vpp_TAG_BUILD_TYPE = release
+vpp_clang_TAG_BUILD_TYPE = release
+vpp_gcov_TAG_BUILD_TYPE = gcov
+vpp_coverity_TAG_BUILD_TYPE = coverity
