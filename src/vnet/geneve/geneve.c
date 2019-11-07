@@ -1102,7 +1102,7 @@ set_ip6_geneve_bypass (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_ip6_geneve_bypass_command, static) = {
   .path = "set interface ip6 geneve-bypass",
   .function = set_ip6_geneve_bypass,
-  .short_help = "set interface ip geneve-bypass <interface> [del]",
+  .short_help = "set interface ip6 geneve-bypass <interface> [del]",
 };
 /* *INDENT-ON* */
 

@@ -1090,7 +1090,7 @@ set_ip6_gtpu_bypass (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_ip6_gtpu_bypass_command, static) = {
   .path = "set interface ip6 gtpu-bypass",
   .function = set_ip6_gtpu_bypass,
-  .short_help = "set interface ip gtpu-bypass <interface> [del]",
+  .short_help = "set interface ip6 gtpu-bypass <interface> [del]",
 };
 /* *INDENT-ON* */
 

@@ -1117,7 +1117,7 @@ set_ip6_vxlan_bypass (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_ip6_vxlan_bypass_command, static) = {
   .path = "set interface ip6 vxlan-bypass",
   .function = set_ip6_vxlan_bypass,
-  .short_help = "set interface ip vxlan-bypass <interface> [del]",
+  .short_help = "set interface ip6 vxlan-bypass <interface> [del]",
 };
 /* *INDENT-ON* */
 

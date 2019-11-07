@@ -1132,7 +1132,7 @@ set_ip6_vxlan_gbp_bypass (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_ip6_vxlan_gbp_bypass_command, static) = {
   .path = "set interface ip6 vxlan-gbp-bypass",
   .function = set_ip6_vxlan_gbp_bypass,
-  .short_help = "set interface ip vxlan-gbp-bypass <interface> [del]",
+  .short_help = "set interface ip6 vxlan-gbp-bypass <interface> [del]",
 };
 /* *INDENT-ON* */
 
