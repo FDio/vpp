@@ -92,7 +92,7 @@ Send some traffic and then issue the following commands.
 
     vppctl show version verbose
     vppctl show hardware
-    vppctl show hardware address
+    vppctl show interface address
     vppctl show interface
     vppctl show run
     vppctl show error
@@ -106,7 +106,7 @@ sense.  Only include those features which have been configured.
      vppctl show bridge-domain
 
      vppctl show ip fib
-     vppctl show ip arp
+     vppctl show ip neighbors
 
      vppctl show ip6 fib
      vppctl show ip6 neighbors
