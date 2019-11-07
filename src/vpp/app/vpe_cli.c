@@ -72,16 +72,20 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error =
+	    clib_error_return (0,
+			       "unknown input `%U'. Expected next-hop <ip>. ",
+			       format_unformat_error, line_input);
 	  goto done;
 	}
     }
 
   if (vec_len (mac_addrs) == 0 || vec_len (mac_addrs) != vec_len (next_hops))
     {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return (0,
+			   "unknown input `%U'. Expected mac for next hop(s).",
+			   format_unformat_error, line_input);
       goto done;
     }
 
@@ -122,7 +126,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtual_ip_cmd_fn_command, static) = {
   .path = "ip virtual",
-  .short_help = "ip virtual <addr> <interface> [mac <Mi>]+",
+  .short_help = "ip virtual <addr> <interface> [mac <Mi> next-hop <ip>]+",
   .function = virtual_ip_cmd_fn_command_fn,
 };
 /* *INDENT-ON* */
