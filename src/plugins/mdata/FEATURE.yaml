@@ -3,7 +3,7 @@ name: Buffer Metadata Change Tracker (mdata)
 maintainer: Dave Barach <dave@barachs.net>
 features:
   - Buffer Metadata Change Tracker
- |-
+ description: |-
               Buffer Metadata Change Tracker
               Uses the before / after graph node main loop performance
               callback hooks to snapshoot buffer metadata, then
