@@ -166,6 +166,8 @@ typedef struct session_main_
 
   /** Session manager is enabled */
   u8 is_enabled;
+  /** Enable session manager at startup */
+  u8 session_enable_asap;
 
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
