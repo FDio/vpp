@@ -60,7 +60,7 @@ typedef struct
   u32 sequence_number;
   /* thread index where events originated */
   u32 thread_index;
-} __attribute__ ((packed)) nat_ha_message_header_t;
+} __attribute__((packed)) nat_ha_message_header_t;
 
 /* NAT HA protocol event data */
 typedef struct
@@ -81,7 +81,7 @@ typedef struct
   u32 fib_index;
   u32 total_pkts;
   u64 total_bytes;
-} __attribute__ ((packed)) nat_ha_event_t;
+} __attribute__((packed)) nat_ha_event_t;
 
 typedef enum
 {
@@ -683,6 +683,18 @@ nat_ha_flush (u8 is_resync)
 {
   skip_if_disabled ();
   nat_ha_event_add (0, 1, 0, is_resync);
+}
+
+int
+nat_ha_resync (u32 client_index, u32 pid,
+	       nat_ha_resync_event_cb_t event_callback)
+{
+  nat_ha_main_t *ha = &nat_ha_main;
+
+  ha->client_index = client_index;
+  ha->pid = pid;
+  ha->event_callback = event_callback;
+  return ha->in_resync;
 }
 
 void
