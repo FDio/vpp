@@ -80,7 +80,7 @@ class TestL2Flood(VppTestCase):
                    src="00:00:de:ad:be:ef") /
              IP(src="10.10.10.10", dst="1.1.1.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         #
         # input on pg0 expect copies on pg1->11
@@ -180,7 +180,7 @@ class TestL2Flood(VppTestCase):
                    src="00:00:de:ad:be:ef") /
              IP(src="10.10.10.10", dst="1.1.1.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         #
         # input on pg0 expect copies on pg1
@@ -217,12 +217,12 @@ class TestL2Flood(VppTestCase):
                       src="00:00:de:ad:be:ef") /
                 IP(src="10.10.10.10", dst="1.1.1.1") /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
         p_bm = (Ether(dst="ff:ff:ff:ff:ff:ff",
                       src="00:00:de:ad:be:ef") /
                 IP(src="10.10.10.10", dst="1.1.1.1") /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
 
         #
         # input on pg0, expected copies on pg1->4

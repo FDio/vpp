@@ -75,13 +75,13 @@ class TestDVR(VppTestCase):
                       IP(src=any_src_addr,
                          dst=ip_non_tag_bridged) /
                       UDP(sport=1234, dport=1234) /
-                      Raw('\xa5' * 100))
+                      Raw(b'\xa5' * 100))
         pkt_tag = (Ether(src=self.pg0.remote_mac,
                          dst=self.loop0.local_mac) /
                    IP(src=any_src_addr,
                       dst=ip_tag_bridged) /
                    UDP(sport=1234, dport=1234) /
-                   Raw('\xa5' * 100))
+                   Raw(b'\xa5' * 100))
 
         #
         # Two sub-interfaces so we can test VLAN tag push/pop
@@ -158,7 +158,7 @@ class TestDVR(VppTestCase):
                           IP(src=any_src_addr,
                              dst=ip_tag_bridged) /
                           UDP(sport=1234, dport=1234) /
-                          Raw('\xa5' * 100))
+                          Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg2,
                                   pkt_tag_to_tag * NUM_PKTS,
@@ -175,7 +175,7 @@ class TestDVR(VppTestCase):
                               IP(src=any_src_addr,
                                  dst=ip_non_tag_bridged) /
                               UDP(sport=1234, dport=1234) /
-                              Raw('\xa5' * 100))
+                              Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg2,
                                   pkt_tag_to_non_tag * NUM_PKTS,
@@ -270,33 +270,33 @@ class TestDVR(VppTestCase):
                       IP(src="2.2.2.2",
                          dst="1.1.1.1") /
                       UDP(sport=1234, dport=1234) /
-                      Raw('\xa5' * 100))
+                      Raw(b'\xa5' * 100))
         pkt_to_tag = (Ether(src=self.pg0.remote_mac,
                             dst=self.pg2.remote_mac) /
                       IP(src="2.2.2.2",
                          dst="1.1.1.2") /
                       UDP(sport=1234, dport=1234) /
-                      Raw('\xa5' * 100))
+                      Raw(b'\xa5' * 100))
         pkt_from_tag = (Ether(src=self.pg3.remote_mac,
                               dst=self.pg2.remote_mac) /
                         Dot1Q(vlan=93) /
                         IP(src="2.2.2.2",
                            dst="1.1.1.1") /
                         UDP(sport=1234, dport=1234) /
-                        Raw('\xa5' * 100))
+                        Raw(b'\xa5' * 100))
         pkt_from_to_tag = (Ether(src=self.pg3.remote_mac,
                                  dst=self.pg2.remote_mac) /
                            Dot1Q(vlan=93) /
                            IP(src="2.2.2.2",
                               dst="1.1.1.2") /
                            UDP(sport=1234, dport=1234) /
-                           Raw('\xa5' * 100))
+                           Raw(b'\xa5' * 100))
         pkt_bcast = (Ether(src=self.pg0.remote_mac,
                            dst="ff:ff:ff:ff:ff:ff") /
                      IP(src="2.2.2.2",
                         dst="255.255.255.255") /
                      UDP(sport=1234, dport=1234) /
-                     Raw('\xa5' * 100))
+                     Raw(b'\xa5' * 100))
 
         #
         # A couple of sub-interfaces for tags

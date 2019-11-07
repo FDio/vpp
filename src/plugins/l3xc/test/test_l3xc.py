@@ -132,7 +132,7 @@ class TestL3xc(VppTestCase):
                      dst=self.pg0.local_mac) /
                IP(src="1.1.1.1", dst="1.1.1.2") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))
+               Raw(b'\xa5' * 100))
         # self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
 
         p_2 = []
@@ -141,7 +141,7 @@ class TestL3xc(VppTestCase):
                              dst=self.pg0.local_mac) /
                        IP(src="1.1.1.1", dst="1.1.1.2") /
                        UDP(sport=1000 + ii, dport=1234) /
-                       Raw('\xa5' * 100))
+                       Raw(b'\xa5' * 100))
         self.send_and_expect_load_balancing(self.pg2, p_2,
                                             [self.pg3, self.pg4, self.pg5])
 

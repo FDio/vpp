@@ -946,7 +946,7 @@ class ARPTestCase(VppTestCase):
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst="10.0.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)

@@ -1469,7 +1469,7 @@ class IPv6NDProxyTest(TestIPv6ND):
              IPv6(dst=self.pg0._remote_hosts[2].ip6,
                   src=self.pg0.remote_ip6) /
              inet6.UDP(sport=10000, dport=20000) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.pg0.add_stream(t)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1531,7 +1531,7 @@ class IPv6NDProxyTest(TestIPv6ND):
               IPv6(dst=self.pg0._remote_hosts[2].ip6,
                    src=self.pg0._remote_hosts[3].ip6) /
               inet6.UDP(sport=10000, dport=20000) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         self.pg2.add_stream(t2)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1619,7 +1619,7 @@ class TestIPNull(VppTestCase):
                    dst=self.pg0.local_mac) /
              IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
              inet6.UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         #
         # A route via IP NULL that will reply with ICMP unreachables
@@ -1718,12 +1718,12 @@ class TestIPDisabled(VppTestCase):
                     dst=self.pg1.local_mac) /
               IPv6(src="2001::1", dst=self.pg0.remote_ip6) /
               inet6.UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         pm = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
               IPv6(src="2001::1", dst="ffef::1") /
               inet6.UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         #
         # PG1 does not forward IP traffic
@@ -1834,7 +1834,7 @@ class TestIP6LoadBalance(VppTestCase):
             port_ip_hdr = (
                 IPv6(dst="3000::1", src="3000:1::1") /
                 inet6.UDP(sport=1234, dport=1234 + ii) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
             port_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                        dst=self.pg0.local_mac) /
                                  port_ip_hdr))
@@ -1856,7 +1856,7 @@ class TestIP6LoadBalance(VppTestCase):
             src_ip_hdr = (
                 IPv6(dst="3000::1", src="3000:1::%d" % ii) /
                 inet6.UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
             src_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                       dst=self.pg0.local_mac) /
                                 src_ip_hdr))
@@ -1954,13 +1954,13 @@ class TestIP6LoadBalance(VppTestCase):
                                    src="4000:1::1") /
                               inet6.UDP(sport=1234,
                                         dport=1234 + ii) /
-                              Raw('\xa5' * 100)))
+                              Raw(b'\xa5' * 100)))
             src_pkts.append((Ether(src=self.pg0.remote_mac,
                                    dst=self.pg0.local_mac) /
                              IPv6(dst="4000::1",
                                   src="4000:1::%d" % ii) /
                              inet6.UDP(sport=1234, dport=1234) /
-                             Raw('\xa5' * 100)))
+                             Raw(b'\xa5' * 100)))
 
         route_3000_2 = VppIpRoute(self, "3000::2", 128,
                                   [VppRoutePath(self.pg3.remote_ip6,
@@ -2000,7 +2000,7 @@ class TestIP6LoadBalance(VppTestCase):
                                    src="6000:1::1") /
                               inet6.UDP(sport=1234,
                                         dport=1234 + ii) /
-                              Raw('\xa5' * 100)))
+                              Raw(b'\xa5' * 100)))
 
         route_5000_2 = VppIpRoute(self, "5000::2", 128,
                                   [VppRoutePath(self.pg3.remote_ip6,
@@ -2054,7 +2054,7 @@ class TestIP6Punt(VppTestCase):
              IPv6(src=self.pg0.remote_ip6,
                   dst=self.pg0.local_ip6) /
              inet6.TCP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         pkts = p * 1025
 
@@ -2221,12 +2221,12 @@ class TestIPDeag(VppTestCase):
                        dst=self.pg0.local_mac) /
                  IPv6(src="5::5", dst="1::1") /
                  inet6.TCP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
         p_src = (Ether(src=self.pg0.remote_mac,
                        dst=self.pg0.local_mac) /
                  IPv6(src="2::2", dst="1::2") /
                  inet6.TCP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
         pkts_dst = p_dst * 257
         pkts_src = p_src * 257
 
@@ -2268,7 +2268,7 @@ class TestIPDeag(VppTestCase):
                      dst=self.pg0.local_mac) /
                IPv6(src="3::4", dst="3::3") /
                inet6.TCP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))
+               Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, p_l * 257,
                                         "IP lookup loop")
@@ -2312,7 +2312,7 @@ class TestIP6Input(VppTestCase):
                           dst=self.pg1.remote_ip6,
                           hlim=1) /
                      inet6.UDP(sport=1234, dport=1234) /
-                     Raw('\xa5' * 100))
+                     Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg0, p_version * NUM_PKTS, self.pg0)
         rx = rx[0]
@@ -2351,7 +2351,7 @@ class TestIP6Input(VppTestCase):
                           dst=dst or self.pg1.remote_ip6,
                           version=3) /
                      l4 /
-                     Raw('\xa5' * 100))
+                     Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, p_version * NUM_PKTS,
                                         remark=msg or "",
@@ -2365,7 +2365,7 @@ class TestIP6Input(VppTestCase):
              IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
              IPv6ExtHdrHopByHop() /
              inet6.UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)

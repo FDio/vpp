@@ -114,7 +114,7 @@ class TestPipe(VppTestCase):
              IP(src="1.1.1.1",
                 dst="1.1.1.2") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
@@ -200,7 +200,7 @@ class TestPipe(VppTestCase):
                   IP(src="1.1.1.2",
                      dst="1.1.1.1") /
                   UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
+                  Raw(b'\xa5' * 100))
 
         # bind the pipe ends to the correct tables
         self.vapi.sw_interface_set_table(pipes[1].west, 0, 2)
@@ -221,7 +221,7 @@ class TestPipe(VppTestCase):
                   IP(src="1.1.1.1",
                      dst="1.1.1.2") /
                   UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
+                  Raw(b'\xa5' * 100))
         self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
         #

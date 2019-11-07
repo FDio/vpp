@@ -1042,7 +1042,7 @@ class TestGBP(VppTestCase):
                            src=self.pg0.remote_mac) /
                      IP(src=eps[0].ip4.address, dst="232.1.1.1") /
                      UDP(sport=1234, dport=1234) /
-                     Raw('\xa5' * 100))
+                     Raw(b'\xa5' * 100))
 
         self.vapi.cli("clear trace")
         self.pg0.add_stream(pkt_bcast)
@@ -1063,13 +1063,13 @@ class TestGBP(VppTestCase):
                                  IP(src=eps[0].ip4.address,
                                     dst="10.0.0.99") /
                                  UDP(sport=1234, dport=1234) /
-                                 Raw('\xa5' * 100))
+                                 Raw(b'\xa5' * 100))
         pkt_inter_epg_222_ip4 = (Ether(src=self.pg0.remote_mac,
                                        dst=str(self.router_mac)) /
                                  IP(src=eps[0].ip4.address,
                                     dst="10.0.1.99") /
                                  UDP(sport=1234, dport=1234) /
-                                 Raw('\xa5' * 100))
+                                 Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0,
                                         pkt_intra_epg_220_ip4 * NUM_PKTS)
@@ -1079,7 +1079,7 @@ class TestGBP(VppTestCase):
                                  IPv6(src=eps[0].ip6.address,
                                       dst="2001:10::99") /
                                  UDP(sport=1234, dport=1234) /
-                                 Raw('\xa5' * 100))
+                                 Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(self.pg0,
                                         pkt_inter_epg_222_ip6 * NUM_PKTS)
 
@@ -1140,7 +1140,7 @@ class TestGBP(VppTestCase):
                                        IP(src=eps[0].ip4.address,
                                           dst="10.0.0.99") /
                                        UDP(sport=1234, dport=1234) /
-                                       Raw('\xa5' * 100))
+                                       Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged(eps[0].itf,
                                      pkt_intra_epg_220_to_uplink * NUM_PKTS,
@@ -1154,7 +1154,7 @@ class TestGBP(VppTestCase):
                                        IP(src=eps[0].ip4.address,
                                           dst="10.0.0.99") /
                                        UDP(sport=1234, dport=1234) /
-                                       Raw('\xa5' * 100))
+                                       Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged(eps[2].itf,
                                      pkt_intra_epg_221_to_uplink * NUM_PKTS,
@@ -1168,7 +1168,7 @@ class TestGBP(VppTestCase):
                                          IP(src=eps[0].ip4.address,
                                             dst="10.0.0.99") /
                                          UDP(sport=1234, dport=1234) /
-                                         Raw('\xa5' * 100))
+                                         Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged(self.pg4,
                                      pkt_intra_epg_220_from_uplink * NUM_PKTS,
@@ -1183,7 +1183,7 @@ class TestGBP(VppTestCase):
                          IP(src=eps[0].ip4.address,
                             dst=eps[1].ip4.address) /
                          UDP(sport=1234, dport=1234) /
-                         Raw('\xa5' * 100))
+                         Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged(self.pg0,
                                      pkt_intra_epg * NUM_PKTS,
@@ -1198,19 +1198,19 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[2].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac,
                                           dst=self.pg0.remote_mac) /
                                     IP(src=eps[2].ip4.address,
                                        dst=eps[0].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         pkt_inter_epg_220_to_222 = (Ether(src=self.pg0.remote_mac,
                                           dst=str(self.router_mac)) /
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[3].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(eps[0].itf,
                                         pkt_inter_epg_220_to_221 * NUM_PKTS)
@@ -1383,7 +1383,7 @@ class TestGBP(VppTestCase):
                                        IP(src=eps[0].ip4.address,
                                           dst="1.1.1.1") /
                                        UDP(sport=1234, dport=1234) /
-                                       Raw('\xa5' * 100))
+                                       Raw(b'\xa5' * 100))
 
         # no policy yet
         self.send_and_assert_no_replies(eps[0].itf,
@@ -1420,7 +1420,7 @@ class TestGBP(VppTestCase):
                                        IPv6(src=eps[0].ip6.address,
                                             dst="6001::1") /
                                        UDP(sport=1234, dport=1234) /
-                                       Raw('\xa5' * 100))
+                                       Raw(b'\xa5' * 100))
 
         self.send_and_expect_natted6(self.pg0,
                                      pkt_inter_epg_220_to_global * NUM_PKTS,
@@ -1435,7 +1435,7 @@ class TestGBP(VppTestCase):
                                          IP(dst=eps[0].fip4.address,
                                             src="1.1.1.1") /
                                          UDP(sport=1234, dport=1234) /
-                                         Raw('\xa5' * 100))
+                                         Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(
             self.pg7, pkt_inter_epg_220_from_global * NUM_PKTS)
@@ -1463,7 +1463,7 @@ class TestGBP(VppTestCase):
                                          IPv6(dst=eps[0].fip6.address,
                                               src="6001::1") /
                                          UDP(sport=1234, dport=1234) /
-                                         Raw('\xa5' * 100))
+                                         Raw(b'\xa5' * 100))
 
         self.send_and_expect_unnatted6(
             self.pg7,
@@ -1480,7 +1480,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[1].fip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_expect_double_natted(eps[0].itf,
                                            pkt_intra_epg_220_global * NUM_PKTS,
@@ -1493,7 +1493,7 @@ class TestGBP(VppTestCase):
                                     IPv6(src=eps[0].ip6.address,
                                          dst=eps[1].fip6.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_expect_double_natted6(
             eps[0].itf,
@@ -1663,7 +1663,7 @@ class TestGBP(VppTestCase):
              Ether(src=learnt[0]["mac"], dst=ep.mac) /
              IP(src=learnt[0]["ip"], dst=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg2, p)
 
@@ -1700,7 +1700,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -1798,7 +1798,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -1843,7 +1843,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
@@ -1868,7 +1868,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
@@ -1884,7 +1884,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  IP(dst=l['ip'], src=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * 17, self.pg2)
 
@@ -1920,7 +1920,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
@@ -1935,7 +1935,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=l['mac']) /
              IP(dst=learnt[0]['ip'], src=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, [p])
 
@@ -1953,7 +1953,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
@@ -1985,7 +1985,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  IP(dst=l['ip'], src=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             self.send_and_expect(self.pg0, [p], self.pg2)
 
@@ -1997,7 +1997,7 @@ class TestGBP(VppTestCase):
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(ep.itf, [p_uu], gbd1.uu_fwd)
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -2005,7 +2005,7 @@ class TestGBP(VppTestCase):
         p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
         rxs = self.send_and_expect_only(ep.itf, [p_bm], tun_bm.mcast_itf)
 
         for rx in rxs:
@@ -2054,7 +2054,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
@@ -2086,7 +2086,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * 1, self.pg0)
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
@@ -2106,7 +2106,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  IPv6(dst=l['ip6'], src=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
@@ -2137,7 +2137,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * 1, self.pg0)
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
@@ -2160,7 +2160,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  IPv6(dst=l['ip6'], src=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
@@ -2296,7 +2296,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[1].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged(self.pg0,
                                      pkt_intra_epg_220_to_220 * 65,
@@ -2307,7 +2307,7 @@ class TestGBP(VppTestCase):
                                     IPv6(src=eps[0].ip6.address,
                                          dst=eps[1].ip6.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_expect_bridged6(self.pg0,
                                       pkt_intra_epg_220_to_220 * 65,
@@ -2321,7 +2321,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[2].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, pkt_inter_epg_220_to_221)
 
@@ -2359,7 +2359,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[3].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(eps[0].itf,
                                         pkt_inter_epg_220_to_222 * 65)
 
@@ -2406,7 +2406,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[2].ip4.address,
                                        dst=eps[0].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         self.send_and_expect_bridged(eps[2].itf,
                                      pkt_inter_epg_221_to_220 * 65,
                                      eps[0].itf)
@@ -2415,7 +2415,7 @@ class TestGBP(VppTestCase):
                                     IP(src=eps[2].ip4.address,
                                        dst=eps[0].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         self.send_and_expect_routed(eps[2].itf,
                                     pkt_inter_epg_221_to_220 * 65,
                                     eps[0].itf,
@@ -2425,7 +2425,7 @@ class TestGBP(VppTestCase):
                                     IPv6(src=eps[2].ip6.address,
                                          dst=eps[0].ip6.address) /
                                     UDP(sport=1234, dport=1234) /
-                                    Raw('\xa5' * 100))
+                                    Raw(b'\xa5' * 100))
         self.send_and_expect_routed6(eps[2].itf,
                                      pkt_inter_epg_221_to_220 * 65,
                                      eps[0].itf,
@@ -2513,13 +2513,13 @@ class TestGBP(VppTestCase):
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(ep.itf, [p_uu])
 
         p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100))
+                Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(ep.itf, [p_bm])
 
         self.pg3.unconfig_ip4()
@@ -2709,7 +2709,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -2744,7 +2744,7 @@ class TestGBP(VppTestCase):
                  Dot1Q(vlan=11) /
                  IP(dst=l['ip'], src=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * 17, self.pg3)
 
@@ -2882,7 +2882,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -2906,7 +2906,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
                  IP(dst=l['ip'], src=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * 1, self.pg2)
 
@@ -2949,7 +2949,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -2979,7 +2979,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
                  IPv6(dst=l['ip6'], src=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
@@ -3012,7 +3012,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(dst="10.0.0.99", src=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, [p])
 
@@ -3030,14 +3030,14 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(dst=epg_220.bvi_ip4.address, src=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IPv6(dst=epg_220.bvi_ip6.address, src=ep.ip6.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
@@ -3047,7 +3047,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(dst="10.0.0.99", src=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, [p], self.pg4)
         for rx in rxs:
@@ -3078,7 +3078,7 @@ class TestGBP(VppTestCase):
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -3139,7 +3139,7 @@ class TestGBP(VppTestCase):
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
                  IP(dst=ip, src=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
+                 Raw(b'\xa5' * 100))
 
             rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
@@ -3174,7 +3174,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(src=ep.ip4.address, dst=rep_2.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, [p], self.pg2)
 
         self.assertFalse(find_gbp_endpoint(self, ip=rep_88.ip4.address))
@@ -3182,7 +3182,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(src=ep.ip4.address, dst=rep_88.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, [p], self.pg4)
 
         #
@@ -3216,7 +3216,7 @@ class TestGBP(VppTestCase):
              Ether(src=l['mac'], dst="00:00:00:11:11:11") /
              IP(src="10.0.1.4", dst=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
         self.assertTrue(find_gbp_endpoint(self,
@@ -3228,7 +3228,7 @@ class TestGBP(VppTestCase):
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
              IP(dst="10.0.1.4", src=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
         # host 2 is the DP learned TEP
@@ -3259,7 +3259,7 @@ class TestGBP(VppTestCase):
              Ether(src=l['mac'], dst="00:00:00:11:11:11") /
              IP(src=learnt[1]['ip'], dst=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rx = self.send_and_expect(self.pg2, [p], self.pg0)
 
@@ -3449,19 +3449,19 @@ class TestGBP(VppTestCase):
         p4 = [(Ether(src=ep1.mac, dst=ep3.mac) /
                IP(src=ep1.ip4.address, dst=ep3.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep3.mac, dst=ep1.mac) /
                IP(src=ep3.ip4.address, dst=ep1.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=ep3.mac) /
                IPv6(src=ep1.ip6.address, dst=ep3.ip6.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep3.mac, dst=ep1.mac) /
                IPv6(src=ep3.ip6.address, dst=ep1.ip6.address) /
                UDP(sport=1234, dport=1230) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
 
         # should be dropped since no contract yet
         self.send_and_assert_no_replies(self.pg0, [p4[0]])
@@ -3681,19 +3681,19 @@ class TestGBP(VppTestCase):
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
                IP(src=ep2.ip4.address, dst=ep1.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
                IPv6(src=ep2.ip6.address, dst=ep1.ip6.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
 
         c3 = VppGbpContract(
             self, 402, epg_220.sclass, epg_221.sclass, acl_index,
@@ -3760,7 +3760,7 @@ class TestGBP(VppTestCase):
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
              IP(src="10.0.0.88", dst=ep1.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         # unknown remote EP to local EP redirected
         rxs = self.send_and_expect(self.pg7, [p], sep1.itf)
@@ -3785,7 +3785,7 @@ class TestGBP(VppTestCase):
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
              IPv6(src="2001:10::88", dst=ep1.ip6.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         # unknown remote EP to local EP redirected (ipv6)
         rxs = self.send_and_expect(self.pg7, [p], sep3.itf)
@@ -3807,11 +3807,11 @@ class TestGBP(VppTestCase):
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IP(src=ep1.ip4.address, dst="10.0.0.88") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IPv6(src=ep1.ip6.address, dst="2001:10::88") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
 
         rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
 
@@ -3974,12 +3974,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IP(src="10.220.0.17", dst="10.221.0.65") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(src=eep1.mac, dst=self.router_mac) /
               Dot1Q(vlan=100) /
               IPv6(src="10:220::17", dst="10:221::65") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         # packets should be dropped in absence of contract
         self.send_and_assert_no_replies(self.pg0, p)
@@ -4104,11 +4104,11 @@ class TestGBP(VppTestCase):
         p = [(base /
               IP(src="10.0.1.100", dst=ep3.ip4.address) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (base /
               IPv6(src="2001:10::100", dst=ep3.ip6.address) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         # unknown remote EP to local EP redirected to known remote SEP
         rxs = self.send_and_expect(self.pg7, p, self.pg7)
@@ -4360,19 +4360,19 @@ class TestGBP(VppTestCase):
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
                IP(src=ep2.ip4.address, dst=ep1.ip4.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
                IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
+               Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
                IPv6(src=ep2.ip6.address, dst=ep1.ip6.address) /
                UDP(sport=1234, dport=1230) /
-               Raw('\xa5' * 100))]
+               Raw(b'\xa5' * 100))]
 
         # should be dropped since no contract yet
         self.send_and_assert_no_replies(self.pg0, [p4[0]])
@@ -4535,7 +4535,7 @@ class TestGBP(VppTestCase):
              Ether(src=str(self.router_mac), dst=sep1.mac) /
              IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, [p] * 17, sep1.itf)
 
@@ -4567,7 +4567,7 @@ class TestGBP(VppTestCase):
         p1 = (Ether(src=sep1.mac, dst=self.router_mac) /
               IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg3, [p1] * 17, self.pg7)
 
@@ -4605,7 +4605,7 @@ class TestGBP(VppTestCase):
               Ether(src=str(self.router_mac), dst=self.router_mac) /
               IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, [p2], self.pg1)
 
@@ -4793,12 +4793,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IP(src="10.0.0.1", dst="10.0.0.88") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
         p6 = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=100) /
               IPv6(src="2001:10::1", dst="2001:10::88") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
+              Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p4 * 1, self.pg7)
 
@@ -4831,7 +4831,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.0.0.101", dst="10.0.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
@@ -5008,7 +5008,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.221.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
 
@@ -5033,7 +5033,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.0.0.101", dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
@@ -5044,7 +5044,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst=rep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg7)
 
@@ -5115,7 +5115,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.222.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_assert_no_replies(self.pg0, p * 1)
 
@@ -5142,7 +5142,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.222.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 3, self.pg7)
 
@@ -5196,12 +5196,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IP(src="10.220.0.1", dst="10.222.0.1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(src=eep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=100) /
               IP(src="10.220.0.1", dst="10.222.0.1") /
               UDP(sport=1222, dport=1235) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         rxs = self.send_and_expect(self.pg0, p, self.pg7)
 
@@ -5240,12 +5240,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IPv6(src="10:220::1", dst="10:222::1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(src=eep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=100) /
               IPv6(src="10:220::1", dst="10:222::1") /
               UDP(sport=7777, dport=8881) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         self.logger.info(self.vapi.cli("sh ip6 fib 10:222::1"))
         rxs = self.send_and_expect(self.pg0, p, self.pg7)
@@ -5264,7 +5264,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.222.0.1", dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 3, self.pg0)
         self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
@@ -5280,7 +5280,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.222.0.1", dst="10.222.0.2") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_assert_no_replies(self.pg7, p * 3)
 
@@ -5291,7 +5291,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IPv6(src="10:222::1", dst="10:222::2") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_assert_no_replies(self.pg7, p * 3)
 
@@ -5311,7 +5311,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=144) /
              IP(src=lep1.ip4.address, dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
 
@@ -5327,7 +5327,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=144) /
              IPv6(src=lep1.ip6.address, dst="10:220::1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
 
@@ -5375,12 +5375,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=144) /
               IPv6(src=lep1.ip6.address, dst="10:20::1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
               IPv6(src=lep1.ip6.address, dst="10:20::1") /
               UDP(sport=124, dport=1230) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         rxs = self.send_and_expect(self.pg0, p, self.pg0, 2)
 
@@ -5392,12 +5392,12 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=144) /
               IP(src=lep1.ip4.address, dst="10.20.0.1") /
               UDP(sport=1235, dport=1235) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
               IP(src=lep1.ip4.address, dst="10.20.0.1") /
               UDP(sport=124, dport=1230) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         rxs = self.send_and_expect(self.pg0, p, self.pg0, 2)
 
@@ -5551,7 +5551,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src=str(rep.ip4), dst="10.0.0.100") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
         #
@@ -5682,7 +5682,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.221.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
 
@@ -5707,7 +5707,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src=rep.ip4.address, dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
@@ -5718,7 +5718,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst=rep.ip4.address) /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg7)
 
@@ -5790,7 +5790,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.222.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_assert_no_replies(self.pg0, p * 1)
 
@@ -5817,7 +5817,7 @@ class TestGBP(VppTestCase):
              Dot1Q(vlan=100) /
              IP(src="10.220.0.1", dst="10.222.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg0, p * 3, self.pg7)
 
@@ -5851,7 +5851,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.222.0.1", dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 3, self.pg0)
         self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
@@ -5867,7 +5867,7 @@ class TestGBP(VppTestCase):
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.222.0.1", dst="10.222.0.2") /
              UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
+             Raw(b'\xa5' * 100))
 
         rxs = self.send_and_assert_no_replies(self.pg7, p * 3)
 

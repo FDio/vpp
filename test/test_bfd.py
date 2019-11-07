@@ -1755,11 +1755,11 @@ class BFDFIBTestCase(VppTestCase):
         p = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IPv6(src="3001::1", dst="2001::1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100)),
+              Raw(b'\xa5' * 100)),
              (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IPv6(src="3001::1", dst="2002::1") /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         # A recursive and a non-recursive route via a next-hop that
         # will have a BFD session
@@ -1884,7 +1884,7 @@ class BFDTunTestCase(VppTestCase):
         p = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4, dst=gre_if.remote_ip4) /
               UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))]
+              Raw(b'\xa5' * 100))]
 
         # session is up - traffic passes
         bfd_session_up(self)
