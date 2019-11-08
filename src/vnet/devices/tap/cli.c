@@ -37,6 +37,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   tap_create_if_args_t args = { 0 };
   int ip_addr_set = 0;
+  u32 tmp;
 
   args.id = ~0;
   args.tap_flags = 0;
@@ -73,10 +74,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  else if (unformat (line_input, "host-ip6-gw %U",
 			     unformat_ip6_address, &args.host_ip6_gw))
 	    args.host_ip6_gw_set = 1;
-	  else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
-	    ;
-	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
-	    ;
+	  else if (unformat (line_input, "rx-ring-size %d", &tmp))
+	    args.rx_ring_sz = tmp;
+	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
+	    args.tx_ring_sz = tmp;
 	  else
 	    if (unformat
 		(line_input, "host-mtu-size %d", &args.host_mtu_size))
