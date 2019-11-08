@@ -29,6 +29,42 @@
 #define MFIB_TABLE_TOTAL_LOCKS MFIB_N_SOURCES
 
 /**
+ * Flags for the source data
+ */
+typedef enum mfib_table_attribute_t_ {
+    /**
+     * Marker. Add new values after this one.
+     */
+    MFIB_TABLE_ATTRIBUTE_FIRST,
+    /**
+     * the table is currently resync-ing
+     */
+    MFIB_TABLE_ATTRIBUTE_RESYNC = MFIB_TABLE_ATTRIBUTE_FIRST,
+    /**
+     * Marker. add new entries before this one.
+     */
+    MFIB_TABLE_ATTRIBUTE_LAST = MFIB_TABLE_ATTRIBUTE_RESYNC,
+} mfib_table_attribute_t;
+
+#define MFIB_TABLE_ATTRIBUTE_MAX (MFIB_TABLE_ATTRIBUTE_LAST+1)
+
+#define MFIB_TABLE_ATTRIBUTES {		         \
+    [MFIB_TABLE_ATTRIBUTE_RESYNC]  = "resync",    \
+}
+
+#define FOR_EACH_MFIB_TABLE_ATTRIBUTE(_item)      	\
+    for (_item = MFIB_TABLE_ATTRIBUTE_FIRST;		\
+	 _item < MFIB_TABLE_ATTRIBUTE_MAX;		\
+	 _item++)
+
+typedef enum mfib_table_flags_t_ {
+    MFIB_TABLE_FLAG_NONE   = 0,
+    MFIB_TABLE_FLAG_RESYNC  = (1 << MFIB_TABLE_ATTRIBUTE_RESYNC),
+} __attribute__ ((packed)) mfib_table_flags_t;
+
+extern u8* format_mfib_table_flags(u8 *s, va_list *args);
+
+/**
  * @brief
  *   A protocol Independent IP multicast FIB table
  */
@@ -56,6 +92,11 @@ typedef struct mfib_table_t_
     fib_protocol_t mft_proto;
 
     /**
+     * table falgs
+     */
+    mfib_table_flags_t mft_flags;
+
+    /**
      * number of locks on the table
      */
     u16 mft_locks[MFIB_TABLE_N_LOCKS];
@@ -64,6 +105,11 @@ typedef struct mfib_table_t_
      * Table ID (hash key) for this FIB.
      */
     u32 mft_table_id;
+
+    /**
+     * resync epoch
+     */
+    u32 mft_epoch;
 
     /**
      * Index into FIB vector.
@@ -282,6 +328,46 @@ extern void mfib_table_flush(u32 fib_index,
 
 /**
  * @brief
+ *  Resync all entries from a table for the source
+ *  this is the mark part of the mark and sweep algorithm.
+ *  All entries in this FIB that are sourced by 'source' are marked
+ *  as stale.
+ *
+ * @param fib_index
+ *  The index of the FIB
+ *
+ * @paran proto
+ *  The protocol of the entries in the table
+ *
+ * @param source
+ *  the source to flush
+ */
+extern void mfib_table_resync(u32 fib_index,
+                              fib_protocol_t proto,
+                              mfib_source_t source);
+
+/**
+ * @brief
+ *  Signal that the table has converged, i.e. all updates are complete.
+ *  this is the sweep part of the mark and sweep algorithm.
+ *  All entries in this FIB that are sourced by 'source' and marked
+ *  as stale are flushed.
+ *
+ * @param fib_index
+ *  The index of the FIB
+ *
+ * @paran proto
+ *  The protocol of the entries in the table
+ *
+ * @param source
+ *  the source to flush
+ */
+extern void mfib_table_converged(u32 fib_index,
+                                 fib_protocol_t proto,
+                                 mfib_source_t source);
+
+/**
+ * @brief
  *  Get the index of the FIB bound to the interface
  *
  * @paran proto
@@ -465,8 +551,8 @@ extern mfib_table_t *mfib_table_get(fib_node_index_t index,
 /**
  * @brief Call back function when walking entries in a FIB table
  */
-typedef int (*mfib_table_walk_fn_t)(fib_node_index_t fei,
-                                    void *ctx);
+typedef walk_rc_t (*mfib_table_walk_fn_t)(fib_node_index_t fei,
+                                          void *ctx);
 
 /**
  * @brief Walk all entries in a FIB table

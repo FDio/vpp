@@ -161,6 +161,8 @@ extern u32 mfib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                  mfib_source_t source);
 extern int mfib_entry_is_host(fib_node_index_t fib_entry_index);
+extern int mfib_entry_is_marked(fib_node_index_t fib_entry_index, mfib_source_t source);
+extern void mfib_entry_mark(fib_node_index_t fib_entry_index, mfib_source_t source);
 extern u32 mfib_entry_get_stats_index(fib_node_index_t fib_entry_index);
 extern void mfib_entry_cover_changed(fib_node_index_t fib_entry_index);
 extern void mfib_entry_cover_updated(fib_node_index_t fib_entry_index);

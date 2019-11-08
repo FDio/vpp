@@ -65,6 +65,47 @@ define ip_table_dump
   u32 context;
 };
 
+/** \brief IP table resync
+    begin the table resync (mark-n-sweep) process.
+    All entries in the table will be marked stale
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table - The table to resync
+*/
+autoreply define ip_table_resync
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief IP table converged
+    end the table resync (mark-n-sweep) process.
+    All entries in the table that are marked stale are deleted
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table - The table that has converged
+*/
+autoreply define ip_table_converged
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief IP table flush
+    Flush a table of all routes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table - The table to flush
+*/
+autoreply define ip_table_flush
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
 /** \brief IP FIB table response
     @param context - sender context
     @param table - description of the table
@@ -955,20 +996,6 @@ define proxy_arp_intfc_details
 {
   u32 context;
   u32 sw_if_index;
-};
-
-/** \brief Reset fib table request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param vrf_id - vrf/table id of the fib table to reset
-    @param is_ipv6 - an ipv6 fib to reset if non-zero, else ipv4
-*/
-autoreply define reset_fib
-{
-  u32 client_index;
-  u32 context;
-  u32 vrf_id;
-  u8 is_ipv6;
 };
 
 /** \brief Set max allowed ARP or ip6 neighbor entries request

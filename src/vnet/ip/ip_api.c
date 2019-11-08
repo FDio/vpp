@@ -92,7 +92,9 @@ _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_DUMP, proxy_arp_dump)                                       \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
  _(PROXY_ARP_INTFC_DUMP, proxy_arp_intfc_dump)                          \
-_(RESET_FIB, reset_fib)							\
+_(IP_TABLE_RESYNC, ip_table_resync)                                     \
+_(IP_TABLE_CONVERGED, ip_table_converged)                               \
+_(IP_TABLE_FLUSH, ip_table_flush)                                       \
 _(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(IP_PUNT_POLICE, ip_punt_police)                                       \
@@ -313,6 +315,7 @@ send_ip_route_details (vpe_api_main_t * am,
   }
 
   vl_api_send_msg (reg, (u8 *) mp);
+  vec_free (rpaths);
 }
 
 typedef struct apt_ip6_fib_show_ctx_t_
@@ -399,14 +402,14 @@ typedef struct vl_api_ip_mfib_dump_ctx_t_
   fib_node_index_t *entries;
 } vl_api_ip_mfib_dump_ctx_t;
 
-static int
+static walk_rc_t
 mfib_route_dump_walk (fib_node_index_t fei, void *arg)
 {
   vl_api_ip_mfib_dump_ctx_t *ctx = arg;
 
   vec_add1 (ctx->entries, fei);
 
-  return (0);
+  return (WALK_CONTINUE);
 }
 
 static void
@@ -2572,137 +2575,90 @@ static void
   REPLY_MACRO (VL_API_IP_SCAN_NEIGHBOR_ENABLE_DISABLE_REPLY);
 }
 
-static int
-ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
+static void
+vl_api_ip_table_resync_t_handler (vl_api_ip_table_resync_t * mp)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnm->interface_main;
-  ip4_main_t *im4 = &ip4_main;
-  static u32 *sw_if_indices_to_shut;
-  fib_table_t *fib_table;
-  ip4_fib_t *fib;
-  u32 sw_if_index;
-  int i;
-  int rv = VNET_API_ERROR_NO_SUCH_FIB;
-  u32 target_fib_id = ntohl (mp->vrf_id);
+  vl_api_ip_table_resync_reply_t *rmp;
+  fib_protocol_t fproto;
+  u32 fib_index;
+  int rv = 0;
 
-  /* *INDENT-OFF* */
-  pool_foreach (fib_table, im4->fibs,
-  ({
-    vnet_sw_interface_t * si;
+  fproto = (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  fib_index = fib_table_find (fproto, ntohl (mp->table.table_id));
 
-    fib = pool_elt_at_index (im4->v4_fibs, fib_table->ft_index);
-
-    if (fib->table_id != target_fib_id)
-      continue;
-
-    /* remove any mpls encap/decap labels */
-    mpls_fib_reset_labels (fib->table_id);
-
-    /* remove any proxy arps in this fib */
-    vnet_proxy_arp_fib_reset (fib->table_id);
-
-    /* Set the flow hash for this fib to the default */
-    vnet_set_ip4_flow_hash (fib->table_id, IP_FLOW_HASH_DEFAULT);
-
-    vec_reset_length (sw_if_indices_to_shut);
-
-    /* Shut down interfaces in this FIB / clean out intfc routes */
-    pool_foreach (si, im->sw_interfaces,
-    ({
-      u32 sw_if_index = si->sw_if_index;
-
-      if (sw_if_index < vec_len (im4->fib_index_by_sw_if_index)
-          && (im4->fib_index_by_sw_if_index[si->sw_if_index] ==
-              fib->index))
-        vec_add1 (sw_if_indices_to_shut, si->sw_if_index);
-    }));
-
-    for (i = 0; i < vec_len (sw_if_indices_to_shut); i++) {
-      sw_if_index = sw_if_indices_to_shut[i];
-
-      u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
-      flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+  if (INDEX_INVALID == fib_index)
+    rv = VNET_API_ERROR_NO_SUCH_FIB;
+  else
+    {
+      fib_table_resync (fib_index, fproto, FIB_SOURCE_API);
+      mfib_table_resync (mfib_table_find (fproto, ntohl (mp->table.table_id)),
+			 fproto, MFIB_SOURCE_API);
     }
-
-    fib_table_flush(fib->index, FIB_PROTOCOL_IP4, FIB_SOURCE_API);
-
-    rv = 0;
-    break;
-    })); /* pool_foreach (fib) */
-    /* *INDENT-ON* */
-
-  return rv;
-}
-
-static int
-ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnm->interface_main;
-  ip6_main_t *im6 = &ip6_main;
-  static u32 *sw_if_indices_to_shut;
-  fib_table_t *fib_table;
-  ip6_fib_t *fib;
-  u32 sw_if_index;
-  int i;
-  int rv = VNET_API_ERROR_NO_SUCH_FIB;
-  u32 target_fib_id = ntohl (mp->vrf_id);
-
-  /* *INDENT-OFF* */
-  pool_foreach (fib_table, im6->fibs,
-  ({
-    vnet_sw_interface_t * si;
-
-    fib = pool_elt_at_index (im6->v6_fibs, fib_table->ft_index);
-
-    if (fib->table_id != target_fib_id)
-      continue;
-
-    vec_reset_length (sw_if_indices_to_shut);
-
-    /* Set the flow hash for this fib to the default */
-    vnet_set_ip6_flow_hash (fib->table_id, IP_FLOW_HASH_DEFAULT);
-
-    /* Shut down interfaces in this FIB / clean out intfc routes */
-    pool_foreach (si, im->sw_interfaces,
-    ({
-      if (im6->fib_index_by_sw_if_index[si->sw_if_index] ==
-          fib->index)
-        vec_add1 (sw_if_indices_to_shut, si->sw_if_index);
-    }));
-
-    for (i = 0; i < vec_len (sw_if_indices_to_shut); i++) {
-      sw_if_index = sw_if_indices_to_shut[i];
-
-      u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
-      flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
-    }
-
-    fib_table_flush(fib->index, FIB_PROTOCOL_IP6, FIB_SOURCE_API);
-
-    rv = 0;
-    break;
-  })); /* pool_foreach (fib) */
-  /* *INDENT-ON* */
-
-  return rv;
+  REPLY_MACRO (VL_API_IP_TABLE_RESYNC_REPLY);
 }
 
 static void
-vl_api_reset_fib_t_handler (vl_api_reset_fib_t * mp)
+vl_api_ip_table_converged_t_handler (vl_api_ip_table_converged_t * mp)
 {
-  int rv;
-  vl_api_reset_fib_reply_t *rmp;
+  vl_api_ip_table_converged_reply_t *rmp;
+  fib_protocol_t fproto;
+  u32 fib_index;
+  int rv = 0;
 
-  if (mp->is_ipv6)
-    rv = ip6_reset_fib_t_handler (mp);
+  fproto = (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  fib_index = fib_table_find (fproto, ntohl (mp->table.table_id));
+
+  if (INDEX_INVALID == fib_index)
+    rv = VNET_API_ERROR_NO_SUCH_FIB;
   else
-    rv = ip4_reset_fib_t_handler (mp);
+    {
+      fib_table_converged (fib_index, fproto, FIB_SOURCE_API);
+      mfib_table_converged (mfib_table_find
+			    (fproto, ntohl (mp->table.table_id)), fproto,
+			    MFIB_SOURCE_API);
+    }
+  REPLY_MACRO (VL_API_IP_TABLE_CONVERGED_REPLY);
+}
 
-  REPLY_MACRO (VL_API_RESET_FIB_REPLY);
+static void
+vl_api_ip_table_flush_t_handler (vl_api_ip_table_converged_t * mp)
+{
+  vl_api_ip_table_flush_reply_t *rmp;
+  fib_protocol_t fproto;
+  u32 fib_index;
+  int rv = 0;
+
+  fproto = (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  fib_index = fib_table_find (fproto, ntohl (mp->table.table_id));
+
+  if (INDEX_INVALID == fib_index)
+    rv = VNET_API_ERROR_NO_SUCH_FIB;
+  else
+    {
+      vnet_main_t *vnm = vnet_get_main ();
+      vnet_interface_main_t *im = &vnm->interface_main;
+      vnet_sw_interface_t *si;
+
+      /* Shut down interfaces in this FIB / clean out intfc routes */
+      /* *INDENT-OFF* */
+      pool_foreach (si, im->sw_interfaces,
+      ({
+        if (fib_index == fib_table_get_index_for_sw_if_index (fproto,
+                                                              si->sw_if_index))
+          {
+            u32 flags = si->flags;
+            flags &= ~VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+            vnet_sw_interface_set_flags (vnm, si->sw_if_index, flags);
+          }
+      }));
+      /* *INDENT-ON* */
+
+      fib_table_flush (fib_index, fproto, FIB_SOURCE_API);
+      mfib_table_flush (mfib_table_find (fproto, ntohl (mp->table.table_id)),
+			fproto, MFIB_SOURCE_API);
+    }
+
+  REPLY_MACRO (VL_API_IP_TABLE_FLUSH_REPLY);
 }
 
 static void

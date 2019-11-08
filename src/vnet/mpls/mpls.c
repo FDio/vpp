@@ -443,13 +443,6 @@ VLIB_CLI_COMMAND (mpls_table_command, static) = {
   .is_mp_safe = 1,
 };
 
-int
-mpls_fib_reset_labels (u32 fib_id)
-{
-  // FIXME
-  return 0;
-}
-
 static clib_error_t *
 mpls_init (vlib_main_t * vm)
 {
