@@ -212,6 +212,7 @@ extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
 					    virtio_if_t * vif, u16 queue_id);
 format_function_t format_virtio_device_name;
+format_function_t format_virtio_log_name;
 
 static_always_inline void
 virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
@@ -227,6 +228,28 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
       vring->last_kick_avail_idx = vring->avail->idx;
     }
 }
+
+
+#define virtio_log_debug(vif, f, ...)				\
+{								\
+  vlib_log(VLIB_LOG_LEVEL_DEBUG, virtio_main.log_default,	\
+	   "%U: " f, format_virtio_log_name, vif,		\
+           ##__VA_ARGS__);					\
+};
+
+#define virtio_log_warning(vif, f, ...)				\
+{								\
+  vlib_log(VLIB_LOG_LEVEL_WARNING, virtio_main.log_default,	\
+	   "%U: " f, format_virtio_log_name, vif,		\
+           ##__VA_ARGS__);					\
+};
+
+#define virtio_log_error(vif, f, ...)				\
+{								\
+  vlib_log(VLIB_LOG_LEVEL_ERR, virtio_main.log_default,		\
+	   "%U: " f, format_virtio_log_name, vif,		\
+           ##__VA_ARGS__);					\
+};
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
 

@@ -474,6 +474,20 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 
 }
 
+static clib_error_t *
+virtio_init (vlib_main_t * vm)
+{
+  virtio_main_t *vim = &virtio_main;
+  clib_error_t *error = 0;
+
+  vim->log_default = vlib_log_register_class ("virtio", 0);
+  vlib_log_debug (vim->log_default, "initialized");
+
+  return error;
+}
+
+VLIB_INIT_FUNCTION (virtio_init);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
