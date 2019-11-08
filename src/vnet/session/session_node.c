@@ -903,7 +903,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
-      session_evt_add_head_old (wrk, elt);
+
+      if (svm_fifo_set_event (ctx->s->tx_fifo))
+	session_evt_add_head_old (wrk, elt);
       vlib_node_increment_counter (wrk->vm, node->node_index,
 				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
       return SESSION_TX_NO_BUFFERS;
