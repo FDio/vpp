@@ -674,6 +674,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
 	  ssvm_unlock_non_recursive (sh);
 	  return -1;
 	}
+      fs->h->n_free_bytes -= chunk_size + sizeof (*c);
     }
   else
     {
@@ -846,13 +847,13 @@ format_fifo_segment_type (u8 * s, va_list * args)
 u8 *
 format_fifo_segment (u8 * s, va_list * args)
 {
+  u32 count, indent, active_fifos, free_fifos, fifo_hdr = 0, chunk_size;
   fifo_segment_t *fs = va_arg (*args, fifo_segment_t *);
   int verbose __attribute__ ((unused)) = va_arg (*args, int);
+  u32 est_chunk_bytes, est_free_seg_bytes;
   fifo_segment_header_t *fsh;
   svm_fifo_chunk_t *c;
-  u32 count, indent;
-  u32 active_fifos;
-  u32 free_fifos;
+  u64 chunk_bytes = 0;
   char *address;
   size_t size;
   int i;
@@ -884,7 +885,12 @@ format_fifo_segment (u8 * s, va_list * args)
   if (!verbose)
     return s;
 
-  s = format (s, "\n");
+  if (fsh->free_chunks)
+    s = format (s, "\n\n%UFree chunks by size:\n", format_white_space,
+		indent + 2);
+  else
+    s = format (s, "\n");
+
   for (i = 0; i < vec_len (fsh->free_chunks); i++)
     {
       c = fsh->free_chunks[i];
@@ -897,12 +903,29 @@ format_fifo_segment (u8 * s, va_list * args)
 	  count++;
 	}
 
-      s = format (s, "%U%-5u Kb: %u free", format_white_space, indent + 2,
-		  1 << (i + max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE) - 10),
-		  count);
+      chunk_size = fs_freelist_index_to_size (i);
+      s = format (s, "%U%-5u kB: %u\n", format_white_space, indent + 2,
+		  chunk_size >> 10, count);
+
+      chunk_bytes += count * chunk_size;
     }
-  s = format (s, "%Ufree bytes %U", format_white_space, indent + 2,
-	      format_memory_size, fsh->n_free_bytes);
+
+  fifo_hdr = free_fifos * sizeof (svm_fifo_t);
+  est_chunk_bytes = fifo_segment_fl_chunk_bytes (fs);
+  est_free_seg_bytes = fsh->n_free_bytes;
+  fifo_segment_update_free_bytes (fs);
+
+  s = format (s, "\n%Useg free bytes: %U (%u) estimated: %U (%u)\n",
+	      format_white_space, indent + 2, format_memory_size,
+	      fsh->n_free_bytes, fsh->n_free_bytes, format_memory_size,
+	      est_free_seg_bytes, est_free_seg_bytes);
+  s = format (s, "%Uchunk free bytes: %U (%lu) estimated: %U (%u)\n",
+	      format_white_space, indent + 2, format_memory_size, chunk_bytes,
+	      chunk_bytes, format_memory_size, est_chunk_bytes,
+	      est_chunk_bytes);
+  s = format (s, "%Ufifo hdr free bytes: %U (%u)\n", format_white_space,
+	      indent + 2, format_memory_size, fifo_hdr, fifo_hdr);
+  s = format (s, "\n");
 
   return s;
 }
