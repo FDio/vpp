@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.2.1";
+option version = "3.2.2";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";

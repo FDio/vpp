@@ -995,41 +995,6 @@ VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
 /* *INDENT-ON* */
 
 static u8 *
-format_vtr (u8 * s, va_list * args)
-{
-  u32 vtr_op = va_arg (*args, u32);
-  u32 dot1q = va_arg (*args, u32);
-  u32 tag1 = va_arg (*args, u32);
-  u32 tag2 = va_arg (*args, u32);
-  switch (vtr_op)
-    {
-    case L2_VTR_DISABLED:
-      return format (s, "none");
-    case L2_VTR_PUSH_1:
-      return format (s, "push-1 %s %d", dot1q ? "dot1q" : "dot1ad", tag1);
-    case L2_VTR_PUSH_2:
-      return format (s, "push-2 %s %d %d", dot1q ? "dot1q" : "dot1ad", tag1,
-		     tag2);
-    case L2_VTR_POP_1:
-      return format (s, "pop-1");
-    case L2_VTR_POP_2:
-      return format (s, "pop-2");
-    case L2_VTR_TRANSLATE_1_1:
-      return format (s, "trans-1-1 %s %d", dot1q ? "dot1q" : "dot1ad", tag1);
-    case L2_VTR_TRANSLATE_1_2:
-      return format (s, "trans-1-2 %s %d %d", dot1q ? "dot1q" : "dot1ad",
-		     tag1, tag2);
-    case L2_VTR_TRANSLATE_2_1:
-      return format (s, "trans-2-1 %s %d", dot1q ? "dot1q" : "dot1ad", tag1);
-    case L2_VTR_TRANSLATE_2_2:
-      return format (s, "trans-2-2 %s %d %d", dot1q ? "dot1q" : "dot1ad",
-		     tag1, tag2);
-    default:
-      return format (s, "none");
-    }
-}
-
-static u8 *
 format_uu_cfg (u8 * s, va_list * args)
 {
   l2_bridge_domain_t *bd_config = va_arg (*args, l2_bridge_domain_t *);

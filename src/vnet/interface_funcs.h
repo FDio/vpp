@@ -448,6 +448,9 @@ unformat_function_t unformat_vnet_hw_interface;
 unformat_function_t unformat_vnet_hw_interface_flags;
 unformat_function_t unformat_vnet_sw_interface_flags;
 
+/* VLAN tag-rewrite */
+format_function_t format_vtr;
+
 /* Node runtime for interface output function. */
 typedef struct
 {
