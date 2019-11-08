@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ac9d6b8d_b6ef8500",
+        "filename": "src/plugins/ip6-nd/ip6_nd.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-08T15:36:30Z",
+      "side": 1,
+      "message": "o",
+      "range": {
+        "startLine": 3,
+        "startChar": 13,
+        "endLine": 3,
+        "endChar": 15
+      },
+      "revId": "a1407a448871d6402f98c2ee48e20678248267a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
