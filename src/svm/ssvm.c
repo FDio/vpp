@@ -377,6 +377,11 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
     }
 
   mspace_disable_expand (heap);
+
+  /* Find actual size because mspace size is rounded up by dlmalloc */
+  struct dlmallinfo dlminfo;
+  dlminfo = mspace_mallinfo (heap);
+  rnd_size = dlminfo.fordblks;
 #endif
 
   ssvm->ssvm_size = rnd_size;
