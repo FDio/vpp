@@ -272,26 +272,26 @@ send_sw_interface_details (vpe_api_main_t * am,
       mp->sub_inner_vlan_id = ntohs (sub->eth.inner_vlan_id);
       mp->sub_if_flags =
 	ntohl (sub->eth.raw_flags & SUB_IF_API_FLAG_MASK_VNET);
+    }
 
-      /* vlan tag rewrite data */
-      u32 vtr_op = L2_VTR_DISABLED;
-      u32 vtr_push_dot1q = 0, vtr_tag1 = 0, vtr_tag2 = 0;
+  /* vlan tag rewrite data */
+  u32 vtr_op = L2_VTR_DISABLED;
+  u32 vtr_push_dot1q = 0, vtr_tag1 = 0, vtr_tag2 = 0;
 
-      if (l2vtr_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
-		     &vtr_op, &vtr_push_dot1q, &vtr_tag1, &vtr_tag2) != 0)
-	{
-	  // error - default to disabled
-	  mp->vtr_op = ntohl (L2_VTR_DISABLED);
-	  clib_warning ("cannot get vlan tag rewrite for sw_if_index %d",
-			swif->sw_if_index);
-	}
-      else
-	{
-	  mp->vtr_op = ntohl (vtr_op);
-	  mp->vtr_push_dot1q = ntohl (vtr_push_dot1q);
-	  mp->vtr_tag1 = ntohl (vtr_tag1);
-	  mp->vtr_tag2 = ntohl (vtr_tag2);
-	}
+  if (l2vtr_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
+		 &vtr_op, &vtr_push_dot1q, &vtr_tag1, &vtr_tag2) != 0)
+    {
+      // error - default to disabled
+      mp->vtr_op = ntohl (L2_VTR_DISABLED);
+      clib_warning ("cannot get vlan tag rewrite for sw_if_index %d",
+		    swif->sw_if_index);
+    }
+  else
+    {
+      mp->vtr_op = ntohl (vtr_op);
+      mp->vtr_push_dot1q = ntohl (vtr_push_dot1q);
+      mp->vtr_tag1 = ntohl (vtr_tag1);
+      mp->vtr_tag2 = ntohl (vtr_tag2);
     }
 
   /* pbb tag rewrite data */
