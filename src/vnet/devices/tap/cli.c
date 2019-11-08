@@ -41,6 +41,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.id = ~0;
   args.tap_flags = 0;
   args.rv = -1;
+  args.num_of_queues = 1;
 
   /* Get a line of input. */
   if (unformat_user (input, unformat_line_input, line_input))
@@ -76,6 +77,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
 	    ;
 	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
+	    ;
+	  else
+	    if (unformat
+		(line_input, "num-of-queues %d", &args.num_of_queues))
 	    ;
 	  else
 	    if (unformat
@@ -120,11 +125,12 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
   .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
-    "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
-    "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
-    "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
-    "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
-    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso]",
+    "[rx-ring-size <size>] [tx-ring-size <size>] [num-of-queues <n>] "
+    "[host-ns <netns>] [host-bridge <bridge-name>] "
+    "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
+    "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
+    "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
+    "[host-mtu-size <size>] [no-gso|gso]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

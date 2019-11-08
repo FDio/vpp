@@ -161,6 +161,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->features |= VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
   vif->features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
   vif->features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
+//  vif->features |= VIRTIO_FEATURE (VIRTIO_NET_F_MQ);
 
   virtio_set_net_hdr_size (vif);
 
@@ -173,7 +174,16 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       goto error;
     }
 
-  ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_ONE_QUEUE | IFF_VNET_HDR;
+  unsigned int features = 0;
+  _IOCTL (vif->tap_fd, TUNGETFEATURES, (void *) &features);
+
+  if (features & IFF_MULTI_QUEUE)
+    {
+      ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR | IFF_MULTI_QUEUE;
+    }
+  else
+    ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_ONE_QUEUE | IFF_VNET_HDR;
+
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
@@ -194,6 +204,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vif->gso_enabled = 0;
     }
 
+//  ifr.ifr_flags = IFF_ATTACH_QUEUE;
+//  _IOCTL (vif->tap_fd, TUNSETQUEUE, (void *) &ifr);
   _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
   _IOCTL (vif->fd, VHOST_SET_OWNER, 0);
@@ -366,21 +378,29 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     vhost_mem->regions[0].guest_phys_addr;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
-  if ((args->error =
-       virtio_vring_init (vm, vif, RX_QUEUE (0), args->rx_ring_sz)))
-    {
-      args->rv = VNET_API_ERROR_INIT_FAILED;
-      goto error;
-    }
-  vif->num_rxqs = 1;
+  vlib_thread_main_t *thm = vlib_get_thread_main ();
 
-  if ((args->error =
-       virtio_vring_init (vm, vif, TX_QUEUE (0), args->tx_ring_sz)))
+  for (int i = 0; i < args->num_of_queues; i++)
     {
-      args->rv = VNET_API_ERROR_INIT_FAILED;
-      goto error;
+      if ((args->error =
+	   virtio_vring_init (vm, vif, RX_QUEUE (i), args->rx_ring_sz)))
+	{
+	  tap_log_warning (tm, vif, "error in rx-queue %u", i);
+	}
+      else
+	vif->num_rxqs++;
+
+      if (i >= thm->n_vlib_mains)
+	continue;
+
+      if ((args->error =
+	   virtio_vring_init (vm, vif, TX_QUEUE (i), args->tx_ring_sz)))
+	{
+	  tap_log_warning (tm, vif, "error in tx-queue %u", i);
+	}
+      else
+	vif->num_txqs++;
     }
-  vif->num_txqs = 1;
 
   if (!args->mac_addr_set)
     ethernet_mac_address_generate (args->mac_addr);
@@ -425,11 +445,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
-  vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
-				 VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+  i = 0;
+  vec_foreach_index (i, vif->rxq_vrings)
+  {
+    vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
+    vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
+				   VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+    virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
+  }
   vif->per_interface_next_index = ~0;
-  virtio_vring_set_numa_node (vm, vif, RX_QUEUE (0));
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
@@ -497,7 +521,9 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
-  vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, RX_QUEUE (0));
+  vec_foreach_index (i, vif->rxq_vrings)
+    vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index,
+					  RX_QUEUE (i));
 
   ethernet_delete_interface (vnm, vif->hw_if_index);
   vif->hw_if_index = ~0;

@@ -18,6 +18,27 @@
 #ifndef _VNET_DEVICES_VIRTIO_TAP_H_
 #define _VNET_DEVICES_VIRTIO_TAP_H_
 
+#define tap_log_debug(tm, vif, f, ...)                      \
+{                                                               \
+  vlib_log(VLIB_LOG_LEVEL_DEBUG, tm->log_default, "tap%u: "    \
+           , f, vif->id,                \
+           ##__VA_ARGS__);                                      \
+};
+
+#define tap_log_warning(tm, vif, f, ...)                    \
+{                                                               \
+  vlib_log(VLIB_LOG_LEVEL_WARNING, tm->log_default, "tap%u: "  \
+           , f, vif->id,                \
+           ##__VA_ARGS__);                                      \
+};
+
+#define tap_log_error(tm, vif, f, ...)                      \
+{                                                               \
+  vlib_log(VLIB_LOG_LEVEL_ERR, tm->log_default, "tap%u: "      \
+           , f, vif->id,                \
+           ##__VA_ARGS__);                                      \
+};
+
 #ifndef MIN
 #define MIN(x,y) (((x)<(y))?(x):(y))
 #endif
@@ -29,6 +50,7 @@ typedef struct
   u8 mac_addr[6];
   u16 rx_ring_sz;
   u16 tx_ring_sz;
+  u16 num_of_queues;
   u32 tap_flags;
 #define TAP_FLAG_GSO (1 << 0)
   u8 *host_namespace;
