@@ -1033,16 +1033,17 @@ list(APPEND VNET_API_FILES pg/pg.api)
 ##############################################################################
 
 list(APPEND VNET_SOURCES
+  devices/virtio/cli.c
   devices/virtio/device.c
+  devices/virtio/format.c
   devices/virtio/node.c
+  devices/virtio/pci.c
   devices/virtio/vhost_user.c
   devices/virtio/vhost_user_input.c
   devices/virtio/vhost_user_output.c
   devices/virtio/vhost_user_api.c
   devices/virtio/virtio.c
   devices/virtio/virtio_api.c
-  devices/virtio/cli.c
-  devices/virtio/pci.c
 )
 
 list(APPEND VNET_HEADERS
