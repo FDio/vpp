@@ -132,27 +132,6 @@ typedef enum
 
 #define VIRTIO_PCI_VRING_ALIGN 4096
 
-#define virtio_log_debug(vim, vif, f, ...)			\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, vim->log_default, "%U: " f,	\
-           format_vlib_pci_addr, &vif->pci_addr,		\
-           ##__VA_ARGS__);					\
-};
-
-#define virtio_log_warning(vim, vif, f, ...)			\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_WARNING, vim->log_default, "%U: " f,	\
-           format_vlib_pci_addr, &vif->pci_addr,		\
-           ##__VA_ARGS__);					\
-};
-
-#define virtio_log_error(vim, vif, f, ...)			\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: " f,	\
-           format_vlib_pci_addr, &vif->pci_addr,		\
-           ##__VA_ARGS__);					\
-};
-
 typedef enum
 {
   VIRTIO_MSIX_NONE = 0,
