@@ -46,27 +46,6 @@ static char *virtio_tx_func_error_strings[] = {
 #undef _
 };
 
-#ifndef CLIB_MARCH_VARIANT
-u8 *
-format_virtio_device_name (u8 * s, va_list * args)
-{
-  u32 dev_instance = va_arg (*args, u32);
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif = pool_elt_at_index (mm->interfaces, dev_instance);
-
-  if (vif->type == VIRTIO_IF_TYPE_TAP)
-    s = format (s, "tap%u", vif->id);
-  else if (vif->type == VIRTIO_IF_TYPE_PCI)
-    s = format (s, "virtio-%x/%x/%x/%x", vif->pci_addr.domain,
-		vif->pci_addr.bus, vif->pci_addr.slot,
-		vif->pci_addr.function);
-  else
-    s = format (s, "virtio-%lu", vif->dev_instance);
-
-  return s;
-}
-#endif /* CLIB_MARCH_VARIANT */
-
 static u8 *
 format_virtio_device (u8 * s, va_list * args)
 {
