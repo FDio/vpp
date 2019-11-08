@@ -94,6 +94,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
   clib_error_t *err = 0;
+  unsigned int tap_features;
   int fd = -1;
   char *host_if_name = 0;
 
@@ -170,6 +171,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
       args->error = clib_error_return_unix (0, "open '/dev/net/tun'");
+      goto error;
+    }
+
+  _IOCTL (vif->tap_fd, TUNGETFEATURES, &tap_features);
+  if ((tap_features & IFF_VNET_HDR) == 0)
+    {
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+      args->error = clib_error_return (0, "vhost-net backend not available");
       goto error;
     }
 
