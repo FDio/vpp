@@ -1021,17 +1021,41 @@ static void *vl_api_delete_subif_t_print
 }
 
 static void *
-vl_api_reset_fib_t_print (vl_api_reset_fib_t * mp, void *handle)
+vl_api_ip_table_resync_t_print (vl_api_ip_table_resync_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: reset_fib ");
+  s = format (0, "SCRIPT: ip_table_resync ");
 
-  if (mp->vrf_id)
-    s = format (s, "vrf %d ", (mp->vrf_id));
+  s = format (s, "v%s-table %d ",
+	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
 
-  if (mp->is_ipv6 != 0)
-    s = format (s, "ipv6 ");
+  FINISH;
+}
+
+static void *
+vl_api_ip_table_flush_t_print (vl_api_ip_table_flush_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_table_flush ");
+
+  s = format (s, "v%s-table %d ",
+	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
+
+  FINISH;
+}
+
+static void *
+vl_api_ip_table_converged_t_print (vl_api_ip_table_converged_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_table_converged ");
+
+  s = format (s, "v%s-table %d ",
+	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
 
   FINISH;
 }
@@ -3733,7 +3757,9 @@ _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
-_(RESET_FIB, reset_fib)                                                 \
+_(IP_TABLE_RESYNC, ip_table_resync)                                     \
+_(IP_TABLE_FLUSH, ip_table_flush)                                       \
+_(IP_TABLE_CONVERGED, ip_table_converged)                               \
 _(SET_IP_FLOW_HASH, set_ip_flow_hash)                                   \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \

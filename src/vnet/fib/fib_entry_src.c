@@ -141,6 +141,44 @@ fib_entry_is_sourced (fib_node_index_t fib_entry_index,
     return (NULL != fib_entry_src_find(fib_entry, source));
 }
 
+int
+fib_entry_is_marked (fib_node_index_t fib_entry_index,
+                      fib_source_t source)
+{
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *esrc;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    esrc = fib_entry_src_find(fib_entry, source);
+
+    if (NULL == esrc)
+    {
+        return (0);
+    }
+    else
+    {
+        return (!!(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_STALE));
+    }
+}
+
+void
+fib_entry_mark (fib_node_index_t fib_entry_index,
+                fib_source_t source)
+{
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *esrc;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    esrc = fib_entry_src_find(fib_entry, source);
+
+    if (NULL != esrc)
+    {
+        esrc->fes_flags |= FIB_ENTRY_SRC_FLAG_STALE;
+    }
+}
+
 static fib_entry_src_t *
 fib_entry_src_find_or_create (fib_entry_t *fib_entry,
 			      fib_source_t source,

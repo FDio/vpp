@@ -60,14 +60,16 @@ class VppIpAddressUnion():
         elif hasattr(other, "ip4") and hasattr(other, "ip6"):
             # vl_api_address_union_t
             if 4 == self.version:
-                return self.ip_addr.packed == other.ip4
+                return self.ip_addr == other.ip4
             else:
-                return self.ip_addr.packed == other.ip6
+                return self.ip_addr == other.ip6
         else:
-            _log.error("Comparing VppIpAddressUnions:%s"
-                       " with incomparable type: %s",
-                       self, other)
-            return NotImplemented
+            raise Exception("Comparing VppIpAddressUnions:%s"
+                            " with incomparable type: %s",
+                            self, other)
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def __str__(self):
         return str(self.ip_addr)
@@ -103,12 +105,7 @@ class VppIpAddress():
                     VppEnum.vl_api_address_family_t.ADDRESS_IP6 and \
                     other.un == self.addr
         else:
-            _log.error(
-                "Comparing VppIpAddress:<%s> %s with incomparable "
-                "type: <%s> %s",
-                self.__class__.__name__, self,
-                other.__class__.__name__, other)
-            return NotImplemented
+            return self.address == str(other)
 
     def __ne__(self, other):
         return not (self == other)
@@ -156,11 +153,6 @@ class VppIpPrefix():
         self.addr = VppIpAddress(addr)
         self.len = len
 
-    def __eq__(self, other):
-        if self.address == other.address and self.len == other.len:
-            return True
-        return False
-
     def encode(self):
         return {'address': self.addr.encode(),
                 'len': self.len}
@@ -186,15 +178,19 @@ class VppIpPrefix():
         return self.addr.is_ip6
 
     def __str__(self):
-        return "%s/%d" % (self.address, self.length)
+        return "%s  /%d" % (self.address, self.length)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return (self.len == other.len and self.addr == other.addr)
         elif hasattr(other, "address") and hasattr(other, "len"):
             # vl_api_prefix_t
-            return self.len == other.len and \
-                   self.addr == other.address
+            return (self.len == other.len and
+                    self.addr == other.address)
+        elif hasattr(other, "network_address") and hasattr(other, "prefixlen"):
+            # IPv[46]Network
+            return (self.len == other.prefixlen and
+                    self.addr == other.network_address)
         else:
             _log.error(
                 "Comparing VppIpPrefix:%s with incomparable type: %s" %
@@ -259,16 +255,14 @@ class VppIpMPrefix():
               hasattr(other, "src_address")):
             # vl_api_mprefix_t
             if 4 == self.ip_saddr.version:
-                if self.glen == other.grp_address_length and \
-                   self.gaddr == str(other.grp_address.ip4) and \
-                   self.saddr == str(other.src_address.ip4):
-                    return True
-                return False
+                return (self.glen == other.grp_address_length and
+                        self.ip_gaddr == other.grp_address and
+                        self.ip_saddr == other.src_address)
             else:
                 return (self.glen == other.grp_address_length and
-                        self.gaddr == other.grp_address.ip6 and
-                        self.saddr == other.src_address.ip6)
+                        self.ip_gaddr == other.grp_address and
+                        self.ip_saddr == other.src_address)
         else:
-            raise Exception("Comparing VppIpPrefix:%s with unknown type: %s" %
+            raise Exception("Comparing VppIpMPrefix:%s with unknown type: %s" %
                             (self, other))
         return False

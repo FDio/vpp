@@ -562,14 +562,14 @@ typedef struct ip6_mfib_show_ctx_t_ {
 } ip6_mfib_show_ctx_t;
 
 
-static int
+static walk_rc_t
 ip6_mfib_table_collect_entries (fib_node_index_t mfei, void *arg)
 {
     ip6_mfib_show_ctx_t *ctx = arg;
 
     vec_add1(ctx->entries, mfei);
 
-    return (0);
+    return (WALK_CONTINUE);
 }
 
 static void
@@ -609,7 +609,7 @@ typedef struct ip6_mfib_walk_ctx_t_
     void *i6w_ctx;
 } ip6_mfib_walk_ctx_t;
 
-static int
+static void
 ip6_mfib_walk_cb (clib_bihash_kv_40_8_t * kvp,
                  void *arg)
 {
@@ -617,9 +617,8 @@ ip6_mfib_walk_cb (clib_bihash_kv_40_8_t * kvp,
 
     if ((kvp->key[4] >> 32) == ctx->i6w_mfib_index)
     {
-        return (ctx->i6w_fn(kvp->value, ctx->i6w_ctx));
+        ctx->i6w_fn(kvp->value, ctx->i6w_ctx);
     }
-    return (FIB_TABLE_WALK_CONTINUE);
 }
 
 void

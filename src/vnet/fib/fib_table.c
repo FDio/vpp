@@ -23,6 +23,8 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/mpls_fib.h>
 
+const static char * fib_table_flags_strings[] = FIB_TABLE_ATTRIBUTES;
+
 fib_table_t *
 fib_table_get (fib_node_index_t index,
 	       fib_protocol_t proto)
@@ -1305,6 +1307,26 @@ format_fib_table_name (u8* s, va_list* ap)
     return (s);
 }
 
+u8*
+format_fib_table_flags (u8 *s, va_list *args)
+{
+    fib_table_flags_t flags = va_arg(*args, int);
+    fib_table_attribute_t attr;
+
+    if (!flags)
+    {
+        return format(s, "none");
+    }
+
+    FOR_EACH_FIB_TABLE_ATTRIBUTE(attr) {
+        if (1 << attr & flags) {
+            s = format(s, "%s", fib_table_flags_strings[attr]);
+        }
+    }
+
+    return (s);
+}
+
 /**
  * @brief Table flush context. Store the indicies of matching FIB entries
  * that need to be removed.
@@ -1335,7 +1357,6 @@ fib_table_flush_cb (fib_node_index_t fib_entry_index,
     return (FIB_TABLE_WALK_CONTINUE);
 }
 
-
 void
 fib_table_flush (u32 fib_index,
 		 fib_protocol_t proto,
@@ -1349,6 +1370,79 @@ fib_table_flush (u32 fib_index,
 
     fib_table_walk(fib_index, proto,
                    fib_table_flush_cb,
+                   &ctx);
+
+    vec_foreach(fib_entry_index, ctx.ftf_entries)
+    {
+        fib_table_entry_delete_index(*fib_entry_index, source);
+    }
+
+    vec_free(ctx.ftf_entries);
+}
+
+static fib_table_walk_rc_t
+fib_table_mark_cb (fib_node_index_t fib_entry_index,
+                   void *arg)
+{
+    fib_table_flush_ctx_t *ctx = arg;
+
+    if (fib_entry_is_sourced(fib_entry_index, ctx->ftf_source))
+    {
+        fib_entry_mark(fib_entry_index, ctx->ftf_source);
+    }
+    return (FIB_TABLE_WALK_CONTINUE);
+}
+
+void
+fib_table_resync (u32 fib_index,
+		 fib_protocol_t proto,
+		 fib_source_t source)
+{
+    fib_table_flush_ctx_t ctx = {
+        .ftf_source = source,
+    };
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get(fib_index, proto);
+
+    fib_table->ft_epoch++;
+    fib_table->ft_flags |= FIB_TABLE_FLAG_RESYNC;
+
+    fib_table_walk(fib_index, proto,
+                   fib_table_mark_cb,
+                   &ctx);
+}
+
+static fib_table_walk_rc_t
+fib_table_sweep_cb (fib_node_index_t fib_entry_index,
+                    void *arg)
+{
+    fib_table_flush_ctx_t *ctx = arg;
+
+    if (fib_entry_is_marked(fib_entry_index, ctx->ftf_source))
+    {
+        vec_add1(ctx->ftf_entries, fib_entry_index);
+    }
+    return (FIB_TABLE_WALK_CONTINUE);
+}
+
+void
+fib_table_converged (u32 fib_index,
+                     fib_protocol_t proto,
+                     fib_source_t source)
+{
+    fib_table_flush_ctx_t ctx = {
+        .ftf_source = source,
+    };
+    fib_node_index_t *fib_entry_index;
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get(fib_index, proto);
+
+    fib_table->ft_flags &= ~FIB_TABLE_FLAG_RESYNC;
+
+    fib_table_walk(fib_index, proto,
+                   fib_table_sweep_cb,
                    &ctx);
 
     vec_foreach(fib_entry_index, ctx.ftf_entries)

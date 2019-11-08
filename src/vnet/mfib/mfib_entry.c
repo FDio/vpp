@@ -38,6 +38,7 @@ static mfib_path_ext_t *mfib_path_ext_pool;
  * String names for each source
  */
 static const char *mfib_source_names[] = MFIB_SOURCE_NAMES;
+static const char *mfib_src_attribute_names[] = MFIB_ENTRY_SRC_ATTRIBUTES;
 
 /*
  * Pool for all fib_entries
@@ -102,6 +103,26 @@ format_mfib_entry_path_ext (u8 * s, va_list * args)
 }
 
 u8 *
+format_mfib_entry_src_flags (u8 *s, va_list *args)
+{
+    mfib_entry_src_attribute_t sattr;
+    mfib_entry_src_flags_t flag = va_arg(*args, int);
+
+    if (!flag)
+    {
+        return format(s, "none");
+    }
+
+    FOR_EACH_MFIB_SRC_ATTRIBUTE(sattr) {
+        if ((1 << sattr) & flag) {
+            s = format (s, "%s,", mfib_src_attribute_names[sattr]);
+        }
+    }
+
+    return (s);
+}
+
+u8 *
 format_mfib_entry (u8 * s, va_list * args)
 {
     fib_node_index_t fei, mfi;
@@ -127,14 +148,15 @@ format_mfib_entry (u8 * s, va_list * args)
         s = format (s, " locks:%d\n", mfib_entry->mfe_node.fn_locks);
         vec_foreach(msrc, mfib_entry->mfe_srcs)
         {
-            s = format (s, "  src:%s locks:%d:",
+            s = format (s, "  src:%s flags:%U locks:%d:",
                         mfib_source_names[msrc->mfes_src],
+                        format_mfib_entry_src_flags, msrc->mfes_flags,
                         msrc->mfes_ref_count);
             if (msrc->mfes_cover != FIB_NODE_INDEX_INVALID)
             {
                 s = format (s, " cover:%d", msrc->mfes_cover);
             }
-            s = format (s, " %U\n", format_mfib_entry_flags, msrc->mfes_flags);
+            s = format (s, " %U\n", format_mfib_entry_flags, msrc->mfes_route_flags);
             if (FIB_NODE_INDEX_INVALID != msrc->mfes_pl)
             {
                 s = fib_path_list_format(msrc->mfes_pl, s);
@@ -201,7 +223,7 @@ mfib_entry_src_init (mfib_entry_t *mfib_entry,
 {
     mfib_entry_src_t esrc = {
         .mfes_pl = FIB_NODE_INDEX_INVALID,
-        .mfes_flags = MFIB_ENTRY_FLAG_NONE,
+        .mfes_route_flags = MFIB_ENTRY_FLAG_NONE,
         .mfes_src = source,
         .mfes_cover = FIB_NODE_INDEX_INVALID,
         .mfes_sibling = FIB_NODE_INDEX_INVALID,
@@ -215,8 +237,8 @@ mfib_entry_src_init (mfib_entry_t *mfib_entry,
 
 static mfib_entry_src_t *
 mfib_entry_src_find (const mfib_entry_t *mfib_entry,
-                    mfib_source_t source,
-                    u32 *index)
+                     mfib_source_t source,
+                     u32 *index)
 
 {
     mfib_entry_src_t *esrc;
@@ -269,8 +291,9 @@ mfib_entry_src_update (mfib_entry_t *mfib_entry,
 
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
 
-    msrc->mfes_flags = entry_flags;
+    msrc->mfes_route_flags = entry_flags;
     msrc->mfes_rpf_id = rpf_id;
+    msrc->mfes_flags &= ~MFIB_ENTRY_SRC_FLAG_STALE;
 
     return (msrc);
 }
@@ -286,6 +309,7 @@ mfib_entry_src_update_and_lock (mfib_entry_t *mfib_entry,
     msrc = mfib_entry_src_update(mfib_entry, source, rpf_id, entry_flags);
 
     msrc->mfes_ref_count++;
+    msrc->mfes_flags &= ~MFIB_ENTRY_SRC_FLAG_STALE;
 
     return (msrc);
 }
@@ -329,6 +353,44 @@ mfib_entry_is_sourced (fib_node_index_t mfib_entry_index,
     mfib_entry = mfib_entry_get(mfib_entry_index);
 
     return (NULL != mfib_entry_src_find(mfib_entry, source, NULL));
+}
+
+int
+mfib_entry_is_marked (fib_node_index_t mfib_entry_index,
+                      mfib_source_t source)
+{
+    mfib_entry_t *mfib_entry;
+    mfib_entry_src_t *esrc;
+
+    mfib_entry = mfib_entry_get(mfib_entry_index);
+
+    esrc = mfib_entry_src_find(mfib_entry, source, NULL);
+
+    if (NULL == esrc)
+    {
+        return (0);
+    }
+    else
+    {
+        return (!!(esrc->mfes_flags & MFIB_ENTRY_SRC_FLAG_STALE));
+    }
+}
+
+void
+mfib_entry_mark (fib_node_index_t fib_entry_index,
+                 mfib_source_t source)
+{
+    mfib_entry_t *mfib_entry;
+    mfib_entry_src_t *esrc;
+
+    mfib_entry = mfib_entry_get(fib_entry_index);
+
+    esrc = mfib_entry_src_find(mfib_entry, source, NULL);
+
+    if (NULL != esrc)
+    {
+        esrc->mfes_flags |= MFIB_ENTRY_SRC_FLAG_STALE;
+    }
 }
 
 int
@@ -578,7 +640,7 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
          * updates to recalculate forwarding.
          */
         mfib_entry->mfe_pl = msrc->mfes_pl;
-        mfib_entry->mfe_flags = msrc->mfes_flags;
+        mfib_entry->mfe_flags = msrc->mfes_route_flags;
         mfib_entry->mfe_itfs = msrc->mfes_itfs;
         mfib_entry->mfe_rpf_id = msrc->mfes_rpf_id;
 
@@ -677,7 +739,9 @@ static fib_node_index_t*
 mfib_entry_src_paths_add (mfib_entry_src_t *msrc,
                           const fib_route_path_t *rpaths)
 {
-    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
+    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_route_flags));
+
+    msrc->mfes_flags &= ~MFIB_ENTRY_SRC_FLAG_STALE;
 
     if (FIB_NODE_INDEX_INVALID == msrc->mfes_pl)
     {
@@ -694,7 +758,9 @@ static fib_node_index_t*
 mfib_entry_src_paths_remove (mfib_entry_src_t *msrc,
                              const fib_route_path_t *rpaths)
 {
-    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
+    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_route_flags));
+
+    msrc->mfes_flags &= ~MFIB_ENTRY_SRC_FLAG_STALE;
 
     return (fib_path_list_paths_remove(msrc->mfes_pl, rpaths));
 }
@@ -792,11 +858,11 @@ static int
 mfib_entry_src_ok_for_delete (const mfib_entry_src_t *msrc)
 {
     return ((INDEX_INVALID == msrc->mfes_cover &&
-             MFIB_ENTRY_FLAG_NONE == msrc->mfes_flags &&
+             MFIB_ENTRY_FLAG_NONE == msrc->mfes_route_flags &&
              0 == fib_path_list_get_n_paths(msrc->mfes_pl)) &&
             (0 == hash_elts(msrc->mfes_itfs)));
 
-    /* return ((MFIB_ENTRY_FLAG_NONE == msrc->mfes_flags) && */
+    /* return ((MFIB_ENTRY_FLAG_NONE == msrc->mfes_route_flags) && */
     /*         (0 == fib_path_list_get_n_paths(msrc->mfes_pl)) && */
     /*         (0 == hash_elts(msrc->mfes_itfs))); */
 }
