@@ -148,16 +148,10 @@ typedef struct
     pci_addr_t pci_addr;
   };
   u32 per_interface_next_index;
-  union
-  {
-    int fd;
-    u32 msix_enabled;
-  };
-  union
-  {
-    int tap_fd;
-    u32 pci_dev_handle;
-  };
+  int *vhost_fds;
+  int *tap_fds;
+  u32 msix_enabled;
+  u32 pci_dev_handle;
   virtio_vring_t *rxq_vrings;
   virtio_vring_t *txq_vrings;
   u64 features, remote_features;
