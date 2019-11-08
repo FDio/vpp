@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a16b3bf8_46e0ebf2",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-08T13:37:19Z",
+      "side": 1,
+      "message": "Should rv be different to differentiate it from the error above?",
+      "range": {
+        "startLine": 180,
+        "startChar": 16,
+        "endLine": 180,
+        "endChar": 47
+      },
+      "revId": "4905cce62575363bc57194bfb91e8711f1d44e59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
