@@ -226,20 +226,24 @@ typedef struct fib_entry_src_vft_t_ {
     }								\
 }
 
-#define FIB_ENTRY_SRC_VFT_INVOKE(esrc, func, args)  \
-{                                                   \
-    const fib_entry_src_vft_t *_vft;                \
-    _vft = fib_entry_src_get_vft(esrc);             \
-    if (_vft->func)                                 \
-        _vft->func args;                            \
+#define FIB_ENTRY_SRC_VFT_INVOKE(esrc, func, args)             \
+{                                                              \
+    const fib_entry_src_vft_t *_vft;                           \
+    _vft = fib_entry_src_get_vft(esrc);                        \
+    if (_vft->func) {                                          \
+        (esrc)->fes_flags &= ~FIB_ENTRY_SRC_FLAG_STALE;        \
+        _vft->func args;                                       \
+    }                                                          \
 }
 
 #define FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, func, args)  \
-{                                                   \
-    const fib_entry_src_vft_t *_vft;                \
-    _vft = fib_entry_src_get_vft(esrc);             \
-    if (_vft->func)                                 \
-        return (_vft->func args);                   \
+{                                                              \
+    const fib_entry_src_vft_t *_vft;                           \
+    _vft = fib_entry_src_get_vft(esrc);                        \
+    if (_vft->func) {                                          \
+        (esrc)->fes_flags &= ~FIB_ENTRY_SRC_FLAG_STALE;        \
+        return (_vft->func args);                              \
+    }                                                          \
 }
 
 #define FIB_ENTRY_SRC_VFT_EXISTS(esrc, func)        \

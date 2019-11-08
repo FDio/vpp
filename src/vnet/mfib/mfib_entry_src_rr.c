@@ -62,7 +62,7 @@ mfib_entry_src_rr_activiate (mfib_entry_t *mfib_entry,
 
     msrc->mfes_pl = csrc->mfes_pl;
     fib_path_list_lock(msrc->mfes_pl);
-    msrc->mfes_flags = csrc->mfes_flags;
+    msrc->mfes_route_flags = csrc->mfes_route_flags;
     msrc->mfes_itfs = csrc->mfes_itfs;
     msrc->mfes_exts = csrc->mfes_exts;
     msrc->mfes_rpf_id = csrc->mfes_rpf_id;
@@ -91,7 +91,7 @@ mfib_entry_src_rr_cover_update (mfib_entry_t *mfib_entry,
 
     cover = mfib_entry_get(msrc->mfes_cover);
 
-    msrc->mfes_flags = cover->mfe_flags;
+    msrc->mfes_route_flags = cover->mfe_flags;
     msrc->mfes_itfs = cover->mfe_itfs;
     msrc->mfes_rpf_id = cover->mfe_rpf_id;
 
