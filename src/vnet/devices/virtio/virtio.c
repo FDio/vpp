@@ -64,11 +64,7 @@ call_read_ready (clib_file_t * uf)
 clib_error_t *
 virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
-  clib_error_t *err = 0;
   virtio_vring_t *vring;
-  struct vhost_vring_state state = { 0 };
-  struct vhost_vring_addr addr = { 0 };
-  struct vhost_vring_file file = { 0 };
   clib_file_t t = { 0 };
   int i;
 
@@ -119,7 +115,9 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
-  vring->kick_fd = eventfd (0, EFD_CLOEXEC);
+  vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
+  virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
+		    vring->size, vring->call_fd, vring->kick_fd);
 
   t.read_function = call_read_ready;
   t.file_descriptor = vring->call_fd;
@@ -128,27 +126,7 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 			  vif->dev_instance, idx);
   vring->call_file_index = clib_file_add (&file_main, &t);
 
-  state.index = idx;
-  state.num = sz;
-  _IOCTL (vif->fd, VHOST_SET_VRING_NUM, &state);
-
-  addr.index = idx;
-  addr.flags = 0;
-  addr.desc_user_addr = pointer_to_uword (vring->desc);
-  addr.avail_user_addr = pointer_to_uword (vring->avail);
-  addr.used_user_addr = pointer_to_uword (vring->used);
-  _IOCTL (vif->fd, VHOST_SET_VRING_ADDR, &addr);
-
-  file.index = idx;
-  file.fd = vring->kick_fd;
-  _IOCTL (vif->fd, VHOST_SET_VRING_KICK, &file);
-  file.fd = vring->call_fd;
-  _IOCTL (vif->fd, VHOST_SET_VRING_CALL, &file);
-  file.fd = vif->tap_fd;
-  _IOCTL (vif->fd, VHOST_NET_SET_BACKEND, &file);
-
-error:
-  return err;
+  return 0;
 }
 
 inline void
@@ -313,6 +291,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	}
       if (type == VIRTIO_IF_TYPE_TAP)
 	{
+	  u8 *str = 0;
 	  if (vif->host_if_name)
 	    vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
 	  if (vif->net_ns)
@@ -320,8 +299,15 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  if (vif->host_mtu_size)
 	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
 			     vif->host_mtu_size);
-	  vlib_cli_output (vm, "  fd %d", vif->fd);
-	  vlib_cli_output (vm, "  tap-fd %d", vif->tap_fd);
+
+	  vec_foreach_index (i, vif->vhost_fds)
+	    str = format (str, " %d", vif->vhost_fds[i]);
+	  vlib_cli_output (vm, "  vhost-fds%v", str);
+	  vec_reset_length (str);
+	  vec_foreach_index (i, vif->tap_fds)
+	    str = format (str, " %d", vif->tap_fds[i]);
+	  vlib_cli_output (vm, "  tap-fds%v", str);
+	  vec_free (str);
 	}
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
