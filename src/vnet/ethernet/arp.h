@@ -62,8 +62,6 @@ extern int vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
 					     ethernet_arp_ip4_over_ethernet_address_t
 					     * a);
 
-extern int vnet_proxy_arp_fib_reset (u32 fib_id);
-
 void vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm,
 					     void *address_arg,
 					     uword node_index,

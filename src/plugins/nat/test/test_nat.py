@@ -1501,8 +1501,8 @@ class TestNAT44(MethodHolder):
             cls.pg1.configure_ipv4_neighbors()
 
             cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-            cls.vapi.ip_table_add_del(is_add=1, table_id=10)
-            cls.vapi.ip_table_add_del(is_add=1, table_id=20)
+            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 10})
+            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 20})
 
             cls.pg4._local_ip4 = "172.16.255.1"
             cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
@@ -3049,8 +3049,8 @@ class TestNAT44(MethodHolder):
 
         self.pg0.unconfig_ip4()
         self.pg1.unconfig_ip4()
-        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id1)
-        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id2)
+        self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id1})
+        self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id2})
         self.pg0.set_table_ip4(vrf_id1)
         self.pg1.set_table_ip4(vrf_id2)
         self.pg0.config_ip4()
@@ -3097,8 +3097,8 @@ class TestNAT44(MethodHolder):
             self.pg1.config_ip4()
             self.pg0.resolve_arp()
             self.pg1.resolve_arp()
-            self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id1)
-            self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id2)
+            self.vapi.ip_table_add_del(is_add=0, table={'table_id': vrf_id1})
+            self.vapi.ip_table_add_del(is_add=0, table={'table_id': vrf_id2})
 
     def test_vrf_feature_independent(self):
         """ NAT44 tenant VRF independent address pool mode """
@@ -3888,8 +3888,8 @@ class TestNAT44(MethodHolder):
 
         self.pg1.unconfig_ip4()
         self.pg2.unconfig_ip4()
-        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id1)
-        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id2)
+        self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id1})
+        self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id2})
         self.pg1.set_table_ip4(vrf_id1)
         self.pg2.set_table_ip4(vrf_id2)
         self.pg1.config_ip4()
@@ -4435,7 +4435,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg4.resolve_arp()
 
             zero_ip4 = socket.inet_pton(socket.AF_INET, "0.0.0.0")
-            cls.vapi.ip_table_add_del(is_add=1, table_id=1)
+            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 1})
 
             cls.pg5._local_ip4 = "10.1.1.1"
             cls.pg5._remote_hosts[0]._ip4 = "10.1.1.2"
@@ -4783,7 +4783,8 @@ class TestNAT44EndpointDependent(MethodHolder):
             is_add=1)
 
         try:
-            self.vapi.ip_table_add_del(is_add=1, table_id=new_vrf_id)
+            self.vapi.ip_table_add_del(is_add=1,
+                                       table={'table_id': new_vrf_id})
 
             self.pg7.unconfig_ip4()
             self.pg7.set_table_ip4(new_vrf_id)
@@ -4874,7 +4875,8 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.pg8.config_ip4()
             self.pg8.resolve_arp()
 
-            self.vapi.ip_table_add_del(is_add=0, table_id=new_vrf_id)
+            self.vapi.ip_table_add_del(is_add=0,
+                                       table={'table_id': new_vrf_id})
 
     def test_forwarding(self):
         """ NAT44 forwarding test """
@@ -7771,8 +7773,9 @@ class TestNAT64(MethodHolder):
             cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
 
-            cls.vapi.ip_table_add_del(is_ipv6=1, is_add=1,
-                                      table_id=cls.vrf1_id)
+            cls.vapi.ip_table_add_del(is_add=1,
+                                      table={'table_id': cls.vrf1_id,
+                                             'is_ip6': 1})
 
             cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
 

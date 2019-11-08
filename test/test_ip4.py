@@ -16,7 +16,7 @@ from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
-    VppIpInterfaceAddress
+    VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
@@ -1959,6 +1959,136 @@ class TestIPv4Frag(VppTestCase):
             self.assert_equal(payload_offset, len(payload))
             payload += p[Raw].load
         self.assert_equal(payload, saved_payload, "payload")
+
+
+class TestIPResync(VppTestCase):
+    """ IPv4 Table Resync """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPResync, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPResync, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPResync, self).setUp()
+
+        self.create_pg_interfaces(range(4))
+
+        table_id = 1
+        self.tables = []
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.generate_remote_hosts(2)
+            self.tables.append(VppIpTable(self, table_id).add_vpp_config())
+            table_id += 1
+
+    def tearDown(self):
+        super(TestIPResync, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+
+    def test_resync(self):
+        """ IP Table Resync """
+
+        N_ROUTES = 20
+        links = [self.pg0, self.pg1, self.pg2, self.pg3]
+        routes = [[], [], [], []]
+
+        # load up the tables with some routes
+        for ii, t in enumerate(self.tables):
+            for jj in range(N_ROUTES):
+                uni = VppIpRoute(
+                    self, "10.0.0.%d" % jj, 32,
+                    [VppRoutePath(links[ii].remote_hosts[0].ip4,
+                                  links[ii].sw_if_index),
+                     VppRoutePath(links[ii].remote_hosts[1].ip4,
+                                  links[ii].sw_if_index)],
+                    table_id=t.table_id).add_vpp_config()
+                multi = VppIpMRoute(
+                    self, "0.0.0.0",
+                    "239.0.0.%d" % jj, 32,
+                    MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+                    [VppMRoutePath(self.pg0.sw_if_index,
+                                   MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                     VppMRoutePath(self.pg1.sw_if_index,
+                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                     VppMRoutePath(self.pg2.sw_if_index,
+                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                     VppMRoutePath(self.pg3.sw_if_index,
+                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+                    table_id=t.table_id).add_vpp_config()
+                routes[ii].append({'uni': uni,
+                                   'multi': multi})
+
+        #
+        # resync the tables a few times
+        #
+        for kk in range(3):
+            # resync each table
+            for t in self.tables:
+                t.resync()
+
+            # all the routes are still there
+            for ii, t in enumerate(self.tables):
+                dump = t.dump()
+                mdump = t.mdump()
+                for r in routes[ii]:
+                    self.assertTrue(find_route_in_dump(dump, r['uni'], t))
+                    self.assertTrue(find_mroute_in_dump(mdump, r['multi'], t))
+
+            # redownload the even numbered routes
+            for ii, t in enumerate(self.tables):
+                for jj in range(0, N_ROUTES, 2):
+                    routes[ii][jj]['uni'].add_vpp_config()
+                    routes[ii][jj]['multi'].add_vpp_config()
+
+            # signal each table converged
+            for t in self.tables:
+                t.converged()
+
+            # we should find the even routes, but not the odd
+            for ii, t in enumerate(self.tables):
+                dump = t.dump()
+                mdump = t.mdump()
+                for jj in range(0, N_ROUTES, 2):
+                    self.assertTrue(find_route_in_dump(
+                        dump, routes[ii][jj]['uni'], t))
+                    self.assertTrue(find_mroute_in_dump(
+                        mdump, routes[ii][jj]['multi'], t))
+                for jj in range(1, N_ROUTES - 1, 2):
+                    self.assertFalse(find_route_in_dump(
+                        dump, routes[ii][jj]['uni'], t))
+                    self.assertFalse(find_mroute_in_dump(
+                        mdump, routes[ii][jj]['multi'], t))
+
+            # reload all the routes
+            for ii, t in enumerate(self.tables):
+                for r in routes[ii]:
+                    r['uni'].add_vpp_config()
+                    r['multi'].add_vpp_config()
+
+            # all the routes are still there
+            for ii, t in enumerate(self.tables):
+                dump = t.dump()
+                mdump = t.mdump()
+                for r in routes[ii]:
+                    self.assertTrue(find_route_in_dump(dump, r['uni'], t))
+                    self.assertTrue(find_mroute_in_dump(mdump, r['multi'], t))
+
+        #
+        # finally flush the tables for good measure
+        #
+        for t in self.tables:
+            t.flush()
+            self.assertEqual(len(t.dump()), 5)
+            self.assertEqual(len(t.mdump()), 1)
 
 
 if __name__ == '__main__':

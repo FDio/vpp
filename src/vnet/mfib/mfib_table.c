@@ -24,6 +24,8 @@
 #include <vnet/mfib/mfib_entry_cover.h>
 #include <vnet/mfib/mfib_signal.h>
 
+const static char * mfib_table_flags_strings[] = MFIB_TABLE_ATTRIBUTES;
+
 mfib_table_t *
 mfib_table_get (fib_node_index_t index,
                 fib_protocol_t proto)
@@ -643,7 +645,7 @@ typedef struct mfib_table_flush_ctx_t_
     mfib_source_t mftf_source;
 } mfib_table_flush_ctx_t;
 
-static int
+static walk_rc_t
 mfib_table_flush_cb (fib_node_index_t mfib_entry_index,
                      void *arg)
 {
@@ -653,7 +655,7 @@ mfib_table_flush_cb (fib_node_index_t mfib_entry_index,
     {
         vec_add1(ctx->mftf_entries, mfib_entry_index);
     }
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 void
@@ -674,6 +676,79 @@ mfib_table_flush (u32 mfib_index,
     vec_foreach(mfib_entry_index, ctx.mftf_entries)
     {
         mfib_table_entry_delete_index(*mfib_entry_index, source);
+    }
+
+    vec_free(ctx.mftf_entries);
+}
+
+static walk_rc_t
+mfib_table_mark_cb (fib_node_index_t fib_entry_index,
+                   void *arg)
+{
+    mfib_table_flush_ctx_t *ctx = arg;
+
+    if (mfib_entry_is_sourced(fib_entry_index, ctx->mftf_source))
+    {
+        mfib_entry_mark(fib_entry_index, ctx->mftf_source);
+    }
+    return (WALK_CONTINUE);
+}
+
+void
+mfib_table_resync (u32 fib_index,
+                   fib_protocol_t proto,
+                   mfib_source_t source)
+{
+    mfib_table_flush_ctx_t ctx = {
+        .mftf_source = source,
+    };
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    mfib_table->mft_epoch++;
+    mfib_table->mft_flags |= MFIB_TABLE_FLAG_RESYNC;
+
+    mfib_table_walk(fib_index, proto,
+                   mfib_table_mark_cb,
+                   &ctx);
+}
+
+static walk_rc_t
+mfib_table_sweep_cb (fib_node_index_t fib_entry_index,
+                    void *arg)
+{
+    mfib_table_flush_ctx_t *ctx = arg;
+
+    if (mfib_entry_is_marked(fib_entry_index, ctx->mftf_source))
+    {
+        vec_add1(ctx->mftf_entries, fib_entry_index);
+    }
+    return (WALK_CONTINUE);
+}
+
+void
+mfib_table_converged (u32 fib_index,
+                      fib_protocol_t proto,
+                      mfib_source_t source)
+{
+    mfib_table_flush_ctx_t ctx = {
+        .mftf_source = source,
+    };
+    fib_node_index_t *fib_entry_index;
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    mfib_table->mft_flags &= ~MFIB_TABLE_FLAG_RESYNC;
+
+    mfib_table_walk(fib_index, proto,
+                    mfib_table_sweep_cb,
+                    &ctx);
+
+    vec_foreach(fib_entry_index, ctx.mftf_entries)
+    {
+        mfib_table_entry_delete_index(*fib_entry_index, source);
     }
 
     vec_free(ctx.mftf_entries);
@@ -767,6 +842,26 @@ mfib_table_walk (u32 fib_index,
     case FIB_PROTOCOL_MPLS:
 	break;
     }
+}
+
+u8*
+format_mfib_table_flags (u8 *s, va_list *args)
+{
+    mfib_table_flags_t flags = va_arg(*args, int);
+    mfib_table_attribute_t attr;
+
+    if (!flags)
+    {
+        return format(s, "none");
+    }
+
+    FOR_EACH_MFIB_TABLE_ATTRIBUTE(attr) {
+        if (1 << attr & flags) {
+            s = format(s, "%s", mfib_table_flags_strings[attr]);
+        }
+    }
+
+    return (s);
 }
 
 u8*

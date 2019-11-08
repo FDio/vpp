@@ -108,6 +108,23 @@ def find_route(test, addr, len, table_id=0):
     return False
 
 
+def find_route_in_dump(dump, route, table):
+    for r in dump:
+        if table.table_id == r.route.table_id \
+           and route.prefix == r.route.prefix:
+            if len(route.paths) == r.route.n_paths:
+                return True
+    return False
+
+
+def find_mroute_in_dump(dump, route, table):
+    for r in dump:
+        if table.table_id == r.route.table_id \
+           and route.prefix == r.route.prefix:
+            return True
+    return False
+
+
 def find_mroute(test, grp_addr, src_addr, grp_addr_len,
                 table_id=0):
     ip_mprefix = VppIpMPrefix(text_type(src_addr),
@@ -168,13 +185,34 @@ class VppIpTable(VppObject):
         self.is_ip6 = is_ip6
 
     def add_vpp_config(self):
-        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=1,
-                                         table_id=self.table_id)
+        self._test.vapi.ip_table_add_del(is_add=1,
+                                         table={'is_ip6': self.is_ip6,
+                                                'table_id': self.table_id})
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=0,
-                                         table_id=self.table_id)
+        self._test.vapi.ip_table_add_del(is_add=0,
+                                         table={'is_ip6': self.is_ip6,
+                                                'table_id': self.table_id})
+
+    def resync(self):
+        self._test.vapi.ip_table_resync(table={'is_ip6': self.is_ip6,
+                                               'table_id': self.table_id})
+
+    def converged(self):
+        self._test.vapi.ip_table_converged(table={'is_ip6': self.is_ip6,
+                                                  'table_id': self.table_id})
+
+    def flush(self):
+        self._test.vapi.ip_table_flush(table={'is_ip6': self.is_ip6,
+                                              'table_id': self.table_id})
+
+    def dump(self):
+        return self._test.vapi.ip_route_dump(self.table_id, self.is_ip6)
+
+    def mdump(self):
+        return self._test.vapi.ip_mroute_dump(self.table_id, self.is_ip6)
 
     def query_vpp_config(self):
         if self.table_id == 0:
@@ -468,6 +506,7 @@ class VppIpRoute(VppObject):
         self.stats_index = r.stats_index
         if self.register:
             self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         # there's no need to issue different deletes for modified routes
@@ -540,6 +579,7 @@ class VppIpMRoute(VppObject):
                                               is_add=1)
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.ip_mroute_add_del(self.table_id,

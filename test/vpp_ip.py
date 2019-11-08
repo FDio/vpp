@@ -67,14 +67,16 @@ class VppIpAddressUnion():
         elif hasattr(other, "ip4") and hasattr(other, "ip6"):
             # vl_api_address_union_t
             if 4 == self.version:
-                return self.ip_addr.packed == other.ip4
+                return self.ip_addr == other.ip4
             else:
-                return self.ip_addr.packed == other.ip6
+                return self.ip_addr == other.ip6
         else:
-            _log.error("Comparing VppIpAddressUnions:%s"
-                       " with incomparable type: %s",
-                       self, other)
-            return NotImplemented
+            raise Exception("Comparing VppIpAddressUnions:%s"
+                            " with incomparable type: %s",
+                            self, other)
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def __str__(self):
         return str(self.ip_addr)
@@ -143,7 +145,6 @@ class VppIpMPrefix():
                 return (self.glen == other.grp_address_length and
                         self.gaddr == str(other.grp_address.ip6) and
                         self.saddr == str(other.src_address.ip6))
-        else:
-            raise Exception("Comparing VppIpPrefix:%s with unknown type: %s" %
+            raise Exception("Comparing VppIpMPrefix:%s with unknown type: %s" %
                             (self, other))
         return False

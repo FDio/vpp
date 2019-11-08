@@ -184,7 +184,7 @@ class TestIp4VrfMultiInst(VppTestCase):
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
             dest_addr = pg_if.local_ip4n
             dest_addr_len = 24
-            self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id)
+            self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id})
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -210,8 +210,7 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         :param int vrf_id: The FIB table / VRF ID to be reset.
         """
-        # self.vapi.reset_vrf(vrf_id, is_ipv6=0)
-        self.vapi.reset_fib(vrf_id, is_ipv6=0)
+        self.vapi.ip_table_flush(table={'table_id': vrf_id})
         if vrf_id in self.vrf_list:
             self.vrf_list.remove(vrf_id)
         if vrf_id not in self.vrf_reset_list:
@@ -226,7 +225,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.logger.info("IPv4 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip arp"))
-        self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id)
+        self.vapi.ip_table_add_del(is_add=0, table={'table_id': vrf_id})
 
     def create_stream(self, src_if, packet_sizes):
         """
