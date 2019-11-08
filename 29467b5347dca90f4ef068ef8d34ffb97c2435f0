@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5047cb61_1b09ad68",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-08T14:09:58Z",
+      "side": 1,
+      "message": "Good news, the performance of l2bdbase test went up by 0.295276205028 (+- 0.164867235717) percent, on denverton, as seen by (still work in progress) bisection script. This is the only place I see that could be improving performance.\nI am surprised such a small increase is even detected, so I am going to re-run the script to see if it finds the similar enough difference again.",
+      "range": {
+        "startLine": 441,
+        "startChar": 7,
+        "endLine": 441,
+        "endChar": 9
+      },
+      "revId": "29467b5347dca90f4ef068ef8d34ffb97c2435f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
