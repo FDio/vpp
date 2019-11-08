@@ -506,9 +506,10 @@ ip4_show_mfib (vlib_main_t * vm,
             continue;
         }
 
-        vlib_cli_output (vm, "%U, fib_index %d",
+        vlib_cli_output (vm, "%U, fib_index:%d flags:%U",
                          format_mfib_table_name, mfib->index, FIB_PROTOCOL_IP4,
-                         mfib->index);
+                         mfib->index,
+                         format_mfib_table_flags, mfib_table->mft_flags);
 
         /* Show summary? */
         if (! verbose)

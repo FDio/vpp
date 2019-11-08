@@ -90,8 +90,6 @@ int mpls_sw_interface_enable_disable (mpls_main_t * mm,
 
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 
-int mpls_fib_reset_labels (u32 fib_id);
-
 int mpls_dest_cmp (void *a1, void *a2);
 
 int mpls_fib_index_cmp (void *a1, void *a2);

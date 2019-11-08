@@ -671,12 +671,14 @@ ip4_show_fib (vlib_main_t * vm,
             continue;
         }
 
-	s = format(s, "%U, fib_index:%d, flow hash:[%U] locks:[",
+	s = format(s, "%U, fib_index:%d, flow hash:[%U] epoch:%d flags:%U locks:[",
                    format_fib_table_name, fib->index,
                    FIB_PROTOCOL_IP4,
                    fib->index,
                    format_ip_flow_hash_config,
-                   fib_table->ft_flow_hash_config);
+                   fib_table->ft_flow_hash_config,
+                   fib_table->ft_epoch,
+                   format_fib_table_flags, fib_table->ft_flags);
 	FOR_EACH_FIB_SOURCE(source)
         {
             if (0 != fib_table->ft_locks[source])
