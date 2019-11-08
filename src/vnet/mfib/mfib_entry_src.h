@@ -28,6 +28,48 @@ typedef struct mfib_path_ext_t_
 } mfib_path_ext_t;
 
 /**
+ * Flags for the source data
+ */
+typedef enum mfib_entry_src_attribute_t_ {
+    /**
+     * Marker. Add new values after this one.
+     */
+    MFIB_ENTRY_SRC_ATTRIBUTE_FIRST,
+    /**
+     * the source has been added to the entry
+     */
+    MFIB_ENTRY_SRC_ATTRIBUTE_STALE = MFIB_ENTRY_SRC_ATTRIBUTE_FIRST,
+    /**
+     * Marker. add new entries before this one.
+     */
+    MFIB_ENTRY_SRC_ATTRIBUTE_LAST = MFIB_ENTRY_SRC_ATTRIBUTE_STALE,
+} mfib_entry_src_attribute_t;
+
+
+#define MFIB_ENTRY_SRC_ATTRIBUTES {                  \
+    [MFIB_ENTRY_SRC_ATTRIBUTE_STALE] = "stale",      \
+}
+
+#define FOR_EACH_MFIB_SRC_ATTRIBUTE(_item)                      \
+    for (_item = MFIB_ENTRY_SRC_ATTRIBUTE_FIRST;		\
+	 _item <= MFIB_ENTRY_SRC_ATTRIBUTE_LAST;		\
+	 _item++)
+
+typedef enum mfib_entry_src_flag_t_ {
+    MFIB_ENTRY_SRC_FLAG_NONE   = 0,
+    MFIB_ENTRY_SRC_FLAG_STALE = (1 << MFIB_ENTRY_SRC_ATTRIBUTE_STALE),
+} __attribute__ ((packed)) mfib_entry_src_flags_t;
+
+extern u8 * format_mfib_entry_src_flags(u8 *s, va_list *args);
+
+/*
+ * Keep the size of the flags field to 2 bytes, so it
+ * can be placed next to the 2 bytes reference count
+ */
+STATIC_ASSERT (sizeof(mfib_entry_src_flags_t) <= 2,
+	       "FIB entry flags field size too big");
+
+/**
  * The source of an MFIB entry
  */
 typedef struct mfib_entry_src_t_
@@ -40,7 +82,12 @@ typedef struct mfib_entry_src_t_
     /**
      * Route flags
      */
-    mfib_entry_flags_t mfes_flags;
+    mfib_entry_flags_t mfes_route_flags;
+
+    /**
+     * Source flags
+     */
+    mfib_entry_src_flags_t mfes_flags;
 
     /**
      * The reference count on the entry. this is a u32

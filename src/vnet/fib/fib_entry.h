@@ -315,6 +315,10 @@ typedef enum fib_entry_src_attribute_t_ {
      */
     FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE,
     /**
+     * the source is stale
+     */
+    FIB_ENTRY_SRC_ATTRIBUTE_STALE,
+    /**
      * the source is inherited from its cover
      */
     FIB_ENTRY_SRC_ATTRIBUTE_INHERITED,
@@ -329,6 +333,7 @@ typedef enum fib_entry_src_attribute_t_ {
     [FIB_ENTRY_SRC_ATTRIBUTE_ADDED]  = "added",	 \
     [FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING] = "contributing", \
     [FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE] = "active", \
+    [FIB_ENTRY_SRC_ATTRIBUTE_STALE] = "stale",      \
     [FIB_ENTRY_SRC_ATTRIBUTE_INHERITED] = "inherited", \
 }
 
@@ -342,6 +347,7 @@ typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_ADDED  = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ADDED),
     FIB_ENTRY_SRC_FLAG_CONTRIBUTING = (1 << FIB_ENTRY_SRC_ATTRIBUTE_CONTRIBUTING),
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
+    FIB_ENTRY_SRC_FLAG_STALE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_STALE),
     FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
 } __attribute__ ((packed)) fib_entry_src_flag_t;
 
@@ -627,6 +633,8 @@ extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
 extern fib_node_index_t fib_entry_get_path_list(fib_node_index_t fib_entry_index);
 extern int fib_entry_is_resolved(fib_node_index_t fib_entry_index);
 extern int fib_entry_is_host(fib_node_index_t fib_entry_index);
+extern int fib_entry_is_marked(fib_node_index_t fib_entry_index, fib_source_t source);
+extern void fib_entry_mark(fib_node_index_t fib_entry_index, fib_source_t source);
 extern void fib_entry_set_flow_hash_config(fib_node_index_t fib_entry_index,
                                            flow_hash_config_t hash_config);
 
