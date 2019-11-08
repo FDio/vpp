@@ -665,7 +665,7 @@ done:
   REPLY_MACRO2 (VL_API_APP_ATTACH_REPLY, ({
     if (!rv)
       {
-	ctrl_thread = vlib_num_workers ()? 1 : 0;
+	ctrl_thread = vlib_num_workers () ? 1 : 0;
 	ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
 	segp = a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
