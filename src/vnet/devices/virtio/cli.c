@@ -186,8 +186,8 @@ VLIB_CLI_COMMAND (show_virtio_pci_command, static) = {
 clib_error_t *
 virtio_pci_cli_init (vlib_main_t * vm)
 {
-  virtio_main_t *vim = &virtio_main;
-  vim->log_default = vlib_log_register_class ("virtio-pci", 0);
+  virtio_pci_main_t *vpm = &virtio_pci_main;
+  vpm->log_default = vlib_log_register_class ("virtio-pci", 0);
   return 0;
 }
 
