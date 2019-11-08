@@ -36,6 +36,8 @@
 
 #define PCI_MSIX_ENABLE 0x8000
 
+virtio_pci_main_t virtio_pci_main;
+
 #define PCI_CONFIG_SIZE(vif) ((vif->msix_enabled == VIRTIO_MSIX_ENABLED) ? \
   24 : 20)
 
@@ -247,7 +249,6 @@ virtio_pci_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw,
 static clib_error_t *
 virtio_pci_get_max_virtqueue_pairs (vlib_main_t * vm, virtio_if_t * vif)
 {
-  virtio_main_t *vim = &virtio_main;
   virtio_net_config_t config;
   clib_error_t *error = 0;
   u16 max_queue_pairs = 1;
@@ -261,7 +262,7 @@ virtio_pci_get_max_virtqueue_pairs (vlib_main_t * vm, virtio_if_t * vif)
       max_queue_pairs = config.max_virtqueue_pairs;
     }
 
-  virtio_log_debug (vim, vif, "max queue pair is %x", max_queue_pairs);
+  virtio_log_debug (vif, "max queue pair is %x", max_queue_pairs);
   if (max_queue_pairs < 1 || max_queue_pairs > 0x8000)
     return clib_error_return (error, "max queue pair is %x", max_queue_pairs);
 
@@ -463,7 +464,6 @@ static int
 virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 			  struct virtio_ctrl_msg *data, u32 len)
 {
-  virtio_main_t *vim = &virtio_main;
   virtio_vring_t *vring = vif->cxq_vring;
   virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
   struct virtio_ctrl_msg result;
@@ -550,7 +550,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
   CLIB_MEMORY_BARRIER ();
   clib_memcpy (&result, vlib_buffer_get_current (b),
 	       sizeof (struct virtio_ctrl_msg));
-  virtio_log_debug (vim, vif, "ctrl-queue: status %u", result.status);
+  virtio_log_debug (vif, "ctrl-queue: status %u", result.status);
   status = result.status;
   vlib_buffer_free (vm, &buffer_index, 1);
   return status;
@@ -559,7 +559,6 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 static int
 virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
 {
-  virtio_main_t *vim = &virtio_main;
   struct virtio_ctrl_msg gso_hdr;
   virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
 
@@ -573,7 +572,7 @@ virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
   clib_memcpy (gso_hdr.data, &offloads, sizeof (offloads));
 
   status = virtio_pci_send_ctrl_msg (vm, vif, &gso_hdr, sizeof (offloads));
-  virtio_log_debug (vim, vif, "enable gso");
+  virtio_log_debug (vif, "enable gso");
   return status;
 }
 
@@ -581,7 +580,6 @@ static int
 virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
 			      u16 num_queues)
 {
-  virtio_main_t *vim = &virtio_main;
   struct virtio_ctrl_msg mq_hdr;
   virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
 
@@ -591,7 +589,7 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   clib_memcpy (mq_hdr.data, &num_queues, sizeof (num_queues));
 
   status = virtio_pci_send_ctrl_msg (vm, vif, &mq_hdr, sizeof (num_queues));
-  virtio_log_debug (vim, vif, "multi-queue enable %u queues", num_queues);
+  virtio_log_debug (vif, "multi-queue enable %u queues", num_queues);
   return status;
 }
 
@@ -610,7 +608,6 @@ virtio_pci_control_vring_init (vlib_main_t * vm, virtio_if_t * vif,
 			       u16 queue_num)
 {
   clib_error_t *error = 0;
-  virtio_main_t *vim = &virtio_main;
   u16 queue_size = 0;
   virtio_vring_t *vring;
   struct vring vr;
@@ -650,7 +647,7 @@ virtio_pci_control_vring_init (vlib_main_t * vm, virtio_if_t * vif,
   ASSERT (vring->buffers == 0);
 
   vring->size = queue_size;
-  virtio_log_debug (vim, vif, "control-queue: number %u, size %u", queue_num,
+  virtio_log_debug (vif, "control-queue: number %u, size %u", queue_num,
 		    queue_size);
   virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr);
   vring->kick_fd = -1;
@@ -662,7 +659,6 @@ clib_error_t *
 virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
 {
   clib_error_t *error = 0;
-  virtio_main_t *vim = &virtio_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u16 queue_size = 0;
   virtio_vring_t *vring;
@@ -717,12 +713,12 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
   if (queue_num % 2)
     {
-      virtio_log_debug (vim, vif, "tx-queue: number %u, size %u", queue_num,
+      virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   else
     {
-      virtio_log_debug (vim, vif, "rx-queue: number %u, size %u", queue_num,
+      virtio_log_debug (vif, "rx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   vring->size = queue_size;
@@ -825,14 +821,13 @@ clib_error_t *
 virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 {
   clib_error_t *error = 0;
-  virtio_main_t *vim = &virtio_main;
   struct virtio_pci_cap cap;
   u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
 
   if ((error = vlib_pci_read_config_u8 (vm, h, PCI_CAPABILITY_LIST, &pos)))
     {
-      virtio_log_error (vim, vif, "error in reading capabilty list position");
+      virtio_log_error (vif, "error in reading capabilty list position");
       clib_error_return (error, "error in reading capabilty list position");
     }
   while (pos)
@@ -841,7 +836,7 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 	   vlib_pci_read_write_config (vm, h, VLIB_READ, pos, &cap,
 				       sizeof (cap))))
 	{
-	  virtio_log_error (vim, vif, "%s [%2x]",
+	  virtio_log_error (vif, "%s [%2x]",
 			    "error in reading the capability at", pos);
 	  clib_error_return (error,
 			     "error in reading the capability at [%2x]", pos);
@@ -859,29 +854,29 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 			       pos + 2);
 
 	  table_size = flags & table_size_mask;
-	  virtio_log_debug (vim, vif, "flags:0x%x %s 0x%x", flags,
+	  virtio_log_debug (vif, "flags:0x%x %s 0x%x", flags,
 			    "msix interrupt vector table-size", table_size);
 
 	  if (flags & PCI_MSIX_ENABLE)
 	    {
-	      virtio_log_debug (vim, vif, "msix interrupt enabled");
+	      virtio_log_debug (vif, "msix interrupt enabled");
 	      vif->msix_enabled = VIRTIO_MSIX_ENABLED;
 	    }
 	  else
 	    {
-	      virtio_log_debug (vim, vif, "msix interrupt disabled");
+	      virtio_log_debug (vif, "msix interrupt disabled");
 	      vif->msix_enabled = VIRTIO_MSIX_DISABLED;
 	    }
 	}
 
       if (cap.cap_vndr != PCI_CAP_ID_VNDR)
 	{
-	  virtio_log_debug (vim, vif, "[%2x] %s %2x ", pos,
+	  virtio_log_debug (vif, "[%2x] %s %2x ", pos,
 			    "skipping non VNDR cap id:", cap.cap_vndr);
 	  goto next;
 	}
 
-      virtio_log_debug (vim, vif,
+      virtio_log_debug (vif,
 			"[%4x] cfg type: %u, bar: %u, offset: %04x, len: %u",
 			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
       switch (cap.cfg_type)
@@ -909,14 +904,14 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 
   if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
     {
-      virtio_log_debug (vim, vif, "legacy virtio pci device found");
+      virtio_log_debug (vif, "legacy virtio pci device found");
       return error;
     }
 
   if (!pci_cfg)
     clib_error_return (error, "modern virtio pci device found");
 
-  virtio_log_debug (vim, vif, "transitional virtio pci device found");
+  virtio_log_debug (vif, "transitional virtio pci device found");
   return error;
 }
 
@@ -925,7 +920,6 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 			virtio_pci_create_if_args_t * args)
 {
   clib_error_t *error = 0;
-  virtio_main_t *vim = &virtio_main;
   u8 status = 0;
 
   if ((error = virtio_pci_read_caps (vm, vif)))
@@ -933,7 +927,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
-      virtio_log_error (vim, vif, "Failed to reset the device");
+      virtio_log_error (vif, "Failed to reset the device");
       clib_error_return (error, "Failed to reset the device");
     }
   /*
@@ -949,7 +943,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   status = virtio_pci_legacy_get_status (vm, vif);
   if (!(status & VIRTIO_CONFIG_STATUS_FEATURES_OK))
     {
-      virtio_log_error (vim, vif,
+      virtio_log_error (vif,
 			"error encountered: Device doesn't support requested features");
       clib_error_return (error, "Device doesn't support requested features");
     }
@@ -983,7 +977,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     {
       if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
 	{
-	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
+	  virtio_log_warning (vif, "%s (%u) %s", "error in rxq-queue",
 			      RX_QUEUE (i), "initialization");
 	}
       else
@@ -993,7 +987,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
 	{
-	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
+	  virtio_log_warning (vif, "%s (%u) %s", "error in txq-queue",
 			      TX_QUEUE (i), "initialization");
 	}
       else
@@ -1007,8 +1001,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
       if ((error =
 	   virtio_pci_control_vring_init (vm, vif, vif->max_queue_pairs * 2)))
 	{
-	  virtio_log_warning (vim, vif, "%s (%u) %s",
-			      "error in control-queue",
+	  virtio_log_warning (vif, "%s (%u) %s", "error in control-queue",
 			      vif->max_queue_pairs * 2, "initialization");
 	  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
 	    vif->features &= ~VIRTIO_FEATURE (VIRTIO_NET_F_MQ);
@@ -1016,7 +1009,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     }
   else
     {
-      virtio_log_debug (vim, vif, "control queue is not available");
+      virtio_log_debug (vif, "control queue is not available");
       vif->cxq_vring = NULL;
     }
 
@@ -1027,10 +1020,10 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     {
       if (virtio_pci_legacy_set_config_irq (vm, vif, 1) ==
 	  VIRTIO_MSI_NO_VECTOR)
-	virtio_log_warning (vim, vif, "config vector 1 is not set");
+	virtio_log_warning (vif, "config vector 1 is not set");
       if (virtio_pci_legacy_set_queue_irq (vm, vif, 0, 0) ==
 	  VIRTIO_MSI_NO_VECTOR)
-	virtio_log_warning (vim, vif, "queue vector 0 is not set");
+	virtio_log_warning (vif, "queue vector 0 is not set");
     }
 
   /*
@@ -1047,6 +1040,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
+  virtio_pci_main_t *vpm = &virtio_pci_main;
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
@@ -1058,7 +1052,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	args->rv = VNET_API_ERROR_INVALID_VALUE;
 	args->error =
 	  clib_error_return (error, "PCI address in use");
-	  vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+	  vlib_log (VLIB_LOG_LEVEL_ERR, vpm->log_default, "%U: %s",
                 format_vlib_pci_addr, &args->addr,
                 " PCI address in use");
 	return;
@@ -1080,7 +1074,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       args->error =
 	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
 			   &vif->pci_addr);
-      vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+      vlib_log (VLIB_LOG_LEVEL_ERR, vpm->log_default, "%U: %s",
 		format_vlib_pci_addr, &vif->pci_addr,
 		"error encountered on pci device open");
       return;
@@ -1091,14 +1085,13 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
     {
-      virtio_log_error (vim, vif,
-			"error encountered on pci bus master enable");
+      virtio_log_error (vif, "error encountered on pci bus master enable");
       goto error;
     }
 
   if ((error = vlib_pci_io_region (vm, h, 0)))
     {
-      virtio_log_error (vim, vif, "error encountered on pci io region");
+      virtio_log_error (vif, "error encountered on pci io region");
       goto error;
     }
 
@@ -1107,26 +1100,25 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
 						   &virtio_pci_irq_0_handler)))
 	{
-	  virtio_log_error (vim, vif,
+	  virtio_log_error (vif,
 			    "error encountered on pci register msix handler 0");
 	  goto error;
 	}
       if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
 						   &virtio_pci_irq_1_handler)))
 	{
-	  virtio_log_error (vim, vif,
+	  virtio_log_error (vif,
 			    "error encountered on pci register msix handler 1");
 	  goto error;
 	}
 
       if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
 	{
-	  virtio_log_error (vim, vif,
-			    "error encountered on pci enable msix irq");
+	  virtio_log_error (vif, "error encountered on pci enable msix irq");
 	  goto error;
 	}
       vif->support_int_mode = 1;
-      virtio_log_debug (vim, vif, "device supports msix interrupts");
+      virtio_log_debug (vif, "device supports msix interrupts");
     }
   else if (vlib_pci_get_num_msix_interrupts (vm, h) == 1)
     {
@@ -1136,12 +1128,12 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if ((error =
 	   vlib_pci_register_intx_handler (vm, h, &virtio_pci_irq_handler)))
 	{
-	  virtio_log_error (vim, vif,
+	  virtio_log_error (vif,
 			    "error encountered on pci register interrupt handler");
 	  goto error;
 	}
       vif->support_int_mode = 1;
-      virtio_log_debug (vim, vif, "pci register interrupt handler");
+      virtio_log_debug (vif, "pci register interrupt handler");
     }
   else
     {
@@ -1150,19 +1142,18 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
        * Please don't use interrupt mode with UIO driver.
        */
       vif->support_int_mode = 0;
-      virtio_log_debug (vim, vif, "driver is configured in poll mode only");
+      virtio_log_debug (vif, "driver is configured in poll mode only");
     }
 
   if ((error = vlib_pci_intr_enable (vm, h)))
     {
-      virtio_log_error (vim, vif,
-			"error encountered on pci interrupt enable");
+      virtio_log_error (vif, "error encountered on pci interrupt enable");
       goto error;
     }
 
   if ((error = virtio_pci_device_init (vm, vif, args)))
     {
-      virtio_log_error (vim, vif, "error encountered on device init");
+      virtio_log_error (vif, "error encountered on device init");
       goto error;
     }
 
@@ -1175,7 +1166,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   if (error)
     {
-      virtio_log_error (vim, vif,
+      virtio_log_error (vif,
 			"error encountered on ethernet register interface");
       goto error;
     }
@@ -1213,7 +1204,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	{
 	  if (virtio_pci_enable_gso (vm, vif))
 	    {
-	      virtio_log_warning (vim, vif, "gso is not enabled");
+	      virtio_log_warning (vif, "gso is not enabled");
 	    }
 	  else
 	    {
@@ -1225,7 +1216,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
 	{
 	  if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
-	    virtio_log_warning (vim, vif, "multiqueue is not set");
+	    virtio_log_warning (vif, "multiqueue is not set");
 	}
     }
   return;
