@@ -331,6 +331,56 @@ class TestVtr(VppTestCase):
         self.vtr_test(self.pg2, [Tag(dot1=DOT1AD, vlan=400),
                                  Tag(dot1=DOT1Q, vlan=300)])
 
+    def test_if_vtr_disable(self):
+        """ Disable VTR on non-sub-interfaces
+        """
+        # First set the VTR fields to junk
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_2,
+            push_dot1q=1, tag1=19, tag2=630)
+
+        if_state = self.vapi.sw_interface_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
+        self.assertNotEqual(if_state[0].vtr_op, L2_VTR_OP.L2_DISABLED)
+
+        # Then ensure that a request to disable VTR is honored.
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_DISABLED)
+
+        if_state = self.vapi.sw_interface_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_DISABLED)
+
+    def test_if_vtr_push_1q(self):
+        """ 1Q VTR push 1 on non-sub-interfaces
+        """
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_1,
+            push_dot1q=1, tag1=150)
+
+        if_state = self.vapi.sw_interface_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_PUSH_1)
+        self.assertEqual(if_state[0].vtr_tag1, 150)
+        self.assertNotEqual(if_state[0].vtr_push_dot1q, 0)
+
+    def test_if_vtr_push_2ad(self):
+        """ 1AD VTR push 2 on non-sub-interfaces
+        """
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_2,
+            push_dot1q=0, tag1=450, tag2=350)
+
+        if_state = self.vapi.sw_interface_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
+        self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_PUSH_2)
+        self.assertEqual(if_state[0].vtr_tag1, 450)         # outer
+        self.assertEqual(if_state[0].vtr_tag2, 350)         # inner
+        self.assertEqual(if_state[0].vtr_push_dot1q, 0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
