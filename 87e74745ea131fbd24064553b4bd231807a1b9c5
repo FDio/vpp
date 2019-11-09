@@ -22,6 +22,30 @@
       "revId": "87e74745ea131fbd24064553b4bd231807a1b9c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf76dafd_24fcc27e",
+        "filename": "src/plugins/mdata/FEATURE.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-11-09T13:47:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1754e1ec_310f37ac",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 3
+      },
+      "revId": "87e74745ea131fbd24064553b4bd231807a1b9c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
