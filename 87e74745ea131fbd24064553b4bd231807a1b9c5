@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1754e1ec_310f37ac",
+        "filename": "src/plugins/mdata/FEATURE.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-09T12:00:35Z",
+      "side": 1,
+      "message": "see: https://gerrit.fd.io/r/#/c/vpp/+/23316/1/src/plugins/mdata/FEATURE.yaml",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 3
+      },
+      "revId": "87e74745ea131fbd24064553b4bd231807a1b9c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
