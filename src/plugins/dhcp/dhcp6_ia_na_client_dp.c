@@ -84,8 +84,6 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
 				  u32 type)
 {
   dhcp6_client_common_main_t *ccm = &dhcp6_client_common_main;
-  vnet_main_t *vnm = vnet_get_main ();
-
   vlib_buffer_t *b;
   u32 bi;
   ip6_header_t *ip;
@@ -96,18 +94,6 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
   client_state->transaction_start = vlib_time_now (vm);
   u32 n_addresses;
   u32 i;
-
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  vnet_sw_interface_t *sup_sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
-
-  /* Interface(s) down? */
-  if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
-    return NULL;
-  if ((sup_sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
-    return NULL;
-  if ((sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
-    return NULL;
 
   /* Get a link-local address */
   src_addr = ip6_neighbor_get_link_local_address (sw_if_index);
