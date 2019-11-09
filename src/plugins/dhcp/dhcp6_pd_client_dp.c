@@ -85,8 +85,6 @@ create_buffer_for_client_message (vlib_main_t * vm,
 				  * client_state, u32 type)
 {
   dhcp6_client_common_main_t *ccm = &dhcp6_client_common_main;
-  vnet_main_t *vnm = vnet_get_main ();
-
   vlib_buffer_t *b;
   u32 bi;
   ip6_header_t *ip;
@@ -98,17 +96,10 @@ create_buffer_for_client_message (vlib_main_t * vm,
   u32 n_prefixes;
   u32 i;
 
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  vnet_sw_interface_t *sup_sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
-
-  /* Interface(s) down? */
-  if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
-    return NULL;
-  if ((sup_sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
-    return NULL;
-  if ((sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
-    return NULL;
+  /*
+   * Note: do NOT psychoanalyze link-state here.
+   * If the interface is down, let the driver turf the packet.
+   */
 
   /* Get a link-local address */
   src_addr = ip6_neighbor_get_link_local_address (sw_if_index);
@@ -298,10 +289,10 @@ check_pd_send_client_message (vlib_main_t * vm,
   else
     {
       client_state->sleep_interval =
-	(2 + random_f64_from_to (-0.1, 0.1)) * client_state->sleep_interval;
+	(2.0 + random_f64_from_to (-0.1, 0.1)) * client_state->sleep_interval;
       if (client_state->sleep_interval > params->mrt)
 	client_state->sleep_interval =
-	  (1 + random_f64_from_to (-0.1, 0.1)) * params->mrt;
+	  (1.0 + random_f64_from_to (-0.1, 0.1)) * params->mrt;
 
       client_state->due_time = current_time + client_state->sleep_interval;
 
@@ -404,12 +395,9 @@ dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,
       client_state->buffer =
 	create_buffer_for_client_message (vm, sw_if_index, client_state,
 					  params->msg_type);
-      if (!client_state->buffer)
-	client_state->keep_sending_client_message = 0;
-      else
-	vlib_process_signal_event (vm,
-				   send_dhcp6_pd_client_message_process_node.index,
-				   1, 0);
+      if (client_state->buffer)
+	vlib_process_signal_event
+	  (vm, send_dhcp6_pd_client_message_process_node.index, 1, 0);
     }
 }
 
