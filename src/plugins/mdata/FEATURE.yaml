@@ -3,13 +3,12 @@ name: Buffer Metadata Change Tracker (mdata)
 maintainer: Dave Barach <dave@barachs.net>
 features:
   - Buffer Metadata Change Tracker
- |-
-              Buffer Metadata Change Tracker
-              Uses the before / after graph node main loop performance
-              callback hooks to snapshoot buffer metadata, then
-              compare and summarize results per-node.
-              Answers the question "what buffer metadata does a particular
-              graph node change?" by direct observation.
-              Zero performance impact until enabled.
+  -
+    Uses the before / after graph node main loop performance
+    callback hooks to snapshoot buffer metadata, then
+    compare and summarize results per-node.
+    Answers the question "what buffer metadata does a particular
+    graph node change?" by direct observation.
+    Zero performance impact until enabled.
 state: production
 properties: [API, CLI, MULTITHREAD]

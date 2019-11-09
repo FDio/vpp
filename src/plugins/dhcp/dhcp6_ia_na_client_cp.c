@@ -302,7 +302,11 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 	{
 	  address_info->preferred_lt = preferred_time;
 	  address_info->valid_lt = valid_time;
-	  address_info->due_time = current_time + valid_time;
+	  address_info->due_time = current_time;
+	  /* Renew the lease at the preferred time, if non-zero */
+	  address_info->due_time += (preferred_time > 0) ?
+	    preferred_time : valid_time;
+
 	  if (address_info->due_time > rm->max_valid_due_time)
 	    rm->max_valid_due_time = address_info->due_time;
 	  continue;
@@ -316,7 +320,11 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       address_info->address = *address;
       address_info->preferred_lt = preferred_time;
       address_info->valid_lt = valid_time;
-      address_info->due_time = current_time + valid_time;
+      address_info->due_time = current_time;
+      /* Renew the lease at the preferred time, if non-zero */
+      address_info->due_time += (preferred_time > 0) ?
+	preferred_time : valid_time;
+
       if (address_info->due_time > rm->max_valid_due_time)
 	rm->max_valid_due_time = address_info->due_time;
       rm->client_state_by_sw_if_index[sw_if_index].address_count++;
