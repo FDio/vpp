@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 
 import abc
-import six
 import unittest
 
-from scapy.fields import BitField, ByteField, FlagsField, IntField
-from scapy.packet import bind_layers, Packet, Raw
+import six
+from scapy.fields import (
+    BitField,
+    ByteField,
+    FlagsField,
+    IntField,
+)
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
+from scapy.packet import Packet, Raw, bind_layers
 
 from framework import VppTestCase, VppTestRunner
-from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
-    VppLispLocatorSet, VppRemoteMapping
-from util import ppp, ForeignAddressFactory
+from lisp import (
+    VppLispAdjacency,
+    VppLispLocator,
+    VppLispLocatorSet,
+    VppLocalMapping,
+    VppRemoteMapping,
+)
+from util import ForeignAddressFactory, ppp
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
 

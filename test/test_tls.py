@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-import unittest
 import os
 import re
 import subprocess
+import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_ip_route import (
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 
 def checkQat():

@@ -3,7 +3,11 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_ip_route import (
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 
 class TestSession(VppTestCase):

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4n_range, ip4_range
 import unittest
-from framework import VppTestCase, VppTestRunner
-from template_bd import BridgeDomain
 
-from scapy.layers.l2 import Ether, Raw
+from scapy.contrib.gtp import GTP_U_Header
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.gtp import GTP_U_Header
+from scapy.layers.l2 import Ether, Raw
 from scapy.utils import atol
-from vpp_ip_route import VppIpRoute, VppRoutePath
+
+from framework import VppTestCase, VppTestRunner
+from template_bd import BridgeDomain
+from util import ip4_range, ip4n_range
 from vpp_ip import INVALID_INDEX
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestGtpuUDP(VppTestCase):

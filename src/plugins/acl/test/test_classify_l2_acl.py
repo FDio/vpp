@@ -2,18 +2,21 @@
 """ Classifier-based L2 ACL Test Case HLD:
 """
 
-import unittest
-import random
 import binascii
+import random
 import socket
+import unittest
 
-
-from scapy.packet import Raw
 from scapy.data import ETH_P_IP
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import (
+    ICMPv6EchoRequest,
+    IPv6,
+    IPv6ExtHdrFragment,
+)
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, TCP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
-from scapy.layers.inet6 import IPv6ExtHdrFragment
+from scapy.packet import Raw
+
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 

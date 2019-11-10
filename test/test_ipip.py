@@ -2,13 +2,33 @@
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
-from scapy.all import fragment, fragment6, RandShort, defragment6
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton
+
+from scapy.all import (
+    RandShort,
+    defragment6,
+    fragment,
+    fragment6,
+)
+from scapy.layers.inet6 import (
+    IP,
+    UDP,
+    Ether,
+    IPv6,
+    IPv6ExtHdrFragment,
+    Raw,
+)
+
+from framework import VppTestCase, VppTestRunner
 from util import reassemble4
+from vpp_ip import DpoProto
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
+
 
 """ Testipip is a subclass of  VPPTestCase classes.
 

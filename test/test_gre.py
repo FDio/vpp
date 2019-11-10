@@ -3,19 +3,24 @@
 import unittest
 
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.volatile import RandMAC, RandIP
+from scapy.layers.l2 import GRE, Dot1Q, Ether
+from scapy.packet import Raw
+from scapy.volatile import RandIP, RandMAC
+from vpp_papi import VppEnum
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
+from util import ppc, ppp
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
-from util import ppp, ppc
-from vpp_papi import VppEnum
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
+from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 
 
 class TestGREInputNodes(VppTestCase):

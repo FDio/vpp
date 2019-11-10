@@ -1,5 +1,6 @@
 from trex_stl_lib.api import *
 
+
 class STLS1(object):
 
     def __init__ (self):
@@ -53,6 +54,3 @@ class STLS1(object):
 # dynamic load - used for trex console or simulator
 def register():
     return STLS1()
-
-
-

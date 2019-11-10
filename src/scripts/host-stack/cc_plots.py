@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import re
 import argparse
+import re
+import sys
+
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+
 
 class Point():
     "CC event"

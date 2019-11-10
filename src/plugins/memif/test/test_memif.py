@@ -1,16 +1,23 @@
 import socket
 import unittest
 
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, ICMP
 import six
-
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from remote_test import RemoteClass, RemoteVppTestCase
-from vpp_memif import remove_all_memif_vpp_config, \
-    VppSocketFilename, VppMemif
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from scapy.layers.inet import ICMP, IP
+from scapy.layers.l2 import Ether
 from vpp_papi import VppEnum
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from remote_test import RemoteClass, RemoteVppTestCase
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_memif import (
+    VppMemif,
+    VppSocketFilename,
+    remove_all_memif_vpp_config,
+)
 
 
 class TestMemif(VppTestCase):

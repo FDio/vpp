@@ -1,37 +1,73 @@
 #!/usr/bin/env python3
 
-import socket
-import unittest
-import struct
 import random
-
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+import socket
+import struct
+import unittest
+from io import BytesIO
+from ipaddress import IPv6Network
+from time import sleep
 
 import scapy.compat
-from scapy.layers.inet import IP, TCP, UDP, ICMP
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
-    ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, fragment6
-from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
-from scapy.layers.l2 import Ether, ARP, GRE
+from scapy.all import (
+    ByteEnumField,
+    FieldLenField,
+    FlagsField,
+    IntField,
+    IPField,
+    LongField,
+    Packet,
+    PacketListField,
+    ShortField,
+    XByteField,
+    bind_layers,
+)
 from scapy.data import IP_PROTOS
-from scapy.packet import bind_layers, Raw
-from util import ppp
-from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
-from time import sleep
-from util import ip4_range
-from vpp_papi import mac_pton
-from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
-from io import BytesIO
-from vpp_papi import VppEnum
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
-from vpp_neighbor import VppNeighbor
+from scapy.layers.inet import (
+    ICMP,
+    IP,
+    TCP,
+    UDP,
+    ICMPerror,
+    IPerror,
+    TCPerror,
+    UDPerror,
+)
+from scapy.layers.inet6 import (
+    ICMPv6DestUnreach,
+    ICMPv6EchoReply,
+    ICMPv6EchoRequest,
+    ICMPv6ND_NA,
+    ICMPv6ND_NS,
+    ICMPv6NDOptDstLLAddr,
+    IPerror6,
+    IPv6,
+    IPv6ExtHdrFragment,
+    fragment6,
+)
+from scapy.layers.l2 import ARP, GRE, Ether
+from scapy.packet import Raw, bind_layers
+from vpp_papi import VppEnum, mac_pton
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from ipfix import IPFIX, Data, IPFIXDecoder, Set, Template
+from syslog_rfc5424_parser import ParseError, SyslogMessage
+from syslog_rfc5424_parser.constants import (
+    SyslogFacility,
+    SyslogSeverity,
+)
+from util import ip4_range, ppp
 from vpp_ip import VppIpAddress, VppIpPrefix
-from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
-    IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
-    PacketListField
-from ipaddress import IPv6Network
+from vpp_ip_route import (
+    FibPathType,
+    VppIpRoute,
+    VppRoutePath,
+)
+from vpp_neighbor import VppNeighbor
 
 
 # NAT HA protocol event data

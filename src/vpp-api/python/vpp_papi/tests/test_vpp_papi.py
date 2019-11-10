@@ -15,6 +15,7 @@
 import ctypes
 import multiprocessing as mp
 import unittest
+
 from vpp_papi import vpp_papi
 
 
@@ -50,4 +51,3 @@ class TestVppPapiVPPApiClientMp(unittest.TestCase):
 
         # AssertionError: 11 != 1
         self.assertEqual(11, c.get_context())
-

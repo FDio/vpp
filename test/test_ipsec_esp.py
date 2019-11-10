@@ -1,19 +1,36 @@
 import socket
 import unittest
-from scapy.layers.ipsec import ESP
-from scapy.layers.inet import UDP
 
 from parameterized import parameterized
-from framework import VppTestRunner
-from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
-    IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
-    config_tun_params, IPsecIPv4Params, IPsecIPv6Params, \
-    IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6
-from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
-    VppIpsecSpdItfBinding
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import DpoProto
+from scapy.layers.inet import UDP
+from scapy.layers.ipsec import ESP
 from vpp_papi import VppEnum
+
+from framework import VppTestRunner
+from template_ipsec import (
+    IPsecIPv4Params,
+    IPsecIPv6Params,
+    IpsecTcpTests,
+    IpsecTra4,
+    IpsecTra4Tests,
+    IpsecTra6,
+    IpsecTra46Tests,
+    IpsecTun4,
+    IpsecTun4Tests,
+    IpsecTun6,
+    IpsecTun46Tests,
+    TemplateIpsec,
+    config_tra_params,
+    config_tun_params,
+)
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ipsec import (
+    VppIpsecSA,
+    VppIpsecSpd,
+    VppIpsecSpdEntry,
+    VppIpsecSpdItfBinding,
+)
 
 NUM_PKTS = 67
 
