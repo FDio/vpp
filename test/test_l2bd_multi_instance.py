@@ -62,14 +62,18 @@
     - check BD data by parsing output of bridge_domain_dump API command
 """
 
-import unittest
 import random
+import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
 from util import Host, ppp
 
 

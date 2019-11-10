@@ -1,7 +1,9 @@
 import abc
+
 import six
-from vpp_pg_interface import is_ipv6_misc
+
 from vpp_interface import VppInterface
+from vpp_pg_interface import is_ipv6_misc
 
 
 @six.add_metaclass(abc.ABCMeta)

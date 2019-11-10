@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 
+from socket import inet_ntop, inet_pton
 import unittest
-import binascii
-from socket import AF_INET6
-
-from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
-from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
-    SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import (
+    UDP,
+    IPv6,
+    IPv6ExtHdrSegmentRouting,
+)
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
 
 from util import ppp
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 
 class TestSRv6(VppTestCase):

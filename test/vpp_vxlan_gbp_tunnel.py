@@ -1,7 +1,8 @@
 
-from vpp_interface import VppInterface
 from vpp_papi import VppEnum
 
+from vpp_interface import VppInterface
+from vpp_ip import VppIpAddress
 
 INDEX_INVALID = 0xffffffff
 

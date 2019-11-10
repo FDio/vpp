@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
-import unittest
 import random
+import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
+from vpp_sub_interface import (
+    VppDot1ADSubint,
+    VppDot1QSubint,
+)
 
 
 class TestL2bd(VppTestCase):

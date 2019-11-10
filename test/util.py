@@ -1,22 +1,25 @@
 """ test framework utilities """
 
 import abc
-import socket
-from socket import AF_INET6
-import six
-import sys
 import os.path
+import socket
+import sys
+from io import BytesIO
+from socket import AF_INET6
 
 import scapy.compat
-from scapy.layers.l2 import Ether
+import six
 from scapy.layers.inet import IP
-from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, IPv6ExtHdrRouting,\
-    IPv6ExtHdrHopByHop
+from scapy.layers.inet6 import (
+    IPv6,
+    IPv6ExtHdrFragment,
+    IPv6ExtHdrHopByHop,
+    IPv6ExtHdrRouting,
+)
+from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.utils import hexdump
 from scapy.utils6 import in6_mactoifaceid
-
-from io import BytesIO
 from vpp_papi import mac_pton
 
 

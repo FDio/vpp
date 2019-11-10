@@ -1,5 +1,5 @@
-from vpp_object import VppObject
 from vpp_interface import VppInterface
+from vpp_object import VppObject
 
 
 class VppLoInterface(VppInterface, VppObject):

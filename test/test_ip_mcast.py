@@ -2,16 +2,23 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, FibPathProto
-from vpp_gre_interface import VppGreInterface
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, getmacbyip
 from scapy.layers.inet6 import IPv6, getmacbyip6
+from scapy.layers.l2 import GRE, Ether
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
+from vpp_gre_interface import VppGreInterface
+from vpp_ip import DpoProto
+from vpp_ip_route import (
+    FibPathProto,
+    MRouteEntryFlags,
+    MRouteItfFlags,
+    VppIpMRoute,
+    VppIpTable,
+    VppMFibSignal,
+    VppMRoutePath,
+)
 
 #
 # The number of packets sent is set to 91 so that when we replicate more than 3

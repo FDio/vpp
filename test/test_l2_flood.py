@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import unittest
 import socket
+import unittest
+
+from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_l2 import L2_PORT_TYPE, BRIDGE_FLAGS
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from vpp_l2 import BRIDGE_FLAGS, L2_PORT_TYPE
 
 NUM_PKTS = 67
 

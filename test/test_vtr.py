@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
-import unittest
 import random
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet import IP, UDP
-
-from util import Host
-from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
+import unittest
 from collections import namedtuple
+
+from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
+from util import Host
+from vpp_sub_interface import (
+    L2_VTR_OP,
+    VppDot1ADSubint,
+    VppDot1QSubint,
+)
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
 DOT1AD = 0x88A8

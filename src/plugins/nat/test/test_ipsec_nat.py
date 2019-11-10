@@ -3,17 +3,21 @@
 import socket
 
 import scapy.compat
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import ICMP, IP, TCP, UDP
-from scapy.layers.ipsec import SecurityAssociation, ESP
-
-from util import ppp, ppc
-from template_ipsec import TemplateIpsec
-from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
-        VppIpsecSpdItfBinding
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import DpoProto
+from scapy.layers.ipsec import ESP, SecurityAssociation
+from scapy.layers.l2 import Ether
 from vpp_papi import VppEnum
+
+from template_ipsec import TemplateIpsec
+from util import ppc, ppp
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ipsec import (
+    VppIpsecSA,
+    VppIpsecSpd,
+    VppIpsecSpdEntry,
+    VppIpsecSpdItfBinding,
+)
 
 
 class IPSecNATTestCase(TemplateIpsec):

@@ -1,9 +1,12 @@
 import gc
 import pprint
+
 import vpp_papi
-from vpp_papi_provider import VppPapiProvider
+
 import objgraph
 from pympler import tracker
+from vpp_papi_provider import VppPapiProvider
+
 tr = tracker.SummaryTracker()
 
 """
