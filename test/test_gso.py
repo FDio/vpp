@@ -9,20 +9,30 @@
 # - Verify that sending Jumbo frame with GSO enabled only on ingress interface
 #
 import unittest
+from socket import AF_INET, AF_INET6, inet_pton
 
-from scapy.packet import Raw
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
-from scapy.layers.inet import TCP, ICMP
+from scapy.data import ETH_P_ARP, ETH_P_IP, ETH_P_IPV6
+from scapy.layers.inet import ICMP, TCP
+from scapy.layers.inet6 import (
+    IP,
+    UDP,
+    Ether,
+    ICMPv6PacketTooBig,
+    IPv6,
+)
 from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
+from util import reassemble4
 from vpp_interface import VppInterface
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
-from socket import AF_INET, AF_INET6, inet_pton
-from util import reassemble4
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppRoutePath,
+)
+from vpp_object import VppObject
 
 
 """ Test_gso is a subclass of VPPTestCase classes.

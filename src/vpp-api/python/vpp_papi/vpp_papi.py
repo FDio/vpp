@@ -14,21 +14,28 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
+
+import atexit
 import ctypes
-import sys
-import multiprocessing as mp
-import os
-import logging
+import fnmatch
 import functools
 import json
+import logging
+import multiprocessing as mp
+import os
+import sys
 import threading
-import fnmatch
 import weakref
-import atexit
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
-from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
+
+from .vpp_serializer import (
+    VPPEnumType,
+    VPPMessage,
+    VPPType,
+    VPPTypeAlias,
+    VPPUnionType,
+    vpp_get_type,
+)
 
 if sys.version[0] == '2':
     import Queue as queue

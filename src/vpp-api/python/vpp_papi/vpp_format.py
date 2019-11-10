@@ -13,9 +13,10 @@
 # limitations under the License.
 #
 import datetime
-from socket import inet_pton, AF_INET6, AF_INET
-import socket
 import ipaddress
+import socket
+from socket import AF_INET, AF_INET6, inet_pton
+
 from . import macaddress
 
 try:

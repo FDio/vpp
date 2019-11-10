@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
+
+import os
 from multiprocessing import Pipe
 from sys import exit
-import os
-from framework import VppDiedError, VppTestCase, KeepAliveReporter
+
+from framework import (
+    KeepAliveReporter,
+    VppDiedError,
+    VppTestCase,
+)
 
 
 class SanityTestCase(VppTestCase):

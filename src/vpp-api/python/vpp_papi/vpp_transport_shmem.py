@@ -3,8 +3,8 @@
 # One for socket and one for shared memory.
 #
 
-from cffi import FFI
 import cffi
+from cffi import FFI
 
 ffi = FFI()
 ffi.cdef("""

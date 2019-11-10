@@ -4,11 +4,11 @@
   object abstractions for representing IP routes in VPP
 """
 
-from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, INVALID_INDEX, VppIpAddressUnion, \
     VppIpMPrefix
 from ipaddress import ip_address, IPv4Network, IPv6Network
+
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff

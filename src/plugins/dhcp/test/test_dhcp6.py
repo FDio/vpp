@@ -1,18 +1,32 @@
+import os
 from socket import AF_INET6
 
-from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
-    DHCP6OptStatusCode, DHCP6OptPref, DHCP6OptIA_PD, DHCP6OptIAPrefix, \
-    DHCP6OptServerId, DHCP6_Solicit, DHCP6_Reply, DHCP6_Request, DHCP6_Renew, \
-    DHCP6_Rebind, DUID_LL, DHCP6_Release, DHCP6OptElapsedTime, DHCP6OptIA_NA, \
-    DHCP6OptIAAddress
-from scapy.layers.inet6 import IPv6, Ether, UDP
-from scapy.utils6 import in6_mactoifaceid
+from scapy.layers.dhcp6 import (
+    DUID_LL,
+    DHCP6_Advertise,
+    DHCP6_Rebind,
+    DHCP6_Release,
+    DHCP6_Renew,
+    DHCP6_Reply,
+    DHCP6_Request,
+    DHCP6_Solicit,
+    DHCP6OptClientId,
+    DHCP6OptElapsedTime,
+    DHCP6OptIA_NA,
+    DHCP6OptIA_PD,
+    DHCP6OptIAAddress,
+    DHCP6OptIAPrefix,
+    DHCP6OptPref,
+    DHCP6OptServerId,
+    DHCP6OptStatusCode,
+)
+from scapy.layers.inet6 import UDP, Ether, IPv6
 from scapy.utils import inet_ntop, inet_pton
-
-from framework import VppTestCase
+from scapy.utils6 import in6_mactoifaceid
 from vpp_papi import VppEnum
+
 import util
-import os
+from framework import VppTestCase
 
 
 def ip6_normalize(ip6):

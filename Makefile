@@ -69,6 +69,7 @@ DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml yamllint
+DEB_DEPENDS += python3-isort
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -90,7 +91,7 @@ RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
 RPM_DEPENDS += yamllint
-
+RPM_DEPENDS += python36-isort
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
@@ -629,6 +630,9 @@ cscope: cscope.files
 checkstyle:
 	@build-root/scripts/checkstyle.sh
 	yamllint $(WS_ROOT)/src
+	isort $(WS_ROOT)/test/ -ac -c -df -m 3 -rc -sg .tox -sg build -sg run -sg site-packages -sg vpp_papi -tc --thirdparty vpp_papi -l 60
+	isort $(WS_ROOT)/src/ -ac -c -df -m 3 -rc -sg .tox -sg build -sg run -sg site-packages -sg vpp_papi -tc --thirdparty vpp_papi -l 60
+	isort $(WS_ROOT)/src/vpp-api/python/vpp_papi -ac -c -df -m 3 -rc -tc -l 60
 
 .PHONY: checkstyle-commit
 checkstyle-commit:
@@ -643,6 +647,11 @@ checkstyle-all: checkstyle-commit checkstyle checkstyle-test
 .PHONY: fixstyle
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
+
+fiximports:
+	isort $(WS_ROOT)/test/ -ac -m 3  -rc -sg .tox -sg build -sg run -sg site-packages -tc --thirdparty vpp_papi -l 60
+	isort $(WS_ROOT)/src/ -ac -m 3  -rc -sg .tox -sg build -sg run -sg site-packages -tc --thirdparty vpp_papi -l 60
+	isort $(WS_ROOT)/src/vpp-api/python/vpp_papi -ac -m 3 -rc -tc -l 60
 
 # necessary because Bug 1696324 - Update to python3.6 breaks PyYAML dependencies
 # Status:	CLOSED CANTFIX

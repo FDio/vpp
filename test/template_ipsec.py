@@ -1,15 +1,20 @@
-import unittest
 import socket
 import struct
+import unittest
 
-from scapy.layers.inet import IP, ICMP, TCP, UDP
-from scapy.layers.ipsec import SecurityAssociation, ESP
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import ICMPv6EchoRequest, IPv6
+from scapy.layers.ipsec import ESP, SecurityAssociation
 from scapy.layers.l2 import Ether, Raw
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
+from vpp_papi import VppEnum
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp, reassemble4, fragment_rfc791, fragment_rfc8200
-from vpp_papi import VppEnum
+from util import (
+    fragment_rfc791,
+    fragment_rfc8200,
+    ppp,
+    reassemble4,
+)
 
 
 class IPsecIPv4Params(object):

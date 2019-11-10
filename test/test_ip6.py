@@ -2,33 +2,66 @@
 
 import socket
 import unittest
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 
-from parameterized import parameterized
 import scapy.compat
 import scapy.layers.inet6 as inet6
+from parameterized import parameterized
 from scapy.contrib.mpls import MPLS
-from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
-    ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
-    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.layers.inet6 import (
+    ICMPv6DestUnreach,
+    ICMPv6EchoReply,
+    ICMPv6EchoRequest,
+    ICMPv6ND_NA,
+    ICMPv6ND_NS,
+    ICMPv6ND_RA,
+    ICMPv6ND_RS,
+    ICMPv6NDOptDstLLAddr,
+    ICMPv6NDOptMTU,
+    ICMPv6NDOptPrefixInfo,
+    ICMPv6NDOptSrcLLAddr,
+    ICMPv6TimeExceeded,
+    IPv6,
+    IPv6ExtHdrHopByHop,
+    icmp6types,
+)
+from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Raw
-from scapy.utils import inet_pton, inet_ntop
-from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid
+from scapy.utils import inet_ntop, inet_pton
+from scapy.utils6 import (
+    in6_getnsma,
+    in6_getnsmac,
+    in6_islladdr,
+    in6_mactoifaceid,
+    in6_ptop,
+)
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp, ip6_normalize, mk_ll_addr
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, \
-    VppIpInterfaceAddress
-from vpp_neighbor import find_nbr, VppNeighbor
+
+from util import ip6_normalize, mk_ll_addr, ppp
+from vpp_ip import DpoProto, VppIpAddress
+from vpp_ip_route import (
+    FibPathType,
+    MRouteEntryFlags,
+    MRouteItfFlags,
+    VppIpInterfaceAddress,
+    VppIpMRoute,
+    VppIpRoute,
+    VppIpTable,
+    VppMplsIpBind,
+    VppMplsRoute,
+    VppMplsTable,
+    VppMRoutePath,
+    VppRoutePath,
+    find_route,
+)
+from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_pg_interface import is_ipv6_misc
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint
-from ipaddress import IPv6Network, IPv6Address
+from vpp_sub_interface import (
+    VppDot1QSubint,
+    VppSubInterface,
+)
 
 AF_INET6 = socket.AF_INET6
 

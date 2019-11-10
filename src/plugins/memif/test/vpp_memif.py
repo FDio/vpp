@@ -2,9 +2,10 @@ import socket
 from ipaddress import IPv4Network
 
 import six
-
-from vpp_object import VppObject
 from vpp_papi import VppEnum
+
+from vpp_ip import VppIpPrefix
+from vpp_object import VppObject
 
 
 def get_if_dump(dump, sw_if_index):

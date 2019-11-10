@@ -2,17 +2,31 @@ import socket
 import unittest
 
 from scapy.layers.ipsec import AH
+from vpp_papi import VppEnum
 
 from framework import VppTestRunner
-from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
-    config_tun_params, config_tra_params, IPsecIPv4Params, IPsecIPv6Params, \
-    IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6
-from template_ipsec import IpsecTcpTests
-from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
-        VppIpsecSpdItfBinding
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from template_ipsec import (
+    IPsecIPv4Params,
+    IPsecIPv6Params,
+    IpsecTcpTests,
+    IpsecTra4,
+    IpsecTra6,
+    IpsecTra46Tests,
+    IpsecTun4,
+    IpsecTun6,
+    IpsecTun46Tests,
+    TemplateIpsec,
+    config_tra_params,
+    config_tun_params,
+)
 from vpp_ip import DpoProto
-from vpp_papi import VppEnum
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ipsec import (
+    VppIpsecSA,
+    VppIpsecSpd,
+    VppIpsecSpdEntry,
+    VppIpsecSpdItfBinding,
+)
 
 
 class ConfigIpsecAH(TemplateIpsec):

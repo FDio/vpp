@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
-from cffi import FFI
+
 import time
+
+from cffi import FFI
 
 ffi = FFI()
 ffi.cdef("""
