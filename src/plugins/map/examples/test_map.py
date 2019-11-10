@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 
-import time,argparse,sys,cmd, unittest
+import argparse
+import cmd
+import sys
+#
+#
+#
+import threading
+import time
+import timeit
+import unittest
 from ipaddress import *
+
+from vpp_papi import *
 
 parser = argparse.ArgumentParser(description='VPP MAP test')
 parser.add_argument('-i', nargs='*', action="store", dest="inputdir")
@@ -9,7 +20,6 @@ args = parser.parse_args()
 
 for dir in args.inputdir:
     sys.path.append(dir)
-from vpp_papi import *
 
 #
 # 1:1 Shared IPv4 address, shared BR (16) VPP CLI
@@ -71,10 +81,6 @@ class TestMAP(unittest.TestCase):
 # 
 
 
-#
-#
-#
-import threading
 class RXThread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -101,7 +107,6 @@ rxthread = RXThread()
 rxthread.setDaemon(True)
         
 print "Connect", connect_to_vpe("client124")
-import timeit
 rxthread.start()
 print "After thread started"
 
@@ -137,5 +142,3 @@ suite = unittest.TestLoader().loadTestsFromTestCase(TestMAP)
 unittest.TextTestRunner(verbosity=2).run(suite)
 
 disconnect_from_vpe()
-
-

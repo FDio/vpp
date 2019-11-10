@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 
+import os
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
-import os
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from vpp_ip_route import (
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 
 class TestMpcap(VppTestCase):

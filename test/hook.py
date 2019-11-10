@@ -1,12 +1,13 @@
+import ipaddress
 import os
 import sys
 import traceback
-import ipaddress
-from subprocess import check_output, CalledProcessError
+from subprocess import CalledProcessError, check_output
 
 import scapy.compat
+
 import framework
-from log import RED, single_line_delim, double_line_delim
+from log import RED, double_line_delim, single_line_delim
 from util import check_core_path, get_core_path
 
 

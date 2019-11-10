@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from framework import VppTestCase
-from ipaddress import IPv4Address
-from ipaddress import IPv6Address
-from scapy.contrib.gtp import *
+from ipaddress import IPv4Address, IPv6Address
+
 from scapy.all import *
+from scapy.contrib.gtp import *
+
+from framework import VppTestCase
 
 
 class TestSRv6EndMGTP4E(VppTestCase):

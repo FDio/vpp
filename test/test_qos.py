@@ -2,20 +2,31 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppDot1QSubint
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsLabel, VppMplsTable, FibPathProto
-
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.mpls import MPLS
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
 from vpp_papi import VppEnum
-from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark, VppQosStore
+
+from framework import VppTestCase, VppTestRunner
+from vpp_ip import DpoProto
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppMplsLabel,
+    VppMplsRoute,
+    VppMplsTable,
+    VppRoutePath,
+)
+from vpp_qos import (
+    VppQosEgressMap,
+    VppQosMark,
+    VppQosRecord,
+    VppQosStore,
+)
+from vpp_sub_interface import VppDot1QSubint
 
 NUM_PKTS = 67
 

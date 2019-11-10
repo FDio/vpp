@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import unittest
-import importlib
 import argparse
+import importlib
+import os
+import sys
+import unittest
 
 
 def discover_tests(directory, callback, ignore_path):

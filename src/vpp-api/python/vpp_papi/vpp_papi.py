@@ -14,22 +14,29 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
+
+import atexit
 import ctypes
-import sys
-import multiprocessing as mp
-import os
-import logging
+import fnmatch
 import functools
 import json
+import logging
+import multiprocessing as mp
+import os
+import sys
 import threading
-import fnmatch
-import weakref
-import atexit
 import time
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
-from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
+import weakref
+
+from .vpp_serializer import (
+    VPPEnumType,
+    VPPMessage,
+    VPPType,
+    VPPTypeAlias,
+    VPPUnionType,
+    vpp_get_type,
+)
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -112,6 +119,7 @@ class VPPRuntimeError(RuntimeError):
 
 class VPPValueError(ValueError):
     pass
+
 
 class VPPApiJSONFiles(object):
     @classmethod
@@ -295,6 +303,7 @@ class VPPApiJSONFiles(object):
                 self.logger.error('Not implemented error for {}'.format(m[0]))
         return messages, services
 
+
 class VPPApiClient(object):
     """VPP interface.
 
@@ -313,7 +322,6 @@ class VPPApiClient(object):
     VPPValueError = VPPValueError
     VPPNotImplementedError = VPPNotImplementedError
     VPPIOError = VPPIOError
-
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=None, loglevel=None,
@@ -391,7 +399,6 @@ class VPPApiClient(object):
 
     def get_function(self, name):
         return getattr(self._api, name)
-
 
     class ContextId(object):
         """Multiprocessing-safe provider of unique context IDs."""

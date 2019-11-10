@@ -1,5 +1,5 @@
-import unittest
 import os
+import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_devices import VppTAPInterface

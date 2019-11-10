@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 
-import unittest
 import random
 import socket
-from ipaddress import IPv4Address, IPv6Address, AddressValueError
+import unittest
+from ipaddress import (
+    AddressValueError,
+    IPv4Address,
+    IPv6Address,
+)
+
+from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
 from vpp_ip_route import VppIpRoute, VppRoutePath
 
 try:

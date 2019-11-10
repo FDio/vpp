@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import logging
+import os
+import sys
 
 """ @var formatting delimiter consisting of '=' characters """
 double_line_delim = '=' * 78

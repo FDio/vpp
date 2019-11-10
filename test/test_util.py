@@ -2,8 +2,10 @@
 """Test framework utility functions tests"""
 
 import unittest
+
+from vpp_papi import mac_ntop, mac_pton
+
 from framework import VppTestRunner
-from vpp_papi import mac_pton, mac_ntop
 
 
 class TestUtil (unittest.TestCase):

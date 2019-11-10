@@ -9,13 +9,25 @@
 # - Different types of interfaces?
 #
 import unittest
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
-from scapy.layers.inet import ICMP
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton
+
+from scapy.layers.inet import ICMP
+from scapy.layers.inet6 import (
+    IP,
+    UDP,
+    Ether,
+    ICMPv6PacketTooBig,
+    IPv6,
+)
+
+from framework import VppTestCase, VppTestRunner
 from util import reassemble4
+from vpp_ip import DpoProto
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppRoutePath,
+)
 
 
 """ Test_mtu is a subclass of VPPTestCase classes.

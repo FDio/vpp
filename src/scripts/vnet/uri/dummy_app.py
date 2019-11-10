@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import argparse
 import socket
 import sys
 import time
-import argparse
 
 # action can be reflect or drop 
 action = "drop"

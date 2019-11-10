@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import ipaddress
-import yaml
-from pprint import pprint
-import re
-from jsonschema import validate
 import argparse
-from subprocess import run, PIPE
+import ipaddress
+import os
+import re
+import sys
+from pprint import pprint
+from subprocess import PIPE, run
+
+import yaml
+
+from jsonschema import validate
 
 # VPP feature JSON schema
 schema = {

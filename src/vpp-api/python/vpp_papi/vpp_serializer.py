@@ -18,6 +18,8 @@ import socket
 import struct
 import sys
 
+from . import vpp_format  # noqa: E402
+
 if sys.version_info <= (3, 4):
     from aenum import IntEnum  # noqa: F401
 else:
@@ -29,7 +31,6 @@ else:
 
     from enum import IntFlag  # noqa: F401
 
-from . import vpp_format  # noqa: E402
 
 #
 # Set log-level in application by doing e.g.:

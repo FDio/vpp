@@ -7,29 +7,45 @@ import binascii
 import hashlib
 import time
 import unittest
-from random import randint, shuffle, getrandbits
+from random import getrandbits, randint, shuffle
 from socket import AF_INET, AF_INET6, inet_ntop
 from struct import pack, unpack
 
-from six import moves
 import scapy.compat
-from scapy.layers.inet import UDP, IP
+from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
+from scapy.layers.l2 import GRE, Ether
 from scapy.packet import Raw
+from six import moves
+from vpp_papi import VppEnum
 
-from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
-    BFDDiagCode, BFDState, BFD_vpp_echo
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from bfd import (
+    BFD,
+    BFD_vpp_echo,
+    BFDAuthType,
+    BFDDiagCode,
+    BFDState,
+    VppBFDAuthKey,
+    VppBFDUDPSession,
+)
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
 from util import ppp
+from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import UnexpectedApiReturnValueError, \
-    CliFailedCommandError
-from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
-from vpp_gre_interface import VppGreInterface
-from vpp_papi import VppEnum
+from vpp_papi_provider import (
+    CliFailedCommandError,
+    UnexpectedApiReturnValueError,
+)
+from vpp_pg_interface import (
+    CaptureTimeoutError,
+    is_ipv6_misc,
+)
 
 USEC_IN_SEC = 1000000
 

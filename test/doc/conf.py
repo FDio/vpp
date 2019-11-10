@@ -18,6 +18,7 @@
 #
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('../../build-root/build-test/src'))
 
 # -- General configuration ------------------------------------------------
