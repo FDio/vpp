@@ -19,6 +19,7 @@
 #include <dhcp/dhcp6_pd_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <float.h>
 #include <math.h>
 #include <string.h>
@@ -412,11 +413,15 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 
       if (address_prefix_present)
 	{
-	  prefix_info->preferred_lt = preferred_time;
-	  prefix_info->valid_lt = valid_time;
-	  prefix_info->due_time = current_time + valid_time;
-	  if (prefix_info->due_time > rm->max_valid_due_time)
-	    rm->max_valid_due_time = prefix_info->due_time;
+	  /*
+	   * We found the prefix. Move along.
+	   * Don't touch the prefix timers!
+	   * If we happen to receive a renew reply just before we
+	   * would have sent a solicit to renew the prefix delegation,
+	   * we forget to renew the delegation. Worse luck, we start
+	   * sending router advertisements with a valid time of zero,
+	   * and the wheels fall off...
+	   */
 	  continue;
 	}
 
@@ -685,7 +690,16 @@ cp_ip6_address_add_del_now (ip6_address_info_t * address_info, u8 is_add)
 	    clib_warning ("Failed adding IPv6 address: %U",
 			  format_clib_error, error);
 	  else
-	    address_info->configured_in_data_plane = 1;
+	    {
+	      if (CLIB_DEBUG > 0)
+		clib_warning ("Add address %U on %U",
+			      format_ip6_address_and_length,
+			      &addr, address_info->prefix_length,
+			      format_vnet_sw_if_index_name,
+			      vnet_get_main (), address_info->sw_if_index);
+
+	      address_info->configured_in_data_plane = 1;
+	    }
 	}
       else
 	{
@@ -700,7 +714,17 @@ cp_ip6_address_add_del_now (ip6_address_info_t * address_info, u8 is_add)
 		clib_warning ("Failed adding IPv6 address: %U",
 			      format_clib_error, error);
 	      else
-		address_info->configured_in_data_plane = 1;
+		{
+		  if (CLIB_DEBUG > 0)
+		    clib_warning ("Add address %U on %U",
+				  format_ip6_address_and_length,
+				  &addr, address_info->prefix_length,
+				  format_vnet_sw_if_index_name,
+				  vnet_get_main (),
+				  address_info->sw_if_index);
+
+		  address_info->configured_in_data_plane = 1;
+		}
 	    }
 	}
     }
@@ -760,6 +784,54 @@ cp_ip6_address_find_new_active_prefix (u32 prefix_group_index,
 }
 
 static void
+cp_ip6_advertise_prefix (prefix_info_t * prefix_info,
+			 ip6_address_info_t * address_info, int enable)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ip6_main_t *im = &ip6_main;
+  u32 prefix_index;
+  ip6_address_t addr;
+  int rv;
+
+  prefix_index =
+    active_prefix_index_by_prefix_group_index_get
+    (address_info->prefix_group_index);
+
+  if (cp_ip6_construct_address (address_info, prefix_index, &addr) != 0)
+    {
+      clib_warning ("address construction FAIL");
+      return;
+    }
+
+  /* The RA code assumes that host bits are zero, so clear them */
+  addr.as_u64[0] &= im->fib_masks[address_info->prefix_length].as_u64[0];
+  addr.as_u64[1] &= im->fib_masks[address_info->prefix_length].as_u64[1];
+
+  rv = ip6_neighbor_ra_prefix (vm, address_info->sw_if_index,
+			       &addr, address_info->prefix_length,
+			       0 /* use_default */ ,
+			       prefix_info->valid_lt,
+			       prefix_info->preferred_lt,
+			       0 /* no_advertise */ ,
+			       0 /* off_link */ ,
+			       0 /* no_autoconfig */ ,
+			       0 /* no_onlink */ ,
+			       enable == 0 /* is_no */ );
+  if (rv != 0)
+    {
+      clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
+      return;
+    }
+
+  if (CLIB_DEBUG > 0)
+    clib_warning ("Advertise prefix %U valid lt %u preferred lt %u",
+		  format_ip6_address_and_length, &addr,
+		  address_info->prefix_length, prefix_info->valid_lt,
+		  prefix_info->preferred_lt);
+}
+
+
+static void
 cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add)
 {
   ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;
@@ -784,7 +856,13 @@ cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add)
 	    {
 	      address_info = &apm->addresses[i];
 	      if (address_info->prefix_group_index == prefix_group_index)
-		cp_ip6_address_add_del_now (address_info, 1 /* add */ );
+		{
+		  /* Add the prefix to the interface */
+		  cp_ip6_address_add_del_now (address_info, 1 /* add */ );
+		  /* And advertise the prefix on the interface */
+		  cp_ip6_advertise_prefix (prefix, address_info,
+					   1 /* enable */ );
+		}
 	    }
 	}
     }
@@ -797,7 +875,11 @@ cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add)
 	    {
 	      address_info = &apm->addresses[i];
 	      if (address_info->prefix_group_index == prefix_group_index)
-		cp_ip6_address_add_del_now (address_info, 0 /* del */ );
+		{
+		  cp_ip6_advertise_prefix (prefix, address_info,
+					   0 /* enable */ );
+		  cp_ip6_address_add_del_now (address_info, 0 /* del */ );
+		}
 	    }
 	  active_prefix_index_by_prefix_group_index_set
 	    (prefix_group_index, ~0);
@@ -812,7 +894,11 @@ cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add)
 		{
 		  address_info = &apm->addresses[i];
 		  if (address_info->prefix_group_index == prefix_group_index)
-		    cp_ip6_address_add_del_now (address_info, 1 /* add */ );
+		    {
+		      cp_ip6_address_add_del_now (address_info, 1 /* add */ );
+		      cp_ip6_advertise_prefix (prefix, address_info,
+					       1 /* enable */ );
+		    }
 		}
 	    }
 	}

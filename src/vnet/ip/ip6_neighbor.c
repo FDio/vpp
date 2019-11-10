@@ -807,7 +807,10 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 	    return -2;
 	}
       else
-	pool_get (nm->neighbor_pool, n);
+	{
+	  pool_get (nm->neighbor_pool, n);
+	  memset (n, 0, sizeof (*n));
+	}
 
       mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
 		 /* old value */ 0);
@@ -1784,6 +1787,14 @@ icmp6_router_solicitation (vlib_main_t * vm,
                               }
                             h.unused  = 0;
 
+                            clib_warning ("Prefix %U valid %u preferred %u",
+                                          format_ip6_address, &pr_info->prefix,
+                                          ntohl(h.valid_time),
+                                          ntohl(h.preferred_time));
+
+                            if (h.valid_time == 0)
+                              clib_warning ("WARNING: valid_time 0!!!");
+
                             clib_memcpy(&h.dst_address, &pr_info->prefix,  sizeof(ip6_address_t));
 
                             payload_length += sizeof( icmp6_neighbor_discovery_prefix_information_option_t);
@@ -2533,6 +2544,7 @@ ip6_neighbor_add_mld_prefix (ip6_radv_t * radv_info, ip6_address_t * addr)
       /* add */
       u32 mi;
       pool_get (radv_info->mldp_group_pool, mcast_group_info);
+      memset (mcast_group_info, 0, sizeof (*mcast_group_info));
 
       mi = mcast_group_info - radv_info->mldp_group_pool;
       mhash_set (&radv_info->address_to_mldp_index, addr, mi,	/* old_value */
@@ -2651,6 +2663,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
       if (is_add)
 	{
 	  pool_get (nm->if_radv_pool, a);
+	  memset (a, 0, sizeof (*a));
 
 	  ri = a - nm->if_radv_pool;
 	  nm->if_radv_pool_index_by_sw_if_index[sw_if_index] = ri;
@@ -3552,6 +3565,7 @@ ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 	  /* add */
 	  u32 pi;
 	  pool_get (radv_info->adv_prefixes_pool, prefix);
+	  memset (prefix, 0, sizeof (*prefix));
 	  pi = prefix - radv_info->adv_prefixes_pool;
 	  mhash_set (&radv_info->address_to_prefix_index, prefix_addr, pi,
 		     /* old_value */ 0);
@@ -4658,6 +4672,7 @@ vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
   pending_resolution_t *pr;
 
   pool_get (nm->pending_resolutions, pr);
+  memset (pr, 0, sizeof (*pr));
 
   pr->next_index = ~0;
   pr->node_index = node_index;
@@ -4707,6 +4722,7 @@ vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
 	return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
       pool_get (nm->mac_changes, mc);
+      memset (mc, 0, sizeof (*mc));
       /* *INDENT-OFF* */
       *mc = (pending_resolution_t)
       {
