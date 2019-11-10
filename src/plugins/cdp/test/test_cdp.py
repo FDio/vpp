@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """ CDP tests """
 
-from scapy.packet import Packet
-from scapy.all import ShortField, StrField
-from scapy.layers.l2 import Dot3, LLC, SNAP
-from scapy.contrib.cdp import CDPMsgDeviceID, CDPMsgSoftwareVersion, \
-        CDPMsgPlatform, CDPMsgPortID, CDPv2_HDR
-
-from framework import VppTestCase
-from scapy.all import raw
-from re import compile
-from time import sleep
-from util import ppp
 import platform
 import sys
 import unittest
+from re import compile
+from time import sleep
+
+from scapy.all import ShortField, StrField, raw
+from scapy.contrib.cdp import (
+    CDPMsgDeviceID,
+    CDPMsgPlatform,
+    CDPMsgPortID,
+    CDPMsgSoftwareVersion,
+    CDPv2_HDR,
+)
+from scapy.layers.l2 import LLC, SNAP, Dot3
+from scapy.packet import Packet
+
+from framework import VppTestCase
+from util import ppp
 
 
 """ TestCDP is a subclass of  VPPTestCase classes.

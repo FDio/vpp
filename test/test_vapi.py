@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """ VAPI test """
 
-import unittest
 import os
 import signal
-from framework import VppTestCase, running_on_centos, VppTestRunner, Worker
+import unittest
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    Worker,
+    running_on_centos,
+)
 
 
 class VAPITestCase(VppTestCase):

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4_range, ip4_range
 import unittest
+
+from scapy.layers.geneve import GENEVE
+from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.utils import atol
+
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
-
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
-from scapy.layers.geneve import GENEVE
-from scapy.utils import atol
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from util import ip4_range
 from vpp_ip import INVALID_INDEX
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestGeneve(BridgeDomain, VppTestCase):

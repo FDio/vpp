@@ -3,12 +3,13 @@
 import socket
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from vpp_bond_interface import VppBondInterface
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 from vpp_papi import MACAddress
+
+from framework import VppTestCase, VppTestRunner
+from vpp_bond_interface import VppBondInterface
 from vpp_ip import VppIpPrefix
 
 

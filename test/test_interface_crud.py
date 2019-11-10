@@ -13,7 +13,7 @@
 
 import unittest
 
-from scapy.layers.inet import IP, ICMP
+from scapy.layers.inet import ICMP, IP
 from scapy.layers.l2 import Ether
 
 from framework import VppTestCase, VppTestRunner

@@ -3,15 +3,15 @@
 import socket
 import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.ppp import PPPoE, PPPoED, PPP
 from scapy.layers.inet import IP
+from scapy.layers.l2 import Ether
+from scapy.layers.ppp import PPP, PPPoE, PPPoED
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
+from util import ppc, ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_pppoe_interface import VppPppoeInterface
-from util import ppp, ppc
 
 
 class TestPPPoE(VppTestCase):

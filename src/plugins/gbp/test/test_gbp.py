@@ -1,32 +1,54 @@
 #!/usr/bin/env python3
 
-from socket import AF_INET, AF_INET6
 import unittest
+from socket import AF_INET, AF_INET6
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP, Dot1Q
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
-    ICMPv6ND_NA, ICMPv6EchoRequest
-from scapy.utils6 import in6_getnsma, in6_getnsmac
+from scapy.data import ETH_P_ARP, ETH_P_IP, ETH_P_IPV6
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import (
+    ICMPv6EchoRequest,
+    ICMPv6ND_NA,
+    ICMPv6ND_NS,
+    ICMPv6NDOptSrcLLAddr,
+    IPv6,
+)
+from scapy.layers.l2 import ARP, Dot1Q, Ether
 from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
-from scapy.utils import inet_pton, inet_ntop
+from scapy.packet import Raw
+from scapy.utils import inet_ntop, inet_pton
+from scapy.utils6 import in6_getnsma, in6_getnsmac
+from vpp_papi import MACAddress, VppEnum
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
 from vpp_interface import VppInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, FibPathProto, \
-    FibPathType
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
-    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_ip import VppIpAddress, VppIpPrefix, DpoProto
-from vpp_papi import VppEnum, MACAddress
-from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
-    VppVxlanGbpTunnel
+from vpp_ip import DpoProto, VppIpAddress, VppIpPrefix
+from vpp_ip_route import (
+    FibPathProto,
+    FibPathType,
+    VppIpInterfaceAddress,
+    VppIpInterfaceBind,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+    find_route,
+)
+from vpp_l2 import (
+    VppBridgeDomain,
+    VppBridgeDomainArpEntry,
+    VppBridgeDomainPort,
+    VppL2FibEntry,
+    VppL2Vtr,
+    find_bridge_domain_port,
+)
 from vpp_neighbor import VppNeighbor
+from vpp_object import VppObject
+from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
+from vpp_vxlan_gbp_tunnel import (
+    INDEX_INVALID,
+    VppVxlanGbpTunnel,
+    find_vxlan_gbp_tunnel,
+)
+
 try:
     text_type = unicode
 except NameError:

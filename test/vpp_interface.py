@@ -1,14 +1,14 @@
+import abc
 import binascii
 import socket
-import abc
+from ipaddress import IPv4Network
 
 import six
 from six import moves
+from vpp_papi import VppEnum, mac_ntop
 
 from util import Host, mk_ll_addr
-from vpp_papi import mac_ntop, VppEnum
 from vpp_ip import VppIpAddress, VppIpPrefix
-from ipaddress import IPv4Network
 
 try:
     text_type = unicode

@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 
-import unittest
 import socket
+import unittest
+
+from scapy.contrib.mpls import MPLS
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import ICMPv6TimeExceeded, IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppIpTable, VppMplsTable, VppMplsLabel
+from vpp_ip_route import (
+    VppIpRoute,
+    VppIpTable,
+    VppMplsLabel,
+    VppMplsRoute,
+    VppMplsTable,
+    VppRoutePath,
+)
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
-from scapy.contrib.mpls import MPLS
 
 
 def verify_filter(capture, sent):

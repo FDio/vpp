@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
+
 from vppapigen import VPPAPI, Option, ParseError, Union
 
 # TODO

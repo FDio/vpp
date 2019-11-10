@@ -14,8 +14,8 @@
 # limitations under the License.
 
 
-import ipaddress
 import argparse
+import ipaddress
 import sys
 
 # map add domain ip4-pfx <pfx> ip6-pfx ::/0 ip6-src <ip6-src> ea-bits-len 0 psid-offset 6 psid-len 6
@@ -103,5 +103,3 @@ def ip4():
 
 
 globals()[args.mapmode]()
-
-

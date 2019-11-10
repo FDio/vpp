@@ -6,22 +6,42 @@ import unittest
 
 import scapy.compat
 from scapy.contrib.mpls import MPLS
-from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
-from scapy.layers.l2 import Ether, Dot1Q, ARP
+from scapy.layers.inet import (
+    ICMP,
+    IP,
+    TCP,
+    UDP,
+    icmpcodes,
+    icmptypes,
+)
+from scapy.layers.l2 import ARP, Dot1Q, Ether
 from scapy.packet import Raw
 from six import moves
+from vpp_papi import VppEnum
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
-from vpp_ip import VppIpPrefix
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable, VppIpTable, FibPathType, find_route, \
-    VppIpInterfaceAddress
-from vpp_ip import VppIpAddress
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_papi import VppEnum
+from vpp_ip import VppIpAddress, VppIpPrefix
+from vpp_ip_route import (
+    FibPathType,
+    MRouteEntryFlags,
+    MRouteItfFlags,
+    VppIpInterfaceAddress,
+    VppIpMRoute,
+    VppIpRoute,
+    VppIpTable,
+    VppMplsIpBind,
+    VppMplsTable,
+    VppMRoutePath,
+    VppRoutePath,
+    find_route,
+)
 from vpp_neighbor import VppNeighbor
+from vpp_sub_interface import (
+    VppDot1ADSubint,
+    VppDot1QSubint,
+    VppSubInterface,
+)
 
 NUM_PKTS = 67
 

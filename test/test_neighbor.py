@@ -3,20 +3,24 @@
 import unittest
 from socket import AF_INET, AF_INET6, inet_pton
 
-from framework import VppTestCase, VppTestRunner
-from vpp_neighbor import VppNeighbor, find_nbr
-from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
-    VppIpTable, DpoProto, FibPathType
-from vpp_papi import VppEnum
-
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP, Dot1Q
+from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.mpls import MPLS
-from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import ARP, Dot1Q, Ether
+from scapy.packet import Raw
+from vpp_papi import VppEnum
 
+from framework import VppTestCase, VppTestRunner
+from vpp_ip_route import (
+    DpoProto,
+    FibPathType,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+    find_route,
+)
+from vpp_neighbor import VppNeighbor, find_nbr
 
 NUM_PKTS = 67
 

@@ -1,8 +1,9 @@
 """ debug utilities """
 
 import os
-import pexpect
 import sys
+
+import pexpect
 
 gdb_path = '/usr/bin/gdb'
 

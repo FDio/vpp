@@ -1,23 +1,36 @@
 #!/usr/bin/env python3
 
-import unittest
 import socket
-
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto, INVALID_INDEX
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
-    VppMplsLabel, MplsLspMode, find_mpls_route, \
-    FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
-from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+import unittest
 
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
 from scapy.contrib.mpls import MPLS
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import ICMPv6TimeExceeded, IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
+from vpp_ip import INVALID_INDEX, DpoProto
+from vpp_ip_route import (
+    FibPathFlags,
+    FibPathProto,
+    FibPathType,
+    MplsLspMode,
+    MRouteEntryFlags,
+    MRouteItfFlags,
+    VppIpMRoute,
+    VppIpRoute,
+    VppIpTable,
+    VppMplsIpBind,
+    VppMplsLabel,
+    VppMplsRoute,
+    VppMplsTable,
+    VppMRoutePath,
+    VppRoutePath,
+    find_mpls_route,
+)
+from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 NUM_PKTS = 67
 

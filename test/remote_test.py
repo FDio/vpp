@@ -2,13 +2,15 @@
 
 import inspect
 import os
+import sys
 import unittest
-from framework import VppTestCase
-from multiprocessing import Process, Pipe
+from multiprocessing import Pipe, Process
 from pickle import dumps
+
 import six
 from six import moves
-import sys
+
+from framework import VppTestCase
 
 if sys.version_info < (3,):
     from aenum import IntEnum, IntFlag

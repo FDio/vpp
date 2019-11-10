@@ -1,6 +1,7 @@
 
-from vpp_object import VppObject
 import socket
+
+from vpp_object import VppObject
 
 
 class IGMP_MODE:

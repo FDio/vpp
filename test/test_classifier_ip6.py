@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import unittest
-import socket
 import binascii
+import socket
 import sys
+import unittest
+
+from scapy.layers.inet6 import TCP, UDP, IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet6 import IPv6, UDP, TCP
 from util import ppp
 
 

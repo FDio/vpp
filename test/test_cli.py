@@ -2,6 +2,7 @@
 """CLI functional tests"""
 
 import unittest
+
 from framework import VppTestCase, VppTestRunner
 
 
