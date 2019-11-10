@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
 from __future__ import print_function
+
 import binascii
 import random
-import socket
-import unittest
-import time
-import re
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+import socket
+from socket import inet_ntop
+import time
+import unittest
+
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from vpp_papi.macaddress import mac_ntop
+from vpp_papi import VppEnum
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from ipfix import IPFIX, Data, IPFIXDecoder, Set, Template
+from util import ppp
+from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
-from util import ppp
-from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_papi.macaddress import mac_ntop
-from socket import inet_ntop
-from vpp_papi import VppEnum
 
 
 class VppCFLOW(VppObject):

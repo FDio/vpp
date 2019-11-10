@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import unittest
 import time
+import unittest
+
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 

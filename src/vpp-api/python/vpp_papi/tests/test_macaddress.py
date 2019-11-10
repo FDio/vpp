@@ -1,4 +1,5 @@
 import unittest
+
 from vpp_papi import MACAddress
 
 

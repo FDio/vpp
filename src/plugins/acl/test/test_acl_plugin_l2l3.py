@@ -23,22 +23,27 @@
 
 """
 
+import time
 import unittest
-from socket import inet_pton, AF_INET, AF_INET6
-from random import choice, shuffle
 from pprint import pprint
+from random import choice, shuffle
+from socket import AF_INET, AF_INET6, inet_pton
 
 import scapy.compat
-from scapy.packet import Raw
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import (
+    ICMPv6EchoReply,
+    ICMPv6EchoRequest,
+    ICMPv6Unknown,
+    IPv6,
+    IPv6ExtHdrFragment,
+    IPv6ExtHdrRouting,
+)
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
-from scapy.layers.inet6 import IPv6ExtHdrFragment
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from vpp_l2 import L2_PORT_TYPE
-import time
 
 
 class TestACLpluginL2L3(VppTestCase):

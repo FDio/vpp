@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 import sys
-import logging
-from vapi_c_gen import CField, CEnum, CStruct, CSimpleType, CStructType,\
-    CMessage, json_to_c_header_name, CAlias
+
+from vapi_c_gen import (
+    CAlias,
+    CEnum,
+    CField,
+    CMessage,
+    CSimpleType,
+    CStruct,
+    CStructType,
+    json_to_c_header_name,
+)
 from vapi_json_parser import JsonParser
 
 

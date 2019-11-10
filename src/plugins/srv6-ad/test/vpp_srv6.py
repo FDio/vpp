@@ -4,8 +4,9 @@
   object abstractions for representing SRv6 localSIDs in VPP
 """
 
+from socket import AF_INET, AF_INET6, inet_ntop, inet_pton
+
 from vpp_object import VppObject
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 
 
 class SRv6LocalSIDBehaviors():

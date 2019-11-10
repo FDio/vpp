@@ -63,16 +63,26 @@
     - no packet received in case of pg-ip6 interfaces in different VRFs
 """
 
-import unittest
 import random
 import socket
+import unittest
 
-from scapy.packet import Raw
+from scapy.layers.inet6 import (
+    UDP,
+    ICMPv6ND_NS,
+    ICMPv6ND_RA,
+    IPv6,
+    IPv6ExtHdrHopByHop,
+    RouterAlert,
+)
 from scapy.layers.l2 import Ether
-from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
-    RouterAlert, IPv6ExtHdrHopByHop
-from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
+from scapy.packet import Raw
 from scapy.pton_ntop import inet_ntop
+from scapy.utils6 import (
+    in6_getAddrType,
+    in6_isllsnmaddr,
+    in6_ismaddr,
+)
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp

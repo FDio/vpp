@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-
 from vpp_vhost_interface import VppVhostInterface
 
 

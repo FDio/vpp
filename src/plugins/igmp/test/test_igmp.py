@@ -2,15 +2,31 @@
 
 import unittest
 
+from scapy.contrib.igmpv3 import (
+    IGMPv3,
+    IGMPv3gr,
+    IGMPv3mq,
+    IGMPv3mr,
+)
+from scapy.layers.inet import IP, IPOption
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
-from scapy.layers.inet import IP, IPOption
-from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
-    IgmpSG, VppHostState, wait_for_igmp_event
-from vpp_ip_route import find_mroute, VppIpTable
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from vpp_igmp import (
+    IGMP_FILTER,
+    IGMP_MODE,
+    IgmpRecord,
+    IgmpSG,
+    VppHostState,
+    find_igmp_state,
+    wait_for_igmp_event,
+)
+from vpp_ip_route import VppIpTable, find_mroute
 
 
 class IgmpMode:

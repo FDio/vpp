@@ -1,9 +1,11 @@
-from scapy.layers.l2 import Dot1Q
 import abc
+
 import six
-from vpp_pg_interface import VppPGInterface
-from vpp_interface import VppInterface
+from scapy.layers.l2 import Dot1Q
 from vpp_papi import VppEnum
+
+from vpp_interface import VppInterface
+from vpp_pg_interface import VppPGInterface
 
 
 class L2_VTR_OP:
