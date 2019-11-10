@@ -1,8 +1,8 @@
 """ abstract vpp object and object registry """
 
 import abc
-import six
 
+import six
 from six import moves
 
 

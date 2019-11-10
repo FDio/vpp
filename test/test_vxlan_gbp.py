@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4_range, reassemble4_ether
 import unittest
-from framework import VppTestCase, VppTestRunner
-from template_bd import BridgeDomain
-from vpp_ip import VppIpAddress
 
-from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether, Raw
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
+
+from framework import VppTestCase, VppTestRunner
+from template_bd import BridgeDomain
+from util import ip4_range, reassemble4_ether
+from vpp_ip import INVALID_INDEX, VppIpAddress
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import INVALID_INDEX
 
 
 class TestVxlanGbp(VppTestCase):

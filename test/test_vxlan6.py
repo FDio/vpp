@@ -2,15 +2,16 @@
 
 import socket
 import unittest
-from framework import VppTestCase, VppTestRunner
-from template_bd import BridgeDomain
 
+from scapy.layers.inet6 import UDP, IPv6
 from scapy.layers.l2 import Ether
-from scapy.layers.inet6 import IPv6, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
-from vpp_ip_route import VppIpRoute, VppRoutePath
+
+from framework import VppTestCase, VppTestRunner
+from template_bd import BridgeDomain
 from vpp_ip import INVALID_INDEX
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestVxlan6(BridgeDomain, VppTestCase):

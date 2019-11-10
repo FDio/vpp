@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 
 import unittest
+from collections import namedtuple
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import ERSPAN, GRE, Dot1Q, Ether
 from scapy.layers.vxlan import VXLAN
+from scapy.packet import Raw
+from vpp_papi import VppEnum
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface
-from collections import namedtuple
-from vpp_papi import VppEnum
-
+from vpp_sub_interface import (
+    L2_VTR_OP,
+    VppDot1ADSubint,
+    VppDot1QSubint,
+)
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
 DOT1AD = 0x88A8

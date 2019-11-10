@@ -2,15 +2,23 @@
 
 from random import randint
 from socket import AF_INET, AF_INET6, inet_pton
+
 from scapy.all import bind_layers
+from scapy.fields import (
+    BitEnumField,
+    BitField,
+    ConditionalField,
+    FlagsField,
+    StrField,
+    XByteField,
+)
 from scapy.layers.inet import UDP
 from scapy.packet import Packet
-from scapy.fields import BitField, BitEnumField, XByteField, FlagsField,\
-    ConditionalField, StrField
-from vpp_object import VppObject
+from vpp_papi import VppEnum
+
 from util import NumericConstant
 from vpp_ip import VppIpAddress
-from vpp_papi import VppEnum
+from vpp_object import VppObject
 
 
 class BFDDiagCode(NumericConstant):

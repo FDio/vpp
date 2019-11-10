@@ -3,10 +3,11 @@
 
 """
 import logging
-
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
+
 from vpp_papi import VppEnum
+
 try:
     text_type = unicode
 except NameError:

@@ -1,26 +1,39 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-"""ACL plugin - MACIP tests
-"""
+
 import binascii
 import ipaddress
 import random
-from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
-from struct import pack, unpack
 import re
 import unittest
+from socket import AF_INET, AF_INET6, inet_ntop, inet_pton
+from struct import pack, unpack
 
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_lo_interface import VppLoInterface
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
 from vpp_l2 import L2_PORT_TYPE
-from vpp_sub_interface import L2_VTR_OP, VppSubInterface, VppDot1QSubint, \
-    VppDot1ADSubint
+from vpp_lo_interface import VppLoInterface
+from vpp_sub_interface import (
+    L2_VTR_OP,
+    VppDot1ADSubint,
+    VppDot1QSubint,
+    VppSubInterface,
+)
+
+
+"""ACL plugin - MACIP tests
+"""
+
+
 
 
 class MethodHolder(VppTestCase):
@@ -1292,4 +1305,4 @@ class TestACL_dot1ad_routed(MethodHolder):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    unittest.main(testRunner=VppTestRunner

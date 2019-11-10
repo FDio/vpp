@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 import sys
-import logging
-from vapi_json_parser import Field, Struct, Enum, Union, Message, JsonParser,\
-    SimpleType, StructType, Alias
+
+from vapi_json_parser import (
+    Alias,
+    Enum,
+    Field,
+    JsonParser,
+    Message,
+    SimpleType,
+    Struct,
+    StructType,
+    Union,
+)
 
 
 class CField(Field):

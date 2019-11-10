@@ -1,22 +1,30 @@
-import unittest
-import socket
 import copy
+import socket
+import unittest
 
-from scapy.layers.ipsec import SecurityAssociation, ESP
-from scapy.layers.l2 import Ether, Raw, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from framework import VppTestRunner
-from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
-    IpsecTun4, IpsecTun6,  IpsecTcpTests, mk_scapy_crypt_key
-from vpp_ipsec_tun_interface import VppIpsecTunInterface
-from vpp_gre_interface import VppGreInterface
-from vpp_ipip_tun_interface import VppIpIpTunInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
-from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
-from util import ppp
+from scapy.layers.ipsec import ESP, SecurityAssociation
+from scapy.layers.l2 import GRE, Ether, Raw
 from vpp_papi import VppEnum
+
+from framework import VppTestRunner
+from template_ipsec import (
+    IpsecTcpTests,
+    IpsecTun4,
+    IpsecTun4Tests,
+    IpsecTun6,
+    IpsecTun6Tests,
+    TemplateIpsec,
+    mk_scapy_crypt_key,
+)
+from util import ppp
+from vpp_gre_interface import VppGreInterface
+from vpp_ip_route import DpoProto, VppIpRoute, VppRoutePath
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect
+from vpp_ipsec_tun_interface import VppIpsecTunInterface
+from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
 
 
 def config_tun_params(p, encryption_type, tun_if):

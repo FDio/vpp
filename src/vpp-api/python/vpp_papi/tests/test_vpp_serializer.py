@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 
-import unittest
-from vpp_papi.vpp_serializer import VPPType, VPPEnumType
-from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
-from vpp_papi.vpp_serializer import VPPTypeAlias, VPPSerializerValueError
-from socket import inet_pton, AF_INET, AF_INET6
 import logging
 import sys
+import unittest
 from ipaddress import *
+from socket import AF_INET, AF_INET6, inet_pton
+
+from vpp_papi.vpp_serializer import (
+    VPPEnumType,
+    VPPMessage,
+    VPPSerializerValueError,
+    VPPType,
+    VPPTypeAlias,
+    VPPUnionType,
+)
 
 
 class TestLimits(unittest.TestCase):

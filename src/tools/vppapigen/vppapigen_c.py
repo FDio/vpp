@@ -1,10 +1,10 @@
 # C generation
 import datetime
 import os
-import time
-import sys
-from io import StringIO
 import shutil
+import sys
+import time
+from io import StringIO
 
 datestring = datetime.datetime.utcfromtimestamp(
     int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))

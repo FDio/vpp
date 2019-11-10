@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
 import unittest
-from framework import VppTestCase, VppTestRunner
-from util import ppp
-from scapy.packet import Raw
+
 from scapy.layers.inet import IP, UDP
-from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
+from scapy.packet import Raw
 from vpp_papi import VppEnum
+
+from framework import VppTestCase, VppTestRunner
+from syslog_rfc5424_parser import ParseError, SyslogMessage
+from syslog_rfc5424_parser.constants import (
+    SyslogFacility,
+    SyslogSeverity,
+)
+from util import ppp
 
 
 class TestSyslog(VppTestCase):

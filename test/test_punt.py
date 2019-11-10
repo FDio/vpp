@@ -1,37 +1,38 @@
 #!/usr/bin/env python3
 import binascii
-import random
-import socket
-import os
-import threading
-import struct
 import copy
 import fcntl
+import os
+import random
+import socket
+import struct
+import threading
 import time
-
+from re import compile
 from struct import unpack, unpack_from
+
+import scapy.compat
+import scapy.layers.inet6 as inet6
+from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import ICMPv6DestUnreach, IPv6
+from scapy.layers.ipsec import ESP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from vpp_papi import VppEnum
+
+from framework import VppTestCase, VppTestRunner
+from util import ppc, ppp
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ipsec_tun_interface import VppIpsecTunInterface
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-from util import ppp, ppc
-from re import compile
-import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.ipsec import ESP
-import scapy.layers.inet6 as inet6
-from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
-from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
-from framework import VppTestCase, VppTestRunner
 
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_papi import VppEnum
-from vpp_ipsec_tun_interface import VppIpsecTunInterface
 
 NUM_PKTS = 67
 
@@ -1226,4 +1227,4 @@ class TestPunt(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    unittest.main(testRunner=VppTestRunner

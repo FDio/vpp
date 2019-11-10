@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-from socket import AF_INET, AF_INET6, inet_pton
 import unittest
+from socket import AF_INET, AF_INET6, inet_pton
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from vpp_interface import VppInterface
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_ip_route import (
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 NUM_PKTS = 67
 

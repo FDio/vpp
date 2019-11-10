@@ -1,17 +1,19 @@
 #
 # VPP Unix Domain Socket Transport.
 #
+import logging
+import multiprocessing
+import select
 import socket
 import struct
 import threading
-import select
-import multiprocessing
+
+from . import vpp_papi
+
 try:
     import queue as queue
 except ImportError:
     import Queue as queue
-import logging
-from . import vpp_papi
 
 
 class VppTransportSocketIOError(IOError):

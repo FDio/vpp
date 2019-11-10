@@ -1,22 +1,39 @@
 #!/usr/bin/env python3
 """ L2BD ARP term Test """
 
-import unittest
-import random
 import copy
-
+import random
+import unittest
 from socket import AF_INET, AF_INET6
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP
-from scapy.utils import inet_pton, inet_ntop
-from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid, in6_ismaddr
-from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
-    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation, \
-    ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
-    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types
+from scapy.layers.inet6 import (
+    UDP,
+    ICMPv6DestUnreach,
+    ICMPv6MRD_Solicitation,
+    ICMPv6ND_NA,
+    ICMPv6ND_NS,
+    ICMPv6ND_RA,
+    ICMPv6ND_RS,
+    ICMPv6NDOptDstLLAddr,
+    ICMPv6NDOptMTU,
+    ICMPv6NDOptPrefixInfo,
+    ICMPv6NDOptSrcLLAddr,
+    IPv6,
+    getmacbyip6,
+    icmp6types,
+)
+from scapy.layers.l2 import ARP, Ether
+from scapy.packet import Raw
+from scapy.utils import inet_ntop, inet_pton
+from scapy.utils6 import (
+    in6_getnsma,
+    in6_getnsmac,
+    in6_islladdr,
+    in6_ismaddr,
+    in6_mactoifaceid,
+    in6_ptop,
+)
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp

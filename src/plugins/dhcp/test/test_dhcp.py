@@ -1,31 +1,44 @@
 #!/usr/bin/env python3
 
-import unittest
 import socket
 import struct
-import six
-
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_neighbor import VppNeighbor
-from vpp_ip_route import find_route, VppIpTable
-from util import mk_ll_addr
-import scapy.compat
-from scapy.layers.l2 import Ether, getmacbyip, ARP, Dot1Q
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, in6_getnsmac
-from scapy.utils6 import in6_mactoifaceid
-from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
-from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
-    DHCP6_RelayReply, DHCP6_Advertise, DHCP6OptRelayMsg, DHCP6OptIfaceId, \
-    DHCP6OptStatusCode, DHCP6OptVSS, DHCP6OptClientLinkLayerAddr, DHCP6_Request
+import unittest
 from socket import AF_INET, AF_INET6
-from scapy.utils import inet_pton, inet_ntop
-from scapy.utils6 import in6_ptop
-from vpp_papi import mac_pton, VppEnum
-from vpp_sub_interface import VppDot1QSubint
-from vpp_qos import VppQosEgressMap, VppQosMark
-from vpp_dhcp import VppDHCPClient, VppDHCPProxy
 
+import scapy.compat
+import six
+from scapy.layers.dhcp import BOOTP, DHCP, DHCPTypes
+from scapy.layers.dhcp6 import (
+    DHCP6,
+    DHCP6_Advertise,
+    DHCP6_RelayForward,
+    DHCP6_RelayReply,
+    DHCP6_Request,
+    DHCP6_Solicit,
+    DHCP6OptClientLinkLayerAddr,
+    DHCP6OptIfaceId,
+    DHCP6OptRelayMsg,
+    DHCP6OptStatusCode,
+    DHCP6OptVSS,
+)
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import IPv6, in6_getnsmac
+from scapy.layers.l2 import ARP, Dot1Q, Ether, getmacbyip
+from scapy.utils import inet_ntop, inet_pton
+from scapy.utils6 import in6_mactoifaceid, in6_ptop
+from vpp_papi import VppEnum, mac_pton
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from util import mk_ll_addr
+from vpp_dhcp import VppDHCPClient, VppDHCPProxy
+from vpp_ip_route import VppIpTable, find_route
+from vpp_neighbor import VppNeighbor
+from vpp_qos import VppQosEgressMap, VppQosMark
+from vpp_sub_interface import VppDot1QSubint
 
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
