@@ -9,11 +9,14 @@ import os
 import time
 from collections import deque
 
-from six import moves, iteritems
+from six import iteritems, moves
 from vpp_papi import VPPApiClient, mac_pton
-from hook import Hook
-from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
+from hook import Hook
+from vpp_ip_route import (
+    MPLS_IETF_MAX_LABEL,
+    MPLS_LABEL_INVALID,
+)
 
 #
 # Dictionary keyed on message name to override default values for

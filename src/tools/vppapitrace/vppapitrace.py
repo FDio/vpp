@@ -19,16 +19,18 @@
 # Convert from VPP API trace to JSON.
 
 import argparse
+import base64
+import json
+import logging
+import os
 import struct
 import sys
-import logging
-import json
-from ipaddress import *
-from collections import namedtuple
-from vpp_papi import MACAddress, VPPApiJSONFiles
-import base64
-import os
 import textwrap
+from collections import namedtuple
+from ipaddress import *
+
+from vpp_papi import MACAddress, VPPApiJSONFiles
+
 
 def serialize_likely_small_unsigned_integer(x):
     r = x

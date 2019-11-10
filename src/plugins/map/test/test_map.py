@@ -2,17 +2,17 @@
 
 import ipaddress
 import unittest
-from ipaddress import IPv6Network, IPv4Network
-
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import fragment_rfc791, fragment_rfc8200
+from ipaddress import IPv4Network, IPv6Network
 
 import scapy.compat
+from scapy.layers.inet import ICMP, IP, TCP, UDP, fragment
+from scapy.layers.inet6 import ICMPv6TimeExceeded, IPv6
 from scapy.layers.l2 import Ether, Raw
-from scapy.layers.inet import IP, UDP, ICMP, TCP, fragment
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
+
+from framework import VppTestCase, VppTestRunner
+from util import fragment_rfc791, fragment_rfc8200
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestMAP(VppTestCase):

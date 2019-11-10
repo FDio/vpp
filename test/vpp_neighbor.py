@@ -5,8 +5,11 @@
 """
 
 from ipaddress import ip_address
+
+from vpp_papi import VppEnum, mac_pton
+
 from vpp_object import VppObject
-from vpp_papi import mac_pton, VppEnum
+
 try:
     text_type = unicode
 except NameError:

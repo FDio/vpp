@@ -2,8 +2,8 @@
 
 import unittest
 
-from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
 
 from framework import VppTestCase
 

@@ -1,42 +1,61 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
+
+import copy
+import faulthandler
 import gc
-import sys
 import os
+import platform
+import random
 import select
 import signal
-import unittest
+import sys
 import tempfile
 import time
-import faulthandler
-import random
-import copy
-import psutil
-import platform
+import unittest
 from collections import deque
-from threading import Thread, Event
 from inspect import getdoc, isclass
+from logging import DEBUG, FileHandler, Formatter
+from threading import Event, Thread
 from traceback import format_exception
-from logging import FileHandler, DEBUG, Formatter
 
+import psutil
 import scapy.compat
+from scapy.layers.inet import (
+    ICMPerror,
+    IPerror,
+    TCPerror,
+    UDPerror,
+)
+from scapy.layers.inet6 import (
+    ICMPv6DestUnreach,
+    ICMPv6EchoReply,
+    ICMPv6EchoRequest,
+)
 from scapy.packet import Raw
+from vpp_papi.vpp_stats import VPPStats
+from vpp_papi.vpp_transport_shmem import (
+    VppTransportShmemIOError,
+)
+
 import hook as hookmodule
+from log import (
+    GREEN,
+    RED,
+    YELLOW,
+    colorize,
+    double_line_delim,
+    get_logger,
+    single_line_delim,
+)
+from util import is_core_present, ppp
+from vpp_bvi_interface import VppBviInterface
+from vpp_lo_interface import VppLoInterface
+from vpp_object import VppObjectRegistry
+from vpp_papi_provider import VppPapiProvider
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
-from vpp_lo_interface import VppLoInterface
-from vpp_bvi_interface import VppBviInterface
-from vpp_papi_provider import VppPapiProvider
-from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
-from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    get_logger, colorize
-from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation

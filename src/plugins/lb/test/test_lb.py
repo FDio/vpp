@@ -1,16 +1,17 @@
 import socket
 
 import scapy.compat
+from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
+from scapy.layers.l2 import GRE, Ether
 from scapy.packet import Raw
-from scapy.data import IP_PROTOS
 
 from framework import VppTestCase
 from util import ppp
-from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
+from vpp_ip_route import VppIpRoute, VppRoutePath
+
 
 """ TestLB is a subclass of  VPPTestCase classes.
 

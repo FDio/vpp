@@ -4,14 +4,14 @@ import binascii
 import socket
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-
-from scapy.packet import Raw
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, TCP
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
 from util import ppp
-from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestClassifier(VppTestCase):
