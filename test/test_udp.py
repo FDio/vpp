@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 import unittest
-from framework import VppTestCase, VppTestRunner
 
-from vpp_udp_encap import find_udp_encap, VppUdpEncap
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
-    FibPathType
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.mpls import MPLS
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+
+from framework import VppTestCase, VppTestRunner
+from vpp_ip_route import (
+    FibPathType,
+    VppIpRoute,
+    VppIpTable,
+    VppMplsLabel,
+    VppRoutePath,
+)
+from vpp_udp_encap import VppUdpEncap, find_udp_encap
 
 NUM_PKTS = 67
 

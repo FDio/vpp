@@ -1,30 +1,52 @@
 #!/usr/bin/env python3
 
-import sys
-import shutil
-import os
-import fnmatch
-import unittest
 import argparse
-import time
-import threading
-import signal
-import psutil
-import re
+import fnmatch
 import multiprocessing
-from multiprocessing import Process, Pipe, cpu_count
-from multiprocessing.queues import Queue
+import os
+import re
+import shutil
+import signal
+import sys
+import threading
+import time
+import unittest
+from multiprocessing import Pipe, Process, cpu_count
 from multiprocessing.managers import BaseManager
+from multiprocessing.queues import Queue
+from subprocess import CalledProcessError, check_output
+
+import psutil
+
 import framework
-from framework import VppTestRunner, running_extended_tests, VppTestCase, \
-    get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
-    TEST_RUN
 from debug import spawn_gdb
-from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
-    colorize, single_line_delim
 from discover_tests import discover_tests
-from subprocess import check_output, CalledProcessError
-from util import check_core_path, get_core_path, is_core_present
+from framework import (
+    ERROR,
+    FAIL,
+    PASS,
+    SKIP,
+    TEST_RUN,
+    VppTestCase,
+    VppTestRunner,
+    get_test_description,
+    get_testcase_doc_name,
+    running_extended_tests,
+)
+from log import (
+    GREEN,
+    RED,
+    YELLOW,
+    colorize,
+    double_line_delim,
+    get_parallel_logger,
+    single_line_delim,
+)
+from util import (
+    check_core_path,
+    get_core_path,
+    is_core_present,
+)
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes

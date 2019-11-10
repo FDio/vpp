@@ -60,16 +60,16 @@
     - no packet received on all 4 pg-l2 interfaces
 """
 
-import unittest
 import random
+import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from vpp_papi import mac_pton
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_papi import mac_pton
 
 # from src/vnet/l2/l2_fib.h
 MAC_EVENT_ACTION_ADD = 0

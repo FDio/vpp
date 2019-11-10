@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
 
-import six
 import unittest
-from random import shuffle, choice, randrange
-
-from framework import VppTestCase, VppTestRunner
+from random import choice, randrange, shuffle
 
 import scapy.compat
+import six
+from scapy.layers.inet import ICMP, IP, UDP
+from scapy.layers.inet6 import (
+    HBHOptUnknown,
+    ICMPv6ParamProblem,
+    ICMPv6TimeExceeded,
+    IPv6,
+    IPv6ExtHdrFragment,
+    IPv6ExtHdrHopByHop,
+)
+from scapy.layers.l2 import GRE, Ether
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, GRE
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
-    ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment, IPv6ExtHdrHopByHop
+from vpp_papi import VppEnum
+
 from framework import VppTestCase, VppTestRunner
-from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
+from util import fragment_rfc791, fragment_rfc8200, ppc, ppp
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
-from vpp_papi import VppEnum
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppRoutePath,
+)
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35

@@ -16,6 +16,7 @@
 import argparse
 import pathlib
 import subprocess
+
 BASE_DIR = subprocess.check_output('git rev-parse --show-toplevel',
                                    shell=True).strip().decode()
 vppapigen_bin = pathlib.Path(

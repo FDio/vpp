@@ -2,23 +2,44 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, \
-    VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, \
-    VppMplsLabel, FibPathProto, FibPathType
-from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
-    VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
-from vpp_udp_encap import VppUdpEncap
-
 import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.contrib.bier import BIER, BIFT, BIERLength
+from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.mpls import MPLS
-from scapy.contrib.bier import BIER, BIERLength, BIFT
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    running_extended_tests,
+)
+from vpp_bier import (
+    BIER_HDR_PAYLOAD,
+    VppBierDispEntry,
+    VppBierDispTable,
+    VppBierImp,
+    VppBierRoute,
+    VppBierTable,
+    VppBierTableID,
+)
+from vpp_ip import DpoProto
+from vpp_ip_route import (
+    MPLS_LABEL_INVALID,
+    FibPathProto,
+    FibPathType,
+    MRouteEntryFlags,
+    MRouteItfFlags,
+    VppIpMRoute,
+    VppIpRoute,
+    VppIpTable,
+    VppMplsLabel,
+    VppMplsTable,
+    VppMRoutePath,
+    VppRoutePath,
+)
+from vpp_udp_encap import VppUdpEncap
 
 NUM_PKTS = 67
 

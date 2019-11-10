@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """ Vpp VCL tests """
 
-import unittest
 import os
-import subprocess
 import signal
-from framework import VppTestCase, VppTestRunner, running_extended_tests, \
-    Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
+import subprocess
+import unittest
+
+from framework import (
+    VppTestCase,
+    VppTestRunner,
+    Worker,
+    running_extended_tests,
+)
+from vpp_ip_route import (
+    FibPathProto,
+    VppIpRoute,
+    VppIpTable,
+    VppRoutePath,
+)
 
 iperf3 = '/usr/bin/iperf3'
 

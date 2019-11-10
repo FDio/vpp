@@ -16,14 +16,16 @@ import ipaddress
 import socket
 import unittest
 
+from parameterized import parameterized
+
+from vpp_papi import vpp_format
+
 try:
     text_type = unicode
 except NameError:
     text_type = str
 
-from vpp_papi import vpp_format
 
-from parameterized import parameterized
 
 ip4_addr = '1.2.3.4'
 ip4_addrn = b'\x01\x02\x03\x04'

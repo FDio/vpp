@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import ipaddress
 import argparse
+import ipaddress
 
 parser = argparse.ArgumentParser(description='Generate NAT plugin config.')
 parser.add_argument('static_map_num', metavar='N', type=int, nargs=1,
@@ -22,4 +22,3 @@ for i in range (0, args.static_map_num[0]):
     local = str(ipaddress.IPv4Address(u'10.0.0.3') + i)
     external = str(ipaddress.IPv4Address(u'173.16.1.3') + i)
     outfile.write('nat44 add static mapping local %s external %s\n' % (local, external))
-

@@ -1,20 +1,20 @@
 import os
-import time
-from socket import inet_pton, inet_ntop
-import struct
-from traceback import format_exc, format_stack
 
-import scapy.compat
-from scapy.utils import wrpcap, rdpcap, PcapReader
-from scapy.plist import PacketList
-from vpp_interface import VppInterface
+from socket import inet_pton, inet_ntop
+import socket
+import struct
+import time
+from traceback import format_exc, format_stack
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
     IPv6ExtHdrHopByHop
-from util import ppp, ppc
+from scapy.plist import PacketList
+from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
+from util import ppp, ppc
+from vpp_interface import VppInterface
 
 
 class CaptureTimeoutError(Exception):

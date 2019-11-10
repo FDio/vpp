@@ -62,14 +62,12 @@
     - no packet received in case of pg-ip4 interfaces in different VRFs
 """
 
-import unittest
 import random
-import socket
+import unittest
 
-import scapy.compat
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import ARP, Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import unittest
 import random
+import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
