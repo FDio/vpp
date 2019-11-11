@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ba2f565_414d9fc9",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-11T15:03:27Z",
+      "side": 1,
+      "message": "Keep the same field order as in the definition body.",
+      "range": {
+        "startLine": 130,
+        "startChar": 11,
+        "endLine": 130,
+        "endChar": 24
+      },
+      "revId": "3b76e3327fc8d9aad4825ae6c700ec078d875af0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
