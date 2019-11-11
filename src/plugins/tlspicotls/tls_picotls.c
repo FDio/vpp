@@ -127,7 +127,7 @@ picotls_start_listen (tls_ctx_t * lctx)
   };
 
   ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
-  if (!ckpair->cert || !ckpair->key)
+  if (!ckpair || !ckpair->cert || !ckpair->key)
     {
       TLS_DBG (1, "tls cert and/or key not configured %d",
 	       ctx->parent_app_wrk_index);
@@ -218,7 +218,7 @@ picotls_do_handshake (picotls_ctx_t * ptls_ctx, session_t * tls_session,
   ptls_t *tls = ptls_ctx->tls;
   ptls_buffer_t buf;
   int rv = PTLS_ERROR_IN_PROGRESS;
-  int write, off;
+  int write = 0, off;
 
   do
     {
@@ -231,8 +231,8 @@ picotls_do_handshake (picotls_ctx_t * ptls_ctx, session_t * tls_session,
 	  off += consumed;
 	  if ((rv == 0 || rv == PTLS_ERROR_IN_PROGRESS) && buf.off != 0)
 	    {
-	      write =
-		picotls_try_handshake_write (ptls_ctx, tls_session, &buf);
+	      write = picotls_try_handshake_write (ptls_ctx, tls_session,
+						   &buf);
 	    }
 	  ptls_buffer_dispose (&buf);
 	}
@@ -260,32 +260,32 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   if (!picotls_handshake_is_over (ctx))
     {
       deq_max = svm_fifo_max_dequeue_cons (tls_rx_fifo);
-      input = malloc (deq_max);
+      input = clib_mem_alloc (deq_max);
       memset (input, 0, deq_max);
 
       deq_now = clib_min (deq_max, svm_fifo_max_read_chunk (tls_rx_fifo));
       if (!deq_now)
-	return 0;
+	goto done_hs;
 
       from_tls_len += svm_fifo_dequeue (tls_rx_fifo, deq_now, input);
       if (from_tls_len <= 0)
 	{
 	  tls_add_vpp_q_builtin_rx_evt (tls_session);
-	  return 0;
+	  goto done_hs;
 	}
       if (from_tls_len < deq_max)
 	{
-	  deq_now =
-	    clib_min (svm_fifo_max_read_chunk (tls_rx_fifo),
-		      deq_max - from_tls_len);
-	  from_tls_len +=
-	    svm_fifo_dequeue (tls_rx_fifo, deq_now, input + from_tls_len);
+	  deq_now = clib_min (svm_fifo_max_read_chunk (tls_rx_fifo),
+			      deq_max - from_tls_len);
+	  from_tls_len += svm_fifo_dequeue (tls_rx_fifo, deq_now,
+					    input + from_tls_len);
 	}
       picotls_do_handshake (ptls_ctx, tls_session, input, from_tls_len);
       if (picotls_handshake_is_over (ctx))
 	tls_notify_app_accept (ctx);
 
-      free (input);
+    done_hs:
+      clib_mem_free (input);
       return 0;
     }
 
