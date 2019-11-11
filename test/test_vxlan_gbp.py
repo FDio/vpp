@@ -5,7 +5,6 @@ from util import ip4_range, reassemble4_ether
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
-from vpp_ip import VppIpAddress
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
@@ -104,8 +103,8 @@ class TestVxlanGbp(VppTestCase):
             rip.add_vpp_config()
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 tunnel={
-                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
-                    'dst': VppIpAddress(dest_ip4).encode(),
+                    'src': cls.pg0.local_ip4,
+                    'dst': dest_ip4,
                     'vni': vni,
                     'instance': INVALID_INDEX,
                     'mcast_sw_if_index': INVALID_INDEX,
@@ -147,8 +146,8 @@ class TestVxlanGbp(VppTestCase):
             cls.single_tunnel_bd = 1
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 tunnel={
-                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
-                    'dst': VppIpAddress(cls.pg0.remote_ip4).encode(),
+                    'src': cls.pg0.local_ip4,
+                    'dst': cls.pg0.remote_ip4,
                     'vni': cls.single_tunnel_bd,
                     'instance': INVALID_INDEX,
                     'mcast_sw_if_index': INVALID_INDEX,

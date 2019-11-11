@@ -1,6 +1,5 @@
 
 from vpp_interface import VppInterface
-from vpp_ip import VppIpAddress
 from vpp_papi import VppEnum
 
 
@@ -8,13 +7,10 @@ INDEX_INVALID = 0xffffffff
 
 
 def find_vxlan_gbp_tunnel(test, src, dst, vni):
-    vsrc = VppIpAddress(src)
-    vdst = VppIpAddress(dst)
-
     ts = test.vapi.vxlan_gbp_tunnel_dump(INDEX_INVALID)
     for t in ts:
-        if vsrc == t.tunnel.src and \
-           vdst == t.tunnel.dst and \
+        if src == str(t.tunnel.src) and \
+           dst == str(t.tunnel.dst) and \
            t.tunnel.vni == vni:
             return t.tunnel.sw_if_index
     return INDEX_INVALID
@@ -29,8 +25,8 @@ class VppVxlanGbpTunnel(VppInterface):
                  is_ipv6=None, encap_table_id=None, instance=0xffffffff):
         """ Create VXLAN-GBP Tunnel interface """
         super(VppVxlanGbpTunnel, self).__init__(test)
-        self.src = VppIpAddress(src)
-        self.dst = VppIpAddress(dst)
+        self.src = src
+        self.dst = dst
         self.vni = vni
         self.mcast_itf = mcast_itf
         self.ipv6 = is_ipv6
@@ -49,8 +45,8 @@ class VppVxlanGbpTunnel(VppInterface):
         reply = self.test.vapi.vxlan_gbp_tunnel_add_del(
             is_add=1,
             tunnel={
-                'src': self.src.encode(),
-                'dst': self.dst.encode(),
+                'src': self.src,
+                'dst': self.dst,
                 'mode': self.mode,
                 'vni': self.vni,
                 'mcast_sw_if_index': mcast_sw_if_index,
@@ -67,8 +63,8 @@ class VppVxlanGbpTunnel(VppInterface):
         self.test.vapi.vxlan_gbp_tunnel_add_del(
             is_add=0,
             tunnel={
-                'src': self.src.encode(),
-                'dst': self.dst.encode(),
+                'src': self.src,
+                'dst': self.dst,
                 'mode': self.mode,
                 'vni': self.vni,
                 'mcast_sw_if_index': mcast_sw_if_index,

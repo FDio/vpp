@@ -2,7 +2,6 @@
 
 import ipaddress
 import unittest
-from ipaddress import IPv6Network, IPv4Network
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
