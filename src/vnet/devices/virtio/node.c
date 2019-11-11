@@ -246,7 +246,13 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_bytes = 0;
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
-  u16 n_left = vring->used->idx - last;
+  /*
+   * vring->used->idx and vring->last_used_idx are free-running indexes, we must
+   * deal with wraparound
+   */
+  u16 n_left =
+    vring->used->idx >=
+    last ? vring->used->idx - last : 65536 - last + vring->used->idx;
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
       vring->last_kick_avail_idx != vring->avail->idx)

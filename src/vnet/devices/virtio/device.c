@@ -97,7 +97,13 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 last = vring->last_used_idx;
-  u16 n_left = vring->used->idx - last;
+  /*
+   * vring->used->idx and vring->last_used_idx are free-running indexes, we must
+   * deal with wraparound
+   */
+  u16 n_left =
+    vring->used->idx >=
+    last ? vring->used->idx - last : 65536 - last + vring->used->idx;
 
   if (n_left == 0)
     return;
