@@ -9,7 +9,6 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import MACAddress
-from vpp_ip import VppIpPrefix
 
 
 class TestBondInterface(VppTestCase):
@@ -73,7 +72,7 @@ class TestBondInterface(VppTestCase):
         bond0.admin_up()
         self.vapi.sw_interface_add_del_address(
             sw_if_index=bond0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.1", 24).encode())
+            prefix="10.10.10.1/24")
 
         self.pg2.config_ip4()
         self.pg2.resolve_arp()

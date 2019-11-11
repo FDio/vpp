@@ -7,8 +7,7 @@ from six import moves
 
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop, VppEnum
-from vpp_ip import VppIpAddress, VppIpPrefix
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 
 try:
     text_type = unicode
@@ -46,20 +45,21 @@ class VppInterface(object):
     @property
     def local_ip4(self):
         """Local IPv4 address on VPP interface (string)."""
-        return self._local_ip4.address
+        return str(self._local_ip4.network_address)
 
     @local_ip4.setter
     def local_ip4(self, value):
-        self._local_ip4.address = value
+        self._local_ip4 = value
 
     @property
     def local_ip4_prefix_len(self):
         """Local IPv4 prefix length """
-        return self._local_ip4.len
+        return self._local_ip4.prefixlen
 
     @local_ip4_prefix_len.setter
     def local_ip4_prefix_len(self, value):
-        self._local_ip4.len = value
+        self._local_ip4 = IPv4Network("%s/%d" %
+                                      (self._local_ip4.network_address, value))
 
     @property
     def local_ip4_prefix(self):
@@ -70,7 +70,8 @@ class VppInterface(object):
     def local_ip4n(self):
         """DEPRECATED """
         """Local IPv4 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self._local_ip4.address)
+        return socket.inet_pton(socket.AF_INET,
+                                str(self._local_ip4.network_address))
 
     @property
     def remote_ip4(self):
@@ -86,20 +87,20 @@ class VppInterface(object):
     @property
     def local_ip6(self):
         """Local IPv6 address on VPP interface (string)."""
-        return self._local_ip6.address
+        return str(self._local_ip6.network_address)
 
     @local_ip6.setter
     def local_ip6(self, value):
-        self._local_ip6.address = value
+        self._local_ip6
 
     @property
     def local_ip6_prefix_len(self):
         """Local IPv6 prefix length """
-        return self._local_ip6.len
+        return self._local_ip6.prefixlen
 
     @local_ip6_prefix_len.setter
     def local_ip6_prefix_len(self, value):
-        self._local_ip6.len = value
+        self._local_ip6.prefixlen = value
 
     @property
     def local_ip6_prefix(self):
@@ -110,7 +111,8 @@ class VppInterface(object):
     def local_ip6n(self):
         """DEPRECATED """
         """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET6, self._local_ip6.address)
+        return socket.inet_pton(socket.AF_INET6,
+                                str(self._local_ip6.network_address))
 
     @property
     def remote_ip6(self):
@@ -126,7 +128,7 @@ class VppInterface(object):
     @property
     def local_ip6_ll(self):
         """Local IPv6 link-local address on VPP interface (string)."""
-        return self._local_ip6_ll.address
+        return self._local_ip6_ll
 
     @property
     def local_ip6n_ll(self):
@@ -233,7 +235,7 @@ class VppInterface(object):
 
     def set_mac(self, mac):
         self._local_mac = str(mac)
-        self._local_ip6_ll = VppIpAddress(mk_ll_addr(self._local_mac))
+        self._local_ip6_ll = mk_ll_addr(self._local_mac)
         self.test.vapi.sw_interface_set_mac_address(
             self.sw_if_index, mac.packed)
 
@@ -242,13 +244,15 @@ class VppInterface(object):
 
         self.generate_remote_hosts()
 
-        self._local_ip4 = VppIpPrefix("172.16.%u.1" % self.sw_if_index, 24)
+        self._local_ip4 = IPv4Network("172.16.%u.1/24" % self.sw_if_index,
+                                      strict=False)
         self._local_ip4_subnet = "172.16.%u.0" % self.sw_if_index
         self._local_ip4_bcast = "172.16.%u.255" % self.sw_if_index
         self.has_ip4_config = False
         self.ip4_table_id = 0
 
-        self._local_ip6 = VppIpPrefix("fd01:%x::1" % self.sw_if_index, 64)
+        self._local_ip6 = IPv6Network("fd01:%x::1/64" % self.sw_if_index,
+                                      strict=False)
         self.has_ip6_config = False
         self.ip6_table_id = 0
 
@@ -269,13 +273,13 @@ class VppInterface(object):
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, moves.reprlib.repr(r)))
-        self._local_ip6_ll = VppIpAddress(mk_ll_addr(self.local_mac))
+        self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.sw_if_index, prefix=self._local_ip4.encode())
+            sw_if_index=self.sw_if_index, prefix=self._local_ip4)
         self.has_ip4_config = True
 
     def unconfig_ip4(self):
@@ -284,7 +288,7 @@ class VppInterface(object):
             if self.has_ip4_config:
                 self.test.vapi.sw_interface_add_del_address(
                     sw_if_index=self.sw_if_index,
-                    prefix=self._local_ip4.encode(), is_add=0)
+                    prefix=self._local_ip4, is_add=0)
         except AttributeError:
             self.has_ip4_config = False
         self.has_ip4_config = False
@@ -302,7 +306,7 @@ class VppInterface(object):
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.sw_if_index, prefix=self._local_ip6.encode())
+            sw_if_index=self.sw_if_index, prefix=self._local_ip6)
         self.has_ip6_config = True
 
     def unconfig_ip6(self):
@@ -311,7 +315,7 @@ class VppInterface(object):
             if self.has_ip6_config:
                 self.test.vapi.sw_interface_add_del_address(
                     sw_if_index=self.sw_if_index,
-                    prefix=self._local_ip6.encode(), is_add=0)
+                    prefix=self._local_ip6, is_add=0)
         except AttributeError:
             self.has_ip6_config = False
         self.has_ip6_config = False
