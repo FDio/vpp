@@ -142,9 +142,12 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
-  error = ikev2_set_profile_ts (vm, tmp, mp->proto, mp->start_port,
-				mp->end_port, (ip4_address_t) mp->start_addr,
-				(ip4_address_t) mp->end_addr, mp->is_local);
+  error =
+    ikev2_set_profile_ts (vm, tmp, mp->proto,
+			  clib_net_to_host_u16 (mp->start_port),
+			  clib_net_to_host_u16 (mp->end_port),
+			  (ip4_address_t) mp->start_addr,
+			  (ip4_address_t) mp->end_addr, mp->is_local);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -189,7 +192,7 @@ vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
   ip4_address_t ip4;
   clib_memcpy (&ip4, mp->address, sizeof (ip4));
 
-  error = ikev2_set_profile_responder (vm, tmp, mp->sw_if_index, ip4);
+  error = ikev2_set_profile_responder (vm, tmp, ntohl (mp->sw_if_index), ip4);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -214,8 +217,10 @@ vl_api_ikev2_set_ike_transforms_t_handler (vl_api_ikev2_set_ike_transforms_t *
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_ike_transforms (vm, tmp, mp->crypto_alg, mp->integ_alg,
-				      mp->dh_group, mp->crypto_key_size);
+    ikev2_set_profile_ike_transforms (vm, tmp, ntohl (mp->crypto_alg),
+				      ntohl (mp->integ_alg),
+				      ntohl (mp->dh_group),
+				      ntohl (mp->crypto_key_size));
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -240,8 +245,10 @@ vl_api_ikev2_set_esp_transforms_t_handler (vl_api_ikev2_set_esp_transforms_t *
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_esp_transforms (vm, tmp, mp->crypto_alg, mp->integ_alg,
-				      mp->dh_group, mp->crypto_key_size);
+    ikev2_set_profile_esp_transforms (vm, tmp, ntohl (mp->crypto_alg),
+				      ntohl (mp->integ_alg),
+				      ntohl (mp->dh_group),
+				      ntohl (mp->crypto_key_size));
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -265,8 +272,12 @@ vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_sa_lifetime (vm, tmp, mp->lifetime, mp->lifetime_jitter,
-				   mp->handover, mp->lifetime_maxdata);
+    ikev2_set_profile_sa_lifetime (vm, tmp,
+				   clib_net_to_host_u64 (mp->lifetime),
+				   ntohl (mp->lifetime_jitter),
+				   ntohl (mp->handover),
+				   clib_net_to_host_u64
+				   (mp->lifetime_maxdata));
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
