@@ -27,6 +27,13 @@ class DpoProto:
 INVALID_INDEX = 0xffffffff
 
 
+def get_dpo_proto(addr):
+    if ip_address(addr).version == 6:
+        return DpoProto.DPO_PROTO_IP6
+    else:
+        return DpoProto.DPO_PROTO_IP4
+
+
 class VppIpAddressUnion():
     def __init__(self, addr):
         self.addr = addr
@@ -73,148 +80,18 @@ class VppIpAddressUnion():
         return str(self.ip_addr)
 
 
-class VppIpAddress():
-    def __init__(self, addr):
-        self.addr = VppIpAddressUnion(addr)
-
-    def encode(self):
-        if self.addr.version == 6:
-            return {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                'un': self.addr.encode()
-            }
-        else:
-            return {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                'un': self.addr.encode()
-            }
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.addr == other.addr
-        elif hasattr(other, "af") and hasattr(other, "un"):
-            # a vp_api_address_t
-            if 4 == self.version:
-                return other.af == \
-                    VppEnum.vl_api_address_family_t.ADDRESS_IP4 and \
-                    other.un == self.addr
-            else:
-                return other.af == \
-                    VppEnum.vl_api_address_family_t.ADDRESS_IP6 and \
-                    other.un == self.addr
-        else:
-            _log.error(
-                "Comparing VppIpAddress:<%s> %s with incomparable "
-                "type: <%s> %s",
-                self.__class__.__name__, self,
-                other.__class__.__name__, other)
-            return NotImplemented
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    def __str__(self):
-        return self.address
-
-    @property
-    def bytes(self):
-        return self.addr.bytes
-
-    @property
-    def address(self):
-        return self.addr.address
-
-    @property
-    def length(self):
-        return self.addr.length
-
-    @property
-    def version(self):
-        return self.addr.version
-
-    @property
-    def is_ip6(self):
-        return (self.version == 6)
-
-    @property
-    def af(self):
-        if self.version == 6:
-            return AF_INET6
-        else:
-            return AF_INET
-
-    @property
-    def dpo_proto(self):
-        if self.version == 6:
-            return DpoProto.DPO_PROTO_IP6
-        else:
-            return DpoProto.DPO_PROTO_IP4
-
-
-class VppIpPrefix():
-    def __init__(self, addr, len):
-        self.addr = VppIpAddress(addr)
-        self.len = len
-
-    def __eq__(self, other):
-        if self.address == other.address and self.len == other.len:
-            return True
-        return False
-
-    def encode(self):
-        return {'address': self.addr.encode(),
-                'len': self.len}
-
-    @property
-    def version(self):
-        return self.addr.version
-
-    @property
-    def address(self):
-        return self.addr.address
-
-    @property
-    def bytes(self):
-        return self.addr.bytes
-
-    @property
-    def length(self):
-        return self.len
-
-    @property
-    def is_ip6(self):
-        return self.addr.is_ip6
-
-    def __str__(self):
-        return "%s/%d" % (self.address, self.length)
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return (self.len == other.len and self.addr == other.addr)
-        elif hasattr(other, "address") and hasattr(other, "len"):
-            # vl_api_prefix_t
-            return self.len == other.len and \
-                   self.addr == other.address
-        else:
-            _log.error(
-                "Comparing VppIpPrefix:%s with incomparable type: %s" %
-                (self, other))
-            return NotImplemented
-
-
 class VppIpMPrefix():
     def __init__(self, saddr, gaddr, glen):
         self.saddr = saddr
         self.gaddr = gaddr
         self.glen = glen
-        self.ip_saddr = VppIpAddressUnion(text_type(self.saddr))
-        self.ip_gaddr = VppIpAddressUnion(text_type(self.gaddr))
-        if self.ip_saddr.version != self.ip_gaddr.version:
+        if ip_address(self.saddr).version != \
+           ip_address(self.gaddr).version:
             raise ValueError('Source and group addresses must be of the '
                              'same address family.')
 
     def encode(self):
-        if 6 == self.ip_saddr.version:
+        if 6 == self.version:
             prefix = {
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 'grp_address': {
@@ -244,7 +121,7 @@ class VppIpMPrefix():
 
     @property
     def version(self):
-        return self.ip_gaddr.version
+        return ip_address(self.gaddr).version
 
     def __str__(self):
         return "(%s,%s)/%d" % (self.saddr, self.gaddr, self.glen)
@@ -252,22 +129,20 @@ class VppIpMPrefix():
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return (self.glen == other.glen and
-                    self.ip_saddr == other.ip_gaddr and
-                    self.ip_saddr == other.ip_saddr)
+                    self.saddr == other.gaddr and
+                    self.saddr == other.saddr)
         elif (hasattr(other, "grp_address_length") and
               hasattr(other, "grp_address") and
               hasattr(other, "src_address")):
             # vl_api_mprefix_t
-            if 4 == self.ip_saddr.version:
-                if self.glen == other.grp_address_length and \
-                   self.gaddr == str(other.grp_address.ip4) and \
-                   self.saddr == str(other.src_address.ip4):
-                    return True
-                return False
+            if 4 == self.version:
+                return (self.glen == other.grp_address_length and
+                        self.gaddr == str(other.grp_address.ip4) and
+                        self.saddr == str(other.src_address.ip4))
             else:
                 return (self.glen == other.grp_address_length and
-                        self.gaddr == other.grp_address.ip6 and
-                        self.saddr == other.src_address.ip6)
+                        self.gaddr == str(other.grp_address.ip6) and
+                        self.saddr == str(other.src_address.ip6))
         else:
             raise Exception("Comparing VppIpPrefix:%s with unknown type: %s" %
                             (self, other))

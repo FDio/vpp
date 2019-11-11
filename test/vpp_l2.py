@@ -4,7 +4,6 @@
 """
 
 from vpp_object import VppObject
-from vpp_ip import VppIpAddress
 from vpp_lo_interface import VppLoInterface
 from vpp_papi import MACAddress
 from vpp_sub_interface import L2_VTR_OP

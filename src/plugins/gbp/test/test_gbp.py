@@ -2,6 +2,7 @@
 
 from socket import AF_INET, AF_INET6
 import unittest
+from ipaddress import ip_address, IPv4Network, IPv6Network
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -22,7 +23,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_ip import VppIpAddress, VppIpPrefix, DpoProto
+from vpp_ip import DpoProto, get_dpo_proto
 from vpp_papi import VppEnum, MACAddress
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
@@ -38,7 +39,7 @@ NUM_PKTS = 67
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
                       tep=None, sclass=None):
     if ip:
-        vip = VppIpAddress(ip)
+        vip = ip
     if mac:
         vmac = MACAddress(mac)
 
@@ -46,9 +47,10 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
 
     for ep in eps:
         if tep:
-            src = VppIpAddress(tep[0])
-            dst = VppIpAddress(tep[1])
-            if src != ep.endpoint.tun.src or dst != ep.endpoint.tun.dst:
+            src = tep[0]
+            dst = tep[1]
+            if src != str(ep.endpoint.tun.src) or \
+               dst != str(ep.endpoint.tun.dst):
                 continue
         if sw_if_index:
             if ep.endpoint.sw_if_index != sw_if_index:
@@ -58,10 +60,10 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
                 continue
         if ip:
             for eip in ep.endpoint.ips:
-                if vip == eip:
+                if vip == str(eip):
                     return True
         if mac:
-            if vmac.packed == ep.endpoint.mac:
+            if vmac == ep.endpoint.mac:
                 return True
 
     return False
@@ -118,10 +120,10 @@ class VppGbpEndpoint(VppObject):
         self.epg = epg
         self.recirc = recirc
 
-        self._ip4 = VppIpAddress(ip4)
-        self._fip4 = VppIpAddress(fip4)
-        self._ip6 = VppIpAddress(ip6)
-        self._fip6 = VppIpAddress(fip6)
+        self._ip4 = ip4
+        self._fip4 = fip4
+        self._ip6 = ip6
+        self._fip6 = fip6
 
         if mac:
             self.vmac = MACAddress(self.itf.remote_mac)
@@ -129,18 +131,18 @@ class VppGbpEndpoint(VppObject):
             self.vmac = MACAddress("00:00:00:00:00:00")
 
         self.flags = flags
-        self.tun_src = VppIpAddress(tun_src)
-        self.tun_dst = VppIpAddress(tun_dst)
+        self.tun_src = tun_src
+        self.tun_dst = tun_dst
 
     def add_vpp_config(self):
         res = self._test.vapi.gbp_endpoint_add(
             self.itf.sw_if_index,
-            [self.ip4.encode(), self.ip6.encode()],
+            [self.ip4, self.ip6],
             self.vmac.packed,
             self.epg.sclass,
             self.flags,
-            self.tun_src.encode(),
-            self.tun_dst.encode())
+            self.tun_src,
+            self.tun_dst)
         self.handle = res.handle
         self._test.registry.register(self, self._test.logger)
 
@@ -150,13 +152,13 @@ class VppGbpEndpoint(VppObject):
     def object_id(self):
         return "gbp-endpoint:[%d==%d:%s:%d]" % (self.handle,
                                                 self.itf.sw_if_index,
-                                                self.ip4.address,
+                                                self.ip4,
                                                 self.epg.sclass)
 
     def query_vpp_config(self):
         return find_gbp_endpoint(self._test,
                                  self.itf.sw_if_index,
-                                 self.ip4.address)
+                                 self.ip4)
 
 
 class VppGbpRecirc(VppObject):
@@ -238,7 +240,13 @@ class VppGbpSubnet(VppObject):
                  type, sw_if_index=None, sclass=None):
         self._test = test
         self.rd_id = rd.rd_id
-        self.prefix = VppIpPrefix(address, address_len)
+        a = ip_address(address)
+        if 4 == a.version:
+            self.prefix = IPv4Network("%s/%d" % (address, address_len),
+                                      strict=False)
+        else:
+            self.prefix = IPv6Network("%s/%d" % (address, address_len),
+                                      strict=False)
         self.type = type
         self.sw_if_index = sw_if_index
         self.sclass = sclass
@@ -247,7 +255,7 @@ class VppGbpSubnet(VppObject):
         self._test.vapi.gbp_subnet_add_del(
             1,
             self.rd_id,
-            self.prefix.encode(),
+            self.prefix,
             self.type,
             sw_if_index=self.sw_if_index if self.sw_if_index else 0xffffffff,
             sclass=self.sclass if self.sclass else 0xffff)
@@ -257,7 +265,7 @@ class VppGbpSubnet(VppObject):
         self._test.vapi.gbp_subnet_add_del(
             0,
             self.rd_id,
-            self.prefix.encode(),
+            self.prefix,
             self.type)
 
     def object_id(self):
@@ -292,8 +300,8 @@ class VppGbpEndpointGroup(VppObject):
         self._test = test
         self.uplink = uplink
         self.bvi = bvi
-        self.bvi_ip4 = VppIpAddress(bvi_ip4)
-        self.bvi_ip6 = VppIpAddress(bvi_ip6)
+        self.bvi_ip4 = bvi_ip4
+        self.bvi_ip6 = bvi_ip6
         self.vnid = vnid
         self.bd = bd
         self.rd = rd
@@ -424,7 +432,7 @@ class VppGbpContractNextHop():
         self.rd = rd
 
     def encode(self):
-        return {'ip': self.ip.encode(),
+        return {'ip': self.ip,
                 'mac': self.mac.packed,
                 'bd_id': self.bd.bd.bd_id,
                 'rd_id': self.rd.rd_id}
@@ -898,10 +906,10 @@ class TestGBP(VppTestCase):
             # add the BD ARP termination entry for BVI IP
             epg.bd_arp_ip4 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip4.address)
+                                                     epg.bvi_ip4)
             epg.bd_arp_ip6 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip6.address)
+                                                     epg.bvi_ip6)
             epg.bd_arp_ip4.add_vpp_config()
             epg.bd_arp_ip6.add_vpp_config()
 
@@ -938,19 +946,19 @@ class TestGBP(VppTestCase):
             #
             for (ip, fip) in zip(ep.ips, ep.fips):
                 # Add static mappings for each EP from the 10/8 to 11/8 network
-                if ip.af == AF_INET:
+                if ip_address(ip).version == 4:
                     flags = self.config_flags.NAT_IS_ADDR_ONLY
                     self.vapi.nat44_add_del_static_mapping(
                         is_add=1,
-                        local_ip_address=ip.bytes,
-                        external_ip_address=fip.bytes,
+                        local_ip_address=ip,
+                        external_ip_address=fip,
                         external_sw_if_index=0xFFFFFFFF,
                         vrf_id=0,
                         flags=flags)
                 else:
                     self.vapi.nat66_add_del_static_mapping(
-                        local_ip_address=ip.bytes,
-                        external_ip_address=fip.bytes,
+                        local_ip_address=ip,
+                        external_ip_address=fip,
                         vrf_id=0, is_add=1)
 
             # VPP EP create ...
@@ -964,27 +972,27 @@ class TestGBP(VppTestCase):
             for ii, ip in enumerate(ep.ips):
                 p = rx[ii]
 
-                if ip.is_ip6:
+                if ip_address(ip).version == 6:
                     self.assertTrue(p.haslayer(ICMPv6ND_NA))
-                    self.assertEqual(p[ICMPv6ND_NA].tgt, ip.address)
+                    self.assertEqual(p[ICMPv6ND_NA].tgt, ip)
                 else:
                     self.assertTrue(p.haslayer(ARP))
-                    self.assertEqual(p[ARP].psrc, ip.address)
-                    self.assertEqual(p[ARP].pdst, ip.address)
+                    self.assertEqual(p[ARP].psrc, ip)
+                    self.assertEqual(p[ARP].pdst, ip)
 
             # add the BD ARP termination entry for floating IP
             for fip in ep.fips:
                 ba = VppBridgeDomainArpEntry(self, epg_nat.bd.bd, ep.mac,
-                                             fip.address)
+                                             fip)
                 ba.add_vpp_config()
 
                 # floating IPs route via EPG recirc
                 r = VppIpRoute(
-                    self, fip.address, fip.length,
-                    [VppRoutePath(fip.address,
+                    self, fip, ip_address(fip).max_prefixlen,
+                    [VppRoutePath(fip,
                                   ep.recirc.recirc.sw_if_index,
                                   type=FibPathType.FIB_PATH_TYPE_DVR,
-                                  proto=fip.dpo_proto)],
+                                  proto=get_dpo_proto(fip))],
                     table_id=20)
                 r.add_vpp_config()
 
@@ -1021,17 +1029,17 @@ class TestGBP(VppTestCase):
                    ARP(op="who-has",
                        hwdst="ff:ff:ff:ff:ff:ff",
                        hwsrc=self.pg0.remote_mac,
-                       pdst=epgs[0].bvi_ip4.address,
-                       psrc=eps[0].ip4.address))
+                       pdst=epgs[0].bvi_ip4,
+                       psrc=eps[0].ip4))
 
         self.send_and_expect(self.pg0, [pkt_arp], self.pg0)
 
-        nsma = in6_getnsma(inet_pton(AF_INET6, eps[0].ip6.address))
+        nsma = in6_getnsma(inet_pton(AF_INET6, eps[0].ip6))
         d = inet_ntop(AF_INET6, nsma)
         pkt_nd = (Ether(dst=in6_getnsmac(nsma),
                         src=self.pg0.remote_mac) /
-                  IPv6(dst=d, src=eps[0].ip6.address) /
-                  ICMPv6ND_NS(tgt=epgs[0].bvi_ip6.address) /
+                  IPv6(dst=d, src=eps[0].ip6) /
+                  ICMPv6ND_NS(tgt=epgs[0].bvi_ip6) /
                   ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
         self.send_and_expect(self.pg0, [pkt_nd], self.pg0)
 
@@ -1040,7 +1048,7 @@ class TestGBP(VppTestCase):
         #
         pkt_bcast = (Ether(dst="ff:ff:ff:ff:ff:ff",
                            src=self.pg0.remote_mac) /
-                     IP(src=eps[0].ip4.address, dst="232.1.1.1") /
+                     IP(src=eps[0].ip4, dst="232.1.1.1") /
                      UDP(sport=1234, dport=1234) /
                      Raw(b'\xa5' * 100))
 
@@ -1060,13 +1068,13 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg_220_ip4 = (Ether(src=self.pg0.remote_mac,
                                        dst=str(self.router_mac)) /
-                                 IP(src=eps[0].ip4.address,
+                                 IP(src=eps[0].ip4,
                                     dst="10.0.0.99") /
                                  UDP(sport=1234, dport=1234) /
                                  Raw(b'\xa5' * 100))
         pkt_inter_epg_222_ip4 = (Ether(src=self.pg0.remote_mac,
                                        dst=str(self.router_mac)) /
-                                 IP(src=eps[0].ip4.address,
+                                 IP(src=eps[0].ip4,
                                     dst="10.0.1.99") /
                                  UDP(sport=1234, dport=1234) /
                                  Raw(b'\xa5' * 100))
@@ -1076,7 +1084,7 @@ class TestGBP(VppTestCase):
 
         pkt_inter_epg_222_ip6 = (Ether(src=self.pg0.remote_mac,
                                        dst=str(self.router_mac)) /
-                                 IPv6(src=eps[0].ip6.address,
+                                 IPv6(src=eps[0].ip6,
                                       dst="2001:10::99") /
                                  UDP(sport=1234, dport=1234) /
                                  Raw(b'\xa5' * 100))
@@ -1137,7 +1145,7 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg_220_to_uplink = (Ether(src=self.pg0.remote_mac,
                                              dst="00:00:00:33:44:55") /
-                                       IP(src=eps[0].ip4.address,
+                                       IP(src=eps[0].ip4,
                                           dst="10.0.0.99") /
                                        UDP(sport=1234, dport=1234) /
                                        Raw(b'\xa5' * 100))
@@ -1151,7 +1159,7 @@ class TestGBP(VppTestCase):
 
         pkt_intra_epg_221_to_uplink = (Ether(src=self.pg2.remote_mac,
                                              dst="00:00:00:33:44:66") /
-                                       IP(src=eps[0].ip4.address,
+                                       IP(src=eps[0].ip4,
                                           dst="10.0.0.99") /
                                        UDP(sport=1234, dport=1234) /
                                        Raw(b'\xa5' * 100))
@@ -1165,7 +1173,7 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg_220_from_uplink = (Ether(src="00:00:00:33:44:55",
                                                dst=self.pg0.remote_mac) /
-                                         IP(src=eps[0].ip4.address,
+                                         IP(src=eps[0].ip4,
                                             dst="10.0.0.99") /
                                          UDP(sport=1234, dport=1234) /
                                          Raw(b'\xa5' * 100))
@@ -1180,8 +1188,8 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg = (Ether(src=self.pg0.remote_mac,
                                dst=self.pg1.remote_mac) /
-                         IP(src=eps[0].ip4.address,
-                            dst=eps[1].ip4.address) /
+                         IP(src=eps[0].ip4,
+                            dst=eps[1].ip4) /
                          UDP(sport=1234, dport=1234) /
                          Raw(b'\xa5' * 100))
 
@@ -1195,20 +1203,20 @@ class TestGBP(VppTestCase):
         #
         pkt_inter_epg_220_to_221 = (Ether(src=self.pg0.remote_mac,
                                           dst=self.pg2.remote_mac) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[2].ip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[2].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac,
                                           dst=self.pg0.remote_mac) /
-                                    IP(src=eps[2].ip4.address,
-                                       dst=eps[0].ip4.address) /
+                                    IP(src=eps[2].ip4,
+                                       dst=eps[0].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         pkt_inter_epg_220_to_222 = (Ether(src=self.pg0.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[3].ip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[3].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
@@ -1380,7 +1388,7 @@ class TestGBP(VppTestCase):
         #
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
                                              dst=str(self.router_mac)) /
-                                       IP(src=eps[0].ip4.address,
+                                       IP(src=eps[0].ip4,
                                           dst="1.1.1.1") /
                                        UDP(sport=1234, dport=1234) /
                                        Raw(b'\xa5' * 100))
@@ -1413,11 +1421,11 @@ class TestGBP(VppTestCase):
         self.send_and_expect_natted(eps[0].itf,
                                     pkt_inter_epg_220_to_global * NUM_PKTS,
                                     self.pg7,
-                                    eps[0].fip4.address)
+                                    eps[0].fip4)
 
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
                                              dst=str(self.router_mac)) /
-                                       IPv6(src=eps[0].ip6.address,
+                                       IPv6(src=eps[0].ip6,
                                             dst="6001::1") /
                                        UDP(sport=1234, dport=1234) /
                                        Raw(b'\xa5' * 100))
@@ -1425,14 +1433,14 @@ class TestGBP(VppTestCase):
         self.send_and_expect_natted6(self.pg0,
                                      pkt_inter_epg_220_to_global * NUM_PKTS,
                                      self.pg7,
-                                     eps[0].fip6.address)
+                                     eps[0].fip6)
 
         #
         # From a global address to an EP: OUT2IN
         #
         pkt_inter_epg_220_from_global = (Ether(src=str(self.router_mac),
                                                dst=self.pg0.remote_mac) /
-                                         IP(dst=eps[0].fip4.address,
+                                         IP(dst=eps[0].fip4,
                                             src="1.1.1.1") /
                                          UDP(sport=1234, dport=1234) /
                                          Raw(b'\xa5' * 100))
@@ -1456,11 +1464,11 @@ class TestGBP(VppTestCase):
         self.send_and_expect_unnatted(self.pg7,
                                       pkt_inter_epg_220_from_global * NUM_PKTS,
                                       eps[0].itf,
-                                      eps[0].ip4.address)
+                                      eps[0].ip4)
 
         pkt_inter_epg_220_from_global = (Ether(src=str(self.router_mac),
                                                dst=self.pg0.remote_mac) /
-                                         IPv6(dst=eps[0].fip6.address,
+                                         IPv6(dst=eps[0].fip6,
                                               src="6001::1") /
                                          UDP(sport=1234, dport=1234) /
                                          Raw(b'\xa5' * 100))
@@ -1469,7 +1477,7 @@ class TestGBP(VppTestCase):
             self.pg7,
             pkt_inter_epg_220_from_global * NUM_PKTS,
             eps[0].itf,
-            eps[0].ip6.address)
+            eps[0].ip6)
 
         #
         # From a local VM to another local VM using resp. public addresses:
@@ -1477,21 +1485,21 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg_220_global = (Ether(src=self.pg0.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[1].fip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[1].fip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
         self.send_and_expect_double_natted(eps[0].itf,
                                            pkt_intra_epg_220_global * NUM_PKTS,
                                            eps[1].itf,
-                                           eps[0].fip4.address,
-                                           eps[1].ip4.address)
+                                           eps[0].fip4,
+                                           eps[1].ip4)
 
         pkt_intra_epg_220_global = (Ether(src=self.pg0.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IPv6(src=eps[0].ip6.address,
-                                         dst=eps[1].fip6.address) /
+                                    IPv6(src=eps[0].ip6,
+                                         dst=eps[1].fip6) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
@@ -1499,8 +1507,8 @@ class TestGBP(VppTestCase):
             eps[0].itf,
             pkt_intra_epg_220_global * NUM_PKTS,
             eps[1].itf,
-            eps[0].fip6.address,
-            eps[1].ip6.address)
+            eps[0].fip6,
+            eps[1].ip6)
 
         #
         # cleanup
@@ -1510,14 +1518,14 @@ class TestGBP(VppTestCase):
             flags = self.config_flags.NAT_IS_ADDR_ONLY
             self.vapi.nat44_add_del_static_mapping(
                 is_add=0,
-                local_ip_address=ep.ip4.bytes,
-                external_ip_address=ep.fip4.bytes,
+                local_ip_address=ep.ip4,
+                external_ip_address=ep.fip4,
                 external_sw_if_index=0xFFFFFFFF,
                 vrf_id=0,
                 flags=flags)
             self.vapi.nat66_add_del_static_mapping(
-                local_ip_address=ep.ip6.bytes,
-                external_ip_address=ep.fip6.bytes,
+                local_ip_address=ep.ip6,
+                external_ip_address=ep.fip6,
                 vrf_id=0, is_add=0)
 
         for epg in epgs:
@@ -1651,7 +1659,7 @@ class TestGBP(VppTestCase):
                             "2001:10::1", "3001::1")
         ep.add_vpp_config()
 
-        self.assertTrue(find_route(self, ep.ip4.address, 32, table_id=1))
+        self.assertTrue(find_route(self, ep.ip4, 32, table_id=1))
 
         # a packet with an sclass from an unknown EPG
         p = (Ether(src=self.pg2.remote_mac,
@@ -1661,7 +1669,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=99, gpid=88, flags=0x88) /
              Ether(src=learnt[0]["mac"], dst=ep.mac) /
-             IP(src=learnt[0]["ip"], dst=ep.ip4.address) /
+             IP(src=learnt[0]["ip"], dst=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -1698,7 +1706,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1841,7 +1849,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=112, flags=0x88, gpflags="D") /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1866,7 +1874,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=112, flags=0xc8) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1882,7 +1890,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh l2fib bd_id 1"))
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
-                 IP(dst=l['ip'], src=ep.ip4.address) /
+                 IP(dst=l['ip'], src=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1918,7 +1926,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1933,7 +1941,7 @@ class TestGBP(VppTestCase):
         # only test 1 EP as the others could timeout
         #
         p = (Ether(src=ep.mac, dst=l['mac']) /
-             IP(dst=learnt[0]['ip'], src=ep.ip4.address) /
+             IP(dst=learnt[0]['ip'], src=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -1951,7 +1959,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1983,7 +1991,7 @@ class TestGBP(VppTestCase):
 
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
-                 IP(dst=l['ip'], src=ep.ip4.address) /
+                 IP(dst=l['ip'], src=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -1995,7 +2003,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh gbp bridge"))
         self.logger.info(self.vapi.cli("sh bridge-domain 1 detail"))
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
-                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(ep.itf, [p_uu], gbd1.uu_fwd)
@@ -2003,7 +2011,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
 
         p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
-                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 100))
         rxs = self.send_and_expect_only(ep.itf, [p_bm], tun_bm.mcast_itf)
@@ -2052,7 +2060,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=113, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IPv6(src=l['ip6'], dst=ep.ip6.address) /
+                 IPv6(src=l['ip6'], dst=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2084,7 +2092,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=113, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IPv6(src=l['ip6'], dst=ep.ip6.address) /
+                 IPv6(src=l['ip6'], dst=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2104,7 +2112,7 @@ class TestGBP(VppTestCase):
         #
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
-                 IPv6(dst=l['ip6'], src=ep.ip6.address) /
+                 IPv6(dst=l['ip6'], src=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2135,7 +2143,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IPv6(src=l['ip6'], dst=ep.ip6.address) /
+                 IPv6(src=l['ip6'], dst=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2158,7 +2166,7 @@ class TestGBP(VppTestCase):
 
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
-                 IPv6(dst=l['ip6'], src=ep.ip6.address) /
+                 IPv6(dst=l['ip6'], src=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2272,7 +2280,7 @@ class TestGBP(VppTestCase):
             # add the BD ARP termination entry for BVI IP
             epg.bd_arp_ip4 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip4.address)
+                                                     epg.bvi_ip4)
             epg.bd_arp_ip4.add_vpp_config()
 
             # EPG in VPP
@@ -2293,8 +2301,8 @@ class TestGBP(VppTestCase):
         #
         pkt_intra_epg_220_to_220 = (Ether(src=self.pg0.remote_mac,
                                           dst=self.pg1.remote_mac) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[1].ip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[1].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
@@ -2304,8 +2312,8 @@ class TestGBP(VppTestCase):
 
         pkt_intra_epg_220_to_220 = (Ether(src=self.pg0.remote_mac,
                                           dst=self.pg1.remote_mac) /
-                                    IPv6(src=eps[0].ip6.address,
-                                         dst=eps[1].ip6.address) /
+                                    IPv6(src=eps[0].ip6,
+                                         dst=eps[1].ip6) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
@@ -2318,8 +2326,8 @@ class TestGBP(VppTestCase):
         #
         pkt_inter_epg_220_to_221 = (Ether(src=self.pg0.remote_mac,
                                           dst=self.pg2.remote_mac) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[2].ip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[2].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
 
@@ -2356,8 +2364,8 @@ class TestGBP(VppTestCase):
 
         pkt_inter_epg_220_to_222 = (Ether(src=self.pg0.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IP(src=eps[0].ip4.address,
-                                       dst=eps[3].ip4.address) /
+                                    IP(src=eps[0].ip4,
+                                       dst=eps[3].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(eps[0].itf,
@@ -2368,16 +2376,16 @@ class TestGBP(VppTestCase):
         #
         pkt_router_ping_220_to_221 = (Ether(src=self.pg0.remote_mac,
                                             dst=str(self.router_mac)) /
-                                      IP(src=eps[0].ip4.address,
-                                         dst=epgs[1].bvi_ip4.address) /
+                                      IP(src=eps[0].ip4,
+                                         dst=epgs[1].bvi_ip4) /
                                       ICMP(type='echo-request'))
 
         self.send_and_expect(self.pg0, [pkt_router_ping_220_to_221], self.pg0)
 
         pkt_router_ping_220_to_221 = (Ether(src=self.pg0.remote_mac,
                                             dst=str(self.router_mac)) /
-                                      IPv6(src=eps[0].ip6.address,
-                                           dst=epgs[1].bvi_ip6.address) /
+                                      IPv6(src=eps[0].ip6,
+                                           dst=epgs[1].bvi_ip6) /
                                       ICMPv6EchoRequest())
 
         self.send_and_expect(self.pg0, [pkt_router_ping_220_to_221], self.pg0)
@@ -2403,8 +2411,8 @@ class TestGBP(VppTestCase):
                                      eps[2].itf)
         pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac,
                                           dst=self.pg0.remote_mac) /
-                                    IP(src=eps[2].ip4.address,
-                                       dst=eps[0].ip4.address) /
+                                    IP(src=eps[2].ip4,
+                                       dst=eps[0].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         self.send_and_expect_bridged(eps[2].itf,
@@ -2412,8 +2420,8 @@ class TestGBP(VppTestCase):
                                      eps[0].itf)
         pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IP(src=eps[2].ip4.address,
-                                       dst=eps[0].ip4.address) /
+                                    IP(src=eps[2].ip4,
+                                       dst=eps[0].ip4) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         self.send_and_expect_routed(eps[2].itf,
@@ -2422,8 +2430,8 @@ class TestGBP(VppTestCase):
                                     str(self.router_mac))
         pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac,
                                           dst=str(self.router_mac)) /
-                                    IPv6(src=eps[2].ip6.address,
-                                         dst=eps[0].ip6.address) /
+                                    IPv6(src=eps[2].ip6,
+                                         dst=eps[0].ip6) /
                                     UDP(sport=1234, dport=1234) /
                                     Raw(b'\xa5' * 100))
         self.send_and_expect_routed6(eps[2].itf,
@@ -2511,13 +2519,13 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
         self.logger.info(self.vapi.cli("sh gbp bridge"))
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
-                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(ep.itf, [p_uu])
 
         p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
-                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 100))
         self.send_and_assert_no_replies(ep.itf, [p_bm])
@@ -2592,7 +2600,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh gbp bridge"))
         p_arp = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
                  ARP(op="who-has",
-                     psrc=ep.ip4.address, pdst="10.0.0.99",
+                     psrc=ep.ip4, pdst="10.0.0.99",
                      hwsrc=ep.mac,
                      hwdst="ff:ff:ff:ff:ff:ff"))
         self.send_and_expect(ep.itf, [p_arp], self.pg4)
@@ -2692,7 +2700,7 @@ class TestGBP(VppTestCase):
                             "2001:10::1", "3001::1")
         ep.add_vpp_config()
 
-        self.assertTrue(find_route(self, ep.ip4.address, 32, table_id=1))
+        self.assertTrue(find_route(self, ep.ip4, 32, table_id=1))
 
         #
         # Send to the static EP
@@ -2707,7 +2715,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2742,7 +2750,7 @@ class TestGBP(VppTestCase):
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  Dot1Q(vlan=11) /
-                 IP(dst=l['ip'], src=ep.ip4.address) /
+                 IP(dst=l['ip'], src=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2880,7 +2888,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2904,7 +2912,7 @@ class TestGBP(VppTestCase):
         #
         for l in learnt:
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-                 IP(dst=l['ip'], src=ep.ip4.address) /
+                 IP(dst=l['ip'], src=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2926,7 +2934,7 @@ class TestGBP(VppTestCase):
 
                 self.assertEqual(inner[Ether].src, routed_src_mac)
                 self.assertEqual(inner[Ether].dst, routed_dst_mac)
-                self.assertEqual(inner[IP].src, ep.ip4.address)
+                self.assertEqual(inner[IP].src, ep.ip4)
                 self.assertEqual(inner[IP].dst, l['ip'])
 
         for l in learnt:
@@ -2947,7 +2955,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
-                 IPv6(src=l['ip6'], dst=ep.ip6.address) /
+                 IPv6(src=l['ip6'], dst=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2977,7 +2985,7 @@ class TestGBP(VppTestCase):
         #
         for l in learnt:
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-                 IPv6(dst=l['ip6'], src=ep.ip6.address) /
+                 IPv6(dst=l['ip6'], src=ep.ip6) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -2999,7 +3007,7 @@ class TestGBP(VppTestCase):
 
                 self.assertEqual(inner[Ether].src, routed_src_mac)
                 self.assertEqual(inner[Ether].dst, routed_dst_mac)
-                self.assertEqual(inner[IPv6].src, ep.ip6.address)
+                self.assertEqual(inner[IPv6].src, ep.ip6)
                 self.assertEqual(inner[IPv6].dst, l['ip6'])
 
         self.logger.info(self.vapi.cli("sh gbp endpoint"))
@@ -3010,7 +3018,7 @@ class TestGBP(VppTestCase):
         # Static sends to unknown EP with no route
         #
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(dst="10.0.0.99", src=ep.ip4.address) /
+             IP(dst="10.0.0.99", src=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3028,14 +3036,14 @@ class TestGBP(VppTestCase):
         # static pings router
         #
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(dst=epg_220.bvi_ip4.address, src=ep.ip4.address) /
+             IP(dst=epg_220.bvi_ip4, src=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IPv6(dst=epg_220.bvi_ip6.address, src=ep.ip6.address) /
+             IPv6(dst=epg_220.bvi_ip6, src=ep.ip6) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3045,7 +3053,7 @@ class TestGBP(VppTestCase):
         # packets to address in the subnet are sent on the uu-fwd
         #
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(dst="10.0.0.99", src=ep.ip4.address) /
+             IP(dst="10.0.0.99", src=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3076,7 +3084,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 IP(src=l['ip'], dst=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -3137,7 +3145,7 @@ class TestGBP(VppTestCase):
         ips = ["10.0.0.88", learnt[0]['ip']]
         for ip in ips:
             p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-                 IP(dst=ip, src=ep.ip4.address) /
+                 IP(dst=ip, src=ep.ip4) /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
@@ -3159,7 +3167,7 @@ class TestGBP(VppTestCase):
 
                 self.assertEqual(inner[Ether].src, routed_src_mac)
                 self.assertEqual(inner[Ether].dst, routed_dst_mac)
-                self.assertEqual(inner[IP].src, ep.ip4.address)
+                self.assertEqual(inner[IP].src, ep.ip4)
                 self.assertEqual(inner[IP].dst, ip)
 
         #
@@ -3169,18 +3177,18 @@ class TestGBP(VppTestCase):
         rep_88.remove_vpp_config()
         rep_2.remove_vpp_config()
 
-        self.assertTrue(find_gbp_endpoint(self, ip=rep_2.ip4.address))
+        self.assertTrue(find_gbp_endpoint(self, ip=rep_2.ip4))
 
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(src=ep.ip4.address, dst=rep_2.ip4.address) /
+             IP(src=ep.ip4, dst=rep_2.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, [p], self.pg2)
 
-        self.assertFalse(find_gbp_endpoint(self, ip=rep_88.ip4.address))
+        self.assertFalse(find_gbp_endpoint(self, ip=rep_88.ip4))
 
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(src=ep.ip4.address, dst=rep_88.ip4.address) /
+             IP(src=ep.ip4, dst=rep_88.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, [p], self.pg4)
@@ -3190,8 +3198,8 @@ class TestGBP(VppTestCase):
         # present (because it's DP learnt) when the TC ends so wait until
         # it is removed
         #
-        self.wait_for_ep_timeout(ip=rep_88.ip4.address)
-        self.wait_for_ep_timeout(ip=rep_2.ip4.address)
+        self.wait_for_ep_timeout(ip=rep_88.ip4)
+        self.wait_for_ep_timeout(ip=rep_2.ip4)
 
         #
         # Same as above, learn a remote EP via CP and DP
@@ -3214,19 +3222,19 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=101, gpid=441, flags=0x88) /
              Ether(src=l['mac'], dst="00:00:00:11:11:11") /
-             IP(src="10.0.1.4", dst=ep.ip4.address) /
+             IP(src="10.0.1.4", dst=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
         self.assertTrue(find_gbp_endpoint(self,
                                           vx_tun_l3._sw_if_index,
-                                          ip=rep_3.ip4.address,
+                                          ip=rep_3.ip4,
                                           tep=[self.pg2.local_ip4,
                                                self.pg2.remote_hosts[2].ip4]))
 
         p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(dst="10.0.1.4", src=ep.ip4.address) /
+             IP(dst="10.0.1.4", src=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
@@ -3236,7 +3244,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[IP].src, self.pg2.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[2].ip4)
 
-        self.wait_for_ep_timeout(ip=rep_3.ip4.address,
+        self.wait_for_ep_timeout(ip=rep_3.ip4,
                                  tep=[self.pg2.local_ip4,
                                       self.pg2.remote_hosts[2].ip4])
 
@@ -3257,7 +3265,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=101, gpid=441, flags=0x88) /
              Ether(src=l['mac'], dst="00:00:00:11:11:11") /
-             IP(src=learnt[1]['ip'], dst=ep.ip4.address) /
+             IP(src=learnt[1]['ip'], dst=ep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3447,19 +3455,19 @@ class TestGBP(VppTestCase):
         #  different dest ports on each so the are LB hashed differently
         #
         p4 = [(Ether(src=ep1.mac, dst=ep3.mac) /
-               IP(src=ep1.ip4.address, dst=ep3.ip4.address) /
+               IP(src=ep1.ip4, dst=ep3.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep3.mac, dst=ep1.mac) /
-               IP(src=ep3.ip4.address, dst=ep1.ip4.address) /
+               IP(src=ep3.ip4, dst=ep1.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=ep3.mac) /
-               IPv6(src=ep1.ip6.address, dst=ep3.ip6.address) /
+               IPv6(src=ep1.ip6, dst=ep3.ip6) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep3.mac, dst=ep1.mac) /
-               IPv6(src=ep3.ip6.address, dst=ep1.ip6.address) /
+               IPv6(src=ep3.ip6, dst=ep1.ip6) /
                UDP(sport=1234, dport=1230) /
                Raw(b'\xa5' * 100))]
 
@@ -3526,16 +3534,16 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep3.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep3.ip4)
 
         rxs = self.send_and_expect(self.pg2, p4[1] * 17, sep2.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep2.mac)
-            self.assertEqual(rx[IP].src, ep3.ip4.address)
-            self.assertEqual(rx[IP].dst, ep1.ip4.address)
+            self.assertEqual(rx[IP].src, ep3.ip4)
+            self.assertEqual(rx[IP].dst, ep1.ip4)
 
         rxs = self.send_and_expect(self.pg0, p6[0] * 17, self.pg7)
 
@@ -3555,16 +3563,16 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep4.mac)
-            self.assertEqual(inner[IPv6].src, ep1.ip6.address)
-            self.assertEqual(inner[IPv6].dst, ep3.ip6.address)
+            self.assertEqual(inner[IPv6].src, ep1.ip6)
+            self.assertEqual(inner[IPv6].dst, ep3.ip6)
 
         rxs = self.send_and_expect(self.pg2, p6[1] * 17, sep3.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep3.mac)
-            self.assertEqual(rx[IPv6].src, ep3.ip6.address)
-            self.assertEqual(rx[IPv6].dst, ep1.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep3.ip6)
+            self.assertEqual(rx[IPv6].dst, ep1.ip6)
 
         #
         # programme the unknown EP
@@ -3576,8 +3584,8 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep4.mac)
-            self.assertEqual(rx[IPv6].src, ep1.ip6.address)
-            self.assertEqual(rx[IPv6].dst, ep3.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep1.ip6)
+            self.assertEqual(rx[IPv6].dst, ep3.ip6)
 
         #
         # and revert back to unprogrammed
@@ -3602,8 +3610,8 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep4.mac)
-            self.assertEqual(inner[IPv6].src, ep1.ip6.address)
-            self.assertEqual(inner[IPv6].dst, ep3.ip6.address)
+            self.assertEqual(inner[IPv6].src, ep1.ip6)
+            self.assertEqual(inner[IPv6].dst, ep3.ip6)
 
         c1.remove_vpp_config()
         c2.remove_vpp_config()
@@ -3658,16 +3666,16 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep3.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep3.ip4)
 
         rxs = self.send_and_expect(self.pg2, p4[1] * 17, sep1.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep3.ip4.address)
-            self.assertEqual(rx[IP].dst, ep1.ip4.address)
+            self.assertEqual(rx[IP].src, ep3.ip4)
+            self.assertEqual(rx[IP].dst, ep1.ip4)
 
         #
         # programme the unknown EP for the L3 tests
@@ -3679,19 +3687,19 @@ class TestGBP(VppTestCase):
         #  different dest ports on each so the are LB hashed differently
         #
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
+               IP(src=ep1.ip4, dst=ep2.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
-               IP(src=ep2.ip4.address, dst=ep1.ip4.address) /
+               IP(src=ep2.ip4, dst=ep1.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
+               IPv6(src=ep1.ip6, dst=ep2.ip6) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
-               IPv6(src=ep2.ip6.address, dst=ep1.ip6.address) /
+               IPv6(src=ep2.ip6, dst=ep1.ip6) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
 
@@ -3719,8 +3727,8 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep2.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep2.ip4)
 
         #
         # learn a remote EP in EPG 221
@@ -3758,7 +3766,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=444, gpid=441, flags=0x88) /
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
-             IP(src="10.0.0.88", dst=ep1.ip4.address) /
+             IP(src="10.0.0.88", dst=ep1.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3769,7 +3777,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
             self.assertEqual(rx[IP].src, "10.0.0.88")
-            self.assertEqual(rx[IP].dst, ep1.ip4.address)
+            self.assertEqual(rx[IP].dst, ep1.ip4)
 
         # endpoint learnt via the parent GBP-vxlan interface
         self.assertTrue(find_gbp_endpoint(self,
@@ -3783,7 +3791,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=444, gpid=441, flags=0x88) /
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
-             IPv6(src="2001:10::88", dst=ep1.ip6.address) /
+             IPv6(src="2001:10::88", dst=ep1.ip6) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -3794,7 +3802,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep3.mac)
             self.assertEqual(rx[IPv6].src, "2001:10::88")
-            self.assertEqual(rx[IPv6].dst, ep1.ip6.address)
+            self.assertEqual(rx[IPv6].dst, ep1.ip6)
 
         # endpoint learnt via the parent GBP-vxlan interface
         self.assertTrue(find_gbp_endpoint(self,
@@ -3805,11 +3813,11 @@ class TestGBP(VppTestCase):
         # L3 switch from local to remote EP
         #
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IP(src=ep1.ip4.address, dst="10.0.0.88") /
+               IP(src=ep1.ip4, dst="10.0.0.88") /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IPv6(src=ep1.ip6.address, dst="2001:10::88") /
+               IPv6(src=ep1.ip6, dst="2001:10::88") /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
 
@@ -3818,7 +3826,7 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
             self.assertEqual(rx[IP].dst, "10.0.0.88")
 
         rxs = self.send_and_expect(self.pg0, p6[0] * 17, sep4.itf)
@@ -3826,7 +3834,7 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep4.mac)
-            self.assertEqual(rx[IPv6].src, ep1.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep1.ip6)
             self.assertEqual(rx[IPv6].dst, "2001:10::88")
 
         #
@@ -3856,7 +3864,7 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
             self.assertEqual(rx[IP].dst, "10.0.0.88")
 
         rxs = self.send_and_expect(self.pg0, p6[0] * 17, sep3.itf)
@@ -3864,7 +3872,7 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep3.mac)
-            self.assertEqual(rx[IPv6].src, ep1.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep1.ip6)
             self.assertEqual(rx[IPv6].dst, "2001:10::88")
 
         #
@@ -3941,25 +3949,25 @@ class TestGBP(VppTestCase):
 
         # external subnets reachable though eep1 and eep2 respectively
         VppIpRoute(self, "10.220.0.0", 24,
-                   [VppRoutePath(eep1.ip4.address, eep1.epg.bvi.sw_if_index)],
+                   [VppRoutePath(eep1.ip4, eep1.epg.bvi.sw_if_index)],
                    table_id=t4.table_id).add_vpp_config()
         VppGbpSubnet(self, rd1, "10.220.0.0", 24,
                      VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
                      sclass=4220).add_vpp_config()
         VppIpRoute(self, "10:220::", 64,
-                   [VppRoutePath(eep1.ip6.address, eep1.epg.bvi.sw_if_index)],
+                   [VppRoutePath(eep1.ip6, eep1.epg.bvi.sw_if_index)],
                    table_id=t6.table_id).add_vpp_config()
         VppGbpSubnet(self, rd1, "10:220::", 64,
                      VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
                      sclass=4220).add_vpp_config()
         VppIpRoute(self, "10.221.0.0", 24,
-                   [VppRoutePath(eep2.ip4.address, eep2.epg.bvi.sw_if_index)],
+                   [VppRoutePath(eep2.ip4, eep2.epg.bvi.sw_if_index)],
                    table_id=t4.table_id).add_vpp_config()
         VppGbpSubnet(self, rd1, "10.221.0.0", 24,
                      VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
                      sclass=4221).add_vpp_config()
         VppIpRoute(self, "10:221::", 64,
-                   [VppRoutePath(eep2.ip6.address, eep2.epg.bvi.sw_if_index)],
+                   [VppRoutePath(eep2.ip6, eep2.epg.bvi.sw_if_index)],
                    table_id=t6.table_id).add_vpp_config()
         VppGbpSubnet(self, rd1, "10:221::", 64,
                      VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
@@ -4102,11 +4110,11 @@ class TestGBP(VppTestCase):
                 VXLAN(vni=444, gpid=441, flags=0x88) /
                 Ether(src="00:22:22:22:22:44", dst=str(self.router_mac)))
         p = [(base /
-              IP(src="10.0.1.100", dst=ep3.ip4.address) /
+              IP(src="10.0.1.100", dst=ep3.ip4) /
               UDP(sport=1234, dport=1234) /
               Raw(b'\xa5' * 100)),
              (base /
-              IPv6(src="2001:10::100", dst=ep3.ip6.address) /
+              IPv6(src="2001:10::100", dst=ep3.ip6) /
               UDP(sport=1234, dport=1234) /
               Raw(b'\xa5' * 100))]
 
@@ -4358,19 +4366,19 @@ class TestGBP(VppTestCase):
         # one node and service endpoint in another node)
         #
         p4 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
+               IP(src=ep1.ip4, dst=ep2.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
-               IP(src=ep2.ip4.address, dst=ep1.ip4.address) /
+               IP(src=ep2.ip4, dst=ep1.ip4) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=str(self.router_mac)) /
-               IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
+               IPv6(src=ep1.ip6, dst=ep2.ip6) /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100)),
               (Ether(src=ep2.mac, dst=str(self.router_mac)) /
-               IPv6(src=ep2.ip6.address, dst=ep1.ip6.address) /
+               IPv6(src=ep2.ip6, dst=ep1.ip6) /
                UDP(sport=1234, dport=1230) /
                Raw(b'\xa5' * 100))]
 
@@ -4442,8 +4450,8 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep1.mac)
-            self.assertEqual(inner[IP].src, ep1.ip4.address)
-            self.assertEqual(inner[IP].dst, ep2.ip4.address)
+            self.assertEqual(inner[IP].src, ep1.ip4)
+            self.assertEqual(inner[IP].dst, ep2.ip4)
 
         rxs = self.send_and_expect(self.pg1, p4[1] * 17, self.pg7)
 
@@ -4463,8 +4471,8 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep1.mac)
-            self.assertEqual(inner[IP].src, ep2.ip4.address)
-            self.assertEqual(inner[IP].dst, ep1.ip4.address)
+            self.assertEqual(inner[IP].src, ep2.ip4)
+            self.assertEqual(inner[IP].dst, ep1.ip4)
 
         rxs = self.send_and_expect(self.pg0, p6[0] * 17, self.pg7)
 
@@ -4481,8 +4489,8 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep1.mac)
-            self.assertEqual(inner[IPv6].src, ep1.ip6.address)
-            self.assertEqual(inner[IPv6].dst, ep2.ip6.address)
+            self.assertEqual(inner[IPv6].src, ep1.ip6)
+            self.assertEqual(inner[IPv6].dst, ep2.ip6)
 
         rxs = self.send_and_expect(self.pg1, p6[1] * 17, self.pg7)
 
@@ -4502,8 +4510,8 @@ class TestGBP(VppTestCase):
 
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, sep1.mac)
-            self.assertEqual(inner[IPv6].src, ep2.ip6.address)
-            self.assertEqual(inner[IPv6].dst, ep1.ip6.address)
+            self.assertEqual(inner[IPv6].src, ep2.ip6)
+            self.assertEqual(inner[IPv6].dst, ep1.ip6)
 
         # configure sep1: it is now local
         # packets between ep1 and ep2 are redirected locally
@@ -4514,16 +4522,16 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep2.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep2.ip4)
 
         rxs = self.send_and_expect(self.pg1, p6[1] * 17, sep1.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IPv6].src, ep2.ip6.address)
-            self.assertEqual(rx[IPv6].dst, ep1.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep2.ip6)
+            self.assertEqual(rx[IPv6].dst, ep1.ip6)
 
         # packet coming from the l2 spine-proxy to sep1
         p = (Ether(src=self.pg7.remote_mac,
@@ -4533,7 +4541,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=116, gpid=440, gpflags=0x08, flags=0x88) /
              Ether(src=str(self.router_mac), dst=sep1.mac) /
-             IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
+             IP(src=ep1.ip4, dst=ep2.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -4542,8 +4550,8 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, str(self.router_mac))
             self.assertEqual(rx[Ether].dst, sep1.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep2.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep2.ip4)
 
         # contract for SEP to communicate with dst EP
         c3 = VppGbpContract(
@@ -4565,7 +4573,7 @@ class TestGBP(VppTestCase):
         # the rd UU (packet is routed)
 
         p1 = (Ether(src=sep1.mac, dst=self.router_mac) /
-              IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
+              IP(src=ep1.ip4, dst=ep2.ip4) /
               UDP(sport=1234, dport=1234) /
               Raw(b'\xa5' * 100))
 
@@ -4583,8 +4591,8 @@ class TestGBP(VppTestCase):
             inner = rx[VXLAN].payload
             self.assertEqual(inner[Ether].src, routed_src_mac)
             self.assertEqual(inner[Ether].dst, routed_dst_mac)
-            self.assertEqual(inner[IP].src, ep1.ip4.address)
-            self.assertEqual(inner[IP].dst, ep2.ip4.address)
+            self.assertEqual(inner[IP].src, ep1.ip4)
+            self.assertEqual(inner[IP].dst, ep2.ip4)
 
         self.logger.info(self.vapi.cli("show bridge 3 detail"))
         sep1.remove_vpp_config()
@@ -4603,7 +4611,7 @@ class TestGBP(VppTestCase):
               UDP(sport=1234, dport=48879) /
               VXLAN(vni=114, gpid=441, gpflags=0x09, flags=0x88) /
               Ether(src=str(self.router_mac), dst=self.router_mac) /
-              IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
+              IP(src=ep1.ip4, dst=ep2.ip4) /
               UDP(sport=1234, dport=1234) /
               Raw(b'\xa5' * 100))
 
@@ -4612,8 +4620,8 @@ class TestGBP(VppTestCase):
         for rx in rxs:
             self.assertEqual(rx[Ether].src, str(self.router_mac))
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep2.ip4.address)
+            self.assertEqual(rx[IP].src, ep1.ip4)
+            self.assertEqual(rx[IP].dst, ep2.ip4)
 
         #
         # bd_uu2.add_vpp_config()
@@ -4771,7 +4779,7 @@ class TestGBP(VppTestCase):
         p_arp = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=100) /
                  ARP(op="who-has",
-                     psrc=eep1.ip4.address, pdst="10.0.0.128",
+                     psrc=eep1.ip4, pdst="10.0.0.128",
                      hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
 
@@ -4781,7 +4789,7 @@ class TestGBP(VppTestCase):
         p_arp = (Ether(src=eep3.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=102) /
                  ARP(op="who-has",
-                     psrc=eep3.ip4.address, pdst="10.0.0.128",
+                     psrc=eep3.ip4, pdst="10.0.0.128",
                      hwsrc=eep3.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
 
@@ -4840,7 +4848,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=100) /
-             IP(src=eep1.ip4.address, dst="10.0.0.128") /
+             IP(src=eep1.ip4, dst="10.0.0.128") /
              ICMP(type='echo-request'))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
@@ -4855,7 +4863,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=eep1.mac, dst=eep2.mac) /
              Dot1Q(vlan=100) /
-             IP(src=eep1.ip4.address, dst=eep2.ip4.address) /
+             IP(src=eep1.ip4, dst=eep2.ip4) /
              ICMP(type='echo-request'))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
@@ -4870,7 +4878,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=eep3.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=102) /
-             IP(src=eep3.ip4.address, dst="10.0.0.128") /
+             IP(src=eep3.ip4, dst="10.0.0.128") /
              ICMP(type='echo-request'))
 
         rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
@@ -4883,7 +4891,7 @@ class TestGBP(VppTestCase):
         # A ip4 subnet reachable through the external EP1
         #
         ip_220 = VppIpRoute(self, "10.220.0.0", 24,
-                            [VppRoutePath(eep1.ip4.address,
+                            [VppRoutePath(eep1.ip4,
                                           eep1.epg.bvi.sw_if_index)],
                             table_id=t4.table_id)
         ip_220.add_vpp_config()
@@ -4898,7 +4906,7 @@ class TestGBP(VppTestCase):
         # An ip6 subnet reachable through the external EP1
         #
         ip6_220 = VppIpRoute(self, "10:220::", 64,
-                             [VppRoutePath(eep1.ip6.address,
+                             [VppRoutePath(eep1.ip6,
                                            eep1.epg.bvi.sw_if_index)],
                              table_id=t6.table_id)
         ip6_220.add_vpp_config()
@@ -4913,7 +4921,7 @@ class TestGBP(VppTestCase):
         # A subnet reachable through the external EP2
         #
         ip_221 = VppIpRoute(self, "10.221.0.0", 24,
-                            [VppRoutePath(eep2.ip4.address,
+                            [VppRoutePath(eep2.ip4,
                                           eep2.epg.bvi.sw_if_index)],
                             table_id=t4.table_id)
         ip_221.add_vpp_config()
@@ -5042,7 +5050,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=100) /
-             IP(src="10.220.0.1", dst=rep.ip4.address) /
+             IP(src="10.220.0.1", dst=rep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -5064,7 +5072,7 @@ class TestGBP(VppTestCase):
             self.assertTrue(rx[VXLAN].gpflags.D)
             inner = rx[VXLAN].payload
             self.assertEqual(inner[IP].src, "10.220.0.1")
-            self.assertEqual(inner[IP].dst, rep.ip4.address)
+            self.assertEqual(inner[IP].dst, rep.ip4)
 
         #
         # An external subnet reachable via the remote external EP
@@ -5309,7 +5317,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=lep1.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=144) /
-             IP(src=lep1.ip4.address, dst="10.220.0.1") /
+             IP(src=lep1.ip4, dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -5325,7 +5333,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=lep1.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=144) /
-             IPv6(src=lep1.ip6.address, dst="10:220::1") /
+             IPv6(src=lep1.ip6, dst="10:220::1") /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -5340,9 +5348,9 @@ class TestGBP(VppTestCase):
         # ip4 and ip6 subnets that load-balance
         #
         ip_20 = VppIpRoute(self, "10.20.0.0", 24,
-                           [VppRoutePath(eep1.ip4.address,
+                           [VppRoutePath(eep1.ip4,
                                          eep1.epg.bvi.sw_if_index),
-                            VppRoutePath(eep2.ip4.address,
+                            VppRoutePath(eep2.ip4,
                                          eep2.epg.bvi.sw_if_index)],
                            table_id=t4.table_id)
         ip_20.add_vpp_config()
@@ -5354,9 +5362,9 @@ class TestGBP(VppTestCase):
         l3o_20.add_vpp_config()
 
         ip6_20 = VppIpRoute(self, "10:20::", 64,
-                            [VppRoutePath(eep1.ip6.address,
+                            [VppRoutePath(eep1.ip6,
                                           eep1.epg.bvi.sw_if_index),
-                             VppRoutePath(eep2.ip6.address,
+                             VppRoutePath(eep2.ip6,
                                           eep2.epg.bvi.sw_if_index)],
                             table_id=t6.table_id)
         ip6_20.add_vpp_config()
@@ -5373,12 +5381,12 @@ class TestGBP(VppTestCase):
         # two ip6 packets whose port are chosen so they load-balance
         p = [(Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
-              IPv6(src=lep1.ip6.address, dst="10:20::1") /
+              IPv6(src=lep1.ip6, dst="10:20::1") /
               UDP(sport=1234, dport=1234) /
               Raw(b'\xa5' * 100)),
              (Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
-              IPv6(src=lep1.ip6.address, dst="10:20::1") /
+              IPv6(src=lep1.ip6, dst="10:20::1") /
               UDP(sport=124, dport=1230) /
               Raw(b'\xa5' * 100))]
 
@@ -5390,12 +5398,12 @@ class TestGBP(VppTestCase):
         # two ip4 packets whose port are chosen so they load-balance
         p = [(Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
-              IP(src=lep1.ip4.address, dst="10.20.0.1") /
+              IP(src=lep1.ip4, dst="10.20.0.1") /
               UDP(sport=1235, dport=1235) /
               Raw(b'\xa5' * 100)),
              (Ether(src=lep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=144) /
-              IP(src=lep1.ip4.address, dst="10.20.0.1") /
+              IP(src=lep1.ip4, dst="10.20.0.1") /
               UDP(sport=124, dport=1230) /
               Raw(b'\xa5' * 100))]
 
@@ -5705,7 +5713,7 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=48879) /
              VXLAN(vni=444, gpid=113, flags=0x88) /
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
-             IP(src=rep.ip4.address, dst="10.220.0.1") /
+             IP(src=rep.ip4, dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -5716,7 +5724,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=self.vlan_100.remote_mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=100) /
-             IP(src="10.220.0.1", dst=rep.ip4.address) /
+             IP(src="10.220.0.1", dst=rep.ip4) /
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
@@ -5738,7 +5746,7 @@ class TestGBP(VppTestCase):
             self.assertTrue(rx[VXLAN].gpflags.D)
             inner = rx[VXLAN].payload
             self.assertEqual(inner[IP].src, "10.220.0.1")
-            self.assertEqual(inner[IP].dst, rep.ip4.address)
+            self.assertEqual(inner[IP].dst, rep.ip4)
 
         #
         # An external subnet reachable via the remote external EP

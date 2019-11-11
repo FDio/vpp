@@ -9,7 +9,6 @@ from scapy.fields import BitField, BitEnumField, XByteField, FlagsField,\
     ConditionalField, StrField
 from vpp_object import VppObject
 from util import NumericConstant
-from vpp_ip import VppIpAddress
 from vpp_papi import VppEnum
 
 
@@ -236,10 +235,10 @@ class VppBFDUDPSession(VppObject):
         self._interface = interface
         self._af = af
         if local_addr:
-            self._local_addr = VppIpAddress(local_addr)
+            self._local_addr = local_addr
         else:
             self._local_addr = None
-        self._peer_addr = VppIpAddress(peer_addr)
+        self._peer_addr = peer_addr
         self._desired_min_tx = desired_min_tx
         self._required_min_rx = required_min_rx
         self._detect_mult = detect_mult
@@ -275,12 +274,12 @@ class VppBFDUDPSession(VppObject):
                 return self._interface.local_ip6
             else:
                 raise Exception("Unexpected af '%s'" % self.af)
-        return self._local_addr.address
+        return self._local_addr
 
     @property
     def peer_addr(self):
         """ BFD session peer address """
-        return self._peer_addr.address
+        return self._peer_addr
 
     def get_bfd_udp_session_dump_entry(self):
         """ get the namedtuple entry from bfd udp session dump """
@@ -343,8 +342,8 @@ class VppBFDUDPSession(VppObject):
         is_delayed = 1 if delayed else 0
         self.test.vapi.bfd_udp_auth_activate(
             sw_if_index=self._interface.sw_if_index,
-            local_addr=self.local_addr.encode(),
-            peer_addr=self.peer_addr.encode(),
+            local_addr=self.local_addr,
+            peer_addr=self.peer_addr,
             bfd_key_id=self._bfd_key_id,
             conf_key_id=conf_key_id,
             is_delayed=is_delayed)
@@ -356,8 +355,8 @@ class VppBFDUDPSession(VppObject):
         is_delayed = 1 if delayed else 0
         self.test.vapi.bfd_udp_auth_deactivate(
             sw_if_index=self._interface.sw_if_index,
-            local_addr=self.local_addr.encode(),
-            peer_addr=self.peer_addr.encode(),
+            local_addr=self.local_addr,
+            peer_addr=self.peer_addr,
             is_delayed=is_delayed)
 
     def modify_parameters(self,
@@ -375,8 +374,8 @@ class VppBFDUDPSession(VppObject):
                                    desired_min_tx=self.desired_min_tx,
                                    required_min_rx=self.required_min_rx,
                                    detect_mult=self.detect_mult,
-                                   local_addr=self.local_addr.encode(),
-                                   peer_addr=self.peer_addr.encode())
+                                   local_addr=self.local_addr,
+                                   peer_addr=self.peer_addr)
 
     def add_vpp_config(self):
         bfd_key_id = self._bfd_key_id if self._sha1_key else None
@@ -386,8 +385,8 @@ class VppBFDUDPSession(VppObject):
                                    desired_min_tx=self.desired_min_tx,
                                    required_min_rx=self.required_min_rx,
                                    detect_mult=self.detect_mult,
-                                   local_addr=self.local_addr.encode(),
-                                   peer_addr=self.peer_addr.encode(),
+                                   local_addr=self.local_addr,
+                                   peer_addr=self.peer_addr,
                                    bfd_key_id=bfd_key_id,
                                    conf_key_id=conf_key_id,
                                    is_authenticated=is_authenticated)
@@ -399,8 +398,8 @@ class VppBFDUDPSession(VppObject):
 
     def remove_vpp_config(self):
         self.test.vapi.bfd_udp_del(self._interface.sw_if_index,
-                                   local_addr=self.local_addr.encode(),
-                                   peer_addr=self.peer_addr.encode())
+                                   local_addr=self.local_addr,
+                                   peer_addr=self.peer_addr)
 
     def object_id(self):
         return "bfd-udp-%s-%s-%s-%s" % (self._interface.sw_if_index,
@@ -413,12 +412,12 @@ class VppBFDUDPSession(VppObject):
         self.test.vapi.bfd_udp_session_set_flags(
             flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
             sw_if_index=self._interface.sw_if_index,
-            local_addr=self.local_addr.encode(),
-            peer_addr=self.peer_addr.encode())
+            local_addr=self.local_addr,
+            peer_addr=self.peer_addr)
 
     def admin_down(self):
         """ set bfd session admin-down """
         self.test.vapi.bfd_udp_session_set_flags(
             flags=0, sw_if_index=self._interface.sw_if_index,
-            local_addr=self.local_addr.encode(),
-            peer_addr=self.peer_addr.encode())
+            local_addr=self.local_addr,
+            peer_addr=self.peer_addr)
