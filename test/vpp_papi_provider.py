@@ -1092,8 +1092,7 @@ class VppPapiProvider(object):
 
     def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
         return self.api(self.papi.vxlan_gbp_tunnel_dump,
-                        {'sw_if_index': sw_if_index,
-                         '_no_type_conversion': True})
+                        {'sw_if_index': sw_if_index})
 
     def pppoe_add_del_session(
             self,
@@ -1802,8 +1801,7 @@ class VppPapiProvider(object):
 
     def gbp_endpoint_dump(self):
         """ GBP endpoint Dump """
-        return self.api(self.papi.gbp_endpoint_dump,
-                        {'_no_type_conversion': True})
+        return self.api(self.papi.gbp_endpoint_dump, {})
 
     def gbp_endpoint_group_add(self, vnid, sclass, bd,
                                rd, uplink_sw_if_index,
@@ -1912,8 +1910,7 @@ class VppPapiProvider(object):
 
     def gbp_subnet_dump(self):
         """ GBP Subnet Dump """
-        return self.api(self.papi.gbp_subnet_dump,
-                        {'_no_type_conversion': True})
+        return self.api(self.papi.gbp_subnet_dump, {})
 
     def gbp_contract_dump(self):
         """ GBP contract Dump """

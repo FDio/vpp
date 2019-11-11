@@ -4,6 +4,7 @@ import socket
 import unittest
 import struct
 import random
+from ipaddress import IPv4Network
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 
@@ -27,7 +28,6 @@ from io import BytesIO
 from vpp_papi import VppEnum
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
 from vpp_neighbor import VppNeighbor
-from vpp_ip import VppIpAddress, VppIpPrefix
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
@@ -1505,16 +1505,19 @@ class TestNAT44(MethodHolder):
             cls.vapi.ip_table_add_del(is_add=1, table_id=10)
             cls.vapi.ip_table_add_del(is_add=1, table_id=20)
 
-            cls.pg4._local_ip4 = VppIpPrefix("172.16.255.1",
-                                             cls.pg4.local_ip4_prefix.len)
+            cls.pg4._local_ip4 = IPv4Network("172.16.255.1/%d" %
+                                             cls.pg4.local_ip4_prefix_len,
+                                             strict=False)
             cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
             cls.pg4.set_table_ip4(10)
-            cls.pg5._local_ip4 = VppIpPrefix("172.17.255.3",
-                                             cls.pg5.local_ip4_prefix.len)
+            cls.pg5._local_ip4 = IPv4Network("172.17.255.3/%d" %
+                                             cls.pg5.local_ip4_prefix_len,
+                                             strict=False)
             cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
             cls.pg5.set_table_ip4(10)
-            cls.pg6._local_ip4 = VppIpPrefix("172.16.255.1",
-                                             cls.pg6.local_ip4_prefix.len)
+            cls.pg6._local_ip4 = IPv4Network("172.16.255.1/%d" %
+                                             cls.pg6.local_ip4_prefix_len,
+                                             strict=False)
             cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
             cls.pg6.set_table_ip4(20)
             for i in cls.overlapping_interfaces:
@@ -1529,7 +1532,7 @@ class TestNAT44(MethodHolder):
             cls.pg9.config_ip4()
             cls.vapi.sw_interface_add_del_address(
                 sw_if_index=cls.pg9.sw_if_index,
-                prefix=VppIpPrefix("10.0.0.1", 24).encode())
+                prefix="10.0.0.1/24")
 
             cls.pg9.admin_up()
             cls.pg9.resolve_arp()
@@ -4431,7 +4434,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg4.config_ip4()
             cls.vapi.sw_interface_add_del_address(
                 sw_if_index=cls.pg4.sw_if_index,
-                prefix=VppIpPrefix("10.0.0.1", 24).encode())
+                prefix="10.0.0.1/24")
 
             cls.pg4.admin_up()
             cls.pg4.resolve_arp()
@@ -4441,8 +4444,9 @@ class TestNAT44EndpointDependent(MethodHolder):
             zero_ip4 = socket.inet_pton(socket.AF_INET, "0.0.0.0")
             cls.vapi.ip_table_add_del(is_add=1, table_id=1)
 
-            cls.pg5._local_ip4 = VppIpPrefix("10.1.1.1",
-                                             cls.pg5.local_ip4_prefix.len)
+            cls.pg5._local_ip4 = IPv4Network("10.1.1.1/%d" %
+                                             cls.pg5.local_ip4_prefix_len,
+                                             strict=False)
             cls.pg5._remote_hosts[0]._ip4 = "10.1.1.2"
             cls.pg5.set_table_ip4(1)
             cls.pg5.config_ip4()
@@ -4454,8 +4458,9 @@ class TestNAT44EndpointDependent(MethodHolder):
                             register=False)
             r1.add_vpp_config()
 
-            cls.pg6._local_ip4 = VppIpPrefix("10.1.2.1",
-                                             cls.pg6.local_ip4_prefix.len)
+            cls.pg6._local_ip4 = IPv4Network("10.1.2.1/%d" %
+                                             cls.pg6.local_ip4_prefix_len,
+                                             strict=False)
             cls.pg6._remote_hosts[0]._ip4 = "10.1.2.2"
             cls.pg6.set_table_ip4(1)
             cls.pg6.config_ip4()

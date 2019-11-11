@@ -20,7 +20,7 @@ from six import moves
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
-from vpp_ip import DpoProto, VppIpAddress
+from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, \
@@ -982,30 +982,29 @@ class TestIPv6IfAddrRoute(VppTestCase):
         addr1 = "2001:10::10"
         addr2 = "2001:10::20"
 
-        if_addr1 = VppIpInterfaceAddress(self, self.pg0,
-                                         VppIpAddress(addr1), 64)
-        if_addr2 = VppIpInterfaceAddress(self, self.pg0,
-                                         VppIpAddress(addr2), 64)
-        self.assertFalse(if_addr1.query_vpp_config())  # 2001:10::/64
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0, addr1, 64)
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0, addr2, 64)
+        self.assertFalse(if_addr1.query_vpp_config())
         self.assertFalse(find_route(self, addr1, 128))
         self.assertFalse(find_route(self, addr2, 128))
 
         # configure first address, verify route present
         if_addr1.add_vpp_config()
-        self.assertTrue(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertTrue(if_addr1.query_vpp_config())
         self.assertTrue(find_route(self, addr1, 128))
         self.assertFalse(find_route(self, addr2, 128))
 
         # configure second address, delete first, verify route not removed
         if_addr2.add_vpp_config()
         if_addr1.remove_vpp_config()
-        self.assertTrue(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertFalse(if_addr1.query_vpp_config())
+        self.assertTrue(if_addr2.query_vpp_config())
         self.assertFalse(find_route(self, addr1, 128))
         self.assertTrue(find_route(self, addr2, 128))
 
         # delete second address, verify route removed
         if_addr2.remove_vpp_config()
-        self.assertFalse(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertFalse(if_addr1.query_vpp_config())
         self.assertFalse(find_route(self, addr1, 128))
         self.assertFalse(find_route(self, addr2, 128))
 

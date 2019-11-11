@@ -13,12 +13,10 @@ from six import moves
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
-from vpp_ip import VppIpPrefix
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
     VppIpInterfaceAddress
-from vpp_ip import VppIpAddress
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
@@ -258,11 +256,9 @@ class TestIPv4IfAddrRoute(VppTestCase):
         """
 
         # create two addresses, verify route not present
-        if_addr1 = VppIpInterfaceAddress(self, self.pg0,
-                                         VppIpAddress("10.10.10.10"), 24)
-        if_addr2 = VppIpInterfaceAddress(self, self.pg0,
-                                         VppIpAddress("10.10.10.20"), 24)
-        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0, "10.10.10.10", 24)
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0, "10.10.10.20", 24)
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.10/24
         self.assertFalse(find_route(self, "10.10.10.10", 32))
         self.assertFalse(find_route(self, "10.10.10.20", 32))
         self.assertFalse(find_route(self, "10.10.10.255", 32))
@@ -270,7 +266,7 @@ class TestIPv4IfAddrRoute(VppTestCase):
 
         # configure first address, verify route present
         if_addr1.add_vpp_config()
-        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.10/24
         self.assertTrue(find_route(self, "10.10.10.10", 32))
         self.assertFalse(find_route(self, "10.10.10.20", 32))
         self.assertTrue(find_route(self, "10.10.10.255", 32))
@@ -279,7 +275,8 @@ class TestIPv4IfAddrRoute(VppTestCase):
         # configure second address, delete first, verify route not removed
         if_addr2.add_vpp_config()
         if_addr1.remove_vpp_config()
-        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.10/24
+        self.assertTrue(if_addr2.query_vpp_config())  # 10.10.10.20/24
         self.assertFalse(find_route(self, "10.10.10.10", 32))
         self.assertTrue(find_route(self, "10.10.10.20", 32))
         self.assertTrue(find_route(self, "10.10.10.255", 32))
@@ -287,7 +284,7 @@ class TestIPv4IfAddrRoute(VppTestCase):
 
         # delete second address, verify route removed
         if_addr2.remove_vpp_config()
-        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(if_addr2.query_vpp_config())  # 10.10.10.20/24
         self.assertFalse(find_route(self, "10.10.10.10", 32))
         self.assertFalse(find_route(self, "10.10.10.20", 32))
         self.assertFalse(find_route(self, "10.10.10.255", 32))
@@ -451,11 +448,11 @@ class TestIPv4FibCrud(VppTestCase):
         pkts = []
 
         for _ in range(count):
-            dst_addr = random.choice(routes).prefix.address
+            dst_addr = random.choice(routes).prefix.network_address
             info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=src_if.remote_ip4, dst=dst_addr) /
+                 IP(src=src_if.remote_ip4, dst=str(dst_addr)) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -491,11 +488,15 @@ class TestIPv4FibCrud(VppTestCase):
 
     def verify_route_dump(self, routes):
         for r in routes:
-            self.assertTrue(find_route(self, r.prefix.address, r.prefix.len))
+            self.assertTrue(find_route(self,
+                                       r.prefix.network_address,
+                                       r.prefix.prefixlen))
 
     def verify_not_in_route_dump(self, routes):
         for r in routes:
-            self.assertFalse(find_route(self, r.prefix.address, r.prefix.len))
+            self.assertFalse(find_route(self,
+                                        r.prefix.network_address,
+                                        r.prefix.prefixlen))
 
     @classmethod
     def setUpClass(cls):
@@ -923,7 +924,7 @@ class TestIPSubNets(VppTestCase):
 
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 16).encode())
+            prefix="10.10.10.10/16")
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -942,7 +943,8 @@ class TestIPSubNets(VppTestCase):
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 16).encode(), is_add=0)
+            prefix="10.10.10.10/16",
+            is_add=0)
 
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
@@ -961,7 +963,7 @@ class TestIPSubNets(VppTestCase):
 
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 31).encode())
+            prefix="10.10.10.10/31")
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -978,7 +980,7 @@ class TestIPSubNets(VppTestCase):
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 31).encode(), is_add=0)
+            prefix="10.10.10.10/31", is_add=0)
 
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
