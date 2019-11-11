@@ -933,24 +933,24 @@ are mutually exclusive:
 ____________________
 
  * **size <n>**
-     TBD
+     Number of entries in the global logging buffer. Defaults to 512.
      
-     **Example:** TBD
+     **Example:** size 512
      
  * **unthrottle-time <n>**
-     TBD
+     Set the global value for the time to wait (in seconds) before resuming logging of a log subclass that exceeded the per-subclass message-per-second threshold.  Defaults to 3.
      
-     **Example:** TBD
+     **Example:** unthrottle-time 3
      
- * **default-log-level emerg|alertcrit|err|warn|notice|info|debug|disabled**
-     TBD
+ * **default-log-level emerg|alert|crit|err|warn|notice|info|debug|disabled**
+     Set the default logging level of the system log.  Defaults to notice.
      
-     **Example:** TBD
+     **Example:** default-log-level notice
      
- * **default-syslog-log-level emerg|alertcrit|err|warn|notice|info|debug|disabled**
-     TBD
+ * **default-syslog-log-level emerg|alert|crit|err|warn|notice|info|debug|disabled**
+     Set the default logging level of the syslog target.  Defaults to warning.
      
-     **Example:** TBD
+     **Example:** default-syslog-log-level warning
 
 .. _mactime:
 
