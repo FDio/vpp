@@ -75,7 +75,7 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
       /* local locator */
       r = &((vl_api_gpe_locator_t *) locs)[i];
       clib_memset (&pair, 0, sizeof (pair));
-      ip_address_set (&pair.lcl_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
+      ip_address_set (&pair.lcl_loc, &r->addr, r->is_ip4 ? AF_IP4 : AF_IP6);
 
       pair.weight = r->weight;
       vec_add1 (pairs, pair);
@@ -86,7 +86,7 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
       /* remote locators */
       r = &((vl_api_gpe_locator_t *) locs)[i];
       p = &pairs[i - rloc_num];
-      ip_address_set (&p->rmt_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
+      ip_address_set (&p->rmt_loc, &r->addr, r->is_ip4 ? AF_IP4 : AF_IP6);
     }
   return pairs;
 }
@@ -99,13 +99,13 @@ unformat_lisp_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
     {
     case 0:			/* ipv4 */
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, IP4);
+      gid_address_ip_set (dst, src, AF_IP4);
       gid_address_ippref_len (dst) = len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
     case 1:			/* ipv6 */
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, IP6);
+      gid_address_ip_set (dst, src, AF_IP6);
       gid_address_ippref_len (dst) = len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
@@ -135,7 +135,7 @@ lisp_api_set_locator (vl_api_gpe_locator_t * loc,
 		      const ip_address_t * addr, u8 weight)
 {
   loc->weight = weight;
-  if (IP4 == ip_addr_version (addr))
+  if (AF_IP4 == ip_addr_version (addr))
     {
       loc->is_ip4 = 1;
       memcpy (loc->addr, addr, 4);
@@ -208,7 +208,7 @@ gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
     switch (fid_addr_type (&e->leid))
       {
       case FID_ADDR_IP_PREF:
-	if (IP4 == ip_prefix_version (&fid_addr_ippref (&e->leid)))
+	if (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&e->leid)))
 	  {
 	    memcpy (&dst[i].leid, &fid_addr_ippref (&e->leid), 4);
 	    memcpy (&dst[i].reid, &fid_addr_ippref (&e->reid), 4);

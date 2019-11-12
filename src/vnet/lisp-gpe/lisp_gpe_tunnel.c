@@ -52,7 +52,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   int len;
   gpe_encap_mode_t encap_mode = vnet_gpe_get_encap_mode ();
 
-  if (IP4 == ip_addr_version (&lgt->key->lcl))
+  if (AF_IP4 == ip_addr_version (&lgt->key->lcl))
     {
       ip4_udp_lisp_gpe_header_t *h0;
       ip4_header_t *ip0;

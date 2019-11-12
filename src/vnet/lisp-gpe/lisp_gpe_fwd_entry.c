@@ -87,7 +87,7 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
        */
       lookup_dpo_add_or_lock_w_fib_index (src_fib_index,
 					  (ip_prefix_version (dst_prefix) ==
-					   IP6 ? DPO_PROTO_IP6 :
+					   AF_IP6 ? DPO_PROTO_IP6 :
 					   DPO_PROTO_IP4),
 					  LOOKUP_UNICAST,
 					  LOOKUP_INPUT_SRC_ADDR,
@@ -329,7 +329,7 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
   ip_prefix_t ippref;
   fib_prefix_t fib_prefix;
   u8 ip_version = ip_prefix_version (&lfe->key->rmt.ippref);
-  dproto = (ip_version == IP4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6);
+  dproto = (ip_version == AF_IP4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6);
 
   if (lfe->is_src_dst)
     {
@@ -539,7 +539,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
 		lfe - lgm->lisp_fwd_entry_pool);
   a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
-  fproto = (IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
+  fproto = (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
 	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
 
   lfe->type = (a->is_negative ?
@@ -581,7 +581,7 @@ del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
 
   delete_fib_entries (lfe);
 
-  fproto = (IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
+  fproto = (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
 	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
   fib_table_unlock (lfe->eid_fib_index, fproto, FIB_SOURCE_LISP);
 

@@ -323,7 +323,7 @@ lisp_add_del_ndp_entry_command_fn (vlib_main_t * vm,
     }
 
   /* build GID address */
-  ip_address_set (&gid_address_arp_ndp_ip (g), &ip6, IP6);
+  ip_address_set (&gid_address_arp_ndp_ip (g), &ip6, AF_IP6);
   gid_address_ndp_bd (g) = bd;
   gid_address_type (g) = GID_ADDR_NDP;
   rc = vnet_lisp_add_del_l2_arp_ndp_entry (g, hw_addr, is_add);
