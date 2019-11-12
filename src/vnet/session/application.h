@@ -114,7 +114,9 @@ typedef struct application_
   /** Preferred tls engine */
   u8 tls_engine;
 
-  u64 *quicly_ctx;
+  /** quic initialization vector */
+  char quic_iv[17];
+  u8 quic_iv_set;
 
 } application_t;
 
