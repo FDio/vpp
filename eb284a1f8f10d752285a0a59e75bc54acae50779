@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cdd74401_8a80789e",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-12T12:31:37Z",
+      "side": 1,
+      "message": "Don\u0027t these belong in the api?",
+      "range": {
+        "startLine": 499,
+        "startChar": 1,
+        "endLine": 509,
+        "endChar": 77
+      },
+      "revId": "eb284a1f8f10d752285a0a59e75bc54acae50779",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
