@@ -94,6 +94,30 @@
       "revId": "eb284a1f8f10d752285a0a59e75bc54acae50779",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2de993bc_213a3672",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-12T18:21:13Z",
+      "side": 1,
+      "message": "I think this is a good example of how while, functional, the api is not consumption friendly.  The question for me is framed more around, should only the tests benefit, only python clients (move to papi), or any clients (move to api)?",
+      "parentUuid": "594b3a99_b7ff000f",
+      "range": {
+        "startLine": 499,
+        "startChar": 1,
+        "endLine": 509,
+        "endChar": 77
+      },
+      "revId": "eb284a1f8f10d752285a0a59e75bc54acae50779",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
