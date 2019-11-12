@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f82edf7c_5fc8e271",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-11-12T09:31:40Z",
+      "side": 1,
+      "message": "Could you please apply the fix also for start_port and end_port?",
+      "revId": "8cd17e576256a500bfe3b0e2059bebc219982b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
