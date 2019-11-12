@@ -406,9 +406,9 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   fib_route_path_t *rpath;
 
-  if (vec_len (lgm->native_fwd_rpath[IP4]))
+  if (vec_len (lgm->native_fwd_rpath[AF_IP4]))
     {
-      vec_foreach (rpath, lgm->native_fwd_rpath[IP4])
+      vec_foreach (rpath, lgm->native_fwd_rpath[AF_IP4])
       {
 	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
 			 format_ip46_address, &rpath->frp_addr,
@@ -416,9 +416,9 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
 			 rpath->frp_sw_if_index);
       }
     }
-  if (vec_len (lgm->native_fwd_rpath[IP6]))
+  if (vec_len (lgm->native_fwd_rpath[AF_IP6]))
     {
-      vec_foreach (rpath, lgm->native_fwd_rpath[IP6])
+      vec_foreach (rpath, lgm->native_fwd_rpath[AF_IP6])
       {
 	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
 			 format_ip46_address, &rpath->frp_addr, IP46_TYPE_IP6,
@@ -461,7 +461,7 @@ vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
   fib_route_path_t *rpath;
   u8 ip_version;
 
-  ip_version = a->rpath.frp_proto == DPO_PROTO_IP4 ? IP4 : IP6;
+  ip_version = a->rpath.frp_proto == DPO_PROTO_IP4 ? AF_IP4 : AF_IP6;
 
   if (a->is_add)
     {

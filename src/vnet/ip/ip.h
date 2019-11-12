@@ -46,6 +46,7 @@
 
 #include <vnet/vnet.h>
 
+#include <vnet/ip/ip_types.h>
 #include <vnet/ip/format.h>
 #include <vnet/ip/ip_packet.h>
 #include <vnet/ip/lookup.h>
@@ -64,22 +65,6 @@
 #include <vnet/ip/ip6_error.h>
 #include <vnet/ip/icmp6.h>
 #include <vnet/classify/vnet_classify.h>
-
-typedef enum ip_address_family_t_
-{
-  AF_IP4,
-  AF_IP6,
-} ip_address_family_t;
-
-extern uword unformat_ip_address_family (unformat_input_t * input,
-					 va_list * args);
-extern u8 *format_ip_address_family (u8 * s, va_list * args);
-
-#define FOR_EACH_IP_ADDRESS_FAMILY(_af) \
-  for (_af = AF_IP4; _af <= AF_IP6; _af++)
-
-#define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
-#define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
 
 /* Per protocol info. */
 typedef struct
