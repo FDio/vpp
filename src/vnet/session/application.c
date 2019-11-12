@@ -1432,8 +1432,6 @@ format_crypto_context (u8 * s, va_list * args)
     format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
 	    crctx->n_subscribers, crctx->ckpair_index);
   s = format (s, "[%U]", format_crypto_engine, crctx->crypto_engine);
-  if (crctx->stale)
-    s = format (s, " -- DELETED");
   return s;
 }
 

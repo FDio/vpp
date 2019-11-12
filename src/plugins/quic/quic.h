@@ -153,7 +153,7 @@ typedef struct quic_stream_data_
 {
   u32 ctx_id;
   u32 thread_index;
-  u32 app_rx_data_len;		/* bytes received, to be read by external app */
+  u32 app_rx_data_len;		/**< bytes received, to be read by external app */
 } quic_stream_data_t;
 
 typedef struct quic_worker_ctx_
@@ -184,21 +184,16 @@ typedef struct quic_main_
   u32 app_index;
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
-  clib_bihash_16_8_t connection_hash;	/* quic connection id -> conn handle */
+  clib_bihash_16_8_t connection_hash;	/**< quic connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
 
-  ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
-  uword *available_crypto_engines;	/* Bitmap for registered engines */
-  u8 default_crypto_engine;	/* Used if you do connect with CRYPTO_ENGINE_NONE (0) */
+  ptls_cipher_suite_t ***quic_ciphers;	/**< available ciphers by crypto engine */
+  uword *available_crypto_engines;	/**< Bitmap for registered engines */
+  u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
 
-  quic_session_cache_t session_cache;
-
-  /*
-   * Config
-   */
-  quicly_context_t quicly_ctx;
   ptls_handshake_properties_t hs_properties;
   quicly_cid_plaintext_t next_cid;
+  quic_session_cache_t session_cache;
 
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;
