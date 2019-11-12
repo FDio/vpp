@@ -46,6 +46,30 @@
       "revId": "eb284a1f8f10d752285a0a59e75bc54acae50779",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cab64447_b16a1885",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-12T12:53:52Z",
+      "side": 1,
+      "message": "in interface.api:\n\ndefine sw_interface_set_l3_mtu\n ...\ndefine sw_interface_set_ip4_mtu\n ...\ndefine sw_interface_set_ip6_mtu\n ...\ndefine sw_interface_set_mpls_mtu\n ...\n\nI was originally going to suggest that we move these to partials in vpp_papi, so they could be consumed beyond the tests, but then pure binary clients wouldn\u0027t have access to them. Moving them to the api gives them unique msg_ids.",
+      "parentUuid": "9f7bae57_5396ed33",
+      "range": {
+        "startLine": 499,
+        "startChar": 1,
+        "endLine": 509,
+        "endChar": 77
+      },
+      "revId": "eb284a1f8f10d752285a0a59e75bc54acae50779",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
