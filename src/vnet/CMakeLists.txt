@@ -451,6 +451,7 @@ list(APPEND VNET_SOURCES
   ip/ip_init.c
   ip/ip_in_out_acl.c
   ip/ip_punt_drop.c
+  ip/ip_types.c
   ip/lookup.c
   ip/punt_api.c
   ip/punt.c
@@ -489,6 +490,7 @@ list(APPEND VNET_HEADERS
   ip/ip_packet.h
   ip/ip_source_and_port_range_check.h
   ip/ip_neighbor.h
+  ip/ip_types.h
   ip/lookup.h
   ip/ports.def
   ip/protocols.def

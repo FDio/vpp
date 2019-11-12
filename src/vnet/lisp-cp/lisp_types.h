@@ -34,55 +34,6 @@ u8 *format_hmac_key_id (u8 * s, va_list * args);
 
 typedef enum
 {
-  IP4,
-  IP6
-} ip_address_type_t;
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct ip_address
-{
-  union
-  {
-    ip4_address_t v4;
-    ip6_address_t v6;
-  } ip;
-  u8 version;
-}) ip_address_t;
-/* *INDENT-ON* */
-
-#define ip_addr_addr(_a) (_a)->ip
-#define ip_addr_v4(_a) (_a)->ip.v4
-#define ip_addr_v6(_a) (_a)->ip.v6
-#define ip_addr_version(_a) (_a)->version
-
-int ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2);
-void ip_address_copy (ip_address_t * dst, const ip_address_t * src);
-void ip_address_copy_addr (void *dst, const ip_address_t * src);
-void ip_address_set (ip_address_t * dst, const void *src, u8 version);
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct ip_prefix
-{
-  ip_address_t addr;
-  u8 len;
-}) ip_prefix_t;
-/* *INDENT-ON* */
-
-#define ip_prefix_addr(_a) (_a)->addr
-#define ip_prefix_version(_a) ip_addr_version(&ip_prefix_addr(_a))
-#define ip_prefix_len(_a) (_a)->len
-#define ip_prefix_v4(_a) ip_addr_v4(&ip_prefix_addr(_a))
-#define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
-
-void ip_prefix_normalize (ip_prefix_t * a);
-
-extern void ip_address_to_fib_prefix (const ip_address_t * addr,
-				      fib_prefix_t * prefix);
-extern void ip_prefix_to_fib_prefix (const ip_prefix_t * ipp,
-				     fib_prefix_t * fibp);
-
-typedef enum
-{
   /* NOTE: ip addresses are left out on purpose. Use max masked ip-prefixes
    * instead */
   GID_ADDR_IP_PREFIX,
@@ -216,11 +167,6 @@ typedef struct _gid_address_t
   u8 vni_mask;
 } gid_address_t;
 
-u8 *format_ip_address (u8 * s, va_list * args);
-uword unformat_ip_address (unformat_input_t * input, va_list * args);
-u8 *format_ip_prefix (u8 * s, va_list * args);
-uword unformat_ip_prefix (unformat_input_t * input, va_list * args);
-
 u16 ip4_address_size_to_put ();
 u16 ip6_address_size_to_put ();
 u32 ip4_address_put (u8 * b, ip4_address_t * a);
@@ -230,8 +176,6 @@ u16 ip_address_size_to_write (ip_address_t * a);
 u16 ip_address_iana_afi (ip_address_t * a);
 u8 ip_address_max_len (u8 ver);
 u32 ip_address_put (u8 * b, ip_address_t * a);
-void ip_address_to_46 (const ip_address_t * addr,
-		       ip46_address_t * a, fib_protocol_t * proto);
 
 /* LISP AFI codes  */
 typedef enum
