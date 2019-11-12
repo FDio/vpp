@@ -1320,10 +1320,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   vec_free (vif->txq_vrings);
   vec_free (vif->cxq_vring);
 
-  if (vif->fd != -1)
-    vif->fd = -1;
-  if (vif->tap_fd != -1)
-    vif->tap_fd = -1;
   clib_error_free (vif->error);
   memset (vif, 0, sizeof (*vif));
   pool_put (vim->interfaces, vif);
