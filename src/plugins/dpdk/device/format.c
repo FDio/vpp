@@ -362,6 +362,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
       dev_type = "Microsoft Hyper-V Netvsc";
       break;
 
+    case VNET_DPDK_PMD_BNXT:
+      dev_type = "Broadcom NetXtreme E/S-Series";
+      break;
+
     default:
     case VNET_DPDK_PMD_UNKNOWN:
       dev_type = "### UNKNOWN ###";
