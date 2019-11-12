@@ -630,6 +630,8 @@ static session_cb_vft_t echo_clients = {
 static clib_error_t *
 echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
+  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
+  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
   u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
@@ -671,6 +673,18 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
     return clib_error_return (0, "attach returned %d", rv);
 
   ecm->app_index = a->app_index;
+
+  clib_memset (a_cert, 0, sizeof (*a_cert));
+  a_cert->app_index = a->app_index;
+  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
+  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vnet_app_add_tls_cert (a_cert);
+
+  clib_memset (a_key, 0, sizeof (*a_key));
+  a_key->app_index = a->app_index;
+  vec_validate (a_key->key, test_srv_key_rsa_len);
+  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_app_add_tls_key (a_key);
   return 0;
 }
 
