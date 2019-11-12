@@ -54,8 +54,14 @@ class MACAddress():
         return '%s(%s)' % (self.__class__.__name__, self.mac_string)
 
     def __eq__(self, other):
+
         if not isinstance(other, MACAddress):
-            return NotImplemented
+            try:
+                # if it looks like a mac address, we'll take it.
+                # (allows for equality with scapy hw-addresses)
+                return self.mac_binary == MACAddress(other).mac_binary
+            except Exception:
+                return NotImplemented
         return self.mac_binary == other.mac_binary
 
     def __ne__(self, other):
