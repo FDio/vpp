@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Ryujiro Shibuya <ryujiro.shibuya@owmobility.com>
+Code-Review+2: Dave Barach <openvpp@barachs.net>
+Submitted-by: Dave Barach <openvpp@barachs.net>
+Submitted-at: Tue, 12 Nov 2019 15:34:41 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/23329
+Project: vpp
+Branch: refs/heads/master
