@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "629db977_6ece47ca",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "These should be defined in \nsrc/plugins/srv6-mobile/mobile.h",
+      "range": {
+        "startLine": 57,
+        "startChar": 0,
+        "endLine": 58,
+        "endChar": 37
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "275616a5_e7bdede1",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Should be defined in \nsrc/plugins/srv6-mobile/mobile.h",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 34
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15749a59_87c5c98c",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Should be defined as part of plugin.",
+      "range": {
+        "startLine": 81,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 0
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6085c272_27982830",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Should be defined as part of plugin.",
+      "range": {
+        "startLine": 117,
+        "startChar": 0,
+        "endLine": 135,
+        "endChar": 17
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "780daeff_a085fb27",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Move to plugin",
+      "range": {
+        "startLine": 136,
+        "startChar": 0,
+        "endLine": 165,
+        "endChar": 29
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b44e912_4f8e85d6",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Should be defined within plugin and retrieved using plugin_mem",
+      "range": {
+        "startLine": 246,
+        "startChar": 0,
+        "endLine": 248,
+        "endChar": 19
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7afa3f38_9bc162db",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Great! :-)",
+      "range": {
+        "startLine": 381,
+        "startChar": 10,
+        "endLine": 381,
+        "endChar": 44
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0865e3df_5cdfe254",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "An SRv6 segment cannot be an IPv4 address. Need to rethink this workflow.\nI believe that the T.M.GTP4.D is a transit behavior, not an SRv6 LocalSID.",
+      "range": {
+        "startLine": 84,
+        "startChar": 0,
+        "endLine": 93,
+        "endChar": 5
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59e76961_451f9244",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Concern here as an SRv6 segment cannot be an IPv4 address.",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 135,
+        "endChar": 21
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ce33b3c7_b1eb976d",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1621,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2019-11-12T09:53:00Z",
+      "side": 1,
+      "message": "Having this in the SR policy generic code will imply a performance degradation. We should try to move this to a plugin as well even though there is no infrastructure.",
+      "range": {
+        "startLine": 1620,
+        "startChar": 0,
+        "endLine": 1621,
+        "endChar": 6
+      },
+      "revId": "285a9aa24eecbfce8d642a8040a1306e1ee307ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
