@@ -114,7 +114,7 @@ ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
   ip_lookup_main_t *lm;
   void *addr;
 
-  lm = (version == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  lm = (version == AF_IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
   addr = ip_interface_get_first_address (lm, sw_if_index, version);
   if (!addr)
     return 0;
@@ -129,7 +129,7 @@ ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
 void
 ip_address_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * prefix)
 {
-  if (addr->version == IP4)
+  if (addr->version == AF_IP4)
     {
       prefix->fp_len = 32;
       prefix->fp_proto = FIB_PROTOCOL_IP4;
@@ -189,7 +189,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 
   ipver = ip_addr_version (dst);
 
-  lm = (ipver == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  lm = (ipver == AF_IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
   si = ip_fib_get_egress_iface_for_dst (lcm, dst);
 
   if ((u32) ~ 0 == si)
@@ -904,7 +904,7 @@ add_l2_arp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   u32 **ht = arg;
   u32 version = (u32) kvp->key[0];
-  if (IP6 == version)
+  if (AF_IP6 == version)
     return;
 
   u32 bd = (u32) (kvp->key[0] >> 32);
@@ -927,7 +927,7 @@ add_ndp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   u32 **ht = arg;
   u32 version = (u32) kvp->key[0];
-  if (IP4 == version)
+  if (AF_IP4 == version)
     return;
 
   u32 bd = (u32) (kvp->key[0] >> 32);
@@ -958,7 +958,7 @@ add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
   lisp_api_l2_arp_entry_t **vector = a->vector, e;
 
   u32 version = (u32) kvp->key[0];
-  if (IP6 == version)
+  if (AF_IP6 == version)
     return;
 
   u32 bd = (u32) (kvp->key[0] >> 32);
@@ -993,7 +993,7 @@ add_ndp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
   lisp_api_ndp_entry_t **vector = a->vector, e;
 
   u32 version = (u32) kvp->key[0];
-  if (IP4 == version)
+  if (AF_IP4 == version)
     return;
 
   u32 bd = (u32) (kvp->key[0] >> 32);
@@ -2513,7 +2513,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
 	addr = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-	ip_address_set (rloc, addr, IP4);
+	ip_address_set (rloc, addr, AF_IP4);
         ip_prefix_len (ippref) = 32;
         ip_prefix_normalize (ippref);
         vec_add1 (rlocs, gid[0]);
@@ -2524,7 +2524,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
         addr = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-        ip_address_set (rloc, addr, IP6);
+        ip_address_set (rloc, addr, AF_IP6);
         ip_prefix_len (ippref) = 128;
         ip_prefix_normalize (ippref);
         vec_add1 (rlocs, gid[0]);
@@ -2687,7 +2687,7 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
           ({
             addr = ip_interface_address_get_address (&lcm->im4->lookup_main,
                                                      ia);
-            ip_address_set (new_ip, addr, IP4);
+            ip_address_set (new_ip, addr, AF_IP4);
           }));
 
           /* Add ipv6 locators */
@@ -2696,7 +2696,7 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
           ({
             addr = ip_interface_address_get_address (&lcm->im6->lookup_main,
                                                      ia);
-            ip_address_set (new_ip, addr, IP6);
+            ip_address_set (new_ip, addr, AF_IP6);
           }));
           /* *INDENT-ON* */
 
@@ -2919,7 +2919,7 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-  next_index = (ip_addr_version (rloc) == IP4) ?
+  next_index = (ip_addr_version (rloc) == AF_IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
@@ -3031,7 +3031,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
 
     vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-    next_index = (ip_addr_version (&lcm->active_map_server) == IP4) ?
+    next_index = (ip_addr_version (&lcm->active_map_server) == AF_IP4) ?
       ip4_lookup_node.index : ip6_lookup_node.index;
 
     f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
@@ -3178,7 +3178,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 
   /* set fib index to default and lookup node */
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
-  next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
+  next_index = (ip_addr_version (&lcm->active_map_resolver) == AF_IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
@@ -3233,14 +3233,14 @@ get_src_and_dst_ip (void *hdr, ip_address_t * src, ip_address_t * dst)
 
   if ((ip4->ip_version_and_header_length & 0xF0) == 0x40)
     {
-      ip_address_set (src, &ip4->src_address, IP4);
-      ip_address_set (dst, &ip4->dst_address, IP4);
+      ip_address_set (src, &ip4->src_address, AF_IP4);
+      ip_address_set (dst, &ip4->dst_address, AF_IP4);
     }
   else
     {
       ip6 = hdr;
-      ip_address_set (src, &ip6->src_address, IP6);
-      ip_address_set (dst, &ip6->dst_address, IP6);
+      ip_address_set (src, &ip6->src_address, AF_IP6);
+      ip_address_set (dst, &ip6->dst_address, AF_IP6);
     }
 }
 
@@ -3252,7 +3252,8 @@ lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   u32 vni = ~0, table_id = ~0;
 
   table_id = fib_table_get_table_id_for_sw_if_index ((version ==
-						      IP4 ? FIB_PROTOCOL_IP4 :
+						      AF_IP4 ?
+						      FIB_PROTOCOL_IP4 :
 						      FIB_PROTOCOL_IP6),
 						     vnet_buffer
 						     (b)->sw_if_index
@@ -3350,7 +3351,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	    {
 	      clib_memset (&gid_address_arp_ndp_ip (dst), 0,
 			   sizeof (ip_address_t));
-	      ip_addr_version (&gid_address_arp_ndp_ip (dst)) = IP4;
+	      ip_addr_version (&gid_address_arp_ndp_ip (dst)) = AF_IP4;
 	      gid_address_arp_ndp_bd (dst) = ~0;
 	      return;
 	    }
@@ -3383,7 +3384,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 			  clib_memset (&gid_address_arp_ndp_ip (dst), 0,
 				       sizeof (ip_address_t));
 			  ip_addr_version (&gid_address_arp_ndp_ip (dst)) =
-			    IP6;
+			    AF_IP6;
 			  gid_address_arp_ndp_bd (dst) = ~0;
 			  gid_address_type (src) = GID_ADDR_NO_ADDRESS;
 			  return;
@@ -3392,7 +3393,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 		      gid_address_ndp_bd (dst) =
 			lisp_get_bd_from_buffer_eth (b);
 		      ip_address_set (&gid_address_arp_ndp_ip (dst),
-				      &ndh->target_address, IP6);
+				      &ndh->target_address, AF_IP6);
 		      return;
 		    }
 		}
@@ -4228,7 +4229,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
   free_map_register_records (records);
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
-  next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
+  next_index = (ip_addr_version (&lcm->active_map_resolver) == AF_IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);

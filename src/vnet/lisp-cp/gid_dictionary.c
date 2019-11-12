@@ -126,7 +126,7 @@ gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
 {
   ip_prefix_t *ippref = &gid_address_sd_dst_ippref (eid);
 
-  if (IP4 == ip_prefix_version (ippref))
+  if (AF_IP4 == ip_prefix_version (ippref))
     gid_dict_foreach_ip4_subprefix (db, gid_address_vni (eid),
 				    &gid_address_sd_src_ippref (eid),
 				    &gid_address_sd_dst_ippref (eid), cb,
@@ -295,7 +295,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 
   switch (ip_prefix_version (dst))
     {
-    case IP4:
+    case AF_IP4:
       sfi = ip4_lookup (&db->dst_ip4_table, vni, dst);
       if (GID_LOOKUP_MISS != sfi)
 	sfib4 = pool_elt_at_index (db->src_ip4_table_pool, sfi);
@@ -312,7 +312,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 	return ip4_lookup (sfib4, 0, src);
 
       break;
-    case IP6:
+    case AF_IP6:
       sfi = ip6_lookup (&db->dst_ip6_table, vni, dst);
       if (GID_LOOKUP_MISS != sfi)
 	sfib6 = pool_elt_at_index (db->src_ip6_table_pool, sfi);
@@ -323,7 +323,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 	{
 	  ip_prefix_t sp;
 	  clib_memset (&sp, 0, sizeof (sp));
-	  ip_prefix_version (&sp) = IP6;
+	  ip_prefix_version (&sp) = AF_IP6;
 	  return ip6_lookup_exact_match (sfib6, 0, &sp);
 	}
       else
@@ -342,7 +342,7 @@ static void
 make_arp_ndp_key (BVT (clib_bihash_kv) * kv, u32 bd, ip_address_t * addr)
 {
   kv->key[0] = ((u64) bd << 32) | (u32) ip_addr_version (addr);
-  if (ip_addr_version (addr) == IP4)
+  if (ip_addr_version (addr) == AF_IP4)
     {
       kv->key[1] = (u64) addr->ip.v4.as_u32;
       kv->key[2] = (u64) 0;
@@ -830,7 +830,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	    {
 	      ip_prefix_t sp;
 	      clib_memset (&sp, 0, sizeof (sp));
-	      ip_prefix_version (&sp) = IP6;
+	      ip_prefix_version (&sp) = AF_IP6;
 	      add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
 	}
@@ -847,7 +847,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	    {
 	      ip_prefix_t sp;
 	      clib_memset (&sp, 0, sizeof (sp));
-	      ip_prefix_version (&sp) = IP6;
+	      ip_prefix_version (&sp) = AF_IP6;
 	      old_val =
 		add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
@@ -864,7 +864,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	    {
 	      ip_prefix_t sp;
 	      clib_memset (&sp, 0, sizeof (sp));
-	      ip_prefix_version (&sp) = IP6;
+	      ip_prefix_version (&sp) = AF_IP6;
 	      old_val = add_del_ip6_key (sfib, 0, &sp, 0, is_add);
 	    }
 
@@ -884,10 +884,10 @@ add_del_ip (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_key,
 {
   switch (ip_prefix_version (dst_key))
     {
-    case IP4:
+    case AF_IP4:
       return add_del_sd_ip4_key (db, vni, dst_key, src_key, value, is_add);
       break;
-    case IP6:
+    case AF_IP6:
       return add_del_sd_ip6_key (db, vni, dst_key, src_key, value, is_add);
       break;
     default:

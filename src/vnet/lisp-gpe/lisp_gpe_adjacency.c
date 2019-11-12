@@ -99,9 +99,9 @@ lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t * ladj)
 {
   switch (ip_addr_version (&ladj->remote_rloc))
     {
-    case IP4:
+    case AF_IP4:
       return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-    case IP6:
+    case AF_IP6:
       return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
     default:
       ASSERT (0);
@@ -116,11 +116,11 @@ ip46_address_to_ip_address (const ip46_address_t * a, ip_address_t * b)
   if (ip46_address_is_ip4 (a))
     {
       clib_memset (b, 0, sizeof (*b));
-      ip_address_set (b, &a->ip4, IP4);
+      ip_address_set (b, &a->ip4, AF_IP4);
     }
   else
     {
-      ip_address_set (b, &a->ip6, IP6);
+      ip_address_set (b, &a->ip6, AF_IP6);
     }
 }
 

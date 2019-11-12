@@ -115,11 +115,11 @@ udp_checksum (udp_header_t * uh, u32 udp_len, void *ih, u8 version)
 {
   switch (version)
     {
-    case IP4:
+    case AF_IP4:
       return (udp_ip4_checksum (uh, udp_len,
 				((ip4_header_t *) ih)->src_address.as_u8,
 				((ip4_header_t *) ih)->dst_address.as_u8));
-    case IP6:
+    case AF_IP6:
       return (udp_ip6_checksum (ih, uh, udp_len));
     default:
       return ~0;
@@ -154,11 +154,11 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
 
   switch (ip_addr_version (src))
     {
-    case IP4:
+    case AF_IP4:
       return vlib_buffer_push_ip4 (vm, b, &ip_addr_v4 (src),
 				   &ip_addr_v4 (dst), proto, csum_offload);
       break;
-    case IP6:
+    case AF_IP6:
       return vlib_buffer_push_ip6 (vm, b, &ip_addr_v6 (src),
 				   &ip_addr_v6 (dst), proto);
       break;
