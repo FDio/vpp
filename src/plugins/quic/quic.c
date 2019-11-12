@@ -32,13 +32,115 @@
 
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
-#include "quic_error.def"
+#include <plugins/quic/quic_error.def>
 #undef quic_error
 };
 
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 static int quic_check_quic_session_connected (quic_ctx_t * ctx);
+static quicly_stream_open_t on_stream_open;
+static quicly_closed_by_peer_t on_closed_by_peer;
+static quicly_now_t quicly_vpp_now_cb;
+
+static int
+quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
+		       u8 crypto_engine)
+{
+  quic_main_t *qm = &quic_main;
+  quicly_context_t *quicly_ctx;
+  ptls_iovec_t key_vec;
+  app_cert_key_pair_t *ckpair;
+  u64 max_enq;
+  if (app->quicly_ctx)
+    return 0;
+
+  if (crypto_engine == CRYPTO_ENGINE_NONE)
+    {
+      QUIC_DBG (2, "No crypto engine specified, using %d", crypto_engine);
+      crypto_engine = qm->default_crypto_engine;
+    }
+  if (!clib_bitmap_get (qm->available_crypto_engines, crypto_engine))
+    {
+      QUIC_DBG (1, "Quic does not support crypto engine %d", crypto_engine);
+      return VNET_API_ERROR_MISSING_CERT_KEY;
+    }
+
+  quicly_ctx_data_t *quicly_ctx_data =
+    clib_mem_alloc (sizeof (quicly_ctx_data_t));
+  clib_memset (quicly_ctx_data, 0, sizeof (*quicly_ctx_data));	/* picotls depends on this */
+  quicly_ctx = &quicly_ctx_data->quicly_ctx;
+  ptls_context_t *ptls_ctx = &quicly_ctx_data->ptls_ctx;
+  ptls_ctx->random_bytes = ptls_openssl_random_bytes;
+  ptls_ctx->get_time = &ptls_get_time;
+  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
+  ptls_ctx->cipher_suites = qm->quic_ciphers[crypto_engine];
+  ptls_ctx->certificates.list = NULL;
+  ptls_ctx->certificates.count = 0;
+  ptls_ctx->esni = NULL;
+  ptls_ctx->on_client_hello = NULL;
+  ptls_ctx->emit_certificate = NULL;
+  ptls_ctx->sign_certificate = NULL;
+  ptls_ctx->verify_certificate = NULL;
+  ptls_ctx->ticket_lifetime = 86400;
+  ptls_ctx->max_early_data_size = 8192;
+  ptls_ctx->hkdf_label_prefix__obsolete = NULL;
+  ptls_ctx->require_dhe_on_psk = 1;
+  ptls_ctx->encrypt_ticket = &qm->session_cache.super;
+
+  app->quicly_ctx = (u64 *) quicly_ctx;
+  clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
+
+  quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
+  quicly_ctx->tls = ptls_ctx;
+  quicly_ctx->stream_open = &on_stream_open;
+  quicly_ctx->closed_by_peer = &on_closed_by_peer;
+  quicly_ctx->now = &quicly_vpp_now_cb;
+  quicly_amend_ptls_context (quicly_ctx->tls);
+
+  quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
+  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
+  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
+
+  /* max_enq is FIFO_SIZE - 1 */
+  max_enq = app->sm_properties.rx_fifo_size - 1;
+  quicly_ctx->transport_params.max_stream_data.bidi_local = max_enq;
+  max_enq = app->sm_properties.tx_fifo_size - 1;
+  quicly_ctx->transport_params.max_stream_data.bidi_remote = max_enq;
+  quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
+
+  quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
+  quicly_ctx_data->cid_key[16] = 0;
+  key_vec = ptls_iovec_init (quicly_ctx_data->cid_key,
+			     strlen (quicly_ctx_data->cid_key));
+  quicly_ctx->cid_encryptor =
+    quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
+				      &ptls_openssl_aes128ecb,
+				      &ptls_openssl_sha256, key_vec);
+
+  ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
+  if (!ckpair || !ckpair->key || !ckpair->cert)
+    {
+      QUIC_DBG (1, "Wrong ckpair id %d\n", ckpair_index);
+      goto error;
+    }
+  if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
+    {
+      QUIC_DBG (1, "failed to read private key from app configuration\n");
+      goto error;
+    }
+  if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
+    {
+      QUIC_DBG (1, "failed to load certificate\n");
+      goto error;
+    }
+  return 0;
+
+error:
+  clib_mem_free (quicly_ctx_data);
+  return VNET_API_ERROR_MISSING_CERT_KEY;
+}
+
 
 /*  Helper functions */
 
@@ -702,9 +804,6 @@ quic_on_closed_by_peer (quicly_closed_by_peer_t * self, quicly_conn_t * conn,
   session_transport_closing_notify (&ctx->connection);
 }
 
-static quicly_stream_open_t on_stream_open = { quic_on_stream_open };
-static quicly_closed_by_peer_t on_closed_by_peer = { quic_on_closed_by_peer };
-
 /* Timer handling */
 
 static int64_t
@@ -719,8 +818,6 @@ quic_get_time (quicly_now_t * self)
   u8 thread_index = vlib_get_thread_index ();
   return quic_get_thread_time (thread_index);
 }
-
-static quicly_now_t quicly_vpp_now_cb = { quic_get_time };
 
 static u32
 quic_set_time_now (u32 thread_index)
@@ -818,149 +915,6 @@ quic_expired_timers_dispatch (u32 * expired_timers)
     {
       quic_timer_expired (expired_timers[i]);
     }
-}
-
-static int
-quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
-			int is_encrypt, ptls_buffer_t * dst, ptls_iovec_t src)
-{
-  quic_session_cache_t *self = (void *) _self;
-  int ret;
-
-  if (is_encrypt)
-    {
-
-      /* replace the cached entry along with a newly generated session id */
-      clib_mem_free (self->data.base);
-      if ((self->data.base = clib_mem_alloc (src.len)) == NULL)
-	return PTLS_ERROR_NO_MEMORY;
-
-      ptls_get_context (tls)->random_bytes (self->id, sizeof (self->id));
-      clib_memcpy (self->data.base, src.base, src.len);
-      self->data.len = src.len;
-
-      /* store the session id in buffer */
-      if ((ret = ptls_buffer_reserve (dst, sizeof (self->id))) != 0)
-	return ret;
-      clib_memcpy (dst->base + dst->off, self->id, sizeof (self->id));
-      dst->off += sizeof (self->id);
-
-    }
-  else
-    {
-
-      /* check if session id is the one stored in cache */
-      if (src.len != sizeof (self->id))
-	return PTLS_ERROR_SESSION_NOT_FOUND;
-      if (clib_memcmp (self->id, src.base, sizeof (self->id)) != 0)
-	return PTLS_ERROR_SESSION_NOT_FOUND;
-
-      /* return the cached value */
-      if ((ret = ptls_buffer_reserve (dst, self->data.len)) != 0)
-	return ret;
-      clib_memcpy (dst->base + dst->off, self->data.base, self->data.len);
-      dst->off += self->data.len;
-    }
-
-  return 0;
-}
-
-static int
-quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
-		       u8 crypto_engine)
-{
-  quic_main_t *qm = &quic_main;
-  quicly_context_t *quicly_ctx;
-  ptls_iovec_t key_vec;
-  app_cert_key_pair_t *ckpair;
-  u64 max_enq;
-  if (app->quicly_ctx)
-    return 0;
-
-  if (crypto_engine == CRYPTO_ENGINE_NONE)
-    {
-      QUIC_DBG (2, "No crypto engine specified, using %d", crypto_engine);
-      crypto_engine = qm->default_crypto_engine;
-    }
-  if (!clib_bitmap_get (qm->available_crypto_engines, crypto_engine))
-    {
-      QUIC_DBG (1, "Quic does not support crypto engine %d", crypto_engine);
-      return VNET_API_ERROR_MISSING_CERT_KEY;
-    }
-
-  quicly_ctx_data_t *quicly_ctx_data =
-    clib_mem_alloc (sizeof (quicly_ctx_data_t));
-  clib_memset (quicly_ctx_data, 0, sizeof (*quicly_ctx_data));	/* picotls depends on this */
-  quicly_ctx = &quicly_ctx_data->quicly_ctx;
-  ptls_context_t *ptls_ctx = &quicly_ctx_data->ptls_ctx;
-  ptls_ctx->random_bytes = ptls_openssl_random_bytes;
-  ptls_ctx->get_time = &ptls_get_time;
-  ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
-  ptls_ctx->cipher_suites = qm->quic_ciphers[crypto_engine];
-  ptls_ctx->certificates.list = NULL;
-  ptls_ctx->certificates.count = 0;
-  ptls_ctx->esni = NULL;
-  ptls_ctx->on_client_hello = NULL;
-  ptls_ctx->emit_certificate = NULL;
-  ptls_ctx->sign_certificate = NULL;
-  ptls_ctx->verify_certificate = NULL;
-  ptls_ctx->ticket_lifetime = 86400;
-  ptls_ctx->max_early_data_size = 8192;
-  ptls_ctx->hkdf_label_prefix__obsolete = NULL;
-  ptls_ctx->require_dhe_on_psk = 1;
-  ptls_ctx->encrypt_ticket = &qm->session_cache.super;
-
-  app->quicly_ctx = (u64 *) quicly_ctx;
-  clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
-
-  quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
-  quicly_ctx->tls = ptls_ctx;
-  quicly_ctx->stream_open = &on_stream_open;
-  quicly_ctx->closed_by_peer = &on_closed_by_peer;
-  quicly_ctx->now = &quicly_vpp_now_cb;
-  quicly_amend_ptls_context (quicly_ctx->tls);
-
-  quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-
-  /* max_enq is FIFO_SIZE - 1 */
-  max_enq = app->sm_properties.rx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.bidi_local = max_enq;
-  max_enq = app->sm_properties.tx_fifo_size - 1;
-  quicly_ctx->transport_params.max_stream_data.bidi_remote = max_enq;
-  quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
-
-  quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
-  quicly_ctx_data->cid_key[16] = 0;
-  key_vec = ptls_iovec_init (quicly_ctx_data->cid_key,
-			     strlen (quicly_ctx_data->cid_key));
-  quicly_ctx->cid_encryptor =
-    quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
-				      &ptls_openssl_aes128ecb,
-				      &ptls_openssl_sha256, key_vec);
-
-  ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
-  if (!ckpair || !ckpair->key || !ckpair->cert)
-    {
-      QUIC_DBG (1, "Wrong ckpair id %d\n", ckpair_index);
-      goto error;
-    }
-  if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
-    {
-      QUIC_DBG (1, "failed to read private key from app configuration\n");
-      goto error;
-    }
-  if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
-    {
-      QUIC_DBG (1, "failed to load certificate\n");
-      goto error;
-    }
-  return 0;
-
-error:
-  clib_mem_free (quicly_ctx_data);
-  return VNET_API_ERROR_MISSING_CERT_KEY;
 }
 
 /* Transport proto functions */
@@ -1077,11 +1031,12 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   app_worker_t *app_wrk;
   application_t *app;
   u32 ctx_index;
+  u32 thread_index = vlib_get_thread_index ();
   int error;
 
   clib_memset (cargs, 0, sizeof (*cargs));
-  ctx_index = quic_ctx_alloc (vlib_get_thread_index ());
-  ctx = quic_ctx_get (ctx_index, vlib_get_thread_index ());
+  ctx_index = quic_ctx_alloc (thread_index);
+  ctx = quic_ctx_get (ctx_index, thread_index);
   ctx->parent_app_wrk_id = sep->app_wrk_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->c_c_index = ctx_index;
@@ -1193,6 +1148,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   quic_ctx_t *lctx;
   u32 lctx_index;
   app_listener_t *app_listener;
+  int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
   app_wrk = app_worker_get (sep->app_wrk_index);
@@ -1210,8 +1166,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   args->app_index = qm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  if (vnet_listen (args))
-    return -1;
+  if ((rv = vnet_listen (args)))
+    return rv;
 
   lctx_index = quic_ctx_alloc (0);
   udp_handle = args->handle;
@@ -1457,7 +1413,6 @@ quic_receive_connection (void *arg)
 
   QUIC_DBG (2, "Received conn %u (now %u)", temp_ctx->c_thread_index,
 	    new_ctx_id);
-
 
   clib_memcpy (new_ctx, temp_ctx, sizeof (quic_ctx_t));
   clib_mem_free (temp_ctx);
@@ -1993,10 +1948,12 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 	  }
       }));
       /* *INDENT-ON* */
-      QUIC_ERR ("Opening ctx not found!");;
+      QUIC_ERR ("Opening ctx not found!");
+      goto reset_connection;
     }
   else
     {
+    reset_connection:
       quic_reset_connection (udp_session_handle, sa, salen,
 			     packet_ctx->packet);
     }
@@ -2127,6 +2084,10 @@ static const transport_proto_vft_t quic_proto = {
   },
 };
 /* *INDENT-ON* */
+
+static quicly_stream_open_t on_stream_open = { quic_on_stream_open };
+static quicly_closed_by_peer_t on_closed_by_peer = { quic_on_closed_by_peer };
+static quicly_now_t quicly_vpp_now_cb = { quic_get_time };
 
 static void
 quic_register_cipher_suite (crypto_engine_type_t type,
