@@ -20,6 +20,10 @@
 
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 
+int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
+			    int is_encrypt, ptls_buffer_t * dst,
+			    ptls_iovec_t src);
+
 #endif /* __included_vpp_quic_crypto_h__ */
 
 /*
