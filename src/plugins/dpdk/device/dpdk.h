@@ -83,7 +83,8 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_failsafe", FAILSAFE)    \
   _ ("net_liovf", LIOVF_ETHER)    \
   _ ("net_qede", QEDE)		  \
-  _ ("net_netvsc", NETVSC)
+  _ ("net_netvsc", NETVSC)        \
+  _ ("net_bnxt", BNXT)
 
 typedef enum
 {
