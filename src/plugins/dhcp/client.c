@@ -658,8 +658,10 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   if (vec_len (c->client_identifier))
     {
       o->option = 61;
-      o->length = vec_len (c->client_identifier);
-      clib_memcpy (o->data, c->client_identifier,
+      o->length = vec_len (c->client_identifier) + 1;
+      /* Set type to zero, apparently some dhcp servers care */
+      o->data[0] = 0;
+      clib_memcpy (o->data + 1, c->client_identifier,
 		   vec_len (c->client_identifier));
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
@@ -1172,7 +1174,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->sw_if_index = sw_if_index;
   a->hostname = hostname;
-  a->client_identifier = format (0, "vpe 1.0%c", 0);
+  a->client_identifier = format (0, "vpp 1.1%c", 0);
   a->set_broadcast_flag = set_broadcast_flag;
 
   /*
