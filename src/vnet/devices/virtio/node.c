@@ -316,9 +316,10 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
 	    next0 = vif->per_interface_next_index;
-	  else
-	    /* redirect if feature path enabled */
-	    vnet_feature_start_device_input_x1 (vif->sw_if_index, &next0, b0);
+
+	  /* redirect if feature path enabled */
+	  vnet_feature_start_device_input_x1 (vif->sw_if_index, &next0, b0);
+
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
