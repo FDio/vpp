@@ -103,6 +103,7 @@ VNET Native Virtio Drivers
 I:	virtio
 Y:	src/vnet/devices/virtio/FEATURE.yaml
 M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/virtio/
 
 VNET Ethernet
