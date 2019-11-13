@@ -1,0 +1,199 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "900b3323_610d882d",
+        "filename": "src/plugins/arp/arp_api.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "This seems redundant / conflicting with the semantic version in the .api file.",
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5bac0f12_1acf3d2a",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "Same as previous comment.",
+      "range": {
+        "startLine": 45,
+        "startChar": 1,
+        "endLine": 50,
+        "endChar": 2
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6389b32e_1a3e68c1",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "Why do you need a plugin specific control_ping? Instead of the general one?\nIf these are completely new messages you could consider using the new dump/details that does not require wrapping.",
+      "range": {
+        "startLine": 56,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 33
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5c5d94a_e7989fc5",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "bool?\nis_no is a terrible parameter name.\nIs this just moving or are you allowed to improve?\n\nYou might consider adding defaults here too.",
+      "range": {
+        "startLine": 103,
+        "startChar": 1,
+        "endLine": 104,
+        "endChar": 11
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "af960bc1_f09e462a",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "bools.\nSame as above.",
+      "range": {
+        "startLine": 147,
+        "startChar": 2,
+        "endLine": 152,
+        "endChar": 11
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8bc9a377_fed92ad1",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "range": {
+        "startLine": 168,
+        "startChar": 2,
+        "endLine": 168,
+        "endChar": 18
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cf87dffc_ed7f5a01",
+        "filename": "src/plugins/ip6-nd/ip6_nd.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "range": {
+        "startLine": 214,
+        "startChar": 2,
+        "endLine": 214,
+        "endChar": 18
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93b405ef_5084f665",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2d077eba_08a18420",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-13T20:24:15Z",
+      "side": 1,
+      "message": "this isn\u0027t quite c",
+      "range": {
+        "startLine": 163,
+        "startChar": 1,
+        "endLine": 167,
+        "endChar": 3
+      },
+      "revId": "4f30218585d8036b92f66101be5294a4deaffb44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
