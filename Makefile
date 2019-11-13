@@ -559,7 +559,7 @@ cscope: cscope.files
 
 checkstyle:
 	@build-root/scripts/checkstyle.sh
-	#yamllint $(WS_ROOT)/src
+	yamllint $(WS_ROOT)/src
 
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
