@@ -23,7 +23,7 @@ from vpp_papi import VppEnum
 def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
     esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
-                              IPSEC_API_SAD_FLAG_USE_ESN))
+                             IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
