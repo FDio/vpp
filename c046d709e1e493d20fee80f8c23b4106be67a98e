@@ -46,6 +46,30 @@
       "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc565423_ccd99581",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-13T17:36:51Z",
+      "side": 1,
+      "message": "If an app relies on both sw_interface_add_del_mac_address and sw_interface_add_del_mac_address_reply, it should be able to get both name_crc values (not the reply value twice).\nWell, sw_interface_add_del_mac_address_reply is autoreply, I have chosen that just because it happened to be first in dict key order.\nAs crc cannot contain underscores, some rsplit() action should recover the complete name for equality checking purposes.",
+      "parentUuid": "68295a53_9a8d6e10",
+      "range": {
+        "startLine": 785,
+        "startChar": 21,
+        "endLine": 785,
+        "endChar": 37
+      },
+      "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
