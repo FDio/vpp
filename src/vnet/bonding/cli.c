@@ -65,8 +65,14 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   clib_spinlock_unlock_if_init (&bif->lockp);
 
   if (bif->mode == BOND_MODE_LACP)
-    stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				    [sif->sw_if_index], sif->actor.state);
+    {
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].actor_state,
+				      sif->actor.state);
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].partner_state,
+				      sif->partner.state);
+    }
 }
 
 /*
@@ -177,8 +183,14 @@ done:
   clib_spinlock_unlock_if_init (&bif->lockp);
 
   if (bif->mode == BOND_MODE_LACP)
-    stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				    [sif->sw_if_index], sif->actor.state);
+    {
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].actor_state,
+				      sif->actor.state);
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].partner_state,
+				      sif->partner.state);
+    }
 }
 
 int
@@ -300,8 +312,12 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
     (*bm->lacp_enable_disable) (vm, bif, sif, 0);
 
   if (bif->mode == BOND_MODE_LACP)
-    stat_segment_deregister_state_counter
-      (bm->stats[bif->sw_if_index][sif->sw_if_index]);
+    {
+      stat_segment_deregister_state_counter
+	(bm->stats[bif->sw_if_index][sif->sw_if_index].actor_state);
+      stat_segment_deregister_state_counter
+	(bm->stats[bif->sw_if_index][sif->sw_if_index].partner_state);
+    }
 
   pool_put (bm->neighbors, sif);
 }
@@ -599,7 +615,19 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       vec_validate (bm->stats[bif->sw_if_index], args->slave);
 
       args->error = stat_segment_register_state_counter
-	(name, &bm->stats[bif->sw_if_index][args->slave]);
+	(name, &bm->stats[bif->sw_if_index][args->slave].actor_state);
+      if (args->error != 0)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  vec_free (name);
+	  return;
+	}
+
+      vec_reset_length (name);
+      name = format (0, "/if/lacp/%u/%u/partner-state%c", bif->sw_if_index,
+		     args->slave, 0);
+      args->error = stat_segment_register_state_counter
+	(name, &bm->stats[bif->sw_if_index][args->slave].partner_state);
       vec_free (name);
       if (args->error != 0)
 	{

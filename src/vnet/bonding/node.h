@@ -352,6 +352,12 @@ typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,
 
 typedef struct
 {
+  u32 partner_state;
+  u32 actor_state;
+} lacp_stats_t;
+
+typedef struct
+{
   /* pool of bonding interfaces */
   bond_if_t *interfaces;
 
@@ -377,7 +383,7 @@ typedef struct
 
   bond_per_thread_data_t *per_thread_data;
 
-  u32 **stats;
+  lacp_stats_t **stats;
 } bond_main_t;
 
 /* bond packet trace capture */
