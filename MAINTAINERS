@@ -91,9 +91,10 @@ M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/tap/
 
 VNET Native Virtio Drivers
-I:      virtio
-M:      Mohsin Kazmi <sykazmi@cisco.com>
-F:      src/vnet/devices/virtio/
+I:	virtio
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/devices/virtio/
 
 VNET Etherent
 I:	ethernet
