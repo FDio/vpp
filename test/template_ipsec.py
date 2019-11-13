@@ -4,7 +4,8 @@ import struct
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 from framework import VppTestCase, VppTestRunner
@@ -93,7 +94,7 @@ def mk_scapy_crypt_key(p):
 
 def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
-    use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
+    esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
@@ -105,7 +106,7 @@ def config_tun_params(p, encryption_type, tun_if):
             src=tun_if.remote_addr[p.addr_type],
             dst=tun_if.local_addr[p.addr_type]),
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -115,11 +116,11 @@ def config_tun_params(p, encryption_type, tun_if):
             dst=tun_if.remote_addr[p.addr_type],
             src=tun_if.local_addr[p.addr_type]),
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
 
 
 def config_tra_params(p, encryption_type):
-    use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
+    esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tra_sa = SecurityAssociation(
@@ -130,7 +131,7 @@ def config_tra_params(p, encryption_type):
         auth_algo=p.auth_algo,
         auth_key=p.auth_key,
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
     p.vpp_tra_sa = SecurityAssociation(
         encryption_type,
         spi=p.scapy_tra_spi,
@@ -139,7 +140,7 @@ def config_tra_params(p, encryption_type):
         auth_algo=p.auth_algo,
         auth_key=p.auth_key,
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
 
 
 class TemplateIpsec(VppTestCase):
@@ -271,7 +272,7 @@ class IpsecTra4(object):
     """ verify methods for Transport v4 """
     def verify_tra_anti_replay(self):
         p = self.params[socket.AF_INET]
-        use_esn = p.vpp_tra_sa.use_esn
+        esn_en = p.vpp_tra_sa.esn_en
 
         seq_cycle_node_name = ('/err/%s/sequence number cycled' %
                                self.tra4_encrypt_node_name)
@@ -415,7 +416,7 @@ class IpsecTra4(object):
                                       seq_num=17))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        if use_esn:
+        if esn_en:
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
             hash_failed_count += 17
@@ -455,7 +456,7 @@ class IpsecTra4(object):
                                         seq_num=seq))
                 for seq in range(259, 280)]
 
-        if use_esn:
+        if esn_en:
             rxs = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
             #

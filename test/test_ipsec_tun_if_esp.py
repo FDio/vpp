@@ -3,7 +3,8 @@ import socket
 import copy
 
 from scapy.layers.ipsec import SecurityAssociation, ESP
-from scapy.layers.l2 import Ether, Raw, GRE
+from scapy.layers.l2 import Ether, GRE
+from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from framework import VppTestRunner
@@ -21,7 +22,7 @@ from vpp_papi import VppEnum
 
 def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
-    use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
+    esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
@@ -33,7 +34,7 @@ def config_tun_params(p, encryption_type, tun_if):
             src=tun_if.remote_ip,
             dst=tun_if.local_ip),
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -43,7 +44,7 @@ def config_tun_params(p, encryption_type, tun_if):
             dst=tun_if.remote_ip,
             src=tun_if.local_ip),
         nat_t_header=p.nat_header,
-        use_esn=use_esn)
+        esn_en=esn_en)
 
 
 class TemplateIpsec4TunIfEsp(TemplateIpsec):
