@@ -22,6 +22,30 @@
       "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68295a53_9a8d6e10",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-13T16:54:44Z",
+      "side": 1,
+      "message": "IS the intent to strip off the \u0027_reply\u0027?",
+      "parentUuid": "abc5320c_9f5f50d1",
+      "range": {
+        "startLine": 785,
+        "startChar": 21,
+        "endLine": 785,
+        "endChar": 37
+      },
+      "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
