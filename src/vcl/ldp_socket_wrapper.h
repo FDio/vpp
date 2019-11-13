@@ -131,6 +131,9 @@ DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
 libc_vfcntl (int fd, int cmd, va_list ap);
 
 DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+libc_vfcntl64 (int fd, int cmd, va_list ap);
+
+DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
 libc_vioctl (int fd, int cmd, va_list ap);
 
 int libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
