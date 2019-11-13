@@ -173,6 +173,9 @@ typedef int (*__libc_dup2) (int oldfd, int newfd);
 #endif
 
 typedef int (*__libc_fcntl) (int fd, int cmd, ...);
+#ifdef HAVE_FCNTL64
+typedef int (*__libc_fcntl64) (int fd, int cmd, ...);
+#endif
 typedef FILE *(*__libc_fopen) (const char *name, const char *mode);
 #ifdef HAVE_FOPEN64
 typedef FILE *(*__libc_fopen64) (const char *name, const char *mode);
@@ -292,6 +295,9 @@ struct swrap_libc_symbols
   SWRAP_SYMBOL_ENTRY (dup2);
 #endif
   SWRAP_SYMBOL_ENTRY (fcntl);
+#ifdef HAVE_FCNTL64
+  SWRAP_SYMBOL_ENTRY (fcntl64);
+#endif
   SWRAP_SYMBOL_ENTRY (fopen);
 #ifdef HAVE_FOPEN64
   SWRAP_SYMBOL_ENTRY (fopen64);
@@ -561,6 +567,29 @@ libc_vfcntl (int fd, int cmd, va_list ap)
 
   return rc;
 }
+
+#ifdef HAVE_FCNTL64
+DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+libc_vfcntl64 (int fd, int cmd, va_list ap)
+{
+  long int args[4];
+  int rc;
+  int i;
+
+  swrap_bind_symbol_libc (fcntl64);
+
+  for (i = 0; i < 4; i++)
+    {
+      args[i] = va_arg (ap, long int);
+    }
+
+  rc = swrap.libc.symbols._libc_fcntl64.f (fd,
+					 cmd,
+					 args[0], args[1], args[2], args[3]);
+
+  return rc;
+}
+#endif
 
 DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
 libc_vioctl (int fd, int cmd, va_list ap)
