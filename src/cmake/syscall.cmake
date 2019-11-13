@@ -34,3 +34,12 @@ if (HAVE_GETCPU)
     add_definitions(-DHAVE_GETCPU)
 endif()
 
+check_c_source_compiles("
+  #define _GNU_SOURCE
+  #include <fcntl.h>
+  int main() { return fcntl64 (0, 0); }
+" HAVE_FCNTL64)
+
+if (HAVE_FCNTL64)
+    add_definitions(-DHAVE_FCNTL64)
+endif()
