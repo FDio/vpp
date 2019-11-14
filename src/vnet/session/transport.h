@@ -22,6 +22,8 @@
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
 #define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
+#define TRANSPORT_PACER_MIN_IDLE	100
+#define TRANSPORT_PACER_IDLE_FACTOR	0.05
 
 typedef struct _transport_options_t
 {
@@ -148,6 +150,17 @@ transport_app_rx_evt (transport_proto_t tp, u32 conn_index, u32 thread_index)
   return tp_vfts[tp].app_rx_evt (tc);
 }
 
+/**
+ * Get maximum tx burst allowed for transport connection
+ *
+ * @param tc		transport connection
+ */
+static inline u32
+transport_connection_snd_space (transport_connection_t * tc)
+{
+  return tp_vfts[tc->proto].send_space (tc);
+}
+
 void transport_register_protocol (transport_proto_t transport_proto,
 				  const transport_proto_vft_t * vft,
 				  fib_protocol_t fib_proto, u32 output_node);
@@ -174,7 +187,8 @@ transport_elog_track_index (transport_connection_t * tc)
 
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 					  u64 rate_bytes_per_sec,
-					  u32 initial_bucket);
+					  u32 initial_bucket,
+					  clib_us_time_t rtt);
 /**
  * Initialize tx pacer for connection
  *
@@ -191,18 +205,13 @@ void transport_connection_tx_pacer_init (transport_connection_t * tc,
  *
  * @param tc			transport connection
  * @param bytes_per_sec		new pacing rate
+ * @param rtt			connection rtt that is used to compute
+ * 				inactivity time after which pacer bucket is
+ * 				reset to 1 mtu
  */
 void transport_connection_tx_pacer_update (transport_connection_t * tc,
-					   u64 bytes_per_sec);
-
-/**
- * Get maximum tx burst allowed for transport connection
- *
- * @param tc		transport connection
- * @param time_now	current cpu time as returned by @ref clib_cpu_time_now
- * @param mss		transport's mss
- */
-u32 transport_connection_snd_space (transport_connection_t * tc, u16 mss);
+					   u64 bytes_per_sec,
+					   clib_us_time_t rtt);
 
 /**
  * Get tx pacer max burst
@@ -225,9 +234,10 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * Reset tx pacer bucket
  *
  * @param tc		transport connection
- * @param time_now	current cpu time
+ * @param bucket	value the bucket will be reset to
  */
-void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc);
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+						 u32 bucket);
 
 /**
  * Check if transport connection is paced
