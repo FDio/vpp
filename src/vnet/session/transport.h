@@ -174,7 +174,8 @@ transport_elog_track_index (transport_connection_t * tc)
 
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 					  u64 rate_bytes_per_sec,
-					  u32 initial_bucket);
+					  u32 initial_bucket,
+					  u32 idle_timeout_us);
 /**
  * Initialize tx pacer for connection
  *
@@ -191,9 +192,12 @@ void transport_connection_tx_pacer_init (transport_connection_t * tc,
  *
  * @param tc			transport connection
  * @param bytes_per_sec		new pacing rate
+ * @param idle_timeout_us	inactivity time after which pacer bucket is
+ * 				reset to 1 mtu
  */
 void transport_connection_tx_pacer_update (transport_connection_t * tc,
-					   u64 bytes_per_sec);
+					   u64 bytes_per_sec,
+					   u32 idle_timeout_us);
 
 /**
  * Get maximum tx burst allowed for transport connection
@@ -227,7 +231,8 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * @param tc		transport connection
  * @param time_now	current cpu time
  */
-void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc);
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+						 u32 bucket);
 
 /**
  * Check if transport connection is paced
