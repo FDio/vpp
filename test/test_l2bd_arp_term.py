@@ -10,7 +10,8 @@ from socket import AF_INET, AF_INET6
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP
-from scapy.utils import inet_pton, inet_ntop
+from scapy.utils import inet_pton
+from scapy.pton_ntop import inet_ntop
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
