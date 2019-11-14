@@ -209,6 +209,20 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	   */
 	  port0 = ip4_map_port_and_security_check (d0, p0, &error0);
 
+	  /*
+	   * Clamp TCP MSS value.
+	   */
+	  if (ip40->protocol == IP_PROTOCOL_TCP)
+	    {
+	      tcp_header_t *tcp = ip4_next_header (ip40);
+	      if (mm->tcp_mss > 0 && tcp_syn (tcp))
+		{
+		  ip_csum_t csum = tcp->checksum;
+		  map_mss_clamping (tcp, &csum, mm->tcp_mss);
+		  tcp->checksum = ip_csum_fold (csum);
+		}
+	    }
+
 	  /* Decrement IPv4 TTL */
 	  ip4_map_decrement_ttl (ip40, &error0);
 	  bool df0 =
