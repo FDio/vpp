@@ -26,6 +26,7 @@
 #include <vnet/ipsec/ipsec_spd_policy.h>
 #include <vnet/ipsec/ipsec_sa.h>
 
+
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
 
@@ -244,6 +245,8 @@ ipsec_sa_get (u32 sa_index)
 
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
+
+
 
 #endif /* __IPSEC_H__ */
 
