@@ -16,7 +16,7 @@
 
 option version = "3.0.0";
 
-import "vnet/ip/ip_types.api";
+import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
 
 /** \brief IPsec: Add/delete Security Policy Database
@@ -178,113 +178,6 @@ define ipsec_spd_dump {
 define ipsec_spd_details {
     u32 context;
     vl_api_ipsec_spd_entry_t entry;
-};
-
-/*
- * @brief Support cryptographic algorithms
- */
-enum ipsec_crypto_alg
-{
-  IPSEC_API_CRYPTO_ALG_NONE = 0,
-  IPSEC_API_CRYPTO_ALG_AES_CBC_128,
-  IPSEC_API_CRYPTO_ALG_AES_CBC_192,
-  IPSEC_API_CRYPTO_ALG_AES_CBC_256,
-  IPSEC_API_CRYPTO_ALG_AES_CTR_128,
-  IPSEC_API_CRYPTO_ALG_AES_CTR_192,
-  IPSEC_API_CRYPTO_ALG_AES_CTR_256,
-  IPSEC_API_CRYPTO_ALG_AES_GCM_128,
-  IPSEC_API_CRYPTO_ALG_AES_GCM_192,
-  IPSEC_API_CRYPTO_ALG_AES_GCM_256,
-  IPSEC_API_CRYPTO_ALG_DES_CBC,
-  IPSEC_API_CRYPTO_ALG_3DES_CBC,
-};
-
-/*
- * @brief Supported Integrity Algorithms
- */
-enum ipsec_integ_alg
-{
-  IPSEC_API_INTEG_ALG_NONE = 0,
-  /* RFC2403 */
-  IPSEC_API_INTEG_ALG_MD5_96,
-  /* RFC2404 */
-  IPSEC_API_INTEG_ALG_SHA1_96,
-  /* draft-ietf-ipsec-ciph-sha-256-00 */
-  IPSEC_API_INTEG_ALG_SHA_256_96,
-  /* RFC4868 */
-  IPSEC_API_INTEG_ALG_SHA_256_128,
-  /* RFC4868 */
-  IPSEC_API_INTEG_ALG_SHA_384_192,
-  /* RFC4868 */
-  IPSEC_API_INTEG_ALG_SHA_512_256,
-};
-
-enum ipsec_sad_flags
-{
-  IPSEC_API_SAD_FLAG_NONE = 0,
-  /* Enable extended sequence numbers */
-  IPSEC_API_SAD_FLAG_USE_ESN = 0x01,
-  /* Enable Anti-replay */
-  IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY = 0x02,
-  /* IPsec tunnel mode if non-zero, else transport mode */
-  IPSEC_API_SAD_FLAG_IS_TUNNEL = 0x04,
-  /* IPsec tunnel mode is IPv6 if non-zero,
-   *  else IPv4 tunnel only valid if is_tunnel is non-zero */
-  IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
-  /* enable UDP encapsulation for NAT traversal */
-  IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
-};
-
-enum ipsec_proto
-{
-  IPSEC_API_PROTO_ESP,
-  IPSEC_API_PROTO_AH,
-};
-
-typedef key
-{
-  /* the length of the key */
-  u8 length;
-  /* The data for the key */
-  u8 data[128];
-};
-
-/** \brief IPsec: Security Association Database entry
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add SAD entry if non-zero, else delete
-    @param sad_id - sad id
-    @param spi - security parameter index
-    @param protocol - 0 = AH, 1 = ESP
-    @param crypto_algorithm - a supported crypto algorithm
-    @param crypto_key - crypto keying material
-    @param integrity_algorithm - one of the supported algorithms
-    @param integrity_key - integrity keying material
-    @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
-    @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
-    @param tx_table_id - the FIB id used for encapsulated packets
-    @param salt - for use with counter mode ciphers
- */
-typedef ipsec_sad_entry
-{
-  u32 sad_id;
-
-  u32 spi;
-
-  vl_api_ipsec_proto_t protocol;
-
-  vl_api_ipsec_crypto_alg_t crypto_algorithm;
-  vl_api_key_t crypto_key;
-
-  vl_api_ipsec_integ_alg_t integrity_algorithm;
-  vl_api_key_t integrity_key;
-
-  vl_api_ipsec_sad_flags_t flags;
-
-  vl_api_address_t tunnel_src;
-  vl_api_address_t tunnel_dst;
-  u32 tx_table_id;
-  u32 salt;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
