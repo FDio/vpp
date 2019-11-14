@@ -584,6 +584,19 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha512) = {
   .plaintext = TEST_DATA (tc7_data),
   .digest = TEST_DATA (tc7_digest_sha512),
 };
+
+UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha512_chain) = {
+  .name = "RFC4231 TC7 [chained]",
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
+  .key = TEST_DATA (tc7_key),
+  .digest = TEST_DATA (tc7_digest_sha512),
+  .pt_chunks = {
+    TEST_DATA_CHUNK (tc7_data, 0, 50),
+    TEST_DATA_CHUNK (tc7_data, 50, 50),
+    TEST_DATA_CHUNK (tc7_data, 100, 50),
+    TEST_DATA_CHUNK (tc7_data, 150, 2),
+  },
+};
 /* *INDENT-ON* */
 
 /*
