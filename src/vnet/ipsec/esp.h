@@ -105,35 +105,6 @@ esp_seq_advance (ipsec_sa_t * sa)
   return 0;
 }
 
-
-always_inline unsigned int
-hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
-	   u8 * signature)
-{
-  vnet_crypto_op_t _op, *op = &_op;
-
-  if (PREDICT_FALSE (sa->integ_op_id == 0))
-    return 0;
-
-  vnet_crypto_op_init (op, sa->integ_op_id);
-  op->key_index = sa->integ_key_index;
-  op->src = data;
-  op->len = data_len;
-  op->digest = signature;
-  op->digest_len = sa->integ_icv_size;
-
-  if (ipsec_sa_is_set_USE_ESN (sa))
-    {
-      u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
-
-      op->len += 4;
-      clib_memcpy (data + data_len, &seq_hi, 4);
-    }
-
-  vnet_crypto_process_ops (vm, op, 1);
-  return sa->integ_icv_size;
-}
-
 always_inline void
 esp_aad_fill (vnet_crypto_op_t * op,
 	      const esp_header_t * esp, const ipsec_sa_t * sa)

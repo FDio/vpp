@@ -299,7 +299,7 @@ esp_decrypt_inline (vlib_main_t * vm,
   if ((n = vec_len (ptd->integ_ops)))
     {
       vnet_crypto_op_t *op = ptd->integ_ops;
-      n -= vnet_crypto_process_ops (vm, op, n);
+      n -= vnet_crypto_process_ops (vm, op, 0, n);
       while (n)
 	{
 	  ASSERT (op - ptd->integ_ops < vec_len (ptd->integ_ops));
@@ -320,7 +320,7 @@ esp_decrypt_inline (vlib_main_t * vm,
   if ((n = vec_len (ptd->crypto_ops)))
     {
       vnet_crypto_op_t *op = ptd->crypto_ops;
-      n -= vnet_crypto_process_ops (vm, op, n);
+      n -= vnet_crypto_process_ops (vm, op, 0, n);
       while (n)
 	{
 	  ASSERT (op - ptd->crypto_ops < vec_len (ptd->crypto_ops));

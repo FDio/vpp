@@ -91,7 +91,7 @@ ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_ops == 0)
     return;
 
-  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, 0, n_ops);
 
   while (n_fail)
     {
