@@ -53,6 +53,7 @@ typedef struct _spacer
   u64 bucket;
   clib_us_time_t last_update;
   f32 tokens_per_period;
+  u32 idle_timeout_us;
 } spacer_t;
 
 #define TRANSPORT_CONN_ID_LEN	44

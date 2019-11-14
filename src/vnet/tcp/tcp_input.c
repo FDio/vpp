@@ -582,6 +582,9 @@ tcp_recovery_no_snd_space (tcp_connection_t * tc)
 
   ASSERT (tcp_in_cong_recovery (tc));
 
+  if (!tc->burst_acked)
+    return 0;
+
   if (tcp_in_recovery (tc))
     space = tcp_available_output_snd_space (tc);
   else
@@ -610,35 +613,48 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       tc = tcp_connection_get (pending_deq_acked[i], thread_index);
       tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
-      if (tc->burst_acked)
-	{
-	  /* Dequeue the newly ACKed bytes */
-	  session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
-	  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+      ASSERT (tc->burst_acked);
 
-	  if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-	    {
-	      if (seq_leq (tc->psh_seq, tc->snd_una))
-		tc->flags &= ~TCP_CONN_PSH_PENDING;
-	    }
+      /* Dequeue the newly ACKed bytes */
+      session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
+      tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
-	  /* If everything has been acked, stop retransmit timer
-	   * otherwise update. */
-	  tcp_retransmit_timer_update (tc);
+      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
+        {
+          if (seq_leq (tc->psh_seq, tc->snd_una))
+            tc->flags &= ~TCP_CONN_PSH_PENDING;
+        }
 
-	  /* Update pacer based on our new cwnd estimate */
-	  tcp_connection_tx_pacer_update (tc);
-	}
+      /* If everything has been acked, stop retransmit timer
+       * otherwise update. */
+      tcp_retransmit_timer_update (tc);
 
-      /* Reset the pacer if we've been idle, i.e., no data sent or if
-       * we're in recovery and snd space constrained */
-      if (tc->data_segs_out == tc->prev_dsegs_out
-	  || (tcp_in_cong_recovery (tc) && tcp_recovery_no_snd_space (tc)))
-	transport_connection_tx_pacer_reset_bucket (&tc->connection);
-
-      tc->prev_dsegs_out = tc->data_segs_out;
-      tc->burst_acked = 0;
+      /* Update pacer based on our new cwnd estimate */
+      tcp_connection_tx_pacer_update (tc);
     }
+
+  /* Reset the pacer if we've been idle, i.e., no data sent or if
+   * we're in recovery and snd space constrained */
+//      if (tc->data_segs_out == tc->prev_dsegs_out
+////	  || (tc->snd_wnd <= tc->snd_nxt - tc->snd_una + tc->burst_acked + tc->snd_mss)
+//	  || (tcp_in_cong_recovery (tc) && tcp_recovery_no_snd_space (tc)))
+//	{
+////        if (tcp_in_cong_recovery (tc))
+////          clib_warning ("%.3f:RESET segs test %u snd_una %u prr_out %u acked %u",
+////                        tcp_time_now_us (tc->c_thread_index) - tc->start_ts,
+////                        tc->data_segs_out == tc->prev_dsegs_out,
+////                        tc->snd_una - tc->iss,
+////                        tc->snd_rxt_bytes + (tc->snd_nxt - tc->snd_congestion),
+////                        tc->burst_acked);
+//	  u32 burst = transport_connection_tx_pacer_burst (&tc->connection);
+//	  burst = clib_min (burst, TRANSPORT_PACER_MIN_BURST);
+//	  transport_connection_tx_pacer_reset_bucket (&tc->connection, burst);
+//	}
+
+  tc->prev_dsegs_out = tc->data_segs_out;
+  tc->burst_acked = 0;
+
+
   _vec_len (wrk->pending_deq_acked) = 0;
 }
 
@@ -1623,10 +1639,11 @@ process_ack:
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
 
-  tcp_program_dequeue (wrk, tc);
-
   if (tc->bytes_acked)
-    tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+    {
+      tcp_program_dequeue (wrk, tc);
+      tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+    }
 
   TCP_EVT (TCP_EVT_ACK_RCVD, tc);
 
