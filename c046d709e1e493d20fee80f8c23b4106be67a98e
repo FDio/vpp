@@ -70,6 +70,30 @@
       "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "949dcc84_a6b8f361",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-14T16:35:21Z",
+      "side": 1,
+      "message": "The [\u0027reply\u0027] value does not have to end on _reply, it could end on _details (for dumps).\n\nMy previous comment has been written in style that assumes users will list reply names explicitly, but maybe it is better to accept only \"service\" messages like this (by line 781 raising otherwise).\nBy the way, do we want to include also event messages here?",
+      "parentUuid": "dc565423_ccd99581",
+      "range": {
+        "startLine": 785,
+        "startChar": 21,
+        "endLine": 785,
+        "endChar": 37
+      },
+      "revId": "c046d709e1e493d20fee80f8c23b4106be67a98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
