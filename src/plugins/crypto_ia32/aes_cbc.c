@@ -34,7 +34,7 @@ typedef struct
 
 static_always_inline void
 aes_cbc_dec (__m128i * k, u8 * src, u8 * dst, u8 * iv, int count,
-	     aesni_key_size_t rounds)
+	     aesni_key_size_t rounds, int store_iv)
 {
   __m128i r0, r1, r2, r3, c0, c1, c2, c3, f;
   int i;
@@ -94,6 +94,146 @@ aes_cbc_dec (__m128i * k, u8 * src, u8 * dst, u8 * iv, int count,
       src += 16;
       dst += 16;
     }
+
+  if (store_iv)
+    _mm_storeu_si128 ((__m128i *) iv, f);
+}
+
+static_always_inline u32
+aesni_ops_enc_aes_cbc_chained (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+			       vnet_crypto_op_chunk_t * chunks,
+			       u32 n_ops, aesni_key_size_t ks)
+{
+  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_ia32_per_thread_data_t *ptd = vec_elt_at_index (cm->per_thread_data,
+							 vm->thread_index);
+  int rounds = AESNI_KEY_ROUNDS (ks);
+  u8 dummy[8192];
+  u8 *src[4] = { };
+  u8 *dst[4] = { };
+  vnet_crypto_key_index_t key_index[4] = { ~0, ~0, ~0, ~0 };
+  u32x4 dummy_mask = { };
+  u32x4 len = { };
+  u32 i, j, count, n_left = n_ops;
+  __m128i r[4] = { }, k[4][rounds + 1];
+  vnet_crypto_op_t **op = ops;
+  u32 op_index[4];
+  vnet_crypto_op_chunk_t *ch;
+  u32x4 n_chunks_left = { };
+
+more:
+  for (i = 0; i < 4; i++)
+    if (len[i] == 0)
+      {
+	if (n_left == 0 && n_chunks_left[i] == 0)
+	  {
+	    /* no more work to enqueue, so we are enqueueing dummy buffer */
+	    src[i] = dst[i] = dummy;
+	    len[i] = sizeof (dummy);
+	    dummy_mask[i] = 0;
+	  }
+	else
+	  {
+	    if (n_chunks_left[i] == 0)
+	      {
+		if (op[0]->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
+		  {
+		    r[i] = ptd->cbc_iv[i];
+		    _mm_storeu_si128 ((__m128i *) op[0]->iv, r[i]);
+		    ptd->cbc_iv[i] = _mm_aesenc_si128 (r[i], r[i]);
+		  }
+		else
+		  r[i] = _mm_loadu_si128 ((__m128i *) op[0]->iv);
+	      }
+	    else
+	      {
+		/* restore unfinished chained op */
+		op = ops + op_index[i];
+	      }
+
+	    if (op[0]->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+	      {
+		if (n_chunks_left[i] == 0)
+		  {
+		    n_chunks_left[i] = op[0]->n_chunks;
+		    op_index[i] = op - ops;
+		    n_left--;
+		  }
+		ch = vec_elt_at_index (chunks, op[0]->chunk_index);
+		u32 ith_chunk = op[0]->n_chunks - n_chunks_left[i];
+		src[i] = ch[ith_chunk].src;
+		dst[i] = ch[ith_chunk].dst;
+		len[i] = ch[ith_chunk].len;
+		dummy_mask[i] = ~0;
+		n_chunks_left[i]--;
+	      }
+	    else
+	      {
+		src[i] = op[0]->src;
+		dst[i] = op[0]->dst;
+		len[i] = op[0]->len;
+		dummy_mask[i] = ~0;
+		n_left--;
+	      }
+
+	    if (key_index[i] != op[0]->key_index)
+	      {
+		aes_cbc_key_data_t *kd;
+		key_index[i] = op[0]->key_index;
+		kd = (aes_cbc_key_data_t *) cm->key_data[key_index[i]];
+		clib_memcpy_fast (k[i], kd->encrypt_key,
+				  (rounds + 1) * sizeof (__m128i));
+	      }
+	    op[0]->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+	    op++;
+	  }
+      }
+
+  count = u32x4_min_scalar (len);
+
+  ASSERT (count % 16 == 0);
+
+  for (i = 0; i < count; i += 16)
+    {
+      r[0] ^= _mm_loadu_si128 ((__m128i *) (src[0] + i)) ^ k[0][0];
+      r[1] ^= _mm_loadu_si128 ((__m128i *) (src[1] + i)) ^ k[1][0];
+      r[2] ^= _mm_loadu_si128 ((__m128i *) (src[2] + i)) ^ k[2][0];
+      r[3] ^= _mm_loadu_si128 ((__m128i *) (src[3] + i)) ^ k[3][0];
+
+      for (j = 1; j < rounds; j++)
+	{
+	  r[0] = _mm_aesenc_si128 (r[0], k[0][j]);
+	  r[1] = _mm_aesenc_si128 (r[1], k[1][j]);
+	  r[2] = _mm_aesenc_si128 (r[2], k[2][j]);
+	  r[3] = _mm_aesenc_si128 (r[3], k[3][j]);
+	}
+
+      r[0] = _mm_aesenclast_si128 (r[0], k[0][j]);
+      r[1] = _mm_aesenclast_si128 (r[1], k[1][j]);
+      r[2] = _mm_aesenclast_si128 (r[2], k[2][j]);
+      r[3] = _mm_aesenclast_si128 (r[3], k[3][j]);
+
+      _mm_storeu_si128 ((__m128i *) (dst[0] + i), r[0]);
+      _mm_storeu_si128 ((__m128i *) (dst[1] + i), r[1]);
+      _mm_storeu_si128 ((__m128i *) (dst[2] + i), r[2]);
+      _mm_storeu_si128 ((__m128i *) (dst[3] + i), r[3]);
+    }
+
+  for (i = 0; i < 4; i++)
+    {
+      src[i] += count;
+      dst[i] += count;
+      len[i] -= count;
+    }
+
+  if (n_left > 0)
+    goto more;
+
+  if ((!u32x4_is_all_zero (len & dummy_mask))
+      || !u32x4_is_all_zero (n_chunks_left & dummy_mask))
+    goto more;
+
+  return n_ops;
 }
 
 static_always_inline u32
@@ -199,6 +339,50 @@ more:
 }
 
 static_always_inline u32
+aesni_ops_dec_aes_cbc_chained (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+			       vnet_crypto_op_chunk_t * chunks,
+			       u32 n_ops, aesni_key_size_t ks)
+{
+  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  int rounds = AESNI_KEY_ROUNDS (ks);
+  vnet_crypto_op_t *op = ops[0];
+  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+  u32 i, n_left = n_ops;
+  vnet_crypto_op_chunk_t *chp;
+  u8 iv[16];
+
+  ASSERT (n_ops >= 1);
+
+decrypt:
+  if (op->iv)
+    clib_memcpy_fast (iv, op->iv, sizeof (iv));
+  else
+    clib_memset (iv, 0, sizeof (iv));
+
+  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      chp = vec_elt_at_index (chunks, op->chunk_index);
+      for (i = 0; i < op->n_chunks; i++)
+	{
+	  aes_cbc_dec (kd->decrypt_key, chp->src, chp->dst, iv, chp->len,
+		       rounds, 1);
+	  chp += 1;
+	}
+    }
+
+  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  if (--n_left)
+    {
+      op += 1;
+      kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+      goto decrypt;
+    }
+
+  return n_ops;
+}
+
+static_always_inline u32
 aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		       u32 n_ops, aesni_key_size_t ks)
 {
@@ -211,7 +395,7 @@ aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   ASSERT (n_ops >= 1);
 
 decrypt:
-  aes_cbc_dec (kd->decrypt_key, op->src, op->dst, op->iv, op->len, rounds);
+  aes_cbc_dec (kd->decrypt_key, op->src, op->dst, op->iv, op->len, rounds, 0);
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   if (--n_left)
@@ -239,13 +423,25 @@ aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 
 #define _(x) \
 static u32 aesni_ops_dec_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+  vnet_crypto_op_chunk_t *chunks, u32 n_ops) \
 { return aesni_ops_dec_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
 static u32 aesni_ops_enc_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+  vnet_crypto_op_chunk_t *chunks, u32 n_ops) \
 { return aesni_ops_enc_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
 static void * aesni_cbc_key_exp_##x (vnet_crypto_key_t *key) \
-{ return aesni_cbc_key_exp (key, AESNI_KEY_##x); }
+{ return aesni_cbc_key_exp (key, AESNI_KEY_##x); } \
+static u32 aesni_ops_dec_aes_cbc_##x##_chained \
+  (vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+    vnet_crypto_op_chunk_t *chunks, u32 n_ops) \
+{ return aesni_ops_dec_aes_cbc_chained (vm, ops, chunks, n_ops, \
+    AESNI_KEY_##x); } \
+static u32 aesni_ops_enc_aes_cbc_##x##_chained \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+  vnet_crypto_op_chunk_t *chunks, u32 n_ops) \
+{ return aesni_ops_enc_aes_cbc_chained (vm, ops, chunks, n_ops, \
+    AESNI_KEY_##x); } \
 
 foreach_aesni_cbc_handler_type;
 #undef _
@@ -289,8 +485,14 @@ crypto_ia32_aesni_cbc_init_sse42 (vlib_main_t * vm)
 				    VNET_CRYPTO_OP_AES_##x##_CBC_ENC, \
 				    aesni_ops_enc_aes_cbc_##x); \
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
+				    VNET_CRYPTO_OP_AES_##x##_CBC_ENC_CHAINED, \
+				    aesni_ops_enc_aes_cbc_##x##_chained); \
+  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
 				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC, \
 				    aesni_ops_dec_aes_cbc_##x); \
+  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
+				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC_CHAINED, \
+				    aesni_ops_dec_aes_cbc_##x##_chained); \
   cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_CBC] = aesni_cbc_key_exp_##x;
   foreach_aesni_cbc_handler_type;
 #undef _

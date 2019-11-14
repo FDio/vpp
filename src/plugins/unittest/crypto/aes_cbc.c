@@ -122,6 +122,21 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .ciphertext = TEST_DATA (ciphertext256),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc_chained) = {
+  .name = "NIST SP 800-38A [chained]",
+  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
+  .iv = TEST_DATA (iv),
+  .key = TEST_DATA (key256),
+  .is_chained = 1,
+  .pt_chunks = {
+    TEST_DATA_CHUNK (plaintext, 0, 32),
+    TEST_DATA_CHUNK (plaintext, 32, 32),
+  },
+  .ct_chunks = {
+    TEST_DATA_CHUNK (ciphertext256, 0, 32),
+    TEST_DATA_CHUNK (ciphertext256, 32, 32),
+  },
+};
 /* *INDENT-ON* */
 
 /*

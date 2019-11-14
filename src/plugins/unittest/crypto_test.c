@@ -38,10 +38,12 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   unittest_crypto_test_registration_t **rv = 0;
   vnet_crypto_alg_data_t *ad;
   vnet_crypto_op_t *ops = 0, *op;
+  vnet_crypto_op_chunk_t *chunks = 0, ch, *chp;
   vnet_crypto_key_index_t *key_indices = 0;
   u8 *computed_data = 0, *s = 0, *err = 0;
   u32 computed_data_total_len = 0, n_ops = 0;
-  u32 i;
+  unittest_crypto_test_data_t *pt, *ct;
+  u32 i, j;
 
   /* construct registration vector */
   while (r)
@@ -58,18 +60,68 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 
 	  switch (i)
 	    {
+	    case VNET_CRYPTO_OP_TYPE_ENCRYPT_CHAINED:
+	    case VNET_CRYPTO_OP_TYPE_DECRYPT_CHAINED:
+	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT_CHAINED:
+	      if (!r->is_chained)
+		break;
+	      ct = r->ct_chunks;
+	      j = 0;
+	      while (ct->data)
+		{
+		  if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
+		    return clib_error_return (0,
+					      "test case '%s' exceeds extra data!",
+					      r->name);
+		  computed_data_total_len += ct->length;
+		  ct++;
+		  j++;
+		}
+	      n_ops += 1;
+	      break;
 	    case VNET_CRYPTO_OP_TYPE_ENCRYPT:
 	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
 	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
+	      if (r->is_chained)
+		break;
 	      computed_data_total_len += r->ciphertext.length;
 	      n_ops += 1;
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
+	      if (r->is_chained)
+		break;
 	      computed_data_total_len += r->ciphertext.length;
 	      computed_data_total_len += r->tag.length;
 	      n_ops += 1;
 	      break;
+	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT_CHAINED:
+	      if (!r->is_chained)
+		break;
+	      computed_data_total_len += r->ciphertext.length;
+	      computed_data_total_len += r->tag.length;
+	      ct = r->ct_chunks;
+	      j = 0;
+	      while (ct->data)
+		{
+		  if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
+		    return clib_error_return (0,
+					      "test case '%s' exceeds extra data!",
+					      r->name);
+		  computed_data_total_len += ct->length;
+		  ct++;
+		  j++;
+		}
+	      n_ops += 1;
+	      break;
 	    case VNET_CRYPTO_OP_TYPE_HMAC:
+	      if (r->is_chained)
+		break;
+	      computed_data_total_len += r->digest.length;
+	      n_ops += 1;
+	      break;
+	    case VNET_CRYPTO_OP_TYPE_HMAC_CHAINED:
+	      if (!r->is_chained)
+		break;
 	      computed_data_total_len += r->digest.length;
 	      n_ops += 1;
 	      break;
@@ -113,19 +165,99 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	    {
 	    case VNET_CRYPTO_OP_TYPE_ENCRYPT:
 	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
+              if (r->is_chained)
+                continue;
 	      op->iv = r->iv.data;
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);
 	      vec_add1 (key_indices, op->key_index);
-	      op->len = r->plaintext.length;
-	      op->src = t == VNET_CRYPTO_OP_TYPE_ENCRYPT ?
-		r->plaintext.data : r->ciphertext.data;
-	      op->dst = computed_data + computed_data_total_len;
-	      computed_data_total_len += r->ciphertext.length;
+
+              op->len = r->plaintext.length;
+              op->src = t == VNET_CRYPTO_OP_TYPE_ENCRYPT ?
+                r->plaintext.data : r->ciphertext.data;
+              op->dst = computed_data + computed_data_total_len;
+              computed_data_total_len += r->ciphertext.length;
 	      break;
+	    case VNET_CRYPTO_OP_TYPE_ENCRYPT_CHAINED:
+	    case VNET_CRYPTO_OP_TYPE_DECRYPT_CHAINED:
+              if (!r->is_chained)
+                continue;
+	      op->iv = r->iv.data;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
+
+              pt = r->pt_chunks;
+              ct = r->ct_chunks;
+              op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+              op->chunk_index = vec_len (chunks);
+              while (pt->data)
+                {
+                  ch.src = t == VNET_CRYPTO_OP_TYPE_ENCRYPT_CHAINED ?
+                    pt->data : ct->data;
+                  ch.len = pt->length;
+                  ch.dst = computed_data + computed_data_total_len;
+                  computed_data_total_len += pt->length;
+                  vec_add1 (chunks, ch);
+                  op->n_chunks++;
+                  pt++;
+                  ct++;
+                }
+              break;
+	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT_CHAINED:
+	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT_CHAINED:
+              if (!r->is_chained)
+                continue;
+	      op->iv = r->iv.data;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
+	      op->aad = r->aad.data;
+	      op->aad_len = r->aad.length;
+	      if (t == VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT_CHAINED)
+		{
+                  pt = r->pt_chunks;
+                  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+                  op->chunk_index = vec_len (chunks);
+                  while (pt->data)
+                    {
+                      ch.src = pt->data;
+                      ch.len = pt->length;
+                      ch.dst = computed_data + computed_data_total_len;
+                      computed_data_total_len += pt->length;
+                      vec_add1 (chunks, ch);
+                      op->n_chunks++;
+                      pt++;
+                    }
+                  op->tag = computed_data + computed_data_total_len;
+                  computed_data_total_len += r->tag.length;
+                }
+              else
+                {
+                  ct = r->ct_chunks;
+                  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+                  op->chunk_index = vec_len (chunks);
+                  while (ct->data)
+                    {
+                      ch.src = ct->data;
+                      ch.len = ct->length;
+                      ch.dst = computed_data + computed_data_total_len;
+                      computed_data_total_len += ct->length;
+                      vec_add1 (chunks, ch);
+                      op->n_chunks++;
+                      ct++;
+                    }
+                  op->tag = r->tag.data;
+                }
+	      op->tag_len = r->tag.length;
+              break;
 	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
 	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
+              if (r->is_chained)
+                continue;
 	      op->iv = r->iv.data;
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
@@ -136,32 +268,57 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	      op->len = r->plaintext.length;
 	      op->dst = computed_data + computed_data_total_len;
 	      computed_data_total_len += r->ciphertext.length;
+
 	      if (t == VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT)
 		{
-		  op->src = r->plaintext.data;
+                  op->src = r->plaintext.data;
 	          op->tag = computed_data + computed_data_total_len;
 	          computed_data_total_len += r->tag.length;
 		}
 	      else
 		{
-		  op->src = r->ciphertext.data;
-	          op->tag = r->tag.data;
+                  op->tag = r->tag.data;
+                  op->src = r->ciphertext.data;
 		}
 	      op->tag_len = r->tag.length;
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_HMAC:
+              if (r->is_chained)
+                continue;
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);
 	      vec_add1 (key_indices, op->key_index);
-	      op->src = r->plaintext.data;
-	      op->len = r->plaintext.length;
-	      op->digest_len = r->digest.length;
-	      op->digest = computed_data + computed_data_total_len;
-	      computed_data_total_len += r->digest.length;
+              op->digest_len = r->digest.length;
+              op->digest = computed_data + computed_data_total_len;
+              computed_data_total_len += r->digest.length;
+              op->src = r->plaintext.data;
+              op->len = r->plaintext.length;
 	      break;
+            case VNET_CRYPTO_OP_TYPE_HMAC_CHAINED:
+              if (!r->is_chained)
+                continue;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
+              op->digest_len = r->digest.length;
+              op->digest = computed_data + computed_data_total_len;
+              computed_data_total_len += r->digest.length;
+              pt = r->pt_chunks;
+              op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+              op->chunk_index = vec_len (chunks);
+              while (pt->data)
+                {
+                  ch.src = pt->data;
+                  ch.len = pt->length;
+                  vec_add1 (chunks, ch);
+                  op->n_chunks++;
+                  pt++;
+                }
+              break;
 	    default:
-	      break;
+	      continue;
 	    };
 
 	  op->user_data = i;
@@ -170,7 +327,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
     }
   /* *INDENT-ON* */
 
-  vnet_crypto_process_ops (vm, ops, vec_len (ops));
+  vnet_crypto_process_chained_ops (vm, ops, chunks, vec_len (ops));
 
   /* *INDENT-OFF* */
   vec_foreach (op, ops)
@@ -179,24 +336,32 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       r = rv[op->user_data];
       unittest_crypto_test_data_t *exp_pt = 0, *exp_ct = 0;
       unittest_crypto_test_data_t *exp_digest = 0, *exp_tag = 0;
+      unittest_crypto_test_data_t *exp_pt_chunks = 0, *exp_ct_chunks = 0;
 
       switch (vnet_crypto_get_op_type (op->op))
 	{
 	case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
+        case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT_CHAINED:
 	  exp_tag = &r->tag;
           /* fall through */
 	case VNET_CRYPTO_OP_TYPE_ENCRYPT:
+        case VNET_CRYPTO_OP_TYPE_ENCRYPT_CHAINED:
 	  exp_ct = &r->ciphertext;
+          exp_ct_chunks = r->ct_chunks;
 	  break;
 	case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
 	case VNET_CRYPTO_OP_TYPE_DECRYPT:
+	case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT_CHAINED:
+	case VNET_CRYPTO_OP_TYPE_DECRYPT_CHAINED:
 	  exp_pt = &r->plaintext;
+          exp_pt_chunks = r->pt_chunks;
 	  break;
 	case VNET_CRYPTO_OP_TYPE_HMAC:
+        case VNET_CRYPTO_OP_TYPE_HMAC_CHAINED:
 	  exp_digest = &r->digest;
-	  break;
+          break;
 	default:
-	  break;
+	  ASSERT(0);
 	}
 
       vec_reset_length (err);
@@ -205,12 +370,42 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	err = format (err, "%sengine error: %U", vec_len (err) ? ", " : "",
 		      format_vnet_crypto_op_status, op->status);
 
-      if (exp_ct && memcmp (op->dst, exp_ct->data, exp_ct->length) != 0)
-	err = format (err, "%sciphertext mismatch",
-		      vec_len (err) ? ", " : "");
+      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+      {
+        if (exp_ct_chunks)
+        {
+          chp = vec_elt_at_index (chunks, op->chunk_index);
+          for (i = 0; i < op->n_chunks; i++)
+          {
+            if (memcmp (chp->dst, exp_ct_chunks[i].data, chp->len))
+              err = format (err, "%sciphertext mismatch [chunk %d]",
+                  vec_len (err) ? ", " : "", i);
+            chp += 1;
+          }
+        }
 
-      if (exp_pt && memcmp (op->dst, exp_pt->data, exp_pt->length) != 0)
-	err = format (err, "%splaintext mismatch", vec_len (err) ? ", " : "");
+        if (exp_pt_chunks)
+        {
+          chp = vec_elt_at_index (chunks, op->chunk_index);
+          for (i = 0; i < op->n_chunks; i++)
+            {
+              if (memcmp (chp->dst, exp_pt_chunks[i].data, chp->len))
+                err = format (err, "%splaintext mismatch [chunk %d]",
+                    vec_len (err) ? ", " : "", i);
+              chp += 1;
+            }
+        }
+      }
+      else
+      {
+        if (exp_ct && memcmp (op->dst, exp_ct->data, exp_ct->length) != 0)
+          err = format (err, "%sciphertext mismatch",
+                        vec_len (err) ? ", " : "");
+
+        if (exp_pt && memcmp (op->dst, exp_pt->data, exp_pt->length) != 0)
+          err = format (err, "%splaintext mismatch",
+              vec_len (err) ? ", " : "");
+      }
 
       if (exp_tag && memcmp (op->tag, exp_tag->data, exp_tag->length) != 0)
 	err = format (err, "%stag mismatch", vec_len (err) ? ", " : "");
@@ -265,6 +460,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   vec_free (err);
   vec_free (rv);
   vec_free (s);
+  vec_free (chunks);
   return 0;
 }
 

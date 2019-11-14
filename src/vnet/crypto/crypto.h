@@ -46,12 +46,17 @@
   _(SHA512, "sha-512")
 
 
-#define foreach_crypto_op_type \
-  _(ENCRYPT, "encrypt") \
-  _(DECRYPT, "decrypt") \
-  _(AEAD_ENCRYPT, "aead-encrypt") \
-  _(AEAD_DECRYPT, "aead-decrypt") \
-  _(HMAC, "hmac")
+#define foreach_crypto_op_type                                 \
+  _(ENCRYPT, "encrypt")                                        \
+  _(ENCRYPT_CHAINED, "encrypt-chained")                        \
+  _(DECRYPT, "decrypt")                                        \
+  _(DECRYPT_CHAINED, "decrypt-chained")                        \
+  _(AEAD_ENCRYPT, "aead-encrypt")                              \
+  _(AEAD_ENCRYPT_CHAINED, "aead-encrypt-chained")              \
+  _(AEAD_DECRYPT, "aead-decrypt")                              \
+  _(AEAD_DECRYPT_CHAINED, "aead-decrypt-chained")              \
+  _(HMAC, "hmac")                                              \
+  _(HMAC_CHAINED, "hmac-chained")
 
 typedef enum
 {
@@ -105,16 +110,30 @@ typedef struct
 typedef enum
 {
   VNET_CRYPTO_OP_NONE = 0,
-#define _(n, s, l) VNET_CRYPTO_OP_##n##_ENC, VNET_CRYPTO_OP_##n##_DEC,
+#define _(n, s, l) \
+  VNET_CRYPTO_OP_##n##_ENC, \
+  VNET_CRYPTO_OP_##n##_ENC_CHAINED, \
+  VNET_CRYPTO_OP_##n##_DEC, \
+  VNET_CRYPTO_OP_##n##_DEC_CHAINED, \
+
   foreach_crypto_cipher_alg
   foreach_crypto_aead_alg
 #undef _
-#define _(n, s) VNET_CRYPTO_OP_##n##_HMAC,
+#define _(n, s) \
+  VNET_CRYPTO_OP_##n##_HMAC, \
+  VNET_CRYPTO_OP_##n##_HMAC_CHAINED,
  foreach_crypto_hmac_alg
 #undef _
     VNET_CRYPTO_N_OP_IDS,
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
+
+typedef enum
+{
+  CRYPTO_OP_SIMPLE,
+  CRYPTO_OP_CHAINED,
+  CRYPTO_OP_BOTH,
+} crypto_op_class_type_t;
 
 typedef struct
 {
@@ -124,24 +143,60 @@ typedef struct
 
 typedef struct
 {
+  u8 *src;
+  u8 *dst;
+  u32 len;
+} vnet_crypto_op_chunk_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  uword user_data;
   vnet_crypto_op_id_t op:16;
   vnet_crypto_op_status_t status:8;
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
-  u32 key_index;
-  u32 len;
+#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 2)
+
+  union
+  {
+    u8 digest_len;
+    u8 tag_len;
+  };
   u16 aad_len;
-  u8 digest_len, tag_len;
+
+  union
+  {
+    struct
+    {
+      u8 *src;
+      u8 *dst;
+    };
+
+    /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
+    u16 n_chunks;
+  };
+
+  union
+  {
+    u32 len;
+    /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
+    u32 chunk_index;
+  };
+
+  u32 key_index;
   u8 *iv;
-  u8 *src;
-  u8 *dst;
   u8 *aad;
-  u8 *tag;
-  u8 *digest;
-  uword user_data;
+
+  union
+  {
+    u8 *tag;
+    u8 *digest;
+  };
 } vnet_crypto_op_t;
+
+STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 
 typedef struct
 {
@@ -159,7 +214,9 @@ typedef struct
 typedef u32 vnet_crypto_key_index_t;
 
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
-					 vnet_crypto_op_t * ops[], u32 n_ops);
+					 vnet_crypto_op_t * ops[],
+					 vnet_crypto_op_chunk_t chunks[],
+					 u32 n_ops);
 
 typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
 					  vnet_crypto_key_op_t kop,
@@ -200,10 +257,17 @@ extern vnet_crypto_main_t crypto_main;
 u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
 			    u32 n_jobs);
 
-u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
-			     u32 n_ops);
+u32 vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
+				     vnet_crypto_op_chunk_t * chunks,
+				     u32 n_ops);
+static_always_inline u32
+vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
+{
+  return vnet_crypto_process_chained_ops (vm, ops, 0, n_ops);
+}
 
-int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
+int vnet_crypto_set_handler2 (char *ops_handler_name, char *engine,
+			      crypto_op_class_type_t oct);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
@@ -225,6 +289,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
+  op->n_chunks = 0;
 }
 
 static_always_inline vnet_crypto_op_type_t
@@ -241,6 +306,12 @@ vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   return vec_elt_at_index (cm->keys, index);
+}
+
+static_always_inline int
+vnet_crypto_set_handler (char *alg_name, char *engine)
+{
+  return vnet_crypto_set_handler2 (alg_name, engine, CRYPTO_OP_BOTH);
 }
 
 #endif /* included_vnet_crypto_crypto_h */
