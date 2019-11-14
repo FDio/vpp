@@ -72,7 +72,6 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
     RouterAlert, IPv6ExtHdrHopByHop
 from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
-from scapy.pton_ntop import inet_ntop
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp

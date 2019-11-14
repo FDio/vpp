@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from socket import AF_INET, AF_INET6
+from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
 
@@ -12,7 +12,6 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
-from scapy.utils import inet_pton, inet_ntop
 
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
@@ -34,6 +33,7 @@ except NameError:
     text_type = str
 
 NUM_PKTS = 67
+arp_opts = {"who-has": 1, "is-at": 2}
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
@@ -1007,7 +1007,7 @@ class TestGBP(VppTestCase):
         #
         pkt_arp = (Ether(dst="ff:ff:ff:ff:ff:ff",
                          src=self.pg0.remote_mac) /
-                   ARP(op="who-has",
+                   ARP(op=arp_opts["who-has"],
                        hwdst="ff:ff:ff:ff:ff:ff",
                        hwsrc=self.pg0.remote_mac,
                        pdst="10.0.0.88",
@@ -1026,7 +1026,7 @@ class TestGBP(VppTestCase):
         #
         pkt_arp = (Ether(dst="ff:ff:ff:ff:ff:ff",
                          src=self.pg0.remote_mac) /
-                   ARP(op="who-has",
+                   ARP(op=arp_opts["who-has"],
                        hwdst="ff:ff:ff:ff:ff:ff",
                        hwsrc=self.pg0.remote_mac,
                        pdst=epgs[0].bvi_ip4,
@@ -1761,7 +1761,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=88, reserved2=0x80, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst="ff:ff:ff:ff:ff:ff") /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc=l['ip'], pdst=l['ip'],
                      hwsrc=l['mac'], hwdst="ff:ff:ff:ff:ff:ff"))
 
@@ -2599,7 +2599,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
         self.logger.info(self.vapi.cli("sh gbp bridge"))
         p_arp = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc=ep.ip4, pdst="10.0.0.99",
                      hwsrc=ep.mac,
                      hwdst="ff:ff:ff:ff:ff:ff"))
@@ -4768,7 +4768,7 @@ class TestGBP(VppTestCase):
         #
         p = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
              Dot1Q(vlan=100) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  psrc="10.0.0.3", pdst="10.0.0.128",
                  hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         self.send_and_assert_no_replies(self.pg0, p)
@@ -4778,7 +4778,7 @@ class TestGBP(VppTestCase):
         #
         p_arp = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=100) /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc=eep1.ip4, pdst="10.0.0.128",
                      hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
@@ -4788,7 +4788,7 @@ class TestGBP(VppTestCase):
         #
         p_arp = (Ether(src=eep3.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=102) /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc=eep3.ip4, pdst="10.0.0.128",
                      hwsrc=eep3.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
@@ -5530,7 +5530,7 @@ class TestGBP(VppTestCase):
         p_arp = (Ether(src=self.vlan_100.remote_mac,
                        dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=100) /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc="10.0.0.100",
                      pdst="10.0.0.128",
                      hwsrc=self.vlan_100.remote_mac,
@@ -5540,7 +5540,7 @@ class TestGBP(VppTestCase):
         p_arp = (Ether(src=self.vlan_101.remote_mac,
                        dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=101) /
-                 ARP(op="who-has",
+                 ARP(op=arp_opts["who-has"],
                      psrc='10.0.0.101',
                      pdst="10.0.0.128",
                      hwsrc=self.vlan_101.remote_mac,

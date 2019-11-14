@@ -1,4 +1,4 @@
-from socket import AF_INET6
+from socket import AF_INET6, inet_pton, inet_ntop
 
 from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
     DHCP6OptStatusCode, DHCP6OptPref, DHCP6OptIA_PD, DHCP6OptIAPrefix, \
@@ -7,7 +7,6 @@ from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
     DHCP6OptIAAddress
 from scapy.layers.inet6 import IPv6, Ether, UDP
 from scapy.utils6 import in6_mactoifaceid
-from scapy.utils import inet_ntop, inet_pton
 
 from framework import VppTestCase
 from vpp_papi import VppEnum

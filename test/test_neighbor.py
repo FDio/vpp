@@ -265,7 +265,7 @@ class ARPTestCase(VppTestCase):
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src=self.pg1._remote_hosts[3].mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg1._remote_hosts[3].mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1._remote_hosts[3].ip4))
@@ -293,13 +293,13 @@ class ARPTestCase(VppTestCase):
         self.pg2.generate_remote_hosts(4)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg2.remote_hosts[3].ip4))
         pt = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
               Dot1Q(vlan=0) /
-              ARP(op="who-has",
+              ARP(op=arp_opts["who-has"],
                   hwsrc=self.pg2.remote_mac,
                   pdst=self.pg1.local_ip4,
                   psrc=self.pg2.remote_hosts[3].ip4))
@@ -411,7 +411,7 @@ class ARPTestCase(VppTestCase):
         # with the unnumbered interface's address as the source
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1.remote_hosts[6].ip4))
@@ -454,7 +454,7 @@ class ARPTestCase(VppTestCase):
                             self.pg1._remote_hosts[7].ip4)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1.remote_hosts[7].ip4))
@@ -480,7 +480,7 @@ class ARPTestCase(VppTestCase):
         att_unnum1.add_vpp_config()
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1.remote_hosts[8].ip4))
@@ -503,7 +503,7 @@ class ARPTestCase(VppTestCase):
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src=self.pg1._remote_hosts[9].mac) /
              Dot1Q(vlan=0) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg1._remote_hosts[9].mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1._remote_hosts[9].ip4))
@@ -524,7 +524,7 @@ class ARPTestCase(VppTestCase):
         # Should still get an ARP resp since the cover is attached
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg1.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg1.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1.remote_hosts[10].ip4))
@@ -571,7 +571,7 @@ class ARPTestCase(VppTestCase):
         a1.add_vpp_config()
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  psrc="100.100.100.50",
                  pdst=self.pg0.remote_ip4))
@@ -586,7 +586,7 @@ class ARPTestCase(VppTestCase):
         #  1c - nor within the subnet of a different interface
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  pdst="10.10.10.3",
                  psrc=self.pg0.remote_ip4))
@@ -597,7 +597,7 @@ class ARPTestCase(VppTestCase):
                                   "10.10.10.3"))
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  pdst="10.10.10.3",
                  psrc=self.pg1.remote_hosts[7].ip4))
@@ -606,7 +606,7 @@ class ARPTestCase(VppTestCase):
             "ARP req for non-local destination - unnum")
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg1.remote_ip4))
@@ -622,14 +622,14 @@ class ARPTestCase(VppTestCase):
         #   2b - to a proxied address
         #   2c - not within a different interface's sub-net
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  psrc="10.10.10.3",
                  pdst=self.pg0.local_ip4))
         self.send_and_assert_no_replies(self.pg0, p,
                                         "ARP req for non-local source")
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg2.remote_mac,
                  psrc="10.10.10.3",
                  pdst=self.pg0.local_ip4))
@@ -637,7 +637,7 @@ class ARPTestCase(VppTestCase):
             self.pg0, p,
             "ARP req for non-local source - unnum")
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  psrc=self.pg1.remote_ip4,
                  pdst=self.pg0.local_ip4))
@@ -649,7 +649,7 @@ class ARPTestCase(VppTestCase):
         #      the router
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  psrc=self.pg0.local_ip4,
                  pdst=self.pg0.local_ip4))
@@ -661,7 +661,7 @@ class ARPTestCase(VppTestCase):
         #      from ARP request HW source
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc="00:00:00:DE:AD:BE",
                  psrc=self.pg0.remote_ip4,
                  pdst=self.pg0.local_ip4))
@@ -674,7 +674,7 @@ class ARPTestCase(VppTestCase):
         #
         self.pg0.generate_remote_hosts(2)
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwsrc=self.pg0.remote_mac,
                  psrc=self.pg0.remote_hosts[0].ip4,
                  pdst=self.pg0.remote_hosts[1].ip4))
@@ -707,7 +707,7 @@ class ARPTestCase(VppTestCase):
 
         arp_req_from_me = (Ether(src=self.pg2.remote_mac,
                                  dst="ff:ff:ff:ff:ff:ff") /
-                           ARP(op="who-has",
+                           ARP(op=arp_opts["who-has"],
                                hwsrc=self.pg2.remote_mac,
                                pdst=self.pg0.remote_hosts[1].ip4,
                                psrc=self.pg0.local_ip4))
@@ -767,32 +767,32 @@ class ARPTestCase(VppTestCase):
         #
         arp_req_pg0 = (Ether(src=self.pg0.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
-                       ARP(op="who-has",
+                       ARP(op=arp_opts["who-has"],
                            hwsrc=self.pg0.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg0.remote_ip4))
         arp_req_pg0_tagged = (Ether(src=self.pg0.remote_mac,
                                     dst="ff:ff:ff:ff:ff:ff") /
                               Dot1Q(vlan=0) /
-                              ARP(op="who-has",
+                              ARP(op=arp_opts["who-has"],
                                   hwsrc=self.pg0.remote_mac,
                                   pdst="10.10.10.3",
                                   psrc=self.pg0.remote_ip4))
         arp_req_pg1 = (Ether(src=self.pg1.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
-                       ARP(op="who-has",
+                       ARP(op=arp_opts["who-has"],
                            hwsrc=self.pg1.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg1.remote_ip4))
         arp_req_pg2 = (Ether(src=self.pg2.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
-                       ARP(op="who-has",
+                       ARP(op=arp_opts["who-has"],
                            hwsrc=self.pg2.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg1.remote_hosts[1].ip4))
         arp_req_pg3 = (Ether(src=self.pg3.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
-                       ARP(op="who-has",
+                       ARP(op=arp_opts["who-has"],
                            hwsrc=self.pg3.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg3.remote_ip4))
@@ -880,7 +880,7 @@ class ARPTestCase(VppTestCase):
         #
         arp_req_pg1_hi = (Ether(src=self.pg1.remote_mac,
                                 dst="ff:ff:ff:ff:ff:ff") /
-                          ARP(op="who-has",
+                          ARP(op=arp_opts["who-has"],
                               hwsrc=self.pg1.remote_mac,
                               pdst="10.10.10.125",
                               psrc=self.pg1.remote_ip4))
@@ -888,7 +888,7 @@ class ARPTestCase(VppTestCase):
                                         "ARP req out of range HI")
         arp_req_pg1_low = (Ether(src=self.pg1.remote_mac,
                                  dst="ff:ff:ff:ff:ff:ff") /
-                           ARP(op="who-has",
+                           ARP(op=arp_opts["who-has"],
                                hwsrc=self.pg1.remote_mac,
                                pdst="10.10.10.1",
                                psrc=self.pg1.remote_ip4))
@@ -1006,7 +1006,7 @@ class ARPTestCase(VppTestCase):
         # MAC addresses
         #
         p1 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-              ARP(op="is-at", hwdst=self.pg1.local_mac,
+              ARP(op=arp_opts["is-at"], hwdst=self.pg1.local_mac,
                   hwsrc="00:00:5e:00:01:09", pdst=self.pg1.local_ip4,
                   psrc=self.pg1.remote_ip4))
 
@@ -1260,7 +1260,7 @@ class ARPTestCase(VppTestCase):
         #
         p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
                     src=self.pg1.remote_hosts[2].mac) /
-              ARP(op="who-has",
+              ARP(op=arp_opts["who-has"],
                   hwdst=self.pg1.local_mac,
                   hwsrc=self.pg1.remote_hosts[2].mac,
                   pdst=self.pg1.remote_hosts[1].ip4,
@@ -1280,7 +1280,7 @@ class ARPTestCase(VppTestCase):
         #
         p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
                     src=self.pg1.remote_hosts[3].mac) /
-              ARP(op="is-at",
+              ARP(op=arp_opts["is-at"],
                   hwdst=self.pg1.local_mac,
                   hwsrc=self.pg1.remote_hosts[3].mac,
                   pdst=self.pg1.remote_hosts[1].ip4,
@@ -1301,7 +1301,7 @@ class ARPTestCase(VppTestCase):
         #
         p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
                     src=self.pg1.remote_hosts[3].mac) /
-              ARP(op="who-has",
+              ARP(op=arp_opts["who-has"],
                   hwdst=self.pg1.local_mac,
                   hwsrc=self.pg1.remote_hosts[3].mac,
                   pdst=self.pg1.remote_hosts[2].ip4,
@@ -1317,7 +1317,7 @@ class ARPTestCase(VppTestCase):
 
         p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
                     src=self.pg1.remote_hosts[3].mac) /
-              ARP(op="is-at",
+              ARP(op=arp_opts["is-at"],
                   hwdst=self.pg1.local_mac,
                   hwsrc=self.pg1.remote_hosts[3].mac,
                   pdst=self.pg1.remote_hosts[2].ip4,
@@ -1413,7 +1413,7 @@ class ARPTestCase(VppTestCase):
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src=self.pg0.remote_mac) /
-             ARP(op="who-has",
+             ARP(op=arp_opts["who-has"],
                  hwdst=self.pg0.local_mac,
                  hwsrc=self.pg0.remote_mac,
                  pdst=self.pg0.remote_hosts[1].ip4,

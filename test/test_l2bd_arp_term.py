@@ -5,12 +5,11 @@ import unittest
 import random
 import copy
 
-from socket import AF_INET, AF_INET6
+from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP
-from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
@@ -20,6 +19,8 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
+
+arp_opts = {"who-has": 1, "is-at": 2}
 
 
 class TestL2bdArpTerm(VppTestCase):
@@ -127,7 +128,7 @@ class TestL2bdArpTerm(VppTestCase):
     @classmethod
     def arp_req(cls, src_host, host):
         return (Ether(dst="ff:ff:ff:ff:ff:ff", src=src_host.mac) /
-                ARP(op="who-has",
+                ARP(op=arp_opts["who-has"],
                     hwsrc=src_host.bin_mac,
                     pdst=host.ip4,
                     psrc=src_host.ip4))
@@ -153,7 +154,6 @@ class TestL2bdArpTerm(VppTestCase):
         self.assertEqual(arp.ptype, 0x800)
         self.assertEqual(arp.hwlen, 6)
         self.assertEqual(arp.plen, 4)
-        arp_opts = {"who-has": 1, "is-at": 2}
         self.assertEqual(arp.op, arp_opts["is-at"])
         self.assertEqual(arp.hwdst, src_host.mac)
         self.assertEqual(arp.pdst, src_host.ip4)
