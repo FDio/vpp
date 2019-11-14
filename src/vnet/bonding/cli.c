@@ -261,6 +261,31 @@ bond_dump_slave_ifs (slave_interface_details_t ** out_slaveifs,
   return 0;
 }
 
+/*
+ * Manage secondary mac addresses when attaching/detaching a slave.
+ * If adding, copies any secondary addresses from master to slave
+ * If deleting, deletes the master's secondary addresses from the slave
+ *
+ */
+static void
+bond_slave_add_del_mac_addrs (bond_if_t * bif, u32 sif_sw_if_index, u8 is_add)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_interface_t *b_ei;
+  mac_address_t *sec_mac;
+  vnet_hw_interface_t *s_hwif;
+
+  b_ei = ethernet_get_interface (&ethernet_main, bif->hw_if_index);
+  if (!b_ei || !b_ei->secondary_addrs)
+    return;
+
+  s_hwif = vnet_get_sup_hw_interface (vnm, sif_sw_if_index);
+
+  vec_foreach (sec_mac, b_ei->secondary_addrs)
+    vnet_hw_interface_add_del_mac_address (vnm, s_hwif->hw_if_index,
+					   sec_mac->bytes, is_add);
+}
+
 static void
 bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
 {
@@ -295,6 +320,10 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   /* Put back the old mac */
   vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
 					sif->persistent_hw_address);
+
+  /* delete the bond's secondary/virtual mac addrs from the slave */
+  bond_slave_add_del_mac_addrs (bif, sif->sw_if_index, 0 /* is_add */ );
+
 
   if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
     (*bm->lacp_enable_disable) (vm, bif, sif, 0);
@@ -664,6 +693,9 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
 						bif->hw_address);
 	}
     }
+
+  /* if there are secondary/virtual mac addrs, propagate to the slave */
+  bond_slave_add_del_mac_addrs (bif, sif->sw_if_index, 1 /* is_add */ );
 
   if (bif_hw->l2_if_count)
     {
