@@ -142,6 +142,47 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
+			  u8 is_add)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  bond_if_t *bif;
+  u32 *slave_sw_if_index;
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *s_hi;
+
+
+  bif = bond_get_master_by_sw_if_index (hi->sw_if_index);
+
+  /* Add/del address on each of the slaves, they control the hardware */
+  vec_foreach (slave_sw_if_index, bif->slaves)
+  {
+
+    s_hi = vnet_get_sup_hw_interface (vnm, *slave_sw_if_index);
+    error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						   address, is_add);
+
+    if (error)
+      break;
+  }
+
+  if (error)
+    {
+      /* undo any that were completed before the failure */
+      int i;
+
+      for (i = (slave_sw_if_index - bif->slaves); i >= 0; i--)
+	{
+	  s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->slaves, i));
+	  vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						 address, !(is_add));
+	}
+    }
+
+  return error;
+}
+
 static_always_inline void
 bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 {
@@ -807,6 +848,7 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .admin_up_down_function = bond_interface_admin_up_down,
   .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
+  .mac_addr_add_del_function = bond_add_del_mac_address,
 };
 
 /* *INDENT-ON* */
