@@ -96,36 +96,36 @@ W_est (cubic_data_t * cd, f64 t, f64 rtt)
 static void
 cubic_congestion (tcp_connection_t * tc)
 {
-  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  u32 w_max;
-
-  w_max = tc->cwnd / tc->snd_mss;
-  if (cubic_cfg.fast_convergence && w_max < cd->w_max)
-    w_max = w_max * ((1.0 + beta_cubic) / 2.0);
-
-  cd->w_max = w_max;
-  tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
-  tc->cwnd = tc->ssthresh;
+//  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+//  u32 w_max;
+//
+//  w_max = tc->cwnd / tc->snd_mss;
+//  if (cubic_cfg.fast_convergence && w_max < cd->w_max)
+//    w_max = w_max * ((1.0 + beta_cubic) / 2.0);
+//
+//  cd->w_max = w_max;
+//  tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
+//  tc->cwnd = tc->ssthresh;
 }
 
 static void
 cubic_loss (tcp_connection_t * tc)
 {
-  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-
-  tc->cwnd = tcp_loss_wnd (tc);
-  cd->t_start = cubic_time (tc->c_thread_index);
-  cd->K = 0;
-  cd->w_max = tc->cwnd / tc->snd_mss;
+//  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+//
+//  tc->cwnd = tcp_loss_wnd (tc);
+//  cd->t_start = cubic_time (tc->c_thread_index);
+//  cd->K = 0;
+//  cd->w_max = tc->cwnd / tc->snd_mss;
 }
 
 static void
 cubic_recovered (tcp_connection_t * tc)
 {
-  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  cd->t_start = cubic_time (tc->c_thread_index);
-  tc->cwnd = tc->ssthresh;
-  cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
+//  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+//  cd->t_start = cubic_time (tc->c_thread_index);
+//  tc->cwnd = tc->ssthresh;
+//  cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
 }
 
 static void

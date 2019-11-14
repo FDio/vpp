@@ -575,20 +575,23 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
   tcp_update_rto (tc);
 }
 
-always_inline u8
-tcp_recovery_no_snd_space (tcp_connection_t * tc)
-{
-  u32 space;
-
-  ASSERT (tcp_in_cong_recovery (tc));
-
-  if (tcp_in_recovery (tc))
-    space = tcp_available_output_snd_space (tc);
-  else
-    space = tcp_fastrecovery_prr_snd_space (tc);
-
-  return (space < tc->snd_mss + tc->burst_acked);
-}
+//always_inline u8
+//tcp_recovery_no_snd_space (tcp_connection_t * tc)
+//{
+//  u32 space;
+//
+//  ASSERT (tcp_in_cong_recovery (tc));
+//
+//  if (!tc->burst_acked)
+//    return 0;
+//
+//  if (tcp_in_recovery (tc))
+//    space = tcp_available_output_snd_space (tc);
+//  else
+//    space = tcp_fastrecovery_prr_snd_space (tc);
+//
+//  return (space < tc->snd_mss + tc->burst_acked);
+//}
 
 /**
  * Dequeue bytes for connections that have received acks in last burst
@@ -610,36 +613,28 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       tc = tcp_connection_get (pending_deq_acked[i], thread_index);
       tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
-      if (tc->burst_acked)
-	{
-	  /* Dequeue the newly ACKed bytes */
-	  session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
-	  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+      ASSERT (tc->burst_acked);
 
-	  if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-	    {
-	      if (seq_leq (tc->psh_seq, tc->snd_una))
-		tc->flags &= ~TCP_CONN_PSH_PENDING;
-	    }
+      /* Dequeue the newly ACKed bytes */
+      session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
+      tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
-	  /* If everything has been acked, stop retransmit timer
-	   * otherwise update. */
-	  tcp_retransmit_timer_update (tc);
+      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
+        {
+          if (seq_leq (tc->psh_seq, tc->snd_una))
+            tc->flags &= ~TCP_CONN_PSH_PENDING;
+        }
 
-	  /* Update pacer based on our new cwnd estimate */
-	  tcp_connection_tx_pacer_update (tc);
-	}
+      /* If everything has been acked, stop retransmit timer
+       * otherwise update. */
+      tcp_retransmit_timer_update (tc);
 
-      /* Reset the pacer if we've been idle, i.e., no data sent or if
-       * we're in recovery and snd space constrained */
-      if (tc->data_segs_out == tc->prev_dsegs_out
-	  || (tcp_in_cong_recovery (tc) && tcp_recovery_no_snd_space (tc)))
-	transport_connection_tx_pacer_reset_bucket (&tc->connection);
+      /* Update pacer based on our new cwnd estimate */
+      tcp_connection_tx_pacer_update (tc);
 
-      tc->prev_dsegs_out = tc->data_segs_out;
       tc->burst_acked = 0;
+      _vec_len (wrk->pending_deq_acked) = 0;
     }
-  _vec_len (wrk->pending_deq_acked) = 0;
 }
 
 static void
@@ -1623,10 +1618,11 @@ process_ack:
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
 
-  tcp_program_dequeue (wrk, tc);
-
   if (tc->bytes_acked)
-    tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+    {
+      tcp_program_dequeue (wrk, tc);
+      tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+    }
 
   TCP_EVT (TCP_EVT_ACK_RCVD, tc);
 
