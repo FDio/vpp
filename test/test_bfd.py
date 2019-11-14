@@ -152,7 +152,7 @@ class BFDAPITestCase(VppTestCase):
         for key in keys:
             self.assertTrue(key.query_vpp_config())
         # remove randomly
-        indexes = range(key_count)
+        indexes = list(range(key_count))
         shuffle(indexes)
         removed = []
         for i in indexes:
@@ -451,7 +451,7 @@ class BFDTestSession(object):
         if self.sha1_key:
             hash_material = scapy.compat.raw(
                 packet[BFD])[:32] + self.sha1_key.key + \
-                "\0" * (20 - len(self.sha1_key.key))
+                b"\0" * (20 - len(self.sha1_key.key))
             self.test.logger.debug("BFD: Calculated SHA1 hash: %s" %
                                    hashlib.sha1(hash_material).hexdigest())
             packet[BFD].auth_key_hash = hashlib.sha1(hash_material).digest()
@@ -510,7 +510,7 @@ class BFDTestSession(object):
             b"\0" * (20 - len(self.sha1_key.key))
         expected_hash = hashlib.sha1(hash_material).hexdigest()
         self.test.assert_equal(binascii.hexlify(bfd.auth_key_hash),
-                               expected_hash, "Auth key hash")
+                               expected_hash.encode(), "Auth key hash")
 
     def verify_bfd(self, packet):
         """ Verify correctness of BFD layer. """
@@ -530,7 +530,7 @@ def bfd_session_up(test):
     old_offset = None
     if hasattr(test, 'vpp_clock_offset'):
         old_offset = test.vpp_clock_offset
-    test.vpp_clock_offset = time.time() - p.time
+    test.vpp_clock_offset = time.time() - float(p.time)
     test.logger.debug("BFD: Calculated vpp clock offset: %s",
                       test.vpp_clock_offset)
     if old_offset:
@@ -2387,7 +2387,7 @@ class BFDCLITestCase(VppTestCase):
     def cli_verify_no_response(self, cli):
         """ execute a CLI, asserting that the response is empty """
         self.assert_equal(self.vapi.cli(cli),
-                          b"",
+                          "",
                           "CLI command response")
 
     def cli_verify_response(self, cli, expected):
