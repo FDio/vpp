@@ -1502,6 +1502,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  return;
 	}
 
+      clib_warning ("rxt %u", tc->snd_una - tc->iss);
       /* We're not in recovery so make sure rto_boff is 0. Can be non 0 due
        * to persist timer timeout */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
@@ -1838,8 +1839,19 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
       int limit;
       limit = clib_max ((int) (tc->prr_delivered - prr_out), 0) + tc->snd_mss;
       space = clib_min (tc->ssthresh - pipe, limit);
+      if (space < limit && limit == tc->snd_mss)
+	clib_warning ("this space %u limit %u", space, limit);
     }
   space = clib_max (space, prr_out ? 0 : tc->snd_mss);
+
+//  u8 tmp, res;
+//  res = 0 != scoreboard_next_rxt_hole (&tc->sack_sb, 0, 1, &tmp, &tmp);
+//  clib_warning ("%.3f: %s resut %d pipe %u prr_out %u HOLE %u FIRST %u sacked %u lost %u",
+//                tcp_time_now_us (tc->c_thread_index) - tc->start_ts,
+//                (!pos ? "above" : "under"), space, pipe, prr_out, res,
+//                scoreboard_first_hole (&tc->sack_sb) != 0, tc->sack_sb.sacked_bytes,
+//                tc->sack_sb.lost_bytes);
+
   return space;
 }
 
@@ -1874,7 +1886,7 @@ static int
 tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 burst_size)
 {
-  u8 snd_limited = 0, can_rescue = 0, reset_pacer = 0;
+  u8 snd_limited = 0, can_rescue = 0;
   u32 n_written = 0, offset, max_bytes, n_segs = 0;
   u32 bi, max_deq, burst_bytes, sent_bytes;
   sack_scoreboard_hole_t *hole;
@@ -1899,12 +1911,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     snd_space = tcp_fastrecovery_prr_snd_space (tc);
 
   if (snd_space < tc->snd_mss)
-    {
-      reset_pacer = burst_bytes > tc->snd_mss;
-      goto done;
-    }
-
-  reset_pacer = snd_space < burst_bytes;
+    goto done;
 
   sb = &tc->sack_sb;
 
@@ -2020,16 +2027,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
-  if (reset_pacer)
-    {
-      transport_connection_tx_pacer_reset_bucket (&tc->connection);
-    }
-  else
-    {
-      sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
-      transport_connection_tx_pacer_update_bytes (&tc->connection,
-						  sent_bytes);
-    }
+  transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
 
   return n_segs;
 }

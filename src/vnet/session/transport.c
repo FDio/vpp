@@ -582,10 +582,11 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
   u64 n_periods = (time_now - pacer->last_update);
   u64 inc;
 
-  if (PREDICT_FALSE (n_periods > 5e4))
+  if (PREDICT_FALSE (n_periods > 5e3))
     {
       pacer->last_update = time_now;
       pacer->bucket = TRANSPORT_PACER_MIN_BURST;
+      clib_warning ("reset %.3f", (f64) time_now / 1e6);
       return TRANSPORT_PACER_MIN_BURST;
     }
 
@@ -637,9 +638,10 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 }
 
 void
-transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc)
+transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+					    u32 bucket)
 {
-  spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), 0);
+  spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), bucket);
 }
 
 void
@@ -669,19 +671,19 @@ transport_connection_tx_pacer_burst (transport_connection_t * tc)
 u32
 transport_connection_snd_space (transport_connection_t * tc, u16 mss)
 {
-  u32 snd_space, max_paced_burst;
+//  u32 snd_space, max_paced_burst;
 
-  snd_space = tp_vfts[tc->proto].send_space (tc);
-  if (snd_space && transport_connection_is_tx_paced (tc))
-    {
-      clib_us_time_t now = transport_us_time_now (tc->thread_index);
-      max_paced_burst = spacer_max_burst (&tc->pacer, now);
-      max_paced_burst =
-	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
-      snd_space = clib_min (snd_space, max_paced_burst);
-      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
-    }
-  return snd_space;
+  return tp_vfts[tc->proto].send_space (tc);
+//  if (snd_space && transport_connection_is_tx_paced (tc))
+//    {
+//      clib_us_time_t now = transport_us_time_now (tc->thread_index);
+//      max_paced_burst = spacer_max_burst (&tc->pacer, now);
+//      max_paced_burst =
+//	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
+//      snd_space = clib_min (snd_space, max_paced_burst);
+//      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
+//    }
+//  return snd_space;
 }
 
 u64
