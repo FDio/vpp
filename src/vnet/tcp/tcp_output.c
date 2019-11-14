@@ -1840,6 +1840,7 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
       space = clib_min (tc->ssthresh - pipe, limit);
     }
   space = clib_max (space, prr_out ? 0 : tc->snd_mss);
+
   return space;
 }
 
@@ -1874,9 +1875,9 @@ static int
 tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 burst_size)
 {
-  u8 snd_limited = 0, can_rescue = 0, reset_pacer = 0;
   u32 n_written = 0, offset, max_bytes, n_segs = 0;
-  u32 bi, max_deq, burst_bytes, sent_bytes;
+  u8 snd_limited = 0, can_rescue = 0;
+  u32 bi, max_deq, burst_bytes;
   sack_scoreboard_hole_t *hole;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
@@ -1899,12 +1900,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     snd_space = tcp_fastrecovery_prr_snd_space (tc);
 
   if (snd_space < tc->snd_mss)
-    {
-      reset_pacer = burst_bytes > tc->snd_mss;
-      goto done;
-    }
-
-  reset_pacer = snd_space < burst_bytes;
+    goto done;
 
   sb = &tc->sack_sb;
 
@@ -2020,17 +2016,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
-  if (reset_pacer)
-    {
-      transport_connection_tx_pacer_reset_bucket (&tc->connection);
-    }
-  else
-    {
-      sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
-      transport_connection_tx_pacer_update_bytes (&tc->connection,
-						  sent_bytes);
-    }
-
+  transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
   return n_segs;
 }
 
