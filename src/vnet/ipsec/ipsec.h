@@ -26,6 +26,10 @@
 #include <vnet/ipsec/ipsec_spd_policy.h>
 #include <vnet/ipsec/ipsec_sa.h>
 
+#define vl_typedefs             /* define message structures */
+#include <vnet/vnet_all_api_h.h>
+#undef vl_typedefs
+
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
 
@@ -244,6 +248,39 @@ ipsec_sa_get (u32 sa_index)
 
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
+
+extern int
+ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out);
+
+extern vl_api_ipsec_proto_t
+ipsec_proto_encode (ipsec_protocol_t p);
+
+extern int
+ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
+                          ipsec_crypto_alg_t * out);
+
+extern vl_api_ipsec_crypto_alg_t
+ipsec_crypto_algo_encode (ipsec_crypto_alg_t c);
+
+extern int
+ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out);
+
+extern vl_api_ipsec_integ_alg_t
+ipsec_integ_algo_encode (ipsec_integ_alg_t i);
+
+extern void
+ipsec_key_decode (const vl_api_key_t * key, ipsec_key_t * out);
+
+extern void
+ipsec_key_encode (const ipsec_key_t * in, vl_api_key_t * out);
+
+extern ipsec_sa_flags_t
+ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in);
+
+extern vl_api_ipsec_sad_flags_t
+ipsec_sad_flags_encode (const ipsec_sa_t * sa);
+
+
 
 #endif /* __IPSEC_H__ */
 
