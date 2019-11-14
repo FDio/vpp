@@ -637,9 +637,10 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 }
 
 void
-transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc)
+transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+					    u32 bucket)
 {
-  spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), 0);
+  spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), bucket);
 }
 
 void

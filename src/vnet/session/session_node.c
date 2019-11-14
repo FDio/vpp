@@ -891,7 +891,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
-      transport_connection_tx_pacer_reset_bucket (ctx->tc);
+      transport_connection_tx_pacer_reset_bucket (ctx->tc, 0);
       return SESSION_TX_NO_DATA;
     }
 

@@ -1502,6 +1502,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  return;
 	}
 
+      clib_warning ("rxt %u", tc->snd_una - tc->iss);
       /* We're not in recovery so make sure rto_boff is 0. Can be non 0 due
        * to persist timer timeout */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
@@ -1838,8 +1839,19 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
       int limit;
       limit = clib_max ((int) (tc->prr_delivered - prr_out), 0) + tc->snd_mss;
       space = clib_min (tc->ssthresh - pipe, limit);
+      if (space < limit && limit == tc->snd_mss)
+	clib_warning ("this space %u limit %u", space, limit);
     }
   space = clib_max (space, prr_out ? 0 : tc->snd_mss);
+
+//  u8 tmp, res;
+//  res = 0 != scoreboard_next_rxt_hole (&tc->sack_sb, 0, 1, &tmp, &tmp);
+//  clib_warning ("%.3f: %s resut %d pipe %u prr_out %u HOLE %u FIRST %u sacked %u lost %u",
+//                tcp_time_now_us (tc->c_thread_index) - tc->start_ts,
+//                (!pos ? "above" : "under"), space, pipe, prr_out, res,
+//                scoreboard_first_hole (&tc->sack_sb) != 0, tc->sack_sb.sacked_bytes,
+//                tc->sack_sb.lost_bytes);
+
   return space;
 }
 
@@ -2022,7 +2034,7 @@ done:
 
   if (reset_pacer)
     {
-      transport_connection_tx_pacer_reset_bucket (&tc->connection);
+      transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
     }
   else
     {
