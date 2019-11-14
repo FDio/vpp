@@ -47,3 +47,6 @@ if [ ${is_known} = "false" ] ; then
   echo $ERR
   exit 1
 fi
+echo "*******************************************************************"
+echo "* VPP Commit Message Checkstyle Successfully Completed"
+echo "*******************************************************************"
