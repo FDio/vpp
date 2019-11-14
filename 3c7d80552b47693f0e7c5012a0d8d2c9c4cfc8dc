@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ea49a5b_22d4b6a2",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 644,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-14T22:26:21Z",
+      "side": 1,
+      "message": "This change is causing the vpp-verify-master-ubuntu1804 job to fail because it is trying to link vapi_c_test with the vpp_debug vom library which has not been built.\n\nSee [0] at 04:51:34 and notice the library path:\n .../build-root/install-vpp_debug-native//vom/lib\n                        ^^^^^^^^^\n\nIf you search back in the log, you will see the release version of the libvom.so was built, thus the debug version is missing.\n\n[0] https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-verify-master-ubuntu1804/227/console-timestamp.log.gz",
+      "range": {
+        "startLine": 644,
+        "startChar": 64,
+        "endLine": 644,
+        "endChar": 74
+      },
+      "revId": "3c7d80552b47693f0e7c5012a0d8d2c9c4cfc8dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
