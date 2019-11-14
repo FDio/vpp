@@ -394,7 +394,6 @@ typedef struct _tcp_connection
   u32 prr_start;	/**< snd_una when prr starts */
   u32 rxt_delivered;	/**< Rxt bytes delivered during current cc event */
   u32 rxt_head;		/**< snd_una last time we re rxted the head */
-  u32 prev_dsegs_out;	/**< Number of dsegs after last ack */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */

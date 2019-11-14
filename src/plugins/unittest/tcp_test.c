@@ -849,7 +849,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /* Init data structures */
   memset (tc, 0, sizeof (*tc));
   session_main.wrk[thread_index].last_vlib_time = 1;
-  transport_connection_tx_pacer_update (&tc->connection, rate);
+  transport_connection_tx_pacer_update (&tc->connection, rate, 1e6);
 
   tcp_bt_init (tc);
   bt = tc->bt;
