@@ -2993,29 +2993,29 @@ class TestNAT44(MethodHolder):
 
         # NAT44 address
         p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
-             ARP(op=ARP.who_has, pdst=self.nat_addr,
+             ARP(op="who-has", pdst=self.nat_addr,
                  psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(1)
         self.assertTrue(capture[0].haslayer(ARP))
-        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+        self.assertTrue(capture[0][ARP].op, "is-at")
 
         # 1:1 NAT address
         p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
-             ARP(op=ARP.who_has, pdst=static_addr,
+             ARP(op="who-has", pdst=static_addr,
                  psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(1)
         self.assertTrue(capture[0].haslayer(ARP))
-        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+        self.assertTrue(capture[0][ARP].op, "is-at")
 
         # send ARP to non-NAT44 interface
         p = (Ether(src=self.pg2.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
-             ARP(op=ARP.who_has, pdst=self.nat_addr,
+             ARP(op="who-has", pdst=self.nat_addr,
                  psrc=self.pg2.remote_ip4, hwsrc=self.pg2.remote_mac))
         self.pg2.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -3028,7 +3028,7 @@ class TestNAT44(MethodHolder):
                                       is_add=0)
 
         p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
-             ARP(op=ARP.who_has, pdst=self.nat_addr,
+             ARP(op="who-has", pdst=self.nat_addr,
                  psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -3036,7 +3036,7 @@ class TestNAT44(MethodHolder):
         self.pg1.assert_nothing_captured()
 
         p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
-             ARP(op=ARP.who_has, pdst=static_addr,
+             ARP(op="who-has", pdst=static_addr,
                  psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
