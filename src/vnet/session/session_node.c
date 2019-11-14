@@ -877,10 +877,23 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   /* This flow queue is "empty" so it should be re-evaluated before
    * the ones that have data to send. */
-  if (ctx->snd_space == 0)
+  if (!ctx->snd_space)
     {
       session_evt_add_head_old (wrk, elt);
       return SESSION_TX_NO_DATA;
+    }
+
+  if (transport_connection_is_tx_paced (ctx->tc))
+    {
+      u32 snd_space = transport_connection_tx_pacer_burst (ctx->tc);
+      if (snd_space < TRANSPORT_PACER_MIN_BURST)
+	{
+	  session_evt_add_head_old (wrk, elt);
+	  return SESSION_TX_NO_DATA;
+	}
+      snd_space = clib_min (ctx->snd_space, snd_space);
+      ctx->snd_space = snd_space >= ctx->snd_mss ?
+	snd_space - snd_space % ctx->snd_mss : snd_space;
     }
 
   /* Allow enqueuing of a new event */
@@ -891,7 +904,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
-      transport_connection_tx_pacer_reset_bucket (ctx->tc);
+      transport_connection_tx_pacer_reset_bucket (ctx->tc, 0);
       return SESSION_TX_NO_DATA;
     }
 
