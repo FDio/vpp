@@ -309,10 +309,7 @@ memif_control_fd_update (int fd, uint8_t events, void *private_ctx)
 {
   libmemif_main_t *lm;
 
-  if (private_ctx == NULL)
-    return MEMIF_ERR_INVAL_ARG;
-
-  lm = (libmemif_main_t *) private_ctx;
+  lm = (private_ctx == NULL) ? &libmemif_main : (libmemif_main_t *) private_ctx;
 
   if (events & MEMIF_FD_EVENT_DEL)
     return memif_del_epoll_fd (lm, fd);
@@ -559,7 +556,7 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
 	  DBG ("eventfd: %s", strerror (err));
 	  return memif_syscall_error_handler (err);
 	}
-      lm->control_fd_update (lm->poll_cancel_fd, MEMIF_FD_EVENT_READ, NULL);
+      lm->control_fd_update (lm->poll_cancel_fd, MEMIF_FD_EVENT_READ, lm->private_ctx);
       DBG ("libmemif event polling initialized");
     }
 
@@ -633,7 +630,7 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
   lm->arm.it_interval.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
   lm->arm.it_interval.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
 
-  if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ, NULL) < 0)
+  if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ, lm->private_ctx) < 0)
     {
       DBG ("callback type memif_control_fd_update_t error!");
       err = MEMIF_ERR_CB_FDUPDATE;
@@ -718,6 +715,10 @@ memif_per_thread_init (memif_per_thread_main_handle_t * pt_main,
     memif_control_fd_update_register (lm, on_control_fd_update);
   else
     {
+      /* private_ctx only used internally by memif_control_fd_update
+       * pointer to this libmemif main
+       */
+      lm->private_ctx = lm;
       lm->epfd = epoll_create (1);
       memif_control_fd_update_register (lm, memif_control_fd_update);
       if ((lm->poll_cancel_fd = eventfd (0, EFD_NONBLOCK)) < 0)
@@ -911,7 +912,8 @@ memif_socket_start_listening (memif_socket_t * ms)
   elt.key = ms->fd;
   elt.data_struct = ms;
   add_list_elt (lm, &elt, &lm->socket_list, &lm->socket_list_len);
-  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_READ, ms->private_ctx);
+  /* if lm->private_ctx == lm event polling is done by libmemif */
+  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_READ, lm->private_ctx);
 
   ms->type = MEMIF_SOCKET_TYPE_LISTENER;
 
@@ -1269,10 +1271,9 @@ memif_request_connection (memif_conn_handle_t c)
       conn->error_fn = memif_conn_fd_error;
 
       lm->control_list[conn->index].key = conn->fd;
-
       lm->control_fd_update (sockfd,
 			     MEMIF_FD_EVENT_READ |
-			     MEMIF_FD_EVENT_WRITE, conn->private_ctx);
+			     MEMIF_FD_EVENT_WRITE, lm->private_ctx);
 
       lm->disconn_slaves--;
       if (lm->disconn_slaves == 0)
@@ -1681,7 +1682,7 @@ memif_disconnect_internal (memif_connection_t * c)
   if (c->fd > 0)
     {
       memif_msg_send_disconnect (c->fd, (uint8_t *) "interface deleted", 0);
-      lm->control_fd_update (c->fd, MEMIF_FD_EVENT_DEL, c->private_ctx);
+      lm->control_fd_update (c->fd, MEMIF_FD_EVENT_DEL, lm->private_ctx);
       close (c->fd);
     }
   get_list_elt (&e, lm->control_list, lm->control_list_len, c->fd);
@@ -1722,7 +1723,7 @@ memif_disconnect_internal (memif_connection_t * c)
 		{
 		  if (c->on_interrupt != NULL)
 		    lm->control_fd_update (mq->int_fd, MEMIF_FD_EVENT_DEL,
-					   c->private_ctx);
+					   lm->private_ctx);
 		  close (mq->int_fd);
 		}
 	      free_list_elt (lm->interrupt_list, lm->interrupt_list_len,
@@ -1846,7 +1847,7 @@ memif_delete (memif_conn_handle_t * conn)
       /* stop listening on this socket */
       if (ms->type == MEMIF_SOCKET_TYPE_LISTENER)
 	{
-	  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_DEL, ms->private_ctx);
+	  lm->control_fd_update (ms->fd, MEMIF_FD_EVENT_DEL, lm->private_ctx);
 	  free_list_elt (lm->socket_list, lm->socket_list_len, ms->fd);
 	  close (ms->fd);
 	  ms->fd = -1;
@@ -1952,7 +1953,7 @@ memif_connect1 (memif_connection_t * c)
     }
 
   lm->control_fd_update (c->fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_MOD,
-			 c->private_ctx);
+			 lm->private_ctx);
 
   return 0;
 }
