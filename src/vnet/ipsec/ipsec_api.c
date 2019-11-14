@@ -321,10 +321,10 @@ out:
   /* *INDENT-ON* */
 }
 
-static int
-ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
+int
+ipsec_proto_decode (int _in, ipsec_protocol_t * out)
 {
-  in = clib_net_to_host_u32 (in);
+  vl_api_ipsec_proto_t in = clib_net_to_host_u32 (_in);
 
   switch (in)
     {
@@ -338,7 +338,7 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
   return (VNET_API_ERROR_INVALID_PROTOCOL);
 }
 
-static vl_api_ipsec_proto_t
+int
 ipsec_proto_encode (ipsec_protocol_t p)
 {
   switch (p)
@@ -351,11 +351,11 @@ ipsec_proto_encode (ipsec_protocol_t p)
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
-static int
-ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
+int
+ipsec_crypto_algo_decode (int _in,
 			  ipsec_crypto_alg_t * out)
 {
-  in = clib_net_to_host_u32 (in);
+  vl_api_ipsec_crypto_alg_t in = clib_net_to_host_u32 (_in);
 
   switch (in)
     {
@@ -368,7 +368,7 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
   return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
-static vl_api_ipsec_crypto_alg_t
+int
 ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
 {
   switch (c)
@@ -384,10 +384,10 @@ ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
-static int
-ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
+int
+ipsec_integ_algo_decode (int _in, ipsec_integ_alg_t * out)
 {
-  in = clib_net_to_host_u32 (in);
+  vl_api_ipsec_integ_alg_t in = clib_net_to_host_u32 (_in);
 
   switch (in)
     {
@@ -400,7 +400,7 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
   return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
-static vl_api_ipsec_integ_alg_t
+int
 ipsec_integ_algo_encode (ipsec_integ_alg_t i)
 {
   switch (i)
@@ -416,24 +416,24 @@ ipsec_integ_algo_encode (ipsec_integ_alg_t i)
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
-static void
+void
 ipsec_key_decode (const vl_api_key_t * key, ipsec_key_t * out)
 {
   ipsec_mk_key (out, key->data, key->length);
 }
 
-static void
+void
 ipsec_key_encode (const ipsec_key_t * in, vl_api_key_t * out)
 {
   out->length = in->len;
   clib_memcpy (out->data, in->data, out->length);
 }
 
-static ipsec_sa_flags_t
-ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
+ipsec_sa_flags_t
+ipsec_sa_flags_decode (int _in)
 {
   ipsec_sa_flags_t flags = IPSEC_SA_FLAG_NONE;
-  in = clib_net_to_host_u32 (in);
+  vl_api_ipsec_sad_flags_t in = clib_net_to_host_u32 (_in);
 
   if (in & IPSEC_API_SAD_FLAG_USE_ESN)
     flags |= IPSEC_SA_FLAG_USE_ESN;
@@ -449,7 +449,7 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
   return (flags);
 }
 
-static vl_api_ipsec_sad_flags_t
+int
 ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
