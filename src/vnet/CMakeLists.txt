@@ -596,6 +596,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ipsec/ipsec_tun_in.c
 )
 
+list(APPEND VNET_API_FILES ipsec/ipsec_types.api)
 list(APPEND VNET_API_FILES ipsec/ipsec.api)
 
 list(APPEND VNET_SOURCES

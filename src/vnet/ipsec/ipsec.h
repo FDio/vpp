@@ -245,6 +245,26 @@ ipsec_sa_get (u32 sa_index)
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
 
+struct _vl_api_key;
+
+extern int ipsec_proto_decode (int in, ipsec_protocol_t * out);
+extern int ipsec_proto_encode (ipsec_protocol_t p);
+
+extern int ipsec_crypto_algo_decode (int in, ipsec_crypto_alg_t * out);
+extern int ipsec_crypto_algo_encode (ipsec_crypto_alg_t c);
+
+extern int ipsec_integ_algo_decode (int in, ipsec_integ_alg_t * out);
+extern int ipsec_integ_algo_encode (ipsec_integ_alg_t i);
+
+extern void ipsec_key_decode (const struct _vl_api_key *key,
+			      ipsec_key_t * out);
+extern void ipsec_key_encode (const ipsec_key_t * in,
+			      struct _vl_api_key *out);
+
+extern ipsec_sa_flags_t ipsec_sa_flags_decode (int in);
+extern int ipsec_sad_flags_encode (const ipsec_sa_t * sa);
+
+
 #endif /* __IPSEC_H__ */
 
 /*
