@@ -239,10 +239,12 @@ aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 
 #define _(x) \
 static u32 aesni_ops_dec_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+  vnet_crypto_op_chunk_t chunks[], u32 n_ops) \
 { return aesni_ops_dec_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
 static u32 aesni_ops_enc_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], \
+  vnet_crypto_op_chunk_t chunks[], u32 n_ops) \
 { return aesni_ops_enc_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
 static void * aesni_cbc_key_exp_##x (vnet_crypto_key_t *key) \
 { return aesni_cbc_key_exp (key, AESNI_KEY_##x); }
