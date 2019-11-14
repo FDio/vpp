@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b64a07a4_f210ed62",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-11-14T19:40:52Z",
+      "side": 1,
+      "message": "Shouldn\u0027t be simpler to do:\nip6_address_and_mask_t fooo \u003d {};",
+      "range": {
+        "startLine": 301,
+        "startChar": 0,
+        "endLine": 312,
+        "endChar": 55
+      },
+      "revId": "7137a1d4330cc6ec66967b00949b7fbef09e44e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
