@@ -15,7 +15,8 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     IPv6ExtHdrHopByHop
 from util import ppp, ppc
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
-from scapy.utils import inet_pton, inet_ntop
+from scapy.utils import inet_pton
+from scapy.pton_ntop import inet_ntop
 
 
 class CaptureTimeoutError(Exception):
@@ -419,7 +420,7 @@ class VppPGInterface(VppInterface):
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""
         return (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.remote_mac) /
-                ARP(op=ARP.who_has, pdst=self.local_ip4,
+                ARP(op="who-has", pdst=self.local_ip4,
                     psrc=self.remote_ip4, hwsrc=self.remote_mac))
 
     def create_ndp_req(self):
@@ -456,7 +457,7 @@ class VppPGInterface(VppInterface):
             return
         arp_reply = captured_packet.copy()  # keep original for exception
         try:
-            if arp_reply[ARP].op == ARP.is_at:
+            if arp_reply[ARP].op == "is-at":
                 self.test.logger.info("VPP %s MAC address is %s " %
                                       (self.name, arp_reply[ARP].hwsrc))
                 self._local_mac = arp_reply[ARP].hwsrc
