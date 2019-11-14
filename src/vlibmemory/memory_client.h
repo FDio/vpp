@@ -19,6 +19,23 @@
 #define SRC_VLIBMEMORY_MEMORY_CLIENT_H_
 
 #include <vlibmemory/memory_shared.h>
+#include <setjmp.h>
+
+/*
+ * Exported so folks can code a working custom rx_pthread function
+ */
+typedef struct
+{
+  u8 rx_thread_jmpbuf_valid;
+  u8 connected_to_vlib;
+  jmp_buf rx_thread_jmpbuf;
+  pthread_t rx_thread_handle;
+  /* Plugin message base lookup scheme */
+  volatile u8 first_msg_id_reply_ready;
+  u16 first_msg_id_reply;
+} memory_client_main_t;
+
+extern memory_client_main_t memory_client_main;
 
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_send_disconnect (u8 do_cleanup);
@@ -29,6 +46,10 @@ void vl_client_disconnect_from_vlib (void);
 void vl_client_disconnect_from_vlib_no_unmap (void);
 int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 			       int rx_queue_size);
+int vl_client_connect_to_vlib_thread_fn (const char *svm_name,
+					 const char *client_name,
+					 int rx_queue_size,
+					 void *(*)(void *));
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					     const char *client_name,
 					     int rx_queue_size);
