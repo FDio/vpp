@@ -227,7 +227,8 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * @param tc		transport connection
  * @param time_now	current cpu time
  */
-void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc);
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+						 u32 bucket);
 
 /**
  * Check if transport connection is paced
