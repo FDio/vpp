@@ -97,8 +97,8 @@ class TestMAP(VppTestCase):
         self.assertEqual(rv[0].tag, tag,
                          "output produced incorrect tag value.")
 
-    def test_map_e(self):
-        """ MAP-E """
+    def test_map_e_udp(self):
+        """ MAP-E UDP"""
 
         #
         # Add a route to the MAP-BR
@@ -363,6 +363,72 @@ class TestMAP(VppTestCase):
 
         self.validate(rx[0][1], v6_reply1)
         self.validate(rx[1][1], v6_reply2)
+
+    def test_map_e_tcp_mss(self):
+        """ MAP-E TCP MSS"""
+
+        #
+        # Add a route to the MAP-BR
+        #
+        map_br_pfx = "2001::"
+        map_br_pfx_len = 32
+        map_route = VppIpRoute(self,
+                               map_br_pfx,
+                               map_br_pfx_len,
+                               [VppRoutePath(self.pg1.remote_ip6,
+                                             self.pg1.sw_if_index)])
+        map_route.add_vpp_config()
+
+        #
+        # Add a domain that maps from pg0 to pg1
+        #
+        map_dst = '2001::/32'
+        map_src = '3000::1/128'
+        client_pfx = '192.168.0.0/16'
+        map_translated_addr = '2001:0:101:5000:0:c0a8:101:5'
+        tag = 'MAP-E TCP tag.'
+        self.vapi.map_add_domain(ip4_prefix=client_pfx,
+                                 ip6_prefix=map_dst,
+                                 ip6_src=map_src,
+                                 ea_bits_len=20,
+                                 psid_offset=4,
+                                 psid_length=4,
+                                 tag=tag)
+
+        # Enable MAP on pg0 interface.
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg0.sw_if_index,
+                                        is_translation=0)
+
+        # Enable MAP on pg1 interface.
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg1.sw_if_index,
+                                        is_translation=0)
+
+        # TCP MSS clamping
+        mss_clamp = 1300
+        self.vapi.map_param_set_tcp(mss_clamp)
+
+        #
+        # Send a v4 packet that will be encapped.
+        #
+        p_ether = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+        p_ip4 = IP(src=self.pg0.remote_ip4, dst='192.168.1.1')
+        p_tcp = TCP(sport=20000, dport=30000, options=[("MSS", 1455)])
+        p4 = p_ether / p_ip4 / p_tcp
+
+        self.pg1.add_stream(p4)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+        rx = rx[0]
+
+        self.assertTrue(rx.haslayer(IPv6))
+        self.assertEqual(rx[IP].src, p4[IP].src)
+        self.assertEqual(rx[IP].dst, p4[IP].dst)
+        self.assertEqual(rx[IPv6].src, "3000::1")
+        self.assertEqual(rx[TCP].options, TCP(options=[('MSS',1300)]).options)
 
     def validate(self, rx, expected):
         self.assertEqual(rx, expected.__class__(scapy.compat.raw(expected)))
