@@ -145,9 +145,14 @@ typedef void (memif_free_t) (void *ptr);
 /** \brief Memif control file descriptor update (callback function)
     @param fd - new file descriptor to watch
     @param events - event type(s) to watch for
+    @param private_ctx - libmemif main private context. Is NULL for
+                         libmemif main created by memif_init()
+
 
     This callback is called when there is new fd to watch for events on
     or if fd is about to be closed (user mey want to stop watching for events on this fd).
+    Private context is taken from libmemif_main, 'private_ctx' passed to memif_per_thread_init()
+    or NULL in case of memif_init()
 */
 typedef int (memif_control_fd_update_t) (int fd, uint8_t events,
 					 void *private_ctx);
