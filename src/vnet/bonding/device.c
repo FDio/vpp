@@ -142,6 +142,50 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
+			  u8 is_add)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  bond_if_t *bif;
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *s_hi;
+  int i;
+
+
+  bif = bond_get_master_by_sw_if_index (hi->sw_if_index);
+  if (!bif)
+    {
+      return clib_error_return (0, "No bond master found for sw_if_index %u",
+				hi->sw_if_index);
+    }
+
+  /* Add/del address on each slave hw intf, they control the hardware */
+  vec_foreach_index (i, bif->slaves)
+  {
+    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->slaves, i));
+    error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						   address, is_add);
+
+    if (error)
+      {
+	int j;
+
+	/* undo any that were completed before the failure */
+	for (j = i - 1; j > -1; j--)
+	  {
+	    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->slaves, j));
+	    vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						   address, !(is_add));
+	  }
+
+	return error;
+      }
+  }
+
+  return 0;
+}
+
 static_always_inline void
 bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 {
@@ -807,6 +851,7 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .admin_up_down_function = bond_interface_admin_up_down,
   .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
+  .mac_addr_add_del_function = bond_add_del_mac_address,
 };
 
 /* *INDENT-ON* */
