@@ -1,15 +1,16 @@
 diff --git a/lib/quicly.c b/lib/quicly.c
-index 95d5f13..200515f 100644
+index 95d5f13..3f4fd18 100644
 --- a/lib/quicly.c
 +++ b/lib/quicly.c
-@@ -3551,6 +3551,10 @@ static int handle_ack_frame(quicly_conn_t *conn, struct st_quicly_handle_payload
+@@ -351,7 +351,10 @@ static __thread int64_t now;
  
-     QUICLY_PROBE(QUICTRACE_RECV_ACK_DELAY, conn, probe_now(), frame.ack_delay);
- 
-+    /* Detect and fix time skew */
-+    if (now < largest_newly_acked.sent_at)
-+        now = largest_newly_acked.sent_at;
+ static void update_now(quicly_context_t *ctx)
+ {
+-    now = ctx->now->cb(ctx->now);
++  int64_t newval = ctx->now->cb(ctx->now);
 +
-     /* Update loss detection engine on ack. The function uses ack_delay only when the largest_newly_acked is also the largest acked
-      * so far. So, it does not matter if the ack_delay being passed in does not apply to the largest_newly_acked. */
-     quicly_loss_on_ack_received(&conn->egress.loss, largest_newly_acked.packet_number, now, largest_newly_acked.sent_at,
++  if (now < newval)
++    now = newval;
+ }
+ 
+ /**
