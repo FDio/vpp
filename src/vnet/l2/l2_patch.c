@@ -49,7 +49,11 @@ format_l2_patch_trace (u8 * s, va_list * args)
   return s;
 }
 
-static l2_patch_main_t l2_patch_main;
+#ifndef CLIB_MARCH_VARIANT
+l2_patch_main_t l2_patch_main;
+#else
+extern l2_patch_main_t l2_patch_main;
+#endif
 
 extern vlib_node_registration_t l2_patch_node;
 
