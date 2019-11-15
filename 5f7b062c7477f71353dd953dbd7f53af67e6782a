@@ -22,6 +22,30 @@
       "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0530ba06_a77dab77",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2019-11-15T07:41:27Z",
+      "side": 1,
+      "message": "I believe we need to do this. We don\u0027t need to clamp MSS if it\u0027s not applied and do unnecessary extra job",
+      "parentUuid": "dec7deaf_a72f9d00",
+      "range": {
+        "startLine": 218,
+        "startChar": 7,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
