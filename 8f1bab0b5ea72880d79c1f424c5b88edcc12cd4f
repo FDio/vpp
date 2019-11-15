@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32deadf3_00f933b8",
+        "filename": "src/vnet/ip/ip_format_fns.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T13:18:57Z",
+      "side": 1,
+      "message": "How do you feel about changing the values of these enums to the iana afi values?",
+      "range": {
+        "startLine": 68,
+        "startChar": 7,
+        "endLine": 68,
+        "endChar": 18
+      },
+      "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
