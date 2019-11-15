@@ -118,6 +118,29 @@
       "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d2307a1_77b06bf9",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T16:12:34Z",
+      "side": 1,
+      "message": "The if the tcp_syn check within map_mss_clampling returns, execution continues at the following line to recalculate the checksum, no?",
+      "range": {
+        "startLine": 221,
+        "startChar": 4,
+        "endLine": 221,
+        "endChar": 47
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
