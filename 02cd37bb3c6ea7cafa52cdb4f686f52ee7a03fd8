@@ -22,6 +22,30 @@
       "revId": "02cd37bb3c6ea7cafa52cdb4f686f52ee7a03fd8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1217910e_9dc13358",
+        "filename": "test/test_mpls.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-11-15T14:58:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ce458e49_1eb15e36",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 0
+      },
+      "revId": "02cd37bb3c6ea7cafa52cdb4f686f52ee7a03fd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
