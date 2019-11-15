@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dec7deaf_a72f9d00",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T05:07:37Z",
+      "side": 1,
+      "message": "Do you need to check for SYN here?",
+      "range": {
+        "startLine": 218,
+        "startChar": 7,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
