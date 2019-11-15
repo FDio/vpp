@@ -869,11 +869,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
     case 0:
       break;
     case VNET_API_ERROR_INVALID_VALUE:
-      if (is_add)
-	error = clib_error_return (0,
-				   "IPSec tunnel interface already exists...");
-      else
-	error = clib_error_return (0, "IPSec tunnel interface not exists...");
+      error = clib_error_return (0,
+				 "IPSec tunnel interface already exists...");
       goto done;
     default:
       error = clib_error_return (0, "ipsec_register_interface returned %d",

@@ -842,17 +842,24 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
     }
   else
     {
-
+      /* *INDENT-OFF* */
       ipip_tunnel_key_t key = {
 	.transport = transport,
 	.fib_index = fib_index,
 	.src = local_ip,
 	.dst = remote_ip
       };
+      /* *INDENT-ON* */
+
       ipip_tunnel_t *t = ipip_tunnel_db_find (&key);
 
-      rv = ipsec_tun_protect_del (t->sw_if_index);
-      ipip_del_tunnel (t->sw_if_index);
+      if (NULL != t)
+	{
+	  rv = ipsec_tun_protect_del (t->sw_if_index);
+	  ipip_del_tunnel (t->sw_if_index);
+	}
+      else
+	rv = VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
 #else
