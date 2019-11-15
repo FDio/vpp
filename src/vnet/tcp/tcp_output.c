@@ -1518,6 +1518,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  tcp_send_reset (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  session_transport_closing_notify (&tc->connection);
+	  session_transport_closed_notify (&tc->connection);
 	  tcp_connection_timers_reset (tc);
 	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.closewait_time);
 	  return;
