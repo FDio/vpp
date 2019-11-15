@@ -43,7 +43,7 @@ DOC_MAC_PY_DEPENDS = pyparsing jinja2
 DOXY_DIR ?= $(WS_ROOT)/doxygen
 
 # Primary source directories
-DOXY_SRC ?= src
+DOXY_SRC ?= $(WS_ROOT)/src
 DOXY_SRC_DIRECTORIES = \
 	$(shell find $(DOXY_SRC) -name '*.md' -print | xargs dirname \
 	| sort | uniq) \
@@ -264,7 +264,10 @@ doxygen: $(SIPHON_DOCS)
 
 .PHONY: wipe-doxygen
 wipe-doxygen:
-	rm -rf "$(BR)/docs" "$(BR)/.doxygen-siphon.d"
+	@rm -rf $(BR)/docs
+	@rm -rf $(BR)/.doxygen-siphon.dep
+	@rm -rf $(BR)/.doxygen-bootstrap.ok
+	@rm -rf $(DOXY_DIR)/siphon/__pycache__
 
 .PHONY: clean
 clean: wipe-doxygen

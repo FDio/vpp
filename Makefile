@@ -680,7 +680,7 @@ bootstrap-doxygen:
 	$(call make-doxy)
 
 .PHONY: doxygen
-doxygen:
+doxygen: bootstrap-doxygen
 	$(call make-doxy)
 
 .PHONY: wipe-doxygen
@@ -697,12 +697,13 @@ docs-venv:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
 
 .PHONY: docs
-docs: $(DOCS_DIR)
+docs: $(DOCS_DIR) docs-venv
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
 
 .PHONY: docs-clean
 docs-clean:
-	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh clean)
+	@rm -rf $(DOCS_DIR)/_build
+	@rm -rf $(VENV_DIR)
 
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
