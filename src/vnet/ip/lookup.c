@@ -846,7 +846,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 &pfx.fp_src_addr.ip4,
 			 unformat_ip4_address, &pfx.fp_grp_addr.ip4))
 	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = 64;
 	}
       else if (unformat (line_input, "%U %U",
@@ -854,7 +854,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 &pfx.fp_src_addr.ip6,
 			 unformat_ip6_address, &pfx.fp_grp_addr.ip6))
 	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 256;
 	}
       else if (unformat (line_input, "%U/%d",
@@ -862,27 +862,27 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 &pfx.fp_grp_addr.ip4, &pfx.fp_len))
 	{
 	  clib_memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
-	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP4;
 	}
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip6_address,
 			 &pfx.fp_grp_addr.ip6, &pfx.fp_len))
 	{
 	  clib_memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP6;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_ip4_address, &pfx.fp_grp_addr.ip4))
 	{
 	  clib_memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
-	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = 32;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_ip6_address, &pfx.fp_grp_addr.ip6))
 	{
 	  clib_memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
       else if (unformat (line_input, "via local Forward"))

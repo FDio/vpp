@@ -419,12 +419,10 @@ fib_entry_chain_type_mcast_to_ucast (fib_forward_chain_type_t fct)
     switch (fct)
     {
     case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+        fct = FIB_FORW_CHAIN_TYPE_UNICAST_IP4;
+        break;
     case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
-        /*
-         * we can only transport IP multicast packets if there is an
-         * LSP.
-         */
-        fct = FIB_FORW_CHAIN_TYPE_MPLS_EOS;
+        fct = FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
         break;
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
