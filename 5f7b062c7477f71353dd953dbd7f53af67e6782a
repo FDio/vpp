@@ -70,6 +70,30 @@
       "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58d48124_78bc3e8f",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-11-15T14:36:24Z",
+      "side": 1,
+      "message": "So, I went and looked up some RFCs and Implementation notes here.\nThe MSS value SHOULD be present only on a SYN or a SYN/ACK packet.\nThe actual segment size used can be different for each data-flow direction.\nThe very first check inside the function map_mss_clamp() is to ensure it\noperates exclusively on SYN packets.  As that function is always inlined,\nthis code need not change.  I can add that SYN check here, though, if desired.",
+      "parentUuid": "907eb4a9_bae217da",
+      "range": {
+        "startLine": 218,
+        "startChar": 7,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
