@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Dave Wallace <dwallacelf@gmail.com>
+Code-Review+2: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Fri, 15 Nov 2019 07:11:34 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/23244
+Project: vpp
+Branch: refs/heads/stable/1908
