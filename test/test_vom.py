@@ -22,11 +22,11 @@ class VOMTestCase(VppTestCase):
 
     def test_vom_cpp(self):
         """ run C++ VOM tests """
-        var = "TEST_DIR"
+        var = "TEST_BR"
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/build/vom_test/vom_test" % built_root
+        executable = "%s/vom_test/vom_test" % built_root
         worker = Worker(
             [executable, "vpp object model", self.shm_prefix], self.logger)
         worker.start()
