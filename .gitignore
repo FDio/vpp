@@ -97,10 +97,6 @@ GTAGS
 /src/vpp_api/.tox
 /src/vpp_api/.stestr
 
-# Build files in the test directory
-/test/*.ok
-/test/ext/.d
-
 # vppctl command list
 /src/scripts/vppctl-cmd-list
 
