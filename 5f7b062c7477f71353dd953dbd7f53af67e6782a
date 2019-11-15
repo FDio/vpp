@@ -94,6 +94,30 @@
       "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09ce4a21_ab6b905f",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T14:50:27Z",
+      "side": 1,
+      "message": "I\u0027m going to defer to Ole.  He is the SME for MAP.\nLet me know if I can do anything else to help.",
+      "parentUuid": "58d48124_78bc3e8f",
+      "range": {
+        "startLine": 218,
+        "startChar": 7,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
