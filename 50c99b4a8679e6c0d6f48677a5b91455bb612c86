@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7fd7c824_2c792c7a",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-15T15:29:29Z",
+      "side": 1,
+      "message": "What is the difference between this and ntohl?\nDoes it explain why both are used in this block?",
+      "range": {
+        "startLine": 276,
+        "startChar": 7,
+        "endLine": 276,
+        "endChar": 27
+      },
+      "revId": "50c99b4a8679e6c0d6f48677a5b91455bb612c86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
