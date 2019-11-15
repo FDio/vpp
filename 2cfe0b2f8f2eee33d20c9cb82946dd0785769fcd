@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3500d173_bcdb4a56",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-11-15T18:20:37Z",
+      "side": 1,
+      "message": "If this feature replaces \"VNET_FEATURE_INIT (ip4_nat44_ed_in2out, static)\" can the obsoleted declaration of the old feature be removed?",
+      "revId": "2cfe0b2f8f2eee33d20c9cb82946dd0785769fcd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f4846af_20febbfc",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-11-15T18:20:37Z",
+      "side": 1,
+      "message": "If this feature replaces \"VNET_FEATURE_INIT (ip4_nat44_ed_out2in, static)\" can the obsoleted declaration of the old feature be removed?",
+      "revId": "2cfe0b2f8f2eee33d20c9cb82946dd0785769fcd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
