@@ -46,6 +46,30 @@
       "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "907eb4a9_bae217da",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T13:39:48Z",
+      "side": 1,
+      "message": "Do you need if (mm-\u003etcp_mss \u003e 0 \u0026\u0026 tcp_syn (tcp))?\nclamping and the associated cksum recalculations don\u0027t need to be processed for established packets, correct?",
+      "parentUuid": "0530ba06_a77dab77",
+      "range": {
+        "startLine": 218,
+        "startChar": 7,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "5f7b062c7477f71353dd953dbd7f53af67e6782a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
