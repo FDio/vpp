@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "73ac399e_14f5cbad",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3876,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-15T13:45:58Z",
+      "side": 1,
+      "message": "is vlib_process_wait_for_event_or_clock() more appropriate here?",
+      "range": {
+        "startLine": 3876,
+        "startChar": 2,
+        "endLine": 3876,
+        "endChar": 33
+      },
+      "revId": "099cc2662c8b002fa2185acaa2f45cbf709cce4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
