@@ -92,7 +92,7 @@ l2fwd_main_t l2fwd_main;
 extern l2fwd_main_t l2fwd_main;
 #endif
 
-extern vlib_node_registration_t l2fwd_node;
+static vlib_node_registration_t l2fwd_node;
 
 #define foreach_l2fwd_error				\
 _(L2FWD,         "L2 forward packets")			\
@@ -412,7 +412,7 @@ VLIB_NODE_FN (l2fwd_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2fwd_node) = {
+VLIB_REGISTER_NODE (l2fwd_node,static) = {
   .name = "l2-fwd",
   .vector_size = sizeof (u32),
   .format_trace = format_l2fwd_trace,

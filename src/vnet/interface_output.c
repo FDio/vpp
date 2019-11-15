@@ -1317,7 +1317,7 @@ interface_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (interface_tx) = {
+VLIB_REGISTER_NODE (interface_tx, static) = {
   .function = interface_tx_node_fn,
   .name = "interface-tx",
   .vector_size = sizeof (u32),

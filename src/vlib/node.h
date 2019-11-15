@@ -187,7 +187,6 @@ static void __vlib_rm_node_registration_##x (void)                      \
 __VA_ARGS__ vlib_node_registration_t x
 #else
 #define VLIB_REGISTER_NODE(x,...)                                       \
-STATIC_ASSERT (sizeof(# __VA_ARGS__) != 7,"node " #x " must not be declared as static"); \
 static __clib_unused vlib_node_registration_t __clib_unused_##x
 #endif
 

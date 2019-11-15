@@ -51,7 +51,7 @@ format_l2_patch_trace (u8 * s, va_list * args)
 
 static l2_patch_main_t l2_patch_main;
 
-extern vlib_node_registration_t l2_patch_node;
+static vlib_node_registration_t l2_patch_node;
 
 #define foreach_l2_patch_error			\
 _(PATCHED, "L2 patch packets")			\
@@ -204,7 +204,7 @@ VLIB_NODE_FN (l2_patch_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_patch_node) = {
+VLIB_REGISTER_NODE (l2_patch_node, static) = {
   .name = "l2-patch",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_patch_trace,

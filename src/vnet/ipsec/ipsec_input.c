@@ -162,7 +162,7 @@ ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
   return 0;
 }
 
-extern vlib_node_registration_t ipsec4_input_node;
+static vlib_node_registration_t ipsec4_input_node;
 
 VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -351,7 +351,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec4_input_node) = {
+VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
   .name = "ipsec4-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
@@ -367,7 +367,7 @@ VLIB_REGISTER_NODE (ipsec4_input_node) = {
 };
 /* *INDENT-ON* */
 
-extern vlib_node_registration_t ipsec6_input_node;
+static vlib_node_registration_t ipsec6_input_node;
 
 
 VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
@@ -523,7 +523,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec6_input_node) = {
+VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
   .name = "ipsec6-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,

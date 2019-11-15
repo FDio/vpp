@@ -1526,7 +1526,7 @@ ip4_reass_walk_expired (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_reass_expire_node) = {
+VLIB_REGISTER_NODE (ip4_reass_expire_node, static) = {
     .function = ip4_reass_walk_expired,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "ip4-reassembly-expire-walk",

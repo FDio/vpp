@@ -1530,7 +1530,7 @@ ip6_reass_walk_expired (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_reass_expire_node) = {
+VLIB_REGISTER_NODE (ip6_reass_expire_node, static) = {
     .function = ip6_reass_walk_expired,
     .format_trace = format_ip6_reass_trace,
     .type = VLIB_NODE_TYPE_PROCESS,

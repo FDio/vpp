@@ -74,7 +74,7 @@ format_l2learn_trace (u8 * s, va_list * args)
   return s;
 }
 
-extern vlib_node_registration_t l2learn_node;
+static vlib_node_registration_t l2learn_node;
 
 #define foreach_l2learn_error				\
 _(L2LEARN,           "L2 learn packets")		\
@@ -427,7 +427,7 @@ VLIB_NODE_FN (l2learn_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2learn_node) = {
+VLIB_REGISTER_NODE (l2learn_node,static) = {
   .name = "l2-learn",
   .vector_size = sizeof (u32),
   .format_trace = format_l2learn_trace,

@@ -52,7 +52,7 @@ format_syn_filter4_trace (u8 * s, va_list * args)
   return s;
 }
 
-extern vlib_node_registration_t syn_filter4_node;
+static vlib_node_registration_t syn_filter4_node;
 
 #define foreach_syn_filter_error                \
 _(THROTTLED, "TCP SYN packet throttle drops")   \
@@ -400,7 +400,7 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (syn_filter4_node) =
+VLIB_REGISTER_NODE (syn_filter4_node, static) =
 {
   .name = "syn-filter-4",
   .vector_size = sizeof (u32),
