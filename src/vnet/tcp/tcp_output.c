@@ -1970,16 +1970,16 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	   * unSACKed sequence number SHOULD be returned, and RescueRxt set to
 	   * RecoveryPoint. HighRxt MUST NOT be updated.
 	   */
-	  max_bytes = clib_min (tc->snd_mss,
-				tc->snd_congestion - tc->snd_una);
+	  hole = scoreboard_last_hole (sb);
+	  max_bytes = clib_min (tc->snd_mss, hole->end - hole->start);
 	  max_bytes = clib_min (max_bytes, snd_space);
-	  offset = tc->snd_congestion - tc->snd_una - max_bytes;
-	  sb->rescue_rxt = tc->snd_congestion;
+	  offset = hole->end - tc->snd_una - max_bytes;
 	  n_written = tcp_prepare_retransmit_segment (wrk, tc, offset,
 						      max_bytes, &b);
 	  if (!n_written)
 	    goto done;
 
+	  sb->rescue_rxt = tc->snd_congestion;
 	  bi = vlib_get_buffer_index (vm, b);
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 	  n_segs += 1;
