@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b8146a6_3bd0805d",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_mac_addr",
+      "range": {
+        "startLine": 72,
+        "startChar": 7,
+        "endLine": 72,
+        "endChar": 24
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a608b6d7_9d8839b2",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_ip4_prefix",
+      "range": {
+        "startLine": 74,
+        "startChar": 7,
+        "endLine": 74,
+        "endChar": 26
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "084f071f_1b4b5db4",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_ip6_prefix",
+      "range": {
+        "startLine": 76,
+        "startChar": 7,
+        "endLine": 76,
+        "endChar": 26
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "30c12cf8_5c3e3e63",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_ip4_gw",
+      "range": {
+        "startLine": 78,
+        "startChar": 7,
+        "endLine": 78,
+        "endChar": 22
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e09de185_85a54540",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_ip6_gw",
+      "range": {
+        "startLine": 80,
+        "startChar": 7,
+        "endLine": 80,
+        "endChar": 22
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "775a2dd2_d55a68ec",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_namespace",
+      "range": {
+        "startLine": 83,
+        "startChar": 7,
+        "endLine": 83,
+        "endChar": 25
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f4aaae7_ee11c954",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_if_name",
+      "range": {
+        "startLine": 85,
+        "startChar": 7,
+        "endLine": 85,
+        "endChar": 23
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "84e046bd_13cdb63a",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "set_host_bridge",
+      "range": {
+        "startLine": 87,
+        "startChar": 7,
+        "endLine": 87,
+        "endChar": 22
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1317bc87_b1eead78",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-16T15:12:52Z",
+      "side": 1,
+      "message": "Would a better option to be to use a flag enum for the options that are to be set?",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 2
+      },
+      "revId": "9b1cbf96e1c380b4f745c5f7cfb129e934cf5dda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
