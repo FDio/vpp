@@ -504,7 +504,7 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, cls).setUpClass()
         gc.collect()  # run garbage collection first
         cls.logger = get_logger(cls.__name__)
-        seed = os.environ["RND_SEED"]
+        seed = os.getenv("RND_SEED", str(time.time()))
         random.seed(seed)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
