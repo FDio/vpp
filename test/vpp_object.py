@@ -90,6 +90,11 @@ class VppObjectRegistry(object):
         # remove the config in reverse order as there might be dependencies
         failed = []
         for obj in reversed(self._object_registry):
+
+            # if I don't have a handle to the api, don't even try...
+            # TODO: identify how callers get here without a handle to vapi.
+            if not hasattr(obj, 'vapi'):
+                continue
             if obj.query_vpp_config():
                 logger.info("REG: Removing configuration for %s" % obj)
                 obj.remove_vpp_config()
