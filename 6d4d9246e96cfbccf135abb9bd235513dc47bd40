@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46a8e3b1_7be929a5",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-17T03:38:03Z",
+      "side": 1,
+      "message": "This is really PAPI_SOURCES_DIR.  Tests do a \u0027python3 -m pip install -e\u0027 on this directory into the venv.  You can find it in test/requirements.txt",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 109,
+        "endChar": 16
+      },
+      "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2ea49316_4ee3d9e7",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-17T03:38:03Z",
+      "side": 1,
+      "message": "This is really PAPI_WIPE_DIST, yes?  \nFor tests, we install into the venv via requirements.txt.",
+      "range": {
+        "startLine": 307,
+        "startChar": 30,
+        "endLine": 307,
+        "endChar": 47
+      },
+      "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
