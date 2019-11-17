@@ -438,6 +438,7 @@ F:      src/plugins/mactime/
 
 Plugin - Network Delay Simulator
 I:	nsim
+Y:	src/plugins/nsim/FEATURE.yaml
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 

@@ -1,0 +1,8 @@
+---
+name: Network Delay Simulator
+maintainer: Dave Barach <dave@barachs.net>
+features:
+  - Network delay and loss fraction simulator
+description: "Introduces configurable network delay and loss"
+state: production
+properties: [CLI, MULTITHREAD]
