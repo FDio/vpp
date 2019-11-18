@@ -22,6 +22,30 @@
       "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa1daa9a_62dab90e",
+        "filename": "src/vnet/ip/ip_format_fns.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-18T17:07:53Z",
+      "side": 1,
+      "message": "Do you mean [0] these ones?\nFirstly, it would be a big API change. I assume many clients just paste is_ip6 (or other hardcoded values) without bothering to read the enum definition.\nSecondly, base the enum implementation on u16 (or u8 if we plan to support only a small subset). The default (u32) is wasting space. But that is both big a API change and a big code change.\nOverall, I am supportive (the less IANA \u003c\u003d\u003e VPP translations the better), I just do not expect the migration to happen anytime soon.\n\n[0] https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xhtml",
+      "parentUuid": "32deadf3_00f933b8",
+      "range": {
+        "startLine": 68,
+        "startChar": 7,
+        "endLine": 68,
+        "endChar": 18
+      },
+      "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
