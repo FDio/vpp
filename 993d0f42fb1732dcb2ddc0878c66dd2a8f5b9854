@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c3d3408_395c9bdc",
+        "filename": "src/plugins/srv6-mobile/README.md",
+        "patchSetId": 21
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-18T03:29:27Z",
+      "side": 1,
+      "message": "This isn\u0027t a fork of VPP I hope. :)",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 27
+      },
+      "revId": "993d0f42fb1732dcb2ddc0878c66dd2a8f5b9854",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "addf3d65_e3edcbd8",
+        "filename": "src/plugins/srv6-mobile/test/test_srv6_end.py",
+        "patchSetId": 21
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-18T03:29:27Z",
+      "side": 1,
+      "message": "Please add asserts here to verify that what\u0027s captured is correct.\nCurrently you don\u0027t verify anything in the test.",
+      "range": {
+        "startLine": 88,
+        "startChar": 5,
+        "endLine": 89,
+        "endChar": 41
+      },
+      "revId": "993d0f42fb1732dcb2ddc0878c66dd2a8f5b9854",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6435903e_58b9c2b4",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-11-18T03:29:27Z",
+      "side": 1,
+      "message": "Shouldn\u0027t the prefix length parameter be exposed via the API? (in the .api file).",
+      "range": {
+        "startLine": 83,
+        "startChar": 3,
+        "endLine": 83,
+        "endChar": 39
+      },
+      "revId": "993d0f42fb1732dcb2ddc0878c66dd2a8f5b9854",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
