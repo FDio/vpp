@@ -188,9 +188,12 @@ class VppPGInterface(VppInterface):
                                   self._out_assert_counter, kind, suffix)
                                  for suffix in ["pcap", "stack"]
                                  ]
-        os.link(self.out_path, link_path)
-        with open(stack_path, "w") as f:
-            f.writelines(format_stack())
+        try:
+            os.link(self.out_path, link_path)
+            with open(stack_path, "w") as f:
+                f.writelines(format_stack())
+	except OSError as e:
+            self.test.logger.debug(e)
         self._out_assert_counter += 1
 
     def _get_capture(self, timeout, filter_out_fn=is_ipv6_misc):
