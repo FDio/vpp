@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ab0a23e_f351f418",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-18T12:29:35Z",
+      "side": 1,
+      "message": "All targets should be documented, including checkstyle-all.",
+      "range": {
+        "startLine": 215,
+        "startChar": 23,
+        "endLine": 215,
+        "endChar": 24
+      },
+      "revId": "e7906906079ca2d67bf67cfa9939523213230b56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
