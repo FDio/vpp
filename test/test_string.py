@@ -35,6 +35,10 @@ class TestString(VppTestCase):
                  "strncat_s", "strncmp_s", "strncpy_s",
                  "strnlen_s", "strstr_s", "strtok_s"]
 
+        error = self.vapi.cli("test format_time")
+        if error.find("failed") != -1:
+           self.logger.critical("FAILURE in the format_time test")
+           self.assertNotIn("failed", error)
         for name in names:
             error = self.vapi.cli("test string " + name)
             if error.find("failed") != -1:

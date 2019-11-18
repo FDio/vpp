@@ -47,6 +47,20 @@ VLIB_CLI_COMMAND (test_crash_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
+test_format_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  struct timeval tv;
+  tv.tv_sec = 0x8000000000000000ULL;
+  tv.tv_usec = 0x8000000000000000ULL;
+  void *p = format (0, "%U", format_timeval, 0, &tv);
+  clib_warning("Result: %v", p);
+  return 0;
+}
+
+
+
+static clib_error_t *
 test_hash_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -104,6 +118,13 @@ VLIB_CLI_COMMAND (test_hash_command, static) =
   .path = "test hash_memory",
   .short_help = "page boundary crossing test",
   .function = test_hash_command_fn,
+};
+
+VLIB_CLI_COMMAND (test_format_command, static) =
+{
+  .path = "test format_time",
+  .short_help = "abnormal time value format test",
+  .function = test_format_command_fn,
 };
 /* *INDENT-ON* */
 

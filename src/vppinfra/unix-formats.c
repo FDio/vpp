@@ -794,6 +794,12 @@ u8 * format_timeval (u8 * s, va_list * args)
     time_t t = tv->tv_sec;
     tm = localtime (&t);
   }
+  if (!tm) {
+      static struct tm tm_bogus = { 0 };
+      tm_bogus.tm_mday = errno;
+      tm_bogus.tm_hour = 42;
+      tm = &tm_bogus;
+  }
 
   for (f = fmt; *f; f++)
     {
