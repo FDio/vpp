@@ -230,10 +230,11 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      /* shift ICV by 4 bytes to insert ESN */
 	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
-	      u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
-	      clib_memcpy_fast (tmp, payload + len, ESP_MAX_ICV_SIZE);
+	      u8 sz = sizeof (sa0->seq_hi);
+	      CLIB_MEM_UNPOISON (payload + len + sz, cpd.icv_sz);
+	      clib_memcpy_le32_overflow (payload + len + sz, payload + len,
+					 ESP_MAX_ICV_SIZE);
 	      clib_memcpy_fast (payload + len, &seq_hi, sz);
-	      clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
 	      op->len += sz;
 	      op->digest += sz;
 	    }
@@ -425,7 +426,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  if (is_ip6 && ip_hdr_sz > 64)
 	    memmove (ip, old_ip, ip_hdr_sz);
 	  else
-	    clib_memcpy_le64 (ip, old_ip, ip_hdr_sz);
+	    clib_memcpy_le64_overflow (ip, old_ip, ip_hdr_sz);
 
 	  b[0]->current_data = pd->current_data + adv - ip_hdr_sz;
 	  b[0]->current_length = pd->current_length + ip_hdr_sz - tail - adv;
@@ -537,6 +538,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  tr->sa_seq = sa0->last_seq;
 	  tr->sa_seq_hi = sa0->seq_hi;
 	}
+
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b[0]);
 
       /* next */
       n_left -= 1;

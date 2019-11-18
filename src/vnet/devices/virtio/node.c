@@ -121,6 +121,7 @@ more:
 	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
 									 b) :
 	 pointer_to_uword (vlib_buffer_get_current (b)));
+      VLIB_BUFFER_POISON (vm, &vring->buffers[next], 1);
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
@@ -269,6 +270,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u16 slot = e->id;
 	  u16 len = e->len - hdr_sz;
 	  u32 bi0 = vring->buffers[slot];
+	  VLIB_BUFFER_UNPOISON (vm, &bi0, 1);
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
 	  hdr = vlib_buffer_get_current (b0);
 	  if (hdr_sz == sizeof (struct virtio_net_hdr_v1))
@@ -278,6 +280,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_length = len;
 	  b0->total_length_not_including_first_buffer = 0;
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr);
@@ -295,6 +298,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  last++;
 		  e = &vring->used->ring[last & mask];
 		  u32 cbi = vring->buffers[e->id];
+		  VLIB_BUFFER_UNPOISON (vm, &cbi, 1);
 		  cb = vlib_get_buffer (vm, cbi);
 
 		  /* current buffer */

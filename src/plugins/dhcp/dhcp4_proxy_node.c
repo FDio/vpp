@@ -742,8 +742,8 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 	      tr->error = error0;
 	      tr->original_sw_if_index = original_sw_if_index;
 	      tr->sw_if_index = sw_if_index;
-	      clib_memcpy_fast (tr->packet_data, h0,
-				sizeof (tr->packet_data));
+	      clib_memcpy_fast_overflow (tr->packet_data, h0,
+					 sizeof (tr->packet_data));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

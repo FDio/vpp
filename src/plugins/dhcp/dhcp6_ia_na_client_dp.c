@@ -217,6 +217,7 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
   ip->payload_length = udp->length;
   b->current_length =
     sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp) + dhcp_opt_len;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b);
 
   ip->dst_address = all_dhcp6_relay_agents_and_servers;
 

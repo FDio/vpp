@@ -123,9 +123,10 @@ send_template_packet (flow_report_main_t * frm,
 
   ASSERT (vec_len (fr->rewrite) < vlib_buffer_get_default_data_size (vm));
 
-  clib_memcpy_fast (b0->data, fr->rewrite, vec_len (fr->rewrite));
   b0->current_data = 0;
   b0->current_length = vec_len (fr->rewrite);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+  clib_memcpy_fast (b0->data, fr->rewrite, vec_len (fr->rewrite));
   b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;

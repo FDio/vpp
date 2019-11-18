@@ -240,7 +240,8 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 						     (ip0->dst_address.
 						      as_u32),
 						     clib_net_to_host_u32
-						     (esp0->spi));
+						     (CLIB_MEM_OVERFLOW_LOAD
+						      (*, &esp0->spi)));
 
 	      has_space0 =
 		vlib_buffer_has_space (b0,
@@ -297,7 +298,8 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 						     (ip0->dst_address.
 						      as_u32),
 						     clib_net_to_host_u32
-						     (ah0->spi));
+						     (CLIB_MEM_OVERFLOW_LOAD
+						      (*, &ah0->spi)));
 
 	      has_space0 =
 		vlib_buffer_has_space (b0,

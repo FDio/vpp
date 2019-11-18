@@ -545,8 +545,10 @@ ip6_ext_hdr (u8 nexthdr)
 #endif
 }
 
-#define ip6_ext_header_len(p)  ((((ip6_ext_header_t *)(p))->n_data_u64s+1) << 3)
-#define ip6_ext_authhdr_len(p) ((((ip6_ext_header_t *)(p))->n_data_u64s+2) << 2)
+#define ip6_ext_header_len__(n)         (((n)+1) << 3)
+#define ip6_ext_header_len_overflow(p)  ip6_ext_header_len__(CLIB_MEM_OVERFLOW_LOAD(*, &(((ip6_ext_header_t *)(p))->n_data_u64s)))
+#define ip6_ext_header_len(p)           ip6_ext_header_len__(((ip6_ext_header_t *)(p))->n_data_u64s)
+#define ip6_ext_authhdr_len(p)          ((((ip6_ext_header_t *)(p))->n_data_u64s+2) << 2)
 
 always_inline void *
 ip6_ext_next_header (ip6_ext_header_t * ext_hdr)
@@ -585,7 +587,8 @@ ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
     {
       result = (void *) (ip6_header + 1);
       if (!vlib_object_within_buffer_data (vm, b, result,
-					   ip6_ext_header_len (result)))
+					   ip6_ext_header_len_overflow
+					   (result)))
 	{
 	  result = NULL;
 	}
@@ -598,7 +601,8 @@ ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
 	{
 	  prev = ip6_ext_next_header (prev);
 	  if (!vlib_object_within_buffer_data (vm, b, prev,
-					       ip6_ext_header_len (prev)))
+					       ip6_ext_header_len_overflow
+					       (prev)))
 	    {
 	      prev = NULL;
 	      break;
@@ -608,7 +612,8 @@ ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
 	{
 	  result = ip6_ext_next_header (prev);
 	  if (!vlib_object_within_buffer_data (vm, b, result,
-					       ip6_ext_header_len (result)))
+					       ip6_ext_header_len_overflow
+					       (result)))
 	    {
 	      result = NULL;
 	    }

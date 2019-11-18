@@ -2334,6 +2334,7 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_radv_t * radv_info)
 
   rh = vlib_buffer_get_current (p0);
   p0->current_length = sizeof (*rh);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, p0);
 
   rh->neighbor.icmp.type = ICMP6_router_solicitation;
   rh->neighbor.icmp.code = 0;
@@ -2785,6 +2786,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
   /* adjust the sizeof the buffer to just include the ipv6 header */
   b0->current_length = sizeof (icmp6_multicast_listener_report_packet_t);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
 
   payload_length = sizeof (icmp6_multicast_listener_report_header_t);
 
@@ -2979,6 +2981,7 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
           }
         b0 = vlib_get_buffer (vm, bo0);
         b0->current_length = sizeof( icmp6_router_solicitation_header_t);
+        VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
         b0->error = ICMP6_ERROR_NONE;
         vnet_buffer (b0)->sw_if_index[VLIB_RX] = radv_info->sw_if_index;
 

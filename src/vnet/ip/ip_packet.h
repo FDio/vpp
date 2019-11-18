@@ -174,7 +174,7 @@ ip_csum (void *data, u16 n_left)
 
   if (n_left)
     {
-      v1 = u16x16_load_unaligned (data);
+      v1 = CLIB_MEM_OVERFLOW_LOAD (u16x16_load_unaligned, data);
 #ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
       v1 = u16x16_byte_swap (v1);
 #endif

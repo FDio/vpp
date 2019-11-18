@@ -70,8 +70,9 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  t->buffer_index = bi0;
 	  clib_memcpy_fast (&t->buffer, b,
 			    sizeof (b[0]) - sizeof (b->pre_data));
-	  clib_memcpy_fast (t->buffer.pre_data, b->data + b->current_data,
-			    sizeof (t->buffer.pre_data));
+	  clib_memcpy_fast_overflow (t->buffer.pre_data,
+				     b->data + b->current_data,
+				     sizeof (t->buffer.pre_data));
 	}
 
       if (pif->pcap_file_name != 0)

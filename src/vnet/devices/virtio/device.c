@@ -176,6 +176,8 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       indirect_desc->next_buffer = bi;
       bi = indirect_buffer;
 
+      VLIB_BUFFER_UNPOISON_DATA (vm, indirect_desc);
+
       struct vring_desc *id =
 	(struct vring_desc *) vlib_buffer_get_current (indirect_desc);
       u32 count = 1;

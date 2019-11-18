@@ -514,6 +514,7 @@ vhost_user_if_input (vlib_main_t * vm,
       cpu->rx_buffers_len--;
       bi_current = cpu->rx_buffers[cpu->rx_buffers_len];
       b_head = b_current = vlib_get_buffer (vm, bi_current);
+      VLIB_BUFFER_UNPOISON_DATA (vm, b_head);
       to_next[0] = bi_current;	//We do that now so we can forget about bi_current
       to_next++;
       n_left_to_next--;
@@ -651,6 +652,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	      b_current->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	      bi_current = bi_next;
 	      b_current = vlib_get_buffer (vm, bi_current);
+	      VLIB_BUFFER_UNPOISON_DATA (vm, b_current);
 	    }
 
 	  /* Prepare a copy order executed later for the data */

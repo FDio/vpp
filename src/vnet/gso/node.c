@@ -77,13 +77,14 @@ tso_init_buf_from_template_base (vlib_buffer_t * nb0, vlib_buffer_t * b0,
 				 u32 flags, u16 length)
 {
   nb0->current_data = b0->current_data;
+  nb0->current_length = length;
   nb0->total_length_not_including_first_buffer = 0;
   nb0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID | flags;
   nb0->trace_handle = b0->trace_handle;
   clib_memcpy_fast (&nb0->opaque, &b0->opaque, sizeof (nb0->opaque));
+  VLIB_BUFFER_RESET_POISON_DATA (vlib_get_main (), nb0);
   clib_memcpy_fast (vlib_buffer_get_current (nb0),
 		    vlib_buffer_get_current (b0), length);
-  nb0->current_length = length;
 }
 
 static_always_inline void
@@ -205,6 +206,9 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 	    clib_panic ("infinite loop detected");
 	  u16 bytes_to_copy = clib_min (src_left, dst_left);
 
+	  cdb0->current_length += bytes_to_copy;
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, cdb0);
+
 	  clib_memcpy_fast (dst_ptr, src_ptr, bytes_to_copy);
 
 	  src_left -= bytes_to_copy;
@@ -213,7 +217,6 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 	  dst_left -= bytes_to_copy;
 	  dst_ptr += bytes_to_copy;
 	  next_tcp_seq += bytes_to_copy;
-	  cdb0->current_length += bytes_to_copy;
 
 	  if (0 == src_left)
 	    {
