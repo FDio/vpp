@@ -286,22 +286,10 @@ session_evt_alloc_old (session_worker_t * wrk)
   return elt;
 }
 
-always_inline u8
-session_is_valid (u32 si, u8 thread_index)
-{
-  session_t *s;
-  s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
-  if (s->session_state == SESSION_STATE_CLOSED)
-    return 1;
-
-  if (s->thread_index != thread_index || s->session_index != si)
-    return 0;
-  return 1;
-}
-
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
 void session_free_w_fifos (session_t * s);
+u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
 session_get (u32 si, u32 thread_index)
