@@ -20,7 +20,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp_debug.h>
 
-#define TRANSPORT_MAX_HDRS_LEN    100	/* Max number of bytes for headers */
+#define TRANSPORT_MAX_HDRS_LEN    140	/* Max number of bytes for headers */
+
 
 typedef enum transport_dequeue_type_
 {
