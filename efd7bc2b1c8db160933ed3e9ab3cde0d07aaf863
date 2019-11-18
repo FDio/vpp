@@ -22,6 +22,30 @@
       "revId": "efd7bc2b1c8db160933ed3e9ab3cde0d07aaf863",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b43baeb9_b6a61bc7",
+        "filename": "src/vnet/ip/ip_format_fns.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-18T13:45:21Z",
+      "side": 1,
+      "message": "How do you all feel about setting ADDRESS_IP4/6 to the iana af values?",
+      "parentUuid": "6cacb8de_350fbcd6",
+      "range": {
+        "startLine": 67,
+        "startChar": 10,
+        "endLine": 67,
+        "endChar": 38
+      },
+      "revId": "efd7bc2b1c8db160933ed3e9ab3cde0d07aaf863",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
