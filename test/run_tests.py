@@ -160,6 +160,8 @@ class TestCaseWrapper(object):
                                    self.logger)
                              )
         self.child.start()
+        # keep the StreamQueue manager from shutting down.
+        self.child.join()
         self.last_test_temp_dir = None
         self.last_test_vpp_binary = None
         self._last_test = None
