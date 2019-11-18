@@ -46,6 +46,30 @@
       "revId": "3c7d80552b47693f0e7c5012a0d8d2c9c4cfc8dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2ad511f_bfbd0a2c",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 644,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-18T16:58:58Z",
+      "side": 1,
+      "message": "If that is what you want to accomplish, substitute \u0027EXTENDED_TESTS\u003d1 test-debug\u0027 with \u0027test-all-debug\u0027 (which includes the correct dependency to build the debug version of the vom library).",
+      "parentUuid": "d6b42768_4d288577",
+      "range": {
+        "startLine": 644,
+        "startChar": 64,
+        "endLine": 644,
+        "endChar": 74
+      },
+      "revId": "3c7d80552b47693f0e7c5012a0d8d2c9c4cfc8dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
