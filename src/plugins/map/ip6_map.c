@@ -618,8 +618,8 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
 	      MAP_ERROR_DECAP_SEC_CHECK;
 
 	  if (PREDICT_FALSE
-	      (d0->mtu && (clib_host_to_net_u16 (ip40->length) > d0->mtu)
-	       && error0 == MAP_ERROR_NONE))
+	      (error0 == MAP_ERROR_NONE &&
+	       d0->mtu && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
 	    {
 	      vnet_buffer (p0)->ip_frag.flags = 0;
 	      vnet_buffer (p0)->ip_frag.next_index = IP_FRAG_NEXT_IP4_LOOKUP;
