@@ -2788,8 +2788,8 @@ arp_term_l2bd (vlib_main_t * vm,
 	    {
 	      u8 *t0 = vlib_add_trace (vm, node, p0,
 				       sizeof (ethernet_arp_input_trace_t));
-	      clib_memcpy_fast (t0, l3h0,
-				sizeof (ethernet_arp_input_trace_t));
+	      clib_memcpy_fast_overflow (t0, l3h0,
+					 sizeof (ethernet_arp_input_trace_t));
 	    }
 
 	  error0 = 0;

@@ -553,7 +553,7 @@ nat_template_rewrite_nat64_session (flow_report_main_t * frm,
 }
 
 static inline void
-snat_ipfix_header_create (flow_report_main_t * frm,
+snat_ipfix_header_create (vlib_main_t *vm, flow_report_main_t * frm,
 			  vlib_buffer_t * b0, u32 * offset)
 {
   snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
@@ -572,6 +572,7 @@ snat_ipfix_header_create (flow_report_main_t * frm,
   b0->current_data = 0;
   b0->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*h) +
     sizeof (*s);
+  VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
   b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
@@ -701,10 +702,13 @@ snat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += NAT44_SESSION_CREATE_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -729,8 +733,6 @@ snat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
 
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
-
-      b0->current_length += NAT44_SESSION_CREATE_LEN;
     }
 
   if (PREDICT_FALSE
@@ -800,10 +802,13 @@ snat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += NAT_ADDRESSES_EXHAUTED_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -813,8 +818,6 @@ snat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
 
       clib_memcpy_fast (b0->data + offset, &pool_id, sizeof (pool_id));
       offset += sizeof (pool_id);
-
-      b0->current_length += NAT_ADDRESSES_EXHAUTED_LEN;
     }
 
   if (PREDICT_FALSE
@@ -886,10 +889,13 @@ snat_ipfix_logging_max_entries_per_usr (u32 thread_index,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += MAX_ENTRIES_PER_USER_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -905,8 +911,6 @@ snat_ipfix_logging_max_entries_per_usr (u32 thread_index,
 
       clib_memcpy_fast (b0->data + offset, &src_ip, sizeof (src_ip));
       offset += sizeof (src_ip);
-
-      b0->current_length += MAX_ENTRIES_PER_USER_LEN;
     }
 
   if (PREDICT_FALSE
@@ -977,10 +981,13 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += MAX_SESSIONS_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -993,8 +1000,6 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
 
       clib_memcpy_fast (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
-
-      b0->current_length += MAX_SESSIONS_LEN;
     }
 
   if (PREDICT_FALSE
@@ -1065,10 +1070,13 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += MAX_BIBS_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA(vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -1081,8 +1089,6 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
 
       clib_memcpy_fast (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
-
-      b0->current_length += MAX_BIBS_LEN;
     }
 
   if (PREDICT_FALSE
@@ -1154,10 +1160,13 @@ nat_ipfix_logging_max_frag_ip4 (u32 thread_index,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += MAX_FRAGMENTS_IP4_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -1173,8 +1182,6 @@ nat_ipfix_logging_max_frag_ip4 (u32 thread_index,
 
       clib_memcpy_fast (b0->data + offset, &src, sizeof (src));
       offset += sizeof (src);
-
-      b0->current_length += MAX_FRAGMENTS_IP4_LEN;
     }
 
   if (PREDICT_FALSE
@@ -1246,10 +1253,13 @@ nat_ipfix_logging_max_frag_ip6 (u32 thread_index,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += MAX_FRAGMENTS_IP6_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -1265,8 +1275,6 @@ nat_ipfix_logging_max_frag_ip6 (u32 thread_index,
 
       clib_memcpy_fast (b0->data + offset, src, sizeof (ip6_address_t));
       offset += sizeof (ip6_address_t);
-
-      b0->current_length += MAX_FRAGMENTS_IP6_LEN;
     }
 
   if (PREDICT_FALSE
@@ -1338,10 +1346,13 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += NAT64_BIB_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -1366,8 +1377,6 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
 
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
-
-      b0->current_length += NAT64_BIB_LEN;
     }
 
   if (PREDICT_FALSE
@@ -1441,10 +1450,13 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (vm, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
+      b0->current_length += NAT64_SES_LEN;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
       u64 time_stamp = clib_host_to_net_u64 (now);
       clib_memcpy_fast (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
@@ -1481,8 +1493,6 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
 
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
-
-      b0->current_length += NAT64_SES_LEN;
     }
 
   if (PREDICT_FALSE

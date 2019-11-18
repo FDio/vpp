@@ -307,6 +307,11 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b2 = vlib_get_buffer (vm, ptd->buffers[co[2].buffer_vec_index]);
       b3 = vlib_get_buffer (vm, ptd->buffers[co[3].buffer_vec_index]);
 
+      VLIB_BUFFER_UNPOISON_DATA (vm, b0);
+      VLIB_BUFFER_UNPOISON_DATA (vm, b1);
+      VLIB_BUFFER_UNPOISON_DATA (vm, b2);
+      VLIB_BUFFER_UNPOISON_DATA (vm, b3);
+
       clib_memcpy_fast (b0->data + co[0].buffer_offset, co[0].data,
 			co[0].data_len);
       clib_memcpy_fast (b1->data + co[1].buffer_offset, co[1].data,
@@ -322,6 +327,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left)
     {
       b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
+      VLIB_BUFFER_UNPOISON_DATA (vm, b0);
       clib_memcpy_fast (b0->data + co[0].buffer_offset, co[0].data,
 			co[0].data_len);
       co += 1;
@@ -599,6 +605,8 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b0->current_length = start_offset + d0->length;
       n_rx_bytes += d0->length;
 
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
       if (0 && memif_desc_is_invalid (mif, d0, buffer_length))
 	return 0;
 
@@ -622,6 +630,8 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_length = start_offset + d0->length;
 	  hb->total_length_not_including_first_buffer += d0->length;
 	  n_rx_bytes += d0->length;
+
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
 
 	  cur_slot++;
 	  n_slots--;

@@ -639,6 +639,7 @@ init_icmp46_echo_request (vlib_main_t * vm, vlib_buffer_t * b0,
   hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   hb->current_length = l34_len + first_buf_data_len;
   hb->total_length_not_including_first_buffer = data_len - first_buf_data_len;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, hb);
 
   icmp46_echo->time_sent = now;
   icmp46_echo->seq = clib_host_to_net_u16 (seq_host);
@@ -989,6 +990,8 @@ send_ip46_ping (vlib_main_t * vm,
 
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
+
+  VLIB_BUFFER_UNPOISON_DATA (vm, b0);
 
   int l4_header_offset = ip46_fill_l3_header (pa46, b0, is_ip6);
 

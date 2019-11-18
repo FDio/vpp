@@ -437,16 +437,17 @@ eth_input_get_etype_and_tags (vlib_buffer_t ** b, u16 * etype, u64 * tags,
   ethernet_header_t *e;
   e = vlib_buffer_get_current (b[offset]);
 #ifdef CLIB_HAVE_VEC128
-  u64x2 r = u64x2_load_unaligned (((u8 *) & e->type) - 6);
+  u64x2 r =
+    CLIB_MEM_OVERFLOW_LOAD (u64x2_load_unaligned, ((u8 *) & e->type) - 6);
   etype[offset] = ((u16x8) r)[3];
   tags[offset] = r[1];
 #else
-  etype[offset] = e->type;
-  tags[offset] = *(u64 *) (e + 1);
+  etype[offset] = CLIB_MEM_OVERFLOW_LOAD (*, &e->type);
+  tags[offset] = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) (e + 1));
 #endif
 
   if (dmac_check)
-    dmacs[offset] = *(u64 *) e;
+    dmacs[offset] = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) e);
 }
 
 static_always_inline u16
@@ -1083,8 +1084,9 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      t0 = vlib_add_trace (vm, node, b0,
 				   sizeof (ethernet_input_trace_t));
-	      clib_memcpy_fast (t0->packet_data, b0->data + b0->current_data,
-				sizeof (t0->packet_data));
+	      clib_memcpy_fast_overflow (t0->packet_data,
+					 b0->data + b0->current_data,
+					 sizeof (t0->packet_data));
 	      t0->frame_flags = from_frame->flags;
 	      clib_memcpy_fast (&t0->frame_data,
 				vlib_frame_scalar_args (from_frame),

@@ -101,14 +101,18 @@ esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz)
   u16 min_length = b->current_length + sizeof (esp_footer_t);
   u16 new_length = round_pow2 (min_length, block_size);
   u8 pad_bytes = new_length - min_length;
+
+  b->current_length = new_length + icv_sz;
+  VLIB_BUFFER_RESET_POISON_DATA (vlib_get_main (), b);
+
   esp_footer_t *f = (esp_footer_t *) (vlib_buffer_get_current (b) +
 				      new_length - sizeof (esp_footer_t));
 
   if (pad_bytes)
-    clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, ESP_MAX_BLOCK_SIZE);
+    clib_memcpy_fast_overflow ((u8 *) f - pad_bytes, pad_data,
+			       ESP_MAX_BLOCK_SIZE);
 
   f->pad_length = pad_bytes;
-  b->current_length = new_length + icv_sz;
   return &f->next_header;
 }
 
@@ -418,12 +422,12 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      l2_hdr = payload - hdr_len;
 
 	      /* copy l2 and ip header */
-	      clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	      clib_memcpy_le32_overflow (l2_hdr, old_ip_hdr - l2_len, l2_len);
 	    }
 	  else
 	    l2_len = 0;
 
-	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
+	  clib_memcpy_le64_overflow (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (is_ip6)
 	    {

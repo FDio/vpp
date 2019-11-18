@@ -168,8 +168,8 @@ gtpu_input (vlib_main_t * vm,
           error1 = 0;
 
           /* speculatively load gtp header version field */
-          ver0 = gtpu0->ver_flags;
-          ver1 = gtpu1->ver_flags;
+          ver0 = CLIB_MEM_OVERFLOW_LOAD(*, &gtpu0->ver_flags);
+          ver1 = CLIB_MEM_OVERFLOW_LOAD(*, &gtpu1->ver_flags);
 
 	  /*
            * Manipulate gtpu header
@@ -545,7 +545,7 @@ gtpu_input (vlib_main_t * vm,
           error0 = 0;
 
           /* speculatively load gtp header version field */
-          ver0 = gtpu0->ver_flags;
+          ver0 = CLIB_MEM_OVERFLOW_LOAD(*, &gtpu0->ver_flags);
 
 	  /*
            * Manipulate gtpu header

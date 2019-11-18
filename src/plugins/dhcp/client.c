@@ -548,6 +548,8 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   udp = (udp_header_t *) (ip + 1);
   dhcp = (dhcp_header_t *) (udp + 1);
 
+  VLIB_BUFFER_UNPOISON_DATA (vm, b);
+
   /* $$$ optimize, maybe */
   clib_memset (ip, 0, sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp));
 
@@ -685,6 +687,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   o++;
 
   b->current_length = ((u8 *) o) - b->data;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b);
 
   /* fix ip length, checksum and udp length */
   ip_length = vlib_buffer_length_in_chain (vm, b);

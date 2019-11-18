@@ -325,6 +325,9 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	      goto do_trace;
 	    }
 
+	  CLIB_MEM_UNPOISON (b0->data,
+			     vlib_buffer_get_default_data_size (vm));
+
 	  id1 = (dhcpv6_int_id_t *) (((uword) ip1) + b0->current_length);
 	  b0->current_length += (sizeof (*id1));
 
@@ -375,6 +378,8 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	      u1->length += type_len + id_len + sizeof (vss1->opt);
 	      b0->current_length += type_len + id_len + sizeof (vss1->opt);
 	    }
+
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
 
 	  pkts_to_server++;
 	  u1->checksum = 0;

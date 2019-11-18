@@ -674,6 +674,7 @@ vhost_user_socket_read (clib_file_t * uf)
 		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+      ASSERT (q < VHOST_VRING_MAX_N);
 
       /* if there is old fd, delete and close it */
       if (vui->vrings[q].callfd_idx != ~0)

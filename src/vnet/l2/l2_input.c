@@ -189,7 +189,8 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 
 #define get_u16(addr) ( *((u16 *)(addr)) )
       u16 ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
-      u8 protocol = ((ip6_header_t *) l3h0)->protocol;
+      u8 protocol =
+	CLIB_MEM_OVERFLOW_LOAD (*, &((ip6_header_t *) l3h0)->protocol);
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
       feat_mask &= ~(L2INPUT_FEAT_FWD |

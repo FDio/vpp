@@ -164,6 +164,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	}
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
+      to_b->current_length =
+	len + sizeof (ip4_header_t) + l2unfragmentablesize;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, to_b);
 
       /* Copy ip4 header */
       to_data = vlib_buffer_get_current (to_b);
@@ -214,8 +217,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	}
 
       to_b->flags |= VNET_BUFFER_F_IS_IP4;
-      to_b->current_length =
-	len + sizeof (ip4_header_t) + l2unfragmentablesize;
 
       to_ip4->fragment_id = ip_frag_id;
       to_ip4->flags_and_fragment_offset =
@@ -435,6 +436,9 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	}
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
+      to_b->current_length =
+	len + sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t);
+      VLIB_BUFFER_RESET_POISON_DATA (vm, to_b);
 
       /* Copy ip6 header */
       clib_memcpy_fast (to_b->data, org_from_packet,
@@ -485,8 +489,6 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	  to_ptr += bytes_to_copy;
 	}
 
-      to_b->current_length =
-	len + sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t);
       to_ip6->payload_length =
 	clib_host_to_net_u16 (len + sizeof (ip6_frag_hdr_t));
       to_ip6->protocol = IP_PROTOCOL_IPV6_FRAGMENTATION;

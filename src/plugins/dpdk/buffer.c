@@ -103,9 +103,12 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   for (i = 0; i < bp->n_buffers; i++)
     {
       struct rte_mempool_objhdr *hdr;
-      vlib_buffer_t *b = vlib_get_buffer (vm, bp->buffers[i]);
+      vlib_buffer_t *b = vlib_get_buffer__ (vm, bp->buffers[i]);
       struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b);
       hdr = (struct rte_mempool_objhdr *) RTE_PTR_SUB (mb, sizeof (*hdr));
+      CLIB_MEM_UNPOISON (hdr,
+			 sizeof (*hdr) + sizeof (*mb) + sizeof (*b) +
+			 vlib_buffer_get_default_data_size (vm));
       hdr->mp = mp;
       hdr->iova = (iova_mode == RTE_IOVA_VA) ?
 	pointer_to_uword (mb) : vlib_physmem_get_pa (vm, mb);

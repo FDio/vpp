@@ -1266,13 +1266,14 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
 	  bytes_this_chunk = clib_min (bytes_to_copy, buf_sz);
 	  ASSERT (current_buffer_index < vec_len (buffers));
 	  b = vlib_get_buffer (vm, buffers[current_buffer_index]);
-	  clib_memcpy_fast (b->data, d0 + data_offset, bytes_this_chunk);
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
 	  vnet_buffer (b)->sw_if_index[VLIB_TX] = s->sw_if_index[VLIB_TX];
 	  b->flags = 0;
 	  b->next_buffer = 0;
 	  b->current_data = 0;
 	  b->current_length = bytes_this_chunk;
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, b);
+	  clib_memcpy_fast (b->data, d0 + data_offset, bytes_this_chunk);
 
 	  not_last = bytes_this_chunk < bytes_to_copy;
 	  if (not_last)
@@ -1495,10 +1496,10 @@ pg_input_trace (pg_main_t * pg,
       clib_memcpy_fast (&t1->buffer, b1,
 			sizeof (b1[0]) - sizeof (b1->pre_data));
 
-      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
-			sizeof (t0->buffer.pre_data));
-      clib_memcpy_fast (t1->buffer.pre_data, b1->data,
-			sizeof (t1->buffer.pre_data));
+      clib_memcpy_fast_overflow (t0->buffer.pre_data, b0->data,
+				 sizeof (t0->buffer.pre_data));
+      clib_memcpy_fast_overflow (t1->buffer.pre_data, b1->data,
+				 sizeof (t1->buffer.pre_data));
     }
 
   while (n_left >= 1)
@@ -1521,8 +1522,8 @@ pg_input_trace (pg_main_t * pg,
       t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       clib_memcpy_fast (&t0->buffer, b0,
 			sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
-			sizeof (t0->buffer.pre_data));
+      clib_memcpy_fast_overflow (t0->buffer.pre_data, b0->data,
+				 sizeof (t0->buffer.pre_data));
     }
 }
 

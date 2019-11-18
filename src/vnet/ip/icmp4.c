@@ -305,6 +305,8 @@ ip4_icmp_error (vlib_main_t * vm,
 
 	  p0->current_length =
 	    p0->current_length > 576 ? 576 : p0->current_length;
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, p0);
+
 	  out_ip0 = vlib_buffer_get_current (p0);
 	  icmp0 = (icmp46_header_t *) & out_ip0[1];
 

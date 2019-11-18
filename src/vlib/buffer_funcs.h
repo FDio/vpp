@@ -75,6 +75,16 @@ vlib_buffer_ptr_from_index (uword buffer_mem_start, u32 buffer_index,
   return uword_to_pointer (buffer_mem_start + offset, vlib_buffer_t *);
 }
 
+always_inline vlib_buffer_t *
+vlib_get_buffer__ (vlib_main_t * vm, u32 buffer_index)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_t *b;
+
+  b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffer_index, 0);
+  return b;
+}
+
 /** \brief Translate buffer index into buffer pointer
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
@@ -84,10 +94,7 @@ vlib_buffer_ptr_from_index (uword buffer_mem_start, u32 buffer_index,
 always_inline vlib_buffer_t *
 vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  vlib_buffer_t *b;
-
-  b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffer_index, 0);
+  vlib_buffer_t *b = vlib_get_buffer__ (vm, buffer_index);
   vlib_buffer_validate (vm, b);
   return b;
 }
@@ -443,6 +450,62 @@ vlib_buffer_get_current_pa (vlib_main_t * vm, vlib_buffer_t * b)
     vlib_prefetch_buffer_header (_b, type);		\
   } while (0)
 
+/**
+ * Address Sanitizer helpers
+ */
+
+#ifdef CLIB_DEBUG_ASAN
+
+static_always_inline void
+VLIB_BUFFER_RESET_POISON_DATA (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  const u32 default_data_size = vlib_buffer_get_default_data_size (vm);
+  i16 data_len = b->current_data + (i16) b->current_length;
+  ASSERT (data_len >= 0 && data_len <= default_data_size);
+  data_len = clib_min (data_len, default_data_size);
+  CLIB_MEM_UNPOISON (b->data, data_len);
+  CLIB_MEM_POISON (vlib_buffer_get_tail (b), default_data_size - data_len);
+}
+
+static_always_inline void
+VLIB_BUFFER_UNPOISON_DATA (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  CLIB_MEM_UNPOISON (b->data, vlib_buffer_get_default_data_size (vm));
+}
+
+static_always_inline void
+vlib_buffer_poison__ (vlib_main_t * vm, u32 * buffers, uword n_buffers,
+		      int poison)
+{
+  uword i;
+  for (i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer__ (vm, buffers[i]);
+      if (poison)
+	CLIB_MEM_POISON (b,
+			 sizeof (*b) +
+			 vlib_buffer_get_default_data_size (vm));
+      else
+	CLIB_MEM_UNPOISON (b, sizeof (*b));
+    }
+}
+
+#define VLIB_BUFFER_POISON(vm, bi, n)   vlib_buffer_poison__((vm), (bi), (n), 1)
+#define VLIB_BUFFER_UNPOISON(vm, bi, n) vlib_buffer_poison__((vm), (bi), (n), 0)
+
+#else /* CLIB_DEBUG_ASAN */
+
+#define VLIB_BUFFER_RESET_POISON_DATA(vm, b)
+#define VLIB_BUFFER_UNPOISON_DATA(vm, b)
+#define VLIB_BUFFER_POISON(vm, bi, n)
+#define VLIB_BUFFER_UNPOISON(vm, bi, n)
+
+#endif /* CLIB_DEBUG_ASAN */
+
+/**
+ * Buffer memory management
+ */
+
 typedef enum
 {
   /* Index is unknown. */
@@ -545,6 +608,8 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       if (CLIB_DEBUG > 0)
 	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 					 VLIB_BUFFER_KNOWN_FREE);
+
+      VLIB_BUFFER_UNPOISON (vm, buffers, n_buffers);
       return n_buffers;
     }
 
@@ -557,6 +622,8 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       if (CLIB_DEBUG > 0)
 	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 					 VLIB_BUFFER_KNOWN_FREE);
+
+      VLIB_BUFFER_UNPOISON (vm, buffers, n_buffers);
       return n_buffers;
     }
 
@@ -590,6 +657,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_FREE);
 
+  VLIB_BUFFER_UNPOISON (vm, buffers, n_buffers);
   return n_buffers;
 }
 
@@ -707,6 +775,7 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
       vlib_buffer_copy_indices (bpt->cached_buffers + n_cached,
 				buffers, n_buffers);
       bpt->n_cached = n_cached + n_buffers;
+      VLIB_BUFFER_POISON (vm, buffers, n_buffers);
       return;
     }
 
@@ -718,6 +787,9 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
   vlib_buffer_copy_indices (bp->buffers + bp->n_avail, buffers,
 			    n_buffers - n_empty);
   bp->n_avail += n_buffers - n_empty;
+
+  VLIB_BUFFER_POISON (vm, buffers, n_buffers);
+
   clib_spinlock_unlock (&bp->lock);
 }
 
@@ -1015,6 +1087,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
     s->total_length_not_including_first_buffer;
   clib_memcpy_fast (d->opaque, s->opaque, sizeof (s->opaque));
   clib_memcpy_fast (d->opaque2, s->opaque2, sizeof (s->opaque2));
+  VLIB_BUFFER_RESET_POISON_DATA (vm, d);
   clib_memcpy_fast (vlib_buffer_get_current (d),
 		    vlib_buffer_get_current (s), s->current_length);
 
@@ -1028,6 +1101,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       d = vlib_get_buffer (vm, new_buffers[i]);
       d->current_data = s->current_data;
       d->current_length = s->current_length;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, d);
       clib_memcpy_fast (vlib_buffer_get_current (d),
 			vlib_buffer_get_current (s), s->current_length);
       d->flags = s->flags & flag_mask;
@@ -1049,6 +1123,7 @@ vlib_buffer_copy_no_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * di)
   /* 1st segment */
   d->current_data = b->current_data;
   d->current_length = b->current_length;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, d);
   clib_memcpy_fast (d->opaque, b->opaque, sizeof (b->opaque));
   clib_memcpy_fast (d->opaque2, b->opaque2, sizeof (b->opaque2));
   clib_memcpy_fast (vlib_buffer_get_current (d),
@@ -1147,6 +1222,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 
       d->current_length = head_end_offset;
       ASSERT (d->buffer_pool_index == s->buffer_pool_index);
+      VLIB_BUFFER_RESET_POISON_DATA (vm, d);
 
       d->total_length_not_including_first_buffer = s->current_length -
 	head_end_offset;
@@ -1401,7 +1477,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
     {
       u32 len = 0;
       u32 space_needed = bytes_left - dst_left;
-      u32 tail;
+      u32 tail = ~0;
 
       if (vlib_buffer_alloc (vm, &tail, 1) == 0)
 	return 0;
@@ -1412,7 +1488,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 
       while (len < space_needed)
 	{
-	  u32 bi;
+	  u32 bi = ~0;
 	  if (vlib_buffer_alloc (vm, &bi, 1) == 0)
 	    {
 	      vlib_buffer_free_one (vm, tail);
@@ -1434,6 +1510,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
   src_left = sb->current_length;
   sp = vlib_buffer_get_current (sb);
   dp = vlib_buffer_get_tail (db);
+  CLIB_MEM_UNPOISON (dp, dst_left);
 
   while (bytes_left)
     {
@@ -1442,6 +1519,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
       if (dst_left == 0)
 	{
 	  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
+	  VLIB_BUFFER_RESET_POISON_DATA (vm, db);
 	  ASSERT (db->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  db = vlib_get_buffer (vm, db->next_buffer);
 	  dst_left = data_size;
@@ -1454,6 +1532,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 	      dst_left += -db->current_data;
 	    }
 	  dp = vlib_buffer_get_current (db);
+	  CLIB_MEM_UNPOISON (dp, dst_left);
 	}
 
       while (src_left == 0)
@@ -1483,6 +1562,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
   if (db != first)
     db->current_data = 0;
   db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, db);
 
   if (is_cloned && to_free)
     vlib_buffer_free_one (vm, to_free);

@@ -952,9 +952,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy_fast (t0->packet_data,
-			    vlib_buffer_get_current (b0),
-			    sizeof (t0->packet_data));
+	  clib_memcpy_fast_overflow (t0->packet_data,
+				     vlib_buffer_get_current (b0),
+				     sizeof (t0->packet_data));
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
@@ -967,9 +967,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy_fast (t1->packet_data,
-			    vlib_buffer_get_current (b1),
-			    sizeof (t1->packet_data));
+	  clib_memcpy_fast_overflow (t1->packet_data,
+				     vlib_buffer_get_current (b1),
+				     sizeof (t1->packet_data));
 	}
       from += 2;
       n_left -= 2;
@@ -996,9 +996,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy_fast (t0->packet_data,
-			    vlib_buffer_get_current (b0),
-			    sizeof (t0->packet_data));
+	  clib_memcpy_fast_overflow (t0->packet_data,
+				     vlib_buffer_get_current (b0),
+				     sizeof (t0->packet_data));
 	}
       from += 1;
       n_left -= 1;

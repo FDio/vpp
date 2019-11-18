@@ -25,6 +25,25 @@
    clib_mem_overflow_ret__; \
    })
 
+#define clib_memcpy_fast_overflow(dst, src, n) \
+  ({ \
+      const void *clib_memcpy_fast_overflow_src__ = (src); \
+      size_t clib_memcpy_fast_overflow_n__ = (n); \
+      CLIB_MEM_OVERFLOW(clib_memcpy_fast((dst), clib_memcpy_fast_overflow_src__, clib_memcpy_fast_overflow_n__), clib_memcpy_fast_overflow_src__, clib_memcpy_fast_overflow_n__); \
+   })
+
+#define clib_memcpy_le_overflow(dst, src, n, max) \
+  do { \
+      void *clib_memcpy_le_overflow_dst__ = (dst); \
+      void *clib_memcpy_le_overflow_src__ = (src); \
+      size_t clib_memcpy_le_overflow_n__ = (n); \
+      size_t clib_memcpy_le_overflow_max__ = (max); \
+      CLIB_MEM_OVERFLOW((clib_memcpy_le(clib_memcpy_le_overflow_dst__, clib_memcpy_le_overflow_src__, clib_memcpy_le_overflow_n__, clib_memcpy_le_overflow_max__), 0), clib_max(clib_memcpy_le_overflow_dst__, clib_memcpy_le_overflow_src__), clib_memcpy_le_overflow_max__); \
+   } while (0)
+
+#define clib_memcpy_le32_overflow(dst, src, n)  clib_memcpy_le_overflow((dst), (src), (n), 64)
+#define clib_memcpy_le64_overflow(dst, src, n)  clib_memcpy_le_overflow((dst), (src), (n), 64)
+
 #define CLIB_MEM_OVERFLOW_LOAD(f, src) \
   ({ \
    typeof(src) clib_mem_overflow_load_src__ = (src); \
@@ -46,6 +65,9 @@ CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
 #define CLIB_MEM_POISON(a, s)                   (void)(a)
 #define CLIB_MEM_UNPOISON(a, s)                 (void)(a)
 #define CLIB_MEM_OVERFLOW(a, b, c)              a
+#define clib_memcpy_fast_overflow(a, b, c)      clib_memcpy_fast((a), (b), (c))
+#define clib_memcpy_le64_overflow(a, b, c)      clib_memcpy_le64((a), (b), (c))
+#define clib_memcpy_le32_overflow(a, b, c)      clib_memcpy_le32((a), (b), (c))
 #define CLIB_MEM_OVERFLOW_LOAD(f, src)          f(src)
 #define CLIB_MEM_POISON_LEN(a, b, c)
 

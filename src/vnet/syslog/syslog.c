@@ -176,8 +176,9 @@ syslog_msg_send (syslog_msg_t * syslog_msg)
   tmp = format (0, "%U", format_syslog_msg, syslog_msg);
   msg_len = vec_len (tmp) - (vec_c_string_is_terminated (tmp) ? 1 : 0);
   msg_len = msg_len < sm->max_msg_size ? msg_len : sm->max_msg_size;
-  clib_memcpy_fast (b->data, tmp, msg_len);
   b->current_length = msg_len;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b);
+  clib_memcpy_fast (b->data, tmp, msg_len);
   vec_free (tmp);
 
   vec_free (syslog_msg->msg);

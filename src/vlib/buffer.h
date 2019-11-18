@@ -45,6 +45,7 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/vector.h>
 #include <vppinfra/lock.h>
+#include <vppinfra/asan.h>
 #include <vlib/error.h>		/* for vlib_error_t */
 
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
@@ -323,6 +324,7 @@ vlib_buffer_put_uninit (vlib_buffer_t * b, u16 size)
   void *p = vlib_buffer_get_tail (b);
   /* XXX make sure there's enough space */
   b->current_length += size;
+  CLIB_MEM_UNPOISON (p, size);
   return p;
 }
 
@@ -349,6 +351,7 @@ vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
 always_inline void *
 vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
 {
+  CLIB_MEM_UNPOISON (vlib_buffer_get_current (b), size);
   b->current_data += size;
   return vlib_buffer_get_current (b);
 }

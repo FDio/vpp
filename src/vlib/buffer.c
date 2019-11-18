@@ -409,9 +409,10 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
   *bi_result = bi;
 
   b = vlib_get_buffer (vm, bi);
+  b->current_length = vec_len (t->packet_data);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b);
   clib_memcpy_fast (vlib_buffer_get_current (b),
 		    t->packet_data, vec_len (t->packet_data));
-  b->current_length = vec_len (t->packet_data);
 
   return b->data;
 }
@@ -442,15 +443,14 @@ vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 
   while (1)
     {
-      u32 n;
+      u32 n, old_len = b->current_length;
 
-      ASSERT (n_buffer_bytes >= b->current_length);
-      n_left_this_buffer =
-	n_buffer_bytes - (b->current_data + b->current_length);
+      ASSERT (n_buffer_bytes >= old_len);
+      n_left_this_buffer = n_buffer_bytes - (b->current_data + old_len);
       n = clib_min (n_left_this_buffer, n_left);
-      clib_memcpy_fast (vlib_buffer_get_current (b) + b->current_length, d,
-			n);
       b->current_length += n;
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b);
+      clib_memcpy_fast (vlib_buffer_get_current (b) + old_len, d, n);
       n_left -= n;
       if (n_left == 0)
 	break;
@@ -560,6 +560,10 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 			CLIB_CACHE_LINE_BYTES);
 
   alloc_size = data_size + sizeof (vlib_buffer_t) + bm->ext_hdr_size;
+#ifdef CLIB_DEBUG_ASAN
+  /* when compiling with ASAN, reserve a redzone at the end of the buffer to catch overflows */
+  alloc_size += CLIB_CACHE_LINE_BYTES;
+#endif
   n_alloc_per_page = (1ULL << m->log2_page_size) / alloc_size;
 
   /* preallocate buffer indices memory */
@@ -587,6 +591,8 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 	vlib_get_buffer (vm, bi);
       }
 
+
+  CLIB_MEM_POISON ((void *) bp->start, bp->size);
   return bp->index;
 }
 

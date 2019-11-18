@@ -484,6 +484,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
    * current_data may not be initialized with 0 and may contain
    * previous offset.
    */
+  VLIB_BUFFER_UNPOISON_DATA (vm, b);
   b->current_data = 0;
   clib_memcpy (vlib_buffer_get_current (b), data,
 	       sizeof (struct virtio_ctrl_msg));

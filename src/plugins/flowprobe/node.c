@@ -155,6 +155,11 @@ flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
   u16 start = offset;
 
+  CLIB_MEM_UNPOISON (to_b->data + start,
+		     sizeof (u32) + sizeof (u32) + sizeof (u64) +
+		     sizeof (u32) + sizeof (u32) + sizeof (u32) +
+		     sizeof (u32));
+
   /* Ingress interface */
   u32 rx_if = clib_host_to_net_u32 (e->key.rx_sw_if_index);
   clib_memcpy_fast (to_b->data + offset, &rx_if, sizeof (rx_if));
@@ -194,6 +199,8 @@ flowprobe_l2_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
   u16 start = offset;
 
+  CLIB_MEM_UNPOISON (to_b->data + start, 6 + 6 + 2);
+
   /* src mac address */
   clib_memcpy_fast (to_b->data + offset, &e->key.src_mac, 6);
   offset += 6;
@@ -213,6 +220,10 @@ static inline u32
 flowprobe_l3_ip6_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
   u16 start = offset;
+
+  CLIB_MEM_UNPOISON (to_b->data + start,
+		     sizeof (ip6_address_t) + sizeof (ip6_address_t) + 1 +
+		     sizeof (u64));
 
   /* ip6 src address */
   clib_memcpy_fast (to_b->data + offset, &e->key.src_address,
@@ -240,6 +251,10 @@ flowprobe_l3_ip4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
   u16 start = offset;
 
+  CLIB_MEM_UNPOISON (to_b->data + start,
+		     sizeof (ip4_address_t) + sizeof (ip4_address_t) + 1 +
+		     sizeof (u64));
+
   /* ip4 src address */
   clib_memcpy_fast (to_b->data + offset, &e->key.src_address.ip4,
 		    sizeof (ip4_address_t));
@@ -265,6 +280,8 @@ static inline u32
 flowprobe_l4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
   u16 start = offset;
+
+  CLIB_MEM_UNPOISON (to_b->data + start, 2 + 2 + 2);
 
   /* src port */
   clib_memcpy_fast (to_b->data + offset, &e->key.src_port, 2);
@@ -653,6 +670,7 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 
       b0->current_data = 0;
       b0->current_length = flowprobe_get_headersize ();
+      VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
       b0->flags |=
 	(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
@@ -708,6 +726,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   e->last_exported = vlib_time_now (vm);
 
   b0->current_length = offset;
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
 
   fm->context[which].next_record_offset_per_worker[my_cpu_number] = offset;
   /* Time to flush the buffer? */

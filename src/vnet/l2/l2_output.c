@@ -428,7 +428,7 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
 	      h = vlib_buffer_get_current (b[0]);
 	      clib_memcpy_fast (t->src, h->src_address, 6);
 	      clib_memcpy_fast (t->dst, h->dst_address, 6);
-	      clib_memcpy_fast (t->raw, &h->type, sizeof (t->raw));
+	      clib_memcpy_fast_overflow (t->raw, &h->type, sizeof (t->raw));
 	    }
 	  /* next */
 	  n_left--;

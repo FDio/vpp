@@ -2955,10 +2955,12 @@ found_src_address:
 	  vec_free (label_vec);
 	}
     }
-  clib_memcpy (dns_response, reply, vec_len (reply));
 
   /* Set the packet length */
   b0->current_length = sizeof (*ip) + sizeof (*udp) + vec_len (reply);
+  VLIB_BUFFER_RESET_POISON_DATA (vm, b0);
+
+  clib_memcpy (dns_response, reply, vec_len (reply));
 
   /* IP header */
   ip->ip_version_and_header_length = 0x45;
