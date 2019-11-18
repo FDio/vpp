@@ -428,7 +428,7 @@ tls_session_accept_callback (session_t * tls_session)
   /* Preallocate app session. Avoids allocating a session post handshake
    * on tls_session rx and potentially invalidating the session pool */
   app_session = session_alloc (ctx->c_thread_index);
-  app_session->session_state = SESSION_STATE_CLOSED;
+  app_session->session_state = SESSION_STATE_CREATED;
   ctx->c_s_index = app_session->session_index;
 
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
@@ -495,7 +495,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   /* Preallocate app session. Avoids allocating a session post handshake
    * on tls_session rx and potentially invalidating the session pool */
   app_session = session_alloc (ctx->c_thread_index);
-  app_session->session_state = SESSION_STATE_CLOSED;
+  app_session->session_state = SESSION_STATE_CREATED;
   ctx->c_s_index = app_session->session_index;
 
   return tls_ctx_init_client (ctx);
