@@ -91,7 +91,9 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 
 /* pad packet in input buffer */
 static_always_inline u8 *
-esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz)
+esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz,
+			u16 * next, vlib_node_runtime_t * node,
+			u16 buffer_data_size)
 {
   static const u8 pad_data[ESP_MAX_BLOCK_SIZE] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -104,8 +106,15 @@ esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz)
   esp_footer_t *f = (esp_footer_t *) (vlib_buffer_get_current (b) +
 				      new_length - sizeof (esp_footer_t));
 
+  if (b->current_data + new_length + icv_sz > buffer_data_size)
+    {
+      b->error = node->errors[ESP_ENCRYPT_ERROR_NO_TRAILER_SPACE];
+      next[0] = ESP_ENCRYPT_NEXT_DROP;
+      return 0;
+    }
+
   if (pad_bytes)
-    clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, ESP_MAX_BLOCK_SIZE);
+    clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, pad_bytes);
 
   f->pad_length = pad_bytes;
   b->current_length = new_length + icv_sz;
@@ -186,19 +195,6 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6)
     }
 
   return len;
-}
-
-static_always_inline int
-esp_trailer_icv_overflow (vlib_node_runtime_t * node, vlib_buffer_t * b,
-			  u16 * next, u16 buffer_data_size)
-{
-  if (b->current_data + b->current_length <= buffer_data_size)
-    return 0;
-
-  b->current_length -= buffer_data_size - b->current_data;
-  b->error = node->errors[ESP_ENCRYPT_ERROR_NO_TRAILER_SPACE];
-  next[0] = ESP_ENCRYPT_NEXT_DROP;
-  return 1;
 }
 
 static_always_inline void
@@ -326,11 +322,12 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	{
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (b[0], block_sz, icv_sz);
-	  payload_len = b[0]->current_length;
-
-	  if (esp_trailer_icv_overflow (node, b[0], next, buffer_data_size))
+	  next_hdr_ptr = esp_add_footer_and_icv (b[0], block_sz, icv_sz,
+						 next, node,
+						 buffer_data_size);
+	  if (!next_hdr_ptr)
 	    goto trace;
+	  payload_len = b[0]->current_length;
 
 	  /* ESP header */
 	  hdr_len += sizeof (*esp);
@@ -389,11 +386,12 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  vlib_buffer_advance (b[0], ip_len);
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (b[0], block_sz, icv_sz);
-	  payload_len = b[0]->current_length;
-
-	  if (esp_trailer_icv_overflow (node, b[0], next, buffer_data_size))
+	  next_hdr_ptr = esp_add_footer_and_icv (b[0], block_sz, icv_sz,
+						 next, node,
+						 buffer_data_size);
+	  if (!next_hdr_ptr)
 	    goto trace;
+	  payload_len = b[0]->current_length;
 
 	  /* ESP header */
 	  hdr_len += sizeof (*esp);
