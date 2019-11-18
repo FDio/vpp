@@ -266,7 +266,8 @@ show_log (vlib_main_t * vm,
     {
       e = vec_elt_at_index (lm->entries, i);
       vlib_cli_output (vm, "%U %-10U %-14U %v",
-		       format_time_float, 0, e->timestamp + time_offset,
+		       format_time_float, (u8 *) 0,
+		       e->timestamp + time_offset,
 		       format_vlib_log_level, e->level,
 		       format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;
