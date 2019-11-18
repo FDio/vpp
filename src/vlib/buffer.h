@@ -349,7 +349,6 @@ vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
 always_inline void *
 vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
 {
-  ASSERT (b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= size);
   b->current_data += size;
   return vlib_buffer_get_current (b);
 }
