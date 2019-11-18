@@ -194,6 +194,12 @@ parse_header (ethernet_input_variant_t variant,
   ethernet_buffer_set_vlan_count (b0, vlan_count);
 }
 
+static_always_inline void
+ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
+				  u64 * dmacs, u8 * dmacs_bad,
+				  u32 n_packets, ethernet_interface_t * ei,
+				  u8 have_sec_dmac);
+
 // Determine the subinterface for this packet, given the result of the
 // vlan table lookups and vlan header parsing. Check the most specific
 // matches first.
@@ -213,22 +219,31 @@ identify_subint (vnet_hw_interface_t * hi,
 
   if (matched)
     {
-
       // Perform L3 my-mac filter
       // A unicast packet arriving on an L3 interface must have a dmac matching the interface mac.
       // This is required for promiscuous mode, else we will forward packets we aren't supposed to.
       if (!(*is_l2))
 	{
+	  u64 dmacs[2];
+	  u8 dmacs_bad[2];
 	  ethernet_header_t *e0;
-	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
+	  ethernet_interface_t *ei0;
 
-	  if (!(ethernet_address_cast (e0->dst_address)))
-	    {
-	      if (!ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
-		{
-		  *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
-		}
-	    }
+	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
+	  dmacs[0] = *(u64 *) e0;
+	  ei0 = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
+
+	  if (ei0 && vec_len (ei0->secondary_addrs))
+	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+					      1 /* n_packets */ , ei0,
+					      1 /* have_sec_dmac */ );
+	  else
+	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+					      1 /* n_packets */ , ei0,
+					      0 /* have_sec_dmac */ );
+
+	  if (dmacs_bad[0])
+	    *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 	}
 
       // Check for down subinterface
@@ -619,14 +634,14 @@ is_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
   r0 = (r0 != u64x4_splat (hwaddr)) & ((r0 & u64x4_splat (DMAC_IGBIT)) == 0);
   return u8x32_msb_mask ((u8x32) (r0));
 }
-#else
+#endif
+
 static_always_inline u8
 is_dmac_bad (u64 dmac, u64 hwaddr)
 {
   u64 r0 = dmac & DMAC_MASK;
   return (r0 != hwaddr) && ((r0 & DMAC_IGBIT) == 0);
 }
-#endif
 
 static_always_inline u8
 is_sec_dmac_bad (u64 dmac, u64 hwaddr)
@@ -663,6 +678,44 @@ eth_input_sec_dmac_check_x4 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
   dmac_bad[3] &= is_sec_dmac_bad (dmac[3], hwaddr);
 #endif
   return *(u32 *) dmac_bad;
+}
+
+/*
+ * DMAC check for ethernet_input_inline()
+ *
+ * dmacs and dmacs_bad are arrays that are 2 elements long
+ * n_packets should be 1 or 2 for ethernet_input_inline()
+ */
+static_always_inline void
+ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
+				  u64 * dmacs, u8 * dmacs_bad,
+				  u32 n_packets, ethernet_interface_t * ei,
+				  u8 have_sec_dmac)
+{
+  u64 hwaddr = (*(u64 *) hi->hw_address) & DMAC_MASK;
+  u8 bad = 0;
+
+  dmacs_bad[0] = is_dmac_bad (dmacs[0], hwaddr);
+  dmacs_bad[1] = ((n_packets > 1) & is_dmac_bad (dmacs[1], hwaddr));
+
+  bad = dmacs_bad[0] | dmacs_bad[1];
+
+  if (PREDICT_FALSE (bad && have_sec_dmac))
+    {
+      mac_address_t *sec_addr;
+
+      vec_foreach (sec_addr, ei->secondary_addrs)
+      {
+	hwaddr = (*(u64 *) sec_addr) & DMAC_MASK;
+
+	bad = (eth_input_sec_dmac_check_x1 (hwaddr, dmacs, dmacs_bad) |
+	       eth_input_sec_dmac_check_x1 (hwaddr, dmacs + 1,
+					    dmacs_bad + 1));
+
+	if (!bad)
+	  return;
+      }
+    }
 }
 
 static_always_inline void
@@ -1147,6 +1200,7 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 cached_sw_if_index = ~0;
   u32 cached_is_l2 = 0;		/* shut up gcc */
   vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
+  ethernet_interface_t *ei = NULL;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
 
@@ -1184,6 +1238,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
 	  u32 is_l20, is_l21;
 	  ethernet_header_t *e0, *e1;
+	  u64 dmacs[2];
+	  u8 dmacs_bad[2];
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1241,6 +1297,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		{
 		  cached_sw_if_index = sw_if_index0;
 		  hi = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+		  ei = ethernet_get_interface (em, hi->hw_if_index);
 		  intf0 = vec_elt_at_index (em->main_intfs, hi->hw_if_index);
 		  subint0 = &intf0->untagged_subint;
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
@@ -1263,14 +1320,27 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (!ethernet_address_cast (e0->dst_address) &&
-		      (hi->hw_address != 0) &&
-		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
+		  dmacs[0] = *(u64 *) e0;
+		  dmacs[1] = *(u64 *) e1;
+
+		  if (ei && vec_len (ei->secondary_addrs))
+		    ethernet_input_inline_dmac_check (hi, dmacs,
+						      dmacs_bad,
+						      2 /* n_packets */ ,
+						      ei,
+						      1 /* have_sec_dmac */ );
+		  else
+		    ethernet_input_inline_dmac_check (hi, dmacs,
+						      dmacs_bad,
+						      2 /* n_packets */ ,
+						      ei,
+						      0 /* have_sec_dmac */ );
+
+		  if (dmacs_bad[0])
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
-		  if (!ethernet_address_cast (e1->dst_address) &&
-		      (hi->hw_address != 0) &&
-		      !ethernet_mac_address_equal ((u8 *) e1, hi->hw_address))
+		  if (dmacs_bad[1])
 		    error1 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
@@ -1427,6 +1497,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  qinq_intf_t *qinq_intf0;
 	  ethernet_header_t *e0;
 	  u32 is_l20;
+	  u64 dmacs[2];
+	  u8 dmacs_bad[2];
 
 	  // Prefetch next iteration
 	  if (n_left_from > 1)
@@ -1468,6 +1540,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		{
 		  cached_sw_if_index = sw_if_index0;
 		  hi = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+		  ei = ethernet_get_interface (em, hi->hw_if_index);
 		  intf0 = vec_elt_at_index (em->main_intfs, hi->hw_if_index);
 		  subint0 = &intf0->untagged_subint;
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
@@ -1485,10 +1558,24 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (!ethernet_address_cast (e0->dst_address) &&
-		      (hi->hw_address != 0) &&
-		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
+		  dmacs[0] = *(u64 *) e0;
+
+		  if (ei && vec_len (ei->secondary_addrs))
+		    ethernet_input_inline_dmac_check (hi, dmacs,
+						      dmacs_bad,
+						      1 /* n_packets */ ,
+						      ei,
+						      1 /* have_sec_dmac */ );
+		  else
+		    ethernet_input_inline_dmac_check (hi, dmacs,
+						      dmacs_bad,
+						      1 /* n_packets */ ,
+						      ei,
+						      0 /* have_sec_dmac */ );
+
+		  if (dmacs_bad[0])
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
