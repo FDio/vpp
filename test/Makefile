@@ -271,7 +271,7 @@ checkstyle: verify-test-dir $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		  $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py $(PLUGIN_SRC_DIR)/*/test/*.py ||\
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E7412 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py $(PLUGIN_SRC_DIR)/*/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\
