@@ -140,6 +140,7 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
+transport_connection_t *session_get_transport (session_t * s);
 
 typedef struct session_main_
 {
@@ -286,22 +287,10 @@ session_evt_alloc_old (session_worker_t * wrk)
   return elt;
 }
 
-always_inline u8
-session_is_valid (u32 si, u8 thread_index)
-{
-  session_t *s;
-  s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
-  if (s->session_state == SESSION_STATE_CLOSED)
-    return 1;
-
-  if (s->thread_index != thread_index || s->session_index != si)
-    return 0;
-  return 1;
-}
-
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
 void session_free_w_fifos (session_t * s);
+u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
 session_get (u32 si, u32 thread_index)
@@ -441,7 +430,6 @@ void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
 void session_add_self_custom_tx_evt (transport_connection_t * tc,
 				     u8 has_prio);
-transport_connection_t *session_get_transport (session_t * s);
 void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
 			   u8 is_lcl);
 
