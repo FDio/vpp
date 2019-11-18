@@ -205,6 +205,32 @@ session_free (session_t * s)
   pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
+u8
+session_is_valid (u32 si, u8 thread_index)
+{
+  session_t *s;
+  transport_connection_t *tc;
+
+  s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+
+  if (!s)
+    return 1;
+
+  if (s->thread_index != thread_index || s->session_index != si)
+    return 0;
+
+  if (s->session_state == SESSION_STATE_TRANSPORT_DELETED
+      || s->session_state <= SESSION_STATE_LISTENING)
+    return 1;
+
+  tc = session_get_transport (s);
+  if (s->connection_index != tc->c_index
+      || s->thread_index != tc->thread_index || tc->s_index != si)
+    return 0;
+
+  return 1;
+}
+
 static void
 session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
 {
