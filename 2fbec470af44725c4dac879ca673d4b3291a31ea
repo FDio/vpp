@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ece25eb_1ed72789",
+        "filename": "docs/gettingstarted/developers/building.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 2027
+      },
+      "writtenOn": "2019-11-19T00:26:41Z",
+      "side": 1,
+      "message": "I\u0027m not sure the path is correct. I see the following after building:\n\n$ ls build-root/\n.ccache/                  autowank                  build-vpp_debug-native/   install-vpp_debug-native/ vagrant/\n.deps.ok                  build-config.mk           config.site               platforms.mk\nMakefile                  build-config.mk.README    copyimg                   scripts/",
+      "revId": "2fbec470af44725c4dac879ca673d4b3291a31ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
