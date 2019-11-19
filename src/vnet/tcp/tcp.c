@@ -327,6 +327,13 @@ tcp_connection_free (tcp_connection_t * tc)
   pool_put (wrk->connections, tc);
 }
 
+static inline u8
+tcp_has_unsent_data (tcp_connection_t * tc)
+{
+  u32 max_deq = transport_max_tx_dequeue (&tc->connection);
+  return (max_deq > tc->snd_nxt - tc->snd_una);
+}
+
 /**
  * Begin connection closing procedure.
  *
@@ -371,7 +378,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_worker_stats_inc (tc->c_thread_index, rst_unread, 1);
 	  break;
 	}
-      if (!transport_max_tx_dequeue (&tc->connection))
+      if (!tcp_has_unsent_data (tc))
 	tcp_send_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
@@ -382,7 +389,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSE_WAIT:
-      if (!transport_max_tx_dequeue (&tc->connection))
+      if (!tcp_has_unsent_data (tc))
 	{
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
