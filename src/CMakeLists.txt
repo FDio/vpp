@@ -61,6 +61,7 @@ if (compiler_flag_no_address_of_packed_member)
 endif()
 
 # release
+list(APPEND BUILD_TYPES "release")
 string(CONCAT CMAKE_C_FLAGS_RELEASE
   "-O2 "
   "-fstack-protector "
@@ -71,6 +72,7 @@ string(CONCAT CMAKE_C_FLAGS_RELEASE
 string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
 
 # debug
+list(APPEND BUILD_TYPES "debug")
 string(CONCAT CMAKE_C_FLAGS_DEBUG
   "-O0 "
   "-DCLIB_DEBUG "
@@ -80,9 +82,11 @@ string(CONCAT CMAKE_C_FLAGS_DEBUG
 )
 
 # coverity
+list(APPEND BUILD_TYPES "coverity")
 string(CONCAT CMAKE_C_FLAGS_COVERITY "-O2 -D__COVERITY__")
 
 # gcov
+list(APPEND BUILD_TYPES "gcov")
 string(CONCAT CMAKE_C_FLAGS_GCOV
   "-O0 "
   "-DCLIB_DEBUG "
@@ -91,6 +95,11 @@ string(CONCAT CMAKE_C_FLAGS_GCOV
   "-ftest-coverage ")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
+
+
+string(REPLACE ";" " " BUILD_TYPES "${BUILD_TYPES}")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
+	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES}")
 
 ##############################################################################
 # install config
