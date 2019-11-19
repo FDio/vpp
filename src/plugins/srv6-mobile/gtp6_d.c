@@ -162,7 +162,7 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
   ip6_header_t *ip6;
   dpo_type_t dpo_type;
   vlib_node_t *node;
-  u32 rc;
+  int rc;
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
