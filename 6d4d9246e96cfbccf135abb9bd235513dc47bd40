@@ -93,6 +93,30 @@
       "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56d4bb7a_dbf9093d",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-19T00:19:43Z",
+      "side": 1,
+      "message": "You are right.  We do it here: \nhttps://github.com/FDio/vpp/blob/master/test/Makefile#L132",
+      "parentUuid": "c686b228_42d1c1db",
+      "range": {
+        "startLine": 307,
+        "startChar": 30,
+        "endLine": 307,
+        "endChar": 47
+      },
+      "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
