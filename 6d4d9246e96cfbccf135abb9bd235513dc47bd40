@@ -141,6 +141,30 @@
       "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26948b33_eeeb113a",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-19T17:21:16Z",
+      "side": 1,
+      "message": "Why do you think it belongs in the base Makefile?\nThe issue is as follows:  The vpp_papi version is never incremented, so when a change is made, e need to force a rebuild for tests to see the new papi code. I added wipe-papi because it was lighter to do than test-wipe, which wipes all the test dependencies.\n\nvpp_papi is also built as part of the deb/rpm packaging, but I haven\u0027t looked into that.",
+      "parentUuid": "00c35a94_901d8376",
+      "range": {
+        "startLine": 307,
+        "startChar": 30,
+        "endLine": 307,
+        "endChar": 47
+      },
+      "revId": "6d4d9246e96cfbccf135abb9bd235513dc47bd40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
