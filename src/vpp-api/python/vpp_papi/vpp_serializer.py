@@ -66,7 +66,31 @@ def conversion_unpacker(data, field_type):
     return vpp_format.conversion_unpacker_table[field_type](data)
 
 
-class BaseTypes(object):
+#TODO: post 20.01, remove inherit from object.
+class Serializer(object):
+    options = {}
+
+    def pack(self, data, kwargs):
+        raise NotImplementedError
+
+    def unpack(self, data, offset, result=None, ntc=False):
+        raise NotImplementedError
+
+    # override as appropriate in subclasses
+    def _get_packer(self, f_type, options):
+        return types[f_type]
+
+    def add_packer(self, f_type, options):
+        if 'default' in options:
+            try:
+                return self._get_packer(f_type, options)
+            except IndexError:
+                raise VPPSerializerValueError(
+                    "Default not supported for {}{} ({})".
+                        format(f_type, types[f_type].__class__, options['default']))
+
+
+class BaseTypes(Serializer):
     def __init__(self, type, elements=0, options=None):
         base_types = {'u8': '>B',
                       'i8': '>b',
@@ -99,8 +123,12 @@ class BaseTypes(object):
     def unpack(self, data, offset, result=None, ntc=False):
         return self.packer.unpack_from(data, offset)[0], self.packer.size
 
+    def _get_packer(self, f_type, options):
+        c = types[f_type].__class__
+        return c(f_type, options=options)
 
-class String(object):
+
+class String(Serializer):
     def __init__(self, name, num, options):
         self.name = name
         self.num = num
@@ -150,6 +178,7 @@ types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
 
 class_types = {}
 
+
 def vpp_get_type(name):
     try:
         return types[name]
@@ -161,7 +190,7 @@ class VPPSerializerValueError(ValueError):
     pass
 
 
-class FixedList_u8(object):
+class FixedList_u8(Serializer):
     def __init__(self, name, field_type, num):
         self.name = name
         self.num = num
@@ -187,6 +216,7 @@ class FixedList_u8(object):
             raise VPPSerializerValueError(
                 'Packing failed for "{}" {}'
                 .format(self.name, kwargs))
+
     def unpack(self, data, offset=0, result=None, ntc=False):
         if len(data[offset:]) < self.num:
             raise VPPSerializerValueError(
@@ -196,7 +226,7 @@ class FixedList_u8(object):
         return self.packer.unpack(data, offset)
 
 
-class FixedList(object):
+class FixedList(Serializer):
     def __init__(self, name, field_type, num):
         self.num = num
         self.packer = types[field_type]
@@ -226,7 +256,7 @@ class FixedList(object):
         return result, total
 
 
-class VLAList(object):
+class VLAList(Serializer):
     def __init__(self, name, field_type, len_field_name, index):
         self.name = name
         self.field_type = field_type
@@ -274,7 +304,7 @@ class VLAList(object):
         return r, total
 
 
-class VLAList_legacy():
+class VLAList_legacy(Serializer):
     def __init__(self, name, field_type):
         self.packer = types[field_type]
         self.size = self.packer.size
@@ -304,7 +334,7 @@ class VLAList_legacy():
         return r, total
 
 
-class VPPEnumType(object):
+class VPPEnumType(Serializer):
     def __init__(self, name, msgdef, options=None):
         self.size = types['u32'].size
         self.name = name
@@ -330,6 +360,7 @@ class VPPEnumType(object):
     def __bool__(self):
         return True
 
+    # TODO: Remove post 20.01.
     if sys.version[0] == '2':
         __nonzero__ = __bool__
 
@@ -346,8 +377,12 @@ class VPPEnumType(object):
         x, size = types[self.enumtype].unpack(data, offset)
         return self.enum(x), size
 
+    def _get_packer(self, f_type, options):
+        c = types[f_type].__class__
+        return c(f_type, types[f_type].msgdef, options=options)
 
-class VPPUnionType(object):
+
+class VPPUnionType(Serializer):
     def __init__(self, name, msgdef):
         self.name = name
         self.size = 0
@@ -397,9 +432,10 @@ class VPPUnionType(object):
         return self.tuple._make(r), maxsize
 
 
-class VPPTypeAlias(object):
-    def __init__(self, name, msgdef):
+class VPPTypeAlias(Serializer):
+    def __init__(self, name, msgdef, options=None):
         self.name = name
+        self.msgdef = msgdef
         t = vpp_get_type(msgdef['type'])
         if not t:
             raise ValueError('No such type: {}'.format(msgdef['type']))
@@ -418,6 +454,7 @@ class VPPTypeAlias(object):
 
         types[name] = self
         self.toplevelconversion = False
+        self.options = options
 
     def pack(self, data, kwargs=None):
         if data and conversion_required(data, self.name):
@@ -426,11 +463,20 @@ class VPPTypeAlias(object):
             # Python 2 and 3 raises different exceptions from inet_pton
             except(OSError, socket.error, TypeError):
                 pass
+        if data is None:  # Default to zero if not specified
+            if self.options and 'default' in self.options:
+                data = self.options['default']
+            else:
+                data = 0
 
         return self.packer.pack(data, kwargs)
 
+    def _get_packer(self, f_type, options):
+        c = types[f_type].__class__
+        return c(f_type, types[f_type].msgdef, options=options)
+
     def unpack(self, data, offset=0, result=None, ntc=False):
-        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+        if ntc is False and self.name in vpp_format.conversion_unpacker_table:
             # Disable type conversion for dependent types
             ntc = True
             self.toplevelconversion = True
@@ -441,7 +487,7 @@ class VPPTypeAlias(object):
         return t, size
 
 
-class VPPType(object):
+class VPPType(Serializer):
     # Set everything up to be able to pack / unpack
     def __init__(self, name, msgdef):
         self.name = name
@@ -496,14 +542,12 @@ class VPPType(object):
                 p = VLAList(f_name, f_type, f[3], length_index)
                 self.packers.append(p)
             else:
-                # Support default for basetypes and enums
+                # Support default for types that decay to basetype
                 if 'default' in self.options:
-                    try:
-                        p = BaseTypes(f_type, 0, self.options)
-                    except KeyError:
-                        p = class_types[f_type](f_name, types[f_type].msgdef, self.options)
+                    p = self.add_packer(f_type, self.options)
                 else:
                     p = types[f_type]
+
                 self.packers.append(p)
                 size += p.size
 
@@ -545,7 +589,7 @@ class VPPType(object):
         # Return a list of arguments
         result = []
         total = 0
-        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+        if ntc is False and self.name in vpp_format.conversion_unpacker_table:
             # Disable type conversion for dependent types
             ntc = True
             self.toplevelconversion = True
