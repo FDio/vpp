@@ -1,0 +1,155 @@
+diff --git a/include/quicly.h b/include/quicly.h
+index 8e8e1f4..1862fbf 100644
+--- a/include/quicly.h
++++ b/include/quicly.h
+@@ -56,6 +56,10 @@ extern "C" {
+ #define QUICLY_STATELESS_RESET_TOKEN_LEN 16
+ #define QUICLY_STATELESS_RESET_PACKET_MIN_LEN 39
+ 
++#define QUICLY_MAX_PN_SIZE 4  /* maximum defined by the RFC used for calculating header protection sampling offset */
++#define QUICLY_KEY_PHASE_BIT 0x4
++#define QUICLY_SEND_PN_SIZE 2 /* size of PN used for sending */
++
+ typedef union st_quicly_address_t {
+     struct sockaddr sa;
+     struct sockaddr_in sin;
+@@ -74,6 +78,7 @@ typedef struct st_quicly_conn_t quicly_conn_t;
+ typedef struct st_quicly_stream_t quicly_stream_t;
+ typedef struct st_quicly_send_context_t quicly_send_context_t;
+ typedef struct st_quicly_address_token_plaintext_t quicly_address_token_plaintext_t;
++typedef struct st_quicly_pn_space_t quicly_pn_space_t;
+ 
+ #define QUICLY_CALLBACK_TYPE0(ret, name)                                                                                           \
+     typedef struct st_quicly_##name##_t {                                                                                          \
+@@ -332,6 +337,26 @@ struct st_quicly_conn_streamgroup_state_t {
+     quicly_stream_id_t next_stream_id;
+ };
+ 
++
++struct st_quicly_pn_space_t {
++    /**
++     * acks to be sent to peer
++     */
++    quicly_ranges_t ack_queue;
++    /**
++     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
++     */
++    int64_t largest_pn_received_at;
++    /**
++     *
++     */
++    uint64_t next_expected_packet_number;
++    /**
++     * packet count before ack is sent
++     */
++    uint32_t unacked_count;
++};
++
+ /**
+  * Values that do not need to be gathered upon the invocation of `quicly_get_stats`. We use typedef to define the same fields in
+  * the same order for quicly_stats_t and `struct st_quicly_public_conn_t::stats`.
+@@ -685,6 +710,18 @@ static const quicly_transport_parameters_t *quicly_get_peer_transport_parameters
+  *
+  */
+ static quicly_state_t quicly_get_state(quicly_conn_t *conn);
++/**
++ *
++ */
++ptls_cipher_context_t *quicly_get_conn_cipher_context(quicly_conn_t *conn);
++/**
++ *
++ */
++ptls_aead_context_t **quicly_get_conn_aead_context(quicly_conn_t *conn);
++/**
++ *
++ */
++struct st_quicly_pn_space_t **quicly_get_conn_pn_space(quicly_conn_t *conn);
+ /**
+  *
+  */
+diff --git a/lib/quicly.c b/lib/quicly.c
+index 2faa0cd..aebf37d 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -44,7 +44,6 @@
+ #define QUICLY_QUIC_BIT 0x40
+ #define QUICLY_LONG_HEADER_RESERVED_BITS 0xc
+ #define QUICLY_SHORT_HEADER_RESERVED_BITS 0x18
+-#define QUICLY_KEY_PHASE_BIT 0x4
+ 
+ #define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
+ #define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
+@@ -54,9 +53,6 @@
+ 
+ #define QUICLY_MIN_INITIAL_DCID_LEN 8
+ 
+-#define QUICLY_MAX_PN_SIZE 4  /* maximum defined by the RFC used for calculating header protection sampling offset */
+-#define QUICLY_SEND_PN_SIZE 2 /* size of PN used for sending */
+-
+ #define QUICLY_TLS_EXTENSION_TYPE_TRANSPORT_PARAMETERS 0xffa5
+ #define QUICLY_TRANSPORT_PARAMETER_ID_ORIGINAL_CONNECTION_ID 0
+ #define QUICLY_TRANSPORT_PARAMETER_ID_IDLE_TIMEOUT 1
+@@ -123,25 +119,6 @@ struct st_quicly_pending_path_challenge_t {
+     uint8_t data[QUICLY_PATH_CHALLENGE_DATA_LEN];
+ };
+ 
+-struct st_quicly_pn_space_t {
+-    /**
+-     * acks to be sent to peer
+-     */
+-    quicly_ranges_t ack_queue;
+-    /**
+-     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
+-     */
+-    int64_t largest_pn_received_at;
+-    /**
+-     *
+-     */
+-    uint64_t next_expected_packet_number;
+-    /**
+-     * packet count before ack is sent
+-     */
+-    uint32_t unacked_count;
+-};
+-
+ struct st_quicly_handshake_space_t {
+     struct st_quicly_pn_space_t super;
+     struct {
+@@ -901,6 +878,37 @@ int quicly_get_stats(quicly_conn_t *conn, quicly_stats_t *stats)
+     return 0;
+ }
+ 
++ptls_cipher_context_t *quicly_get_conn_cipher_context(quicly_conn_t *conn)
++{
++    if (conn) {
++        ptls_cipher_context_t *header_protection;
++        if (conn->application == NULL ||
++            (header_protection = conn->application->cipher.ingress.header_protection.one_rtt) == NULL) {
++            return NULL;
++        }
++
++        return header_protection;
++    }
++
++    return NULL;
++}
++
++ptls_aead_context_t **quicly_get_conn_aead_context(quicly_conn_t *conn)
++{
++    if (conn)
++        return conn->application->cipher.ingress.aead;
++
++    return NULL;
++}
++
++struct st_quicly_pn_space_t **quicly_get_conn_pn_space(quicly_conn_t *conn)
++{
++    if (conn)
++        return (void *)&conn->application;
++
++    return NULL;
++}
++
+ quicly_stream_id_t quicly_get_ingress_max_streams(quicly_conn_t *conn, int uni)
+ {
+     quicly_maxsender_t *maxsender = uni ? conn->ingress.max_streams.uni : conn->ingress.max_streams.bidi;

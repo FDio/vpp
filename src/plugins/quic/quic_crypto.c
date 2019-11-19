@@ -136,12 +136,10 @@ aes256ctr_setup_crypto (ptls_cipher_context_t * ctx, int is_enc,
 					  quic_crypto_cipher_encrypt);
 }
 
-size_t
-quic_crypto_aead_encrypt (ptls_aead_context_t * _ctx, void *output,
-			  const void *input, size_t inlen, uint64_t seq,
-			  const void *iv, const void *aad, size_t aadlen)
+void
+quic_crypto_aead_encrypt_init (ptls_aead_context_t * _ctx, const void *iv,
+			       const void *aad, size_t aadlen)
 {
-  vlib_main_t *vm = vlib_get_main ();
   struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
 
   vnet_crypto_op_id_t id;
@@ -157,23 +155,41 @@ quic_crypto_aead_encrypt (ptls_aead_context_t * _ctx, void *output,
     {
       assert (0);
     }
-
   vnet_crypto_op_init (&ctx->op, id);
   ctx->op.aad = (u8 *) aad;
   ctx->op.aad_len = aadlen;
   ctx->op.iv = (u8 *) iv;
 
+  ctx->op.key_index = ctx->key_index;
+}
+
+
+size_t
+quic_crypto_aead_encrypt_update (ptls_aead_context_t * _ctx, void *output,
+				 const void *input, size_t inlen)
+{
+  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
+
   ctx->op.src = (u8 *) input;
   ctx->op.dst = output;
-  ctx->op.key_index = ctx->key_index;
   ctx->op.len = inlen;
 
   ctx->op.tag_len = ctx->super.algo->tag_size;
   ctx->op.tag = ctx->op.src + inlen;
 
-  vnet_crypto_process_ops (vm, &ctx->op, 1);
+  return 0;
+}
 
+size_t
+quic_crypto_aead_encrypt_final (ptls_aead_context_t * _ctx, void *output)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
+
+  vnet_crypto_process_ops (vm, &ctx->op, 1);
   return ctx->op.len + ctx->op.tag_len;
+
 }
 
 size_t
@@ -246,7 +262,9 @@ quic_crypto_aead_setup_crypto (ptls_aead_context_t * _ctx, int is_enc,
     }
 
   ctx->super.do_decrypt = quic_crypto_aead_decrypt;
-  ctx->super.do_encrypt = quic_crypto_aead_encrypt;
+  ctx->super.do_encrypt_init = quic_crypto_aead_encrypt_init;
+  ctx->super.do_encrypt_update = quic_crypto_aead_encrypt_update;
+  ctx->super.do_encrypt_final = quic_crypto_aead_encrypt_final;
   ctx->super.dispose_crypto = quic_crypto_aead_dispose_crypto;
 
   ctx->key_index = vnet_crypto_key_add (vm, algo,
