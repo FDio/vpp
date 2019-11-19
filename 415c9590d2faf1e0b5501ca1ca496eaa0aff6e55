@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "97ef10bc_ff4b383e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-19T08:18:03Z",
+      "side": 1,
+      "message": "Does this belong in the constructors of the appropriate types? \nOr maybe a \u0027default\u0027 mixin that provides an \"add_default_packer\" method?",
+      "range": {
+        "startLine": 507,
+        "startChar": 16,
+        "endLine": 514,
+        "endChar": 25
+      },
+      "revId": "415c9590d2faf1e0b5501ca1ca496eaa0aff6e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
