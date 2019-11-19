@@ -99,7 +99,7 @@ srv6_end_m_gtp6_e_init (vlib_main_t * vm)
   gtpu_header_t *gtpu = &sm->cache_hdr.gtpu;
   dpo_type_t dpo_type;
   vlib_node_t *node;
-  u32 rc;
+  int rc;
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
