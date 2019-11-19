@@ -181,7 +181,7 @@ check_l3cache ()
 	  u8 *p = NULL;
 	  int level_cache = -1;
 
-	  p = format (p, "%s/%s/%s", sys_cache_dir, dp->d_name, "level");
+	  p = format (p, "%s/%s/%s%c", sys_cache_dir, dp->d_name, "level", 0);
 	  if ((err = clib_sysfs_read ((char *) p, "%d", &level_cache)))
 	    clib_error_free (err);
 
