@@ -398,8 +398,9 @@ class VPPUnionType(object):
 
 
 class VPPTypeAlias(object):
-    def __init__(self, name, msgdef):
+    def __init__(self, name, msgdef, options=None):
         self.name = name
+        self.msgdef = msgdef
         t = vpp_get_type(msgdef['type'])
         if not t:
             raise ValueError('No such type: {}'.format(msgdef['type']))
@@ -418,6 +419,7 @@ class VPPTypeAlias(object):
 
         types[name] = self
         self.toplevelconversion = False
+        self.options = options
 
     def pack(self, data, kwargs=None):
         if data and conversion_required(data, self.name):
@@ -426,6 +428,11 @@ class VPPTypeAlias(object):
             # Python 2 and 3 raises different exceptions from inet_pton
             except(OSError, socket.error, TypeError):
                 pass
+        if data is None:  # Default to zero if not specified
+            if self.options and 'default' in self.options:
+                data = self.options['default']
+            else:
+                data = 0
 
         return self.packer.pack(data, kwargs)
 
@@ -496,12 +503,18 @@ class VPPType(object):
                 p = VLAList(f_name, f_type, f[3], length_index)
                 self.packers.append(p)
             else:
-                # Support default for basetypes and enums
+                # Support default for basetypes, enums and types that decay to basetype
                 if 'default' in self.options:
-                    try:
-                        p = BaseTypes(f_type, 0, self.options)
-                    except KeyError:
-                        p = class_types[f_type](f_name, types[f_type].msgdef, self.options)
+                    # Need a new instance
+                    c = types[f_type].__class__
+                    if c.__name__ == 'BaseTypes':
+                        p = c(f_type, options=self.options)
+                    elif c.__name__ == 'VPPTypeAlias' or c.__name__ == 'VPPEnumType':
+                        p = c(f_type, types[f_type].msgdef, options=self.options)
+                    else:
+                        raise VPPSerializerValueError(
+                            "Default not supported for {} ({})".
+                            format(f_type, self.options['default']))
                 else:
                     p = types[f_type]
                 self.packers.append(p)
