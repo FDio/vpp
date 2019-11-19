@@ -323,11 +323,6 @@ void vlib_validate_combined_counter (vlib_combined_counter_main_t * cm,
 */
 #define vlib_counter_len(cm) vec_len((cm)->maxi)
 
-serialize_function_t serialize_vlib_simple_counter_main,
-  unserialize_vlib_simple_counter_main;
-serialize_function_t serialize_vlib_combined_counter_main,
-  unserialize_vlib_combined_counter_main;
-
 #endif /* included_vlib_counter_h */
 
 /*

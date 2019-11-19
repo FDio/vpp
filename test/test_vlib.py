@@ -127,8 +127,26 @@ class TestVlib(VppTestCase):
                 "   }\n",
                 "}\n",
                 "pa en",
+                "clear interfaces",
                 "test vlib",
                 "show buffers",
+                ]
+
+        for cmd in cmds:
+            r = self.vapi.cli_return_response(cmd)
+            if r.retval != 0:
+                if hasattr(r, 'reply'):
+                    self.logger.info(cmd + " FAIL reply " + r.reply)
+                else:
+                    self.logger.info(cmd + " FAIL retval " + str(r.retval))
+
+    def test_vlib_format_unittest(self):
+        """ Vlib format.c Code Coverage Test """
+
+        cmds = ["loopback create",
+                "classify filter pcap mask l2 proto ipv6 match l2 proto 86dd",
+                "classify filter del",
+                "test format-vlib",
                 ]
 
         for cmd in cmds:

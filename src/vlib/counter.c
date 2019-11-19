@@ -119,30 +119,6 @@ vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm)
   return (vec_len (cm->counters[0]));
 }
 
-void
-serialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
-{
-  clib_warning ("unimplemented");
-}
-
-void
-unserialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
-{
-  clib_warning ("unimplemented");
-}
-
-void
-serialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
-{
-  clib_warning ("unimplemented");
-}
-
-void
-unserialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
-{
-  clib_warning ("unimplemented");
-}
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -14,6 +14,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vnet/vnet.h>
 
 u8 *vlib_validate_buffers (vlib_main_t * vm,
 			   u32 * buffers,
@@ -34,6 +35,8 @@ test_vlib_command_fn (vlib_main_t * vm,
   u8 junk[4] = { 1, 2, 3, 4 };
   vlib_packet_template_t _t, *t = &_t;
   u8 *data_copy = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
 
   /* Cover vlib_packet_template_get_packet */
   t->packet_data = format (0, "silly packet data");
@@ -70,6 +73,7 @@ test_vlib_command_fn (vlib_main_t * vm,
 
   /* Dump the resulting two-chunk pkt */
   vlib_cli_output (vm, "%U", format_vlib_buffer_and_data, b);
+  vlib_cli_output (vm, "%U", format_vlib_buffer_data, b->data, 17);
 
   vec_validate (data_copy, vlib_buffer_length_in_chain (vm, b) - 1);
   vlib_cli_output (vm, "%u", vlib_buffer_contents (vm, bi, data_copy));
@@ -109,13 +113,19 @@ test_vlib_command_fn (vlib_main_t * vm,
   if (res)
     return clib_error_return (0, "%v", res);
 
-  /* It will not be allocated, exercise error path */
+  /* Misc */
+  vlib_cli_output
+    (vm, "%u",
+     vlib_combined_counter_n_counters (im->combined_sw_if_counters));
+
+  /* buffer will not be allocated at this point, exercise error path */
   res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
 			       1, VLIB_BUFFER_KNOWN_ALLOCATED,
 			       1 /* follow_buffer_next */ );
   if (res)
     return clib_error_return (0, "%v", res);
 
+  /* NOTREACHED */
   return 0;
 }
 
@@ -125,6 +135,57 @@ VLIB_CLI_COMMAND (test_vlib_command, static) =
   .path = "test vlib",
   .short_help = "vlib code coverate unit test",
   .function = test_vlib_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+test_format_vlib_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  unformat_input_t _i, *i = &_i;
+  int enable = -1, disable = -1;
+  int twenty_seven = -1;;
+  int rxtx = -1;
+
+  memset (i, 0, sizeof (*i));
+  unformat_init_string (i, "enable disable rx tx 27", 23);
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_vlib_enable_disable, &enable))
+	;
+      else if (unformat (i, "%U", unformat_vlib_enable_disable, &disable))
+	;
+      else if (unformat (i, "%U", unformat_vlib_number, &twenty_seven))
+	;
+      else if (unformat (i, "%U", unformat_vlib_rx_tx, &rxtx))
+	;
+      else
+	break;
+    }
+
+  rxtx = VLIB_TX;
+  vlib_cli_output (vm, "%U", format_vlib_read_write, rxtx);
+  vlib_cli_output (vm, "%U", format_vlib_rx_tx, rxtx);
+
+  rxtx = VLIB_RX;
+  vlib_cli_output (vm, "%U", format_vlib_read_write, rxtx);
+  vlib_cli_output (vm, "%U", format_vlib_rx_tx, rxtx);
+  rxtx = 12345;
+  vlib_cli_output (vm, "%U", format_vlib_read_write, rxtx);
+  vlib_cli_output (vm, "%U", format_vlib_rx_tx, rxtx);
+
+  unformat_free (i);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_format_vlib_command, static) =
+{
+  .path = "test format-vlib",
+  .short_help = "vlib format code coverate unit test",
+  .function = test_format_vlib_command_fn,
 };
 /* *INDENT-ON* */
 
