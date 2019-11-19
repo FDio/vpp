@@ -36,7 +36,8 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   mq = session_main_get_vpp_event_queue (thread_index);
   if (PREDICT_FALSE (svm_msg_q_lock (mq)))
     return -1;
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+  if (PREDICT_FALSE (svm_msg_q_is_full (mq)
+		     || svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       svm_msg_q_unlock (mq);
       return -2;
