@@ -2268,12 +2268,8 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Still have to send the FIN */
 	  if (tc->flags & TCP_CONN_FINPNDG)
 	    {
-	      /* TX fifo finally drained */
-	      max_deq = transport_max_tx_dequeue (&tc->connection);
-	      if (max_deq <= tc->burst_acked)
-		tcp_send_fin (tc);
 	      /* If a fin was received and data was acked extend wait */
-	      else if ((tc->flags & TCP_CONN_FINRCVD) && tc->bytes_acked)
+	      if ((tc->flags & TCP_CONN_FINRCVD) && tc->bytes_acked)
 		tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 				  tcp_cfg.closewait_time);
 	    }
@@ -2320,19 +2316,34 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (tcp_rcv_ack (wrk, tc, b[0], tcp, &error))
 	    goto drop;
 
-	  if (!(tc->flags & TCP_CONN_FINPNDG))
+	  /* Do nothing if fin still pending */
+	  if (!(tc->flags & TCP_CONN_FINSNT))
 	    break;
 
-	  /* Still have outstanding tx data */
+	  /* Still have outstanding tx data, wait for more acks */
 	  max_deq = transport_max_tx_dequeue (&tc->connection);
 	  if (max_deq > tc->burst_acked)
 	    break;
 
-	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
-	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
-	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
-			 tcp_cfg.lastack_time);
+
+	  /* All data and fin acked, close the connection */
+	  if (max_deq < tc->burst_acked)
+	    {
+	      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	      session_transport_closed_notify (&tc->connection);
+	      tcp_program_cleanup (tcp_get_worker (tc->c_thread_index), tc);
+	      session_tx_fifo_dequeue_drop (&tc->connection, max_deq);
+	      tc->burst_acked = 0;
+	    }
+	  /* Weird, fin still not acked although it was sent on a data packet,
+	   * move to last-ack */
+	  else
+	    {
+	      tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
+	      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+			     tcp_cfg.lastack_time);
+	    }
 	  break;
 	case TCP_STATE_CLOSING:
 	  /* In addition to the processing for the ESTABLISHED state, if
