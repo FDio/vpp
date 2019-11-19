@@ -98,6 +98,13 @@ tcp_flight_size (const tcp_connection_t * tc)
   return flight_size;
 }
 
+always_inline u8
+tcp_unsent_bytes (tcp_connection_t *tc)
+{
+  u32 max_deq = transport_max_tx_dequeue (&tc->connection);
+  return (max_deq - (tc->snd_nxt - tc->snd_una));
+}
+
 /**
  * Initial cwnd as per RFC5681
  */

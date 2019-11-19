@@ -390,7 +390,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_worker_stats_inc (wrk, rst_unread, 1);
 	  break;
 	}
-      if (!transport_max_tx_dequeue (&tc->connection))
+      if (!tcp_unsent_bytes (tc))
 	tcp_send_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
@@ -402,7 +402,7 @@ tcp_connection_close (tcp_connection_t * tc)
 		     tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSE_WAIT:
-      if (!transport_max_tx_dequeue (&tc->connection))
+      if (!tcp_unsent_bytes (tc))
 	{
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
@@ -437,7 +437,7 @@ tcp_session_half_close (u32 conn_index, u32 thread_index)
   /* If the connection is not in ESTABLISHED state, ignore it */
   if (tc->state != TCP_STATE_ESTABLISHED)
     return;
-  if (!transport_max_tx_dequeue (&tc->connection))
+  if (!tcp_unsent_bytes (tc))
     tcp_send_fin (tc);
   else
     tc->flags |= TCP_CONN_FINPNDG;
