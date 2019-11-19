@@ -598,6 +598,11 @@ I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
 F:	extras/vpp_config
 
+bash functions
+I:	bash
+M:	Dave Wallace <dwallacelf@gmail.com>
+F:	extras/bash/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
