@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "610e7fa4_eac416e8",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 873,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-11-19T15:22:49Z",
+      "side": 1,
+      "message": "clib_mem_alloc",
+      "range": {
+        "startLine": 873,
+        "startChar": 16,
+        "endLine": 873,
+        "endChar": 22
+      },
+      "revId": "ddb8683d81c48fda544854b7abf3375687cdd43e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9cbba6b_4604ca2a",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 884,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-11-19T15:22:49Z",
+      "side": 1,
+      "message": "clib_mem_free",
+      "range": {
+        "startLine": 884,
+        "startChar": 2,
+        "endLine": 884,
+        "endChar": 6
+      },
+      "revId": "ddb8683d81c48fda544854b7abf3375687cdd43e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
