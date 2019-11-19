@@ -1095,6 +1095,18 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 	  && seq_lt (tc->psh_seq, snd_nxt + data_len))
 	flags |= TCP_FLAG_PSH;
     }
+  if (PREDICT_FALSE (tc->state > TCP_STATE_ESTABLISHED))
+    {
+      clib_warning ("this was called");
+      u32 max_deq = transport_max_tx_dequeue (&tc->connection);
+      if (max_deq <= tc->snd_nxt - tc->snd_una + data_len)
+	{
+	  clib_warning ("fin sent here");
+	  flags |= TCP_FLAG_FIN;
+	  tc->flags &= ~TCP_CONN_FINPNDG;
+	  tc->flags |= TCP_CONN_FINSNT;
+	}
+    }
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
@@ -1483,7 +1495,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
       TCP_EVT (TCP_EVT_CC_EVT, tc, 2);
 
       /* Lost FIN, retransmit and return */
-      if (tc->flags & TCP_CONN_FINSNT)
+      if ((tc->flags & TCP_CONN_FINSNT) && tc->snd_nxt == tc->snd_una)
 	{
 	  tcp_send_fin (tc);
 	  tc->rto_boff += 1;
