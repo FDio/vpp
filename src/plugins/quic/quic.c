@@ -887,6 +887,28 @@ quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
   return 0;
 }
 
+static quicly_datagram_t *
+quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
+{
+  quicly_datagram_t *packet;
+
+  if ((packet = clib_mem_alloc (sizeof (*packet) + payloadsize)) == NULL)
+    return NULL;
+  packet->data.base = (uint8_t *) packet + sizeof (*packet);
+
+  return packet;
+}
+
+static void
+quic_free_packet (quicly_packet_allocator_t * self,
+		  quicly_datagram_t * packet)
+{
+  clib_mem_free (packet);
+}
+
+quicly_packet_allocator_t quic_packet_allocator =
+  { quic_alloc_packet, quic_free_packet };
+
 static int
 quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
 		       u8 crypto_engine)
@@ -952,6 +974,8 @@ quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
   max_enq = app->sm_properties.tx_fifo_size - 1;
   quicly_ctx->transport_params.max_stream_data.bidi_remote = max_enq;
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
+
+  quicly_ctx->packet_allocator = &quic_packet_allocator;
 
   quicly_ctx->tls->random_bytes (quicly_ctx_data->cid_key, 16);
   quicly_ctx_data->cid_key[16] = 0;
