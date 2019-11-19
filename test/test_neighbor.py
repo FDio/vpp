@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import unittest
 from socket import AF_INET, AF_INET6, inet_pton
 
@@ -76,55 +77,68 @@ class ARPTestCase(VppTestCase):
 
         super(ARPTestCase, self).tearDown()
 
-    def verify_arp_req(self, rx, smac, sip, dip):
+    def verify_arp(self, rx, smac, sip, dip, dmac, arp_op=0):
+        """
+
+        :param rx:
+        :type rx:
+        :param smac:
+        :type smac:
+        :param dmac:
+        :type dmac:
+        :param sip:
+        :type sip:
+        :param dip:
+        :type dip:
+        :param arp_op:
+        :type arp_op:
+        :return:
+        :rtype:
+        :raises: AssertionError, IndexError
+        """
+        # TODO: move to constructor. Need to review scapy and rfc first.
+        hwdst = "00:00:00:00:00:00" if dmac == "ff:ff:ff:ff:ff:ff" else dmac
         ether = rx[Ether]
-        self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
-        self.assertEqual(ether.src, smac)
+        self.assertEqual(ether.dst, dmac,
+                         "unexpected dst mac.")
+        self.assertEqual(ether.src, smac,
+                         "unexpected src mac.")
 
         arp = rx[ARP]
-        self.assertEqual(arp.hwtype, 1)
-        self.assertEqual(arp.ptype, 0x800)
-        self.assertEqual(arp.hwlen, 6)
-        self.assertEqual(arp.plen, 4)
-        self.assertEqual(arp.op, arp_opts["who-has"])
-        self.assertEqual(arp.hwsrc, smac)
-        self.assertEqual(arp.hwdst, "00:00:00:00:00:00")
-        self.assertEqual(arp.psrc, sip)
-        self.assertEqual(arp.pdst, dip)
+        self.assertEqual(arp.hwtype, 1,
+                         "unexpected arp hwtype. (expected Ethernet(1))")
+        self.assertEqual(arp.ptype, 0x800,
+                         "unexpected ether type. (expected IP4 (0x0800))")
+        self.assertEqual(arp.hwlen, 6,
+                         "unexpected hw addr length. "
+                         "(expected 6-byte mac address")
+        self.assertEqual(arp.plen, 4,
+                         "unexpected ip4 address length.")
+        self.assertEqual(arp.op, arp_op,
+                         "unexpected arp operation.")
+        self.assertEqual(arp.hwsrc, smac,
+                         "unexpected source mac.")
+        self.assertEqual(arp.hwdst, hwdst,
+                         "unexpected dest mac.")
+        self.assertEqual(arp.psrc, sip,
+                         "unexpected source IP.")
+        self.assertEqual(arp.pdst, dip,
+                         "unexpected dest IP.")
 
-    def verify_arp_resp(self, rx, smac, dmac, sip, dip):
-        ether = rx[Ether]
-        self.assertEqual(ether.dst, dmac)
-        self.assertEqual(ether.src, smac)
+    verify_arp_req = functools.partialmethod(
+        verify_arp,
+        dmac="ff:ff:ff:ff:ff:ff",
+        arp_op=arp_opts["who-has"])
+
+    verify_arp_resp = functools.partialmethod(
+        verify_arp,
+        arp_op=arp_opts["is-at"])
+
+    def verify_arp_vrrp_resp(self, rx, smac, sip, dip, dmac):
+        self.verify_arp_resp(rx, smac, sip, dip, dmac)
 
         arp = rx[ARP]
-        self.assertEqual(arp.hwtype, 1)
-        self.assertEqual(arp.ptype, 0x800)
-        self.assertEqual(arp.hwlen, 6)
-        self.assertEqual(arp.plen, 4)
-        self.assertEqual(arp.op, arp_opts["is-at"])
-        self.assertEqual(arp.hwsrc, smac)
-        self.assertEqual(arp.hwdst, dmac)
-        self.assertEqual(arp.psrc, sip)
-        self.assertEqual(arp.pdst, dip)
-
-    def verify_arp_vrrp_resp(self, rx, smac, dmac, sip, dip):
-        ether = rx[Ether]
-        self.assertEqual(ether.dst, dmac)
-        self.assertEqual(ether.src, smac)
-
-        arp = rx[ARP]
-        self.assertEqual(arp.hwtype, 1)
-        self.assertEqual(arp.ptype, 0x800)
-        self.assertEqual(arp.hwlen, 6)
-        self.assertEqual(arp.plen, 4)
-        self.assertEqual(arp.op, arp_opts["is-at"])
-        self.assertNotEqual(arp.hwsrc, smac)
-        self.assertTrue("00:00:5e:00:01" in arp.hwsrc or
-                        "00:00:5E:00:01" in arp.hwsrc)
-        self.assertEqual(arp.hwdst, dmac)
-        self.assertEqual(arp.psrc, sip)
-        self.assertEqual(arp.pdst, dip)
+        self.assertTrue("00:00:5e:00:01" in arp.hwsrc.lower())
 
     def verify_ip(self, rx, smac, dmac, sip, dip):
         ether = rx[Ether]
@@ -171,9 +185,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
 
         self.verify_arp_req(rx[0],
-                            self.pg1.local_mac,
-                            self.pg1.local_ip4,
-                            self.pg1._remote_hosts[1].ip4)
+                            smac=self.pg1.local_mac,
+                            sip=self.pg1.local_ip4,
+                            dip=self.pg1._remote_hosts[1].ip4)
 
         #
         # And a dynamic ARP entry for host 1
@@ -277,9 +291,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg1.local_mac,
-                             self.pg1._remote_hosts[3].mac,
                              self.pg1.local_ip4,
-                             self.pg1._remote_hosts[3].ip4)
+                             self.pg1._remote_hosts[3].ip4,
+                             self.pg1._remote_hosts[3].mac,)
 
         #
         # VPP should have learned the mapping for the remote host
@@ -344,9 +358,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg2.remote_hosts[3].ip4)
+                             self.pg2.remote_hosts[3].ip4,
+                             self.pg2.remote_mac,)
 
         self.pg2.add_stream(pt)
         self.pg_enable_capture(self.pg_interfaces)
@@ -355,9 +369,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg2.remote_hosts[3].ip4)
+                             self.pg2.remote_hosts[3].ip4,
+                             self.pg2.remote_mac,)
 
         #
         # A neighbor entry that has no associated FIB-entry
@@ -423,9 +437,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg1.remote_hosts[6].ip4)
+                             self.pg1.remote_hosts[6].ip4,
+                             self.pg2.remote_mac,)
 
         #
         # An attached host route out of pg2 for an undiscovered hosts generates
@@ -466,9 +480,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg1.remote_hosts[7].ip4)
+                             self.pg1.remote_hosts[7].ip4,
+                             self.pg2.remote_mac,)
 
         #
         # An attached host route as yet unresolved out of pg2 for an
@@ -492,9 +506,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg1.remote_hosts[8].ip4)
+                             self.pg1.remote_hosts[8].ip4,
+                             self.pg2.remote_mac)
 
         #
         # Send an ARP request from one of the so-far unlearned remote hosts
@@ -515,9 +529,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg1.local_mac,
-                             self.pg1._remote_hosts[9].mac,
                              self.pg1.local_ip4,
-                             self.pg1._remote_hosts[9].ip4)
+                             self.pg1._remote_hosts[9].ip4,
+                             self.pg1._remote_hosts[9].mac)
 
         #
         # Add a hierarchy of routes for a host in the sub-net.
@@ -540,9 +554,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg1.local_mac,
-                             self.pg1.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg1.remote_hosts[10].ip4)
+                             self.pg1.remote_hosts[10].ip4,
+                             self.pg1.remote_mac,)
 
         r2 = VppIpRoute(self, self.pg1.remote_hosts[10].ip4, 32,
                         [VppRoutePath(self.pg1.remote_hosts[10].ip4,
@@ -555,9 +569,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg1.local_mac,
-                             self.pg1.remote_mac,
                              self.pg1.local_ip4,
-                             self.pg1.remote_hosts[10].ip4)
+                             self.pg1.remote_hosts[10].ip4,
+                             self.pg1.remote_mac)
 
         #
         # add an ARP entry that's not on the sub-net and so whose
@@ -738,9 +752,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              self.pg0.remote_hosts[1].ip4,
-                             self.pg0.local_ip4)
+                             self.pg0.local_ip4,
+                             self.pg2.remote_mac)
 
         #
         # validate we have not learned an ARP entry as a result of this
@@ -838,9 +852,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg0.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg0.local_mac,
-                             self.pg0.remote_mac,
                              "10.10.10.3",
-                             self.pg0.remote_ip4)
+                             self.pg0.remote_ip4,
+                             self.pg0.remote_mac)
 
         self.pg0.add_stream(arp_req_pg0_tagged)
         self.pg_enable_capture(self.pg_interfaces)
@@ -849,9 +863,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg0.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg0.local_mac,
-                             self.pg0.remote_mac,
                              "10.10.10.3",
-                             self.pg0.remote_ip4)
+                             self.pg0.remote_ip4,
+                             self.pg0.remote_mac)
 
         self.pg1.add_stream(arp_req_pg1)
         self.pg_enable_capture(self.pg_interfaces)
@@ -860,9 +874,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg1.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg1.local_mac,
-                             self.pg1.remote_mac,
                              "10.10.10.3",
-                             self.pg1.remote_ip4)
+                             self.pg1.remote_ip4,
+                             self.pg1.remote_mac)
 
         self.pg2.add_stream(arp_req_pg2)
         self.pg_enable_capture(self.pg_interfaces)
@@ -871,9 +885,9 @@ class ARPTestCase(VppTestCase):
         rx = self.pg2.get_capture(1)
         self.verify_arp_resp(rx[0],
                              self.pg2.local_mac,
-                             self.pg2.remote_mac,
                              "10.10.10.3",
-                             self.pg1.remote_hosts[1].ip4)
+                             self.pg1.remote_hosts[1].ip4,
+                             self.pg2.remote_mac)
 
         #
         # A request for an address out of the configured range
@@ -1423,9 +1437,9 @@ class ARPTestCase(VppTestCase):
 
         self.verify_arp_resp(rx[0],
                              self.pg0.local_mac,
-                             self.pg0.remote_mac,
                              self.pg0.remote_hosts[1].ip4,
-                             self.pg0.remote_ip4)
+                             self.pg0.remote_ip4,
+                             self.pg0.remote_mac)
 
 
 class NeighborStatsTestCase(VppTestCase):
