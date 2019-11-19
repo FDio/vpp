@@ -77,13 +77,9 @@ If the download hangs at any point, then you may need to
 Build VPP (Debug)
 ----------------------------
 
-This build version contains debug symbols which are useful for modifying VPP. The
-**make** command below builds a debug version of VPP. The binaries, when building the
-debug images, can be found in /build-root/vpp_debug-native.
-
 The Debug build version contains debug symbols, which are useful for troubleshooting
 or modifying VPP. The **make** command below, builds a debug version of VPP. The
-binaries used for building the debug image can be found in */build-root/vpp_debug-native*.
+binaries used for building the debug image can be found in *build-root/vpp_debug-native*.
 
 .. code-block:: console
 
