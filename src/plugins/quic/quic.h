@@ -41,6 +41,9 @@
 #define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
 
+#define QUIC_SEND_MAX_BATCH_PACKETS 16
+#define QUIC_RCV_MAX_BATCH_PACKETS 16
+
 /* Taken from quicly.c */
 #define QUICLY_QUIC_BIT 0x40
 
@@ -170,6 +173,11 @@ typedef struct quic_rx_packet_ctx_
   u8 data[QUIC_MAX_PACKET_SIZE];
   u32 ctx_index;
   u32 thread_index;
+  struct sockaddr_in6 sa6;
+  struct sockaddr sa;
+  socklen_t salen;
+  int err;
+  session_dgram_hdr_t ph;
 } quic_rx_packet_ctx_t;
 
 typedef struct quicly_ctx_data_
