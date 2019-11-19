@@ -500,10 +500,23 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 
   max_enq = svm_fifo_max_enqueue_prod (f);
   QUIC_DBG (3, "Enqueuing %u at off %u in %u space", len, off, max_enq);
-  if (off - stream_data->app_rx_data_len + len > max_enq)
+  /* Handle duplicate packet/chunk from quicly */
+  if (off < stream_data->app_rx_data_len)
+    {
+      QUIC_DBG (3, "Session [idx %u, app_wrk %u, thread %u, rx-fifo 0x%llx]: "
+		"DUPLICATE PACKET (max_enq %u, len %u, "
+		"app_rx_data_len %u, off %u, ToBeNQ %u)",
+		stream_session->session_index,
+		stream_session->app_wrk_index,
+		stream_session->thread_index, f,
+		max_enq, len, stream_data->app_rx_data_len, off,
+		off - stream_data->app_rx_data_len + len);
+      return 0;
+    }
+  if (PREDICT_FALSE ((off - stream_data->app_rx_data_len + len) > max_enq))
     {
       QUIC_ERR ("Session [idx %u, app_wrk %u, thread %u, rx-fifo 0x%llx]: "
-		"RX fifo is full (max_enq %u, len %u, "
+		"RX FIFO IS FULL (max_enq %u, len %u, "
 		"app_rx_data_len %u, off %u, ToBeNQ %u)",
 		stream_session->session_index,
 		stream_session->app_wrk_index,
