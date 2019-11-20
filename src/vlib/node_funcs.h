@@ -212,32 +212,10 @@ vlib_get_process_from_node (vlib_main_t * vm, vlib_node_t * node)
   return vec_elt (nm->processes, node->runtime_index);
 }
 
-/* Fetches frame with given handle. */
 always_inline vlib_frame_t *
-vlib_get_frame_no_check (vlib_main_t * vm, uword frame_index)
+vlib_get_frame (vlib_main_t * vm, vlib_frame_t * f)
 {
-  vlib_frame_t *f;
-  f = vm->heap_aligned_base + (frame_index * VLIB_FRAME_ALIGN);
-  return f;
-}
-
-always_inline u32
-vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
-{
-  uword i;
-
-  ASSERT (((uword) f & (VLIB_FRAME_ALIGN - 1)) == 0);
-
-  i = ((u8 *) f - (u8 *) vm->heap_aligned_base);
-  ASSERT ((i / VLIB_FRAME_ALIGN) <= 0xFFFFFFFFULL);
-
-  return i / VLIB_FRAME_ALIGN;
-}
-
-always_inline vlib_frame_t *
-vlib_get_frame (vlib_main_t * vm, uword frame_index)
-{
-  vlib_frame_t *f = vlib_get_frame_no_check (vm, frame_index);
+  ASSERT (f != NULL);
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
   return f;
 }
@@ -246,14 +224,6 @@ always_inline void
 vlib_frame_no_append (vlib_frame_t * f)
 {
   f->frame_flags |= VLIB_FRAME_NO_APPEND;
-}
-
-always_inline u32
-vlib_frame_index (vlib_main_t * vm, vlib_frame_t * f)
-{
-  uword i = vlib_frame_index_no_check (vm, f);
-  ASSERT (vlib_get_frame (vm, i) == f);
-  return i;
 }
 
 /* Byte alignment for vector arguments. */
