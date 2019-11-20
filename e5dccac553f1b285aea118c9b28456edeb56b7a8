@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49bee60a_df67d9a9",
+        "filename": "src/plugins/srv6-mobile/FEATURE.yaml",
+        "patchSetId": 7
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-20T03:31:06Z",
+      "side": 1,
+      "message": "Mobile?",
+      "range": {
+        "startLine": 2,
+        "startChar": 11,
+        "endLine": 2,
+        "endChar": 18
+      },
+      "revId": "e5dccac553f1b285aea118c9b28456edeb56b7a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
