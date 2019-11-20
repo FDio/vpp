@@ -1066,7 +1066,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
        vlib_pci_device_open (vm, (vlib_pci_addr_t *) & vif->pci_addr,
 			     virtio_pci_device_ids, &h)))
     {
-      pool_put (vim->interfaces, vif);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
 	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
@@ -1074,6 +1073,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
 		format_vlib_pci_addr, &vif->pci_addr,
 		"error encountered on pci device open");
+      pool_put (vim->interfaces, vif);
       return;
     }
   vif->pci_dev_handle = h;
