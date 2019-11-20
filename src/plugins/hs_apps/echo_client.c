@@ -870,7 +870,8 @@ echo_clients_command_fn (vlib_main_t * vm,
   if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
     return clib_error_return (0, "Uri parse error: %d", rv);
   ecm->transport_proto = sep.transport_proto;
-  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
+  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP
+		   || sep.transport_proto == TRANSPORT_PROTO_UDPC);
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();
@@ -902,8 +903,13 @@ echo_clients_command_fn (vlib_main_t * vm,
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
+  vlib_worker_thread_barrier_sync (vm);
   if ((error = echo_clients_connect (vm, n_clients)))
-    goto cleanup;
+    {
+      vlib_worker_thread_barrier_release (vm);
+      goto cleanup;
+    }
+  vlib_worker_thread_barrier_release (vm);
 
   /* Park until the sessions come up, or ten seconds elapse... */
   vlib_process_wait_for_event_or_clock (vm, syn_timeout);
