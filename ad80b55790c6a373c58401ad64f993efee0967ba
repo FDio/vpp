@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6eb85e5_d051528a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "Let me decode this.\n\"types\" is the module-level dict defined at line 174 now.\nIt is a mapping from string (the type name) to instance of some Serializer subclass (we can call it the type implementation).\nWell, except \"string\" which maps to a class, not an instance.\n\nThis general implementation of _get_packer method returns the type implementation, and as Serializer class defines a method called pack, the type implementation can be called a packer.\nI wonder why the Serializer class is not called Packer instead.\n\nIs there an analogue of the word \"codec\" for pack+unpack capable instances?\n\"pacunp\"?\nIn any case Serializer instance assigned to a variable with \"packer\" in its name (see line 551) is confusing.",
+      "range": {
+        "startLine": 81,
+        "startChar": 15,
+        "endLine": 81,
+        "endChar": 28
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "015372f1_0d5fc6d7",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "This (if not true) leads to return value None. Surprising.\nLine 547 means that currently never happens, but in that case why have an if here at all?",
+      "range": {
+        "startLine": 84,
+        "startChar": 8,
+        "endLine": 84,
+        "endChar": 10
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ecb0d13_d83e2293",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "We are constructing a new instance of some Serializer subclass (usually instance of BaseType), which is aware of the options.\nThat is fine, but perhaps we should cache and reuse the instance?\nI expect over time we will have many fields of the form:\n  vl_api_interface_index_t sw_if_index [default\u003d0xFFFFFFFF];",
+      "range": {
+        "startLine": 128,
+        "startChar": 15,
+        "endLine": 128,
+        "endChar": 17
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a82dc13_859324d3",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "Once again, an options-aware instance of (hopefully) VPPEnumType is contructed and returned, but not cached.",
+      "range": {
+        "startLine": 382,
+        "startChar": 15,
+        "endLine": 382,
+        "endChar": 17
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52758bb4_ff8595b8",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "Another caching opportunity.",
+      "range": {
+        "startLine": 476,
+        "startChar": 15,
+        "endLine": 476,
+        "endChar": 17
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "510e88d2_2ece0706",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "Default support\n\nImperatives sound like TODO items, but this should be done by this Change.\nOr did you mean a TODO item to support more types (such as string)?",
+      "range": {
+        "startLine": 545,
+        "startChar": 18,
+        "endLine": 545,
+        "endChar": 33
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eabd08c6_25e0edfe",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T20:13:25Z",
+      "side": 1,
+      "message": "Here, p gets assigned a type implementation (a packer). I just wonder why the method name starts with add_, as there is currently no caching. Perhaps get_ or create_ are better prefixes.",
+      "range": {
+        "startLine": 547,
+        "startChar": 20,
+        "endLine": 547,
+        "endChar": 21
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
