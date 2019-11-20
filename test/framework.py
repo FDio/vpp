@@ -265,7 +265,10 @@ class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
-
+    # With the  introduction of multi-worker tests,
+    # we need to signal the needed resources.
+    cores_required = 1
+    logger = None
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
     vapi_response_timeout = 5
@@ -492,6 +495,9 @@ class VppTestCase(unittest.TestCase):
         Remove shared memory files, start vpp and connect the vpp-api
         """
         super(VppTestCase, cls).setUpClass()
+        # if we don't have the resources, skip the test.
+        if psutil.cpu_count() < cls.cores_required:
+            raise unittest.SkipTest("Insufficient CPU Cores to run test.")
         gc.collect()  # run garbage collection first
         cls.logger = get_logger(cls.__name__)
         seed = os.environ["RND_SEED"]
