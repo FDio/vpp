@@ -136,20 +136,49 @@ format_transport_half_open_connection (u8 * s, va_list * args)
   return s;
 }
 
+static u8
+unformat_transport_str_match (unformat_input_t * input, const char *str)
+{
+  int i;
+
+  if (strlen (str) > vec_len (input->buffer) - input->index)
+    return 0;
+
+  for (i = 0; i < strlen (str); i++)
+    {
+      if (input->buffer[i + input->index] != str[i])
+	return 0;
+    }
+  return 1;
+}
+
 uword
 unformat_transport_proto (unformat_input_t * input, va_list * args)
 {
   u32 *proto = va_arg (*args, u32 *);
+  u8 longest_match = 0, match;
+  char *str_match = 0;
 
 #define _(sym, str, sstr)						\
-  if (unformat (input, str))						\
+  if (unformat_transport_str_match (input, str))			\
     {									\
-      *proto = TRANSPORT_PROTO_ ## sym;					\
-      return 1;								\
+      match = strlen (str);						\
+      if (match > longest_match)					\
+	{								\
+	  *proto = TRANSPORT_PROTO_ ## sym;				\
+	  longest_match = match;					\
+	  str_match = str;						\
+	}								\
     }
   foreach_transport_proto
 #undef _
-    return 0;
+    if (longest_match)
+    {
+      unformat (input, str_match);
+      return 1;
+    }
+
+  return 0;
 }
 
 u32
