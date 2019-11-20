@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7a95a43d_9df4d0b0",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-20T21:14:23Z",
+      "side": 1,
+      "message": "Will rename to Packer.  I have no preference.  The closest I can think of to pack/unpack is serdes. (see how \u0027Serializer\u0027 came to be?)",
+      "parentUuid": "f6eb85e5_d051528a",
+      "range": {
+        "startLine": 81,
+        "startChar": 15,
+        "endLine": 81,
+        "endChar": 28
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "015372f1_0d5fc6d7",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-11-20T20:13:25Z",
       "side": 1,
       "message": "This (if not true) leads to return value None. Surprising.\nLine 547 means that currently never happens, but in that case why have an if here at all?",
+      "range": {
+        "startLine": 84,
+        "startChar": 8,
+        "endLine": 84,
+        "endChar": 10
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb6d7572_736d0048",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-20T21:14:23Z",
+      "side": 1,
+      "message": "Yes. Probably better to check \"if options\" and raise that \"options are not supported\"",
+      "parentUuid": "015372f1_0d5fc6d7",
       "range": {
         "startLine": 84,
         "startChar": 8,
@@ -117,6 +165,30 @@
     },
     {
       "key": {
+        "uuid": "75fc3d83_614ee52f",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-20T21:14:23Z",
+      "side": 1,
+      "message": "type(options) \u003d\u003d list, which is mutable. Have to resolve that first, or use a 3rd party tool such as https://pypi.org/project/memoization/ , or roll our own.",
+      "parentUuid": "52758bb4_ff8595b8",
+      "range": {
+        "startLine": 476,
+        "startChar": 15,
+        "endLine": 476,
+        "endChar": 17
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "510e88d2_2ece0706",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 4
@@ -151,6 +223,30 @@
       "writtenOn": "2019-11-20T20:13:25Z",
       "side": 1,
       "message": "Here, p gets assigned a type implementation (a packer). I just wonder why the method name starts with add_, as there is currently no caching. Perhaps get_ or create_ are better prefixes.",
+      "range": {
+        "startLine": 547,
+        "startChar": 20,
+        "endLine": 547,
+        "endChar": 21
+      },
+      "revId": "ad80b55790c6a373c58401ad64f993efee0967ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e60bd1f6_ec7abfa8",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-20T21:14:23Z",
+      "side": 1,
+      "message": "It was called add because it is added in 551 below.  Is option_aware_packer() or option_enabled_packer() clearer?",
+      "parentUuid": "eabd08c6_25e0edfe",
       "range": {
         "startLine": 547,
         "startChar": 20,
