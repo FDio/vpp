@@ -856,6 +856,7 @@ start_workers (vlib_main_t * vm)
 	      /* zap the (per worker) frame freelists, etc */
 	      nm_clone->frame_sizes = 0;
 	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
+	      nm_clone->node_by_error = nm->node_by_error;
 
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
@@ -1175,6 +1176,7 @@ vlib_worker_thread_node_refork (void)
 
   nm_clone->processes = vec_dup_aligned (nm->processes,
 					 CLIB_CACHE_LINE_BYTES);
+  nm_clone->node_by_error = nm->node_by_error;
 }
 
 void

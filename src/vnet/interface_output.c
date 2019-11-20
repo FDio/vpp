@@ -562,10 +562,10 @@ counter_index (vlib_main_t * vm, vlib_error_t e)
   vlib_node_t *n;
   u32 ci, ni;
 
-  ni = vlib_error_get_node (e);
+  ni = vlib_error_get_node (&vm->node_main, e);
   n = vlib_get_node (vm, ni);
 
-  ci = vlib_error_get_code (e);
+  ci = vlib_error_get_code (&vm->node_main, e);
   ASSERT (ci < n->n_errors);
 
   ci += n->error_heap_index;
@@ -583,8 +583,8 @@ format_vnet_error_trace (u8 * s, va_list * va)
   vlib_error_main_t *em = &vm->error_main;
   u32 i;
 
-  error_node = vlib_get_node (vm, vlib_error_get_node (e[0]));
-  i = counter_index (vm, e[0]);
+  error_node = vlib_get_node (vm, vlib_error_get_node (&vm->node_main, e[0]));
+  i = counter_index (vm, vlib_error_get_code (&vm->node_main, e[0]));
   s = format (s, "%v: %s", error_node->name, em->error_strings_heap[i]);
 
   return s;
@@ -652,8 +652,8 @@ trace_errors_with_buffers (vlib_main_t * vm,
 static u8 *
 validate_error (vlib_main_t * vm, vlib_error_t * e, u32 index)
 {
-  uword node_index = vlib_error_get_node (e[0]);
-  uword code = vlib_error_get_code (e[0]);
+  uword node_index = vlib_error_get_node (&vm->node_main, e[0]);
+  uword code = vlib_error_get_code (&vm->node_main, e[0]);
   vlib_node_t *n;
 
   if (node_index >= vec_len (vm->node_main.nodes))
