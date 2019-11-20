@@ -1649,7 +1649,6 @@ quic_udp_session_accepted_callback (session_t * udp_session)
 {
   /* New UDP connection, try to accept it */
   u32 ctx_index;
-  u32 *pool_index;
   quic_ctx_t *ctx, *lctx;
   session_t *udp_listen_session;
   u32 thread_index = vlib_get_thread_index ();
@@ -1679,11 +1678,6 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->quicly_ctx = lctx->quicly_ctx;
 
   udp_session->opaque = ctx_index;
-
-  /* Put this ctx in the "opening" pool */
-  pool_get (quic_main.wrk_ctx[ctx->c_thread_index].opening_ctx_pool,
-	    pool_index);
-  *pool_index = ctx_index;
 
   /* TODO timeout to delete these if they never connect */
   return 0;
@@ -1824,13 +1818,19 @@ quic_accept_connection (u32 ctx_index, struct sockaddr *sa,
   /* new connection, accept and create context if packet is valid
    * TODO: check if socket is actually listening? */
   ctx = quic_ctx_get (ctx_index, thread_index);
+  if (ctx->c_s_index != QUIC_SESSION_INVALID)
+    {
+      QUIC_DBG (2, "already accepted ctx 0x%x", ctx_index);
+      return -1;
+    }
+
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
   if ((rv = quicly_accept (&conn, quicly_ctx, NULL, sa,
 			   &packet, NULL, &quic_main.next_cid, NULL)))
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
-      QUIC_ERR ("Accept failed with %d", rv);
+      QUIC_ERR ("Accept failed with %U", quic_format_err, rv);
       /* TODO: cleanup created quic ctx and UDP session */
       return 0;
     }
@@ -1919,13 +1919,13 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   size_t plen;
   struct sockaddr_in6 sa6;
   struct sockaddr *sa = (struct sockaddr *) &sa6;
+  session_t *udp_session;
   socklen_t salen;
   u32 full_len, ret;
   int err, rv = 0;
   packet_ctx->thread_index = UINT32_MAX;
   packet_ctx->ctx_index = UINT32_MAX;
   u32 thread_index = vlib_get_thread_index ();
-  u32 *opening_ctx_pool, *ctx_index_ptr;
   u32 cur_deq = svm_fifo_max_dequeue (f) - *fifo_offset;
   quicly_context_t *quicly_ctx;
 
@@ -1993,31 +1993,14 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
       *max_packet = packet_n + 1;
       return 0;
     }
-  else if ((packet_ctx->packet.octets.base[0] & QUICLY_PACKET_TYPE_BITMASK) ==
-	   QUICLY_PACKET_TYPE_INITIAL)
+  else if (QUICLY_PACKET_IS_LONG_HEADER (packet_ctx->packet.octets.base[0]))
     {
-      /*  Try to find matching "opening" ctx */
-      opening_ctx_pool = quic_main.wrk_ctx[thread_index].opening_ctx_pool;
-
-      /* *INDENT-OFF* */
-      pool_foreach (ctx_index_ptr, opening_ctx_pool,
-      ({
-	ctx = quic_ctx_get (*ctx_index_ptr, thread_index);
-	if (ctx->udp_session_handle == udp_session_handle)
-	  {
-	    /*  Right ctx found, create conn & remove from pool */
-	    quic_accept_connection (*ctx_index_ptr, sa, salen, packet_ctx->packet);
-	    *max_packet = packet_n + 1;
-	    packet_ctx->thread_index = thread_index;
-	    packet_ctx->ctx_index = *ctx_index_ptr;
-	    pool_put (opening_ctx_pool, ctx_index_ptr);
-	    goto updateOffset;
-	  }
-      }));
-      /* *INDENT-ON* */
-      QUIC_ERR ("Missing opening ctx (in %d) Thread %d UDP 0x%lx",
-		pool_elts (opening_ctx_pool), thread_index,
-		udp_session_handle);
+      udp_session = session_get_from_handle (udp_session_handle);
+      if ((rv = quic_accept_connection (udp_session->opaque, sa,
+					salen, packet_ctx->packet)))
+	{
+	  QUIC_ERR ("quic accept errored with %d", rv);
+	}
     }
   else
     {
@@ -2025,7 +2008,6 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 			     packet_ctx->packet);
     }
 
-updateOffset:
   *fifo_offset += SESSION_CONN_HDR_LEN + ph.data_length;
   return 0;
 }
