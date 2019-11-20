@@ -727,8 +727,14 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
       a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
       a->app_index = ecm->app_index;
+
+      vlib_worker_thread_barrier_sync (vm);
       if ((rv = vnet_connect_uri (a)))
-	return clib_error_return (0, "connect returned: %d", rv);
+	{
+	  vlib_worker_thread_barrier_release (vm);
+	  return clib_error_return (0, "connect returned: %d", rv);
+	}
+      vlib_worker_thread_barrier_release (vm);
 
       /* Crude pacing for call setups  */
       if ((i % 16) == 0)
@@ -870,7 +876,8 @@ echo_clients_command_fn (vlib_main_t * vm,
   if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
     return clib_error_return (0, "Uri parse error: %d", rv);
   ecm->transport_proto = sep.transport_proto;
-  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
+  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP
+		   || sep.transport_proto == TRANSPORT_PROTO_UDPC);
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();
@@ -903,7 +910,9 @@ echo_clients_command_fn (vlib_main_t * vm,
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
   if ((error = echo_clients_connect (vm, n_clients)))
-    goto cleanup;
+    {
+      goto cleanup;
+    }
 
   /* Park until the sessions come up, or ten seconds elapse... */
   vlib_process_wait_for_event_or_clock (vm, syn_timeout);
