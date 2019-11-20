@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f20d0fd_000eac53",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1754,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-11-20T13:52:52Z",
+      "side": 1,
+      "message": "child_index is a local index within SA, so we probably have to include sa_index to make the local_sa_id unique",
+      "range": {
+        "startLine": 1754,
+        "startChar": 42,
+        "endLine": 1754,
+        "endChar": 67
+      },
+      "revId": "c8432c92a405d4e23c06bad4543d9983428ca703",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
