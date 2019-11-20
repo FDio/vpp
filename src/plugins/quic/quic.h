@@ -161,7 +161,6 @@ typedef struct quic_worker_ctx_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;				   /**< worker time */
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
-  u32 *opening_ctx_pool;
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
