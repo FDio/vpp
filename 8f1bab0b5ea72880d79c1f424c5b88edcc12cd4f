@@ -70,6 +70,30 @@
       "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc18f65d_cbb92a1b",
+        "filename": "src/vnet/ip/ip_format_fns.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-20T13:00:36Z",
+      "side": 1,
+      "message": "\u003e but is it also a big code change?\n\nIf we are going for u16, many instances of \"ntohl\" would need to become \"ntohs\". And I do not see an easy automated way to see which ones, unless a tool like checkstyle is smart enough.\nI believe it would be easier to do u32_to_u16 migration after VPP-1777.\n\n\u003e do the fields need to be reordered \n\nFor PAPI users, order does not matter. But for users pushing configuration via shared memory, ordering fields to have them aligned would be nice.\nMy concern for field sizes is primarily due to general principles, secondarily due to Unix Domain Socket transport having finite buffer size.",
+      "parentUuid": "ea283f02_fbd24e78",
+      "range": {
+        "startLine": 68,
+        "startChar": 7,
+        "endLine": 68,
+        "endChar": 18
+      },
+      "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
