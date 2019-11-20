@@ -308,7 +308,7 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   max_enqueue = svm_fifo_max_enqueue (f);
   if (max_enqueue < SESSION_CONN_HDR_LEN + len)
     {
-      QUIC_DBG (1, "Too much data to send, max_enqueue %u, len %u",
+      QUIC_ERR ("Too much data to send, max_enqueue %u, len %u",
 		max_enqueue, len + SESSION_CONN_HDR_LEN);
       return QUIC_ERROR_FULL_FIFO;
     }
@@ -339,13 +339,13 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   ret = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
   if (ret != sizeof (hdr))
     {
-      QUIC_DBG (1, "Not enough space to enqueue header");
+      QUIC_ERR ("Not enough space to enqueue header");
       return QUIC_ERROR_FULL_FIFO;
     }
   ret = svm_fifo_enqueue (f, len, packet->data.base);
   if (ret != len)
     {
-      QUIC_DBG (1, "Not enough space to enqueue payload");
+      QUIC_ERR ("Not enough space to enqueue payload");
       return QUIC_ERROR_FULL_FIFO;
     }
 
@@ -491,7 +491,7 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
   app_worker_t *app_wrk;
   svm_fifo_t *f;
   quic_stream_data_t *stream_data;
-  int rlen;
+  int rlen, rv;
 
   stream_data = (quic_stream_data_t *) stream->data;
   sctx = quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
@@ -538,8 +538,12 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
       ASSERT (rlen >= len);
       app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
       if (PREDICT_TRUE (app_wrk != 0))
-	app_worker_lock_and_send_event (app_wrk, stream_session,
-					SESSION_IO_EVT_RX);
+	{
+	  rv = app_worker_lock_and_send_event (app_wrk, stream_session,
+					       SESSION_IO_EVT_RX);
+	  if (rv)
+	    QUIC_ERR ("Failed to ping app for RX");
+	}
       quic_ack_rx_data (stream_session);
     }
   else
@@ -679,7 +683,7 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
   app_wrk = app_worker_get (stream_session->app_wrk_index);
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
     {
-      QUIC_DBG (1, "failed to allocate fifos");
+      QUIC_ERR ("failed to allocate fifos");
       session_free (stream_session);
       quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       return 0;			/* Frame is still valid */
@@ -690,7 +694,7 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
 
   if ((rv = app_worker_accept_notify (app_wrk, stream_session)))
     {
-      QUIC_DBG (1, "failed to notify accept worker app");
+      QUIC_ERR ("failed to notify accept worker app");
       session_free_w_fifos (stream_session);
       quicly_reset_stream (stream, QUIC_APP_ACCEPT_NOTIFY_ERROR);
       return 0;			/* Frame is still valid */
@@ -772,6 +776,7 @@ quic_update_timer (quic_ctx_t * ctx)
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   int64_t next_timeout, next_interval;
   session_t *quic_session;
+  int rv;
 
   /*  This timeout is in ms which is the unit of our timer */
   next_timeout = quicly_get_first_timeout (ctx->conn);
@@ -787,9 +792,13 @@ quic_update_timer (quic_ctx_t * ctx)
 	{
 	  quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
 	  if (svm_fifo_set_event (quic_session->tx_fifo))
-	    session_send_io_evt_to_thread_custom (quic_session,
-						  quic_session->thread_index,
-						  SESSION_IO_EVT_BUILTIN_TX);
+	    {
+	      rv = session_send_io_evt_to_thread_custom (quic_session,
+							 quic_session->thread_index,
+							 SESSION_IO_EVT_BUILTIN_TX);
+	      if (PREDICT_FALSE (rv))
+		QUIC_ERR ("Failed to enqueue builtin_tx %d", rv);
+	    }
 	  return;
 	}
     }
@@ -897,7 +906,7 @@ quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
     }
   if (!clib_bitmap_get (qm->available_crypto_engines, crypto_engine))
     {
-      QUIC_DBG (1, "Quic does not support crypto engine %d", crypto_engine);
+      QUIC_ERR ("Quic does not support crypto engine %d", crypto_engine);
       return VNET_API_ERROR_MISSING_CERT_KEY;
     }
 
@@ -956,17 +965,17 @@ quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
   ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
   if (!ckpair || !ckpair->key || !ckpair->cert)
     {
-      QUIC_DBG (1, "Wrong ckpair id %d\n", ckpair_index);
+      QUIC_ERR ("Wrong ckpair id %d\n", ckpair_index);
       goto error;
     }
   if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
     {
-      QUIC_DBG (1, "failed to read private key from app configuration\n");
+      QUIC_ERR ("failed to read private key from app configuration\n");
       goto error;
     }
   if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
     {
-      QUIC_DBG (1, "failed to load certificate\n");
+      QUIC_ERR ("failed to load certificate\n");
       goto error;
     }
   return 0;
@@ -998,14 +1007,14 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   if (session_type_transport_proto (quic_session->session_type) !=
       TRANSPORT_PROTO_QUIC)
     {
-      QUIC_DBG (1, "received incompatible session");
+      QUIC_ERR ("received incompatible session");
       return -1;
     }
 
   app_wrk = app_worker_get_if_valid (quic_session->app_wrk_index);
   if (!app_wrk)
     {
-      QUIC_DBG (1, "Invalid app worker :(");
+      QUIC_ERR ("Invalid app worker :(");
       return -1;
     }
 
@@ -1015,7 +1024,7 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
 		       quic_session->thread_index);
   if (quic_ctx_is_stream (qctx))
     {
-      QUIC_DBG (1, "session is a stream");
+      QUIC_ERR ("session is a stream");
       quic_ctx_free (sctx);
       return -1;
     }
@@ -1054,7 +1063,7 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
 
   if (app_worker_init_connected (app_wrk, stream_session))
     {
-      QUIC_DBG (1, "failed to app_worker_init_connected");
+      QUIC_ERR ("failed to app_worker_init_connected");
       quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       session_free_w_fifos (stream_session);
       quic_ctx_free (sctx);
@@ -1068,7 +1077,7 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   stream_session->session_state = SESSION_STATE_READY;
   if (app_worker_connect_notify (app_wrk, stream_session, opaque))
     {
-      QUIC_DBG (1, "failed to notify app");
+      QUIC_ERR ("failed to notify app");
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
       session_free_w_fifos (stream_session);
       quic_ctx_free (sctx);
@@ -1411,7 +1420,7 @@ quic_on_quic_session_connected (quic_ctx_t * ctx)
 
   if (app_worker_init_connected (app_wrk, quic_session))
     {
-      QUIC_DBG (1, "failed to app_worker_init_connected");
+      QUIC_ERR ("failed to app_worker_init_connected");
       quic_proto_on_close (ctx_id, thread_index);
       return app_worker_connect_notify (app_wrk, NULL, ctx->client_opaque);
     }
@@ -1420,7 +1429,7 @@ quic_on_quic_session_connected (quic_ctx_t * ctx)
   if ((rv = app_worker_connect_notify (app_wrk, quic_session,
 				       ctx->client_opaque)))
     {
-      QUIC_DBG (1, "failed to notify app %d", rv);
+      QUIC_ERR ("failed to notify app %d", rv);
       quic_proto_on_close (ctx_id, thread_index);
       return -1;
     }
@@ -1623,7 +1632,7 @@ quic_udp_session_migrate_callback (session_t * s, session_handle_t new_sh)
   u32 new_thread = session_thread_from_handle (new_sh);
   quic_ctx_t *ctx;
 
-  QUIC_DBG (1, "Session %x migrated to %lx", s->session_index, new_sh);
+  QUIC_ERR ("Session %x migrated to %lx", s->session_index, new_sh);
   ASSERT (vlib_get_thread_index () == s->thread_index);
   ctx = quic_ctx_get (s->opaque, s->thread_index);
   ASSERT (ctx->udp_session_handle == session_handle (s));
@@ -1736,7 +1745,7 @@ quic_custom_tx_callback (void *s, u32 max_burst_size)
   stream = ctx->stream;
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
-      QUIC_DBG (1, "Warning: tried to send on closed stream");
+      QUIC_ERR ("Warning: tried to send on closed stream");
       return -1;
     }
 
@@ -1821,7 +1830,7 @@ quic_accept_connection (u32 ctx_index, struct sockaddr *sa,
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
-      QUIC_DBG (1, "Accept failed with %d", rv);
+      QUIC_ERR ("Accept failed with %d", rv);
       /* TODO: cleanup created quic ctx and UDP session */
       return 0;
     }
@@ -1851,14 +1860,14 @@ quic_accept_connection (u32 ctx_index, struct sockaddr *sa,
    * but we still need fifos for the events? */
   if ((rv = app_worker_init_accepted (quic_session)))
     {
-      QUIC_DBG (1, "failed to allocate fifos");
+      QUIC_ERR ("failed to allocate fifos");
       session_free (quic_session);
       return rv;
     }
   app_wrk = app_worker_get (quic_session->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, quic_session)))
     {
-      QUIC_DBG (1, "failed to notify accept worker app");
+      QUIC_ERR ("failed to notify accept worker app");
       return rv;
     }
 
@@ -1976,7 +1985,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
       ctx = quic_ctx_get (packet_ctx->ctx_index, thread_index);
       rv = quicly_receive (ctx->conn, NULL, sa, &packet_ctx->packet);
       if (rv)
-	QUIC_ERR ("quicly_receive return error %d", rv);
+	QUIC_ERR ("quicly_receive errored %U", quic_format_err, rv);
     }
   else if (packet_ctx->ctx_index != UINT32_MAX)
     {
@@ -2006,7 +2015,9 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 	  }
       }));
       /* *INDENT-ON* */
-      QUIC_ERR ("Opening ctx not found!");;
+      QUIC_ERR ("Missing opening ctx (in %d) Thread %d UDP 0x%lx",
+		pool_elts (opening_ctx_pool), thread_index,
+		udp_session_handle);
     }
   else
     {
