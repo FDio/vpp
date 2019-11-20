@@ -789,7 +789,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
       // remote = input, local = output
       /* create an ip-ip tunnel, then the two SA, then bind them */
       rv = ipip_add_tunnel (transport,
-			    ntohl (mp->show_instance),
+			    (mp->renumber ? ntohl (mp->show_instance) : ~0),
 			    &local_ip,
 			    &remote_ip, fib_index, 0, &sw_if_index);
 
