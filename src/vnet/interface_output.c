@@ -503,7 +503,16 @@ static_always_inline void vnet_interface_pcap_tx_trace
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
       if (pp->pcap_sw_if_index == 0 || pp->pcap_sw_if_index == sw_if_index)
-	pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	{
+	  vnet_main_t *vnm = vnet_get_main ();
+	  vnet_hw_interface_t *hi =
+	    vnet_get_sup_hw_interface (vnm, sw_if_index);
+	  /* Capture pkt if not filtered, or if filter hits */
+	  if (hi->trace_classify_table_index == ~0 ||
+	      vnet_is_packet_traced_inline
+	      (b0, hi->trace_classify_table_index, 0 /* full classify */ ))
+	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	}
     }
 }
 
