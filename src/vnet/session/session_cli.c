@@ -133,8 +133,9 @@ format_session (u8 * s, va_list * args)
       if (verbose > 1)
 	{
 	  s = format (s, "%U", format_session_fifos, ss, verbose);
-	  s = format (s, " session: state: %U flags: %U\n",
-		      format_session_state, ss, format_session_flags, ss);
+	  s = format (s, " session: state: %U opaque: 0x%x flags: %U\n",
+		      format_session_state, ss, ss->opaque,
+		      format_session_flags, ss);
 	}
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
