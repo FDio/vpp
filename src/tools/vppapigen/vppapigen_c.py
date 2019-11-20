@@ -359,10 +359,10 @@ endian_strings = {
     'u16': 'clib_net_to_host_u16',
     'u32': 'clib_net_to_host_u32',
     'u64': 'clib_net_to_host_u64',
-    'i16': 'clib_net_to_host_u16',
-    'i32': 'clib_net_to_host_u32',
-    'i64': 'clib_net_to_host_u64',
-    'f64': 'clib_net_to_host_u64',
+    'i16': 'clib_net_to_host_i16',
+    'i32': 'clib_net_to_host_i32',
+    'i64': 'clib_net_to_host_i64',
+    'f64': 'clib_net_to_host_f64',
 }
 
 
