@@ -674,6 +674,7 @@ class TestIPv4SVReassembly(VppTestCase):
 class TestIPv4MWReassembly(VppTestCase):
     """ IPv4 Reassembly (multiple workers) """
     worker_config = "workers %d" % worker_count
+    cores_required = 5
 
     @classmethod
     def setUpClass(cls):
@@ -1307,6 +1308,7 @@ class TestIPv6Reassembly(VppTestCase):
 class TestIPv6MWReassembly(VppTestCase):
     """ IPv6 Reassembly (multiple workers) """
     worker_config = "workers %d" % worker_count
+    cores_required = 5
 
     @classmethod
     def setUpClass(cls):
