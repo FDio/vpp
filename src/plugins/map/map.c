@@ -1034,7 +1034,7 @@ map_error_counter_get (u32 node_index, map_error_t map_error)
   vlib_node_t *n = vlib_get_node (vm, node_index);
   u32 ci;
 
-  ci = vlib_error_get_code (e);
+  ci = vlib_error_get_code (&vm->node_main, e);
   ASSERT (ci < n->n_errors);
   ci += n->error_heap_index;
 

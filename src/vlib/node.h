@@ -785,8 +785,27 @@ typedef struct
 
   /* Node registrations added by constructors */
   vlib_node_registration_t *node_registrations;
+
+  /* Node index from error code */
+  u32 *node_by_error;
 } vlib_node_main_t;
 
+typedef u16 vlib_error_t;
+
+always_inline u32
+vlib_error_get_node (vlib_node_main_t * nm, vlib_error_t e)
+{
+  return nm->node_by_error[e];
+}
+
+always_inline u32
+vlib_error_get_code (vlib_node_main_t * nm, vlib_error_t e)
+{
+  u32 node_index = nm->node_by_error[e];
+  vlib_node_t *n = nm->nodes[node_index];
+  u32 error_code = e - n->error_heap_index;
+  return error_code;
+}
 
 #define FRAME_QUEUE_MAX_NELTS 32
 typedef struct
