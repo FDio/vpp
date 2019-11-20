@@ -549,22 +549,30 @@ not, the CLI command add a new table and the indicated mask rule
 ### Configure a simple pcap classify filter
 
 ```
-    classify filter pcap mask l3 ip4 src match l3 ip4 src 192.168.1.11"
-    pcap rx trace on max 100 filter
+    classify filter pcap mask l3 ip4 src match l3 ip4 src 192.168.1.11
+    pcap trace rx max 100 filter
 ```
 
-### Configure a simple interface packet-tracer filter
+### Configure a simple per-interface capture filter
 
 ```
     classify filter GigabitEthernet3/0/0 mask l3 ip4 src match l3 ip4 src 192.168.1.11"
-    [device-driver debug CLI TBD]
+    pcap trace rx max 100 intfc GigabitEthernet3/0/0
+```
+
+Note that per-interface capture filters are _always_ applied.
+
+### Clear per-interface capture filters
+
+```
+    classify filter GigabitEthernet3/0/0 del
 ```
 
 ### Configure another fairly simple pcap classify filter
 
 ```
    classify filter pcap mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10
-   pcap tx trace on max 100 filter
+   pcap trace tx max 100 filter
 ```
 
 ### Clear all current classifier filters
