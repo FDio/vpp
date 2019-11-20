@@ -1018,6 +1018,8 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
 	      tc->rtt_ts);
   s = format (s, " rtt_seq %u\n", tc->rtt_seq - tc->iss);
+  s = format (s, " next_node %u opaque 0x%x\n", tc->next_node_index,
+	      tc->next_node_opaque);
   s = format (s, " cong:   %U", format_tcp_congestion, tc);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
