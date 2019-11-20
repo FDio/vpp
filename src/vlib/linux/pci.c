@@ -738,8 +738,8 @@ add_device_uio (vlib_main_t * vm, linux_pci_device_t * p,
       goto error;
     }
 
-  s = format (0, "%s/%U/uio", sysfs_pci_dev_path,
-	      format_vlib_pci_addr, &di->addr);
+  s = format (0, "%s/%U/uio%c", sysfs_pci_dev_path,
+	      format_vlib_pci_addr, &di->addr, 0);
   foreach_directory_file ((char *) s, scan_uio_dir, p,	/* scan_dirs */
 			  1);
   vec_reset_length (s);
