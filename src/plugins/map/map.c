@@ -95,6 +95,9 @@ map_free_extras (u32 map_domain_index)
     return;
 
   de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+  if (!de)
+    return;
+
   tag = de->tag;
   if (!tag)
     return;
@@ -926,9 +929,9 @@ format_map_domain (u8 * s, va_list * args)
   de = vec_elt_at_index (mm->domain_extras, map_domain_index);
 
   s = format (s,
-	      "[%d] tag {%v} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
+	      "[%d] tag {%s} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
 	      "ea-bits-len %d psid-offset %d psid-len %d mtu %d %s",
-	      map_domain_index, de->tag,
+	      map_domain_index, de ? de->tag : (u8 *) "[no-tag]",
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
 	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
 	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
