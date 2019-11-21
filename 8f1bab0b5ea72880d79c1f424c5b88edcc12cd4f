@@ -118,6 +118,30 @@
       "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ac31b1c_3fa7fbdd",
+        "filename": "src/vnet/ip/ip_format_fns.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-21T14:28:01Z",
+      "side": 1,
+      "message": "You mean implementing auto-detection for the smallest fitting type, but still allowing the colon operator to override?\nYes, it could be added. The downside is lot of \"ntohl\" to find and edit in the code.",
+      "parentUuid": "fc422464_99050cd4",
+      "range": {
+        "startLine": 68,
+        "startChar": 7,
+        "endLine": 68,
+        "endChar": 18
+      },
+      "revId": "8f1bab0b5ea72880d79c1f424c5b88edcc12cd4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
