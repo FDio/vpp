@@ -499,7 +499,12 @@ static inline u16
 tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u16 checksum = 0;
-  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+
+  if (PREDICT_TRUE (tc->cfg_flags & TCP_CFG_F_CSUM_OFFLOAD))
+    {
+      b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+    }
+  else
     {
       tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
       vlib_main_t *vm = wrk->vm;
@@ -510,10 +515,6 @@ tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
       else
 	checksum = ip6_tcp_compute_checksum_custom
 	  (vm, b, &tc->c_lcl_ip, &tc->c_rmt_ip);
-    }
-  else
-    {
-      b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
     }
   return checksum;
 }

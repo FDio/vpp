@@ -107,6 +107,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define foreach_tcp_cfg_flag 			\
   _(RATE_SAMPLE, "Rate sampling")		\
   _(NO_CSUM_OFFLOAD, "No csum offload")    	\
+  _(CSUM_OFFLOAD, "Csum offload")		\
   _(NO_TSO, "TSO off")				\
   _(TSO, "TSO")					\
 
@@ -473,7 +474,7 @@ struct _tcp_cc_algorithm
 #define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
 	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
 
-#define tcp_csum_offload(tc) (!((tc)->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+#define tcp_csum_offload(tc) ((tc)->cfg_flags & TCP_CFG_F_CSUM_OFFLOAD)
 
 always_inline void
 tcp_cong_recovery_off (tcp_connection_t * tc)

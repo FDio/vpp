@@ -2369,6 +2369,10 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
   vnet_hw_interface_t *hw_if;
   u32 sw_if_idx, lb_idx;
 
+  if ((tc->cfg_flags & TCP_CFG_F_NO_TSO)
+      && (tc->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+    return;
+
   if (is_ipv4)
     {
       ip4_address_t *dst_addr = &(tc->c_rmt_ip.ip4);
@@ -2388,6 +2392,9 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
 
   if (hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     tc->cfg_flags |= TCP_CFG_F_TSO;
+
+  if (hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+    tc->cfg_flags |= TCP_CFG_F_CSUM_OFFLOAD;
 }
 
 always_inline uword
@@ -2606,8 +2613,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
-      if (!(new_tc0->cfg_flags & TCP_CFG_F_NO_TSO))
-	tcp_check_tx_offload (new_tc0, is_ip4);
+      tcp_check_tx_offload (new_tc0, is_ip4);
 
       /* Read data, if any */
       if (PREDICT_FALSE (vnet_buffer (b0)->tcp.data_len))
@@ -2801,8 +2807,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tc0->state = TCP_STATE_ESTABLISHED;
 	  TCP_EVT (TCP_EVT_STATE_CHANGE, tc0);
 
-	  if (!(tc0->cfg_flags & TCP_CFG_F_NO_TSO))
-	    tcp_check_tx_offload (tc0, is_ip4);
+	  tcp_check_tx_offload (tc0, is_ip4);
 
 	  /* Initialize session variables */
 	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
