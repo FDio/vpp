@@ -558,6 +558,9 @@ typedef struct tcp_configuration_
   /** Allow use of TSO whenever available */
   u8 allow_tso;
 
+  /** Set if csum offloading is enabled */
+  u8 csum_offload;
+
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
