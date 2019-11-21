@@ -69,6 +69,7 @@ DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml yamllint
+DEB_DEPENDS += python3-venv  # ensurepip
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
