@@ -105,12 +105,14 @@ STATIC_ASSERT (sizeof (vnet_rewrite_header_t) <= 16,
       vnet_rewrite_declare(64 - 2*sizeof(int)) rw;
     } my_adjacency_t;
 */
-#define vnet_declare_rewrite(total_bytes)				\
-struct {								\
-  vnet_rewrite_header_t rewrite_header;  			        \
-									\
-  u8 rewrite_data[(total_bytes) - sizeof (vnet_rewrite_header_t)];	\
-}
+#define VNET_DECLARE_REWRITE                         \
+  struct                                             \
+  {                                                  \
+    vnet_rewrite_header_t rewrite_header;            \
+                                                     \
+    u8 rewrite_data[(VNET_REWRITE_TOTAL_BYTES) -     \
+                    sizeof (vnet_rewrite_header_t)]; \
+  }
 
 always_inline void
 vnet_rewrite_clear_data_internal (vnet_rewrite_header_t * rw, int max_size)
