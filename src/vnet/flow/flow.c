@@ -96,6 +96,9 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   uword private_data;
   int rv;
 
+  if (f == 0)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
+
   if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
 
@@ -136,6 +139,9 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   vnet_device_class_t *dev_class;
   uword *p;
   int rv;
+
+  if (f == 0)
+    return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
 
   if (!vnet_hw_interface_is_valid (vnm, hw_if_index))
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
