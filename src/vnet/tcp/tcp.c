@@ -705,6 +705,9 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_nxt = tc->iss + 1;
   tc->snd_una_max = tc->snd_nxt;
   tc->srtt = 100;		/* 100 ms */
+
+  if (!tcp_cfg.csum_offload)
+    tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
 }
 
 void
@@ -1656,6 +1659,7 @@ tcp_configuration_init (void)
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.allow_tso = 0;
+  tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
   tcp_cfg.rwnd_min_update_ack = 1;
 
@@ -1797,6 +1801,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.enable_tx_pacing = 0;
       else if (unformat (input, "tso"))
 	tcp_cfg.allow_tso = 1;
+      else if (unformat (input, "no-csum-offload"))
+	tcp_cfg.csum_offload = 0;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tcp_cfg.cc_algo))
 	;

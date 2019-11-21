@@ -896,26 +896,15 @@ static void
 tcp_push_ip_hdr (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		 vlib_buffer_t * b)
 {
-  tcp_header_t *th = vlib_buffer_get_current (b);
-  vlib_main_t *vm = wrk->vm;
   if (tc->c_is_ip4)
     {
-      ip4_header_t *ih;
-      ih = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip4,
-				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP,
-				 tcp_csum_offload (tc));
-      th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih);
+      vlib_buffer_push_ip4 (wrk->vm, b, &tc->c_lcl_ip4, &tc->c_rmt_ip4,
+			    IP_PROTOCOL_TCP, tcp_csum_offload (tc));
     }
   else
     {
-      ip6_header_t *ih;
-      int bogus = ~0;
-
-      ih = vlib_buffer_push_ip6_custom (vm, b, &tc->c_lcl_ip6,
-					&tc->c_rmt_ip6, IP_PROTOCOL_TCP,
-					tc->ipv6_flow_label);
-      th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih, &bogus);
-      ASSERT (!bogus);
+      vlib_buffer_push_ip6_custom (wrk->vm, b, &tc->c_lcl_ip6, &tc->c_rmt_ip6,
+				   IP_PROTOCOL_TCP, tc->ipv6_flow_label);
     }
 }
 
@@ -2270,19 +2259,16 @@ always_inline void
 tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 		    tcp_connection_t * tc0, u8 is_ip4)
 {
-  u8 __clib_unused *ih0;
-  tcp_header_t __clib_unused *th0 = vlib_buffer_get_current (b0);
-
-  TCP_EVT (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
+  TCP_EVT (TCP_EVT_OUTPUT, tc0,
+	   ((tcp_header_t *) vlib_buffer_get_current (b0))->flags,
+	   b0->current_length);
 
   if (is_ip4)
-    ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-				IP_PROTOCOL_TCP, tcp_csum_offload (tc0));
+    vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
+			  IP_PROTOCOL_TCP, tcp_csum_offload (tc0));
   else
-    ih0 =
-      vlib_buffer_push_ip6_custom (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
-				   IP_PROTOCOL_TCP, tc0->ipv6_flow_label);
-
+    vlib_buffer_push_ip6_custom (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
+				 IP_PROTOCOL_TCP, tc0->ipv6_flow_label);
 }
 
 always_inline void
