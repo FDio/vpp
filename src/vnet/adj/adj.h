@@ -316,7 +316,7 @@ typedef struct ip_adjacency_t_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /* Rewrite in second/third cache lines */
-  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+  VNET_DECLARE_REWRITE;
 
   /**
    * more control plane members that do not fit on the first cacheline

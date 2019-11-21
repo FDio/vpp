@@ -31,7 +31,7 @@ typedef struct
    * Let: rewrite_header.sw_if_index = tx_fib_index or ~0.
    *      rewrite_header.next_index = L2_XCRW_NEXT_XXX
    */
-  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+  VNET_DECLARE_REWRITE;
 } l2_xcrw_adjacency_t;
 
 typedef struct
