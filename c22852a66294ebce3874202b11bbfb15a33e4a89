@@ -22,6 +22,30 @@
       "revId": "c22852a66294ebce3874202b11bbfb15a33e4a89",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d950373a_1a27bd04",
+        "filename": "src/vppinfra/asan.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-11-21T09:09:30Z",
+      "side": 1,
+      "message": "related to my comment above: CLIB_SANITIZE_ADDRESS instead?\nThen we can use CLIB_SANITIZE_THREAD, CLIB_SANITIZE_UB etc. when we add others later",
+      "parentUuid": "f2993cfa_15593fe2",
+      "range": {
+        "startLine": 43,
+        "startChar": 9,
+        "endLine": 43,
+        "endChar": 24
+      },
+      "revId": "c22852a66294ebce3874202b11bbfb15a33e4a89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
