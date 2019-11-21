@@ -1897,7 +1897,7 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   svm_msg_q_t *mq;
   u8 is_ct;
 
-  if (PREDICT_FALSE (!buf))
+  if (PREDICT_FALSE (!buf || n == 0))
     return VPPCOM_EINVAL;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
