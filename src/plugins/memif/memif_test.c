@@ -125,7 +125,7 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 }
 
 /* memif_socket_filename_add_del reply handler */
-#define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANLDER
+#define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANDLER
 static void vl_api_memif_socket_filename_add_del_reply_t_handler
   (vl_api_memif_socket_filename_add_del_reply_t * mp)
 {
