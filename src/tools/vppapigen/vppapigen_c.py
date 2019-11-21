@@ -458,7 +458,6 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
             output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name
             continue
 
-
         if t.__class__.__name__ == 'Using':
             output += signature.format(name=t.name)
             if ('length' in t.alias and t.alias['length'] and
@@ -512,6 +511,7 @@ def generate_include_enum(s, module, stream):
             write('   VL_API_{},\n'.format(t.name.upper()))
         write('   VL_MSG_FIRST_AVAILABLE\n')
         write('}} vl_api_{}_enum_t;\n'.format(module))
+
 
 #
 # Generate separate API _types file.
@@ -654,14 +654,14 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
         except:
             continue
         if d.manual_print:
-            write('/* Manual definition requested for: vl_api_{n}_t_hander() */\n'
+            write('/* Manual definition requested for: vl_api_{n}_t_handler() */\n'
                   .format(n=s.reply))
             continue
         if not define_hash[s.caller].autoreply:
-            write('/* Only autoreply is supported (vl_api_{n}_t_hander()) */\n'
+            write('/* Only autoreply is supported (vl_api_{n}_t_handler()) */\n'
                   .format(n=s.reply))
             continue
-        write('#ifndef VL_API_{n}_T_HANLDER\n'.format(n=s.reply.upper()))
+        write('#ifndef VL_API_{n}_T_HANDLER\n'.format(n=s.reply.upper()))
         write('static void\n')
         write('vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n'.format(n=s.reply))
         write('   vat_main_t * vam = {}_test_main.vat_main;\n'.format(module))
