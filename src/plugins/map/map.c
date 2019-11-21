@@ -80,7 +80,7 @@ map_save_extras (u32 map_domain_index, u8 * tag)
   if (!tag)
     return;
 
-  de->tag = vec_dup (tag);
+  vec_validate_init_c_string (de->tag, tag, strlen ((char *) tag));
 }
 
 
@@ -89,18 +89,18 @@ map_free_extras (u32 map_domain_index)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
-  u8 *tag;
 
   if (map_domain_index == ~0)
     return;
 
-  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
-  tag = de->tag;
-  if (!tag)
+  if (map_domain_index >= vec_len (mm->domain_extras))
     return;
 
-  vec_free (tag);
-  de->tag = 0;
+  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+  if (!de)
+    return;
+
+  vec_free (de->tag);
 }
 
 
@@ -916,19 +916,20 @@ format_map_domain (u8 * s, va_list * args)
   map_main_t *mm = &map_main;
   ip6_address_t ip6_prefix;
   u32 map_domain_index = d - mm->domains;
-  map_domain_extra_t *de;
+  map_domain_extra_t *de = 0;
 
   if (d->rules)
     clib_memset (&ip6_prefix, 0, sizeof (ip6_prefix));
   else
     ip6_prefix = d->ip6_prefix;
 
-  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+  if (map_domain_index < vec_len (mm->domain_extras))
+    de = vec_elt_at_index (mm->domain_extras, map_domain_index);
 
   s = format (s,
-	      "[%d] tag {%v} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
+	      "[%d] tag {%s} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
 	      "ea-bits-len %d psid-offset %d psid-len %d mtu %d %s",
-	      map_domain_index, de->tag,
+	      map_domain_index, (de && de->tag) ? de->tag : (u8 *) "[no-tag]",
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
 	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
 	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
@@ -979,7 +980,13 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    {
+      /* *INDENT-OFF* */
+      pool_foreach(d, mm->domains,
+	({vlib_cli_output(vm, "%U", format_map_domain, d, counters);}));
+      /* *INDENT-ON* */
+      return 0;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -996,7 +1003,10 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   if (pool_elts (mm->domains) == 0)
-    vlib_cli_output (vm, "No MAP domains are configured...");
+    {
+      vlib_cli_output (vm, "No MAP domains are configured...");
+      goto done;
+    }
 
   if (map_domain_index == ~0)
     {
