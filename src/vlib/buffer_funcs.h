@@ -474,6 +474,13 @@ vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 u8 *vlib_validate_buffer (vlib_main_t * vm, u32 buffer_index,
 			  uword follow_chain);
 
+u8 *vlib_validate_buffers (vlib_main_t * vm,
+			   u32 * buffers,
+			   uword next_buffer_stride,
+			   uword n_buffers,
+			   vlib_buffer_known_state_t known_state,
+			   uword follow_buffer_next);
+
 static_always_inline vlib_buffer_pool_t *
 vlib_get_buffer_pool (vlib_main_t * vm, u8 buffer_pool_index)
 {
