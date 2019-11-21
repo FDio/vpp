@@ -272,11 +272,13 @@ show_gdb_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
   vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
   vlib_cli_output (vm, "vb2(b) returns vnet_buffer2(b) [opaque2]");
+  vlib_cli_output (vm, "vbi(b) returns b index");
   vlib_cli_output (vm, "pe(p) returns pool_elts(p)");
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
   vlib_cli_output (vm, "gdb_show_errors(0|1) dumps error counters");
   vlib_cli_output (vm, "gdb_show_session dumps session counters");
   vlib_cli_output (vm, "gdb_show_traces() dumps buffer traces");
+  vlib_cli_output (vm, "gdb_validate_buffer(b) check vlib_buffer b sanity");
   vlib_cli_output (vm, "debug_hex_bytes (ptr, n_bytes) dumps n_bytes in hex");
   vlib_cli_output (vm, "vlib_dump_frame_ownership() does what it says");
   vlib_cli_output (vm, "vlib_runtime_index_to_node_name (index) prints NN");
@@ -314,6 +316,31 @@ vb2 (void *vb_arg)
   return rv;
 }
 
+u32
+vbi (vlib_buffer_t * b)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  u32 bi = pointer_to_uword (b) - bm->buffer_mem_start;
+  bi >>= CLIB_LOG2_CACHE_LINE_BYTES;
+  return bi;
+}
+
+int
+gdb_validate_buffer (vlib_buffer_t * b)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u32 bi = vbi (b);
+  u8 *s =
+    vlib_validate_buffers (vm, &bi, 0, 1, VLIB_BUFFER_KNOWN_ALLOCATED, 1);
+  if (s)
+    {
+      fformat (stderr, "gdb_validate_buffer(): %v", s);
+      return -1;
+    }
+  fformat (stderr, "gdb_validate_buffer(): no error found\n");
+  return 0;
+}
 
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t *
