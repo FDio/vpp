@@ -513,8 +513,6 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
     {
-      ASSERT (*private_data >= vec_len (xd->flow_entries));
-
       fe = vec_elt_at_index (xd->flow_entries, *private_data);
 
       if ((rv = rte_flow_destroy (xd->device_index, fe->handle,
