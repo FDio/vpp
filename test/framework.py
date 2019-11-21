@@ -171,7 +171,7 @@ def pump_output(testclass):
                 testclass.vpp_stdout_deque.extend(split[:limit])
                 if not testclass.cache_vpp_output:
                     for line in split[:limit]:
-                        testclass.logger.debug(
+                        testclass.logger.info(
                             "VPP STDOUT: %s" % line.rstrip("\n"))
         if testclass.vpp.stderr.fileno() in readable:
             read = os.read(testclass.vpp.stderr.fileno(), 102400)
@@ -189,7 +189,7 @@ def pump_output(testclass):
                 testclass.vpp_stderr_deque.extend(split[:limit])
                 if not testclass.cache_vpp_output:
                     for line in split[:limit]:
-                        testclass.logger.debug(
+                        testclass.logger.error(
                             "VPP STDERR: %s" % line.rstrip("\n"))
                         # ignoring the dummy pipe here intentionally - the
                         # flag will take care of properly terminating the loop
