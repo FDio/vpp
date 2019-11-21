@@ -712,7 +712,7 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
     return (fib_entry);
 }
 
-static void
+static fib_entry_t*
 fib_entry_post_install_actions (fib_entry_t *fib_entry,
 				fib_source_t source,
 				fib_entry_flag_t old_flags)
@@ -720,6 +720,8 @@ fib_entry_post_install_actions (fib_entry_t *fib_entry,
     fib_entry = fib_entry_post_flag_update_actions(fib_entry,
                                                    old_flags);
     fib_entry_src_action_installed(fib_entry, source);
+
+    return (fib_entry);
 }
 
 fib_node_index_t
@@ -754,7 +756,8 @@ fib_entry_create (u32 fib_index,
     fib_entry = fib_entry_get(fib_entry_index);
     fib_entry_src_action_activate(fib_entry, source);
 
-    fib_entry_post_install_actions(fib_entry, source, FIB_ENTRY_FLAG_NONE);
+    fib_entry = fib_entry_post_install_actions(fib_entry, source,
+                                               FIB_ENTRY_FLAG_NONE);
 
     FIB_ENTRY_DBG(fib_entry, "create");
 
@@ -782,7 +785,8 @@ fib_entry_create_special (u32 fib_index,
     fib_entry = fib_entry_src_action_add(fib_entry, source, flags, dpo);
     fib_entry_src_action_activate(fib_entry, source);
 
-    fib_entry_post_install_actions(fib_entry, source, FIB_ENTRY_FLAG_NONE);
+    fib_entry = fib_entry_post_install_actions(fib_entry, source,
+                                               FIB_ENTRY_FLAG_NONE);
 
     FIB_ENTRY_DBG(fib_entry, "create-special");
 
@@ -1308,7 +1312,9 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 	fib_entry_src_action_reactivate(fib_entry,
 					fib_entry_src_get_source(
 					    fib_entry_get_best_src_i(fib_entry)));
-        fib_entry_post_install_actions(fib_entry, best_source, bflags);
+        fib_entry = fib_entry_post_install_actions(fib_entry,
+                                                   best_source,
+                                                   bflags);
     }
     else
     {
@@ -1382,7 +1388,9 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 	fib_entry_src_action_reactivate(fib_entry,
 					fib_entry_src_get_source(
 					    fib_entry_get_best_src_i(fib_entry)));
-        fib_entry_post_install_actions(fib_entry, best_source, bflags);
+        fib_entry = fib_entry_post_install_actions(fib_entry,
+                                                   best_source,
+                                                   bflags);
     }
     else
     {
