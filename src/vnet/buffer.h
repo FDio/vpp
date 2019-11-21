@@ -168,7 +168,7 @@ typedef struct
 	  };
 
 	  /* Rewrite length */
-	  u32 save_rewrite_length;
+	  u8 save_rewrite_length;
 
 	  /* MFIB RPF ID */
 	  u32 rpf_id;
@@ -250,7 +250,7 @@ typedef struct
       u8 pyld_proto:3;		/* dpo_proto_t */
       u8 rsvd:5;
       /* Rewrite length */
-      u32 save_rewrite_length;
+      u8 save_rewrite_length;
       /* Save the mpls header length including all label stack */
       u8 mpls_hdr_length;
       /*
@@ -379,6 +379,16 @@ typedef struct
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;
+
+#define VNET_REWRITE_TOTAL_BYTES (VLIB_BUFFER_PRE_DATA_SIZE)
+
+STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
+	       == STRUCT_SIZE_OF (vnet_buffer_opaque_t,
+				  mpls.save_rewrite_length)
+	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
+				  mpls.save_rewrite_length) == 1
+	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
+	       "save_rewrite_length member must be able to hold the max value of rewrite length");
 
 /*
  * The opaque field of the vlib_buffer_t is interpreted as a
