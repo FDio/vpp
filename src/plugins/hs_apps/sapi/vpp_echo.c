@@ -587,6 +587,8 @@ session_connected_handler (session_connected_msg_t * mp)
   u32 listener_index = htonl (mp->context);
   svm_fifo_t *rx_fifo, *tx_fifo;
 
+  clib_atomic_add_fetch (&em->max_sim_connects, 1);
+
   if (mp->retval)
     {
       if (em->proto_cb_vft->connected_cb)
@@ -738,23 +740,6 @@ echo_process_rpcs (echo_main_t * em)
     }
 }
 
-static inline int
-echo_mq_dequeue_batch (svm_msg_q_t * mq, svm_msg_q_msg_t * msg_vec,
-		       u32 n_max_msg)
-{
-  svm_msg_q_msg_t *msg;
-  u32 n_msgs;
-  int i;
-
-  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
-  for (i = 0; i < n_msgs; i++)
-    {
-      vec_add2 (msg_vec, msg, 1);
-      svm_msg_q_sub_w_lock (mq, msg);
-    }
-  return n_msgs;
-}
-
 static void *
 echo_mq_thread_fn (void *arg)
 {
@@ -784,7 +769,11 @@ echo_mq_thread_fn (void *arg)
 	  svm_msg_q_unlock (mq);
 	  continue;
 	}
-      echo_mq_dequeue_batch (mq, msg_vec, ~0);
+      for (i = 0; i < svm_msg_q_size (mq); i++)
+	{
+	  vec_add2 (msg_vec, msg, 1);
+	  svm_msg_q_sub_w_lock (mq, msg);
+	}
       svm_msg_q_unlock (mq);
 
       for (i = 0; i < vec_len (msg_vec); i++)
@@ -839,13 +828,14 @@ print_usage_and_exit (void)
   int i;
   fprintf (stderr,
 	   "Usage: vpp_echo [socket-name SOCKET] [client|server] [uri URI] [OPTIONS]\n"
-	   "Generates traffic and assert correct teardown of the QUIC hoststack\n"
+	   "Generates traffic and assert correct teardown of the hoststack\n"
 	   "\n"
 	   "  socket-name PATH    Specify the binary socket path to connect to VPP\n"
 	   "  use-svm-api         Use SVM API to connect to VPP\n"
 	   "  test-bytes[:assert] Check data correctness when receiving (assert fails on first error)\n"
 	   "  fifo-size N[K|M|G]  Use N[K|M|G] fifos\n"
-	   "  mq-size N           Use N event slots for vpp_echo <-> vpp events\n"
+	   "  mq-size N           Use mq with N slots for [vpp_echo->vpp] communication\n"
+	   "  max-sim-connects N  Do not allow more than N mq events inflight\n"
 	   "  rx-buf N[K|M|G]     Use N[Kb|Mb|GB] RX buffer\n"
 	   "  tx-buf N[K|M|G]     Use N[Kb|Mb|GB] TX test buffer\n"
 	   "  appns NAMESPACE     Use the namespace NAMESPACE\n"
@@ -1008,6 +998,8 @@ echo_process_opts (int argc, char **argv)
 			 echo_unformat_timing_event, &em->timing.start_event,
 			 echo_unformat_timing_event, &em->timing.end_event))
 	;
+      else if (unformat (a, "max-sim-connects %d", &em->max_sim_connects))
+	;
       else
 	print_usage_and_exit ();
     }
@@ -1039,6 +1031,9 @@ echo_process_opts (int argc, char **argv)
       em->bytes_to_receive == 0 ? ECHO_CLOSE_F_PASSIVE : ECHO_CLOSE_F_ACTIVE;
   if (em->send_stream_disconnects == ECHO_CLOSE_F_INVALID)
     em->send_stream_disconnects = default_f_active;
+
+  if (em->max_sim_connects == 0)
+    em->max_sim_connects = em->evt_q_size >> 1;
 
   if (em->wait_for_gdb)
     {
@@ -1091,7 +1086,7 @@ main (int argc, char **argv)
   char *app_name;
   u64 i;
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
-  u32 rpc_queue_size = 64 << 10;
+  u32 rpc_queue_size = 256 << 10;
 
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   clib_spinlock_init (&em->sid_vpp_handles_lock);
@@ -1118,6 +1113,7 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
+  em->max_sim_connects = 0;
   em->crypto_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
