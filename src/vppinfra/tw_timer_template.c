@@ -301,12 +301,25 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
   ASSERT (interval);
 
   pool_get (tw->timers, t);
+  prev_user_handle[__os_thread_index] = t->user_handle;
   clib_memset (t, 0xff, sizeof (*t));
-
   t->user_handle = TW (make_internal_timer_handle) (user_id, timer_id);
 
   timer_add (tw, t, interval);
   return t - tw->timers;
+}
+
+u8
+TW (tw_timer_is_valid) (TWT (tw_timer_wheel) * tw, u32 handle, u32 user_id,
+			u32 timer_id)
+{
+#if LOG2_TW_TIMERS_PER_OBJECT > 0
+  u32 expected;
+  expected = (timer_id << (32 - LOG2_TW_TIMERS_PER_OBJECT)) | (user_id);
+  return (expected == tw->timers[handle].user_handle);
+#else
+  return (tw->timers[handle].user_handle == user_id);
+#endif
 }
 
 #if TW_TIMER_SCAN_FOR_HANDLE > 0

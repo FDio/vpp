@@ -234,8 +234,12 @@ typedef struct
 
 } TWT (tw_timer_wheel);
 
+static volatile u32 prev_user_handle[16];
 u32 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw,
 			 u32 pool_index, u32 timer_id, u64 interval);
+u8
+TW (tw_timer_is_valid) (TWT (tw_timer_wheel) * tw, u32 handle, u32 user_id,
+			u32 timer_id);
 
 void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle);
 int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle);
