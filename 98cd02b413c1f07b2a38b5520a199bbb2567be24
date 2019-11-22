@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c493dd38_4eb5e019",
+        "filename": "src/plugins/map/map.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 932,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-22T17:42:43Z",
+      "side": 1,
+      "message": "tag is a vector.  See map_api.c:43\nu8 *tag \u003d format (0, \"%s\", mp-\u003etag);\nHow do you feel about building a vector for \"[no-tag]\" and returning that?",
+      "range": {
+        "startLine": 932,
+        "startChar": 19,
+        "endLine": 932,
+        "endChar": 20
+      },
+      "revId": "98cd02b413c1f07b2a38b5520a199bbb2567be24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
