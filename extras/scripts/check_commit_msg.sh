@@ -1,9 +1,17 @@
 #/bin/env bash
 
-KNOWN_FEATURES=$(cat MAINTAINERS | sed -ne 's/^I:[[:space:]]*//p')
-FEATURES=$(git show -s --format=%s --no-color | sed -e 's/\([a-z0-9 -]*\):.*/\1/')
+KNOWN_FEATURES=$(cat MAINTAINERS \
+	| sed -ne 's/^I:[[:space:]]*//p' \
+	| tr '[A-Z]' '[a-z]')
+FEATURES=$(git show -s --format=%s --no-color \
+	| sed -e 's/\([^:]*\):.*/\1/' \
+	| sed -e 's/\([A-Za-z0-9 -]*\).*/\1/' \
+	| tr '[A-Z]' '[a-z]')
 KNOWN_TYPES="feature fix refactor style docs test make"
-TYPE=$(git show -s --format=%b --no-color | sed -ne 's/^Type:[[:space:]]*//p')
+TYPE=$(git show -s --format=%b --no-color \
+	| sed -ne 's/^[Tt]ype:[[:space:]]*//p' \
+	| tr '[A-Z]' '[a-z]')
+
 ERR="=============================== ERROR ==============================="
 
 # Chech that subject line contains at least one feature id
