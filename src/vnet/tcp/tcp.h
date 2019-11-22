@@ -1133,10 +1133,16 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 				  wrk_ctx[tc->c_thread_index].timer_wheel,
 				  tc->timers[timer_id], interval);
   else
-    tc->timers[timer_id] =
-      tw_timer_start_16t_2w_512sl (&tcp_main.
-				   wrk_ctx[tc->c_thread_index].timer_wheel,
-				   tc->c_c_index, timer_id, interval);
+    {
+      ASSERT (tw_timer_is_valid_16t_2w_512sl
+	      (&tcp_main.wrk_ctx[tc->c_thread_index].timer_wheel,
+	       tc->timers[timer_id], tc->c_c_index, timer_id));
+      tc->timers[timer_id] =
+	tw_timer_start_16t_2w_512sl (&tcp_main.
+				     wrk_ctx[tc->c_thread_index].timer_wheel,
+				     tc->c_c_index, timer_id, interval);
+    }
+
 }
 
 always_inline void
@@ -1145,17 +1151,29 @@ tcp_retransmit_timer_set (tcp_connection_t * tc)
   ASSERT (tc->snd_una != tc->snd_una_max);
   tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
 		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+  ASSERT (tw_timer_is_valid_16t_2w_512sl
+	  (&tcp_main.wrk_ctx[tc->c_thread_index].timer_wheel,
+	   tc->timers[TCP_TIMER_RETRANSMIT], tc->c_c_index,
+	   TCP_TIMER_RETRANSMIT));
 }
 
 always_inline void
 tcp_retransmit_timer_reset (tcp_connection_t * tc)
 {
+  ASSERT (tw_timer_is_valid_16t_2w_512sl
+	  (&tcp_main.wrk_ctx[tc->c_thread_index].timer_wheel,
+	   tc->timers[TCP_TIMER_RETRANSMIT], tc->c_c_index,
+	   TCP_TIMER_RETRANSMIT));
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
 }
 
 always_inline void
 tcp_retransmit_timer_force_update (tcp_connection_t * tc)
 {
+  ASSERT (tw_timer_is_valid_16t_2w_512sl
+	  (&tcp_main.wrk_ctx[tc->c_thread_index].timer_wheel,
+	   tc->timers[TCP_TIMER_RETRANSMIT], tc->c_c_index,
+	   TCP_TIMER_RETRANSMIT));
   tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
 		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
