@@ -22,6 +22,30 @@
       "revId": "98cd02b413c1f07b2a38b5520a199bbb2567be24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "286a7d2a_38efc493",
+        "filename": "src/plugins/map/map.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 932,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-11-22T18:01:48Z",
+      "side": 1,
+      "message": "They are really all variable length C strings.  The trailing NUL is the problem.\nAn easier thing is something like:  (de \u0026\u0026 de-\u003etag) ? de-\u003etag : 0\nand then letting the %s formatter supply the usual \"(nil)\" instead.",
+      "parentUuid": "c493dd38_4eb5e019",
+      "range": {
+        "startLine": 932,
+        "startChar": 19,
+        "endLine": 932,
+        "endChar": 20
+      },
+      "revId": "98cd02b413c1f07b2a38b5520a199bbb2567be24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
