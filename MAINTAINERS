@@ -715,6 +715,11 @@ M:	vpp-dev Mailing List <vpp-dev@fd.io>
 C:  Unmaintained
 F:	src/plugins/ioam
 
+filter
+I:	filter
+M:	Neale Ranns <neale@graphiant.com>
+F:	src/plugins/filter
+
 Plugin - Awkward chained buffer geometry tool
 I:	oddbuf
 M:	Dave Barach <vpp@barachs.net>
