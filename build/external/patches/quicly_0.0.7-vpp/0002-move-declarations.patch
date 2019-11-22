@@ -1,0 +1,69 @@
+diff --git a/include/quicly.h b/include/quicly.h
+index 21fdea4..0ffc908 100644
+--- a/include/quicly.h
++++ b/include/quicly.h
+@@ -90,6 +90,7 @@ typedef struct st_quicly_conn_t quicly_conn_t;
+ typedef struct st_quicly_stream_t quicly_stream_t;
+ typedef struct st_quicly_send_context_t quicly_send_context_t;
+ typedef struct st_quicly_address_token_plaintext_t quicly_address_token_plaintext_t;
++typedef struct st_quicly_pn_space_t quicly_pn_space_t;
+ 
+ #define QUICLY_CALLBACK_TYPE0(ret, name)                                                                                           \
+     typedef struct st_quicly_##name##_t {                                                                                          \
+@@ -329,6 +330,26 @@ struct st_quicly_context_t {
+     quicly_finalize_send_packet_t *finalize_send_packet;
+ };
+ 
++struct st_quicly_pn_space_t {
++    /**
++     * acks to be sent to peer
++     */
++    quicly_ranges_t ack_queue;
++    /**
++     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
++     */
++    int64_t largest_pn_received_at;
++    /**
++     *
++     */
++    uint64_t next_expected_packet_number;
++    /**
++     * packet count before ack is sent
++     */
++    uint32_t unacked_count;
++};
++
++
+ /**
+  * connection state
+  */
+diff --git a/lib/quicly.c b/lib/quicly.c
+index 9a1106d..8fcb6e6 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -109,25 +109,6 @@ struct st_quicly_pending_path_challenge_t {
+     uint8_t data[QUICLY_PATH_CHALLENGE_DATA_LEN];
+ };
+ 
+-struct st_quicly_pn_space_t {
+-    /**
+-     * acks to be sent to peer
+-     */
+-    quicly_ranges_t ack_queue;
+-    /**
+-     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
+-     */
+-    int64_t largest_pn_received_at;
+-    /**
+-     *
+-     */
+-    uint64_t next_expected_packet_number;
+-    /**
+-     * packet count before ack is sent
+-     */
+-    uint32_t unacked_count;
+-};
+-
+ struct st_quicly_handshake_space_t {
+     struct st_quicly_pn_space_t super;
+     struct {
