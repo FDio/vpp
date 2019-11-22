@@ -1100,6 +1100,16 @@ tcp_cc_get_pacing_rate (tcp_connection_t * tc)
   return ((f64) tc->cwnd / srtt);
 }
 
+static inline u8
+tcp_timer_is_valid (tcp_connection_t * tc, u32 timer_id)
+{
+  return
+    tw_timer_is_valid_16t_2w_512sl (&tcp_main.wrk_ctx
+				    [tc->c_thread_index].timer_wheel,
+				    tc->timers[timer_id], tc->c_c_index,
+				    timer_id);
+}
+
 always_inline void
 tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
@@ -1109,6 +1119,7 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
     tw_timer_start_16t_2w_512sl (&tcp_main.
 				 wrk_ctx[tc->c_thread_index].timer_wheel,
 				 tc->c_c_index, timer_id, interval);
+  ASSERT (tcp_timer_is_valid (tc, timer_id));
 }
 
 always_inline void
@@ -1118,6 +1129,7 @@ tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
     return;
 
+  ASSERT (tcp_timer_is_valid (tc, timer_id));
   tw_timer_stop_16t_2w_512sl (&tcp_main.
 			      wrk_ctx[tc->c_thread_index].timer_wheel,
 			      tc->timers[timer_id]);
@@ -1129,14 +1141,22 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
-    tw_timer_update_16t_2w_512sl (&tcp_main.
-				  wrk_ctx[tc->c_thread_index].timer_wheel,
-				  tc->timers[timer_id], interval);
+    {
+      ASSERT (tcp_timer_is_valid (tc, timer_id));
+      tw_timer_update_16t_2w_512sl (&tcp_main.
+				    wrk_ctx[tc->c_thread_index].timer_wheel,
+				    tc->timers[timer_id], interval);
+      ASSERT (tcp_timer_is_valid (tc, timer_id));
+    }
   else
-    tc->timers[timer_id] =
-      tw_timer_start_16t_2w_512sl (&tcp_main.
-				   wrk_ctx[tc->c_thread_index].timer_wheel,
-				   tc->c_c_index, timer_id, interval);
+    {
+      tc->timers[timer_id] =
+	tw_timer_start_16t_2w_512sl (&tcp_main.
+				     wrk_ctx[tc->c_thread_index].timer_wheel,
+				     tc->c_c_index, timer_id, interval);
+      ASSERT (tcp_timer_is_valid (tc, timer_id));
+    }
+
 }
 
 always_inline void
