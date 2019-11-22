@@ -23,6 +23,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/udp/udp.h>
 #include <vppinfra/error.h>
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
@@ -1005,6 +1006,18 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			    udp0->dst_port, thread_index, sw_if_index0,
 			    vnet_buffer (b0)->sw_if_index[VLIB_TX])))
 			goto trace00;
+
+		      /*
+		       * Send DHCP packets to the ipv4 stack, or we won't
+		       * be able to use dhcp client on the outside interface
+		       */
+		      if (PREDICT_FALSE
+			  ((b0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+			   && proto0 == SNAT_PROTOCOL_UDP
+			   && (udp0->dst_port ==
+			       clib_host_to_net_u16
+			       (UDP_DST_PORT_dhcp_to_server))))
+			goto trace00;
 		    }
 		  else
 		    {
@@ -1227,6 +1240,18 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			   (sm, ip1, ip1->protocol, udp1->src_port,
 			    udp1->dst_port, thread_index, sw_if_index1,
 			    vnet_buffer (b1)->sw_if_index[VLIB_TX])))
+			goto trace01;
+
+		      /*
+		       * Send DHCP packets to the ipv4 stack, or we won't
+		       * be able to use dhcp client on the outside interface
+		       */
+		      if (PREDICT_FALSE
+			  ((b1->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+			   && proto1 == SNAT_PROTOCOL_UDP
+			   && (udp1->dst_port ==
+			       clib_host_to_net_u16
+			       (UDP_DST_PORT_dhcp_to_server))))
 			goto trace01;
 		    }
 		  else
@@ -1494,6 +1519,18 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			   (sm, ip0, ip0->protocol, udp0->src_port,
 			    udp0->dst_port, thread_index, sw_if_index0,
 			    vnet_buffer (b0)->sw_if_index[VLIB_TX])))
+			goto trace0;
+
+		      /*
+		       * Send DHCP packets to the ipv4 stack, or we won't
+		       * be able to use dhcp client on the outside interface
+		       */
+		      if (PREDICT_FALSE
+			  ((b0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+			   && proto0 == SNAT_PROTOCOL_UDP
+			   && (udp0->dst_port ==
+			       clib_host_to_net_u16
+			       (UDP_DST_PORT_dhcp_to_server))))
 			goto trace0;
 		    }
 		  else
@@ -1796,6 +1833,18 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 						   &fragments_to_loopback);
 			  goto trace0;
 			}
+
+		      /*
+		       * Send DHCP packets to the ipv4 stack, or we won't
+		       * be able to use dhcp client on the outside interface
+		       */
+		      if (PREDICT_FALSE
+			  ((b0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+			   && proto0 == SNAT_PROTOCOL_UDP
+			   && (udp0->dst_port ==
+			       clib_host_to_net_u16
+			       (UDP_DST_PORT_dhcp_to_server))))
+			goto trace0;
 		    }
 		  else
 		    {

@@ -516,6 +516,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   ASSERT (b->current_data == 0);
 
   vnet_buffer (b)->sw_if_index[VLIB_RX] = c->sw_if_index;
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   if (ADJ_INDEX_INVALID == c->ai_ucast)
     is_broadcast = 1;
