@@ -291,6 +291,8 @@ ethernet_register_interface (vnet_main_t * vnm,
   pool_get (em->interfaces, ei);
   ei->flag_change = flag_change;
 
+  clib_memcpy (ei->address, address, sizeof (ei->address));
+
   hw_if_index = vnet_register_interface
     (vnm,
      dev_class_index, dev_instance,
@@ -309,7 +311,6 @@ ethernet_register_interface (vnet_main_t * vnm,
   /* Standard default ethernet MTU. */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
 
-  clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_add (hi->hw_address, address, sizeof (ei->address));
 
   if (error)

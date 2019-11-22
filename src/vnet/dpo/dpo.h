@@ -287,6 +287,8 @@ extern int dpo_is_adj(const dpo_id_t *dpo);
  * @biref Format a DPO_id_t oject
  */
 extern u8 *format_dpo_id(u8 * s, va_list * args);
+extern u8 *format_dpo_id_handle(u8 * s, va_list * args);
+extern uword unformat_dpo_id_handle(unformat_input_t * input, va_list * args);
 
 /**
  * @biref format a DPO type
@@ -297,6 +299,11 @@ extern u8 *format_dpo_type(u8 * s, va_list * args);
  * @brief format a DPO protocol
  */
 extern u8 *format_dpo_proto(u8 * s, va_list * args);
+
+/**
+ * @brief unformat a DPO protocol
+ */
+extern uword unformat_dpo_proto(unformat_input_t * input, va_list * args);
 
 /**
  * @brief format a DPO protocol

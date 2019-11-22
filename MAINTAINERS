@@ -589,6 +589,11 @@ IOAM
 I:	ioam
 F:	src/plugins/ioam
 
+filter
+I:	filter
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/filter
+
 Awkward chained buffer geometry tool
 I:	oddbuf
 F:	src/plugins/oddbuf

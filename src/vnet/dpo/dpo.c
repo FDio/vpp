@@ -175,11 +175,76 @@ format_dpo_id (u8 * s, va_list * args)
 }
 
 u8 *
+format_dpo_id_handle (u8 * s, va_list * args)
+{
+    dpo_id_t *dpo = va_arg (*args, dpo_id_t*);
+
+    s = format(s, "handle:[%d, %U, %d]",
+               dpo->dpoi_type, format_dpo_proto,
+               dpo->dpoi_proto, dpo->dpoi_index);
+
+    return (s);
+}
+
+uword
+unformat_dpo_id_handle (unformat_input_t * input, va_list * args)
+{
+  dpo_id_t *dpo = va_arg(*args, dpo_id_t *);
+  int type;
+
+  if (unformat(input, "handle:[%d, ip4, %d]",
+               &type,
+               //unformat_dpo_proto, &proto,
+               &dpo->dpoi_index))
+    {
+      dpo->dpoi_type = type;
+      dpo->dpoi_proto = DPO_PROTO_IP4;
+      dpo->dpoi_next_node = ~0;
+
+      return (1);
+    }
+  return (0);
+}
+
+u8 *
 format_dpo_proto (u8 * s, va_list * args)
 {
     dpo_proto_t proto = va_arg (*args, int);
 
     return (format(s, "%s", dpo_proto_names[proto]));
+}
+
+/**
+ * @brief unformat a DPO protocol
+ */
+uword
+unformat_dpo_proto (unformat_input_t * input, va_list * args)
+{
+    dpo_proto_t *proto = va_arg (*args, dpo_proto_t*);
+
+    if (unformat(input, "ip") || unformat(input, "ip4"))
+    {
+        *proto = DPO_PROTO_IP4;
+    }
+    else if (unformat(input, "ip6"))
+    {
+        *proto = DPO_PROTO_IP6;
+    }
+    else if (unformat(input, "mpls"))
+    {
+        *proto = DPO_PROTO_MPLS;
+    }
+    else if (unformat(input, "ethernet") ||
+             unformat(input, "eth") ||
+             unformat(input, "mac"))
+    {
+        *proto = DPO_PROTO_ETHERNET;
+    }
+    else
+    {
+        return (0);
+    }
+    return (1);
 }
 
 void
