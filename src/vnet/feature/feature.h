@@ -446,6 +446,7 @@ clib_error_t *vnet_feature_arc_init
    vnet_config_main_t * vcm,
    char **feature_start_nodes,
    int num_feature_start_nodes,
+   char *last_in_arc,
    vnet_feature_registration_t * first_reg,
    vnet_feature_constraint_registration_t * first_const_set,
    char ***in_feature_nodes);

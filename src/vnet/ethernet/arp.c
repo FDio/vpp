@@ -1725,7 +1725,7 @@ VNET_FEATURE_ARC_INIT (arp_feat, static) =
 {
   .arc_name = "arp",
   .start_nodes = VNET_FEATURES ("arp-input"),
-  .last_in_arc = "arp-disabled",
+  .last_in_arc = "error-drop",
   .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
 };
 
