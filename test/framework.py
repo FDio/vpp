@@ -260,6 +260,10 @@ class KeepAliveReporter(object):
         self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
 
+class VPPStatsSocketTimeoutError(BaseException):
+    pass
+
+
 class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
@@ -462,17 +466,27 @@ class VppTestCase(unittest.TestCase):
         cls.wait_for_enter()
 
     @classmethod
-    def wait_for_stats_socket(cls):
+    def connect_stats_socket_with_vpp_health_check(cls):
         deadline = time.time() + 300
         ok = False
         while time.time() < deadline or \
                 cls.debug_gdb or cls.debug_gdbserver:
+            try:
+                cls.vapi.hook.poll_vpp()
+            except VppDiedError:
+                cls.vpp_startup_failed = True
+                cls.logger.critical(
+                    "VPP died shortly after startup, check the"
+                    " output to standard error for possible cause")
+                raise
             if os.path.exists(cls.stats_sock):
                 ok = True
                 break
-            cls.sleep(0.8)
+            cls.sleep(0.1)
         if not ok:
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
+            raise VPPStatsSocketTimeoutError
+        cls.statistics = VPPStats(socketname=cls.stats_sock)
 
     @classmethod
     def wait_for_coredump(cls):
@@ -559,16 +573,7 @@ class VppTestCase(unittest.TestCase):
             else:
                 hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)
-            cls.wait_for_stats_socket()
-            cls.statistics = VPPStats(socketname=cls.stats_sock)
-            try:
-                hook.poll_vpp()
-            except VppDiedError:
-                cls.vpp_startup_failed = True
-                cls.logger.critical(
-                    "VPP died shortly after startup, check the"
-                    " output to standard error for possible cause")
-                raise
+            cls.connect_stats_socket_with_vpp_health_check()
             try:
                 cls.vapi.connect()
             except Exception:
