@@ -279,9 +279,8 @@ ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
       vnet_crypto_op_t *op = ops[i];                                         \
                                                                              \
       kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      IMB_AES##b##_GCM_INIT(m, kd, &ctx, op->iv, op->aad, op->aad_len);      \
-      IMB_AES##b##_GCM_ENC_UPDATE(m, kd, &ctx, op->dst, op->src, op->len);   \
-      IMB_AES##b##_GCM_ENC_FINALIZE(m, kd, &ctx, op->tag, op->tag_len);      \
+      IMB_AES##b##_GCM_DEC (m, kd %ctx, op->dst, op->src, op->len, op->iv,   \
+                            op->aad, op->aad_len, op->tag, op->tag_len);     \
                                                                              \
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                          \
     }                                                                        \
@@ -307,9 +306,8 @@ ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
       u8 scratch[64];                                                        \
                                                                              \
       kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      IMB_AES##b##_GCM_INIT(m, kd, &ctx, op->iv, op->aad, op->aad_len);      \
-      IMB_AES##b##_GCM_DEC_UPDATE(m, kd, &ctx, op->dst, op->src, op->len);   \
-      IMB_AES##b##_GCM_DEC_FINALIZE(m, kd, &ctx, scratch, op->tag_len);      \
+      IMB_AES##b##_GCM_DEC (m, kd %ctx, op->dst, op->src, op->len, op->iv,   \
+                            op->aad, op->aad_len, scratch, op->tag_len);     \
                                                                              \
       if ((memcmp (op->tag, scratch, op->tag_len)))                          \
         {                                                                    \
