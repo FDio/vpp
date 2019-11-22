@@ -530,13 +530,13 @@ echo_send_rpc (echo_main_t * em, void *fp, void *arg, u32 opaque)
   echo_rpc_msg_t *evt;
   if (PREDICT_FALSE (svm_msg_q_lock (em->rpc_msq_queue)))
     {
-      ECHO_LOG (1, "RPC lock failed");
+      ECHO_FAIL (ECHO_FAIL_RPC_SIZE, "RPC lock failed");
       return -1;
     }
   if (PREDICT_FALSE (svm_msg_q_ring_is_full (em->rpc_msq_queue, 0)))
     {
       svm_msg_q_unlock (em->rpc_msq_queue);
-      ECHO_LOG (1, "RPC ring is full");
+      ECHO_FAIL (ECHO_FAIL_RPC_SIZE, "RPC ring is full");
       return -2;
     }
   msg = svm_msg_q_alloc_msg_w_ring (em->rpc_msq_queue, 0);
