@@ -469,6 +469,7 @@ class VppTestCase(unittest.TestCase):
             if os.path.exists(cls.stats_sock):
                 ok = True
                 break
+            cls.vapi.hook.poll_vpp()
             cls.sleep(0.8)
         if not ok:
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
