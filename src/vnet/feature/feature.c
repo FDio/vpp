@@ -122,6 +122,7 @@ vnet_feature_init (vlib_main_t * vm)
       vcm = &cm->config_main;
       if ((error = vnet_feature_arc_init
 	   (vm, vcm, areg->start_nodes, areg->n_start_nodes,
+	    areg->last_in_arc,
 	    fm->next_feature_by_arc[arc_index],
 	    fm->next_constraint_by_arc[arc_index],
 	    &fm->feature_nodes[arc_index])))

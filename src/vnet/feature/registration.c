@@ -122,6 +122,7 @@ vnet_feature_arc_init (vlib_main_t * vm,
 		       vnet_config_main_t * vcm,
 		       char **feature_start_nodes,
 		       int num_feature_start_nodes,
+		       char *last_in_arc,
 		       vnet_feature_registration_t * first_reg,
 		       vnet_feature_constraint_registration_t *
 		       first_const_set, char ***in_feature_nodes)
@@ -153,6 +154,27 @@ vnet_feature_arc_init (vlib_main_t * vm,
   reg_by_index = hash_create (0, sizeof (uword));
 
   this_reg = first_reg;
+
+  /* Autogenerate <node> before <last-in-arc> constraints */
+  if (last_in_arc)
+    {
+      while (this_reg)
+	{
+	  /* If this isn't the last node in the arc... */
+	  if (clib_strcmp (this_reg->node_name, last_in_arc))
+	    {
+	      /*
+	       * Add an explicit constraint so this feature will run
+	       * before the last node in the arc
+	       */
+	      constraint_tuple = format (0, "%s,%s%c", this_reg->node_name,
+					 last_in_arc, 0);
+	      vec_add1 (constraints, constraint_tuple);
+	    }
+	  this_reg = this_reg->next_in_arc;
+	}
+      this_reg = first_reg;
+    }
 
   /* pass 1, collect feature node names, construct a before b pairs */
   while (this_reg)
