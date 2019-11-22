@@ -95,7 +95,8 @@
   _(ECHO_FAIL_TEST_ASSERT_RX_TOTAL, "ECHO_FAIL_TEST_ASSERT_RX_TOTAL")   \
   _(ECHO_FAIL_TEST_ASSERT_TX_TOTAL, "ECHO_FAIL_TEST_ASSERT_TX_TOTAL")   \
   _(ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,                          \
-    "ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED")
+    "ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED")                        \
+  _(ECHO_FAIL_RPC_SIZE, "ECHO_FAIL_RPC_SIZE")
 
 typedef enum
 {
@@ -327,6 +328,8 @@ typedef struct
 
   volatile u32 n_clients_connected;	/* Number of STREAM sessions connected */
   volatile u32 nxt_available_sidx;	/* next unused prealloced session_index */
+
+  volatile int max_sim_connects;
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;

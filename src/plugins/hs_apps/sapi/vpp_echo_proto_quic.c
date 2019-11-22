@@ -299,32 +299,14 @@ quic_echo_on_connected (session_connected_msg_t * mp, u32 session_index)
 }
 
 static void
-quic_echo_retry_connect (u32 session_index)
-{
-  /* retry connect */
-  echo_session_t *session;
-  echo_main_t *em = &echo_main;
-  if (session_index == SESSION_INVALID_INDEX)
-    {
-      ECHO_LOG (1, "Retrying Qsession connect");
-      echo_send_rpc (em, echo_send_connect, (void *) SESSION_INVALID_HANDLE,
-		     SESSION_INVALID_INDEX);
-    }
-  else
-    {
-      session = pool_elt_at_index (em->sessions, session_index);
-      ECHO_LOG (1, "Retrying connect %U", echo_format_session, session);
-      echo_send_rpc (em, echo_send_connect,
-		     (void *) session->vpp_session_handle, session_index);
-    }
-}
-
-static void
 quic_echo_connected_cb (session_connected_bundled_msg_t * mp,
 			u32 session_index, u8 is_failed)
 {
   if (is_failed)
-    return quic_echo_retry_connect (session_index);
+    {
+      ECHO_FAIL (ECHO_FAIL_QUIC_WRONG_CONNECT, "Echo connect failed");
+      return;
+    }
   return quic_echo_on_connected ((session_connected_msg_t *) mp,
 				 session_index);
 }

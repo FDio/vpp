@@ -149,6 +149,10 @@ echo_send_connect (u64 parent_session_handle, u32 opaque)
   session_connect_msg_t *mp;
   svm_msg_q_t *mq = em->ctrl_mq;
 
+  clib_atomic_sub_fetch (&em->max_sim_connects, 1);
+  while (em->max_sim_connects <= 0)
+    ;
+
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT);
   mp = (session_connect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
