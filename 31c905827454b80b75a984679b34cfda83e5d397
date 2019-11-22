@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0cb1a18_42f163f7",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-11-22T12:43:33Z",
+      "side": 1,
+      "message": "STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);",
+      "revId": "31c905827454b80b75a984679b34cfda83e5d397",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
