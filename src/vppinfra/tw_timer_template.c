@@ -309,6 +309,19 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
   return t - tw->timers;
 }
 
+u8
+TW (tw_timer_is_valid) (TWT (tw_timer_wheel) * tw, u32 handle, u32 user_id,
+			u32 timer_id)
+{
+#if LOG2_TW_TIMERS_PER_OBJECT > 0
+  u32 expected;
+  expected = (timer_id << (32 - LOG2_TW_TIMERS_PER_OBJECT)) | (user_id);
+  return (expected == handle);
+#else
+  return (handle == user_id);
+#endif
+}
+
 #if TW_TIMER_SCAN_FOR_HANDLE > 0
 int TW (scan_for_handle) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
