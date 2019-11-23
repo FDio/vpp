@@ -117,7 +117,7 @@ format_strings = {'u8': '%u',
                   'u32': '%u',
                   'i32': '%ld',
                   'u64': '%llu',
-                  'i64': '%llu',
+                  'i64': '%lld',
                   'f64': '%.2f'}
 
 noprint_fields = {'_vl_msg_id': None,
