@@ -82,7 +82,7 @@ typedef enum _tcp_timers
   TCP_N_TIMERS
 } tcp_timers_e;
 
-typedef void (timer_expiration_handler) (u32 index);
+typedef void (timer_expiration_handler) (u32 index, u32 thread_index);
 
 extern timer_expiration_handler tcp_timer_delack_handler;
 extern timer_expiration_handler tcp_timer_retransmit_handler;
