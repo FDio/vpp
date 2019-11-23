@@ -1414,16 +1414,13 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 }
 
 static void
-tcp_timer_waitclose_handler (u32 conn_index)
+tcp_timer_waitclose_handler (u32 conn_index, u32 thread_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, thread_index);
   if (!tc)
     return;
-
-  tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
   switch (tc->state)
     {
@@ -1497,19 +1494,38 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
 static void
 tcp_expired_timers_dispatch (u32 * expired_timers)
 {
-  int i;
+  u32 thread_index = vlib_get_thread_index ();
   u32 connection_index, timer_id;
+  tcp_connection_t *tc;
+  int i;
 
+  /*
+   * Invalidate all timer handles before dispatching. This avoids dangling
+   * index references to timer wheel pool entries that have been freed.
+   */
   for (i = 0; i < vec_len (expired_timers); i++)
     {
-      /* Get session index and timer id */
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
 
+      if (timer_id != TCP_TIMER_RETRANSMIT_SYN)
+	tc = tcp_connection_get (connection_index, thread_index);
+      else
+	tc = tcp_half_open_connection_get (connection_index);
+
       TCP_EVT (TCP_EVT_TIMER_POP, connection_index, timer_id);
 
-      /* Handle expiration */
-      (*timer_expiration_handlers[timer_id]) (connection_index);
+      tc->timers[timer_id] = TCP_TIMER_HANDLE_INVALID;
+    }
+
+  /*
+   * Dispatch expired timers
+   */
+  for (i = 0; i < vec_len (expired_timers); i++)
+    {
+      connection_index = expired_timers[i] & 0x0FFFFFFF;
+      timer_id = expired_timers[i] >> 28;
+      (*timer_expiration_handlers[timer_id]) (connection_index, thread_index);
     }
 }
 

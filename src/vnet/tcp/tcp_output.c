@@ -1221,13 +1221,11 @@ tcp_program_retransmit (tcp_connection_t * tc)
  * Sends delayed ACK when timer expires
  */
 void
-tcp_timer_delack_handler (u32 index)
+tcp_timer_delack_handler (u32 index, u32 thread_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (index, thread_index);
-  tc->timers[TCP_TIMER_DELACK] = TCP_TIMER_HANDLE_INVALID;
   tcp_send_ack (tc);
 }
 
@@ -1457,9 +1455,8 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 }
 
 void
-tcp_timer_retransmit_handler (u32 tc_index)
+tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_main_t *vm = wrk->vm;
   tcp_connection_t *tc;
@@ -1471,8 +1468,6 @@ tcp_timer_retransmit_handler (u32 tc_index)
   /* Note: the connection may have been closed and pool_put */
   if (PREDICT_FALSE (tc == 0 || tc->state == TCP_STATE_SYN_SENT))
     return;
-
-  tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
 
   /* Wait-close and retransmit could pop at the same time */
   if (tc->state == TCP_STATE_CLOSED)
@@ -1606,9 +1601,8 @@ tcp_timer_retransmit_handler (u32 tc_index)
  * SYN retransmit timer handler. Active open only.
  */
 void
-tcp_timer_retransmit_syn_handler (u32 tc_index)
+tcp_timer_retransmit_syn_handler (u32 tc_index, u32 thread_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_main_t *vm = wrk->vm;
   tcp_connection_t *tc;
@@ -1620,8 +1614,6 @@ tcp_timer_retransmit_syn_handler (u32 tc_index)
   /* Note: the connection may have transitioned to ESTABLISHED... */
   if (PREDICT_FALSE (tc == 0 || tc->state != TCP_STATE_SYN_SENT))
     return;
-
-  tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
 
   /* Half-open connection actually moved to established but we were
    * waiting for syn retransmit to pop to call cleanup from the right
@@ -1675,9 +1667,8 @@ tcp_timer_retransmit_syn_handler (u32 tc_index)
  *
  */
 void
-tcp_timer_persist_handler (u32 index)
+tcp_timer_persist_handler (u32 index, u32 thread_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   u32 bi, max_snd_bytes, available_bytes, offset;
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -1690,9 +1681,6 @@ tcp_timer_persist_handler (u32 index)
   tc = tcp_connection_get_if_valid (index, thread_index);
   if (!tc)
     return;
-
-  /* Make sure timer handle is set to invalid */
-  tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
 
   /* Problem already solved or worse */
   if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
