@@ -46,6 +46,30 @@
       "revId": "0ef809aff4d9c0736099bb5cb2677c49854d07fb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b4432f30_448e19e2",
+        "filename": "src/vnet/classify/classify_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-23T15:29:34Z",
+      "side": 1,
+      "message": "Never mind. ;)\n\nvppapigen sends the default value (host-endian) via json to vpp_papi, who does the endian transform when it does the pack.",
+      "parentUuid": "4e3406cc_f33dbf9a",
+      "range": {
+        "startLine": 115,
+        "startChar": 2,
+        "endLine": 120,
+        "endChar": 0
+      },
+      "revId": "0ef809aff4d9c0736099bb5cb2677c49854d07fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
