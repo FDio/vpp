@@ -40,7 +40,7 @@ class TestVlib(VppTestCase):
                 "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "elog trace dispatch",
                 "event-logger stop",
@@ -81,7 +81,7 @@ class TestVlib(VppTestCase):
                 "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "show vlib graph",
                 "show vlib graph ethernet-input",
@@ -124,7 +124,7 @@ class TestVlib(VppTestCase):
                 "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "pa en",
                 "clear interfaces",
