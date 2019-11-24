@@ -77,18 +77,20 @@ class Packer(object):
         raise NotImplementedError
 
     # override as appropriate in subclasses
-    def _get_packer_with_options(self, f_type, options):
+    @staticmethod
+    def _get_packer_with_options(f_type, options):
         return types[f_type]
 
     def get_packer_with_options(self, f_type, options):
         if options is not None:
             try:
-                return self._get_packer_with_options(f_type, options)
+                c = types[f_type].__class__
+                return c._get_packer_with_options(f_type, options)
             except IndexError:
                 raise VPPSerializerValueError(
                     "Options not supported for {}{} ({})".
-                        format(f_type, types[f_type].__class__,
-                               options))
+                    format(f_type, types[f_type].__class__,
+                           options))
 
 
 class BaseTypes(Packer):
@@ -126,9 +128,9 @@ class BaseTypes(Packer):
     def unpack(self, data, offset, result=None, ntc=False):
         return self.packer.unpack_from(data, offset)[0], self.packer.size
 
-    def _get_packer_with_options(self, f_type, options):
-        c = types[f_type].__class__
-        return c(f_type, options=options)
+    @staticmethod
+    def _get_packer_with_options(f_type, options):
+        return BaseTypes(f_type, options=options)
 
     def __repr__(self):
         return "BaseTypes(type=%s, elements=%s, options=%s)" % (self._type,
@@ -175,7 +177,6 @@ class String(Packer):
             return '', 0
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
-        #x2 = x.split(b'\0', 1)[0]
         return (x.decode('ascii', errors='replace'), size + length_field_size)
 
 
@@ -272,7 +273,7 @@ class FixedList(Packer):
 
     def __repr__(self):
         return "FixedList_(name=%s, field_type=%s, num=%s)" % (
-            self.name, self.field_type, self.num )
+            self.name, self.field_type, self.num)
 
 
 class VLAList(Packer):
@@ -325,8 +326,8 @@ class VLAList(Packer):
     def __repr__(self):
         return "VLAList(name=%s, field_type=%s, " \
                "len_field_name=%s, index=%s)" % (
-            self.name, self.field_type, self.length_field, self.index
-        )
+                   self.name, self.field_type, self.length_field, self.index
+               )
 
 
 class VLAList_legacy(Packer):
@@ -409,9 +410,9 @@ class VPPEnumType(Packer):
         x, size = types[self.enumtype].unpack(data, offset)
         return self.enum(x), size
 
-    def _get_packer_with_options(self, f_type, options):
-        c = types[f_type].__class__
-        return c(f_type, types[f_type].msgdef, options=options)
+    @staticmethod
+    def _get_packer_with_options(f_type, options):
+        return VPPEnumType(f_type, types[f_type].msgdef, options=options)
 
     def __repr__(self):
         return "VPPEnumType(name=%s, msgdef=%s, options=%s)" % (
@@ -512,9 +513,9 @@ class VPPTypeAlias(Packer):
 
         return self.packer.pack(data, kwargs)
 
-    def _get_packer_with_options(self, f_type, options):
-        c = types[f_type].__class__
-        return c(f_type, types[f_type].msgdef, options=options)
+    @staticmethod
+    def _get_packer_with_options(f_type, options):
+        return VPPTypeAlias(f_type, types[f_type].msgdef, options=options)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
         if ntc is False and self.name in vpp_format.conversion_unpacker_table:
