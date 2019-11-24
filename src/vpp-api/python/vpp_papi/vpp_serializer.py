@@ -179,9 +179,11 @@ class String(Packer):
         return (x.decode('ascii', errors='replace'), size + length_field_size)
 
 
-types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
+types = {'u8': BaseTypes('u8'), 'i8': BaseTypes('i8'),
+         'u16': BaseTypes('u16'), 'i16': BaseTypes('i16'),
          'u32': BaseTypes('u32'), 'i32': BaseTypes('i32'),
-         'u64': BaseTypes('u64'), 'f64': BaseTypes('f64'),
+         'u64': BaseTypes('u64'), 'i64': BaseTypes('i64'),
+         'f64': BaseTypes('f64'),
          'bool': BaseTypes('bool'), 'string': String}
 
 class_types = {}
