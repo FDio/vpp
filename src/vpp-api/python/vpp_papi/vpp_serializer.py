@@ -93,6 +93,8 @@ class Packer(object):
 
 class BaseTypes(Packer):
     def __init__(self, type, elements=0, options=None):
+        self._type = type
+        self._elements = elements
         base_types = {'u8': '>B',
                       'i8': '>b',
                       'string': '>s',
@@ -127,6 +129,11 @@ class BaseTypes(Packer):
     def _get_packer_with_options(self, f_type, options):
         c = types[f_type].__class__
         return c(f_type, options=options)
+
+    def __repr__(self):
+        return "BaseTypes(type=%s, elements=%s, options=%s)" % (self._type,
+                                                                self._elements,
+                                                                self.options)
 
 
 class String(Packer):
@@ -226,6 +233,11 @@ class FixedList_u8(Packer):
                 .format(self.name, len(data[offset:]), self.num))
         return self.packer.unpack(data, offset)
 
+    def __repr__(self):
+        return "FixedList_u8(name=%s, field_type=%s, num=%s)" % (
+            self.name, self.field_type, self.num
+        )
+
 
 class FixedList(Packer):
     def __init__(self, name, field_type, num):
@@ -255,6 +267,10 @@ class FixedList(Packer):
             offset += size
             total += size
         return result, total
+
+    def __repr__(self):
+        return "FixedList_(name=%s, field_type=%s, num=%s)" % (
+            self.name, self.field_type, self.num )
 
 
 class VLAList(Packer):
@@ -304,9 +320,17 @@ class VLAList(Packer):
             total += size
         return r, total
 
+    def __repr__(self):
+        return "VLAList(name=%s, field_type=%s, " \
+               "len_field_name=%s, index=%s)" % (
+            self.name, self.field_type, self.length_field, self.index
+        )
+
 
 class VLAList_legacy(Packer):
     def __init__(self, name, field_type):
+        self.name = name
+        self.field_type = field_type
         self.packer = types[field_type]
         self.size = self.packer.size
 
@@ -333,6 +357,11 @@ class VLAList_legacy(Packer):
             offset += self.packer.size
             total += size
         return r, total
+
+    def __repr__(self):
+        return "VLAList_legacy(name=%s, field_type=%s)" % (
+            self.name, self.field_type
+        )
 
 
 class VPPEnumType(Packer):
@@ -382,10 +411,16 @@ class VPPEnumType(Packer):
         c = types[f_type].__class__
         return c(f_type, types[f_type].msgdef, options=options)
 
+    def __repr__(self):
+        return "VPPEnumType(name=%s, msgdef=%s, options=%s)" % (
+            self.name, self.msgdef, self.options
+        )
+
 
 class VPPUnionType(Packer):
     def __init__(self, name, msgdef):
         self.name = name
+        self.msgdef = msgdef
         self.size = 0
         self.maxindex = 0
         fields = []
@@ -431,6 +466,9 @@ class VPPUnionType(Packer):
                 maxsize = size
             r.append(x)
         return self.tuple._make(r), maxsize
+
+    def __repr__(self):
+        return"VPPUnionType(name=%s, msgdef=%r)" % (self.name, self.msgdef)
 
 
 class VPPTypeAlias(Packer):
@@ -486,6 +524,10 @@ class VPPTypeAlias(Packer):
             self.toplevelconversion = False
             return conversion_unpacker(t, self.name), size
         return t, size
+
+    def __repr__(self):
+        return "VPPTypeAlias(name=%s, msgdef=%s, options=%s)" % (
+            self.name, self.msgdef, self.options)
 
 
 class VPPType(Packer):
@@ -608,6 +650,11 @@ class VPPType(Packer):
             self.toplevelconversion = False
             t = conversion_unpacker(t, self.name)
         return t, total
+
+    def __repr__(self):
+        return "%s(name=%s, msgdef=%s)" % (
+            self.__class__.__name__, self.name, self.msgdef
+        )
 
 
 class VPPMessage(VPPType):
