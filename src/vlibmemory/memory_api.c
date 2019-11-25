@@ -780,6 +780,8 @@ vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
   svm_queue_t *q;
   int rv;
 
+  pthread_mutex_lock (&am->vlib_rp->mutex);
+  pthread_mutex_lock (&am->vlib_private_rps[reg_index]->mutex);
   vlib_rp = am->vlib_rp = am->vlib_private_rps[reg_index];
 
   am->shmem_hdr = (void *) vlib_rp->user_ctx;
@@ -789,6 +791,8 @@ vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   am->shmem_hdr = save_shmem_hdr;
   am->vlib_rp = save_vlib_rp;
+  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  pthread_mutex_unlock (&am->vlib_private_rps[reg_index]->mutex);
 
   return rv;
 }
