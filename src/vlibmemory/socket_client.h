@@ -51,13 +51,31 @@ extern socket_client_main_t socket_client_main;
 int vl_socket_client_connect (char *socket_path, char *client_name,
 			      u32 socket_buffer_size);
 void vl_socket_client_disconnect (void);
+void vl_socket_client_enable_disable (int enable);
 int vl_socket_client_read (int wait);
 int vl_socket_client_write (void);
-void vl_socket_client_enable_disable (int enable);
 void *vl_socket_client_msg_alloc (int nbytes);
 int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
 			       int want_pthread);
 clib_error_t *vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait);
+
+/*
+ * Socket client apis that explicitly pass socket main as an argument
+ */
+
+int vl_socket_client_connect2 (socket_client_main_t * scm, char *socket_path,
+			       char *client_name, u32 socket_buffer_size);
+void vl_socket_client_disconnect2 (socket_client_main_t * scm);
+void vl_socket_client_enable_disable2 (socket_client_main_t * scm,
+				       int enable);
+int vl_socket_client_read2 (socket_client_main_t * scm, int wait);
+int vl_socket_client_write2 (socket_client_main_t * scm);
+void *vl_socket_client_msg_alloc2 (socket_client_main_t * scm, int nbytes);
+int vl_socket_client_init_shm2 (socket_client_main_t * scm,
+				vl_api_shm_elem_config_t * config,
+				int want_pthread);
+clib_error_t *vl_socket_client_recv_fd_msg2 (socket_client_main_t * scm,
+					     int fds[], int n_fds, u32 wait);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_CLIENT_H_ */
 

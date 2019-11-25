@@ -42,6 +42,7 @@
 #undef vl_printfun
 
 socket_client_main_t socket_client_main;
+__thread socket_client_main_t *socket_client_ctx = &socket_client_main;
 
 /* Debug aid */
 u32 vl (void *p) __attribute__ ((weak));
@@ -52,10 +53,23 @@ vl (void *p)
   return vec_len (p);
 }
 
-int
-vl_socket_client_read (int wait)
+static socket_client_main_t *
+vl_socket_client_ctx_push (socket_client_main_t * ctx)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  socket_client_main_t *old = socket_client_ctx;
+  socket_client_ctx = ctx;
+  return old;
+}
+
+static void
+vl_socket_client_ctx_pop (socket_client_main_t * old_ctx)
+{
+  socket_client_ctx = old_ctx;
+}
+
+static int
+vl_socket_client_read_internal (socket_client_main_t * scm, int wait)
+{
   u32 data_len = 0, msg_size;
   int n, current_rx_index;
   msgbuf_t *mbp = 0;
@@ -139,9 +153,26 @@ vl_socket_client_read (int wait)
 }
 
 int
-vl_socket_client_write (void)
+vl_socket_client_read (int wait)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  return vl_socket_client_read_internal (socket_client_ctx, wait);
+}
+
+int
+vl_socket_client_read2 (socket_client_main_t * scm, int wait)
+{
+  socket_client_main_t *old_ctx;
+  int rv;
+
+  old_ctx = vl_socket_client_ctx_push (scm);
+  rv = vl_socket_client_read_internal (scm, wait);
+  vl_socket_client_ctx_pop (old_ctx);
+  return rv;
+}
+
+static int
+vl_socket_client_internal (socket_client_main_t * scm)
+{
   int n;
 
   msgbuf_t msgbuf = {
@@ -167,18 +198,40 @@ vl_socket_client_write (void)
   return n;
 }
 
+int
+vl_socket_client_write (void)
+{
+  return vl_socket_client_internal (socket_client_ctx);
+}
+
+int
+vl_socket_client_write2 (socket_client_main_t * scm)
+{
+  socket_client_main_t *old_ctx;
+  int rv;
+
+  old_ctx = vl_socket_client_ctx_push (scm);
+  rv = vl_socket_client_internal (scm);
+  vl_socket_client_ctx_pop (old_ctx);
+  return rv;
+}
+
+void *
+vl_socket_client_msg_alloc2 (socket_client_main_t * scm, int nbytes)
+{
+  scm->socket_tx_nbytes = nbytes;
+  return ((void *) scm->socket_tx_buffer);
+}
+
 void *
 vl_socket_client_msg_alloc (int nbytes)
 {
-  socket_client_main.socket_tx_nbytes = nbytes;
-  return ((void *) socket_client_main.socket_tx_buffer);
+  return vl_socket_client_msg_alloc2 (socket_client_ctx, nbytes);
 }
 
 void
-vl_socket_client_disconnect (void)
+vl_socket_client_disconnect2 (socket_client_main_t * scm)
 {
-  socket_client_main_t *scm = &socket_client_main;
-
   if (vl_mem_client_is_connected ())
     {
       vl_client_disconnect_from_vlib_no_unmap ();
@@ -190,16 +243,27 @@ vl_socket_client_disconnect (void)
 }
 
 void
+vl_socket_client_disconnect (void)
+{
+  vl_socket_client_disconnect2 (socket_client_ctx);
+}
+
+void
+vl_socket_client_enable_disable2 (socket_client_main_t * scm, int enable)
+{
+  scm->socket_enable = enable;
+}
+
+void
 vl_socket_client_enable_disable (int enable)
 {
-  socket_client_main_t *scm = &socket_client_main;
-  scm->socket_enable = enable;
+  vl_socket_client_enable_disable2 (socket_client_ctx, enable);
 }
 
 clib_error_t *
 vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  socket_client_main_t *scm = socket_client_ctx;
   char msgbuf[16];
   char ctl[CMSG_SPACE (sizeof (int) * n_fds)
 	   + CMSG_SPACE (sizeof (struct ucred))];
@@ -263,7 +327,7 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
 static void vl_api_sock_init_shm_reply_t_handler
   (vl_api_sock_init_shm_reply_t * mp)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  socket_client_main_t *scm = socket_client_ctx;
   ssvm_private_t *memfd = &scm->memfd_segment;
   i32 retval = ntohl (mp->retval);
   api_main_t *am = &api_main;
@@ -323,7 +387,7 @@ static void vl_api_sock_init_shm_reply_t_handler
 static void
 vl_api_sockclnt_create_reply_t_handler (vl_api_sockclnt_create_reply_t * mp)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  socket_client_main_t *scm = socket_client_ctx;
   if (!mp->response)
     {
       scm->socket_enable = 1;
@@ -356,10 +420,9 @@ vl_sock_client_install_message_handlers (void)
 }
 
 int
-vl_socket_client_connect (char *socket_path, char *client_name,
-			  u32 socket_buffer_size)
+vl_socket_client_connect2 (socket_client_main_t * scm, char *socket_path,
+			   char *client_name, u32 socket_buffer_size)
 {
-  socket_client_main_t *scm = &socket_client_main;
   vl_api_sockclnt_create_t *mp;
   clib_socket_t *sock;
   clib_error_t *error;
@@ -393,7 +456,7 @@ vl_socket_client_connect (char *socket_path, char *client_name,
   _vec_len (scm->socket_tx_buffer) = 0;
   scm->name = format (0, "%s", client_name);
 
-  mp = vl_socket_client_msg_alloc (sizeof (*mp));
+  mp = vl_socket_client_msg_alloc2 (scm, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
   strncpy ((char *) mp->name, client_name, sizeof (mp->name) - 1);
   mp->name[sizeof (mp->name) - 1] = 0;
@@ -401,28 +464,36 @@ vl_socket_client_connect (char *socket_path, char *client_name,
 
   clib_time_init (&scm->clib_time);
 
-  if (vl_socket_client_write () <= 0)
+  if (vl_socket_client_write2 (scm) <= 0)
     return (-1);
 
-  if (vl_socket_client_read (5))
+  if (vl_socket_client_read2 (scm, 5))
     return (-1);
 
   return (0);
 }
 
 int
-vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
-			   int want_pthread)
+vl_socket_client_connect (char *socket_path, char *client_name,
+			  u32 socket_buffer_size)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  return vl_socket_client_connect2 (socket_client_ctx, socket_path,
+				    client_name, socket_buffer_size);
+}
+
+int
+vl_socket_client_init_shm2 (socket_client_main_t * scm,
+			    vl_api_shm_elem_config_t * config,
+			    int want_pthread)
+{
   vl_api_sock_init_shm_t *mp;
   int rv, i;
   u64 *cfg;
 
   scm->want_shm_pthread = want_pthread;
 
-  mp = vl_socket_client_msg_alloc (sizeof (*mp) +
-				   vec_len (config) * sizeof (u64));
+  mp = vl_socket_client_msg_alloc2 (scm, sizeof (*mp) +
+				    vec_len (config) * sizeof (u64));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_SOCK_INIT_SHM);
   mp->client_index = clib_host_to_net_u32 (scm->client_index);
@@ -437,23 +508,36 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
 	}
       mp->nitems = vec_len (config);
     }
-  rv = vl_socket_client_write ();
+  rv = vl_socket_client_write2 (scm);
   if (rv <= 0)
     return rv;
 
-  if (vl_socket_client_read (1))
+  if (vl_socket_client_read2 (scm, 1))
     return -1;
 
   return 0;
 }
 
-clib_error_t *
-vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait)
+int
+vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
+			   int want_pthread)
 {
-  socket_client_main_t *scm = &socket_client_main;
+  return vl_socket_client_init_shm2 (socket_client_ctx, config, want_pthread);
+}
+
+clib_error_t *
+vl_socket_client_recv_fd_msg2 (socket_client_main_t * scm, int fds[],
+			       int n_fds, u32 wait)
+{
   if (!scm->socket_fd)
     return clib_error_return (0, "no socket");
   return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fds, n_fds, wait);
+}
+
+clib_error_t *
+vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait)
+{
+  return vl_socket_client_recv_fd_msg2 (socket_client_ctx, fds, n_fds, wait);
 }
 
 /*
