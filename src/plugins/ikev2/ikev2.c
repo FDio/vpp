@@ -1542,7 +1542,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   int rv;
 
   rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
-			&a->local_ip, &a->remote_ip, 0, 0, &sw_if_index);
+			&a->local_ip, &a->remote_ip, 0,
+			IPIP_TUNNEL_FLAG_NONE, IP_DSCP_CS0, &sw_if_index);
 
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
