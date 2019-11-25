@@ -719,6 +719,7 @@ list(APPEND VNET_SOURCES
   ipip/sixrd.c
   ipip/ipip_api.c
   ipip/ipip_cli.c
+  ipip/ipip_types_api.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -729,7 +730,10 @@ list(APPEND VNET_HEADERS
   ipip/ipip.h
 )
 
-list(APPEND VNET_API_FILES ipip/ipip.api)
+list(APPEND VNET_API_FILES
+  ipip/ipip_types.api
+  ipip/ipip.api
+)
 
 ##############################################################################
 # Tunnel protocol: l2tpv3

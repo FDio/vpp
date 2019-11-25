@@ -1,0 +1,33 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Flags controlling tunnel behaviour
+ */
+enum ipip_tunnel_flags : u8
+{
+  IPIP_TUNNEL_API_FLAG_NONE = 0,
+  /** at encap, copy the DF bit of the payload into the tunnel header */
+  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DF = 0x1,
+  /** at encap, set the DF bit in the tunnel header */
+  IPIP_TUNNEL_API_FLAG_ENCAP_SET_DF = 0x2,
+  /** at encap, copy the DSCP bits of the payload into the tunnel header */
+  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP = 0x4,
+  /** at encap, copy the ECN bit of the payload into the tunnel header */
+  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN = 0x8,
+  /** at decap, copy the ECN bit of the tunnel header into the payload */
+  IPIP_TUNNEL_API_FLAG_DECAP_COPY_ECN = 0x10,
+};

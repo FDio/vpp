@@ -280,10 +280,10 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                     ip0->hop_limit = vnet_buffer(b0)->mpls.ttl;
                     ip1->hop_limit = vnet_buffer(b1)->mpls.ttl;
 
-                    ip6_set_traffic_class_network_order(
+                    ip6_set_dscp_network_order(
                         ip0,
                         mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp));
-                    ip6_set_traffic_class_network_order(
+                    ip6_set_dscp_network_order(
                         ip1,
                         mpls_exp_to_ip_dscp(vnet_buffer(b1)->mpls.exp));
                 }
@@ -380,7 +380,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                      */
                     ip0->hop_limit = vnet_buffer(b0)->mpls.ttl;
 
-                    ip6_set_traffic_class_network_order(
+                    ip6_set_dscp_network_order(
                         ip0,
                         mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp));
                 }
