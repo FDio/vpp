@@ -147,7 +147,6 @@ void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
 int
 vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 {
-  svm_region_t *svm;
   vl_api_memclnt_create_t *mp;
   vl_api_memclnt_create_reply_t *rp;
   svm_queue_t *vl_input_queue;
@@ -168,7 +167,6 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       return -1;
     }
 
-  svm = am->vlib_rp;
   shmem_hdr = am->shmem_hdr;
 
   if (shmem_hdr == 0 || shmem_hdr->vl_input_queue == 0)
@@ -180,12 +178,10 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   CLIB_MEM_UNPOISON (shmem_hdr, sizeof (*shmem_hdr));
   VL_MSG_API_SVM_QUEUE_UNPOISON (shmem_hdr->vl_input_queue);
 
-  pthread_mutex_lock (&svm->mutex);
-  oldheap = svm_push_data_heap (svm);
+  oldheap = vl_msg_push_heap ();
   vl_input_queue = svm_queue_alloc_and_init (input_queue_size, sizeof (uword),
 					     getpid ());
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&svm->mutex);
+  vl_msg_pop_heap (oldheap);
 
   am->my_client_index = ~0;
   am->my_registration = 0;
@@ -243,11 +239,9 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
   void *oldheap;
   api_main_t *am = &api_main;
 
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
   svm_queue_free (am->vl_input_queue);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
-  svm_pop_heap (oldheap);
+  vl_msg_pop_heap (oldheap);
 
   am->my_client_index = ~0;
   am->my_registration = 0;
