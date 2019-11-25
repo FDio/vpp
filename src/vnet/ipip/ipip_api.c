@@ -22,6 +22,7 @@
 #include <vnet/ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/ipip/ipip_types_api.h>
 
 #include <vnet/ipip/ipip.api_enum.h>
 #include <vnet/ipip/ipip.api_types.h>
@@ -36,6 +37,7 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
   vl_api_ipip_add_tunnel_reply_t *rmp;
   int rv = 0;
   u32 fib_index, sw_if_index = ~0;
+  ipip_tunnel_flags_t flags;
   ip46_address_t src, dst;
   ip46_type_t itype[2];
 
@@ -54,6 +56,11 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
       goto out;
     }
 
+  rv = ipip_tunnel_flags_decode (mp->tunnel.flags, &flags);
+
+  if (rv)
+    goto out;
+
   fib_index = fib_table_find (fib_proto_from_ip46 (itype[0]),
 			      ntohl (mp->tunnel.table_id));
 
@@ -67,7 +74,8 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 			     IPIP_TRANSPORT_IP6 :
 			     IPIP_TRANSPORT_IP4),
 			    ntohl (mp->tunnel.instance), &src, &dst,
-			    fib_index, mp->tunnel.tc_tos, &sw_if_index);
+			    fib_index, flags,
+			    ip_dscp_decode (mp->tunnel.dscp), &sw_if_index);
     }
 
 out:
@@ -110,6 +118,8 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
     rmp->tunnel.table_id = htonl (ft->ft_table_id);
     rmp->tunnel.instance = htonl (t->user_instance);
     rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+    rmp->tunnel.dscp = t->dscp;
+    rmp->tunnel.flags = ipip_tunnel_flags_encode(t->flags);
   }));
     /* *INDENT-ON* */
 }
