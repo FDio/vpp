@@ -46,6 +46,30 @@
       "revId": "9beb09d47e1d07b4a77dfdeb2da7eeaa5dc95da9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edf2bb35_3705d441",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-25T16:11:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3612de9d_06895d5d",
+      "range": {
+        "startLine": 7,
+        "startChar": 16,
+        "endLine": 7,
+        "endChar": 19
+      },
+      "revId": "9beb09d47e1d07b4a77dfdeb2da7eeaa5dc95da9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
