@@ -53,7 +53,6 @@
 
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, clib_memset */
-#include <vppinfra/valgrind.h>
 
 #define CLIB_MAX_MHEAPS 256
 
@@ -124,9 +123,6 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
   if (offset != ~0)
     {
       p = heap + offset;
-#if CLIB_DEBUG > 0
-      VALGRIND_MALLOCLIKE_BLOCK (p, mheap_data_bytes (heap, offset), 0, 0);
-#endif
       return p;
     }
   else
@@ -234,10 +230,6 @@ clib_mem_free (void *p)
   mheap_put (heap, (u8 *) p - heap);
 #else
   mspace_put (heap, p);
-#endif
-
-#if CLIB_DEBUG > 0
-  VALGRIND_FREELIKE_BLOCK (p, 0);
 #endif
 }
 
