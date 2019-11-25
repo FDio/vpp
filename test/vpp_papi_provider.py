@@ -344,7 +344,10 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
+        t_start = time.time()
         r = self.papi.cli_inband(cmd=cli)
+        elapsed = time.time() - t_start
+        self.test_class.logger.debug("CLI_TIME: it took " + str(elapsed) + " sec")
         self.hook.after_cli(cli)
         return r
 
