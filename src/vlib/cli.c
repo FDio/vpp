@@ -798,9 +798,9 @@ vl_msg_push_heap (void)
   return 0;
 }
 
-void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
+void vl_api_pop_heap (void *oldheap) __attribute__ ((weak));
 void
-vl_msg_pop_heap (void *oldheap)
+vl_api_pop_heap (void *oldheap)
 {
 }
 
@@ -851,13 +851,13 @@ show_memory_usage (vlib_main_t * vm,
       was_enabled = clib_mem_trace_enable_disable (0);
       u8 *s_in_svm =
 	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
-      vl_msg_pop_heap (oldheap);
+      vl_api_pop_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
 
       oldheap = vl_msg_push_heap ();
       vec_free (s_in_svm);
       clib_mem_trace_enable_disable (was_enabled);
-      vl_msg_pop_heap (oldheap);
+      vl_api_pop_heap (oldheap);
       vlib_cli_output (vm, "API segment");
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
@@ -1036,7 +1036,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
       oldheap = vl_msg_push_heap ();
       current_traced_heap = clib_mem_get_heap ();
       clib_mem_trace (1);
-      vl_msg_pop_heap (oldheap);
+      vl_api_pop_heap (oldheap);
 
     }
 

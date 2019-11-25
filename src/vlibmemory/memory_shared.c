@@ -161,15 +161,13 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
    */
   am->ring_misses++;
 
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
   if (may_return_null)
     {
       rv = clib_mem_alloc_or_null (nbytes);
       if (PREDICT_FALSE (rv == 0))
 	{
-	  svm_pop_heap (oldheap);
-	  pthread_mutex_unlock (&am->vlib_rp->mutex);
+	  vl_api_pop_heap (oldheap);
 	  return 0;
 	}
     }
@@ -178,8 +176,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 
   rv->q = 0;
   rv->gc_mark_timestamp = 0;
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  vl_api_pop_heap (oldheap);
 
 out:
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
@@ -261,6 +258,7 @@ vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg, int nbytes)
   svm_region_t *vlib_rp, *save_vlib_rp = am->vlib_rp;
   void *msg;
 
+  pthread_mutex_lock (&am->vlib_rp_mutex);
   vlib_rp = am->vlib_rp = reg->vlib_rp;
   am->shmem_hdr = (void *) vlib_rp->user_ctx;
 
@@ -268,6 +266,7 @@ vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg, int nbytes)
 
   am->shmem_hdr = save_shmem_hdr;
   am->vlib_rp = save_vlib_rp;
+  pthread_mutex_unlock (&am->vlib_rp_mutex);
 
   return msg;
 }
@@ -277,7 +276,6 @@ vl_msg_api_free (void *a)
 {
   msgbuf_t *rv;
   void *oldheap;
-  api_main_t *am = &api_main;
 
   rv = (msgbuf_t *) (((u8 *) a) - offsetof (msgbuf_t, data));
 
@@ -301,8 +299,7 @@ vl_msg_api_free (void *a)
       return;
     }
 
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
 
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
   {
@@ -313,8 +310,7 @@ vl_msg_api_free (void *a)
 #endif
 
   clib_mem_free (rv);
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  vl_api_pop_heap (oldheap);
 }
 
 static void

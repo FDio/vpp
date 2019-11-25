@@ -1040,7 +1040,7 @@ vl_msg_api_get_msg_index (u8 * name_and_crc)
 }
 
 void *
-vl_msg_push_heap (void)
+vl_msg_push_heap_no_rplock (void)
 {
   api_main_t *am = &api_main;
   pthread_mutex_lock (&am->vlib_rp->mutex);
@@ -1048,11 +1048,27 @@ vl_msg_push_heap (void)
 }
 
 void
-vl_msg_pop_heap (void *oldheap)
+vl_api_pop_heap_no_rplock (void *oldheap)
 {
   api_main_t *am = &api_main;
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
+}
+
+void *
+vl_msg_push_heap (void)
+{
+  api_main_t *am = &api_main;
+  pthread_mutex_lock (&am->vlib_rp_mutex);
+  return vl_msg_push_heap_no_rplock ();
+}
+
+void
+vl_api_pop_heap (void *oldheap)
+{
+  api_main_t *am = &api_main;
+  vl_api_pop_heap_no_rplock (oldheap);
+  pthread_mutex_unlock (&am->vlib_rp_mutex);
 }
 
 int

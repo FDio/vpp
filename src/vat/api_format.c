@@ -1100,7 +1100,6 @@ vl_api_cli_reply_t_handler_json (vl_api_cli_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
-  api_main_t *am = &api_main;
   void *oldheap;
   u8 *reply;
 
@@ -1109,14 +1108,12 @@ vl_api_cli_reply_t_handler_json (vl_api_cli_reply_t * mp)
   vat_json_object_add_uint (&node, "reply_in_shmem",
 			    ntohl (mp->reply_in_shmem));
   /* Toss the shared-memory original... */
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
 
   reply = uword_to_pointer (mp->reply_in_shmem, u8 *);
   vec_free (reply);
 
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  vl_api_pop_heap (oldheap);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -2710,7 +2707,6 @@ static void vl_api_get_node_graph_reply_t_handler
   (vl_api_get_node_graph_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
   i32 retval = ntohl (mp->retval);
   u8 *pvt_copy, *reply;
   void *oldheap;
@@ -2735,13 +2731,11 @@ static void vl_api_get_node_graph_reply_t_handler
   pvt_copy = vec_dup (reply);
 
   /* Toss the shared-memory original... */
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
 
   vec_free (reply);
 
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  vl_api_pop_heap (oldheap);
 
   if (vam->graph_nodes)
     {
@@ -2773,7 +2767,6 @@ static void vl_api_get_node_graph_reply_t_handler_json
   (vl_api_get_node_graph_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
   void *oldheap;
   vat_json_node_t node;
   u8 *reply;
@@ -2786,13 +2779,11 @@ static void vl_api_get_node_graph_reply_t_handler_json
   reply = uword_to_pointer (mp->reply_in_shmem, u8 *);
 
   /* Toss the shared-memory original... */
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  oldheap = vl_msg_push_heap ();
 
   vec_free (reply);
 
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  vl_api_pop_heap (oldheap);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);

@@ -76,7 +76,6 @@ maybe_register_api_client (vat_main_t * vam)
 {
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
-  svm_region_t *svm;
   void *oldheap;
   api_main_t *am = &api_main;
 
@@ -85,17 +84,15 @@ maybe_register_api_client (vat_main_t * vam)
 
   pool_get (am->vl_clients, regpp);
 
-  svm = am->vlib_rp;
+  oldheap = vl_msg_push_heap ();
 
-  pthread_mutex_lock (&svm->mutex);
-  oldheap = svm_push_data_heap (svm);
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
   clib_memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
-  regp->vlib_rp = svm;
+  regp->vlib_rp = am->vlib_rp;
   regp->shmem_hdr = am->shmem_hdr;
 
   /* Loopback connection */
@@ -104,8 +101,7 @@ maybe_register_api_client (vat_main_t * vam)
   regp->name = format (0, "%s", "vpp-internal");
   vec_add1 (regp->name, 0);
 
-  pthread_mutex_unlock (&svm->mutex);
-  svm_pop_heap (oldheap);
+  vl_api_pop_heap (oldheap);
 
   vam->my_client_index = vl_msg_api_handle_from_index_and_epoch
     (regp->vl_api_registration_pool_index,

@@ -121,31 +121,27 @@ vl_api_memclnt_create_internal (char *name, svm_queue_t * q)
 {
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
-  svm_region_t *svm;
   void *oldheap;
   api_main_t *am = &api_main;
 
   ASSERT (vlib_get_thread_index () == 0);
   pool_get (am->vl_clients, regpp);
 
-  svm = am->vlib_rp;
 
-  pthread_mutex_lock (&svm->mutex);
-  oldheap = svm_push_data_heap (svm);
+  oldheap = vl_msg_push_heap ();
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
   clib_memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
-  regp->vlib_rp = svm;
+  regp->vlib_rp = am->vlib_rp;
   regp->shmem_hdr = am->shmem_hdr;
 
   regp->vl_input_queue = q;
   regp->name = format (0, "%s%c", name, 0);
 
-  pthread_mutex_unlock (&svm->mutex);
-  svm_pop_heap (oldheap);
+  vl_api_pop_heap (oldheap);
   return vl_msg_api_handle_from_index_and_epoch
     (regp->vl_api_registration_pool_index,
      am->shmem_hdr->application_restarts);
@@ -160,7 +156,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
   vl_api_memclnt_create_reply_t *rp;
-  svm_region_t *svm;
   svm_queue_t *q;
   int rv = 0;
   void *oldheap;
@@ -195,17 +190,14 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   pool_get (am->vl_clients, regpp);
 
-  svm = am->vlib_rp;
-
-  pthread_mutex_lock (&svm->mutex);
-  oldheap = svm_push_data_heap (svm);
+  oldheap = vl_msg_push_heap_no_rplock ();
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
   clib_memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
-  regp->vlib_rp = svm;
+  regp->vlib_rp = am->vlib_rp;
   regp->shmem_hdr = am->shmem_hdr;
   regp->clib_file_index = am->shmem_hdr->clib_file_index;
 
@@ -224,8 +216,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   else
     msg_table = am->serialized_message_table_in_shmem;
 
-  pthread_mutex_unlock (&svm->mutex);
-  svm_pop_heap (oldheap);
+  vl_api_pop_heap_no_rplock (oldheap);
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_REPLY);
@@ -266,7 +257,6 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
   vl_api_memclnt_delete_reply_t *rp;
-  svm_region_t *svm;
   void *oldheap;
   api_main_t *am = &api_main;
   u32 handle, client_index, epoch;
@@ -294,7 +284,6 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
     {
       int i;
       regp = *regpp;
-      svm = am->vlib_rp;
       int private_registration = 0;
 
       /* Send reply unless client asked us to do the cleanup */
@@ -327,11 +316,11 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
       for (i = 0; i < vec_len (am->vlib_private_rps); i++)
 	{
 	  /* Is this a pairwise / private API segment? */
-	  if (am->vlib_private_rps[i] == svm)
+	  if (am->vlib_private_rps[i] == am->vlib_rp)
 	    {
 	      /* Note: account for the memfd header page */
-	      uword virtual_base = svm->virtual_base - MMAP_PAGESIZE;
-	      uword virtual_size = svm->virtual_size + MMAP_PAGESIZE;
+	      uword virtual_base = am->vlib_rp->virtual_base - MMAP_PAGESIZE;
+	      uword virtual_size = am->vlib_rp->virtual_size + MMAP_PAGESIZE;
 
 	      /*
 	       * Kill the registration pool element before we make
@@ -355,16 +344,14 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	{
 	  pool_put_index (am->vl_clients,
 			  regp->vl_api_registration_pool_index);
-	  pthread_mutex_lock (&svm->mutex);
-	  oldheap = svm_push_data_heap (svm);
+	  oldheap = vl_msg_push_heap_no_rplock ();
 	  if (mp->do_cleanup)
 	    svm_queue_free (regp->vl_input_queue);
 	  vec_free (regp->name);
 	  /* Poison the old registration */
 	  clib_memset (regp, 0xF1, sizeof (*regp));
 	  clib_mem_free (regp);
-	  pthread_mutex_unlock (&svm->mutex);
-	  svm_pop_heap (oldheap);
+	  vl_api_pop_heap_no_rplock (oldheap);
 	  /*
 	   * These messages must be freed manually, since they're set up
 	   * as "bounce" messages. In the private_registration == 1 case,
@@ -505,7 +492,7 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
   vl_api_memclnt_keepalive_t *mp;
   svm_queue_t *q;
   api_main_t *am = &api_main;
-  svm_region_t *save_vlib_rp = am->vlib_rp;
+  svm_region_t *save_vlib_rp;
   vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
 
   q = regp->vl_input_queue;
@@ -530,6 +517,8 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
    * memory clients..
    */
 
+  pthread_mutex_lock (&am->vlib_rp_mutex);
+  save_vlib_rp = am->vlib_rp;
   am->vlib_rp = regp->vlib_rp;
   am->shmem_hdr = regp->shmem_hdr;
 
@@ -549,6 +538,7 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
 
   am->vlib_rp = save_vlib_rp;
   am->shmem_hdr = save_shmem_hdr;
+  pthread_mutex_unlock (&am->vlib_rp_mutex);
 }
 
 static void
@@ -625,7 +615,6 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
   if (PREDICT_FALSE (vec_len (dead_indices) > 0))
     {
       int i;
-      svm_region_t *svm;
       void *oldheap;
 
       /* Allow the application to clean up its registrations */
@@ -642,9 +631,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 	    }
 	}
 
-      svm = am->vlib_rp;
-      pthread_mutex_lock (&svm->mutex);
-      oldheap = svm_push_data_heap (svm);
+      oldheap = vl_msg_push_heap ();
 
       for (i = 0; i < vec_len (dead_indices); i++)
 	{
@@ -652,7 +639,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 	  if (regpp)
 	    {
 	      /* Is this a pairwise SVM segment? */
-	      if ((*regpp)->vlib_rp != svm)
+	      if ((*regpp)->vlib_rp != am->vlib_rp)
 		{
 		  int i;
 		  svm_region_t *dead_rp = (*regpp)->vlib_rp;
@@ -669,7 +656,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 		      }
 		  svm_pop_heap (oldheap);
 		  clib_warning ("private rp %llx AWOL", dead_rp);
-		  oldheap = svm_push_data_heap (svm);
+		  oldheap = svm_push_data_heap (am->vlib_rp);
 
 		found:
 		  /* Kill it, accounting for the memfd header page */
@@ -678,7 +665,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 		    clib_unix_warning ("munmap");
 		  /* Reset the queue-length-address cache */
 		  vec_reset_length (vl_api_queue_cursizes);
-		  oldheap = svm_push_data_heap (svm);
+		  oldheap = svm_push_data_heap (am->vlib_rp);
 		}
 	      else
 		{
@@ -694,14 +681,13 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 	      svm_pop_heap (oldheap);
 	      clib_warning ("Duplicate free, client index %d",
 			    regpp - am->vl_clients);
-	      oldheap = svm_push_data_heap (svm);
+	      oldheap = svm_push_data_heap (am->vlib_rp);
 	    }
 	}
 
       svm_client_scan_this_region_nolock (am->vlib_rp);
 
-      pthread_mutex_unlock (&svm->mutex);
-      svm_pop_heap (oldheap);
+      vl_api_pop_heap (oldheap);
       for (i = 0; i < vec_len (dead_indices); i++)
 	pool_put_index (am->vl_clients, dead_indices[i]);
     }
@@ -778,10 +764,12 @@ vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
-  svm_region_t *vlib_rp, *save_vlib_rp = am->vlib_rp;
+  svm_region_t *vlib_rp, *save_vlib_rp;
   svm_queue_t *q;
   int rv;
 
+  pthread_mutex_lock (&am->vlib_rp_mutex);
+  save_vlib_rp = am->vlib_rp;
   vlib_rp = am->vlib_rp = am->vlib_private_rps[reg_index];
 
   am->shmem_hdr = (void *) vlib_rp->user_ctx;
@@ -791,6 +779,7 @@ vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   am->shmem_hdr = save_shmem_hdr;
   am->vlib_rp = save_vlib_rp;
+  pthread_mutex_unlock (&am->vlib_rp_mutex);
 
   return rv;
 }
@@ -1006,6 +995,8 @@ vlibmemory_init (vlib_main_t * vm)
      0) ? am->global_pvt_heap_size : SVM_PVT_MHEAP_SIZE;
 
   svm_region_init_args (a);
+  if (pthread_mutex_init (&am->vlib_rp_mutex, NULL))
+    clib_unix_warning ("pthread_mutex_init");
 
   return 0;
 }
