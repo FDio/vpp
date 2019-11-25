@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "67a864b9_e1bd9193",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-25T13:15:17Z",
+      "side": 1,
+      "message": "Do you want to allow capital letters, so the \"tr\" command in the next line makes sense?",
+      "range": {
+        "startLine": 7,
+        "startChar": 16,
+        "endLine": 7,
+        "endChar": 19
+      },
+      "revId": "9beb09d47e1d07b4a77dfdeb2da7eeaa5dc95da9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
