@@ -22,6 +22,30 @@
       "revId": "9beb09d47e1d07b4a77dfdeb2da7eeaa5dc95da9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3612de9d_06895d5d",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-11-25T15:28:56Z",
+      "side": 1,
+      "message": "I tested this case by hand before submitting the patch, so your comment here\ncaught me a bit off guard.  And then I read the \u0027sed\u0027 line and thought, \"Yeah,\nthat\u0027s right.  We need an A-Z in there too.  Drat.\"  And then I tested it some\nmore and a few variants, and tried to figure out why it was working without the\nsuggested A-Z in there too.\n\nI have come to realize that this line:\n    sed -e \u0027s/\\([a-z0-9 -]*\\):.*/\\1/\u0027\ndoes not do anything like what it initially appears to do, or what is neeeded\nfor it to do.  Specifically, in the case when the words of the commit message\ndo NOT match the pattern-piece that is left of the colon, then nothing matches\nand the pattern is ignored and subsequently the input line is simply echoed.\n\nFor example:\n    $ echo \u0027Build some stuff: Ease commit message checking\u0027 | sed -e \u0027s/^\\([a-z0 -]*\\):.*/\\1/\u0027\n    Build some stuff: Ease commit message checking\n\nTo make that clearer, perhaps:\n    $ echo \u0027Build some stuff: Ease commit message checking\u0027 | sed -e \u0027s/^\\([a-z0-9 -]*\\):\\(.*\\)/\\1 and \\2/\u0027\n    Build some stuff: Ease commit message checking\n\nBut notice when the LHS of the colon pattern matches:\n    $ echo \u0027build some stuff: Ease commit message checking\u0027 | sed -e \u0027s/^\\([a-z0-9 -]*\\):\\(.*\\)/\\1 and \\2/\u0027\n    build some stuff and  Ease commit message checking\n\nSo the key here will be to two-step it, with a split on the colon first, then check for acceptable words sequences without strange characters:\n    $ echo \u0027Build some !*(^*%^ stuff: Ease commit message checking\u0027 | sed -e \u0027s/^\\([^:]*\\):.*/\\1/\u0027 | sed -e \u0027s/\\([A-Za-z0-9 -]*\\).*/\\1/\u0027\n    Build some\n\nAnd, to your point, then:\n    $ echo \u0027Build some !*(^*%^ stuff: Ease commit message checking\u0027 | sed -e \u0027s/^\\([^:]*\\):.*/\\1/\u0027 | sed -e \u0027s/\\([a-z0-9 -]*\\).*/\\1/\u0027\n    $\n\nNotice there the A-Z set is necessary, as you suggested.\n\nNew patch coming to a theater near you...",
+      "parentUuid": "67a864b9_e1bd9193",
+      "range": {
+        "startLine": 7,
+        "startChar": 16,
+        "endLine": 7,
+        "endChar": 19
+      },
+      "revId": "9beb09d47e1d07b4a77dfdeb2da7eeaa5dc95da9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
