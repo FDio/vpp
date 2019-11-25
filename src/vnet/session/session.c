@@ -1332,7 +1332,6 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 {
   u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
   ssvm_private_t *eqs = &smm->evt_qs_segment;
-  api_main_t *am = &api_main;
   uword eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
   void *oldheap;
@@ -1362,7 +1361,7 @@ session_vpp_event_queues_allocate (session_main_t * smm)
   if (smm->evt_qs_use_memfd_seg)
     oldheap = ssvm_push_heap (eqs->sh);
   else
-    oldheap = svm_push_data_heap (am->vlib_rp);
+    oldheap = vl_msg_push_heap ();
 
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
@@ -1387,7 +1386,7 @@ session_vpp_event_queues_allocate (session_main_t * smm)
   if (smm->evt_qs_use_memfd_seg)
     ssvm_pop_heap (oldheap);
   else
-    svm_pop_heap (oldheap);
+    vl_msg_pop_heap (oldheap);
 }
 
 ssvm_private_t *

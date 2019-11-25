@@ -201,7 +201,9 @@ void vl_msg_api_set_first_available_msg_id (u16 first_avail);
 u16 vl_msg_api_get_msg_ids (const char *name, int n);
 u32 vl_msg_api_get_msg_index (u8 * name_and_crc);
 void *vl_msg_push_heap (void);
+void *vl_msg_push_heap_w_region (svm_region_t * vlib_rp);
 void vl_msg_pop_heap (void *oldheap);
+void vl_msg_pop_heap_w_region (svm_region_t * vlib_rp, void *oldheap);
 
 typedef clib_error_t *(vl_msg_api_init_function_t) (u32 client_index);
 
