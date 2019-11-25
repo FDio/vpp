@@ -552,7 +552,7 @@ class VppTestCase(unittest.TestCase):
             if cls.debug_gdb or cls.debug_gdbserver:
                 read_timeout = 0
             else:
-                read_timeout = 5
+                read_timeout = 45
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
                                        read_timeout)
             if cls.step:
