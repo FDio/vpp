@@ -223,7 +223,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   else
     host_if_name = (char *) args->host_if_name;
 
-  fcntl (tfd, F_SETFL, O_NONBLOCK);
+  if (fcntl (tfd, F_SETFL, O_NONBLOCK) < 0)
+    {
+      err = clib_error_return_unix (0, "fcntl(tfd, F_SETFL, O_NONBLOCK)");
+      tap_log_err (vif, "set nonblocking: %U", format_clib_error, err);
+      goto error;
+    }
 
   tap_log_dbg (vif, "TUNSETVNETHDRSZ: fd %d vnet_hdr_sz %u", tfd, hdrsz);
   _IOCTL (tfd, TUNSETVNETHDRSZ, &hdrsz);
