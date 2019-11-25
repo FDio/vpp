@@ -1411,8 +1411,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 			       u32 start_bucket)
 {
   f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
-  u64 rate = (u64) window / srtt;
-  transport_connection_tx_pacer_reset (&tc->connection, rate, start_bucket,
+  transport_connection_tx_pacer_reset (&tc->connection,
+				       tcp_cc_get_pacing_rate (tc),
 				       srtt * CLIB_US_TIME_FREQ);
 }
 
