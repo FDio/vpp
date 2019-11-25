@@ -791,7 +791,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
       rv = ipip_add_tunnel (transport,
 			    (mp->renumber ? ntohl (mp->show_instance) : ~0),
 			    &local_ip,
-			    &remote_ip, fib_index, 0, &sw_if_index);
+			    &remote_ip, fib_index,
+			    IPIP_TUNNEL_FLAG_NONE, IP_DSCP_CS0, &sw_if_index);
 
       if (rv)
 	goto done;
