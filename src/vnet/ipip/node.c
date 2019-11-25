@@ -158,9 +158,23 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
 
 	  if (inner_protocol0 == IP_PROTOCOL_IPV6)
-	    next0 = IPIP_INPUT_NEXT_IP6_INPUT;
+	    {
+	      next0 = IPIP_INPUT_NEXT_IP6_INPUT;
+	    }
 	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
-	    next0 = IPIP_INPUT_NEXT_IP4_INPUT;
+	    {
+	      next0 = IPIP_INPUT_NEXT_IP4_INPUT;
+	      if (t0->flags & IPIP_TUNNEL_FLAG_DECAP_COPY_ECN)
+		{
+		  if (is_ipv6)
+		    ip4_header_set_ecn_w_chksum ((ip4_header_t *) (ip60 + 1),
+						 ip6_ecn_network_order
+						 (ip60));
+		  else
+		    ip4_header_set_ecn_w_chksum (ip40 + 1,
+						 ip4_header_get_ecn (ip40));
+		}
+	    }
 
 	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD
 	      && t0->sixrd.security_check)

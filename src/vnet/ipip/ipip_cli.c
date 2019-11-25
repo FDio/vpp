@@ -82,7 +82,8 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
                            &src,
                            &dst,
                            fib_index,
-                           0,
+                           IPIP_TUNNEL_FLAG_NONE,
+                           IP_DSCP_CS0,
                            &sw_if_index);
     }
 
@@ -175,21 +176,24 @@ static u8 *format_ipip_tunnel(u8 *s, va_list *args) {
                                     fib_proto_from_ip46(type));
   switch (t->mode) {
   case IPIP_MODE_6RD:
-    s = format(s, "[%d] 6rd src %U ip6-pfx %U/%d table-ID %d sw-if-idx %d ",
+    s = format(s, "[%d] 6rd src %U ip6-pfx %U/%d ",
 	       t->dev_instance,
 	       format_ip46_address, &t->tunnel_src, type,
-	       format_ip6_address, &t->sixrd.ip6_prefix, t->sixrd.ip6_prefix_len,
-	       table_id, t->sw_if_index);
+	       format_ip6_address, &t->sixrd.ip6_prefix, t->sixrd.ip6_prefix_len);
     break;
   case IPIP_MODE_P2P:
   default:
-    s = format(s, "[%d] instance %d src %U dst %U table-ID %d sw-if-idx %d ",
+    s = format(s, "[%d] instance %d src %U dst %U ",
 	       t->dev_instance, t->user_instance,
 	       format_ip46_address, &t->tunnel_src, type,
-	       format_ip46_address, &t->tunnel_dst, type,
-	       table_id, t->sw_if_index);
+	       format_ip46_address, &t->tunnel_dst, type);
     break;
   }
+
+  s = format(s, "table-ID %d sw-if-idx %d flags [%U] dscp %U",
+             table_id, t->sw_if_index,
+             format_ipip_tunnel_flags, t->flags,
+             format_ip_dscp, t->dscp);
 
   return s;
 }

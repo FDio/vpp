@@ -264,6 +264,70 @@ ip4_header_checksum (ip4_header_t * i)
   return csum;
 }
 
+always_inline void
+ip4_header_set_dscp (ip4_header_t * ip4, ip_dscp_t dscp)
+{
+  ip4->tos &= ~0xfc;
+  /* not masking the dscp value to save th instruction
+   * it shouldn't b necessary since the argument is an enum
+   * whose range is therefore constrained in the CP. in the
+   * DP it will have been taken from another packet, so again
+   * constrained in  value */
+  ip4->tos |= dscp << IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT;
+}
+
+always_inline void
+ip4_header_set_ecn (ip4_header_t * ip4, ip_ecn_t ecn)
+{
+  ip4->tos &= ~IP_PACKET_TC_FIELD_ECN_MASK;
+  ip4->tos |= ecn;
+}
+
+always_inline void
+ip4_header_set_ecn_w_chksum (ip4_header_t * ip4, ip_ecn_t ecn)
+{
+  ip_csum_t sum = ip4->checksum;
+  u8 old = ip4->tos;
+  u8 new = (old & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn;
+
+  sum = ip_csum_update (sum, old, new, ip4_header_t, tos);
+  ip4->checksum = ip_csum_fold (sum);
+  ip4->tos = new;
+}
+
+always_inline ip_dscp_t
+ip4_header_get_dscp (const ip4_header_t * ip4)
+{
+  return (ip4->tos >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
+}
+
+always_inline ip_ecn_t
+ip4_header_get_ecn (const ip4_header_t * ip4)
+{
+  return (ip4->tos & IP_PACKET_TC_FIELD_ECN_MASK);
+}
+
+always_inline void
+ip4_header_set_df (ip4_header_t * ip4)
+{
+  ip4->flags_and_fragment_offset |=
+    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
+}
+
+always_inline void
+ip4_header_clear_df (ip4_header_t * ip4)
+{
+  ip4->flags_and_fragment_offset &=
+    ~clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
+}
+
+always_inline u8
+ip4_header_get_df (ip4_header_t * ip4)
+{
+  return (! !(ip4->flags_and_fragment_offset &
+	      clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)));
+}
+
 static inline uword
 ip4_header_checksum_is_valid (ip4_header_t * i)
 {

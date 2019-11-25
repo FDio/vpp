@@ -396,6 +396,20 @@ ip6_traffic_class_network_order (const ip6_header_t * ip6)
 	  & 0x0ff00000) >> 20;
 }
 
+static_always_inline ip_dscp_t
+ip6_dscp_network_order (const ip6_header_t * ip6)
+{
+  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & 0x0fc00000) >> 22;
+}
+
+static_always_inline ip_dscp_t
+ip6_ecn_network_order (const ip6_header_t * ip6)
+{
+  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & 0x00300000) >> 20;
+}
+
 static_always_inline void
 ip6_set_traffic_class_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
 {
@@ -403,6 +417,26 @@ ip6_set_traffic_class_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
     clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
   tmp &= 0xf00fffff;
   tmp |= (dscp << 20);
+  ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
+}
+
+static_always_inline void
+ip6_set_dscp_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
+{
+  u32 tmp =
+    clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
+  tmp &= 0xf03fffff;
+  tmp |= (dscp << 22);
+  ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
+}
+
+static_always_inline void
+ip6_set_ecn_network_order (ip6_header_t * ip6, ip_ecn_t ecn)
+{
+  u32 tmp =
+    clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
+  tmp &= 0xffcfffff;
+  tmp |= (ecn << 20);
   ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
 }
 

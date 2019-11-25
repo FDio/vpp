@@ -7,6 +7,8 @@ from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_papi import VppEnum
 from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
@@ -17,7 +19,8 @@ IPIP tests.
 """
 
 
-def ipip_add_tunnel(test, src, dst, table_id=0, tc_tos=0xff):
+def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0,
+                    flags=0):
     """ Add a IPIP tunnel """
     return test.vapi.ipip_add_tunnel(
         tunnel={
@@ -25,9 +28,13 @@ def ipip_add_tunnel(test, src, dst, table_id=0, tc_tos=0xff):
             'dst': dst,
             'table_id': table_id,
             'instance': 0xffffffff,
-            'tc_tos': tc_tos
+            'dscp': dscp,
+            'flags': flags
         }
     )
+
+
+N_PACKETS = 64 - 1
 
 
 class TestIPIP(VppTestCase):
@@ -76,99 +83,258 @@ class TestIPIP(VppTestCase):
         p4_reply.ttl -= 1
         return frags, p4_reply
 
+    def verify_ip4ip4_encaps(self, a, p_ip4s, p_ip4_encaps):
+        for i, p_ip4 in enumerate(p_ip4s):
+            p_ip4.dst = a
+            p4 = (self.p_ether / p_ip4 / self.p_payload)
+            p_ip4_inner = p_ip4
+            p_ip4_inner.ttl -= 1
+            p4_reply = (p_ip4_encaps[i] / p_ip4_inner / self.p_payload)
+            p4_reply.ttl -= 1
+            p4_reply.id = 0
+            rx = self.send_and_expect(self.pg0, p4 * N_PACKETS, self.pg1)
+            for p in rx:
+                self.validate(p[1], p4_reply)
+                self.assert_packet_checksums_valid(p)
+
+    def verify_ip6ip4_encaps(self, a, p_ip6s, p_ip4_encaps):
+        for i, p_ip6 in enumerate(p_ip6s):
+            p_ip6.dst = a
+            p6 = (self.p_ether / p_ip6 / self.p_payload)
+            p_inner_ip6 = p_ip6
+            p_inner_ip6.hlim -= 1
+            p6_reply = (p_ip4_encaps[i] / p_inner_ip6 / self.p_payload)
+            p6_reply.ttl -= 1
+            rx = self.send_and_expect(self.pg0, p6 * N_PACKETS, self.pg1)
+            for p in rx:
+                self.validate(p[1], p6_reply)
+                self.assert_packet_checksums_valid(p)
+
     def test_ipip4(self):
         """ ip{v4,v6} over ip4 test """
-        p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
-        p_ip6 = IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=42)
-        p_ip4 = IP(src="1.2.3.4", dst="130.67.0.1", tos=42)
-        p_payload = UDP(sport=1234, dport=1234) / Raw(b'X' * 100)
 
-        # IPv4 transport
-        rv = ipip_add_tunnel(self,
-                             self.pg0.local_ip4,
-                             self.pg1.remote_ip4,
-                             tc_tos=0xFF)
-        sw_if_index = rv.sw_if_index
+        self.pg1.generate_remote_hosts(5)
+        self.pg1.configure_ipv4_neighbors()
+        e = VppEnum.vl_api_ipip_tunnel_flags_t
+        d = VppEnum.vl_api_ip_dscp_t
+        self.p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+        self.p_payload = UDP(sport=1234, dport=1234) / Raw(b'X' * 100)
 
-        # Set interface up and enable IP on it
-        self.vapi.sw_interface_set_flags(sw_if_index, 1)
-        self.vapi.sw_interface_set_unnumbered(
-            sw_if_index=self.pg0.sw_if_index,
-            unnumbered_sw_if_index=sw_if_index)
+        # create a TOS byte by shifting a DSCP code point 2 bits. those 2 bits
+        # are for the ECN.
+        dscp = d.IP_API_DSCP_AF31 << 2
+        ecn = 3
+        dscp_ecn = d.IP_API_DSCP_AF31 << 2 | ecn
+        p_ip6_dscp = IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp)
+        p_ip4_dscp = IP(src="1.2.3.4", dst="130.67.0.1", tos=dscp)
 
-        # Add IPv4 and IPv6 routes via tunnel interface
-        ip4_via_tunnel = VppIpRoute(
-            self, "130.67.0.0", 16,
-            [VppRoutePath("0.0.0.0",
-                          sw_if_index,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
-        ip4_via_tunnel.add_vpp_config()
+        # IPv4 transport that copies the DCSP from the payload
+        tun_dscp = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            self.pg1.remote_hosts[0].ip4,
+            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP).add_vpp_config()
+        # IPv4 transport that copies the DCSP and ECN from the payload
+        tun_dscp_ecn = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            self.pg1.remote_hosts[1].ip4,
+            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP |
+                   e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN)).add_vpp_config()
+        # IPv4 transport that copies the ECN from the payload and sets the
+        # DF bit on encap. copies the ECN on decap
+        tun_ecn = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            self.pg1.remote_hosts[2].ip4,
+            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN |
+                   e.IPIP_TUNNEL_API_FLAG_ENCAP_SET_DF |
+                   e.IPIP_TUNNEL_API_FLAG_DECAP_COPY_ECN)).add_vpp_config()
+        # IPv4 transport that sets a fixed DSCP in the encap and copies
+        # the DF bit
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            self.pg1.remote_hosts[3].ip4,
+            dscp=d.IP_API_DSCP_AF11,
+            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DF).add_vpp_config()
 
-        ip6_via_tunnel = VppIpRoute(
-            self, "dead::", 16,
-            [VppRoutePath("::",
-                          sw_if_index,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
-        ip6_via_tunnel.add_vpp_config()
+        # array of all the tunnels
+        tuns = [tun_dscp, tun_dscp_ecn, tun_ecn, tun]
 
-        # IPv6 in to IPv4 tunnel
-        p6 = (p_ether / p_ip6 / p_payload)
-        p_inner_ip6 = p_ip6
-        p_inner_ip6.hlim -= 1
-        p6_reply = (IP(src=self.pg0.local_ip4, dst=self.pg1.remote_ip4,
-                       proto='ipv6', id=0, tos=42) / p_inner_ip6 / p_payload)
-        p6_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg0, p6 * 10, self.pg1)
-        for p in rx:
-            self.validate(p[1], p6_reply)
-            self.assert_packet_checksums_valid(p)
+        # addresses for prefixes routed via each tunnel
+        a4s = ["" for i in range(len(tuns))]
+        a6s = ["" for i in range(len(tuns))]
+
+        # IP headers with each combination of DSCp/ECN tested
+        p_ip6s = [IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp),
+                  IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp_ecn),
+                  IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=ecn),
+                  IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=0xff)]
+        p_ip4s = [IP(src="1.2.3.4", dst="130.67.0.1", tos=dscp, flags='DF'),
+                  IP(src="1.2.3.4", dst="130.67.0.1", tos=dscp_ecn),
+                  IP(src="1.2.3.4", dst="130.67.0.1", tos=ecn),
+                  IP(src="1.2.3.4", dst="130.67.0.1", tos=0xff)]
+
+        # Configure each tunnel
+        for i, t in enumerate(tuns):
+            # Set interface up and enable IP on it
+            self.vapi.sw_interface_set_flags(t.sw_if_index, 1)
+            self.vapi.sw_interface_set_unnumbered(
+                sw_if_index=self.pg0.sw_if_index,
+                unnumbered_sw_if_index=t.sw_if_index)
+
+            # prefix for route / destination address for packets
+            a4s[i] = "130.67.%d.0" % i
+            a6s[i] = "dead:%d::" % i
+
+            # Add IPv4 and IPv6 routes via tunnel interface
+            ip4_via_tunnel = VppIpRoute(
+                self, a4s[i], 24,
+                [VppRoutePath("0.0.0.0",
+                              t.sw_if_index,
+                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            ip4_via_tunnel.add_vpp_config()
+
+            ip6_via_tunnel = VppIpRoute(
+                self, a6s[i], 64,
+                [VppRoutePath("::",
+                              t.sw_if_index,
+                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            ip6_via_tunnel.add_vpp_config()
+
+        print(self.vapi.cli("sh ipip tun"))
+
+        #
+        # Encapsulation
+        #
+
+        # tun_dscp copies only the dscp
+        # expected TC values are thus only the DCSP value is present from the
+        # inner
+        exp_tcs = [dscp, dscp, 0, 0xfc]
+        p_ip44_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[0].ip4,
+                            tos=tc) for tc in exp_tcs]
+        p_ip64_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[0].ip4,
+                            proto='ipv6', id=0, tos=tc) for tc in exp_tcs]
 
         # IPv4 in to IPv4 tunnel
-        p4 = (p_ether / p_ip4 / p_payload)
-        p_ip4_inner = p_ip4
-        p_ip4_inner.ttl -= 1
-        p4_reply = (IP(src=self.pg0.local_ip4, dst=self.pg1.remote_ip4,
-                       tos=42) /
-                    p_ip4_inner / p_payload)
-        p4_reply.ttl -= 1
-        p4_reply.id = 0
-        rx = self.send_and_expect(self.pg0, p4 * 10, self.pg1)
-        for p in rx:
-            self.validate(p[1], p4_reply)
-            self.assert_packet_checksums_valid(p)
+        self.verify_ip4ip4_encaps(a4s[0], p_ip4s, p_ip44_encaps)
+        # IPv6 in to IPv4 tunnel
+        self.verify_ip6ip4_encaps(a6s[0], p_ip6s, p_ip64_encaps)
 
+        # tun_dscp_ecn copies the dscp and the ecn
+        exp_tcs = [dscp, dscp_ecn, ecn, 0xff]
+        p_ip44_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[1].ip4,
+                            tos=tc) for tc in exp_tcs]
+        p_ip64_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[1].ip4,
+                            proto='ipv6', id=0, tos=tc) for tc in exp_tcs]
+
+        self.verify_ip4ip4_encaps(a4s[1], p_ip4s, p_ip44_encaps)
+        self.verify_ip6ip4_encaps(a6s[1], p_ip6s, p_ip64_encaps)
+
+        # tun_ecn copies only the ecn and always sets DF
+        exp_tcs = [0, ecn, ecn, ecn]
+        p_ip44_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[2].ip4,
+                            flags='DF', tos=tc) for tc in exp_tcs]
+        p_ip64_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[2].ip4,
+                            flags='DF', proto='ipv6', id=0, tos=tc)
+                         for tc in exp_tcs]
+
+        self.verify_ip4ip4_encaps(a4s[2], p_ip4s, p_ip44_encaps)
+        self.verify_ip6ip4_encaps(a6s[2], p_ip6s, p_ip64_encaps)
+
+        # tun sets a fixed dscp and copies DF
+        fixed_dscp = tun.dscp << 2
+        flags = ['DF', 0, 0, 0]
+        p_ip44_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[3].ip4,
+                            flags=f,
+                            tos=fixed_dscp) for f in flags]
+        p_ip64_encaps = [IP(src=self.pg0.local_ip4,
+                            dst=self.pg1.remote_hosts[3].ip4,
+                            proto='ipv6', id=0,
+                            tos=fixed_dscp) for i in range(len(p_ip4s))]
+
+        self.verify_ip4ip4_encaps(a4s[3], p_ip4s, p_ip44_encaps)
+        self.verify_ip6ip4_encaps(a6s[3], p_ip6s, p_ip64_encaps)
+
+        #
         # Decapsulation
-        p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        #
+        self.p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
 
         # IPv4 tunnel to IPv4
+        tcs = [0, dscp, dscp_ecn, ecn]
+
+        # one overlay packet and all combinations of its encap
         p_ip4 = IP(src="1.2.3.4", dst=self.pg0.remote_ip4)
-        p4 = (p_ether / IP(src=self.pg1.remote_ip4,
-                           dst=self.pg0.local_ip4) / p_ip4 / p_payload)
-        p4_reply = (p_ip4 / p_payload)
-        p4_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg1, p4 * 10, self.pg0)
-        for p in rx:
-            self.validate(p[1], p4_reply)
-            self.assert_packet_checksums_valid(p)
+        p_ip4_encaps = [IP(src=self.pg1.remote_hosts[0].ip4,
+                           dst=self.pg0.local_ip4,
+                           tos=tc) for tc in tcs]
+
+        # for each encap tun will produce the same inner packet because it does
+        # not copy up fields from the payload
+        for p_ip4_encap in p_ip4_encaps:
+            p4 = (self.p_ether / p_ip4_encap / p_ip4 / self.p_payload)
+            p4_reply = (p_ip4 / self.p_payload)
+            p4_reply.ttl -= 1
+            rx = self.send_and_expect(self.pg1, p4 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p4_reply)
+                self.assert_packet_checksums_valid(p)
 
         err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
-        self.assertEqual(err, 10)
+        self.assertEqual(err, N_PACKETS * 4)
+
+        # tun_ecn copies the ECN bits from the encap to the inner
+        p_ip4_encaps = [IP(src=self.pg1.remote_hosts[2].ip4,
+                           dst=self.pg0.local_ip4,
+                           tos=tc) for tc in tcs]
+        p_ip4_replys = [p_ip4.copy() for i in range(len(p_ip4_encaps))]
+        p_ip4_replys[2].tos = ecn
+        p_ip4_replys[3].tos = ecn
+        for i, p_ip4_encap in enumerate(p_ip4_encaps):
+            print(i)
+            p4 = (self.p_ether / p_ip4_encap / p_ip4 / self.p_payload)
+            p4_reply = (p_ip4_replys[i] / self.p_payload)
+            p4_reply.ttl -= 1
+            rx = self.send_and_expect(self.pg1, p4 * N_PACKETS, self.pg0)
+            for p in rx:
+                self.validate(p[1], p4_reply)
+                self.assert_packet_checksums_valid(p)
+
+        err = self.statistics.get_err_counter(
+            '/err/ipip4-input/packets decapsulated')
+        self.assertEqual(err, N_PACKETS * 8)
 
         # IPv4 tunnel to IPv6
         p_ip6 = IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
-        p6 = (p_ether / IP(src=self.pg1.remote_ip4,
-                           dst=self.pg0.local_ip4) / p_ip6 / p_payload)
-        p6_reply = (p_ip6 / p_payload)
+        p6 = (self.p_ether /
+              IP(src=self.pg1.remote_hosts[0].ip4,
+                 dst=self.pg0.local_ip4) / p_ip6 /
+              self.p_payload)
+        p6_reply = (p_ip6 / self.p_payload)
         p6_reply.hlim = 63
-        rx = self.send_and_expect(self.pg1, p6 * 10, self.pg0)
+        rx = self.send_and_expect(self.pg1, p6 * N_PACKETS, self.pg0)
         for p in rx:
             self.validate(p[1], p6_reply)
             self.assert_packet_checksums_valid(p)
 
         err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
-        self.assertEqual(err, 20)
+        self.assertEqual(err, N_PACKETS * 9)
 
         #
         # Fragmentation / Reassembly and Re-fragmentation
@@ -197,7 +363,7 @@ class TestIPIP(VppTestCase):
 
         err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
-        self.assertEqual(err, 1020)
+        self.assertEqual(err, 1000 + N_PACKETS * 9)
 
         f = []
         r = []
@@ -240,7 +406,7 @@ class TestIPIP(VppTestCase):
         self.validate(reass_pkt, p4_reply)
 
         # send large packets through the tunnel, expect them to be fragmented
-        self.vapi.sw_interface_set_mtu(sw_if_index, [600, 0, 0, 0])
+        self.vapi.sw_interface_set_mtu(tun_dscp.sw_if_index, [600, 0, 0, 0])
 
         p4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
               IP(src="1.2.3.4", dst="130.67.0.1", tos=42) /
@@ -310,8 +476,7 @@ class TestIPIP6(VppTestCase):
         # IPv6 transport
         rv = ipip_add_tunnel(self,
                              self.pg0.local_ip6,
-                             self.pg1.remote_ip6,
-                             tc_tos=255)
+                             self.pg1.remote_ip6)
 
         sw_if_index = rv.sw_if_index
         self.tunnel_if_index = sw_if_index

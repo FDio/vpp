@@ -75,8 +75,10 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip4->src_address.as_u32 = t->tunnel_src.ip4.as_u32;
       ip4->dst_address.as_u32 = t->tunnel_dst.ip4.as_u32;
       ip4->checksum = ip4_header_checksum (ip4);
-      if (t->tc_tos != 0xFF)
-	ip4->tos = t->tc_tos;
+      if (!(t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP))
+	ip4_header_set_dscp (ip4, t->dscp);
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_SET_DF)
+	ip4_header_set_df (ip4);
       break;
 
     case IPIP_TRANSPORT_IP6:
@@ -84,8 +86,8 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip6 = (ip6_header_t *) rewrite;
       ip6->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
-      if (t->tc_tos != 0xFF)
-	ip6_set_traffic_class_network_order (ip6, t->tc_tos);
+      if (!(t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP))
+	ip6_set_traffic_class_network_order (ip6, t->dscp);
       ip6->hop_limit = 64;
       /* fixup ip6 header length and protocol after-the-fact */
       ip6->src_address.as_u64[0] = t->tunnel_src.ip6.as_u64[0];
@@ -114,15 +116,25 @@ ipip4_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
     {
     case VNET_LINK_IP6:
       ip4->protocol = IP_PROTOCOL_IPV6;
-      if (t->tc_tos == 0xFF)
-	ip4->tos =
-	  ip6_traffic_class_network_order ((const ip6_header_t *) (ip4 + 1));
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP)
+	ip4_header_set_dscp (ip4,
+			     ip6_dscp_network_order ((ip6_header_t *) (ip4 +
+								       1)));
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_ECN)
+	ip4_header_set_ecn (ip4,
+			    ip6_ecn_network_order ((ip6_header_t *) (ip4 +
+								     1)));
       break;
 
     case VNET_LINK_IP4:
       ip4->protocol = IP_PROTOCOL_IP_IN_IP;
-      if (t->tc_tos == 0xFF)
-	ip4->tos = ((ip4_header_t *) (ip4 + 1))->tos;
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP)
+	ip4_header_set_dscp (ip4, ip4_header_get_dscp (ip4 + 1));
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_ECN)
+	ip4_header_set_ecn (ip4, ip4_header_get_ecn (ip4 + 1));
+      if ((t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DF) &&
+	  ip4_header_get_df (ip4 + 1))
+	ip4_header_set_df (ip4);
       break;
 
     default:
@@ -151,17 +163,15 @@ ipip6_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
     {
     case VNET_LINK_IP6:
       ip6->protocol = IP_PROTOCOL_IPV6;
-      if (t->tc_tos == 0xFF)
-	ip6_set_traffic_class_network_order (ip6,
-					     ip6_traffic_class_network_order ((const ip6_header_t *) (ip6 + 1)));
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP)
+	ip6_set_dscp_network_order (ip6, ip6_dscp_network_order (ip6 + 1));
       break;
 
     case VNET_LINK_IP4:
       ip6->protocol = IP_PROTOCOL_IP_IN_IP;
-      if (t->tc_tos == 0xFF)
-	ip6_set_traffic_class_network_order (ip6,
-					     ((ip4_header_t *) (ip6 +
-								1))->tos);
+      if (t->flags & IPIP_TUNNEL_FLAG_ENCAP_COPY_DSCP)
+	ip6_set_dscp_network_order
+	  (ip6, ip4_header_get_dscp ((ip4_header_t *) (ip6 + 1)));
       break;
 
     default:
@@ -248,6 +258,20 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 						       adj_get_link_type
 						       (ai), NULL));
   ipip_tunnel_stack (ai);
+}
+
+u8 *
+format_ipip_tunnel_flags (u8 * s, va_list * args)
+{
+  ipip_tunnel_flags_t f = va_arg (*args, int);
+
+  if (f == IPIP_TUNNEL_FLAG_NONE)
+    return (format (s, "none"));
+
+#define _(a,b,c) if (f & IPIP_TUNNEL_FLAG_##a) s = format(s, "%s ", b);
+  forech_ipip_tunnel_flag
+#undef _
+    return (s);
 }
 
 static u8 *
@@ -384,7 +408,8 @@ ipip_tunnel_db_remove (ipip_tunnel_t * t)
 int
 ipip_add_tunnel (ipip_transport_t transport,
 		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
-		 u32 fib_index, u8 tc_tos, u32 * sw_if_indexp)
+		 u32 fib_index, ipip_tunnel_flags_t flags,
+		 ip_dscp_t dscp, u32 * sw_if_indexp)
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -430,9 +455,10 @@ ipip_add_tunnel (ipip_transport_t transport,
   t->hw_if_index = hw_if_index;
   t->fib_index = fib_index;
   t->sw_if_index = sw_if_index;
-  t->tc_tos = tc_tos;
-
+  t->dscp = dscp;
+  t->flags = flags;
   t->transport = transport;
+
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t_idx;
 

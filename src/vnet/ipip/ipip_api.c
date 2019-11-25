@@ -29,6 +29,12 @@
 #define REPLY_MSG_ID_BASE im->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+static ipip_tunnel_flags_t
+ipip_tunnel_flags_decode (vl_api_ipip_tunnel_flags_t f)
+{
+  return ((ipip_tunnel_flags_t) f);
+}
+
 static void
 vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 {
@@ -67,7 +73,9 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 			     IPIP_TRANSPORT_IP6 :
 			     IPIP_TRANSPORT_IP4),
 			    ntohl (mp->tunnel.instance), &src, &dst,
-			    fib_index, mp->tunnel.tc_tos, &sw_if_index);
+			    fib_index,
+			    ipip_tunnel_flags_decode (mp->tunnel.flags),
+			    ip_dscp_decode (mp->tunnel.dscp), &sw_if_index);
     }
 
 out:
