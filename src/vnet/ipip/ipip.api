@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,9 +49,11 @@
  *
  */
 
-option version = "1.2.0";
+option version = "2.0.0";
+
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/ipip/ipip_types.api";
 
 /**
  * An IP{v4,v6} over IP{v4,v6} tunnel.
@@ -63,8 +66,9 @@ typedef ipip_tunnel
   vl_api_interface_index_t sw_if_index; /* ignored on create, set in
 					   details/dump */
   u32 table_id;
-  u8 tc_tos; /* If ~0, the TOS/TC value is copied from
-                inner packet, otherwise set to value */
+  vl_api_ipip_tunnel_flags_t flags;
+  vl_api_ip_dscp_t dscp; /* DSCP value for the tunnel encap,
+                            ignored if ECNAP_COPY_DSCP flag is set */
 };
 
 /**
