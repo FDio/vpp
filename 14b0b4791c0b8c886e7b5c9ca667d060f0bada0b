@@ -22,6 +22,30 @@
       "revId": "14b0b4791c0b8c886e7b5c9ca667d060f0bada0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7244ad32_db56821b",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-25T17:50:41Z",
+      "side": 1,
+      "message": "Will fix.\n\nUsed self.__class__.__name__ so I didn\u0027t need to duplicate code for the subclass.  When we drop python2 support I want to revisit this and see if I can move __repr__ to Packer and use inspect.signature once for all the clases.",
+      "parentUuid": "92f6f06c_9bd7dddf",
+      "range": {
+        "startLine": 272,
+        "startChar": 16,
+        "endLine": 272,
+        "endChar": 26
+      },
+      "revId": "14b0b4791c0b8c886e7b5c9ca667d060f0bada0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
