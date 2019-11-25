@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "4946fda9_69a8d0f7",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-11-25T18:57:11Z",
+      "side": 1,
+      "message": "Good call. Thanks for noticing that. I will fix it and submit an updated patchset.",
+      "parentUuid": "f31408c8_36d49440",
+      "revId": "710cddad9862485a9fb5610e6b5d8c04a42c1543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "824b65d2_35b1e9e0",
         "filename": "src/vnet/bonding/device.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2019-11-25T03:46:31Z",
       "side": 1,
       "message": "The sw_if_index in bif-\u003esalves is not sorted by anything. I don\u0027t think you can walk backward like that. Instead of doing vec_foreach in the previous loop, you could use vec_foreach_index. When you encounter an error at a particular index, you could undo by walking the index backward starting from the index with with error.",
+      "revId": "710cddad9862485a9fb5610e6b5d8c04a42c1543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac521fe9_e49784b3",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-11-25T18:57:11Z",
+      "side": 1,
+      "message": "I don\u0027t understand why bif-\u003eslaves would need to be sorted in order for this to work. If an error occurred during the first loop, slave_sw_if_index would point at the element in bif-\u003eslaves that was being processed when the error occurred. The second loop starts at the index of that failed element (slave_sw_if_index - bif-\u003eslaves) and works backwards to index 0 of bif-\u003eslaves.\n\nWhile I think this should work, I can see that the logic of my code would have been clearer if I had made the two loops consistent with each other and either used pointer comparison or numeric indices for both instead of mixing those two approaches. I\u0027ll convert to use vec_foreach_index() in the first loop as you suggested.",
+      "parentUuid": "824b65d2_35b1e9e0",
       "revId": "710cddad9862485a9fb5610e6b5d8c04a42c1543",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
