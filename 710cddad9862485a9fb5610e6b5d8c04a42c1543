@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f31408c8_36d49440",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-11-25T03:46:31Z",
+      "side": 1,
+      "message": "bif may be null. I am pretty sure you\u0027ll get coverity warning for this.",
+      "revId": "710cddad9862485a9fb5610e6b5d8c04a42c1543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "824b65d2_35b1e9e0",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-11-25T03:46:31Z",
+      "side": 1,
+      "message": "The sw_if_index in bif-\u003esalves is not sorted by anything. I don\u0027t think you can walk backward like that. Instead of doing vec_foreach in the previous loop, you could use vec_foreach_index. When you encounter an error at a particular index, you could undo by walking the index backward starting from the index with with error.",
+      "revId": "710cddad9862485a9fb5610e6b5d8c04a42c1543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
