@@ -162,15 +162,13 @@ vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
    */
   am->ring_misses++;
 
-  pthread_mutex_lock (&vlib_rp->mutex);
-  oldheap = svm_push_data_heap (vlib_rp);
+  oldheap = vl_msg_push_heap_w_vrp (vlib_rp);
   if (may_return_null)
     {
       rv = clib_mem_alloc_or_null (nbytes);
       if (PREDICT_FALSE (rv == 0))
 	{
-	  svm_pop_heap (oldheap);
-	  pthread_mutex_unlock (&vlib_rp->mutex);
+	  vl_msg_pop_heap_w_vrp (vlib_rp, oldheap);
 	  return 0;
 	}
     }
@@ -179,8 +177,7 @@ vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
 
   rv->q = 0;
   rv->gc_mark_timestamp = 0;
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&vlib_rp->mutex);
+  vl_msg_pop_heap_w_vrp (vlib_rp, oldheap);
 
 out:
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
@@ -293,8 +290,7 @@ vl_msg_api_free_w_vrp (svm_region_t * vlib_rp, void *a)
       return;
     }
 
-  pthread_mutex_lock (&vlib_rp->mutex);
-  oldheap = svm_push_data_heap (vlib_rp);
+  oldheap = vl_msg_push_heap_w_vrp (vlib_rp);
 
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
   {
@@ -305,8 +301,7 @@ vl_msg_api_free_w_vrp (svm_region_t * vlib_rp, void *a)
 #endif
 
   clib_mem_free (rv);
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&vlib_rp->mutex);
+  vl_msg_pop_heap_w_vrp (vlib_rp, oldheap);
 }
 
 void
