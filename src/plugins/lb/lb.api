@@ -159,6 +159,7 @@ autoreply define lb_add_del_intf_nat4 {
   u32 context;
   bool is_add;
   vl_api_interface_index_t sw_if_index;
+  option vat_help = "in <intfc> [del]";
 };
 
 /** \brief Enable/disable NAT6 feature on the interface
@@ -172,4 +173,5 @@ autoreply define lb_add_del_intf_nat6 {
   u32 context;
   bool is_add;
   vl_api_interface_index_t sw_if_index;
+  option vat_help = "in <intfc> [del]";
 };
