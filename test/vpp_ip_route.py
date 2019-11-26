@@ -246,6 +246,7 @@ class VppIpInterfaceAddress(VppObject):
             sw_if_index=self.intf.sw_if_index, prefix=self.prefix,
             is_add=1)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
