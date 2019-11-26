@@ -456,12 +456,12 @@ map_security_check_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "enable"))
 	{
-	  enable = false;
+	  enable = true;
 	  saw_enable = true;
 	}
       else if (unformat (line_input, "disable"))
 	{
-	  enable = true;
+	  enable = false;
 	  saw_enable = true;
 	}
       else if (unformat (line_input, "fragments on"))
