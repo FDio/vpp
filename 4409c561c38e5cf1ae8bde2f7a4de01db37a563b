@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c53ba0aa_b20a1c40",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-11-26T23:27:44Z",
+      "side": 1,
+      "message": "Shouldnt be simpler to just convert:\nsed -e \u0027s/\\([a-z0-9 -]*\\):.*/\\1/\u0027\nto\nsed -ne \u0027s/\\([a-z0-9 -]*\\):.*/\\1/p\u0027\n\n?",
+      "range": {
+        "startLine": 5,
+        "startChar": 8,
+        "endLine": 6,
+        "endChar": 36
+      },
+      "revId": "4409c561c38e5cf1ae8bde2f7a4de01db37a563b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
