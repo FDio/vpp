@@ -1543,6 +1543,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 
   rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
 			&a->local_ip, &a->remote_ip, 0, 0, &sw_if_index);
+  if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
+    rv = 0;
 
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
