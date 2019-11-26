@@ -272,7 +272,11 @@ class FixedList(Packer):
         return result, total
 
     def __repr__(self):
+<<<<<<< HEAD
         return "FixedList_(name=%s, field_type=%s, num=%s)" % (
+=======
+        return "FixedList(name=%s, field_type=%s, num=%s)" % (
+>>>>>>> 2144cc7... papi: fix typo in repr
             self.name, self.field_type, self.num)
 
 
