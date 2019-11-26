@@ -49,6 +49,9 @@ vec_resize_allocate_memory (void *v,
   vec_header_t *vh = _vec_find (v);
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
+#if CLIB_DEBUG > 0
+  u32 obj_size;
+#endif
 
   header_bytes = vec_header_bytes (header_bytes);
 
@@ -65,19 +68,27 @@ vec_resize_allocate_memory (void *v,
       return v;
     }
 
-  vh->len += length_increment;
   old = v - header_bytes;
+  old_alloc_bytes = clib_mem_size (old);
+
+#if CLIB_DEBUG > 0
+  obj_size = old_alloc_bytes / (vh->len ? vh->len : 1);
+#endif
+
+  vh->len += length_increment;
 
   /* Vector header must start heap object. */
   ASSERT (clib_mem_is_heap_object (old));
-
-  old_alloc_bytes = clib_mem_size (old);
 
   /* Need to resize? */
   if (data_bytes <= old_alloc_bytes)
     return v;
 
+#if CLIB_DEBUG > 0
+  new_alloc_bytes = old_alloc_bytes + obj_size;
+#else
   new_alloc_bytes = (old_alloc_bytes * 3) / 2;
+#endif
   if (new_alloc_bytes < data_bytes)
     new_alloc_bytes = data_bytes;
 
