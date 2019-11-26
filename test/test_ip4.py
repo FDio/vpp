@@ -20,6 +20,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
+from vpp_lo_interface import VppLoInterface
 
 NUM_PKTS = 67
 
@@ -2090,6 +2091,69 @@ class TestIPReplace(VppTestCase):
             self.assertEqual(len(t.dump()), 5)
             self.assertEqual(len(t.mdump()), 1)
 
+
+class TestIPCover(VppTestCase):
+    """ IPv4 Table Cover """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPCover, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPCover, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPCover, self).setUp()
+
+        self.create_pg_interfaces(range(4))
+
+        table_id = 1
+        self.tables = []
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.generate_remote_hosts(2)
+            self.tables.append(VppIpTable(self, table_id).add_vpp_config())
+            table_id += 1
+
+    def tearDown(self):
+        super(TestIPCover, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+
+    def test_cover(self):
+        """ IP Table Cover """
+
+        # add a loop back with a /32 prefix
+        lo = VppLoInterface(self)
+        lo.admin_up()
+        a = VppIpInterfaceAddress(self, lo, "127.0.0.1", 32).add_vpp_config()
+
+        # add a neighbour that matches the loopback's /32
+        nbr = VppNeighbor(self,
+                          lo.sw_if_index,
+                          lo.remote_mac,
+                          "127.0.0.1").add_vpp_config()
+
+        # add the default route which will be the cover for /32
+        r = VppIpRoute(self, "0.0.0.0", 0,
+                       [VppRoutePath("127.0.0.1",
+                                     lo.sw_if_index)],
+                       register=False).add_vpp_config()
+
+        # add/remove/add a longer mask cover
+        r = VppIpRoute(self, "127.0.0.0", 8,
+                       [VppRoutePath("127.0.0.1",
+                                     lo.sw_if_index)]).add_vpp_config()
+        r.remove_vpp_config()
+        r.add_vpp_config()
+
+        # remove the default route
+        r.remove_vpp_config()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

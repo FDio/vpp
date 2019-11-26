@@ -373,19 +373,23 @@ fib_entry_src_adj_cover_update (fib_entry_src_t *src,
      * prefix is updated during the covers walk.
      */
     fib_entry_src_cover_res_t res = {
-        .install = !0,
+        .install = 0,
         .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
     };
     fib_entry_t *cover;
 
-    ASSERT(FIB_NODE_INDEX_INVALID != src->u.adj.fesa_cover);
+    /*
+     * If there is no cover, then the source is not active and we can ignore
+     * this update
+     */
+    if (FIB_NODE_INDEX_INVALID != src->u.adj.fesa_cover)
+    {
+        cover = fib_entry_get(src->u.adj.fesa_cover);
 
-    cover = fib_entry_get(src->u.adj.fesa_cover);
+        res.install = (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover));
 
-    res.install = (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover));
-
-    FIB_ENTRY_DBG(fib_entry, "adj-src-cover-updated");
-
+        FIB_ENTRY_DBG(fib_entry, "adj-src-cover-updated");
+    }
     return (res);
 }
 
