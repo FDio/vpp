@@ -268,7 +268,7 @@ static int api_lb_add_del_as (vat_main_t * vam)
   mp->pfx.len = vip_plen;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
-  clib_memcpy (&mp->as_address, &as_addr, sizeof (as_addr));
+  clib_memcpy (&mp->as_address.un.ip6, &as_addr.ip6, sizeof (as_addr.ip6));
   mp->is_del = is_del;
   mp->is_flush = is_flush;
 
