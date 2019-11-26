@@ -289,7 +289,7 @@ static int api_lb_flush_vip (vat_main_t * vam)
   if (!unformat(line_input, "%U", unformat_ip46_prefix,
                 &vip_prefix, &vip_plen, IP46_TYPE_ANY))
   {
-      errmsg ("lb_add_del_as: invalid vip prefix\n");
+      errmsg ("lb_flush_vip: invalid vip prefix\n");
       return -99;
   }
 
@@ -300,16 +300,83 @@ static int api_lb_flush_vip (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+static uword
+api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
+{
+  vat_main_t *vam = va_arg (*args, vat_main_t *);
+  u32 *result = va_arg (*args, u32 *);
+  u8 *if_name;
+  uword *p;
+
+  if (!unformat (input, "%s", &if_name))
+    return 0;
+
+  p = hash_get_mem (vam->sw_if_index_by_interface_name, if_name);
+  if (p == 0)
+    return 0;
+  *result = p[0];
+  return 1;
+}
+
 static int api_lb_add_del_intf_nat4 (vat_main_t * vam)
 {
-  // Not yet implemented
-  return -99;
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_intf_nat4_t *mp;
+  u32 _sw_if_index, *sw_if_index = &_sw_if_index;
+  int is_del = 0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "in %U", api_unformat_sw_if_index,
+                    vam, sw_if_index))
+        ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else {
+          errmsg ("invalid arguments\n");
+          return -99;
+      }
+    }
+
+  M(LB_ADD_DEL_INTF_NAT4, mp);
+  mp->is_add = (is_del? 0:1);
+  mp->sw_if_index = (vl_api_interface_index_t)(ntohl(*sw_if_index));
+
+  S(mp);
+  W (ret);
+  return ret;
 }
 
 static int api_lb_add_del_intf_nat6 (vat_main_t * vam)
 {
-  // Not yet implemented
-  return -99;
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_intf_nat6_t *mp;
+  u32 _sw_if_index, *sw_if_index = &_sw_if_index;
+  int is_del = 0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "in %U", api_unformat_sw_if_index,
+                    vam, sw_if_index))
+        ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else {
+          errmsg ("invalid arguments\n");
+          return -99;
+      }
+    }
+
+  M(LB_ADD_DEL_INTF_NAT6, mp);
+  mp->is_add = (is_del? 0:1);
+  mp->sw_if_index = (vl_api_interface_index_t)(ntohl(*sw_if_index));
+
+  S(mp);
+  W (ret);
+  return ret;
 }
 
 static void vl_api_lb_vip_details_t_handler
