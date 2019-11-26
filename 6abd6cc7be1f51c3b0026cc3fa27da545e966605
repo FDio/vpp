@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "03c0026a_252d8a3b",
+        "filename": "src/plugins/unittest/crypto/rfc2202_hmac_sha1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-11-26T10:46:06Z",
+      "side": 1,
+      "message": "not sure what you mean, that\u0027s what is does, I haven\u0027t defined new test vectors. TEST_DATA_CHUNK(v, offset, size) just takes existing vector data from v+offset to v+offset+size.",
+      "parentUuid": "c51de43e_336b2ecf",
+      "range": {
+        "startLine": 221,
+        "startChar": 1,
+        "endLine": 234,
+        "endChar": 0
+      },
+      "revId": "6abd6cc7be1f51c3b0026cc3fa27da545e966605",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1cc93b5e_c9e7d0cc",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 8
@@ -45,6 +69,30 @@
       "revId": "6abd6cc7be1f51c3b0026cc3fa27da545e966605",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9dd6142e_2b668e50",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-11-26T10:46:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1cc93b5e_c9e7d0cc",
+      "range": {
+        "startLine": 244,
+        "startChar": 0,
+        "endLine": 245,
+        "endChar": 52
+      },
+      "revId": "6abd6cc7be1f51c3b0026cc3fa27da545e966605",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
