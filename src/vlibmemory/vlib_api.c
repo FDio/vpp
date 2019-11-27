@@ -74,7 +74,7 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
   vl_api_get_first_msg_id_reply_t *rmp;
   vl_api_registration_t *regp;
   uword *p;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_msg_range_t *rp;
   u8 name[64];
   u16 first_msg_id = ~0;
@@ -108,7 +108,7 @@ out:
 void
 vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_api_versions_reply_t *rmp;
   vl_api_registration_t *reg;
   u32 nmsg = vec_len (am->api_version_list);
@@ -185,7 +185,7 @@ static void
 send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
 {
   vl_api_trace_plugin_msg_ids_t *mp;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
   svm_queue_t *q;
 
@@ -207,7 +207,7 @@ void
 vl_api_save_msg_table (void)
 {
   u8 *serialized_message_table;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u8 *chroot_file;
   int fd, rv;
 
@@ -257,7 +257,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
   vl_shmem_hdr_t *shm;
   svm_queue_t *q;
   clib_error_t *e;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   f64 dead_client_scan_time;
   f64 sleep_time, start_time;
   f64 vector_rate;
@@ -617,7 +617,7 @@ vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
 static void
 vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_msg_range_t *rp;
   uword *p;
 
@@ -670,7 +670,7 @@ extern void *rpc_call_main_thread_cb_fn;
 static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler,              \

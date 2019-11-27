@@ -120,7 +120,7 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 static int
 connect_to_vpp (char *name)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   mt_main_t *mm = &mt_main;
   u8 *msg_base_lookup_name;
 

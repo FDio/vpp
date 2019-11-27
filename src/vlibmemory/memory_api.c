@@ -64,7 +64,7 @@ static void
 memclnt_queue_callback (vlib_main_t * vm)
 {
   int i;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   if (PREDICT_FALSE (vec_len (vl_api_queue_cursizes) !=
 		     1 + vec_len (am->vlib_private_rps)))
@@ -123,7 +123,7 @@ vl_api_memclnt_create_internal (char *name, svm_queue_t * q)
   vl_api_registration_t *regp;
   svm_region_t *svm;
   void *oldheap;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   ASSERT (vlib_get_thread_index () == 0);
   pool_get (am->vl_clients, regpp);
@@ -164,7 +164,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   svm_queue_t *q;
   int rv = 0;
   void *oldheap;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u8 *msg_table;
 
   /*
@@ -246,7 +246,7 @@ vl_api_call_reaper_functions (u32 client_index)
   clib_error_t *error = 0;
   _vl_msg_api_function_list_elt_t *i;
 
-  i = api_main.reaper_function_registrations;
+  i = my_api_main->reaper_function_registrations;
   while (i)
     {
       error = i->f (client_index);
@@ -268,7 +268,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
   vl_api_memclnt_delete_reply_t *rp;
   svm_region_t *svm;
   void *oldheap;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u32 handle, client_index, epoch;
 
   handle = mp->index;
@@ -411,7 +411,7 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   api_main_t *am;
   vl_shmem_hdr_t *shmem_hdr;
 
-  am = &api_main;
+  am = my_api_main;
   shmem_hdr = am->shmem_hdr;
 
   rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
@@ -439,7 +439,7 @@ int
 vl_mem_api_init (const char *region_name)
 {
   int rv;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
   vl_shmem_hdr_t *shm;
@@ -488,7 +488,7 @@ vl_mem_api_init (const char *region_name)
 clib_error_t *
 map_api_segment_init (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   int rv;
 
   if ((rv = vl_mem_api_init (am->region_name)) < 0)
@@ -504,7 +504,7 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
 {
   vl_api_memclnt_keepalive_t *mp;
   svm_queue_t *q;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   svm_region_t *save_vlib_rp = am->vlib_rp;
   vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
 
@@ -724,7 +724,7 @@ void_mem_api_handle_msg_i (api_main_t * am, vlib_main_t * vm,
 int
 vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   return void_mem_api_handle_msg_i (am, vm, node,
 				    am->shmem_hdr->vl_input_queue);
 }
@@ -732,7 +732,7 @@ vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node)
 int
 vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   int i;
   uword *tmp, mp;
 
@@ -776,7 +776,7 @@ int
 vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       u32 reg_index)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
   svm_region_t *vlib_rp, *save_vlib_rp = am->vlib_rp;
   svm_queue_t *q;
@@ -800,7 +800,7 @@ vl_mem_api_client_index_to_registration (u32 handle)
 {
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *shmem_hdr;
   u32 index;
 
@@ -828,7 +828,7 @@ svm_queue_t *
 vl_api_client_index_to_input_queue (u32 index)
 {
   vl_api_registration_t *regp;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   /* Special case: vlib trying to send itself a message */
   if (index == (u32) ~ 0)
@@ -898,7 +898,7 @@ vl_api_ring_command (vlib_main_t * vm,
 {
   int i;
   vl_shmem_hdr_t *shmem_hdr;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   /* First, dump the primary region rings.. */
 
@@ -964,7 +964,7 @@ VLIB_CLI_COMMAND (cli_show_api_ring_command, static) =
 clib_error_t *
 vlibmemory_init (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   svm_map_region_args_t _a, *a = &_a;
   u8 *remove_path1, *remove_path2;
   void vlibsocket_reference (void);
@@ -1013,7 +1013,7 @@ vlibmemory_init (vlib_main_t * vm)
 void
 vl_set_memory_region_name (const char *name)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   am->region_name = name;
 }
 

@@ -118,7 +118,7 @@ clib_error_t *
 lacp_plugin_api_hookup (vlib_main_t * vm)
 {
   lacp_main_t *lm = &lacp_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   /* Ask for a correctly-sized block of API message decode slots */
   lm->msg_id_base = setup_message_id_table ();

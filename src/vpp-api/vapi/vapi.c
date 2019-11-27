@@ -447,7 +447,7 @@ vapi_send (vapi_ctx_t ctx, void *msg)
       goto out;
     }
   int tmp;
-  svm_queue_t *q = api_main.shmem_hdr->vl_input_queue;
+  svm_queue_t *q = my_api_main->shmem_hdr->vl_input_queue;
 #if VAPI_DEBUG
   unsigned msgid = be16toh (*(u16 *) msg);
   if (msgid <= ctx->vl_msg_id_max)
@@ -490,7 +490,7 @@ vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2)
       rv = VAPI_EINVAL;
       goto out;
     }
-  svm_queue_t *q = api_main.shmem_hdr->vl_input_queue;
+  svm_queue_t *q = my_api_main->shmem_hdr->vl_input_queue;
 #if VAPI_DEBUG
   unsigned msgid1 = be16toh (*(u16 *) msg1);
   unsigned msgid2 = be16toh (*(u16 *) msg2);
@@ -536,7 +536,7 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
       return VAPI_EINVAL;
     }
   vapi_error_e rv = VAPI_OK;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   uword data;
 
   if (am->our_pid == 0)
@@ -860,7 +860,7 @@ vapi_lookup_vl_msg_id (vapi_ctx_t ctx, vapi_msg_id_t id)
 int
 vapi_get_client_index (vapi_ctx_t ctx)
 {
-  return api_main.my_client_index;
+  return my_api_main->my_client_index;
 }
 
 bool

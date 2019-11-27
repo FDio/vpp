@@ -1100,7 +1100,7 @@ vl_api_cli_reply_t_handler_json (vl_api_cli_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   void *oldheap;
   u8 *reply;
 
@@ -2710,7 +2710,7 @@ static void vl_api_get_node_graph_reply_t_handler
   (vl_api_get_node_graph_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   i32 retval = ntohl (mp->retval);
   u8 *pvt_copy, *reply;
   void *oldheap;
@@ -2773,7 +2773,7 @@ static void vl_api_get_node_graph_reply_t_handler_json
   (vl_api_get_node_graph_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   void *oldheap;
   vat_json_node_t node;
   u8 *reply;
@@ -21333,7 +21333,7 @@ value_sort_cmp (void *a1, void *a2)
 static int
 dump_msg_api_table (vat_main_t * vam)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   name_sort_t *nses = 0, *ns;
   hash_pair_t *hp;
   int i;

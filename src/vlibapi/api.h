@@ -68,7 +68,7 @@ static void __vl_msg_api_add_##tag##_function_##x (void)                \
                                                                         \
 static void __vl_msg_api_add_##tag##_function_##x (void)                \
 {                                                                       \
- api_main_t * am = &api_main;                                           \
+ api_main_t * am = my_api_main;                                         \
  static _vl_msg_api_function_list_elt_t _vl_msg_api_function;           \
  _vl_msg_api_function.next_init_function                                \
     = am->tag##_function_registrations;                                 \

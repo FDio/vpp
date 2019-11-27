@@ -101,7 +101,7 @@ vl_api_client_command (vlib_main_t * vm,
   vl_api_registration_t **regpp, *regp;
   svm_queue_t *q;
   char *health;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u32 *confused_indices = 0;
 
   if (!pool_elts (am->vl_clients))
@@ -161,7 +161,7 @@ static clib_error_t *
 vl_api_status_command (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cli_cmd)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   /* check if rx_trace and tx_trace are not null pointers */
   if (am->rx_trace == 0)
@@ -228,7 +228,7 @@ vl_api_message_table_command (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cli_cmd)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   int i;
   int verbose = 0;
 
@@ -304,7 +304,7 @@ vl_api_show_plugin_command (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cli_cmd)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_msg_range_t *rp = 0;
   int i;
 
@@ -402,7 +402,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   struct stat statb;
   size_t file_size;
   u8 *msg;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u8 *tmpbuf = 0;
   u32 nitems, nitems_msgtbl;
   void **saved_print_handlers = 0;
@@ -668,7 +668,7 @@ api_trace_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   u32 nitems = 256 << 10;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
   u8 *filename = 0;
   u8 *chroot_filename = 0;
@@ -804,7 +804,7 @@ vl_api_trace_command (vlib_main_t * vm,
 {
   u32 nitems = 1024;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -881,7 +881,7 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   u32 nitems = 256 << 10;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -914,7 +914,7 @@ VLIB_CONFIG_FUNCTION (api_trace_config_fn, "api-trace");
 static clib_error_t *
 api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u32 nitems;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1004,7 +1004,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 				vlib_cli_command_t * cmd)
 {
   u8 *filename = 0;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   serialize_main_t _sm, *sm = &_sm;
   clib_error_t *error;
   u32 nmsgs;

@@ -78,7 +78,7 @@ maybe_register_api_client (vat_main_t * vam)
   vl_api_registration_t *regp;
   svm_region_t *svm;
   void *oldheap;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   if (vam->my_client_index != ~0)
     return;
@@ -260,7 +260,7 @@ api_cli_output (void *notused, const char *fmt, ...)
 u16
 vl_client_get_first_plugin_msg_id (const char *plugin_name)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_msg_range_t *rp;
   uword *p;
 
