@@ -440,6 +440,8 @@ vppcom_connect_to_vpp (char *app_name)
 	  return VPPCOM_ECONNREFUSED;
 	}
 
+      wrk->bapi_fd = socket_client_main.socket_fd;
+
       if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
 	{
 	  VERR ("app (%s) init shm failed!", app_name);

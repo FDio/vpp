@@ -298,6 +298,9 @@ typedef struct vcl_worker_
 
   u32 forked_child;
 
+  /** Binary api fd if used with socket transport */
+  int bapi_fd;
+
 } vcl_worker_t;
 
 typedef struct vppcom_main_t_
