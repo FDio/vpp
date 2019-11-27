@@ -674,9 +674,9 @@ typedef struct snat_main_s
 
   /* values of various timeouts */
   u32 udp_timeout;
-  u32 tcp_established_timeout;
-  u32 tcp_transitory_timeout;
   u32 icmp_timeout;
+  u32 tcp_transitory_timeout;
+  u32 tcp_established_timeout;
 
   /* TCP MSS clamping */
   u16 mss_clamping;
