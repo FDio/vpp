@@ -1829,7 +1829,11 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
 
-  return quic_send_packets (ctx);
+  ctx->conn_state = QUIC_CONN_STATE_READY;
+  pctx->ctx_index = ctx_index;
+  pctx->thread_index = thread_index;
+
+  return 0;
 }
 
 static int
@@ -2012,13 +2016,22 @@ rx_start:
     }
   for (i = 0; i < max_packets; i++)
     {
-      if (packets_ctx[i].ptype != QUIC_PACKET_TYPE_RECEIVE)
-	continue;
-      ctx = quic_ctx_get (packets_ctx[i].ctx_index,
-			  packets_ctx[i].thread_index);
-      quic_check_quic_session_connected (ctx);
-      ctx = quic_ctx_get (packets_ctx[i].ctx_index,
-			  packets_ctx[i].thread_index);
+      switch (packets_ctx[i].ptype)
+	{
+	case QUIC_PACKET_TYPE_RECEIVE:
+	  ctx = quic_ctx_get (packets_ctx[i].ctx_index,
+			      packets_ctx[i].thread_index);
+	  quic_check_quic_session_connected (ctx);
+	  ctx = quic_ctx_get (packets_ctx[i].ctx_index,
+			      packets_ctx[i].thread_index);
+	  break;
+	case QUIC_PACKET_TYPE_ACCEPT:
+	  ctx = quic_ctx_get (packets_ctx[i].ctx_index,
+			      packets_ctx[i].thread_index);
+	  break;
+	default:
+	  continue;
+	}
       quic_send_packets (ctx);
     }
 
