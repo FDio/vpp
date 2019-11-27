@@ -1332,7 +1332,7 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 {
   u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
   ssvm_private_t *eqs = &smm->evt_qs_segment;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   uword eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
   void *oldheap;

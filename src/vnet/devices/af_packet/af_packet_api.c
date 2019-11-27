@@ -170,7 +170,7 @@ setup_message_id_table (api_main_t * am)
 static clib_error_t *
 af_packet_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \

@@ -316,7 +316,7 @@ void
 vcl_cleanup_bapi (void)
 {
   socket_client_main_t *scm = &socket_client_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   am->my_client_index = ~0;
   am->my_registration = 0;

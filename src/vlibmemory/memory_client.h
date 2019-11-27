@@ -36,6 +36,7 @@ typedef struct
 } memory_client_main_t;
 
 extern memory_client_main_t memory_client_main;
+extern __thread memory_client_main_t *my_memory_client_main;
 
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_send_disconnect (u8 do_cleanup);
@@ -49,7 +50,7 @@ int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 int vl_client_connect_to_vlib_thread_fn (const char *svm_name,
 					 const char *client_name,
 					 int rx_queue_size,
-					 void *(*)(void *));
+					 void *(*)(void *), void *);
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					     const char *client_name,
 					     int rx_queue_size);
