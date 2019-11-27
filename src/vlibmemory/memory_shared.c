@@ -43,7 +43,8 @@
 #define DEBUG_MESSAGE_BUFFER_OVERRUN 0
 
 CLIB_NOSANITIZE_ADDR static inline void *
-vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
+vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
+			   int may_return_null)
 {
   int i;
   msgbuf_t *rv;
@@ -53,7 +54,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
   vl_shmem_hdr_t *shmem_hdr;
   api_main_t *am = &api_main;
 
-  shmem_hdr = am->shmem_hdr;
+  shmem_hdr = (void *) vlib_rp->user_ctx;
 
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
   nbytes += 4;
@@ -161,15 +162,15 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
    */
   am->ring_misses++;
 
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  pthread_mutex_lock (&vlib_rp->mutex);
+  oldheap = svm_push_data_heap (vlib_rp);
   if (may_return_null)
     {
       rv = clib_mem_alloc_or_null (nbytes);
       if (PREDICT_FALSE (rv == 0))
 	{
 	  svm_pop_heap (oldheap);
-	  pthread_mutex_unlock (&am->vlib_rp->mutex);
+	  pthread_mutex_unlock (&vlib_rp->mutex);
 	  return 0;
 	}
     }
@@ -179,7 +180,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
   rv->q = 0;
   rv->gc_mark_timestamp = 0;
   svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  pthread_mutex_unlock (&vlib_rp->mutex);
 
 out:
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
@@ -207,7 +208,8 @@ vl_msg_api_alloc (int nbytes)
    * Clients use pool-0, vlib proc uses pool 1
    */
   pool = (am->our_pid == shmem_hdr->vl_pid);
-  return vl_msg_api_alloc_internal (nbytes, pool, 0 /* may_return_null */ );
+  return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, pool,
+				    0 /* may_return_null */ );
 }
 
 void *
@@ -228,13 +230,15 @@ vl_msg_api_alloc_or_null (int nbytes)
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
 
   pool = (am->our_pid == shmem_hdr->vl_pid);
-  return vl_msg_api_alloc_internal (nbytes, pool, 1 /* may_return_null */ );
+  return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, pool,
+				    1 /* may_return_null */ );
 }
 
 void *
 vl_msg_api_alloc_as_if_client (int nbytes)
 {
-  return vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
+  return vl_msg_api_alloc_internal (api_main.vlib_rp, nbytes, 0,
+				    0 /* may_return_null */ );
 }
 
 void *
@@ -250,34 +254,22 @@ vl_msg_api_alloc_zero_as_if_client (int nbytes)
 void *
 vl_msg_api_alloc_as_if_client_or_null (int nbytes)
 {
-  return vl_msg_api_alloc_internal (nbytes, 0, 1 /* may_return_null */ );
+  return vl_msg_api_alloc_internal (api_main.vlib_rp, nbytes, 0,
+				    1 /* may_return_null */ );
 }
 
 void *
 vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg, int nbytes)
 {
-  api_main_t *am = &api_main;
-  vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
-  svm_region_t *vlib_rp, *save_vlib_rp = am->vlib_rp;
-  void *msg;
-
-  vlib_rp = am->vlib_rp = reg->vlib_rp;
-  am->shmem_hdr = (void *) vlib_rp->user_ctx;
-
-  msg = vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
-
-  am->shmem_hdr = save_shmem_hdr;
-  am->vlib_rp = save_vlib_rp;
-
-  return msg;
+  return vl_msg_api_alloc_internal (reg->vlib_rp, nbytes, 0,
+				    0 /* may_return_null */ );
 }
 
 void
-vl_msg_api_free (void *a)
+vl_msg_api_free_w_vrp (svm_region_t *vlib_rp, void *a)
 {
   msgbuf_t *rv;
   void *oldheap;
-  api_main_t *am = &api_main;
 
   rv = (msgbuf_t *) (((u8 *) a) - offsetof (msgbuf_t, data));
 
@@ -301,8 +293,8 @@ vl_msg_api_free (void *a)
       return;
     }
 
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
+  pthread_mutex_lock (&vlib_rp->mutex);
+  oldheap = svm_push_data_heap (vlib_rp);
 
 #if DEBUG_MESSAGE_BUFFER_OVERRUN > 0
   {
@@ -314,7 +306,13 @@ vl_msg_api_free (void *a)
 
   clib_mem_free (rv);
   svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  pthread_mutex_unlock (&vlib_rp->mutex);
+}
+
+void
+vl_msg_api_free (void *a)
+{
+  vl_msg_api_free_w_vrp (api_main.vlib_rp, a);
 }
 
 static void
