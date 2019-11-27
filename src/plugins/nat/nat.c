@@ -459,6 +459,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 			    u->sessions_per_user_list_head_index);
   oldest_elt = pool_elt_at_index (tsm->list_pool, oldest_index);
   s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
   sess_timeout_time = s->last_heard + (f64) nat44_session_get_timeout (sm, s);
   if (now >= sess_timeout_time)
     {
@@ -2315,10 +2316,8 @@ snat_init (vlib_main_t * vm)
   sm->fq_in2out_index = ~0;
   sm->fq_in2out_output_index = ~0;
   sm->fq_out2in_index = ~0;
-  sm->udp_timeout = SNAT_UDP_TIMEOUT;
-  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
-  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
-  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+
+
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
@@ -2339,8 +2338,6 @@ snat_init (vlib_main_t * vm)
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-out2in");
   sm->pre_out2in_node_index = node->index;
-
-  // TODO: output ?? (special node)
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out");
   sm->in2out_node_index = node->index;
@@ -3739,24 +3736,36 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t *sm = &snat_main;
   nat66_main_t *nm = &nat66_main;
-  u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128 << 20;
+  dslite_main_t *dm = &dslite_main;
+  snat_main_per_thread_data_t *tsm;
+
+  u32 static_mapping_buckets = 1024;
+  u32 static_mapping_memory_size = 64 << 20;
+
+  u32 nat64_bib_buckets = 1024;
+  u32 nat64_bib_memory_size = 128 << 20;
+
+  u32 nat64_st_buckets = 2048;
+  u32 nat64_st_memory_size = 256 << 20;
+
   u32 user_buckets = 128;
   u32 user_memory_size = 64 << 20;
-  u32 max_translations_per_user = 100;
+  u32 translation_buckets = 1024;
+  u32 translation_memory_size = 128 << 20;
+
+  u32 max_translations_per_user = ~0;
+
   u32 outside_vrf_id = 0;
   u32 outside_ip6_vrf_id = 0;
   u32 inside_vrf_id = 0;
-  u32 static_mapping_buckets = 1024;
-  u32 static_mapping_memory_size = 64 << 20;
-  u32 nat64_bib_buckets = 1024;
-  u32 nat64_bib_memory_size = 128 << 20;
-  u32 nat64_st_buckets = 2048;
-  u32 nat64_st_memory_size = 256 << 20;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
-  snat_main_per_thread_data_t *tsm;
-  dslite_main_t *dm = &dslite_main;
+
+  u32 udp_timeout = SNAT_UDP_TIMEOUT;
+  u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
+
+  u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+  u32 tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
 
   sm->deterministic = 0;
   sm->out2in_dpo = 0;
@@ -3767,6 +3776,14 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat
 	  (input, "translation hash buckets %d", &translation_buckets))
 	;
+      else if (unformat (input, "udp timeout %d", &udp_timeout))
+	;
+      else if (unformat (input, "icmp timeout %d", &icmp_timeout))
+	;
+      else if (unformat (input, "tcp transitory timeout %d",
+			 &tcp_transitory_timeout));
+      else if (unformat (input, "tcp established timeout %d",
+			 &tcp_established_timeout));
       else if (unformat (input, "translation hash memory %d",
 			 &translation_memory_size));
       else if (unformat (input, "user hash buckets %d", &user_buckets))
@@ -3825,14 +3842,23 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
     return clib_error_return (0,
 			      "out2in dpo mode available only for simple nat");
 
-  /* for show commands, etc. */
-  sm->translation_buckets = translation_buckets;
-  sm->translation_memory_size = translation_memory_size;
-  /* do not exceed load factor 10 */
-  sm->max_translations = 10 * translation_buckets;
+  /* optionally configurable timeouts for testing purposes */
+  sm->udp_timeout = udp_timeout;
+  sm->icmp_timeout = icmp_timeout;
+  sm->tcp_transitory_timeout = tcp_transitory_timeout;
+  sm->tcp_established_timeout = tcp_established_timeout;
+
   sm->user_buckets = user_buckets;
   sm->user_memory_size = user_memory_size;
-  sm->max_translations_per_user = max_translations_per_user;
+
+  sm->translation_buckets = translation_buckets;
+  sm->translation_memory_size = translation_memory_size;
+
+  /* do not exceed load factor 10 */
+  sm->max_translations = 10 * translation_buckets;
+  sm->max_translations_per_user = max_translations_per_user == ~0 ?
+    sm->max_translations : max_translations_per_user;
+
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 							     outside_vrf_id,
@@ -3868,7 +3894,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  sm->handoff_out2in_index = nat_pre_out2in_node.index;
 	  sm->handoff_in2out_index = nat_pre_in2out_node.index;
-	  // TODO: test
 	  sm->handoff_in2out_output_index = nat44_ed_in2out_output_node.index;
 
 	  sm->in2out_node_index = nat44_ed_in2out_node.index;
@@ -3888,7 +3913,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  sm->handoff_out2in_index = snat_in2out_node.index;
 	  sm->handoff_in2out_index = snat_out2in_node.index;
-	  // TODO: test
 	  sm->handoff_in2out_output_index = snat_in2out_output_node.index;
 
 	  sm->in2out_node_index = snat_in2out_node.index;
