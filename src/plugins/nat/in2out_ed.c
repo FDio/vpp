@@ -28,6 +28,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44_inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
@@ -208,6 +209,8 @@ slow_path_ed (snat_main_t * sm,
 		},
   };
   nat44_is_idle_session_ctx_t ctx;
+
+  nat44_session_try_cleanup (&key->l_addr, rx_fib_index, thread_index, now);
 
   if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
     {
