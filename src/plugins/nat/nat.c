@@ -459,6 +459,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 			    u->sessions_per_user_list_head_index);
   oldest_elt = pool_elt_at_index (tsm->list_pool, oldest_index);
   s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
   sess_timeout_time = s->last_heard + (f64) nat44_session_get_timeout (sm, s);
   if (now >= sess_timeout_time)
     {
@@ -2340,8 +2341,6 @@ snat_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-out2in");
   sm->pre_out2in_node_index = node->index;
 
-  // TODO: output ?? (special node)
-
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out");
   sm->in2out_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-output");
@@ -3868,7 +3867,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  sm->handoff_out2in_index = nat_pre_out2in_node.index;
 	  sm->handoff_in2out_index = nat_pre_in2out_node.index;
-	  // TODO: test
 	  sm->handoff_in2out_output_index = nat44_ed_in2out_output_node.index;
 
 	  sm->in2out_node_index = nat44_ed_in2out_node.index;
@@ -3888,7 +3886,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  sm->handoff_out2in_index = snat_in2out_node.index;
 	  sm->handoff_in2out_index = snat_out2in_node.index;
-	  // TODO: test
 	  sm->handoff_in2out_output_index = snat_in2out_output_node.index;
 
 	  sm->in2out_node_index = snat_in2out_node.index;
