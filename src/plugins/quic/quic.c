@@ -32,7 +32,7 @@
 
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
-#include <plugins/quic/quic_error.def>
+#include <quic/quic_error.def>
 #undef quic_error
 };
 
