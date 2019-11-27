@@ -525,13 +525,15 @@ msg_handler_internal (api_main_t * am,
 
 /* This is only to be called from a vlib/vnet app */
 void
-vl_msg_api_handler_with_vm_node (api_main_t * am,
+vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 				 void *the_msg, vlib_main_t * vm,
-				 vlib_node_runtime_t * node)
+				 vlib_node_runtime_t * node, u8 is_private)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   u8 *(*handler) (void *, void *, void *);
   u8 *(*print_fp) (void *, void *);
+  svm_region_t *old_vlib_rp;
+  void *save_shmem_hdr;
   int is_mp_safe = 1;
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
@@ -581,7 +583,19 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
 	  vl_msg_api_barrier_sync ();
 	}
+      if (is_private)
+	{
+	  old_vlib_rp = am->vlib_rp;
+	  save_shmem_hdr = am->shmem_hdr;
+	  am->vlib_rp = vlib_rp;
+	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
+	}
       (*handler) (the_msg, vm, node);
+      if (is_private)
+	{
+	  am->vlib_rp = old_vlib_rp;
+	  am->shmem_hdr = save_shmem_hdr;
+	}
       if (!is_mp_safe)
 	vl_msg_api_barrier_release ();
     }
