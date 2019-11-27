@@ -867,4 +867,7 @@ if __name__ == '__main__':
                 print('Test run was successful')
             else:
                 print('%s attempt(s) left.' % attempts)
+                print('Suites rescheduled:')
+                for s in suites:
+                    print(s)
         sys.exit(exit_code)
