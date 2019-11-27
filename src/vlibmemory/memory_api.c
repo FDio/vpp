@@ -708,14 +708,16 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 }
 
 static inline int
-void_mem_api_handle_msg_i (api_main_t * am, vlib_main_t * vm,
-			   vlib_node_runtime_t * node, svm_queue_t * q)
+void_mem_api_handle_msg_i (api_main_t * am, svm_region_t * vlib_rp,
+			   vlib_main_t * vm, vlib_node_runtime_t * node,
+			   svm_queue_t * q, u8 is_private)
 {
   uword mp;
   if (!svm_queue_sub2 (q, (u8 *) & mp))
     {
       VL_MSG_API_UNPOISON ((void *) mp);
-      vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
+      vl_msg_api_handler_with_vm_node (am, vlib_rp, (void *) mp, vm, node,
+				       is_private);
       return 0;
     }
   return -1;
@@ -725,8 +727,9 @@ int
 vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node)
 {
   api_main_t *am = &api_main;
-  return void_mem_api_handle_msg_i (am, vm, node,
-				    am->shmem_hdr->vl_input_queue);
+  return void_mem_api_handle_msg_i (am, am->vlib_rp, vm, node,
+				    am->shmem_hdr->vl_input_queue,
+				    0 /* is_private */ );
 }
 
 int
@@ -764,7 +767,8 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
       for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
 	{
 	  mp = vm->processing_rpc_requests[i];
-	  vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
+	  vl_msg_api_handler_with_vm_node (am, am->vlib_rp, (void *) mp, vm,
+					   node, 0 /* is_private */ );
 	}
       vl_msg_api_barrier_release ();
     }
@@ -787,7 +791,8 @@ vl_mem_api_handle_msg_private (vlib_main_t * vm, vlib_node_runtime_t * node,
   am->shmem_hdr = (void *) vlib_rp->user_ctx;
   q = am->shmem_hdr->vl_input_queue;
 
-  rv = void_mem_api_handle_msg_i (am, vm, node, q);
+  rv = void_mem_api_handle_msg_i (am, am->vlib_private_rps[reg_index], vm,
+				  node, q, 1 /* is_private */ );
 
   am->shmem_hdr = save_shmem_hdr;
   am->vlib_rp = save_vlib_rp;
