@@ -32,7 +32,7 @@
 #include <vppinfra/elog.h>
 
 /* *INDENT-OFF* */
-api_main_t api_main =
+api_main_t api_global_main =
   {
     .region_name = "/unset",
     .api_uid = -1,
@@ -40,10 +40,20 @@ api_main_t api_main =
   };
 /* *INDENT-ON* */
 
+/* Please use vlibapi_get_main() to access my_api_main */
+__thread api_main_t *my_api_main = &api_global_main;
+
+void
+vl_msg_api_set_global_main (void *am_arg)
+{
+  ASSERT (am_arg);
+  my_api_main = (api_main_t *) am_arg;
+}
+
 void
 vl_msg_api_increment_missing_client_counter (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   am->missing_clients++;
 }
 
@@ -644,7 +654,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 void
 vl_msg_api_handler (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg,
 			(am->rx_trace
@@ -655,7 +665,7 @@ vl_msg_api_handler (void *the_msg)
 void
 vl_msg_api_handler_no_free (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   msg_handler_internal (am, the_msg,
 			(am->rx_trace
 			 && am->rx_trace->enabled) /* trace_it */ ,
@@ -665,7 +675,7 @@ vl_msg_api_handler_no_free (void *the_msg)
 void
 vl_msg_api_handler_no_trace_no_free (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   msg_handler_internal (am, the_msg, 0 /* trace_it */ , 1 /* do_it */ ,
 			0 /* free_it */ );
 }
@@ -682,7 +692,7 @@ vl_msg_api_handler_no_trace_no_free (void *the_msg)
 void
 vl_msg_api_trace_only (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg,
 			(am->rx_trace
@@ -693,7 +703,7 @@ vl_msg_api_trace_only (void *the_msg)
 void
 vl_msg_api_cleanup_handler (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
 
   if (PREDICT_FALSE (id >= vec_len (am->msg_cleanup_handlers)))
@@ -713,7 +723,7 @@ vl_msg_api_cleanup_handler (void *the_msg)
 void
 vl_msg_api_replay_handler (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
 
@@ -740,7 +750,7 @@ vl_msg_api_get_msg_length (void *msg_arg)
 void
 vl_msg_api_socket_handler (void *the_msg)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg,
 			(am->rx_trace
@@ -761,7 +771,7 @@ _(is_mp_safe)
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   /*
    * This happens during the java core tests if the message
@@ -844,7 +854,7 @@ vl_msg_api_clean_handlers (int msg_id)
 void
 vl_msg_api_set_cleanup_handler (int msg_id, void *fp)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   ASSERT (msg_id > 0);
 
   vec_validate (am->msg_cleanup_handlers, msg_id);
@@ -891,7 +901,7 @@ vl_msg_api_post_mortem_dump_enable_disable (int enable)
 void
 vl_msg_api_post_mortem_dump (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   FILE *fp;
   char filename[64];
   int rv;
@@ -926,7 +936,7 @@ vl_msg_api_post_mortem_dump (void)
 void
 vl_msg_api_register_pd_handler (void *fp, u16 msg_id_host_byte_order)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   /* Mild idiot proofing */
   if (msg_id_host_byte_order > 10000)
@@ -940,7 +950,7 @@ vl_msg_api_register_pd_handler (void *fp, u16 msg_id_host_byte_order)
 int
 vl_msg_api_pd_handler (void *mp, int rv)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   int (*fp) (void *, int);
   u16 msg_id;
 
@@ -961,7 +971,7 @@ vl_msg_api_pd_handler (void *mp, int rv)
 void
 vl_msg_api_set_first_available_msg_id (u16 first_avail)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   am->first_available_msg_id = first_avail;
 }
@@ -969,7 +979,7 @@ vl_msg_api_set_first_available_msg_id (u16 first_avail)
 u16
 vl_msg_api_get_msg_ids (const char *name, int n)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   u8 *name_copy;
   vl_api_msg_range_t *rp;
   uword *p;
@@ -1041,7 +1051,7 @@ vl_msg_api_add_version (api_main_t * am, const char *string,
 u32
 vl_msg_api_get_msg_index (u8 * name_and_crc)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   uword *p;
 
   if (am->msg_index_by_name_and_crc)
@@ -1056,7 +1066,7 @@ vl_msg_api_get_msg_index (u8 * name_and_crc)
 void *
 vl_msg_push_heap (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   pthread_mutex_lock (&am->vlib_rp->mutex);
   return svm_push_data_heap (am->vlib_rp);
 }
@@ -1064,7 +1074,7 @@ vl_msg_push_heap (void)
 void
 vl_msg_pop_heap (void *oldheap)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 }
@@ -1122,7 +1132,7 @@ vl_api_from_api_to_vec (vl_api_string_t * astr)
 void
 vl_api_set_elog_main (elog_main_t * m)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   am->elog_main = m;
 }
 
@@ -1130,7 +1140,7 @@ int
 vl_api_set_elog_trace_api_messages (int enable)
 {
   int rv;
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   rv = am->elog_trace_api_messages;
   am->elog_trace_api_messages = enable;
@@ -1140,7 +1150,7 @@ vl_api_set_elog_trace_api_messages (int enable)
 int
 vl_api_get_elog_trace_api_messages (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   return am->elog_trace_api_messages;
 }

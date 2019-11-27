@@ -158,7 +158,7 @@ static clib_error_t *
 gmon_init (vlib_main_t * vm)
 {
   gmon_main_t *gm = &gmon_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   pid_t *swp = 0;
   f64 *v = 0;
   clib_error_t *error;
