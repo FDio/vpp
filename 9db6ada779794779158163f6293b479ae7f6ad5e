@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f5116c2_8fac795b",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-27T14:10:05Z",
+      "side": 1,
+      "message": "begin",
+      "range": {
+        "startLine": 68,
+        "startChar": 28,
+        "endLine": 68,
+        "endChar": 33
+      },
+      "revId": "9db6ada779794779158163f6293b479ae7f6ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9f53f9d1_a5ef4b2b",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-27T14:10:05Z",
+      "side": 1,
+      "message": "exists",
+      "range": {
+        "startLine": 74,
+        "startChar": 42,
+        "endLine": 74,
+        "endChar": 47
+      },
+      "revId": "9db6ada779794779158163f6293b479ae7f6ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d15f8377_a18a8c29",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-27T14:10:05Z",
+      "side": 1,
+      "message": "declares",
+      "range": {
+        "startLine": 75,
+        "startChar": 11,
+        "endLine": 75,
+        "endChar": 20
+      },
+      "revId": "9db6ada779794779158163f6293b479ae7f6ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6df470b6_13c805fd",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-27T14:10:05Z",
+      "side": 1,
+      "message": "course",
+      "range": {
+        "startLine": 77,
+        "startChar": 59,
+        "endLine": 77,
+        "endChar": 66
+      },
+      "revId": "9db6ada779794779158163f6293b479ae7f6ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ae5001b_c494b12c",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-11-27T14:10:05Z",
+      "side": 1,
+      "message": "Should we mention this also shuts down interfaces?",
+      "range": {
+        "startLine": 109,
+        "startChar": 4,
+        "endLine": 109,
+        "endChar": 31
+      },
+      "revId": "9db6ada779794779158163f6293b479ae7f6ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
