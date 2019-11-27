@@ -203,6 +203,8 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   snat_session_key_t eh_key;
   nat44_is_idle_session_ctx_t ctx;
 
+  nat44_session_try_cleanup (&l_key.addr, l_key.fib_index, thread_index, now);
+
   if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
