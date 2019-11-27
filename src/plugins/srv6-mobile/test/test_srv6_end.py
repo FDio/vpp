@@ -86,7 +86,8 @@ class TestSRv6EndMGTP4E(VppTestCase):
         capture = self.pg1.get_capture(len(pkts))
 
         for pkt in capture:
-            self.logger.info(pkt.show2())
+            # do not log packets by default
+            # self.logger.info(pkt.show2())
             self.assertEqual(pkt[IP].dst, self.ip4_dst)
             self.assertEqual(pkt[IP].src, self.ip4_src)
             self.assertEqual(pkt[GTP_U_Header].teid, 0xbbbbbbbb)
