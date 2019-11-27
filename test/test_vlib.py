@@ -12,6 +12,7 @@ class TestVlib(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.vapi_response_timeout = 45
         super(TestVlib, cls).setUpClass()
 
     @classmethod

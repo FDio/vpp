@@ -11,6 +11,7 @@ class TestBihash(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.vapi_response_timeout = 45
         super(TestBihash, cls).setUpClass()
 
     @classmethod
