@@ -84,7 +84,8 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_liovf", LIOVF_ETHER)    \
   _ ("net_qede", QEDE)		  \
   _ ("net_netvsc", NETVSC)        \
-  _ ("net_bnxt", BNXT)
+  _ ("net_bnxt", BNXT)            \
+  _ ("net_hinic", HINIC)
 
 typedef enum
 {
