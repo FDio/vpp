@@ -596,7 +596,7 @@ svm_map_region (svm_map_region_args_t * a)
 
   shm_name = shm_name_from_svm_map_region_args (a);
 
-  if (CLIB_DEBUG > 1)
+  if (1 || CLIB_DEBUG > 1)
     clib_warning ("[%d] map region %s: shm_open (%s)",
 		  getpid (), a->name, shm_name);
 

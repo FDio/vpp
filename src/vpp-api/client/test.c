@@ -87,7 +87,7 @@ test_connect ()
 static void
 test_messages (void)
 {
-  api_main_t * am = &api_main;
+  api_main_t * am = vlibapi_get_main();
   vl_api_show_version_t message;
   vl_api_show_version_t *mp;
   int async = 1;

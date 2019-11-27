@@ -36,6 +36,7 @@ typedef struct
 } memory_client_main_t;
 
 extern memory_client_main_t memory_client_main;
+extern __thread memory_client_main_t *my_memory_client_main;
 
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_send_disconnect (u8 do_cleanup);
@@ -49,7 +50,7 @@ int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 int vl_client_connect_to_vlib_thread_fn (const char *svm_name,
 					 const char *client_name,
 					 int rx_queue_size,
-					 void *(*)(void *));
+					 void *(*)(void *), void *);
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					     const char *client_name,
 					     int rx_queue_size);
@@ -61,6 +62,13 @@ int vl_client_connect_to_vlib_no_rx_pthread_no_map (const char *svm_name,
 						    int rx_queue_size);
 void vl_client_install_client_message_handlers (void);
 u8 vl_mem_client_is_connected (void);
+
+always_inline memory_client_main_t *
+vlibapi_get_memory_client_main (void)
+{
+  ASSERT (my_memory_client_main);
+  return my_memory_client_main;
+}
 
 #endif /* SRC_VLIBMEMORY_MEMORY_CLIENT_H_ */
 

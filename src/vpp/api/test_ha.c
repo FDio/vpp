@@ -131,7 +131,7 @@ connect_to_vpe (char *name)
 {
   int rv = 0;
   test_main_t *tm = &test_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   rv = vl_client_connect_to_vlib ("/vpe-api", name, 32);
   if (rv < 0)
@@ -174,7 +174,7 @@ int
 main (int argc, char **argv)
 {
   test_main_t *tm = &test_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
   u32 swt_pid = 0;
   int connected = 0;
 

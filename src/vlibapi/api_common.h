@@ -369,7 +369,14 @@ typedef struct
 
 } api_main_t;
 
-extern api_main_t api_main;
+extern __thread api_main_t *my_api_main;
+extern api_main_t api_global_main;
+
+always_inline api_main_t *
+vlibapi_get_main (void)
+{
+  return my_api_main;
+}
 
 #endif /* included_api_common_h */
 

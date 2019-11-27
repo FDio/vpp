@@ -713,7 +713,7 @@ nsh_api_init (vlib_main_t * vm, nsh_main_t * nm)
   error = nsh_plugin_api_hookup (vm);
 
   /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (nm, &api_main);
+  setup_message_id_table (nm, vlibapi_get_main ());
 
   vec_free (name);
 

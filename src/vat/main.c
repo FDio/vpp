@@ -31,7 +31,7 @@ int
 connect_to_vpe (char *name)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = vlibapi_get_main ();
 
   if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
     return -1;
@@ -185,7 +185,7 @@ do_one_file (vat_main_t * vam)
       if (vam->client_index_invalid)
 	{
 	  vat_main_t *vam = &vat_main;
-	  api_main_t *am = &api_main;
+	  api_main_t *am = vlibapi_get_main ();
 
 	  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 	  vam->my_client_index = am->my_client_index;
