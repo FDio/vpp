@@ -428,6 +428,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  switch (xd->pmd)
 	    {
 	      /* Drivers with valid speed_capa set */
+	    case VNET_DPDK_PMD_HINIC:
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
@@ -936,6 +937,10 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	    devconf->is_blacklisted = 1;
 	  }
       }
+    /* huawei hinic */
+    else if (d->vendor_id == 0x19e5 && d->device_class == PCI_CLASS_NETWORK_ETHERNET &&
+    (d->device_id == 0x1822))
+      ;
     /* all Intel network devices */
     else if (d->vendor_id == 0x8086 && d->device_class == PCI_CLASS_NETWORK_ETHERNET)
       ;

@@ -1,0 +1,25 @@
+From 71c5930bff7f9f529863efa84889efef14953499 Mon Sep 17 00:00:00 2001
+From: jiangxiaoming <jiangxiaoming@xdja.com>
+Date: Wed, 4 Sep 2019 14:20:06 +0800
+Subject: [PATCH] fix: hinic rte_pktmbuf_pool_create error
+
+---
+ drivers/net/hinic/hinic_pmd_ethdev.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hinic/hinic_pmd_ethdev.h b/drivers/net/hinic/hinic_pmd_ethdev.h
+index 4aeddc2..77729b3 100644
+--- a/drivers/net/hinic/hinic_pmd_ethdev.h
++++ b/drivers/net/hinic/hinic_pmd_ethdev.h
+@@ -15,7 +15,7 @@
+ #define HINIC_MAX_RX_QUEUES	(64)
+ 
+ /* mbuf pool for copy invalid mbuf segs */
+-#define HINIC_COPY_MEMPOOL_DEPTH (128)
++#define HINIC_COPY_MEMPOOL_DEPTH (256)
+ #define HINIC_COPY_MBUF_SIZE     (4096)
+ 
+ #define SIZE_8BYTES(size)	(ALIGN((u32)(size), 8) >> 3)
+-- 
+2.23.0
+

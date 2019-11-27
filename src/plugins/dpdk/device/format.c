@@ -262,6 +262,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
   switch (dm->devices[i].pmd)
     {
+    case VNET_DPDK_PMD_HINIC:
+      dev_type = "HUAWEI hinic";
+      break;
+
     case VNET_DPDK_PMD_E1000EM:
       dev_type = "Intel 82540EM (e1000)";
       break;
