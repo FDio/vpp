@@ -36,6 +36,7 @@ typedef struct
 } memory_client_main_t;
 
 extern memory_client_main_t memory_client_main;
+extern __thread memory_client_main_t *my_memory_client_main;
 
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_send_disconnect (u8 do_cleanup);

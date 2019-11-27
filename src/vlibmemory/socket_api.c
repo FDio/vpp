@@ -118,7 +118,7 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
 #endif
   socket_main_t *sm = &socket_main;
   u16 msg_id = ntohs (*(u16 *) elem);
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   msgbuf_t *mb = (msgbuf_t *) (elem - offsetof (msgbuf_t, data));
   vl_api_registration_t *sock_rp;
   clib_file_main_t *fm = &file_main;
@@ -458,7 +458,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
 {
   vl_api_registration_t *regp;
   vl_api_sockclnt_create_reply_t *rp;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   hash_pair_t *hp;
   int rv = 0;
   u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
@@ -619,7 +619,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   ssvm_private_t _memfd_private, *memfd = &_memfd_private;
   svm_map_region_args_t _args, *a = &_args;
   vl_api_registration_t *regp;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   svm_region_t *vlib_rp;
   clib_file_t *cf;
   vl_api_shm_elem_config_t *config = 0;

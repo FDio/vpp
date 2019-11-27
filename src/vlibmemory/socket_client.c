@@ -266,7 +266,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   socket_client_main_t *scm = &socket_client_main;
   ssvm_private_t *memfd = &scm->memfd_segment;
   i32 retval = ntohl (mp->retval);
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   clib_error_t *error;
   int my_fd = -1;
   u8 *new_name;

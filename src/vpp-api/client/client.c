@@ -177,7 +177,7 @@ vac_rx_thread_fn (void *arg)
   vl_api_memclnt_keepalive_t *mp;
   vl_api_memclnt_keepalive_reply_t *rmp;
   vac_main_t *pm = &vac_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *shmem_hdr;
   uword msg;
 
@@ -237,7 +237,7 @@ vac_timeout_thread_fn (void *arg)
 {
   vl_api_memclnt_read_timeout_t *ep;
   vac_main_t *pm = &vac_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   struct timespec ts;
   struct timeval tv;
   int rv;
@@ -272,7 +272,7 @@ vac_timeout_thread_fn (void *arg)
 void
 vac_rx_suspend (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vac_main_t *pm = &vac_main;
   vl_api_memclnt_rx_thread_suspend_t *ep;
 
@@ -306,14 +306,14 @@ vac_rx_resume (void)
 static uword *
 vac_msg_table_get_hash (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   return (am->msg_index_by_name_and_crc);
 }
 
 int
 vac_msg_table_size(void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   return hash_elts(am->msg_index_by_name_and_crc);
 }
 
@@ -390,7 +390,7 @@ unset_timeout (void)
 int
 vac_disconnect (void)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vac_main_t *pm = &vac_main;
   uword junk;
   int rv = 0;
@@ -442,7 +442,7 @@ int
 vac_read (char **p, int *l, u16 timeout)
 {
   svm_queue_t *q;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vac_main_t *pm = &vac_main;
   vl_api_memclnt_keepalive_t *mp;
   vl_api_memclnt_keepalive_reply_t *rmp;
@@ -489,7 +489,7 @@ vac_read (char **p, int *l, u16 timeout)
       shmem_hdr = am->shmem_hdr;
       vl_msg_api_send_shmem(shmem_hdr->vl_input_queue, (u8 *)&rmp);
       vl_msg_api_free((void *) msg);
-      /* 
+      /*
        * Python code is blissfully unaware of these pings, so
        * act as if it never happened...
        */
@@ -535,14 +535,14 @@ typedef VL_API_PACKED(struct _vl_api_header {
 static u32
 vac_client_index (void)
 {
-  return (api_main.my_client_index);
+  return (my_api_main->my_client_index);
 }
 
 int
 vac_write (char *p, int l)
 {
   int rv = -1;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_api_header_t *mp = vl_msg_api_alloc(l);
   svm_queue_t *q;
   vac_main_t *pm = &vac_main;

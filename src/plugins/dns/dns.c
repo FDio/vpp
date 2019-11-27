@@ -3056,7 +3056,7 @@ dns_init (vlib_main_t * vm)
   dm->name_cache_size = 1000;
   dm->max_ttl_in_seconds = 86400;
   dm->random_seed = 0xDEADDABE;
-  dm->api_main = &api_main;
+  dm->api_main = my_api_main;
 
   /* Ask for a correctly-sized block of API message decode slots */
   dm->msg_id_base = setup_message_id_table ();

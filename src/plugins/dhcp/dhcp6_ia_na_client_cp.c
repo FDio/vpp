@@ -766,7 +766,7 @@ dhcp_ia_na_client_cp_init (vlib_main_t * vm)
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
-  rm->api_main = &api_main;
+  rm->api_main = my_api_main;
   rm->node_index = dhcp6_client_cp_process_node.index;
 
   return NULL;

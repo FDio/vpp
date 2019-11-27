@@ -27,17 +27,58 @@ vat_suspend (vlib_main_t * vm, f64 interval)
   /* do nothing in the standalone version, just return */
 }
 
+void *new_api_main;
+void *new_memclnt_main;
+
+static void *
+my_rx_thread_fn (void *arg)
+{
+  svm_queue_t *q;
+
+  my_memory_client_main = new_memclnt_main;
+  my_api_main = new_api_main;
+
+  q = my_api_main->vl_input_queue;
+
+  /* So we can make the rx thread terminate cleanly */
+  if (setjmp (my_memory_client_main->rx_thread_jmpbuf) == 0)
+    {
+      my_memory_client_main->rx_thread_jmpbuf_valid = 1;
+      clib_mem_set_thread_index ();
+      while (1)
+	vl_msg_api_queue_handler (q);
+    }
+  pthread_exit (0);
+}
+
 int
 connect_to_vpe (char *name)
 {
   vat_main_t *vam = &vat_main;
-  api_main_t *am = &api_main;
+
+  /* $$$$ TEST CODE DO NOT MERGE! */
 
   if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
     return -1;
 
-  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  vam->my_client_index = am->my_client_index;
+  new_api_main = my_api_main = clib_mem_alloc (sizeof (*my_api_main));
+  memset (my_api_main, 0, sizeof (*my_api_main));
+
+  new_memclnt_main = my_memory_client_main =
+    clib_mem_alloc (sizeof (*my_memory_client_main));
+  memset (my_memory_client_main, 0, sizeof (*my_memory_client_main));
+
+  /* sequencing issue... */
+  vat_api_hookup (vam);
+
+  if (vl_client_connect_to_vlib_thread_fn ("/vpe-api", "doppelganger", 32,
+					   my_rx_thread_fn) < 0)
+    return -1;
+
+  /* $$$$ END TEST CODE DO NOT MERGE */
+
+  vam->vl_input_queue = my_api_main->shmem_hdr->vl_input_queue;
+  vam->my_client_index = my_api_main->my_client_index;
 
   return 0;
 }
@@ -185,7 +226,7 @@ do_one_file (vat_main_t * vam)
       if (vam->client_index_invalid)
 	{
 	  vat_main_t *vam = &vat_main;
-	  api_main_t *am = &api_main;
+	  api_main_t *am = my_api_main;
 
 	  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 	  vam->my_client_index = am->my_client_index;
