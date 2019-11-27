@@ -662,7 +662,7 @@ static clib_error_t *
 rd_cp_init (vlib_main_t * vm)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();

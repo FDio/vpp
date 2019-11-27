@@ -2309,7 +2309,7 @@ snat_init (vlib_main_t * vm)
   sm->vnet_main = vnet_get_main ();
   sm->ip4_main = im;
   sm->ip4_lookup_main = lm;
-  sm->api_main = &api_main;
+  sm->api_main = my_api_main;
   sm->first_worker_index = 0;
   sm->num_workers = 0;
   sm->num_snat_thread = 1;

@@ -88,7 +88,7 @@ int
 connect_to_vpp (char *name)
 {
   echo_main_t *em = &echo_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
   if (em->use_sock_api)
     {

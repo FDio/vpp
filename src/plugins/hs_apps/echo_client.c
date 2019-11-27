@@ -318,7 +318,7 @@ VLIB_REGISTER_NODE (echo_clients_node) =
 static int
 create_api_loopback (echo_client_main_t * ecm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *shmem_hdr;
 
   shmem_hdr = am->shmem_hdr;

@@ -1288,7 +1288,7 @@ l2_bridge (test_main_t * tm)
 int
 main (int argc, char **argv)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   test_main_t *tm = &test_main;
   int ch;
 

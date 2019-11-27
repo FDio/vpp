@@ -510,7 +510,7 @@ int
 vppcom_connect_to_vpp (char *app_name)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
 
   if (vcl_cfg->vpp_api_socket_name)

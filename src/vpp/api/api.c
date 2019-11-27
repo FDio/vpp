@@ -143,7 +143,7 @@ shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
   u8 **shmem_vecp = (u8 **) arg;
   u8 *shmem_vec;
   void *oldheap;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   u32 offset;
 
   shmem_vec = *shmem_vecp;
@@ -170,7 +170,7 @@ vl_api_cli_t_handler (vl_api_cli_t * mp)
   vl_api_cli_reply_t *rp;
   vl_api_registration_t *reg;
   vlib_main_t *vm = vlib_get_main ();
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   unformat_input_t input;
   u8 *shmem_vec = 0;
   void *oldheap;
@@ -439,7 +439,7 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
 {
   int rv = 0;
   u8 *vector = 0;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vlib_main_t *vm = vlib_get_main ();
   void *oldheap;
   vl_api_get_node_graph_reply_t *rmp;
@@ -625,7 +625,7 @@ static void setup_message_id_table (api_main_t * am);
 static clib_error_t *
 vpe_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \

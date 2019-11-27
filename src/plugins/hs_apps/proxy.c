@@ -381,7 +381,7 @@ static void
 create_api_loopbacks (vlib_main_t * vm)
 {
   proxy_main_t *pm = &proxy_main;
-  api_main_t *am = &api_main;
+  api_main_t *am = my_api_main;
   vl_shmem_hdr_t *shmem_hdr;
 
   shmem_hdr = am->shmem_hdr;
