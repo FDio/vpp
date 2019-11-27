@@ -29,6 +29,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44_inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
@@ -188,6 +189,9 @@ create_session_for_static_mapping (snat_main_t * sm,
   ip4_header_t *ip0;
   udp_header_t *udp0;
   nat44_is_idle_session_ctx_t ctx0;
+
+  nat44_session_try_cleanup (&in2out.addr, in2out.fib_index, thread_index,
+			     now);
 
   if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
     {
