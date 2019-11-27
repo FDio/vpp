@@ -616,6 +616,7 @@ class VppTestCase(unittest.TestCase):
 
         if hasattr(cls, 'vpp'):
             if hasattr(cls, 'vapi'):
+                cls.logger.debug(cls.vapi.vpp.get_stats())
                 cls.logger.debug("Disconnecting class vapi client on %s",
                                  cls.__name__)
                 cls.vapi.disconnect()
