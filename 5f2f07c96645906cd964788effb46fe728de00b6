@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a35a31b_33ff907a",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-11-27T19:23:18Z",
+      "side": 1,
+      "message": "This takes some serious head scratching to read for me. Please split into multiple lines/variables.",
+      "revId": "5f2f07c96645906cd964788effb46fe728de00b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
