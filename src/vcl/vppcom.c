@@ -3590,11 +3590,24 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
+  vcl_worker_t *wrk;
+  u8 *wrk_name = 0;
+  int rv;
+
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
-  if (vcl_worker_set_bapi ())
-    return VPPCOM_EEXIST;
+  wrk = vcl_worker_get_current ();
+  wrk_name = format (0, "%s-wrk-%u", vcm->app_name, wrk->wrk_index);
+
+  my_memory_client_main = &wrk->bapi_shm_ctx;
+  my_api_main = &wrk->bapi_api_ctx;
+
+  rv = vppcom_connect_to_vpp ((char *) wrk_name);
+  vec_free (wrk_name);
+
+  if (rv)
+    return VPPCOM_EFAULT;
 
   if (vcl_worker_register_with_vpp ())
     return VPPCOM_EEXIST;
