@@ -228,7 +228,7 @@ vppcom_cfg_read_file (char *conf_fname)
   int fd;
   unformat_input_t _input, *input = &_input;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 vc_cfg_input = 0, *chroot_path;
+  u8 vc_cfg_input = 0;
   struct stat s;
   u32 uid, gid, q_len;
 
@@ -282,19 +282,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
 			vcl_cfg->max_workers);
 	    }
-	  else if (unformat (line_input, "api-prefix %s", &chroot_path))
+	  else if (unformat (line_input, "api-prefix %s",
+			     &vcl_cfg->vpp_api_chroot))
 	    {
-	      vec_terminate_c_string (chroot_path);
-	      if (vcl_cfg->vpp_api_filename)
-		vec_free (vcl_cfg->vpp_api_filename);
-	      vcl_cfg->vpp_api_filename = format (0, "/%s-vpe-api%c",
-						  chroot_path, 0);
-	      vl_set_memory_root_path ((char *) chroot_path);
-
-	      VCFG_DBG (0, "VCL<%d>: configured api-prefix (%s) and api "
-			"filename (%s)", getpid (), chroot_path,
-			vcl_cfg->vpp_api_filename);
-	      chroot_path = 0;	/* Don't vec_free() it! */
+	      vec_terminate_c_string (vcl_cfg->vpp_api_chroot);
+	      VCFG_DBG (0, "VCL<%d>: configured api-prefix (%s) ", getpid (),
+			vcl_cfg->vpp_api_chroot);
 	    }
 	  else if (unformat (line_input, "api-socket-name %s",
 			     &vcl_cfg->vpp_api_socket_name))
@@ -563,17 +556,15 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
   vppcom_cfg_heapsize (conf_fname);
   vppcom_cfg_read_file (conf_fname);
 
+  /* Regrab cfg after heap initialization */
+  vcl_cfg = &vcm->cfg;
   env_var_str = getenv (VPPCOM_ENV_API_PREFIX);
   if (env_var_str)
     {
-      if (vcl_cfg->vpp_api_filename)
-	vec_free (vcl_cfg->vpp_api_filename);
-      vcl_cfg->vpp_api_filename = format (0, "/%s-vpe-api%c", env_var_str, 0);
-      vl_set_memory_root_path ((char *) env_var_str);
-
-      VCFG_DBG (0, "VCL<%d>: configured api prefix (%s) and filename (%s) "
-		"from " VPPCOM_ENV_API_PREFIX "!", getpid (), env_var_str,
-		vcl_cfg->vpp_api_filename);
+      vcl_cfg->vpp_api_chroot = format (0, "%s", env_var_str);
+      vec_terminate_c_string (vcl_cfg->vpp_api_chroot);
+      VCFG_DBG (0, "VCL<%d>: configured api prefix (%s) from "
+		VPPCOM_ENV_API_PREFIX "!", getpid (), env_var_str);
     }
   env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
   if (env_var_str)
