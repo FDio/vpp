@@ -3588,11 +3588,18 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
+  u8 *wrk_name = 0;
+  int rv;
+
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
-  if (vcl_worker_set_bapi ())
-    return VPPCOM_EEXIST;
+  wrk_name = format (0, "%s-wrk-%u", vcm->app_name, vcl_get_worker_index ());
+  rv = vppcom_connect_to_vpp ((char *) wrk_name);
+  vec_free (wrk_name);
+
+  if (rv)
+    return VPPCOM_EFAULT;
 
   if (vcl_worker_register_with_vpp ())
     return VPPCOM_EEXIST;
