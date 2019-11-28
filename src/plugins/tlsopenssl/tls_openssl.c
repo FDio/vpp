@@ -479,7 +479,7 @@ check_app_fifo:
       return wrote;
     }
   svm_fifo_enqueue_nocopy (f, read);
-  if (read < enq_max && BIO_ctrl_pending (oc->wbio) > 0)
+  if (read < enq_max && SSL_pending (oc->ssl) > 0)
     {
       deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
       read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
@@ -488,7 +488,7 @@ check_app_fifo:
     }
 
   tls_notify_app_enqueue (ctx, app_session);
-  if (BIO_ctrl_pending (oc->wbio) > 0)
+  if (SSL_pending (oc->ssl) > 0)
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
   return wrote;
