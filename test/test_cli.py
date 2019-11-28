@@ -42,7 +42,9 @@ class TestCLI(VppTestCase):
         """ Test that VppApiClient raises VppTransportShmemIOError if timeout."""  # noqa
         with self.assertRaises(
                 vpp_transport_shmem.VppTransportShmemIOError) as ctx:
-            rv = self.vapi.papi.cli_inband(cmd='wait 10')
+            long_timeout = 2*self.vapi_response_timeout
+            cmd = "wait %d" % long_timeout
+            rv = self.vapi.papi.cli_inband(cmd=cmd)
 
 
 class TestCLIExtendedVapiTimeout(VppTestCase):
