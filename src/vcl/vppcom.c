@@ -3588,11 +3588,16 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
+  clib_warning ("called!");
+
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
-  if (vcl_worker_set_bapi ())
-    return VPPCOM_EEXIST;
+//  if (vcl_worker_set_bapi ())
+//    return VPPCOM_EEXIST;
+
+  if (vppcom_connect_to_vpp ("test"))
+    return VPPCOM_EFAULT;
 
   if (vcl_worker_register_with_vpp ())
     return VPPCOM_EEXIST;
