@@ -142,6 +142,12 @@ typedef struct
   u32 esp4_no_crypto_tun_feature_index;
   u32 esp6_no_crypto_tun_feature_index;
 
+  /* post node index for async crypto */
+  u32 esp4_encrypt_post_index;
+  u32 esp6_encrypt_post_index;
+  u32 esp4_encrypt_tun_post_index;
+  u32 esp6_encrypt_tun_post_index;
+
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
   /* pool of esp backends */

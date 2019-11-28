@@ -727,8 +727,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip46_address_t local_ip = ip46_address_initializer;
   ip46_address_t remote_ip = ip46_address_initializer;
-  ipsec_crypto_alg_t crypto_alg;
-  ipsec_integ_alg_t integ_alg;
+  ipsec_crypto_alg_t crypto_alg = 0;
+  ipsec_integ_alg_t integ_alg = 0;
   ipsec_sa_flags_t flags;
   u32 local_spi, remote_spi, salt, table_id, fib_index;
   u32 instance = ~0;

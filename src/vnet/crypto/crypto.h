@@ -62,10 +62,14 @@ typedef enum
 } vnet_crypto_op_type_t;
 
 #define foreach_crypto_op_status \
+  _(AVAILABLE, "available") \
+  _(READY, "ready") \
   _(PENDING, "pending") \
+  _(WORK_IN_PROGRESS, "work-in-progress") \
   _(COMPLETED, "completed") \
   _(FAIL_NO_HANDLER, "no-handler") \
-  _(FAIL_BAD_HMAC, "bad-hmac")
+  _(FAIL_BAD_HMAC, "bad-hmac") \
+  _(ENGINE_ERR, "engine-error")
 
 typedef enum
 {
@@ -126,7 +130,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_id_t op:16;
-  vnet_crypto_op_status_t status:8;
+  u8 status;
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
@@ -138,9 +142,14 @@ typedef struct
   u8 *src;
   u8 *dst;
   u8 *aad;
-  u8 *tag;
-  u8 *digest;
+  union {
+    u8 *tag;
+    u8 *digest;
+  };
   uword user_data;
+/* for async mode */
+  u32 bi;
+  u16 next;
 } vnet_crypto_op_t;
 
 typedef struct
@@ -153,7 +162,18 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head;
+  u32 tail;
+  u32 mask;
+  u32 last;
+  vnet_crypto_op_t *ops;
+} vnet_crypto_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_bitmap_t *act_queues;
+  vnet_crypto_queue_t *queues;
 } vnet_crypto_thread_t;
 
 typedef u32 vnet_crypto_key_index_t;
@@ -165,12 +185,18 @@ typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
 					  vnet_crypto_key_op_t kop,
 					  vnet_crypto_key_index_t idx);
 
+typedef u32 (vnet_crypto_queue_handler_t) (vlib_main_t * vm, u32 thread_idx,
+                                           vnet_crypto_queue_t * q);
+
 u32 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
 				 char *desc);
 
 void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_op_id_t opt,
 				       vnet_crypto_ops_handler_t * oph);
+void vnet_crypto_register_queue_handler (vlib_main_t * vm, u32 engine_index,
+                                         vnet_crypto_op_id_t opt,
+                                         vnet_crypto_queue_handler_t * qh);
 void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_key_handler_t * keyh);
 
@@ -181,18 +207,31 @@ typedef struct
   int priority;
   vnet_crypto_key_handler_t *key_op_handler;
   vnet_crypto_ops_handler_t *ops_handlers[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_queue_handler_t *queue_handlers[VNET_CRYPTO_N_OP_IDS];
 } vnet_crypto_engine_t;
+
+typedef struct
+{
+  u32 node_idx;
+  u32 next_idx;
+} vnet_crypto_async_next_node_t;
 
 typedef struct
 {
   vnet_crypto_alg_data_t *algs;
   vnet_crypto_thread_t *threads;
   vnet_crypto_ops_handler_t **ops_handlers;
+  vnet_crypto_queue_handler_t **queue_handlers;
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_op_data_t queue_data[VNET_CRYPTO_N_OP_IDS];
   vnet_crypto_engine_t *engines;
   vnet_crypto_key_t *keys;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
+#define VNET_CRYPTO_ASYNC_ENABLE   1 << 0
+#define VNET_CRYPTO_ASYNC_DEDICATE 1 << 1
+  u32 async_flag;
+  vnet_crypto_async_next_node_t *next_nodes;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
@@ -241,6 +280,125 @@ vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   return vec_elt_at_index (cm->keys, index);
+}
+
+/**
+ * Get one not processed op from queue, mark its status as in_progress, and
+ * return to the caller. Used by crypto engine only. If is possible to use
+ * fast "thread unsafe" mode to avoid atomic operation. However this mode
+ * should only be used when the crypto engine runs on the same lcore as
+ * the worker who owns the queue.
+ *
+ * @param q:      the queue pointer.
+ * @param atomic: 1 as using thread safe atomic operation, 0 as thread unsafe
+ *                mode. Only set to 0 when crypto engine runs on the same lcore
+ *                as the worker.
+ * @return:       the pointer to a vnet_crypto_op_t data to be processed by the
+ *                engine.
+ **/
+static_always_inline vnet_crypto_op_t *
+vnet_crypto_async_get_pending_op (vnet_crypto_queue_t * q, u32 atomic)
+{
+  vnet_crypto_op_t *op;
+  u32 mask = q->mask;
+  u32 head = q->head;
+  u32 last = q->last;
+  u32 i;
+
+  if (atomic)
+    {
+      for (i = last; i < head; i++)
+      {
+        op = &q->ops[i & mask];
+
+        if (clib_atomic_bool_cmp_and_swap (&op->status, 2, 3))
+          {
+            clib_atomic_cmp_and_swap (&q->last, last, i + 1);
+            return op;
+          }
+      }
+
+      return 0;
+    }
+
+  for (i = last; i < head; i++)
+    {
+      op = &q->ops[i & mask];
+
+      if (op->status == VNET_CRYPTO_OP_STATUS_PENDING)
+        {
+          op->status = VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS;
+          q->last = i + 1;
+          return op;
+        }
+    }
+
+  return 0;
+}
+
+static_always_inline vnet_crypto_op_t *
+vnet_crypto_async_alloc_op (vlib_main_t * vm, vnet_crypto_op_id_t op_id)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, vm->thread_index);
+  vnet_crypto_queue_t *q = &ct->queues [op_id];
+  vnet_crypto_op_t *op;
+
+  if (PREDICT_FALSE (q->ops == 0))
+    {
+      q->mask = VNET_CRYPTO_RING_SIZE - 1;
+      vec_validate_aligned (q->ops, VNET_CRYPTO_RING_SIZE,
+                             CLIB_CACHE_LINE_BYTES);
+    }
+
+  op = &q->ops[q->head & q->mask];
+
+  if (PREDICT_TRUE (op->status == VNET_CRYPTO_OP_STATUS_AVAILABLE))
+    {
+      op->status = VNET_CRYPTO_OP_STATUS_READY;
+      op->op = op_id;
+      op->flags = 0;
+      op->key_index = ~0;
+      CLIB_MEMORY_STORE_BARRIER ();
+      clib_bitmap_set_no_check (ct->act_queues, op_id, 1);
+      q->head++;
+      return op;
+    }
+
+  return 0;
+}
+
+static_always_inline void
+vnet_crypto_async_submit_op (vnet_crypto_op_t *op)
+{
+  op->status = VNET_CRYPTO_OP_STATUS_PENDING;
+}
+
+static_always_inline u32
+vnet_crypto_async_dispatch_one_queue (vlib_main_t * vm, u32 thread_idx,
+                                      u32 qidx)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, thread_idx);
+  vnet_crypto_queue_t *q = &ct->queues[qidx];
+
+  if (cm->queue_handlers && cm->queue_handlers[qidx])
+    return (cm->queue_handlers[qidx]) (vm, thread_idx, q);
+
+  return 0;
+}
+
+void vnet_crypto_async_mode_enable_disable (u8 is_enabled, u8 is_dedicate);
+
+u32 vnet_crypto_async_register_next_node (vlib_main_t * vm,
+                                          char *next_node_name);
+
+static_always_inline int
+vnet_crypto_is_async_mode (void)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  return (cm->async_flag & VNET_CRYPTO_ASYNC_ENABLE) ? 1 : 0;
 }
 
 #endif /* included_vnet_crypto_crypto_h */

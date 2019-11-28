@@ -128,19 +128,20 @@ add_vpp_plugin(dpdk
   device/init.c
   device/node.c
 #   hqos/hqos.c
-  ipsec/cli.c
-  ipsec/crypto_node.c
-  ipsec/esp_decrypt.c
-  ipsec/esp_encrypt.c
-  ipsec/ipsec.c
+#  ipsec/cli.c
+#  ipsec/crypto_node.c
+#  ipsec/esp_decrypt.c
+#  ipsec/esp_encrypt.c
+#  ipsec/ipsec.c
+  cryptodev/cryptodev.c
 
   MULTIARCH_SOURCES
   buffer.c
   device/device.c
   device/node.c
-  ipsec/crypto_node.c
-  ipsec/esp_decrypt.c
-  ipsec/esp_encrypt.c
+#  ipsec/crypto_node.c
+#  ipsec/esp_decrypt.c
+#  ipsec/esp_encrypt.c
 
 #  API_FILES
 #  api/dpdk.api
@@ -150,7 +151,7 @@ add_vpp_plugin(dpdk
 
   INSTALL_HEADERS
   device/dpdk.h
-  ipsec/ipsec.h
+#  ipsec/ipsec.h
 
   LINK_FLAGS
   "${DPDK_LINK_FLAGS}"
