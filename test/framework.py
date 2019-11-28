@@ -1555,13 +1555,20 @@ class Worker(Thread):
 
     def run(self):
         executable = self.args[0]
-        if not os.path.exists(executable) or not os.access(
+        if not os.path.exists(executable):
+            # Exit code that means some system file did not exist,
+            # could not be opened, or had some other kind of error.
+            self.result = os.EX_OSFILE
+            raise unittest.SkipTest(
+                "executable '%s' is not found." % executable)
+        elif not os.access(
                 executable, os.F_OK | os.X_OK):
             # Exit code that means some system file did not exist,
             # could not be opened, or had some other kind of error.
             self.result = os.EX_OSFILE
-            raise EnvironmentError(
-                "executable '%s' is not found or executable." % executable)
+            raise unittest.SkipTest(
+                "executable '%s' is not executable." % executable)
+
         self.logger.debug("Running executable: '{app}'"
                           .format(app=' '.join(self.args)))
         env = os.environ.copy()
