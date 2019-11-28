@@ -16,6 +16,24 @@
       "revId": "e140d5d0255b80f8dda945daf7202b5698d81d9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c3b6286e_4b6b5931",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-11-28T19:39:12Z",
+      "side": 0,
+      "message": "It\u0027s actually wrong. When making headroom, the current_data moves towards the end of the buffer (current_data + size), it doesn\u0027t shrink. The assert (copied from push_uninit) checks that there\u0027s enough space (pre_data + current_data) to consume \"size\" bytes before current_data. \n\nAs is, it wrongly complains when we move current_data forward by more than pre-data (128) + current_data (let\u0027s say 0). Until now we\u0027ve been leaving 100B for headers but we\u0027re now leaving 140B (too many layers of encapsulation in some cases .. :().",
+      "parentUuid": "b010279f_e27475df",
+      "revId": "e140d5d0255b80f8dda945daf7202b5698d81d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
