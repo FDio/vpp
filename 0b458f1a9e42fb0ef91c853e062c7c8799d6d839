@@ -22,6 +22,47 @@
       "revId": "0b458f1a9e42fb0ef91c853e062c7c8799d6d839",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "463c36fa_3ca3dcd4",
+        "filename": "test/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-11-28T22:13:50Z",
+      "side": 1,
+      "message": "\"2*timeout\" or \"2+timeout\" here does not affect the overall run time (in the success case) because the successful test should complete after \"timeout\" - trivial to see this by editing the timeout value in framework.py to be 45 seconds and doing \"time TEST\u003dtest_cli make test-debug\"\n\nThus after having seen and fixed in the past hew months a fair few \"off-by-a-second, breaks only once in a blue moon, and only on parallel runs, and only with many enough workers\" tricky to reproduce test failures I strongly believe the \"2*timeout\" is a better choice here.",
+      "parentUuid": "71bde601_ce2a1a4f",
+      "range": {
+        "startLine": 45,
+        "startChar": 27,
+        "endLine": 45,
+        "endChar": 29
+      },
+      "revId": "0b458f1a9e42fb0ef91c853e062c7c8799d6d839",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f550fbd_6c94f582",
+        "filename": "test/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-11-28T22:13:50Z",
+      "side": 1,
+      "message": "This 15 seconds, on the other hand, are dutifully spent *every* time the test suite execution is run. Feel free to submit a *separate* change to reduce it down to 10 if you feel like saving a bit... It\u0027s not the most long running tests, so up to you... But this change is purely about things not failing if one edits the default in framework.py.",
+      "revId": "0b458f1a9e42fb0ef91c853e062c7c8799d6d839",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
