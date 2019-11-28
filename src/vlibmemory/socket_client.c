@@ -260,10 +260,10 @@ vl_socket_client_enable_disable (int enable)
   vl_socket_client_enable_disable2 (socket_client_ctx, enable);
 }
 
-clib_error_t *
-vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
+static clib_error_t *
+vl_sock_api_recv_fd_msg_internal (socket_client_main_t * scm, int fds[],
+				  int n_fds, u32 wait)
 {
-  socket_client_main_t *scm = socket_client_ctx;
   char msgbuf[16];
   char ctl[CMSG_SPACE (sizeof (int) * n_fds)
 	   + CMSG_SPACE (sizeof (struct ucred))];
@@ -275,7 +275,10 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
   pid_t pid __attribute__ ((unused));
   uid_t uid __attribute__ ((unused));
   gid_t gid __attribute__ ((unused));
+  int socket_fd;
   f64 timeout;
+
+  socket_fd = scm->client_socket.fd;
 
   iov[0].iov_base = msgbuf;
   iov[0].iov_len = 5;
@@ -322,6 +325,26 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
       cmsg = CMSG_NXTHDR (&mh, cmsg);
     }
   return 0;
+}
+
+clib_error_t *
+vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
+{
+  return vl_sock_api_recv_fd_msg_internal (socket_client_ctx, fds, n_fds,
+					   wait);
+}
+
+clib_error_t *
+vl_sock_api_recv_fd_msg2 (socket_client_main_t * scm, int socket_fd,
+			  int fds[], int n_fds, u32 wait)
+{
+  socket_client_main_t *old_ctx;
+  clib_error_t *error;
+
+  old_ctx = vl_socket_client_ctx_push (scm);
+  error = vl_sock_api_recv_fd_msg_internal (scm, fds, n_fds, wait);
+  vl_socket_client_ctx_pop (old_ctx);
+  return error;
 }
 
 static void vl_api_sock_init_shm_reply_t_handler
@@ -562,7 +585,7 @@ vl_socket_client_recv_fd_msg2 (socket_client_main_t * scm, int fds[],
 {
   if (!scm->socket_fd)
     return clib_error_return (0, "no socket");
-  return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fds, n_fds, wait);
+  return vl_sock_api_recv_fd_msg_internal (scm, fds, n_fds, wait);
 }
 
 clib_error_t *

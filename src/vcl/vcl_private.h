@@ -298,6 +298,8 @@ typedef struct vcl_worker_
 
   u32 forked_child;
 
+  socket_client_main_t bapi_sock_ctx;
+
 } vcl_worker_t;
 
 typedef struct vppcom_main_t_
