@@ -211,6 +211,7 @@ typedef struct vppcom_cfg_t_
   char *event_log_path;
   u8 *vpp_api_filename;
   u8 *vpp_api_socket_name;
+  u8 *vpp_api_chroot;
   u32 tls_engine;
 } vppcom_cfg_t;
 
@@ -298,6 +299,9 @@ typedef struct vcl_worker_
 
   u32 forked_child;
 
+  socket_client_main_t bapi_sock_ctx;
+  memory_client_main_t bapi_shm_ctx;
+  api_main_t bapi_api_ctx;
 } vcl_worker_t;
 
 typedef struct vppcom_main_t_
