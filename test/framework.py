@@ -1395,7 +1395,7 @@ class VppTestResult(unittest.TestResult):
             test.__class__._header_printed = True
 
         print_header(test)
-
+        self.start_test = time.time()
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
             self.stream.writeln(
@@ -1410,14 +1410,17 @@ class VppTestResult(unittest.TestResult):
 
         """
         unittest.TestResult.stopTest(self, test)
+
         if self.verbosity > 0:
             self.stream.writeln(single_line_delim)
             self.stream.writeln("%-73s%s" % (self.getDescription(test),
                                              self.result_string))
             self.stream.writeln(single_line_delim)
         else:
-            self.stream.writeln("%-73s%s" % (self.getDescription(test),
-                                             self.result_string))
+            self.stream.writeln("%-68s %4.2f %s" %
+                                (self.getDescription(test),
+                                 time.time() - self.start_test,
+                                 self.result_string))
 
         self.send_result_through_pipe(test, TEST_RUN)
 
