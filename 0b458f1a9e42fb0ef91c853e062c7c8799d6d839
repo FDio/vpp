@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "71bde601_ce2a1a4f",
+        "filename": "test/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-28T16:51:29Z",
+      "side": 1,
+      "message": "Can we save some run time and just do +2?",
+      "range": {
+        "startLine": 45,
+        "startChar": 27,
+        "endLine": 45,
+        "endChar": 29
+      },
+      "revId": "0b458f1a9e42fb0ef91c853e062c7c8799d6d839",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
