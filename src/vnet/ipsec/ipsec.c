@@ -310,6 +310,15 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;
 
+  im->esp4_encrypt_post_index =
+      vnet_crypto_async_register_next_node (vm, "esp4-encrypt-post");
+  im->esp6_encrypt_post_index =
+      vnet_crypto_async_register_next_node (vm, "esp6-encrypt-post");
+  im->esp4_encrypt_tun_post_index =
+      vnet_crypto_async_register_next_node (vm, "esp4-encrypt-tun-post");
+  im->esp6_encrypt_tun_post_index =
+      vnet_crypto_async_register_next_node (vm, "esp6-encrypt-tun-post");
+
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_NONE;

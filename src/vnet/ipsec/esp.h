@@ -19,6 +19,20 @@
 #include <vnet/crypto/crypto.h>
 #include <vnet/ipsec/ipsec.h>
 
+#define foreach_esp_encrypt_next                   \
+_(DROP, "error-drop")                              \
+_(IP4_LOOKUP, "ip4-lookup")                        \
+_(IP6_LOOKUP, "ip6-lookup")                        \
+_(INTERFACE_OUTPUT, "interface-output")
+
+typedef enum
+{
+#define _(v, s) ESP_ENCRYPT_NEXT_##v,
+  foreach_esp_encrypt_next
+#undef _
+    ESP_ENCRYPT_N_NEXT,
+} esp_encrypt_next_t;
+
 typedef struct
 {
   union
