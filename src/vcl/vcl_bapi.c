@@ -137,7 +137,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
-      if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
+      if (vl_socket_client_recv_fd_msg2 (&wrk->bapi_sock_ctx, fds, mp->n_fds,
+					 5))
 	goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
@@ -217,7 +218,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
-      if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
+      if (vl_socket_client_recv_fd_msg2 (&wrk->bapi_sock_ctx, fds, mp->n_fds,
+					 5))
 	goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
@@ -510,19 +512,25 @@ int
 vppcom_connect_to_vpp (char *app_name)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  api_main_t *am = vlibapi_get_main ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  api_main_t *am;
+
+  vlibapi_set_main (&wrk->bapi_api_ctx);
+  vlibapi_set_memory_client_main (&wrk->bapi_shm_ctx);
+  vppcom_api_hookup ();
 
   if (vcl_cfg->vpp_api_socket_name)
     {
-      if (vl_socket_client_connect ((char *) vcl_cfg->vpp_api_socket_name,
-				    app_name, 0 /* default rx/tx buffer */ ))
+      if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
+				     (char *) vcl_cfg->vpp_api_socket_name,
+				     app_name, 0 /* default rx/tx buffer */ ))
 	{
 	  VERR ("app (%s) socket connect failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
 	}
 
-      if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
+      if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
+				      1 /* want_pthread */ ))
 	{
 	  VERR ("app (%s) init shm failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
@@ -533,6 +541,8 @@ vppcom_connect_to_vpp (char *app_name)
       if (!vcl_cfg->vpp_api_filename)
 	vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
 
+      vl_set_memory_root_path ((char *) vcl_cfg->vpp_api_chroot);
+
       VDBG (0, "app (%s) connecting to VPP api (%s)...",
 	    app_name, vcl_cfg->vpp_api_filename);
 
@@ -542,9 +552,9 @@ vppcom_connect_to_vpp (char *app_name)
 	  VERR ("app (%s) connect failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
 	}
-
     }
 
+  am = vlibapi_get_main ();
   wrk->vl_input_queue = am->shmem_hdr->vl_input_queue;
   wrk->my_client_index = (u32) am->my_client_index;
   wrk->wrk_state = STATE_APP_CONN_VPP;
