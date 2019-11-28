@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "98d64a1c_09b7d352",
+        "filename": "src/plugins/srv6-mobile/test/test_srv6_end.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-28T05:31:34Z",
+      "side": 1,
+      "message": "pkt.show2(dump\u003dTrue)\nsee: https://scapy.readthedocs.io/en/latest/api/scapy.packet.html#scapy.packet.Packet.show2",
+      "range": {
+        "startLine": 90,
+        "startChar": 14,
+        "endLine": 90,
+        "endChar": 43
+      },
+      "revId": "2f112473b593d24b87f26eab2d0031621a317b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
