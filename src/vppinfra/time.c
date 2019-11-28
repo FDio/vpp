@@ -71,6 +71,13 @@ estimate_clock_frequency (f64 sample_time)
   return freq;
 }
 
+f64
+exported_for_test_estimate_clock_frequency (f64 sample_time)
+{
+  return estimate_clock_frequency (sample_time);
+}
+
+
 /* Fetch cpu frequency via parseing /proc/cpuinfo.
    Only works for Linux. */
 static f64

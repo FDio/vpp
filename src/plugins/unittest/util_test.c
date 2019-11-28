@@ -46,6 +46,40 @@ VLIB_CLI_COMMAND (test_crash_command, static) =
 };
 /* *INDENT-ON* */
 
+f64 exported_for_test_estimate_clock_frequency (f64 sample_time);
+
+static clib_error_t *
+test_time_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  int failures = 0;
+  for (i = 0; i < 2500; i++)
+    {
+      f64 t = exported_for_test_estimate_clock_frequency (1e-3);
+      if (t == 0)
+	{
+	  failures++;
+	}
+    }
+  if (failures)
+    vlib_cli_output (vm, "os_cpu_clock_frequency failed %d times", failures);
+  if (failures == 0)
+    vlib_cli_output (vm, "PASS...");
+  else
+    vlib_cli_output (vm, "FAIL...");
+
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_time_command, static) =
+{
+  .path = "test os-clock",
+  .short_help = "test the os_cpu_clock_frequency()",
+  .function = test_time_command_fn,
+};
+/* *INDENT-ON* */
+
 static clib_error_t *
 test_hash_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
