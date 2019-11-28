@@ -34,6 +34,29 @@
       "revId": "57572230716326153af4c0d246e0c7491d832469",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb5127cd_7b592809",
+        "filename": "test/test_flow.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-11-28T14:52:19Z",
+      "side": 1,
+      "message": "If you are going to short-circuit the exception checking, you should check it by hand.\nsee: https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/plugins/mactime/test/test_mactime.py;h\u003deb28002c829dd24d7aa87e3c52ff9103a540a402;hb\u003dHEAD#l151",
+      "range": {
+        "startLine": 51,
+        "startChar": 12,
+        "endLine": 51,
+        "endChar": 46
+      },
+      "revId": "57572230716326153af4c0d246e0c7491d832469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
