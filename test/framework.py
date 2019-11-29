@@ -462,19 +462,6 @@ class VppTestCase(unittest.TestCase):
         cls.wait_for_enter()
 
     @classmethod
-    def wait_for_stats_socket(cls):
-        deadline = time.time() + 300
-        ok = False
-        while time.time() < deadline or \
-                cls.debug_gdb or cls.debug_gdbserver:
-            if os.path.exists(cls.stats_sock):
-                ok = True
-                break
-            cls.sleep(0.8)
-        if not ok:
-            cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
-
-    @classmethod
     def wait_for_coredump(cls):
         corefile = cls.tempdir + "/core"
         if os.path.isfile(corefile):
@@ -559,7 +546,6 @@ class VppTestCase(unittest.TestCase):
             else:
                 hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)
-            cls.wait_for_stats_socket()
             cls.statistics = VPPStats(socketname=cls.stats_sock)
             try:
                 hook.poll_vpp()
