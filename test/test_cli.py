@@ -50,7 +50,7 @@ class TestCLIExtendedVapiTimeout(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.vapi_response_timeout = 15
+        cls.vapi_response_timeout = 10
         cls.__doc__ = " CLI Test Case w/ Extended (%ssec) Vapi Timeout " \
                       % cls.vapi_response_timeout
         super(TestCLIExtendedVapiTimeout, cls).setUpClass()
