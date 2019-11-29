@@ -196,34 +196,46 @@ class VPPStats(object):
     sharedlib_name = 'libvppapiclient.so'
 
     def __init__(self, socketname=default_socketname, timeout=10):
+        self.socketname = socketname
+        self.timeout = timeout
+        self.connected = False
         try:
             self.api = ffi.dlopen(VPPStats.sharedlib_name)
         except Exception:
             raise VPPStatsClientLoadError("Could not open: %s" %
                                           VPPStats.sharedlib_name)
+
+    def connect(self):
         self.client = self.api.stat_client_get()
 
-        poll_end_time = time.time() + timeout
+        poll_end_time = time.time() + self.timeout
         while time.time() < poll_end_time:
-            rv = self.api.stat_segment_connect_r(socketname.encode('utf-8'),
-                                                 self.client)
+            rv = self.api.stat_segment_connect_r(
+                self.socketname.encode('utf-8'), self.client)
             # Break out if success or any other error than "no such file"
             # (indicating that VPP hasn't started yet)
             if rv == 0 or ffi.errno != 2:
+                self.connected = True
                 break
 
         if rv != 0:
             raise VPPStatsIOError(retval=rv)
 
     def heartbeat(self):
+        if not self.connected:
+            self.connect()
         return self.api.stat_segment_heartbeat_r(self.client)
 
     def ls(self, patterns):
+        if not self.connected:
+            self.connect()
         return self.api.stat_segment_ls_r(make_string_vector(self.api,
                                                              patterns),
                                           self.client)
 
     def lsstr(self, patterns):
+        if not self.connected:
+            self.connect()
         rv = self.api.stat_segment_ls_r(make_string_vector(self.api,
                                                            patterns),
                                         self.client)
@@ -235,6 +247,8 @@ class VPPStats(object):
                 for i in range(self.api.stat_segment_vec_len(rv))]
 
     def dump(self, counters):
+        if not self.connected:
+            self.connect()
         stats = {}
         rv = self.api.stat_segment_dump_r(counters, self.client)
         # Raise exception and retry
@@ -271,8 +285,14 @@ class VPPStats(object):
         return sum(self.get_counter(name))
 
     def disconnect(self):
-        self.api.stat_segment_disconnect_r(self.client)
-        self.api.stat_client_free(self.client)
+        try:
+            self.api.stat_segment_disconnect_r(self.client)
+            self.api.stat_client_free(self.client)
+            self.connected = False
+            del self.client
+        except AttributeError:
+            # no need to disconnect if we're not connected
+            pass
 
     def set_errors(self):
         '''Return all errors counters > 0'''
