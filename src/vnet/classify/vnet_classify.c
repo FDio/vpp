@@ -2001,7 +2001,7 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 		s = format (s, " none");
 	    }
 
-	  vlib_cli_output (vm, "%-30s table(s)%s", name, s);
+	  vlib_cli_output (vm, "%-30v table(s)%v", name, s);
 	  vec_reset_length (s);
 	}
       else
@@ -2014,7 +2014,7 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 	  else
 	    s = format (s, " none");
 
-	  vlib_cli_output (vm, "%-30s first table%s", name, s);
+	  vlib_cli_output (vm, "%-30v first table%v", name, s);
 	  vec_reset_length (s);
 	}
       vec_reset_length (name);
