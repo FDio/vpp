@@ -11,3 +11,4 @@ problem with FD.io VPP implementations.
 
     reportingissues/index.rst
     cpuusage
+    sanitizer
