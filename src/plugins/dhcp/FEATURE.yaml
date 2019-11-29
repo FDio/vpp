@@ -1,0 +1,11 @@
+---
+name: Dynamic Host Configuration Protocol (DHCP)
+maintainer: Dave Barach <dave@barachs.net>, Neale Ranns <nranns@cisco.com>
+features:
+  - DHCP client (v4/v6)
+  - DHCPv6 prefix delegation
+  - DHCP Proxy / Option 82
+
+description: "DHCP client"
+state: production
+properties: [API, CLI, MULTITHREAD]
