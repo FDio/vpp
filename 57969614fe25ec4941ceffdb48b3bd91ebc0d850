@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2369fc4f_f4636d76",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-11-29T19:06:44Z",
+      "side": 1,
+      "message": "Apparently centos openssl does not have this function ...",
+      "range": {
+        "startLine": 491,
+        "startChar": 6,
+        "endLine": 491,
+        "endChar": 21
+      },
+      "revId": "57969614fe25ec4941ceffdb48b3bd91ebc0d850",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
