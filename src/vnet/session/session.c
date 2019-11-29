@@ -1315,7 +1315,8 @@ session_transport_cleanup (session_t * s)
 		       s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
    * sure the session is properly freed. */
-  session_free_w_fifos (s);
+  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  session_free (s);
 }
 
 /**
