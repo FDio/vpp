@@ -400,7 +400,11 @@ ipip_add_tunnel (ipip_transport_t transport,
   };
   t = ipip_tunnel_db_find (&key);
   if (t)
-    return VNET_API_ERROR_IF_ALREADY_EXISTS;
+    {
+      if (sw_if_indexp)
+	sw_if_indexp[0] = t->sw_if_index;
+      return VNET_API_ERROR_IF_ALREADY_EXISTS;
+    }
 
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
   clib_memset (t, 0, sizeof (*t));

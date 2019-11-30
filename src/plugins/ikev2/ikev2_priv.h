@@ -291,6 +291,9 @@ typedef struct
 
   ikev2_main_per_thread_data_t *per_thread_data;
 
+  /* interface indices managed by IKE */
+  uword *sw_if_indices;
+
   /* API message ID base */
   u16 msg_id_base;
 } ikev2_main_t;
