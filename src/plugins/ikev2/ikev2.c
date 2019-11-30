@@ -1545,6 +1545,17 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			&a->local_ip, &a->remote_ip, 0,
 			IPIP_TUNNEL_FLAG_NONE, IP_DSCP_CS0, &sw_if_index);
 
+  if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
+    rv = 0;
+
+  if (rv)
+    {
+      clib_warning ("installing ipip tunnel failed! loc:%U rem:%U",
+		    format_ip4_address, &a->local_ip,
+		    format_ip4_address, &a->remote_ip);
+      return;
+    }
+
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
@@ -2535,6 +2546,8 @@ ikev2_node_fn (vlib_main_t * vm,
 		    {
 		      if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
 			{
+			  if (sa0->childs)
+			    vec_free (sa0->childs);
 			  ikev2_child_sa_t *child;
 			  vec_add2 (sa0->childs, child, 1);
 			  child->r_proposals = sa0->rekey[0].r_proposal;
