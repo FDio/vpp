@@ -1538,12 +1538,30 @@ typedef struct
 static void
 ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 {
+  ikev2_main_t *km = &ikev2_main;
   u32 sw_if_index;
   int rv;
+  uword *p = 0;
 
   rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
 			&a->local_ip, &a->remote_ip, 0,
 			IPIP_TUNNEL_FLAG_NONE, IP_DSCP_CS0, &sw_if_index);
+
+  if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
+    {
+      p = hash_get (km->sw_if_indices, sw_if_index);
+      if (p)
+	/* interface is managed by IKE; proceed with updating SAs */
+	rv = 0;
+    }
+
+  if (rv)
+    {
+      clib_warning ("installing ipip tunnel failed! loc:%U rem:%U",
+		    format_ip4_address, &a->local_ip,
+		    format_ip4_address, &a->remote_ip);
+      return;
+    }
 
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
@@ -1561,6 +1579,7 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   u32 *sas_in = NULL;
   vec_add1 (sas_in, a->remote_sa_id);
   rv |= ipsec_tun_protect_update (sw_if_index, a->local_sa_id, sas_in);
+  hash_set1 (km->sw_if_indices, sw_if_index);
 }
 
 static int
@@ -1779,6 +1798,7 @@ typedef struct
 static void
 ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 {
+  ikev2_main_t *km = &ikev2_main;
   /* *INDENT-OFF* */
   ipip_tunnel_key_t key = {
     .src = a->local_ip,
@@ -1793,6 +1813,7 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 
   if (ipip)
     {
+      hash_unset (km->sw_if_indices, ipip->sw_if_index);
       ipsec_tun_protect_del (ipip->sw_if_index);
       ipsec_sa_unlock_id (a->remote_sa_id);
       ipsec_sa_unlock_id (a->local_sa_id);
@@ -2535,6 +2556,8 @@ ikev2_node_fn (vlib_main_t * vm,
 		    {
 		      if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
 			{
+			  if (sa0->childs)
+			    vec_free (sa0->childs);
 			  ikev2_child_sa_t *child;
 			  vec_add2 (sa0->childs, child, 1);
 			  child->r_proposals = sa0->rekey[0].r_proposal;
@@ -3480,6 +3503,7 @@ ikev2_init (vlib_main_t * vm)
     }
 
   km->sa_by_ispi = hash_create (0, sizeof (uword));
+  km->sw_if_indices = hash_create (0, 0);
 
   udp_register_dst_port (vm, 500, ikev2_node.index, 1);
 
