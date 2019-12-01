@@ -198,6 +198,7 @@ clib_time_verify_frequency (clib_time_t * c)
   f64 dtr_max;
   u64 dtc = c->last_cpu_time - c->last_verify_cpu_time;
   f64 new_clocks_per_second, delta;
+  f64 save_total_cpu_time_in_seconds;
 
   c->last_verify_cpu_time = c->last_cpu_time;
   c->last_verify_reference_time = now_reference;
@@ -239,10 +240,12 @@ clib_time_verify_frequency (clib_time_t * c)
     flt_round_nearest ((f64) dtc / (dtr * c->round_to_units))
     * c->round_to_units;
 
+  /* Compute abs(rate change) */
   delta = new_clocks_per_second - c->clocks_per_second;
   if (delta < 0.0)
     delta = -delta;
 
+  /* If rate change > 1%, reject it and try again */
   if (PREDICT_FALSE ((delta / c->clocks_per_second) > .01))
     {
       clib_warning ("Rejecting large frequency change of %.2f%%",
@@ -251,10 +254,18 @@ clib_time_verify_frequency (clib_time_t * c)
       return;
     }
 
-  c->clocks_per_second =
-    flt_round_nearest ((f64) dtc / (dtr * c->round_to_units))
-    * c->round_to_units;
+  /* Save total cpu time in seconds */
+  save_total_cpu_time_in_seconds = c->total_cpu_time * c->seconds_per_clock;
+
+  /* Recalculate clock rate */
+  c->clocks_per_second = new_clocks_per_second;
   c->seconds_per_clock = 1 / c->clocks_per_second;
+
+  /*
+   * Restore total cpu time in seconds. Otherwise, if c->clocks_per_second
+   * has decreased, time may appear to flow backwards.
+   */
+  c->total_cpu_time = save_total_cpu_time_in_seconds * c->clocks_per_second;
 
   /* Double time between verifies; max at 64 secs ~ 1 minute. */
   if (c->log2_clocks_per_frequency_verify < c->log2_clocks_per_second + 6)

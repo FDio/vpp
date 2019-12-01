@@ -205,14 +205,16 @@ clib_time_now_internal (clib_time_t * c, u64 n)
 {
   u64 l = c->last_cpu_time;
   u64 t = c->total_cpu_time;
+  f64 rv;
   t += n - l;
   c->total_cpu_time = t;
   c->last_cpu_time = n;
+  rv = t * c->seconds_per_clock;
   if (PREDICT_FALSE
       ((c->last_cpu_time -
 	c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify))
     clib_time_verify_frequency (c);
-  return t * c->seconds_per_clock;
+  return rv;
 }
 
 /* Maximum f64 value as max clib_time */
