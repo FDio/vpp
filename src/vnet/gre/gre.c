@@ -276,7 +276,7 @@ gre_build_rewrite (vnet_main_t * vnm,
 
 static void
 gre4_fixup (vlib_main_t * vm,
-	    ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
+	    const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   ip4_header_t *ip0;
 
@@ -290,7 +290,7 @@ gre4_fixup (vlib_main_t * vm,
 
 static void
 gre6_fixup (vlib_main_t * vm,
-	    ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
+	    const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   ip6_header_t *ip0;
 

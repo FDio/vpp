@@ -376,7 +376,7 @@ mpls_tunnel_admin_up_down (vnet_main_t * vnm,
  */
 static void
 mpls_tunnel_fixup (vlib_main_t *vm,
-                   ip_adjacency_t *adj,
+                   const ip_adjacency_t *adj,
                    vlib_buffer_t *b0,
                    const void*data)
 {

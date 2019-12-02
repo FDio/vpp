@@ -1699,7 +1699,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  ip_adjacency_t *adj0, *adj1;
+	  const ip_adjacency_t *adj0, *adj1;
 	  vlib_buffer_t *p0, *p1;
 	  ip6_header_t *ip0, *ip1;
 	  u32 pi0, rw_len0, next0, error0, adj_index0;
