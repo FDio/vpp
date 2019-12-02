@@ -1379,9 +1379,8 @@ format_cert_key_pair (u8 * s, va_list * args)
   if (ckpair->cert_key_index == 0)
     s = format (s, "DEFAULT (cert:%d, key:%d)", cert_len, key_len);
   else
-    s =
-      format (s, "%d (cert:%d, key:%d)", ckpair->cert_key_index, cert_len,
-	      key_len);
+    s = format (s, "%d (cert:%d, key:%d)", ckpair->cert_key_index,
+		cert_len, key_len);
   return s;
 }
 
@@ -1428,9 +1427,8 @@ u8 *
 format_crypto_context (u8 * s, va_list * args)
 {
   crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
-  s =
-    format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
-	    crctx->n_subscribers, crctx->ckpair_index);
+  s = format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
+	      crctx->n_subscribers, crctx->ckpair_index);
   s = format (s, "[%U]", format_crypto_engine, crctx->crypto_engine);
   return s;
 }
@@ -1534,11 +1532,60 @@ show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+static u8 *
+application_format_mq (u8 * s, va_list * args)
+{
+  svm_msg_q_t *mq = va_arg (*args, svm_msg_q_t *);
+  s = format (s, " [Q:%d/%d]", mq->q->cursize, mq->q->maxsize);
+  for (u32 i = 0; i < vec_len (mq->rings); i++)
+    {
+      s = format (s, " [R%d:%d/%d]", i, mq->rings[i].cursize,
+		  mq->rings[i].nitems);
+    }
+  return s;
+}
+
+static inline void
+appliction_format_app_mq (vlib_main_t * vm, application_t * app)
+{
+  app_worker_map_t *map;
+  app_worker_t *wrk;
+  /* *INDENT-OFF* */
+  pool_foreach (map, app->worker_maps, ({
+    wrk = app_worker_get (map->wrk_index);
+    vlib_cli_output (vm, "[A%d][%d]%U", app->app_index, map->wrk_index, application_format_mq, wrk->event_queue);
+  }));
+  /* *INDENT-ON* */
+}
+
+static clib_error_t *
+appliction_format_all_app_mq (vlib_main_t * vm)
+{
+  application_t *app;
+  int i, n_threads;
+
+  n_threads = vec_len (vlib_mains);
+  session_cli_return_if_not_enabled ();
+
+  for (i = 0; i < n_threads; i++)
+    {
+      vlib_cli_output (vm, "[Ctrl%d]%U", i, application_format_mq,
+		       session_main_get_vpp_event_queue (i));
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (app, app_main.app_pool, ({
+      appliction_format_app_mq (vm, app);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
 static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  int do_server = 0, do_client = 0;
+  int do_server = 0, do_client = 0, do_mq = 0;
   application_t *app;
   u32 app_index = ~0;
   int verbose = 0;
@@ -1551,6 +1598,8 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	do_server = 1;
       else if (unformat (input, "client"))
 	do_client = 1;
+      else if (unformat (input, "mq"))
+	do_mq = 1;
       else if (unformat (input, "%u", &app_index))
 	;
       else if (unformat (input, "verbose"))
@@ -1558,6 +1607,22 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
+    }
+
+  if (do_mq && app_index != ~0)
+    {
+      app = application_get_if_valid (app_index);
+      if (!app)
+	return clib_error_return (0, "No app with index %u", app_index);
+
+      appliction_format_app_mq (vm, app);
+      return 0;
+    }
+
+  if (do_mq)
+    {
+      appliction_format_all_app_mq (vm);
+      return 0;
     }
 
   if (do_server)
@@ -1688,7 +1753,7 @@ VLIB_INIT_FUNCTION (application_init);
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
   .path = "show app",
-  .short_help = "show app [server|client] [verbose]",
+  .short_help = "show app [app_id] [server|client] [mq] [verbose]",
   .function = show_app_command_fn,
 };
 
