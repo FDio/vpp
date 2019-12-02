@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0f63ea65_2907f338",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-02T05:54:11Z",
+      "side": 1,
+      "message": "why did you pick 255?",
+      "revId": "3918ba34ef0e3c9daf41c386bbb17b4417e07df9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
