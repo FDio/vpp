@@ -225,10 +225,12 @@ class VppTransport(object):
             return msg
         raise VppTransportSocketIOError(1, 'Unknown socket read error')
 
-    def read(self):
+    def read(self, timeout=None):
         if not self.connected:
             raise VppTransportSocketIOError(1, 'Not connected')
+        if timeout is None:
+            timeout = self.read_timeout
         try:
-            return self.q.get(True, self.read_timeout)
+            return self.q.get(True, timeout)
         except queue.Empty:
             return None

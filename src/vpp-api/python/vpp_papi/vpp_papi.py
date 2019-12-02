@@ -620,6 +620,7 @@ class VPPApiClient(object):
         kwargs['_vl_msg_id'] = i
 
         no_type_conversion = kwargs.pop('_no_type_conversion', False)
+        timeout = kwargs.pop('_timeout', None)
 
         try:
             if self.transport.socket_index:
@@ -645,7 +646,7 @@ class VPPApiClient(object):
         # Block until we get a reply.
         rl = []
         while (True):
-            r = self.read_blocking(no_type_conversion)
+            r = self.read_blocking(no_type_conversion, timeout)
             if r is None:
                 raise VPPIOError(2, 'VPP API client: read failed')
             msgname = type(r).__name__
@@ -699,10 +700,10 @@ class VPPApiClient(object):
         self.transport.write(b)
         return context
 
-    def read_blocking(self, no_type_conversion=False):
+    def read_blocking(self, no_type_conversion=False, timeout=None):
         """Get next received message from transport within timeout, decoded.
 
-        Note that noticifations have context zero
+        Note that notifications have context zero
         and are not put into receive queue (at least for socket transport),
         use async_thread with registered callback for processing them.
 
@@ -720,8 +721,9 @@ class VPPApiClient(object):
         :type no_type_conversion: bool
         :returns: Decoded message, or None if no message (within timeout).
         :rtype: Whatever VPPType.unpack returns, depends on no_type_conversion.
+        :raises VppTransportShmemIOError if timed out.
         """
-        msg = self.transport.read()
+        msg = self.transport.read(timeout=timeout)
         if not msg:
             return None
         return self.decode_incoming_msg(msg, no_type_conversion)

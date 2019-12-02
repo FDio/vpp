@@ -17,7 +17,7 @@ class TestCLI(VppTestCase):
     @classmethod
     def setUpClass(cls):
         # using the framework default
-        # cls.vapi_response_timeout = 5
+        cls.vapi_response_timeout = 5
         super(TestCLI, cls).setUpClass()
 
     @classmethod
@@ -43,6 +43,11 @@ class TestCLI(VppTestCase):
         with self.assertRaises(
                 vpp_transport_shmem.VppTransportShmemIOError) as ctx:
             rv = self.vapi.papi.cli_inband(cmd='wait 10')
+
+    def test_long_cli_delay_override(self):
+        """ Test per-command _timeout option."""  # noqa
+        rv = self.vapi.papi.cli_inband(cmd='wait 10', _timeout=15)
+        self.assertEqual(rv.retval, 0)
 
 
 class TestCLIExtendedVapiTimeout(VppTestCase):
