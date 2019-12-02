@@ -26,7 +26,7 @@ class VOMTestCase(VppTestCase):
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/build/vom_test/vom_test" % built_root
+        executable = "%s/build/vom_test" % built_root
         worker = Worker(
             [executable, "vpp object model", self.shm_prefix], self.logger)
         worker.start()
@@ -41,7 +41,7 @@ class VOMTestCase(VppTestCase):
                     "Timeout! Worker did not finish in %ss" % timeout)
                 os.killpg(os.getpgid(worker.process.pid), signal.SIGTERM)
                 worker.join()
-            except:
+            except OSError:
                 raise Exception("Couldn't kill worker-spawned process")
         if error:
             raise Exception(
