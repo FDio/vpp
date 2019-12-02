@@ -237,6 +237,9 @@ class VppInterface(object):
             self.sw_if_index, mac.packed)
 
     def set_sw_if_index(self, sw_if_index):
+        if sw_if_index > 255:
+            raise RuntimeError("Don't support sw_if_index values "
+                               "greater than 255.")
         self._sw_if_index = sw_if_index
 
         self.generate_remote_hosts()
