@@ -1172,11 +1172,6 @@ class VppTestCase(unittest.TestCase):
 
         return rx
 
-    def runTest(self):
-        """ unittest calls runTest when TestCase is instantiated without a
-        test case.  Use case: Writing unittests against VppTestCase"""
-        pass
-
 
 def get_testcase_doc_name(test):
     return getdoc(test.__class__).splitlines()[0]
