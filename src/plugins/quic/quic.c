@@ -101,6 +101,7 @@ quic_store_quicly_ctx (application_t * app, u32 ckpair_index,
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
+  quicly_ctx->transport_params.idle_timeout = qm->connection_timeout;
 
   /* max_enq is FIFO_SIZE - 1 */
   max_enq = app->sm_properties.rx_fifo_size - 1;
@@ -140,7 +141,6 @@ error:
   clib_mem_free (quicly_ctx_data);
   return VNET_API_ERROR_MISSING_CERT_KEY;
 }
-
 
 /*  Helper functions */
 
@@ -1706,7 +1706,6 @@ tx_end:
   return 0;
 }
 
-
 /*
  * Returns 0 if a matching connection is found and is on the right thread.
  * Otherwise returns -1.
@@ -2360,24 +2359,27 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   quic_main_t *qm = &quic_main;
   uword tmp;
+  u32 i;
 
   qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
   qm->udp_fifo_prealloc = 0;
+  qm->connection_timeout = QUIC_DEFAULT_CONN_TIMEOUT;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo-size %U", unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
 	    {
-	      return clib_error_return
-		(0, "fifo-size %llu (0x%llx) too large", tmp, tmp);
+	      return clib_error_return (0,
+					"fifo-size %llu (0x%llx) too large",
+					tmp, tmp);
 	    }
 	  qm->udp_fifo_size = tmp;
 	}
-      else
-	if (unformat
-	    (input, "fifo-prealloc %u", &quic_main.udp_fifo_prealloc))
-	;
+      else if (unformat (input, "conn-timeout %u", &i))
+	qm->connection_timeout = i;
+      else if (unformat (input, "fifo-prealloc %u", &i))
+	qm->udp_fifo_prealloc = i;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
