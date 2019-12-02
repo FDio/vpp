@@ -1715,42 +1715,46 @@ tx_end:
 static inline int
 quic_find_packet_ctx (quic_rx_packet_ctx_t * pctx, u32 caller_thread_index)
 {
-  quic_ctx_t *ctx_;
-  quicly_conn_t *conn_;
   clib_bihash_kv_16_8_t kv;
   clib_bihash_16_8_t *h;
+  quic_ctx_t *ctx;
+  u32 index, thread_id;
 
   h = &quic_main.connection_hash;
   quic_make_connection_key (&kv, &pctx->packet.cid.dest.plaintext);
   QUIC_DBG (3, "Searching conn with id %lu %lu", kv.key[0], kv.key[1]);
 
-  if (clib_bihash_search_16_8 (h, &kv, &kv) == 0)
+  if (clib_bihash_search_16_8 (h, &kv, &kv))
     {
-      u32 index = kv.value & UINT32_MAX;
-      u32 thread_id = kv.value >> 32;
-      /* Check if this connection belongs to this thread, otherwise
-       * ask for it to be moved */
-      if (thread_id != caller_thread_index)
-	{
-	  QUIC_DBG (2, "Connection is on wrong thread");
-	  /* Cannot make full check with quicly_is_destination... */
-	  pctx->ctx_index = index;
-	  pctx->thread_index = thread_id;
-	  return QUIC_PACKET_TYPE_MIGRATE;
-	}
-      ctx_ = quic_ctx_get (index, vlib_get_thread_index ());
-      conn_ = ctx_->conn;
-      if (conn_
-	  && quicly_is_destination (conn_, NULL, &pctx->sa, &pctx->packet))
-	{
-	  QUIC_DBG (3, "Connection found");
-	  pctx->ctx_index = index;
-	  pctx->thread_index = thread_id;
-	  return QUIC_PACKET_TYPE_RECEIVE;
-	}
+      QUIC_DBG (3, "connection not found");
+      return QUIC_PACKET_TYPE_NONE;
     }
-  QUIC_DBG (3, "connection not found");
-  return QUIC_PACKET_TYPE_NONE;
+
+  index = kv.value & UINT32_MAX;
+  thread_id = kv.value >> 32;
+  /* Check if this connection belongs to this thread, otherwise
+   * ask for it to be moved */
+  if (thread_id != caller_thread_index)
+    {
+      QUIC_DBG (2, "Connection is on wrong thread");
+      /* Cannot make full check with quicly_is_destination... */
+      pctx->ctx_index = index;
+      pctx->thread_index = thread_id;
+      return QUIC_PACKET_TYPE_MIGRATE;
+    }
+  ctx = quic_ctx_get (index, vlib_get_thread_index ());
+  if (!ctx->conn)
+    {
+      QUIC_ERR ("ctx has no conn");
+      return QUIC_PACKET_TYPE_NONE;
+    }
+  if (!quicly_is_destination (ctx->conn, NULL, &pctx->sa, &pctx->packet))
+    return QUIC_PACKET_TYPE_NONE;
+
+  QUIC_DBG (3, "Connection found");
+  pctx->ctx_index = index;
+  pctx->thread_index = thread_id;
+  return QUIC_PACKET_TYPE_RECEIVE;
 }
 
 static int
