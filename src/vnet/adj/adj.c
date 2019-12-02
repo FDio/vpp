@@ -405,10 +405,11 @@ adj_feature_update_walk_cb (adj_index_t ai,
     return (ADJ_WALK_RC_CONTINUE);
 }
 
-void
+static void
 adj_feature_update (u32 sw_if_index,
                     u8 arc_index,
-                    u8 is_enable)
+                    u8 is_enable,
+                    void *data)
 {
     /*
      * Walk all the adjacencies on the interface to update the cached
@@ -589,6 +590,8 @@ adj_module_init (vlib_main_t * vm)
     adj_glean_module_init();
     adj_midchain_module_init();
     adj_mcast_module_init();
+
+    vnet_feature_register(adj_feature_update, NULL);
 
     return (NULL);
 }

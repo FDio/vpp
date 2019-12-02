@@ -454,6 +454,12 @@ clib_error_t *vnet_feature_arc_init
 void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index,
 				   int verbose);
 
+typedef void (*vnet_feature_update_cb_t) (u32 sw_if_index,
+					  u8 arc_index,
+					  u8 is_enable, void *cb);
+
+extern void vnet_feature_register (vnet_feature_update_cb_t cb, void *data);
+
 #endif /* included_feature_h */
 
 /*
