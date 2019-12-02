@@ -247,6 +247,12 @@ int svm_msg_q_alloc_consumer_eventfd (svm_msg_q_t * mq);
  */
 int svm_msg_q_alloc_producer_eventfd (svm_msg_q_t * mq);
 
+
+/**
+ * Format message queue, shows msg count for each ring
+ */
+u8 *format_svm_msg_q (u8 * s, va_list * args);
+
 /**
  * Check if message queue is full
  */
