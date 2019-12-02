@@ -190,9 +190,11 @@ help:
 	@echo " install-dep[s]       - install software dependencies"
 	@echo " wipe                 - wipe all products of debug build "
 	@echo " wipe-release         - wipe all products of release build "
+	@echo " wipe-asan            - alias for 'wipe' target "
 	@echo " build                - build debug binaries"
 	@echo " build-release        - build release binaries"
 	@echo " build-coverity       - build coverity artifacts"
+	@echo " build-asan           - build debug binaries with AddressSanitizer"
 	@echo " rebuild              - wipe and build debug binaries"
 	@echo " rebuild-release      - wipe and build release binaries"
 	@echo " run                  - run debug binary"
@@ -395,6 +397,13 @@ wipe-release: test-wipe $(BR)/.deps.ok
 .PHONY: rebuild-release
 rebuild-release: wipe-release build-release
 
+.PHONY: build-asan
+build-asan: export VPP_EXTRA_CMAKE_ARGS+= -DENABLE_SANITIZE_ADDR=ON
+build-asan: build
+
+.PHONY: wipe-asan
+wipe-asan: wipe
+
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
 export TEST_DIR ?= $(WS_ROOT)/test
@@ -427,6 +436,10 @@ test-debug:
 .PHONY: test-gcov
 test-gcov:
 	$(call test,vpp,vpp_gcov,test)
+
+.PHONY: test-asan
+test-asan: export VPP_EXTRA_CMAKE_ARGS+= -DENABLE_SANITIZE_ADDR=ON
+test-asan: test-debug
 
 .PHONY: test-all
 test-all:
