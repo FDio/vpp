@@ -116,12 +116,14 @@ class VppTransport(object):
             raise VppTransportShmemIOError(1, 'Not connected')
         return vpp_api.vac_write(bytes(buf), len(buf))
 
-    def read(self):
+    def read(self, timeout=None):
         if not self.connected:
             raise VppTransportShmemIOError(1, 'Not connected')
+        if timeout is None:
+            timeout = self.read_timeout
         mem = ffi.new("char **")
         size = ffi.new("int *")
-        rv = vpp_api.vac_read(mem, size, self.read_timeout)
+        rv = vpp_api.vac_read(mem, size, timeout)
         if rv:
             strerror = 'vac_read failed.  It is likely that VPP died.'
             raise VppTransportShmemIOError(rv, strerror)
