@@ -15,6 +15,7 @@
 
 #include <svm/message_queue.h>
 #include <vppinfra/mem.h>
+#include <vppinfra/format.h>
 #include <sys/eventfd.h>
 
 static inline svm_msg_q_ring_t *
@@ -263,6 +264,19 @@ svm_msg_q_alloc_producer_eventfd (svm_msg_q_t * mq)
     return -1;
   svm_msg_q_set_producer_eventfd (mq, fd);
   return 0;
+}
+
+u8 *
+format_svm_msg_q (u8 * s, va_list * args)
+{
+  svm_msg_q_t *mq = va_arg (*args, svm_msg_q_t *);
+  s = format (s, " [Q:%d/%d]", mq->q->cursize, mq->q->maxsize);
+  for (u32 i = 0; i < vec_len (mq->rings); i++)
+    {
+      s = format (s, " [R%d:%d/%d]", i, mq->rings[i].cursize,
+		  mq->rings[i].nitems);
+    }
+  return s;
 }
 
 /*
