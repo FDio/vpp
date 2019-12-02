@@ -89,7 +89,7 @@ class VppInterface(object):
 
     @local_ip6.setter
     def local_ip6(self, value):
-        self._local_ip6
+        self._local_ip6 = value
 
     @property
     def local_ip6_prefix_len(self):
