@@ -206,7 +206,8 @@ lisp_afi_from_vnet_link_type (vnet_link_t link)
 }
 
 static void
-lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
+lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm,
+				   const ip_adjacency_t * adj,
 				   vlib_buffer_t * b)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
@@ -273,7 +274,8 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
 
 static void
 lisp_gpe_fixup (vlib_main_t * vm,
-		ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
+		const ip_adjacency_t * adj,
+		vlib_buffer_t * b, const void *data)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 

@@ -2423,7 +2423,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
   b = bufs;
   while (n_left_from >= 8)
     {
-      ip_adjacency_t *adj0, *adj1;
+      const ip_adjacency_t *adj0, *adj1;
       ip4_header_t *ip0, *ip1;
       u32 rw_len0, error0, adj_index0;
       u32 rw_len1, error1, adj_index1;

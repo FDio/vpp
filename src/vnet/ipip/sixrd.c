@@ -85,8 +85,8 @@ sixrd_adj_from_const_base (const adj_delegate_t * ad)
 }
 
 static void
-sixrd_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0,
-	     const void *data)
+sixrd_fixup (vlib_main_t * vm,
+	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   ip4_header_t *ip4 = vlib_buffer_get_current (b0);
   ip6_header_t *ip6 = vlib_buffer_get_current (b0) + sizeof (ip4_header_t);
@@ -99,8 +99,8 @@ sixrd_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0,
 }
 
 static void
-ip6ip_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0,
-	     const void *data)
+ip6ip_fixup (vlib_main_t * vm,
+	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
   const ipip_tunnel_t *t = data;
   ip4_header_t *ip4 = vlib_buffer_get_current (b0);
