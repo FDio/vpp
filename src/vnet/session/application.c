@@ -1379,9 +1379,8 @@ format_cert_key_pair (u8 * s, va_list * args)
   if (ckpair->cert_key_index == 0)
     s = format (s, "DEFAULT (cert:%d, key:%d)", cert_len, key_len);
   else
-    s =
-      format (s, "%d (cert:%d, key:%d)", ckpair->cert_key_index, cert_len,
-	      key_len);
+    s = format (s, "%d (cert:%d, key:%d)", ckpair->cert_key_index,
+		cert_len, key_len);
   return s;
 }
 
@@ -1428,9 +1427,8 @@ u8 *
 format_crypto_context (u8 * s, va_list * args)
 {
   crypto_context_t *crctx = va_arg (*args, crypto_context_t *);
-  s =
-    format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
-	    crctx->n_subscribers, crctx->ckpair_index);
+  s = format (s, "[0x%x][sub%d,ckpair%x]", crctx->ctx_index,
+	      crctx->n_subscribers, crctx->ckpair_index);
   s = format (s, "[%U]", format_crypto_engine, crctx->crypto_engine);
   return s;
 }
@@ -1529,6 +1527,56 @@ show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
   /* *INDENT-OFF* */
   pool_foreach (ckpair, app_main.cert_key_pair_store, ({
     vlib_cli_output (vm, "%U", format_cert_key_pair, ckpair);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static u8 *
+format_mq (u8 * s, va_list * args)
+{
+  svm_msg_q_t *mq = va_arg (*args, svm_msg_q_t *);
+  s = format (s, " [Q:%d/%d]", mq->q->cursize, mq->q->maxsize);
+  for (u32 i = 0; i < vec_len (mq->rings); i++)
+    {
+      s = format (s, " [R%d:%d/%d]", i, mq->rings[i].cursize,
+		  mq->rings[i].nitems);
+    }
+  return s;
+}
+
+static inline void
+show_app_mq_command_per_app (vlib_main_t * vm, application_t * app)
+{
+  app_worker_map_t *map;
+  app_worker_t *wrk;
+  /* *INDENT-OFF* */
+  pool_foreach (map, app->worker_maps, ({
+    wrk = app_worker_get (map->wrk_index);
+    vlib_cli_output (vm, "[A%d][%d]%U", app->app_index, map->wrk_index, format_mq, wrk->event_queue);
+  }));
+  /* *INDENT-ON* */
+}
+
+static clib_error_t *
+show_app_mq_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			vlib_cli_command_t * cmd)
+{
+  application_t *app;
+  int i, n_threads;
+
+  n_threads = vec_len (vlib_mains);
+  session_cli_return_if_not_enabled ();
+
+  for (i = 0; i < n_threads; i++)
+    {
+      vlib_cli_output (vm, "[Ctrl%d]%U", i, format_mq,
+		       session_main_get_vpp_event_queue (i));
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (app, app_main.app_pool, ({
+      show_app_mq_command_per_app (vm, app);
   }));
   /* *INDENT-ON* */
   return 0;
@@ -1697,6 +1745,13 @@ VLIB_CLI_COMMAND (show_certificate_command, static) =
   .path = "show app certificate",
   .short_help = "list app certs and keys present in store",
   .function = show_certificate_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_app_mq_command, static) =
+{
+  .path = "show app message queue",
+  .short_help = "list app certs and keys present in store",
+  .function = show_app_mq_command_fn,
 };
 /* *INDENT-ON* */
 
