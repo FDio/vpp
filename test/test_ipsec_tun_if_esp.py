@@ -759,6 +759,103 @@ class TestIpsecGreIfEsp(TemplateIpsec,
         super(TestIpsecGreIfEsp, self).tearDown()
 
 
+class TestIpsecGreIfEspTra(TemplateIpsec,
+                           IpsecTun4Tests):
+    """ Ipsec GRE ESP - TRA tests """
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    encryption_type = ESP
+
+    def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
+                         payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=self.pg0.remote_ip4,
+                              dst=self.pg0.local_ip4) /
+                           GRE() /
+                           IP(src=self.pg1.local_ip4,
+                              dst=self.pg1.remote_ip4) /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def gen_pkts(self, sw_intf, src, dst, count=1,
+                 payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IP(src="1.1.1.1", dst="1.1.1.2") /
+                UDP(sport=1144, dport=2233) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[Ether].dst, self.pg1.remote_mac)
+            self.assert_equal(rx[IP].dst, self.pg1.remote_ip4)
+
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+                self.assert_packet_checksums_valid(pkt)
+                self.assertTrue(pkt.haslayer(GRE))
+                e = pkt[GRE]
+                self.assertEqual(e[IP].dst, "1.1.1.2")
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def setUp(self):
+        super(TestIpsecGreIfEspTra, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_if = VppGreInterface(self,
+                                   self.pg0.local_ip4,
+                                   self.pg0.remote_ip4)
+        p.tun_if.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_out,
+                                           [p.tun_sa_in])
+        p.tun_protect.add_vpp_config()
+
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        config_tun_params(p, self.encryption_type, p.tun_if)
+
+        VppIpRoute(self, "1.1.1.2", 32,
+                   [VppRoutePath(p.tun_if.remote_ip4,
+                                 0xffffffff)]).add_vpp_config()
+
+    def tearDown(self):
+        p = self.ipv4_params
+        p.tun_if.unconfig_ip4()
+        super(TestIpsecGreIfEspTra, self).tearDown()
+
+
 class TemplateIpsec4TunProtect(object):
     """ IPsec IPv4 Tunnel protect """
 
