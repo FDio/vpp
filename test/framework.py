@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import gc
+import logging
 import sys
 import os
 import select
@@ -51,6 +52,12 @@ try:
     input = raw_input
 except NameError:
     pass
+
+logger = logging.getLogger(__name__)
+
+# Set up an empty logger for the testcase that can be overridden as necessary
+null_logger = logging.getLogger('VppTestCase')
+null_logger.addHandler(logging.NullHandler())
 
 PASS = 0
 FAIL = 1
@@ -268,6 +275,7 @@ class VppTestCase(unittest.TestCase):
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
+    logger = null_logger
     vapi_response_timeout = 5
 
     @property
@@ -1120,17 +1128,16 @@ class VppTestCase(unittest.TestCase):
                 time.sleep(0)
             return
 
-        if hasattr(cls, 'logger'):
-            cls.logger.debug("Starting sleep for %es (%s)", timeout, remark)
+        cls.logger.debug("Starting sleep for %es (%s)", timeout, remark)
         before = time.time()
         time.sleep(timeout)
         after = time.time()
-        if hasattr(cls, 'logger') and after - before > 2 * timeout:
+        if after - before > 2 * timeout:
             cls.logger.error("unexpected self.sleep() result - "
                              "slept for %es instead of ~%es!",
                              after - before, timeout)
-        if hasattr(cls, 'logger'):
-            cls.logger.debug(
+
+        cls.logger.debug(
                 "Finished sleep (%s) - slept %es (wanted %es)",
                 remark, after - before, timeout)
 
@@ -1270,22 +1277,20 @@ class VppTestResult(unittest.TestResult):
                     failed_dir,
                     '%s-FAILED' %
                     os.path.basename(self.current_test_case_info.tempdir))
-                if self.current_test_case_info.logger:
-                    self.current_test_case_info.logger.debug(
+
+                self.current_test_case_info.logger.debug(
                         "creating a link to the failed test")
-                    self.current_test_case_info.logger.debug(
+                self.current_test_case_info.logger.debug(
                         "os.symlink(%s, %s)" %
                         (self.current_test_case_info.tempdir, link_path))
                 if os.path.exists(link_path):
-                    if self.current_test_case_info.logger:
-                        self.current_test_case_info.logger.debug(
+                    self.current_test_case_info.logger.debug(
                             'symlink already exists')
                 else:
                     os.symlink(self.current_test_case_info.tempdir, link_path)
 
             except Exception as e:
-                if self.current_test_case_info.logger:
-                    self.current_test_case_info.logger.error(e)
+                self.current_test_case_info.logger.error(e)
 
     def send_result_through_pipe(self, test, result):
         if hasattr(self, 'test_framework_result_pipe'):

@@ -1,6 +1,7 @@
 """ test framework utilities """
 
 import abc
+import logging
 import socket
 from socket import AF_INET6
 import six
@@ -18,6 +19,10 @@ from scapy.utils6 import in6_mactoifaceid
 
 from io import BytesIO
 from vpp_papi import mac_pton
+
+# Set up an empty logger for the testcase that can be overridden as necessary
+null_logger = logging.getLogger('VppTestCase.util')
+null_logger.addHandler(logging.NullHandler())
 
 
 def ppp(headline, packet):
@@ -260,20 +265,7 @@ class L4_CONN_SIDE:
     L4_CONN_SIDE_ONE = 1
 
 
-class LoggerWrapper(object):
-    def __init__(self, logger=None):
-        self._logger = logger
-
-    def debug(self, *args, **kwargs):
-        if self._logger:
-            self._logger.debug(*args, **kwargs)
-
-    def error(self, *args, **kwargs):
-        if self._logger:
-            self._logger.error(*args, **kwargs)
-
-
-def fragment_rfc791(packet, fragsize, _logger=None):
+def fragment_rfc791(packet, fragsize, logger=null_logger):
     """
     Fragment an IPv4 packet per RFC 791
     :param packet: packet to fragment
@@ -281,7 +273,6 @@ def fragment_rfc791(packet, fragsize, _logger=None):
     :note: IP options are not supported
     :returns: list of fragments
     """
-    logger = LoggerWrapper(_logger)
     logger.debug(ppp("Fragmenting packet:", packet))
     packet = packet.__class__(scapy.compat.raw(packet))  # recalc. all values
     if len(packet[IP].options) > 0:
@@ -313,13 +304,13 @@ def fragment_rfc791(packet, fragsize, _logger=None):
     p[IP].frag = fo + nfb
     del p[IP].chksum
 
-    more_fragments = fragment_rfc791(p, fragsize, _logger)
+    more_fragments = fragment_rfc791(p, fragsize, logger)
     pkts.extend(more_fragments)
 
     return pkts
 
 
-def fragment_rfc8200(packet, identification, fragsize, _logger=None):
+def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
     """
     Fragment an IPv6 packet per RFC 8200
     :param packet: packet to fragment
@@ -327,7 +318,6 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     :note: IP options are not supported
     :returns: list of fragments
     """
-    logger = LoggerWrapper(_logger)
     packet = packet.__class__(scapy.compat.raw(packet))  # recalc. all values
     if len(packet) <= fragsize:
         return [packet]
