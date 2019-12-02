@@ -52,7 +52,6 @@ class AuthKeyFactory(object):
                              conf_key_id=conf_key_id, key=key)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDAPITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) - API"""
 
@@ -152,7 +151,7 @@ class BFDAPITestCase(VppTestCase):
         for key in keys:
             self.assertTrue(key.query_vpp_config())
         # remove randomly
-        indexes = range(key_count)
+        indexes = list(range(key_count))
         shuffle(indexes)
         removed = []
         for i in indexes:
@@ -451,7 +450,7 @@ class BFDTestSession(object):
         if self.sha1_key:
             hash_material = scapy.compat.raw(
                 packet[BFD])[:32] + self.sha1_key.key + \
-                "\0" * (20 - len(self.sha1_key.key))
+                b"\0" * (20 - len(self.sha1_key.key))
             self.test.logger.debug("BFD: Calculated SHA1 hash: %s" %
                                    hashlib.sha1(hash_material).hexdigest())
             packet[BFD].auth_key_hash = hashlib.sha1(hash_material).digest()
@@ -510,7 +509,7 @@ class BFDTestSession(object):
             b"\0" * (20 - len(self.sha1_key.key))
         expected_hash = hashlib.sha1(hash_material).hexdigest()
         self.test.assert_equal(binascii.hexlify(bfd.auth_key_hash),
-                               expected_hash, "Auth key hash")
+                               expected_hash.encode(), "Auth key hash")
 
     def verify_bfd(self, packet):
         """ Verify correctness of BFD layer. """
@@ -530,7 +529,7 @@ def bfd_session_up(test):
     old_offset = None
     if hasattr(test, 'vpp_clock_offset'):
         old_offset = test.vpp_clock_offset
-    test.vpp_clock_offset = time.time() - p.time
+    test.vpp_clock_offset = time.time() - float(p.time)
     test.logger.debug("BFD: Calculated vpp clock offset: %s",
                       test.vpp_clock_offset)
     if old_offset:
@@ -677,7 +676,6 @@ def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None, is_tunnel=False):
     return p
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFD4TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD)"""
 
@@ -765,7 +763,6 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         bfd_session_down(self)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_hold_up(self):
         """ hold BFD session up """
         bfd_session_up(self)
@@ -775,7 +772,6 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(len(self.vapi.collect_events()), 0,
                           "number of bfd events")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_slow_timer(self):
         """ verify slow periodic control frames while session down """
         packet_count = 3
@@ -790,7 +786,6 @@ class BFD4TestCase(VppTestCase):
                 time_diff, 0.70, 1.05, "time between slow packets")
             prev_packet = next_packet
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_zero_remote_min_rx(self):
         """ no packets when zero remote required min rx interval """
         bfd_session_up(self)
@@ -815,7 +810,6 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(
             len(self.vapi.collect_events()), 0, "number of bfd events")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_conn_down(self):
         """ verify session goes down after inactivity """
         bfd_session_up(self)
@@ -825,7 +819,6 @@ class BFD4TestCase(VppTestCase):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.down)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_large_required_min_rx(self):
         """ large remote required min rx interval """
         bfd_session_up(self)
@@ -855,7 +848,6 @@ class BFD4TestCase(VppTestCase):
                 break
         self.assert_equal(count, 0, "number of packets received")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_immediate_remote_min_rx_reduction(self):
         """ immediately honor remote required min rx reduction """
         self.vpp_session.remove_vpp_config()
@@ -888,7 +880,6 @@ class BFD4TestCase(VppTestCase):
                                  "time between BFD packets")
             reference_packet = p
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_modify_req_min_rx_double(self):
         """ modify session - double required min rx """
         bfd_session_up(self)
@@ -918,7 +909,6 @@ class BFD4TestCase(VppTestCase):
         self.assert_in_range(time_to_event, .9 * timeout,
                              1.1 * timeout, "session timeout")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_modify_req_min_rx_halve(self):
         """ modify session - halve required min rx """
         self.vpp_session.modify_parameters(
@@ -961,7 +951,6 @@ class BFD4TestCase(VppTestCase):
                              "time before bfd session goes down")
         verify_event(self, e, expected_state=BFDState.down)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_modify_detect_mult(self):
         """ modify detect multiplier """
         bfd_session_up(self)
@@ -985,7 +974,6 @@ class BFD4TestCase(VppTestCase):
         self.assertNotIn("P", p.sprintf("%BFD.flags%"),
                          "Poll bit not set in BFD packet")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_queued_poll(self):
         """ test poll sequence queueing """
         bfd_session_up(self)
@@ -1051,7 +1039,6 @@ class BFD4TestCase(VppTestCase):
         self.assertNotIn("P", p.sprintf("%BFD.flags%"),
                          "Poll bit set in BFD packet")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_poll_response(self):
         """ test correct response to control frame with poll bit set """
         bfd_session_up(self)
@@ -1062,7 +1049,6 @@ class BFD4TestCase(VppTestCase):
             self, pcap_time_min=time.time() - self.vpp_clock_offset)
         self.assertIn("F", final.sprintf("%BFD.flags%"))
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_no_periodic_if_remote_demand(self):
         """ no periodic frames outside poll sequence if remote demand set """
         bfd_session_up(self)
@@ -1190,7 +1176,6 @@ class BFD4TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assertTrue(echo_seen, "No echo packets received")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_echo_fail(self):
         """ session goes down if echo function fails """
         bfd_session_up(self)
@@ -1231,7 +1216,6 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(events[0].state, BFDState.down, BFDState)
         self.assertTrue(verified_diag, "Incorrect diagnostics code received")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_echo_stop(self):
         """ echo function stops if peer sets required min echo rx zero """
         bfd_session_up(self)
@@ -1264,7 +1248,6 @@ class BFD4TestCase(VppTestCase):
             events = self.vapi.collect_events()
             self.assert_equal(len(events), 0, "number of bfd events")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_echo_source_removed(self):
         """ echo function stops if echo source is removed """
         bfd_session_up(self)
@@ -1297,7 +1280,6 @@ class BFD4TestCase(VppTestCase):
             events = self.vapi.collect_events()
             self.assert_equal(len(events), 0, "number of bfd events")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_stale_echo(self):
         """ stale echo packets don't keep a session up """
         bfd_session_up(self)
@@ -1351,7 +1333,6 @@ class BFD4TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assertTrue(timeout_ok, "Expected timeout event didn't occur")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_invalid_echo_checksum(self):
         """ echo packets with invalid checksum don't keep a session up """
         bfd_session_up(self)
@@ -1402,7 +1383,6 @@ class BFD4TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assertTrue(timeout_ok, "Expected timeout event didn't occur")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_admin_up_down(self):
         """ put session admin-up and admin-down """
         bfd_session_up(self)
@@ -1440,7 +1420,6 @@ class BFD4TestCase(VppTestCase):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.up)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_config_change_remote_demand(self):
         """ configuration change while peer in demand mode """
         bfd_session_up(self)
@@ -1493,7 +1472,6 @@ class BFD4TestCase(VppTestCase):
         self.assertFalse(vpp_session.query_vpp_config())
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6) """
 
@@ -1578,7 +1556,6 @@ class BFD6TestCase(VppTestCase):
         self.test_session.send_packet()
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_hold_up(self):
         """ hold BFD session up """
         bfd_session_up(self)
@@ -1708,7 +1685,6 @@ class BFD6TestCase(VppTestCase):
         self.assertFalse(vpp_session.query_vpp_config())
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDFIBTestCase(VppTestCase):
     """ BFD-FIB interactions (IPv6) """
 
@@ -1814,7 +1790,6 @@ class BFDFIBTestCase(VppTestCase):
                              packet[IPv6].dst)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """ BFD over GRE tunnel """
 
@@ -1895,7 +1870,6 @@ class BFDTunTestCase(VppTestCase):
         bfd_session_down(self)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDSHA1TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (SHA1 auth) """
 
@@ -1948,7 +1922,6 @@ class BFDSHA1TestCase(VppTestCase):
             bfd_key_id=self.vpp_session.bfd_key_id)
         bfd_session_up(self)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_hold_up(self):
         """ hold BFD session up """
         key = self.factory.create_random_key(self)
@@ -1967,7 +1940,6 @@ class BFDSHA1TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_hold_up_meticulous(self):
         """ hold BFD session up - meticulous auth """
         key = self.factory.create_random_key(
@@ -1989,7 +1961,6 @@ class BFDSHA1TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_send_bad_seq_number(self):
         """ session is not kept alive by msgs with bad sequence numbers"""
         key = self.factory.create_random_key(
@@ -2052,7 +2023,6 @@ class BFDSHA1TestCase(VppTestCase):
         wait_for_bfd_packet(self)
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_mismatch_auth(self):
         """ session is not brought down by unauthenticated msg """
         key = self.factory.create_random_key(self)
@@ -2067,7 +2037,6 @@ class BFDSHA1TestCase(VppTestCase):
                                             legitimate_test_session,
                                             rogue_test_session)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_mismatch_bfd_key_id(self):
         """ session is not brought down by msg with non-existent key-id """
         key = self.factory.create_random_key(self)
@@ -2087,7 +2056,6 @@ class BFDSHA1TestCase(VppTestCase):
                                             legitimate_test_session,
                                             rogue_test_session)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_mismatched_auth_type(self):
         """ session is not brought down by msg with wrong auth type """
         key = self.factory.create_random_key(self)
@@ -2104,7 +2072,6 @@ class BFDSHA1TestCase(VppTestCase):
             vpp_session, legitimate_test_session, rogue_test_session,
             {'auth_type': BFDAuthType.keyed_md5})
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_restart(self):
         """ simulate remote peer restart and resynchronization """
         key = self.factory.create_random_key(
@@ -2133,7 +2100,6 @@ class BFDSHA1TestCase(VppTestCase):
         bfd_session_up(self)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDAuthOnOffTestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (changing auth) """
 
@@ -2346,7 +2312,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
                           "number of bfd events")
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI) """
     pg0 = None
@@ -2387,7 +2352,7 @@ class BFDCLITestCase(VppTestCase):
     def cli_verify_no_response(self, cli):
         """ execute a CLI, asserting that the response is empty """
         self.assert_equal(self.vapi.cli(cli),
-                          b"",
+                          "",
                           "CLI command response")
 
     def cli_verify_response(self, cli, expected):
