@@ -43,6 +43,7 @@
 
 #define QUIC_SEND_MAX_BATCH_PACKETS 16
 #define QUIC_RCV_MAX_BATCH_PACKETS 16
+#define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
 
 /* Taken from quicly.c */
 #define QUICLY_QUIC_BIT 0x40
@@ -216,6 +217,7 @@ typedef struct quic_main_
 
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;
+  u32 connection_timeout;
 } quic_main_t;
 
 #endif /* __included_quic_h__ */
