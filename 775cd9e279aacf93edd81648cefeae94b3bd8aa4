@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7bd33fca_b4826caa",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1562,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-02T16:30:23Z",
+      "side": 1,
+      "message": "Out of curiosity: do we want to show this for all apps in bulk or should we add it to the \"show app\" cli? Something like \"show app \u003capp-index\u003e mq\"?",
+      "range": {
+        "startLine": 1562,
+        "startChar": 0,
+        "endLine": 1562,
+        "endChar": 22
+      },
+      "revId": "775cd9e279aacf93edd81648cefeae94b3bd8aa4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
