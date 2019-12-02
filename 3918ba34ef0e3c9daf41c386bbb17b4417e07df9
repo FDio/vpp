@@ -16,6 +16,24 @@
       "revId": "3918ba34ef0e3c9daf41c386bbb17b4417e07df9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d90755f_37271cc9",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-02T10:05:04Z",
+      "side": 1,
+      "message": "max value of a single ipv4 octet (L247,L249,L250)",
+      "parentUuid": "0f63ea65_2907f338",
+      "revId": "3918ba34ef0e3c9daf41c386bbb17b4417e07df9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
