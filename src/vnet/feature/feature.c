@@ -14,9 +14,38 @@
  */
 
 #include <vnet/feature/feature.h>
-#include <vnet/adj/adj.h>
+
 
 vnet_feature_main_t feature_main;
+
+typedef struct vnet_feature_upd_registration_t_
+{
+  vnet_feature_update_cb_t cb;
+  void *data;
+} vnet_feature_upd_registration_t;
+
+static vnet_feature_upd_registration_t *regs;
+
+void
+vnet_feature_register (vnet_feature_update_cb_t cb, void *data)
+{
+  vnet_feature_upd_registration_t *reg;
+
+  vec_add2 (regs, reg, 1);
+
+  reg->cb = cb;
+  reg->data = data;
+}
+
+static void
+vent_feature_reg_invoke (u32 sw_if_index, u8 arc_index, u8 is_enable)
+{
+  vnet_feature_upd_registration_t *reg;
+
+  vec_foreach (reg, regs)
+    reg->cb (sw_if_index, arc_index, is_enable, reg->data);
+}
+
 
 static clib_error_t *
 vnet_feature_init (vlib_main_t * vm)
@@ -265,7 +294,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   fm->sw_if_index_has_features[arc_index] =
     clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
 		     (feature_count > 0));
-  adj_feature_update (sw_if_index, arc_index, (feature_count > 0));
+  vent_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
 
   fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
   return 0;
