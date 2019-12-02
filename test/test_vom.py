@@ -41,7 +41,7 @@ class VOMTestCase(VppTestCase):
                     "Timeout! Worker did not finish in %ss" % timeout)
                 os.killpg(os.getpgid(worker.process.pid), signal.SIGTERM)
                 worker.join()
-            except:
+            except OSError:
                 raise Exception("Couldn't kill worker-spawned process")
         if error:
             raise Exception(
