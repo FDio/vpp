@@ -785,6 +785,8 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
   sctx->stream = stream;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
+  if (quicly_stream_is_unidirectional (stream->stream_id))
+    stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
   stream_data = (quic_stream_data_t *) stream->data;
   stream_data->ctx_id = sctx_id;
@@ -959,7 +961,7 @@ quic_expired_timers_dispatch (u32 * expired_timers)
 /* Transport proto functions */
 
 static int
-quic_connect_stream (session_t * quic_session, u32 opaque)
+quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 {
   uint64_t quic_session_handle;
   session_t *stream_session;
@@ -1012,7 +1014,9 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   if (!conn || !quicly_connection_is_ready (conn))
     return -1;
 
-  if ((rv = quicly_open_stream (conn, &stream, 0 /* uni */ )))
+  if ((rv =
+       quicly_open_stream (conn, &stream,
+			   sep->flags & SESSION_F_UNIDIRECTIONAL)))
     {
       QUIC_DBG (2, "Stream open failed with %d", rv);
       return -1;
@@ -1029,6 +1033,8 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   stream_session->listener_handle = quic_session_handle;
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
+  if (sep->flags & SESSION_F_UNIDIRECTIONAL)
+    stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
   sctx->c_s_index = stream_session->session_index;
   stream_data = (quic_stream_data_t *) stream->data;
@@ -1043,14 +1049,14 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
     {
       QUIC_ERR ("failed to app_worker_init_connected");
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
-      return app_worker_connect_notify (app_wrk, NULL, opaque);
+      return app_worker_connect_notify (app_wrk, NULL, sep->opaque);
     }
 
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
-  if (app_worker_connect_notify (app_wrk, stream_session, opaque))
+  if (app_worker_connect_notify (app_wrk, stream_session, sep->opaque))
     {
       QUIC_ERR ("failed to notify app");
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
@@ -1124,7 +1130,7 @@ quic_connect (transport_endpoint_cfg_t * tep)
 
   quic_session = session_get_from_handle_if_valid (sep->parent_handle);
   if (quic_session)
-    return quic_connect_stream (quic_session, sep->opaque);
+    return quic_connect_stream (quic_session, sep);
   else
     return quic_connect_connection (sep);
 }
@@ -1143,6 +1149,9 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
   if (quic_ctx_is_stream (ctx))
     {
       quicly_stream_t *stream = ctx->stream;
+      if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
+					stream->stream_id))
+	return;
       quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
       quic_send_packets (ctx);
       return;

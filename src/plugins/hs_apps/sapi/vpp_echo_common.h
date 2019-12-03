@@ -94,6 +94,7 @@
   _(ECHO_FAIL_MISSING_START_EVENT, "ECHO_FAIL_MISSING_START_EVENT")     \
   _(ECHO_FAIL_MISSING_END_EVENT, "ECHO_FAIL_MISSING_END_EVENT")         \
   _(ECHO_FAIL_TEST_ASSERT_RX_TOTAL, "ECHO_FAIL_TEST_ASSERT_RX_TOTAL")   \
+  _(ECHO_FAIL_UNIDIRECTIONAL, "ECHO_FAIL_UNIDIRECTIONAL")               \
   _(ECHO_FAIL_TEST_ASSERT_TX_TOTAL, "ECHO_FAIL_TEST_ASSERT_TX_TOTAL")   \
   _(ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,                          \
     "ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED")                        \
@@ -313,6 +314,7 @@ typedef struct
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
   u32 ckpair_index;		/* Cert key pair used */
   u8 crypto_engine;		/* crypto engine used */
+  u8 connect_flag;		/* flags to pass to mq connect */
 
   u8 *appns_id;
   u64 appns_flags;

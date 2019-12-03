@@ -166,6 +166,7 @@ echo_send_connect (u64 parent_session_handle, u32 opaque)
   mp->parent_handle = parent_session_handle;
   mp->ckpair_index = em->ckpair_index;
   mp->crypto_engine = em->crypto_engine;
+  mp->flags = em->connect_flag;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
