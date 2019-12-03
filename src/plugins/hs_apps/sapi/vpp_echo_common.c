@@ -503,12 +503,12 @@ echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid)
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
   if (sid == SESSION_INVALID_INDEX)
     {
-      ECHO_LOG (2, "hash_unset(0x%lx)", handle);
+      ECHO_LOG (3, "hash_unset(0x%lx)", handle);
       hash_unset (em->session_index_by_vpp_handles, handle);
     }
   else
     {
-      ECHO_LOG (2, "hash_set(0x%lx) S[%d]", handle, sid);
+      ECHO_LOG (3, "hash_set(0x%lx) S[%d]", handle, sid);
       hash_set (em->session_index_by_vpp_handles, handle, sid);
     }
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
@@ -558,7 +558,7 @@ echo_get_session_from_handle (echo_main_t * em, u64 handle)
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
   if (!p)
     {
-      ECHO_LOG (1, "unknown handle 0x%lx", handle);
+      ECHO_LOG (2, "unknown handle 0x%lx", handle);
       return 0;
     }
   return pool_elt_at_index (em->sessions, p[0]);
@@ -571,7 +571,7 @@ wait_for_segment_allocation (u64 segment_handle)
   f64 timeout;
   timeout = clib_time_now (&em->clib_time) + TIMEOUT;
   uword *segment_present;
-  ECHO_LOG (1, "Waiting for segment 0x%lx...", segment_handle);
+  ECHO_LOG (3, "Waiting for segment 0x%lx...", segment_handle);
   while (clib_time_now (&em->clib_time) < timeout)
     {
       clib_spinlock_lock (&em->segment_handles_lock);
@@ -582,7 +582,7 @@ wait_for_segment_allocation (u64 segment_handle)
       if (em->time_to_stop == 1)
 	return 0;
     }
-  ECHO_LOG (1, "timeout wait_for_segment_allocation (0x%lx)", segment_handle);
+  ECHO_LOG (2, "timeout wait_for_segment_allocation (0x%lx)", segment_handle);
   return -1;
 }
 
@@ -598,7 +598,7 @@ wait_for_state_change (echo_main_t * em, connection_state_t state,
       if (em->time_to_stop)
 	return 1;
     }
-  ECHO_LOG (1, "timeout waiting for %U", echo_format_app_state, state);
+  ECHO_LOG (2, "timeout waiting for %U", echo_format_app_state, state);
   return -1;
 }
 
@@ -618,7 +618,7 @@ void
 echo_session_print_stats (echo_main_t * em, echo_session_t * session)
 {
   f64 deltat = clib_time_now (&em->clib_time) - session->start;
-  ECHO_LOG (0, "Session 0x%x done in %.6fs RX[%.4f] TX[%.4f] Gbit/s\n",
+  ECHO_LOG (1, "Session 0x%x done in %.6fs RX[%.4f] TX[%.4f] Gbit/s\n",
 	    session->vpp_session_handle, deltat,
 	    (session->bytes_received * 8.0) / deltat / 1e9,
 	    (session->bytes_sent * 8.0) / deltat / 1e9);

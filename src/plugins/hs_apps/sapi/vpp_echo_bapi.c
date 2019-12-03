@@ -278,7 +278,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   u32 n_fds = 0;
   u64 segment_handle;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
-  ECHO_LOG (1, "Attached returned app %u", htons (mp->app_index));
+  ECHO_LOG (2, "Attached returned app %u", htons (mp->app_index));
 
   if (mp->retval)
     {
@@ -346,7 +346,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	}
     }
   echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
-  ECHO_LOG (1, "Mapped segment 0x%lx", segment_handle);
+  ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
 
   em->state = STATE_ATTACHED_NO_CERT;
   return;
@@ -375,7 +375,7 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
   echo_main_t *em = &echo_main;
   u64 segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   echo_segment_handle_add_del (em, segment_handle, 0 /* add */ );
-  ECHO_LOG (1, "Unmaped segment 0x%lx", segment_handle);
+  ECHO_LOG (2, "Unmaped segment 0x%lx", segment_handle);
 }
 
 static void
@@ -421,7 +421,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 	}
     }
   echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
-  ECHO_LOG (1, "Mapped segment 0x%lx", segment_handle);
+  ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
   return;
 
 failed:

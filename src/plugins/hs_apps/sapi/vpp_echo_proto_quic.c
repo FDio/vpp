@@ -60,7 +60,7 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
   for (i = 0; i < eqm->n_stream_clients; i++)
     echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
 
-  ECHO_LOG (0, "Qsession 0x%llx S[%d] connected to %U:%d",
+  ECHO_LOG (1, "Qsession 0x%llx S[%d] connected to %U:%d",
 	    mp->handle, session_index, format_ip46_address, &mp->lcl.ip,
 	    mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
 }
@@ -106,7 +106,7 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  ECHO_LOG (1, "Accept on QSession 0x%lx S[%u]", mp->handle, session_index);
+  ECHO_LOG (2, "Accept on QSession 0x%lx S[%u]", mp->handle, session_index);
   u32 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
@@ -127,7 +127,7 @@ quic_echo_on_accept_log_ip (session_accepted_msg_t * mp, u32 session_index)
 {
   u8 *ip_str;
   ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
-  ECHO_LOG (0, "Accepted session from: %s:%d", ip_str,
+  ECHO_LOG (1, "Accepted session from: %s:%d", ip_str,
 	    clib_net_to_host_u16 (mp->rmt.port));
 
 }
@@ -166,7 +166,7 @@ quic_echo_cleanup_listener (u32 listener_index, echo_main_t * em,
   ls = pool_elt_at_index (em->sessions, listener_index);
   if (ls->session_type != ECHO_SESSION_TYPE_QUIC)
     {
-      ECHO_LOG (1, "%U: Invalid listener session type",
+      ECHO_LOG (2, "%U: Invalid listener session type",
 		echo_format_session, ls);
       return;
     }
@@ -194,7 +194,7 @@ quic_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
   if ((em->state == STATE_DATA_DONE) ||
       !(s->session_state < ECHO_SESSION_STATE_CLOSED))
     return;
-  ECHO_LOG (2, "%U cleanup (parent_died %d)", echo_format_session, s,
+  ECHO_LOG (3, "%U cleanup (parent_died %d)", echo_format_session, s,
 	    parent_died);
   s->session_state = ECHO_SESSION_STATE_CLOSED;
   if (s->session_type == ECHO_SESSION_TYPE_QUIC)
@@ -214,7 +214,7 @@ quic_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
     }
   if (!em->n_clients_connected && !eqm->n_quic_clients_connected)
     em->state = STATE_DATA_DONE;
-  ECHO_LOG (1, "Cleanup sessions (still %uQ %uS): app %U",
+  ECHO_LOG (2, "Cleanup sessions (still %uQ %uS): app %U",
 	    eqm->n_quic_clients_connected, em->n_clients_connected,
 	    echo_format_app_state, em->state);
 }
@@ -223,7 +223,7 @@ static void
 quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
 {
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  ECHO_LOG (1, "Closing Qsessions");
+  ECHO_LOG (2, "Closing Qsessions");
   /* Close Quic session without streams */
   echo_session_t *s;
 
@@ -234,19 +234,19 @@ quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
       {
         if (eqm->send_quic_disconnects == ECHO_CLOSE_F_ACTIVE)
           {
-            ECHO_LOG (1,"%U: ACTIVE close", echo_format_session, s);
+            ECHO_LOG (2,"%U: ACTIVE close", echo_format_session, s);
             echo_send_rpc (em, echo_send_disconnect_session,
                            (void *) s->vpp_session_handle, 0);
             clib_atomic_fetch_add (&em->stats.active_count.q, 1);
           }
         else if (eqm->send_quic_disconnects == ECHO_CLOSE_F_NONE)
           {
-            ECHO_LOG (1,"%U: CLEAN close", echo_format_session, s);
+            ECHO_LOG (2,"%U: CLEAN close", echo_format_session, s);
             quic_echo_cleanup_cb (s, 0 /* parent_died */);
             clib_atomic_fetch_add (&em->stats.clean_count.q, 1);
           }
         else
-          ECHO_LOG (1,"%U: PASSIVE close", echo_format_session, s);
+          ECHO_LOG (2,"%U: PASSIVE close", echo_format_session, s);
       }
   }));
   /* *INDENT-ON* */
@@ -262,27 +262,38 @@ quic_echo_on_connected (session_connected_msg_t * mp, u32 session_index)
 
   if (session->listener_index == SESSION_INVALID_INDEX)
     {
+      clib_atomic_fetch_add (&em->stats.connected_count.q, 1);
       session->session_type = ECHO_SESSION_TYPE_QUIC;
-      ECHO_LOG (1, "Connected %U -> URI", echo_format_session, session);
+      ECHO_LOG (2, "Connected %U -> URI", echo_format_session, session);
       session->accepted_session_count = 0;
       if (eqm->cb_vft.quic_connected_cb)
 	eqm->cb_vft.quic_connected_cb (mp, session->session_index);
       clib_atomic_fetch_add (&eqm->n_quic_clients_connected, 1);
+
+      if (em->stats.connected_count.q % LOGGING_BATCH == 0)
+	ECHO_LOG (0, "Connected Q %d / %d", em->stats.connected_count.q,
+		  em->n_connects);
     }
   else
     {
+      clib_atomic_fetch_add (&em->stats.connected_count.s, 1);
       listen_session =
 	pool_elt_at_index (em->sessions, session->listener_index);
       session->session_type = ECHO_SESSION_TYPE_STREAM;
       clib_atomic_fetch_add (&listen_session->accepted_session_count, 1);
-      ECHO_LOG (1, "Connected %U -> %U", echo_format_session, session,
+      ECHO_LOG (2, "Connected %U -> %U", echo_format_session, session,
 		echo_format_session, listen_session);
       if (em->i_am_master && eqm->cb_vft.server_stream_connected_cb)
 	eqm->cb_vft.server_stream_connected_cb (mp, session->session_index);
       if (!em->i_am_master && eqm->cb_vft.client_stream_connected_cb)
 	eqm->cb_vft.client_stream_connected_cb (mp, session->session_index);
       clib_atomic_fetch_add (&em->n_clients_connected, 1);
+
+      if (em->stats.connected_count.s % LOGGING_BATCH == 0)
+	ECHO_LOG (0, "Connected S %d / %d", em->stats.connected_count.s,
+		  em->n_clients);
     }
+
 
   if (em->n_clients_connected == em->n_clients
       && em->n_clients_connected != 0)
@@ -320,15 +331,21 @@ quic_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
   ls = pool_elt_at_index (em->sessions, session->listener_index);
   if (ls->session_type == ECHO_SESSION_TYPE_LISTEN)
     {
+      clib_atomic_fetch_add (&em->stats.accepted_count.q, 1);
       echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
       session->session_type = ECHO_SESSION_TYPE_QUIC;
       session->accepted_session_count = 0;
       if (eqm->cb_vft.quic_accepted_cb)
 	eqm->cb_vft.quic_accepted_cb (mp, session->session_index);
       clib_atomic_fetch_add (&eqm->n_quic_clients_connected, 1);
+
+      if (em->stats.accepted_count.q % LOGGING_BATCH == 0)
+	ECHO_LOG (0, "Accepted Q %d / %d", em->stats.accepted_count.q,
+		  em->n_connects);
     }
   else
     {
+      clib_atomic_fetch_add (&em->stats.accepted_count.s, 1);
       session->session_type = ECHO_SESSION_TYPE_STREAM;
       echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
       clib_atomic_fetch_add (&ls->accepted_session_count, 1);
@@ -337,6 +354,10 @@ quic_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
       if (!em->i_am_master && eqm->cb_vft.client_stream_accepted_cb)
 	eqm->cb_vft.client_stream_accepted_cb (mp, session->session_index);
       clib_atomic_fetch_add (&em->n_clients_connected, 1);
+
+      if (em->stats.accepted_count.s % LOGGING_BATCH == 0)
+	ECHO_LOG (0, "Accepted S %d / %d", em->stats.accepted_count.s,
+		  em->n_clients);
     }
 
   if (em->n_clients_connected == em->n_clients

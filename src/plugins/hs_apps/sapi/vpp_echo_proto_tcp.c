@@ -53,7 +53,7 @@ tcp_echo_connected_cb (session_connected_bundled_msg_t * mp,
       return;			/* Dont handle bapi connect errors for now */
     }
 
-  ECHO_LOG (1, "Connected session 0x%lx -> URI",
+  ECHO_LOG (2, "Connected session 0x%lx -> URI",
 	    ((session_connected_msg_t *) mp)->handle);
   session->session_type = ECHO_SESSION_TYPE_STREAM;
   session->accepted_session_count = 0;

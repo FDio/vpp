@@ -36,6 +36,7 @@
 #undef vl_printfun
 
 #define TIMEOUT 10.0
+#define LOGGING_BATCH (100)
 
 #define foreach_echo_fail_code                                          \
   _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
@@ -345,6 +346,8 @@ typedef struct
     teardown_stat_t close_count;	/* received close from vpp */
     teardown_stat_t active_count;	/* sent close to vpp */
     teardown_stat_t clean_count;	/* cleaned up stale session */
+    teardown_stat_t connected_count;	/* connected sessions count */
+    teardown_stat_t accepted_count;	/* connected sessions count */
   } stats;
 
   struct			/* Event based timing : start & end depend on CLI specified events */
