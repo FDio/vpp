@@ -235,6 +235,7 @@ class VppInterface(object):
         self._local_ip6_ll = mk_ll_addr(self._local_mac)
         self.test.vapi.sw_interface_set_mac_address(
             self.sw_if_index, mac.packed)
+        return self
 
     def set_sw_if_index(self, sw_if_index):
         if sw_if_index > 255:
@@ -281,6 +282,7 @@ class VppInterface(object):
         self.test.vapi.sw_interface_add_del_address(
             sw_if_index=self.sw_if_index, prefix=self.local_ip4_prefix)
         self.has_ip4_config = True
+        return self
 
     def unconfig_ip4(self):
         """Remove IPv4 address on the VPP interface."""
@@ -292,6 +294,7 @@ class VppInterface(object):
         except AttributeError:
             self.has_ip4_config = False
         self.has_ip4_config = False
+        return self
 
     def configure_ipv4_neighbors(self):
         """For every remote host assign neighbor's MAC to IPv4 addresses.
@@ -302,12 +305,14 @@ class VppInterface(object):
             self.test.vapi.ip_neighbor_add_del(self.sw_if_index,
                                                host.mac,
                                                host.ip4)
+        return self
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
             sw_if_index=self.sw_if_index, prefix=self.local_ip6_prefix)
         self.has_ip6_config = True
+        return self
 
     def unconfig_ip6(self):
         """Remove IPv6 address on the VPP interface."""
@@ -319,6 +324,7 @@ class VppInterface(object):
         except AttributeError:
             self.has_ip6_config = False
         self.has_ip6_config = False
+        return self
 
     def configure_ipv6_neighbors(self):
         """For every remote host assign neighbor's MAC to IPv6 addresses.
@@ -334,6 +340,7 @@ class VppInterface(object):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""
         self.unconfig_ip4()
         self.unconfig_ip6()
+        return self
 
     def set_table_ip4(self, table_id):
         """Set the interface in a IPv4 Table.
@@ -343,6 +350,7 @@ class VppInterface(object):
         self.ip4_table_id = table_id
         self.test.vapi.sw_interface_set_table(
             self.sw_if_index, 0, self.ip4_table_id)
+        return self
 
     def set_table_ip6(self, table_id):
         """Set the interface in a IPv6 Table.
@@ -352,12 +360,14 @@ class VppInterface(object):
         self.ip6_table_id = table_id
         self.test.vapi.sw_interface_set_table(
             self.sw_if_index, 1, self.ip6_table_id)
+        return self
 
     def disable_ipv6_ra(self):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.sw_interface_ip6nd_ra_config(
             sw_if_index=self.sw_if_index,
             suppress=1)
+        return self
 
     def ip6_ra_config(self, no=0, suppress=0, send_unicast=0):
         """Configure IPv6 RA suppress on the VPP interface."""
@@ -366,6 +376,7 @@ class VppInterface(object):
             is_no=no,
             suppress=suppress,
             send_unicast=send_unicast)
+        return self
 
     def ip6_ra_prefix(self, prefix, is_no=0,
                       off_link=0, no_autoconfig=0, use_default=0):
@@ -380,17 +391,20 @@ class VppInterface(object):
             use_default=use_default,
             off_link=off_link, no_autoconfig=no_autoconfig,
             is_no=is_no)
+        return self
 
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(
             self.sw_if_index,
             flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP)
+        return self
 
     def admin_down(self):
         """Put interface ADMIN-down."""
         self.test.vapi.sw_interface_set_flags(self.sw_if_index,
                                               flags=0)
+        return self
 
     def link_up(self):
         """Put interface link-state-UP."""
@@ -404,11 +418,13 @@ class VppInterface(object):
         """IPv6 Enable interface"""
         self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
                                                        enable=1)
+        return self
 
     def ip6_disable(self):
         """Put interface ADMIN-DOWN."""
         self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
                                                        enable=0)
+        return self
 
     def add_sub_if(self, sub_if):
         """Register a sub-interface with this interface.
@@ -422,14 +438,17 @@ class VppInterface(object):
                 self.sub_if.append(sub_if)
             else:
                 self.sub_if = sub_if
+        return self
 
     def enable_mpls(self):
         """Enable MPLS on the VPP interface."""
         self.test.vapi.sw_interface_set_mpls_enable(self.sw_if_index)
+        return self
 
     def disable_mpls(self):
         """Enable MPLS on the VPP interface."""
         self.test.vapi.sw_interface_set_mpls_enable(self.sw_if_index, 0)
+        return self
 
     def is_ip4_entry_in_fib_dump(self, dump):
         for i in dump:
@@ -444,17 +463,20 @@ class VppInterface(object):
         """ Set the interface to unnumbered via ip_sw_if_index """
         self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
                                                    self.sw_if_index)
+        return self
 
     def unset_unnumbered(self, ip_sw_if_index):
         """ Unset the interface to unnumbered via ip_sw_if_index """
         self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
                                                    self.sw_if_index, is_add=0)
+        return self
 
     def set_proxy_arp(self, enable=1):
         """ Set the interface to enable/disable Proxy ARP """
         self.test.vapi.proxy_arp_intfc_enable_disable(
             self.sw_if_index,
             enable)
+        return self
 
     def query_vpp_config(self):
         dump = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
@@ -502,12 +524,16 @@ class VppInterface(object):
 
     def set_l3_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])
+        return self
 
     def set_ip4_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, mtu, 0, 0])
+        return self
 
     def set_ip6_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, 0, mtu, 0])
+        return self
 
     def set_mpls_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [0, 0, 0, mtu])
+        return self
