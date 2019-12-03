@@ -1731,6 +1731,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
+      if (vcl_session_is_closing (s))
+	return vcl_session_closing_error (s);
+
       if (is_nonblocking)
 	{
 	  svm_fifo_unset_event (s->rx_fifo);
@@ -1738,8 +1741,6 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	}
       while (svm_fifo_is_empty_cons (rx_fifo))
 	{
-	  if (vcl_session_is_closing (s))
-	    return vcl_session_closing_error (s);
 
 	  svm_fifo_unset_event (s->rx_fifo);
 	  svm_msg_q_lock (mq);
