@@ -28,6 +28,7 @@ from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
+import vpp_papi
 from vpp_papi.vpp_stats import VPPStats
 from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
@@ -571,11 +572,10 @@ class VppTestCase(unittest.TestCase):
                 raise
             try:
                 cls.vapi.connect()
-            except Exception:
-                try:
-                    cls.vapi.disconnect()
-                except Exception:
-                    pass
+            except vpp_papi.VPPIOError as e:
+                cls.logger.debug("Exception connecting to vapi: %s" % e)
+                cls.vapi.disconnect()
+
                 if cls.debug_gdbserver:
                     print(colorize("You're running VPP inside gdbserver but "
                                    "VPP-API connection failed, did you forget "
