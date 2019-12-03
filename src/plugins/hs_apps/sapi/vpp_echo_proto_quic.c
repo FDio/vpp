@@ -358,6 +358,12 @@ quic_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
       if (em->stats.accepted_count.s % LOGGING_BATCH == 0)
 	ECHO_LOG (0, "Accepted S %d / %d", em->stats.accepted_count.s,
 		  em->n_clients);
+
+      if (em->connect_flag && !(mp->flags & em->connect_flag))
+	{
+	  ECHO_FAIL (ECHO_FAIL_UNIDIRECTIONAL,
+		     "expected unidirectional streams");
+	}
     }
 
   if (em->n_clients_connected == em->n_clients
@@ -436,11 +442,14 @@ quic_echo_unformat_setup_vft (unformat_input_t * input, va_list * args)
 static int
 quic_echo_process_opts_cb (unformat_input_t * a)
 {
+  echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
   if (unformat (a, "quic-streams %d", &eqm->n_stream_clients))
     ;
   else if (unformat (a, "quic-setup %U", quic_echo_unformat_setup_vft))
     ;
+  else if (unformat (a, "uni"))
+    em->connect_flag = SESSION_F_UNIDIRECTIONAL;
   else if (unformat (a, "qclose=%U",
 		     echo_unformat_close, &eqm->send_quic_disconnects))
     ;
@@ -489,6 +498,7 @@ quic_echo_print_usage_cb ()
 	   "                      OPT=default : Client open N connections.\n"
 	   "                       On each one client opens M streams\n"
 	   "  qclose=[Y|N|W]      When connection is done send[Y]|nop[N]|wait[W] for close\n"
+	   "  uni                 Use unidirectional streams\n"
 	   "\n"
 	   "  quic-streams N      Open N QUIC streams (defaults to 1)\n");
 }
