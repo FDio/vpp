@@ -1865,7 +1865,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      else
 			{
 			  adj_index0 = radv_info->mcast_adj_index;
-			  if (adj_index0 == 0)
+			  if (adj_index0 == ADJ_INDEX_INVALID)
 			    error0 = ICMP6_ERROR_DST_LOOKUP_MISS;
 			  else
 			    {
