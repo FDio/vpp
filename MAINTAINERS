@@ -127,9 +127,15 @@ F:	src/vnet/mfib/
 F:	src/vnet/dpo
 F:	src/vnet/adj
 
-VNET IPv4 and IPv6 LPM
+VNET IPv4 LPM
 I:	ip
 M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/ip/
+
+VNET IPv6 LPM
+I:	ip6
+M:	Neale Ranns <nranns@cisco.com>
+M:	Jon Loeliger <jdl@netgate.com>
 F:	src/vnet/ip/
 
 VNET QoS
