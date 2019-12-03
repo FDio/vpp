@@ -14,7 +14,7 @@ import logging
 from . import vpp_papi
 
 
-class VppTransportSocketIOError(IOError):
+class VppTransportSocketIOError(vpp_papi.VPPIOError):
     # TODO: Document different values of error number (first numeric argument).
     pass
 
@@ -37,7 +37,9 @@ class VppTransport(object):
         self.q = multiprocessing.Queue()
         # The following fields are set in connect().
         self.message_thread = None
-        self.socket = None
+        # Create a UDS socket
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.socket.settimeout(self.read_timeout)
 
     def msg_thread_func(self):
         while True:
@@ -76,25 +78,6 @@ class VppTransport(object):
                         2, 'Unknown response from select')
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
-        # TODO: Reorder the actions and add "roll-backs",
-        # to restore clean disconnect state when failure happens durng connect.
-
-        if self.message_thread is not None:
-            raise VppTransportSocketIOError(
-                1, "PAPI socket transport connect: Need to disconnect first.")
-
-        # Create a UDS socket
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.socket.settimeout(self.read_timeout)
-
-        # Connect the socket to the port where the server is listening
-        try:
-            self.socket.connect(self.server_address)
-        except socket.error as msg:
-            logging.error("{} on socket {}".format(msg, self.server_address))
-            raise
-
-        self.connected = True
 
         # Queues' feeder threads from previous connect may still be sending.
         # Close and join to avoid any errors.
@@ -127,6 +110,25 @@ class VppTransport(object):
         for m in r.message_table:
             n = m.name
             self.message_table[n] = m.index
+
+        # TODO: Reorder the actions and add "roll-backs",
+        # to restore clean disconnect state when
+        # failure happens during connect.
+
+        if self.message_thread is not None:
+            raise VppTransportSocketIOError(
+                1,
+                "PAPI socket transport connect: Need to disconnect first.")
+
+        # Connect the socket to the port where the server is listening
+        try:
+            self.socket.connect(self.server_address)
+        except socket.error as msg:
+            logging.error(
+                "{} on socket {}".format(msg, self.server_address))
+            raise VppTransportSocketIOError(msg.errno, msg)
+
+        self.connected = True
 
         self.message_thread.daemon = True
         self.message_thread.start()
@@ -233,4 +235,4 @@ class VppTransport(object):
         try:
             return self.q.get(True, timeout)
         except queue.Empty:
-            return None
+            raise VppTransportSocketIOError(2, 'VPP API client: read failed')
