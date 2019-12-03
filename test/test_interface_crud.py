@@ -30,8 +30,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         try:
             cls.create_pg_interfaces(range(1))
             for i in cls.pg_interfaces:
-                i.config_ip4()
-                i.resolve_arp()
+                i.config_ip4().resolve_arp()
         except:
             cls.tearDownClass()
             raise
@@ -86,8 +85,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32
-            i.config_ip4()
-            i.admin_up()
+            i.config_ip4().admin_up()
 
         # read (check sw if dump, ip4 fib, ip6 fib)
         if_dump = self.vapi.sw_interface_dump(name_filter_valid=True,
@@ -133,13 +131,11 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32
-            i.config_ip4()
-            i.admin_up()
+            i.config_ip4().admin_up()
 
         # disable
         for i in loopbacks:
-            i.admin_down()
-            i.unconfig_ip4()
+            i.admin_down().unconfig_ip4()
 
         # read (check not in sw if dump, ip4 fib, ip6 fib)
         if_dump = self.vapi.sw_interface_dump()
@@ -188,6 +184,7 @@ class TestInterfaceDumpApi(VppTestCase):
         # verify 3 interfaces
         rv = self.vapi.sw_interface_dump(sw_if_index=0xffffffff)
         self.assertEqual(len(rv), 3, 'Expected 3 interfaces.')
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
