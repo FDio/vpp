@@ -196,6 +196,7 @@ mq_send_session_accepted_cb (session_t * s)
   mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
   mp->segment_handle = session_segment_handle (s);
+  mp->flags = s->flags;
 
   if (session_has_transport (s))
     {

@@ -361,6 +361,7 @@ typedef struct session_accepted_msg_
   u64 segment_handle;
   uword vpp_event_queue_address;
   transport_endpoint_t rmt;
+  u8 flags;
 } __clib_packed session_accepted_msg_t;
 
 typedef struct session_accepted_reply_msg_
@@ -386,6 +387,7 @@ typedef struct session_connect_msg_
   u64 parent_handle;
   u32 ckpair_index;
   u8 crypto_engine;
+  u8 flags;
 } __clib_packed session_connect_msg_t;
 
 STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
