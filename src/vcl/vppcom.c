@@ -1733,6 +1733,8 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     {
       if (is_nonblocking)
 	{
+	  if (vcl_session_is_closing (s))
+	    return vcl_session_closing_error (s);
 	  svm_fifo_unset_event (s->rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
