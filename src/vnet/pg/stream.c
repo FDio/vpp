@@ -217,7 +217,6 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
       if (gso_enabled)
 	{
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-	  vnm->interface_main.gso_interface_count++;
 	  pi->gso_enabled = 1;
 	  pi->gso_size = gso_size;
 	}

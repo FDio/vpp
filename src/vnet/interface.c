@@ -1341,7 +1341,6 @@ vnet_interface_init (vlib_main_t * vm)
       }
   }
 
-  im->gso_interface_count = 0;
   /* init per-thread data */
   vec_validate_aligned (im->per_thread_data, vlib_num_workers (),
 			CLIB_CACHE_LINE_BYTES);

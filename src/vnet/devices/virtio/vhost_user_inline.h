@@ -277,20 +277,16 @@ vui_is_link_up (vhost_user_intf_t * vui)
 static_always_inline void
 vhost_user_update_gso_interface_count (vhost_user_intf_t * vui, u8 add)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
 
   if (vui->enable_gso)
     {
       if (add)
 	{
-	  vnm->interface_main.gso_interface_count++;
 	  vum->gso_count++;
 	}
       else
 	{
-	  ASSERT (vnm->interface_main.gso_interface_count > 0);
-	  vnm->interface_main.gso_interface_count--;
 	  ASSERT (vum->gso_count > 0);
 	  vum->gso_count--;
 	}
