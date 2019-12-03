@@ -161,7 +161,8 @@ class VppPapiProvider(object):
 
     _zero, _negative = range(2)
 
-    def __init__(self, name, shm_prefix, test_class, read_timeout):
+    def __init__(self, name, shm_prefix, test_class, read_timeout,
+                 use_socket=False):
         self.hook = Hook(test_class)
         self.name = name
         self.shm_prefix = shm_prefix
@@ -173,7 +174,6 @@ class VppPapiProvider(object):
         # calling the constructor.
         VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
 
-        use_socket = False
         try:
             if os.environ['SOCKET'] == '1':
                 use_socket = True

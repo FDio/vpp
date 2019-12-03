@@ -28,8 +28,8 @@ from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
+import vpp_papi
 from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
@@ -268,6 +268,8 @@ class VppTestCase(unittest.TestCase):
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
     vapi_response_timeout = 5
+    # 'shmem' or 'socket'
+    vapi_transport = 'shmem'
 
     @property
     def packet_infos(self):
@@ -552,8 +554,10 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
                 cls.vapi_response_timeout = 0
+            vapi_use_socket_transport = 'socket' in cls.vapi_transport
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
-                                       cls.vapi_response_timeout)
+                                       cls.vapi_response_timeout,
+                                       use_socket=vapi_use_socket_transport)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
             else:
@@ -705,8 +709,8 @@ class VppTestCase(unittest.TestCase):
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
-        except VppTransportShmemIOError:
-            self.logger.debug("VppTransportShmemIOError: Vpp dead. "
+        except vpp_papi.VPPIOError:
+            self.logger.debug("VPPIOError: Vpp dead. "
                               "Cannot log show commands.")
             self.vpp_dead = True
         else:
