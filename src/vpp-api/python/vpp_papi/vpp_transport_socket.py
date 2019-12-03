@@ -14,7 +14,7 @@ import logging
 from . import vpp_papi
 
 
-class VppTransportSocketIOError(IOError):
+class VppTransportSocketIOError(vpp_papi.VPPIOError):
     # TODO: Document different values of error number (first numeric argument).
     pass
 
@@ -37,7 +37,9 @@ class VppTransport(object):
         self.q = multiprocessing.Queue()
         # The following fields are set in connect().
         self.message_thread = None
-        self.socket = None
+        # Create a UDS socket
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.socket.settimeout(self.read_timeout)
 
     def msg_thread_func(self):
         while True:
@@ -82,10 +84,6 @@ class VppTransport(object):
         if self.message_thread is not None:
             raise VppTransportSocketIOError(
                 1, "PAPI socket transport connect: Need to disconnect first.")
-
-        # Create a UDS socket
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.socket.settimeout(self.read_timeout)
 
         # Connect the socket to the port where the server is listening
         try:
@@ -233,4 +231,4 @@ class VppTransport(object):
         try:
             return self.q.get(True, timeout)
         except queue.Empty:
-            return None
+            raise VppTransportSocketIOError(2, 'VPP API client: read failed')
