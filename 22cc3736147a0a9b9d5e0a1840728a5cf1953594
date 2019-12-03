@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b604789_f7bb2613",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-03T17:24:42Z",
+      "side": 1,
+      "message": "use socket.",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 37
+      },
+      "revId": "22cc3736147a0a9b9d5e0a1840728a5cf1953594",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e47fa39f_52a3cad5",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-03T17:24:42Z",
+      "side": 1,
+      "message": "see https://gerrit.fd.io/r/c/vpp/+/23284/4/test/test_mpls.py#24\nMaybe it is better to patch the arp sources? We should be consistent.",
+      "range": {
+        "startLine": 423,
+        "startChar": 16,
+        "endLine": 423,
+        "endChar": 54
+      },
+      "revId": "22cc3736147a0a9b9d5e0a1840728a5cf1953594",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
