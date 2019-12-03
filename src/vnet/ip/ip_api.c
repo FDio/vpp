@@ -2795,10 +2795,11 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
 	}
       break;
     }
-  rmp->timeout_ms = clib_host_to_net_u32 (rmp->timeout_ms);
-  rmp->max_reassemblies = clib_host_to_net_u32 (rmp->max_reassemblies);
+  rmp->timeout_ms = clib_host_to_net_u32 (timeout_ms);
+  rmp->max_reassemblies = clib_host_to_net_u32 (max_reassemblies);
+  rmp->max_reassembly_length = clib_host_to_net_u32 (max_reassembly_length);
   rmp->expire_walk_interval_ms =
-    clib_host_to_net_u32 (rmp->expire_walk_interval_ms);
+    clib_host_to_net_u32 (expire_walk_interval_ms);
   vl_api_send_msg (rp, (u8 *) rmp);
 }
 
