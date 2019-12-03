@@ -166,6 +166,7 @@ typedef struct quic_stream_data_
   u32 ctx_id;
   u32 thread_index;
   u32 app_rx_data_len;		/**< bytes received, to be read by external app */
+  u32 app_tx_data_len;		/**< bytes sent */
 } quic_stream_data_t;
 
 typedef struct quic_worker_ctx_

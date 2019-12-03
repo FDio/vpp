@@ -664,16 +664,22 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 void
 quic_fifo_egress_shift (quicly_stream_t * stream, size_t delta)
 {
+  quic_stream_data_t *stream_data;
   session_t *stream_session;
   svm_fifo_t *f;
   int rv;
 
+  stream_data = (quic_stream_data_t *) stream->data;
   stream_session = get_stream_session_from_stream (stream);
   f = stream_session->tx_fifo;
 
+  ASSERT (stream_data->app_tx_data_len >= delta);
+  stream_data->app_tx_data_len -= delta;
   rv = svm_fifo_dequeue_drop (f, delta);
   ASSERT (rv == delta);
-  quicly_stream_sync_sendbuf (stream, 0);
+
+  rv = quicly_stream_sync_sendbuf (stream, 0);
+  ASSERT (!rv);
 }
 
 int
@@ -681,9 +687,11 @@ quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
 		       size_t * len, int *wrote_all)
 {
   u32 deq_max, first_deq, max_rd_chunk, rem_offset;
+  quic_stream_data_t *stream_data;
   session_t *stream_session;
   svm_fifo_t *f;
 
+  stream_data = (quic_stream_data_t *) stream->data;
   stream_session = get_stream_session_from_stream (stream);
   f = stream_session->tx_fifo;
 
@@ -699,8 +707,11 @@ quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
     {
       *wrote_all = 1;
       *len = deq_max - off;
-      QUIC_DBG (3, "Wrote ALL, %u", *len);
     }
+  ASSERT (*len > 0);
+
+  if (off + *len > stream_data->app_tx_data_len)
+    stream_data->app_tx_data_len = off + *len;
 
   /* TODO, use something like : return svm_fifo_peek (f, off, *len, dst); */
   max_rd_chunk = svm_fifo_max_read_chunk (f);
@@ -780,6 +791,7 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
   stream_data->ctx_id = sctx_id;
   stream_data->thread_index = sctx->c_thread_index;
   stream_data->app_rx_data_len = 0;
+  stream_data->app_tx_data_len = 0;
 
   sctx->c_s_index = stream_session->session_index;
   stream_session->session_state = SESSION_STATE_CREATED;
@@ -1024,6 +1036,7 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   stream_data->ctx_id = sctx->c_c_index;
   stream_data->thread_index = sctx->c_thread_index;
   stream_data->app_rx_data_len = 0;
+  stream_data->app_tx_data_len = 0;
   stream_session->session_state = SESSION_STATE_READY;
 
   /* For now we only reset streams. Cleanup will be triggered by timers */
@@ -1674,8 +1687,10 @@ static int
 quic_custom_tx_callback (void *s, u32 max_burst_size)
 {
   session_t *stream_session = (session_t *) s;
+  quic_stream_data_t *stream_data;
   quicly_stream_t *stream;
   quic_ctx_t *ctx;
+  u32 max_deq;
   int rv;
 
   if (PREDICT_FALSE
@@ -1690,9 +1705,6 @@ quic_custom_tx_callback (void *s, u32 max_burst_size)
 
   QUIC_DBG (3, "Stream TX event");
   quic_ack_rx_data (stream_session);
-  if (!svm_fifo_max_dequeue (stream_session->tx_fifo))
-    return 0;
-
   stream = ctx->stream;
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
@@ -1700,8 +1712,18 @@ quic_custom_tx_callback (void *s, u32 max_burst_size)
       return -1;
     }
 
-  if ((rv = quicly_stream_sync_sendbuf (stream, 1)) != 0)
-    return rv;
+  stream_data = (quic_stream_data_t *) stream->data;
+  max_deq = svm_fifo_max_dequeue (stream_session->tx_fifo);
+  ASSERT (max_deq >= stream_data->app_tx_data_len);
+  if (max_deq == stream_data->app_tx_data_len)
+    {
+      QUIC_DBG (3, "TX but no data %d / %d", max_deq,
+		stream_data->app_tx_data_len);
+      return 0;
+    }
+  stream_data->app_tx_data_len = max_deq;
+  rv = quicly_stream_sync_sendbuf (stream, 1);
+  ASSERT (!rv);
 
 tx_end:
   quic_send_packets (ctx);
