@@ -14,7 +14,7 @@ import logging
 from . import vpp_papi
 
 
-class VppTransportSocketIOError(IOError):
+class VppTransportSocketIOError(vpp_papi.VPPIOError):
     # TODO: Document different values of error number (first numeric argument).
     pass
 
@@ -77,7 +77,7 @@ class VppTransport(object):
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
         # TODO: Reorder the actions and add "roll-backs",
-        # to restore clean disconnect state when failure happens durng connect.
+        # to restore clean disconnect state when failure happens during connect.
 
         if self.message_thread is not None:
             raise VppTransportSocketIOError(
@@ -233,4 +233,4 @@ class VppTransport(object):
         try:
             return self.q.get(True, timeout)
         except queue.Empty:
-            return None
+            raise VppTransportSocketIOError(2, 'VPP API client: read failed')
