@@ -19,6 +19,7 @@
 #include <vnet/l2/l2_classify.h>	/* for L2_INPUT_CLASSIFY_NEXT_xxx */
 #include <vnet/fib/fib_table.h>
 #include <vppinfra/lock.h>
+#include <vnet/classify/trace_classify.h>
 
 /**
  * @file
@@ -1692,12 +1693,14 @@ classify_filter_command_fn (vlib_main_t * vm,
   u32 current_data_flag = 0;
   int current_data_offset = 0;
   u32 sw_if_index = ~0;
+  int pkt_trace = 0;
   int i;
   vnet_classify_table_t *t;
   u8 *mask = 0;
   vnet_classify_main_t *cm = &vnet_classify_main;
   int rv = 0;
   vnet_classify_filter_set_t *set = 0;
+  u32 set_index = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1705,6 +1708,8 @@ classify_filter_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (input, "pcap %=", &sw_if_index, 0))
 	;
+      else if (unformat (input, "trace"))
+	pkt_trace = 1;
       else if (unformat (input, "%U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
@@ -1720,6 +1725,9 @@ classify_filter_command_fn (vlib_main_t * vm,
 	break;
     }
 
+  if (sw_if_index == 0)
+    return clib_error_return (0, "Local interface not supported...");
+
   if (is_add && mask == 0 && table_index == ~0)
     return clib_error_return (0, "Mask required");
 
@@ -1729,18 +1737,25 @@ classify_filter_command_fn (vlib_main_t * vm,
   if (is_add && match == ~0 && table_index == ~0)
     return clib_error_return (0, "match count required");
 
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "Must specify pcap or interface...");
+  if (sw_if_index == ~0 && pkt_trace == 0)
+    return clib_error_return (0, "Must specify trace, pcap or interface...");
+
+  if (pkt_trace && sw_if_index != ~0)
+    return clib_error_return (0, "Packet trace filter is per-system");
 
   if (!is_add)
     {
-      u32 set_index = 0;
 
-      if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
+      if (pkt_trace)
+	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
+      else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
 	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
 
-      if (set_index == 0)
+      if (set_index == ~0)
 	{
+	  if (pkt_trace)
+	    return clib_error_return (0,
+				      "No pkt trace classify filter set...");
 	  if (sw_if_index == 0)
 	    return clib_error_return (0, "No pcap classify filter set...");
 	  else
@@ -1759,27 +1774,36 @@ classify_filter_command_fn (vlib_main_t * vm,
 	  table_index = set->table_indices[0];
 	  vec_reset_length (set->table_indices);
 	  pool_put (cm->filter_sets, set);
-	  cm->filter_set_by_sw_if_index[sw_if_index] = 0;
-	  if (sw_if_index > 0)
+	  if (pkt_trace)
 	    {
-	      vnet_hw_interface_t *hi =
-		vnet_get_sup_hw_interface (vnm, sw_if_index);
-	      hi->trace_classify_table_index = ~0;
+	      vlib_global_main.trace_filter.trace_filter_set_index = ~0;
+	      vlib_global_main.trace_filter.trace_classify_table_index = ~0;
+	    }
+	  else
+	    {
+	      cm->filter_set_by_sw_if_index[sw_if_index] = ~0;
+	      if (sw_if_index > 0)
+		{
+		  vnet_hw_interface_t *hi =
+		    vnet_get_sup_hw_interface (vnm, sw_if_index);
+		  hi->trace_classify_table_index = ~0;
+		}
 	    }
 	}
     }
 
   if (is_add)
     {
-      u32 set_index = 0;
-
-      if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
+      if (pkt_trace)
+	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
+      else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
 	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
 
       /* Do we have a filter set for this intfc / pcap yet? */
-      if (set_index == 0)
+      if (set_index == ~0)
 	{
 	  pool_get (cm->filter_sets, set);
+	  set_index = set - cm->filter_sets;
 	  set->refcnt = 1;
 	}
       else
@@ -1826,11 +1850,18 @@ classify_filter_command_fn (vlib_main_t * vm,
 
   /* Remember the table */
   vec_add1 (set->table_indices, table_index);
-  vec_validate_init_empty (cm->filter_set_by_sw_if_index, sw_if_index, 0);
-  cm->filter_set_by_sw_if_index[sw_if_index] = set - cm->filter_sets;
+
+  if (pkt_trace)
+    vlib_global_main.trace_filter.trace_filter_set_index = set_index;
+  else
+    {
+      vec_validate_init_empty (cm->filter_set_by_sw_if_index, sw_if_index,
+			       ~0);
+      cm->filter_set_by_sw_if_index[sw_if_index] = set - cm->filter_sets;
+    }
 
   /* Put top table index where device drivers can find them */
-  if (sw_if_index > 0)
+  if (sw_if_index > 0 && pkt_trace == 0)
     {
       vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
       ASSERT (vec_len (set->table_indices) > 0);
@@ -1877,10 +1908,34 @@ found_table:
   return 0;
 }
 
+/** Enable / disable packet trace filter */
+int
+vlib_enable_disable_pkt_trace_filter (int enable)
+{
+  if (enable)
+    {
+      vnet_classify_main_t *cm = &vnet_classify_main;
+      vnet_classify_filter_set_t *set;
+      u32 set_index = vlib_global_main.trace_filter.trace_filter_set_index;
+
+      if (set_index == ~0)
+	return -1;
+
+      set = pool_elt_at_index (cm->filter_sets, set_index);
+      vlib_global_main.trace_filter.trace_classify_table_index =
+	set->table_indices[0];
+      vlib_global_main.trace_filter.trace_filter_enable = 1;
+    }
+  else
+    {
+      vlib_global_main.trace_filter.trace_filter_enable = 0;
+    }
+  return 0;
+}
+
 /*?
  * Construct an arbitrary set of packet classifier tables for use with
- * "pcap rx | tx trace," and (eventually) with the vpp packet
- * tracer
+ * "pcap rx | tx trace," and with the vpp packet tracer
  *
  * Packets which match a rule in the classifier table chain
  * will be traced. The tables are automatically ordered so that
@@ -1925,16 +1980,24 @@ found_table:
  *
  * Configure a simple classify filter, and configure pcap rx trace to use it:
  *
- * <b><em>classify filter mask l3 ip4 src match l3 ip4 src 192.168.1.11"</em></b><br>
+ * <b><em>classify filter rx mask l3 ip4 src match l3 ip4 src 192.168.1.11"</em></b><br>
  * <b><em>pcap rx trace on max 100 filter</em></b>
  *
  * Configure another fairly simple filter
  *
  * <b><em>classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
  *
- * Clear all current classifier filters
  *
- * <b><em>classify filter del</em></b>
+ * Configure a filter for use with the vpp packet tracer:
+ * <b><em>classify filter trace mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
+ * <b><em>trace add dpdk-input 100 filter</em></b>
+ *
+ * Clear classifier filters
+ *
+ * <b><em>classify filter [trace | rx | tx  | <intfc>] del</em></b>
+ *
+ * To display the top-level classifier tables for each use case:
+ * <b><em>show classify filter</em/></b>
  *
  * To inspect the classifier tables, use
  *
@@ -1947,8 +2010,9 @@ VLIB_CLI_COMMAND (classify_filter, static) =
 {
   .path = "classify filter",
   .short_help =
-  "classify filter <intfc> | pcap mask <mask-value> match <match-value> [del]"
-  "[buckets <nn>] [memory-size <n>]",
+  "classify filter <intfc> | pcap mask <mask-value> match <match-value>\n"
+  "  | trace mask <mask-value> match <match-value> [del]\n"
+  "    [buckets <nn>] [memory-size <n>]",
   .function = classify_filter_command_fn,
 };
 /* *INDENT-ON* */
@@ -1966,26 +2030,39 @@ show_classify_filter_command_fn (vlib_main_t * vm,
   u32 set_index;
   u32 table_index;
   int verbose = 0;
-  int i, j;
+  int i, j, limit;
 
   (void) unformat (input, "verbose %=", &verbose, 1);
 
   vlib_cli_output (vm, "%-30s%s", "Filter Used By", " Table(s)");
   vlib_cli_output (vm, "%-30s%s", "--------------", " --------");
 
-  for (i = 0; i < vec_len (cm->filter_set_by_sw_if_index); i++)
-    {
-      set_index = cm->filter_set_by_sw_if_index[i];
+  limit = vec_len (cm->filter_set_by_sw_if_index);
 
-      if (set_index == 0 && verbose == 0)
+  for (i = -1; i < limit; i++)
+    {
+      if (i < 0)
+	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
+      else
+	set_index = cm->filter_set_by_sw_if_index[i];
+
+      if (set_index == ~0)
 	continue;
 
       set = pool_elt_at_index (cm->filter_sets, set_index);
 
-      if (i == 0)
-	name = format (0, "pcap rx/tx/drop:");
-      else
-	name = format (0, "%U:", format_vnet_sw_if_index_name, vnm, i);
+      switch (i)
+	{
+	case -1:
+	  name = format (0, "packet tracer:");
+	  break;
+	case 0:
+	  name = format (0, "pcap rx/tx/drop:");
+	  break;
+	default:
+	  name = format (0, "%U:", format_vnet_sw_if_index_name, vnm, i);
+	  break;
+	}
 
       if (verbose)
 	{
@@ -2875,11 +2952,21 @@ vnet_classify_init (vlib_main_t * vm)
   set->table_indices[0] = ~0;
   /* Initialize the pcap filter set */
   vec_validate (cm->filter_set_by_sw_if_index, 0);
+  cm->filter_set_by_sw_if_index[0] = ~0;
+  /* Initialize the packet tracer filter set */
+  vlib_global_main.trace_filter.trace_filter_set_index = ~0;
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (vnet_classify_init);
+
+int
+vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
+{
+  return vnet_is_packet_traced_inline (b, classify_table_index, func);
+}
+
 
 #define TEST_CODE 0
 

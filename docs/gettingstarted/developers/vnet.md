@@ -526,10 +526,10 @@ These commands have the following optional parameters:
 
 ## packet trace capture filtering
 
-The "classify filter pcap | <interface-name> " debug CLI command
+The "classify filter pcap | <interface-name> | trace" debug CLI command
 constructs an arbitrary set of packet classifier tables for use with
 "pcap rx | tx | drop trace," and with the vpp packet tracer on a
-per-interface basis.
+per-interface or system-wide basis.
 
 Packets which match a rule in the classifier table chain will be
 traced. The tables are automatically ordered so that matches in the
@@ -575,10 +575,17 @@ Note that per-interface capture filters are _always_ applied.
    pcap trace tx max 100 filter
 ```
 
+### Configure a vpp packet tracer filter
+
+```
+   classify filter trace mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10
+   trace add dpdk-input 100 filter
+```
+
 ### Clear all current classifier filters
 
 ```
-    classify filter del
+    classify filter [pcap | <interface> | trace] del
 ```
 
 ### To inspect the classifier tables
