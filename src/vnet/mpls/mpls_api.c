@@ -196,6 +196,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 			      mp->mr_is_multipath,
 			      fib_index,
 			      &pfx,
+			      FIB_SOURCE_API,
 			      (mp->mr_route.mr_is_multicast ?
 			       FIB_ENTRY_FLAG_MULTICAST :
 			       FIB_ENTRY_FLAG_NONE), rpaths);
