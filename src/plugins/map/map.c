@@ -97,9 +97,6 @@ map_free_extras (u32 map_domain_index)
     return;
 
   de = vec_elt_at_index (mm->domain_extras, map_domain_index);
-  if (!de)
-    return;
-
   vec_free (de->tag);
 }
 
