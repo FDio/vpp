@@ -383,7 +383,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  break;
 	case SOCKET_READ_EVENT:
-	  for (i = 0; i < vec_len (event_data); i++)
+	  for (i = 0; i < vec_len (event_data) - 1; i++)
 	    {
 	      a = pool_elt_at_index (socket_main.process_args, event_data[i]);
 	      vl_socket_process_api_msg (a->clib_file, a->regp,
