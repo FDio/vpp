@@ -491,7 +491,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  n_left_to_next -= 1;
 	  error0 = MAP_ERROR_NONE;
 	  p0 = vlib_get_buffer (vm, pi0);
-	  u16 l4_dst_port = vnet_buffer (p0)->ip.reass.l4_dst_port;
+	  u16 l4_src_port = vnet_buffer (p0)->ip.reass.l4_src_port;
 
 	  ip60 = vlib_buffer_get_current (p0);
 
@@ -534,7 +534,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (vnet_buffer (p0)->map_t.v6.frag_offset
 	       && ip6_frag_hdr_offset (frag0)))
 	    {
-	      map_port0 = l4_dst_port;
+	      map_port0 = l4_src_port;
 	      next0 = IP6_MAPT_NEXT_MAPT_FRAGMENTED;
 	    }
 	  else
@@ -547,7 +547,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      vnet_buffer (p0)->map_t.checksum_offset =
 		vnet_buffer (p0)->map_t.v6.l4_offset + 16;
 	      next0 = IP6_MAPT_NEXT_MAPT_TCP_UDP;
-	      map_port0 = l4_dst_port;
+	      map_port0 = l4_src_port;
 	    }
 	  else
 	    if (PREDICT_TRUE
@@ -559,7 +559,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      vnet_buffer (p0)->map_t.checksum_offset =
 		vnet_buffer (p0)->map_t.v6.l4_offset + 6;
 	      next0 = IP6_MAPT_NEXT_MAPT_TCP_UDP;
-	      map_port0 = l4_dst_port;
+	      map_port0 = l4_src_port;
 	    }
 	  else if (vnet_buffer (p0)->map_t.v6.l4_protocol ==
 		   IP_PROTOCOL_ICMP6)
@@ -576,7 +576,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		      u8_ptr_add (ip60,
 				  vnet_buffer (p0)->map_t.v6.l4_offset))->
 		  code == ICMP6_echo_request)
-		map_port0 = l4_dst_port;
+		map_port0 = l4_src_port;
 	    }
 	  else
 	    {

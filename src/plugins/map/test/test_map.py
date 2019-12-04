@@ -640,6 +640,61 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_translated)
 
+    def test_map_t_ip6_psid(self):
+        """ MAP-T v6->v4 PSID validation"""
+
+        #
+        # Add a domain that maps from pg0 to pg1
+        #
+        map_dst = '2001:db8::/32'
+        map_src = '1234:5678:90ab:cdef::/64'
+        ip4_pfx = '192.168.0.0/24'
+        tag = 'MAP-T Test Domain'
+
+        self.vapi.map_add_domain(ip6_prefix=map_dst,
+                                 ip4_prefix=ip4_pfx,
+                                 ip6_src=map_src,
+                                 ea_bits_len=16,
+                                 psid_offset=6,
+                                 psid_length=4,
+                                 mtu=1500,
+                                 tag=tag)
+
+        # Enable MAP-T on interfaces.
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg0.sw_if_index,
+                                        is_translation=1)
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg1.sw_if_index,
+                                        is_translation=1)
+
+        map_route = VppIpRoute(self,
+                               "2001:db8::",
+                               32,
+                               [VppRoutePath(self.pg1.remote_ip6,
+                                             self.pg1.sw_if_index,
+                                             proto=DpoProto.DPO_PROTO_IP6)])
+        map_route.add_vpp_config()
+
+        p_ether6 = Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+        p_ip6 = IPv6(src='2001:db8:1f0::c0a8:1:f',
+                     dst='1234:5678:90ab:cdef:ac:1001:200:0')
+
+        # Send good IPv6 source port, ensure translated IPv4 received
+        payload = TCP(sport=0xabcd, dport=80)
+        p6 = (p_ether6 / p_ip6 / payload)
+        p4_translated = (IP(src='192.168.0.1',
+                            dst=self.pg0.remote_ip4) / payload)
+        p4_translated.id = 0
+        p4_translated.ttl -= 1
+        rx = self.send_and_expect(self.pg1, p6*1, self.pg0)
+        for p in rx:
+            self.validate(p[1], p4_translated)
+
+        # Send bad IPv6 source port, ensure translated IPv4 not received
+        payload = TCP(sport=0xdcba, dport=80)
+        p6 = (p_ether6 / p_ip6 / payload)
+        self.send_and_assert_no_replies(self.pg1, p6*1)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
