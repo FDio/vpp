@@ -598,7 +598,7 @@ session_main_get_worker (u32 thread_index)
 static inline session_worker_t *
 session_main_get_worker_if_valid (u32 thread_index)
 {
-  if (pool_is_free_index (session_main.wrk, thread_index))
+  if (thread_index > vec_len (session_main.wrk))
     return 0;
   return &session_main.wrk[thread_index];
 }
