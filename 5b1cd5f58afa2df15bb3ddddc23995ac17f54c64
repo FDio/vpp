@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "900e0087_7ed09500",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-12-04T10:49:44Z",
+      "side": 1,
+      "message": "This logic is wrong I think: the GSO may be enabled on ingress interface and disabled on this one. This logic will cause a failure then-- you will not be able to segment the GSO frame if it is there. So you always need to call the tx function with \"do_gso \u003d 1\" here, unless you have other way to know whether there are gso frames that you might need to segment. Am I understanding it all right ?",
+      "revId": "5b1cd5f58afa2df15bb3ddddc23995ac17f54c64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
