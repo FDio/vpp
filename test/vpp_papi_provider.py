@@ -60,7 +60,6 @@ defaultmapping = {
     'ip_neighbor_add_del': {'is_add': 1, },
     'ip_punt_police': {'is_add': 1, },
     'ip_punt_redirect': {'is_add': 1, },
-    'ip_route_add_del': {'is_add': 1, },
     'ip_unnumbered_dump': {'sw_if_index': 4294967295, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_sad_entry_add_del': {'is_add': 1, },
@@ -455,9 +454,10 @@ class VppPapiProvider(object):
         return self.api(self.papi.create_loopback,
                         {'mac_address': mac})
 
-    def ip_route_dump(self, table_id, is_ip6=False):
+    def ip_route_dump(self, table_id, is_ip6=False, src=0):
         return self.api(self.papi.ip_route_dump,
-                        {'table': {
+                        {'src': src,
+                         'table': {
                             'table_id': table_id,
                             'is_ip6': is_ip6
                         }})

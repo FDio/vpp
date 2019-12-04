@@ -1,0 +1,52 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/fib/fib_types.api";
+
+typedef fib_source
+{
+    u8 priority;
+    u8 id;
+    string name[64];
+};
+
+define fib_source_add
+{
+    u32 client_index;
+    u32 context;
+    vl_api_fib_source_t src;
+};
+
+define fib_source_add_reply
+{
+    u32 context;
+    i32 retval;
+    u8 id;
+};
+
+define fib_source_dump
+{
+    u32 client_index;
+    u32 context;
+};
+
+define fib_source_details
+{
+    u32 context;
+    vl_api_fib_source_t src;
+};
