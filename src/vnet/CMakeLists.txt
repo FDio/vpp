@@ -1284,7 +1284,10 @@ list(APPEND VNET_HEADERS
   fib/fib_source.h
 )
 
-list(APPEND VNET_API_FILES fib/fib_types.api)
+list(APPEND VNET_API_FILES
+  fib/fib_types.api
+  fib/fib.api
+)
 
 ##############################################################################
 # ADJ

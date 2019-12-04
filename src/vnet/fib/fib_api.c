@@ -21,23 +21,13 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/bier/bier_disp_table.h>
 #include <vpp/api/types.h>
+#include <vnet/ip/ip_format_fns.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/fib/fib.api_enum.h>
+#include <vnet/fib/fib.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+static u16 fib_base_msg_id;
+#define REPLY_MSG_ID_BASE fib_base_msg_id
 #include <vlibapi/api_helper_macros.h>
 
 int
@@ -456,6 +446,7 @@ fib_api_route_add_del (u8 is_add,
                        u8 is_multipath,
                        u32 fib_index,
                        const fib_prefix_t * prefix,
+                       fib_source_t src,
                        fib_entry_flag_t entry_flags,
                        fib_route_path_t *rpaths)
 {
@@ -468,13 +459,13 @@ fib_api_route_add_del (u8 is_add,
         if (is_add)
             fib_table_entry_path_add2 (fib_index,
                                        prefix,
-                                       FIB_SOURCE_API,
+                                       src,
                                        entry_flags,
                                        rpaths);
         else
             fib_table_entry_path_remove2 (fib_index,
                                           prefix,
-                                          FIB_SOURCE_API,
+                                          src,
                                           rpaths);
     }
     else
@@ -487,7 +478,7 @@ fib_api_route_add_del (u8 is_add,
             /* path replacement */
             fib_table_entry_update (fib_index,
                                     prefix,
-                                    FIB_SOURCE_API,
+                                    src,
                                     entry_flags,
                                     rpaths);
         }
@@ -495,7 +486,7 @@ fib_api_route_add_del (u8 is_add,
             /* entry delete */
             fib_table_entry_delete (fib_index,
                                     prefix,
-                                    FIB_SOURCE_API);
+                                    src);
     }
 
     return (0);
@@ -563,3 +554,93 @@ fib_proto_to_api_address_family (fib_protocol_t fproto)
     ASSERT(0);
     return (clib_net_to_host_u32 (ADDRESS_IP4));
 }
+
+void
+vl_api_fib_source_add_t_handler (vl_api_fib_source_add_t * mp)
+{
+    vl_api_fib_source_add_reply_t *rmp;
+    fib_source_t src;
+    int rv = 0;
+    u8 *name;
+
+    name = format (0, "%s", mp->src.name);
+    vec_add1 (name, 0);
+
+    src = fib_source_allocate((const char *)name,
+                              mp->src.priority,
+                              FIB_SOURCE_BH_API);
+
+    vec_free(name);
+
+    REPLY_MACRO2 (VL_API_FIB_SOURCE_ADD_REPLY,
+    ({
+        rmp->id = src;
+    }));
+}
+
+typedef struct fib_source_dump_ctx_t_
+{
+    vl_api_registration_t * reg;
+    u32 context;
+} fib_source_dump_ctx_t;
+
+static walk_rc_t
+send_fib_source (fib_source_t id,
+                 const char *name,
+                 fib_source_priority_t prio,
+                 fib_source_behaviour_t bh,
+                 void *data)
+{
+    vl_api_fib_source_details_t *mp;
+    fib_source_dump_ctx_t *ctx;
+
+    ctx = data;
+    mp = vl_msg_api_alloc_zero (sizeof (*mp));
+    if (!mp)
+        return WALK_STOP;
+
+    mp->_vl_msg_id = ntohs (VL_API_FIB_SOURCE_DETAILS + REPLY_MSG_ID_BASE);
+    mp->context = ctx->context;
+
+    mp->src.priority = prio;
+    mp->src.id = id;
+    clib_memcpy(mp->src.name, name,
+                clib_min(strlen(name), ARRAY_LEN(mp->src.name)));
+
+    vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+    return (WALK_CONTINUE);
+}
+
+void
+vl_api_fib_source_dump_t_handler (vl_api_fib_source_dump_t * mp)
+{
+    vl_api_registration_t *reg;
+
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+        return;
+
+    fib_source_dump_ctx_t ctx = {
+        .reg = reg,
+        .context = mp->context,
+    };
+
+    fib_source_walk(send_fib_source, &ctx);
+}
+
+
+#include <vnet/fib/fib.api.c>
+
+static clib_error_t *
+fib_api_hookup (vlib_main_t * vm)
+{
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  fib_base_msg_id = setup_message_id_table ();
+
+  return (NULL);
+}
+
+VLIB_API_INIT_FUNCTION (fib_api_hookup);

@@ -303,6 +303,7 @@ send_ip_route_details (vpe_api_main_t * am,
     htonl (fib_table_get_table_id
 	   (fib_entry_get_fib_index (fib_entry_index), pfx->fp_proto));
   mp->route.n_paths = path_count;
+  mp->route.src = fib_entry_get_best_source (fib_entry_index);
   mp->route.stats_index =
     htonl (fib_table_entry_get_stats_index
 	   (fib_entry_get_fib_index (fib_entry_index), pfx));
@@ -330,6 +331,7 @@ vl_api_ip_route_dump_t_handler (vl_api_ip_route_dump_t * mp)
   fib_node_index_t *fib_entry_index;
   vl_api_registration_t *reg;
   fib_protocol_t fproto;
+  fib_source_t src;
   u32 fib_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -342,11 +344,16 @@ vl_api_ip_route_dump_t_handler (vl_api_ip_route_dump_t * mp)
 
   fproto = (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   fib_index = fib_table_find (fproto, ntohl (mp->table.table_id));
+  src = mp->src;
 
   if (INDEX_INVALID == fib_index)
     return;
 
-  fib_table_walk (fib_index, fproto, vl_api_ip_fib_dump_walk, &ctx);
+  if (src)
+    fib_table_walk_w_src (fib_index, fproto, src,
+			  vl_api_ip_fib_dump_walk, &ctx);
+  else
+    fib_table_walk (fib_index, fproto, vl_api_ip_fib_dump_walk, &ctx);
 
   vec_foreach (fib_entry_index, ctx.feis)
   {
@@ -661,6 +668,7 @@ ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp, u32 * stats_index)
   fib_route_path_t *rpaths = NULL, *rpath;
   fib_entry_flag_t entry_flags;
   vl_api_fib_path_t *apath;
+  fib_source_t src;
   fib_prefix_t pfx;
   u32 fib_index;
   int rv, ii;
@@ -691,9 +699,11 @@ ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp, u32 * stats_index)
 	goto out;
     }
 
+  src = (0 == mp->route.src ? FIB_SOURCE_API : mp->route.src);
+
   rv = fib_api_route_add_del (mp->is_add,
 			      mp->is_multipath,
-			      fib_index, &pfx, entry_flags, rpaths);
+			      fib_index, &pfx, src, entry_flags, rpaths);
 
   if (mp->is_add && 0 == rv)
     *stats_index = fib_table_entry_get_stats_index (fib_index, &pfx);
