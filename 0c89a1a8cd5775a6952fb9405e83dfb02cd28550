@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "66205303_df0448e2",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-04T15:44:29Z",
+      "side": 1,
+      "message": "Right, did introduce a QUIC_ASSERT macro for this purpose.\nFor now it prints on all quic asserts in prod. We can fine tune \nit if it cause performance drops.",
+      "parentUuid": "03519237_661e1f84",
+      "range": {
+        "startLine": 676,
+        "startChar": 2,
+        "endLine": 676,
+        "endChar": 49
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e9347577_86090df1",
         "filename": "src/plugins/quic/quic.c",
         "patchSetId": 1
@@ -45,6 +69,30 @@
       "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2012270c_cf6c0f35",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-04T15:44:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e9347577_86090df1",
+      "range": {
+        "startLine": 682,
+        "startChar": 2,
+        "endLine": 682,
+        "endChar": 15
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "08b8616d_342528be",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-04T15:44:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8b51fa32_0fffbb9b",
+      "range": {
+        "startLine": 711,
+        "startChar": 2,
+        "endLine": 711,
+        "endChar": 20
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "70f89116_460f22e4",
         "filename": "src/plugins/quic/quic.c",
         "patchSetId": 1
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "09b3bef1_27a3ae5f",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1717,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-04T15:44:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "70f89116_460f22e4",
+      "range": {
+        "startLine": 1717,
+        "startChar": 2,
+        "endLine": 1717,
+        "endChar": 51
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0d1c8801_960f30ce",
         "filename": "src/plugins/quic/quic.c",
         "patchSetId": 1
@@ -114,6 +210,30 @@
       "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "133c40b1_8d80056a",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1726,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-04T15:44:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0d1c8801_960f30ce",
+      "range": {
+        "startLine": 1726,
+        "startChar": 2,
+        "endLine": 1726,
+        "endChar": 15
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
