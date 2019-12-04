@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f82af891_db7f30df",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-12-04T10:56:58Z",
+      "side": 1,
+      "message": "I suppose the compiler is clever enough to optimize things, but is it intentional we are passing it by value ?",
+      "range": {
+        "startLine": 94,
+        "startChar": 7,
+        "endLine": 94,
+        "endChar": 30
+      },
+      "revId": "4e99f38ba6ce56276e7cfb63d45624c21597fe2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
