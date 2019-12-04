@@ -1,0 +1,20 @@
+set term pag off
+loop create
+
+set int ip address loop0 192.168.1.1/24
+set int state loop0 up
+
+packet-generator new {
+    name pg0
+    limit 100
+    size 300-300
+    interface loop0
+    node ethernet-input
+    data { IP4: 1.2.3 -> 4.5.6
+           UDP: 192.168.1.10 - 192.168.1.20 -> 192.168.2.10
+           UDP: 1234 -> 2345
+           incrementing 286
+    }
+}
+
+classify filter trace mask l3 ip4 src match l3 ip4 src 192.168.1.15

@@ -61,6 +61,9 @@ vlib_add_trace (vlib_main_t * vm,
 
   ASSERT (vnet_trace_dummy);
 
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_IS_TRACED) == 0))
+    return vnet_trace_dummy;
+
   if (PREDICT_FALSE (tm->add_trace_callback != 0))
     {
       return tm->add_trace_callback ((struct vlib_main_t *) vm,
@@ -118,6 +121,9 @@ vlib_trace_next_frame (vlib_main_t * vm,
 }
 
 void trace_apply_filter (vlib_main_t * vm);
+int vnet_is_packet_traced (vlib_buffer_t * b,
+			   u32 classify_table_index, int func);
+
 
 /* Mark buffer as traced and allocate trace buffer. */
 always_inline void
@@ -130,6 +136,16 @@ vlib_trace_buffer (vlib_main_t * vm,
 
   if (PREDICT_FALSE (tm->trace_enable == 0))
     return;
+
+  /* Classifier filter in use? */
+  if (PREDICT_FALSE (vlib_global_main.trace_filter.trace_filter_enable))
+    {
+      /* See if we're supposed to trace this packet... */
+      if (vnet_is_packet_traced
+	  (b, vlib_global_main.trace_filter.trace_classify_table_index,
+	   0 /* full classify */ ) != 1)
+	return;
+    }
 
   /*
    * Apply filter to existing traces to keep number of allocated traces low.
