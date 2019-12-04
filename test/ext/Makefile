@@ -46,7 +46,8 @@ $(VAPI_CPPBIN).d: $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
 	$(CXX) -o $@ $(CPPFLAGS) -MM -MT '$(VAPI_CPPBIN)' $(CPPSRC) > $@
 endif
 
-ifeq ($(filter yes,$(EXTENDED_TESTS)),$(EXTENDED_TESTS))
+ifneq ($(EXTENDED_TESTS),)
+ifeq ($(filter yes y 1,$(EXTENDED_TESTS)),$(EXTENDED_TESTS))
 VOM_BIN = $(addprefix $(VOM_BINDIR), /vom_test)
 VOM_CPPSRC = $(TEST_EXT_DIR)/vom_test.cpp
 
@@ -73,6 +74,7 @@ $(VOM_BIN): $(VOM_CPPSRC) $(VOM_BINDIR)
 
 $(VOM_BIN).d: $(VOM_CPPSRC) $(VOM_BINDIR)
 	$(CXX) -o $@ $(VOM_CPPFLAGS) -MM -MT '$(VOM_BIN)' $(VOM_CPPSRC) > $@
+endif
 endif
 
 .PHONY: test-apps
