@@ -941,6 +941,17 @@ extern void fib_table_walk(u32 fib_index,
                            void *ctx);
 
 /**
+ * @brief Walk all entries in a FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void fib_table_walk_w_src(u32 fib_index,
+                                 fib_protocol_t proto,
+                                 fib_source_t src,
+                                 fib_table_walk_fn_t fn,
+                                 void *ctx);
+
+/**
  * @brief Walk all entries in a sub-tree FIB table. The 'root' paraneter
  * is the prefix at the root of the sub-tree.
  * N.B: This is NOT safe to deletes. If you need to delete walk the whole

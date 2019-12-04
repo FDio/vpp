@@ -28,7 +28,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, FibPathProto, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump, \
-    VppIp6LinkLocalAddress
+    VppIp6LinkLocalAddress, VppIpRouteV2
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_pg_interface import is_ipv6_misc
@@ -3267,6 +3267,108 @@ class TestIPv6PathMTU(VppTestCase):
         pmtu.remove_vpp_config()
         self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
         self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+
+class TestIPFibSource(VppTestCase):
+    """ IPv6 Table FibSource """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPFibSource, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPFibSource, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPFibSource, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_arp()
+            i.generate_remote_hosts(2)
+            i.configure_ipv6_neighbors()
+
+    def tearDown(self):
+        super(TestIPFibSource, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+
+    def test_fib_source(self):
+        """ IP Table FibSource """
+
+        routes = self.vapi.ip_route_v2_dump(0, True)
+
+        # 2 interfaces (4 routes) + 2 specials + 4 neighbours = 10 routes
+        self.assertEqual(len(routes), 10)
+
+        # dump all the sources in the FIB
+        sources = self.vapi.fib_source_dump()
+        for source in sources:
+            if (source.src.name == "API"):
+                api_source = source.src
+            if (source.src.name == "interface"):
+                intf_source = source.src
+            if (source.src.name == "adjacency"):
+                adj_source = source.src
+            if (source.src.name == "special"):
+                special_source = source.src
+            if (source.src.name == "default-route"):
+                dr_source = source.src
+
+        # dump the individual route types
+        routes = self.vapi.ip_route_v2_dump(0, True, src=adj_source.id)
+        self.assertEqual(len(routes), 4)
+        routes = self.vapi.ip_route_v2_dump(0, True, src=intf_source.id)
+        self.assertEqual(len(routes), 4)
+        routes = self.vapi.ip_route_v2_dump(0, True, src=special_source.id)
+        self.assertEqual(len(routes), 1)
+        routes = self.vapi.ip_route_v2_dump(0, True, src=dr_source.id)
+        self.assertEqual(len(routes), 1)
+
+        # add a new soure that'a better than the API
+        self.vapi.fib_source_add(src={'name': "bgp",
+                                      "priority": api_source.priority - 1})
+
+        # dump all the sources to check our new one is there
+        sources = self.vapi.fib_source_dump()
+
+        for source in sources:
+            if (source.src.name == "bgp"):
+                bgp_source = source.src
+
+        self.assertTrue(bgp_source)
+        self.assertEqual(bgp_source.priority,
+                         api_source.priority - 1)
+
+        # add a route with the default API source
+        r1 = VppIpRouteV2(
+            self, "2001::1", 128,
+            [VppRoutePath(self.pg0.remote_ip6,
+                          self.pg0.sw_if_index)]).add_vpp_config()
+
+        r2 = VppIpRouteV2(self, "2001::1", 128,
+                          [VppRoutePath(self.pg1.remote_ip6,
+                                        self.pg1.sw_if_index)],
+                          src=bgp_source.id).add_vpp_config()
+
+        # ensure the BGP source takes priority
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
+             inet6.UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+
+        self.send_and_expect(self.pg0, [p], self.pg1)
+
+        r2.remove_vpp_config()
+        r1.remove_vpp_config()
+
+        self.assertFalse(find_route(self, "2001::1", 128))
 
 
 if __name__ == '__main__':
