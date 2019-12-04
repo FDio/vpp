@@ -213,5 +213,6 @@ const static fib_entry_src_vft_t interface_src_vft = {
 void
 fib_entry_src_interface_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_INTERFACE, &interface_src_vft);    
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_INTERFACE,
+                                     &interface_src_vft);
 }

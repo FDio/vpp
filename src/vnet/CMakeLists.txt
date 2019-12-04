@@ -1248,21 +1248,22 @@ list(APPEND VNET_SOURCES
   fib/fib_node_list.c
   fib/fib_entry.c
   fib/fib_entry_src.c
-  fib/fib_entry_src_rr.c
+  fib/fib_entry_src_adj.c
+  fib/fib_entry_src_api.c
+  fib/fib_entry_src_drop.c
   fib/fib_entry_src_interface.c
   fib/fib_entry_src_interpose.c
-  fib/fib_entry_src_default_route.c
-  fib/fib_entry_src_special.c
-  fib/fib_entry_src_api.c
-  fib/fib_entry_src_adj.c
-  fib/fib_entry_src_mpls.c
   fib/fib_entry_src_lisp.c
+  fib/fib_entry_src_mpls.c
+  fib/fib_entry_src_simple.c
+  fib/fib_entry_src_rr.c
   fib/fib_entry_cover.c
   fib/fib_entry_delegate.c
   fib/fib_entry_track.c
   fib/fib_path_list.c
   fib/fib_path.c
   fib/fib_path_ext.c
+  fib/fib_source.c
   fib/fib_urpf_list.c
   fib/fib_attached_export.c
   fib/fib_api.c
@@ -1280,6 +1281,7 @@ list(APPEND VNET_HEADERS
   fib/fib_node_list.h
   fib/fib_entry.h
   fib/fib_entry_delegate.h
+  fib/fib_source.h
 )
 
 list(APPEND VNET_API_FILES fib/fib_types.api)

@@ -65,6 +65,8 @@ uword *gbp_subnet_db;
  */
 gbp_subnet_t *gbp_subnet_pool;
 
+static fib_source_t gbp_fib_source;
+
 static index_t
 gbp_subnet_db_find (u32 fib_index, const fib_prefix_t * pfx)
 {
@@ -122,7 +124,7 @@ gbp_subnet_transport_add (gbp_subnet_t * gs)
 
   gs->gs_fei = fib_table_entry_update_one_path (gs->gs_key->gsk_fib_index,
 						&gs->gs_key->gsk_pfx,
-						FIB_SOURCE_PLUGIN_HI,
+						gbp_fib_source,
 						FIB_ENTRY_FLAG_NONE,
 						fib_proto_to_dpo (fproto),
 						&ADJ_BCAST_ADDR,
@@ -145,7 +147,7 @@ gbp_subnet_internal_add (gbp_subnet_t * gs)
 
   gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
 						   &gs->gs_key->gsk_pfx,
-						   FIB_SOURCE_PLUGIN_HI,
+						   gbp_fib_source,
 						   FIB_ENTRY_FLAG_EXCLUSIVE,
 						   &gfd);
 
@@ -169,7 +171,7 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
 
   gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
 						   &gs->gs_key->gsk_pfx,
-						   FIB_SOURCE_PLUGIN_HI,
+						   gbp_fib_source,
 						   (FIB_ENTRY_FLAG_EXCLUSIVE |
 						    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
 						   &gpd);
@@ -216,7 +218,7 @@ gbp_subnet_del_i (index_t gsi)
 				(GBP_SUBNET_L3_OUT == gs->gs_type
 				 || GBP_SUBNET_ANON_L3_OUT ==
 				 gs->gs_type) ? FIB_SOURCE_SPECIAL :
-				FIB_SOURCE_PLUGIN_HI);
+				gbp_fib_source);
 
   gbp_subnet_db_del (gs);
   gbp_route_domain_unlock (gs->gs_rd);
@@ -578,6 +580,9 @@ gbp_subnet_init (vlib_main_t * vm)
 {
   gbp_subnet_db = hash_create_mem (0,
 				   sizeof (gbp_subnet_key_t), sizeof (u32));
+  gbp_fib_source = fib_source_allocate ("gbp-subnet",
+					FIB_SOURCE_PRIORITY_HI,
+					FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);
 }

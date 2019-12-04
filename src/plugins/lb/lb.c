@@ -26,6 +26,9 @@
 //After so many seconds. It is assumed that inter-core race condition will not occur.
 #define LB_CONCURRENCY_TIMEOUT 10
 
+// FIB source for adding routes
+static fib_source_t lb_fib_src;
+
 lb_main_t lb_main;
 
 #define lb_get_writer_lock() clib_spinlock_lock (&lb_main.writer_lock)
@@ -948,7 +951,7 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
   dpo_set(&dpo, dpo_type, proto, *vip_prefix_index);
   fib_table_entry_special_dpo_add(0,
                                   &pfx,
-                                  FIB_SOURCE_PLUGIN_HI,
+                                  lb_fib_src,
                                   FIB_ENTRY_FLAG_EXCLUSIVE,
                                   &dpo);
   dpo_reset(&dpo);
@@ -1037,7 +1040,7 @@ static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
       pfx.fp_len = vip->plen;
       pfx.fp_proto = FIB_PROTOCOL_IP6;
   }
-  fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
+  fib_table_entry_special_remove(0, &pfx, lb_fib_src);
 }
 
 int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
@@ -1445,6 +1448,11 @@ lb_init (vlib_main_t * vm)
 #define _(a,b,c) lbm->vip_counters[c].name = b;
   lb_foreach_vip_counter
 #undef _
+
+  lb_fib_src = fib_source_allocate("lb",
+                                   FIB_SOURCE_PRIORITY_HI,
+                                   FIB_SOURCE_BH_SIMPLE);
+
   return NULL;
 }
 

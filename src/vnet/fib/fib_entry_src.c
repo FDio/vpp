@@ -28,7 +28,7 @@
 /*
  * per-source type vft
  */
-static fib_entry_src_vft_t fib_entry_src_vft[FIB_SOURCE_MAX];
+static fib_entry_src_vft_t fib_entry_src_bh_vft[FIB_SOURCE_BH_MAX];
 
 /**
  * Get the VFT for a given source. This is a combination of the source
@@ -37,12 +37,16 @@ static fib_entry_src_vft_t fib_entry_src_vft[FIB_SOURCE_MAX];
 const fib_entry_src_vft_t*
 fib_entry_src_get_vft (const fib_entry_src_t *esrc)
 {
+    fib_source_behaviour_t bh;
+
+    bh = fib_source_get_behaviour(esrc->fes_src);
+
     if (esrc->fes_entry_flags & FIB_ENTRY_FLAG_INTERPOSE)
     {
-        return (&fib_entry_src_vft[FIB_SOURCE_INTERPOSE]);
+        return (&fib_entry_src_bh_vft[FIB_SOURCE_BH_INTERPOSE]);
     }
 
-    return (&fib_entry_src_vft[esrc->fes_src]);
+    return (&fib_entry_src_bh_vft[bh]);
 }
 
 static void
@@ -54,14 +58,14 @@ fib_entry_src_copy_default (const fib_entry_src_t *orig_src,
 }
 
 void
-fib_entry_src_register (fib_source_t source,
-			const fib_entry_src_vft_t *vft)
+fib_entry_src_behaviour_register (fib_source_behaviour_t bh,
+                                  const fib_entry_src_vft_t *vft)
 {
-    fib_entry_src_vft[source] = *vft;
+    fib_entry_src_bh_vft[bh] = *vft;
 
-    if (NULL == fib_entry_src_vft[source].fesv_copy)
+    if (NULL == fib_entry_src_bh_vft[bh].fesv_copy)
     {
-        fib_entry_src_vft[source].fesv_copy = fib_entry_src_copy_default;
+        fib_entry_src_bh_vft[bh].fesv_copy = fib_entry_src_copy_default;
     }
 }
 
@@ -71,7 +75,8 @@ fib_entry_src_cmp_for_sort (void * v1,
 {
     fib_entry_src_t *esrc1 = v1, *esrc2 = v2;
 
-    return (esrc1->fes_src - esrc2->fes_src);
+    return (fib_source_get_prio(esrc1->fes_src) -
+            fib_source_get_prio(esrc2->fes_src));
 }
 
 static void
@@ -1925,8 +1930,8 @@ fib_entry_src_module_init (void)
     fib_entry_src_rr_register();
     fib_entry_src_interface_register();
     fib_entry_src_interpose_register();
-    fib_entry_src_default_route_register();
-    fib_entry_src_special_register();
+    fib_entry_src_drop_register();
+    fib_entry_src_simple_register();
     fib_entry_src_api_register();
     fib_entry_src_adj_register();
     fib_entry_src_mpls_register();
