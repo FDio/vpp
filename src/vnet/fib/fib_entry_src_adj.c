@@ -411,5 +411,5 @@ const static fib_entry_src_vft_t adj_src_vft = {
 void
 fib_entry_src_adj_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_ADJ, &adj_src_vft);
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_ADJ, &adj_src_vft);
 }

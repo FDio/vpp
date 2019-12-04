@@ -61,17 +61,17 @@ fib_entry_src_rr_get_next_best (const fib_entry_src_t *src,
         /*
          * skip to the next best source after this one
          */
-        if (source <= src->fes_src)
+        switch (fib_source_cmp(source, src->fes_src))
         {
+        case FIB_SOURCE_CMP_BETTER:
+        case FIB_SOURCE_CMP_EQUAL:
             continue;
-        }
-        else
-        {
+        case FIB_SOURCE_CMP_WORSE:
             best_src = next_src;
-            break;
+            goto out;
         }
     }));
-
+ out:
     return (best_src);
 }
 
@@ -366,5 +366,6 @@ const static fib_entry_src_vft_t interpose_src_vft = {
 void
 fib_entry_src_interpose_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_INTERPOSE, &interpose_src_vft);
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_INTERPOSE,
+                                     &interpose_src_vft);
 }

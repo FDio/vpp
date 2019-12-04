@@ -109,7 +109,7 @@ dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 	.fp_len = 0,
 	.fp_addr.ip4.as_u32 = 0,
       };
-      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+      fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
     }
   else
@@ -121,7 +121,7 @@ dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 	.fp_addr.ip6.as_u64[0] = addr->as_u64[0],
 	.fp_addr.ip6.as_u64[1] = addr->as_u64[1],
       };
-      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+      fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
     }
 
@@ -153,7 +153,7 @@ dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 	.fp_addr.ip6.as_u64[0] = addr->as_u64[0],
 	.fp_addr.ip6.as_u64[1] = addr->as_u64[1],
       };
-      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+      fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
 
       dpo_reset (&dpo);
@@ -218,7 +218,7 @@ dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr, u8 is_add)
       foreach_snat_protocol
 #undef _
 	dslite_dpo_create (DPO_PROTO_IP4, 0, &dpo_v4);
-      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+      fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v4);
       dpo_reset (&dpo_v4);
     }
@@ -231,7 +231,7 @@ dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr, u8 is_add)
       vec_free (a->busy_##n##_ports_per_thread);
       foreach_snat_protocol
 #undef _
-	fib_table_entry_special_remove (0, &pfx, FIB_SOURCE_PLUGIN_HI);
+	fib_table_entry_special_remove (0, &pfx, nat_fib_src_hi);
       vec_del1 (dm->addr_pool, i);
     }
   return 0;

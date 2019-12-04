@@ -343,7 +343,7 @@ nat64_add_del_pool_addr (u32 thread_index,
       if (vrf_id != ~0)
 	a->fib_index =
 	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-					     FIB_SOURCE_PLUGIN_HI);
+					     nat_fib_src_hi);
 #define _(N, id, n, s) \
       clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535); \
       a->busy_##n##_ports = 0; \
@@ -357,8 +357,7 @@ nat64_add_del_pool_addr (u32 thread_index,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       if (a->fib_index != ~0)
-	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6,
-			  FIB_SOURCE_PLUGIN_HI);
+	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
       /* Delete sessions using address */
         /* *INDENT-OFF* */
         vec_foreach (db, nm->db)
@@ -688,7 +687,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
   u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-						     FIB_SOURCE_PLUGIN_HI);
+						     nat_fib_src_hi);
   snat_protocol_t p = ip_proto_to_snat_proto (proto);
   ip46_address_t addr;
   int i;
@@ -1027,7 +1026,7 @@ nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
 	  vec_add2 (nm->pref64, p, 1);
 	  p->fib_index =
 	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-					       FIB_SOURCE_PLUGIN_HI);
+					       nat_fib_src_hi);
 	  p->vrf_id = vrf_id;
 	}
 

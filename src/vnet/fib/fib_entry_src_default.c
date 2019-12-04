@@ -113,9 +113,6 @@ const static fib_entry_src_vft_t default_src_vft = {
 void
 fib_entry_src_default_register (void)
 {
-    fib_source_t source;
-
-    FOR_EACH_FIB_SOURCE(source) {
-	fib_entry_src_register(source, &default_src_vft);    
-    }
+    fib_entry_src_behaviour_register (FIB_SOURCE_BH_DROP,
+                                      &default_src_vft);
 }

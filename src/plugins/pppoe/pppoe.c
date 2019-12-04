@@ -37,6 +37,8 @@
 
 pppoe_main_t pppoe_main;
 
+static fib_source_t pppoe_fib_src;
+
 u8 *
 format_pppoe_session (u8 * s, va_list * args)
 {
@@ -376,7 +378,7 @@ int vnet_pppoe_add_del_session
 
       /* add reverse route for client ip */
       fib_table_entry_path_add (a->decap_fib_index, &pfx,
-				FIB_SOURCE_PLUGIN_HI, FIB_ENTRY_FLAG_NONE,
+				pppoe_fib_src, FIB_ENTRY_FLAG_NONE,
 				fib_proto_to_dpo (pfx.fp_proto),
 				&pfx.fp_addr, sw_if_index, ~0,
 				1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
@@ -408,7 +410,7 @@ int vnet_pppoe_add_del_session
 
       /* delete reverse route for client ip */
       fib_table_entry_path_remove (a->decap_fib_index, &pfx,
-				   FIB_SOURCE_PLUGIN_HI,
+				   pppoe_fib_src,
 				   fib_proto_to_dpo (pfx.fp_proto),
 				   &pfx.fp_addr,
 				   sw_if_index, ~0, 1,
@@ -720,6 +722,8 @@ pppoe_init (vlib_main_t * vm)
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_PPPOE_DISCOVERY,
 				pppoe_cp_dispatch_node.index);
+
+  pppoe_fib_src = fib_source_allocate ("pppoe", 624, FIB_SOURCE_BH_SIMPLE);
 
   return 0;
 }

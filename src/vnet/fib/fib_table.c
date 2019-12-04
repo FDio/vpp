@@ -304,6 +304,21 @@ fib_table_fwding_dpo_remove (u32 fib_index,
     }
 }
 
+static void
+fib_table_source_count_inc (fib_table_t *fib_table,
+                            fib_source_t source)
+{
+    vec_validate (fib_table->ft_src_route_counts, source);
+    fib_table->ft_src_route_counts[source]++;
+}
+
+static void
+fib_table_source_count_dec (fib_table_t *fib_table,
+                            fib_source_t source)
+{
+    vec_validate (fib_table->ft_src_route_counts, source);
+    fib_table->ft_src_route_counts[source]--;
+}
 
 fib_node_index_t
 fib_table_entry_special_dpo_add (u32 fib_index,
@@ -325,7 +340,7 @@ fib_table_entry_special_dpo_add (u32 fib_index,
 						   dpo);
 
 	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
-        fib_table->ft_src_route_counts[source]++;
+        fib_table_source_count_inc(fib_table, source);
     }
     else
     {
@@ -336,7 +351,7 @@ fib_table_entry_special_dpo_add (u32 fib_index,
 
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]++;
+        fib_table_source_count_inc(fib_table, source);
         }
     }
 
@@ -364,7 +379,7 @@ fib_table_entry_special_dpo_update (u32 fib_index,
 						   dpo);
 
 	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
-        fib_table->ft_src_route_counts[source]++;
+        fib_table_source_count_inc(fib_table, source);
     }
     else
     {
@@ -379,7 +394,7 @@ fib_table_entry_special_dpo_update (u32 fib_index,
 
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]++;
+            fib_table_source_count_inc(fib_table, source);
         }
     }
 
@@ -461,7 +476,7 @@ fib_table_entry_special_remove (u32 fib_index,
 	 */
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]--;
+            fib_table_source_count_dec(fib_table, source);
         }
 
 	fib_entry_unlock(fib_entry_index);
@@ -591,7 +606,7 @@ fib_table_entry_path_add2 (u32 fib_index,
 					   rpaths);
 
 	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
-        fib_table->ft_src_route_counts[source]++;
+        fib_table_source_count_inc(fib_table, source);
     }
     else
     {
@@ -602,7 +617,7 @@ fib_table_entry_path_add2 (u32 fib_index,
 
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]++;
+            fib_table_source_count_inc(fib_table, source);
         }
     }
 
@@ -684,7 +699,7 @@ fib_table_entry_path_remove2 (u32 fib_index,
 	 */
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]--;
+            fib_table_source_count_dec(fib_table, source);
         }
 
 	fib_entry_unlock(fib_entry_index);
@@ -763,7 +778,7 @@ fib_table_entry_update (u32 fib_index,
 					   paths);
 
     	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
-        fib_table->ft_src_route_counts[source]++;
+        fib_table_source_count_inc(fib_table, source);
     }
     else
     {
@@ -774,7 +789,7 @@ fib_table_entry_update (u32 fib_index,
 
         if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
         {
-            fib_table->ft_src_route_counts[source]++;
+            fib_table_source_count_inc(fib_table, source);
         }
     }
 
@@ -856,7 +871,7 @@ fib_table_entry_delete_i (u32 fib_index,
      */
     if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
     {
-        fib_table->ft_src_route_counts[source]--;
+        fib_table_source_count_dec(fib_table, source);
     }
 
     fib_entry_unlock(fib_entry_index);
@@ -1246,6 +1261,27 @@ fib_table_sub_tree_walk (u32 fib_index,
     }
 }
 
+static void
+fib_table_lock_dec (fib_table_t *fib_table,
+                    fib_source_t source)
+{
+    vec_validate(fib_table->ft_locks, source);
+
+    fib_table->ft_locks[source]--;
+    fib_table->ft_total_locks--;
+}
+
+static void
+fib_table_lock_inc (fib_table_t *fib_table,
+                    fib_source_t source)
+{
+    vec_validate(fib_table->ft_locks, source);
+
+    ASSERT(fib_table->ft_locks[source] < (0xffff - 1));
+    fib_table->ft_locks[source]++;
+    fib_table->ft_total_locks++;
+}
+
 void
 fib_table_unlock (u32 fib_index,
 		  fib_protocol_t proto,
@@ -1254,10 +1290,9 @@ fib_table_unlock (u32 fib_index,
     fib_table_t *fib_table;
 
     fib_table = fib_table_get(fib_index, proto);
-    fib_table->ft_locks[source]--;
-    fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]--;
+    fib_table_lock_dec(fib_table, source);
 
-    if (0 == fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS])
+    if (0 == fib_table->ft_total_locks)
     {
         /*
          * no more locak from any source - kill it
@@ -1275,10 +1310,7 @@ fib_table_lock (u32 fib_index,
 
     fib_table = fib_table_get(fib_index, proto);
 
-    ASSERT(fib_table->ft_locks[source] < (0xffff - 1));
-
-    fib_table->ft_locks[source]++;
-    fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]++;
+    fib_table_lock_inc(fib_table, source);
 }
 
 u32

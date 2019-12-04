@@ -23,12 +23,6 @@
 #include <vnet/mpls/packet.h>
 
 /**
- * Keep a lock per-source and a total
- */
-#define FIB_TABLE_N_LOCKS (FIB_SOURCE_MAX+1)
-#define FIB_TABLE_TOTAL_LOCKS FIB_SOURCE_MAX
-
-/**
  * Flags for the source data
  */
 typedef enum fib_table_attribute_t_ {
@@ -89,7 +83,8 @@ typedef struct fib_table_t_
     /**
      * per-source number of locks on the table
      */
-    u16 ft_locks[FIB_TABLE_N_LOCKS];
+    u16 *ft_locks;
+    u32 ft_total_locks;
 
     /**
      * Table ID (hash key) for this FIB.
@@ -109,7 +104,7 @@ typedef struct fib_table_t_
     /**
      * Per-source route counters
      */
-    u32 ft_src_route_counts[FIB_SOURCE_MAX];
+    u32 *ft_src_route_counts;
 
     /**
      * Total route counters

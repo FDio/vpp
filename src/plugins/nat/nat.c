@@ -38,6 +38,9 @@
 
 snat_main_t snat_main;
 
+fib_source_t nat_fib_src_hi;
+fib_source_t nat_fib_src_low;
+
 /* *INDENT-OFF* */
 /* Hook up input features */
 VNET_FEATURE_INIT (nat_pre_in2out, static) = {
@@ -536,7 +539,7 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
   if (is_add)
     fib_table_entry_update_one_path (fib_index,
 				     &prefix,
-				     FIB_SOURCE_PLUGIN_LOW,
+				     nat_fib_src_low,
 				     (FIB_ENTRY_FLAG_CONNECTED |
 				      FIB_ENTRY_FLAG_LOCAL |
 				      FIB_ENTRY_FLAG_EXCLUSIVE),
@@ -545,7 +548,7 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
 				     sw_if_index,
 				     ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
   else
-    fib_table_entry_delete (fib_index, &prefix, FIB_SOURCE_PLUGIN_LOW);
+    fib_table_entry_delete (fib_index, &prefix, nat_fib_src_low);
 }
 
 int
@@ -577,7 +580,7 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
   if (vrf_id != ~0)
     ap->fib_index =
       fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
-					 FIB_SOURCE_PLUGIN_LOW);
+					 nat_fib_src_low);
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
@@ -813,7 +816,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	      local->vrf_id = vrf_id;
 	      local->fib_index =
 		fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
-						   FIB_SOURCE_PLUGIN_LOW);
+						   nat_fib_src_low);
 	      m_key.addr = m->local_addr;
 	      m_key.port = m->local_port;
 	      m_key.protocol = m->proto;
@@ -834,13 +837,13 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       if (vrf_id != ~0)
 	fib_index =
 	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
-					     FIB_SOURCE_PLUGIN_LOW);
+					     nat_fib_src_low);
       /* If not specified use inside VRF id from SNAT plugin startup config */
       else
 	{
 	  fib_index = sm->inside_fib_index;
 	  vrf_id = sm->inside_vrf_id;
-	  fib_table_lock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
+	  fib_table_lock (fib_index, FIB_PROTOCOL_IP4, nat_fib_src_low);
 	}
 
       if (!(out2in_only || identity_nat))
@@ -1133,7 +1136,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	    }
 	}
 
-      fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
+      fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, nat_fib_src_low);
       if (pool_elts (m->locals))
 	return 0;
 
@@ -1291,7 +1294,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	  locals[i].fib_index =
 	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 					       locals[i].vrf_id,
-					       FIB_SOURCE_PLUGIN_LOW);
+					       nat_fib_src_low);
 	  m_key.addr = locals[i].addr;
 	  m_key.fib_index = locals[i].fib_index;
 	  if (!out2in_only)
@@ -1381,7 +1384,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       pool_foreach (local, m->locals,
       ({
           fib_table_unlock (local->fib_index, FIB_PROTOCOL_IP4,
-                            FIB_SOURCE_PLUGIN_LOW);
+                            nat_fib_src_low);
           m_key.addr = local->addr;
           if (!out2in_only)
             {
@@ -1514,7 +1517,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
       local->vrf_id = vrf_id;
       local->fib_index =
 	fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
-					   FIB_SOURCE_PLUGIN_LOW);
+					   nat_fib_src_low);
 
       if (!is_out2in_only_static_mapping (m))
 	{
@@ -1536,7 +1539,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 	return VNET_API_ERROR_UNSPECIFIED;
 
       fib_table_unlock (match_local->fib_index, FIB_PROTOCOL_IP4,
-			FIB_SOURCE_PLUGIN_LOW);
+			nat_fib_src_low);
 
       if (!is_out2in_only_static_mapping (m))
 	{
@@ -1687,7 +1690,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     }
 
   if (a->fib_index != ~0)
-    fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
+    fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP4, nat_fib_src_low);
 
   /* Delete sessions using address */
   if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
@@ -2464,6 +2467,10 @@ snat_init (vlib_main_t * vm)
   };
   vec_add1 (ip4_main.table_bind_callbacks, cbt4);
 
+  nat_fib_src_hi = fib_source_allocate ("nat-hi", 623, FIB_SOURCE_BH_SIMPLE);
+  nat_fib_src_low =
+    fib_source_allocate ("nat-low", 903, FIB_SOURCE_BH_SIMPLE);
+
   /* Init virtual fragmenentation reassembly */
   return nat_reass_init (vm);
 }
@@ -2915,13 +2922,13 @@ nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add)
   if (is_add)
     {
       nat_dpo_create (DPO_PROTO_IP4, 0, &dpo_v4);
-      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+      fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v4);
       dpo_reset (&dpo_v4);
     }
   else
     {
-      fib_table_entry_special_remove (0, &pfx, FIB_SOURCE_PLUGIN_HI);
+      fib_table_entry_special_remove (0, &pfx, nat_fib_src_hi);
     }
 }
 
@@ -3836,15 +3843,15 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 							     outside_vrf_id,
-							     FIB_SOURCE_PLUGIN_HI);
+							     nat_fib_src_hi);
   nm->outside_vrf_id = outside_ip6_vrf_id;
   nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 							     outside_ip6_vrf_id,
-							     FIB_SOURCE_PLUGIN_HI);
+							     nat_fib_src_hi);
   sm->inside_vrf_id = inside_vrf_id;
   sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 							    inside_vrf_id,
-							    FIB_SOURCE_PLUGIN_HI);
+							    nat_fib_src_hi);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
 

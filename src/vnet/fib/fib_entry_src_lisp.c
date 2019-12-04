@@ -114,7 +114,7 @@ fib_entry_src_lisp_get_data (fib_entry_src_t *src,
     return (&(src->u.lisp.fesl_fib_index));
 }
 
-const static fib_entry_src_vft_t api_src_vft = {
+const static fib_entry_src_vft_t lisp_src_vft = {
     .fesv_init = fib_entry_src_lisp_init,
     .fesv_deinit = fib_entry_src_lisp_deinit,
     .fesv_add = fib_entry_src_lisp_add,
@@ -129,5 +129,6 @@ const static fib_entry_src_vft_t api_src_vft = {
 void
 fib_entry_src_lisp_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_LISP, &api_src_vft);
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_LISP,
+                                     &lisp_src_vft);
 }

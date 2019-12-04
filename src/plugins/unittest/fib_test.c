@@ -9310,13 +9310,15 @@ fib_test_inherit (void)
              "%U via 10.10.10.2",
              format_fib_prefix, &pfx_10_10_10_0_s_24);
 
+    fib_source_t hi_src = fib_source_allocate("test", 501, FIB_SOURCE_BH_SIMPLE);
+
     /*
      * add the source that replaces inherited state.
      * inheriting source is not the best, so it doesn't push state.
      */
     fib_table_entry_update_one_path(0,
                                     &pfx_10_10_10_0_s_24,
-                                    FIB_SOURCE_PLUGIN_HI,
+                                    hi_src,
                                     FIB_ENTRY_FLAG_NONE,
                                     DPO_PROTO_IP4,
                                     &nh_10_10_10_1,
@@ -9354,7 +9356,7 @@ fib_test_inherit (void)
      * withdraw the higher priority source and expect the inherited to return
      * throughout the sub-tree
      */
-    fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, FIB_SOURCE_PLUGIN_HI);
+    fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, hi_src);
 
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
     FIB_TEST(!fib_test_validate_entry(fei,

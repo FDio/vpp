@@ -53,6 +53,7 @@ typedef struct gbp_route_domain_db_t
 } gbp_route_domain_db_t;
 
 static gbp_route_domain_db_t gbp_route_domain_db;
+static fib_source_t gbp_fib_source;
 
 /**
  * logger
@@ -154,7 +155,7 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 	grd->grd_fib_index[fproto] =
 	  fib_table_find_or_create_and_lock (fproto,
 					     grd->grd_table_id[fproto],
-					     FIB_SOURCE_PLUGIN_HI);
+					     gbp_fib_source);
 
 	if (~0 != grd->grd_uu_sw_if_index[fproto])
 	  {
@@ -221,8 +222,7 @@ gbp_route_domain_unlock (index_t index)
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
-	fib_table_unlock (grd->grd_fib_index[fproto],
-			  fproto, FIB_SOURCE_PLUGIN_HI);
+	fib_table_unlock (grd->grd_fib_index[fproto], fproto, gbp_fib_source);
 	if (INDEX_INVALID != grd->grd_adj[fproto])
 	  adj_unlock (grd->grd_adj[fproto]);
       }
@@ -430,6 +430,7 @@ static clib_error_t *
 gbp_route_domain_init (vlib_main_t * vm)
 {
   grd_logger = vlib_log_register_class ("gbp", "rd");
+  gbp_fib_source = fib_source_allocate ("gbp-rd", 652, FIB_SOURCE_BH_DROP);
 
   return (NULL);
 }

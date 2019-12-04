@@ -162,13 +162,5 @@ const static fib_entry_src_vft_t api_src_vft = {
 void
 fib_entry_src_api_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_PLUGIN_HI, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_PLUGIN_LOW, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_API, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_CLI, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_6RD, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_DHCP, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_IP6_ND_PROXY, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_IP6_ND, &api_src_vft);
-    fib_entry_src_register(FIB_SOURCE_SR, &api_src_vft);
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_API, &api_src_vft);
 }

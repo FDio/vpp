@@ -41,9 +41,10 @@ static const char *gbp_endpoint_attr_names[] = GBP_ENDPOINT_ATTR_NAMES;
  */
 gbp_ep_db_t gbp_ep_db;
 
-fib_node_type_t gbp_endpoint_fib_type;
-
-vlib_log_class_t gbp_ep_logger;
+static fib_source_t gbp_fib_source_hi;
+static fib_source_t gbp_fib_source_low;
+static fib_node_type_t gbp_endpoint_fib_type;
+static vlib_log_class_t gbp_ep_logger;
 
 #define GBP_ENDPOINT_DBG(...)                           \
     vlib_log_debug (gbp_ep_logger, __VA_ARGS__);
@@ -588,10 +589,10 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
      */
     if (gbp_endpoint_is_remote (ge))
       {
-	fib_table_entry_special_remove (fib_index, pfx, FIB_SOURCE_PLUGIN_HI);
+	fib_table_entry_special_remove (fib_index, pfx, gbp_fib_source_hi);
       }
 
-    fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_PLUGIN_LOW);
+    fib_table_entry_delete (fib_index, pfx, gbp_fib_source_low);
   }
   vec_foreach (ai, gef->gef_adjs)
   {
@@ -726,7 +727,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
       }
 
     fib_table_entry_path_add (fib_index, pfx,
-			      FIB_SOURCE_PLUGIN_LOW,
+			      gbp_fib_source_low,
 			      FIB_ENTRY_FLAG_NONE,
 			      fib_proto_to_dpo (pfx->fp_proto),
 			      &pfx->fp_addr, ip_sw_if_index,
@@ -759,7 +760,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 					gg->gg_sclass, ~0, &policy_dpo);
 
 	    fib_table_entry_special_dpo_add (fib_index, pfx,
-					     FIB_SOURCE_PLUGIN_HI,
+					     gbp_fib_source_hi,
 					     FIB_ENTRY_FLAG_INTERPOSE,
 					     &policy_dpo);
 	    dpo_reset (&policy_dpo);
@@ -1576,6 +1577,10 @@ gbp_endpoint_init (vlib_main_t * vm)
 
   gbp_ep_logger = vlib_log_register_class ("gbp", "ep");
   gbp_endpoint_fib_type = fib_node_register_new_type (&gbp_endpoint_vft);
+  gbp_fib_source_hi = fib_source_allocate ("gbp-endpoint-hi", 651,
+					   FIB_SOURCE_BH_SIMPLE);
+  gbp_fib_source_low = fib_source_allocate ("gbp-endpoint-low", 1751,
+					    FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);
 }

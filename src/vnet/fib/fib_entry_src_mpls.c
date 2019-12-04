@@ -193,5 +193,5 @@ const static fib_entry_src_vft_t mpls_src_vft = {
 void
 fib_entry_src_mpls_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_MPLS, &mpls_src_vft);
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_MPLS, &mpls_src_vft);
 }
