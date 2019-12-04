@@ -23,6 +23,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/api_errno.h>
+#include <vnet/fib/fib_source.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
@@ -741,6 +742,9 @@ extern vlib_node_registration_t nat44_ed_hairpin_src_node;
 extern vlib_node_registration_t nat44_ed_in2out_worker_handoff_node;
 extern vlib_node_registration_t nat44_ed_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t nat44_ed_out2in_worker_handoff_node;
+
+extern fib_source_t nat_fib_src_hi;
+extern fib_source_t nat_fib_src_low;
 
 /* format functions */
 format_function_t format_snat_user;

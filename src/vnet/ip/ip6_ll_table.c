@@ -283,7 +283,7 @@ ip6_ll_show_fib (vlib_main_t * vm,
     s = format (s, "%U, fib_index:%d, locks:[",
 		format_fib_table_name, fib_index,
 		FIB_PROTOCOL_IP6, fib_index);
-    FOR_EACH_FIB_SOURCE (source)
+    vec_foreach_index (source, fib_table->ft_locks)
     {
       if (0 != fib_table->ft_locks[source])
 	{

@@ -170,7 +170,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
 	return VNET_API_ERROR_VALUE_EXIST;
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-						     FIB_SOURCE_PLUGIN_HI);
+						     nat_fib_src_hi);
       pool_get (nm->sm, sm);
       clib_memset (sm, 0, sizeof (*sm));
       sm->l_addr.as_u64[0] = l_addr->as_u64[0];
@@ -214,8 +214,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       kv.key[2] = sm_key.as_u64[2];
       if (clib_bihash_add_del_24_8 (&nm->sm_e, &kv, 0))
 	nat_elog_warn ("nat66-static-map-by-external delete key failed");
-      fib_table_unlock (sm->fib_index, FIB_PROTOCOL_IP6,
-			FIB_SOURCE_PLUGIN_HI);
+      fib_table_unlock (sm->fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
       pool_put (nm->sm, sm);
     }
 

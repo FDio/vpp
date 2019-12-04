@@ -260,8 +260,8 @@ extern u8* fib_entry_src_format(fib_entry_t *entry,
 				fib_source_t source,
 				u8* s);
 
-extern void fib_entry_src_register(fib_source_t source,
-				   const fib_entry_src_vft_t *vft);
+extern void fib_entry_src_behaviour_register (fib_source_behaviour_t source,
+                                              const fib_entry_src_vft_t *vft);
 
 extern fib_entry_src_cover_res_t fib_entry_src_action_cover_change(
     fib_entry_t *entry,
@@ -348,8 +348,8 @@ extern void fib_entry_src_default_register(void);
 extern void fib_entry_src_rr_register(void);
 extern void fib_entry_src_interface_register(void);
 extern void fib_entry_src_interpose_register(void);
-extern void fib_entry_src_default_route_register(void);
-extern void fib_entry_src_special_register(void);
+extern void fib_entry_src_drop_register(void);
+extern void fib_entry_src_simple_register(void);
 extern void fib_entry_src_api_register(void);
 extern void fib_entry_src_adj_register(void);
 extern void fib_entry_src_mpls_register(void);

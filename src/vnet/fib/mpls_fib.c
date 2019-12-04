@@ -275,6 +275,7 @@ mpls_fib_table_destroy (u32 fib_index)
     }
     hash_free(mf->mf_entries);
 
+    vec_free(fib_table->ft_src_route_counts);
     pool_put(mpls_main.mpls_fibs, mf);
     pool_put(mpls_main.fibs, fib_table);
 }
@@ -450,7 +451,7 @@ mpls_fib_show (vlib_main_t * vm,
 
 	s = format (s, "%v, fib_index:%d locks:[",
                     fib_table->ft_desc, mpls_main.fibs - fib_table);
-	FOR_EACH_FIB_SOURCE(source)
+        vec_foreach_index(source, fib_table->ft_locks)
         {
             if (0 != fib_table->ft_locks[source])
             {

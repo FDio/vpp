@@ -306,6 +306,5 @@ const static fib_entry_src_vft_t rr_src_vft = {
 void
 fib_entry_src_rr_register (void)
 {
-    fib_entry_src_register(FIB_SOURCE_RR, &rr_src_vft);    
-    fib_entry_src_register(FIB_SOURCE_URPF_EXEMPT, &rr_src_vft);    
+    fib_entry_src_behaviour_register(FIB_SOURCE_BH_RR, &rr_src_vft);
 }

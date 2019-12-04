@@ -26,10 +26,12 @@
 
 u32 *svs_itf_db[FIB_PROTOCOL_IP_MAX];
 
+static fib_source_t svs_fib_src;
+
 int
 svs_table_add (fib_protocol_t fproto, u32 table_id)
 {
-  fib_table_find_or_create_and_lock (fproto, table_id, FIB_SOURCE_PLUGIN_LOW);
+  fib_table_find_or_create_and_lock (fproto, table_id, svs_fib_src);
 
   return (0);
 }
@@ -50,7 +52,7 @@ svs_table_delete (fib_protocol_t fproto, u32 table_id)
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib_table_unlock (fib_index, fproto, FIB_SOURCE_PLUGIN_LOW);
+  fib_table_unlock (fib_index, fproto, svs_fib_src);
 
   return (0);
 }
@@ -68,7 +70,7 @@ svs_route_add_i (u32 fib_index, const fib_prefix_t * pfx, u32 src_fib_index)
 				      LOOKUP_TABLE_FROM_CONFIG, &dpo);
 
   fib_table_entry_special_dpo_add (fib_index, pfx,
-				   FIB_SOURCE_PLUGIN_LOW,
+				   svs_fib_src,
 				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
 
   dpo_unlock (&dpo);
@@ -107,7 +109,7 @@ svs_route_delete (u32 table_id, const fib_prefix_t * pfx)
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib_table_entry_special_remove (fib_index, pfx, FIB_SOURCE_PLUGIN_LOW);
+  fib_table_entry_special_remove (fib_index, pfx, svs_fib_src);
 
   return (0);
 }
@@ -214,7 +216,7 @@ svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
 				"svs-ip4" :
 				"svs-ip6"), sw_if_index, 0, NULL, 0);
 
-  fib_table_entry_special_remove (fib_index, &pfx, FIB_SOURCE_PLUGIN_LOW);
+  fib_table_entry_special_remove (fib_index, &pfx, svs_fib_src);
 
   return (0);
 }
@@ -606,6 +608,10 @@ svs_init (vlib_main_t * vm)
     .function = svs_ip4_table_bind,
   };
   vec_add1 (ip4_main.table_bind_callbacks, cbt4);
+
+  svs_fib_src = fib_source_allocate ("svs",
+				     FIB_SOURCE_PRIORITY_LOW,
+				     FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);
 }
