@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "62f4d9bf_d44ae884",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-04T23:15:04Z",
+      "side": 0,
+      "message": "why no longer exclude the \u0027local\u0027?",
+      "revId": "d3955fb119fc94b000ee2516721c4f6b5525c370",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
