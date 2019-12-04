@@ -218,6 +218,7 @@ Plugin - MAP
 I:	map
 Y:	src/plugins/map/FEATURE.yaml
 M:	Ole Troan <ot@cisco.com>
+M:	Jon Loeliger <jdl@netgate.com>
 F:	src/plugins/map
 
 VNET MPLS
