@@ -16,6 +16,24 @@
       "revId": "5b1cd5f58afa2df15bb3ddddc23995ac17f54c64",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c94ff94a_75877457",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-12-04T11:04:41Z",
+      "side": 1,
+      "message": "Are you saying GSO is enabled only on rx side of an interface? Is it possible to enable GSO partially on an interface?",
+      "parentUuid": "900e0087_7ed09500",
+      "revId": "5b1cd5f58afa2df15bb3ddddc23995ac17f54c64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
