@@ -192,13 +192,11 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 	goto out;
     }
 
-  rv = fib_api_route_add_del (mp->mr_is_add,
-			      mp->mr_is_multipath,
-			      fib_index,
-			      &pfx,
-			      (mp->mr_route.mr_is_multicast ?
-			       FIB_ENTRY_FLAG_MULTICAST :
-			       FIB_ENTRY_FLAG_NONE), rpaths);
+  rv = fib_api_route_add_del (
+    mp->mr_is_add, mp->mr_is_multipath, fib_index, &pfx, FIB_SOURCE_API,
+    (mp->mr_route.mr_is_multicast ? FIB_ENTRY_FLAG_MULTICAST :
+				    FIB_ENTRY_FLAG_NONE),
+    rpaths);
 
   if (mp->mr_is_add && 0 == rv)
     *stats_index = fib_table_entry_get_stats_index (fib_index, &pfx);

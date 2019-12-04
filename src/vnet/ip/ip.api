@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "3.0.3";
+option version = "3.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/fib/fib_types.api";
@@ -135,6 +135,8 @@ define ip_table_details
   @param stats_index The index of the route in the stats segment
   @param prefix the prefix for the route
   @param n_paths The number of paths the route has
+  @param src The entity adding the route. either 0 for default
+             or a value returned from fib_source_sdd.
   @param paths The paths of the route
 */
 typedef ip_route
@@ -143,6 +145,15 @@ typedef ip_route
   u32 stats_index;
   vl_api_prefix_t prefix;
   u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+typedef ip_route_v2
+{
+  u32 table_id;
+  u32 stats_index;
+  vl_api_prefix_t prefix;
+  u8 n_paths;
+  u8 src;
   vl_api_fib_path_t paths[n_paths];
 };
 
@@ -163,8 +174,24 @@ define ip_route_add_del
   bool is_multipath;
   vl_api_ip_route_t route;
 };
+define ip_route_add_del_v2
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  bool is_multipath;
+  vl_api_ip_route_v2_t route;
+};
 define ip_route_add_del_reply
 {
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+define ip_route_add_del_v2_reply
+{
+  option in_progress;
   u32 context;
   i32 retval;
   u32 stats_index;
@@ -172,12 +199,23 @@ define ip_route_add_del_reply
 
 /** \brief Dump IP routes from a table
     @param client_index - opaque cookie to identify the sender
+    @param src The entity adding the route. either 0 for default
+               or a value returned from fib_source_sdd.
     @param table - The table from which to dump routes (ony ID an AF are needed)
 */
 define ip_route_dump
 {
   u32 client_index;
   u32 context;
+  vl_api_ip_table_t table;
+};
+define ip_route_v2_dump
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  /* vl_api_fib_source_t src; */
+  u8 src;
   vl_api_ip_table_t table;
 };
 
@@ -188,6 +226,12 @@ define ip_route_details
 {
   u32 context;
   vl_api_ip_route_t route;
+};
+define ip_route_v2_details
+{
+  option in_progress;
+  u32 context;
+  vl_api_ip_route_v2_t route;
 };
 
 /** \brief Lookup IP route from a table
@@ -204,6 +248,15 @@ define ip_route_lookup
   u8 exact;
   vl_api_prefix_t prefix;
 };
+define ip_route_lookup_v2
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  u8 exact;
+  vl_api_prefix_t prefix;
+};
 
 /** \brief IP FIB table lookup response
     @param retval - return code of the lookup
@@ -214,6 +267,13 @@ define ip_route_lookup_reply
   u32 context;
   i32 retval;
   vl_api_ip_route_t route;
+};
+define ip_route_lookup_v2_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
+  vl_api_ip_route_v2_t route;
 };
 
 /** \brief Set the ip flow hash config for a fib request

@@ -48,7 +48,6 @@ defaultmapping = {
                          'classify_table_index': 4294967295, 'is_add': 1, },
     'ip_mroute_add_del': {'is_add': 1, },
     'ip_neighbor_add_del': {'is_add': 1, },
-    'ip_route_add_del': {'is_add': 1, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
     'ipsec_spd_dump': {'sa_id': 4294967295, },
@@ -409,6 +408,16 @@ class VppPapiProvider(object):
                             'table_id': table_id,
                             'is_ip6': is_ip6
                         }})
+
+    def ip_route_v2_dump(self, table_id, is_ip6=False, src=0):
+        return self.api(self.papi.ip_route_v2_dump,
+                        {
+                            'src': src,
+                            'table': {
+                                'table_id': table_id,
+                                'is_ip6': is_ip6
+                            }
+                        })
 
     def ip_neighbor_add_del(self,
                             sw_if_index,

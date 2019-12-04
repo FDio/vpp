@@ -45,6 +45,7 @@ extern int fib_api_route_add_del (u8 is_add,
                                   u8 is_multipath,
                                   u32 fib_index,
                                   const fib_prefix_t * prefix,
+                                  fib_source_t src,
                                   fib_entry_flag_t entry_flags,
                                   fib_route_path_t *rpaths);
 
