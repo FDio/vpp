@@ -514,7 +514,8 @@ class VppIpRoute(VppObject):
     """
 
     def __init__(self, test, dest_addr,
-                 dest_addr_len, paths, table_id=0, register=True):
+                 dest_addr_len, paths, table_id=0,
+                 register=True, src=0):
         self._test = test
         self.paths = paths
         self.table_id = table_id
@@ -522,6 +523,7 @@ class VppIpRoute(VppObject):
         self.register = register
         self.stats_index = None
         self.modified = False
+        self.src = src
 
         self.encoded_paths = []
         for path in self.paths:
@@ -542,6 +544,7 @@ class VppIpRoute(VppObject):
 
         self._test.vapi.ip_route_add_del(route={'table_id': self.table_id,
                                                 'prefix': self.prefix,
+                                                'src': self.src,
                                                 'n_paths': len(
                                                     self.encoded_paths),
                                                 'paths': self.encoded_paths,
@@ -555,6 +558,7 @@ class VppIpRoute(VppObject):
                    'prefix': self.prefix,
                    'n_paths': len(self.encoded_paths),
                    'paths': self.encoded_paths,
+                   'src': self.src,
                    },
             is_add=1,
             is_multipath=0)
@@ -572,6 +576,7 @@ class VppIpRoute(VppObject):
             self._test.vapi.ip_route_add_del(
                 route={'table_id': self.table_id,
                        'prefix': self.prefix,
+                       'src': self.src,
                        'n_paths': len(
                            self.encoded_paths),
                        'paths': self.encoded_paths},
@@ -581,6 +586,7 @@ class VppIpRoute(VppObject):
             self._test.vapi.ip_route_add_del(
                 route={'table_id': self.table_id,
                        'prefix': self.prefix,
+                       'src': self.src,
                        'n_paths': 0},
                 is_add=0,
                 is_multipath=0)
