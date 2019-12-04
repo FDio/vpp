@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "acedf989_cd82119a",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-12-04T10:40:17Z",
+      "side": 1,
+      "message": "We need to check the virtio specific flags in this function which is not available for pg. So, we need separate GSO flags function for virtio.",
+      "parentUuid": "f8072dbf_f4b54195",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "74c727c5_b4b8da16",
         "filename": "src/vnet/gso/gso.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "30884269_276af3d4",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-12-04T10:40:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "74c727c5_b4b8da16",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0487856d_0e030243",
         "filename": "src/vnet/gso/gso.c",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2019-11-05T10:11:04Z",
       "side": 1,
       "message": "vnet_gso_parser() should take a is_ip6 parameter to compile-out those branches. Both call-sites have the info already.",
+      "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb2b42fe_b4413888",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-12-04T10:40:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0487856d_0e030243",
       "revId": "954a39bc48662ca3c70ab20c452668c252ef2bbc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
