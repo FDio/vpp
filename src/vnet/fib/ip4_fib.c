@@ -160,6 +160,7 @@ ip4_fib_table_destroy (u32 fib_index)
 {
     fib_table_t *fib_table = pool_elt_at_index(ip4_main.fibs, fib_index);
     ip4_fib_t *v4_fib = pool_elt_at_index(ip4_main.v4_fibs, fib_index);
+    u32 *n_locks;
     int ii;
 
     /*
@@ -182,9 +183,10 @@ ip4_fib_table_destroy (u32 fib_index)
      * validate no more routes.
      */
     ASSERT(0 == fib_table->ft_total_route_counts);
-    FOR_EACH_FIB_SOURCE(ii)
+
+    vec_foreach(n_locks, fib_table->ft_src_route_counts)
     {
-	ASSERT(0 == fib_table->ft_src_route_counts[ii]);
+	ASSERT(0 == *n_locks);
     }
 
     if (~0 != fib_table->ft_table_id)
@@ -192,6 +194,7 @@ ip4_fib_table_destroy (u32 fib_index)
 	hash_unset (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
     }
 
+    vec_free(fib_table->ft_src_route_counts);
     ip4_mtrie_free(&v4_fib->mtrie);
 
     pool_put(ip4_main.v4_fibs, v4_fib);
@@ -679,7 +682,7 @@ ip4_show_fib (vlib_main_t * vm,
                    fib_table->ft_flow_hash_config,
                    fib_table->ft_epoch,
                    format_fib_table_flags, fib_table->ft_flags);
-	FOR_EACH_FIB_SOURCE(source)
+        vec_foreach_index(source, fib_table->ft_locks)
         {
             if (0 != fib_table->ft_locks[source])
             {

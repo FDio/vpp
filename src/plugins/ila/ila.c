@@ -68,6 +68,11 @@ static dpo_type_t ila_dpo_type;
  */
 static fib_node_type_t ila_fib_node_type;
 
+/**
+ * FIB source for adding entries
+ */
+static fib_source_t ila_fib_src;
+
 u8 *
 format_half_ip6_address (u8 * s, va_list * va)
 {
@@ -758,7 +763,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 
 	  fib_table_entry_special_dpo_add(0,
 					  &pfx,
-					  FIB_SOURCE_PLUGIN_HI,
+					  ila_fib_src,
 					  FIB_ENTRY_FLAG_EXCLUSIVE,
 					  &dpo);
 	  dpo_reset(&dpo);
@@ -794,7 +799,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	      .fp_proto = FIB_PROTOCOL_IP6,
 	  };
 
-	  fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
+	  fib_table_entry_special_remove(0, &pfx, ila_fib_src);
 	  /*
 	   * remove this ILA entry as child of the FIB netry for the next-hop
 	   */
@@ -935,7 +940,9 @@ ila_init (vlib_main_t * vm)
 
   ila_dpo_type = dpo_register_new_type(&ila_vft, ila_nodes);
   ila_fib_node_type = fib_node_register_new_type(&ila_fib_node_vft);
-
+  ila_fib_src = fib_source_allocate("ila",
+                                    FIB_SOURCE_PRIORITY_HI,
+                                    FIB_SOURCE_BH_SIMPLE);
   return NULL;
 }
 

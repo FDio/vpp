@@ -633,9 +633,9 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  fib_index =
 	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-					       vrf_id, FIB_SOURCE_PLUGIN_HI);
+					       vrf_id, nat_fib_src_hi);
 	  fib_table_entry_update_one_path (fib_index, &fibpfx,
-					   FIB_SOURCE_PLUGIN_HI,
+					   nat_fib_src_hi,
 					   FIB_ENTRY_FLAG_NONE,
 					   DPO_PROTO_IP6, NULL,
 					   sw_if_index, ~0, 0,
@@ -645,12 +645,11 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
 	  fib_table_entry_path_remove (fib_index, &fibpfx,
-				       FIB_SOURCE_PLUGIN_HI,
+				       nat_fib_src_hi,
 				       DPO_PROTO_IP6, NULL,
 				       sw_if_index, ~0, 1,
 				       FIB_ROUTE_PATH_INTF_RX);
-	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6,
-			    FIB_SOURCE_PLUGIN_HI);
+	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
 	}
     }
 

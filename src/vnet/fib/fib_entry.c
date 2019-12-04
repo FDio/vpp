@@ -34,7 +34,6 @@
 /*
  * Array of strings/names for the FIB sources
  */
-static const char *fib_source_names[] = FIB_SOURCES;
 static const char *fib_attribute_names[] = FIB_ENTRY_ATTRIBUTES;
 static const char *fib_src_attribute_names[] = FIB_ENTRY_SRC_ATTRIBUTES;
 
@@ -95,16 +94,6 @@ fib_entry_get_default_chain_type (const fib_entry_t *fib_entry)
     }
 
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-}
-
-u8 *
-format_fib_source (u8 * s, va_list * args)
-{
-    fib_source_t source = va_arg (*args, int);
-
-    s = format (s, "src:%s", fib_source_names[source]);
-
-    return (s);
 }
 
 u8 *
@@ -285,7 +274,7 @@ fib_entry_src_get_source (const fib_entry_src_t *esrc)
     {
 	return (esrc->fes_src);
     }
-    return (FIB_SOURCE_MAX);
+    return (FIB_SOURCE_INVALID);
 }
 
 static fib_entry_flag_t
@@ -836,16 +825,17 @@ fib_entry_source_change_w_flags (fib_entry_t *fib_entry,
                                  fib_entry_flag_t old_flags,
                                  fib_source_t new_source)
 {
-    if (new_source < old_source)
+    switch (fib_source_cmp(new_source, old_source))
     {
+    case FIB_SOURCE_CMP_BETTER:
 	/*
 	 * we have a new winning source.
 	 */
 	fib_entry_src_action_deactivate(fib_entry, old_source);
 	fib_entry_src_action_activate(fib_entry, new_source);
-    }
-    else if (new_source > old_source)
-    {
+        break;
+
+    case FIB_SOURCE_CMP_WORSE:
         /*
          * the new source loses. Re-activate the winning sources
          * in case it is an interposer and hence relied on the losing
@@ -853,15 +843,15 @@ fib_entry_source_change_w_flags (fib_entry_t *fib_entry,
          */
         fib_entry_src_action_reactivate(fib_entry, old_source);
         return;
-    }
-    else
-    {
+
+    case FIB_SOURCE_CMP_EQUAL:
 	/*
 	 * the new source is one this entry already has.
 	 * But the path-list was updated, which will contribute new forwarding,
 	 * so install it.
 	 */
         fib_entry_src_action_reactivate(fib_entry, new_source);
+        break;
     }
 
     fib_entry_post_update_actions(fib_entry, new_source, old_flags);
@@ -984,7 +974,7 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
 
-    if (FIB_SOURCE_MAX == best_source)
+    if (FIB_SOURCE_INVALID == best_source)
     {
         /*
          * no more sources left. this entry is toast.
@@ -1040,16 +1030,16 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
      * then we need to create a new one. else we are updating
      * an existing.
      */
-    if (source < best_source)
+    switch (fib_source_cmp(source, best_source))
     {
+    case FIB_SOURCE_CMP_BETTER:
 	/*
 	 * Que! removing a path from a source that is better than the
 	 * one this entry is using.
 	 */
 	ASSERT(0);
-    }
-    else if (source > best_source )
-    {
+        break;
+    case FIB_SOURCE_CMP_WORSE:
 	/*
 	 * the source is not the best. no need to update forwarding
 	 */
@@ -1067,10 +1057,9 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
              * that remain are non-inherited
              */
             return (fib_entry_src_burn_only_inherited(fib_entry));
-       }
-    }
-    else
-    {
+        }
+        break;
+    case FIB_SOURCE_CMP_EQUAL:
 	/*
 	 * removing a path from the path-list we were using.
 	 */
@@ -1089,6 +1078,7 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
 	     */
 	    fib_entry_src_action_reactivate(fib_entry, source);
 	}
+        break;
     }
 
     fib_entry_post_update_actions(fib_entry, source, bflags);
@@ -1131,16 +1121,17 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
      * then we need to create a new one. else we are updating
      * an existing.
      */
-    if (source < best_source )
+    switch (fib_source_cmp(source, best_source))
     {
+    case FIB_SOURCE_CMP_BETTER:
 	/*
 	 * Que! removing a path from a source that is better than the
 	 * one this entry is using. This can only mean it is a source
          * this prefix does not have.
 	 */
         return (FIB_ENTRY_SRC_FLAG_ADDED);
-    }
-    else if (source > best_source ) {
+
+    case FIB_SOURCE_CMP_WORSE:
 	/*
 	 * the source is not the best. no need to update forwarding
 	 */
@@ -1174,9 +1165,9 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
 
             return (FIB_ENTRY_SRC_FLAG_ADDED);
         }
-    }
-    else
-    {
+        break;
+
+    case FIB_SOURCE_CMP_EQUAL:
 	if (!(FIB_ENTRY_SRC_FLAG_ADDED & sflag))
 	{
 	    /*
@@ -1191,6 +1182,7 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
 	     */
 	    fib_entry_src_action_reactivate(fib_entry, source);
 	}
+        break;
     }
 
     fib_entry_post_update_actions(fib_entry, source, bflags);

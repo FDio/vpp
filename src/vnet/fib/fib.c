@@ -22,6 +22,7 @@
 static clib_error_t *
 fib_module_init (vlib_main_t * vm)
 {
+    fib_source_module_init();
     fib_entry_module_init();
     fib_entry_src_module_init();
     fib_path_module_init();
