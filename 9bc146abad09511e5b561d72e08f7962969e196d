@@ -22,6 +22,30 @@
       "revId": "9bc146abad09511e5b561d72e08f7962969e196d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4290bfc_d0986b04",
+        "filename": "test/test_fib.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-04T22:01:10Z",
+      "side": 1,
+      "message": "i thought thee would be occasions where one would like to examine the output.",
+      "parentUuid": "37f3ebed_5e3f51c3",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 54
+      },
+      "revId": "9bc146abad09511e5b561d72e08f7962969e196d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
