@@ -237,6 +237,10 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
     return;
 
   filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index
+      >= vec_len (pcm->classify_table_index_by_sw_if_index[mp->type]))
+    return;
+
   if (filter_sw_if_index != ~0)
     vec_tbl =
       &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
@@ -519,6 +523,10 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
     return;
 
   filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index
+      >= vec_len (pcm->classify_table_index_by_sw_if_index[mp->type]))
+    return;
+
   if (filter_sw_if_index != ~0)
     vec_tbl =
       &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
