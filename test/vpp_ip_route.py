@@ -606,6 +606,110 @@ class VppIpRoute(VppObject):
         return c[0][self.stats_index]
 
 
+class VppIpRouteV2(VppObject):
+    """
+    IP Route V2
+    """
+
+    def __init__(self, test, dest_addr,
+                 dest_addr_len, paths, table_id=0,
+                 register=True, src=0):
+        self._test = test
+        self.paths = paths
+        self.table_id = table_id
+        self.prefix = mk_network(dest_addr, dest_addr_len)
+        self.register = register
+        self.stats_index = None
+        self.modified = False
+        self.src = src
+
+        self.encoded_paths = []
+        for path in self.paths:
+            self.encoded_paths.append(path.encode())
+
+    def __eq__(self, other):
+        if self.table_id == other.table_id and \
+           self.prefix == other.prefix:
+            return True
+        return False
+
+    def modify(self, paths):
+        self.paths = paths
+        self.encoded_paths = []
+        for path in self.paths:
+            self.encoded_paths.append(path.encode())
+        self.modified = True
+
+        self._test.vapi.ip_route_add_del_v2(route={'table_id': self.table_id,
+                                                   'prefix': self.prefix,
+                                                   'src': self.src,
+                                                   'n_paths': len(
+                                                       self.encoded_paths),
+                                                   'paths': self.encoded_paths,
+                                                   },
+                                            is_add=1,
+                                            is_multipath=0)
+
+    def add_vpp_config(self):
+        r = self._test.vapi.ip_route_add_del_v2(
+            route={'table_id': self.table_id,
+                   'prefix': self.prefix,
+                   'n_paths': len(self.encoded_paths),
+                   'paths': self.encoded_paths,
+                   'src': self.src,
+                   },
+            is_add=1,
+            is_multipath=0)
+        self.stats_index = r.stats_index
+        if self.register:
+            self._test.registry.register(self, self._test.logger)
+        return self
+
+    def remove_vpp_config(self):
+        # there's no need to issue different deletes for modified routes
+        # we do this only to test the two different ways to delete routes
+        # eiter by passing all the paths to remove and mutlipath=1 or
+        # passing no paths and multipath=0
+        if self.modified:
+            self._test.vapi.ip_route_add_del_v2(
+                route={'table_id': self.table_id,
+                       'prefix': self.prefix,
+                       'src': self.src,
+                       'n_paths': len(
+                           self.encoded_paths),
+                       'paths': self.encoded_paths},
+                is_add=0,
+                is_multipath=1)
+        else:
+            self._test.vapi.ip_route_add_del_v2(
+                route={'table_id': self.table_id,
+                       'prefix': self.prefix,
+                       'src': self.src,
+                       'n_paths': 0},
+                is_add=0,
+                is_multipath=0)
+
+    def query_vpp_config(self):
+        return find_route(self._test,
+                          self.prefix.network_address,
+                          self.prefix.prefixlen,
+                          self.table_id)
+
+    def object_id(self):
+        return ("%s:table-%d-%s" % (
+            'ip6-route' if self.prefix.version == 6 else 'ip-route',
+                self.table_id,
+                self.prefix))
+
+    def get_stats_to(self):
+        c = self._test.statistics.get_counter("/net/route/to")
+        return c[0][self.stats_index]
+
+    def get_stats_via(self):
+        c = self._test.statistics.get_counter("/net/route/via")
+        return c[0][self.stats_index]
+
+
 class VppIpMRoute(VppObject):
     """
     IP Multicast Route
