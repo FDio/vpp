@@ -73,6 +73,13 @@ typedef struct
   u32 filter_classify_table_index;
 } vnet_pcap_t;
 
+typedef struct
+{
+  u8 trace_filter_enable;
+  u32 trace_classify_table_index;
+  u32 trace_filter_set_index;
+} vlib_trace_filter_t;
+
 typedef struct vlib_main_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -164,6 +171,9 @@ typedef struct vlib_main_t
 
   /* pcap rx / tx tracing */
   vnet_pcap_t pcap;
+
+  /* Packet trace capture filter */
+  vlib_trace_filter_t trace_filter;
 
   /* Error handling. */
   vlib_error_main_t error_main;

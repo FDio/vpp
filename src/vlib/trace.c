@@ -351,6 +351,13 @@ VLIB_CLI_COMMAND (show_trace_cli,static) = {
 };
 /* *INDENT-ON* */
 
+int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
+int
+vlib_enable_disable_pkt_trace_filter (int enable)
+{
+  return 0;
+}
+
 static clib_error_t *
 cli_add_trace_buffer (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -361,6 +368,7 @@ cli_add_trace_buffer (vlib_main_t * vm,
   vlib_trace_node_t *tn;
   u32 node_index, add;
   u8 verbose = 0;
+  int filter = 0;
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -376,6 +384,8 @@ cli_add_trace_buffer (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
+      else if (unformat (line_input, "filter"))
+	filter = 1;
       else
 	{
 	  error = clib_error_create ("expected NODE COUNT, got `%U'",
@@ -393,6 +403,15 @@ cli_add_trace_buffer (vlib_main_t * vm,
 				 "initiate trace on this node.",
 				 format_vlib_node_name, vm, node_index);
       goto done;
+    }
+
+  if (filter)
+    {
+      if (vlib_enable_disable_pkt_trace_filter (1 /* enable */ ))
+	{
+	  error = clib_error_create ("No packet trace filter configured...");
+	  goto done;
+	}
     }
 
   /* *INDENT-OFF* */
@@ -420,7 +439,6 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
   .function = cli_add_trace_buffer,
 };
 /* *INDENT-ON* */
-
 
 /*
  * Configure a filter for packet traces.
@@ -523,6 +541,7 @@ static clib_error_t *
 cli_clear_trace_buffer (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  vlib_enable_disable_pkt_trace_filter (0 /* enable */ );
   clear_trace_buffer ();
   return 0;
 }
@@ -539,6 +558,18 @@ VLIB_CLI_COMMAND (clear_trace_cli,static) = {
 void
 vlib_trace_cli_reference (void)
 {
+}
+
+int
+vnet_is_packet_traced (vlib_buffer_t * b,
+		       u32 classify_table_index, int func)
+__attribute__ ((weak));
+
+int
+vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
+{
+  clib_warning ("BUG: STUB called");
+  return 1;
 }
 
 /*
