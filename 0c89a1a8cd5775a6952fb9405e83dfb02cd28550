@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03519237_661e1f84",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-04T01:46:58Z",
+      "side": 1,
+      "message": "Since the CI make test is currently done exclusively on release images, it would be helpful if these ASSERTS also had a test case for the error condition and emitted a QUIC_ERR() message.",
+      "range": {
+        "startLine": 676,
+        "startChar": 2,
+        "endLine": 676,
+        "endChar": 49
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9347577_86090df1",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-04T01:46:58Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 682,
+        "startChar": 2,
+        "endLine": 682,
+        "endChar": 15
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b51fa32_0fffbb9b",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-04T01:46:58Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 711,
+        "startChar": 2,
+        "endLine": 711,
+        "endChar": 20
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70f89116_460f22e4",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1717,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-04T01:46:58Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 1717,
+        "startChar": 2,
+        "endLine": 1717,
+        "endChar": 51
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d1c8801_960f30ce",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1726,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-04T01:46:58Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 1726,
+        "startChar": 2,
+        "endLine": 1726,
+        "endChar": 15
+      },
+      "revId": "0c89a1a8cd5775a6952fb9405e83dfb02cd28550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
