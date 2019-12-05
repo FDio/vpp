@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "986e0443_4a9d41ae",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-05T15:38:15Z",
+      "side": 1,
+      "message": "Is this a session flag or a quic flag?",
+      "range": {
+        "startLine": 156,
+        "startChar": 4,
+        "endLine": 156,
+        "endChar": 18
+      },
+      "revId": "ea4d67633bf9147492f5baf19e6b86a5d36f7c04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
