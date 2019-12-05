@@ -22,6 +22,30 @@
       "revId": "7a78cb1af53ad3e5db8d96662cd44c810b27bfa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ac5ee38_5a77ad88",
+        "filename": "src/vnet/classify/classify_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-05T14:30:40Z",
+      "side": 1,
+      "message": "I don\u0027t believe so.  There are places in this code where the\nrange of classify table indices is [0, vec_len(tbl)).  That is,\n0 \u003c\u003d index \u003c vec_len(tbl) are valid, and then greater or equal\nto vec_len(tbl) is invalid.\n\nHere is one other such example:\n\nd2c97d988b (Pavel Kotucek      2017-01-24 10:58:12 +0100 237)   vec_tbl \u003d pcm-\u003eclassify_table_index_by_sw_if_index[mp-\u003etype];\nd2c97d988b (Pavel Kotucek      2017-01-24 10:58:12 +0100 238)\nd2c97d988b (Pavel Kotucek      2017-01-24 10:58:12 +0100 239)   if (vec_len (vec_tbl))\nd2c97d988b (Pavel Kotucek      2017-01-24 10:58:12 +0100 240)     {\nd2c97d988b (Pavel Kotucek      2017-01-24 10:58:12 +0100 241)       for (i \u003d 0; i \u003c vec_len (vec_tbl); i++)\n\nHave I missed something here?",
+      "parentUuid": "229783d1_870bcd4d",
+      "range": {
+        "startLine": 240,
+        "startChar": 0,
+        "endLine": 242,
+        "endChar": 11
+      },
+      "revId": "7a78cb1af53ad3e5db8d96662cd44c810b27bfa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
