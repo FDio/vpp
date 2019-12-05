@@ -15,6 +15,8 @@ get_filename_component(CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_FILE} PATH)
 
 find_path(VPP_INCLUDE_DIR PATH_SUFFIXES NAMES vppinfra/clib.h)
 find_program(VPP_APIGEN vppapigen)
+find_program(VPP_VAPI_C_GEN vapi_c_gen.py)
+find_program(VPP_VAPI_CPP_GEN vapi_cpp_gen.py)
 
 if(VPP_INCLUDE_DIR AND VPP_APIGEN)
   include_directories (${VPP_INCLUDE_DIR})
