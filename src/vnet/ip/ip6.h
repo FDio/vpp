@@ -197,7 +197,7 @@ typedef struct ip6_main_t
   u32 *mfib_index_by_sw_if_index;
 
   /* IP6 enabled count by software interface */
-  u8 *ip_enabled_by_sw_if_index;
+  u32 *ip_enabled_by_sw_if_index;
 
   /* Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
