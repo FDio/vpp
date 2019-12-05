@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4d6801df_f37a4026",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1548,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-05T20:47:44Z",
+      "side": 1,
+      "message": "i think we need a flag here to differentiate the case when we are rekeying from we are creating the first child SA.\nin the first case it is ok that the interface exists, we can assume that IKEv2 added it, and therefore when the child SA dies, we can assume we are allowed to delete it. for the second case this is not true - the interface was added by another entity and IKE should not delete it.\nalternatively reference counting on the interface would work.",
+      "revId": "c41694375509a0a474366c956d135463e38d3c38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
