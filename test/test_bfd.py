@@ -1790,6 +1790,7 @@ class BFDFIBTestCase(VppTestCase):
                              packet[IPv6].dst)
 
 
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """ BFD over GRE tunnel """
 
