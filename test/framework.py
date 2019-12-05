@@ -1008,13 +1008,15 @@ class VppTestCase(unittest.TestCase):
         while True:
             layer = temp.getlayer(counter)
             if layer:
+                layer = layer.copy()
+                layer.remove_payload()
                 for cf in checksum_fields:
                     if hasattr(layer, cf):
                         if ignore_zero_udp_checksums and \
                                 0 == getattr(layer, cf) and \
                                 layer.name in udp_layers:
                             continue
-                        delattr(layer, cf)
+                        delattr(temp.getlayer(counter), cf)
                         checksums.append((counter, cf))
             else:
                 break
