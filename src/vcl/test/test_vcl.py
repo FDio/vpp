@@ -26,7 +26,11 @@ _have_iperf3 = have_app(iperf3)
 class VCLAppWorker(Worker):
     """ VCL Test Application Worker """
 
-    def __init__(self, build_dir, appname, args, logger, env={}):
+    def __init__(self, build_dir, appname, executable_args, logger, env=None,
+                 *args, **kwargs):
+
+        if env is None:
+            env = {}
         vcl_lib_dir = "%s/vpp/lib" % build_dir
         if "iperf" in appname:
             app = appname
@@ -38,8 +42,9 @@ class VCLAppWorker(Worker):
                         "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         else:
             app = "%s/vpp/bin/%s" % (build_dir, appname)
-        self.args = [app] + args
-        super(VCLAppWorker, self).__init__(self.args, logger, env)
+        self.args = [app] + executable_args
+        super(VCLAppWorker, self).__init__(self.args, logger, env,
+                                           *args, **kwargs)
 
 
 class VCLTestCase(VppTestCase):
