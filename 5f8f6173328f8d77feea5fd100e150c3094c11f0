@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "36c62c30_566f8b49",
+        "filename": "src/vnet/nhrp/nhrp.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-05T16:27:12Z",
+      "side": 1,
+      "message": "Finish describing this field, add other fields, add descriptions to other messages.",
+      "range": {
+        "startLine": 23,
+        "startChar": 22,
+        "endLine": 23,
+        "endChar": 23
+      },
+      "revId": "5f8f6173328f8d77feea5fd100e150c3094c11f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
