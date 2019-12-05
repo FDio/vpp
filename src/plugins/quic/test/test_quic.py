@@ -41,6 +41,11 @@ class QUICAppWorker(Worker):
 
 class QUICTestCase(VppTestCase):
     """ QUIC Test Case """
+
+    timeout = 20
+    pre_test_sleep = 0.3
+    post_test_sleep = 0.2
+
     @classmethod
     def setUpClass(cls):
         cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
@@ -53,10 +58,7 @@ class QUICTestCase(VppTestCase):
         if self.build_dir is None:
             raise Exception("Environment variable `%s' not set" % var)
         self.vppDebug = 'vpp_debug' in self.build_dir
-        self.timeout = 20
         self.vapi.session_enable_disable(is_enabled=1)
-        self.pre_test_sleep = 0.3
-        self.post_test_sleep = 0.2
 
         self.create_loopback_interfaces(2)
         self.uri = "quic://%s/1234" % self.loop0.local_ip4
@@ -265,6 +267,8 @@ class QUICEchoExtTestCase(QUICTestCase):
 
 class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Test Case"""
+    timeout = 60
+
     def test_quic_ext_transfer(self):
         self.server()
         self.client()
@@ -274,6 +278,7 @@ class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
 class QUICEchoExtTransferBigTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Big Test Case"""
     test_bytes = ''
+    timeout = 60
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_ext_transfer_big(self):
