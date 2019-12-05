@@ -1,4 +1,9 @@
 #!/bin/bash
+: ${VPP_BUILD_USER:=$(whoami)}
+: ${VPP_BUILD_HOST:=$(hostname)}
+DATE_FMT="+%Y-%m-%dT%H:%M:%S"
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
+VPP_BUILD_DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" "$DATE_FMT" 2>/dev/null || date -u -r "$SOURCE_DATE_EPOCH" "$DATE_FMT" 2>/dev/null || date -u "$DATE_FMT")
 
 cat > ${1} << __EOF__
 /*
@@ -19,9 +24,9 @@ cat > ${1} << __EOF__
 #ifndef included_vpp_app_version_h
 #define included_vpp_app_version_h
 
-#define VPP_BUILD_DATE "$(date)"
-#define VPP_BUILD_USER "$(whoami)"
-#define VPP_BUILD_HOST "$(hostname)"
+#define VPP_BUILD_DATE "$VPP_BUILD_DATE"
+#define VPP_BUILD_USER "$VPP_BUILD_USER"
+#define VPP_BUILD_HOST "$VPP_BUILD_HOST"
 #define VPP_BUILD_TOPDIR "$(git rev-parse --show-toplevel 2> /dev/null)"
 #define VPP_BUILD_VER "$(scripts/version)"
 #endif
