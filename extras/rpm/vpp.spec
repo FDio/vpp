@@ -403,6 +403,9 @@ fi
 %files devel
 %defattr(-,bin,bin)
 /usr/bin/vppapigen
+/usr/bin/vapi_c_gen.py
+/usr/bin/vapi_cpp_gen.py
+/usr/bin/vapi_json_parser.py
 %{_includedir}/*
 /usr/share/doc/vpp/examples/sample-plugin
 /usr/share/vpp

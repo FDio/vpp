@@ -31,12 +31,10 @@ macro(add_vpp_plugin name)
     endif()
   endif()
 
-  file(RELATIVE_PATH rpath ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+  vpp_add_api_files(${plugin_name} plugins ${PLUGIN_COMPONENT} ${PLUGIN_API_FILES})
   foreach(f ${PLUGIN_API_FILES})
     get_filename_component(dir ${f} DIRECTORY)
-    vpp_generate_api_header(${f} plugins ${PLUGIN_COMPONENT})
     list(APPEND api_includes ${f}.h ${f}.json)
-    set_property(GLOBAL APPEND PROPERTY VPP_API_FILES ${rpath}/${f})
     install(
       FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_enum.h
@@ -47,6 +45,9 @@ macro(add_vpp_plugin name)
   endforeach()
   add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_includes})
   set_target_properties(${plugin_name} PROPERTIES NO_SONAME 1)
+  if(PLUGIN_API_FILES)
+    add_dependencies(${plugin_name} ${plugin_name}_api_headers)
+  endif()
   if(NOT VPP_EXTERNAL_PROJECT)
     add_dependencies(${plugin_name} vpp_version_h api_headers)
   endif()
