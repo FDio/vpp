@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ed744c4_a9991d0b",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 601,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-05T03:14:27Z",
+      "side": 1,
+      "message": "Hm, I\u0027m almost torn about this. If somebody calls this function with thread_index \u003e the number of workers, I\u0027d almost consider that a bug ...",
+      "range": {
+        "startLine": 601,
+        "startChar": 0,
+        "endLine": 601,
+        "endChar": 48
+      },
+      "revId": "ff0cbe50486cac27dbc73e353dd2e612b00e8206",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
