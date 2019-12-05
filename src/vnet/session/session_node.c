@@ -310,7 +310,7 @@ session_mq_reset_reply_handler (void *data)
   s = session_get_if_valid (index, thread_index);
 
   /* Session was already closed or already cleaned up */
-  if (!s || s->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+  if (!s)
     return;
 
   app_wrk = app_worker_get (s->app_wrk_index);
