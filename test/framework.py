@@ -1500,9 +1500,10 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger, env=None):
+    def __init__(self, executable_args, logger, env=None, *args, **kwargs):
+        super(Worker, self).__init__(*args, **kwargs)
         self.logger = logger
-        self.args = args
+        self.args = executable_args
         if hasattr(self, 'testcase') and self.testcase.debug_all:
             if self.testcase.debug_gdbserver:
                 self.args = ['/usr/bin/gdbserver', 'localhost:{port}'
@@ -1517,7 +1518,6 @@ class Worker(Thread):
         self.result = None
         env = {} if env is None else env
         self.env = copy.deepcopy(env)
-        super(Worker, self).__init__()
 
     def wait_for_enter(self):
         if not hasattr(self, 'testcase'):
