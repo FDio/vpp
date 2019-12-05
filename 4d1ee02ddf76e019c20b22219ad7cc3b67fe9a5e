@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b3e2433_9b867370",
+        "filename": "src/vlibmemory/vlib_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-12-05T19:47:02Z",
+      "side": 1,
+      "message": "This is a great way to *cause* SIGABRT. It\u0027s easy to imagine vec_len (event_data) \u003d\u003d 0, at which point the wheels fall off.",
+      "revId": "4d1ee02ddf76e019c20b22219ad7cc3b67fe9a5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
