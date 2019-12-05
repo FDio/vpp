@@ -59,8 +59,7 @@ class TestSRv6EndMGTP4E(VppTestCase):
                    IPv6ExtHdrSegmentRouting() /
                    IPv6(dst=d, src=s) /
                    UDP(sport=1000, dport=23))
-
-            self.logger.info(pkt.show2())
+            self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
         return pkts
@@ -86,7 +85,7 @@ class TestSRv6EndMGTP4E(VppTestCase):
         capture = self.pg1.get_capture(len(pkts))
 
         for pkt in capture:
-            self.logger.info(pkt.show2())
+            self.logger.info(pkt.show2(dump=True))
             self.assertEqual(pkt[IP].dst, self.ip4_dst)
             self.assertEqual(pkt[IP].src, self.ip4_src)
             self.assertEqual(pkt[GTP_U_Header].teid, 0xbbbbbbbb)

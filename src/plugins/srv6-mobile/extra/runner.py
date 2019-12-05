@@ -527,6 +527,7 @@ class Program(object):
         for p in c4.pg_read_packets():
             p.show2()
 
+    ''' T.Map is obsolete
     def test_tmap(self):
         # TESTS:
         # trace add af-packet-input 10
@@ -809,6 +810,7 @@ class Program(object):
         print("Receiving packet on {}:".format(c4.name))
         for p in c4.pg_read_packets():
             p.show2()
+    '''
 
     def test_gtp4(self):
         # TESTS:
@@ -836,9 +838,8 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec(
-            "sr localsid prefix 172.20.0.1/32 "
-            "behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -906,10 +907,8 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec(
-            "sr localsid prefix ::ffff:ac14:0001/128 "
-            "behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64 "
-            "nhtype ipv4")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -978,10 +977,8 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec(
-            "sr localsid prefix 172.20.0.1/32 "
-            "behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64 "
-            "nhtype ipv4")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -1047,9 +1044,8 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec(
-            "sr localsid prefix ::ffff:ac14:0001/128 "
-            "behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -1117,9 +1113,8 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec(
-            "sr localsid prefix ::ffff:ac14:0001/128 "
-            "behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -1935,10 +1930,10 @@ def get_args():
         choices=[
             "ping",
             "srv6",
-            "tmap",
-            "tmap_5g",
-            "tmap_ipv6",
-            "tmap_ipv6_5g",
+            # "tmap",
+            # "tmap_5g",
+            # "tmap_ipv6",
+            # "tmap_ipv6_5g",
             "gtp4",
             "gtp4_5g",
             "gtp4_echo",
@@ -1996,14 +1991,14 @@ def main(op=None, prefix=None, verbose=None,
             program.test_ping()
         elif op == 'srv6':
             program.test_srv6()
-        elif op == 'tmap':
-            program.test_tmap()
-        elif op == 'tmap_5g':
-            program.test_tmap_5g()
-        elif op == 'tmap_ipv6':
-            program.test_tmap_ipv6()
-        elif op == 'tmap_ipv6_5g':
-            program.test_tmap_ipv6_5g()
+        # elif op == 'tmap':
+        #    program.test_tmap()
+        # elif op == 'tmap_5g':
+        #    program.test_tmap_5g()
+        # elif op == 'tmap_ipv6':
+        #    program.test_tmap_ipv6()
+        # elif op == 'tmap_ipv6_5g':
+        #    program.test_tmap_ipv6_5g()
         elif op == 'gtp4':
             program.test_gtp4()
         elif op == 'gtp4_5g':

@@ -37,6 +37,11 @@
 #define IP_PROTOCOL_NONE	59
 #endif
 
+#define SRV6_GTP6_UNKNOW	0
+#define SRV6_GTP6_DT4		1
+#define SRV6_GTP6_DT6		2
+#define SRV6_GTP6_DT46		3
+
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define BITALIGN2(A,B)          A; B
 #define BITALIGN3(A,B,C)        A; B; C
@@ -175,19 +180,19 @@ typedef struct srv6_end_main_v4_s
 
 } srv6_end_main_v4_t;
 
-typedef struct srv6_end_main_v4_decap_s
+typedef struct srv6_t_main_v4_decap_s
 {
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  u32 end_m_gtp4_d_node_index;
+  u32 t_m_gtp4_d_node_index;
   u32 error_node_index;
 
   ip6_header_t cache_hdr;
-} srv6_end_main_v4_decap_t;
+} srv6_t_main_v4_decap_t;
 
 extern srv6_end_main_v4_t srv6_end_main_v4;
-extern srv6_end_main_v4_decap_t srv6_end_main_v4_decap;
+extern srv6_t_main_v4_decap_t srv6_t_main_v4_decap;
 extern vlib_node_registration_t srv6_end_m_gtp4_e;
 
 typedef struct srv6_end_main_v6_s

@@ -14,6 +14,7 @@
 add_vpp_plugin(srv6mobile
   SOURCES
   gtp4_e.c
+  gtp4_d.c
   gtp6_e.c
   gtp6_d.c
   gtp6_d_di.c

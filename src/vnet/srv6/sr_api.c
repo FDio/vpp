@@ -108,13 +108,14 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 
 /*
  * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
- *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+ *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+ *                u16 behavior, void *plugin_mem)
  */
   int rv = 0;
   rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
 		      segments,
 		      ntohl (mp->sids.weight),
-		      mp->type, ntohl (mp->fib_table), mp->is_encap);
+		      mp->type, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
