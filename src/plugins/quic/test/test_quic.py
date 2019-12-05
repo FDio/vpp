@@ -14,14 +14,17 @@ class QUICAppWorker(Worker):
     """ QUIC Test Application Worker """
     process = None
 
-    def __init__(self, build_dir, appname, args, logger, role, testcase,
-                 env={}):
+    def __init__(self, build_dir, appname, executable_args, logger, role,
+                 testcase, env=None, *args, **kwargs):
+        if env is None:
+            env = {}
         app = "%s/vpp/bin/%s" % (build_dir, appname)
-        self.args = [app] + args
+        self.args = [app] + executable_args
         self.role = role
         self.wait_for_gdb = 'wait-for-gdb'
         self.testcase = testcase
-        super(QUICAppWorker, self).__init__(self.args, logger, env)
+        super(QUICAppWorker, self).__init__(self.args, logger, env,
+                                            *args, **kwargs)
 
     def run(self):
         super(QUICAppWorker, self).run()
