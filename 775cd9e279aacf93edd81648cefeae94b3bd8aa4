@@ -22,6 +22,30 @@
       "revId": "775cd9e279aacf93edd81648cefeae94b3bd8aa4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b98b0bbd_523fada8",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1562,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-05T09:35:51Z",
+      "side": 1,
+      "message": "Right, also it\u0027s best to avoid the proliferation of debug clis\nAdded it to `show app mq` and `show app N mq`",
+      "parentUuid": "7bd33fca_b4826caa",
+      "range": {
+        "startLine": 1562,
+        "startChar": 0,
+        "endLine": 1562,
+        "endChar": 22
+      },
+      "revId": "775cd9e279aacf93edd81648cefeae94b3bd8aa4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
