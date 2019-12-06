@@ -16,7 +16,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
-
+#include <vnet/format_fns.h>
 #include <stn/stn.h>
 
 #define __plugin_msg_base stn_test_main.msg_id_base
@@ -81,7 +81,7 @@ vl_api_stn_rules_details_t_handler (vl_api_stn_rules_details_t * mp)
 {
   vat_main_t *vam = stn_test_main.vat_main;
   fformat (vam->ofp, "addr: %U sw_if_index: %u\n",
-	   mp->is_ip4 ? format_ip4_address : format_ip6_address,
+	   format_ip46_address,
 	   mp->ip_address, clib_net_to_host_u32 (mp->sw_if_index));
 }
 

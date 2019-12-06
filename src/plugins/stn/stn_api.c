@@ -18,7 +18,8 @@
 
 #include <plugins/stn/stn.h>
 #include <vnet/ip/format.h>
-
+#include <vnet/format_fns.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vppinfra/byte_order.h>
 
 /* define message IDs */
@@ -48,10 +49,7 @@ static void *vl_api_stn_add_del_rule_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: stn_add_del_rule ");
-  if (mp->is_ip4)
-    s = format (s, "address %U ", format_ip4_address, mp->ip_address);
-  else
-    s = format (s, "address %U ", format_ip6_address, mp->ip_address);
+  s = format (s, "address %U ", format_ip46_address, mp->ip_address);
   s = format (s, "sw_if_index %d is_add %d", mp->sw_if_index, mp->is_add);
 
   FINISH;
@@ -64,15 +62,7 @@ vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
   vl_api_stn_add_del_rule_reply_t *rmp;
   int rv = 0;
 
-  if (mp->is_ip4)
-    {
-      ip4_address_t a;
-      memcpy (&a, mp->ip_address, sizeof (a));
-      ip46_address_set_ip4 (&args.address, &a);
-    }
-  else
-    memcpy (&args.address.ip6, mp->ip_address, sizeof (ip6_address_t));
-
+  ip_address_decode (&mp->ip_address, &args.address);
   args.sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   args.del = !mp->is_add;
 
@@ -92,16 +82,9 @@ send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
   rmp->_vl_msg_id =
     clib_host_to_net_u16 (VL_API_STN_RULES_DETAILS + stn_main.msg_id_base);
 
-  if (ip46_address_is_ip4 (&r->address))
-    {
-      clib_memcpy (rmp->ip_address, &r->address.ip4, sizeof (ip4_address_t));
-      rmp->is_ip4 = 1;
-    }
-  else
-    {
-      clib_memcpy (rmp->ip_address, &r->address.ip6, sizeof (ip6_address_t));
-    }
-
+  ip_address_encode (&r->address,
+		     ip46_address_is_ip4 (&r->address) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &rmp->ip_address);
   rmp->context = context;
   rmp->sw_if_index = clib_host_to_net_u32 (r->sw_if_index);
 
