@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "286d01a6_d71032eb",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-06T09:34:48Z",
+      "side": 1,
+      "message": "Not true.",
+      "range": {
+        "startLine": 9,
+        "startChar": 15,
+        "endLine": 9,
+        "endChar": 19
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9310bef0_774ab9c4",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-06T09:34:48Z",
+      "side": 1,
+      "message": "IOError\n\nThat would catch also VppTransportSocketIOError and socket.error.",
+      "range": {
+        "startLine": 575,
+        "startChar": 19,
+        "endLine": 575,
+        "endChar": 38
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
