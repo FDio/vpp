@@ -19,7 +19,9 @@
     the bonding device driver
 */
 
-option version = "1.0.0";
+option version = "2.0.0";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Dump lacp interfaces request */
 define sw_interface_lacp_dump
@@ -52,21 +54,21 @@ define sw_interface_lacp_dump
 define sw_interface_lacp_details
 {
   u32 context;
-  u32 sw_if_index;
-  u8 interface_name[64];
+  vl_api_interface_index_t sw_if_index;
+  string interface_name[64];
   u32 rx_state;
   u32 tx_state;
   u32 mux_state;
   u32 ptx_state;
-  u8 bond_interface_name[64];
+  string bond_interface_name[64];
   u16 actor_system_priority;
-  u8 actor_system[6];
+  vl_api_mac_address_t actor_system;
   u16 actor_key;
   u16 actor_port_priority;
   u16 actor_port_number;
   u8 actor_state;
   u16 partner_system_priority;
-  u8 partner_system[6];
+  vl_api_mac_address_t partner_system;
   u16 partner_key;
   u16 partner_port_priority;
   u16 partner_port_number;
