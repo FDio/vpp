@@ -54,11 +54,17 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
+  echo_connect_args_t _a, *a = &_a;
   u64 i;
+
+  a->parent_session_handle = mp->handle;
+  a->context = session_index;
+  clib_memcpy_fast (&a->lcl_ip, &em->lcl_ip, sizeof (ip46_address_t));
+  clib_memcpy_fast (&a->ip, &em->uri_elts.ip, sizeof (ip46_address_t));
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
+    echo_send_rpc (em, echo_send_connect, (echo_rpc_args_t *) a);
 
   ECHO_LOG (1, "Qsession 0x%llx S[%d] connected to %U:%d",
 	    mp->handle, session_index, format_ip46_address, &mp->lcl.ip,
@@ -107,11 +113,17 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
   ECHO_LOG (2, "Accept on QSession 0x%lx S[%u]", mp->handle, session_index);
+  echo_connect_args_t _a, *a = &_a;
   u32 i;
+
+  a->parent_session_handle = mp->handle;
+  a->context = session_index;
+  clib_memcpy_fast (&a->lcl_ip, &em->lcl_ip, sizeof (ip46_address_t));
+  clib_memcpy_fast (&a->ip, &em->uri_elts.ip, sizeof (ip46_address_t));
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
+    echo_send_rpc (em, echo_send_connect, (echo_rpc_args_t *) a);
 }
 
 static void
@@ -175,7 +187,7 @@ quic_echo_cleanup_listener (u32 listener_index, echo_main_t * em,
       if (eqm->send_quic_disconnects == ECHO_CLOSE_F_ACTIVE)
 	{
 	  echo_send_rpc (em, echo_send_disconnect_session,
-			 (void *) ls->vpp_session_handle, 0);
+			 (echo_rpc_args_t *) & ls->vpp_session_handle);
 	  clib_atomic_fetch_add (&em->stats.active_count.q, 1);
 	}
       else if (eqm->send_quic_disconnects == ECHO_CLOSE_F_NONE)
@@ -236,7 +248,7 @@ quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
           {
             ECHO_LOG (2,"%U: ACTIVE close", echo_format_session, s);
             echo_send_rpc (em, echo_send_disconnect_session,
-                           (void *) s->vpp_session_handle, 0);
+                           (echo_rpc_args_t *) &s->vpp_session_handle);
             clib_atomic_fetch_add (&em->stats.active_count.q, 1);
           }
         else if (eqm->send_quic_disconnects == ECHO_CLOSE_F_NONE)
@@ -466,7 +478,9 @@ quic_echo_set_defaults_after_opts_cb ()
 
   em->n_connects = em->n_clients;
   em->n_sessions =
-    clib_max (1, eqm->n_stream_clients) * em->n_clients + em->n_clients + 1;
+    clib_max (1,
+	      eqm->n_stream_clients) * em->n_clients + em->n_clients +
+    em->n_uris;
   em->n_clients = eqm->n_stream_clients * em->n_clients;
 
   if (em->i_am_master)
