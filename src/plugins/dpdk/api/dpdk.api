@@ -14,6 +14,7 @@
  */
 
 option version = "1.0.0";
+import "vnet/interface_types.api";
 
 /** \brief DPDK interface HQoS pipe profile set request
     @param client_index - opaque cookie to identify the sender
@@ -26,7 +27,7 @@ option version = "1.0.0";
 autoreply define sw_interface_set_dpdk_hqos_pipe {
     u32 client_index;
     u32 context;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
     u32 subport;
     u32 pipe;
     u32 profile;
@@ -46,7 +47,7 @@ autoreply define sw_interface_set_dpdk_hqos_pipe {
 autoreply define sw_interface_set_dpdk_hqos_subport {
     u32 client_index;
     u32 context;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
     u32 subport;
     u32 tb_rate;
     u32 tb_size;
@@ -66,7 +67,7 @@ autoreply define sw_interface_set_dpdk_hqos_subport {
 autoreply define sw_interface_set_dpdk_hqos_tctbl {
     u32 client_index;
     u32 context;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
     u32 entry;
     u32 tc;
     u32 queue;
