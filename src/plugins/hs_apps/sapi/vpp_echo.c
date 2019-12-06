@@ -394,7 +394,7 @@ echo_handle_data (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 	  if (em->send_stream_disconnects == ECHO_CLOSE_F_ACTIVE)
 	    {
 	      echo_send_rpc (em, echo_send_disconnect_session,
-			     (void *) s->vpp_session_handle, 0);
+			     (echo_rpc_args_t *) & s->vpp_session_handle);
 	      clib_atomic_fetch_add (&em->stats.active_count.s, 1);
 	    }
 	  else if (em->send_stream_disconnects == ECHO_CLOSE_F_NONE)
@@ -488,14 +488,16 @@ echo_data_thread_fn (void *arg)
 }
 
 static void
-session_unlisten_handler (session_unlisten_msg_t * mp)
+session_unlisten_handler (session_unlisten_reply_msg_t * mp)
 {
-  echo_session_t *listen_session;
+  echo_session_t *ls;
   echo_main_t *em = &echo_main;
-  listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
-  em->proto_cb_vft->cleanup_cb (listen_session, 0 /* parent_died */ );
-  listen_session->session_state = ECHO_SESSION_STATE_CLOSED;
-  em->state = STATE_DISCONNECTED;
+
+  ls = echo_get_session_from_handle (em, mp->handle);
+  em->proto_cb_vft->cleanup_cb (ls, 0 /* parent_died */ );
+  ls->session_state = ECHO_SESSION_STATE_CLOSED;
+  if (--em->listen_session_cnt == 0)
+    em->state = STATE_DISCONNECTED;
 }
 
 static void
@@ -518,8 +520,9 @@ session_bound_handler (session_bound_msg_t * mp)
   listen_session->session_type = ECHO_SESSION_TYPE_LISTEN;
   listen_session->vpp_session_handle = mp->handle;
   echo_session_handle_add_del (em, mp->handle, listen_session->session_index);
-  em->state = STATE_LISTEN;
-  em->listen_session_index = listen_session->session_index;
+  vec_add1 (em->listen_session_indexes, listen_session->session_index);
+  if (++em->listen_session_cnt == em->n_uris)
+    em->state = STATE_LISTEN;
   if (em->proto_cb_vft->bound_uri_cb)
     em->proto_cb_vft->bound_uri_cb (mp, listen_session);
 }
@@ -718,7 +721,8 @@ handle_mq_event (session_event_t * e)
     case SESSION_CTRL_EVT_RESET:
       return session_reset_handler ((session_reset_msg_t *) e->data);
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
-      return session_unlisten_handler ((session_unlisten_msg_t *) e->data);
+      return session_unlisten_handler ((session_unlisten_reply_msg_t *)
+				       e->data);
     case SESSION_IO_EVT_RX:
       break;
     default:
@@ -744,7 +748,7 @@ echo_process_rpcs (echo_main_t * em)
       svm_msg_q_sub_w_lock (mq, &msg);
       rpc = svm_msg_q_msg_data (mq, &msg);
       svm_msg_q_unlock (mq);
-      ((echo_rpc_t) rpc->fp) (rpc->arg, rpc->opaque);
+      ((echo_rpc_t) rpc->fp) (em, &rpc->args);
       svm_msg_q_free_msg (mq, &msg);
     }
 }
@@ -798,13 +802,43 @@ echo_mq_thread_fn (void *arg)
   pthread_exit (0);
 }
 
+static inline void
+echo_cycle_ip (echo_main_t * em, ip46_address_t * ip, ip46_address_t * src_ip,
+	       u32 i)
+{
+  u8 *ipu8;
+  u8 l;
+  if (i % em->n_uris == 0)
+    {
+      clib_memcpy_fast (ip, src_ip, sizeof (*ip));
+      return;
+    }
+  l = em->uri_elts.is_ip4 ? 3 : 15;
+  ipu8 = em->uri_elts.is_ip4 ? ip->ip4.as_u8 : ip->ip6.as_u8;
+  while (ipu8[l] == 0xf)
+    ipu8[l--] = 0;
+  if (l)
+    ipu8[l]++;
+}
+
 static void
 clients_run (echo_main_t * em)
 {
+  echo_connect_args_t _a, *a = &_a;
   u64 i;
+
+  a->context = SESSION_INVALID_INDEX;
+  a->parent_session_handle = SESSION_INVALID_HANDLE;
+  clib_memset (&a->lcl_ip, 0, sizeof (a->lcl_ip));
+
   echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
   for (i = 0; i < em->n_connects; i++)
-    echo_send_connect (SESSION_INVALID_HANDLE, SESSION_INVALID_INDEX);
+    {
+      echo_cycle_ip (em, &a->ip, &em->uri_elts.ip, i);
+      if (em->lcl_ip_set)
+	echo_cycle_ip (em, &a->lcl_ip, &em->lcl_ip, i);
+      echo_send_connect (em, a);
+    }
   wait_for_state_change (em, STATE_READY, 0);
   ECHO_LOG (2, "App is ready");
   echo_process_rpcs (em);
@@ -814,14 +848,25 @@ static void
 server_run (echo_main_t * em)
 {
   echo_session_t *ls;
-  echo_send_listen (em);
+  ip46_address_t _ip, *ip = &_ip;
+  u32 *listen_session_index;
+  u32 i;
+
+  for (i = 0; i < em->n_uris; i++)
+    {
+      echo_cycle_ip (em, ip, &em->uri_elts.ip, i);
+      echo_send_listen (em, ip);
+    }
   wait_for_state_change (em, STATE_READY, 0);
   ECHO_LOG (2, "App is ready");
   echo_process_rpcs (em);
   /* Cleanup */
-  ECHO_LOG (2, "Unbind listen port");
-  ls = pool_elt_at_index (em->sessions, em->listen_session_index);
-  echo_send_unbind (em, ls);
+  vec_foreach (listen_session_index, em->listen_session_indexes)
+  {
+    ECHO_LOG (2, "Unbind listen port %d", em->listen_session_cnt);
+    ls = pool_elt_at_index (em->sessions, *listen_session_index);
+    echo_send_unbind (em, ls);
+  }
   if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
     {
       ECHO_FAIL (ECHO_FAIL_SERVER_DISCONNECT_TIMEOUT,
@@ -854,6 +899,8 @@ print_usage_and_exit (void)
 	   "  secret SECRET       set namespace secret\n"
 	   "  chroot prefix PATH  Use PATH as memory root path\n"
 	   "  sclose=[Y|N|W]      When stream is done, send[Y]|nop[N]|wait[W] for close\n"
+	   "  nuris N             Cycle through N consecutive (src&dst) ips when creating connections\n"
+	   "  lcl IP              Set the local ip to use as a client (use with nuris to set first src ip)\n"
 	   "\n"
 	   "  time START:END      Time between evts START & END, events being :\n"
 	   "                       start - Start of the app\n"
@@ -931,6 +978,10 @@ echo_process_opts (int argc, char **argv)
 	vl_set_memory_root_path ((char *) chroot_prefix);
       else if (unformat (a, "uri %s", &uri))
 	em->uri = format (0, "%s%c", uri, 0);
+      else if (unformat (a, "lcl %U", unformat_ip46_address, &em->lcl_ip))
+	em->lcl_ip_set = 1;
+      else if (unformat (a, "nuris %u", &em->n_uris))
+	em->n_sessions = em->n_clients + em->n_uris;
       else if (unformat (a, "server"))
 	em->i_am_master = 1;
       else if (unformat (a, "client"))
@@ -965,7 +1016,7 @@ echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "nclients %d", &em->n_clients))
 	{
-	  em->n_sessions = em->n_clients + 1;
+	  em->n_sessions = em->n_clients + em->n_uris;
 	  em->n_connects = em->n_clients;
 	}
       else if (unformat (a, "nthreads %d", &em->n_rx_threads))
@@ -1113,6 +1164,8 @@ main (int argc, char **argv)
   em->i_am_master = 1;
   em->n_rx_threads = 4;
   em->evt_q_size = 256;
+  em->lcl_ip_set = 0;
+  clib_memset (&em->lcl_ip, 0, sizeof (em->lcl_ip));
   em->test_return_packets = RETURN_PACKETS_NOTEST;
   em->timing.start_event = ECHO_EVT_FIRST_QCONNECT;
   em->timing.end_event = ECHO_EVT_LAST_BYTE;
@@ -1122,7 +1175,9 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
+  em->n_uris = 1;
   em->max_sim_connects = 0;
+  em->listen_session_cnt = 0;
   em->crypto_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);

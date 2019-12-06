@@ -266,13 +266,17 @@ typedef struct
   svm_queue_t *vl_input_queue;	/* vpe input queue */
   u32 my_client_index;		/* API client handle */
   u8 *uri;			/* The URI we're playing with */
+  u32 n_uris;			/* Cycle through adjacent ips */
+  ip46_address_t lcl_ip;	/* Local ip for client */
+  u8 lcl_ip_set;
   echo_session_t *sessions;	/* Session pool */
   svm_msg_q_t *app_mq;		/* Our receiveing event queue */
   svm_msg_q_t *ctrl_mq;		/* Our control queue (towards vpp) */
   clib_time_t clib_time;	/* For deadman timers */
   u8 *socket_name;
   int i_am_master;
-  u32 listen_session_index;	/* Index of vpp listener session */
+  u32 *listen_session_indexes;	/* vec of vpp listener sessions */
+  volatile u32 listen_session_cnt;
 
   uword *session_index_by_vpp_handles;	/* Hash table : quic_echo s_id -> vpp s_handle */
   clib_spinlock_t sid_vpp_handles_lock;	/* Hash table lock */
@@ -370,14 +374,34 @@ typedef struct
 
 extern echo_main_t echo_main;
 
-typedef void (*echo_rpc_t) (void *arg, u32 opaque);
+
+typedef struct echo_connect_args_
+{
+  u32 context;
+  u64 parent_session_handle;
+  ip46_address_t ip;
+  ip46_address_t lcl_ip;
+} echo_connect_args_t;
+
+typedef struct echo_disconnect_args_
+{
+  u64 session_handle;
+} echo_disconnect_args_t;
+
+typedef union
+{
+  echo_connect_args_t connect;
+  echo_disconnect_args_t disconnect;
+} echo_rpc_args_t;
+
+typedef void (*echo_rpc_t) (echo_main_t * em, echo_rpc_args_t * arg);
 
 typedef struct
 {
   void *fp;
-  void *arg;
-  u32 opaque;
+  echo_rpc_args_t args;
 } echo_rpc_msg_t;
+
 
 u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ip6_address (u8 * s, va_list * args);
@@ -398,7 +422,7 @@ uword unformat_ip6_address (unformat_input_t * input, va_list * args);
 
 void echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid);
 echo_session_t *echo_session_new (echo_main_t * em);
-int echo_send_rpc (echo_main_t * em, void *fp, void *arg, u32 opaque);
+int echo_send_rpc (echo_main_t * em, void *fp, echo_rpc_args_t * args);
 echo_session_t *echo_get_session_from_handle (echo_main_t * em, u64 handle);
 int wait_for_segment_allocation (u64 segment_handle);
 int wait_for_state_change (echo_main_t * em, connection_state_t state,
@@ -412,10 +436,10 @@ uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
 
 void echo_send_attach (echo_main_t * em);
 void echo_send_detach (echo_main_t * em);
-void echo_send_listen (echo_main_t * em);
+void echo_send_listen (echo_main_t * em, ip46_address_t * ip);
 void echo_send_unbind (echo_main_t * em, echo_session_t * s);
-void echo_send_connect (u64 vpp_session_handle, u32 opaque);
-void echo_send_disconnect_session (u64 handle, u32 opaque);
+void echo_send_connect (echo_main_t * em, void *args);
+void echo_send_disconnect_session (echo_main_t * em, void *args);
 void echo_api_hookup (echo_main_t * em);
 void echo_send_add_cert_key (echo_main_t * em);
 void echo_send_del_cert_key (echo_main_t * em);
