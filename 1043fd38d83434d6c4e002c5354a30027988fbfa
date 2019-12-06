@@ -93,6 +93,30 @@
       "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ca4f3a8_0d7356d9",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-06T15:19:59Z",
+      "side": 1,
+      "message": "| Git blame on current master says nothing has changed since [2]. Were you planning to change \n| the parent class in a Change that did not get merged?\n\nYes. \nI think it makes sense to change the exception hierarchy to:\n\n+--IOError\n   + VPPIOError\n      +  VppTransportShmemIOError\n      +  VppTransportSocketIOError\nSince we are still subclassing IOError, it should be backward compatible.\n\nWill wrap socket.error.",
+      "parentUuid": "a4fbd844_2e089764",
+      "range": {
+        "startLine": 575,
+        "startChar": 19,
+        "endLine": 575,
+        "endChar": 38
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
