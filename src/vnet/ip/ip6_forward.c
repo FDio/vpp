@@ -1161,15 +1161,13 @@ ip6_tcp_udp_icmp_bad_length (vlib_main_t * vm, vlib_buffer_t * p0)
   payload_length_host_byte_order = clib_net_to_host_u16 (ip0->payload_length);
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
 
-  if (p0)
+
+  u32 n_ip_bytes_this_buffer =
+    p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
+  if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
     {
-      u32 n_ip_bytes_this_buffer =
-	p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
-      if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
-	{
-	  n_this_buffer = p0->current_length > headers_size ?
-	    n_ip_bytes_this_buffer - headers_size : 0;
-	}
+      n_this_buffer = p0->current_length > headers_size ?
+	n_ip_bytes_this_buffer - headers_size : 0;
     }
 
   n_bytes_left -= n_this_buffer;
