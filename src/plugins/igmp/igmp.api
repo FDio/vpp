@@ -18,6 +18,7 @@
 
 option version = "1.0.0";
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /**
  * @brief Filter mode
@@ -65,7 +66,7 @@ typedef igmp_group
 {
   vl_api_filter_mode_t filter;
   u8 n_srcs;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip4_address_t gaddr;
   vl_api_ip4_address_t saddrs[n_srcs];
 };
@@ -93,9 +94,9 @@ autoreply define igmp_enable_disable
   u32 client_index;
   u32 context;
 
-  u8 enable;
+  bool enable;
   u8 mode;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /**
@@ -116,7 +117,7 @@ autoreply define igmp_proxy_device_add_del
 
   u8 add;
   u32 vrf_id;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /**
@@ -135,9 +136,9 @@ autoreply define igmp_proxy_device_add_del_interface
   u32 client_index;
   u32 context;
 
-  u8 add;
+  bool add;
   u32 vrf_id;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /**
@@ -151,7 +152,7 @@ define igmp_dump
   u32 client_index;
   u32 context;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /**
@@ -165,7 +166,7 @@ define igmp_details
 {
   u32 context;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip4_address_t saddr;
   vl_api_ip4_address_t gaddr;
 };
@@ -180,7 +181,7 @@ autoreply define igmp_clear_interface
   u32 client_index;
   u32 context;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /**
@@ -215,7 +216,7 @@ service {
  */
 define igmp_event
 {
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_filter_mode_t filter;
   vl_api_ip4_address_t saddr;
   vl_api_ip4_address_t gaddr;
