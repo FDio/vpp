@@ -15,7 +15,9 @@
  *------------------------------------------------------------------
  */
 
-option version = "1.0.1";
+option version = "1.1.0";
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief
     @param client_index - opaque cookie to identify the sender
@@ -45,7 +47,7 @@ define vmxnet3_create
   u16 txq_size;
   u16 txq_num;
   u8 bind;
-  u8 enable_gso;
+  bool enable_gso;
   option vat_help = "<pci-address> [rx-queue-size <size>] [tx-queue-size <size>] [num-tx-queues <num>] [num-rx-queues <num>] [bind] [gso]";
 };
 
@@ -59,7 +61,7 @@ define vmxnet3_create_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief
@@ -73,7 +75,7 @@ autoreply define vmxnet3_delete
   u32 client_index;
   u32 context;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   option vat_help = "sw_if_index <sw_if_index>";
 };
 
@@ -126,12 +128,12 @@ define vmxnet3_details
 {
   u32 context;
 
-  u32 sw_if_index;
-  u8 if_name[64];
-  u8 hw_addr[6];
+  vl_api_interface_index_t sw_if_index;
+  string if_name[64];
+  vl_api_mac_address_t hw_addr;
   u32 pci_addr;
   u8 version;
-  u8 admin_up_down;
+  bool admin_up_down;
 
   u8 rx_count;
   vl_api_vmxnet3_rx_list_t rx_list[16];
