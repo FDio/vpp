@@ -26,7 +26,7 @@ autoreply define cdp_enable_disable
   u32 context;
   
   /* Enable (1)/ disable (0) the feature */
-  u8 enable_disable;
+  bool enable_disable;
 };
 
 /*
