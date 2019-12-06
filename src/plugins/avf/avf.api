@@ -16,6 +16,7 @@
  */
 
 option version = "1.0.0";
+import "vnet/interface_types.api";
 
 /** \brief
     @param client_index - opaque cookie to identify the sender
@@ -51,7 +52,7 @@ define avf_create_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief
@@ -65,7 +66,7 @@ autoreply define avf_delete
   u32 client_index;
   u32 context;
 
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   option vat_help = "<sw_if_index>";
 };
 
