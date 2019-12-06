@@ -18,5 +18,11 @@
 quic_error (NONE, "no error")
 quic_error (TX_PACKETS, "quic TX packets")
 quic_error (RX_PACKETS, "quic RX packets")
+quic_error (OPENED_STREAM, "quic opened streams number")
+quic_error (CLOSED_STREAM, "quic closed streams number")
+quic_error (OPENED_CONNECTION, "quic opened connections number")
+quic_error (CLOSED_CONNECTION, "quic closed connections number")
+quic_error (ZERO_RTT_RX_PACKETS, "0RTT RX packets number")
+quic_error (ONE_RTT_RX_PACKETS, "1RTT RX packets number")
 quic_error (PACKET_DROP, "quic packet drops")
 

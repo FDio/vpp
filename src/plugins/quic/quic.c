@@ -549,6 +549,7 @@ quic_on_stream_destroy (quicly_stream_t * stream, int err)
   stream_session->session_state = SESSION_STATE_CLOSED;
   session_transport_delete_notify (&sctx->connection);
 
+  quic_increment_counter (QUIC_ERROR_CLOSED_STREAM, 1);
   quic_ctx_free (sctx);
   clib_mem_free (stream->data);
 }
@@ -1017,6 +1018,8 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
       QUIC_DBG (2, "Stream open failed with %d", rv);
       return -1;
     }
+  quic_increment_counter (QUIC_ERROR_OPENED_STREAM, 1);
+
   sctx->stream = stream;
 
   QUIC_DBG (2, "Opened stream %d, creating session", stream->stream_id);
@@ -1053,6 +1056,7 @@ quic_connect_stream (session_t * quic_session, u32 opaque)
   if (app_worker_connect_notify (app_wrk, stream_session, opaque))
     {
       QUIC_ERR ("failed to notify app");
+      quic_increment_counter (QUIC_ERROR_CLOSED_STREAM, 1);
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
       return -1;
     }
@@ -1157,6 +1161,8 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
       quicly_conn_t *conn = ctx->conn;
       /* Start connection closing. Keep sending packets until quicly_send
          returns QUICLY_ERROR_FREE_CONNECTION */
+
+      quic_increment_counter (QUIC_ERROR_CLOSED_CONNECTION, 1);
       quicly_close (conn, QUIC_APP_ERROR_CLOSE_NOTIFY, "Closed by peer");
       /* This also causes all streams to be closed (and the cb called) */
       quic_send_packets (ctx);
@@ -2319,12 +2325,67 @@ quic_format_ctx_stat (u8 * s, va_list * args)
   return s;
 }
 
+u64
+quic_get_counter_value (u32 event_code)
+{
+  vlib_node_t *n;
+  vlib_main_t *vm;
+  vlib_error_main_t *em;
+
+  u32 code, i;
+  u64 c, sum = 0;
+  int index = 0;
+
+  vm = vlib_get_main ();
+  em = &vm->error_main;
+  n = vlib_get_node (vm, quic_input_node.index);
+  code = event_code;
+  /* *INDENT-OFF* */
+  foreach_vlib_main(({
+    em = &this_vlib_main->error_main;
+    i = n->error_heap_index + code;
+    c = em->counters[i];
+
+    if (i < vec_len (em->counters_last_clear))
+       c -= em->counters_last_clear[i];
+    sum += c;
+    index++;
+  }));
+  /* *INDENT-ON* */
+  return sum;
+}
+
 static clib_error_t *
 quic_plugin_showstats_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
   quic_main_t *qm = &quic_main;
+
+  vlib_cli_output (vm, "\n-------- Connections --------\n");
+  vlib_cli_output (vm, "%=20s%10Ld%=20s%10Ld", "Opened:",
+		   quic_get_counter_value (QUIC_ERROR_OPENED_CONNECTION),
+		   "Closed:",
+		   quic_get_counter_value (QUIC_ERROR_CLOSED_CONNECTION));
+
+  vlib_cli_output (vm, "\n---------- Streams ----------\n");
+  vlib_cli_output (vm, "%=20s%10Ld%=20s%10Ld", "Opened:",
+		   quic_get_counter_value (QUIC_ERROR_OPENED_STREAM),
+		   "Closed:",
+		   quic_get_counter_value (QUIC_ERROR_CLOSED_STREAM));
+
+  vlib_cli_output (vm, "\n--------- RX Packets ---------\n");
+  vlib_cli_output (vm, "%=20s%10Ld", "Total:",
+		   quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
+  vlib_cli_output (vm, "%=20s%10Ld", "0RTT :",
+		   quic_get_counter_value (QUIC_ERROR_ZERO_RTT_RX_PACKETS));
+  vlib_cli_output (vm, "%=20s%10Ld", "1RTT :",
+		   quic_get_counter_value (QUIC_ERROR_ONE_RTT_RX_PACKETS));
+
+  vlib_cli_output (vm, "\n-------- TX Packets --------\n");
+  vlib_cli_output (vm, "%=20s%10Ld", "Total:",
+		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
+
   quic_ctx_t *ctx = NULL;
   u32 num_workers = vlib_num_workers ();
 
