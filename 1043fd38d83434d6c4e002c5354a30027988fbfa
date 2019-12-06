@@ -45,6 +45,30 @@
       "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64bd3a74_36856134",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-06T12:23:59Z",
+      "side": 1,
+      "message": "VPPIOError is a base class of VppTransportSocketIOError. If it is not, it was changed in another changeset.  I will update it here if needed.   \n\n\nsocket.error was a subclass of IOError in python2.  As of python3, socket.error is OSError. \nSee: [0][1] \n[0] https://docs.python.org/3/library/socket.html#socket.error\n[1] https://www.python.org/dev/peps/pep-3151/\n\nAre we ok with not catching the python2 socket.error exception for the next month or so until we drop py2 support after the 20.01 release? \n\nThis is a good catch.",
+      "parentUuid": "9310bef0_774ab9c4",
+      "range": {
+        "startLine": 575,
+        "startChar": 19,
+        "endLine": 575,
+        "endChar": 38
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
