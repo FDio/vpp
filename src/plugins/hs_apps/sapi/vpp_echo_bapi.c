@@ -103,7 +103,7 @@ echo_send_del_cert_key (echo_main_t * em)
 }
 
 void
-echo_send_listen (echo_main_t * em)
+echo_send_listen (echo_main_t * em, ip46_address_t * ip)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_listen_msg_t *mp;
@@ -116,7 +116,7 @@ echo_send_listen (echo_main_t * em)
   mp->context = ntohl (0xfeedface);
   mp->wrk_index = 0;
   mp->is_ip4 = em->uri_elts.is_ip4;
-  clib_memcpy_fast (&mp->ip, &em->uri_elts.ip, sizeof (mp->ip));
+  clib_memcpy_fast (&mp->ip, ip, sizeof (mp->ip));
   mp->port = em->uri_elts.port;
   mp->proto = em->uri_elts.transport_proto;
   mp->ckpair_index = em->ckpair_index;
@@ -142,11 +142,11 @@ echo_send_unbind (echo_main_t * em, echo_session_t * s)
 }
 
 void
-echo_send_connect (u64 parent_session_handle, u32 opaque)
+echo_send_connect (echo_main_t * em, void *args)
 {
-  echo_main_t *em = &echo_main;
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_connect_msg_t *mp;
+  echo_connect_args_t *a = (echo_connect_args_t *) args;
   svm_msg_q_t *mq = em->ctrl_mq;
 
   clib_atomic_sub_fetch (&em->max_sim_connects, 1);
@@ -157,32 +157,33 @@ echo_send_connect (u64 parent_session_handle, u32 opaque)
   mp = (session_connect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
   mp->client_index = em->my_client_index;
-  mp->context = ntohl (opaque);
+  mp->context = ntohl (a->context);
   mp->wrk_index = 0;
   mp->is_ip4 = em->uri_elts.is_ip4;
-  clib_memcpy_fast (&mp->ip, &em->uri_elts.ip, sizeof (mp->ip));
+  clib_memcpy_fast (&mp->ip, &a->ip, sizeof (mp->ip));
+  clib_memcpy_fast (&mp->lcl_ip, &a->lcl_ip, sizeof (mp->ip));
   mp->port = em->uri_elts.port;
   mp->proto = em->uri_elts.transport_proto;
-  mp->parent_handle = parent_session_handle;
+  mp->parent_handle = a->parent_session_handle;
   mp->ckpair_index = em->ckpair_index;
   mp->crypto_engine = em->crypto_engine;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
 void
-echo_send_disconnect_session (u64 handle, u32 opaque)
+echo_send_disconnect_session (echo_main_t * em, void *args)
 {
-  echo_main_t *em = &echo_main;
   echo_session_t *s;
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_disconnect_msg_t *mp;
   svm_msg_q_t *mq = em->ctrl_mq;
+  echo_disconnect_args_t *a = (echo_disconnect_args_t *) args;
 
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_DISCONNECT);
   mp = (session_disconnect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
   mp->client_index = em->my_client_index;
-  mp->handle = handle;
+  mp->handle = a->session_handle;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
