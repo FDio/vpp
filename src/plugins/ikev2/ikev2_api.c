@@ -26,6 +26,7 @@
 #include <ikev2/ikev2_priv.h>
 
 /* define message IDs */
+#include <vnet/format_fns.h>
 #include <plugins/ikev2/ikev2.api_enum.h>
 #include <plugins/ikev2/ikev2.api_types.h>
 

@@ -27,6 +27,7 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
+#include <vnet/format_fns.h>
 #include <ikev2/ikev2.api_enum.h>
 #include <ikev2/ikev2.api_types.h>
 
