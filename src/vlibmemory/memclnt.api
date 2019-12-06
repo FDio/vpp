@@ -53,7 +53,7 @@ manual_print
 define memclnt_delete {
     u32 index;                  /* index, used e.g. by API trace replay */
     u64 handle;               /* handle by which vlib knows this client */
-    u8 do_cleanup;				/* vlib to cleanup the registration */
+    bool do_cleanup;		/* vlib to cleanup the registration */
 };
 
 define memclnt_delete_reply {
