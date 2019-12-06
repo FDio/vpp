@@ -19,7 +19,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
-
+#include <vnet/format_fns.h>
 #include <vmxnet3/vmxnet3.h>
 
 #include <vlibapi/api.h>
