@@ -389,7 +389,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vl_socket_process_api_msg (a->clib_file, a->regp,
 					 (i8 *) a->data);
 	      vec_free (a->data);
-	      pool_put (socket_main.process_args, a);
+	      pool_put_index (socket_main.process_args, event_data[i]);
 	    }
 	  break;
 
