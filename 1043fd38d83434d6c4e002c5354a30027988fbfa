@@ -117,6 +117,30 @@
       "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "91a45273_7587aea6",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-06T17:57:12Z",
+      "side": 1,
+      "message": "Unmerged change was here.\nhttps://gerrit.fd.io/r/c/vpp/+/23755",
+      "parentUuid": "1ca4f3a8_0d7356d9",
+      "range": {
+        "startLine": 575,
+        "startChar": 19,
+        "endLine": 575,
+        "endChar": 38
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
