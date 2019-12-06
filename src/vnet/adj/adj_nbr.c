@@ -518,12 +518,13 @@ typedef struct adj_db_count_ctx_t_ {
     u64 count;
 } adj_db_count_ctx_t;
 
-static void
+static int
 adj_db_count (BVT(clib_bihash_kv) * kvp,
 	      void *arg)
 {
     adj_db_count_ctx_t * ctx = arg;
     ctx->count++;
+    return (BIHASH_WALK_CONTINUE);
 }
 
 u32
@@ -560,14 +561,16 @@ typedef struct adj_walk_ctx_t_
     void *awc_ctx;
 } adj_walk_ctx_t;
 
-static void
+static int
 adj_nbr_walk_cb (BVT(clib_bihash_kv) * kvp,
 		 void *arg)
 {
     adj_walk_ctx_t *ctx = arg;
 
     // FIXME: can't stop early...
-    ctx->awc_cb(kvp->value, ctx->awc_ctx);
+    if (ADJ_WALK_RC_STOP == ctx->awc_cb(kvp->value, ctx->awc_ctx))
+        return (BIHASH_WALK_STOP);
+    return (BIHASH_WALK_CONTINUE);
 }
 
 void

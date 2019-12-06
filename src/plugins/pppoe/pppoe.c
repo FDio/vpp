@@ -626,7 +626,7 @@ typedef struct pppoe_show_walk_ctx_t_
   u32 total_entries;
 } pppoe_show_walk_ctx_t;
 
-static void
+static int
 pppoe_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   pppoe_show_walk_ctx_t *ctx = arg;
@@ -654,6 +654,8 @@ pppoe_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 		   result.fields.session_index == ~0
 		   ? -1 : result.fields.session_index);
   ctx->total_entries++;
+
+  return (BIHASH_WALK_CONTINUE);
 }
 
 /** Display the contents of the PPPoE Fib. */
