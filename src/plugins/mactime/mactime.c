@@ -24,6 +24,7 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
+#include <vnet/format_fns.h>
 #include <mactime/mactime.api_enum.h>
 #include <mactime/mactime.api_types.h>
 

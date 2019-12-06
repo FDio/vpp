@@ -16,7 +16,10 @@
 /** @file
     This file defines vpp mactime control-plane API messages
 */
-option version = "1.2.1";
+option version = "2.0.0";
+
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
 
 /** @brief api to enable or disable the time-based src mac filter on
     an interface
@@ -26,8 +29,8 @@ autoreply define mactime_enable_disable
 {
   u32 client_index;             /**< client index, from api_main */
   u32 context;                  /**< application context */
-  u8 enable_disable;            /**< enable=1, disable=0 */
-  u32 sw_if_index;              /**< the interface handle  */
+  bool enable_disable;            /**< enable=1, disable=0 */
+  vl_api_interface_index_t sw_if_index;              /**< the interface handle  */
   option vat_help = "<intfc> [disable]";
 };
 
@@ -76,14 +79,14 @@ autoreply define mactime_add_del_range
 {
   u32 client_index;             /**< client index, from api_main */
   u32 context;                  /**< application context */
-  u8 is_add;                    /**< add=1, del=0  */
-  u8 drop;                      /**< drop flag */
-  u8 allow;                     /**< allow flag */
+  bool is_add;                    /**< add=1, del=0  */
+  bool drop;                      /**< drop flag */
+  bool allow;                     /**< allow flag */
   u8 allow_quota;               /**< allow subject to quota */
-  u8 no_udp_10001;              /**< drop udp to port 10001 */
+  bool no_udp_10001;              /**< drop udp to port 10001 */
   u64 data_quota;		/**< max bytes this device */
-  u8 mac_address[6];            /**< src mac address */
-  u8 device_name[64];           /**< device name */
+  vl_api_mac_address_t mac_address;            /**< src mac address */
+  string device_name[64];           /**< device name */
   u32 count;                    /**< number of time ranges to follow */
   /** time ranges, in seconds since Sunday began */
   vl_api_time_range_t ranges[count];
@@ -123,11 +126,11 @@ define mactime_details
 {
   u32 context;
   u32 pool_index;
-  u8 mac_address[6];
+  vl_api_mac_address_t mac_address;
   u64 data_quota;
   u64 data_used_in_range;
   u32 flags;
-  u8 device_name[64];
+  string device_name[64];
   u32 nranges;
   vl_api_mactime_time_range_t ranges[nranges];
 };
