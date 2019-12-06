@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-option version = "4.1.0";
+option version = "4.1.1";
 
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Add MAP domains
     @param client_index - opaque cookie to identify the sender
@@ -149,7 +150,7 @@ autoreply define map_if_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   bool is_enable;
   bool is_translation; /* 0 - encapsulation, 1 - translation */
 };
