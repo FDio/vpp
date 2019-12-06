@@ -1039,6 +1039,8 @@ class BFD4TestCase(VppTestCase):
         self.assertNotIn("P", p.sprintf("%BFD.flags%"),
                          "Poll bit set in BFD packet")
 
+    # returning inconsistent results requiring retries in per-patch tests
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_poll_response(self):
         """ test correct response to control frame with poll bit set """
         bfd_session_up(self)
