@@ -69,6 +69,30 @@
       "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4fbd844_2e089764",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-06T14:49:36Z",
+      "side": 1,
+      "message": "\u003e VPPIOError is a base class of VppTransportSocketIOError. If it is not, it was changed in another changeset.  I will update it here if needed.\n\nGit blame on current master says nothing has changed since [2]. Were you planning to change the parent class in a Change that did not get merged?\n\n\u003e socket.error was a subclass of IOError in python2.  As of python3, socket.error is OSError. \n\nWe can wrap socket.error into VppTransportSocketIOError here [3].\n\n[2] https://gerrit.fd.io/r/c/vpp/+/16229/3/src/vpp-api/python/vpp_papi/vpp_transport_socket.py\n[3] https://github.com/FDio/vpp/blob/7b22df06fc14b9edf178eaff31d348ba7c360125/src/vpp-api/python/vpp_papi/vpp_transport_socket.py#L95",
+      "parentUuid": "64bd3a74_36856134",
+      "range": {
+        "startLine": 575,
+        "startChar": 19,
+        "endLine": 575,
+        "endChar": 38
+      },
+      "revId": "1043fd38d83434d6c4e002c5354a30027988fbfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
