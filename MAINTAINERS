@@ -59,7 +59,6 @@ I:	vlib
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vlib/
-E:	src/vlib/buffer*.[ch]
 
 Vector Library - Buffer Management
 I:	buffers
