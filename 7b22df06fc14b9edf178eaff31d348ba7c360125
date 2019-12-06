@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "73ef3968_0f3feef9",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-12-06T15:37:27Z",
+      "side": 0,
+      "message": "any reason why modifying MAINTAINERS with this patch?",
+      "revId": "7b22df06fc14b9edf178eaff31d348ba7c360125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
