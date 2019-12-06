@@ -995,7 +995,6 @@ class VppPapiProvider(object):
             client_mac,
             session_id=0,
             is_add=1,
-            is_ipv6=0,
             decap_vrf_id=0):
         """
 
@@ -1009,7 +1008,6 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.pppoe_add_del_session,
                         {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
                          'session_id': session_id,
                          'client_ip': client_ip,
                          'decap_vrf_id': decap_vrf_id,
