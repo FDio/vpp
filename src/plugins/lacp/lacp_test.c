@@ -28,6 +28,7 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* declare message IDs */
+#include <vnet/format_fns.h>
 #include <lacp/lacp.api_enum.h>
 #include <lacp/lacp.api_types.h>
 #include <vpp/api/vpe.api_types.h>

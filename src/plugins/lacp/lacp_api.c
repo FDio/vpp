@@ -27,6 +27,7 @@
 
 
 /* define message IDs */
+#include <vnet/format_fns.h>
 #include <lacp/lacp.api_enum.h>
 #include <lacp/lacp.api_types.h>
 
