@@ -16,6 +16,24 @@
       "revId": "7b22df06fc14b9edf178eaff31d348ba7c360125",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1b4d4ce_1c92db61",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-06T15:47:38Z",
+      "side": 0,
+      "message": "When looking whether we have a separate \"pci\" component, I have noticed this line is listed below for \"buffers\" component.\nWill revert in the next patch set to simplify review.",
+      "parentUuid": "73ef3968_0f3feef9",
+      "revId": "7b22df06fc14b9edf178eaff31d348ba7c360125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
