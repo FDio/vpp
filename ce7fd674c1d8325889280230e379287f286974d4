@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e055628d_9bb4402b",
+        "filename": "src/plugins/srv6-mobile/gtp4_d.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-06T14:22:35Z",
+      "side": 1,
+      "message": "The type tracks back to [0], so it would be better to use u16 here and in [1] (and who knows where else).\n\n[0] https://github.com/FDio/vpp/blob/7b22df06fc14b9edf178eaff31d348ba7c360125/src/vnet/srv6/sr.h#L180\n[1] https://github.com/FDio/vpp/blob/7b22df06fc14b9edf178eaff31d348ba7c360125/src/vnet/srv6/sr_policy_rewrite.c#L3303",
+      "range": {
+        "startLine": 189,
+        "startChar": 2,
+        "endLine": 189,
+        "endChar": 5
+      },
+      "revId": "ce7fd674c1d8325889280230e379287f286974d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
