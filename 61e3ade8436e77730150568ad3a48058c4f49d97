@@ -22,6 +22,30 @@
       "revId": "61e3ade8436e77730150568ad3a48058c4f49d97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "942a3944_28017c14",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-06T14:36:10Z",
+      "side": 1,
+      "message": "Thank you!  That comment perfectly highlights the point I was trying to make regarding developer expectations.  We can do better.\nThe desired goal is to have per-patch tests and nightly tests, where they are all stable.\n\nThe test runner should support known failure result types from the stdlib nad support the stdlib unittest skip exception, not just the decorator.\n\nIf we need additional test categories, we should explicitly add them.",
+      "parentUuid": "33bb70cb_c2cb34f2",
+      "range": {
+        "startLine": 10,
+        "startChar": 15,
+        "endLine": 10,
+        "endChar": 25
+      },
+      "revId": "61e3ade8436e77730150568ad3a48058c4f49d97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
