@@ -139,11 +139,12 @@ typedef struct _ip4_session_table_walk_ctx_t
   void *ctx;
 } ip4_session_table_walk_ctx_t;
 
-void
+static int
 ip4_session_table_walk_cb (clib_bihash_kv_16_8_t * kvp, void *arg)
 {
   ip4_session_table_walk_ctx_t *ctx = arg;
   ctx->fn (kvp, ctx->ctx);
+  return (BIHASH_WALK_CONTINUE);
 }
 
 void

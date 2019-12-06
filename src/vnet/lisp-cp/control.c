@@ -899,16 +899,17 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
   return vnet_lisp_map_cache_add_del (a, map_index_result);
 }
 
-static void
+static int
 add_l2_arp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   u32 **ht = arg;
   u32 version = (u32) kvp->key[0];
   if (AF_IP6 == version)
-    return;
+    return (BIHASH_WALK_CONTINUE);
 
   u32 bd = (u32) (kvp->key[0] >> 32);
   hash_set (ht[0], bd, 0);
+  return (BIHASH_WALK_CONTINUE);
 }
 
 u32 *
@@ -922,16 +923,17 @@ vnet_lisp_l2_arp_bds_get (void)
   return bds;
 }
 
-static void
+static int
 add_ndp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   u32 **ht = arg;
   u32 version = (u32) kvp->key[0];
   if (AF_IP4 == version)
-    return;
+    return (BIHASH_WALK_CONTINUE);
 
   u32 bd = (u32) (kvp->key[0] >> 32);
   hash_set (ht[0], bd, 0);
+  return (BIHASH_WALK_CONTINUE);
 }
 
 u32 *
@@ -951,7 +953,7 @@ typedef struct
   u32 bd;
 } lisp_add_l2_arp_ndp_args_t;
 
-static void
+static int
 add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   lisp_add_l2_arp_ndp_args_t *a = arg;
@@ -959,7 +961,7 @@ add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
 
   u32 version = (u32) kvp->key[0];
   if (AF_IP6 == version)
-    return;
+    return (BIHASH_WALK_CONTINUE);
 
   u32 bd = (u32) (kvp->key[0] >> 32);
 
@@ -969,6 +971,7 @@ add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
       e.ip4 = (u32) kvp->key[1];
       vec_add1 (vector[0], e);
     }
+  return (BIHASH_WALK_CONTINUE);
 }
 
 lisp_api_l2_arp_entry_t *
@@ -986,7 +989,7 @@ vnet_lisp_l2_arp_entries_get_by_bd (u32 bd)
   return entries;
 }
 
-static void
+static int
 add_ndp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   lisp_add_l2_arp_ndp_args_t *a = arg;
@@ -994,7 +997,7 @@ add_ndp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
 
   u32 version = (u32) kvp->key[0];
   if (AF_IP4 == version)
-    return;
+    return (BIHASH_WALK_CONTINUE);
 
   u32 bd = (u32) (kvp->key[0] >> 32);
 
@@ -1004,6 +1007,7 @@ add_ndp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
       clib_memcpy (e.ip6, &kvp->key[1], 16);
       vec_add1 (vector[0], e);
     }
+  return (BIHASH_WALK_CONTINUE);
 }
 
 lisp_api_ndp_entry_t *

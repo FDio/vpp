@@ -906,12 +906,12 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 }
 
 void BV (clib_bihash_foreach_key_value_pair)
-  (BVT (clib_bihash) * h, void *callback, void *arg)
+  (BVT (clib_bihash) * h,
+   BV (clib_bihash_foreach_key_value_pair_cb) cb, void *arg)
 {
   int i, j, k;
   BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
-  void (*fp) (BVT (clib_bihash_kv) *, void *) = callback;
 
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return;
@@ -930,7 +930,8 @@ void BV (clib_bihash_foreach_key_value_pair)
 	      if (BV (clib_bihash_is_free) (&v->kvp[k]))
 		continue;
 
-	      (*fp) (&v->kvp[k], arg);
+	      if (BIHASH_WALK_STOP == cb (&v->kvp[k], arg))
+		return;
 	      /*
 	       * In case the callback deletes the last entry in the bucket...
 	       */

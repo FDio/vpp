@@ -328,8 +328,16 @@ int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 			     BVT (clib_bihash_kv) * search_v,
 			     BVT (clib_bihash_kv) * return_v);
 
+#define BIHASH_WALK_STOP 0
+#define BIHASH_WALK_CONTINUE 1
+
+typedef
+  int (*BV (clib_bihash_foreach_key_value_pair_cb)) (BVT (clib_bihash_kv) *,
+						     void *);
 void BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
-					      void *callback, void *arg);
+					      BV
+					      (clib_bihash_foreach_key_value_pair_cb)
+					      cb, void *arg);
 void *clib_all_bihash_set_heap (void);
 void clib_bihash_copied (void *dst, void *src);
 

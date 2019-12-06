@@ -1268,8 +1268,8 @@ gbp_endpoint_show_one (index_t gei, void *ctx)
   return (WALK_CONTINUE);
 }
 
-static void
-gbp_endpoint_walk_ip_itf (const clib_bihash_kv_24_8_t * kvp, void *arg)
+static int
+gbp_endpoint_walk_ip_itf (clib_bihash_kv_24_8_t * kvp, void *arg)
 {
   ip46_address_t ip;
   vlib_main_t *vm;
@@ -1283,10 +1283,11 @@ gbp_endpoint_walk_ip_itf (const clib_bihash_kv_24_8_t * kvp, void *arg)
 		   format_ip46_address, &ip, IP46_TYPE_ANY,
 		   format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index, kvp->value);
+  return (BIHASH_WALK_CONTINUE);
 }
 
-static void
-gbp_endpoint_walk_mac_itf (const clib_bihash_kv_16_8_t * kvp, void *arg)
+static int
+gbp_endpoint_walk_mac_itf (clib_bihash_kv_16_8_t * kvp, void *arg)
 {
   mac_address_t mac;
   vlib_main_t *vm;
@@ -1300,6 +1301,7 @@ gbp_endpoint_walk_mac_itf (const clib_bihash_kv_16_8_t * kvp, void *arg)
 		   format_mac_address_t, &mac,
 		   format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index, kvp->value);
+  return (BIHASH_WALK_CONTINUE);
 }
 
 static clib_error_t *

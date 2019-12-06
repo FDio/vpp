@@ -818,7 +818,7 @@ typedef struct
   clib_bihash_48_8_t *new_hash;
 } ip6_rehash_cb_ctx;
 
-static void
+static int
 ip6_rehash_cb (clib_bihash_kv_48_8_t * kv, void *_ctx)
 {
   ip6_rehash_cb_ctx *ctx = _ctx;
@@ -826,6 +826,7 @@ ip6_rehash_cb (clib_bihash_kv_48_8_t * kv, void *_ctx)
     {
       ctx->failure = 1;
     }
+  return (BIHASH_WALK_CONTINUE);
 }
 
 static void

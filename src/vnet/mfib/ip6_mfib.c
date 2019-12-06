@@ -609,7 +609,7 @@ typedef struct ip6_mfib_walk_ctx_t_
     void *i6w_ctx;
 } ip6_mfib_walk_ctx_t;
 
-static void
+static int
 ip6_mfib_walk_cb (clib_bihash_kv_40_8_t * kvp,
                  void *arg)
 {
@@ -619,6 +619,7 @@ ip6_mfib_walk_cb (clib_bihash_kv_40_8_t * kvp,
     {
         ctx->i6w_fn(kvp->value, ctx->i6w_ctx);
     }
+    return (BIHASH_WALK_CONTINUE);
 }
 
 void

@@ -1365,7 +1365,7 @@ typedef struct
 } ip4_rehash_cb_ctx;
 
 #ifndef CLIB_MARCH_VARIANT
-static void
+static int
 ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
 {
   ip4_rehash_cb_ctx *ctx = _ctx;
@@ -1373,6 +1373,7 @@ ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
     {
       ctx->failure = 1;
     }
+  return (BIHASH_WALK_CONTINUE);
 }
 
 static void

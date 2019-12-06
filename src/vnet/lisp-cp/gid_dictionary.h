@@ -146,9 +146,9 @@ gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
 			    foreach_subprefix_match_cb_t cb, void *arg);
 
 void
-gid_dict_foreach_l2_arp_ndp_entry (gid_dictionary_t * db, void (*cb)
-				   (BVT (clib_bihash_kv) * kvp, void *arg),
-				   void *ht);
+gid_dict_foreach_l2_arp_ndp_entry (gid_dictionary_t * db,
+				   BV (clib_bihash_foreach_key_value_pair_cb)
+				   cb, void *ht);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
 

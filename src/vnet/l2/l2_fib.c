@@ -111,7 +111,7 @@ typedef struct l2fib_dump_walk_ctx_t_
   l2fib_entry_result_t *l2fe_res;
 } l2fib_dump_walk_ctx_t;
 
-static void
+static int
 l2fib_dump_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   l2fib_dump_walk_ctx_t *ctx = arg;
@@ -126,6 +126,8 @@ l2fib_dump_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
       vec_add1 (ctx->l2fe_key, key);
       vec_add1 (ctx->l2fe_res, result);
     }
+
+  return (BIHASH_WALK_CONTINUE);
 }
 
 void
@@ -158,7 +160,7 @@ typedef struct l2fib_show_walk_ctx_t_
   u8 now;
 } l2fib_show_walk_ctx_t;
 
-static void
+static int
 l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   l2fib_show_walk_ctx_t *ctx = arg;
@@ -186,10 +188,10 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
       u8 *s = NULL;
 
       if (ctx->learn && l2fib_entry_result_is_set_AGE_NOT (&result))
-	return;			/* skip provisioned macs */
+	return (BIHASH_WALK_CONTINUE);	/* skip provisioned macs */
 
       if (ctx->add && !l2fib_entry_result_is_set_AGE_NOT (&result))
-	return;			/* skip learned macs */
+	return (BIHASH_WALK_CONTINUE);	/* skip learned macs */
 
       bd_config = vec_elt_at_index (l2input_main.bd_configs,
 				    key.fields.bd_index);
@@ -219,6 +221,8 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 		       ctx->vnm, result.fields.sw_if_index);
       vec_free (s);
     }
+
+  return (BIHASH_WALK_CONTINUE);
 }
 
 /** Display the contents of the l2fib. */

@@ -244,11 +244,12 @@ test_bihash_threads (bihash_test_main_t * tm)
 /*
  * Callback to blow up spectacularly if anything remains in the table
  */
-static void
+static int
 count_items (BVT (clib_bihash_kv) * kvp, void *notused)
 {
   _clib_error (CLIB_ERROR_ABORT, 0, 0,
 	       "bihash test FAILED, items left in table!");
+  return (BIHASH_WALK_CONTINUE);
 }
 
 static clib_error_t *

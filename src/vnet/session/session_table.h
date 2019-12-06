@@ -60,7 +60,6 @@ typedef struct _session_lookup_table
 typedef int (*ip4_session_table_walk_fn_t) (clib_bihash_kv_16_8_t * kvp,
 					    void *ctx);
 
-void ip4_session_table_walk_cb (clib_bihash_kv_16_8_t * kvp, void *arg);
 void ip4_session_table_walk (clib_bihash_16_8_t * hash,
 			     ip4_session_table_walk_fn_t fn, void *arg);
 

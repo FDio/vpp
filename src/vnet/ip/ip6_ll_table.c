@@ -210,18 +210,20 @@ typedef struct
   u64 count_by_prefix_length[129];
 } count_routes_in_fib_at_prefix_length_arg_t;
 
-static void
-count_routes_in_fib_at_prefix_length (BVT (clib_bihash_kv) * kvp, void *arg)
+static int
+count_routes_in_fib_at_prefix_length (clib_bihash_kv_24_8_t * kvp, void *arg)
 {
   count_routes_in_fib_at_prefix_length_arg_t *ap = arg;
   int mask_width;
 
   if ((kvp->key[2] >> 32) != ap->fib_index)
-    return;
+    return (BIHASH_WALK_CONTINUE);
 
   mask_width = kvp->key[2] & 0xFF;
 
   ap->count_by_prefix_length[mask_width]++;
+
+  return (BIHASH_WALK_CONTINUE);
 }
 
 static clib_error_t *
