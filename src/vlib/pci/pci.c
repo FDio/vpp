@@ -110,7 +110,7 @@ show_pci_fn (vlib_main_t * vm,
 			 format_vlib_pci_link_speed, d,
 			 d->driver_name ? (char *) d->driver_name : "",
 			 d->product_name,
-			 format_vlib_pci_vpd, d->vpd_r, 0);
+			 format_vlib_pci_vpd, d->vpd_r, (u8 *) 0);
 	vlib_pci_free_device_info (d);
     }
   /* *INDENT-ON* */
