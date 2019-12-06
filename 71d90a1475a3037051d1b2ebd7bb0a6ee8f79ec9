@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "91fba414_ce302a5c",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-06T01:37:58Z",
+      "side": 1,
+      "message": "this calling convention for arrays:\n  vnet_crypto_op_chunk_t * chunks\nis usually preferred over this one:\n  vnet_crypto_op_chunk_t chunks[]",
+      "revId": "71d90a1475a3037051d1b2ebd7bb0a6ee8f79ec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
