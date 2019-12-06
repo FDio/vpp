@@ -21,13 +21,14 @@
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
 #include <vnet/fib/fib_table.h>
-
+#include <vnet/ip/ip_types_api.h>
 #include <vppinfra/byte_order.h>
 #include <vlibmemory/api.h>
 
 
 #include <pppoe/pppoe.h>
 
+#include <vnet/format_fns.h>
 #include <pppoe/pppoe.api_enum.h>
 #include <pppoe/pppoe.api_types.h>
 
@@ -53,11 +54,10 @@ static void vl_api_pppoe_add_del_session_t_handler
 
   vnet_pppoe_add_del_session_args_t a = {
     .is_add = mp->is_add,
-    .is_ip6 = mp->is_ipv6,
     .decap_fib_index = decap_fib_index,
     .session_id = ntohs (mp->session_id),
-    .client_ip = to_ip46 (mp->is_ipv6, mp->client_ip),
   };
+  ip_address_decode (&mp->client_ip, &a.client_ip);
   clib_memcpy (a.client_mac, mp->client_mac, 6);
 
   u32 sw_if_index = ~0;
@@ -83,14 +83,15 @@ static void send_pppoe_session_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_PPPOE_SESSION_DETAILS);
+  ip_address_encode (&t->client_ip, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->client_ip);
+
   if (is_ipv6)
     {
-      memcpy (rmp->client_ip, t->client_ip.ip6.as_u8, 16);
       rmp->decap_vrf_id = htonl (im6->fibs[t->decap_fib_index].ft_table_id);
     }
   else
     {
-      memcpy (rmp->client_ip, t->client_ip.ip4.as_u8, 4);
       rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
     }
   rmp->session_id = htons (t->session_id);
@@ -98,7 +99,6 @@ static void send_pppoe_session_details
   clib_memcpy (rmp->local_mac, t->local_mac, 6);
   clib_memcpy (rmp->client_mac, t->client_mac, 6);
   rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
