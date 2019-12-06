@@ -114,6 +114,8 @@ api_sw_interface_lacp_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
+  if (!lm->ping_id)
+    lm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
   mp_ping->_vl_msg_id = htons (lm->ping_id);
   mp_ping->client_index = vam->my_client_index;

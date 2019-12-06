@@ -304,6 +304,8 @@ api_memif_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
+  if (!mm->ping_id)
+    mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
   mp_ping->_vl_msg_id = htons (mm->ping_id);
   mp_ping->client_index = vam->my_client_index;
@@ -356,6 +358,8 @@ api_memif_socket_filename_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
+  if (!mm->ping_id)
+    mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
   mp_ping->_vl_msg_id = htons (mm->ping_id);
   mp_ping->client_index = vam->my_client_index;

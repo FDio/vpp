@@ -586,6 +586,10 @@ def generate_include_types(s, module, stream):
 
             write('} vl_api_%s_t;\n' % o.name)
 
+    for t in s['Define']:
+        write('#define VL_API_{ID}_CRC "{n}_{crc:08x}"\n'
+              .format(n=t.name, ID=t.name.upper(), crc=t.crc))
+
     write("\n#endif\n")
 
 
