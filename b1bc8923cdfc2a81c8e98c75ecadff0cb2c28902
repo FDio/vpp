@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83426b0a_38f406f4",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1536,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T00:07:54Z",
+      "side": 1,
+      "message": "What about renaming to format_svm_mq or message_queue and move to message_queue.c?",
+      "range": {
+        "startLine": 1536,
+        "startChar": 0,
+        "endLine": 1536,
+        "endChar": 21
+      },
+      "revId": "b1bc8923cdfc2a81c8e98c75ecadff0cb2c28902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "00d49fa3_316e6db1",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1556,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T00:07:54Z",
+      "side": 1,
+      "message": "Make sure the line text is properly wrapped because fixstyle won\u0027t fix it ...",
+      "range": {
+        "startLine": 1556,
+        "startChar": 4,
+        "endLine": 1556,
+        "endChar": 113
+      },
+      "revId": "b1bc8923cdfc2a81c8e98c75ecadff0cb2c28902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e73b5b8_2e1a3884",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1568,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T00:07:54Z",
+      "side": 1,
+      "message": "No need, you check it in show_app_command_fn",
+      "range": {
+        "startLine": 1568,
+        "startChar": 2,
+        "endLine": 1568,
+        "endChar": 39
+      },
+      "revId": "b1bc8923cdfc2a81c8e98c75ecadff0cb2c28902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
