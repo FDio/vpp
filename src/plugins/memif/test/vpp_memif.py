@@ -91,13 +91,10 @@ class VppMemif(VppObject):
             buffer_size=self.buffer_size,
             hw_addr=self.hw_addr)
         try:
-            self.sw_if_index = 0
-        except AttributeError:
-            raise AttributeError('self: %s' % self.__dict__)
-        try:
             self.sw_if_index = rv.sw_if_index
         except AttributeError:
-            raise AttributeError("%s %s", self, rv)
+            # rv doesn't have .sw_if_index attribute
+            raise AttributeError("%s %s" % (self, rv))
 
         return self.sw_if_index
 
