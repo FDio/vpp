@@ -30,7 +30,7 @@
 typedef struct
 {
   clib_file_t *clib_file;
-  vl_api_registration_t *regp;
+  u32 reg_index;
   u8 *data;
 } vl_socket_args_for_process_t;
 
@@ -65,6 +65,14 @@ typedef struct
 } socket_main_t;
 
 extern socket_main_t socket_main;
+
+always_inline vl_api_registration_t *
+vl_socket_get_registration (u32 reg_index)
+{
+  if (pool_is_free_index (socket_main.registration_pool, reg_index))
+    return 0;
+  return pool_elt_at_index (socket_main.registration_pool, reg_index);
+}
 
 void vl_socket_free_registration_index (u32 pool_index);
 clib_error_t *vl_socket_read_ready (struct clib_file *uf);
