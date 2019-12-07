@@ -97,7 +97,7 @@ class VppMemif(VppObject):
         try:
             self.sw_if_index = rv.sw_if_index
         except AttributeError:
-            raise AttributeError("%s %s", self, rv)
+            raise AttributeError("%s %s" % (self, rv))
 
         return self.sw_if_index
 
