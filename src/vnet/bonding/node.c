@@ -28,6 +28,7 @@ bond_main_t bond_main;
 #define foreach_bond_input_error \
   _(NONE, "no error")            \
   _(IF_DOWN, "interface down")   \
+  _(PASSIVE_IF, "traffic received on passive interface")   \
   _(PASS_THRU, "pass through (CDP, LLDP, slow protocols)")
 
 typedef enum
@@ -162,6 +163,15 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       *bond_sw_if_index = slave_sw_if_index;
       *error = node->errors[BOND_INPUT_ERROR_IF_DOWN];
+      return;
+    }
+
+  if ((bif->mode == BOND_MODE_ACTIVE_BACKUP) &&
+      (slave_sw_if_index != bif->active_slaves[0]))
+    {
+      *bond_sw_if_index = slave_sw_if_index;
+      *error = node->errors[BOND_INPUT_ERROR_PASSIVE_IF];
+      return;
     }
 
   *bond_sw_if_index = bif->sw_if_index;
