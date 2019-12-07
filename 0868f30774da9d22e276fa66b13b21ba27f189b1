@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4dc0b691_7493221c",
+        "filename": "src/vat/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T01:47:36Z",
+      "side": 1,
+      "message": "Should we remove this before merging?",
+      "range": {
+        "startLine": 63,
+        "startChar": 0,
+        "endLine": 64,
+        "endChar": 34
+      },
+      "revId": "0868f30774da9d22e276fa66b13b21ba27f189b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fc932ec5_a7bb4482",
+        "filename": "src/vlibapi/api_shared.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T01:47:36Z",
+      "side": 1,
+      "message": "What do you think about leaving this as api_main, to avoid changing it in all internal nodes that only touch the \"single threaded\" vpp global api main? The unfortunate side effect of sharing data structures between clients and vpp.",
+      "range": {
+        "startLine": 43,
+        "startChar": 21,
+        "endLine": 43,
+        "endChar": 32
+      },
+      "revId": "0868f30774da9d22e276fa66b13b21ba27f189b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2a5f29c_2f7e9d67",
+        "filename": "src/vlibmemory/memory_client.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-07T01:47:36Z",
+      "side": 1,
+      "message": "Same comment here.",
+      "range": {
+        "startLine": 39,
+        "startChar": 38,
+        "endLine": 39,
+        "endChar": 59
+      },
+      "revId": "0868f30774da9d22e276fa66b13b21ba27f189b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
