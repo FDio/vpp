@@ -114,7 +114,11 @@ esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz,
     }
 
   if (pad_bytes)
-    clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, pad_bytes);
+    {
+      ASSERT (pad_bytes <= ESP_MAX_BLOCK_SIZE);
+      pad_bytes = clib_min (ESP_MAX_BLOCK_SIZE, pad_bytes);
+      clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, pad_bytes);
+    }
 
   f->pad_length = pad_bytes;
   b->current_length = new_length + icv_sz;
