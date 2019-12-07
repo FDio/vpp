@@ -190,16 +190,13 @@ vl_socket_free_registration_index (u32 pool_index)
 }
 
 void
-vl_socket_process_api_msg (clib_file_t * uf, vl_api_registration_t * rp,
-			   i8 * input_v)
+vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
 {
   msgbuf_t *mbp = (msgbuf_t *) input_v;
 
   u8 *the_msg = (u8 *) (mbp->data);
-  socket_main.current_uf = uf;
   socket_main.current_rp = rp;
   vl_msg_api_socket_handler (the_msg);
-  socket_main.current_uf = 0;
   socket_main.current_rp = 0;
 }
 
@@ -235,8 +232,9 @@ vl_socket_read_ready (clib_file_t * uf)
   u32 msgbuf_len;
   u32 save_input_buffer_length = vec_len (socket_main.input_buffer);
   vl_socket_args_for_process_t *a;
+  u32 reg_index = uf->private_data;
 
-  rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
+  rp = vl_socket_get_registration (reg_index);
 
   /* Ignore unprocessed_input for now, n describes input_buffer for now. */
   n = read (uf->file_descriptor, socket_main.input_buffer,
@@ -248,17 +246,7 @@ vl_socket_read_ready (clib_file_t * uf)
 	{
 	  /* Severe error, close the file. */
 	  clib_file_del (fm, uf);
-
-	  if (!pool_is_free (socket_main.registration_pool, rp))
-	    {
-	      u32 index = rp - socket_main.registration_pool;
-	      vl_socket_free_registration_index (index);
-	    }
-	  else
-	    {
-	      clib_warning ("client index %d already free?",
-			    rp->vl_api_registration_pool_index);
-	    }
+	  vl_socket_free_registration_index (reg_index);
 	}
       /* EAGAIN means we do not close the file, but no data to process anyway. */
       return 0;
@@ -326,8 +314,7 @@ vl_socket_read_ready (clib_file_t * uf)
       _vec_len (data_for_process) = msgbuf_len;
       /* Everything is ready to signal the SOCKET_READ_EVENT. */
       pool_get (socket_main.process_args, a);
-      a->clib_file = uf;
-      a->regp = rp;
+      a->reg_index = reg_index;
       a->data = data_for_process;
 
       vlib_process_signal_event (vm, vl_api_clnt_node.index,
