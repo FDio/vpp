@@ -26,8 +26,7 @@
 
 typedef struct
 {
-  clib_file_t *clib_file;
-  vl_api_registration_t *regp;
+  u32 reg_index;
   u8 *data;
 } vl_socket_args_for_process_t;
 
@@ -50,7 +49,6 @@ typedef struct
    * or to a shared-memory connection.
    */
   vl_api_registration_t *current_rp;
-  clib_file_t *current_uf;
   /* One input buffer, shared across all sockets */
   i8 *input_buffer;
 
@@ -63,12 +61,19 @@ typedef struct
 
 extern socket_main_t socket_main;
 
+always_inline vl_api_registration_t *
+vl_socket_get_registration (u32 reg_index)
+{
+  if (pool_is_free_index (socket_main.registration_pool, reg_index))
+    return 0;
+  return pool_elt_at_index (socket_main.registration_pool, reg_index);
+}
+
 void vl_socket_free_registration_index (u32 pool_index);
 clib_error_t *vl_socket_read_ready (struct clib_file *uf);
 clib_error_t *vl_socket_write_ready (struct clib_file *uf);
 void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
-void vl_socket_process_api_msg (clib_file_t * uf, vl_api_registration_t * rp,
-				i8 * input_v);
+void vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v);
 void vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am);
 clib_error_t *vl_sock_api_init (vlib_main_t * vm);
 clib_error_t *vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds);
