@@ -74,31 +74,39 @@ class TestGtpuUDP(VppTestCase):
         """ test UDP ports
         Check if there are no udp listeners before gtpu is enabled
         """
-
         # UDP ports should be disabled unless a tunnel is configured
         self._check_udp_port_ip4(False)
         self._check_udp_port_ip6(False)
 
-        r = self.vapi.gtpu_add_del_tunnel(src_addr=self.pg0.local_ip4n,
-                                          dst_addr=self.pg0.remote_ip4n)
+        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
+                                          mcast_sw_if_index=0xFFFFFFFF,
+                                          decap_next_index=0xFFFFFFFF,
+                                          src_address=self.pg0.local_ip4,
+                                          dst_address=self.pg0.remote_ip4)
 
         # UDP port 2152 enabled for ip4
         self._check_udp_port_ip4()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_ipv6=1,
-                                          src_addr=self.pg0.local_ip6n,
-                                          dst_addr=self.pg0.remote_ip6n)
+        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
+                                          mcast_sw_if_index=0xFFFFFFFF,
+                                          decap_next_index=0xFFFFFFFF,
+                                          src_address=self.pg0.local_ip6,
+                                          dst_address=self.pg0.remote_ip6)
 
         # UDP port 2152 enabled for ip6
         self._check_udp_port_ip6()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=0,
-                                          src_addr=self.pg0.local_ip4n,
-                                          dst_addr=self.pg0.remote_ip4n)
+        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
+                                          mcast_sw_if_index=0xFFFFFFFF,
+                                          decap_next_index=0xFFFFFFFF,
+                                          src_address=self.pg0.local_ip4,
+                                          dst_address=self.pg0.remote_ip4)
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=0, is_ipv6=1,
-                                          src_addr=self.pg0.local_ip6n,
-                                          dst_addr=self.pg0.remote_ip6n)
+        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
+                                          mcast_sw_if_index=0xFFFFFFFF,
+                                          decap_next_index=0xFFFFFFFF,
+                                          src_address=self.pg0.local_ip6,
+                                          dst_address=self.pg0.remote_ip6)
 
 
 class TestGtpu(BridgeDomain, VppTestCase):
@@ -235,10 +243,12 @@ class TestGtpu(BridgeDomain, VppTestCase):
                                            INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            dest_ip4n = socket.inet_pton(socket.AF_INET, dest_ip4)
             r = cls.vapi.gtpu_add_del_tunnel(
-                src_addr=cls.pg0.local_ip4n,
-                dst_addr=dest_ip4n,
+                is_add=True,
+                mcast_sw_if_index=0xFFFFFFFF,
+                decap_next_index=0xFFFFFFFF,
+                src_address=cls.pg0.local_ip4,
+                dst_address=dest_ip4,
                 teid=teid)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=teid)
@@ -254,8 +264,9 @@ class TestGtpu(BridgeDomain, VppTestCase):
         teid_end = teid_start + n_shared_dst_tunnels
         for teid in range(teid_start, teid_end):
             r = cls.vapi.gtpu_add_del_tunnel(
-                src_addr=cls.pg0.local_ip4n,
-                dst_addr=cls.mcast_ip4n,
+                decap_next_index=0xFFFFFFFF,
+                src_address=cls.pg0.local_ip4,
+                dst_address=cls.mcast_ip4,
                 mcast_sw_if_index=1,
                 teid=teid,
                 is_add=is_add)
@@ -278,12 +289,13 @@ class TestGtpu(BridgeDomain, VppTestCase):
         n_distinct_dst_tunnels = 20
         ip_range_start = 10
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
-        for dest_ip4n in ip4n_range(cls.mcast_ip4n, ip_range_start,
-                                    ip_range_end):
-            teid = bytearray(dest_ip4n)[3]
+        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
+                                  ip_range_end):
+            teid = int(dest_ip4.split('.')[3])
             cls.vapi.gtpu_add_del_tunnel(
-                src_addr=cls.pg0.local_ip4n,
-                dst_addr=dest_ip4n,
+                decap_next_index=0xFFFFFFFF,
+                src_address=cls.pg0.local_ip4,
+                dst_address=dest_ip4,
                 mcast_sw_if_index=1,
                 teid=teid,
                 is_add=is_add)
@@ -331,8 +343,11 @@ class TestGtpu(BridgeDomain, VppTestCase):
             #  into BD.
             cls.single_tunnel_bd = 11
             r = cls.vapi.gtpu_add_del_tunnel(
-                src_addr=cls.pg0.local_ip4n,
-                dst_addr=cls.pg0.remote_ip4n,
+                is_add=True,
+                mcast_sw_if_index=0xFFFFFFFF,
+                decap_next_index=0xFFFFFFFF,
+                src_address=cls.pg0.local_ip4,
+                dst_address=cls.pg0.remote_ip4,
                 teid=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
@@ -345,9 +360,11 @@ class TestGtpu(BridgeDomain, VppTestCase):
             cls.create_gtpu_flood_test_bd(cls.mcast_flood_bd,
                                           cls.n_ucast_tunnels)
             r = cls.vapi.gtpu_add_del_tunnel(
-                src_addr=cls.pg0.local_ip4n,
-                dst_addr=cls.mcast_ip4n,
+                is_add=True,
+                src_address=cls.pg0.local_ip4,
+                dst_address=cls.mcast_ip4,
                 mcast_sw_if_index=1,
+                decap_next_index=0xFFFFFFFF,
                 teid=cls.mcast_flood_bd)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.mcast_flood_bd)

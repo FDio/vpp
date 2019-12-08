@@ -18,10 +18,12 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 #include <gtpu/gtpu.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define __plugin_msg_base gtpu_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
+#include <vnet/format_fns.h>
 #include <gtpu/gtpu.api_enum.h>
 #include <gtpu/gtpu.api_types.h>
 
@@ -299,22 +301,15 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
 
   M (GTPU_ADD_DEL_TUNNEL, mp);
 
-  if (ipv6_set)
-    {
-      clib_memcpy (mp->src_address, &src.ip6, sizeof (src.ip6));
-      clib_memcpy (mp->dst_address, &dst.ip6, sizeof (dst.ip6));
-    }
-  else
-    {
-      clib_memcpy (mp->src_address, &src.ip4, sizeof (src.ip4));
-      clib_memcpy (mp->dst_address, &dst.ip4, sizeof (dst.ip4));
-    }
+  ip_address_encode(&src, ipv6_set ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		    &mp->src_address);
+  ip_address_encode(&dst, ipv6_set ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		    &mp->dst_address);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_next_index = ntohl (decap_next_index);
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->teid = ntohl (teid);
   mp->is_add = is_add;
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -325,9 +320,10 @@ static void vl_api_gtpu_tunnel_details_t_handler
   (vl_api_gtpu_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
-  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
-
+  ip46_address_t src;
+  ip46_address_t dst;
+  ip_address_decode(&mp->dst_address, &dst);
+  ip_address_decode(&mp->src_address, &src);
   print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
        ntohl (mp->sw_if_index),
        format_ip46_address, &src, IP46_TYPE_ANY,

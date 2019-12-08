@@ -24,9 +24,10 @@
 
 #include <vppinfra/byte_order.h>
 #include <vlibmemory/api.h>
-
+#include <vnet/ip/ip_types_api.h>
 #include <gtpu/gtpu.h>
 
+#include <vnet/format_fns.h>
 #include <gtpu/gtpu.api_enum.h>
 #include <gtpu/gtpu.api_types.h>
 
@@ -67,14 +68,13 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
 
   vnet_gtpu_add_del_tunnel_args_t a = {
     .is_add = mp->is_add,
-    .is_ip6 = mp->is_ipv6,
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = p[0],
     .decap_next_index = ntohl (mp->decap_next_index),
     .teid = ntohl (mp->teid),
-    .dst = to_ip46 (mp->is_ipv6, mp->dst_address),
-    .src = to_ip46 (mp->is_ipv6, mp->src_address),
   };
+  ip_address_decode (&mp->dst_address, &a.dst);
+  ip_address_decode (&mp->src_address, &a.src);
 
   /* Check src & dst are different */
   if (ip46_address_cmp (&a.dst, &a.src) == 0)
@@ -113,23 +113,19 @@ static void send_gtpu_tunnel_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_GTPU_TUNNEL_DETAILS + gtm->msg_id_base);
-  if (is_ipv6)
-    {
-      memcpy (rmp->src_address, t->src.ip6.as_u8, 16);
-      memcpy (rmp->dst_address, t->dst.ip6.as_u8, 16);
-      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
-    }
-  else
-    {
-      memcpy (rmp->src_address, t->src.ip4.as_u8, 4);
-      memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
-      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
-    }
+
+  ip_address_encode (&t->src, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->src_address);
+  ip_address_encode (&t->dst, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->dst_address);
+
+  rmp->encap_vrf_id =
+    is_ipv6 ? htonl (im6->fibs[t->encap_fib_index].ft_table_id) :
+    htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->teid = htonl (t->teid);
   rmp->decap_next_index = htonl (t->decap_next_index);
   rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
