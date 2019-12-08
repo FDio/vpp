@@ -379,7 +379,7 @@ int vnet_gtpu_add_del_tunnel
   u32 sw_if_index = ~0;
   gtpu4_tunnel_key_t key4;
   gtpu6_tunnel_key_t key6;
-  u32 is_ip6 = a->is_ip6;
+  bool is_ip6 = !ip46_address_is_ip4 (&a->dst);
 
   if (!is_ip6)
     {
@@ -820,7 +820,6 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
   clib_memset (a, 0, sizeof (*a));
 
   a->is_add = is_add;
-  a->is_ip6 = ipv6_set;
 
 #define _(x) a->x = x;
   foreach_copy_field;

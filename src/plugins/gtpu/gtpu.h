@@ -245,7 +245,6 @@ u8 *format_gtpu_encap_trace (u8 * s, va_list * args);
 typedef struct
 {
   u8 is_add;
-  u8 is_ip6;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
