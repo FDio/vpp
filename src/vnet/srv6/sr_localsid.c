@@ -504,7 +504,9 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
 			   "\n\tTable:  \t%u",
-			   format_ip6_address, &ls->localsid, ls->vrf_index);
+			   format_ip6_address, &ls->localsid,
+			   fib_table_get_table_id (ls->vrf_index,
+						   FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DX4:
 	  vlib_cli_output (vm,
@@ -537,13 +539,16 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tDT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
 			   "\n\tTable: %u", format_ip6_address, &ls->localsid,
-			   ls->vrf_index);
+			   fib_table_get_table_id (ls->vrf_index,
+						   FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DT4:
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tDT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
 			   "\n\tTable: \t%u", format_ip6_address,
-			   &ls->localsid, ls->vrf_index);
+			   &ls->localsid,
+			   fib_table_get_table_id (ls->vrf_index,
+						   FIB_PROTOCOL_IP4));
 	  break;
 	default:
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
