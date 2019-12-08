@@ -26,6 +26,7 @@
 #include <vnet/srv6/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/fib/ip4_fib.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -332,6 +333,29 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
   return rs;
 }
 
+static inline u32
+vrf_index_to_table_id (u32 vrf_index, u8 proto)
+{
+  ip6_main_t *im6 = &ip6_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_fib_t *fib6;
+  ip4_fib_t *fib4;
+  u32 table_id;
+
+  switch (proto)
+    {
+    case FIB_PROTOCOL_IP6:
+      fib6 = pool_elt_at_index (im6->v6_fibs, vrf_index);
+      table_id = fib6->table_id;
+      break;
+    case FIB_PROTOCOL_IP4:
+      fib4 = pool_elt_at_index (im4->v4_fibs, vrf_index);
+      table_id = fib4->table_id;
+      break;
+    }
+
+  return table_id;
+}
 
 #endif /* included_vnet_sr_h */
 

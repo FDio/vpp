@@ -238,7 +238,16 @@ static void send_sr_localsid_details
   else
     clib_memcpy (rmp->xconnect_nh_addr6, &t->next_hop.ip6,
 		 sizeof (ip6_address_t));
-  rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
+
+  if (t->behavior == SR_BEHAVIOR_T || t->behavior == SR_BEHAVIOR_DT6)
+    rmp->xconnect_iface_or_vrf_table =
+      htonl (vrf_index_to_table_id (t->sw_if_index, FIB_PROTOCOL_IP6));
+  else if (t->behavior == SR_BEHAVIOR_DT4)
+    rmp->xconnect_iface_or_vrf_table =
+      htonl (vrf_index_to_table_id (t->sw_if_index, FIB_PROTOCOL_IP4));
+  else
+    rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
+
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
