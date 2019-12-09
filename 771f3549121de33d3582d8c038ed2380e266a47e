@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "26a08455_a66781b2",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T13:59:41Z",
+      "side": 1,
+      "message": "\u003e If blocking\u003dTrue and timeout \u003d 0.0, get() immediately raises Empty.\n\u003e\n\u003e https://github.com/python/cpython/blob/master/Lib/queue.py#L177\n\nNot if there is something waiting in the queue, when line 175 skips line 177.\nI think using timeout\u003d0.0 for \"async read\" is understandable enough, unless we want to add \"blocking\" argument alongside \"timeout\".\n\n\u003e We should decide what the behavior should be and make it consistent across the transports.\n\nI prefer None when there is a delay (but later attempt may work), and VPPIOError when something went wrong and we do no expect waiting will fix it.",
+      "parentUuid": "f7791e2f_09d3a1f8",
+      "range": {
+        "startLine": 733,
+        "startChar": 59,
+        "endLine": 733,
+        "endChar": 70
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4b6217e_87455423",
         "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
         "patchSetId": 4
