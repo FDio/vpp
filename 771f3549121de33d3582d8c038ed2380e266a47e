@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "9eed64fc_1ff9330b",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-09T15:14:09Z",
+      "side": 1,
+      "message": "non blocking get \u003d\u003d get_nowait \u003d\u003d get(block\u003dFalse, timeout\u003dNone) (not timeout\u003d0.0)\nhttps://docs.python.org/3.6/library/queue.html#queue.Queue.get_nowait\nhttps://github.com/python/cpython/blob/master/Lib/queue.py#L192\n\nWe need an error for when we timeout. I\u0027m not invested in VPPIOErrorI can create/raise an ApiClientReadTimeout if you like. They can be ignored from the client.",
+      "parentUuid": "26a08455_a66781b2",
+      "range": {
+        "startLine": 733,
+        "startChar": 59,
+        "endLine": 733,
+        "endChar": 70
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4b6217e_87455423",
         "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
         "patchSetId": 4
