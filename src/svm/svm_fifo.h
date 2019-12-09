@@ -78,11 +78,12 @@ typedef struct _svm_fifo
   CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
   u32 size;			/**< size of the fifo in bytes */
   u32 nitems;			/**< usable size (size-1) */
-  u8 flags;			/**< fifo flags */
   svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
-  rb_tree_t chunk_lookup;
+  rb_tree_t chunk_lookup;	/**< rbtree for chunk lookup */
+  u8 flags;			/**< fifo flags */
+  u8 slice_index;		/**< segment slice for fifo */
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
