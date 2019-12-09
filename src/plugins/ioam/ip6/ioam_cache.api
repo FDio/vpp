@@ -26,6 +26,5 @@ autoreply define ioam_cache_ip6_enable_disable {
     u32 context;
 
     /* Enable / disable the feature */
-    u8 is_disable;
-
+    bool is_disable;
 };

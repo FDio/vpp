@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
+import "vnet/ip/ip_types.api";
 
 /** \brief UDP-Probe Add/Delete request 
     @param src_ip_address - Source ipv4/v6 address for the udp-ping flow
@@ -30,14 +31,13 @@ option version = "2.0.0";
 autoreply define udp_ping_add_del {
   u32 client_index;
   u32 context;
-  u8 src_ip_address[16];
-  u8 dst_ip_address[16];
+  vl_api_address_t src_ip_address;
+  vl_api_address_t dst_ip_address;
   u16 start_src_port;
   u16 end_src_port;
   u16 start_dst_port;
   u16 end_dst_port;
   u16 interval;
-  u8 is_ipv4;
   u8 dis;
   u8 fault_det;
   u8 reserve[3];
@@ -51,6 +51,6 @@ autoreply define udp_ping_add_del {
 autoreply define udp_ping_export {
    u32 client_index;
    u32 context;
-   u32 enable;
+   bool enable;
 };
 

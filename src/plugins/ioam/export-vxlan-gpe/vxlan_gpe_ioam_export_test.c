@@ -22,59 +22,23 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
+#include <vnet/format_fns.h>
 
-#define __plugin_msg_base export_test_main.msg_id_base
+#define __plugin_msg_base vxlan_gpe_ioam_export_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
 #include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api_enum.h>
 #include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api_types.h>
 
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-
-#define vl_endianfun		/* define message structures */
-#define vl_printfun
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h>
-#undef vl_endianfun
-#undef vl_printfun
-#undef vl_api_version
-
 typedef struct
 {
   /* API message ID base */
   u16 msg_id_base;
   vat_main_t *vat_main;
-} export_test_main_t;
+} vxlan_gpe_ioam_export_test_main_t;
 
-static export_test_main_t export_test_main;
-
-#define foreach_standard_reply_retval_handler   \
-_(vxlan_gpe_ioam_export_enable_disable_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = export_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                                       \
-_(VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE_REPLY, vxlan_gpe_ioam_export_enable_disable_reply)
+vxlan_gpe_ioam_export_test_main_t vxlan_gpe_ioam_export_test_main;
 
 static int
 api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
@@ -105,58 +69,9 @@ api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg \
-_(vxlan_gpe_ioam_export_enable_disable, "<intfc> [disable]")
-
-static void
-vxlan_gpe_ioam_vat_api_hookup (vat_main_t * vam)
-{
-  export_test_main_t *sm = &export_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t *
-vxlan_gpe_ioam_export_vat_plugin_register (vat_main_t * vam)
-{
-  export_test_main_t *sm = &export_test_main;
-  u8 *name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "vxlan_gpe_ioam_export_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~ 0)
-    vxlan_gpe_ioam_vat_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+/* Override generated plugin register symbol */
+#define vat_plugin_register vxlan_gpe_ioam_export_vat_plugin_register
+#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -25,7 +25,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-
+#include <vnet/format_fns.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 
 /* define message IDs */

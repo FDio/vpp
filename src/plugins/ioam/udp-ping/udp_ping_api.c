@@ -25,7 +25,8 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-
+#include <vnet/format_fns.h>
+#include <vnet/ip/ip_types_api.h>
 
 /* define message IDs */
 #include <ioam/udp-ping/udp_ping.api_enum.h>
@@ -42,16 +43,13 @@ vl_api_udp_ping_add_del_t_handler (vl_api_udp_ping_add_del_t * mp)
   udp_ping_main_t *sm = &udp_ping_main;
   vl_api_udp_ping_add_del_reply_t *rmp;
 
-  if (mp->is_ipv4)
+  if (clib_net_to_host_u32 (mp->src_ip_address.af) == ADDRESS_IP4)
     {
       rv = -1;			//Not supported
       goto ERROROUT;
     }
-
-  clib_memcpy ((void *) &src.ip6, (void *) mp->src_ip_address,
-	       sizeof (ip6_address_t));
-  clib_memcpy ((void *) &dst.ip6, (void *) mp->dst_ip_address,
-	       sizeof (ip6_address_t));
+  ip_address_decode (&mp->src_ip_address, &src);
+  ip_address_decode (&mp->dst_ip_address, &dst);
 
   ip46_udp_ping_set_flow (src, dst,
 			  ntohs (mp->start_src_port),

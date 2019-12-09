@@ -25,7 +25,8 @@
 #include <vlibapi/api_helper_macros.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-
+#include <vnet/format_fns.h>
+#include <vnet/ip/ip_types_api.h>
 
 /* define message IDs */
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
@@ -84,10 +85,11 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   u32 vni;
 
 
-  if (!mp->is_ipv6)
+  if (clib_net_to_host_u32 (mp->local.af) == ADDRESS_IP4 &&
+      clib_net_to_host_u32 (mp->remote.af) == ADDRESS_IP4)
     {
-      clib_memcpy (&key4.local, &mp->local, sizeof (key4.local));
-      clib_memcpy (&key4.remote, &mp->remote, sizeof (key4.remote));
+      clib_memcpy (&key4.local, &mp->local.un.ip4, sizeof (key4.local));
+      clib_memcpy (&key4.remote, &mp->remote.un.ip4, sizeof (key4.remote));
       vni = clib_net_to_host_u32 (mp->vni);
       key4.vni = clib_host_to_net_u32 (vni << 8);
       key4.pad = 0;
@@ -106,7 +108,7 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
 
   error = vxlan_gpe_ioam_set (t, hm->has_trace_option,
 			      hm->has_pot_option,
-			      hm->has_ppc_option, mp->is_ipv6);
+			      hm->has_ppc_option, 0 /* is_ipv6 */ );
 
 
   if (error)
@@ -132,7 +134,8 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   u32 vni;
 
 
-  if (!mp->is_ipv6)
+  if (clib_net_to_host_u32 (mp->local.af) == ADDRESS_IP4 &&
+      clib_net_to_host_u32 (mp->remote.af) == ADDRESS_IP4)
     {
       clib_memcpy (&key4.local, &mp->local, sizeof (key4.local));
       clib_memcpy (&key4.remote, &mp->remote, sizeof (key4.remote));
@@ -173,16 +176,12 @@ static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   ip46_address_t dst_addr;
 
-  clib_memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
-  if (!mp->is_ipv6)
-    {
-      clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));
-    }
+  ip_address_decode (&mp->dst_addr, &dst_addr);
+  bool is_ip6 = clib_net_to_host_u32 (mp->dst_addr.af) == ADDRESS_IP6;
   rv = vxlan_gpe_enable_disable_ioam_for_dest (sm->vlib_main,
 					       dst_addr,
 					       ntohl (mp->outer_fib_index),
-					       mp->is_ipv6 ? 0 : 1,
-					       1 /* is_add */ );
+					       is_ip6, 1 /* is_add */ );
 
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY);
 }
@@ -195,16 +194,11 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   ip46_address_t dst_addr;
 
-  clib_memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
-  if (!mp->is_ipv6)
-    {
-      clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));
-    }
-
+  ip_address_decode (&mp->dst_addr, &dst_addr);
+  bool is_ip6 = clib_net_to_host_u32 (mp->dst_addr.af) == ADDRESS_IP6;
   rv = vxlan_gpe_ioam_disable_for_dest (sm->vlib_main,
 					dst_addr,
-					ntohl (mp->outer_fib_index),
-					mp->is_ipv6 ? 0 : 1);
+					ntohl (mp->outer_fib_index), is_ip6);
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
 }
 
