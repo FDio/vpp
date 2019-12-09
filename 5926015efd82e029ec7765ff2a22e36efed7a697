@@ -22,6 +22,30 @@
       "revId": "5926015efd82e029ec7765ff2a22e36efed7a697",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da9632b5_b5595610",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1857,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2019-12-09T17:27:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9300fcdc_3f54eb2f",
+      "range": {
+        "startLine": 1857,
+        "startChar": 0,
+        "endLine": 1857,
+        "endChar": 46
+      },
+      "revId": "5926015efd82e029ec7765ff2a22e36efed7a697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
