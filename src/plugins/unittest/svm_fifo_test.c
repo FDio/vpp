@@ -2012,6 +2012,13 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 
 static fifo_segment_main_t segment_main;
 
+static svm_fifo_t *
+fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
+			 fifo_segment_ftype_t ftype)
+{
+  return fifo_segment_alloc_fifo_w_slice (fs, 0, data_bytes, ftype);
+}
+
 static int
 sfifo_test_fifo_segment_hello_world (int verbose)
 {
@@ -2340,9 +2347,7 @@ sfifo_test_fifo_segment_slave (int verbose)
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t *sm = &segment_main;
   u8 *test_data, *retrieved_data = 0;
-  fifo_segment_t *sp;
-  fifo_segment_header_t *fsh;
-  ssvm_shared_header_t *sh;
+  fifo_segment_t *fs;
   svm_fifo_t *f;
   u32 *result;
   int rv, i;
@@ -2357,13 +2362,11 @@ sfifo_test_fifo_segment_slave (int verbose)
 
   SFIFO_TEST (!rv, "svm_fifo_segment_attach returned %d", rv);
 
-  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
   vec_free (a->new_segment_indices);
-  sh = sp->ssvm.sh;
-  fsh = (fifo_segment_header_t *) sh->opaque[0];
 
   /* might wanna wait.. */
-  f = fsh->fifos;
+  f = fifo_segment_get_slice_fifo_list (fs, 0);
 
   /* Lazy bastards united */
   test_data = format (0, "Hello world%c", 0);
@@ -2530,7 +2533,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   free_space = fifo_segment_free_bytes (fs);
   SFIFO_TEST (free_space <= 256 << 10, "free space expected %u is %u",
 	      256 << 10, free_space);
-  rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 50);
+  rv = fifo_segment_prealloc_fifo_chunks (fs, 0, 4096, 50);
   SFIFO_TEST (rv == 0, "chunk prealloc should work");
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == 50, "prealloc chunks expected %u is %u", 50, rv);
@@ -2542,7 +2545,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
 	      4096 * 50, rv);
 
-  rv = fifo_segment_prealloc_fifo_hdrs (fs, 50);
+  rv = fifo_segment_prealloc_fifo_hdrs (fs, 0, 50);
   SFIFO_TEST (rv == 0, "fifo hdr prealloc should work");
   rv = fifo_segment_num_free_fifos (fs);
   SFIFO_TEST (rv == 50, "prealloc fifo hdrs expected %u is %u", 50, rv);
@@ -2585,7 +2588,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   /* Preallocate as many more chunks as possible. Heap is almost full
    * so we may not use all the free space*/
   alloc = 0;
-  while (!fifo_segment_prealloc_fifo_chunks (fs, 4096, 1))
+  while (!fifo_segment_prealloc_fifo_chunks (fs, 0, 4096, 1))
     alloc++;
   SFIFO_TEST (alloc, "chunk prealloc should work %u", alloc);
   rv = fifo_segment_num_free_chunks (fs, 4096);
@@ -2607,10 +2610,10 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   f = fifo_segment_alloc_fifo (fs, 200 << 10, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f == 0, "fifo alloc should fail");
 
-  rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 50);
+  rv = fifo_segment_prealloc_fifo_chunks (fs, 0, 4096, 50);
   SFIFO_TEST (rv == -1, "chunk prealloc should fail");
 
-  rv = fifo_segment_prealloc_fifo_hdrs (fs, 50);
+  rv = fifo_segment_prealloc_fifo_hdrs (fs, 0, 50);
   SFIFO_TEST (rv == -1, "fifo hdr prealloc should fail");
 
   /*
