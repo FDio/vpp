@@ -100,6 +100,7 @@ class TestVlib(VppTestCase):
                 "set node function ethernet-input default",
                 "set node function ethernet-input bozo",
                 "set node function ethernet-input",
+                "show \t",
                 ]
 
         for cmd in cmds:
@@ -126,10 +127,35 @@ class TestVlib(VppTestCase):
                 "   incrementing 30\n"
                 "   }\n"
                 "}\n",
+                "elog trace",
+                "elog trace enable",
+                "elog trace api cli barrier",
                 "pa en",
+                "show interface bogus",
+                "elog trace disable api cli barrier",
+                "elog trace circuit-node ethernet-input",
+                "elog trace circuit-node ethernet-input disable",
                 "clear interfaces",
                 "test vlib",
+                "test vlib2",
+                "show memory api-segment stats-segment main-heap verbose",
+                "leak-check { show memory }",
+                "show cpu",
+                "memory-trace main-heap",
+                "memory-trace main-heap api-segment stats-segment",
+                "leak-check { show version }",
+                "show version ?",
+                "comment { show version }",
+                "uncomment { show version }",
+                "show memory main-heap",
+                "show memory bogus",
+                "choices",
+                "test heap-validate",
+                "memory-trace main-heap disable",
                 "show buffers",
+                "show eve",
+                "show help",
+                "show ip ",
                 ]
 
         for cmd in cmds:

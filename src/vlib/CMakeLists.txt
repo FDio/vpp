@@ -86,7 +86,6 @@ add_vpp_library(vlib
   buffer_funcs.h
   buffer.h
   buffer_node.h
-  cli_funcs.h
   cli.h
   counter.h
   counter_types.h
