@@ -116,6 +116,30 @@
       "revId": "0868f30774da9d22e276fa66b13b21ba27f189b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ab527eba_1df7d993",
+        "filename": "src/vlibmemory/memory_client.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-12-09T16:42:56Z",
+      "side": 1,
+      "message": "Same basic reply. Would prefer that folks use the TLS variable exclusively",
+      "parentUuid": "e2a5f29c_2f7e9d67",
+      "range": {
+        "startLine": 39,
+        "startChar": 38,
+        "endLine": 39,
+        "endChar": 59
+      },
+      "revId": "0868f30774da9d22e276fa66b13b21ba27f189b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
