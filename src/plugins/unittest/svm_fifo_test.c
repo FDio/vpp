@@ -2012,6 +2012,13 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 
 static fifo_segment_main_t segment_main;
 
+svm_fifo_t *
+fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
+			 fifo_segment_ftype_t ftype)
+{
+  return fifo_segment_alloc_fifo_w_slice (fs, 0, data_bytes, ftype);
+}
+
 static int
 sfifo_test_fifo_segment_hello_world (int verbose)
 {
@@ -2542,7 +2549,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
 	      4096 * 50, rv);
 
-  rv = fifo_segment_prealloc_fifo_hdrs (fs, 50);
+  rv = fifo_segment_prealloc_fifo_hdrs (fs, 0, 50);
   SFIFO_TEST (rv == 0, "fifo hdr prealloc should work");
   rv = fifo_segment_num_free_fifos (fs);
   SFIFO_TEST (rv == 50, "prealloc fifo hdrs expected %u is %u", 50, rv);
@@ -2610,7 +2617,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 50);
   SFIFO_TEST (rv == -1, "chunk prealloc should fail");
 
-  rv = fifo_segment_prealloc_fifo_hdrs (fs, 50);
+  rv = fifo_segment_prealloc_fifo_hdrs (fs, 0, 50);
   SFIFO_TEST (rv == -1, "fifo hdr prealloc should fail");
 
   /*
