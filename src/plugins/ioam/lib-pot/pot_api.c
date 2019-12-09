@@ -43,8 +43,7 @@ static void vl_api_pot_profile_add_t_handler
     pot_profile *profile = NULL;
     u8 *name = 0;
 
-    if (mp->list_name_len)
-        name = format(0, "%s", mp->list_name);
+    name = vl_api_from_api_to_vec(&mp->list_name);
 
     pot_profile_list_init(name);
     id = mp->id;
@@ -122,8 +121,7 @@ static void vl_api_pot_profile_activate_t_handler
     u8 id;
     u8 *name = NULL;
 
-    if (mp->list_name_len)
-        name = format(0, "%s", mp->list_name);
+    name = vl_api_from_api_to_vec(&mp->list_name);
     if (!pot_profile_list_is_enabled(name)) {
         rv = -1;
     } else {

@@ -25,7 +25,6 @@ option version = "1.0.0";
     @param max_bits - Max bits to be used for Random number generation
     @param lpc - Lagrange basis polynomial
     @param polynomial_public - pre-evaluated public polynomial 
-    @param list_name_len - length of the name of this profile list
     @param list_name - name of this profile list
 */
 autoreply define pot_profile_add {
@@ -39,34 +38,29 @@ autoreply define pot_profile_add {
   u8  max_bits;
   u64 lpc;
   u64 polynomial_public;
-  u8 list_name_len;
-  u8 list_name[list_name_len];
+  string list_name[];
 };
 
 /** \brief Proof of Transit(POT): Activate POT profile in the list
     @param id - id of the profile 
-    @param list_name_len - length of the name of this profile list
     @param list_name - name of this profile list
 */
 autoreply define pot_profile_activate {
   u32 client_index;
   u32 context;
   u8 id;
-  u8 list_name_len;
-  u8 list_name[list_name_len];
+  string list_name[];
 };
 
 /** \brief Delete POT Profile 
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param list_name_len - length of the name of the profile list
     @param list_name - name of profile list to delete
 */
 autoreply define pot_profile_del {
   u32 client_index;
   u32 context;
-  u8 list_name_len;
-  u8 list_name[list_name_len];
+  string list_name[];
 };
 
 /** \brief Show POT Profiles

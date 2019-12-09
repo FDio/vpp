@@ -23,22 +23,15 @@
 #include <vlibmemory/api.h>
 
 #include <vppinfra/error.h>
+#include <vnet/format_fns.h>
+#include <vnet/ip/ip_types_api.h>
 
-#define __plugin_msg_base vxlan_gpe_test_main.msg_id_base
+#define __plugin_msg_base ioam_vxlan_gpe_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_types.h>
-
-#define vl_endianfun		/* define message structures */
-#define vl_printfun
-#define vl_api_version(n,v) static u32 api_version=(v);
-#define vl_print(handle, ...)
-#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.h>
-#undef vl_endianfun
-#undef vl_printfun
-#undef vl_api_version
 
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
@@ -48,45 +41,9 @@ typedef struct
   /* API message ID base */
   u16 msg_id_base;
   vat_main_t *vat_main;
-} vxlan_gpe_test_main_t;
+} ioam_vxlan_gpe_test_main_t;
 
-vxlan_gpe_test_main_t vxlan_gpe_test_main;
-
-#define foreach_standard_reply_retval_handler     \
-_(vxlan_gpe_ioam_enable_reply)                    \
-_(vxlan_gpe_ioam_disable_reply)                   \
-_(vxlan_gpe_ioam_vni_enable_reply)                \
-_(vxlan_gpe_ioam_vni_disable_reply)               \
-_(vxlan_gpe_ioam_transit_enable_reply)            \
-_(vxlan_gpe_ioam_transit_disable_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = vxlan_gpe_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                                              \
-_(VXLAN_GPE_IOAM_ENABLE_REPLY, vxlan_gpe_ioam_enable_reply)                    \
-_(VXLAN_GPE_IOAM_DISABLE_REPLY, vxlan_gpe_ioam_disable_reply)                  \
-_(VXLAN_GPE_IOAM_VNI_ENABLE_REPLY, vxlan_gpe_ioam_vni_enable_reply)            \
-_(VXLAN_GPE_IOAM_VNI_DISABLE_REPLY, vxlan_gpe_ioam_vni_disable_reply)          \
-_(VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY, vxlan_gpe_ioam_transit_enable_reply)    \
-_(VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY, vxlan_gpe_ioam_transit_disable_reply)  \
+ioam_vxlan_gpe_test_main_t ioam_vxlan_gpe_test_main;
 
 static int
 api_vxlan_gpe_ioam_enable (vat_main_t * vam)
@@ -144,9 +101,7 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_vni_enable_t *mp;
-  ip4_address_t local4, remote4;
-  ip6_address_t local6, remote6;
-  u8 ipv4_set = 0, ipv6_set = 0;
+  ip46_address_t local, remote;
   u8 local_set = 0;
   u8 remote_set = 0;
   u32 vni;
@@ -156,30 +111,15 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "local %U", unformat_ip4_address, &local4))
+      if (unformat (line_input, "local %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
-	  ipv4_set = 1;
 	}
       else if (unformat (line_input, "remote %U",
-			 unformat_ip4_address, &remote4))
+			 unformat_ip46_address, &remote))
 	{
 	  remote_set = 1;
-	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "local %U",
-			 unformat_ip6_address, &local6))
-	{
-	  local_set = 1;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip6_address, &remote6))
-	{
-	  remote_set = 1;
-	  ipv6_set = 1;
-	}
-
       else if (unformat (line_input, "vni %d", &vni))
 	vni_set = 1;
       else
@@ -199,7 +139,7 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
       errmsg ("tunnel remote address not specified\n");
       return -99;
     }
-  if (ipv4_set && ipv6_set)
+  if (ip46_address_is_ip4 (&local) != ip46_address_is_ip4 (&remote))
     {
       errmsg ("both IPv4 and IPv6 addresses specified");
       return -99;
@@ -213,20 +153,14 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
 
   M (VXLAN_GPE_IOAM_VNI_ENABLE, mp);
 
-
-  if (ipv6_set)
-    {
-      clib_memcpy (&mp->local, &local6, sizeof (local6));
-      clib_memcpy (&mp->remote, &remote6, sizeof (remote6));
-    }
-  else
-    {
-      clib_memcpy (&mp->local, &local4, sizeof (local4));
-      clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
-    }
+  ip_address_encode (&local,
+		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->local);
+  ip_address_encode (&local,
+		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->remote);
 
   mp->vni = ntohl (vni);
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -238,9 +172,7 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_vni_disable_t *mp;
-  ip4_address_t local4, remote4;
-  ip6_address_t local6, remote6;
-  u8 ipv4_set = 0, ipv6_set = 0;
+  ip46_address_t local, remote;
   u8 local_set = 0;
   u8 remote_set = 0;
   u32 vni;
@@ -250,30 +182,15 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "local %U", unformat_ip4_address, &local4))
+      if (unformat (line_input, "local %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
-	  ipv4_set = 1;
 	}
       else if (unformat (line_input, "remote %U",
-			 unformat_ip4_address, &remote4))
+			 unformat_ip46_address, &remote))
 	{
 	  remote_set = 1;
-	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "local %U",
-			 unformat_ip6_address, &local6))
-	{
-	  local_set = 1;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip6_address, &remote6))
-	{
-	  remote_set = 1;
-	  ipv6_set = 1;
-	}
-
       else if (unformat (line_input, "vni %d", &vni))
 	vni_set = 1;
       else
@@ -293,7 +210,7 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
       errmsg ("tunnel remote address not specified\n");
       return -99;
     }
-  if (ipv4_set && ipv6_set)
+  if (ip46_address_is_ip4 (&local) != ip46_address_is_ip4 (&remote))
     {
       errmsg ("both IPv4 and IPv6 addresses specified");
       return -99;
@@ -307,20 +224,14 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
 
   M (VXLAN_GPE_IOAM_VNI_DISABLE, mp);
 
-
-  if (ipv6_set)
-    {
-      clib_memcpy (&mp->local, &local6, sizeof (local6));
-      clib_memcpy (&mp->remote, &remote6, sizeof (remote6));
-    }
-  else
-    {
-      clib_memcpy (&mp->local, &local4, sizeof (local4));
-      clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
-    }
+  ip_address_encode (&local,
+		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->local);
+  ip_address_encode (&local,
+		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->remote);
 
   mp->vni = ntohl (vni);
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -332,9 +243,7 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_transit_enable_t *mp;
-  ip4_address_t local4;
-  ip6_address_t local6;
-  u8 ipv4_set = 0, ipv6_set = 0;
+  ip46_address_t local;
   u8 local_set = 0;
   u32 outer_fib_index = 0;
   int ret;
@@ -342,18 +251,10 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "dst-ip %U", unformat_ip4_address, &local4))
+      if (unformat (line_input, "dst-ip %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
-	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "dst-ip %U",
-			 unformat_ip6_address, &local6))
-	{
-	  local_set = 1;
-	  ipv6_set = 1;
-	}
-
       else if (unformat (line_input, "outer-fib-index %d", &outer_fib_index))
 	;
       else
@@ -368,28 +269,17 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
       errmsg ("destination address not specified\n");
       return -99;
     }
-  if (ipv4_set && ipv6_set)
-    {
-      errmsg ("both IPv4 and IPv6 addresses specified");
-      return -99;
-    }
-
 
   M (VXLAN_GPE_IOAM_TRANSIT_ENABLE, mp);
 
 
-  if (ipv6_set)
+  if (!ip46_address_is_ip4 (&local))
     {
       errmsg ("IPv6 currently unsupported");
       return -1;
     }
-  else
-    {
-      clib_memcpy (&mp->dst_addr, &local4, sizeof (local4));
-    }
-
+  ip_address_encode (&local, IP46_TYPE_IP4, &mp->dst_addr);
   mp->outer_fib_index = htonl (outer_fib_index);
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -401,9 +291,7 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_transit_disable_t *mp;
-  ip4_address_t local4;
-  ip6_address_t local6;
-  u8 ipv4_set = 0, ipv6_set = 0;
+  ip46_address_t local;
   u8 local_set = 0;
   u32 outer_fib_index = 0;
   int ret;
@@ -411,18 +299,10 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "dst-ip %U", unformat_ip4_address, &local4))
+      if (unformat (line_input, "dst-ip %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
-	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "dst-ip %U",
-			 unformat_ip6_address, &local6))
-	{
-	  local_set = 1;
-	  ipv6_set = 1;
-	}
-
       else if (unformat (line_input, "outer-fib-index %d", &outer_fib_index))
 	;
       else
@@ -437,96 +317,26 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
       errmsg ("destination address not specified\n");
       return -99;
     }
-  if (ipv4_set && ipv6_set)
-    {
-      errmsg ("both IPv4 and IPv6 addresses specified");
-      return -99;
-    }
-
 
   M (VXLAN_GPE_IOAM_TRANSIT_DISABLE, mp);
 
 
-  if (ipv6_set)
+  if (!ip46_address_is_ip4 (&local))
     {
       return -1;
     }
-  else
-    {
-      clib_memcpy (&mp->dst_addr, &local4, sizeof (local4));
-    }
+  ip_address_encode (&local, IP46_TYPE_IP4, &mp->dst_addr);
 
   mp->outer_fib_index = htonl (outer_fib_index);
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg \
-_(vxlan_gpe_ioam_enable, ""\
-  "[trace] [pow] [ppc <encap|ppc decap>]") \
-_(vxlan_gpe_ioam_disable, "")                    \
-_(vxlan_gpe_ioam_vni_enable, ""\
-  "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
-_(vxlan_gpe_ioam_vni_disable, ""\
-  "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
-_(vxlan_gpe_ioam_transit_enable, ""\
-  "dst-ip <dst_ip> [outer-fib-index <outer_fib_index>]") \
-_(vxlan_gpe_ioam_transit_disable, ""\
-  "dst-ip <dst_ip> [outer-fib-index <outer_fib_index>]") \
-
-
-static void
-vxlan_gpe_vat_api_hookup (vat_main_t * vam)
-{
-  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t *
-vxlan_gpe_vat_plugin_register (vat_main_t * vam)
-{
-  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
-  u8 *name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "ioam_vxlan_gpe_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~ 0)
-    vxlan_gpe_vat_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+/* Override generated plugin register symbol */
+#define vat_plugin_register vxlan_gpe_vat_plugin_register
+#include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -25,7 +25,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
-
+#include <vnet/format_fns.h>
 
 /* define message IDs */
 #include <ioam/export/ioam_export.api_enum.h>
