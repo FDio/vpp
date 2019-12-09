@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fbe37497_23fc6baf",
+        "filename": "src/vnet/devices/tap/tapv2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T16:09:03Z",
+      "side": 1,
+      "message": "Turns out it is prepared [1] already, but waiting for CSIT.\n\n[1] https://gerrit.fd.io/r/c/vpp/+/21706",
+      "range": {
+        "startLine": 125,
+        "startChar": 50,
+        "endLine": 125,
+        "endChar": 61
+      },
+      "revId": "ed19e09ed9a209045bd17f6e3a281e3fbcde7a90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
