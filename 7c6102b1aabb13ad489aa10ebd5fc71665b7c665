@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "916f7d75_d0ba301a",
+        "filename": "src/vnet/devices/tap/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T13:32:56Z",
+      "side": 1,
+      "message": "This (well, the lack of an analogue in .api or _api.s) explains why the multi queue support works via CLI, but not via API.",
+      "range": {
+        "startLine": 45,
+        "startChar": 2,
+        "endLine": 45,
+        "endChar": 25
+      },
+      "revId": "7c6102b1aabb13ad489aa10ebd5fc71665b7c665",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
