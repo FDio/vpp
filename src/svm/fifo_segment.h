@@ -90,9 +90,10 @@ void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
  * @param ftype		fifo type @ref fifo_segment_ftype_t
  * @return		new fifo or 0 if alloc failed
  */
-svm_fifo_t *fifo_segment_alloc_fifo (fifo_segment_t * fs,
-				     u32 data_bytes,
-				     fifo_segment_ftype_t ftype);
+svm_fifo_t *fifo_segment_alloc_fifo_w_thread (fifo_segment_t * fs,
+                                              u32 thread_index,
+                                              u32 data_bytes,
+                                              fifo_segment_ftype_t ftype);
 
 /**
  * Free fifo allocated in fifo segment

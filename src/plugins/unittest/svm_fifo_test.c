@@ -2012,6 +2012,13 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 
 static fifo_segment_main_t segment_main;
 
+svm_fifo_t *
+fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
+			 fifo_segment_ftype_t ftype)
+{
+  return fifo_segment_alloc_fifo_w_thread (fs, 0, data_bytes, ftype);
+}
+
 static int
 sfifo_test_fifo_segment_hello_world (int verbose)
 {

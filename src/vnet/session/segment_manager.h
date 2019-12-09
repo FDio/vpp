@@ -106,9 +106,11 @@ void segment_manager_segment_reader_unlock (segment_manager_t * sm);
 void segment_manager_segment_writer_unlock (segment_manager_t * sm);
 
 int segment_manager_alloc_session_fifos (segment_manager_t * sm,
+                                         u32 thread_index,
 					 svm_fifo_t ** rx_fifo,
 					 svm_fifo_t ** tx_fifo);
 int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
+                                     u32 thread_index,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo);

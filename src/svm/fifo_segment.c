@@ -377,8 +377,8 @@ done:
  * Allocate fifo in fifo segment
  */
 svm_fifo_t *
-fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
-			 fifo_segment_ftype_t ftype)
+fifo_segment_alloc_fifo_w_thread (fifo_segment_t * fs, u32 thread_index,
+                                  u32 data_bytes, fifo_segment_ftype_t ftype)
 {
   fifo_segment_header_t *fsh;
   svm_fifo_t *f = 0;
