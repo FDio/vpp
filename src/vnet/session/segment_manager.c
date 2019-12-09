@@ -54,6 +54,7 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->n_slices = vlib_num_workers () + 1;
   return props;
 }
 
@@ -151,6 +152,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
   /*
    * Initialize fifo segment
    */
+  fs->n_slices = props->n_slices;
   fifo_segment_init (fs);
 
   /*
@@ -470,30 +472,34 @@ segment_manager_has_fifos (segment_manager_t * sm)
 void
 segment_manager_del_sessions (segment_manager_t * sm)
 {
-  fifo_segment_t *fifo_segment;
   session_handle_t *handles = 0, *handle;
+  fifo_segment_t *fs;
   session_t *session;
-  svm_fifo_t *fifo;
+  int slice_index;
+  svm_fifo_t *f;
 
   ASSERT (pool_elts (sm->segments) != 0);
 
   /* Across all fifo segments used by the server */
   /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (fifo_segment, sm, ({
-    fifo = fifo_segment_get_fifo_list (fifo_segment);
-
-    /*
-     * Remove any residual sessions from the session lookup table
-     * Don't bother deleting the individual fifos, we're going to
-     * throw away the fifo segment in a minute.
-     */
-    while (fifo)
+  segment_manager_foreach_segment_w_lock (fs, sm, ({
+    for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
-	session = session_get_if_valid (fifo->master_session_index,
-	                                fifo->master_thread_index);
-	if (session)
-	  vec_add1 (handles, session_handle (session));
-	fifo = fifo->next;
+        f = fifo_segment_get_slice_fifo_list (fs, slice_index);
+
+        /*
+         * Remove any residual sessions from the session lookup table
+         * Don't bother deleting the individual fifos, we're going to
+         * throw away the fifo segment in a minute.
+         */
+        while (f)
+          {
+            session = session_get_if_valid (f->master_session_index,
+                                            f->master_thread_index);
+            if (session)
+              vec_add1 (handles, session_handle (session));
+            f = f->next;
+          }
       }
 
     /* Instead of removing the segment, test when cleaning up disconnected
@@ -508,16 +514,19 @@ segment_manager_del_sessions (segment_manager_t * sm)
 
 int
 segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
+				 u32 thread_index,
 				 u32 rx_fifo_size, u32 tx_fifo_size,
 				 svm_fifo_t ** rx_fifo, svm_fifo_t ** tx_fifo)
 {
   rx_fifo_size = clib_max (rx_fifo_size, sm_main.default_fifo_size);
-  *rx_fifo = fifo_segment_alloc_fifo (fifo_segment, rx_fifo_size,
-				      FIFO_SEGMENT_RX_FIFO);
+  *rx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
+					      rx_fifo_size,
+					      FIFO_SEGMENT_RX_FIFO);
 
   tx_fifo_size = clib_max (tx_fifo_size, sm_main.default_fifo_size);
-  *tx_fifo = fifo_segment_alloc_fifo (fifo_segment, tx_fifo_size,
-				      FIFO_SEGMENT_TX_FIFO);
+  *tx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
+					      tx_fifo_size,
+					      FIFO_SEGMENT_TX_FIFO);
 
   if (*rx_fifo == 0)
     {
@@ -544,6 +553,7 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
 
 int
 segment_manager_alloc_session_fifos (segment_manager_t * sm,
+				     u32 thread_index,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo)
 {
@@ -563,6 +573,7 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   /* *INDENT-OFF* */
   segment_manager_foreach_segment_w_lock (fs, sm, ({
     alloc_fail = segment_manager_try_alloc_fifos (fs,
+                                                  thread_index,
                                                   props->rx_fifo_size,
                                                   props->tx_fifo_size,
                                                   rx_fifo, tx_fifo);
@@ -616,7 +627,8 @@ alloc_check:
 	  return SESSION_ERROR_SEG_CREATE;
 	}
       fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
-      alloc_fail = segment_manager_try_alloc_fifos (fs, props->rx_fifo_size,
+      alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
+						    props->rx_fifo_size,
 						    props->tx_fifo_size,
 						    rx_fifo, tx_fifo);
       added_a_segment = 1;
@@ -883,11 +895,13 @@ VLIB_CLI_COMMAND (segment_manager_show_command, static) =
 void
 segment_manager_format_sessions (segment_manager_t * sm, int verbose)
 {
-  fifo_segment_t *fifo_segment;
   vlib_main_t *vm = vlib_get_main ();
   app_worker_t *app_wrk;
+  fifo_segment_t *fs;
   const u8 *app_name;
-  u8 *s = 0;
+  int slice_index;
+  u8 *s = 0, *str;
+  svm_fifo_t *f;
 
   if (!sm)
     {
@@ -905,35 +919,35 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
   clib_rwlock_reader_lock (&sm->segments_rwlock);
 
   /* *INDENT-OFF* */
-  pool_foreach (fifo_segment, sm->segments, ({
-    svm_fifo_t *fifo;
-    u8 *str;
-
-    fifo = fifo_segment_get_fifo_list (fifo_segment);
-    while (fifo)
+  pool_foreach (fs, sm->segments, ({
+    for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
-        u32 session_index, thread_index;
-        session_t *session;
+        f = fifo_segment_get_slice_fifo_list (fs, slice_index);
+        while (f)
+          {
+            u32 session_index, thread_index;
+            session_t *session;
 
-        session_index = fifo->master_session_index;
-        thread_index = fifo->master_thread_index;
+            session_index = f->master_session_index;
+            thread_index = f->master_thread_index;
 
-        session = session_get (session_index, thread_index);
-        str = format (0, "%U", format_session, session, verbose);
+            session = session_get (session_index, thread_index);
+            str = format (0, "%U", format_session, session, verbose);
 
-        if (verbose)
-          s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
-                      app_wrk->api_client_index, app_wrk->connects_seg_manager);
-        else
-          s = format (s, "%-40s%-20s", str, app_name);
+            if (verbose)
+              s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
+                          app_wrk->api_client_index, app_wrk->connects_seg_manager);
+            else
+              s = format (s, "%-40s%-20s", str, app_name);
 
-        vlib_cli_output (vm, "%v", s);
-        vec_reset_length (s);
-        vec_free (str);
+            vlib_cli_output (vm, "%v", s);
+            vec_reset_length (s);
+            vec_free (str);
 
-        fifo = fifo->next;
+            f = f->next;
+          }
+        vec_free (s);
       }
-    vec_free (s);
   }));
   /* *INDENT-ON* */
 
