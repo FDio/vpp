@@ -36,21 +36,34 @@ typedef enum fifo_segment_flags_
   FIFO_SEGMENT_F_WILL_DELETE = 1 << 1,
 } fifo_segment_flags_t;
 
-typedef struct
+typedef struct fifo_segment_slice_
 {
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
-  u32 n_active_fifos;			/**< Number of active fifos */
-  u8 flags;				/**< Segment flags */
-  u32 n_free_bytes;			/**< Bytes usable for new allocs */
   u32 n_fl_chunk_bytes;			/**< Chunk bytes on freelist */
+} fifo_segment_slice_t;
+
+typedef struct
+{
+  fifo_segment_slice_t *slices;		/** Fixed array of slices */
+//  svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
+//  svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
+//  svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
+  ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
+//  uword *n_free_bytes;			/**< Bytes usable for new allocs */
+  u8 flags;				/**< Segment flags */
+//  u32 n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
+  uword n_free_bytes;			/**< Segment free bytes */
+  u32 n_active_fifos;			/**< Number of active fifos */
 } fifo_segment_header_t;
 
 typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
+  uword n_free_bytes;		/**< segment free bytes */
+  u8 n_slices;			/**< number of fifo segment slices */
 } fifo_segment_t;
 
 typedef struct
@@ -90,9 +103,10 @@ void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
  * @param ftype		fifo type @ref fifo_segment_ftype_t
  * @return		new fifo or 0 if alloc failed
  */
-svm_fifo_t *fifo_segment_alloc_fifo (fifo_segment_t * fs,
-				     u32 data_bytes,
-				     fifo_segment_ftype_t ftype);
+svm_fifo_t *fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs,
+                                              u32 slice_index,
+                                              u32 data_bytes,
+                                              fifo_segment_ftype_t ftype);
 
 /**
  * Free fifo allocated in fifo segment
@@ -111,7 +125,8 @@ void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
  * @param batch_size	number of chunks to be allocated
  * @return		0 on success, negative number otherwise
  */
-int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 batch_size);
+int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 slice_index,
+                                     u32 batch_size);
 
 /**
  * Try to preallocate fifo chunks on segment
@@ -124,8 +139,8 @@ int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 batch_size);
  * @param batch_size	number of chunks to be allocated
  * @return		0 on success, negative number otherwise
  */
-int fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 chunk_size,
-				       u32 batch_size);
+int fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 slice_index,
+                                       u32 chunk_size, u32 batch_size);
 /**
  * Pre-allocates fifo pairs in fifo segment
  *
@@ -192,9 +207,10 @@ void fifo_segment_update_free_bytes (fifo_segment_t * fs);
  * @param fs		fifo segment
  * @return		free bytes on chunk free lists
  */
-u32 fifo_segment_fl_chunk_bytes (fifo_segment_t * fs);
+uword fifo_segment_fl_chunk_bytes (fifo_segment_t * fs);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
-svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
+svm_fifo_t *fifo_segment_get_slice_fifo_list (fifo_segment_t * fs,
+                                              u32 slice_index);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
 u32 fifo_segment_num_free_fifos (fifo_segment_t * fs);
 /**
