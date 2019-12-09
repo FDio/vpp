@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d278b001_4c4ec22d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 671,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T11:59:04Z",
+      "side": 1,
+      "message": "See comments below.",
+      "range": {
+        "startLine": 671,
+        "startChar": 20,
+        "endLine": 671,
+        "endChar": 24
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0bed24cf_b08c8e11",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T11:59:04Z",
+      "side": 1,
+      "message": "This gets changed. We do not want to change this, as calling with timeout\u003d0.0 may be legitimate in async clients.",
+      "range": {
+        "startLine": 733,
+        "startChar": 59,
+        "endLine": 733,
+        "endChar": 70
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8d203826_e58abf9e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-09T11:59:04Z",
+      "side": 1,
+      "message": "This is how it gets changed. Excepting is more expensive than checking for None.",
+      "range": {
+        "startLine": 237,
+        "startChar": 12,
+        "endLine": 237,
+        "endChar": 43
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
