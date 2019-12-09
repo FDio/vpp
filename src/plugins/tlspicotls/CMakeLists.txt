@@ -17,6 +17,7 @@ if (PICOTLS_INCLUDE_DIR AND PICOTLS_LINK_LIBRARIES)
     add_vpp_plugin(tlspicotls
         SOURCES
         tls_picotls.c
+        pico_vpp_crypto.c
         certs.c
 
         LINK_LIBRARIES ${PICOTLS_LINK_LIBRARIES}
