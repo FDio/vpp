@@ -31,6 +31,7 @@ typedef struct _segment_manager_props
   u8 add_segment:1;			/**< can add new segments flag */
   u8 use_mq_eventfd:1;			/**< use eventfds for mqs flag */
   u8 reserved:6;			/**< reserved flags */
+  u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
 } segment_manager_props_t;
@@ -106,9 +107,11 @@ void segment_manager_segment_reader_unlock (segment_manager_t * sm);
 void segment_manager_segment_writer_unlock (segment_manager_t * sm);
 
 int segment_manager_alloc_session_fifos (segment_manager_t * sm,
+					 u32 thread_index,
 					 svm_fifo_t ** rx_fifo,
 					 svm_fifo_t ** tx_fifo);
 int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
+				     u32 thread_index,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo);

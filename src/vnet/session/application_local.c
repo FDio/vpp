@@ -191,7 +191,8 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
     }
   seg = segment_manager_get_segment_w_lock (sm, seg_index);
 
-  rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
+  rv = segment_manager_try_alloc_fifos (seg, ls->thread_index,
+					props->rx_fifo_size,
 					props->tx_fifo_size, &ls->rx_fifo,
 					&ls->tx_fifo);
   if (rv)
