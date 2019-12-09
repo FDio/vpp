@@ -20,6 +20,7 @@ from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi.macaddress import mac_ntop
 from socket import inet_ntop
+from vpp_papi import VppEnum
 
 
 class VppCFLOW(VppObject):
@@ -42,10 +43,20 @@ class VppCFLOW(VppObject):
 
     def add_vpp_config(self):
         self.enable_exporter()
+        l2_flag = 0
+        l3_flag = 0
+        l4_flag = 0
+        if 'l2' in self._collect.lower():
+            l2_flag = (VppEnum.vl_api_flowprobe_record_flags_t.
+                       FLOWPROBE_RECORD_FLAG_L2)
+        if 'l3' in self._collect.lower():
+            l3_flag = (VppEnum.vl_api_flowprobe_record_flags_t.
+                       FLOWPROBE_RECORD_FLAG_L3)
+        if 'l4' in self._collect.lower():
+            l4_flag = (VppEnum.vl_api_flowprobe_record_flags_t.
+                       FLOWPROBE_RECORD_FLAG_L4)
         self._test.vapi.flowprobe_params(
-            record_l2=1 if 'l2' in self._collect.lower() else 0,
-            record_l3=1 if 'l3' in self._collect.lower() else 0,
-            record_l4=1 if 'l4' in self._collect.lower() else 0,
+            record_flags=(l2_flag | l3_flag | l4_flag),
             active_timer=self._active, passive_timer=self._passive)
         self.enable_flowprobe_feature()
         self._test.vapi.cli("ipfix flush")
