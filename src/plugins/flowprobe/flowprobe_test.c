@@ -96,11 +96,11 @@ static int
 api_flowprobe_params (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  u8 record_l2 = 0, record_l3 = 0, record_l4 = 0;
   u32 active_timer = ~0;
   u32 passive_timer = ~0;
   vl_api_flowprobe_params_t *mp;
   int ret;
+  u8 record_flags = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -112,11 +112,11 @@ api_flowprobe_params (vat_main_t * vam)
 	while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
 	  {
 	    if (unformat (i, "l2"))
-	      record_l2 = 1;
+	      record_flags |= FLOWPROBE_RECORD_FLAG_L2;
 	    else if (unformat (i, "l3"))
-	      record_l3 = 1;
+	      record_flags |= FLOWPROBE_RECORD_FLAG_L3;
 	    else if (unformat (i, "l4"))
-	      record_l4 = 1;
+	      record_flags |= FLOWPROBE_RECORD_FLAG_L4;
 	    else
 	      break;
 	  }
@@ -132,9 +132,7 @@ api_flowprobe_params (vat_main_t * vam)
 
   /* Construct the API message */
   M (FLOWPROBE_PARAMS, mp);
-  mp->record_l2 = record_l2;
-  mp->record_l3 = record_l3;
-  mp->record_l4 = record_l4;
+  mp->record_flags = record_flags;
   mp->active_timer = ntohl (active_timer);
   mp->passive_timer = ntohl (passive_timer);
 

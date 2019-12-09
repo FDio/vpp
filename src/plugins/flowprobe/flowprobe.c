@@ -632,13 +632,6 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (mp->which != FLOW_VARIANT_IP4 && mp->which != FLOW_VARIANT_L2
-      && mp->which != FLOW_VARIANT_IP6)
-    {
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
-    }
-
   if (fm->record == 0)
     {
       clib_warning ("Please specify flowprobe params record first...");
@@ -730,7 +723,10 @@ vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t * mp)
   int rv = 0;
 
   rv = flowprobe_params
-    (fm, mp->record_l2, mp->record_l3, mp->record_l4,
+    (fm,
+     mp->record_flags & FLOWPROBE_RECORD_FLAG_L2,
+     mp->record_flags & FLOWPROBE_RECORD_FLAG_L3,
+     mp->record_flags & FLOWPROBE_RECORD_FLAG_L4,
      clib_net_to_host_u32 (mp->active_timer),
      clib_net_to_host_u32 (mp->passive_timer));
 
