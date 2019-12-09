@@ -25,6 +25,7 @@ option version = "3.0.0";
 import "vnet/fib/fib_types.api";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/mfib/mfib_types.api";
+import "vnet/interface_types.api";
 
 /** \brief An IP table
     @param is_ipv6 - V4 or V6 table
@@ -38,8 +39,8 @@ import "vnet/mfib/mfib_types.api";
 typedef ip_table
 {
   u32 table_id;
-  u8  is_ip6;
-  u8  name[64];
+  bool is_ip6;
+  string name[64];
 };
 
 /** \brief Add / del table request
@@ -51,7 +52,7 @@ autoreply define ip_table_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_ip_table_t table;
 };
 
@@ -157,8 +158,8 @@ define ip_route_add_del
 {
   u32 client_index;
   u32 context;
-  u8  is_add;
-  u8  is_multipath;
+  bool is_add;
+  bool is_multipath;
   vl_api_ip_route_t route;
 };
 define ip_route_add_del_reply
@@ -208,7 +209,7 @@ enum ip_neighbor_flags
     @param flags - flags for the nieghbor
 */
 typedef ip_neighbor {
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip_neighbor_flags_t flags;
   vl_api_mac_address_t mac_address;
   vl_api_address_t ip_address;
@@ -225,7 +226,7 @@ define ip_neighbor_add_del
   u32 client_index;
   u32 context;
   /* 1 = add, 0 = delete */
-  u8 is_add;
+  bool is_add;
   vl_api_ip_neighbor_t neighbor;
 };
 define ip_neighbor_add_del_reply
@@ -245,8 +246,8 @@ define ip_neighbor_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8  is_ipv6;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
 };
 
 /** \brief IP neighboors dump response
@@ -276,7 +277,7 @@ autoreply define set_ip_flow_hash
   u32 client_index;
   u32 context;
   u32 vrf_id;
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 src;
   u8 dst;
   u8 sport;
@@ -307,14 +308,14 @@ autoreply define sw_interface_ip6nd_ra_config
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 suppress;
   u8 managed;
   u8 other;
   u8 ll_option;
   u8 send_unicast;
   u8 cease;
-  u8 is_no;
+  bool is_no;
   u8 default_router;
   u32 max_interval;
   u32 min_interval;
@@ -355,14 +356,14 @@ autoreply define sw_interface_ip6nd_ra_prefix
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_prefix_t prefix;
-  u8 use_default;
-  u8 no_advertise;
-  u8 off_link;
-  u8 no_autoconfig;
-  u8 no_onlink;
-  u8 is_no;
+  bool use_default;
+  bool no_advertise;
+  bool off_link;
+  bool no_autoconfig;
+  bool no_onlink;
+  bool is_no;
   u32 val_lifetime;
   u32 pref_lifetime;
 };
@@ -378,8 +379,8 @@ autoreply define ip6nd_proxy_add_del
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_del;
+  vl_api_interface_index_t sw_if_index;
+  bool is_del;
   vl_api_ip6_address_t ip;
 };
 
@@ -390,7 +391,7 @@ autoreply define ip6nd_proxy_add_del
 define ip6nd_proxy_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip6_address_t ip;
 };
 
@@ -427,7 +428,7 @@ autoreply define ip6nd_send_router_solicitation
   u32 mrc;
   u32 mrd;
   u32 sw_if_index;
-  u8 stop;
+  bool stop;
 };
 
 /** \brief IPv6 interface enable / disable request
@@ -440,8 +441,8 @@ autoreply define sw_interface_ip6_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable;			/* set to true if enable */
+  vl_api_interface_index_t sw_if_index;
+  bool enable;			/* set to true if enable */
 };
 
 /** \brief IPv6 set link local address on interface request
@@ -454,8 +455,8 @@ autoreply define sw_interface_ip6_set_link_local_address
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 address[16];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ip6_address_t address;
 };
 
 /** \brief Dump IP multicast fib table
@@ -515,8 +516,8 @@ define ip_mroute_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_multipath;
+  bool is_add;
+  bool is_multipath;
   vl_api_ip_mroute_t route;
 };
 define ip_mroute_add_del_reply
@@ -548,7 +549,7 @@ manual_endian manual_print define ip_mroute_details
 define ip_address_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_address_with_prefix_t prefix;
 };
 
@@ -556,8 +557,8 @@ define ip_address_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
 };
 
 /** \brief IP unnumbered configurations
@@ -567,8 +568,8 @@ define ip_address_dump
 define ip_unnumbered_details
 {
   u32 context;
-  u32 sw_if_index;
-  u32 ip_sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t ip_sw_if_index;
 };
 
 /** \brief Dump IP unnumbered configurations
@@ -578,21 +579,21 @@ define ip_unnumbered_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define ip_details
 {
   u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
 };
 
 define ip_dump
 {
   u32 client_index;
   u32 context;
-  u8 is_ipv6;
+  bool is_ipv6;
 };
 
 define mfib_signal_dump
@@ -604,7 +605,7 @@ define mfib_signal_dump
 define mfib_signal_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 table_id;
   vl_api_mprefix_t prefix;
   u16 ip_packet_len;
@@ -623,8 +624,8 @@ autoreply define ip_punt_police
   u32 client_index;
   u32 context;
   u32 policer_index;
-  u8 is_add;
-  u8 is_ip6;
+  bool is_add;
+  bool is_ip6;
 };
 
 /** \brief Punt redirect type
@@ -637,8 +638,8 @@ autoreply define ip_punt_police
 */
 typedef punt_redirect
 {
-  u32 rx_sw_if_index;
-  u32 tx_sw_if_index;
+  vl_api_interface_index_t rx_sw_if_index;
+  vl_api_interface_index_t tx_sw_if_index;
   vl_api_address_t nh;
 };
 
@@ -653,15 +654,15 @@ autoreply define ip_punt_redirect
   u32 client_index;
   u32 context;
   vl_api_punt_redirect_t punt;
-  u8 is_add;
+  bool is_add;
 };
 
 define ip_punt_redirect_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
 };
 
 define ip_punt_redirect_details
@@ -675,8 +676,8 @@ autoreply define ip_container_proxy_add_del
   u32 client_index;
   u32 context;
   vl_api_prefix_t pfx;
-  u32 sw_if_index;
-  u8 is_add;
+  vl_api_interface_index_t sw_if_index;
+  bool is_add;
 };
 
 define ip_container_proxy_dump
@@ -688,7 +689,7 @@ define ip_container_proxy_dump
 define ip_container_proxy_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_prefix_t prefix;
 };
 
@@ -708,7 +709,7 @@ autoreply define ip_source_and_port_range_check_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_prefix_t prefix;
   u8 number_of_ranges;
   u16 low_ports[32];
@@ -727,8 +728,8 @@ autoreply define ip_source_and_port_range_check_interface_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
   u32 tcp_in_vrf_id;
   u32 tcp_out_vrf_id;
   u32 udp_in_vrf_id;
@@ -746,9 +747,9 @@ autoreply define ip_source_check_interface_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   u8 loose;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Enable/disable periodic IP neighbor scan
@@ -786,7 +787,7 @@ autoreply define ip_probe_neighbor
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_address_t dst;
 };
 
@@ -803,7 +804,7 @@ autoreply define want_ip4_arp_events
 {
   u32 client_index;
   u32 context;
-  u8 enable_disable;
+  bool enable_disable;
   u32 pid;
   vl_api_ip4_address_t ip;
 };
@@ -822,7 +823,7 @@ define ip4_arp_event
   u32 client_index;
   vl_api_ip4_address_t ip;
   u32 pid;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_mac_address_t mac;
   u8 mac_ip;
 };
@@ -845,7 +846,7 @@ autoreply define want_ip6_nd_events
 {
   u32 client_index;
   u32 context;
-  u8 enable_disable;
+  bool enable_disable;
   u32 pid;
   vl_api_ip6_address_t ip;
 };
@@ -863,7 +864,7 @@ define ip6_nd_event
 {
   u32 client_index;
   u32 pid;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip6_address_t ip;
   vl_api_mac_address_t mac;
   u8 mac_ip;
@@ -884,7 +885,7 @@ autoreply define want_ip6_ra_events
 {
   u32 client_index;
   u32 context;
-  u8 enable_disable;
+  bool enable_disable;
   u32 pid;
 };
 
@@ -919,7 +920,7 @@ define ip6_ra_event
 {
   u32 client_index;
   u32 pid;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip6_address_t router_addr;
   u8 current_hop_limit;
   u8 flags;
@@ -957,7 +958,7 @@ autoreply define proxy_arp_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_proxy_arp_t proxy;
 };
 
@@ -988,9 +989,9 @@ autoreply define proxy_arp_intfc_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   /* 1 = on, 0 = off */
-  u8 enable_disable;
+  bool enable_disable;
 };
 
 /** \brief Proxy ARP interface dump request
@@ -1007,7 +1008,7 @@ define proxy_arp_intfc_dump
 define proxy_arp_intfc_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Set max allowed ARP or ip6 neighbor entries request
@@ -1020,7 +1021,7 @@ autoreply define set_arp_neighbor_limit
 {
   u32 client_index;
   u32 context;
-  u8 is_ipv6;
+  bool is_ipv6;
   u32 arp_neighbor_limit;
 };
 
@@ -1028,7 +1029,7 @@ autoreply define set_arp_neighbor_limit
     @param id - profile id
     @param seqno - To enable Seqno Processing
     @param analyse - Enabling analysis of iOAM at decap node 
-    @param pow_enable - Proof of Work enabled or not flag
+    @param pot_enable - Proof of Work enabled or not flag
     @param trace_enable - iOAM Trace enabled or not flag
 */
 autoreply define ioam_enable
@@ -1069,7 +1070,7 @@ autoreply define ip_reassembly_set
   u32 max_reassemblies;
   u32 max_reassembly_length;
   u32 expire_walk_interval_ms;
-  u8 is_ip6;
+  bool is_ip6;
   vl_api_ip_reass_type_t type;
 };
 
@@ -1077,7 +1078,7 @@ define ip_reassembly_get
 {
   u32 client_index;
   u32 context;
-  u8 is_ip6;
+  bool is_ip6;
   vl_api_ip_reass_type_t type;
 };
 
@@ -1089,7 +1090,7 @@ define ip_reassembly_get_reply
   u32 max_reassemblies;
   u32 max_reassembly_length;
   u32 expire_walk_interval_ms;
-  u8 is_ip6;
+  bool is_ip6;
 };
 
 /** \brief Enable/disable reassembly feature
@@ -1103,9 +1104,9 @@ autoreply define ip_reassembly_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable_ip4;
-  u8 enable_ip6;
+  vl_api_interface_index_t sw_if_index;
+  bool enable_ip4;
+  bool enable_ip6;
   vl_api_ip_reass_type_t type;
 };
 
