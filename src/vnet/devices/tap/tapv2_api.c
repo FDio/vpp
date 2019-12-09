@@ -122,6 +122,9 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   ap->tap_flags = ntohl (mp->tap_flags);
 
+  /* TODO: Allow to use multiple queues. */
+  ap->num_rx_queues = 1;
+
   tap_create_if (vm, ap);
 
 
