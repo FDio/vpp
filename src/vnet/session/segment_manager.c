@@ -54,6 +54,7 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->n_slices = vlib_num_workers() + 1;
   return props;
 }
 
@@ -151,6 +152,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
   /*
    * Initialize fifo segment
    */
+  fs->n_slices = props->n_slices;
   fifo_segment_init (fs);
 
   /*
@@ -508,16 +510,19 @@ segment_manager_del_sessions (segment_manager_t * sm)
 
 int
 segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
+                                 u32 thread_index,
 				 u32 rx_fifo_size, u32 tx_fifo_size,
 				 svm_fifo_t ** rx_fifo, svm_fifo_t ** tx_fifo)
 {
   rx_fifo_size = clib_max (rx_fifo_size, sm_main.default_fifo_size);
-  *rx_fifo = fifo_segment_alloc_fifo (fifo_segment, rx_fifo_size,
-				      FIFO_SEGMENT_RX_FIFO);
+  *rx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
+                                               rx_fifo_size,
+                                               FIFO_SEGMENT_RX_FIFO);
 
   tx_fifo_size = clib_max (tx_fifo_size, sm_main.default_fifo_size);
-  *tx_fifo = fifo_segment_alloc_fifo (fifo_segment, tx_fifo_size,
-				      FIFO_SEGMENT_TX_FIFO);
+  *tx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
+                                               tx_fifo_size,
+                                               FIFO_SEGMENT_TX_FIFO);
 
   if (*rx_fifo == 0)
     {
@@ -544,6 +549,7 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
 
 int
 segment_manager_alloc_session_fifos (segment_manager_t * sm,
+                                     u32 thread_index,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo)
 {
@@ -563,6 +569,7 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   /* *INDENT-OFF* */
   segment_manager_foreach_segment_w_lock (fs, sm, ({
     alloc_fail = segment_manager_try_alloc_fifos (fs,
+                                                  thread_index,
                                                   props->rx_fifo_size,
                                                   props->tx_fifo_size,
                                                   rx_fifo, tx_fifo);
@@ -616,7 +623,8 @@ alloc_check:
 	  return SESSION_ERROR_SEG_CREATE;
 	}
       fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
-      alloc_fail = segment_manager_try_alloc_fifos (fs, props->rx_fifo_size,
+      alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
+                                                    props->rx_fifo_size,
 						    props->tx_fifo_size,
 						    rx_fifo, tx_fifo);
       added_a_segment = 1;
