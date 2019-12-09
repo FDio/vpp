@@ -43,6 +43,10 @@ format_gso_trace (u8 * s, va_list * args)
       s = format (s, "gso_sz %d gso_l4_hdr_sz %d",
 		  t->gso_size, t->gso_l4_hdr_sz);
     }
+  else
+    {
+      s = format (s, "non-gso buffer");
+    }
 
   return s;
 }
@@ -238,6 +242,8 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 	  if (0 == dst_left && total_src_left)
 	    {
 	      n_tx_bytes += cdb0->current_length;
+	      tso_fixup_segmented_buf (cdb0, tcp_flags_no_fin_psh, is_ip6,
+				       gho);
 	      ASSERT (dbi < vec_len (ptd->split_buffers));
 	      cdb0 = vlib_get_buffer (vm, ptd->split_buffers[dbi++]);
 	      tso_init_buf_from_template (vm, cdb0, b0, l234_sz,
@@ -301,108 +307,109 @@ vnet_gso_node_inline (vlib_main_t * vm,
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (from + 8 <= from_end && n_left_to_next >= 4)
-	{
-	  u32 bi0, bi1, bi2, bi3;
-	  u32 next0, next1, next2, next3;
-	  u32 swif0, swif1, swif2, swif3;
-	  gso_trace_t *t0, *t1, *t2, *t3;
-	  vnet_hw_interface_t *hi0, *hi1, *hi2, *hi3;
+      if (!do_segmentation)
+	while (from + 8 <= from_end && n_left_to_next >= 4)
+	  {
+	    u32 bi0, bi1, bi2, bi3;
+	    u32 next0, next1, next2, next3;
+	    u32 swif0, swif1, swif2, swif3;
+	    gso_trace_t *t0, *t1, *t2, *t3;
+	    vnet_hw_interface_t *hi0, *hi1, *hi2, *hi3;
 
-	  /* Prefetch next iteration. */
-	  vlib_prefetch_buffer_header (b[4], LOAD);
-	  vlib_prefetch_buffer_header (b[5], LOAD);
-	  vlib_prefetch_buffer_header (b[6], LOAD);
-	  vlib_prefetch_buffer_header (b[7], LOAD);
+	    /* Prefetch next iteration. */
+	    vlib_prefetch_buffer_header (b[4], LOAD);
+	    vlib_prefetch_buffer_header (b[5], LOAD);
+	    vlib_prefetch_buffer_header (b[6], LOAD);
+	    vlib_prefetch_buffer_header (b[7], LOAD);
 
-	  bi0 = from[0];
-	  bi1 = from[1];
-	  bi2 = from[2];
-	  bi3 = from[3];
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  to_next[2] = bi2;
-	  to_next[3] = bi3;
+	    bi0 = from[0];
+	    bi1 = from[1];
+	    bi2 = from[2];
+	    bi3 = from[3];
+	    to_next[0] = bi0;
+	    to_next[1] = bi1;
+	    to_next[2] = bi2;
+	    to_next[3] = bi3;
 
-	  swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-	  swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
-	  swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
-	  swif3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
+	    swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	    swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+	    swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+	    swif3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
-	  if (PREDICT_FALSE (hi->sw_if_index != swif0))
-	    {
-	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
-		  (b[0]->flags & VNET_BUFFER_F_GSO))
-		break;
-	    }
-	  if (PREDICT_FALSE (hi->sw_if_index != swif1))
-	    {
-	      hi1 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if (!(hi1->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
-		  (b[1]->flags & VNET_BUFFER_F_GSO))
-		break;
-	    }
-	  if (PREDICT_FALSE (hi->sw_if_index != swif2))
-	    {
-	      hi2 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if ((hi2->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
-		  (b[2]->flags & VNET_BUFFER_F_GSO))
-		break;
-	    }
-	  if (PREDICT_FALSE (hi->sw_if_index != swif3))
-	    {
-	      hi3 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if (!(hi3->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
-		  (b[3]->flags & VNET_BUFFER_F_GSO))
-		break;
-	    }
+	    if (PREDICT_FALSE (hi->sw_if_index != swif0))
+	      {
+		hi0 = vnet_get_sup_hw_interface (vnm, swif0);
+		if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+		    (b[0]->flags & VNET_BUFFER_F_GSO))
+		  break;
+	      }
+	    if (PREDICT_FALSE (hi->sw_if_index != swif1))
+	      {
+		hi1 = vnet_get_sup_hw_interface (vnm, swif0);
+		if (!(hi1->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+		    (b[1]->flags & VNET_BUFFER_F_GSO))
+		  break;
+	      }
+	    if (PREDICT_FALSE (hi->sw_if_index != swif2))
+	      {
+		hi2 = vnet_get_sup_hw_interface (vnm, swif0);
+		if ((hi2->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+		    (b[2]->flags & VNET_BUFFER_F_GSO))
+		  break;
+	      }
+	    if (PREDICT_FALSE (hi->sw_if_index != swif3))
+	      {
+		hi3 = vnet_get_sup_hw_interface (vnm, swif0);
+		if (!(hi3->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+		    (b[3]->flags & VNET_BUFFER_F_GSO))
+		  break;
+	      }
 
-	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
-	      t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
-	      t0->gso_size = vnet_buffer2 (b[0])->gso_size;
-	      t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
-	    }
-	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      t1 = vlib_add_trace (vm, node, b[1], sizeof (t1[0]));
-	      t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
-	      t1->gso_size = vnet_buffer2 (b[1])->gso_size;
-	      t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
-	    }
-	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      t2 = vlib_add_trace (vm, node, b[2], sizeof (t2[0]));
-	      t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
-	      t2->gso_size = vnet_buffer2 (b[2])->gso_size;
-	      t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
-	    }
-	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      t3 = vlib_add_trace (vm, node, b[3], sizeof (t3[0]));
-	      t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
-	      t3->gso_size = vnet_buffer2 (b[3])->gso_size;
-	      t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
-	    }
+	    if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	      {
+		t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
+		t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
+		t0->gso_size = vnet_buffer2 (b[0])->gso_size;
+		t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
+	      }
+	    if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	      {
+		t1 = vlib_add_trace (vm, node, b[1], sizeof (t1[0]));
+		t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
+		t1->gso_size = vnet_buffer2 (b[1])->gso_size;
+		t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
+	      }
+	    if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	      {
+		t2 = vlib_add_trace (vm, node, b[2], sizeof (t2[0]));
+		t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
+		t2->gso_size = vnet_buffer2 (b[2])->gso_size;
+		t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
+	      }
+	    if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+	      {
+		t3 = vlib_add_trace (vm, node, b[3], sizeof (t3[0]));
+		t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
+		t3->gso_size = vnet_buffer2 (b[3])->gso_size;
+		t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
+	      }
 
-	  from += 4;
-	  to_next += 4;
-	  n_left_to_next -= 4;
-	  n_left_from -= 4;
+	    from += 4;
+	    to_next += 4;
+	    n_left_to_next -= 4;
+	    n_left_from -= 4;
 
-	  next0 = next1 = 0;
-	  next2 = next3 = 0;
-	  vnet_feature_next (&next0, b[0]);
-	  vnet_feature_next (&next1, b[1]);
-	  vnet_feature_next (&next2, b[2]);
-	  vnet_feature_next (&next3, b[3]);
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, bi1, bi2, bi3,
-					   next0, next1, next2, next3);
-	  b += 4;
-	}
+	    next0 = next1 = 0;
+	    next2 = next3 = 0;
+	    vnet_feature_next (&next0, b[0]);
+	    vnet_feature_next (&next1, b[1]);
+	    vnet_feature_next (&next2, b[2]);
+	    vnet_feature_next (&next3, b[3]);
+	    vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, bi1, bi2,
+					     bi3, next0, next1, next2, next3);
+	    b += 4;
+	  }
 
       while (from + 1 <= from_end && n_left_to_next > 0)
 	{
@@ -410,6 +417,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	  gso_trace_t *t0;
 	  vnet_hw_interface_t *hi0;
 	  u32 next0 = 0;
+	  u32 do_segmentation0 = 0;
 
 	  swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	  if (PREDICT_FALSE (hi->sw_if_index != swif0))
@@ -417,8 +425,10 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
 	      if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
 		  (b[0]->flags & VNET_BUFFER_F_GSO))
-		do_segmentation = 1;
+		do_segmentation0 = 1;
 	    }
+	  else
+	    do_segmentation0 = do_segmentation;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  to_next[0] = bi0 = from[0];
@@ -435,7 +445,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
 	    }
 
-	  if (do_segmentation)
+	  if (do_segmentation0)
 	    {
 	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
 		{
@@ -543,12 +553,7 @@ vnet_gso_inline (vlib_main_t * vm,
       vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
       hi = vnet_get_sup_hw_interface (vnm,
 				      vnet_buffer (b)->sw_if_index[VLIB_TX]);
-      /*
-       * The 3-headed "if" is here because we want to err on the side
-       * of not impacting the non-GSO performance - so for the more
-       * common case of no GSO interfaces we want to prevent the
-       * segmentation codepath from being there altogether.
-       */
+
       if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
 				     is_ip6, /* do_segmentation */ 0);
