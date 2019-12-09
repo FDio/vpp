@@ -133,7 +133,7 @@ test_vlib_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (test_vlib_command, static) =
 {
   .path = "test vlib",
-  .short_help = "vlib code coverate unit test",
+  .short_help = "vlib code coverage unit test",
   .function = test_vlib_command_fn,
 };
 /* *INDENT-ON* */
@@ -188,6 +188,45 @@ VLIB_CLI_COMMAND (test_format_vlib_command, static) =
   .function = test_format_vlib_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+test_vlib2_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u8 *s;
+  u8 **result;
+
+  s = format (0, "show       ");
+  result = vlib_cli_get_possible_completions (s);
+  vec_free (result);
+  vec_free (s);
+
+  s = 0;
+  vec_add1 (s, 0);
+  result = vlib_cli_get_possible_completions (s);
+  vec_free (result);
+  vec_free (s);
+
+  s = format (0, "show            ?");
+  result = vlib_cli_get_possible_completions (s);
+  vec_free (result);
+  vec_free (s);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_vlib2_command, static) =
+{
+  .path = "test vlib2",
+  .short_help = "vlib code coverage unit test #2",
+  .function = test_vlib2_command_fn,
+};
+/* *INDENT-ON* */
+
+
+
+
 
 /*
  * fd.io coding-style-patch-verification: ON

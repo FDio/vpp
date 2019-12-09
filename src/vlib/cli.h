@@ -140,15 +140,6 @@ typedef struct
   /* Hash table mapping normalized path to index into all_commands. */
   uword *command_index_by_path;
 
-  /* Vector of all known parse rules. */
-  vlib_cli_parse_rule_t *parse_rules;
-
-  /* Hash table mapping parse rule name to index into parse_rule vector. */
-  uword *parse_rule_index_by_name;
-
-  /* Data parsed for rules. */
-  void **parse_rule_data;
-
   /* registration list added by constructors */
   vlib_cli_command_t *cli_command_registrations;
 

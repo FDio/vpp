@@ -210,29 +210,6 @@ unformat_vlib_cli_sub_command (unformat_input_t * i, va_list * args)
   vlib_cli_main_t *cm = &vm->cli_main;
   uword *match_bitmap, is_unique, index;
 
-  {
-    vlib_cli_sub_rule_t *sr;
-    vlib_cli_parse_rule_t *r;
-    vec_foreach (sr, c->sub_rules)
-    {
-      void **d;
-      r = vec_elt_at_index (cm->parse_rules, sr->rule_index);
-      vec_add2 (cm->parse_rule_data, d, 1);
-      vec_reset_length (d[0]);
-      if (r->data_size)
-	d[0] = _vec_resize (d[0],
-			    /* length increment */ 1,
-			    r->data_size,
-			    /* header_bytes */ 0,
-			    /* data align */ sizeof (uword));
-      if (unformat_user (i, r->unformat_function, vm, d[0]))
-	{
-	  *result = vec_elt_at_index (cm->commands, sr->command_index);
-	  return 1;
-	}
-    }
-  }
-
   match_bitmap = vlib_cli_sub_command_match (c, i);
   is_unique = clib_bitmap_count_set_bits (match_bitmap) == 1;
   index = ~0;
@@ -363,49 +340,11 @@ format_vlib_cli_command_help (u8 * s, va_list * args)
 }
 
 static u8 *
-format_vlib_cli_parse_rule_name (u8 * s, va_list * args)
-{
-  vlib_cli_parse_rule_t *r = va_arg (*args, vlib_cli_parse_rule_t *);
-  return format (s, "<%U>", format_c_identifier, r->name);
-}
-
-static u8 *
 format_vlib_cli_path (u8 * s, va_list * args)
 {
   u8 *path = va_arg (*args, u8 *);
-  int i, in_rule;
-  in_rule = 0;
-  for (i = 0; i < vec_len (path); i++)
-    {
-      switch (path[i])
-	{
-	case '%':
-	  in_rule = 1;
-	  vec_add1 (s, '<');	/* start of <RULE> */
-	  break;
 
-	case '_':
-	  /* _ -> space in rules. */
-	  vec_add1 (s, in_rule ? ' ' : '_');
-	  break;
-
-	case ' ':
-	  if (in_rule)
-	    {
-	      vec_add1 (s, '>');	/* end of <RULE> */
-	      in_rule = 0;
-	    }
-	  vec_add1 (s, ' ');
-	  break;
-
-	default:
-	  vec_add1 (s, path[i]);
-	  break;
-	}
-    }
-
-  if (in_rule)
-    vec_add1 (s, '>');		/* terminate <RULE> */
+  s = format (s, "%v", path);
 
   return s;
 }
@@ -415,13 +354,10 @@ all_subs (vlib_cli_main_t * cm, vlib_cli_command_t * subs, u32 command_index)
 {
   vlib_cli_command_t *c = vec_elt_at_index (cm->commands, command_index);
   vlib_cli_sub_command_t *sc;
-  vlib_cli_sub_rule_t *sr;
 
   if (c->function)
     vec_add1 (subs, c[0]);
 
-  vec_foreach (sr, c->sub_rules)
-    subs = all_subs (cm, subs, sr->command_index);
   vec_foreach (sc, c->sub_commands) subs = all_subs (cm, subs, sc->index);
 
   return subs;
@@ -456,6 +392,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
   unformat_input_t sub_input;
   u8 *string;
   uword is_main_dispatch = cm == &vm->cli_main;
+  uword value;
+  u8 *key;
 
   parent = vec_elt_at_index (cm->commands, parent_command_index);
   if (is_main_dispatch && unformat (input, "help"))
@@ -484,49 +422,34 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	vlib_cli_output (vm, "%U", format_vlib_cli_command_help, c,
 			 /* is_long */ 1);
 
-      else if (vec_len (c->sub_commands) + vec_len (c->sub_rules) == 0)
+      else if (vec_len (c->sub_commands) == 0)
 	vlib_cli_output (vm, "%v: no sub-commands", c->path);
 
       else
 	{
-	  vlib_cli_sub_command_t *sc;
-	  vlib_cli_sub_rule_t *sr, *subs;
+	  vlib_cli_sub_rule_t *sr, *subs = 0;
 
-	  subs = vec_dup (c->sub_rules);
-
-	  /* Add in rules if any. */
-	  vec_foreach (sc, c->sub_commands)
-	  {
-	    vec_add2 (subs, sr, 1);
-	    sr->name = sc->name;
-	    sr->command_index = sc->index;
-	    sr->rule_index = ~0;
-	  }
+          /* *INDENT-OFF* */
+          hash_foreach_mem (key, value, c->sub_command_index_by_name,
+          ({
+            (void) key;
+            vec_add2 (subs, sr, 1);
+            sr->name = c->sub_commands[value].name;
+            sr->command_index = value;
+            sr->rule_index = ~0;
+          }));
+          /* *INDENT-ON* */
 
 	  vec_sort_with_function (subs, vlib_cli_cmp_rule);
 
 	  for (i = 0; i < vec_len (subs); i++)
 	    {
 	      vlib_cli_command_t *d;
-	      vlib_cli_parse_rule_t *r;
 
 	      d = vec_elt_at_index (cm->commands, subs[i].command_index);
-	      r =
-		subs[i].rule_index != ~0 ? vec_elt_at_index (cm->parse_rules,
-							     subs
-							     [i].rule_index) :
-		0;
-
-	      if (r)
-		vlib_cli_output
-		  (vm, "  %-30U %U",
-		   format_vlib_cli_parse_rule_name, r,
-		   format_vlib_cli_command_help, d, /* is_long */ 0);
-	      else
-		vlib_cli_output
-		  (vm, "  %-30v %U",
-		   subs[i].name,
-		   format_vlib_cli_command_help, d, /* is_long */ 0);
+	      vlib_cli_output
+		(vm, "  %-30v %U", subs[i].name,
+		 format_vlib_cli_command_help, d, /* is_long */ 0);
 	    }
 
 	  vec_free (subs);
@@ -669,8 +592,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		  if (c_error)
 		    {
 		      vec_add1 (c_error->what, 0);
-		      ed->err = elog_string (&vm->elog_main,
-					     (char *) c_error->what);
+		      ed->err =
+			elog_string (&vm->elog_main, (char *) c_error->what);
 		      _vec_len (c_error->what) -= 1;
 		    }
 		  else
@@ -732,7 +655,6 @@ vlib_cli_input (vlib_main_t * vm,
 		vlib_cli_output_function_t * function, uword function_arg)
 {
   vlib_process_t *cp = vlib_get_current_process (vm);
-  vlib_cli_main_t *cm = &vm->cli_main;
   clib_error_t *error;
   vlib_cli_output_function_t *save_function;
   uword save_function_arg;
@@ -746,9 +668,8 @@ vlib_cli_input (vlib_main_t * vm,
 
   do
     {
-      vec_reset_length (cm->parse_rule_data);
-      error = vlib_cli_dispatch_sub_commands (vm, &vm->cli_main, input,	/* parent */
-					      0);
+      error = vlib_cli_dispatch_sub_commands (vm, &vm->cli_main, input,
+					      /* parent */ 0);
     }
   while (!error && !unformat (input, "%U", unformat_eof));
 
@@ -1296,14 +1217,6 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
 	  return;
 	}
 
-      q = hash_get_mem (cm->parse_rule_index_by_name, sub_name);
-      if (!q)
-	{
-	  clib_error ("reference to unknown rule `%%%v' in path `%v'",
-		      sub_name, c->path);
-	  return;
-	}
-
       hash_set_mem (p->sub_rule_index_by_name, sub_name,
 		    vec_len (p->sub_rules));
       vec_add2 (p->sub_rules, sr, 1);
@@ -1492,6 +1405,8 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
   return 0;
 }
 
+#if 0
+/* $$$ turn back on again someday, maybe */
 clib_error_t *
 vlib_cli_register_parse_rule (vlib_main_t * vm, vlib_cli_parse_rule_t * r_reg)
 {
@@ -1524,8 +1439,6 @@ vlib_cli_register_parse_rule (vlib_main_t * vm, vlib_cli_parse_rule_t * r_reg)
   return error;
 }
 
-#if 0
-/* $$$ turn back on again someday, maybe */
 static clib_error_t *vlib_cli_register_parse_rules (vlib_main_t * vm,
 						    vlib_cli_parse_rule_t *
 						    lo,
