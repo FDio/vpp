@@ -41,6 +41,7 @@ typedef struct
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
+  ssvm_private_t *ssvm;			/**< Pointer to fs ssvm */
   u32 n_active_fifos;			/**< Number of active fifos */
   u8 flags;				/**< Segment flags */
   u32 n_free_bytes;			/**< Bytes usable for new allocs */
@@ -51,6 +52,7 @@ typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
+  u8 n_slices;
 } fifo_segment_t;
 
 typedef struct
@@ -90,9 +92,10 @@ void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
  * @param ftype		fifo type @ref fifo_segment_ftype_t
  * @return		new fifo or 0 if alloc failed
  */
-svm_fifo_t *fifo_segment_alloc_fifo (fifo_segment_t * fs,
-				     u32 data_bytes,
-				     fifo_segment_ftype_t ftype);
+svm_fifo_t *fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs,
+                                              u32 thread_index,
+                                              u32 data_bytes,
+                                              fifo_segment_ftype_t ftype);
 
 /**
  * Free fifo allocated in fifo segment
@@ -111,7 +114,8 @@ void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
  * @param batch_size	number of chunks to be allocated
  * @return		0 on success, negative number otherwise
  */
-int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 batch_size);
+int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 slice_index,
+                                     u32 batch_size);
 
 /**
  * Try to preallocate fifo chunks on segment
@@ -194,7 +198,8 @@ void fifo_segment_update_free_bytes (fifo_segment_t * fs);
  */
 u32 fifo_segment_fl_chunk_bytes (fifo_segment_t * fs);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
-svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
+svm_fifo_t *fifo_segment_get_slice_fifo_list (fifo_segment_t * fs,
+                                              u32 slice_index);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
 u32 fifo_segment_num_free_fifos (fifo_segment_t * fs);
 /**
