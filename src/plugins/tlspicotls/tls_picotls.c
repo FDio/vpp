@@ -2,6 +2,7 @@
 
 #include "certs.h"
 #include "tls_picotls.h"
+#include "pico_vpp_crypto.h"
 
 picotls_main_t picotls_main;
 
@@ -151,7 +152,7 @@ picotls_start_listen (tls_ctx_t * lctx)
   /* setup protocol related functions */
   ptls_ctx->key_exchanges = key_exchange;
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
-  ptls_ctx->cipher_suites = ptls_openssl_cipher_suites;
+  ptls_ctx->cipher_suites = ptls_vpp_crypto_cipher_suites;
   ptls_ctx->get_time = &ptls_get_time;
 
   lctx->tls_ssl_ctx = ptls_lctx_idx;
