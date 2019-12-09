@@ -48,6 +48,53 @@
     },
     {
       "key": {
+        "uuid": "f7791e2f_09d3a1f8",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-09T12:37:11Z",
+      "side": 1,
+      "message": "The docs say that q.get() takes blocking\u003d[True|False] \n\nhttps://docs.python.org/3/library/queue.html#queue.Queue.get\n\nIf blocking\u003dTrue and timeout \u003d 0.0, get() immediately raises Empty.\n\nhttps://github.com/python/cpython/blob/master/Lib/queue.py#L177\n\nI can update the docstring to indicate that we raise VPPIOError, which is what the shmem transport does.  We should decide what the behavior should be and make it consistent across the transports.",
+      "parentUuid": "0bed24cf_b08c8e11",
+      "range": {
+        "startLine": 733,
+        "startChar": 59,
+        "endLine": 733,
+        "endChar": 70
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4b6217e_87455423",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-09T12:37:11Z",
+      "side": 1,
+      "message": "This is always blocking.  For async, this would have to be False.",
+      "range": {
+        "startLine": 235,
+        "startChar": 30,
+        "endLine": 235,
+        "endChar": 35
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8d203826_e58abf9e",
         "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
         "patchSetId": 4
@@ -59,6 +106,30 @@
       "writtenOn": "2019-12-09T11:59:04Z",
       "side": 1,
       "message": "This is how it gets changed. Excepting is more expensive than checking for None.",
+      "range": {
+        "startLine": 237,
+        "startChar": 12,
+        "endLine": 237,
+        "endChar": 43
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6121f633_36958e9d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-09T12:37:11Z",
+      "side": 1,
+      "message": "Added to make the interfaces consistent between socket and shmem.",
+      "parentUuid": "8d203826_e58abf9e",
       "range": {
         "startLine": 237,
         "startChar": 12,
