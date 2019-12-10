@@ -37,6 +37,7 @@
 
 #define TIMEOUT 10.0
 #define LOGGING_BATCH (100)
+#define LOG_EVERY_N_IDLE_CYCLES (1e8)
 
 #define foreach_echo_fail_code                                          \
   _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
