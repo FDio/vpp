@@ -216,6 +216,12 @@ quic_ctx_is_listener (quic_ctx_t * ctx)
   return (ctx->flags & QUIC_F_IS_LISTENER);
 }
 
+static inline int
+quic_ctx_is_conn (quic_ctx_t * ctx)
+{
+  return !(quic_ctx_is_listener (ctx) || quic_ctx_is_stream (ctx));
+}
+
 static session_t *
 get_stream_session_from_stream (quicly_stream_t * stream)
 {
@@ -335,6 +341,7 @@ quic_connection_delete (quic_ctx_t * ctx)
 
   /*  Delete the connection from the connection map */
   conn = ctx->conn;
+  ctx->conn = NULL;
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   QUIC_DBG (2, "Deleting conn with id %lu %lu from map", kv.key[0],
 	    kv.key[1]);
@@ -344,7 +351,6 @@ quic_connection_delete (quic_ctx_t * ctx)
 
   if (ctx->conn)
     quicly_free (ctx->conn);
-  ctx->conn = NULL;
   session_transport_delete_notify (&ctx->connection);
 }
 
@@ -2306,26 +2312,7 @@ quic_plugin_set_fifo_size_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-static u8 *
-quic_format_ctx_stat (u8 * s, va_list * args)
-{
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  quicly_stats_t quicly_stats;
-
-  quicly_get_stats (ctx->conn, &quicly_stats);
-
-  s = format (s, "\n\rQUIC conn stats \n\r");
-
-  s =
-    format (s, "RTT: min:%d, smoothed:%d, variance:%d, latest:%d \n\r",
-	    quicly_stats.rtt.minimum, quicly_stats.rtt.smoothed,
-	    quicly_stats.rtt.variance, quicly_stats.rtt.latest);
-  s = format (s, "Packet loss:%d \n\r", quicly_stats.num_packets.lost);
-
-  return s;
-}
-
-u64
+static inline u64
 quic_get_counter_value (u32 event_code)
 {
   vlib_node_t *n;
@@ -2355,71 +2342,209 @@ quic_get_counter_value (u32 event_code)
   return sum;
 }
 
-static clib_error_t *
-quic_plugin_showstats_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+static void
+quic_show_aggregated_stats (vlib_main_t * vm)
 {
-  quic_main_t *qm = &quic_main;
-
-  vlib_cli_output (vm, "\n-------- Connections --------\n");
-  vlib_cli_output (vm, "%=20s%10Ld%=20s%10Ld", "Opened:",
-		   quic_get_counter_value (QUIC_ERROR_OPENED_CONNECTION),
-		   "Closed:",
-		   quic_get_counter_value (QUIC_ERROR_CLOSED_CONNECTION));
-
-  vlib_cli_output (vm, "\n---------- Streams ----------\n");
-  vlib_cli_output (vm, "%=20s%10Ld%=20s%10Ld", "Opened:",
-		   quic_get_counter_value (QUIC_ERROR_OPENED_STREAM),
-		   "Closed:",
-		   quic_get_counter_value (QUIC_ERROR_CLOSED_STREAM));
-
-  vlib_cli_output (vm, "\n--------- RX Packets ---------\n");
-  vlib_cli_output (vm, "%=20s%10Ld", "Total:",
-		   quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
-  vlib_cli_output (vm, "%=20s%10Ld", "0RTT :",
-		   quic_get_counter_value (QUIC_ERROR_ZERO_RTT_RX_PACKETS));
-  vlib_cli_output (vm, "%=20s%10Ld", "1RTT :",
-		   quic_get_counter_value (QUIC_ERROR_ONE_RTT_RX_PACKETS));
-
-  vlib_cli_output (vm, "\n-------- TX Packets --------\n");
-  vlib_cli_output (vm, "%=20s%10Ld", "Total:",
-		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
-
-  quic_ctx_t *ctx = NULL;
   u32 num_workers = vlib_num_workers ();
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx = NULL;
+  quicly_stats_t st, agg_stats;
+  u32 i, nconn = 0, nstream = 0;
 
-  for (int i = 0; i < num_workers + 1; i++)
+  clib_memset (&agg_stats, 0, sizeof (agg_stats));
+  for (i = 0; i < num_workers + 1; i++)
     {
       /* *INDENT-OFF* */
       pool_foreach (ctx, qm->ctx_pool[i],
       ({
-        if(!(ctx->flags & QUIC_F_IS_LISTENER) && !(ctx->flags & QUIC_F_IS_STREAM))
-          vlib_cli_output (vm, "%U", quic_format_ctx_stat, ctx);
+	if (quic_ctx_is_conn (ctx) && ctx->conn)
+	  {
+	    quicly_get_stats (ctx->conn, &st);
+	    agg_stats.rtt.smoothed += st.rtt.smoothed;
+	    agg_stats.rtt.minimum += st.rtt.minimum;
+	    agg_stats.rtt.variance += st.rtt.variance;
+	    agg_stats.num_packets.received += st.num_packets.received;
+	    agg_stats.num_packets.sent += st.num_packets.sent;
+	    agg_stats.num_packets.lost += st.num_packets.lost;
+	    agg_stats.num_packets.ack_received += st.num_packets.ack_received;
+	    agg_stats.num_bytes.received += st.num_bytes.received;
+	    agg_stats.num_bytes.sent += st.num_bytes.sent;
+	    nconn++;
+	  }
+	else if (quic_ctx_is_stream (ctx))
+	  nstream++;
       }));
       /* *INDENT-ON* */
     }
-  return 0;
+  vlib_cli_output (vm, "-------- Connections --------");
+  vlib_cli_output (vm, "Current:         %u", nconn);
+  vlib_cli_output (vm, "Opened:          %d",
+		   quic_get_counter_value (QUIC_ERROR_OPENED_CONNECTION));
+  vlib_cli_output (vm, "Closed:          %d",
+		   quic_get_counter_value (QUIC_ERROR_CLOSED_CONNECTION));
+  vlib_cli_output (vm, "---------- Streams ----------");
+  vlib_cli_output (vm, "Current:         %u", nstream);
+  vlib_cli_output (vm, "Opened:          %d",
+		   quic_get_counter_value (QUIC_ERROR_OPENED_STREAM));
+  vlib_cli_output (vm, "Closed:          %d",
+		   quic_get_counter_value (QUIC_ERROR_CLOSED_STREAM));
+  vlib_cli_output (vm, "---------- Packets ----------");
+  vlib_cli_output (vm, "RX Total:        %d",
+		   quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
+  vlib_cli_output (vm, "RX 0RTT:         %d",
+		   quic_get_counter_value (QUIC_ERROR_ZERO_RTT_RX_PACKETS));
+  vlib_cli_output (vm, "RX 1RTT:         %d",
+		   quic_get_counter_value (QUIC_ERROR_ONE_RTT_RX_PACKETS));
+  vlib_cli_output (vm, "TX Total:        %d",
+		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
+  vlib_cli_output (vm, "----------- Stats -----------");
+  vlib_cli_output (vm, "Min      RTT     %f",
+		   nconn > 0 ? agg_stats.rtt.minimum / nconn : 0);
+  vlib_cli_output (vm, "Smoothed RTT     %f",
+		   nconn > 0 ? agg_stats.rtt.smoothed / nconn : 0);
+  vlib_cli_output (vm, "Variance on RTT  %f",
+		   nconn > 0 ? agg_stats.rtt.variance / nconn : 0);
+  vlib_cli_output (vm, "Packets Received %lu",
+		   agg_stats.num_packets.received);
+  vlib_cli_output (vm, "Packets Sent     %lu", agg_stats.num_packets.sent);
+  vlib_cli_output (vm, "Packets Lost     %lu", agg_stats.num_packets.lost);
+  vlib_cli_output (vm, "Packets Acks     %lu",
+		   agg_stats.num_packets.ack_received);
+  vlib_cli_output (vm, "RX bytes         %lu", agg_stats.num_bytes.received);
+  vlib_cli_output (vm, "TX bytes         %lu", agg_stats.num_bytes.sent);
+}
+
+static u8 *
+quic_format_quicly_conn_id (u8 * s, va_list * args)
+{
+  quicly_cid_plaintext_t *mid = va_arg (*args, quicly_cid_plaintext_t *);
+  s = format (s, "C%x_%x", mid->master_id, mid->thread_id);
+  return s;
+}
+
+static u8 *
+quic_format_quicly_stream_id (u8 * s, va_list * args)
+{
+  quicly_stream_t *stream = va_arg (*args, quicly_stream_t *);
+  s =
+    format (s, "%U S%lx", quic_format_quicly_conn_id,
+	    quicly_get_master_id (stream->conn), stream->stream_id);
+  return s;
+}
+
+static u8 *
+quic_format_listener_ctx (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  s = format (s, "[#%d][%x][Listener]", ctx->c_thread_index, ctx->c_c_index);
+  return s;
+}
+
+static u8 *
+quic_format_connection_ctx (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  quicly_stats_t quicly_stats;
+
+  s = format (s, "[#%d][%x]", ctx->c_thread_index, ctx->c_c_index);
+
+  if (!ctx->conn)
+    {
+      s = format (s, "- no conn -\n");
+      return s;
+    }
+  s = format (s, "[%U]",
+	      quic_format_quicly_conn_id, quicly_get_master_id (ctx->conn));
+  quicly_get_stats (ctx->conn, &quicly_stats);
+
+  s = format (s, "[RTT >%3d, ~%3d, V%3d, last %3d]",
+	      quicly_stats.rtt.minimum, quicly_stats.rtt.smoothed,
+	      quicly_stats.rtt.variance, quicly_stats.rtt.latest);
+  s = format (s, " TX:%d RX:%d loss:%d ack:%d",
+	      quicly_stats.num_packets.sent,
+	      quicly_stats.num_packets.received,
+	      quicly_stats.num_packets.lost,
+	      quicly_stats.num_packets.ack_received);
+  return s;
+}
+
+static u8 *
+quic_format_stream_ctx (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  session_t *stream_session;
+  quicly_stream_t *stream = ctx->stream;
+  u32 txs, rxs;
+
+  s = format (s, "[#%d][%x]", ctx->c_thread_index, ctx->c_c_index);
+  s = format (s, "[%U]", quic_format_quicly_stream_id, stream);
+
+  stream_session = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
+  if (!stream_session)
+    {
+      s = format (s, "- no session -\n");
+      return s;
+    }
+  txs = svm_fifo_max_dequeue (stream_session->tx_fifo);
+  rxs = svm_fifo_max_dequeue (stream_session->rx_fifo);
+  s = format (s, "[rx %d tx %d]\n", rxs, txs);
+  return s;
 }
 
 static clib_error_t *
-quic_show_ctx_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+quic_show_connections_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
 {
-  quic_main_t *qm = &quic_main;
-  quic_ctx_t *ctx = NULL;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 show_listeners = 0, show_conn = 0, show_stream = 0;
   u32 num_workers = vlib_num_workers ();
+  quic_main_t *qm = &quic_main;
+  clib_error_t *error = 0;
+  quic_ctx_t *ctx = NULL;
+
+  session_cli_return_if_not_enabled ();
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      quic_show_aggregated_stats (vm);
+      return 0;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "listener"))
+	show_listeners = 1;
+      else if (unformat (line_input, "conn"))
+	show_conn = 1;
+      else if (unformat (line_input, "stream"))
+	show_stream = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
 
   for (int i = 0; i < num_workers + 1; i++)
     {
       /* *INDENT-OFF* */
       pool_foreach (ctx, qm->ctx_pool[i],
       ({
-        vlib_cli_output (vm, "%U", format_quic_ctx, ctx, 1);
+        if (quic_ctx_is_stream (ctx) && show_stream)
+          vlib_cli_output (vm, "%U", quic_format_stream_ctx, ctx);
+        else if (quic_ctx_is_listener (ctx) && show_listeners)
+          vlib_cli_output (vm, "%U", quic_format_listener_ctx, ctx);
+	else if (quic_ctx_is_conn (ctx) && show_conn)
+          vlib_cli_output (vm, "%U", quic_format_connection_ctx, ctx);
       }));
       /* *INDENT-ON* */
     }
-  return 0;
+
+done:
+  unformat_free (line_input);
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -2435,17 +2560,11 @@ VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
   .short_help = "quic set fifo-size N[K|M|G] (default 64K)",
   .function = quic_plugin_set_fifo_size_command_fn,
 };
-VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
-{
-  .path = "show quic stats",
-  .short_help = "show quic stats",
-  .function = quic_plugin_showstats_command_fn,
-};
 VLIB_CLI_COMMAND(quic_show_ctx_command, static)=
 {
-  .path = "show quic ctx",
-  .short_help = "show quic ctx",
-  .function = quic_show_ctx_command_fn,
+  .path = "show quic",
+  .short_help = "show quic",
+  .function = quic_show_connections_command_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {
