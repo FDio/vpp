@@ -378,6 +378,12 @@ vlibapi_get_main (void)
   return my_api_main;
 }
 
+always_inline void
+vlibapi_set_main (api_main_t * am)
+{
+  my_api_main = am;
+}
+
 #endif /* included_api_common_h */
 
 /*
