@@ -30,6 +30,7 @@
 
 #include <quicly/constants.h>
 #include <quicly/defaults.h>
+#include <picotls.h>
 
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
@@ -47,6 +48,7 @@ static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
 static quicly_stream_open_t on_stream_open;
 static quicly_closed_by_peer_t on_closed_by_peer;
 static quicly_now_t quicly_vpp_now_cb;
+
 
 /* Crypto contexts */
 
@@ -84,6 +86,35 @@ quic_crypto_context_free_if_needed (crypto_context_t * crctx, u8 thread_index)
   clib_mem_free (crctx->data);
   pool_put (qm->wrk_ctx[thread_index].crypto_ctx_pool, crctx);
 }
+
+static quicly_datagram_t *
+quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
+{
+  quicly_datagram_t *packet;
+  if ((packet =
+       clib_mem_alloc (sizeof (*packet) + payloadsize +
+		       sizeof (quic_encrypt_cb_ctx))) == NULL)
+    return NULL;
+  packet->data.base =
+    (uint8_t *) packet + sizeof (*packet) + sizeof (quic_encrypt_cb_ctx);
+  quic_encrypt_cb_ctx *encrypt_cb_ctx =
+    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
+
+  clib_memset (encrypt_cb_ctx, 0, sizeof (*encrypt_cb_ctx));
+  return packet;
+}
+
+static void
+quic_free_packet (quicly_packet_allocator_t * self,
+		  quicly_datagram_t * packet)
+{
+  clib_mem_free (packet);
+}
+
+quicly_packet_allocator_t quic_packet_allocator =
+  { quic_alloc_packet, quic_free_packet };
+static quicly_finalize_send_packet_t quic_finalize_send_packet_ptr =
+  { quic_crypto_finalize_send_packet_cb };
 
 static int
 quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
@@ -208,6 +239,9 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   quicly_ctx->closed_by_peer = &on_closed_by_peer;
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
+
+  quicly_ctx->packet_allocator = &quic_packet_allocator;
+  quicly_ctx->finalize_send_packet = &quic_finalize_send_packet_ptr;
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
@@ -669,8 +703,10 @@ quic_send_packets (quic_ctx_t * ctx)
       if ((err = quicly_send (conn, packets, &num_packets)))
 	goto quicly_error;
 
+      quic_crypto_batch_tx_packets ();
       for (i = 0; i != num_packets; ++i)
 	{
+	  quic_crypto_finalize_send_packet (packets[i]);
 	  if ((err = quic_send_datagram (udp_session, packets[i])))
 	    goto quicly_error;
 
