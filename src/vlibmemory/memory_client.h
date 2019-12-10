@@ -70,6 +70,12 @@ vlibapi_get_memory_client_main (void)
   return my_memory_client_main;
 }
 
+always_inline void
+vlibapi_set_memory_client_main (memory_client_main_t * mm)
+{
+  my_memory_client_main = mm;
+}
+
 #endif /* SRC_VLIBMEMORY_MEMORY_CLIENT_H_ */
 
 /*
