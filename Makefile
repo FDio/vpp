@@ -684,7 +684,7 @@ docs-venv:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
 
 .PHONY: docs
-docs: $(DOCS_DIR) docs-venv
+docs: $(DOCS_DIR)
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
 
 .PHONY: docs-clean
