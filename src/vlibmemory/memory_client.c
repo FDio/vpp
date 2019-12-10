@@ -48,12 +48,24 @@
 memory_client_main_t memory_client_main;
 __thread memory_client_main_t *my_memory_client_main = &memory_client_main;
 
+typedef struct rx_thread_fn_arg
+{
+  api_main_t *am;
+  memory_client_main_t *mm;
+} rx_thread_fn_arg_t;
+
 static void *
 rx_thread_fn (void *arg)
 {
+  rx_thread_fn_arg_t *a = (rx_thread_fn_arg_t *) arg;
+  memory_client_main_t *mm;
   svm_queue_t *q;
-  memory_client_main_t *mm = vlibapi_get_memory_client_main ();
 
+  vlibapi_set_main (a->am);
+  vlibapi_set_memory_client_main (a->mm);
+  clib_mem_free (a);
+
+  mm = vlibapi_get_memory_client_main ();
   q = vlibapi_get_main ()->vl_input_queue;
 
   /* So we can make the rx thread terminate cleanly */
@@ -419,6 +431,15 @@ connect_to_vlib_internal (const char *svm_name,
 
   if (thread_fn)
     {
+      if (thread_fn == rx_thread_fn)
+	{
+	  rx_thread_fn_arg_t *arg;
+	  arg = clib_mem_alloc (sizeof (*arg));
+	  arg->am = vlibapi_get_main ();
+	  arg->mm = vlibapi_get_memory_client_main ();
+	  thread_fn_arg = (void *) arg;
+	}
+
       rv = pthread_create (&mm->rx_thread_handle,
 			   NULL /*attr */ , thread_fn, thread_fn_arg);
       if (rv)
