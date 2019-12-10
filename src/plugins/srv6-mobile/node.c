@@ -129,10 +129,6 @@ format_srv6_end_rewrite_trace6 (u8 * s, va_list * args)
   _(M_GTP6_D_DI_PACKETS, "srv6 End.M.GTP6.D.DI packets") \
   _(M_GTP6_D_DI_BAD_PACKETS, "srv6 End.M.GTP6.D.DI bad packets")
 
-#define foreach_srv6_end_v6_dt_error \
-  _(M_GTP6_DT_PACKETS, "srv6 End.M.GTP6.DT packets") \
-  _(M_GTP6_DT_BAD_PACKETS, "srv6 End.M.GTP6.DT bad packets")
-
 typedef enum
 {
 #define _(sym,str) SRV6_END_ERROR_##sym,
@@ -172,14 +168,6 @@ typedef enum
 #undef _
     SRV6_END_N_V6_D_DI_ERROR,
 } srv6_end_error_v6_d_di_t;
-
-typedef enum
-{
-#define _(sym,str) SRV6_END_ERROR_##sym,
-  foreach_srv6_end_v6_dt_error
-#undef _
-    SRV6_END_N_V6_DT_ERROR,
-} srv6_end_error_v6_dt_t;
 
 static char *srv6_end_error_v4_strings[] = {
 #define _(sym,string) string,
@@ -258,20 +246,22 @@ hash_uword_to_u16 (uword * key)
 #endif
 }
 
-static inline void
-gtp_type_set (gtpu_header_t * gtpu, u16 tag)
+static inline u8
+gtpu_type_get (u16 tag)
 {
   u16 val;
 
   val = clib_net_to_host_u16 (tag);
   if (val & SRH_TAG_ECHO_REPLY)
-    gtpu->type = GTPU_TYPE_ECHO_REPLY;
+    return GTPU_TYPE_ECHO_REPLY;
   else if (val & SRH_TAG_ECHO_REQUEST)
-    gtpu->type = GTPU_TYPE_ECHO_REQUEST;
+    return GTPU_TYPE_ECHO_REQUEST;
   else if (val & SRH_TAG_ERROR_INDICATION)
-    gtpu->type = GTPU_TYPE_ERROR_INDICATION;
+    return GTPU_TYPE_ERROR_INDICATION;
   else if (val & SRH_TAG_END_MARKER)
-    gtpu->type = GTPU_TYPE_END_MARKER;
+    return GTPU_TYPE_END_MARKER;
+
+  return GTPU_TYPE_GTPU;
 }
 
 // Function for SRv6 GTP4.E function.
@@ -343,10 +333,12 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      u8 gtpu_type = 0;
 	      u16 tag = 0;
 	      u32 teid;
 	      u8 *teid8p = (u8 *) & teid;
 	      u8 qfi = 0;
+	      u16 seq = 0;
 	      u32 index;
 	      u32 offset, shift;
 	      u32 hdrlen = 0;
@@ -390,9 +382,13 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  qfi = dst0.as_u8[offset + 4];
 
 		  clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 5], 4);
+
+		  clib_memcpy_fast (&seq, &dst0.as_u8[offset + 9], 2);
 		}
 	      else
 		{
+		  u8 *sp;
+
 		  for (index = 0; index < 4; index++)
 		    {
 		      dst4.as_u8[index] = dst0.as_u8[offset + index] << shift;
@@ -410,14 +406,30 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 			dst0.as_u8[offset + 6 + index] >> (8 - shift);
 		      teid8p++;
 		    }
+
+		  sp = (u8 *) & seq;
+		  for (index = 0; index < 2; index++)
+		    {
+		      sp[index] = dst0.as_u8[offset + 9 + index] << shift;
+		      sp[index] =
+			dst0.as_u8[offset + 10 + index] >> (8 - shift);
+		    }
 		}
+
+	      gtpu_type = gtpu_type_get (tag);
 
 	      if (qfi)
 		{
 		  hdrlen =
 		    sizeof (gtpu_exthdr_t) + sizeof (gtpu_pdu_session_t);
-		  len0 += hdrlen;
 		}
+	      else if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
+		       || gtpu_type == GTPU_TYPE_ECHO_REPLY)
+		{
+		  hdrlen = sizeof (gtpu_exthdr_t);
+		}
+	      len0 += hdrlen;
+
 	      hdrlen += sizeof (ip4_gtpu_header_t);
 
 	      // IPv4 GTP-U header creation.
@@ -433,10 +445,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      hdr0->gtpu.teid = teid;
 	      hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
-	      if (PREDICT_FALSE (tag != 0))
-		{
-		  gtp_type_set (&hdr0->gtpu, tag);
-		}
+	      hdr0->gtpu.type = gtpu_type;
 
 	      if (qfi)
 		{
@@ -444,7 +453,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  gtpu_pdu_session_t *sess;
 
 		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
+
 		  hdr0->gtpu.ext->seq = 0;
+
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
 
@@ -463,6 +474,15 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		  sess->spare = 0;
 		  sess->u.val = qfi;
 		  sess->nextexthdr = 0;
+		}
+
+	      if (gtpu_type == GTPU_TYPE_ECHO_REPLY
+		  || gtpu_type == GTPU_TYPE_ECHO_REQUEST)
+		{
+		  hdr0->gtpu.ver_flags |= GTPU_SEQ_FLAG;
+		  hdr0->gtpu.ext->seq = seq;
+		  hdr0->gtpu.ext->npdu_num = 0;
+		  hdr0->gtpu.ext->nextexthdr = 0;
 		}
 
 	      offset = ls_param->v4src_position / 8;
@@ -618,6 +638,8 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 	      u8 *teidp;
 	      u8 qfi = 0;
 	      u8 *qfip = NULL;
+	      u16 seq = 0;
+	      u8 *seqp = NULL;
 	      u32 offset, shift, index;
 	      ip6srv_combo_header_t *ip6srv;
 	      gtpu_pdu_session_t *sess = NULL;
@@ -632,10 +654,14 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 
 	      gtpu_type = hdr->gtpu.type;
 
-	      if (hdr->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+	      if (hdr->gtpu.ver_flags & (GTPU_EXTHDR_FLAG | GTPU_SEQ_FLAG))
 		{
 		  // Extention header.
 		  hdr_len += sizeof (gtpu_exthdr_t);
+
+		  seq = hdr->gtpu.ext->seq;
+		  seqp = (u8 *) & seq;
+
 		  if (hdr->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
@@ -683,6 +709,9 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 		    }
 
 		  clib_memcpy_fast (&seg.as_u8[offset + 5], teidp, 4);
+
+		  if (seqp)
+		    clib_memcpy_fast (&seg.as_u8[offset + 9], seqp, 2);
 		}
 	      else
 		{
@@ -695,6 +724,17 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 		      seg.as_u8[offset + index + 5] |= teidp[index] >> shift;
 		      seg.as_u8[offset + index + 6] |=
 			teidp[index] << (8 - shift);
+		    }
+
+		  if (seqp)
+		    {
+		      for (index = 0; index < 2; index++)
+			{
+			  seg.as_u8[offset + 9 + index] |=
+			    seqp[index] >> shift;
+			  seg.as_u8[offset + 10 + index] |=
+			    seqp[index] << (8 - shift);
+			}
 		    }
 
 		  if (qfip)
@@ -785,16 +825,49 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 		  clib_memcpy_fast (ip6srv, sl->rewrite,
 				    vec_len (sl->rewrite));
 
-		  ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+		  if (vec_len (sl->segments) > 1)
+		    {
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
 
-		  ip6srv->sr.tag =
-		    clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+		      ip6srv->sr.segments_left += 1;
+		      ip6srv->sr.last_entry += 1;
 
-		  ip6srv->sr.segments_left += 1;
-		  ip6srv->sr.last_entry += 1;
+		      ip6srv->sr.length += sizeof (ip6_address_t) / 8;
+		      ip6srv->sr.segments[0] = seg;
 
-		  ip6srv->sr.length += sizeof (ip6_address_t) / 8;
-		  ip6srv->sr.segments[0] = seg;
+		      clib_memcpy_fast (&ip6srv->sr.segments[1],
+					(u8 *) (sl->rewrite +
+						sizeof (ip6_header_t) +
+						sizeof (ip6_sr_header_t)),
+					vec_len (sl->segments) *
+					sizeof (ip6_address_t));
+		    }
+		  else
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+
+		      ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
+
+		      ip6srv->sr.segments_left = 1;
+		      ip6srv->sr.last_entry = 0;
+
+		      ip6srv->sr.length =
+			((sizeof (ip6_sr_header_t) +
+			  sizeof (ip6_address_t)) / 8) - 1;
+		      ip6srv->sr.flags = 0;
+
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+
+		      ip6srv->sr.segments[0] = seg;
+		      if (vec_len (sl->segments))
+			{
+			  ip6srv->sr.segments[1] = sl->segments[0];
+			  ip6srv->sr.length += sizeof (ip6_address_t) / 8;
+			  ip6srv->sr.last_entry++;
+			}
+		    }
 
 		  if (PREDICT_TRUE (encap != NULL))
 		    {
@@ -842,13 +915,6 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 		    {
 		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
 		    }
-
-		  clib_memcpy_fast (&ip6srv->sr.segments[1],
-				    (u8 *) (sl->rewrite +
-					    sizeof (ip6_header_t) +
-					    sizeof (ip6_sr_header_t)),
-				    vec_len (sl->segments) *
-				    sizeof (ip6_address_t));
 		}
 	      else
 		{
@@ -1066,6 +1132,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      u32 teid;
 	      u8 *teid8p = (u8 *) & teid;
 	      u8 qfi = 0;
+	      u16 seq = 0;
+	      u8 gtpu_type = 0;
 	      u16 index;
 	      u16 offset, shift;
 	      u32 hdrlen = 0;
@@ -1080,9 +1148,13 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		  clib_memcpy_fast (teid8p, &dst0.as_u8[offset], 4);
 
 		  qfi = dst0.as_u8[offset + 4];
+
+		  clib_memcpy_fast (&seq, &dst0.as_u8[offset + 5], 2);
 		}
 	      else
 		{
+		  u8 *sp;
+
 		  for (index = offset; index < offset + 4; index++)
 		    {
 		      *teid8p = dst0.as_u8[index] << shift;
@@ -1092,14 +1164,30 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 
 		  qfi |= dst0.as_u8[offset + 4] << shift;
 		  qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
+
+		  sp = (u8 *) & seq;
+		  for (index = 0; index < 2; index++)
+		    {
+		      sp[index] = dst0.as_u8[offset + 5 + index] << shift;
+		      sp[index] =
+			dst0.as_u8[offset + 6 + index] >> (8 - shift);
+		    }
 		}
+
+	      gtpu_type = gtpu_type_get (tag);
 
 	      if (qfi)
 		{
 		  hdrlen =
 		    sizeof (gtpu_exthdr_t) + sizeof (gtpu_pdu_session_t);
-		  len0 += hdrlen;
 		}
+	      else if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
+		       || gtpu_type == GTPU_TYPE_ECHO_REPLY)
+		{
+		  hdrlen = sizeof (gtpu_exthdr_t);
+		}
+
+	      len0 += hdrlen;
 	      hdrlen += sizeof (ip6_gtpu_header_t);
 
 	      vlib_buffer_advance (b0, -(word) hdrlen);
@@ -1112,10 +1200,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      hdr0->gtpu.teid = teid;
 	      hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
-	      if (PREDICT_FALSE (tag != 0))
-		{
-		  gtp_type_set (&hdr0->gtpu, tag);
-		}
+	      hdr0->gtpu.type = gtpu_type;
 
 	      if (qfi)
 		{
@@ -1123,6 +1208,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		  gtpu_pdu_session_t *sess;
 
 		  hdr0->gtpu.ver_flags |= GTPU_EXTHDR_FLAG;
+
 		  hdr0->gtpu.ext->seq = 0;
 		  hdr0->gtpu.ext->npdu_num = 0;
 		  hdr0->gtpu.ext->nextexthdr = GTPU_EXTHDR_PDU_SESSION;
@@ -1142,6 +1228,15 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		  sess->spare = 0;
 		  sess->u.val = qfi;
 		  sess->nextexthdr = 0;
+		}
+
+	      if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
+		  || gtpu_type == GTPU_TYPE_ECHO_REPLY)
+		{
+		  hdr0->gtpu.ver_flags |= GTPU_SEQ_FLAG;
+		  hdr0->gtpu.ext->seq = seq;
+		  hdr0->gtpu.ext->npdu_num = 0;
+		  hdr0->gtpu.ext->nextexthdr = 0;
 		}
 
 	      hdr0->udp.length = clib_host_to_net_u16 (len0 +
@@ -1241,6 +1336,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  u8 gtpu_type = 0;
 	  u8 qfi;
 	  u8 *qfip = NULL;
+	  u16 seq = 0;
+	  u8 *seqp = NULL;
 	  u32 offset, shift;
 	  u32 hdrlen;
 	  ip6_header_t *encap = NULL;
@@ -1288,10 +1385,14 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) & teid;
 
-	      if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+	      if (hdr0->gtpu.ver_flags & (GTPU_EXTHDR_FLAG | GTPU_SEQ_FLAG))
 		{
 		  // Extention header.
 		  hdrlen += sizeof (gtpu_exthdr_t);
+
+		  seq = hdr0->gtpu.ext->seq;
+		  seqp = (u8 *) & seq;
+
 		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
@@ -1331,6 +1432,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 		      seg0.as_u8[offset + 4] = qfi;
 		    }
+
+		  if (seqp)
+		    clib_memcpy_fast (&seg0.as_u8[offset + 5], seqp, 2);
 		}
 	      else
 		{
@@ -1356,6 +1460,16 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 		      seg0.as_u8[offset + 4] |= qfi >> shift;
 		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
+		    }
+
+		  if (seqp)
+		    {
+		      for (idx = 0; idx < 2; idx++)
+			{
+			  seg0.as_u8[offset + 5 + idx] |= seqp[idx] >> shift;
+			  seg0.as_u8[offset + 6 + idx] |=
+			    seqp[idx] << (8 - shift);
+			}
 		    }
 		}
 
@@ -1421,17 +1535,51 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  clib_memcpy_fast (ip6srv, sl->rewrite,
 				    vec_len (sl->rewrite));
 
-		  ip6srv->ip.src_address = src0;
-		  ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+		  if (vec_len (sl->segments) > 1)
+		    {
+		      ip6srv->ip.src_address = src0;
 
-		  ip6srv->sr.tag =
-		    clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
 
-		  ip6srv->sr.segments_left += 1;
-		  ip6srv->sr.last_entry += 1;
+		      ip6srv->sr.segments_left += 1;
+		      ip6srv->sr.last_entry += 1;
 
-		  ip6srv->sr.length += sizeof (ip6_address_t) / 8;
-		  ip6srv->sr.segments[0] = seg0;
+		      ip6srv->sr.length += sizeof (ip6_address_t) / 8;
+		      ip6srv->sr.segments[0] = seg0;
+
+		      clib_memcpy_fast (&ip6srv->sr.segments[1],
+					(u8 *) (sl->rewrite +
+						sizeof (ip6_header_t) +
+						sizeof (ip6_sr_header_t)),
+					vec_len (sl->segments) *
+					sizeof (ip6_address_t));
+		    }
+		  else
+		    {
+		      ip6srv->ip.src_address = src0;
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+
+		      ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
+		      ip6srv->sr.segments_left = 1;
+		      ip6srv->sr.last_entry = 0;
+		      ip6srv->sr.length =
+			((sizeof (ip6_sr_header_t) +
+			  sizeof (ip6_address_t)) / 8) - 1;
+		      ip6srv->sr.flags = 0;
+
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+
+		      ip6srv->sr.segments[0] = seg0;
+
+		      if (vec_len (sl->segments))
+			{
+			  ip6srv->sr.segments[1] = sl->segments[0];
+			  ip6srv->sr.last_entry++;
+			  ip6srv->sr.length += sizeof (ip6_address_t) / 8;
+			}
+		    }
 
 		  if (PREDICT_TRUE (encap != NULL))
 		    {
@@ -1479,13 +1627,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		    {
 		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
 		    }
-
-		  clib_memcpy_fast (&ip6srv->sr.segments[1],
-				    (u8 *) (sl->rewrite +
-					    sizeof (ip6_header_t) +
-					    sizeof (ip6_sr_header_t)),
-				    vec_len (sl->segments) *
-				    sizeof (ip6_address_t));
 		}
 	      else
 		{
@@ -1636,6 +1777,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  u8 gtpu_type = 0;
 	  u8 qfi = 0;
 	  u8 *qfip = NULL;
+	  u16 seq = 0;
+	  u8 *seqp = NULL;
 	  u32 offset, shift;
 	  u32 hdrlen;
 	  ip6_header_t *encap = NULL;
@@ -1684,10 +1827,14 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) & teid;
 
-	      if (hdr0->gtpu.ver_flags & GTPU_EXTHDR_FLAG)
+	      if (hdr0->gtpu.ver_flags & (GTPU_EXTHDR_FLAG | GTPU_SEQ_FLAG))
 		{
 		  // Extention header.
 		  hdrlen += sizeof (gtpu_exthdr_t);
+
+		  seq = hdr0->gtpu.ext->seq;
+		  seqp = (u8 *) & seq;
+
 		  if (hdr0->gtpu.ext->nextexthdr == GTPU_EXTHDR_PDU_SESSION)
 		    {
 		      // PDU Session Container.
@@ -1726,6 +1873,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		      seg0.as_u8[offset + 4] = qfi;
 		    }
+
+		  if (seqp)
+		    clib_memcpy_fast (&seg0.as_u8[offset + 5], seqp, 2);
 		}
 	      else
 		{
@@ -1751,6 +1901,16 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		      seg0.as_u8[offset + 4] |= qfi >> shift;
 		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
+		    }
+
+		  if (seqp)
+		    {
+		      for (idx = 0; idx < 2; idx++)
+			{
+			  seg0.as_u8[offset + 5 + idx] |= seqp[idx] >> shift;
+			  seg0.as_u8[offset + 6 + idx] |=
+			    seqp[idx] << (8 - shift);
+			}
 		    }
 		}
 
@@ -1807,13 +1967,54 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  clib_memcpy_fast (ip6srv, sl->rewrite,
 				    vec_len (sl->rewrite));
 
-		  ip6srv->ip.src_address = src0;
+		  if (vec_len (sl->segments) > 1)
+		    {
+		      ip6srv->ip.src_address = src0;
 
-		  ip6srv->sr.tag =
-		    clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
 
-		  ip6srv->sr.segments_left += 2;
-		  ip6srv->sr.last_entry += 2;
+		      ip6srv->sr.segments_left += 2;
+		      ip6srv->sr.last_entry += 2;
+
+		      ip6srv->sr.length += ((sizeof (ip6_address_t) * 2) / 8);
+
+		      ip6srv->sr.segments[0] = dst0;
+		      ip6srv->sr.segments[1] = seg0;
+
+		      clib_memcpy_fast (&ip6srv->sr.segments[2],
+					(u8 *) (sl->rewrite +
+						sizeof (ip6_header_t) +
+						sizeof (ip6_sr_header_t)),
+					vec_len (sl->segments) *
+					sizeof (ip6_address_t));
+		    }
+		  else
+		    {
+		      ip6srv->ip.src_address = src0;
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
+
+		      ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
+		      ip6srv->sr.segments_left = 2;
+		      ip6srv->sr.last_entry = 1;
+		      ip6srv->sr.length =
+			((sizeof (ip6_sr_header_t) +
+			  2 * sizeof (ip6_address_t)) / 8) - 1;
+		      ip6srv->sr.flags = 0;
+
+		      ip6srv->sr.tag =
+			clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
+
+		      ip6srv->sr.segments[0] = dst0;
+		      ip6srv->sr.segments[1] = seg0;
+
+		      if (vec_len (sl->segments))
+			{
+			  ip6srv->sr.segments[2] = sl->segments[0];
+			  ip6srv->sr.last_entry++;
+			  ip6srv->sr.length += sizeof (ip6_address_t) / 8;
+			}
+		    }
 		}
 	      else
 		{
@@ -1823,12 +2024,18 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  ip6srv->ip.src_address = src0;
 		  ip6srv->ip.dst_address = seg0;
 
+		  ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
+		  ip6srv->sr.segments_left = 1;
+		  ip6srv->sr.last_entry = 0;
+		  ip6srv->sr.length =
+		    ((sizeof (ip6_sr_header_t) +
+		      sizeof (ip6_address_t)) / 8) - 1;
+		  ip6srv->sr.flags = 0;
+
 		  ip6srv->sr.tag =
 		    clib_host_to_net_u16 (srh_tagfield[gtpu_type]);
 
-		  ip6srv->sr.segments_left += 1;
-		  ip6srv->sr.last_entry += 1;
-		  ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
+		  ip6srv->sr.segments[0] = dst0;
 		}
 
 	      ip6srv->ip.payload_length =
@@ -1880,20 +2087,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      else
 		{
 		  ip6srv->sr.protocol = IP_PROTOCOL_NONE;
-		}
-
-	      ip6srv->sr.length += ((sizeof (ip6_address_t) * 2) / 8);
-	      ip6srv->sr.segments[0] = dst0;
-	      ip6srv->sr.segments[1] = seg0;
-
-	      if (sl)
-		{
-		  clib_memcpy_fast (&ip6srv->sr.segments[2],
-				    (u8 *) (sl->rewrite +
-					    sizeof (ip6_header_t) +
-					    sizeof (ip6_sr_header_t)),
-				    vec_len (sl->segments) *
-				    sizeof (ip6_address_t));
 		}
 
 	      good_n++;
