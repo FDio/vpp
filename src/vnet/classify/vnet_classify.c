@@ -775,6 +775,9 @@ vnet_classify_add_del_table (vnet_classify_main_t * cm,
 	  if (nbuckets == 0)
 	    return VNET_API_ERROR_INVALID_VALUE;
 
+	  if (match < 1 || match > 5)
+	    return VNET_API_ERROR_INVALID_VALUE;
+
 	  t = vnet_classify_new_table (cm, mask, nbuckets, memory_size,
 				       skip, match);
 	  t->next_table_index = next_table_index;
