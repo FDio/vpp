@@ -16,6 +16,7 @@
 #include <quic/quic.h>
 
 #include <quicly.h>
+#include <quicly/constants.h>
 
 u8 *
 quic_format_err (u8 * s, va_list * args)
@@ -73,8 +74,8 @@ quic_format_err (u8 * s, va_list * args)
     case QUICLY_TRANSPORT_ERROR_STREAM_STATE:
       s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_STATE");
       break;
-    case QUICLY_TRANSPORT_ERROR_FINAL_OFFSET:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_FINAL_OFFSET");
+    case QUICLY_TRANSPORT_ERROR_FINAL_SIZE:
+      s = format (s, "QUICLY_TRANSPORT_ERROR_FINAL_SIZE");
       break;
     case QUICLY_TRANSPORT_ERROR_FRAME_ENCODING:
       s = format (s, "QUICLY_TRANSPORT_ERROR_FRAME_ENCODING");
@@ -82,14 +83,14 @@ quic_format_err (u8 * s, va_list * args)
     case QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER:
       s = format (s, "QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER");
       break;
-    case QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION");
+    case QUICLY_ERROR_NO_COMPATIBLE_VERSION:
+      s = format (s, "QUICLY_ERROR_NO_COMPATIBLE_VERSION");
       break;
     case QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION:
       s = format (s, "QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION");
       break;
-    case QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION");
+    case QUICLY_TRANSPORT_ERROR_CRYPTO_BUFFER_EXCEEDED:
+      s = format (s, "QUICLY_TRANSPORT_ERROR_CRYPTO_BUFFER_EXCEEDED");
       break;
       /* picotls errors */
     case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CLOSE_NOTIFY):
