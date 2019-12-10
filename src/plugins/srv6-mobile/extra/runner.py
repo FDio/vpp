@@ -865,6 +865,77 @@ class Program(object):
         print("Sending packet on {}:".format(c1.name))
         p.show2()
 
+        time.sleep(10) 
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+        print("Sleeping")
+        time.sleep(5)
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
+    def test_gtp4_usid(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface4(
+            local_ip="172.16.0.1/30",
+            remote_ip="172.16.0.2/30",
+            local_mac="aa:bb:cc:dd:ee:01",
+            remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface4(
+            local_ip="1.0.0.2/30",
+            remote_ip="1.0.0.1",
+            local_mac="aa:bb:cc:dd:ee:11",
+            remote_mac="aa:bb:cc:dd:ee:22")
+
+        c1.vppctl_exec("set sr encaps source addr A1::1")
+        c1.vppctl_exec("sr policy add bsid D4:: next D2:1111:aaaa:bbbb::")
+        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
+
+        c2.vppctl_exec("sr localsid prefix D2:1111:aaaa::/48 behavior end usid 16")
+
+        c3.vppctl_exec("sr localsid prefix D2:1111:bbbb::/48 behavior end usid 16")
+
+        c4.vppctl_exec(
+            "sr localsid prefix D4::/32 "
+            "behavior end.m.gtp4.e v4src_position 64")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D2:1111:bbbb::/48")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ip_pgroute("pg0", "1.0.0.1", "172.20.0.1/32")
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
+             IP(src="172.20.0.2", dst="172.20.0.1") /
+             UDP(sport=2152, dport=2152) /
+             GTP_U_Header(gtp_type="g_pdu", teid=200) /
+             IP(src="172.99.0.1", dst="172.99.0.2") /
+             ICMP())
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        time.sleep(10) 
         c1.enable_trace(10)
         c4.enable_trace(10)
 
@@ -997,7 +1068,7 @@ class Program(object):
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
              IP(src="172.20.0.2", dst="172.20.0.1") /
              UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="echo_request", teid=200))
+             GTP_U_Header(gtp_type="echo_request", S=1, teid=200, seq=200))
 
         print("Sending packet on {}:".format(c1.name))
         p.show2()
@@ -1360,7 +1431,7 @@ class Program(object):
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
              IPv6(src="C::2", dst="D::2") /
              UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="echo_request", teid=200))
+             GTP_U_Header(gtp_type="echo_request", S=1, teid=200, seq=300))
 
         print("Sending packet on {}:".format(c1.name))
         p.show2()
@@ -1853,7 +1924,6 @@ class Program(object):
                 "running" if self.networks.get(name) else "missing"))
 
     def build_image(self):
-        # TODO: optimize build process for speed and image size
         print("VPP Path (build): {}".format(self.vpp_path))
         self.containers.build(self.path, self.vpp_path)
 
@@ -1935,6 +2005,7 @@ def get_args():
             # "tmap_ipv6",
             # "tmap_ipv6_5g",
             "gtp4",
+            "gtp4_usid",
             "gtp4_5g",
             "gtp4_echo",
             "gtp4_ipv6",
@@ -1967,8 +2038,10 @@ def main(op=None, prefix=None, verbose=None,
         image = "srv6m-release-image"
     elif image == 'debug':
         image = "srv6m-image"
+    else
+        image = "srv6m-image"
 
-    print("Verified image: {}".format(image))
+    print("Target image: {}".format(image))
 
     program = Program(image, prefix)
 
@@ -2001,6 +2074,8 @@ def main(op=None, prefix=None, verbose=None,
         #    program.test_tmap_ipv6_5g()
         elif op == 'gtp4':
             program.test_gtp4()
+        elif op == 'gtp4_usid':
+            program.test_gtp4_usid()
         elif op == 'gtp4_5g':
             program.test_gtp4_5g()
         elif op == 'gtp4_echo':
