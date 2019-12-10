@@ -88,6 +88,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   u32 id, spi, salt;
   int is_add, rv;
 
+  salt = 0;
   error = NULL;
   is_add = 0;
   flags = IPSEC_SA_FLAG_NONE;
