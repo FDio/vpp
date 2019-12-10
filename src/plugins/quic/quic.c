@@ -28,6 +28,7 @@
 #include <quic/error.h>
 #include <quic/quic_crypto.h>
 
+#include <quicly/constants.h>
 #include <quicly/defaults.h>
 
 static char *quic_error_strings[] = {
