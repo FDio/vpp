@@ -150,7 +150,7 @@ print_global_json_stats (echo_main_t * em)
   fformat (stdout, "  \"end_evt_missing\": \"%s\",\n",
 	   end_evt_missing ? "True" : "False");
   fformat (stdout, "  \"rx_data\": %lld,\n", em->stats.rx_total);
-  fformat (stdout, "  \"tx_rx\": %lld,\n", em->stats.tx_total);
+  fformat (stdout, "  \"tx_data\": %lld,\n", em->stats.tx_total);
   fformat (stdout, "  \"closing\": {\n");
   fformat (stdout, "    \"reset\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.reset_count.q, em->stats.reset_count.s);
@@ -244,10 +244,15 @@ echo_update_count_on_session_close (echo_main_t * em, echo_session_t * s)
 	    s->bytes_received, s->bytes_received + s->bytes_to_receive,
 	    echo_format_session, s, s->bytes_sent,
 	    s->bytes_sent + s->bytes_to_send);
+
+  ASSERT (em->stats.tx_total + s->bytes_sent <= em->stats.tx_expected);
+  ASSERT (em->stats.rx_total + s->bytes_received <= em->stats.rx_expected);
   clib_atomic_fetch_add (&em->stats.tx_total, s->bytes_sent);
   clib_atomic_fetch_add (&em->stats.rx_total, s->bytes_received);
 
-  if (PREDICT_FALSE (em->stats.rx_total == em->stats.rx_expected))
+  if (PREDICT_FALSE
+      ((em->stats.rx_total == em->stats.rx_expected)
+       && (em->stats.tx_total == em->stats.tx_expected)))
     echo_notify_event (em, ECHO_EVT_LAST_BYTE);
 }
 
@@ -413,7 +418,7 @@ echo_handle_data (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
     {
       if (n_sent || n_read)
 	s->idle_cycles = 0;
-      else if (s->idle_cycles++ == 1e7)
+      else if (s->idle_cycles++ == LOG_EVERY_N_IDLE_CYCLES)
 	{
 	  s->idle_cycles = 0;
 	  ECHO_LOG (2, "Idle client TX:%dB RX:%dB", s->bytes_to_send,
