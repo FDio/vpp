@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3246b946_5abfae7e",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 778,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-12-10T13:20:43Z",
+      "side": 1,
+      "message": "This change appears likely to handle misconfiguration.",
+      "revId": "59505842b7e81e8fd1b94681f7bdbff00638ec80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5da17297_ca4773a5",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-12-10T13:20:43Z",
+      "side": 1,
+      "message": "Frankly, the abort() will catch corruption of t-\u003ematch_n_vectors in production images, for virtually no cost. Removing the \"default\" case will cause a coverity warning. I would prefer not to make this change.",
+      "revId": "59505842b7e81e8fd1b94681f7bdbff00638ec80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
