@@ -113,10 +113,7 @@ For systems without IOMMU only, enable unsafe NOIOMMU mode
 
     $ echo Y | sudo tee /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
 
-To bind interface to vfio-pci first install the :ref:`configutil`. This will
-download the dpdk_devbind.py script. It is located in
-*/usr/vpp/vpp-config/scripts* with Centos and
-*/usr/local/vpp/vpp-config/scripts* with Ubuntu.
+To bind interface to vfio-pci first install get the dpdk_devbind.py script.
 
 Bind the driver with the following commands:
 

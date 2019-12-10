@@ -21,6 +21,5 @@ section covers the following areas:
 .. toctree::
    :maxdepth: 2
 
-   configutil/index.rst
    configuring/index.rst
    running/index.rst
