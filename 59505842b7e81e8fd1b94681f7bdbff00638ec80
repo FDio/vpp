@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "70f6f0db_a2d23dee",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 778,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-12-10T13:31:54Z",
+      "side": 1,
+      "message": "Indeed. I made a mistake in my hex match resulting in a too long match (9 x 16-bytes) which triggered the abort() in vnet_classify_hash_packet_inline().\nI think it is better to reject unsupported configuration at config time than to abort() at runtime because of it.",
+      "parentUuid": "3246b946_5abfae7e",
+      "revId": "59505842b7e81e8fd1b94681f7bdbff00638ec80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5da17297_ca4773a5",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2019-12-10T13:20:43Z",
       "side": 1,
       "message": "Frankly, the abort() will catch corruption of t-\u003ematch_n_vectors in production images, for virtually no cost. Removing the \"default\" case will cause a coverity warning. I would prefer not to make this change.",
+      "revId": "59505842b7e81e8fd1b94681f7bdbff00638ec80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7459a034_7991c2dc",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-12-10T13:31:54Z",
+      "side": 1,
+      "message": "Fair point, it is probably better to crash early in case of corruption, but then we really need to reject wrong configurations otherwise a bad conf on the debug cli to troubleshoot something completely unrelated could just crash vpp",
+      "parentUuid": "5da17297_ca4773a5",
       "revId": "59505842b7e81e8fd1b94681f7bdbff00638ec80",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
