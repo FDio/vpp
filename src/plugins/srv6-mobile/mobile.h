@@ -51,6 +51,7 @@
 #endif
 
 #define GTPU_EXTHDR_FLAG                0x04
+#define GTPU_SEQ_FLAG			0x02
 #define GTPU_EXTHDR_PDU_SESSION         0x85
 
 #define SRH_TAG_ECHO_REPLY              0x0008
