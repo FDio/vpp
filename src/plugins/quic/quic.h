@@ -187,6 +187,7 @@ typedef struct quic_worker_ctx_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;				   /**< worker time */
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
+  quicly_cid_plaintext_t next_cid;
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
@@ -225,7 +226,6 @@ typedef struct quic_main_
   u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
 
   ptls_handshake_properties_t hs_properties;
-  quicly_cid_plaintext_t next_cid;
   quic_session_cache_t session_cache;
 
   u32 udp_fifo_size;

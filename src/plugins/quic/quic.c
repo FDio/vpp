@@ -1545,10 +1545,10 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
   ret = quicly_connect (&ctx->conn, quicly_ctx, (char *) ctx->srv_hostname,
-			sa, NULL, &quic_main.next_cid, ptls_iovec_init (NULL,
-									0),
-			&quic_main.hs_properties, NULL);
-  ++quic_main.next_cid.master_id;
+			sa, NULL, &quic_main.wrk_ctx[thread_index].next_cid,
+			ptls_iovec_init (NULL, 0), &quic_main.hs_properties,
+			NULL);
+  ++quic_main.wrk_ctx[thread_index].next_cid.master_id;
   /*  Save context handle in quicly connection */
   quic_store_conn_ctx (ctx->conn, ctx);
   assert (ret == 0);
@@ -1601,7 +1601,7 @@ quic_udp_session_migrate_callback (session_t * s, session_handle_t new_sh)
   u32 new_thread = session_thread_from_handle (new_sh);
   quic_ctx_t *ctx;
 
-  QUIC_ERR ("Session %x migrated to %lx", s->session_index, new_sh);
+  QUIC_DBG (2, "Session %x migrated to %lx", s->session_index, new_sh);
   QUIC_ASSERT (vlib_get_thread_index () == s->thread_index);
   ctx = quic_ctx_get (s->opaque, s->thread_index);
   QUIC_ASSERT (ctx->udp_session_handle == session_handle (s));
@@ -1804,7 +1804,8 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
 
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
   if ((rv = quicly_accept (&conn, quicly_ctx, NULL, &pctx->sa,
-			   &pctx->packet, NULL, &quic_main.next_cid, NULL)))
+			   &pctx->packet, NULL,
+			   &quic_main.wrk_ctx[thread_index].next_cid, NULL)))
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
@@ -1814,7 +1815,7 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
     }
   assert (conn != NULL);
 
-  ++quic_main.next_cid.master_id;
+  ++quic_main.wrk_ctx[thread_index].next_cid.master_id;
   /* Save ctx handle in quicly connection */
   quic_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
@@ -2204,6 +2205,7 @@ quic_init (vlib_main_t * vm)
   /*  Timer wheels, one per thread. */
   for (i = 0; i < num_threads; i++)
     {
+      qm->wrk_ctx[i].next_cid.thread_id = i;
       tw = &qm->wrk_ctx[i].timer_wheel;
       tw_timer_wheel_init_1t_3w_1024sl_ov (tw, quic_expired_timers_dispatch,
 					   1e-3 /* timer period 1ms */ , ~0);
