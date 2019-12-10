@@ -226,6 +226,8 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
   } xor_sum __attribute__ ((aligned (sizeof (u32x4))));
 
   ASSERT (t);
+  ASSERT (t->match_n_vectors >= 1 && t->match_n_vectors <= 5);
+
   mask = t->mask;
 #ifdef CLIB_HAVE_VEC128
   u32x4u *data = (u32x4u *) h;
@@ -246,8 +248,6 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
       /* FALLTHROUGH */
     case 1:
       break;
-    default:
-      abort ();
     }
 #else
   u32 skip_u64 = t->skip_n_vectors * 2;
@@ -274,9 +274,6 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
       /* FALLTHROUGH */
     case 1:
       break;
-
-    default:
-      abort ();
     }
 #endif /* CLIB_HAVE_VEC128 */
 
