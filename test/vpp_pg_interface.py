@@ -1,6 +1,6 @@
 import os
 import time
-import socket
+from socket import inet_pton, inet_ntop
 import struct
 from traceback import format_exc, format_stack
 
@@ -15,7 +15,6 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     IPv6ExtHdrHopByHop
 from util import ppp, ppc
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
-from scapy.utils import inet_pton, inet_ntop
 
 
 class CaptureTimeoutError(Exception):
