@@ -1,0 +1,2030 @@
+Created by PLY version 3.7 (http://www.dabeaz.com/ply)
+
+Grammar
+
+Rule 0     S' -> slist
+Rule 1     slist -> stmt
+Rule 2     slist -> slist stmt
+Rule 3     stmt -> define
+Rule 4     stmt -> typedef
+Rule 5     stmt -> option
+Rule 6     stmt -> import
+Rule 7     stmt -> enum
+Rule 8     stmt -> union
+Rule 9     stmt -> service
+Rule 10    import -> IMPORT STRING_LITERAL ;
+Rule 11    service -> SERVICE { service_statements } ;
+Rule 12    service_statements -> service_statement
+Rule 13    service_statements -> service_statements service_statement
+Rule 14    service_statement -> RPC ID RETURNS NULL ;
+Rule 15    service_statement -> RPC ID RETURNS ID ;
+Rule 16    service_statement -> RPC ID RETURNS STREAM ID ;
+Rule 17    service_statement -> RPC ID RETURNS ID EVENTS event_list ;
+Rule 18    event_list -> events
+Rule 19    event_list -> event_list events
+Rule 20    events -> ID
+Rule 21    events -> ID ,
+Rule 22    enum -> ENUM ID { enum_statements } ;
+Rule 23    enum -> ENUM ID : enum_size { enum_statements } ;
+Rule 24    enum_size -> U8
+Rule 25    enum_size -> U16
+Rule 26    enum_size -> U32
+Rule 27    define -> DEFINE ID { block_statements_opt } ;
+Rule 28    define -> flist DEFINE ID { block_statements_opt } ;
+Rule 29    flist -> flag
+Rule 30    flist -> flist flag
+Rule 31    flag -> MANUAL_PRINT
+Rule 32    flag -> MANUAL_ENDIAN
+Rule 33    flag -> DONT_TRACE
+Rule 34    flag -> TYPEONLY
+Rule 35    flag -> AUTOREPLY
+Rule 36    typedef -> TYPEDEF ID { block_statements_opt } ;
+Rule 37    typedef -> TYPEDEF declaration
+Rule 38    block_statements_opt -> block_statements
+Rule 39    block_statements -> block_statement
+Rule 40    block_statements -> block_statements block_statement
+Rule 41    block_statement -> declaration
+Rule 42    block_statement -> option
+Rule 43    enum_statements -> enum_statement
+Rule 44    enum_statements -> enum_statements enum_statement
+Rule 45    enum_statement -> ID = NUM ,
+Rule 46    enum_statement -> ID ,
+Rule 47    field_options -> field_option
+Rule 48    field_options -> field_options field_option
+Rule 49    field_option -> ID = assignee ,
+Rule 50    field_option -> ID = assignee
+Rule 51    declaration -> type_specifier ID ;
+Rule 52    declaration -> type_specifier ID [ field_options ] ;
+Rule 53    declaration -> type_specifier ID [ NUM ] ;
+Rule 54    declaration -> type_specifier ID [ ID ] ;
+Rule 55    option -> OPTION ID = assignee ;
+Rule 56    assignee -> NUM
+Rule 57    assignee -> TRUE
+Rule 58    assignee -> FALSE
+Rule 59    assignee -> STRING_LITERAL
+Rule 60    type_specifier -> U8
+Rule 61    type_specifier -> U16
+Rule 62    type_specifier -> U32
+Rule 63    type_specifier -> U64
+Rule 64    type_specifier -> I8
+Rule 65    type_specifier -> I16
+Rule 66    type_specifier -> I32
+Rule 67    type_specifier -> I64
+Rule 68    type_specifier -> F64
+Rule 69    type_specifier -> BOOL
+Rule 70    type_specifier -> STRING
+Rule 71    type_specifier -> ID
+Rule 72    union -> UNION ID { block_statements_opt } ;
+
+Terminals, with rules where they appear
+
+,                    : 21 45 46 49
+:                    : 23
+;                    : 10 11 14 15 16 17 22 23 27 28 36 51 52 53 54 55 72
+=                    : 45 49 50 55
+AUTOREPLY            : 35
+BOOL                 : 69
+DEFINE               : 27 28
+DONT_TRACE           : 33
+ENUM                 : 22 23
+EVENTS               : 17
+F64                  : 68
+FALSE                : 58
+I16                  : 65
+I32                  : 66
+I64                  : 67
+I8                   : 64
+ID                   : 14 15 15 16 16 17 17 20 21 22 23 27 28 36 45 46 49 50 51 52 53 54 54 55 71 72
+IMPORT               : 10
+MANUAL_ENDIAN        : 32
+MANUAL_PRINT         : 31
+NULL                 : 14
+NUM                  : 45 53 56
+OPTION               : 55
+RETURNS              : 14 15 16 17
+RPC                  : 14 15 16 17
+SERVICE              : 11
+STREAM               : 16
+STRING               : 70
+STRING_LITERAL       : 10 59
+TRUE                 : 57
+TYPEDEF              : 36 37
+TYPEONLY             : 34
+U16                  : 25 61
+U32                  : 26 62
+U64                  : 63
+U8                   : 24 60
+UNION                : 72
+[                    : 52 53 54
+]                    : 52 53 54
+error                : 
+{                    : 11 22 23 27 28 36 72
+}                    : 11 22 23 27 28 36 72
+
+Nonterminals, with rules where they appear
+
+assignee             : 49 50 55
+block_statement      : 39 40
+block_statements     : 38 40
+block_statements_opt : 27 28 36 72
+declaration          : 37 41
+define               : 3
+enum                 : 7
+enum_size            : 23
+enum_statement       : 43 44
+enum_statements      : 22 23 44
+event_list           : 17 19
+events               : 18 19
+field_option         : 47 48
+field_options        : 48 52
+flag                 : 29 30
+flist                : 28 30
+import               : 6
+option               : 5 42
+service              : 9
+service_statement    : 12 13
+service_statements   : 11 13
+slist                : 2 0
+stmt                 : 1 2
+type_specifier       : 51 52 53 54
+typedef              : 4
+union                : 8
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . slist
+    (1) slist -> . stmt
+    (2) slist -> . slist stmt
+    (3) stmt -> . define
+    (4) stmt -> . typedef
+    (5) stmt -> . option
+    (6) stmt -> . import
+    (7) stmt -> . enum
+    (8) stmt -> . union
+    (9) stmt -> . service
+    (27) define -> . DEFINE ID { block_statements_opt } ;
+    (28) define -> . flist DEFINE ID { block_statements_opt } ;
+    (36) typedef -> . TYPEDEF ID { block_statements_opt } ;
+    (37) typedef -> . TYPEDEF declaration
+    (55) option -> . OPTION ID = assignee ;
+    (10) import -> . IMPORT STRING_LITERAL ;
+    (22) enum -> . ENUM ID { enum_statements } ;
+    (23) enum -> . ENUM ID : enum_size { enum_statements } ;
+    (72) union -> . UNION ID { block_statements_opt } ;
+    (11) service -> . SERVICE { service_statements } ;
+    (29) flist -> . flag
+    (30) flist -> . flist flag
+    (31) flag -> . MANUAL_PRINT
+    (32) flag -> . MANUAL_ENDIAN
+    (33) flag -> . DONT_TRACE
+    (34) flag -> . TYPEONLY
+    (35) flag -> . AUTOREPLY
+
+    DEFINE          shift and go to state 13
+    TYPEDEF         shift and go to state 6
+    OPTION          shift and go to state 9
+    IMPORT          shift and go to state 11
+    ENUM            shift and go to state 1
+    UNION           shift and go to state 10
+    SERVICE         shift and go to state 17
+    MANUAL_PRINT    shift and go to state 18
+    MANUAL_ENDIAN   shift and go to state 3
+    DONT_TRACE      shift and go to state 12
+    TYPEONLY        shift and go to state 14
+    AUTOREPLY       shift and go to state 19
+
+    slist                          shift and go to state 2
+    flist                          shift and go to state 4
+    typedef                        shift and go to state 5
+    import                         shift and go to state 16
+    define                         shift and go to state 8
+    union                          shift and go to state 7
+    flag                           shift and go to state 15
+    enum                           shift and go to state 21
+    service                        shift and go to state 22
+    option                         shift and go to state 23
+    stmt                           shift and go to state 20
+
+state 1
+
+    (22) enum -> ENUM . ID { enum_statements } ;
+    (23) enum -> ENUM . ID : enum_size { enum_statements } ;
+
+    ID              shift and go to state 24
+
+
+state 2
+
+    (0) S' -> slist .
+    (2) slist -> slist . stmt
+    (3) stmt -> . define
+    (4) stmt -> . typedef
+    (5) stmt -> . option
+    (6) stmt -> . import
+    (7) stmt -> . enum
+    (8) stmt -> . union
+    (9) stmt -> . service
+    (27) define -> . DEFINE ID { block_statements_opt } ;
+    (28) define -> . flist DEFINE ID { block_statements_opt } ;
+    (36) typedef -> . TYPEDEF ID { block_statements_opt } ;
+    (37) typedef -> . TYPEDEF declaration
+    (55) option -> . OPTION ID = assignee ;
+    (10) import -> . IMPORT STRING_LITERAL ;
+    (22) enum -> . ENUM ID { enum_statements } ;
+    (23) enum -> . ENUM ID : enum_size { enum_statements } ;
+    (72) union -> . UNION ID { block_statements_opt } ;
+    (11) service -> . SERVICE { service_statements } ;
+    (29) flist -> . flag
+    (30) flist -> . flist flag
+    (31) flag -> . MANUAL_PRINT
+    (32) flag -> . MANUAL_ENDIAN
+    (33) flag -> . DONT_TRACE
+    (34) flag -> . TYPEONLY
+    (35) flag -> . AUTOREPLY
+
+    DEFINE          shift and go to state 13
+    TYPEDEF         shift and go to state 6
+    OPTION          shift and go to state 9
+    IMPORT          shift and go to state 11
+    ENUM            shift and go to state 1
+    UNION           shift and go to state 10
+    SERVICE         shift and go to state 17
+    MANUAL_PRINT    shift and go to state 18
+    MANUAL_ENDIAN   shift and go to state 3
+    DONT_TRACE      shift and go to state 12
+    TYPEONLY        shift and go to state 14
+    AUTOREPLY       shift and go to state 19
+
+    flist                          shift and go to state 4
+    typedef                        shift and go to state 5
+    import                         shift and go to state 16
+    define                         shift and go to state 8
+    union                          shift and go to state 7
+    flag                           shift and go to state 15
+    enum                           shift and go to state 21
+    service                        shift and go to state 22
+    option                         shift and go to state 23
+    stmt                           shift and go to state 25
+
+state 3
+
+    (32) flag -> MANUAL_ENDIAN .
+
+    DEFINE          reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+    MANUAL_PRINT    reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+    MANUAL_ENDIAN   reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+    DONT_TRACE      reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+    TYPEONLY        reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+    AUTOREPLY       reduce using rule 32 (flag -> MANUAL_ENDIAN .)
+
+
+state 4
+
+    (28) define -> flist . DEFINE ID { block_statements_opt } ;
+    (30) flist -> flist . flag
+    (31) flag -> . MANUAL_PRINT
+    (32) flag -> . MANUAL_ENDIAN
+    (33) flag -> . DONT_TRACE
+    (34) flag -> . TYPEONLY
+    (35) flag -> . AUTOREPLY
+
+    DEFINE          shift and go to state 26
+    MANUAL_PRINT    shift and go to state 18
+    MANUAL_ENDIAN   shift and go to state 3
+    DONT_TRACE      shift and go to state 12
+    TYPEONLY        shift and go to state 14
+    AUTOREPLY       shift and go to state 19
+
+    flag                           shift and go to state 27
+
+state 5
+
+    (4) stmt -> typedef .
+
+    DEFINE          reduce using rule 4 (stmt -> typedef .)
+    TYPEDEF         reduce using rule 4 (stmt -> typedef .)
+    OPTION          reduce using rule 4 (stmt -> typedef .)
+    IMPORT          reduce using rule 4 (stmt -> typedef .)
+    ENUM            reduce using rule 4 (stmt -> typedef .)
+    UNION           reduce using rule 4 (stmt -> typedef .)
+    SERVICE         reduce using rule 4 (stmt -> typedef .)
+    MANUAL_PRINT    reduce using rule 4 (stmt -> typedef .)
+    MANUAL_ENDIAN   reduce using rule 4 (stmt -> typedef .)
+    DONT_TRACE      reduce using rule 4 (stmt -> typedef .)
+    TYPEONLY        reduce using rule 4 (stmt -> typedef .)
+    AUTOREPLY       reduce using rule 4 (stmt -> typedef .)
+    $end            reduce using rule 4 (stmt -> typedef .)
+
+
+state 6
+
+    (36) typedef -> TYPEDEF . ID { block_statements_opt } ;
+    (37) typedef -> TYPEDEF . declaration
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    ID              shift and go to state 31
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+
+    type_specifier                 shift and go to state 40
+    declaration                    shift and go to state 34
+
+state 7
+
+    (8) stmt -> union .
+
+    DEFINE          reduce using rule 8 (stmt -> union .)
+    TYPEDEF         reduce using rule 8 (stmt -> union .)
+    OPTION          reduce using rule 8 (stmt -> union .)
+    IMPORT          reduce using rule 8 (stmt -> union .)
+    ENUM            reduce using rule 8 (stmt -> union .)
+    UNION           reduce using rule 8 (stmt -> union .)
+    SERVICE         reduce using rule 8 (stmt -> union .)
+    MANUAL_PRINT    reduce using rule 8 (stmt -> union .)
+    MANUAL_ENDIAN   reduce using rule 8 (stmt -> union .)
+    DONT_TRACE      reduce using rule 8 (stmt -> union .)
+    TYPEONLY        reduce using rule 8 (stmt -> union .)
+    AUTOREPLY       reduce using rule 8 (stmt -> union .)
+    $end            reduce using rule 8 (stmt -> union .)
+
+
+state 8
+
+    (3) stmt -> define .
+
+    DEFINE          reduce using rule 3 (stmt -> define .)
+    TYPEDEF         reduce using rule 3 (stmt -> define .)
+    OPTION          reduce using rule 3 (stmt -> define .)
+    IMPORT          reduce using rule 3 (stmt -> define .)
+    ENUM            reduce using rule 3 (stmt -> define .)
+    UNION           reduce using rule 3 (stmt -> define .)
+    SERVICE         reduce using rule 3 (stmt -> define .)
+    MANUAL_PRINT    reduce using rule 3 (stmt -> define .)
+    MANUAL_ENDIAN   reduce using rule 3 (stmt -> define .)
+    DONT_TRACE      reduce using rule 3 (stmt -> define .)
+    TYPEONLY        reduce using rule 3 (stmt -> define .)
+    AUTOREPLY       reduce using rule 3 (stmt -> define .)
+    $end            reduce using rule 3 (stmt -> define .)
+
+
+state 9
+
+    (55) option -> OPTION . ID = assignee ;
+
+    ID              shift and go to state 42
+
+
+state 10
+
+    (72) union -> UNION . ID { block_statements_opt } ;
+
+    ID              shift and go to state 43
+
+
+state 11
+
+    (10) import -> IMPORT . STRING_LITERAL ;
+
+    STRING_LITERAL  shift and go to state 44
+
+
+state 12
+
+    (33) flag -> DONT_TRACE .
+
+    DEFINE          reduce using rule 33 (flag -> DONT_TRACE .)
+    MANUAL_PRINT    reduce using rule 33 (flag -> DONT_TRACE .)
+    MANUAL_ENDIAN   reduce using rule 33 (flag -> DONT_TRACE .)
+    DONT_TRACE      reduce using rule 33 (flag -> DONT_TRACE .)
+    TYPEONLY        reduce using rule 33 (flag -> DONT_TRACE .)
+    AUTOREPLY       reduce using rule 33 (flag -> DONT_TRACE .)
+
+
+state 13
+
+    (27) define -> DEFINE . ID { block_statements_opt } ;
+
+    ID              shift and go to state 45
+
+
+state 14
+
+    (34) flag -> TYPEONLY .
+
+    DEFINE          reduce using rule 34 (flag -> TYPEONLY .)
+    MANUAL_PRINT    reduce using rule 34 (flag -> TYPEONLY .)
+    MANUAL_ENDIAN   reduce using rule 34 (flag -> TYPEONLY .)
+    DONT_TRACE      reduce using rule 34 (flag -> TYPEONLY .)
+    TYPEONLY        reduce using rule 34 (flag -> TYPEONLY .)
+    AUTOREPLY       reduce using rule 34 (flag -> TYPEONLY .)
+
+
+state 15
+
+    (29) flist -> flag .
+
+    DEFINE          reduce using rule 29 (flist -> flag .)
+    MANUAL_PRINT    reduce using rule 29 (flist -> flag .)
+    MANUAL_ENDIAN   reduce using rule 29 (flist -> flag .)
+    DONT_TRACE      reduce using rule 29 (flist -> flag .)
+    TYPEONLY        reduce using rule 29 (flist -> flag .)
+    AUTOREPLY       reduce using rule 29 (flist -> flag .)
+
+
+state 16
+
+    (6) stmt -> import .
+
+    DEFINE          reduce using rule 6 (stmt -> import .)
+    TYPEDEF         reduce using rule 6 (stmt -> import .)
+    OPTION          reduce using rule 6 (stmt -> import .)
+    IMPORT          reduce using rule 6 (stmt -> import .)
+    ENUM            reduce using rule 6 (stmt -> import .)
+    UNION           reduce using rule 6 (stmt -> import .)
+    SERVICE         reduce using rule 6 (stmt -> import .)
+    MANUAL_PRINT    reduce using rule 6 (stmt -> import .)
+    MANUAL_ENDIAN   reduce using rule 6 (stmt -> import .)
+    DONT_TRACE      reduce using rule 6 (stmt -> import .)
+    TYPEONLY        reduce using rule 6 (stmt -> import .)
+    AUTOREPLY       reduce using rule 6 (stmt -> import .)
+    $end            reduce using rule 6 (stmt -> import .)
+
+
+state 17
+
+    (11) service -> SERVICE . { service_statements } ;
+
+    {               shift and go to state 46
+
+
+state 18
+
+    (31) flag -> MANUAL_PRINT .
+
+    DEFINE          reduce using rule 31 (flag -> MANUAL_PRINT .)
+    MANUAL_PRINT    reduce using rule 31 (flag -> MANUAL_PRINT .)
+    MANUAL_ENDIAN   reduce using rule 31 (flag -> MANUAL_PRINT .)
+    DONT_TRACE      reduce using rule 31 (flag -> MANUAL_PRINT .)
+    TYPEONLY        reduce using rule 31 (flag -> MANUAL_PRINT .)
+    AUTOREPLY       reduce using rule 31 (flag -> MANUAL_PRINT .)
+
+
+state 19
+
+    (35) flag -> AUTOREPLY .
+
+    DEFINE          reduce using rule 35 (flag -> AUTOREPLY .)
+    MANUAL_PRINT    reduce using rule 35 (flag -> AUTOREPLY .)
+    MANUAL_ENDIAN   reduce using rule 35 (flag -> AUTOREPLY .)
+    DONT_TRACE      reduce using rule 35 (flag -> AUTOREPLY .)
+    TYPEONLY        reduce using rule 35 (flag -> AUTOREPLY .)
+    AUTOREPLY       reduce using rule 35 (flag -> AUTOREPLY .)
+
+
+state 20
+
+    (1) slist -> stmt .
+
+    DEFINE          reduce using rule 1 (slist -> stmt .)
+    TYPEDEF         reduce using rule 1 (slist -> stmt .)
+    OPTION          reduce using rule 1 (slist -> stmt .)
+    IMPORT          reduce using rule 1 (slist -> stmt .)
+    ENUM            reduce using rule 1 (slist -> stmt .)
+    UNION           reduce using rule 1 (slist -> stmt .)
+    SERVICE         reduce using rule 1 (slist -> stmt .)
+    MANUAL_PRINT    reduce using rule 1 (slist -> stmt .)
+    MANUAL_ENDIAN   reduce using rule 1 (slist -> stmt .)
+    DONT_TRACE      reduce using rule 1 (slist -> stmt .)
+    TYPEONLY        reduce using rule 1 (slist -> stmt .)
+    AUTOREPLY       reduce using rule 1 (slist -> stmt .)
+    $end            reduce using rule 1 (slist -> stmt .)
+
+
+state 21
+
+    (7) stmt -> enum .
+
+    DEFINE          reduce using rule 7 (stmt -> enum .)
+    TYPEDEF         reduce using rule 7 (stmt -> enum .)
+    OPTION          reduce using rule 7 (stmt -> enum .)
+    IMPORT          reduce using rule 7 (stmt -> enum .)
+    ENUM            reduce using rule 7 (stmt -> enum .)
+    UNION           reduce using rule 7 (stmt -> enum .)
+    SERVICE         reduce using rule 7 (stmt -> enum .)
+    MANUAL_PRINT    reduce using rule 7 (stmt -> enum .)
+    MANUAL_ENDIAN   reduce using rule 7 (stmt -> enum .)
+    DONT_TRACE      reduce using rule 7 (stmt -> enum .)
+    TYPEONLY        reduce using rule 7 (stmt -> enum .)
+    AUTOREPLY       reduce using rule 7 (stmt -> enum .)
+    $end            reduce using rule 7 (stmt -> enum .)
+
+
+state 22
+
+    (9) stmt -> service .
+
+    DEFINE          reduce using rule 9 (stmt -> service .)
+    TYPEDEF         reduce using rule 9 (stmt -> service .)
+    OPTION          reduce using rule 9 (stmt -> service .)
+    IMPORT          reduce using rule 9 (stmt -> service .)
+    ENUM            reduce using rule 9 (stmt -> service .)
+    UNION           reduce using rule 9 (stmt -> service .)
+    SERVICE         reduce using rule 9 (stmt -> service .)
+    MANUAL_PRINT    reduce using rule 9 (stmt -> service .)
+    MANUAL_ENDIAN   reduce using rule 9 (stmt -> service .)
+    DONT_TRACE      reduce using rule 9 (stmt -> service .)
+    TYPEONLY        reduce using rule 9 (stmt -> service .)
+    AUTOREPLY       reduce using rule 9 (stmt -> service .)
+    $end            reduce using rule 9 (stmt -> service .)
+
+
+state 23
+
+    (5) stmt -> option .
+
+    DEFINE          reduce using rule 5 (stmt -> option .)
+    TYPEDEF         reduce using rule 5 (stmt -> option .)
+    OPTION          reduce using rule 5 (stmt -> option .)
+    IMPORT          reduce using rule 5 (stmt -> option .)
+    ENUM            reduce using rule 5 (stmt -> option .)
+    UNION           reduce using rule 5 (stmt -> option .)
+    SERVICE         reduce using rule 5 (stmt -> option .)
+    MANUAL_PRINT    reduce using rule 5 (stmt -> option .)
+    MANUAL_ENDIAN   reduce using rule 5 (stmt -> option .)
+    DONT_TRACE      reduce using rule 5 (stmt -> option .)
+    TYPEONLY        reduce using rule 5 (stmt -> option .)
+    AUTOREPLY       reduce using rule 5 (stmt -> option .)
+    $end            reduce using rule 5 (stmt -> option .)
+
+
+state 24
+
+    (22) enum -> ENUM ID . { enum_statements } ;
+    (23) enum -> ENUM ID . : enum_size { enum_statements } ;
+
+    {               shift and go to state 48
+    :               shift and go to state 47
+
+
+state 25
+
+    (2) slist -> slist stmt .
+
+    DEFINE          reduce using rule 2 (slist -> slist stmt .)
+    TYPEDEF         reduce using rule 2 (slist -> slist stmt .)
+    OPTION          reduce using rule 2 (slist -> slist stmt .)
+    IMPORT          reduce using rule 2 (slist -> slist stmt .)
+    ENUM            reduce using rule 2 (slist -> slist stmt .)
+    UNION           reduce using rule 2 (slist -> slist stmt .)
+    SERVICE         reduce using rule 2 (slist -> slist stmt .)
+    MANUAL_PRINT    reduce using rule 2 (slist -> slist stmt .)
+    MANUAL_ENDIAN   reduce using rule 2 (slist -> slist stmt .)
+    DONT_TRACE      reduce using rule 2 (slist -> slist stmt .)
+    TYPEONLY        reduce using rule 2 (slist -> slist stmt .)
+    AUTOREPLY       reduce using rule 2 (slist -> slist stmt .)
+    $end            reduce using rule 2 (slist -> slist stmt .)
+
+
+state 26
+
+    (28) define -> flist DEFINE . ID { block_statements_opt } ;
+
+    ID              shift and go to state 49
+
+
+state 27
+
+    (30) flist -> flist flag .
+
+    DEFINE          reduce using rule 30 (flist -> flist flag .)
+    MANUAL_PRINT    reduce using rule 30 (flist -> flist flag .)
+    MANUAL_ENDIAN   reduce using rule 30 (flist -> flist flag .)
+    DONT_TRACE      reduce using rule 30 (flist -> flist flag .)
+    TYPEONLY        reduce using rule 30 (flist -> flist flag .)
+    AUTOREPLY       reduce using rule 30 (flist -> flist flag .)
+
+
+state 28
+
+    (67) type_specifier -> I64 .
+
+    ID              reduce using rule 67 (type_specifier -> I64 .)
+
+
+state 29
+
+    (70) type_specifier -> STRING .
+
+    ID              reduce using rule 70 (type_specifier -> STRING .)
+
+
+state 30
+
+    (68) type_specifier -> F64 .
+
+    ID              reduce using rule 68 (type_specifier -> F64 .)
+
+
+state 31
+
+    (36) typedef -> TYPEDEF ID . { block_statements_opt } ;
+    (71) type_specifier -> ID .
+
+    {               shift and go to state 50
+    ID              reduce using rule 71 (type_specifier -> ID .)
+
+
+state 32
+
+    (65) type_specifier -> I16 .
+
+    ID              reduce using rule 65 (type_specifier -> I16 .)
+
+
+state 33
+
+    (62) type_specifier -> U32 .
+
+    ID              reduce using rule 62 (type_specifier -> U32 .)
+
+
+state 34
+
+    (37) typedef -> TYPEDEF declaration .
+
+    DEFINE          reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    TYPEDEF         reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    OPTION          reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    IMPORT          reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    ENUM            reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    UNION           reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    SERVICE         reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    MANUAL_PRINT    reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    MANUAL_ENDIAN   reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    DONT_TRACE      reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    TYPEONLY        reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    AUTOREPLY       reduce using rule 37 (typedef -> TYPEDEF declaration .)
+    $end            reduce using rule 37 (typedef -> TYPEDEF declaration .)
+
+
+state 35
+
+    (63) type_specifier -> U64 .
+
+    ID              reduce using rule 63 (type_specifier -> U64 .)
+
+
+state 36
+
+    (69) type_specifier -> BOOL .
+
+    ID              reduce using rule 69 (type_specifier -> BOOL .)
+
+
+state 37
+
+    (66) type_specifier -> I32 .
+
+    ID              reduce using rule 66 (type_specifier -> I32 .)
+
+
+state 38
+
+    (61) type_specifier -> U16 .
+
+    ID              reduce using rule 61 (type_specifier -> U16 .)
+
+
+state 39
+
+    (60) type_specifier -> U8 .
+
+    ID              reduce using rule 60 (type_specifier -> U8 .)
+
+
+state 40
+
+    (51) declaration -> type_specifier . ID ;
+    (52) declaration -> type_specifier . ID [ field_options ] ;
+    (53) declaration -> type_specifier . ID [ NUM ] ;
+    (54) declaration -> type_specifier . ID [ ID ] ;
+
+    ID              shift and go to state 51
+
+
+state 41
+
+    (64) type_specifier -> I8 .
+
+    ID              reduce using rule 64 (type_specifier -> I8 .)
+
+
+state 42
+
+    (55) option -> OPTION ID . = assignee ;
+
+    =               shift and go to state 52
+
+
+state 43
+
+    (72) union -> UNION ID . { block_statements_opt } ;
+
+    {               shift and go to state 53
+
+
+state 44
+
+    (10) import -> IMPORT STRING_LITERAL . ;
+
+    ;               shift and go to state 54
+
+
+state 45
+
+    (27) define -> DEFINE ID . { block_statements_opt } ;
+
+    {               shift and go to state 55
+
+
+state 46
+
+    (11) service -> SERVICE { . service_statements } ;
+    (12) service_statements -> . service_statement
+    (13) service_statements -> . service_statements service_statement
+    (14) service_statement -> . RPC ID RETURNS NULL ;
+    (15) service_statement -> . RPC ID RETURNS ID ;
+    (16) service_statement -> . RPC ID RETURNS STREAM ID ;
+    (17) service_statement -> . RPC ID RETURNS ID EVENTS event_list ;
+
+    RPC             shift and go to state 57
+
+    service_statements             shift and go to state 56
+    service_statement              shift and go to state 58
+
+state 47
+
+    (23) enum -> ENUM ID : . enum_size { enum_statements } ;
+    (24) enum_size -> . U8
+    (25) enum_size -> . U16
+    (26) enum_size -> . U32
+
+    U8              shift and go to state 59
+    U16             shift and go to state 61
+    U32             shift and go to state 62
+
+    enum_size                      shift and go to state 60
+
+state 48
+
+    (22) enum -> ENUM ID { . enum_statements } ;
+    (43) enum_statements -> . enum_statement
+    (44) enum_statements -> . enum_statements enum_statement
+    (45) enum_statement -> . ID = NUM ,
+    (46) enum_statement -> . ID ,
+
+    ID              shift and go to state 64
+
+    enum_statement                 shift and go to state 63
+    enum_statements                shift and go to state 65
+
+state 49
+
+    (28) define -> flist DEFINE ID . { block_statements_opt } ;
+
+    {               shift and go to state 66
+
+
+state 50
+
+    (36) typedef -> TYPEDEF ID { . block_statements_opt } ;
+    (38) block_statements_opt -> . block_statements
+    (39) block_statements -> . block_statement
+    (40) block_statements -> . block_statements block_statement
+    (41) block_statement -> . declaration
+    (42) block_statement -> . option
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (55) option -> . OPTION ID = assignee ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    OPTION          shift and go to state 9
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+    ID              shift and go to state 68
+
+    block_statements               shift and go to state 70
+    block_statements_opt           shift and go to state 67
+    type_specifier                 shift and go to state 40
+    option                         shift and go to state 71
+    block_statement                shift and go to state 72
+    declaration                    shift and go to state 69
+
+state 51
+
+    (51) declaration -> type_specifier ID . ;
+    (52) declaration -> type_specifier ID . [ field_options ] ;
+    (53) declaration -> type_specifier ID . [ NUM ] ;
+    (54) declaration -> type_specifier ID . [ ID ] ;
+
+    ;               shift and go to state 74
+    [               shift and go to state 73
+
+
+state 52
+
+    (55) option -> OPTION ID = . assignee ;
+    (56) assignee -> . NUM
+    (57) assignee -> . TRUE
+    (58) assignee -> . FALSE
+    (59) assignee -> . STRING_LITERAL
+
+    NUM             shift and go to state 75
+    TRUE            shift and go to state 78
+    FALSE           shift and go to state 79
+    STRING_LITERAL  shift and go to state 77
+
+    assignee                       shift and go to state 76
+
+state 53
+
+    (72) union -> UNION ID { . block_statements_opt } ;
+    (38) block_statements_opt -> . block_statements
+    (39) block_statements -> . block_statement
+    (40) block_statements -> . block_statements block_statement
+    (41) block_statement -> . declaration
+    (42) block_statement -> . option
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (55) option -> . OPTION ID = assignee ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    OPTION          shift and go to state 9
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+    ID              shift and go to state 68
+
+    block_statements               shift and go to state 70
+    block_statements_opt           shift and go to state 80
+    type_specifier                 shift and go to state 40
+    option                         shift and go to state 71
+    block_statement                shift and go to state 72
+    declaration                    shift and go to state 69
+
+state 54
+
+    (10) import -> IMPORT STRING_LITERAL ; .
+
+    DEFINE          reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    TYPEDEF         reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    OPTION          reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    IMPORT          reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    ENUM            reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    UNION           reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    SERVICE         reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    MANUAL_PRINT    reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    MANUAL_ENDIAN   reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    DONT_TRACE      reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    TYPEONLY        reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    AUTOREPLY       reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+    $end            reduce using rule 10 (import -> IMPORT STRING_LITERAL ; .)
+
+
+state 55
+
+    (27) define -> DEFINE ID { . block_statements_opt } ;
+    (38) block_statements_opt -> . block_statements
+    (39) block_statements -> . block_statement
+    (40) block_statements -> . block_statements block_statement
+    (41) block_statement -> . declaration
+    (42) block_statement -> . option
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (55) option -> . OPTION ID = assignee ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    OPTION          shift and go to state 9
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+    ID              shift and go to state 68
+
+    block_statements               shift and go to state 70
+    block_statements_opt           shift and go to state 81
+    type_specifier                 shift and go to state 40
+    option                         shift and go to state 71
+    block_statement                shift and go to state 72
+    declaration                    shift and go to state 69
+
+state 56
+
+    (11) service -> SERVICE { service_statements . } ;
+    (13) service_statements -> service_statements . service_statement
+    (14) service_statement -> . RPC ID RETURNS NULL ;
+    (15) service_statement -> . RPC ID RETURNS ID ;
+    (16) service_statement -> . RPC ID RETURNS STREAM ID ;
+    (17) service_statement -> . RPC ID RETURNS ID EVENTS event_list ;
+
+    }               shift and go to state 83
+    RPC             shift and go to state 57
+
+    service_statement              shift and go to state 82
+
+state 57
+
+    (14) service_statement -> RPC . ID RETURNS NULL ;
+    (15) service_statement -> RPC . ID RETURNS ID ;
+    (16) service_statement -> RPC . ID RETURNS STREAM ID ;
+    (17) service_statement -> RPC . ID RETURNS ID EVENTS event_list ;
+
+    ID              shift and go to state 84
+
+
+state 58
+
+    (12) service_statements -> service_statement .
+
+    }               reduce using rule 12 (service_statements -> service_statement .)
+    RPC             reduce using rule 12 (service_statements -> service_statement .)
+
+
+state 59
+
+    (24) enum_size -> U8 .
+
+    {               reduce using rule 24 (enum_size -> U8 .)
+
+
+state 60
+
+    (23) enum -> ENUM ID : enum_size . { enum_statements } ;
+
+    {               shift and go to state 85
+
+
+state 61
+
+    (25) enum_size -> U16 .
+
+    {               reduce using rule 25 (enum_size -> U16 .)
+
+
+state 62
+
+    (26) enum_size -> U32 .
+
+    {               reduce using rule 26 (enum_size -> U32 .)
+
+
+state 63
+
+    (43) enum_statements -> enum_statement .
+
+    }               reduce using rule 43 (enum_statements -> enum_statement .)
+    ID              reduce using rule 43 (enum_statements -> enum_statement .)
+
+
+state 64
+
+    (45) enum_statement -> ID . = NUM ,
+    (46) enum_statement -> ID . ,
+
+    =               shift and go to state 86
+    ,               shift and go to state 87
+
+
+state 65
+
+    (22) enum -> ENUM ID { enum_statements . } ;
+    (44) enum_statements -> enum_statements . enum_statement
+    (45) enum_statement -> . ID = NUM ,
+    (46) enum_statement -> . ID ,
+
+    }               shift and go to state 89
+    ID              shift and go to state 64
+
+    enum_statement                 shift and go to state 88
+
+state 66
+
+    (28) define -> flist DEFINE ID { . block_statements_opt } ;
+    (38) block_statements_opt -> . block_statements
+    (39) block_statements -> . block_statement
+    (40) block_statements -> . block_statements block_statement
+    (41) block_statement -> . declaration
+    (42) block_statement -> . option
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (55) option -> . OPTION ID = assignee ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    OPTION          shift and go to state 9
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+    ID              shift and go to state 68
+
+    block_statements               shift and go to state 70
+    block_statements_opt           shift and go to state 90
+    type_specifier                 shift and go to state 40
+    option                         shift and go to state 71
+    block_statement                shift and go to state 72
+    declaration                    shift and go to state 69
+
+state 67
+
+    (36) typedef -> TYPEDEF ID { block_statements_opt . } ;
+
+    }               shift and go to state 91
+
+
+state 68
+
+    (71) type_specifier -> ID .
+
+    ID              reduce using rule 71 (type_specifier -> ID .)
+
+
+state 69
+
+    (41) block_statement -> declaration .
+
+    OPTION          reduce using rule 41 (block_statement -> declaration .)
+    U8              reduce using rule 41 (block_statement -> declaration .)
+    U16             reduce using rule 41 (block_statement -> declaration .)
+    U32             reduce using rule 41 (block_statement -> declaration .)
+    U64             reduce using rule 41 (block_statement -> declaration .)
+    I8              reduce using rule 41 (block_statement -> declaration .)
+    I16             reduce using rule 41 (block_statement -> declaration .)
+    I32             reduce using rule 41 (block_statement -> declaration .)
+    I64             reduce using rule 41 (block_statement -> declaration .)
+    F64             reduce using rule 41 (block_statement -> declaration .)
+    BOOL            reduce using rule 41 (block_statement -> declaration .)
+    STRING          reduce using rule 41 (block_statement -> declaration .)
+    ID              reduce using rule 41 (block_statement -> declaration .)
+    }               reduce using rule 41 (block_statement -> declaration .)
+
+
+state 70
+
+    (38) block_statements_opt -> block_statements .
+    (40) block_statements -> block_statements . block_statement
+    (41) block_statement -> . declaration
+    (42) block_statement -> . option
+    (51) declaration -> . type_specifier ID ;
+    (52) declaration -> . type_specifier ID [ field_options ] ;
+    (53) declaration -> . type_specifier ID [ NUM ] ;
+    (54) declaration -> . type_specifier ID [ ID ] ;
+    (55) option -> . OPTION ID = assignee ;
+    (60) type_specifier -> . U8
+    (61) type_specifier -> . U16
+    (62) type_specifier -> . U32
+    (63) type_specifier -> . U64
+    (64) type_specifier -> . I8
+    (65) type_specifier -> . I16
+    (66) type_specifier -> . I32
+    (67) type_specifier -> . I64
+    (68) type_specifier -> . F64
+    (69) type_specifier -> . BOOL
+    (70) type_specifier -> . STRING
+    (71) type_specifier -> . ID
+
+    }               reduce using rule 38 (block_statements_opt -> block_statements .)
+    OPTION          shift and go to state 9
+    U8              shift and go to state 39
+    U16             shift and go to state 38
+    U32             shift and go to state 33
+    U64             shift and go to state 35
+    I8              shift and go to state 41
+    I16             shift and go to state 32
+    I32             shift and go to state 37
+    I64             shift and go to state 28
+    F64             shift and go to state 30
+    BOOL            shift and go to state 36
+    STRING          shift and go to state 29
+    ID              shift and go to state 68
+
+    type_specifier                 shift and go to state 40
+    option                         shift and go to state 71
+    block_statement                shift and go to state 92
+    declaration                    shift and go to state 69
+
+state 71
+
+    (42) block_statement -> option .
+
+    OPTION          reduce using rule 42 (block_statement -> option .)
+    U8              reduce using rule 42 (block_statement -> option .)
+    U16             reduce using rule 42 (block_statement -> option .)
+    U32             reduce using rule 42 (block_statement -> option .)
+    U64             reduce using rule 42 (block_statement -> option .)
+    I8              reduce using rule 42 (block_statement -> option .)
+    I16             reduce using rule 42 (block_statement -> option .)
+    I32             reduce using rule 42 (block_statement -> option .)
+    I64             reduce using rule 42 (block_statement -> option .)
+    F64             reduce using rule 42 (block_statement -> option .)
+    BOOL            reduce using rule 42 (block_statement -> option .)
+    STRING          reduce using rule 42 (block_statement -> option .)
+    ID              reduce using rule 42 (block_statement -> option .)
+    }               reduce using rule 42 (block_statement -> option .)
+
+
+state 72
+
+    (39) block_statements -> block_statement .
+
+    OPTION          reduce using rule 39 (block_statements -> block_statement .)
+    U8              reduce using rule 39 (block_statements -> block_statement .)
+    U16             reduce using rule 39 (block_statements -> block_statement .)
+    U32             reduce using rule 39 (block_statements -> block_statement .)
+    U64             reduce using rule 39 (block_statements -> block_statement .)
+    I8              reduce using rule 39 (block_statements -> block_statement .)
+    I16             reduce using rule 39 (block_statements -> block_statement .)
+    I32             reduce using rule 39 (block_statements -> block_statement .)
+    I64             reduce using rule 39 (block_statements -> block_statement .)
+    F64             reduce using rule 39 (block_statements -> block_statement .)
+    BOOL            reduce using rule 39 (block_statements -> block_statement .)
+    STRING          reduce using rule 39 (block_statements -> block_statement .)
+    ID              reduce using rule 39 (block_statements -> block_statement .)
+    }               reduce using rule 39 (block_statements -> block_statement .)
+
+
+state 73
+
+    (52) declaration -> type_specifier ID [ . field_options ] ;
+    (53) declaration -> type_specifier ID [ . NUM ] ;
+    (54) declaration -> type_specifier ID [ . ID ] ;
+    (47) field_options -> . field_option
+    (48) field_options -> . field_options field_option
+    (49) field_option -> . ID = assignee ,
+    (50) field_option -> . ID = assignee
+
+    NUM             shift and go to state 93
+    ID              shift and go to state 96
+
+    field_options                  shift and go to state 95
+    field_option                   shift and go to state 94
+
+state 74
+
+    (51) declaration -> type_specifier ID ; .
+
+    OPTION          reduce using rule 51 (declaration -> type_specifier ID ; .)
+    U8              reduce using rule 51 (declaration -> type_specifier ID ; .)
+    U16             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    U32             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    U64             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    I8              reduce using rule 51 (declaration -> type_specifier ID ; .)
+    I16             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    I32             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    I64             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    F64             reduce using rule 51 (declaration -> type_specifier ID ; .)
+    BOOL            reduce using rule 51 (declaration -> type_specifier ID ; .)
+    STRING          reduce using rule 51 (declaration -> type_specifier ID ; .)
+    ID              reduce using rule 51 (declaration -> type_specifier ID ; .)
+    }               reduce using rule 51 (declaration -> type_specifier ID ; .)
+    DEFINE          reduce using rule 51 (declaration -> type_specifier ID ; .)
+    TYPEDEF         reduce using rule 51 (declaration -> type_specifier ID ; .)
+    IMPORT          reduce using rule 51 (declaration -> type_specifier ID ; .)
+    ENUM            reduce using rule 51 (declaration -> type_specifier ID ; .)
+    UNION           reduce using rule 51 (declaration -> type_specifier ID ; .)
+    SERVICE         reduce using rule 51 (declaration -> type_specifier ID ; .)
+    MANUAL_PRINT    reduce using rule 51 (declaration -> type_specifier ID ; .)
+    MANUAL_ENDIAN   reduce using rule 51 (declaration -> type_specifier ID ; .)
+    DONT_TRACE      reduce using rule 51 (declaration -> type_specifier ID ; .)
+    TYPEONLY        reduce using rule 51 (declaration -> type_specifier ID ; .)
+    AUTOREPLY       reduce using rule 51 (declaration -> type_specifier ID ; .)
+    $end            reduce using rule 51 (declaration -> type_specifier ID ; .)
+
+
+state 75
+
+    (56) assignee -> NUM .
+
+    ;               reduce using rule 56 (assignee -> NUM .)
+    ,               reduce using rule 56 (assignee -> NUM .)
+    ]               reduce using rule 56 (assignee -> NUM .)
+    ID              reduce using rule 56 (assignee -> NUM .)
+
+
+state 76
+
+    (55) option -> OPTION ID = assignee . ;
+
+    ;               shift and go to state 97
+
+
+state 77
+
+    (59) assignee -> STRING_LITERAL .
+
+    ;               reduce using rule 59 (assignee -> STRING_LITERAL .)
+    ,               reduce using rule 59 (assignee -> STRING_LITERAL .)
+    ]               reduce using rule 59 (assignee -> STRING_LITERAL .)
+    ID              reduce using rule 59 (assignee -> STRING_LITERAL .)
+
+
+state 78
+
+    (57) assignee -> TRUE .
+
+    ;               reduce using rule 57 (assignee -> TRUE .)
+    ,               reduce using rule 57 (assignee -> TRUE .)
+    ]               reduce using rule 57 (assignee -> TRUE .)
+    ID              reduce using rule 57 (assignee -> TRUE .)
+
+
+state 79
+
+    (58) assignee -> FALSE .
+
+    ;               reduce using rule 58 (assignee -> FALSE .)
+    ,               reduce using rule 58 (assignee -> FALSE .)
+    ]               reduce using rule 58 (assignee -> FALSE .)
+    ID              reduce using rule 58 (assignee -> FALSE .)
+
+
+state 80
+
+    (72) union -> UNION ID { block_statements_opt . } ;
+
+    }               shift and go to state 98
+
+
+state 81
+
+    (27) define -> DEFINE ID { block_statements_opt . } ;
+
+    }               shift and go to state 99
+
+
+state 82
+
+    (13) service_statements -> service_statements service_statement .
+
+    }               reduce using rule 13 (service_statements -> service_statements service_statement .)
+    RPC             reduce using rule 13 (service_statements -> service_statements service_statement .)
+
+
+state 83
+
+    (11) service -> SERVICE { service_statements } . ;
+
+    ;               shift and go to state 100
+
+
+state 84
+
+    (14) service_statement -> RPC ID . RETURNS NULL ;
+    (15) service_statement -> RPC ID . RETURNS ID ;
+    (16) service_statement -> RPC ID . RETURNS STREAM ID ;
+    (17) service_statement -> RPC ID . RETURNS ID EVENTS event_list ;
+
+    RETURNS         shift and go to state 101
+
+
+state 85
+
+    (23) enum -> ENUM ID : enum_size { . enum_statements } ;
+    (43) enum_statements -> . enum_statement
+    (44) enum_statements -> . enum_statements enum_statement
+    (45) enum_statement -> . ID = NUM ,
+    (46) enum_statement -> . ID ,
+
+    ID              shift and go to state 64
+
+    enum_statement                 shift and go to state 63
+    enum_statements                shift and go to state 102
+
+state 86
+
+    (45) enum_statement -> ID = . NUM ,
+
+    NUM             shift and go to state 103
+
+
+state 87
+
+    (46) enum_statement -> ID , .
+
+    }               reduce using rule 46 (enum_statement -> ID , .)
+    ID              reduce using rule 46 (enum_statement -> ID , .)
+
+
+state 88
+
+    (44) enum_statements -> enum_statements enum_statement .
+
+    }               reduce using rule 44 (enum_statements -> enum_statements enum_statement .)
+    ID              reduce using rule 44 (enum_statements -> enum_statements enum_statement .)
+
+
+state 89
+
+    (22) enum -> ENUM ID { enum_statements } . ;
+
+    ;               shift and go to state 104
+
+
+state 90
+
+    (28) define -> flist DEFINE ID { block_statements_opt . } ;
+
+    }               shift and go to state 105
+
+
+state 91
+
+    (36) typedef -> TYPEDEF ID { block_statements_opt } . ;
+
+    ;               shift and go to state 106
+
+
+state 92
+
+    (40) block_statements -> block_statements block_statement .
+
+    OPTION          reduce using rule 40 (block_statements -> block_statements block_statement .)
+    U8              reduce using rule 40 (block_statements -> block_statements block_statement .)
+    U16             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    U32             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    U64             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    I8              reduce using rule 40 (block_statements -> block_statements block_statement .)
+    I16             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    I32             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    I64             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    F64             reduce using rule 40 (block_statements -> block_statements block_statement .)
+    BOOL            reduce using rule 40 (block_statements -> block_statements block_statement .)
+    STRING          reduce using rule 40 (block_statements -> block_statements block_statement .)
+    ID              reduce using rule 40 (block_statements -> block_statements block_statement .)
+    }               reduce using rule 40 (block_statements -> block_statements block_statement .)
+
+
+state 93
+
+    (53) declaration -> type_specifier ID [ NUM . ] ;
+
+    ]               shift and go to state 107
+
+
+state 94
+
+    (47) field_options -> field_option .
+
+    ]               reduce using rule 47 (field_options -> field_option .)
+    ID              reduce using rule 47 (field_options -> field_option .)
+
+
+state 95
+
+    (52) declaration -> type_specifier ID [ field_options . ] ;
+    (48) field_options -> field_options . field_option
+    (49) field_option -> . ID = assignee ,
+    (50) field_option -> . ID = assignee
+
+    ]               shift and go to state 108
+    ID              shift and go to state 110
+
+    field_option                   shift and go to state 109
+
+state 96
+
+    (54) declaration -> type_specifier ID [ ID . ] ;
+    (49) field_option -> ID . = assignee ,
+    (50) field_option -> ID . = assignee
+
+    ]               shift and go to state 111
+    =               shift and go to state 112
+
+
+state 97
+
+    (55) option -> OPTION ID = assignee ; .
+
+    DEFINE          reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    TYPEDEF         reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    OPTION          reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    IMPORT          reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    ENUM            reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    UNION           reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    SERVICE         reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    MANUAL_PRINT    reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    MANUAL_ENDIAN   reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    DONT_TRACE      reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    TYPEONLY        reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    AUTOREPLY       reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    $end            reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    U8              reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    U16             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    U32             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    U64             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    I8              reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    I16             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    I32             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    I64             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    F64             reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    BOOL            reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    STRING          reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    ID              reduce using rule 55 (option -> OPTION ID = assignee ; .)
+    }               reduce using rule 55 (option -> OPTION ID = assignee ; .)
+
+
+state 98
+
+    (72) union -> UNION ID { block_statements_opt } . ;
+
+    ;               shift and go to state 113
+
+
+state 99
+
+    (27) define -> DEFINE ID { block_statements_opt } . ;
+
+    ;               shift and go to state 114
+
+
+state 100
+
+    (11) service -> SERVICE { service_statements } ; .
+
+    DEFINE          reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    TYPEDEF         reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    OPTION          reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    IMPORT          reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    ENUM            reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    UNION           reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    SERVICE         reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    MANUAL_PRINT    reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    MANUAL_ENDIAN   reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    DONT_TRACE      reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    TYPEONLY        reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    AUTOREPLY       reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+    $end            reduce using rule 11 (service -> SERVICE { service_statements } ; .)
+
+
+state 101
+
+    (14) service_statement -> RPC ID RETURNS . NULL ;
+    (15) service_statement -> RPC ID RETURNS . ID ;
+    (16) service_statement -> RPC ID RETURNS . STREAM ID ;
+    (17) service_statement -> RPC ID RETURNS . ID EVENTS event_list ;
+
+    NULL            shift and go to state 115
+    ID              shift and go to state 116
+    STREAM          shift and go to state 117
+
+
+state 102
+
+    (23) enum -> ENUM ID : enum_size { enum_statements . } ;
+    (44) enum_statements -> enum_statements . enum_statement
+    (45) enum_statement -> . ID = NUM ,
+    (46) enum_statement -> . ID ,
+
+    }               shift and go to state 118
+    ID              shift and go to state 64
+
+    enum_statement                 shift and go to state 88
+
+state 103
+
+    (45) enum_statement -> ID = NUM . ,
+
+    ,               shift and go to state 119
+
+
+state 104
+
+    (22) enum -> ENUM ID { enum_statements } ; .
+
+    DEFINE          reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    TYPEDEF         reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    OPTION          reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    IMPORT          reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    ENUM            reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    UNION           reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    SERVICE         reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    MANUAL_PRINT    reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    MANUAL_ENDIAN   reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    DONT_TRACE      reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    TYPEONLY        reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    AUTOREPLY       reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+    $end            reduce using rule 22 (enum -> ENUM ID { enum_statements } ; .)
+
+
+state 105
+
+    (28) define -> flist DEFINE ID { block_statements_opt } . ;
+
+    ;               shift and go to state 120
+
+
+state 106
+
+    (36) typedef -> TYPEDEF ID { block_statements_opt } ; .
+
+    DEFINE          reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    TYPEDEF         reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    OPTION          reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    IMPORT          reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    ENUM            reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    UNION           reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    SERVICE         reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    MANUAL_PRINT    reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    MANUAL_ENDIAN   reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    DONT_TRACE      reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    TYPEONLY        reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    AUTOREPLY       reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+    $end            reduce using rule 36 (typedef -> TYPEDEF ID { block_statements_opt } ; .)
+
+
+state 107
+
+    (53) declaration -> type_specifier ID [ NUM ] . ;
+
+    ;               shift and go to state 121
+
+
+state 108
+
+    (52) declaration -> type_specifier ID [ field_options ] . ;
+
+    ;               shift and go to state 122
+
+
+state 109
+
+    (48) field_options -> field_options field_option .
+
+    ]               reduce using rule 48 (field_options -> field_options field_option .)
+    ID              reduce using rule 48 (field_options -> field_options field_option .)
+
+
+state 110
+
+    (49) field_option -> ID . = assignee ,
+    (50) field_option -> ID . = assignee
+
+    =               shift and go to state 112
+
+
+state 111
+
+    (54) declaration -> type_specifier ID [ ID ] . ;
+
+    ;               shift and go to state 123
+
+
+state 112
+
+    (49) field_option -> ID = . assignee ,
+    (50) field_option -> ID = . assignee
+    (56) assignee -> . NUM
+    (57) assignee -> . TRUE
+    (58) assignee -> . FALSE
+    (59) assignee -> . STRING_LITERAL
+
+    NUM             shift and go to state 75
+    TRUE            shift and go to state 78
+    FALSE           shift and go to state 79
+    STRING_LITERAL  shift and go to state 77
+
+    assignee                       shift and go to state 124
+
+state 113
+
+    (72) union -> UNION ID { block_statements_opt } ; .
+
+    DEFINE          reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    TYPEDEF         reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    OPTION          reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    IMPORT          reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    ENUM            reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    UNION           reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    SERVICE         reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    MANUAL_PRINT    reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    MANUAL_ENDIAN   reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    DONT_TRACE      reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    TYPEONLY        reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    AUTOREPLY       reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+    $end            reduce using rule 72 (union -> UNION ID { block_statements_opt } ; .)
+
+
+state 114
+
+    (27) define -> DEFINE ID { block_statements_opt } ; .
+
+    DEFINE          reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    TYPEDEF         reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    OPTION          reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    IMPORT          reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    ENUM            reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    UNION           reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    SERVICE         reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    MANUAL_PRINT    reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    MANUAL_ENDIAN   reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    DONT_TRACE      reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    TYPEONLY        reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    AUTOREPLY       reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+    $end            reduce using rule 27 (define -> DEFINE ID { block_statements_opt } ; .)
+
+
+state 115
+
+    (14) service_statement -> RPC ID RETURNS NULL . ;
+
+    ;               shift and go to state 125
+
+
+state 116
+
+    (15) service_statement -> RPC ID RETURNS ID . ;
+    (17) service_statement -> RPC ID RETURNS ID . EVENTS event_list ;
+
+    ;               shift and go to state 126
+    EVENTS          shift and go to state 127
+
+
+state 117
+
+    (16) service_statement -> RPC ID RETURNS STREAM . ID ;
+
+    ID              shift and go to state 128
+
+
+state 118
+
+    (23) enum -> ENUM ID : enum_size { enum_statements } . ;
+
+    ;               shift and go to state 129
+
+
+state 119
+
+    (45) enum_statement -> ID = NUM , .
+
+    }               reduce using rule 45 (enum_statement -> ID = NUM , .)
+    ID              reduce using rule 45 (enum_statement -> ID = NUM , .)
+
+
+state 120
+
+    (28) define -> flist DEFINE ID { block_statements_opt } ; .
+
+    DEFINE          reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    TYPEDEF         reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    OPTION          reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    IMPORT          reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    ENUM            reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    UNION           reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    SERVICE         reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    MANUAL_PRINT    reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    MANUAL_ENDIAN   reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    DONT_TRACE      reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    TYPEONLY        reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    AUTOREPLY       reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+    $end            reduce using rule 28 (define -> flist DEFINE ID { block_statements_opt } ; .)
+
+
+state 121
+
+    (53) declaration -> type_specifier ID [ NUM ] ; .
+
+    OPTION          reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    U8              reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    U16             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    U32             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    U64             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    I8              reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    I16             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    I32             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    I64             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    F64             reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    BOOL            reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    STRING          reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    ID              reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    }               reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    DEFINE          reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    TYPEDEF         reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    IMPORT          reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    ENUM            reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    UNION           reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    SERVICE         reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    MANUAL_PRINT    reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    MANUAL_ENDIAN   reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    DONT_TRACE      reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    TYPEONLY        reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    AUTOREPLY       reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+    $end            reduce using rule 53 (declaration -> type_specifier ID [ NUM ] ; .)
+
+
+state 122
+
+    (52) declaration -> type_specifier ID [ field_options ] ; .
+
+    OPTION          reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    U8              reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    U16             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    U32             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    U64             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    I8              reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    I16             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    I32             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    I64             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    F64             reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    BOOL            reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    STRING          reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    ID              reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    }               reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    DEFINE          reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    TYPEDEF         reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    IMPORT          reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    ENUM            reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    UNION           reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    SERVICE         reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    MANUAL_PRINT    reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    MANUAL_ENDIAN   reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    DONT_TRACE      reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    TYPEONLY        reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    AUTOREPLY       reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+    $end            reduce using rule 52 (declaration -> type_specifier ID [ field_options ] ; .)
+
+
+state 123
+
+    (54) declaration -> type_specifier ID [ ID ] ; .
+
+    OPTION          reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    U8              reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    U16             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    U32             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    U64             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    I8              reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    I16             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    I32             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    I64             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    F64             reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    BOOL            reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    STRING          reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    ID              reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    }               reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    DEFINE          reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    TYPEDEF         reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    IMPORT          reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    ENUM            reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    UNION           reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    SERVICE         reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    MANUAL_PRINT    reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    MANUAL_ENDIAN   reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    DONT_TRACE      reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    TYPEONLY        reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    AUTOREPLY       reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+    $end            reduce using rule 54 (declaration -> type_specifier ID [ ID ] ; .)
+
+
+state 124
+
+    (49) field_option -> ID = assignee . ,
+    (50) field_option -> ID = assignee .
+
+    ,               shift and go to state 130
+    ]               reduce using rule 50 (field_option -> ID = assignee .)
+    ID              reduce using rule 50 (field_option -> ID = assignee .)
+
+
+state 125
+
+    (14) service_statement -> RPC ID RETURNS NULL ; .
+
+    }               reduce using rule 14 (service_statement -> RPC ID RETURNS NULL ; .)
+    RPC             reduce using rule 14 (service_statement -> RPC ID RETURNS NULL ; .)
+
+
+state 126
+
+    (15) service_statement -> RPC ID RETURNS ID ; .
+
+    }               reduce using rule 15 (service_statement -> RPC ID RETURNS ID ; .)
+    RPC             reduce using rule 15 (service_statement -> RPC ID RETURNS ID ; .)
+
+
+state 127
+
+    (17) service_statement -> RPC ID RETURNS ID EVENTS . event_list ;
+    (18) event_list -> . events
+    (19) event_list -> . event_list events
+    (20) events -> . ID
+    (21) events -> . ID ,
+
+    ID              shift and go to state 133
+
+    events                         shift and go to state 131
+    event_list                     shift and go to state 132
+
+state 128
+
+    (16) service_statement -> RPC ID RETURNS STREAM ID . ;
+
+    ;               shift and go to state 134
+
+
+state 129
+
+    (23) enum -> ENUM ID : enum_size { enum_statements } ; .
+
+    DEFINE          reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    TYPEDEF         reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    OPTION          reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    IMPORT          reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    ENUM            reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    UNION           reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    SERVICE         reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    MANUAL_PRINT    reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    MANUAL_ENDIAN   reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    DONT_TRACE      reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    TYPEONLY        reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    AUTOREPLY       reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+    $end            reduce using rule 23 (enum -> ENUM ID : enum_size { enum_statements } ; .)
+
+
+state 130
+
+    (49) field_option -> ID = assignee , .
+
+    ]               reduce using rule 49 (field_option -> ID = assignee , .)
+    ID              reduce using rule 49 (field_option -> ID = assignee , .)
+
+
+state 131
+
+    (18) event_list -> events .
+
+    ;               reduce using rule 18 (event_list -> events .)
+    ID              reduce using rule 18 (event_list -> events .)
+
+
+state 132
+
+    (17) service_statement -> RPC ID RETURNS ID EVENTS event_list . ;
+    (19) event_list -> event_list . events
+    (20) events -> . ID
+    (21) events -> . ID ,
+
+    ;               shift and go to state 136
+    ID              shift and go to state 133
+
+    events                         shift and go to state 135
+
+state 133
+
+    (20) events -> ID .
+    (21) events -> ID . ,
+
+    ;               reduce using rule 20 (events -> ID .)
+    ID              reduce using rule 20 (events -> ID .)
+    ,               shift and go to state 137
+
+
+state 134
+
+    (16) service_statement -> RPC ID RETURNS STREAM ID ; .
+
+    }               reduce using rule 16 (service_statement -> RPC ID RETURNS STREAM ID ; .)
+    RPC             reduce using rule 16 (service_statement -> RPC ID RETURNS STREAM ID ; .)
+
+
+state 135
+
+    (19) event_list -> event_list events .
+
+    ;               reduce using rule 19 (event_list -> event_list events .)
+    ID              reduce using rule 19 (event_list -> event_list events .)
+
+
+state 136
+
+    (17) service_statement -> RPC ID RETURNS ID EVENTS event_list ; .
+
+    }               reduce using rule 17 (service_statement -> RPC ID RETURNS ID EVENTS event_list ; .)
+    RPC             reduce using rule 17 (service_statement -> RPC ID RETURNS ID EVENTS event_list ; .)
+
+
+state 137
+
+    (21) events -> ID , .
+
+    ;               reduce using rule 21 (events -> ID , .)
+    ID              reduce using rule 21 (events -> ID , .)
+
