@@ -469,17 +469,34 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   /* Free fifo chunks */
   cur = f->start_chunk;
-  do
+
+  if (f->flags & SVM_FIFO_F_LL_TERMINATED)
     {
-      next = cur->next;
-      fl_index = fs_freelist_for_size (cur->length);
-      ASSERT (fl_index < vec_len (fsh->free_chunks));
-      cur->next = fsh->free_chunks[fl_index];
-      fsh->free_chunks[fl_index] = cur;
-      fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
-      cur = next;
+      while (cur)
+	{
+	  next = cur->next;
+	  fl_index = fs_freelist_for_size (cur->length);
+	  ASSERT (fl_index < vec_len (fsh->free_chunks));
+	  cur->next = fsh->free_chunks[fl_index];
+	  fsh->free_chunks[fl_index] = cur;
+	  fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+	  cur = next;
+	}
     }
-  while (cur != f->start_chunk);
+  else
+    {
+      do
+	{
+	  next = cur->next;
+	  fl_index = fs_freelist_for_size (cur->length);
+	  ASSERT (fl_index < vec_len (fsh->free_chunks));
+	  cur->next = fsh->free_chunks[fl_index];
+	  fsh->free_chunks[fl_index] = cur;
+	  fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+	  cur = next;
+	}
+      while (cur != f->start_chunk);
+    }
 
   f->start_chunk = f->end_chunk = f->new_chunks = 0;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
@@ -683,7 +700,10 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
       fs->h->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
     }
 
-  svm_fifo_add_chunk (f, c);
+  if (f->flags & SVM_FIFO_F_LL_TERMINATED)
+    svm_fifo_add_chunk_non_wrapped (f, c);
+  else
+    svm_fifo_add_chunk (f, c);
 
   ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);

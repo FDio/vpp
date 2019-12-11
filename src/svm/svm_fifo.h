@@ -39,6 +39,7 @@ typedef struct
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
 #define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
+#define SVM_FIFO_MAX_HEAD_TAIL_POSITION (2 << 20)	/* 2GB */
 
 typedef enum svm_fifo_deq_ntf_
 {
@@ -71,6 +72,7 @@ typedef enum svm_fifo_flag_
   SVM_FIFO_F_COLLECT_CHUNKS = 1 << 3,
   SVM_FIFO_F_LL_TRACKED = 1 << 4,
   SVM_FIFO_F_SINGLE_THREAD_OWNED = 1 << 5,
+  SVM_FIFO_F_LL_TERMINATED = 1 << 6,
 } svm_fifo_flag_t;
 
 typedef struct _svm_fifo
@@ -83,6 +85,10 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
   rb_tree_t chunk_lookup;
+
+  /* enhancement for memory scaling */
+  u32 max_size;
+  u32 default_chunk_size;
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
@@ -234,6 +240,19 @@ f_free_count (svm_fifo_t * f, u32 head, u32 tail)
 }
 
 /**
+ * Shrink the non-wrapped fifo
+ *
+ * This is applicable only when SVM_FIFO_F_LL_TERMINATED is flagged on.
+ * Caller has to deallocate the chunks starting with the removed_chunks which
+ * is terminated by NULL.
+ *
+ * @param f               fifo
+ * @param removed_chunks  returns the first fifo-chunk to be deallocated
+ */
+void svm_fifo_shrink_non_wrapped (svm_fifo_t * f,
+				  svm_fifo_chunk_t ** removed_chunks);
+
+/**
  * Try to shrink fifo size.
  *
  * Internal function.
@@ -250,6 +269,11 @@ void svm_fifo_try_shrink (svm_fifo_t * f, u32 head, u32 tail);
  * @return 		pointer to new fifo
  */
 svm_fifo_t *svm_fifo_create (u32 size);
+/**
+ * TODO describe
+ */
+svm_fifo_t *svm_fifo_create_non_wrapped (u32 max_size,
+					 u32 default_chunk_size);
 /**
  * Initialize fifo
  *
@@ -284,6 +308,10 @@ svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
  * @param c 	chunk or linked list of chunks to be added
  */
 void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
+/**
+ * TODO describe
+ */
+void svm_fifo_add_chunk_non_wrapped (svm_fifo_t * f, svm_fifo_chunk_t * c);
 /**
  * Request to reduce fifo size by amount of bytes
  *
