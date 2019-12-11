@@ -25,9 +25,9 @@ typedef struct _segment_manager_props
   u32 rx_fifo_size;			/**< receive fifo size */
   u32 tx_fifo_size;			/**< transmit fifo size */
   u32 evt_q_size;			/**< event queue length */
-  u32 segment_size;			/**< first segment size */
   u32 prealloc_fifos;			/**< preallocated fifo pairs */
-  u32 add_segment_size;			/**< additional segment size */
+  uword segment_size;			/**< first segment size */
+  uword add_segment_size;		/**< additional segment size */
   u8 add_segment:1;			/**< can add new segments flag */
   u8 use_mq_eventfd:1;			/**< use eventfds for mqs flag */
   u8 reserved:6;			/**< reserved flags */
@@ -69,7 +69,7 @@ typedef struct segment_manager_main_init_args_
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
 segment_manager_t *segment_manager_alloc (void);
-int segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
+int segment_manager_init (segment_manager_t * sm, uword first_seg_size,
 			  u32 prealloc_fifo_pairs);
 
 /**
@@ -89,7 +89,7 @@ segment_manager_t *segment_manager_get (u32 index);
 segment_manager_t *segment_manager_get_if_valid (u32 index);
 u32 segment_manager_index (segment_manager_t * sm);
 
-int segment_manager_add_segment (segment_manager_t * sm, u32 segment_size);
+int segment_manager_add_segment (segment_manager_t * sm, uword segment_size);
 void segment_manager_del_segment (segment_manager_t * sm,
 				  fifo_segment_t * fs);
 fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,

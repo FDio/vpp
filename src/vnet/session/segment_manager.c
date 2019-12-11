@@ -83,11 +83,11 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
  * to avoid affecting any of the segments pool readers.
  */
 int
-segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
+segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 {
+  uword baseva = (uword) ~ 0ULL, alloc_size, page_size;
+  u32 rnd_margin = 128 << 10, fs_index = ~0;
   segment_manager_main_t *smm = &sm_main;
-  u32 rnd_margin = 128 << 10, fs_index = ~0, page_size;
-  uword baseva = (uword) ~ 0ULL, alloc_size;
   segment_manager_props_t *props;
   fifo_segment_t *fs;
   u8 *seg_name;
@@ -307,7 +307,7 @@ segment_manager_alloc (void)
  * Returns error if ssvm segment(s) allocation fails.
  */
 int
-segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
+segment_manager_init (segment_manager_t * sm, uword first_seg_size,
 		      u32 prealloc_fifo_pairs)
 {
   u32 rx_fifo_size, tx_fifo_size, pair_size;
