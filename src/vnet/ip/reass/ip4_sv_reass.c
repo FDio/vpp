@@ -1182,7 +1182,7 @@ ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
 					    "ip4-sv-reassembly-feature",
 					    sw_if_index, 0, 0, 0);
     }
-  return -1;
+  return 0;
 }
 
 uword
