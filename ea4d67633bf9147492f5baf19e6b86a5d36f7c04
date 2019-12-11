@@ -22,6 +22,30 @@
       "revId": "ea4d67633bf9147492f5baf19e6b86a5d36f7c04",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0be3a4d0_5f7c4950",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-12-11T10:04:24Z",
+      "side": 1,
+      "message": "It\u0027s supposed to be a session flag telling \"this session only uses one fifo\". But it\u0027s only used by quic for now.",
+      "parentUuid": "986e0443_4a9d41ae",
+      "range": {
+        "startLine": 156,
+        "startChar": 4,
+        "endLine": 156,
+        "endChar": 18
+      },
+      "revId": "ea4d67633bf9147492f5baf19e6b86a5d36f7c04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
