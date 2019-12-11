@@ -1,5 +1,6 @@
 # JSON generation
 import json
+import collections
 
 
 def walk_enums(s):
@@ -15,7 +16,7 @@ def walk_enums(s):
 
 
 def walk_services(s):
-    r = {}
+    r = collections.OrderedDict()
     for e in s:
         d = {'reply': e.reply}
         if e.stream:
@@ -51,28 +52,31 @@ def walk_defs(s, is_message=False):
                 raise ValueError("Error in processing array type %s" % b)
 
         if is_message and t.crc:
-            c = {}
+            c = collections.OrderedDict()
             c['crc'] = "{0:#0{1}x}".format(t.crc, 10)
             d.append(c)
 
         r.append(d)
     return r
 
+
 #
 # Plugin entry point
 #
 def run(args, filename, s):
-    j = {}
+    j = collections.OrderedDict()
 
     j['types'] = (walk_defs([o for o in s['types']
                              if o.__class__.__name__ == 'Typedef']))
-    j['messages'] = walk_defs(s['Define'], True)
+    j['aliases'] = {o.name: o.alias for o in s['types']
+                    if o.__class__.__name__ == 'Using'}
     j['unions'] = (walk_defs([o for o in s['types']
                               if o.__class__.__name__ == 'Union']))
     j['enums'] = (walk_enums([o for o in s['types']
                               if o.__class__.__name__ == 'Enum']))
+    j['messages'] = walk_defs(s['Define'], True)
     j['services'] = walk_services(s['Service'])
     j['options'] = s['Option']
-    j['aliases'] = {o.name:o.alias for o in s['types'] if o.__class__.__name__ == 'Using'}
+
     j['vl_api_version'] = hex(s['file_crc'])
     return json.dumps(j, indent=4, separators=(',', ': '))
