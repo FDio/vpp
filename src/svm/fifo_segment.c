@@ -25,7 +25,7 @@
  * @param fs		fifo segment
  * @return		number of free bytes
  */
-static u32
+static uword
 fs_free_space (fifo_segment_t * fs)
 {
   struct dlmallinfo dlminfo;
@@ -870,7 +870,7 @@ fifo_segment_update_free_bytes (fifo_segment_t * fs)
   clib_atomic_store_rel_n (&fsh->n_free_bytes, fs_free_space (fs));
 }
 
-u32
+uword
 fifo_segment_free_bytes (fifo_segment_t * fs)
 {
   return fsh_n_free_bytes (fs->h);
@@ -943,11 +943,11 @@ format_fifo_segment_type (u8 * s, va_list * args)
 u8 *
 format_fifo_segment (u8 * s, va_list * args)
 {
-  u32 count, indent, active_fifos, free_fifos, fifo_hdr = 0, chunk_size;
+  u32 count, indent, active_fifos, free_fifos, fifo_hdr = 0;
   fifo_segment_t *fs = va_arg (*args, fifo_segment_t *);
   int verbose __attribute__ ((unused)) = va_arg (*args, int);
-  u32 est_chunk_bytes, est_free_seg_bytes, free_chunks;
-  uword chunk_bytes = 0, free_seg_bytes;
+  uword est_chunk_bytes, est_free_seg_bytes, free_chunks;
+  uword chunk_bytes = 0, free_seg_bytes, chunk_size;
   fifo_segment_header_t *fsh;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
@@ -1020,11 +1020,11 @@ format_fifo_segment (u8 * s, va_list * args)
   fifo_segment_update_free_bytes (fs);
   free_seg_bytes = fifo_segment_free_bytes (fs);
 
-  s = format (s, "\n%Useg free bytes: %U (%u) estimated: %U (%u)\n",
+  s = format (s, "\n%Useg free bytes: %U (%lu) estimated: %U (%lu)\n",
 	      format_white_space, indent + 2, format_memory_size,
 	      free_seg_bytes, free_seg_bytes, format_memory_size,
 	      est_free_seg_bytes, est_free_seg_bytes);
-  s = format (s, "%Uchunk free bytes: %U (%lu) estimated: %U (%u)\n",
+  s = format (s, "%Uchunk free bytes: %U (%lu) estimated: %U (%lu)\n",
 	      format_white_space, indent + 2, format_memory_size, chunk_bytes,
 	      chunk_bytes, format_memory_size, est_chunk_bytes,
 	      est_chunk_bytes);
