@@ -646,7 +646,7 @@ class AllResults(dict):
                 failed_testcase_ids = result[FAIL]
                 errored_testcase_ids = result[ERROR]
                 old_testcase_name = None
-                if failed_testcase_ids or errored_testcase_ids:
+                if failed_testcase_ids:
                     for failed_test_id in failed_testcase_ids:
                         new_testcase_name, test_name = \
                             result.get_testcase_names(failed_test_id)
@@ -656,15 +656,16 @@ class AllResults(dict):
                             old_testcase_name = new_testcase_name
                         print('    FAILURE: {} [{}]'.format(
                             colorize(test_name, RED), failed_test_id))
-                    for failed_test_id in errored_testcase_ids:
+                if errored_testcase_ids:
+                    for errored_test_id in errored_testcase_ids:
                         new_testcase_name, test_name = \
-                            result.get_testcase_names(failed_test_id)
+                            result.get_testcase_names(errored_test_id)
                         if new_testcase_name != old_testcase_name:
                             print('  Testcase name: {}'.format(
                                 colorize(new_testcase_name, RED)))
                             old_testcase_name = new_testcase_name
                         print('      ERROR: {} [{}]'.format(
-                            colorize(test_name, RED), failed_test_id))
+                            colorize(test_name, RED), errored_test_id))
         if self.testsuites_no_tests_run:
             print('TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:')
             tc_classes = set()
