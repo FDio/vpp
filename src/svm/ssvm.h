@@ -82,7 +82,7 @@ typedef struct
 typedef struct
 {
   ssvm_shared_header_t *sh;
-  u64 ssvm_size;
+  uword ssvm_size;
   u32 my_pid;
   u8 *name;
   uword requested_va;
