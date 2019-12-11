@@ -392,8 +392,6 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
   unformat_input_t sub_input;
   u8 *string;
   uword is_main_dispatch = cm == &vm->cli_main;
-  uword value;
-  u8 *key;
 
   parent = vec_elt_at_index (cm->commands, parent_command_index);
   if (is_main_dispatch && unformat (input, "help"))
@@ -428,17 +426,15 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       else
 	{
 	  vlib_cli_sub_rule_t *sr, *subs = 0;
+	  vlib_cli_sub_command_t *sc;
 
-          /* *INDENT-OFF* */
-          hash_foreach_mem (key, value, c->sub_command_index_by_name,
-          ({
-            (void) key;
-            vec_add2 (subs, sr, 1);
-            sr->name = c->sub_commands[value].name;
-            sr->command_index = value;
-            sr->rule_index = ~0;
-          }));
-          /* *INDENT-ON* */
+	  vec_foreach (sc, c->sub_commands)
+	  {
+	    vec_add2 (subs, sr, 1);
+	    sr->name = sc->name;
+	    sr->command_index = sc->index;
+	    sr->rule_index = ~0;
+	  }
 
 	  vec_sort_with_function (subs, vlib_cli_cmp_rule);
 
