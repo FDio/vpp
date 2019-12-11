@@ -4,6 +4,7 @@ import ply.lex as lex
 import ply.yacc as yacc
 import sys
 import argparse
+import collections
 import keyword
 import logging
 import binascii
@@ -20,9 +21,9 @@ sys.dont_write_bytecode = True
 #
 
 # Global dictionary of new types (including enums)
-global_types = {}
+global_types = collections.OrderedDict()
 
-seen_imports = {}
+seen_imports = collections.OrderedDict()
 
 
 def global_type_add(name, obj):
