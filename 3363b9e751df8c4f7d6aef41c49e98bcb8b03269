@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "76b6d4cd_b47d2fe1",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-12-11T22:07:28Z",
+      "side": 1,
+      "message": "I am not sure I understand why this is needed.\nThe global types dictionary isn\u0027t exposed to the language generators.",
+      "revId": "3363b9e751df8c4f7d6aef41c49e98bcb8b03269",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
