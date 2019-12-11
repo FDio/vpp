@@ -347,9 +347,8 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
 int
 ssvm_master_init_private (ssvm_private_t * ssvm)
 {
+  uword pagesize = clib_mem_get_page_size (), rnd_size = 0;
   ssvm_shared_header_t *sh;
-  u32 pagesize = clib_mem_get_page_size ();
-  u32 rnd_size = 0;
   u8 *heap;
 
   rnd_size = clib_max (ssvm->ssvm_size + (pagesize - 1), ssvm->ssvm_size);

@@ -42,7 +42,7 @@ typedef struct fifo_segment_slice_
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
-  u32 n_fl_chunk_bytes;			/**< Chunk bytes on freelist */
+  uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
 } fifo_segment_slice_t;
 
 typedef struct
@@ -66,7 +66,7 @@ typedef struct
 typedef struct
 {
   fifo_segment_t *segments;	/**< pool of fifo segments */
-  u64 next_baseva;		/**< Where to put the next one */
+  uword next_baseva;		/**< Where to put the next one */
   u32 timeout_in_seconds;	/**< Time to wait during attach */
 } fifo_segment_main_t;
 
@@ -186,7 +186,7 @@ int fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f);
  * @param fs		fifo segment
  * @return		free bytes estimate
  */
-u32 fifo_segment_free_bytes (fifo_segment_t * fs);
+uword fifo_segment_free_bytes (fifo_segment_t * fs);
 
 /**
  * Update fifo segment free bytes estimate
