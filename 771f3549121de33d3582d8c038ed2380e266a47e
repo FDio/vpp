@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "ed3737d3_111c9e77",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 733,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-11T13:19:03Z",
+      "side": 1,
+      "message": "The API of Queue offers both \"block\" and \"timeout\" arguments. The documentation is not explicit on what happens when block\u003dTrue and timeout\u003d0.0, but the implemented behavior is the same as with block\u003dFalse, just the execution is slightly slower.\n\nNow, vpp_papi.read_blocking only offers \"timeout\" argument. The behavior with timeout\u003d0.0 is implied by the line we are commenting on, no \"if timeout is positive\" condition is present here. Maybe the method name (read_blocking) is confusing, and we could rename this to just read(), with the docstring explaining that the timeout value decides whether the read is blocking or not.\n\n\u003e We need an error for when we timeout.\n\nWe can have a wrapper function that raises ApiClientReadTimeout when the inner function returns None. With the two functions, callers can chose what they like. Line 670 will call the raising function, (my hypothetical) async client user will call the None returning function, everybody is happy.\nThen, read_blocking could be a good name for the raising function, but that would be a backward incompatible change for existing users.",
+      "parentUuid": "9eed64fc_1ff9330b",
+      "range": {
+        "startLine": 733,
+        "startChar": 59,
+        "endLine": 733,
+        "endChar": 70
+      },
+      "revId": "771f3549121de33d3582d8c038ed2380e266a47e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4b6217e_87455423",
         "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
         "patchSetId": 4
