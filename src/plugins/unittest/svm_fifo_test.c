@@ -15,14 +15,15 @@
 #include <svm/svm_fifo.h>
 #include <vlib/vlib.h>
 #include <svm/fifo_segment.h>
+#include <vnet/session/segment_manager.h>
 
-#define SFIFO_TEST_I(_cond, _comment, _args...)			\
+#define SFIFO_TEST_I(_cond, _comment, _output, _args...)	\
 ({								\
   int _evald = (_cond);						\
   if (!(_evald)) {						\
     fformat(stderr, "FAIL:%d: " _comment "\n",			\
 	    __LINE__, ##_args);					\
-  } else {							\
+  } else if (_output) {							\
     fformat(stderr, "PASS:%d: " _comment "\n",			\
 	    __LINE__, ##_args);					\
   }								\
@@ -31,9 +32,28 @@
 
 #define SFIFO_TEST(_cond, _comment, _args...)			\
 {								\
-    if (!SFIFO_TEST_I(_cond, _comment, ##_args)) {		\
+    if (!SFIFO_TEST_I(_cond, _comment, 1, ##_args)) {		\
 	return 1;                                               \
     }								\
+}
+
+#define SFIFO_TEST_SILENT(_cond, _comment, _args...)            \
+{                                                               \
+    if (!SFIFO_TEST_I(_cond, _comment, 0, ##_args)) {           \
+        return 1;                                               \
+    }                                                           \
+}
+
+static inline u32
+fs_freelist_for_size (u32 size)
+{
+  return max_log2 (size) - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
+}
+
+static inline u32
+fs_freelist_index_to_size (u32 fl_index)
+{
+  return 1 << (fl_index + max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE));
 }
 
 typedef struct
@@ -1186,6 +1206,631 @@ sfifo_test_fifo_large (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+
+int
+sfifo_test_fifo_no_wrap (vlib_main_t * vm, unformat_input_t * input)
+{
+  static int size8KB = 8 << 10;
+  static int size16KB = 16 << 10;
+  static int size24KB = 24 << 10;
+
+  segment_manager_t* sm;
+  fifo_segment_t* fs;
+  svm_fifo_t *f;
+  u32 max_fifo_size = 2 << 20; /* 2MB */
+  u32 default_chunk_size = size16KB;
+  int rv, __clib_unused verbose = 0;
+  u8* test_data;
+  u32 test_data_len;
+  svm_fifo_chunk_t *removed_chunks, *tmp_chunk, *tmp_chunk2;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+        verbose = 1;
+    }
+
+  test_data_len = size8KB;
+  test_data = (u8*)malloc(test_data_len);
+
+  /* allocate segment */
+  sm = segment_manager_alloc();
+  segment_manager_init (sm, 128 << 20, 0); /* 128MB */
+  fs = segment_manager_get_segment_w_lock (sm, 0);
+  segment_manager_segment_writer_unlock (sm);
+
+  /*
+   * 1. create empty fifo
+   *    verify nothing can be enqueued into the empty fifo
+   */
+  f = svm_fifo_create_non_wrapped (max_fifo_size, default_chunk_size);
+  f->segment_manager = segment_manager_index (sm);
+  f->segment_index = 0;
+
+  SFIFO_TEST ((f->max_size == max_fifo_size), "f->max_size %u", f->max_size);
+  SFIFO_TEST ((f->default_chunk_size == default_chunk_size), "f->default_chunk_size %u", f->default_chunk_size);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == 0), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == 0), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == 0), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == 0), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->head_chunk == 0), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->tail_chunk == 0), "f->tail_chunk %p", f->tail_chunk);
+
+  /* attempt to enque something, but FIFO has no chunk */
+  rv = svm_fifo_enqueue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == SVM_FIFO_EFULL), "enqueue should fail: %d", rv);
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+
+
+  /*
+   * 2. add a chunk, then enqueue/dequeue data
+   *    verify that fifo shrinks when it can
+   */
+
+  /* allocation of chunk from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  /* enqueue 100 bytes */
+  rv = svm_fifo_enqueue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 100), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* enqueue 100 bytes, again */
+  rv = svm_fifo_enqueue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 200), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 100 bytes */
+  rv = svm_fifo_dequeue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == 100), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 200), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should not be shrunk */
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == NULL), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 100 bytes, again */
+  rv = svm_fifo_dequeue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == 200), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 200), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should be shrunk */
+  tmp_chunk = f->start_chunk;
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == tmp_chunk), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((removed_chunks->next == NULL), "removed_chunks->next %p", removed_chunks->next);
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == 0), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == 0), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == 0), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == 0), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->head_chunk == 0), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->tail_chunk == 0), "f->tail_chunk %p", f->tail_chunk);
+
+
+  /*
+   * 3. add 2 chunks, enqueue/dequeue and shrink
+   */
+
+  /* allocation of chunk from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* allocation of another chunk from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->tail_chunk == f->head_chunk), "f->tail_chunk %p", f->tail_chunk);
+  SFIFO_TEST ((f->end_chunk != f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk == f->start_chunk->next), "f->end_chunk %p", f->end_chunk);
+
+  /* enqueue 100 bytes */
+  rv = svm_fifo_enqueue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 100), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->tail_chunk == f->head_chunk), "f->tail_chunk %p", f->tail_chunk);
+  SFIFO_TEST ((f->end_chunk != f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk == f->start_chunk->next), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should not be shrunk */
+  /* there's an empty chunk, but it is not the start_chunk */
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == NULL), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->tail_chunk == f->head_chunk), "f->tail_chunk %p", f->tail_chunk);
+  SFIFO_TEST ((f->end_chunk != f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk == f->start_chunk->next), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 100 bytes */
+  rv = svm_fifo_dequeue (f, 100, (u8 *) test_data);
+  SFIFO_TEST ((rv == 100), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == 100), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 100), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->tail_chunk == f->head_chunk), "f->tail_chunk %p", f->tail_chunk);
+  SFIFO_TEST ((f->end_chunk != f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk == f->start_chunk->next), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should be shrunk this time */
+  tmp_chunk = f->start_chunk;
+  tmp_chunk2 = f->end_chunk;
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == tmp_chunk), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((removed_chunks->next == tmp_chunk2), "removed_chunks->next %p", removed_chunks->next);
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == 0), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == 0), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == 0), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == 0), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->head_chunk == 0), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->tail_chunk == 0), "f->tail_chunk %p", f->tail_chunk);
+
+
+  /*
+   * 4. allocte 2 chunks and enqueue to crossover the chunks
+   *    test dequeue and shrink as well
+   */
+
+  /* allocation of chunk from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  /* enqueue 8KB */
+  rv = svm_fifo_enqueue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size8KB), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* enqueue 8KB, again -- last 1 byte cannot be enqueued */
+  rv = svm_fifo_enqueue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB - 1), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size16KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* allocation of chunk from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  /* enqueue 8KB */
+  rv = svm_fifo_enqueue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size24KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 8KB */
+  rv = svm_fifo_dequeue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == size8KB), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size24KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should not be shrunk */
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == NULL), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((f->head == size8KB), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size24KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk != f->start_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 8KB */
+  rv = svm_fifo_dequeue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == size16KB), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size24KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size * 2), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size * 2 - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk != f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->head_chunk == f->start_chunk->next), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* attempt to shrink -- should be shrunk */
+  tmp_chunk = f->start_chunk;
+  tmp_chunk2 = f->end_chunk;
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == tmp_chunk), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((removed_chunks->next == NULL), "removed_chunks->next %p", removed_chunks->next);
+  SFIFO_TEST ((f->head == size16KB), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == (size24KB - 1)), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == tmp_chunk2), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->head_chunk == f->start_chunk), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->end_chunk == f->start_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 8KB -- but (8KB - 1byte) can be dequeued */
+  rv = svm_fifo_dequeue (f, size8KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size8KB - 1), "dequeued %d", rv);
+
+  SFIFO_TEST ((f->head == size24KB - 1), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size24KB - 1), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == default_chunk_size), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == default_chunk_size - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->head_chunk == f->start_chunk), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+ /* attempt to shrink -- should be shrunk */
+  tmp_chunk = f->start_chunk;
+  tmp_chunk2 = f->end_chunk;
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == tmp_chunk), "removed_chunks %p", removed_chunks);
+  SFIFO_TEST ((removed_chunks->next == NULL), "removed_chunks->next %p", removed_chunks->next);
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == 0), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == 0), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == 0), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == 0), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->end_chunk == 0), "f->end_chunk %p", f->end_chunk);
+  SFIFO_TEST ((f->head_chunk == 0), "f->head_chunk %p", f->head_chunk);
+  SFIFO_TEST ((f->tail_chunk == 0), "f->tail_chunk %p", f->tail_chunk);
+
+
+  /* test done. clean up */
+  free (test_data);
+  segment_manager_segment_writer_unlock (sm);
+
+  return 0;
+}
+
+int
+sfifo_test_fifo_compare_wrap_no_wrap (vlib_main_t * vm, unformat_input_t * input)
+{
+  static int size2KB = 2 << 10;
+  static int size4KB = 4 << 10;
+  static int size6KB = 6 << 10;
+  static int size8KB = 8 << 10;
+  static int size12KB = 12 << 10;
+  static int size16KB = 16 << 10;
+
+  segment_manager_t* sm;
+  fifo_segment_t* fs;
+  svm_fifo_t *f, *f2;
+  u32 max_fifo_size = 2 << 20; /* 2MB */
+  u32 default_chunk_size = size4KB;
+  int rv, __clib_unused verbose = 0;
+  u8* test_data;
+  u32 test_data_len;
+  u32 i, j, fl_index;
+  svm_fifo_chunk_t *removed_chunks, *old_start, *old_end;
+  fifo_segment_header_t *fsh;
+  rb_node_t *node;
+  u64 t1, t2;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+        verbose = 1;
+    }
+
+  test_data_len = size8KB;
+  test_data = (u8*)malloc(test_data_len);
+
+  /* allocate segment */
+  sm = segment_manager_alloc();
+  segment_manager_init (sm, 128 << 20, 0); /* 128MB */
+  fs = segment_manager_get_segment_w_lock (sm, 0);
+  fsh = fs->h;
+  segment_manager_segment_writer_unlock (sm);
+
+  /*
+   * 1 non-wrapped fifo
+   */
+
+  /*
+   * 1-1. create non-wrapped fifo
+   *      allocate 2 x 4KB chunks and fill 6KB of them
+   */
+  f = svm_fifo_create_non_wrapped (max_fifo_size, default_chunk_size);
+  f->segment_manager = segment_manager_index (sm);
+  f->segment_index = 0;
+
+  /* allocation of chunks from fifo-segment */
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+  rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+  SFIFO_TEST ((rv == 0), "fifo_segment_grow_fifo: %d", rv);
+
+  /* enqueue 6KB */
+  /*  |xxxxxxxx| -> |xxxx----| -> NULL */
+  rv = svm_fifo_enqueue (f, size6KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size6KB), "enqueued %d", rv);
+
+  SFIFO_TEST ((f->head == 0), "f->head %u", f->head);
+  SFIFO_TEST ((f->tail == size6KB), "f->tail %u", f->tail);
+  SFIFO_TEST ((f->size == size8KB), "f->size %u", f->size);
+  SFIFO_TEST ((f->nitems == size8KB - 1), "f->nitems %u", f->nitems);
+  SFIFO_TEST ((f->start_chunk == f->head_chunk), "f->start_chunk %p", f->start_chunk);
+  SFIFO_TEST ((f->tail_chunk == f->head_chunk->next), "f->tail_chunk %p", f->tail_chunk);
+  SFIFO_TEST ((f->end_chunk == f->tail_chunk), "f->end_chunk %p", f->end_chunk);
+
+  /* dequeue 2KB */
+  /*  |----xxxx| -> |xxxx----| -> NULL */
+  rv = svm_fifo_dequeue (f, size2KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size2KB), "dequeued %d", rv);
+
+
+  /*
+   * 1-2. functional validation
+   *      repeat (grow / enqueue / dequeue / shrink / rbtree search)
+   *      simulating transfer of 4GB, by 4KB x 1048576 times
+   */
+  for (i = 0; i < (1 << 20); ++i)
+    {
+      old_start = f->start_chunk;
+      old_end = f->end_chunk;
+
+      /* grow */
+      /*  |----xxxx| -> |xxxx----| -> |--------| -> NULL */
+      rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+      SFIFO_TEST_SILENT ((rv == 0), "[%d] fifo_segment_grow_fifo: %d", i, rv);
+      SFIFO_TEST_SILENT ((f->end_chunk == old_end->next), "[%d] f->end_chunk %p", i, f->end_chunk);
+      SFIFO_TEST_SILENT ((f->size == size12KB), "[%d] f->size %d", i, f->size);
+
+      /* enqueue */
+      /*  |----xxxx| -> |xxxxxxxx| -> |xxxx----| -> NULL */
+      rv = svm_fifo_enqueue (f, size4KB, (u8 *) test_data);
+      SFIFO_TEST_SILENT ((rv == size4KB), "[%d] enqueued %d", i, rv);
+
+      /* dequeue */
+      /*  |--------| -> |----xxxx| -> |xxxx----| -> NULL */
+      rv = svm_fifo_dequeue (f, size4KB, (u8 *) test_data);
+      SFIFO_TEST_SILENT ((rv == size4KB), "[%d] dequeued %d", i, rv);
+
+      /* shrink */
+      /*                |----xxxx| -> |xxxx----| -> NULL */
+      removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+      svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+      SFIFO_TEST_SILENT ((removed_chunks == old_start), "[%d] removed_chunks %p", i, removed_chunks);
+      SFIFO_TEST_SILENT ((removed_chunks->next == NULL), "[%d] removed_chunks->next %p", i, removed_chunks->next);
+      SFIFO_TEST_SILENT ((f->start_chunk != old_start), "[%d] f->start_chunk %p", i, f->start_chunk);
+      SFIFO_TEST_SILENT ((f->size == size8KB), "[%d] f->size %d", i, f->size);
+
+      /* put the removed chunk into the pool */
+      fl_index = fs_freelist_for_size (removed_chunks->length);
+      fsh->free_chunks[fl_index] = removed_chunks;
+      fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+
+      /* rbtree search */
+      SFIFO_TEST_SILENT ((rb_tree_n_nodes (&f->chunk_lookup) == 3), "[%d] rb_tree_n_nodes %d", i, rb_tree_n_nodes (&f->chunk_lookup));
+      for (j = 0; j < 10; ++j)
+        {
+          node = rb_tree_search_subtree (&f->chunk_lookup,
+                                         rb_node (&f->chunk_lookup, f->chunk_lookup.root),
+                                         f->head & ~(default_chunk_size - 1));
+          SFIFO_TEST_SILENT (((svm_fifo_chunk_t*)node->opaque == f->head_chunk), "[%d][%d] node->opaque %p", i, j, node->opaque);
+          node = rb_tree_search_subtree (&f->chunk_lookup,
+                                         rb_node (&f->chunk_lookup, f->chunk_lookup.root),
+                                         f->tail & ~(default_chunk_size - 1));
+          SFIFO_TEST_SILENT (((svm_fifo_chunk_t*)node->opaque == f->tail_chunk), "[%d][%d] node->opaque %p", i, j, node->opaque);
+        }
+    }
+
+  /*
+   * 1-3. do the same, but without result-evaluation
+   *      measure the duration
+   */
+  t1 = unix_time_now_nsec();
+  for (i = 0; i < (1 << 20); ++i)
+    {
+      old_start = f->start_chunk;
+      old_end = f->end_chunk;
+
+      rv = fifo_segment_grow_fifo (fs, f, f->default_chunk_size);
+      rv = svm_fifo_enqueue (f, size4KB, (u8 *) test_data);
+      rv = svm_fifo_dequeue (f, size4KB, (u8 *) test_data);
+      removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+      svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+      fl_index = fs_freelist_for_size (removed_chunks->length);
+      fsh->free_chunks[fl_index] = removed_chunks;
+      fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+      for (j = 0; j < 10; ++j)
+        {
+          node = rb_tree_search_subtree (&f->chunk_lookup,
+                                         rb_node (&f->chunk_lookup, f->chunk_lookup.root),
+                                         f->head & ~(default_chunk_size - 1));
+          node = rb_tree_search_subtree (&f->chunk_lookup,
+                                         rb_node (&f->chunk_lookup, f->chunk_lookup.root),
+                                         f->tail & ~(default_chunk_size - 1));
+        }
+    }
+  t2 = unix_time_now_nsec();
+  fprintf (stderr, "measured time of non-wrapped fifo operations %lu (ns)\n", t2 - t1);
+
+  /*
+   * 1-4. dequeue remaining and shrink it
+   */
+  rv = svm_fifo_dequeue (f, size4KB, (u8 *) test_data);
+  SFIFO_TEST ((rv == size4KB), "dequeued %d", rv);
+  removed_chunks = (svm_fifo_chunk_t*) 0x12345678;
+  old_start = f->start_chunk;
+  svm_fifo_shrink_non_wrapped (f, &removed_chunks);
+  SFIFO_TEST ((removed_chunks == old_start), "removed_chunks %p", removed_chunks);
+  fl_index = fs_freelist_for_size (removed_chunks->length);
+  fsh->free_chunks[fl_index] = removed_chunks;
+  fsh->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+
+
+  /*
+   * 2. usual (circular) fifo
+   */
+
+  /*
+   * 2-1. set up fifo with 4 x 4KB chunks
+   */
+  f2 = svm_fifo_create (size4KB);
+  rv = fifo_segment_grow_fifo (fs, f2, size4KB);
+  rv = fifo_segment_grow_fifo (fs, f2, size4KB);
+  rv = fifo_segment_grow_fifo (fs, f2, size4KB);
+  SFIFO_TEST ((f2->size == size16KB), "f2->size %d", f2->size);
+
+  rv = svm_fifo_enqueue (f2, size6KB, (u8 *) test_data);
+  rv = svm_fifo_dequeue (f2, size2KB, (u8 *) test_data);
+  SFIFO_TEST ((f2->head == size2KB), "f2->head %d", f2->head);
+  SFIFO_TEST ((f2->tail == size6KB), "f2->tail %d", f2->tail);
+
+  /*
+   * 2-2. functional validation
+   *      repeat (enqueue / dequeue / rbtree search)
+   *      simulating transfer of 4GB, by 4KB x 1048576 times
+   *      (no growth/shrink)
+   */
+  old_start = f2->start_chunk;
+  old_end = f2->end_chunk;
+  for (i = 0; i < (1 << 20); ++i)
+    {
+      SFIFO_TEST_SILENT ((f2->head == (size2KB + size4KB * (i % 4)) % size16KB), "[%d] f2->head %d", i, f2->head);
+      SFIFO_TEST_SILENT ((f2->tail == (size6KB + size4KB * (i % 4)) % size16KB), "[%d] f2->tail %d", i, f2->tail);
+      rv = svm_fifo_enqueue (f2, size4KB, (u8 *) test_data);
+      rv = svm_fifo_dequeue (f2, size4KB, (u8 *) test_data);
+      for (j = 0; j < 10; ++j)
+        {
+          node = rb_tree_search_subtree (&f2->chunk_lookup,
+                                         rb_node (&f2->chunk_lookup, f2->chunk_lookup.root),
+                                         f2->head_chunk->start_byte);
+          SFIFO_TEST_SILENT (((svm_fifo_chunk_t*) node->opaque == f2->head_chunk), "[%d][%d] node->opaque %p", i, j, node->opaque);
+          node = rb_tree_search_subtree (&f2->chunk_lookup,
+                                         rb_node (&f2->chunk_lookup, f2->chunk_lookup.root),
+                                         f2->tail_chunk->start_byte);
+          SFIFO_TEST_SILENT (((svm_fifo_chunk_t*) node->opaque == f2->tail_chunk), "[%d][%d] node->opaque %p", i, j, node->opaque);
+        }
+      SFIFO_TEST_SILENT ((f2->start_chunk == old_start), "[%d] f2->start_chunk %p", i, f2->start_chunk);
+      SFIFO_TEST_SILENT ((f2->end_chunk == old_end), "[%d] f2->end_chunk %p", i, f2->end_chunk);
+    }
+
+  /*
+   * 2-3. do the same, but without result-evaluation
+   *      measure the duration
+   */
+  t1 = unix_time_now_nsec();
+  for (i = 0; i < (1 << 20); ++i)
+    {
+      rv = svm_fifo_enqueue (f2, size4KB, (u8 *) test_data);
+      rv = svm_fifo_dequeue (f2, size4KB, (u8 *) test_data);
+      for (j = 0; j < 10; ++j)
+        {
+          node = rb_tree_search_subtree (&f2->chunk_lookup,
+                                         rb_node (&f2->chunk_lookup, f2->chunk_lookup.root),
+                                         f2->head_chunk->start_byte);
+          node = rb_tree_search_subtree (&f2->chunk_lookup,
+                                         rb_node (&f2->chunk_lookup, f2->chunk_lookup.root),
+                                         f2->tail_chunk->start_byte);
+        }
+    }
+  t2 = unix_time_now_nsec();
+  fprintf (stderr, "measured time of wrapped fifo operations %lu (ns)\n", t2 - t1);
+
+  /*
+   * 2-4. dequeue
+   */
+  rv = svm_fifo_dequeue (f2, size4KB, (u8 *) test_data);
+
+
+
+ 
+
+
+
+  /* test done. clean up */
+  free (test_data);
+  segment_manager_segment_writer_unlock (sm);
+
+  return 0;
+
+}
+
 static int
 sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1975,6 +2620,18 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+int
+sfifo_test_fifo_grow_no_wrap (vlib_main_t * vm, unformat_input_t * input)
+{
+  return 0;
+}
+
+int
+sfifo_test_fifo_shrink_no_wrap (vlib_main_t * vm, unformat_input_t * input)
+{
+  return 0;
+}
+
 /* *INDENT-OFF* */
 svm_fifo_trace_elem_t fifo_trace[] = {};
 /* *INDENT-ON* */
@@ -2721,6 +3378,14 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_grow (vm, input);
       else if (unformat (input, "shrink"))
 	res = sfifo_test_fifo_shrink (vm, input);
+      else if (unformat (input, "fifo_nw"))
+        res = sfifo_test_fifo_no_wrap (vm, input);
+      else if (unformat (input, "compare"))
+        res = sfifo_test_fifo_compare_wrap_no_wrap (vm, input);
+      else if (unformat (input, "grow_nw"))
+        res = sfifo_test_fifo_grow_no_wrap (vm, input);
+      else if (unformat (input, "shrink_nw"))
+        res = sfifo_test_fifo_shrink_no_wrap (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
@@ -2781,6 +3446,15 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 
 	  if ((res = sfifo_test_fifo_shrink (vm, input)))
 	    goto done;
+
+          if ((res = sfifo_test_fifo_no_wrap (vm, input)))
+            goto done;
+
+          if ((res = sfifo_test_fifo_grow_no_wrap (vm, input)))
+            goto done;
+
+          if ((res = sfifo_test_fifo_shrink_no_wrap (vm, input)))
+            goto done;
 
 	  str = "all";
 	  unformat_init_cstring (input, str);
