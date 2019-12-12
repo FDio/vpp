@@ -39,6 +39,13 @@ class TestGSO(VppTestCase):
     @classmethod
     def setUpClass(self):
         super(TestGSO, self).setUpClass()
+        res = self.create_pg_interfaces(range(2))
+        res_gso = self.create_pg_interfaces(range(2, 4), 1, 1460)
+        self.create_pg_interfaces(range(4, 5), 1, 8960)
+        self.pg_interfaces.append(res[0])
+        self.pg_interfaces.append(res[1])
+        self.pg_interfaces.append(res_gso[0])
+        self.pg_interfaces.append(res_gso[1])
 
     @classmethod
     def tearDownClass(self):
@@ -46,6 +53,13 @@ class TestGSO(VppTestCase):
 
     def setUp(self):
         super(TestGSO, self).setUp()
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.disable_ipv6_ra()
+            i.resolve_arp()
+            i.resolve_ndp()
 
     def tearDown(self):
         super(TestGSO, self).tearDown()
@@ -60,15 +74,6 @@ class TestGSO(VppTestCase):
         #
         # Send jumbo frame with gso disabled and DF bit is set
         #
-        self.create_pg_interfaces(range(2))
-        for i in self.pg_interfaces:
-            i.admin_up()
-            i.config_ip4()
-            i.config_ip6()
-            i.disable_ipv6_ra()
-            i.resolve_arp()
-            i.resolve_ndp()
-
         p4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
               IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
                  flags='DF') /
@@ -89,15 +94,6 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled and DF bit is set
         # input and output interfaces support GSO
         #
-        self.create_pg_interfaces(range(2, 4), 1, 1460)
-        for i in self.pg_interfaces:
-            i.admin_up()
-            i.config_ip4()
-            i.config_ip6()
-            i.disable_ipv6_ra()
-            i.resolve_arp()
-            i.resolve_ndp()
-
         p41 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
                   flags='DF') /
@@ -120,29 +116,20 @@ class TestGSO(VppTestCase):
         # and DF bit is set. GSO packet will be chunked into gso_size
         # data payload
         #
-        self.create_pg_interfaces(range(4, 5))
-        for i in self.pg_interfaces:
-            i.admin_up()
-            i.config_ip4()
-            i.config_ip6()
-            i.disable_ipv6_ra()
-            i.resolve_arp()
-            i.resolve_ndp()
-
-        self.vapi.feature_gso_enable_disable(self.pg4.sw_if_index)
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
         p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IP(src=self.pg2.remote_ip4, dst=self.pg4.remote_ip4,
+               IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
                   flags='DF') /
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p42], self.pg4, 45)
+        rxs = self.send_and_expect(self.pg2, [p42], self.pg0, 45)
         size = 0
         for rx in rxs:
-            self.assertEqual(rx[Ether].src, self.pg4.local_mac)
-            self.assertEqual(rx[Ether].dst, self.pg4.remote_mac)
+            self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
-            self.assertEqual(rx[IP].dst, self.pg4.remote_ip4)
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 1234)
 
@@ -177,31 +164,61 @@ class TestGSO(VppTestCase):
         # 8960.
         #
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
-        self.create_pg_interfaces(range(5, 6), 1, 8960)
-        for i in self.pg_interfaces:
-            i.admin_up()
-            i.config_ip4()
-            i.config_ip6()
-            i.disable_ipv6_ra()
-            i.resolve_arp()
-            i.resolve_ndp()
-
-        self.vapi.sw_interface_set_mtu(self.pg5.sw_if_index, [9000, 0, 0, 0])
+        self.vapi.sw_interface_set_mtu(self.pg4.sw_if_index, [9000, 0, 0, 0])
         self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index)
-        p44 = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
-               IP(src=self.pg5.remote_ip4, dst=self.pg1.remote_ip4) /
+        p44 = (Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac) /
+               IP(src=self.pg4.remote_ip4, dst=self.pg1.remote_ip4) /
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
         self.pg1.enable_capture()
-        rxs = self.send_and_expect(self.pg5, [p44], self.pg1, 33)
+        rxs = self.send_and_expect(self.pg4, [p44], self.pg1, 33)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
-            self.assertEqual(rx[IP].src, self.pg5.remote_ip4)
+            self.assertEqual(rx[IP].src, self.pg4.remote_ip4)
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
         size = rxs[32][TCP].seq + rxs[32][IP].len - 20 - 20
+        self.assertEqual(size, 65200)
+
+    def test_gso_vxlan(self):
+        """ GSO VXLAN test """
+        #
+        # Send jumbo frame with gso enabled only on input interface and
+        # create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg2
+        # into BD.
+        #
+        self.single_tunnel_bd = 10
+        r = self.vapi.vxlan_add_del_tunnel(src_address=self.pg0.local_ip4n,
+                                           dst_address=self.pg0.remote_ip4n,
+                                           vni=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd)
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+
+        p45 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
+               IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags='DF') /
+               TCP(sport=1234, dport=1234) /
+               Raw(b'\xa5' * 65200))
+
+        self.pg0.enable_capture()
+        rxs = self.send_and_expect(self.pg2, [p45], self.pg0, 45)
+        size = 0
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg0.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rx[VXLAN].vni, 10)
+            inner = rx[VXLAN].payload
+            self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
+            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
+            self.assertEqual(inner[IP].dst, "172.16.3.3")
+            size += inner[IP].len - 20 - 20
         self.assertEqual(size, 65200)
 
 if __name__ == '__main__':
