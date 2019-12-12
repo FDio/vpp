@@ -154,7 +154,7 @@ set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
+      gso_header_offset_t gho = vnet_gso_header_offset_parser (b);
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -173,7 +173,7 @@ set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
     }
   else if (b->flags & VNET_BUFFER_F_IS_IP6)
     {
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
+      gso_header_offset_t gho = vnet_gso_header_offset_parser (b);
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -202,7 +202,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       if (b->flags & VNET_BUFFER_F_IS_IP4)
 	{
 	  ip4_header_t *ip4;
-	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
+	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b);
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
 	  hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
@@ -221,7 +221,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 	}
       else if (b->flags & VNET_BUFFER_F_IS_IP6)
 	{
-	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
+	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b);
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
 	  hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
