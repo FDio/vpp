@@ -22,8 +22,11 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/gso/gso.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/tcp/tcp_packet.h>
+#include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
 
 #define foreach_virtio_tx_func_error	       \
@@ -114,10 +117,41 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
   vring->last_used_idx = last;
 }
 
+static_always_inline void
+set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
+		      struct virtio_net_hdr_v1 *hdr)
+{
+  if (b->flags & VNET_BUFFER_F_IS_IP4)
+    {
+      ip4_header_t *ip4;
+      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+	hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+      else if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+	hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+      ip4 =
+	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+    }
+  else if (b->flags & VNET_BUFFER_F_IS_IP6)
+    {
+      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+	hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+      else if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+	hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+    }
+}
+
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
-		    u16 mask, int do_gso)
+		    u16 mask, int do_gso, int csum_offload)
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
@@ -127,24 +161,41 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
   struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
 
   clib_memset (hdr, 0, hdr_sz);
+
   if (do_gso && (b->flags & VNET_BUFFER_F_GSO))
     {
       if (b->flags & VNET_BUFFER_F_IS_IP4)
 	{
+	  ip4_header_t *ip4;
+	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x22;
-	  hdr->csum_offset = 0x10;
+	  hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
+	  hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+	  ip4 =
+	    (ip4_header_t *) (vlib_buffer_get_current (b) +
+			      gho.l3_hdr_offset);
+	  if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+	    ip4->checksum = ip4_header_checksum (ip4);
 	}
-      else
+      else if (b->flags & VNET_BUFFER_F_IS_IP6)
 	{
+	  gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x36;
-	  hdr->csum_offset = 0x10;
+	  hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
+	  hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
 	}
+    }
+  else if (csum_offload
+	   && (b->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+			   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)))
+    {
+      set_checksum_offsets (vm, vif, b, hdr);
     }
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
@@ -245,7 +296,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif,
-			    int do_gso)
+			    int do_gso, int csum_offload)
 {
   u16 n_left = frame->n_vectors;
   virtio_vring_t *vring;
@@ -274,7 +325,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u16 n_added = 0;
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
-			    do_gso);
+			    do_gso, csum_offload);
       if (!n_added)
 	break;
       avail += n_added;
@@ -310,15 +361,21 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 					       vlib_node_runtime_t * node,
 					       vlib_frame_t * frame)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
 
-  if (vif->gso_enabled > 0)
-    return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ );
+  if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+    return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ ,
+				       1);
+  else if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+    return virtio_interface_tx_inline (vm, node, frame, vif,
+				       0 /* no do_gso */ , 1);
   else
     return virtio_interface_tx_inline (vm, node, frame, vif,
-				       0 /* no do_gso */ );
+				       0 /* no do_gso */ , 0);
 }
 
 static void
