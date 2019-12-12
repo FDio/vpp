@@ -395,7 +395,7 @@ vl_client_api_unmap (void)
 u8
 vl_mem_client_is_connected (void)
 {
-  return (memory_client_main.connected_to_vlib != 0);
+  return (my_memory_client_main->connected_to_vlib != 0);
 }
 
 static int

@@ -519,6 +519,8 @@ vppcom_connect_to_vpp (char *app_name)
   vlibapi_set_memory_client_main (&wrk->bapi_shm_ctx);
   vppcom_api_hookup ();
 
+  clib_warning ("memclnt main %p %p", my_memory_client_main,
+		&wrk->bapi_shm_ctx);
   if (vcl_cfg->vpp_api_socket_name)
     {
       if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
@@ -567,10 +569,11 @@ vppcom_connect_to_vpp (char *app_name)
 void
 vppcom_disconnect_from_vpp (void)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
 
   if (vcl_cfg->vpp_api_socket_name)
-    vl_socket_client_disconnect ();
+    vl_socket_client_disconnect2 (&wrk->bapi_sock_ctx);
   else
     vl_client_disconnect_from_vlib ();
 }
