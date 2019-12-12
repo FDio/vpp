@@ -171,7 +171,7 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 
   ASSERT (!(is_ip4 && is_ip6));
 
-  gho = vnet_gso_header_offset_parser (b, is_ip6);
+  gho = vnet_gso_header_offset_parser (b);
   th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
   uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
 
