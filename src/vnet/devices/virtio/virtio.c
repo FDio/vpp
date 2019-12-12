@@ -288,6 +288,8 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	{
 	  vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
 			   &vif->pci_addr);
+	  vlib_cli_output (vm, "  csum-enabled %d",
+			   vif->csum_offload_enabled);
 	}
       if (type == VIRTIO_IF_TYPE_TAP)
 	{
