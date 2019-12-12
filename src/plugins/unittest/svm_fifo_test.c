@@ -1193,8 +1193,8 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   int test_n_bytes, deq_bytes, enq_bytes, n_deqs, n_enqs;
   svm_fifo_chunk_t *c, *next, *prev;
   u8 *test_data = 0, *data_buf = 0;
+  u32 old_tail, offset;
   svm_fifo_t *f;
-  u32 old_tail;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1277,6 +1277,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_add_chunk (f, c);
   SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
 	      fifo_size + 200, f->size);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   prev = 0;
   for (i = 0; i < 5; i++)
@@ -1434,14 +1435,22 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "max deq expected %u is %u",
 	      0, svm_fifo_max_dequeue (f));
 
   svm_fifo_enqueue (f, sizeof (u8), &test_data[0]);
 
   memset (data_buf, 0, vec_len (data_buf));
+  offset = 0;
   for (i = 0; i <= n_deqs; i++)
-    svm_fifo_dequeue (f, deq_bytes, data_buf + i * deq_bytes);
+    {
+      rv = svm_fifo_peek (f, offset, deq_bytes, data_buf + i * deq_bytes);
+      if (rv < 0 || (rv != deq_bytes && i != n_deqs))
+	SFIFO_TEST (0, "unexpected peek %d", rv);
+      offset += rv;
+    }
+  svm_fifo_dequeue_drop (f, offset);
 
   rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
 		     (u32 *) & j);
@@ -1749,6 +1758,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (f, 200, test_data);
   svm_fifo_enqueue_with_offset (f, 50, vec_len (test_data) - 250,
 				&test_data[250]);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /* Free space */
   rv = svm_fifo_max_enqueue (f);
