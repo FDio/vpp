@@ -4,9 +4,10 @@ maintainer: ayourtch@gmail.com sykazmi@cisco.com
 features:
   - Basic GSO support
   - GSO for VLAN tagged packets
+  - GSO for VXLAN tunnel
   - Provide inline function to get header offsets
 description: "Generic Segmentation Offload"
 missing:
-  - Tunnels i.e. VXLAN
+  - Thorough Testing with VXLAN tunnel
 state: experimental
 properties: [API, CLI]
