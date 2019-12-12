@@ -236,8 +236,7 @@ static_always_inline void
 vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 			      virtio_net_hdr_t * hdr)
 {
-  gso_header_offset_t gho =
-    vnet_gso_header_offset_parser (b, b->flags & VNET_BUFFER_F_IS_IP6);
+  gso_header_offset_t gho = vnet_gso_header_offset_parser (b);
   if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
     {
       ip4_header_t *ip4;
