@@ -60,6 +60,7 @@ typedef struct svm_fifo_chunk_
   u32 start_byte;		/**< chunk start byte */
   u32 length;			/**< length of chunk in bytes */
   struct svm_fifo_chunk_ *next;	/**< pointer to next chunk in linked-lists */
+  rb_node_index_t rb_index;	/**< node index if chunk in rbtree */
   u8 data[0];			/**< start of chunk data */
 } svm_fifo_chunk_t;
 
@@ -80,8 +81,8 @@ typedef struct _svm_fifo
   u32 nitems;			/**< usable size (size-1) */
   svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
-  svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
-  rb_tree_t chunk_lookup;	/**< rbtree for chunk lookup */
+  rb_tree_t ooo_enq_lookup;	/**< rbtree for ooo enq chunk lookup */
+  rb_tree_t ooo_deq_lookup;	/**< rbtree for ooo deq chunk lookup */
   u8 flags;			/**< fifo flags */
   u8 slice_index;		/**< segment slice for fifo */
 
@@ -96,6 +97,7 @@ typedef struct _svm_fifo
   u32 segment_index;		/**< segment index in segment manager */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
+  svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
   u32 size_decrement;		/**< bytes to remove from fifo */
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
