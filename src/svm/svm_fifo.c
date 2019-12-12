@@ -414,7 +414,8 @@ svm_fifo_init_chunks (svm_fifo_t * f)
 
   f->flags |= SVM_FIFO_F_MULTI_CHUNK;
   rb_tree_init (&f->chunk_lookup);
-  rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
+  rb_tree_init (&f->ooo_deq_lookup);
+//  rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
 
   f->start_chunk->start_byte = 0;
   prev = f->start_chunk;
@@ -423,7 +424,7 @@ svm_fifo_init_chunks (svm_fifo_t * f)
   while (c != f->start_chunk)
     {
       c->start_byte = prev->start_byte + prev->length;
-      rb_tree_add2 (&f->chunk_lookup, c->start_byte, pointer_to_uword (c));
+//      rb_tree_add2 (&f->chunk_lookup, c->start_byte, pointer_to_uword (c));
       prev = c;
       c = c->next;
     }
@@ -458,6 +459,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   c->next = c;
   c->start_byte = 0;
   c->length = data_size_in_bytes;
+  c->rb_index = RBTREE_TNIL_INDEX;
   f->start_chunk = f->end_chunk = c;
 
   svm_fifo_init (f, data_size_in_bytes);
@@ -491,6 +493,44 @@ svm_fifo_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
   return (pos >= c->start_byte && pos < c->start_byte + c->length);
 }
 
+rb_node_t *
+svm_fifo_find_node_rbtree (rb_tree_t *rt, u32 pos)
+{
+  rb_node_t *cur, *prev;
+
+  cur = rb_node (rt, rt->root);
+  if (PREDICT_FALSE (rb_node_is_tnil (rt, cur)))
+    return 0;
+
+  while (pos != cur->key)
+    {
+      prev = cur;
+      if (pos < cur->key)
+	{
+	  cur = rb_node_left (rt, cur);
+	  if (rb_node_is_tnil (rt, cur))
+	    {
+	      cur = rb_tree_predecessor (rt, prev);
+	      break;
+	    }
+	}
+      else
+	{
+	  cur = rb_node_right (rt, cur);
+	  if (rb_node_is_tnil (rt, cur))
+	    {
+	      cur = prev;
+	      break;
+	    }
+	}
+    }
+
+  if (rb_node_is_tnil (rt, cur))
+    return 0;
+
+  return cur;
+}
+
 /**
  * Find chunk for given byte position
  *
@@ -499,47 +539,231 @@ svm_fifo_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
  *
  * @return chunk that includes given position or 0
  */
+svm_fifo_chunk_t *
+svm_fifo_find_chunk_rbtree (rb_tree_t *rt, u32 pos)
+{
+  svm_fifo_chunk_t *c;
+  rb_node_t *n;
+
+  n = svm_fifo_find_node_rbtree (rt, pos);
+  if (!n)
+    return 0;
+  c = uword_to_pointer (n->opaque, svm_fifo_chunk_t *);
+  if (svm_fifo_chunk_includes_pos (c, pos))
+    return c;
+
+  return 0;
+}
+
 static svm_fifo_chunk_t *
 svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
 {
-  rb_tree_t *rt = &f->chunk_lookup;
-  rb_node_t *cur, *prev;
   svm_fifo_chunk_t *c;
 
-  cur = rb_node (rt, rt->root);
-  while (pos != cur->key)
+//  ASSERT (!svm_fifo_chunk_includes_pos (f->ooo_deq, pos));
+
+//  c = f->ooo_deq->next;
+//  if (svm_fifo_chunk_includes_pos (c, pos))
+//    return c;
+//
+//  c = svm_fifo_find_chunk_rbtree (f, pos);
+//  if (c)
+//    return c;
+
+//  clib_warning ("linear search");
+  c = f->start_chunk;
+  do
     {
-      prev = cur;
-      if (pos < cur->key)
-	cur = rb_node_left (rt, cur);
-      else
-	cur = rb_node_right (rt, cur);
+      if (svm_fifo_chunk_includes_pos (c, pos))
+	return c;
+      c = c->next;
+    } while (c != f->start_chunk);
 
-      if (rb_node_is_tnil (rt, cur))
+  return 0;
+}
+
+static void
+svm_fifo_update_ooo_enq (svm_fifo_t * f, u32 ref_pos, u32 start_pos, u32 end_pos)
+{
+  rb_tree_t *rt = &f->chunk_lookup;
+  rb_node_index_t parent_index;
+  svm_fifo_chunk_t *c;
+  rb_node_t *cur;
+
+  if (svm_fifo_chunk_includes_pos (f->ooo_enq, start_pos)
+      && svm_fifo_chunk_includes_pos (f->ooo_enq, end_pos)
+      && ref_pos < start_pos)
+    return;
+
+  if (rt->root == RBTREE_TNIL_INDEX)
+    {
+      c = f->tail_chunk;
+      c->rb_index = rb_tree_add2 (rt, c->start_byte, pointer_to_uword (c));
+    }
+  else
+    {
+      cur = svm_fifo_find_node_rbtree (rt, start_pos);
+      c = uword_to_pointer (cur->opaque, svm_fifo_chunk_t*);
+      if (ref_pos > start_pos && c->start_byte > start_pos)
 	{
-	  /* Hit tnil as a left child. Find predecessor */
-	  if (pos < prev->key)
-	    {
-	      cur = rb_tree_predecessor (rt, prev);
-	      if (rb_node_is_tnil (rt, cur))
-		return 0;
-	      c = uword_to_pointer (cur->opaque, svm_fifo_chunk_t *);
-	      if (svm_fifo_chunk_includes_pos (c, pos))
-		return c;
-	      return 0;
-	    }
-	  /* Hit tnil as a right child. Check if this is the one */
-	  c = uword_to_pointer (prev->opaque, svm_fifo_chunk_t *);
-	  if (svm_fifo_chunk_includes_pos (c, pos))
-	    return c;
-
-	  return 0;
+	  c = f->end_chunk;
+	  ASSERT (c->rb_index != RBTREE_TNIL_INDEX);
 	}
     }
 
-  if (!rb_node_is_tnil (rt, cur))
-    return uword_to_pointer (cur->opaque, svm_fifo_chunk_t *);
-  return 0;
+  if (svm_fifo_chunk_includes_pos (c, start_pos))
+    f->ooo_enq = c;
+
+  if (svm_fifo_chunk_includes_pos (c, end_pos) && ref_pos < end_pos)
+    return;
+
+  parent_index = c->rb_index;
+  do
+    {
+      c = c->next;
+      if (c->rb_index != RBTREE_TNIL_INDEX)
+	break;
+      /* Can't insert with parent when byte space wraps */
+      if (c->start_byte == 0)
+	c->rb_index = rb_tree_add2 (rt, c->start_byte, pointer_to_uword (c));
+      else
+	c->rb_index = rb_tree_add_w_parent (rt, c->start_byte,
+	                                    pointer_to_uword (c), parent_index);
+
+      if (svm_fifo_chunk_includes_pos (c, start_pos))
+        f->ooo_enq = c;
+
+      parent_index = c->rb_index;
+    }
+  while (!svm_fifo_chunk_includes_pos (c, end_pos));
+}
+
+static void
+svm_fifo_update_ooo_deq (svm_fifo_t * f, u32 ref_pos, u32 start_pos, u32 end_pos)
+{
+  rb_tree_t *rt = &f->ooo_deq_lookup;
+  rb_node_index_t parent_index;
+  rb_node_t *cur;
+  svm_fifo_chunk_t *c;
+
+  if (svm_fifo_chunk_includes_pos (f->ooo_deq, start_pos)
+      && svm_fifo_chunk_includes_pos (f->ooo_deq, end_pos)
+      && ref_pos < start_pos)
+    return;
+
+  if (rt->root == RBTREE_TNIL_INDEX)
+    {
+      c = f->head_chunk;
+      c->rb_index = rb_tree_add2 (rt, c->start_byte, pointer_to_uword (c));
+    }
+  else
+    {
+      cur = svm_fifo_find_node_rbtree (rt, start_pos);
+      c = uword_to_pointer (cur->opaque, svm_fifo_chunk_t*);
+      if (ref_pos > start_pos && c->start_byte > start_pos)
+	{
+	  c = f->end_chunk;
+	  ASSERT (c->rb_index != RBTREE_TNIL_INDEX);
+	}
+    }
+
+  if (svm_fifo_chunk_includes_pos (c, start_pos))
+    f->ooo_deq = c;
+
+  if (svm_fifo_chunk_includes_pos (c, end_pos) && ref_pos < end_pos)
+    return;
+
+  parent_index = c->rb_index;
+  do
+    {
+      c = c->next;
+      if (c->rb_index != RBTREE_TNIL_INDEX)
+	break;
+      /* Can't insert with parent when byte space wraps */
+      if (c->start_byte == 0)
+	c->rb_index = rb_tree_add2 (rt, c->start_byte, pointer_to_uword (c));
+      else
+	c->rb_index = rb_tree_add_w_parent (rt, c->start_byte,
+	                                    pointer_to_uword (c),
+	                                    parent_index);
+
+      if (svm_fifo_chunk_includes_pos (c, start_pos))
+        f->ooo_deq = c;
+
+      parent_index = c->rb_index;
+    }
+  while (!svm_fifo_chunk_includes_pos (c, end_pos));
+}
+
+void
+svm_fifo_ooo_deq_track (svm_fifo_t *f, u32 start_pos, u32 end_pos)
+{
+  rb_tree_t *rt = &f->ooo_deq_lookup;
+  rb_node_index_t parent_index;
+  svm_fifo_chunk_t *c;
+
+  if (svm_fifo_chunk_includes_pos (f->ooo_deq, end_pos) && start_pos < end_pos)
+    return;
+
+  parent_index = f->ooo_deq->rb_index;
+  c = f->ooo_deq->next;
+  do
+    {
+      ASSERT (c->rb_index == RBTREE_TNIL_INDEX);
+      c->rb_index = rb_tree_add_w_parent (rt, c->start_byte,
+                                          pointer_to_uword (c), parent_index);
+      parent_index = c->rb_index;
+      c = c->next;
+    } while (!svm_fifo_chunk_includes_pos (c, end_pos));
+}
+
+//static svm_fifo_chunk_t *
+//svm_fifo_clear_ooo_chunk (svm_fifo_t * f, rb_tree_t *rt,
+//                          svm_fifo_chunk_t *start, u32 pos)
+//{
+//  svm_fifo_chunk_t *c;
+//  rb_node_t *n;
+//
+//  c = start;
+//  while (!svm_fifo_chunk_includes_pos (c, pos))
+//    {
+//      ASSERT (c->rb_index != RBTREE_TNIL_INDEX);
+//      n = rb_node (rt, c->rb_index);
+//      rb_tree_del_node (rt, n);
+//      c->rb_index = RBTREE_TNIL_INDEX;
+//      c = c->next;
+//    }
+//
+//  return c;
+//}
+
+static svm_fifo_chunk_t *
+svm_fifo_clear_chunks (svm_fifo_t * f, rb_tree_t *rt, svm_fifo_chunk_t *start,
+                       u32 start_pos, u32 end_pos)
+{
+  svm_fifo_chunk_t *c;
+  rb_node_t *n;
+
+  /* Nothing to do if still in the same chunk and not wrapped */
+  if (svm_fifo_chunk_includes_pos (start, end_pos) && start_pos < end_pos)
+    return start;
+
+  c = start;
+  do
+    {
+      if (c->rb_index == RBTREE_TNIL_INDEX)
+	{
+	  c = c->next;
+	  continue;
+	}
+
+      n = rb_node (rt, c->rb_index);
+      rb_tree_del_node (rt, n);
+      c->rb_index = RBTREE_TNIL_INDEX;
+      c = c->next;
+    } while (!svm_fifo_chunk_includes_pos (c, end_pos));
+
+  return c;
 }
 
 static inline void
@@ -586,8 +810,16 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
     {
       ASSERT (f->start_chunk->next == f->start_chunk);
       rb_tree_init (&f->chunk_lookup);
-      rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
+      rb_tree_init (&f->ooo_deq_lookup);
+//      rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
       f->flags |= SVM_FIFO_F_MULTI_CHUNK;
+    }
+
+  cur = c;
+  while (cur)
+    {
+      cur->rb_index = RBTREE_TNIL_INDEX;
+      cur = cur->next;
     }
 
   /* If fifo is not wrapped, update the size now */
@@ -608,8 +840,8 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
       while (cur)
 	{
 	  cur->start_byte = prev->start_byte + prev->length;
-	  rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
-			pointer_to_uword (cur));
+//	  rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+//			pointer_to_uword (cur));
 	  prev = cur;
 	  cur = cur->next;
 	}
@@ -647,8 +879,8 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 	    {
 	      add_bytes += c->length;
 	      c->start_byte = prev->start_byte + prev->length;
-	      rb_tree_add2 (&f->chunk_lookup, c->start_byte,
-			    pointer_to_uword (c));
+//	      rb_tree_add2 (&f->chunk_lookup, c->start_byte,
+//			    pointer_to_uword (c));
 
 	      prev = c;
 	      c = c->next;
@@ -660,8 +892,8 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
 	  while (cur != f->start_chunk)
 	    {
 	      cur->start_byte = prev->start_byte + prev->length;
-	      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
-			    pointer_to_uword (cur));
+//	      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+//			    pointer_to_uword (cur));
 	      prev = cur;
 	      cur = cur->next;
 	    }
@@ -694,8 +926,8 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
   while (cur)
     {
       cur->start_byte = prev->start_byte + prev->length;
-      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
-		    pointer_to_uword (cur));
+//      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+//		    pointer_to_uword (cur));
       prev = cur;
       cur = cur->next;
     }
@@ -847,6 +1079,7 @@ void
 svm_fifo_free_chunk_lookup (svm_fifo_t * f)
 {
   rb_tree_free_nodes (&f->chunk_lookup);
+  rb_tree_free_nodes (&f->ooo_deq_lookup);
 }
 
 void
@@ -910,8 +1143,9 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
     {
       len += ooo_segment_try_collect (f, len, &tail);
-      if (!svm_fifo_chunk_includes_pos (f->tail_chunk, tail))
-	f->tail_chunk = svm_fifo_find_chunk (f, tail);
+      if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+	f->tail_chunk = svm_fifo_clear_chunks (f, &f->chunk_lookup,
+	                                      f->tail_chunk, f->tail, tail);
     }
 
   /* store-rel: producer owned index (paired with load-acq in consumer) */
@@ -949,8 +1183,8 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
   ooo_segment_add (f, offset, head, tail, len);
   tail_idx = (tail + offset) % f->size;
 
-  if (!svm_fifo_chunk_includes_pos (f->ooo_enq, tail_idx))
-    f->ooo_enq = svm_fifo_find_chunk (f, tail_idx);
+  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+    svm_fifo_update_ooo_enq (f, f->tail, tail_idx, (tail_idx + len) % f->size);
 
   svm_fifo_copy_to_chunk (f, f->ooo_enq, tail_idx, src, len, &f->ooo_enq);
 
@@ -970,8 +1204,9 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   tail = f->tail;
   tail = (tail + len) % f->size;
 
-  if (!svm_fifo_chunk_includes_pos (f->tail_chunk, tail))
-    f->tail_chunk = svm_fifo_find_chunk (f, tail);
+  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+    f->tail_chunk = svm_fifo_clear_chunks (f, &f->chunk_lookup, f->tail_chunk,
+                                           f->tail, tail);
 
   /* store-rel: producer owned index (paired with load-acq in consumer) */
   clib_atomic_store_rel_n (&f->tail, tail);
@@ -1018,8 +1253,13 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
 
   len = clib_min (cursize - offset, len);
   head_idx = (head + offset) % f->size;
-  if (!svm_fifo_chunk_includes_pos (f->ooo_deq, head_idx))
-    f->ooo_deq = svm_fifo_find_chunk (f, head_idx);
+
+  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+    {
+//      if (!svm_fifo_chunk_includes_pos (f->ooo_deq, head_idx))
+      svm_fifo_update_ooo_deq (f, head, head_idx, (head_idx + len) % f->size);
+//      svm_fifo_ooo_deq_track (f, head_idx, (head_idx + len) % f->size);
+    }
 
   svm_fifo_copy_from_chunk (f, f->ooo_deq, head_idx, dst, len, &f->ooo_deq);
   return len;
@@ -1045,8 +1285,9 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   /* move head */
   head = (head + total_drop_bytes) % f->size;
 
-  if (!svm_fifo_chunk_includes_pos (f->head_chunk, head))
-    f->head_chunk = svm_fifo_find_chunk (f, head);
+  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+    f->head_chunk = svm_fifo_clear_chunks (f, &f->ooo_deq_lookup,
+                                           f->head_chunk, f->head, head);
 
   if (PREDICT_FALSE (f->flags & SVM_FIFO_F_GROW))
     svm_fifo_try_grow (f, head);
@@ -1063,8 +1304,9 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
   /* consumer foreign index */
   u32 tail = clib_atomic_load_acq_n (&f->tail);
 
-  if (!svm_fifo_chunk_includes_pos (f->head_chunk, tail))
-    f->head_chunk = svm_fifo_find_chunk (f, tail);
+  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+    f->head_chunk = svm_fifo_clear_chunks (f, &f->ooo_deq_lookup,
+                                           f->head_chunk, tail, tail - 1);
 
   if (PREDICT_FALSE (f->flags & SVM_FIFO_F_GROW))
     svm_fifo_try_grow (f, tail);
@@ -1220,6 +1462,35 @@ svm_fifo_is_sane (svm_fifo_t * f)
 	    return 0;
 	  if (prev && (prev->start_byte + prev->length != c->start_byte))
 	    return 0;
+
+	  if (c->rb_index != RBTREE_TNIL_INDEX)
+	    {
+	      u8 found = 0;
+
+	      tmp = svm_fifo_find_chunk_rbtree (&f->chunk_lookup,
+	                                        c->start_byte);
+	      if (tmp)
+		{
+		  found = 1;
+		  if (tmp != c)
+		    return 0;
+		}
+
+	      tmp = svm_fifo_find_chunk_rbtree (&f->ooo_deq_lookup,
+	                                        c->start_byte);
+	      if (tmp)
+		{
+		  if (found)
+		    return 0;
+
+		  found = 1;
+		  if (tmp != c)
+		    return 0;
+		}
+	      if (!found)
+		return 0;
+	    }
+
 	  size += c->length;
 	  prev = c;
 	  c = c->next;
