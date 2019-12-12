@@ -228,7 +228,7 @@ VNET GSO
 I:	gso
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
-F:	src/vnet/interface_output.c
+F:	src/vnet/gso/
 
 Plugin - MAP
 I:	map
