@@ -137,6 +137,24 @@ rb_tree_fixup_inline (rb_tree_t * rt, rb_node_t * y, rb_node_t * z)
   rb_node (rt, rt->root)->color = RBTREE_BLACK;
 }
 
+always_inline void
+rb_tree_link_parent_and_fix (rb_tree_t *rt, rb_node_t *z, rb_node_t *y)
+{
+  rb_node_index_t yi;
+
+  yi = rb_node_index (rt, y);
+  z->parent = yi;
+  if (yi == RBTREE_TNIL_INDEX)
+    rt->root = rb_node_index (rt, z);
+  else if (z->key < y->key)
+    y->left = rb_node_index (rt, z);
+  else
+    y->right = rb_node_index (rt, z);
+
+  /* Tree fixup stage */
+  rb_tree_fixup_inline (rt, y, z);
+}
+
 static void
 rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
 {
@@ -188,6 +206,23 @@ rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
   n->color = RBTREE_RED;
   n->opaque = opaque;
   rb_tree_insert (rt, n);
+  return rb_node_index (rt, n);
+}
+
+rb_node_index_t
+rb_tree_add_w_parent (rb_tree_t * rt, u32 key, uword opaque,
+                      rb_node_index_t parent_index)
+{
+  rb_node_t *n, *parent;
+
+  pool_get_zero (rt->nodes, n);
+  n->key = key;
+  n->color = RBTREE_RED;
+  n->opaque = opaque;
+
+  parent = rb_node (rt, parent_index);
+  rb_tree_link_parent_and_fix (rt, n, parent);
+
   return rb_node_index (rt, n);
 }
 

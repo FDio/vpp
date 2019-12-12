@@ -1277,6 +1277,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_add_chunk (f, c);
   SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
 	      fifo_size + 200, f->size);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   prev = 0;
   for (i = 0; i < 5; i++)
@@ -1434,6 +1435,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "max deq expected %u is %u",
 	      0, svm_fifo_max_dequeue (f));
 
