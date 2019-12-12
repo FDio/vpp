@@ -114,6 +114,27 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
   vring->last_used_idx = last;
 }
 
+static_always_inline void
+set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
+		      struct virtio_net_hdr_v1 *hdr)
+{
+  if (b->flags & VNET_BUFFER_F_IS_IP4)
+    {
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      // FIXME: set the calculated l4 hdr offset
+      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x22;
+      hdr->csum_offset = 0x10;
+    }
+  else
+    {
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      // FIXME: set the calculated l4 hdr offset
+      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x36;
+      hdr->csum_offset = 0x10;
+    }
+
+}
+
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
@@ -127,24 +148,37 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
   struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
 
   clib_memset (hdr, 0, hdr_sz);
-  if (do_gso && (b->flags & VNET_BUFFER_F_GSO))
+
+  if (b->flags & VNET_BUFFER_F_GSO)
     {
-      if (b->flags & VNET_BUFFER_F_IS_IP4)
+      if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4)) &&
+	  (b->flags & VNET_BUFFER_F_IS_IP4))
 	{
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  // FIXME: set the calculated hdr len
+	  hdr->hdr_len =
+	    vnet_buffer (b)->l4_hdr_offset + vnet_buffer2 (b)->gso_l4_hdr_sz;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x22;
 	  hdr->csum_offset = 0x10;
 	}
-      else
+      else if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6)) &&
+	       (b->flags & VNET_BUFFER_F_IS_IP6))
 	{
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  // FIXME: set the calculated hdr len
+	  hdr->hdr_len =
+	    vnet_buffer (b)->l4_hdr_offset + vnet_buffer2 (b)->gso_l4_hdr_sz;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x36;
 	  hdr->csum_offset = 0x10;
 	}
+    }
+  else if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CSUM))
+    {
+      set_checksum_offsets (vm, vif, b, hdr);
     }
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))

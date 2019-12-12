@@ -555,6 +555,26 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static int
+virtio_pci_enable_checksum_offload (vlib_main_t * vm, virtio_if_t * vif)
+{
+  struct virtio_ctrl_msg gso_hdr;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+
+  gso_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
+  gso_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
+  gso_hdr.status = VIRTIO_NET_ERR;
+  u64 offloads = VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM);
+  //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
+  //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
+  //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO);
+  clib_memcpy (gso_hdr.data, &offloads, sizeof (offloads));
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &gso_hdr, sizeof (offloads));
+  virtio_log_debug (vif, "enable checksum");
+  return status;
+}
+
+static int
 virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
 {
   struct virtio_ctrl_msg gso_hdr;
@@ -736,17 +756,16 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
    * default: all supported features
    */
   u64 supported_features = VIRTIO_FEATURE (VIRTIO_NET_F_CSUM)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
     | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MTU)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GSO)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_MTU) | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_GSO)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO)
     | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4)
     | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO)
+    //| VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO)
     | VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)
     | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS)
     | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)
@@ -1196,17 +1215,29 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
     {
-      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS) &&
-	  args->gso_enabled)
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS))
 	{
-	  if (virtio_pci_enable_gso (vm, vif))
+	  if (args->gso_enabled)
 	    {
-	      virtio_log_warning (vif, "gso is not enabled");
+	      if (virtio_pci_enable_gso (vm, vif))
+		{
+		  virtio_log_warning (vif, "gso is not enabled");
+		}
+	      else
+		{
+		  vif->gso_enabled = 1;
+		}
 	    }
-	  else
+	  else if (args->checksum_offload_enabled)
 	    {
-	      vif->gso_enabled = 1;
-	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	      if (virtio_pci_enable_checksum_offload (vm, vif))
+		{
+		  virtio_log_warning (vif, "checksum offload is not enabled");
+		}
+	      else
+		{
+		  vif->csum_offload_enabled = 1;
+		}
 	    }
 	}
       if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
@@ -1214,6 +1245,16 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	  if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
 	    virtio_log_warning (vif, "multiqueue is not set");
 	}
+    }
+  if (vif->features & (VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |
+		       VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6)))
+    {
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+	VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+    }
+  else if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CSUM))
+    {
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
     }
   return;
 

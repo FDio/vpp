@@ -44,6 +44,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.features = feature_mask;
       else if (unformat (line_input, "gso-enabled"))
 	args.gso_enabled = 1;
+      else if (unformat (line_input, "csum-enabled"))
+	args.checksum_offload_enabled = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -59,7 +61,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>] [gso-enabled]",
+                "[feature-mask <hex-mask>] [gso-enabled] [csum-enabled]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */
