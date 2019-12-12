@@ -411,6 +411,7 @@ fs_try_alloc_fifo_batch (fifo_segment_header_t * fsh,
       c = (svm_fifo_chunk_t *) (fmem + sizeof (*f));
       c->start_byte = 0;
       c->length = rounded_data_size;
+      c->rb_index = RBTREE_TNIL_INDEX;
       c->next = fss->free_chunks[fl_index];
       fss->free_chunks[fl_index] = c;
       fmem += hdrs + rounded_data_size;
@@ -505,11 +506,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
 
   /* Initialize chunks and rbtree for multi-chunk fifos */
   if (f->start_chunk->next != f->start_chunk)
-    {
-      void *oldheap = ssvm_push_heap (fsh->ssvm_sh);
-      svm_fifo_init_chunks (f);
-      ssvm_pop_heap (oldheap);
-    }
+    svm_fifo_init_chunks (f);
 
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
@@ -540,7 +537,6 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   fifo_segment_header_t *fsh = fs->h;
   svm_fifo_chunk_t *cur, *next;
   fifo_segment_slice_t *fss;
-  void *oldheap;
   int fl_index;
 
   ASSERT (f->refcnt > 0);
@@ -575,6 +571,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
       fl_index = fs_freelist_for_size (cur->length);
       ASSERT (fl_index < vec_len (fss->free_chunks));
       cur->next = fss->free_chunks[fl_index];
+      cur->rb_index = RBTREE_TNIL_INDEX;
       fss->free_chunks[fl_index] = cur;
       fss->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
       cur = next;
@@ -584,9 +581,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   f->start_chunk = f->end_chunk = f->new_chunks = 0;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
 
-  oldheap = ssvm_push_heap (fsh->ssvm_sh);
   svm_fifo_free_chunk_lookup (f);
-  ssvm_pop_heap (oldheap);
 
   /* not allocated on segment heap */
   svm_fifo_free_ooo_data (f);
@@ -766,25 +761,21 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   fl_index = fs_freelist_for_size (chunk_size);
   fss = fsh_slice_get (fsh, f->slice_index);
 
-  oldheap = ssvm_push_heap (fsh->ssvm_sh);
-
   c = fss->free_chunks[fl_index];
 
   if (!c)
     {
       fsh_check_mem (fsh);
       if (fsh_n_free_bytes (fsh) < chunk_size)
-	{
-	  ssvm_pop_heap (oldheap);
-	  return -1;
-	}
+	return -1;
 
+      oldheap = ssvm_push_heap (fsh->ssvm_sh);
       c = svm_fifo_chunk_alloc (chunk_size);
+      ssvm_pop_heap (oldheap);
+
       if (!c)
-	{
-	  ssvm_pop_heap (oldheap);
-	  return -1;
-	}
+	return -1;
+
       fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
     }
   else
@@ -796,7 +787,6 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
 
   svm_fifo_add_chunk (f, c);
 
-  ssvm_pop_heap (oldheap);
   return 0;
 }
 
@@ -806,10 +796,8 @@ fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f)
   fifo_segment_header_t *fsh = fs->h;
   svm_fifo_chunk_t *cur, *next;
   fifo_segment_slice_t *fss;
-  void *oldheap;
   int fl_index;
 
-  oldheap = ssvm_push_heap (fsh->ssvm_sh);
   cur = svm_fifo_collect_chunks (f);
 
   fss = fsh_slice_get (fsh, f->slice_index);
@@ -822,8 +810,6 @@ fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f)
       fss->free_chunks[fl_index] = cur;
       cur = next;
     }
-
-  ssvm_pop_heap (oldheap);
 
   return 0;
 }
