@@ -142,12 +142,10 @@ more:
 }
 
 static_always_inline void
-fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
+fill_checksum_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 {
   u8 l4_proto = 0;
-  u8 l4_hdr_sz = 0;
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-
     {
       ethernet_header_t *eh =
 	(ethernet_header_t *) vlib_buffer_get_current (b0);
@@ -176,8 +174,78 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 	    (ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
 	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
 	  l4_proto = ip4->protocol;
+	  b0->flags |= (VNET_BUFFER_F_IS_IP4);
 	  b0->flags |=
-	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+	    (VNET_BUFFER_F_L2_HDR_OFFSET_VALID
+	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+	}
+      else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+	{
+	  ip6_header_t *ip6 =
+	    (ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
+	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+	  /* FIXME IPv6 EH traversal */
+	  l4_proto = ip6->protocol;
+	  b0->flags |= (VNET_BUFFER_F_IS_IP6 |
+			VNET_BUFFER_F_L2_HDR_OFFSET_VALID
+			| VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+			VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+	}
+      if (l4_proto == IP_PROTOCOL_TCP)
+	{
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
+						vnet_buffer
+						(b0)->l4_hdr_offset);
+	  tcp->checksum = 0;
+	}
+      else if (l4_proto == IP_PROTOCOL_UDP)
+	{
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
+						vnet_buffer
+						(b0)->l4_hdr_offset);
+	  udp->checksum = 0;
+	}
+    }
+}
+
+static_always_inline void
+fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
+{
+  u8 l4_proto = 0;
+  u8 l4_hdr_sz = 0;
+  if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
+    {
+      ethernet_header_t *eh =
+	(ethernet_header_t *) vlib_buffer_get_current (b0);
+      u16 ethertype = clib_net_to_host_u16 (eh->type);
+      u16 l2hdr_sz = sizeof (ethernet_header_t);
+
+      if (ethernet_frame_is_tagged (ethertype))
+	{
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
+	}
+
+      vnet_buffer (b0)->l2_hdr_offset = 0;
+      vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
+      if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+	{
+	  ip4_header_t *ip4 =
+	    (ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
+	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+	  l4_proto = ip4->protocol;
+	  b0->flags |= (VNET_BUFFER_F_IS_IP4);
 	  b0->flags |=
 	    (VNET_BUFFER_F_L2_HDR_OFFSET_VALID
 	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
@@ -234,7 +302,7 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 static_always_inline uword
 virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
-			    int gso_enabled)
+			    int gso_enabled, int checksum_offload_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
@@ -282,6 +350,8 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr);
+	  else if (checksum_offload_enabled)
+	    fill_checksum_buffer_flags (b0, hdr);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = vif->sw_if_index;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -385,10 +455,13 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
       {
 	if (vif->gso_enabled)
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 1);
+					      dq->queue_id, 1, 0);
+	else if (vif->csum_offload_enabled)
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
+					      dq->queue_id, 0, 1);
 	else
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 0);
+					      dq->queue_id, 0, 0);
       }
   }
 
