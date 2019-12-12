@@ -50,9 +50,12 @@ typedef int (*rb_tree_lt_fn) (u32 a, u32 b);
 void rb_tree_init (rb_tree_t * rt);
 rb_node_index_t rb_tree_add (rb_tree_t * rt, u32 key);
 rb_node_index_t rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque);
+rb_node_index_t rb_tree_add_w_parent (rb_tree_t * rt, u32 key, uword opaque,
+                                      rb_node_t *parent);
 rb_node_index_t rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque,
 				    rb_tree_lt_fn ltfn);
 void rb_tree_del (rb_tree_t * rt, u32 key);
+void rb_tree_del_node (rb_tree_t * rt, rb_node_t * z);
 void rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn);
 void rb_tree_free_nodes (rb_tree_t * rt);
 u32 rb_tree_n_nodes (rb_tree_t * rt);
