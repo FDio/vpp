@@ -82,6 +82,7 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
   rb_tree_t chunk_lookup;	/**< rbtree for chunk lookup */
+  rb_tree_t ooo_deq_lookup;
   u8 flags;			/**< fifo flags */
   u8 slice_index;		/**< segment slice for fifo */
 

@@ -448,9 +448,9 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
   /* Initialize chunks and rbtree for multi-chunk fifos */
   if (f->start_chunk->next != f->start_chunk)
     {
-      void *oldheap = ssvm_push_heap (fsh->ssvm_sh);
+//      void *oldheap = ssvm_push_heap (fsh->ssvm_sh);
       svm_fifo_init_chunks (f);
-      ssvm_pop_heap (oldheap);
+//      ssvm_pop_heap (oldheap);
     }
 
   /* If rx fifo type add to active fifos list. When cleaning up segment,
