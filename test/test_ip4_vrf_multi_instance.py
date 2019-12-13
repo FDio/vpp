@@ -68,8 +68,8 @@ import socket
 
 import scapy.compat
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ARP
+from scapy.layers.l2 import Ether, ARP
+from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp

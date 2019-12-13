@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from socket import AF_INET, AF_INET6
+from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
 
@@ -12,7 +12,6 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
-from scapy.utils import inet_pton, inet_ntop
 
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
