@@ -1118,6 +1118,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	{
 	  devconf->tso = DPDK_DEVICE_TSO_OFF;
 	}
+      else if (unformat (input, "devargs %s", &devconf->devargs))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1428,21 +1430,31 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	/* copy tso config from default device */
 	_(tso)
 
+	/* copy tso config from default device */
+	_(devargs)
+
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
-      {
-	tmp = format (0, "-w%c", 0);
-	vec_add1 (conf->eal_init_args, tmp);
-	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
-	vec_add1 (conf->eal_init_args, tmp);
-      }
+    {
+	  tmp = format (0, "-w%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	  if (devconf->devargs)
+	  {
+	    tmp = format (0, "%U,%s", format_vlib_pci_addr, &devconf->pci_addr, devconf->devargs, 0);
+	  }
+	  else
+	  {
+	    tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
+	  }
+	  vec_add1 (conf->eal_init_args, tmp);
+    }
     else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
-      {
-	tmp = format (0, "-b%c", 0);
-	vec_add1 (conf->eal_init_args, tmp);
-	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
-	vec_add1 (conf->eal_init_args, tmp);
-      }
+    {
+	  tmp = format (0, "-b%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	  tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+    }
   }));
   /* *INDENT-ON* */
 
