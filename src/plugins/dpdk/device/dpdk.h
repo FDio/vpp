@@ -336,6 +336,8 @@ typedef struct
   u32 hqos_enabled;
   dpdk_device_config_hqos_t hqos;
   u8 tso;
+  u8 *devargs;
+
 #define DPDK_DEVICE_TSO_DEFAULT 0
 #define DPDK_DEVICE_TSO_OFF 1
 #define DPDK_DEVICE_TSO_ON  2

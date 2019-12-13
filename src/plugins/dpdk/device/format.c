@@ -564,6 +564,9 @@ format_dpdk_device (u8 * s, va_list * args)
 	      format_white_space, indent + 2, format_dpdk_link_status, xd);
   s = format (s, "%Uflags: %U\n",
 	      format_white_space, indent + 2, format_dpdk_device_flags, xd);
+  if (di.device->devargs && di.device->devargs->args)
+    s = format (s, "%UDevargs: %s\n",
+		format_white_space, indent + 2, di.device->devargs->args);
   s = format (s, "%Urx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
 	      format_white_space, indent + 2, xd->rx_q_used, di.max_rx_queues,
