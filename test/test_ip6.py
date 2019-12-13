@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import socket
+from socket import inet_pton, inet_ntop
 import unittest
 
 from parameterized import parameterized
@@ -13,7 +13,6 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
-from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid
 from six import moves
