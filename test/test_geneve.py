@@ -8,7 +8,7 @@ from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from scapy.layers.geneve import GENEVE
+from scapy.contrib.geneve import GENEVE
 from scapy.utils import atol
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
