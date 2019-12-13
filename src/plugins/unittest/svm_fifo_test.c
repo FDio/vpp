@@ -2692,6 +2692,109 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+sfifo_test_fifo_compare3 (vlib_main_t * vm, unformat_input_t * input)
+{
+  segment_manager_t* sm;
+  fifo_segment_t* fs;
+  svm_fifo_t *f;
+  u32 max_fifo_size = 2 << 20; /* 2MB */
+  u32 chunk_size = 4 << 10; /* 4KB */
+  int rv, __clib_unused verbose = 0;
+  u8* test_data;
+  u32 test_data_len;
+  u32 i;
+  u32 seed;
+  uword to_receive;
+  u32 to_enqueue, to_dequeue;
+  u64 loop_count, get_max_at, failure_count, t1, t2;
+
+  static char* labels[] = { "ordinary FIFO",
+                           "single-thread-owned FIFO",
+                           "single-thread-owned and margin-kept FIFO"};
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+        verbose = 1;
+    }
+
+  test_data_len = 2 << 20; /* 2MB */
+  test_data = clib_mem_alloc (test_data_len);
+
+  /* allocate segment */
+  sm = segment_manager_alloc();
+  segment_manager_init (sm, 32 << 20, 0); /* 32MB */
+  fs = segment_manager_get_segment_w_lock (sm, 0);
+  segment_manager_segment_writer_unlock (sm);
+
+  seed = rand();
+
+  for (i = 0; i < 3; ++i)
+    {
+      f = svm_fifo_create (chunk_size);
+      f->segment_manager = segment_manager_index (sm);
+      f->segment_index = 0;
+
+      if (i > 0)
+        f->flags |= SVM_FIFO_F_SINGLE_THREAD_OWNED;
+      if (i > 1)
+        f->flags |= SVM_FIFO_F_KEEP_MARGIN;
+
+      srand(seed);
+      to_receive = (4L << 30); /* 40GB */
+      loop_count = get_max_at = failure_count = 0;
+
+      t1 = unix_time_now_nsec();
+      while (to_receive || svm_fifo_max_dequeue_cons (f))
+        {
+          ++loop_count;
+          switch (rand() % 2)
+            {
+              case 0:
+                if (to_receive)
+                  {
+                    if (svm_fifo_max_enqueue_prod (f))
+                      {
+                      {
+                        to_enqueue = svm_fifo_max_enqueue_prod (f) * ((rand() % 3) + 8) / 10;
+                        to_enqueue = clib_min (to_enqueue, to_receive);
+                        to_enqueue = clib_min (to_enqueue, test_data_len);
+                        to_receive -= svm_fifo_enqueue (f, to_enqueue, test_data);
+                      }
+                  }
+                break;
+              case 1:
+                if (svm_fifo_max_dequeue_cons (f))
+                  {
+                    to_dequeue = svm_fifo_max_dequeue_cons (f) * ((rand() % 10) + 1) / 10;
+                    svm_fifo_dequeue (f, to_dequeue, test_data);
+                  }
+                rv = 0;
+                while (rv == 0
+                       && (svm_fifo_max_enqueue_prod (f) < (f->size * 0.3))
+                       && (f->size < max_fifo_size))
+                  {
+                    rv = f->new_chunks ? -1 : fifo_segment_grow_fifo (fs, f, chunk_size);
+                    failure_count += ((rv != 0) ? 1 : 0);
+                    if (f->size >= max_fifo_size && !get_max_at)
+                      get_max_at = loop_count;
+                  }
+                break;
+            }
+        }
+      t2 = unix_time_now_nsec();
+
+      clib_warning ("%s : loop count %u, final fifo size %u, (get max-fifo at %u), failure count %d, duration %llu (ns)", labels[i], loop_count, f->size, get_max_at, failure_count, t2 - t1);
+
+      clib_mem_free (f);
+    }
+
+  clib_mem_free (test_data);
+
+  return 0;
+}
+
 static clib_error_t *
 svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	       vlib_cli_command_t * cmd_arg)
@@ -2726,6 +2829,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_shrink (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
+      else if (unformat (input, "compare3"))
+        res = sfifo_test_fifo_compare3 (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = sfifo_test_fifo1 (vm, input)))
@@ -2784,6 +2889,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 
 	  if ((res = sfifo_test_fifo_shrink (vm, input)))
 	    goto done;
+
+          if ((res = sfifo_test_fifo_compare3 (vm, input)))
+            goto done;
 
 	  str = "all";
 	  unformat_init_cstring (input, str);

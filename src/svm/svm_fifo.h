@@ -71,6 +71,7 @@ typedef enum svm_fifo_flag_
   SVM_FIFO_F_COLLECT_CHUNKS = 1 << 3,
   SVM_FIFO_F_LL_TRACKED = 1 << 4,
   SVM_FIFO_F_SINGLE_THREAD_OWNED = 1 << 5,
+  SVM_FIFO_F_KEEP_MARGIN = 1 << 6,
 } svm_fifo_flag_t;
 
 typedef struct _svm_fifo
@@ -231,7 +232,9 @@ f_cursize (svm_fifo_t * f, u32 head, u32 tail)
 static inline u32
 f_free_count (svm_fifo_t * f, u32 head, u32 tail)
 {
-  return (f->nitems - f_cursize (f, head, tail));
+  return ((f->flags & SVM_FIFO_F_KEEP_MARGIN) && (head > tail))
+    ? (f->nitems - f_cursize (f, f->head_chunk->start_byte, tail))
+    : (f->nitems - f_cursize (f, head, tail));
 }
 
 /**
