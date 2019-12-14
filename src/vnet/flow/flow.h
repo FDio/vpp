@@ -21,10 +21,15 @@
 #include <vnet/l3_types.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ethernet/packet.h>
 
 #define foreach_flow_type \
+  /* l2 flow*/ \
+  _(ETHERNET, ethernet, "ethernet") \
+  /* l4 flow*/ \
   _(IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple") \
   _(IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple") \
+  /* L4 tunnel flow*/ \
   _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
   _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan") \
   _(IP4_GTPC, ip4_gtpc, "ipv4-gtpc") \
@@ -35,6 +40,9 @@
   _(IP6_GTPU, ip6_gtpu, "ipv6-gtpu") \
   _(IP6_GTPU_IP4, ip6_gtpu_ip4, "ipv6-gtpu-ipv4") \
   _(IP6_GTPU_IP6, ip6_gtpu_ip6, "ipv6-gtpu-ipv6")
+
+#define foreach_flow_entry_ethernet \
+  _fe(ethernet_header_t, eth_hdr)
 
 #define foreach_flow_entry_ip4_n_tuple \
   _fe(ip4_address_and_mask_t, src_addr) \
