@@ -294,6 +294,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   ip6_address_and_mask_t inner_ip6d = { };
   ip_port_and_mask_t sport = { };
   ip_port_and_mask_t dport = { };
+  u16 eth_type;
+  bool ethernet_set = false;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -312,6 +314,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_ENABLE;
       else if (unformat (line_input, "disable"))
 	action = FLOW_DISABLE;
+      else if (unformat (line_input, "eth-type %U",
+			 unformat_ethernet_type_host_byte_order, &eth_type))
+	ethernet_set = true;
       else if (unformat (line_input, "src-ip %U",
 			 unformat_ip4_address_and_mask, &ip4s))
 	outer_ip4_set = true;
@@ -336,7 +341,6 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "inner-ip6-dst-ip %U",
 			 unformat_ip6_address_and_mask, &inner_ip6d))
 	inner_ip6_set = true;
-
       else if (unformat (line_input, "src-port %U", unformat_ip_port_and_mask,
 			 &sport))
 	;
@@ -390,6 +394,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "Please specify at least one action");
 
       /* Adjust the flow type */
+      if (ethernet_set == true)
+	outer_type = VNET_FLOW_TYPE_ETHERNET;
       if (outer_ip4_set == true)
 	outer_type = VNET_FLOW_TYPE_IP4_N_TUPLE;
       else if (outer_ip6_set == true)
@@ -402,7 +408,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       if (outer_type == VNET_FLOW_TYPE_UNKNOWN)
 	return clib_error_return (0, "Please specify a supported flow type");
 
-      if (outer_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
+      if (outer_type == VNET_FLOW_TYPE_ETHERNET)
+	type = VNET_FLOW_TYPE_ETHERNET;
+      else if (outer_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
 	{
 	  type = VNET_FLOW_TYPE_IP4_N_TUPLE;
 
@@ -450,6 +458,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       //assign specific field values per flow type
       switch (type)
 	{
+	case VNET_FLOW_TYPE_ETHERNET:
+	  memset (&flow.ethernet, 0, sizeof (flow.ethernet));
+	  flow.ethernet.eth_hdr.type = eth_type;
+	  break;
+
 	case VNET_FLOW_TYPE_IP4_N_TUPLE:
 	case VNET_FLOW_TYPE_IP4_GTPC:
 	case VNET_FLOW_TYPE_IP4_GTPU:

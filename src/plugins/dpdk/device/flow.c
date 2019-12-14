@@ -28,12 +28,39 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
+/* check if flow is L2 flow */
+#define FLOW_IS_L2_LAYER(f) \
+  (f->type == VNET_FLOW_TYPE_ETHERNET)
+
+/* check if flow is L4 type */
+#define FLOW_IS_L4_LAYER(f) \
+  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) || \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE))
+
+/* check if flow is L4 tunnel type */
+#define FLOW_IS_L4_TUNNEL_LAYER(f) \
+  ((f->type >= VNET_FLOW_TYPE_IP4_VXLAN) || \
+   (f->type <= VNET_FLOW_TYPE_IP6_GTPU_IP6))
+
 /* constant structs */
 static const struct rte_flow_attr ingress = {.ingress = 1 };
+
+static inline bool
+mac_address_is_all_zero (const u8 addr[6])
+{
+  int i = 0;
+
+  for (i = 0; i < 6; i++)
+    if (addr[i] != 0)
+      return false;
+
+  return true;
+}
 
 static int
 dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
+  struct rte_flow_item_eth eth[2] = { };
   struct rte_flow_item_ipv4 ip4[2] = { };
   struct rte_flow_item_ipv4 inner_ip4[2] = { };
   struct rte_flow_item_ipv6 ip6[2] = { };
@@ -70,8 +97,42 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   /* Ethernet */
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_ETH;
-  item->spec = NULL;
-  item->mask = NULL;
+  if (f->type == VNET_FLOW_TYPE_ETHERNET)
+    {
+      vnet_flow_ethernet_t *te = &f->ethernet;
+
+      clib_memset (&eth[0], 0, sizeof (eth[0]));
+      clib_memset (&eth[1], 0, sizeof (eth[1]));
+
+      /* check if SMAC/DMAC/Ether_type assigned */
+      if (!mac_address_is_all_zero (te->eth_hdr.dst_address))
+	{
+	  clib_memcpy_fast (&eth[0].dst, &te->eth_hdr.dst_address,
+			    sizeof (eth[0].dst));
+	  clib_memset (&eth[1].dst, 0xFF, sizeof (eth[1].dst));
+	}
+
+      if (!mac_address_is_all_zero (te->eth_hdr.src_address))
+	{
+	  clib_memcpy_fast (&eth[0].src, &te->eth_hdr.src_address,
+			    sizeof (eth[0].src));
+	  clib_memset (&eth[1].src, 0xFF, sizeof (eth[1].src));
+	}
+
+      if (te->eth_hdr.type)
+	{
+	  eth[0].type = clib_host_to_net_u16 (te->eth_hdr.type);
+	  eth[1].type = clib_host_to_net_u16 (0xFFFF);
+	}
+
+      item->spec = eth;
+      item->mask = eth + 1;
+    }
+  else
+    {
+      item->spec = NULL;
+      item->mask = NULL;
+    }
 
   /* VLAN */
   if ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||
@@ -82,6 +143,9 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       item->spec = NULL;
       item->mask = NULL;
     }
+
+  if (FLOW_IS_L2_LAYER (f))
+    goto pattern_end;
 
   /* IP */
   vec_add2 (items, item, 1);
@@ -420,6 +484,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	}
     }
 
+pattern_end:
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_END;
 
@@ -578,6 +643,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
   switch (flow->type)
     {
+    case VNET_FLOW_TYPE_ETHERNET:
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
     case VNET_FLOW_TYPE_IP6_N_TUPLE:
     case VNET_FLOW_TYPE_IP4_VXLAN:
