@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9415556a_c580baa7",
+        "filename": "test/test_bier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-14T19:04:18Z",
+      "side": 1,
+      "message": "Remove the identity list comprehension \nb \u003d [b\u0027a\u0027, b\u0027b\u0027, b\u0027c\u0027]\nb \u003d\u003d [_b for _b in b]\nTrue",
+      "range": {
+        "startLine": 170,
+        "startChar": 16,
+        "endLine": 170,
+        "endChar": 61
+      },
+      "revId": "e97fddc161b2698af42e1541eda2c312f0376beb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
