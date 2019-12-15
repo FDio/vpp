@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "04f0a3d0_21e351f7",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-15T20:51:54Z",
+      "side": 1,
+      "message": "use: fib_table_get_table_id()",
+      "revId": "c51e34d403c7875882c9229af95d186943953cb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
