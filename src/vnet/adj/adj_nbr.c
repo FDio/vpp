@@ -221,12 +221,12 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 		     u32 sw_if_index)
 {
     adj_index_t adj_index;
-    ip_adjacency_t *adj;
 
     adj_index = adj_nbr_find(nh_proto, link_type, nh_addr, sw_if_index);
 
     if (ADJ_INDEX_INVALID == adj_index)
     {
+        ip_adjacency_t *adj;
 	vnet_main_t *vnm;
 
 	vnm = vnet_get_main();
@@ -256,6 +256,7 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 	adj_lock(adj_index);
     }
 
+    adj_delegate_adj_created(adj_get(adj_index));
     return (adj_index);
 }
 
@@ -283,6 +284,8 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
     adj_nbr_update_rewrite(adj_index,
 			   ADJ_NBR_REWRITE_FLAG_COMPLETE,
 			   rewrite);
+
+    adj_delegate_adj_created(adj_get(adj_index));
 
     return (adj_index);
 }

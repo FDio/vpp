@@ -140,6 +140,20 @@ adj_delegate_adj_deleted (ip_adjacency_t *adj)
     vec_reset_length(adj->ia_delegates);
 }
 
+void
+adj_delegate_adj_created (ip_adjacency_t *adj)
+{
+    adj_delegate_vft_t *vft;
+
+    vec_foreach(vft, ad_vfts)
+    {
+        if (vft->adv_adj_created)
+        {
+            vft->adv_adj_created(adj_get_index(adj));
+        }
+    }
+}
+
 u8*
 adj_delegate_format (u8* s, ip_adjacency_t *adj)
 {

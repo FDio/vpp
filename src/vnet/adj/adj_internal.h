@@ -136,6 +136,7 @@ extern int adj_bfd_is_up (adj_index_t ai);
  * Adj delegates
  */ 
 extern void adj_delegate_adj_deleted(ip_adjacency_t *adj);
+extern void adj_delegate_adj_created(ip_adjacency_t *adj);
 extern u8* adj_delegate_format(u8* s, ip_adjacency_t *adj);
 
 #endif

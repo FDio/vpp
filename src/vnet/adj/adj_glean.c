@@ -91,6 +91,8 @@ adj_glean_add_or_lock (fib_protocol_t proto,
         adj_lock(adj_get_index(adj));
     }
 
+    adj_delegate_adj_created(adj);
+
     return (adj_get_index(adj));
 }
 
