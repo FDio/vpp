@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e54d0dfd_301ed27d",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-16T04:29:27Z",
+      "side": 1,
+      "message": "could you please create an inline function for this choice. named something descriptive like, ipsec_sa_assign_thread().",
+      "revId": "10123e23c6b987d174bab48b4b5cab64d94208b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
