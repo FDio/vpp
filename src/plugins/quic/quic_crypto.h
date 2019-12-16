@@ -45,7 +45,7 @@ typedef struct quic_encrypt_cb_ctx_
 } quic_encrypt_cb_ctx;
 
 void
-quic_crypto_finalize_send_packet_cb (quicly_finalize_send_packet_t * _self,
+quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
 				     quicly_conn_t * conn,
 				     ptls_cipher_context_t * hp,
 				     ptls_aead_context_t * aead,
