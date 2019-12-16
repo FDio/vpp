@@ -234,12 +234,16 @@ define ipsec_sad_entry_add_del_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_id_index - Tunnel interface to protect
+    @param nh - The peer/next-hop on the tunnel to which the traffic
+                should be protected. For a P2P interface set this to the
+                all 0s address.
     @param sa_in - The ID [set] of inbound SAs
     @param sa_out - The ID of outbound SA
 */
 typedef ipsec_tunnel_protect
 {
   vl_api_interface_index_t sw_if_index;
+  vl_api_address_t nh;
   u32 sa_out;
   u8 n_sa_in;
   u32 sa_in[n_sa_in];
@@ -259,6 +263,7 @@ autoreply define ipsec_tunnel_protect_del
   u32 context;
 
   vl_api_interface_index_t sw_if_index;
+  vl_api_address_t nh;
 };
 
 /**
