@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-  NHRP objects
+  TEIB objects
 """
 
 from vpp_object import VppObject
@@ -15,7 +15,7 @@ def find_teib(test, ne):
     return False
 
 
-class VppNhrp(VppObject):
+class VppTeib(VppObject):
 
     def __init__(self, test, itf, peer, nh, table_id=0):
         self._test = test
@@ -34,6 +34,7 @@ class VppNhrp(VppObject):
                 'nh': self.nh,
             })
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         r = self._test.vapi.teib_entry_add_del(

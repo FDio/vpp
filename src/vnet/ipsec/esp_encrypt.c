@@ -23,6 +23,7 @@
 #include <vnet/crypto/crypto.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/esp.h>
 
 #define foreach_esp_encrypt_next                   \
@@ -319,13 +320,13 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (is_tun)
 	{
 	  /* we are on a ipsec tunnel's feature arc */
-	  u32 next0;
+	  u32 next0 = 0;
 	  config_index = b[0]->current_config_index;
-	  sa_index0 = *(u32 *) vnet_feature_next_with_data (&next0, b[0],
-							    sizeof
-							    (sa_index0));
-	  vnet_buffer (b[0])->ipsec.sad_index = sa_index0;
+	  vnet_feature_next (&next0, b[0]);
 	  next[0] = next0;
+	  vnet_buffer (b[0])->ipsec.sad_index =
+	    sa_index0 = ipsec_tun_protect_get_sa_out
+	    (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 	}
       else
 	sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;

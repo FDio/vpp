@@ -12,7 +12,7 @@ from scapy.volatile import RandMAC, RandIP
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
-from vpp_teib import VppNhrp
+from vpp_teib import VppTeib
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from util import ppp, ppc
@@ -1067,9 +1067,9 @@ class TestGRE(VppTestCase):
                 route_via_tun.add_vpp_config()
 
                 #
-                # Add a NHRP entry resolves the peer
+                # Add a TEIB entry resolves the peer
                 #
-                teib = VppNhrp(self, gre_if,
+                teib = VppTeib(self, gre_if,
                                gre_if._remote_hosts[ii].ip4,
                                itf._remote_hosts[ii].ip4)
                 teib.add_vpp_config()
@@ -1093,7 +1093,7 @@ class TestGRE(VppTestCase):
                 self.verify_decapped_4o4(self.pg0, rx, tx_i)
 
                 #
-                # delete and re-add the NHRP
+                # delete and re-add the TEIB
                 #
                 teib.remove_vpp_config()
                 self.send_and_assert_no_replies(self.pg0, tx_e)
@@ -1152,9 +1152,9 @@ class TestGRE(VppTestCase):
                 route_addr = "4::%d" % ii
 
                 #
-                # Add a NHRP entry resolves the peer
+                # Add a TEIB entry resolves the peer
                 #
-                teib = VppNhrp(self, gre_if,
+                teib = VppTeib(self, gre_if,
                                gre_if._remote_hosts[ii].ip6,
                                itf._remote_hosts[ii].ip6)
                 teib.add_vpp_config()
@@ -1188,7 +1188,7 @@ class TestGRE(VppTestCase):
                 self.verify_decapped_6o6(self.pg0, rx, tx_i)
 
                 #
-                # delete and re-add the NHRP
+                # delete and re-add the TEIB
                 #
                 teib.remove_vpp_config()
                 self.send_and_assert_no_replies(self.pg0, tx_e)

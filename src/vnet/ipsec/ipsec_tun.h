@@ -77,6 +77,8 @@ typedef struct ipsec_tun_protect_t_
 
   ipsec_ep_t itp_tun;
 
+  ip_address_t *itp_key;
+
 } ipsec_tun_protect_t;
 
 #define FOR_EACH_IPSEC_PROTECT_INPUT_SAI(_itp, _sai, body) \
@@ -96,21 +98,28 @@ typedef struct ipsec_tun_protect_t_
   }                                                        \
 }
 
-extern int ipsec_tun_protect_update_one (u32 sw_if_index, u32 sa_out,
-					 u32 sa_in);
-extern int ipsec_tun_protect_update (u32 sw_if_index, u32 sa_out,
-				     u32 * sa_ins);
-extern int ipsec_tun_protect_update_in (u32 sw_if_index, u32 sa_in);
-extern int ipsec_tun_protect_update_out (u32 sw_if_index, u32 sa_out);
+extern int ipsec_tun_protect_update_one (u32 sw_if_index,
+					 const ip_address_t * nh,
+					 u32 sa_out, u32 sa_in);
+extern int ipsec_tun_protect_update (u32 sw_if_index,
+				     const ip_address_t * nh,
+				     u32 sa_out, u32 * sa_ins);
+extern int ipsec_tun_protect_update_in (u32 sw_if_index,
+					const ip_address_t * nh, u32 sa_in);
+extern int ipsec_tun_protect_update_out (u32 sw_if_index,
+					 const ip_address_t * nh, u32 sa_out);
 
-extern int ipsec_tun_protect_del (u32 sw_if_index);
+extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh);
 
 typedef walk_rc_t (*ipsec_tun_protect_walk_cb_t) (index_t itpi, void *arg);
 extern void ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn,
 				    void *cttx);
-extern index_t ipsec_tun_protect_find (u32 sw_if_index);
+extern void ipsec_tun_protect_walk_itf (u32 sw_if_index,
+					ipsec_tun_protect_walk_cb_t fn,
+					void *cttx);
 
 extern u8 *format_ipsec_tun_protect (u8 * s, va_list * args);
+extern u8 *format_ipsec_tun_protect_index (u8 * s, va_list * args);
 
 // FIXME
 extern vlib_node_registration_t ipsec4_tun_input_node;
@@ -119,7 +128,7 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * DP API
  */
-extern ipsec_tun_protect_t *ipsec_protect_pool;
+extern ipsec_tun_protect_t *ipsec_tun_protect_pool;
 
 typedef struct ipsec_tun_lkup_result_t_
 {
@@ -137,7 +146,17 @@ typedef struct ipsec_tun_lkup_result_t_
 always_inline ipsec_tun_protect_t *
 ipsec_tun_protect_get (u32 index)
 {
-  return (pool_elt_at_index (ipsec_protect_pool, index));
+  return (pool_elt_at_index (ipsec_tun_protect_pool, index));
+}
+
+extern index_t *ipsec_tun_protect_sa_by_adj_index;
+always_inline index_t
+ipsec_tun_protect_get_sa_out (adj_index_t ai)
+{
+  ASSERT (vec_len (ipsec_tun_protect_sa_by_adj_index) > ai);
+  ASSERT (INDEX_INVALID != ipsec_tun_protect_sa_by_adj_index[ai]);
+
+  return (ipsec_tun_protect_sa_by_adj_index[ai]);
 }
 
 /*
