@@ -606,7 +606,7 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   if (n->sibling_of)
     s = format (s, ", sibling-of %s", n->sibling_of);
 
-  vlib_cli_output (vm, "node %s, type %s, state %U, index %d%v\n",
+  vlib_cli_output (vm, "node %v, type %s, state %U, index %d%v\n",
 		   n->name, type_str, format_vlib_node_state, vm, n,
 		   n->index, s);
   vec_reset_length (s);
