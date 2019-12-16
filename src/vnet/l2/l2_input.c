@@ -83,7 +83,7 @@ format_l2_input_features (u8 * s, va_list * args)
 
   feature_bitmap &= ~L2INPUT_FEAT_DROP;	/* Not a feature */
   int i;
-  for (i = L2INPUT_N_FEAT; i >= 0; i--)
+  for (i = L2INPUT_N_FEAT - 1; i >= 0; i--)
     {
       if (feature_bitmap & (1 << i))
 	{
