@@ -21,23 +21,20 @@ rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version)
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
 
-RDMA_BUILD_TYPE:=Release
+RDMA_BUILD_TYPE:=RelWithDebInfo
 ifeq ($(RDMA_CORE_DEBUG),y)
 RDMA_BUILD_TYPE:=Debug
 endif
 
-RDMA_FILES := include/infiniband/verbs.h \
-	      include/infiniband/verbs_api.h \
-	      include/infiniband/ib_user_ioctl_verbs.h \
-	      include/rdma/ib_user_verbs.h \
-	      lib/statics/libibverbs.a \
-	      util/librdma_util.a \
-	      lib/statics/libmlx5.a
+BUILD_FILES := include/ \
+	       lib/statics/libibverbs.a \
+	       lib/statics/libmlx5.a \
+	       util/librdma_util.a
 
 define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
-	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 \
+	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 -DIN_PLACE=1 \
 	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) \
 	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)
 endef
@@ -48,9 +45,9 @@ endef
 
 define  rdma-core_install_cmds
 	mkdir -p $(rdma-core_install_dir)
-	tar -C $(rdma-core_build_dir) --xform='s|/statics/|/|' -hc $(RDMA_FILES) | tar -C $(rdma-core_install_dir) -xv > $(rdma-core_install_log)
-	mv -v $(rdma-core_install_dir)/util/librdma_util.a $(rdma-core_install_dir)/lib >> $(rdma-core_install_log)
-	rmdir $(rdma-core_install_dir)/util
+	tar -C $(rdma-core_build_dir) -hc $(BUILD_FILES) | tar -C $(rdma-core_install_dir) -xv > $(rdma-core_install_log)
+	find $(rdma-core_install_dir) -name '*.a' -exec mv -v {} $(rdma-core_install_dir)/lib \; >> $(rdma-core_install_log)
+	rmdir -v $(rdma-core_install_dir)/util $(rdma-core_install_dir)/lib/statics >> $(rdma-core_install_log)
 endef
 
 $(eval $(call package,rdma-core))

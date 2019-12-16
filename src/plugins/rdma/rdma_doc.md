@@ -44,13 +44,13 @@ vpp# set int st rdma-0 up
 vpp# ping 1.1.1.100`
 ```
 
-### Containers support
+## Containers support
 It should work in containers as long as:
  - the `ib_uverbs` module is loaded
  - the device nodes `/dev/infiniband/uverbs[0-9]+` are usable from the
    container (but see [security considerations](#Security considerations))
 
-### SR-IOV VFs support
+## SR-IOV VFs support
 It should work on SR-IOV VFs the same way it does with PFs. Because of VFs
 security containment features, make sure the MAC address of the rdma VPP
 interface matches the MAC address assigned to the underlying VF.
@@ -67,4 +67,13 @@ VF is configured in trusted mode and spoof-checking is disabled (of course, be
 aware of the [security considerations](#Security considerations)):
 ```
 host# ip l set dev enp94s0f0 vf 0 spoof off trust on
+```
+
+## Direct Verb mode
+Direct Verb allows the driver to access the NIC HW RX/TX rings directly
+instead of having to go through libibverb and suffering associated overhead.
+For supported HW (currently only Mellanox ConnectX4/5), this must be
+explicitely selected at interface creation with the 'mode' parameter:
+```
+vpp# create int rdma host-if enp94s0f2 name rdma-0 mode dv
 ```

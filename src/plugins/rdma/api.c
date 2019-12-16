@@ -18,8 +18,6 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-#include <rdma/rdma.h>
-
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -28,6 +26,8 @@
 #include <rdma/rdma.api_types.h>
 
 #include <vlibapi/api_helper_macros.h>
+
+#include <rdma/rdma.h>
 
 static rdma_mode_t
 rdma_api_mode (vl_api_rdma_mode_t mode)
@@ -87,7 +87,9 @@ vl_api_rdma_delete_t_handler (vl_api_rdma_delete_t * mp)
   hw =
     vnet_get_sup_hw_interface_api_visible_or_null (vnm,
 						   htonl (mp->sw_if_index));
-  if (hw == NULL || rdma_device_class.index != hw->dev_class_index)
+  if (hw == NULL
+      || (rdma_device_class.index != hw->dev_class_index
+	  && rdma_mlx5_device_class.index != hw->dev_class_index))
     {
       rv = VNET_API_ERROR_INVALID_INTERFACE;
       goto reply;
