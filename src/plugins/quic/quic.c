@@ -32,6 +32,8 @@
 #include <quicly/defaults.h>
 #include <picotls.h>
 
+extern quicly_crypto_engine_t quic_crypto_engine;
+
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
 #include <quic/quic_error.def>
@@ -113,8 +115,6 @@ quic_free_packet (quicly_packet_allocator_t * self,
 
 quicly_packet_allocator_t quic_packet_allocator =
   { quic_alloc_packet, quic_free_packet };
-static quicly_finalize_send_packet_t quic_finalize_send_packet_ptr =
-  { quic_crypto_finalize_send_packet_cb };
 
 static int
 quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
@@ -241,7 +241,7 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   quicly_amend_ptls_context (quicly_ctx->tls);
 
   quicly_ctx->packet_allocator = &quic_packet_allocator;
-  quicly_ctx->finalize_send_packet = &quic_finalize_send_packet_ptr;
+  quicly_ctx->crypto_engine = &quic_crypto_engine;
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
@@ -2473,7 +2473,7 @@ quic_init (vlib_main_t * vm)
   quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
+  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
   vec_free (a->name);
   return 0;
 }

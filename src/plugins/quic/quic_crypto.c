@@ -64,6 +64,77 @@ quic_crypto_batch_tx_packets ()
   aead_crypto_nb_tx_packets = 0;
 }
 
+static int
+quic_crypto_setup_cipher (quicly_crypto_engine_t * engine,
+			  quicly_conn_t * conn, size_t epoch, int is_enc,
+			  ptls_cipher_context_t ** hp_ctx,
+			  ptls_aead_context_t ** aead_ctx,
+			  ptls_aead_algorithm_t * aead,
+			  ptls_hash_algorithm_t * hash, const void *secret)
+{
+  uint8_t hpkey[PTLS_MAX_SECRET_SIZE];
+  int ret;
+
+  if (hp_ctx != NULL)
+    *hp_ctx = NULL;
+  *aead_ctx = NULL;
+
+  /* generate new header protection key */
+  if (hp_ctx != NULL)
+    {
+      if ((ret =
+	   ptls_hkdf_expand_label (hash, hpkey, aead->ctr_cipher->key_size,
+				   ptls_iovec_init (secret,
+						    hash->digest_size),
+				   "quic hp", ptls_iovec_init (NULL, 0),
+				   NULL)) != 0)
+	goto Exit;
+      if ((*hp_ctx =
+	   ptls_cipher_new (aead->ctr_cipher, is_enc, hpkey)) == NULL)
+	{
+	  ret = PTLS_ERROR_NO_MEMORY;
+	  goto Exit;
+	}
+    }
+
+  /* generate new AEAD context */
+  if ((*aead_ctx =
+       ptls_aead_new (aead, hash, is_enc, secret,
+		      QUICLY_AEAD_BASE_LABEL)) == NULL)
+    {
+      ret = PTLS_ERROR_NO_MEMORY;
+      goto Exit;
+    }
+  if (QUICLY_DEBUG)
+    {
+      char *secret_hex = quicly_hexdump (secret, hash->digest_size, SIZE_MAX),
+	*hpkey_hex =
+	quicly_hexdump (hpkey, aead->ctr_cipher->key_size, SIZE_MAX);
+      fprintf (stderr, "%s:\n  aead-secret: %s\n  hp-key: %s\n", __FUNCTION__,
+	       secret_hex, hpkey_hex);
+      free (secret_hex);
+      free (hpkey_hex);
+    }
+
+  ret = 0;
+Exit:
+  if (ret != 0)
+    {
+      if (*aead_ctx != NULL)
+	{
+	  ptls_aead_free (*aead_ctx);
+	  *aead_ctx = NULL;
+	}
+      if (*hp_ctx != NULL)
+	{
+	  ptls_cipher_free (*hp_ctx);
+	  *hp_ctx = NULL;
+	}
+    }
+  ptls_clear_memory (hpkey, sizeof (hpkey));
+  return ret;
+}
+
 void
 build_iv (ptls_aead_context_t * ctx, uint8_t * iv, uint64_t seq)
 {
@@ -123,7 +194,7 @@ quic_crypto_finalize_send_packet (quicly_datagram_t * packet)
 
 
 void
-quic_crypto_finalize_send_packet_cb (quicly_finalize_send_packet_t * _self,
+quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
 				     quicly_conn_t * conn,
 				     ptls_cipher_context_t * hp,
 				     ptls_aead_context_t * aead,
@@ -447,6 +518,10 @@ ptls_cipher_suite_t quic_crypto_aes256gcmsha384 = {
 
 ptls_cipher_suite_t *quic_crypto_cipher_suites[] = {
   &quic_crypto_aes256gcmsha384, &quic_crypto_aes128gcmsha256, NULL
+};
+
+quicly_crypto_engine_t quic_crypto_engine = {
+  quic_crypto_setup_cipher, quic_crypto_finalize_send_packet_cb
 };
 
 int
