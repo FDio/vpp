@@ -66,17 +66,22 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
      */
     if (!(FIB_ENTRY_FLAG_LOCAL & src->fes_entry_flags))
     {
-        adj = adj_get(fib_path_list_get_adj(
-			  src->fes_pl,
-			  fib_entry_get_default_chain_type(entry)));
+        adj_index_t ai;
 
-	if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
+        ai = fib_path_list_get_adj(src->fes_pl,
+                                   fib_entry_get_default_chain_type(entry));
+        if (INDEX_INVALID != ai)
         {
-            /*
-             * the connected prefix will link to a glean on a non-p2p
-             * u.interface.
-             */
-            adj->sub_type.glean.receive_addr = entry->fe_prefix.fp_addr;
+            adj = adj_get(ai);
+
+            if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
+            {
+                /*
+                 * the connected prefix will link to a glean on a non-p2p
+                 * u.interface.
+                 */
+                adj->sub_type.glean.receive_addr = entry->fe_prefix.fp_addr;
+            }
         }
     }
 }

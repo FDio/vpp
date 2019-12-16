@@ -999,6 +999,9 @@ class TestGRE(VppTestCase):
             gre_if.config_ip4()
             gre_if.generate_remote_hosts(4)
 
+            self.logger.info(self.vapi.cli("sh adj"))
+            self.logger.info(self.vapi.cli("sh ip fib"))
+
             #
             # for-each peer
             #
@@ -1043,6 +1046,9 @@ class TestGRE(VppTestCase):
                 self.verify_tunneled_4o4(self.pg0, rx, tx,
                                          itf.local_ip4,
                                          gre_if._remote_hosts[ii].ip4)
+
+            gre_if.admin_down()
+            gre_if.unconfig_ip4()
 
 
 if __name__ == '__main__':
