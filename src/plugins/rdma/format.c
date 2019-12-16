@@ -55,13 +55,26 @@ format_rdma_device (u8 * s, va_list * args)
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
   u32 indent = format_get_indent (s);
+  u32 qid;
 
   s = format (s, "netdev: %v\n", rd->linux_ifname);
-  s = format (s, "%Uflags: %U", format_white_space, indent,
+  s = format (s, "%Uflags: %U\n", format_white_space, indent,
 	      format_rdma_device_flags, rd);
   if (rd->error)
-    s = format (s, "\n%Uerror %U", format_white_space, indent,
+    s = format (s, "%Uerror %U\n", format_white_space, indent,
 		format_clib_error, rd->error);
+
+  s = format (s, "%UTX queues statistics\n", format_white_space, indent);
+  vec_foreach_index (qid, rd->txqs)
+  {
+    const rdma_txq_t *txq = vec_elt_at_index (rd->txqs, qid);
+    s =
+      format (s, "%U[%d]: %d free / %d descriptors\n", format_white_space,
+	      indent + 1, (int) qid, (int) RDMA_TXQ_AVAIL_SZ (txq, txq->head,
+							      txq->tail),
+	      (int) RDMA_TXQ_BUF_SZ (txq));
+  }
+
 
   return s;
 }
