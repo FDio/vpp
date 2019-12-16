@@ -639,7 +639,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		    u32 c;
 		  } *ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_string (&vm->elog_main, c->path);
+		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
 		}
 
 	      if (!c->is_mp_safe)
@@ -665,7 +665,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		    u32 c, err;
 		  } *ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_string (&vm->elog_main, c->path);
+		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
 		  if (c_error)
 		    {
 		      vec_add1 (c_error->what, 0);
