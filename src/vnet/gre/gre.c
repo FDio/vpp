@@ -351,6 +351,7 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   u32 ti;
 
   adj = adj_get (ai);
+
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
   is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;

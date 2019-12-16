@@ -530,7 +530,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      if (ipsec_sa_is_set_IS_PROTECT (sa0))
 		{
 		  /*
-		   * Check that the reveal IP header matches that
+		   * Check that the revealed IP header matches that
 		   * of the tunnel we are protecting
 		   */
 		  const ipsec_tun_protect_t *itp;

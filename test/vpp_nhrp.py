@@ -34,6 +34,7 @@ class VppNhrp(VppObject):
                 'nh': self.nh,
             })
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         r = self._test.vapi.nhrp_entry_add_del(
