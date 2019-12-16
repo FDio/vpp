@@ -337,9 +337,13 @@ rdma_async_event_cleanup (rdma_device_t * rd)
 }
 
 static clib_error_t *
-rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
+rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd,
+			 rdma_mode_t mode)
 {
-  return ethernet_register_interface (vnm, rdma_device_class.index,
+  return ethernet_register_interface (vnm,
+				      RDMA_MODE_DV == mode ?
+				      rdma_mlx5_device_class.index :
+				      rdma_device_class.index,
 				      rd->dev_instance, rd->hwaddr.bytes,
 				      &rd->hw_if_index, rdma_flag_change);
 }
@@ -471,7 +475,61 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
 }
 
 static clib_error_t *
-rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
+rdma_txq_init_mlx5 (vlib_main_t * vm, rdma_device_t * rd, rdma_txq_t * txq)
+{
+  rdma_mlx5_wqe_t *tmpl = (void *) txq->dv_wqe_tmpl;
+  struct mlx5dv_cq dv_cq;
+  struct mlx5dv_qp dv_qp;
+  struct mlx5dv_obj obj = {
+    .cq = {
+	   .in = txq->cq,
+	   .out = &dv_cq,
+	   },
+    .qp = {
+	   .in = txq->qp,
+	   .out = &dv_qp,
+	   },
+  };
+
+  if (mlx5dv_init_obj (&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP))
+    return clib_error_return_unix (0, "DV init obj failed");
+
+  if ((1 << txq->bufs_log2sz) > dv_qp.sq.wqe_cnt
+      || !is_pow2 (dv_qp.sq.wqe_cnt)
+      || sizeof (rdma_mlx5_wqe_t) != dv_qp.sq.stride
+      || (uword) dv_qp.sq.buf % sizeof (rdma_mlx5_wqe_t))
+    return clib_error_return (0, "Unsupported DV SQ parameters");
+
+  if ((1 << txq->bufs_log2sz) > dv_cq.cqe_cnt
+      || !is_pow2 (dv_cq.cqe_cnt)
+      || sizeof (struct mlx5_cqe64) != dv_cq.cqe_size
+      || (uword) dv_cq.buf % sizeof (struct mlx5_cqe64))
+    return clib_error_return (0, "Unsupported DV CQ parameters");
+
+  /* get SQ and doorbell addresses */
+  txq->dv_sq_wqes = dv_qp.sq.buf;
+  txq->dv_sq_dbrec = dv_qp.dbrec;
+  txq->dv_sq_db = dv_qp.bf.reg;
+  txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+
+  /* get CQ and doorbell addresses */
+  txq->dv_cq_cqes = dv_cq.buf;
+  txq->dv_cq_dbrec = dv_cq.dbrec;
+  txq->dv_cq_log2sz = min_log2 (dv_cq.cqe_cnt);
+
+  /* init tx desc template */
+  STATIC_ASSERT_SIZEOF (txq->dv_wqe_tmpl, sizeof (*tmpl));
+  mlx5dv_set_ctrl_seg (&tmpl->ctrl, 0, MLX5_OPCODE_SEND, 0, txq->qp->qp_num,
+		       0, RDMA_MLX5_WQE_DS, 0, ~0);
+  /* FIXME: mlx5dv_set_eth_seg(&tmpl->eseg, MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM, 0, 0, 0); */
+  mlx5dv_set_data_seg (&tmpl->dseg, 0, rd->lkey, 0);
+
+  return 0;
+}
+
+static clib_error_t *
+rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
+	       rdma_mode_t mode)
 {
   rdma_txq_t *txq;
   struct ibv_qp_init_attr qpia;
@@ -480,7 +538,8 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 
   vec_validate_aligned (rd->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (rd->txqs, qid);
-  txq->size = n_desc;
+  ASSERT (is_pow2 (n_desc));
+  txq->bufs_log2sz = min_log2 (n_desc);
   vec_validate_aligned (txq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
   if ((txq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
@@ -514,12 +573,16 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   qpa.qp_state = IBV_QPS_RTS;
   if (ibv_modify_qp (txq->qp, &qpa, qp_flags) != 0)
     return clib_error_return_unix (0, "Modify QP (send) Failed");
-  return 0;
+
+  txq->ibv_cq = txq->cq;
+  txq->ibv_qp = txq->qp;
+
+  return RDMA_MODE_DV == mode ? rdma_txq_init_mlx5 (vm, rd, txq) : 0;
 }
 
 static clib_error_t *
 rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
-	       u32 txq_size, u32 rxq_num)
+	       u32 txq_size, u32 rxq_num, rdma_mode_t mode)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
@@ -532,6 +595,13 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
   if ((rd->pd = ibv_alloc_pd (rd->ctx)) == 0)
     return clib_error_return_unix (0, "PD Alloc Failed");
 
+  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
+			    bm->buffer_mem_size,
+			    IBV_ACCESS_LOCAL_WRITE)) == 0)
+    return clib_error_return_unix (0, "Register MR Failed");
+
+  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
+
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
   /*
@@ -540,7 +610,7 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
    * the broacast packets we sent
    */
   for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((err = rdma_txq_init (vm, rd, i, txq_size)))
+    if ((err = rdma_txq_init (vm, rd, i, txq_size, mode)))
       return err;
 
   for (i = 0; i < rxq_num; i++)
@@ -548,12 +618,6 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
-
-  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
-			    bm->buffer_mem_size,
-			    IBV_ACCESS_LOCAL_WRITE)) == 0)
-    return clib_error_return_unix (0, "Register MR Failed");
-  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
   return 0;
 }
@@ -602,26 +666,15 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
     }
 
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
+      args->rxq_size > 65535 || args->txq_size > 65535 ||
       !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error =
-	clib_error_return (0, "queue size must be a power of two >= %i",
+	clib_error_return (0,
+			   "queue size must be a power of two between %i and 65535",
 			   VLIB_FRAME_SIZE);
       goto err0;
-    }
-
-  switch (args->mode)
-    {
-    case RDMA_MODE_AUTO:
-      break;
-    case RDMA_MODE_IBV:
-      break;
-    case RDMA_MODE_DV:
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error = clib_error_return (0, "unsupported mode");
-      goto err0;
-      break;
     }
 
   dev_list = ibv_get_device_list (&n_devs);
@@ -688,10 +741,11 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
     }
 
   if ((args->error =
-       rdma_dev_init (vm, rd, args->rxq_size, args->txq_size, args->rxq_num)))
+       rdma_dev_init (vm, rd, args->rxq_size, args->txq_size, args->rxq_num,
+		      args->mode)))
     goto err2;
 
-  if ((args->error = rdma_register_interface (vnm, rd)))
+  if ((args->error = rdma_register_interface (vnm, rd, args->mode)))
     goto err2;
 
   if ((args->error = rdma_async_event_init (rd)))
@@ -779,9 +833,21 @@ static char *rdma_tx_func_error_strings[] = {
 };
 
 /* *INDENT-OFF* */
+VNET_DEVICE_CLASS (rdma_mlx5_device_class) =
+{
+  .name = "RDMA interface (direct verbs)",
+  .format_device = format_rdma_device,
+  .format_device_name = format_rdma_device_name,
+  .admin_up_down_function = rdma_interface_admin_up_down,
+  .rx_redirect_to_node = rdma_set_interface_next_node,
+  .tx_function_n_errors = RDMA_TX_N_ERROR,
+  .tx_function_error_strings = rdma_tx_func_error_strings,
+  .mac_addr_change_function = rdma_mac_change,
+};
+
 VNET_DEVICE_CLASS (rdma_device_class) =
 {
-  .name = "RDMA interface",
+  .name = "RDMA interface (ibverb)",
   .format_device = format_rdma_device,
   .format_device_name = format_rdma_device_name,
   .admin_up_down_function = rdma_interface_admin_up_down,
