@@ -41,6 +41,19 @@ enum
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
+  struct mlx5_wqe_ctrl_seg ctrl;
+  struct mlx5_wqe_eth_seg eseg;
+  struct mlx5_wqe_data_seg dseg;
+} rdma_mlx5_wqe_t;
+#define RDMA_MLX5_WQE_SZ        sizeof(rdma_mlx5_wqe_t)
+#define RDMA_MLX5_WQE_DS        (RDMA_MLX5_WQE_SZ/sizeof(struct mlx5_wqe_data_seg))
+STATIC_ASSERT (RDMA_MLX5_WQE_SZ == MLX5_SEND_WQE_BB &&
+	       RDMA_MLX5_WQE_SZ % sizeof (struct mlx5_wqe_data_seg) == 0,
+	       "bad size");
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct ibv_cq *cq;
   struct ibv_wq *wq;
@@ -65,14 +78,60 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* following fields are accessed in datapath */
   clib_spinlock_t lock;
+
+  union
+  {
+    struct
+    {
+      /* ibverb datapath. Cache of cq, sq below */
+      struct ibv_cq *ibv_cq;
+      struct ibv_qp *ibv_qp;
+    };
+    struct
+    {
+      /* direct verbs datapath */
+      void *dv_sq_wqes;
+      u32 *dv_sq_dbrec;
+      u64 *dv_sq_db;
+      struct mlx5_cqe64 *dv_cq_cqes;
+      u32 *dv_cq_dbrec;
+    };
+  };
+
+  u32 *bufs;			/* vlib_buffer ring buffer */
+  u16 head;
+  u16 tail;
+  u16 dv_cq_idx;		/* monotonic CQE index (valid only for direct verbs) */
+  u8 bufs_log2sz;		/* log2 vlib_buffer entries */
+  u8 dv_sq_log2sz:4;		/* log2 SQ WQE entries (valid only for direct verbs) */
+  u8 dv_cq_log2sz:4;		/* log2 CQ CQE entries (valid only for direct verbs) */
+    STRUCT_MARK (cacheline1);
+
+  /* WQE template (valid only for direct verbs) */
+  u8 dv_wqe_tmpl[64];
+
+  /* end of 2nd 64-bytes cacheline (or 1st 128-bytes cacheline) */
+    STRUCT_MARK (cacheline2);
+
+  /* fields below are not accessed in datapath */
   struct ibv_cq *cq;
   struct ibv_qp *qp;
-  u32 *bufs;
-  u32 size;
-  u32 head;
-  u32 tail;
+
 } rdma_txq_t;
+STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
+STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
+
+#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
+
+#define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
+#define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
+#define RDMA_TXQ_DV_CQ_SZ(txq)  (1U << (txq)->dv_cq_log2sz)
+
+#define RDMA_TXQ_USED_SZ(head, tail)            ((u16)((u16)(tail) - (u16)(head)))
+#define RDMA_TXQ_AVAIL_SZ(txq, head, tail)      ((u16)(RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
 
 typedef struct
 {
@@ -170,8 +229,11 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")
+#define foreach_rdma_tx_func_error \
+_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
+_(NO_FREE_SLOTS, "no free tx slots") \
+_(SUBMISSION, "tx submission errors") \
+_(COMPLETION, "tx completion errors")
 
 typedef enum
 {
@@ -181,7 +243,7 @@ typedef enum
     RDMA_TX_N_ERROR,
 } rdma_tx_func_error_t;
 
-#endif /* AVF_H */
+#endif /* _RDMA_H_ */
 
 /*
  * fd.io coding-style-patch-verification: ON
