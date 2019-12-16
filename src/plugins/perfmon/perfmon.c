@@ -110,14 +110,8 @@ perfmon_init (vlib_main_t * vm)
   /* Default data collection interval */
   pm->timeout_interval = 2.0;	/* seconds */
   vec_validate (pm->pm_fds, 1);
-  vec_validate (pm->pm_fds[0], vec_len (vlib_mains) - 1);
-  vec_validate (pm->pm_fds[1], vec_len (vlib_mains) - 1);
   vec_validate (pm->perf_event_pages, 1);
-  vec_validate (pm->perf_event_pages[0], vec_len (vlib_mains) - 1);
-  vec_validate (pm->perf_event_pages[1], vec_len (vlib_mains) - 1);
   vec_validate (pm->rdpmc_indices, 1);
-  vec_validate (pm->rdpmc_indices[0], vec_len (vlib_mains) - 1);
-  vec_validate (pm->rdpmc_indices[1], vec_len (vlib_mains) - 1);
   pm->page_size = getpagesize ();
 
   pm->perfmon_table = 0;

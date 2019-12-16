@@ -130,6 +130,10 @@ enable_current_events (perfmon_main_t * pm)
 
   for (i = 0; i < limit; i++)
     {
+      vec_validate (pm->pm_fds[i], vec_len (vlib_mains) - 1);
+      vec_validate (pm->perf_event_pages[i], vec_len (vlib_mains) - 1);
+      vec_validate (pm->rdpmc_indices[i], vec_len (vlib_mains) - 1);
+
       c = vec_elt_at_index (pm->single_events_to_collect,
 			    pm->current_event + i);
 
@@ -169,6 +173,7 @@ enable_current_events (perfmon_main_t * pm)
 	      close (fd);
 	      return;
 	    }
+	  CLIB_MEM_UNPOISON (p, pm->page_size);
 	}
       else
 	p = 0;
@@ -239,12 +244,18 @@ disable_events (perfmon_main_t * pm)
 	clib_unix_warning ("disable ioctl");
 
       if (pm->perf_event_pages[i][my_thread_index])
-	if (munmap (pm->perf_event_pages[i][my_thread_index],
-		    pm->page_size) < 0)
-	  clib_unix_warning ("munmap");
+	{
+	  if (munmap (pm->perf_event_pages[i][my_thread_index],
+		      pm->page_size) < 0)
+	    clib_unix_warning ("munmap");
+	  CLIB_MEM_POISON (pm->perf_event_pages[i][my_thread_index],
+			   pm->page_size);
+	  pm->perf_event_pages[i][my_thread_index] = 0;
+	}
 
       (void) close (pm->pm_fds[i][my_thread_index]);
       pm->pm_fds[i][my_thread_index] = 0;
+
     }
 }
 
