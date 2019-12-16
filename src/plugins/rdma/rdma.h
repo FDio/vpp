@@ -24,6 +24,16 @@
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
 
+/*
+ * FIXME: VPP macro always_inline clashes with GCC attribute always_inline
+ * used in external libraries :*(
+ */
+#undef always_inline
+#include <infiniband/mlx5dv.h>
+#define always_inline static_always_inline
+
+#define RDMA_TX_RETRIES 5
+
 #define foreach_rdma_device_flags \
   _(0, ERROR, "error") \
   _(1, ADMIN_UP, "admin-up") \
@@ -39,6 +49,19 @@ enum
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
+  struct mlx5_wqe_ctrl_seg ctrl;
+  struct mlx5_wqe_eth_seg eseg;
+  struct mlx5_wqe_data_seg dseg;
+  u8 pad_[];
+} rdma_mlx5_wqe_t;
+#define RDMA_MLX5_WQE_SZ STRUCT_OFFSET_OF(rdma_mlx5_wqe_t, pad_)
+#define RDMA_MLX5_WQE_DS (RDMA_MLX5_WQE_SZ/16)
+STATIC_ASSERT_SIZEOF (rdma_mlx5_wqe_t, MLX5_SEND_WQE_BB);
+STATIC_ASSERT (0 == RDMA_MLX5_WQE_SZ % 16, "bad size");
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct ibv_cq *cq;
   struct ibv_wq *wq;
@@ -51,14 +74,59 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* following fields are accessed in datapath */
   clib_spinlock_t lock;
+
+  union
+  {
+    struct
+    {
+      /* ibverb datapath. Cache of cq, sq below */
+      struct ibv_cq *ibv_cq;
+      struct ibv_qp *ibv_qp;
+    };
+    struct
+    {
+      /* direct verbs datapath */
+      void *dv_sq_wqes;
+      u32 *dv_sq_dbrec;
+      u64 *dv_sq_db;
+      void *dv_cq_cqes;
+      u32 *dv_cq_dbrec;
+    };
+  };
+
+  /* vlib_buffer ring buffer */
+  u32 *bufs;
+
+  /* monotonic head/tail ringbuffer indexes */
+  u16 head;
+  u16 tail;
+
+  /* monotonic CQE index (valid only for direct verbs) */
+  u16 dv_cq_idx;
+
+  u8 bufs_log2sz;		/* log2 vlib_buffer entries */
+  u8 dv_sq_log2sz:4;		/* log2 SQ WQE entries (valid only for direct verbs) */
+  u8 dv_cq_log2sz:4;		/* log2 CQ CQE entries (valid only for direct verbs) */
+
+  /* end of 1st 64-bytes cacheline */
+    STRUCT_MARK (cacheline1);
+
+  /* WQE template (valid only for direct verbs) */
+  u8 dv_wqe_tmpl[64];
+
+  /* end of 2nd 64-bytes cacheline (or 1st 128-bytes cacheline) */
+    STRUCT_MARK (cacheline2);
+
+  /* fields below are not accessed in datapath */
   struct ibv_cq *cq;
   struct ibv_qp *qp;
-  u32 *bufs;
-  u32 size;
-  u32 head;
-  u32 tail;
+
 } rdma_txq_t;
+STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
+STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
 typedef struct
 {
@@ -129,6 +197,7 @@ void rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd);
 
 extern vlib_node_registration_t rdma_input_node;
 extern vnet_device_class_t rdma_device_class;
+extern vnet_device_class_t rdma_mlx5_device_class;
 
 format_function_t format_rdma_device;
 format_function_t format_rdma_device_name;
@@ -141,8 +210,10 @@ typedef struct
   u32 hw_if_index;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")
+#define foreach_rdma_tx_func_error   \
+_(NO_FREE_SLOTS, "no free tx slots") \
+_(SUBMISSION, "tx submission errors") \
+_(COMPLETION, "tx completion errors")
 
 typedef enum
 {
@@ -152,7 +223,7 @@ typedef enum
     RDMA_TX_N_ERROR,
 } rdma_tx_func_error_t;
 
-#endif /* AVF_H */
+#endif /* _RDMA_H_ */
 
 /*
  * fd.io coding-style-patch-verification: ON

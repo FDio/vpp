@@ -111,6 +111,14 @@
 #define PREDICT_FALSE(x) __builtin_expect((x),0)
 #define PREDICT_TRUE(x) __builtin_expect((x),1)
 
+/*
+ * Compiler barrier
+ *   prevent compiler to reorder memory access accross this boundary
+ *   prevent compiler to cache values in register (force reload)
+ * Not to be confused with CPU memory barrier below
+ */
+#define CLIB_COMPILER_BARRIER() asm volatile ("":::"memory")
+
 /* Full memory barrier (read and write). */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
 
