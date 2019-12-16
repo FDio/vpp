@@ -273,7 +273,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
 
-      itp0 = pool_elt_at_index (ipsec_protect_pool, itr0.tun_index);
+      itp0 = pool_elt_at_index (ipsec_tun_protect_pool, itr0.tun_index);
       vnet_buffer (b[0])->ipsec.sad_index = itr0.sa_index;
       vnet_buffer (b[0])->ipsec.protect_index = itr0.tun_index;
 

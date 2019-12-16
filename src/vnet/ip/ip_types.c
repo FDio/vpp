@@ -94,6 +94,21 @@ ip_address_size (const ip_address_t * a)
   return 0;
 }
 
+bool
+ip_address_is_zero (const ip_address_t * ip)
+{
+  switch (ip_addr_version (ip))
+    {
+    case AF_IP4:
+      return (ip_addr_v4 (ip).as_u32 == 0);
+    case AF_IP6:
+      return (ip_addr_v6 (ip).as_u64[0] == 0 &&
+	      ip_addr_v6 (ip).as_u64[1] == 0);
+      break;
+    }
+  return false;
+}
+
 int
 ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2)
 {
@@ -155,19 +170,41 @@ ip_address_set (ip_address_t * dst, const void *src, u8 version)
   ip_addr_version (dst) = version;
 }
 
-void
-ip_address_to_46 (const ip_address_t * addr,
-		  ip46_address_t * a, fib_protocol_t * proto)
+fib_protocol_t
+ip_address_to_46 (const ip_address_t * addr, ip46_address_t * a)
 {
-  *proto = (AF_IP4 == ip_addr_version (addr) ?
-	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-  switch (*proto)
+  fib_protocol_t proto;
+
+  proto = (AF_IP4 == ip_addr_version (addr) ?
+	   FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+  switch (proto)
     {
     case FIB_PROTOCOL_IP4:
       ip46_address_set_ip4 (a, &addr->ip.v4);
       break;
     case FIB_PROTOCOL_IP6:
       a->ip6 = addr->ip.v6;
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
+
+  return (proto);
+}
+
+void
+ip_address_from_46 (const ip46_address_t * nh,
+		    fib_protocol_t fproto, ip_address_t * ip)
+{
+  switch (fproto)
+    {
+    case FIB_PROTOCOL_IP4:
+      clib_memset (ip, 0, sizeof (*ip));
+      ip_address_set (ip, &nh->ip4, AF_IP4);
+      break;
+    case FIB_PROTOCOL_IP6:
+      ip_address_set (ip, &nh->ip6, AF_IP6);
       break;
     default:
       ASSERT (0);

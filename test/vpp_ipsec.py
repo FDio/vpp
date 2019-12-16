@@ -272,13 +272,16 @@ class VppIpsecTunProtect(VppObject):
     VPP IPSEC tunnel protection
     """
 
-    def __init__(self, test, itf, sa_out, sas_in):
+    def __init__(self, test, itf, sa_out, sas_in, nh=None):
         self.test = test
         self.itf = itf
         self.sas_in = []
         for sa in sas_in:
             self.sas_in.append(sa.id)
         self.sa_out = sa_out.id
+        self.nh = nh
+        if not self.nh:
+            self.nh = "0.0.0.0"
 
     def update_vpp_config(self, sa_out, sas_in):
         self.sas_in = []
@@ -290,10 +293,11 @@ class VppIpsecTunProtect(VppObject):
                 'sw_if_index': self.itf._sw_if_index,
                 'n_sa_in': len(self.sas_in),
                 'sa_out': self.sa_out,
-                'sa_in': self.sas_in})
+                'sa_in': self.sas_in,
+                'nh': self.nh})
 
     def object_id(self):
-        return "ipsec-tun-protect-%s" % self.itf
+        return "ipsec-tun-protect-%s-%s" % (self.itf, self.nh)
 
     def add_vpp_config(self):
         self.test.vapi.ipsec_tunnel_protect_update(
@@ -301,17 +305,20 @@ class VppIpsecTunProtect(VppObject):
                 'sw_if_index': self.itf._sw_if_index,
                 'n_sa_in': len(self.sas_in),
                 'sa_out': self.sa_out,
-                'sa_in': self.sas_in})
+                'sa_in': self.sas_in,
+                'nh': self.nh})
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
         self.test.vapi.ipsec_tunnel_protect_del(
-            sw_if_index=self.itf.sw_if_index)
+            sw_if_index=self.itf.sw_if_index,
+            nh=self.nh)
 
     def query_vpp_config(self):
         bs = self.test.vapi.ipsec_tunnel_protect_dump(
             sw_if_index=self.itf.sw_if_index)
         for b in bs:
-            if b.tun.sw_if_index == self.itf.sw_if_index:
+            if b.tun.sw_if_index == self.itf.sw_if_index and \
+               self.nh == str(b.tun.nh):
                 return True
         return False
