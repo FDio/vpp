@@ -215,12 +215,13 @@ clib_mem_init (void *memory, uword memory_size)
   else
     heap = create_mspace (memory_size, 1 /* locked */ );
 
+  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
+
   clib_mem_set_heap (heap);
 
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
 
-  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
   return heap;
 }
 

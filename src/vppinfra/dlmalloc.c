@@ -4139,6 +4139,7 @@ int mspace_is_heap_object (mspace msp, void *p)
   return 0;
 }
 
+CLIB_NOSANITIZE_ADDR
 void *mspace_least_addr (mspace msp)
 {
   mstate ms = (mstate) msp;
@@ -4152,6 +4153,7 @@ void mspace_disable_expand (mspace msp)
   disable_expand (ms);
 }
 
+CLIB_NOSANITIZE_ADDR
 int mspace_enable_disable_trace (mspace msp, int enable)
 {
   mstate ms = (mstate)msp;
