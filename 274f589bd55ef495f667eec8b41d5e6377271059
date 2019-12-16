@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b479c55a_bf1cf697",
+        "filename": "src/vnet/arp/arp.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-16T14:08:24Z",
+      "side": 1,
+      "message": "Really?",
+      "range": {
+        "startLine": 19,
+        "startChar": 12,
+        "endLine": 19,
+        "endChar": 34
+      },
+      "revId": "274f589bd55ef495f667eec8b41d5e6377271059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
