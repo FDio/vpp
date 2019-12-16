@@ -247,7 +247,7 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
 
     ladj = lisp_gpe_adjacency_get (paths[ii].lisp_adj);
 
-    ip_address_to_46 (&ladj->remote_rloc, &rpaths[ii].frp_addr, &fp);
+    fp = ip_address_to_46 (&ladj->remote_rloc, &rpaths[ii].frp_addr);
 
     rpaths[ii].frp_proto = fib_proto_to_dpo (fp);
     rpaths[ii].frp_sw_if_index = ladj->sw_if_index;

@@ -163,6 +163,26 @@ ip_address_decode (const vl_api_address_t * in, ip46_address_t * out)
   return (ip_address_union_decode (&in->un, in->af, out));
 }
 
+void
+ip_address_decode2 (const vl_api_address_t * in, ip_address_t * out)
+{
+  switch (clib_net_to_host_u32 (in->af))
+    {
+    case ADDRESS_IP4:
+      clib_memset (out, 0, sizeof (*out));
+      clib_memcpy (&ip_addr_v4 (out), &in->un.ip4, sizeof (ip_addr_v4 (out)));
+      out->version = AF_IP4;
+      break;
+    case ADDRESS_IP6:
+      clib_memcpy (&ip_addr_v6 (out), &in->un.ip6, sizeof (ip_addr_v6 (out)));
+      out->version = AF_IP6;
+      break;
+    default:
+      ASSERT (!"Unknown address family in API address type");
+      break;
+    }
+}
+
 static void
 ip_address_union_encode (const ip46_address_t * in,
 			 vl_api_address_family_t af,
@@ -194,6 +214,22 @@ ip_address_encode (const ip46_address_t * in,
       break;
     }
   ip_address_union_encode (in, out->af, &out->un);
+}
+
+void
+ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
+{
+  switch (in->version)
+    {
+    case AF_IP4:
+      out->af = clib_net_to_host_u32 (ADDRESS_IP4);
+      ip4_address_encode (&in->ip.v4, out->un.ip4);
+      break;
+    case AF_IP6:
+      out->af = clib_net_to_host_u32 (ADDRESS_IP6);
+      ip6_address_encode (&in->ip.v6, out->un.ip6);
+      break;
+    }
 }
 
 void
