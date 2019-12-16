@@ -72,8 +72,7 @@ vl_api_teib_send_one (index_t nei, void *arg)
   const teib_entry_t *ne;
   const fib_prefix_t *pfx;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_TEIB_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
 

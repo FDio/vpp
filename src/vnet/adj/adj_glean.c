@@ -149,8 +149,7 @@ adj_glean_interface_state_change (vnet_main_t * vnm,
     fib_protocol_t proto;
     ip_adjacency_t *adj;
 
-
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
     {
 	if (sw_if_index >= vec_len(adj_gleans[proto]) ||
 	    ADJ_INDEX_INVALID == adj_gleans[proto][sw_if_index])
@@ -242,7 +241,7 @@ adj_glean_interface_delete (vnet_main_t * vnm,
 	return (NULL);
     }
 
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
     {
 	if (sw_if_index >= vec_len(adj_gleans[proto]) ||
 	    ADJ_INDEX_INVALID == adj_gleans[proto][sw_if_index])

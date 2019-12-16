@@ -116,6 +116,7 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_tunnel_protect_update_reply_t *rmp;
   u32 sw_if_index, ii, *sa_ins = NULL;
+  ip_address_t nh;
   int rv;
 
   sw_if_index = ntohl (mp->tunnel.sw_if_index);
@@ -127,7 +128,9 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
   for (ii = 0; ii < mp->tunnel.n_sa_in; ii++)
     vec_add1 (sa_ins, ntohl (mp->tunnel.sa_in[ii]));
 
-  rv = ipsec_tun_protect_update (sw_if_index,
+  ip_address_decode2 (&mp->tunnel.nh, &nh);
+
+  rv = ipsec_tun_protect_update (sw_if_index, &nh,
 				 ntohl (mp->tunnel.sa_out), sa_ins);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -143,15 +146,17 @@ static void vl_api_ipsec_tunnel_protect_del_t_handler
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_tunnel_protect_del_reply_t *rmp;
-  int rv;
+  ip_address_t nh;
   u32 sw_if_index;
+  int rv;
 
   sw_if_index = ntohl (mp->sw_if_index);
 
   VALIDATE_SW_IF_INDEX (mp);
 
 #if WITH_LIBSSL > 0
-  rv = ipsec_tun_protect_del (sw_if_index);
+  ip_address_decode2 (&mp->nh, &nh);
+  rv = ipsec_tun_protect_del (sw_if_index, &nh);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -177,13 +182,13 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
 
   itp = ipsec_tun_protect_get (itpi);
 
-
   mp = vl_msg_api_alloc (sizeof (*mp) + (sizeof (u32) * itp->itp_n_sa_in));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IPSEC_TUNNEL_PROTECT_DETAILS);
   mp->context = ctx->context;
 
   mp->tun.sw_if_index = htonl (itp->itp_sw_if_index);
+  ip_address_encode2 (itp->itp_key, &mp->tun.nh);
 
   mp->tun.sa_out = htonl (itp->itp_out_sa);
   mp->tun.n_sa_in = itp->itp_n_sa_in;
@@ -224,12 +229,8 @@ vl_api_ipsec_tunnel_protect_dump_t_handler (vl_api_ipsec_tunnel_protect_dump_t
     }
   else
     {
-      index_t itpi;
-
-      itpi = ipsec_tun_protect_find (sw_if_index);
-
-      if (INDEX_INVALID != itpi)
-	send_ipsec_tunnel_protect_details (itpi, &ctx);
+      ipsec_tun_protect_walk_itf (sw_if_index,
+				  send_ipsec_tunnel_protect_details, &ctx);
     }
 #else
   clib_warning ("unimplemented");
@@ -680,7 +681,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
       if (rv)
 	goto done;
 
-      rv = ipsec_tun_protect_update_one (sw_if_index,
+      rv = ipsec_tun_protect_update_one (sw_if_index, NULL,
 					 ipsec_tun_mk_output_sa_id
 					 (sw_if_index),
 					 ipsec_tun_mk_input_sa_id
@@ -711,7 +712,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 
       if (NULL != t)
 	{
-	  rv = ipsec_tun_protect_del (t->sw_if_index);
+	  rv = ipsec_tun_protect_del (t->sw_if_index, NULL);
 	  ipip_del_tunnel (t->sw_if_index);
 	}
       else
@@ -859,10 +860,10 @@ vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)
   VALIDATE_SW_IF_INDEX(mp);
 
   if (mp->is_outbound)
-    rv = ipsec_tun_protect_update_out (ntohl (mp->sw_if_index),
+    rv = ipsec_tun_protect_update_out (ntohl (mp->sw_if_index), NULL,
                                        ntohl (mp->sa_id));
   else
-    rv = ipsec_tun_protect_update_in (ntohl (mp->sw_if_index),
+    rv = ipsec_tun_protect_update_in (ntohl (mp->sw_if_index), NULL,
                                        ntohl (mp->sa_id));
 
 #else
