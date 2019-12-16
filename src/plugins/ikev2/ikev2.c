@@ -1578,7 +1578,7 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 
   u32 *sas_in = NULL;
   vec_add1 (sas_in, a->remote_sa_id);
-  rv |= ipsec_tun_protect_update (sw_if_index, a->local_sa_id, sas_in);
+  rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
   hash_set1 (km->sw_if_indices, sw_if_index);
 }
 
@@ -1814,7 +1814,7 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
   if (ipip)
     {
       hash_unset (km->sw_if_indices, ipip->sw_if_index);
-      ipsec_tun_protect_del (ipip->sw_if_index);
+      ipsec_tun_protect_del (ipip->sw_if_index, NULL);
       ipsec_sa_unlock_id (a->remote_sa_id);
       ipsec_sa_unlock_id (a->local_sa_id);
       ipip_del_tunnel (ipip->sw_if_index);

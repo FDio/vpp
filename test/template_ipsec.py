@@ -25,14 +25,14 @@ class IPsecIPv4Params(object):
         self.remote_tun_if_host = '1.1.1.1'
         self.remote_tun_if_host6 = '1111::1'
 
-        self.scapy_tun_sa_id = 10
+        self.scapy_tun_sa_id = 100
         self.scapy_tun_spi = 1001
-        self.vpp_tun_sa_id = 20
+        self.vpp_tun_sa_id = 200
         self.vpp_tun_spi = 1000
 
-        self.scapy_tra_sa_id = 30
+        self.scapy_tra_sa_id = 300
         self.scapy_tra_spi = 2001
-        self.vpp_tra_sa_id = 40
+        self.vpp_tra_sa_id = 400
         self.vpp_tra_spi = 2000
 
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -61,14 +61,14 @@ class IPsecIPv6Params(object):
         self.remote_tun_if_host = '1111:1111:1111:1111:1111:1111:1111:1111'
         self.remote_tun_if_host4 = '1.1.1.1'
 
-        self.scapy_tun_sa_id = 50
+        self.scapy_tun_sa_id = 500
         self.scapy_tun_spi = 3001
-        self.vpp_tun_sa_id = 60
+        self.vpp_tun_sa_id = 600
         self.vpp_tun_spi = 3000
 
-        self.scapy_tra_sa_id = 70
+        self.scapy_tra_sa_id = 700
         self.scapy_tra_spi = 4001
-        self.vpp_tra_sa_id = 80
+        self.vpp_tra_sa_id = 800
         self.vpp_tra_spi = 4000
 
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.

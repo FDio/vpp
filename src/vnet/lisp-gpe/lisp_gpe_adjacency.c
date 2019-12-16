@@ -159,7 +159,7 @@ lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
   fib_protocol_t nh_proto;
   ip46_address_t nh;
 
-  ip_address_to_46 (&ladj->remote_rloc, &nh, &nh_proto);
+  nh_proto = ip_address_to_46 (&ladj->remote_rloc, &nh);
 
   /*
    * walk all the adjacencies on th lisp interface and restack them

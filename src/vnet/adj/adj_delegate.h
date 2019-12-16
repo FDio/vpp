@@ -80,7 +80,7 @@ typedef u8 * (*adj_delegate_format_t)(const adj_delegate_t *aed, u8 *s);
 /**
  * Notification that an adjacency has been created
  */
-typedef u8 * (*adj_delegate_adj_created_t)(adj_index_t ai);
+typedef void (*adj_delegate_adj_created_t)(adj_index_t ai);
 
 /**
  * An ADJ delegate virtual function table

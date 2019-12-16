@@ -71,8 +71,7 @@ vl_api_nhrp_send_one (index_t nei, void *arg)
   vl_api_nhrp_send_t *ctx = arg;
   const nhrp_entry_t *ne;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_NHRP_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
 
