@@ -1475,7 +1475,7 @@ vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
       e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
       if (e->event_type != SESSION_CTRL_EVT_ACCEPTED)
 	{
-	  VDBG (0, "discarded event: %u", e->event_type);
+	  vcl_handle_mq_event (wrk, e);
 	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
 	  continue;
 	}
