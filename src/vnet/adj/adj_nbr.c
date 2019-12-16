@@ -671,7 +671,7 @@ adj_nbr_walk_nh (u32 sw_if_index,
 
     FOR_EACH_VNET_LINK(linkt)
     {
-        ai = adj_nbr_find (FIB_PROTOCOL_IP4, linkt, nh, sw_if_index);
+        ai = adj_nbr_find (adj_nh_proto, linkt, nh, sw_if_index);
 
         if (INDEX_INVALID != ai)
             cb(ai, ctx);
