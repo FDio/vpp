@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f7af30a_10e020e3",
+        "filename": "Makefile",
+        "patchSetId": 7
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-17T14:45:15Z",
+      "side": 1,
+      "message": "Merge artifacts",
+      "range": {
+        "startLine": 488,
+        "startChar": 0,
+        "endLine": 488,
+        "endChar": 12
+      },
+      "revId": "1bef2b846ec53b7b49c4a777e88253a5e9c75275",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
