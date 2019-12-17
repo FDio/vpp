@@ -181,6 +181,11 @@ I:	cop
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/cop/
 
+VNET NHRP
+I:	nhrp
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/nhrp/
+
 Crypto IA32 Plugin
 I:	crypto-ia32
 M:	Damjan Marion <damarion@cisco.com>
