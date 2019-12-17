@@ -1050,6 +1050,84 @@ class TestGRE(VppTestCase):
             gre_if.admin_down()
             gre_if.unconfig_ip4()
 
+    def test_mgre6(self):
+        """ mGRE IPv6 tunnel Tests """
+
+        self.pg0.ip6_enable()
+
+        for itf in self.pg_interfaces[3:]:
+            #
+            # one underlay nh for each overlay/tunnel peer
+            #
+            itf.config_ip6()
+            itf.generate_remote_hosts(4)
+            itf.configure_ipv6_neighbors()
+
+            #
+            # Create an L3 GRE tunnel.
+            #  - set it admin up
+            #  - assign an IP Addres
+            #  - Add a route via the tunnel
+            #
+            gre_if = VppGreInterface(self,
+                                     itf.local_ip6,
+                                     "::",
+                                     mode=(VppEnum.vl_api_gre_tunnel_mode_t.
+                                           GRE_API_TUNNEL_MODE_MP))
+            gre_if.add_vpp_config()
+            gre_if.admin_up()
+            gre_if.config_ip6()
+            gre_if.generate_remote_hosts(4)
+
+            #
+            # for-each peer
+            #
+            for ii in range(1, 4):
+                route_addr = "4::%d" % ii
+
+                #
+                # route traffic via the peer
+                #
+                route_via_tun = VppIpRoute(
+                    self, route_addr, 128,
+                    [VppRoutePath(gre_if._remote_hosts[ii].ip6,
+                                  gre_if.sw_if_index)])
+                route_via_tun.add_vpp_config()
+
+                #
+                # Add a NHRP entry resolves the peer
+                #
+                nhrp = VppNhrp(self, gre_if,
+                               gre_if._remote_hosts[ii].ip6,
+                               itf._remote_hosts[ii].ip6)
+                nhrp.add_vpp_config()
+
+                #
+                # Send a packet stream that is routed into the tunnel
+                #  - packets are GRE encapped
+                #
+                tx = self.create_stream_ip6(self.pg0, "5::5", route_addr)
+                rx = self.send_and_expect(self.pg0, tx, itf)
+                self.verify_tunneled_6o6(self.pg0, rx, tx,
+                                         itf.local_ip6,
+                                         gre_if._remote_hosts[ii].ip6)
+
+                #
+                # delete and re-add the NHRP
+                #
+                nhrp.remove_vpp_config()
+                self.send_and_assert_no_replies(self.pg0, tx)
+
+                nhrp.add_vpp_config()
+                rx = self.send_and_expect(self.pg0, tx, itf)
+                self.verify_tunneled_6o6(self.pg0, rx, tx,
+                                         itf.local_ip6,
+                                         gre_if._remote_hosts[ii].ip6)
+            gre_if.admin_down()
+            gre_if.unconfig_ip4()
+            itf.unconfig_ip6()
+        self.pg0.ip6_disable()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
