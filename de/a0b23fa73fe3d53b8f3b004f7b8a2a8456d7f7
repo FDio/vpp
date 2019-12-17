@@ -1,0 +1,10 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Benoît Ganne <bganne@cisco.com>
+Code-Review+1: Juraj Linkeš <juraj.linkes@pantheon.tech>
+Code-Review+1: Lijian Zhang <Lijian.Zhang@arm.com>
+Code-Review+2: Damjan Marion <dmarion@me.com>
+Submitted-by: Damjan Marion <dmarion@me.com>
+Submitted-at: Tue, 17 Dec 2019 18:06:30 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/23849
+Project: vpp
+Branch: refs/heads/master
