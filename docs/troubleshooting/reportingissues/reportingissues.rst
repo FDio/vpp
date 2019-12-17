@@ -198,9 +198,16 @@ If you start VPP from systemd, you also need to edit
 /lib/systemd/system/vpp.service and uncomment the "LimitCORE=infinity"
 line before restarting VPP.
 
-Vpp core files often appear enormous. Gzip typically compresses them
-to manageable sizes. A multi-GByte corefile often compresses to 10-20
-Mbytes.
+Vpp core files often appear enormous, but they are invariably
+sparse. Gzip compresses them to manageable sizes. A multi-GByte
+corefile often compresses to 10-20 Mbytes.
+
+When decompressing a vpp core file, we suggest using "dd" as shown to
+create a sparse, uncompressed core file:
+
+.. code-block:: console
+
+   $ zcat vpp_core.gz | dd conv=sparse of=vpp_core
 
 Please remember to put compressed core files in accessible places.
 
@@ -208,6 +215,9 @@ Make sure to leave the default stanza "... unix { ... full-coredump
 ... } ... " in the vpp startup configuration file
 /etc/vpp/startup.conf, or to include it in the command line arguments
 passed by orchestration software.
+
+Core files from Private Images
+==============================
 
 Core files from private images require special handling. If it's
 necessary to go that route, copy the **exact** Debian packages (or
@@ -239,8 +249,8 @@ dramatically different binary artifacts. All it takes is a different
 toolchain version.
 
 
-Compressed Core Files
----------------------
+On-the-fly Core File Compression
+--------------------------------
 
 Depending on operational requirements, it's possible to compress
 corefiles as they are generated. Please note that it takes several
