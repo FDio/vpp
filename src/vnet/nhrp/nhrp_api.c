@@ -70,6 +70,7 @@ vl_api_nhrp_send_one (index_t nei, void *arg)
   vl_api_nhrp_details_t *mp;
   vl_api_nhrp_send_t *ctx = arg;
   const nhrp_entry_t *ne;
+  const fib_prefix_t *pfx;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -77,12 +78,15 @@ vl_api_nhrp_send_one (index_t nei, void *arg)
   mp->context = ctx->context;
 
   ne = nhrp_entry_get (nei);
+  pfx = nhrp_entry_get_nh (ne);
 
-  ip_address_encode (&ne->ne_key->nk_peer, IP46_TYPE_ANY, &mp->entry.peer);
-  ip_address_encode (&ne->ne_nh.fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
+  ip_address_encode (nhrp_entry_get_peer (ne), IP46_TYPE_ANY,
+		     &mp->entry.peer);
+  ip_address_encode (&pfx->fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
   mp->entry.nh_table_id =
-    htonl (fib_table_get_table_id (ne->ne_fib_index, ne->ne_nh.fp_proto));
-  mp->entry.sw_if_index = htonl (ne->ne_key->nk_sw_if_index);
+    htonl (fib_table_get_table_id
+	   (nhrp_entry_get_fib_index (ne), pfx->fp_proto));
+  mp->entry.sw_if_index = htonl (nhrp_entry_get_sw_if_index (ne));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

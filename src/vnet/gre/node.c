@@ -239,16 +239,17 @@ gre_input (vlib_main_t * vm,
       len[0] = vlib_buffer_length_in_chain (vm, b[0]);
       len[1] = vlib_buffer_length_in_chain (vm, b[1]);
 
+      /* always search for P2P types in the DP */
       if (is_ipv6)
 	{
 	  gre_mk_key6 (&ip6[0]->dst_address,
 		       &ip6[0]->src_address,
 		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], 0, &key[0].gtk_v6);
+		       type[0], GRE_TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
 	  gre_mk_key6 (&ip6[1]->dst_address,
 		       &ip6[1]->src_address,
 		       vnet_buffer (b[1])->ip.fib_index,
-		       type[1], 0, &key[1].gtk_v6);
+		       type[1], GRE_TUNNEL_MODE_P2P, 0, &key[1].gtk_v6);
 	  matched[0] = gre_match_key6 (&cached_key.gtk_v6, &key[0].gtk_v6);
 	  matched[1] = gre_match_key6 (&cached_key.gtk_v6, &key[1].gtk_v6);
 	}
@@ -257,11 +258,11 @@ gre_input (vlib_main_t * vm,
 	  gre_mk_key4 (ip4[0]->dst_address,
 		       ip4[0]->src_address,
 		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], 0, &key[0].gtk_v4);
+		       type[0], GRE_TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
 	  gre_mk_key4 (ip4[1]->dst_address,
 		       ip4[1]->src_address,
 		       vnet_buffer (b[1])->ip.fib_index,
-		       type[1], 0, &key[1].gtk_v4);
+		       type[1], GRE_TUNNEL_MODE_P2P, 0, &key[1].gtk_v4);
 	  matched[0] = gre_match_key4 (&cached_key.gtk_v4, &key[0].gtk_v4);
 	  matched[1] = gre_match_key4 (&cached_key.gtk_v4, &key[1].gtk_v4);
 	}
@@ -380,7 +381,7 @@ gre_input (vlib_main_t * vm,
 	  gre_mk_key6 (&ip6[0]->dst_address,
 		       &ip6[0]->src_address,
 		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], 0, &key[0].gtk_v6);
+		       type[0], GRE_TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
 	  matched[0] = gre_match_key6 (&cached_key.gtk_v6, &key[0].gtk_v6);
 	}
       else
@@ -388,7 +389,7 @@ gre_input (vlib_main_t * vm,
 	  gre_mk_key4 (ip4[0]->dst_address,
 		       ip4[0]->src_address,
 		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], 0, &key[0].gtk_v4);
+		       type[0], GRE_TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
 	  matched[0] = gre_match_key4 (&cached_key.gtk_v4, &key[0].gtk_v4);
 	}
 
