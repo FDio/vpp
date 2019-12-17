@@ -154,10 +154,11 @@ format_nhrp_entry (u8 * s, va_list * args)
   ne = nhrp_entry_get (nei);
 
   s = format (s, "[%d] ", nei);
-  s = format (s, "%U:%U ", format_vnet_sw_if_index_name,
-	      vnm, ne->ne_key->nk_sw_if_index,
-	      format_ip46_address, &ne->ne_key->nk_peer, IP46_TYPE_ANY);
-  s = format (s, "via %d:%U",
+  s = format (s, "%U:", format_vnet_sw_if_index_name,
+	      vnm, ne->ne_key->nk_sw_if_index);
+  s = format (s, " %U", format_ip46_address,
+	      &ne->ne_key->nk_peer, IP46_TYPE_ANY);
+  s = format (s, " via [%d]:%U",
 	      fib_table_get_table_id (ne->ne_fib_index, ne->ne_nh.fp_proto),
 	      format_fib_prefix, &ne->ne_nh);
 
