@@ -145,7 +145,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 		echo Applying patch: $$(basename $$f) ; \
 		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
 		retCode=$$?; \
-		[ $$retCode -gt 1 ] && exit $$retCode; \
+		[ $$retCode -gt 0 ] && exit $$retCode; \
 	done; \
 	touch $@
 
