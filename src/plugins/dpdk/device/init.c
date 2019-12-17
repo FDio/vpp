@@ -199,6 +199,15 @@ check_l3cache ()
   return 0;
 }
 
+static void
+enable_l4_csum_offload (dpdk_device_t * xd)
+{
+  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -508,12 +517,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
 	      xd->nb_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
 	      xd->nb_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
+	      if (dm->conf->enable_tcp_udp_checksum)
+		enable_l4_csum_offload (xd);
 	      break;
 
 	      /* vmxnet3 */
 	    case VNET_DPDK_PMD_VMXNET3:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+	      if (dm->conf->enable_tcp_udp_checksum)
+		enable_l4_csum_offload (xd);
 	      break;
 
 	    case VNET_DPDK_PMD_AF_PACKET:
