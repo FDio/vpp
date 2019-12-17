@@ -34,7 +34,7 @@ define pipe_create
   u32 client_index;
   u32 context;
   bool is_specified;
-  u32 user_instance;
+  u32 user_instance [default=0xffffffff];
 };
 
 /** \brief Reply for pipe create reply

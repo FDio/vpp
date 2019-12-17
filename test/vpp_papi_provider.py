@@ -1855,10 +1855,6 @@ class VppPapiProvider(object):
              'id': interface_id
              })
 
-    def pipe_delete(self, parent_sw_if_index):
-        return self.api(self.papi.pipe_delete,
-                        {'parent_sw_if_index': parent_sw_if_index})
-
     def svs_table_add_del(self, af, table_id, is_add=1):
         return self.api(self.papi.svs_table_add_del,
                         {
