@@ -428,6 +428,7 @@ vlib_buffer_get_current_pa (vlib_main_t * vm, vlib_buffer_t * b)
     vlib_prefetch_buffer_header (_b, type);		\
   } while (0)
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
 typedef enum
 {
   /* Index is unknown. */
@@ -465,6 +466,7 @@ u8 *vlib_validate_buffers (vlib_main_t * vm,
 			   uword n_buffers,
 			   vlib_buffer_known_state_t known_state,
 			   uword follow_buffer_next);
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
 static_always_inline vlib_buffer_pool_t *
 vlib_get_buffer_pool (vlib_main_t * vm, u8 buffer_pool_index)
@@ -581,10 +583,14 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   n_buffers -= n_left;
 
 done:
+
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   /* Verify that buffers are known free. */
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_FREE);
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
+
   if (PREDICT_FALSE (bm->alloc_callback_fn != 0))
     bm->alloc_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
   return n_buffers;
@@ -694,9 +700,12 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 						     vm->thread_index);
   u32 n_cached, n_empty;
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_ALLOCATED);
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
+
   if (PREDICT_FALSE (bm->free_callback_fn != 0))
     bm->free_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
 

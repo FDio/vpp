@@ -34,6 +34,8 @@
     of typing to make it so.
 */
 
+#define VLIB_VALIDATE_BUFFER_DEBUG
+
 /**
  * Buffer Flags
  */
@@ -482,12 +484,14 @@ typedef struct
   u32 default_data_size;
   clib_mem_page_sz_t log2_page_size;
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   /* Hash table mapping buffer index into number
      0 => allocated but free, 1 => allocated and not-free.
      If buffer index is not in hash table then this buffer
      has never been allocated. */
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
   /* logging */
   vlib_log_class_t log_default;

@@ -6,19 +6,23 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
 u8 *vlib_validate_buffers (vlib_main_t * vm,
 			   u32 * buffers,
 			   uword next_buffer_stride,
 			   uword n_buffers,
 			   vlib_buffer_known_state_t known_state,
 			   uword follow_buffer_next);
+#endif
 
 static clib_error_t *
 test_vlib_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   u32 bi;
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   u8 *res;
+#endif
   u32 allocated;
   vlib_buffer_t *b;
   vlib_buffer_t *last_b;
@@ -82,6 +86,7 @@ test_vlib_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%llx", vlib_buffer_get_pa (vm, b));
   vlib_cli_output (vm, "%llx", vlib_buffer_get_current_pa (vm, b));
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   /* Validate it one way */
   res = vlib_validate_buffer (vm, bi, 1 /* follow_buffer_next */ );
   if (res)
@@ -93,27 +98,32 @@ test_vlib_command_fn (vlib_main_t * vm,
 			       1 /* follow_buffer_next */ );
   if (res)
     return clib_error_return (0, "%v", res);
+#endif
 
   /* Free it */
   vlib_buffer_free_one (vm, bi);
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   /* It will be free */
   res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
 			       1, VLIB_BUFFER_KNOWN_FREE,
 			       1 /* follow_buffer_next */ );
   if (res)
     return clib_error_return (0, "%v", res);
+#endif
 
   /* Misc */
   vlib_cli_output
     (vm, "%u",
      vlib_combined_counter_n_counters (im->combined_sw_if_counters));
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   /* buffer will not be allocated at this point, exercise error path */
   res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
 			       1, VLIB_BUFFER_KNOWN_ALLOCATED,
 			       1 /* follow_buffer_next */ );
   if (res)
     return clib_error_return (0, "%v", res);
+#endif
 
   /* NOTREACHED */
   return 0;
