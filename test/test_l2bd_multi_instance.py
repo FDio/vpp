@@ -115,9 +115,6 @@ class TestL2bdMultiInst(VppTestCase):
             for i in cls.pg_interfaces:
                 i.admin_up()
 
-            # Create list of BDs
-            cls.bd_list = list()
-
             # Create list of deleted BDs
             cls.bd_deleted_list = list()
 
@@ -138,6 +135,8 @@ class TestL2bdMultiInst(VppTestCase):
         """
         self.reset_packet_infos()
         super(TestL2bdMultiInst, self).setUp()
+        # Create list of BDs
+        self.bd_list = []
 
     def tearDown(self):
         """
@@ -412,6 +411,7 @@ class TestL2bdMultiInst(VppTestCase):
         """
         # Config 2
         # Update data of 5 BDs (disable learn, forward, flood, uu-flood)
+        self.create_bd_and_mac_learn(5)
         self.set_bd_flags(self.bd_list[0], learn=False, forward=False,
                           flood=False, uu_flood=False)
         self.set_bd_flags(self.bd_list[1], forward=False)
@@ -438,6 +438,7 @@ class TestL2bdMultiInst(VppTestCase):
         """
         # Config 3
         # Delete 2 BDs
+        self.create_bd_and_mac_learn(5)
         self.delete_bd(2)
 
         # Verify 3
@@ -471,6 +472,7 @@ class TestL2bdMultiInst(VppTestCase):
         """
         # Config 5
         # Delete 5 BDs
+        self.create_bd_and_mac_learn(5)
         self.delete_bd(5)
 
         # Verify 5
