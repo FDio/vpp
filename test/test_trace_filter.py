@@ -5,11 +5,11 @@ import unittest
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
+from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
-from scapy.layers.geneve import GENEVE
 from scapy.compat import raw
 
 
