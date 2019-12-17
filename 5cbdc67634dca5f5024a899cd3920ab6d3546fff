@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32d5612e_e21345f1",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-12-17T18:13:56Z",
+      "side": 1,
+      "message": "Scratching my head trying to understand why this change is needed....",
+      "range": {
+        "startLine": 602,
+        "startChar": 0,
+        "endLine": 605,
+        "endChar": 10
+      },
+      "revId": "5cbdc67634dca5f5024a899cd3920ab6d3546fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
