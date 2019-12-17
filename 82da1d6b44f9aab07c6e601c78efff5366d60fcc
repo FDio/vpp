@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7e492024_4e01fece",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-12-17T18:23:01Z",
+      "side": 1,
+      "message": "I will prefer that we limit allowed chars to [a-z0-9 -]* here...",
+      "range": {
+        "startLine": 4,
+        "startChar": 60,
+        "endLine": 4,
+        "endChar": 61
+      },
+      "revId": "82da1d6b44f9aab07c6e601c78efff5366d60fcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
