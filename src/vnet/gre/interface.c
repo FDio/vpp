@@ -25,6 +25,7 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/nhrp/nhrp.h>
 
 u8 *
 format_gre_tunnel_type (u8 * s, va_list * args)
@@ -93,13 +94,13 @@ gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
   if (!a->is_ipv6)
     {
       gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index,
-		   a->type, a->session_id, &key->gtk_v4);
+		   a->type, a->mode, a->session_id, &key->gtk_v4);
       p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
     }
   else
     {
       gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index,
-		   a->type, a->session_id, &key->gtk_v6);
+		   a->type, a->mode, a->session_id, &key->gtk_v6);
       p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
     }
 
@@ -114,35 +115,29 @@ gre_tunnel_db_add (gre_tunnel_t * t, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
 
-  t->key = clib_mem_alloc (sizeof (*t->key));
-  clib_memcpy (t->key, key, sizeof (*key));
-
   if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
     {
-      hash_set_mem (gm->tunnel_by_key6, &t->key->gtk_v6, t->dev_instance);
+      hash_set_mem_alloc (&gm->tunnel_by_key6, &key->gtk_v6, t->dev_instance);
     }
   else
     {
-      hash_set_mem (gm->tunnel_by_key4, &t->key->gtk_v4, t->dev_instance);
+      hash_set_mem_alloc (&gm->tunnel_by_key4, &key->gtk_v4, t->dev_instance);
     }
 }
 
 static void
-gre_tunnel_db_remove (gre_tunnel_t * t)
+gre_tunnel_db_remove (gre_tunnel_t * t, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
 
   if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
     {
-      hash_unset_mem (gm->tunnel_by_key6, &t->key->gtk_v6);
+      hash_unset_mem_free (&gm->tunnel_by_key6, &key->gtk_v6);
     }
   else
     {
-      hash_unset_mem (gm->tunnel_by_key4, &t->key->gtk_v4);
+      hash_unset_mem_free (&gm->tunnel_by_key4, &key->gtk_v4);
     }
-
-  clib_mem_free (t->key);
-  t->key = NULL;
 }
 
 /**
@@ -202,6 +197,99 @@ gre_tunnel_restack (gre_tunnel_t * gt)
   {
     adj_nbr_walk (gt->sw_if_index, proto, gre_adj_walk_cb, NULL);
   }
+}
+
+static void
+gre_nhrp_mk_key (const gre_tunnel_t * t,
+		 const nhrp_entry_t * ne, gre_tunnel_key_t * key)
+{
+  const fib_prefix_t *nh;
+
+  nh = nhrp_entry_get_nh (ne);
+
+  /* construct the key using mode P2P so it can be found in the DP */
+  if (FIB_PROTOCOL_IP4 == nh->fp_proto)
+    gre_mk_key4 (t->tunnel_src.ip4,
+		 nh->fp_addr.ip4,
+		 nhrp_entry_get_fib_index (ne),
+		 t->type, GRE_TUNNEL_MODE_P2P, 0, &key->gtk_v4);
+  else
+    gre_mk_key6 (&t->tunnel_src.ip6,
+		 &nh->fp_addr.ip6,
+		 nhrp_entry_get_fib_index (ne),
+		 t->type, GRE_TUNNEL_MODE_P2P, 0, &key->gtk_v6);
+}
+
+static void
+gre_nhrp_entry_added (const nhrp_entry_t * ne)
+{
+  gre_main_t *gm = &gre_main;
+  gre_tunnel_key_t key;
+  gre_tunnel_t *t;
+  u32 sw_if_index;
+  u32 t_idx;
+
+  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+    return;
+
+  t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
+
+  if (INDEX_INVALID == t_idx)
+    return;
+
+  t = pool_elt_at_index (gm->tunnels, t_idx);
+
+  gre_nhrp_mk_key (t, ne, &key);
+  gre_tunnel_db_add (t, &key);
+}
+
+static void
+gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
+{
+  gre_main_t *gm = &gre_main;
+  gre_tunnel_key_t key;
+  gre_tunnel_t *t;
+  u32 sw_if_index;
+  u32 t_idx;
+
+  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+    return;
+
+  t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
+
+  if (INDEX_INVALID == t_idx)
+    return;
+
+  t = pool_elt_at_index (gm->tunnels, t_idx);
+
+  gre_nhrp_mk_key (t, ne, &key);
+  gre_tunnel_db_remove (t, &key);
+}
+
+static walk_rc_t
+gre_tunnel_delete_nhrp_walk (index_t nei, void *ctx)
+{
+  gre_tunnel_t *t = ctx;
+  gre_tunnel_key_t key;
+
+  gre_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  gre_tunnel_db_remove (t, &key);
+
+  return (WALK_CONTINUE);
+}
+
+static walk_rc_t
+gre_tunnel_add_nhrp_walk (index_t nei, void *ctx)
+{
+  gre_tunnel_t *t = ctx;
+  gre_tunnel_key_t key;
+
+  gre_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  gre_tunnel_db_add (t, &key);
+
+  return (WALK_CONTINUE);
 }
 
 static int
@@ -315,6 +403,10 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   t->tunnel_dst.fp_addr = a->dst;
 
   gre_tunnel_db_add (t, &key);
+
+  if (t->mode == GRE_TUNNEL_MODE_MP)
+    nhrp_walk_itf (t->sw_if_index, gre_tunnel_add_nhrp_walk, t);
+
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     {
       gre_sn_key_t skey;
@@ -368,6 +460,9 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
+  if (t->mode == GRE_TUNNEL_MODE_MP)
+    nhrp_walk_itf (t->sw_if_index, gre_tunnel_delete_nhrp_walk, t);
+
   sw_if_index = t->sw_if_index;
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
 
@@ -397,7 +492,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
     }
 
   hash_unset (gm->instance_used, t->user_instance);
-  gre_tunnel_db_remove (t);
+  gre_tunnel_db_remove (t, &key);
   pool_put (gm->tunnels, t);
 
   if (sw_if_indexp)
@@ -422,6 +517,9 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 
   if (a->session_id > GTK_SESSION_ID_MAX)
     return VNET_API_ERROR_INVALID_SESSION_ID;
+
+  if (a->mode == GRE_TUNNEL_MODE_MP && !ip46_address_is_zero (&a->dst))
+    return (VNET_API_ERROR_INVALID_DST_ADDRESS);
 
   if (a->is_add)
     return (vnet_gre_tunnel_add (a, outer_fib_index, sw_if_indexp));
@@ -639,10 +737,17 @@ VLIB_CLI_COMMAND (show_gre_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+const static nhrp_vft_t gre_nhrp_vft = {
+  .nv_added = gre_nhrp_entry_added,
+  .nv_deleted = gre_nhrp_entry_deleted,
+};
+
 /* force inclusion from application's main.c */
 clib_error_t *
 gre_interface_init (vlib_main_t * vm)
 {
+  nhrp_register (&gre_nhrp_vft);
+
   return (NULL);
 }
 
