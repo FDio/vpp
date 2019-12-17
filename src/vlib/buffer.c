@@ -111,6 +111,7 @@ format_vlib_buffer_and_data (u8 * s, va_list * args)
   return s;
 }
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
 static u8 *
 format_vlib_buffer_known_state (u8 * s, va_list * args)
 {
@@ -138,6 +139,7 @@ format_vlib_buffer_known_state (u8 * s, va_list * args)
 
   return format (s, "%s", t);
 }
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
 u8 *
 format_vlib_buffer_contents (u8 * s, va_list * va)
@@ -156,6 +158,7 @@ format_vlib_buffer_contents (u8 * s, va_list * va)
   return s;
 }
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
 static u8 *
 vlib_validate_buffer_helper (vlib_main_t * vm,
 			     u32 bi,
@@ -263,7 +266,9 @@ done:
   hash_free (hash);
   return result;
 }
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
 /* When debugging validate that given buffers are either known allocated
    or known free. */
 void
@@ -305,6 +310,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
       clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
     }
 }
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
 void
 vlib_packet_template_init (vlib_main_t * vm,
@@ -809,7 +815,9 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   bm->log_default = vlib_log_register_class ("buffer", 0);
   bm->ext_hdr_size = __vlib_buffer_external_hdr_size;
 
+#ifdef VLIB_VALIDATE_BUFFER_DEBUG
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
+#endif /* VLIB_VALIDATE_BUFFER_DEBUG */
 
   bmp = os_get_online_cpu_node_bitmap ();
   bmp_has_memory = os_get_cpu_with_memory_bitmap ();
