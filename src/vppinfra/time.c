@@ -153,6 +153,38 @@ os_cpu_clock_frequency (void)
 #endif
   f64 cpu_freq;
 
+#ifdef __x86_64__
+  u32 __clib_unused eax = 0, ebx = 0, ecx = 0, edx = 0;
+  clib_get_cpuid (0x00, &eax, &ebx, &ecx, &edx);
+  if (eax >= 0x15)
+    {
+      u32 max_leaf = eax;
+      /*
+         CPUID Leaf 0x15 - Time Stamp Counter and Nominal Core Crystal Clock Info
+         eax - denominator of the TSC/”core crystal clock” ratio
+         ebx - numerator of the TSC/”core crystal clock” ratio
+         ecx - nominal frequency of the core crystal clock in Hz
+         edx - reseved
+       */
+
+      clib_get_cpuid (0x15, &eax, &ebx, &ecx, &edx);
+      if (ebx && ecx)
+	return ecx * ebx / eax;
+
+      if (max_leaf >= 0x16)
+	{
+	  /*
+	     CPUID Leaf 0x16 - Processor Frequency Information Leaf
+	     eax - Bits 15 - 00: Processor Base Frequency (in MHz).
+	   */
+
+	  clib_get_cpuid (0x16, &eax, &ebx, &ecx, &edx);
+	  if (eax)
+	    return 1e6 * (eax & 0xffff);
+	}
+    }
+#endif
+
   if (clib_cpu_supports_invariant_tsc ())
     return estimate_clock_frequency (1e-3);
 
