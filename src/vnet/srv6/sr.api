@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.2.0";
+option version = "1.2.1";
 
 /** \brief SRv6 SID
 */
