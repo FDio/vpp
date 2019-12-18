@@ -119,7 +119,7 @@ typedef struct
 {
   ip6_address_t localsid;		/**< LocalSID IPv6 address */
 
-  u16 localsid_len;
+  u16 localsid_prefix_len;
 
   char end_psp;					/**< Combined with End.PSP? */
 
@@ -331,10 +331,10 @@ extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
-		 char end_psp, u8 behavior, u32 sw_if_index,
-		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
-		 void *ls_plugin_mem);
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+		 u16 localsid_prefix_len, char end_psp, u8 behavior,
+		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
+		 ip46_address_t * nh_addr, void *ls_plugin_mem);
 
 extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
