@@ -506,8 +506,7 @@ again:
   reass = NULL;
   now = vlib_time_now (vm);
 
-  if (!clib_bihash_search_48_8
-      (&rm->hash, (clib_bihash_kv_48_8_t *) kv, (clib_bihash_kv_48_8_t *) kv))
+  if (!clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
     {
       reass =
 	pool_elt_at_index (rm->per_thread_data
@@ -552,18 +551,17 @@ again:
       ++rt->reass_n;
     }
 
-  reass->key.as_u64[0] = ((clib_bihash_kv_48_8_t *) kv)->key[0];
-  reass->key.as_u64[1] = ((clib_bihash_kv_48_8_t *) kv)->key[1];
-  reass->key.as_u64[2] = ((clib_bihash_kv_48_8_t *) kv)->key[2];
-  reass->key.as_u64[3] = ((clib_bihash_kv_48_8_t *) kv)->key[3];
-  reass->key.as_u64[4] = ((clib_bihash_kv_48_8_t *) kv)->key[4];
-  reass->key.as_u64[5] = ((clib_bihash_kv_48_8_t *) kv)->key[5];
+  reass->key.as_u64[0] = kv->kv.key[0];
+  reass->key.as_u64[1] = kv->kv.key[1];
+  reass->key.as_u64[2] = kv->kv.key[2];
+  reass->key.as_u64[3] = kv->kv.key[3];
+  reass->key.as_u64[4] = kv->kv.key[4];
+  reass->key.as_u64[5] = kv->kv.key[5];
   kv->v.reass_index = (reass - rt->pool);
   kv->v.memory_owner_thread_index = vm->thread_index;
   reass->last_heard = now;
 
-  int rv =
-    clib_bihash_add_del_48_8 (&rm->hash, (clib_bihash_kv_48_8_t *) kv, 2);
+  int rv = clib_bihash_add_del_48_8 (&rm->hash, &kv->kv, 2);
   if (rv)
     {
       ip6_full_reass_free (rm, rt, reass);

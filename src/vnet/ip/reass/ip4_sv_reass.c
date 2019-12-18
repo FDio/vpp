@@ -307,8 +307,7 @@ ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
   ip4_sv_reass_t *reass = NULL;
   f64 now = vlib_time_now (rm->vlib_main);
 
-  if (!clib_bihash_search_16_8
-      (&rm->hash, (clib_bihash_kv_16_8_t *) kv, (clib_bihash_kv_16_8_t *) kv))
+  if (!clib_bihash_search_16_8 (&rm->hash, &kv->kv, &kv->kv))
     {
       if (vm->thread_index != kv->v.thread_index)
 	{
@@ -356,13 +355,13 @@ ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
       rt->lru_first = rt->lru_last = reass - rt->pool;
     }
 
-  reass->key.as_u64[0] = ((clib_bihash_kv_16_8_t *) kv)->key[0];
-  reass->key.as_u64[1] = ((clib_bihash_kv_16_8_t *) kv)->key[1];
+  reass->key.as_u64[0] = kv->kv.key[0];
+  reass->key.as_u64[1] = kv->kv.key[1];
   kv->v.reass_index = (reass - rt->pool);
   kv->v.thread_index = vm->thread_index;
   reass->last_heard = now;
 
-  if (clib_bihash_add_del_16_8 (&rm->hash, (clib_bihash_kv_16_8_t *) kv, 1))
+  if (clib_bihash_add_del_16_8 (&rm->hash, &kv->kv, 1))
     {
       ip4_sv_reass_free (vm, rm, rt, reass);
       reass = NULL;
