@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c0812cb_674a5cae",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-18T20:45:58Z",
+      "side": 1,
+      "message": "can you elaborate please on the circumstances where this would be 0.",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34f7befa_a8b49b82",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-18T20:45:58Z",
+      "side": 1,
+      "message": "maybe set this value to flow_hash0, then the load-balance node does not need to generate a new flow hash.",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
