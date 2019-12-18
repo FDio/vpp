@@ -1464,6 +1464,19 @@ quic_on_client_connected (quic_ctx_t * ctx)
   return 0;
 }
 
+static inline void
+quic_update_conn_ctx (quicly_conn_t * conn, quicly_context_t * quicly_context)
+{
+  /* we need to update the quicly_conn on migrate
+   * as it contains a pointer to the crypto context */
+  ptls_context_t **tls;
+  quicly_context_t **_quicly_context;
+  _quicly_context = (quicly_context_t **) conn;
+  *_quicly_context = quicly_context;
+  tls = (ptls_context_t **) quicly_get_tls (conn);
+  *tls = quicly_context->tls;
+}
+
 static void
 quic_receive_connection (void *arg)
 {
@@ -1471,6 +1484,7 @@ quic_receive_connection (void *arg)
   quic_ctx_t *temp_ctx, *new_ctx;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
+  quicly_context_t *quicly_context;
   session_t *udp_session;
 
   temp_ctx = arg;
@@ -1488,6 +1502,9 @@ quic_receive_connection (void *arg)
   new_ctx->c_c_index = new_ctx_id;
 
   conn = new_ctx->conn;
+  quicly_context = quic_get_quicly_ctx_from_ctx (new_ctx);
+  quic_update_conn_ctx (conn, quicly_context);
+
   quic_store_conn_ctx (conn, new_ctx);
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) thread_index) << 32 | (u64) new_ctx_id;
