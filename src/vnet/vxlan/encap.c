@@ -129,6 +129,11 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
 	  vlib_buffer_t * b1 = vlib_get_buffer (vm, bi1);
+          /* set l2.l2_length to compute flow hash if it is zero */
+          if (vnet_buffer(b0)->l2.l2_len == 0)
+            vnet_buffer(b0)->l2.l2_len = sizeof(ethernet_header_t);
+          if (vnet_buffer(b1)->l2.l2_len == 0)
+            vnet_buffer(b1)->l2.l2_len = sizeof(ethernet_header_t);
           u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
           u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
 
@@ -287,6 +292,10 @@ vxlan_encap_inline (vlib_main_t * vm,
                 udp1->checksum = 0xffff;
             }
 
+        /* reset the IP flow hash after add new ip header */
+        vnet_buffer(b0)->ip.flow_hash = 0;
+        vnet_buffer(b1)->ip.flow_hash = 0;
+
 	if (sw_if_index0 == sw_if_index1)
 	{
           vlib_increment_combined_counter (tx_counter, thread_index,
@@ -331,6 +340,9 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+          /* set l2.l2_length to compute flow hash if it is zero */
+          if (vnet_buffer(b0)->l2.l2_len == 0)
+            vnet_buffer(b0)->l2.l2_len = sizeof(ethernet_header_t);
           u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
@@ -423,6 +435,9 @@ vxlan_encap_inline (vlib_main_t * vm,
               if (udp0->checksum == 0)
                 udp0->checksum = 0xffff;
             }
+
+          /* reset the IP flow hash after add new ip header */
+          vnet_buffer(b0)->ip.flow_hash = 0;
 
           vlib_increment_combined_counter (tx_counter, thread_index,
               sw_if_index0, 1, len0);
