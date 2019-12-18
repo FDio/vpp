@@ -1592,6 +1592,7 @@ session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_main_t *sm = &session_main;
   if (!sm->wrk[0].vpp_event_queue)
     return 0;
+  node = vlib_node_get_runtime (vm, session_queue_node.index);
   return session_queue_node_fn (vm, node, frame);
 }
 
