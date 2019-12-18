@@ -1044,6 +1044,18 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       return 0;
     }
 
+  dcm->esp4_enc_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp4_encrypt_node.index, 0);
+  dcm->esp4_enc_tun_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp4_encrypt_tun_node.index, 0);
+  dcm->esp4_dec_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp4_decrypt_node.index, 0);
+  dcm->esp6_enc_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp6_encrypt_node.index, 0);
+  dcm->esp6_enc_tun_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp6_encrypt_tun_node.index, 0);
+  dcm->esp6_dec_fq_index =
+    vlib_frame_queue_main_init (dpdk_esp6_decrypt_node.index, 0);
 
   u32 idx = ipsec_register_esp_backend (vm, im, "dpdk backend",
 					"dpdk-esp4-encrypt",

@@ -129,6 +129,7 @@ add_vpp_plugin(dpdk
   ipsec/crypto_node.c
   ipsec/esp_decrypt.c
   ipsec/esp_encrypt.c
+  ipsec/ipsec_handoff.c
   ipsec/ipsec.c
 
   MULTIARCH_SOURCES
@@ -138,6 +139,7 @@ add_vpp_plugin(dpdk
   ipsec/crypto_node.c
   ipsec/esp_decrypt.c
   ipsec/esp_encrypt.c
+  ipsec/ipsec_handoff.c
 
   INSTALL_HEADERS
   device/dpdk.h
