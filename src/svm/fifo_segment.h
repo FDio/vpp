@@ -51,6 +51,7 @@ typedef struct
   ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
   uword n_free_bytes;			/**< Segment free bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
+  u32 n_reserved_bytes;			/**< Bytes not to be allocated */
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
   u8 flags;				/**< Segment flags */
   u8 n_slices;				/**< Number of slices */

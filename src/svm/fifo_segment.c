@@ -43,7 +43,8 @@ fsh_free_bytes_sub (fifo_segment_header_t * fsh, int size)
 static inline uword
 fsh_n_free_bytes (fifo_segment_header_t * fsh)
 {
-  return clib_atomic_load_relax_n (&fsh->n_free_bytes);
+  return clib_atomic_load_relax_n (&fsh->n_free_bytes) -
+    fsh->n_reserved_bytes;
 }
 
 static inline fifo_segment_slice_t *
@@ -67,7 +68,7 @@ fifo_segment_init (fifo_segment_t * fs)
   fifo_segment_header_t *fsh;
   fifo_segment_slice_t *fss;
   ssvm_shared_header_t *sh;
-  u32 max_chunk_sz;
+  u32 max_chunk_sz, max_chunks;
   uword max_fifo;
   void *oldheap;
   int i;
@@ -108,6 +109,8 @@ fifo_segment_init (fifo_segment_t * fs)
   ssvm_pop_heap (oldheap);
 
   fsh->n_free_bytes = fs_free_space (fs);
+  max_chunks = fsh->n_free_bytes / FIFO_SEGMENT_MIN_FIFO_SIZE;
+  fsh->n_reserved_bytes = (max_chunks / 4) * sizeof (rb_node_t);
   sh->ready = 1;
   return (0);
 }
@@ -1028,8 +1031,10 @@ format_fifo_segment (u8 * s, va_list * args)
 	      format_white_space, indent + 2, format_memory_size, chunk_bytes,
 	      chunk_bytes, format_memory_size, est_chunk_bytes,
 	      est_chunk_bytes);
-  s = format (s, "%Ufifo hdr free bytes: %U (%u)\n", format_white_space,
-	      indent + 2, format_memory_size, fifo_hdr, fifo_hdr);
+  s = format (s, "%Ufifo hdr free bytes: %U (%u) reserved %U (%lu)\n",
+	      format_white_space, indent + 2, format_memory_size, fifo_hdr,
+	      fifo_hdr, format_memory_size, fsh->n_reserved_bytes,
+	      fsh->n_reserved_bytes);
   s = format (s, "\n");
 
   return s;
