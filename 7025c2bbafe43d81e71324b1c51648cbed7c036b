@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e3b9f1a7_4c1fde8b",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-18T06:20:36Z",
+      "side": 1,
+      "message": "that wasn\u0027t the change i was asking for :)\n\nwhat you had before:\n  vnet_crypto_op_chunk_t * chunks\nis the common calling convention for arrays in C. \nthis alternative:\n  vnet_crypto_op_chunk_t chunks[]\nis not used as often. i.e. this file/directory is the only one in the code base that passes arrays this way.",
+      "revId": "7025c2bbafe43d81e71324b1c51648cbed7c036b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
