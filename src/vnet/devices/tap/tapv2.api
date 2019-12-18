@@ -27,6 +27,7 @@ import "vnet/ip/ip_types.api";
 
 enum tap_flags {
         TAP_FLAG_GSO = 1,
+        TAP_FLAG_CSUM_OFFLOAD = 2,
 };
 
 /** \brief Initialize a new tap interface with the given parameters
