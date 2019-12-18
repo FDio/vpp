@@ -413,6 +413,12 @@ gtpu_encap_inline (vlib_main_t * vm,
 	  stats_n_packets += 4;
 	  stats_n_bytes += len0 + len1 + len2 + len3;
 
+          /* save inner packet flow_hash for load-balance node */
+          vnet_buffer (b0)->ip.flow_hash = flow_hash0;
+          vnet_buffer (b1)->ip.flow_hash = flow_hash1;
+          vnet_buffer (b2)->ip.flow_hash = flow_hash2;
+          vnet_buffer (b3)->ip.flow_hash = flow_hash3;
+
 	  /* Batch stats increment on the same gtpu tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
@@ -610,6 +616,9 @@ gtpu_encap_inline (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
+
+          /* save inner packet flow_hash for load-balance node */
+          vnet_buffer (b0)->ip.flow_hash = flow_hash0;
 
 	  /* Batch stats increment on the same gtpu tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
