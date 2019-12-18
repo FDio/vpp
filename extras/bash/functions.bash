@@ -26,11 +26,14 @@ vpp-make-test()
     local all
     local debug
     local grep_for
+    local show_grep
     local run_make_test
     local old_pwd
+    local test_desc
     local is_feature="false"
     local retry_count=100
     local tester=${GERRIT_USER:-$USER}
+    local jobs="auto"
     
     if [ -z "$WS_ROOT" ] ; then
         echo "ERROR: WS_ROOT is not set!"
@@ -40,7 +43,7 @@ vpp-make-test()
         return
     fi
     
-    options=$(getopt -o "adfg:r:" -- "$@")
+    options=$(getopt -o "adfg:j:r:" -- "$@")
     if [ $? -eq 1 ] ; then
         usage=true
     else
@@ -63,6 +66,14 @@ vpp-make-test()
                 show_grep=$1
                 grep_for="${1//-/\\-}"
                 ;;
+            -j)
+                shift
+                jobs=$1
+                if [ $((jobs)) != $jobs ] ; then
+                    echo "ERROR: Invalid option value for -j option ($jobs)!"
+                    usage=true;
+                fi
+                ;;
             -r)
                 shift
                 retry_count=$1
@@ -83,14 +94,15 @@ vpp-make-test()
         if [ -z "$1" ] ; then
             echo "ERROR: no testcase specified!"
         fi
-        echo "Usage: vpp-make-test [-a][-d][-f][-g <text>][-r <retry count>] <testcase> [<retry_count>]"
+        echo "Usage: vpp-make-test [-a][-d][-f][-g <text>][-j <jobs>][-r <retry count>] <testcase> [<retry_count>]"
         echo "         -a                Run extended tests"
         echo "         -d                Run vpp debug image (i.e. with ASSERTS)"
         echo "         -f                Testcase is a feature set (e.g. tcp)"
         echo "         -g <text>         Text to grep for in log, FAIL on match."
         echo "                           Enclose <text> in single quotes when it contains any dashes:"
         echo "                           e.g.  vpp-make-test -g 'goof-bad-' test_xyz"
-        echo "         -r <retry count>  Retry Count (default = 100 for individual | 1 for feature)"
+        echo "         -j <# jobs>       Set TEST_JOBS (default = auto) for feature set"
+        echo "         -r <retry count>  Retry Count (default = 100 for individual test | 1 for feature set)"
         return
     fi
 
@@ -98,7 +110,7 @@ vpp-make-test()
         retry_count=1
     fi
     if [ "$is_feature" == "true" ] ; then
-        run_make_test="make test$all$debug TEST=$1 SANITY=no TEST_JOBS=auto"
+        run_make_test="make test$all$debug TEST=$1 SANITY=no TEST_JOBS=$jobs"
     else
         run_make_test="make test$all$debug TEST=*.*.$1 SANITY=no"
     fi
@@ -106,9 +118,9 @@ vpp-make-test()
     old_pwd=$(pwd)
     cd $WS_ROOT
     line="------------------------------------------------------------------------------"
-    local test_desc="'$run_make_test'"
+    test_desc="'$run_make_test'"
     if [ -n "$grep_for" ] ; then
-        test_desc="$test_desc [grep $show_grep]"
+        test_desc="$test_desc [grep '$show_grep']"
     fi
     for ((i=1; i<=retry_count; i++)) ; do
         echo -e "\n$line"
@@ -137,4 +149,3 @@ vpp-make-test()
     echo -e "Hey $tester, Life is good!!! :D\n"
     cd $old_pwd
 }
-export -f vpp-make-test
