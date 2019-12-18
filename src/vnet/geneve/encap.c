@@ -120,6 +120,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 	  flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
 
+
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
@@ -288,6 +289,10 @@ geneve_encap_inline (vlib_main_t * vm,
 	  len1 = vlib_buffer_length_in_chain (vm, b[1]);
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
+
+	  /* save inner packet flow_hash for load-balance node */
+	  vnet_buffer (b[0])->ip.flow_hash = flow_hash0;
+	  vnet_buffer (b[1])->ip.flow_hash = flow_hash1;
 
 	  /* Batch stats increment on the same geneve tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
@@ -466,6 +471,9 @@ geneve_encap_inline (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b[0]);
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
+
+	  /* save inner packet flow_hash for load-balance node */
+	  vnet_buffer (b[0])->ip.flow_hash = flow_hash0;
 
 	  /* Batch stats increment on the same geneve tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted

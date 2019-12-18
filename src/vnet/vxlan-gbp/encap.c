@@ -309,6 +309,10 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		udp1->checksum = 0xffff;
 	    }
 
+	  /* save inner packet flow_hash for load-balance node */
+	  vnet_buffer (b[0])->ip.flow_hash = flow_hash0;
+	  vnet_buffer (b[1])->ip.flow_hash = flow_hash1;
+
 	  vlib_increment_combined_counter (tx_counter, thread_index,
 					   sw_if_index0, 1, len0);
 	  vlib_increment_combined_counter (tx_counter, thread_index,
@@ -450,6 +454,9 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	      if (udp0->checksum == 0)
 		udp0->checksum = 0xffff;
 	    }
+
+	  /* save inner packet flow_hash for load-balance node */
+	  vnet_buffer (b[0])->ip.flow_hash = flow_hash0;
 
 	  vlib_increment_combined_counter (tx_counter, thread_index,
 					   sw_if_index0, 1, len0);
