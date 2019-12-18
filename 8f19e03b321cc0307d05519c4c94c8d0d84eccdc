@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5de972cd_f1534ee8",
+        "filename": "docs/gettingstarted/users/configuring/startup.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 1403,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-12-18T14:27:05Z",
+      "side": 1,
+      "message": "Do we want the trailing whitespaces?",
+      "range": {
+        "startLine": 1403,
+        "startChar": 73,
+        "endLine": 1403,
+        "endChar": 74
+      },
+      "revId": "8f19e03b321cc0307d05519c4c94c8d0d84eccdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
