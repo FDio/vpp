@@ -47,6 +47,25 @@ def config_tun_params(p, encryption_type, tun_if):
         esn_en=esn_en)
 
 
+def config_tra_params(p, encryption_type, tun_if):
+    ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
+    esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
+                             IPSEC_API_SAD_FLAG_USE_ESN))
+    crypt_key = mk_scapy_crypt_key(p)
+    p.scapy_tun_sa = SecurityAssociation(
+        encryption_type, spi=p.vpp_tun_spi,
+        crypt_algo=p.crypt_algo,
+        crypt_key=crypt_key,
+        auth_algo=p.auth_algo, auth_key=p.auth_key,
+        esn_en=esn_en)
+    p.vpp_tun_sa = SecurityAssociation(
+        encryption_type, spi=p.scapy_tun_spi,
+        crypt_algo=p.crypt_algo,
+        crypt_key=crypt_key,
+        auth_algo=p.auth_algo, auth_key=p.auth_key,
+        esn_en=esn_en)
+
+
 class TemplateIpsec4TunIfEsp(TemplateIpsec):
     """ IPsec tunnel interface tests """
 
@@ -657,6 +676,111 @@ class TestIpsecGreTebIfEsp(TemplateIpsec,
         super(TestIpsecGreTebIfEsp, self).tearDown()
 
 
+class TestIpsecGreTebIfEspTra(TemplateIpsec,
+                              IpsecTun4Tests):
+    """ Ipsec GRE TEB ESP - Tra tests """
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    encryption_type = ESP
+    omac = "00:11:22:33:44:55"
+
+    def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
+                         payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=self.pg0.remote_ip4,
+                              dst=self.pg0.local_ip4) /
+                           GRE() /
+                           Ether(dst=self.omac) /
+                           IP(src="1.1.1.1", dst="1.1.1.2") /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def gen_pkts(self, sw_intf, src, dst, count=1,
+                 payload_size=100):
+        return [Ether(dst=self.omac) /
+                IP(src="1.1.1.1", dst="1.1.1.2") /
+                UDP(sport=1144, dport=2233) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[Ether].dst, self.omac)
+            self.assert_equal(rx[IP].dst, "1.1.1.2")
+
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+                self.assert_packet_checksums_valid(pkt)
+                self.assert_equal(pkt[IP].dst, self.pg0.remote_ip4)
+                self.assert_equal(pkt[IP].src, self.pg0.local_ip4)
+                self.assertTrue(pkt.haslayer(GRE))
+                e = pkt[Ether]
+                self.assertEqual(e[Ether].dst, self.omac)
+                self.assertEqual(e[IP].dst, "1.1.1.2")
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def setUp(self):
+        super(TestIpsecGreTebIfEspTra, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_if = VppGreInterface(self,
+                                   self.pg0.local_ip4,
+                                   self.pg0.remote_ip4,
+                                   type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                         GRE_API_TUNNEL_TYPE_TEB))
+        p.tun_if.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_out,
+                                           [p.tun_sa_in])
+
+        p.tun_protect.add_vpp_config()
+
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        config_tra_params(p, self.encryption_type, p.tun_if)
+
+        VppBridgeDomainPort(self, bd1, p.tun_if).add_vpp_config()
+        VppBridgeDomainPort(self, bd1, self.pg1).add_vpp_config()
+
+        self.vapi.cli("clear ipsec sa")
+
+    def tearDown(self):
+        p = self.ipv4_params
+        p.tun_if.unconfig_ip4()
+        super(TestIpsecGreTebIfEspTra, self).tearDown()
+
+
 class TestIpsecGreIfEsp(TemplateIpsec,
                         IpsecTun4Tests):
     """ Ipsec GRE ESP - TUN tests """
@@ -845,7 +969,7 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
 
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
-        config_tun_params(p, self.encryption_type, p.tun_if)
+        config_tra_params(p, self.encryption_type, p.tun_if)
 
         VppIpRoute(self, "1.1.1.2", 32,
                    [VppRoutePath(p.tun_if.remote_ip4,

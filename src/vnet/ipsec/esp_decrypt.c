@@ -24,10 +24,13 @@
 #include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/ipsec_tun.h>
 
+#include <vnet/gre/gre.h>
+
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input-no-checksum")           \
 _(IP6_INPUT, "ip6-input")                       \
+_(L2_INPUT, "l2-input")                         \
 _(HANDOFF, "handoff")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
@@ -487,9 +490,40 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next[0] = ESP_DECRYPT_NEXT_DROP;
-	      b[0]->error = node->errors[ESP_DECRYPT_ERROR_DECRYPTION_FAILED];
-	      goto trace;
+	      if (is_tun && f->next_header == IP_PROTOCOL_GRE)
+		{
+		  gre_header_t *gre;
+
+		  b[0]->current_data = pd->current_data + adv;
+		  b[0]->current_length = pd->current_length - adv - tail;
+
+		  gre = vlib_buffer_get_current (b[0]);
+
+		  vlib_buffer_advance (b[0], sizeof (*gre));
+
+		  switch (clib_net_to_host_u16 (gre->protocol))
+		    {
+		    case GRE_PROTOCOL_teb:
+		      next[0] = ESP_DECRYPT_NEXT_L2_INPUT;
+		      break;
+		    case GRE_PROTOCOL_ip4:
+		      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
+		      break;
+		    case GRE_PROTOCOL_ip6:
+		      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
+		      break;
+		    default:
+		      next[0] = ESP_DECRYPT_NEXT_DROP;
+		      break;
+		    }
+		}
+	      else
+		{
+		  next[0] = ESP_DECRYPT_NEXT_DROP;
+		  b[0]->error =
+		    node->errors[ESP_DECRYPT_ERROR_DECRYPTION_FAILED];
+		  goto trace;
+		}
 	    }
 	  if (is_tun)
 	    {
@@ -501,9 +535,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 		   */
 		  const ipsec_tun_protect_t *itp;
 
-		  itp =
-		    ipsec_tun_protect_get (vnet_buffer (b[0])->
-					   ipsec.protect_index);
+		  itp = ipsec_tun_protect_get
+		    (vnet_buffer (b[0])->ipsec.protect_index);
+
 		  if (PREDICT_TRUE (f->next_header == IP_PROTOCOL_IP_IN_IP))
 		    {
 		      const ip4_header_t *ip4;
@@ -614,6 +648,7 @@ VLIB_REGISTER_NODE (esp4_decrypt_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-handoff",
   },
 };
@@ -632,6 +667,7 @@ VLIB_REGISTER_NODE (esp6_decrypt_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-handoff",
   },
 };
@@ -648,6 +684,7 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-handoff",
   },
 };
@@ -664,6 +701,7 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-handoff",
   },
 };
