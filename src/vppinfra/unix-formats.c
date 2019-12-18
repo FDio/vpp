@@ -255,10 +255,10 @@ u8 * format_sockaddr (u8 * s, va_list * args)
 
     case AF_LOCAL:
       {
-        /* 
+        /*
          * There isn't anything useful to print.
          * The unix cli world uses the output to make a node name,
-         * so we need to return a unique name. 
+         * so we need to return a unique name.
          */
         s = format (s, "local:%u", local_counter++);
       }
@@ -772,7 +772,7 @@ u8 * format_timeval (u8 * s, va_list * args)
 {
   char * fmt = va_arg (*args, char *);
   struct timeval * tv = va_arg (*args, struct timeval *);
-  struct tm * tm;
+  struct tm _tm, * tm = &_tm;
   word msec;
   char * f, c;
 
@@ -782,7 +782,8 @@ u8 * format_timeval (u8 * s, va_list * args)
   if (! tv)
     {
       static struct timeval now;
-      gettimeofday (&now, 0);
+      if (gettimeofday (&now, 0))
+        clib_unix_warning ("gettimeofday");
       tv = &now;
     }
 
@@ -792,7 +793,12 @@ u8 * format_timeval (u8 * s, va_list * args)
 
   {
     time_t t = tv->tv_sec;
-    tm = localtime (&t);
+    if (localtime_r (&t, tm) == 0)
+      {
+        clib_unix_warning ("localtime_r failed");
+        /* Print 1/1/1970. Not much else we can do. */
+        memset (tm, 0, sizeof (*tm));
+      }
   }
 
   for (f = fmt; *f; f++)

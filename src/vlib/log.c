@@ -259,8 +259,24 @@ show_log (vlib_main_t * vm,
   int count = lm->count;
   f64 time_offset;
 
+  if (count == 0)
+    {
+      vlib_cli_output (vm, "No log entries...");
+      return 0;
+    }
+
   time_offset = (f64) lm->time_zero_timeval.tv_sec
     + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
+
+  e = vec_elt_at_index (lm->entries, 0);
+
+  if ((e->timestamp + time_offset) < 0.0 || time_offset > 4e9)
+    {
+      clib_warning ("BUG: tv_sec %llu tv_usec %llu time_zero %.6f",
+		    lm->time_zero_timeval.tv_sec,
+		    lm->time_zero_timeval.tv_usec, lm->time_zero);
+      time_offset = 0.0;
+    }
 
   while (count--)
     {
