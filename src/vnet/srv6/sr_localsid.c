@@ -63,9 +63,10 @@ static dpo_type_t sr_localsid_d_dpo_type;
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
-		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
-		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem)
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+		 u16 localsid_prefix_len, char end_psp, u8 behavior,
+		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
+		 ip46_address_t * nh_addr, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
@@ -93,9 +94,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 	      pref_length = plugin->prefix_length;
 	    }
 
-	  if (prefixlen != 0)
+	  if (localsid_prefix_len != 0)
 	    {
-	      pref_length = prefixlen;
+	      pref_length = localsid_prefix_len;
 	    }
 
 	  /* Delete FIB entry */
@@ -152,9 +153,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
   pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
   pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
 
-  if (prefixlen != 0)
+  if (pref_length != 0)
     {
-      pfx.fp_len = prefixlen;
+      pfx.fp_len = pref_length;
     }
 
   /* Lookup the FIB index associated to the table id provided */
@@ -172,11 +173,11 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
   clib_memset (ls, 0, sizeof (*ls));
 
   clib_memcpy (&ls->localsid, localsid_addr, sizeof (ip6_address_t));
+  ls->localsid_prefix_len = pref_length;
   ls->end_psp = end_psp;
   ls->behavior = behavior;
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
-  ls->localsid_len = pfx.fp_len;
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -309,6 +310,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "del"))
 	is_del = 1;
+      else if (!address_set
+	       && unformat (input, "address %U/%u", unformat_ip6_address,
+			    &resulting_address, &prefix_len))
+	address_set = 1;
       else if (!address_set
 	       && unformat (input, "address %U", unformat_ip6_address,
 			    &resulting_address))
@@ -489,47 +494,53 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
       switch (ls->behavior)
 	{
 	case SR_BEHAVIOR_END:
-	  vlib_cli_output (vm, "\tAddress: \t%U\n\tBehavior: \tEnd",
-			   format_ip6_address, &ls->localsid);
+	  vlib_cli_output (vm, "\tAddress: \t%U/%u\n\tBehavior: \tEnd",
+			   format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len);
 	  break;
 	case SR_BEHAVIOR_X:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tX (Endpoint with Layer-3 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tX (Endpoint with Layer-3 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len,
 			   format_vnet_sw_if_index_name, vnm, ls->sw_if_index,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
 	case SR_BEHAVIOR_T:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
 			   "\n\tTable:  \t%u",
 			   format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len,
 			   fib_table_get_table_id (ls->vrf_index,
 						   FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DX4:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tDX4 (Endpoint with decapsulation and IPv4 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDX4 (Endpoint with decapsulation and IPv4 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len,
 			   format_vnet_sw_if_index_name, vnm, ls->sw_if_index,
 			   format_ip4_address, &ls->next_hop.ip4);
 	  break;
 	case SR_BEHAVIOR_DX6:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tDX6 (Endpoint with decapsulation and IPv6 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDX6 (Endpoint with decapsulation and IPv6 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len,
 			   format_vnet_sw_if_index_name, vnm, ls->sw_if_index,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
 	case SR_BEHAVIOR_DX2:
 	  if (ls->vlan_index == (u32) ~ 0)
 	    vlib_cli_output (vm,
-			     "\tAddress: \t%U\n\tBehavior: \tDX2 (Endpoint with decapulation and Layer-2 cross-connect)"
+			     "\tAddress: \t%U/%u\n\tBehavior: \tDX2 (Endpoint with decapulation and Layer-2 cross-connect)"
 			     "\n\tIface:  \t%U", format_ip6_address,
-			     &ls->localsid, format_vnet_sw_if_index_name, vnm,
+			     &ls->localsid, ls->localsid_prefix_len,
+			     format_vnet_sw_if_index_name, vnm,
 			     ls->sw_if_index);
 	  else
 	    vlib_cli_output (vm,
@@ -537,16 +548,17 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 	case SR_BEHAVIOR_DT6:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tDT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
 			   "\n\tTable: %u", format_ip6_address, &ls->localsid,
+			   ls->localsid_prefix_len,
 			   fib_table_get_table_id (ls->vrf_index,
 						   FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DT4:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tDT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
 			   "\n\tTable: \t%u", format_ip6_address,
-			   &ls->localsid,
+			   &ls->localsid, ls->localsid_prefix_len,
 			   fib_table_get_table_id (ls->vrf_index,
 						   FIB_PROTOCOL_IP4));
 	  break;
@@ -557,11 +569,12 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		pool_elt_at_index (sm->plugin_functions,
 				   ls->behavior - SR_BEHAVIOR_LAST);
 
-	      vlib_cli_output (vm, "\tAddress: \t%U\n"
+	      vlib_cli_output (vm, "\tAddress: \t%U/%u\n"
 			       "\tBehavior: \t%s (%s)\n\t%U",
 			       format_ip6_address, &ls->localsid,
-			       plugin->keyword_str, plugin->def_str,
-			       plugin->ls_format, ls->plugin_mem);
+			       ls->localsid_prefix_len, plugin->keyword_str,
+			       plugin->def_str, plugin->ls_format,
+			       ls->plugin_mem);
 	    }
 	  else
 	    //Should never get here...
