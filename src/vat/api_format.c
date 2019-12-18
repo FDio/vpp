@@ -7341,6 +7341,8 @@ api_tap_create_v2 (vat_main_t * vam)
 	tap_flags &= ~TAP_FLAG_GSO;
       else if (unformat (i, "gso"))
 	tap_flags |= TAP_FLAG_GSO;
+      else if (unformat (i, "csum-offload"))
+	tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
       else
 	break;
     }

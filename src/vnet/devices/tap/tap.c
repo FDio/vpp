@@ -210,6 +210,11 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
       vif->gso_enabled = 1;
     }
+  else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
+    {
+      offload = TUN_F_CSUM;
+      vif->csum_offload_enabled = 1;
+    }
 
   _IOCTL (tfd, TUNSETIFF, (void *) &ifr);
   tap_log_dbg (vif, "TUNSETIFF fd %d name %s flags 0x%x", tfd,
@@ -594,7 +599,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   if (args->tap_flags & TAP_FLAG_GSO)
     {
-      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+	VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+    }
+  else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
+    {
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
     }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
@@ -666,6 +676,62 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 }
 
 int
+tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
+				 int enable_disable)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif;
+  vnet_hw_interface_t *hw;
+  clib_error_t *err = 0;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+
+  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+
+  const unsigned int csum_offload_on = TUN_F_CSUM;
+  const unsigned int csum_offload_off = 0;
+  unsigned int offload = enable_disable ? csum_offload_on : csum_offload_off;
+  _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
+  vif->gso_enabled = 0;
+  vif->csum_offload_enabled = enable_disable ? 1 : 0;
+
+  if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0)
+    {
+      hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+    }
+
+  if (enable_disable)
+    {
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD) ==
+	  0)
+	{
+	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	}
+    }
+  else
+    {
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD) !=
+	  0)
+	{
+	  hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	}
+    }
+
+error:
+  if (err)
+    {
+      clib_warning ("Error %s checksum offload on sw_if_index %d",
+		    enable_disable ? "enabling" : "disabling", sw_if_index);
+      return VNET_API_ERROR_SYSCALL_ERROR_3;
+    }
+  return 0;
+}
+
+int
 tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -686,18 +752,21 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
   unsigned int offload = enable_disable ? gso_on : gso_off;
   _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
   vif->gso_enabled = enable_disable ? 1 : 0;
+  vif->csum_offload_enabled = 0;
   if (enable_disable)
     {
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0)
 	{
-	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+	    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 	}
     }
   else
     {
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0)
 	{
-	  hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	  hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+			 VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
 	}
     }
 

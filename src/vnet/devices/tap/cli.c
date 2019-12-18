@@ -89,6 +89,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.tap_flags &= ~TAP_FLAG_GSO;
 	  else if (unformat (line_input, "gso"))
 	    args.tap_flags |= TAP_FLAG_GSO;
+	  else if (unformat (line_input, "csum-offload"))
+	    args.tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
 	  else if (unformat (line_input, "hw-addr %U",
 			     unformat_ethernet_address, args.mac_addr.bytes))
 	    args.mac_addr_set = 1;
@@ -128,7 +130,7 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
     "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
-    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso]",
+    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -182,14 +184,15 @@ VLIB_CLI_COMMAND (tap_delete__command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
-tap_gso_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		    vlib_cli_command_t * cmd)
+tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  int enable = 1;
-  int rv;
+  int gso_enable = 0, gso_disable = 0;
+  int csum_offload_enable = 0, csum_offload_disable = 0;
+  int rv = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -202,10 +205,14 @@ tap_gso_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
 			 vnm, &sw_if_index))
 	;
-      else if (unformat (line_input, "enable"))
-	enable = 1;
-      else if (unformat (line_input, "disable"))
-	enable = 0;
+      else if (unformat (line_input, "gso-enable"))
+	gso_enable = 1;
+      else if (unformat (line_input, "gso-disable"))
+	gso_disable = 1;
+      else if (unformat (line_input, "csum-offload-enable"))
+	csum_offload_enable = 1;
+      else if (unformat (line_input, "csum-offload-disable"))
+	csum_offload_disable = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -216,7 +223,15 @@ tap_gso_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
-  rv = tap_gso_enable_disable (vm, sw_if_index, enable);
+  if (gso_enable)
+    rv = tap_gso_enable_disable (vm, sw_if_index, 1);
+  else if (csum_offload_enable)
+    rv = tap_csum_offload_enable_disable (vm, sw_if_index, 1);
+  else if (gso_disable)
+    rv = tap_gso_enable_disable (vm, sw_if_index, 0);
+  else if (csum_offload_disable)
+    rv = tap_csum_offload_enable_disable (vm, sw_if_index, 0);
+
   if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
     return clib_error_return (0, "not a tap interface");
   else if (rv != 0)
@@ -226,11 +241,12 @@ tap_gso_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tap_gso__command, static) =
+VLIB_CLI_COMMAND (tap_offload_command, static) =
 {
-  .path = "set tap gso",
-  .short_help = "set tap gso {<interface> | sw_if_index <sw_idx>} <enable|disable>",
-  .function = tap_gso_command_fn,
+  .path = "set tap offload",
+  .short_help = "set tap offload {<interface> | sw_if_index <sw_idx>}"
+    " <gso-enable | gso-disable | csum-offload-enable | csum-offload-disable>",
+  .function = tap_offload_command_fn,
 };
 /* *INDENT-ON* */
 
