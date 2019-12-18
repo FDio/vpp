@@ -372,8 +372,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
 	      len0 = vlib_buffer_length_in_chain (vm, b0);
 
-	      offset = ls0->localsid_len / 8;
-	      shift = ls0->localsid_len % 8;
+	      offset = ls0->localsid_prefix_len / 8;
+	      shift = ls0->localsid_prefix_len % 8;
 
 	      gtpu_type = gtpu_type_get (tag);
 
@@ -1169,7 +1169,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      u16 offset, shift;
 	      u32 hdrlen = 0;
 
-	      index = ls0->localsid_len;
+	      index = ls0->localsid_prefix_len;
 	      index += 8;
 	      offset = index / 8;
 	      shift = index % 8;
