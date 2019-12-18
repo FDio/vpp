@@ -29,7 +29,8 @@
 #define foreach_esp_decrypt_next	       \
 _(DROP, "error-drop")			       \
 _(IP4_INPUT, "ip4-input-no-checksum")	       \
-_(IP6_INPUT, "ip6-input")
+_(IP6_INPUT, "ip6-input")                      \
+_(HANDOFF, "handoff")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -147,6 +148,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  struct rte_mbuf *mb0;
 	  struct rte_crypto_op *op;
 	  u16 res_idx;
+	  u32 next0 = next_index;;
 
 	  bi0 = from[0];
 	  from += 1;
@@ -162,7 +164,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (mb0, CLIB_CACHE_LINE_BYTES, STORE);
 
 	  op = ops[0];
-	  ops += 1;
 	  ASSERT (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED);
 
 	  dpdk_op_priv_t *priv = crypto_op_get_priv (op);
@@ -204,6 +205,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp4_decrypt_node.index,
 						 ESP_DECRYPT_ERROR_NOSUP, 1);
+		  next0 = ESP_DECRYPT_NEXT_DROP;
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -225,6 +227,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 						 dpdk_esp4_decrypt_node.index,
 						 ESP_DECRYPT_ERROR_SESSION,
 						 1);
+		  next0 = ESP_DECRYPT_NEXT_DROP;
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -247,11 +250,32 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 		vlib_node_increment_counter (vm,
 					     dpdk_esp4_decrypt_node.index,
 					     ESP_DECRYPT_ERROR_REPLAY, 1);
+	      next0 = ESP_DECRYPT_NEXT_DROP;
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
 	      goto trace;
 	    }
+
+	  if (PREDICT_FALSE (~0 == sa0->decrypt_thread_index))
+	    {
+	      /* this is the first packet to use this SA, claim the SA
+	       * for this thread. this could happen simultaneously on
+	       * another thread */
+	      clib_atomic_cmp_and_swap (&sa0->decrypt_thread_index, ~0,
+					ipsec_sa_assign_thread
+					(thread_index));
+	    }
+
+	  if (PREDICT_TRUE (thread_index != sa0->decrypt_thread_index))
+	    {
+	      next0 = ESP_DECRYPT_NEXT_HANDOFF;
+	      to_next[0] = bi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      goto trace;
+	    }
+
 
 	  if (is_ip6)
 	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT6_POST;
@@ -291,6 +315,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      else
 		vlib_node_increment_counter (vm, dpdk_esp4_decrypt_node.index,
 					     ESP_DECRYPT_ERROR_BAD_LEN, 1);
+	      next0 = ESP_DECRYPT_NEXT_DROP;
 	      res->n_ops -= 1;
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -356,6 +381,9 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	  crypto_op_setup (is_aead, mb0, op, session, cipher_off, cipher_len,
 			   0, auth_len, aad, digest, digest_paddr);
+
+	  ops += 1;
+
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -366,6 +394,9 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b0),
 				sizeof (esp_header_t));
 	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -413,9 +444,10 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
+    [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
+    [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_HANDOFF] = "dpdk-esp4-decrypt-handoff",
   },
 };
 /* *INDENT-ON* */
@@ -439,9 +471,10 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
+    [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
+    [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_HANDOFF]=  "dpdk-esp6-decrypt-handoff",
   },
 };
 /* *INDENT-ON* */
@@ -704,9 +737,10 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
+    [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
+    [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_HANDOFF] = "dpdk-esp4-decrypt-handoff",
   },
 };
 /* *INDENT-ON* */
@@ -730,9 +764,11 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
+    [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
+    [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_HANDOFF]=  "dpdk-esp6-decrypt-handoff",
+
   },
 };
 /* *INDENT-ON* */

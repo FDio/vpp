@@ -29,9 +29,7 @@
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
-_(IP4_LOOKUP, "ip4-lookup")                        \
-_(IP6_LOOKUP, "ip6-lookup")                        \
-_(INTERFACE_OUTPUT, "interface-output")
+_(HANDOFF, "handoff")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
 typedef enum
@@ -158,6 +156,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	{
 	  clib_error_t *error;
 	  u32 bi0, bi1;
+	  u32 next0;
 	  vlib_buffer_t *b0, *b1;
 	  u32 sa_index0;
 	  ip4_and_esp_header_t *ih0, *oh0 = 0;
@@ -174,10 +173,12 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  struct rte_mbuf *mb0;
 	  struct rte_crypto_op *op;
 	  u16 res_idx;
+	  u32 config_index;
 
 	  bi0 = from[0];
 	  from += 1;
 	  n_left_from -= 1;
+	  next0 = next_index;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ih0 = vlib_buffer_get_current (b0);
@@ -201,7 +202,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	    }
 
 	  op = ops[0];
-	  ops += 1;
 	  ASSERT (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED);
 
 	  dpdk_op_priv_t *priv = crypto_op_get_priv (op);
@@ -217,9 +217,11 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	    {
 	      u32 tmp;
 	      /* we are on a ipsec tunnel's feature arc */
+	      config_index = b0->current_config_index;
 	      sa_index0 = *(u32 *) vnet_feature_next_with_data (&tmp, b0,
 								sizeof
 								(sa_index0));
+	      vnet_buffer (b0)->ipsec.sad_index = sa_index0;
 	    }
 	  else
 	    sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
@@ -251,6 +253,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp4_encrypt_node.index,
 						 ESP_ENCRYPT_ERROR_NOSUP, 1);
+		  next0 = ESP_ENCRYPT_NEXT_DROP;
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -272,6 +275,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 						 dpdk_esp4_encrypt_node.index,
 						 ESP_ENCRYPT_ERROR_SESSION,
 						 1);
+		  next0 = ESP_ENCRYPT_NEXT_DROP;
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -279,6 +283,29 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		}
 
 	      last_sa_index = sa_index0;
+	    }
+
+	  if (PREDICT_FALSE (~0 == sa0->encrypt_thread_index))
+	    {
+	      /* this is the first packet to use this SA, claim the SA
+	       * for this thread. this could happen simultaneously on
+	       * another thread */
+	      clib_atomic_cmp_and_swap (&sa0->encrypt_thread_index, ~0,
+					ipsec_sa_assign_thread
+					(thread_index));
+	    }
+
+	  if (PREDICT_TRUE (thread_index != sa0->encrypt_thread_index))
+	    {
+	      next0 = ESP_ENCRYPT_NEXT_HANDOFF;
+	      to_next[0] = bi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      if (is_tun)
+		{
+		  b0->current_config_index = config_index;
+		}
+	      goto trace;
 	    }
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
@@ -295,6 +322,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 					     dpdk_esp4_encrypt_node.index,
 					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO: rekey SA
+	      next0 = ESP_ENCRYPT_NEXT_DROP;
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
@@ -559,6 +587,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  crypto_op_setup (is_aead, mb0, op, session, cipher_off, cipher_len,
 			   0, auth_len, (u8 *) aad, digest, digest_paddr);
 
+	  ops += 1;
+
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -571,6 +601,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		p += vnet_buffer (b0)->ip.save_rewrite_length;
 	      clib_memcpy_fast (tr->packet_data, p, sizeof (tr->packet_data));
 	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -613,10 +646,11 @@ VLIB_REGISTER_NODE (dpdk_esp4_encrypt_node) = {
   .format_trace = format_esp_encrypt_trace,
   .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
+  .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes =
     {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+        [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
+        [ESP_ENCRYPT_NEXT_HANDOFF] = "dpdk-esp4-encrypt-handoff",
     }
 };
 /* *INDENT-ON* */
@@ -636,10 +670,11 @@ VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
   .format_trace = format_esp_encrypt_trace,
   .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
+  .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes =
     {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+        [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
+        [ESP_ENCRYPT_NEXT_HANDOFF] = "dpdk-esp6-encrypt-handoff",
     }
 };
 /* *INDENT-ON* */
@@ -659,10 +694,11 @@ VLIB_REGISTER_NODE (dpdk_esp4_encrypt_tun_node) = {
   .format_trace = format_esp_encrypt_trace,
   .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
+  .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes =
     {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+        [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
+        [ESP_ENCRYPT_NEXT_HANDOFF] = "dpdk-esp4-encrypt-tun-handoff",
     }
 };
 
@@ -689,10 +725,11 @@ VLIB_REGISTER_NODE (dpdk_esp6_encrypt_tun_node) = {
   .format_trace = format_esp_encrypt_trace,
   .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
+  .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes =
     {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+        [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
+        [ESP_ENCRYPT_NEXT_HANDOFF] = "dpdk-esp6-encrypt-tun-handoff",
     }
 };
 

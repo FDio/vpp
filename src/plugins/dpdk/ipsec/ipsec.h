@@ -168,9 +168,24 @@ typedef struct
   crypto_drv_t *drv;
   u64 session_timeout;		/* nsec */
   u8 enabled;
+
+  u32 esp4_enc_fq_index;
+  u32 esp4_enc_tun_fq_index;
+  u32 esp4_dec_fq_index;
+  u32 esp6_enc_fq_index;
+  u32 esp6_enc_tun_fq_index;
+  u32 esp6_dec_fq_index;
+
 } dpdk_crypto_main_t;
 
 extern dpdk_crypto_main_t dpdk_crypto_main;
+
+extern vlib_node_registration_t dpdk_esp4_encrypt_node;
+extern vlib_node_registration_t dpdk_esp4_encrypt_tun_node;
+extern vlib_node_registration_t dpdk_esp4_decrypt_node;
+extern vlib_node_registration_t dpdk_esp6_encrypt_node;
+extern vlib_node_registration_t dpdk_esp6_encrypt_tun_node;
+extern vlib_node_registration_t dpdk_esp6_decrypt_node;
 
 static const u8 pad_data[] =
   { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };
