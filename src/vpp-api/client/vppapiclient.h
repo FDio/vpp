@@ -18,6 +18,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define VAC_NOT_CONNECTED -3
+#define VAC_SHM_NOT_READY -4
+#define VAC_TIMEOUT -5
+
 typedef void (*vac_callback_t)(unsigned char * data, int len);
 typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
 int vac_connect(char * name, char * chroot_prefix, vac_callback_t cb,
