@@ -1120,11 +1120,6 @@ int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
 int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
 
 /**
- * @brief Increment IPv4 address
- */
-void increment_v4_address (ip4_address_t * a);
-
-/**
  * @brief Add external address to NAT44 pool
  *
  * @param addr      IPv4 address

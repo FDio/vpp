@@ -18,7 +18,9 @@
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
+#include <nat/lib/alloc.h>
 #include <nat/nat.h>
+#include <nat/nat_inlines.h>
 
 typedef struct
 {
@@ -82,10 +84,12 @@ typedef struct
   ip6_address_t b4_ip6_addr;
   ip4_address_t b4_ip4_addr;
   dslite_per_thread_data_t *per_thread_data;
-  snat_address_t *addr_pool;
   u32 num_workers;
   u32 first_worker_index;
   u16 port_per_thread;
+
+  /* nat address pool */
+  nat_ip4_pool_t pool;
 
   /* counters/gauges */
   vlib_simple_counter_main_t total_b4s;
@@ -99,6 +103,8 @@ typedef struct
   /* If set then the DSLite component behaves as CPE/B4
    * otherwise it behaves as AFTR */
   u8 is_ce;
+
+  u16 msg_id_base;
 } dslite_main_t;
 
 typedef struct
@@ -139,7 +145,6 @@ extern vlib_node_registration_t dslite_out2in_node;
 extern vlib_node_registration_t dslite_ce_encap_node;
 extern vlib_node_registration_t dslite_ce_decap_node;
 
-void dslite_init (vlib_main_t * vm);
 void dslite_set_ce (dslite_main_t * dm, u8 set);
 int dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
 int dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
