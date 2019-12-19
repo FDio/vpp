@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8b29120_9c43ffb6",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-19T15:14:59Z",
+      "side": 1,
+      "message": "This just brought my attention to the fact that echo_main_t * is passed as an argument in a lot of the functions here.  Given that echo_main is a global variable, I don\u0027t really see the value of including it in all of the function calls.\n\nI\u0027m not sure that it provides any value in performance.\n\nI\u0027d recommend that this be removed here, and that we add a TODO to clean up all of the other function calls include it as a function parameter.",
+      "range": {
+        "startLine": 321,
+        "startChar": 17,
+        "endLine": 321,
+        "endChar": 33
+      },
+      "revId": "4824d57745e5f3cbda694695a4191c9e9dd6a5dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96fdcc3d_cb8d522a",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 762,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-19T15:14:59Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 762,
+        "startChar": 27,
+        "endLine": 762,
+        "endChar": 43
+      },
+      "revId": "4824d57745e5f3cbda694695a4191c9e9dd6a5dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ba3d6b1_8a249690",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-19T15:14:59Z",
+      "side": 1,
+      "message": "Please remove blank line",
+      "range": {
+        "startLine": 836,
+        "startChar": 0,
+        "endLine": 837,
+        "endChar": 4
+      },
+      "revId": "4824d57745e5f3cbda694695a4191c9e9dd6a5dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
