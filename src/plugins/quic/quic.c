@@ -1973,10 +1973,9 @@ quic_find_packet_ctx (quic_rx_packet_ctx_t * pctx, u32 caller_thread_index)
   return QUIC_PACKET_TYPE_RECEIVE;
 }
 
-static int
-quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
+static void
+quic_accept_connection (quic_rx_packet_ctx_t * pctx)
 {
-  u32 thread_index = vlib_get_thread_index ();
   quicly_context_t *quicly_ctx;
   session_t *quic_session;
   clib_bihash_kv_16_8_t kv;
@@ -1988,27 +1987,28 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
 
   /* new connection, accept and create context if packet is valid
    * TODO: check if socket is actually listening? */
-  ctx = quic_ctx_get (ctx_index, thread_index);
+  ctx = quic_ctx_get (pctx->ctx_index, pctx->thread_index);
   if (ctx->c_s_index != QUIC_SESSION_INVALID)
     {
       QUIC_DBG (2, "already accepted ctx 0x%x", ctx_index);
-      return 0;
+      return;
     }
 
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
   if ((rv = quicly_accept (&conn, quicly_ctx, NULL, &pctx->sa,
 			   &pctx->packet, NULL,
-			   &quic_main.wrk_ctx[thread_index].next_cid, NULL)))
+			   &quic_main.wrk_ctx[pctx->thread_index].next_cid,
+			   NULL)))
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
       QUIC_ERR ("Accept failed with %U", quic_format_err, rv);
       /* TODO: cleanup created quic ctx and UDP session */
-      return 0;
+      return;
     }
   assert (conn != NULL);
 
-  ++quic_main.wrk_ctx[thread_index].next_cid.master_id;
+  ++quic_main.wrk_ctx[pctx->thread_index].next_cid.master_id;
   /* Save ctx handle in quicly connection */
   quic_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
@@ -2029,7 +2029,7 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
 
   /* Register connection in connections map */
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
-  kv.value = ((u64) thread_index) << 32 | (u64) ctx_index;
+  kv.value = ((u64) pctx->thread_index) << 32 | (u64) pctx->ctx_index;
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
 
@@ -2037,23 +2037,19 @@ quic_accept_connection (u32 ctx_index, quic_rx_packet_ctx_t * pctx)
   if ((rv = app_worker_init_accepted (quic_session)))
     {
       QUIC_ERR ("failed to allocate fifos");
-      quic_proto_on_close (ctx_index, thread_index);
-      return rv;
+      quic_proto_on_close (pctx->ctx_index, pctx->thread_index);
+      return;
     }
 
   app_wrk = app_worker_get (quic_session->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, quic_session)))
     {
       QUIC_ERR ("failed to notify accept worker app");
-      quic_proto_on_close (ctx_index, thread_index);
-      return rv;
+      quic_proto_on_close (pctx->ctx_index, pctx->thread_index);
+      return;
     }
 
   ctx->conn_state = QUIC_CONN_STATE_READY;
-  pctx->ctx_index = ctx_index;
-  pctx->thread_index = thread_index;
-
-  return 0;
 }
 
 static int
@@ -2092,6 +2088,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   u32 thread_index = vlib_get_thread_index ();
   u32 cur_deq = svm_fifo_max_dequeue (f) - fifo_offset;
   quicly_context_t *quicly_ctx;
+  session_t *udp_session;
   int rv;
 
   ret = svm_fifo_peek (f, fifo_offset,
@@ -2141,6 +2138,9 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   else if (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]))
     {
       pctx->ptype = QUIC_PACKET_TYPE_ACCEPT;
+      udp_session = session_get_from_handle (udp_session_handle);
+      pctx->ctx_index = udp_session->opaque;
+      pctx->thread_index = thread_index;
     }
   else
     {
@@ -2176,6 +2176,11 @@ rx_start:
 
   fifo_offset = 0;
   max_packets = QUIC_RCV_MAX_BATCH_PACKETS;
+
+#if CLIB_DEBUG > 0
+  clib_memset (packets_ctx, 0xfa,
+	       QUIC_RCV_MAX_BATCH_PACKETS * sizeof (quic_rx_packet_ctx_t));
+#endif
 
   for (i = 0; i < max_packets; i++)
     {
@@ -2222,12 +2227,7 @@ rx_start:
 	    }
 	  break;
 	case QUIC_PACKET_TYPE_ACCEPT:
-	  udp_session = session_get_from_handle (udp_session_handle);
-	  if ((rv = quic_accept_connection (udp_session->opaque,
-					    &packets_ctx[i])))
-	    {
-	      QUIC_ERR ("quic accept errored with %d", rv);
-	    }
+	  quic_accept_connection (&packets_ctx[i]);
 	  break;
 	case QUIC_PACKET_TYPE_RESET:
 	  quic_reset_connection (udp_session_handle, &packets_ctx[i]);
