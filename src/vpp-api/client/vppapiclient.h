@@ -18,6 +18,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+typedef enum
+{
+  VAC_SVM_QUEUE_SUB_1 = -1,
+  VAC_SVM_QUEUE_SUB_2 = -2,
+  VAC_NOT_CONNECTED = -3,
+  VAC_SHM_NOT_READY = -4,
+  VAC_TIMEOUT = -5,
+} vac_errno_t;
+
+
 typedef void (*vac_callback_t)(unsigned char * data, int len);
 typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
 int vac_connect(char * name, char * chroot_prefix, vac_callback_t cb,
