@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d4693751_97edce6b",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-12-19T17:57:32Z",
+      "side": 1,
+      "message": "Should also check outer_vlan_id_any which would not be valid with exact match either.  Also, can we put the same check in interface_api.c function vl_api_create_subif_t_handler() to cover the API case as well?",
+      "range": {
+        "startLine": 586,
+        "startChar": 32,
+        "endLine": 586,
+        "endChar": 33
+      },
+      "revId": "19f215e402eb805034f4df036d7155ebeffac59c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
