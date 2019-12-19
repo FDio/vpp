@@ -22,6 +22,30 @@
       "revId": "5cbdc67634dca5f5024a899cd3920ab6d3546fff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03ee1136_049f1563",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-19T17:50:04Z",
+      "side": 1,
+      "message": "Lines 604-605 are just an analogue of a similar pattern at lines 521-522, and line 602 is analogous to line 504.\nThe old line 602 was probably unsafe if vif-\u003enum_rxqs \u003e vif-\u003enum_txqs (which I assume can happen, that is why there is line 171), as initialization (line 456) also stops at num_q_pairs.\n\nI agree there should be a more reasonable way to (re)write the code, I just stopped at the first form I thought would work correctly.",
+      "parentUuid": "32d5612e_e21345f1",
+      "range": {
+        "startLine": 602,
+        "startChar": 0,
+        "endLine": 605,
+        "endChar": 10
+      },
+      "revId": "5cbdc67634dca5f5024a899cd3920ab6d3546fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
