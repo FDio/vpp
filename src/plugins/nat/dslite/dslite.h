@@ -19,6 +19,7 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
 #include <nat/nat.h>
+#include <nat/nat_inlines.h>
 
 typedef struct
 {
@@ -99,6 +100,8 @@ typedef struct
   /* If set then the DSLite component behaves as CPE/B4
    * otherwise it behaves as AFTR */
   u8 is_ce;
+
+  u16 msg_id_base;
 } dslite_main_t;
 
 typedef struct
@@ -139,7 +142,6 @@ extern vlib_node_registration_t dslite_out2in_node;
 extern vlib_node_registration_t dslite_ce_encap_node;
 extern vlib_node_registration_t dslite_ce_decap_node;
 
-void dslite_init (vlib_main_t * vm);
 void dslite_set_ce (dslite_main_t * dm, u8 set);
 int dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
 int dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
