@@ -12,13 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <nat/dslite.h>
-#include <nat/dslite_dpo.h>
+#include <vnet/plugin/plugin.h>
+#include <nat/dslite/dslite.h>
+#include <nat/dslite/dslite_dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vpp/app/version.h>
 
 dslite_main_t dslite_main;
+fib_source_t nat_fib_src_hi;
 
-void
+clib_error_t *dslite_api_hookup (vlib_main_t * vm);
+
+static clib_error_t *
 dslite_init (vlib_main_t * vm)
 {
   dslite_main_t *dm = &dslite_main;
@@ -88,6 +93,12 @@ dslite_init (vlib_main_t * vm)
   vlib_zero_simple_counter (&dm->total_sessions, 0);
 
   dslite_dpo_module_init ();
+
+  nat_fib_src_hi = fib_source_allocate ("dslite-hi",
+					FIB_SOURCE_PRIORITY_HI,
+					FIB_SOURCE_BH_SIMPLE);
+
+  return dslite_api_hookup (vm);
 }
 
 void
@@ -261,6 +272,12 @@ format_dslite_ce_trace (u8 * s, va_list * args)
 
   return s;
 }
+
+VLIB_INIT_FUNCTION (dslite_init);
+
+VLIB_PLUGIN_REGISTER () =
+{
+.version = VPP_BUILD_VER,.description = "Dual-Stack Lite",};
 
 /*
  * fd.io coding-style-patch-verification: ON

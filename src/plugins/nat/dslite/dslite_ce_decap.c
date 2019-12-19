@@ -12,29 +12,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <nat/dslite.h>
+#include <nat/dslite/dslite.h>
 #include <nat/nat_inlines.h>
 
 typedef enum
 {
-  DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP,
-  DSLITE_CE_ENCAP_NEXT_DROP,
-  DSLITE_CE_ENCAP_N_NEXT,
-} dslite_ce_encap_next_t;
+  DSLITE_CE_DECAP_NEXT_IP4_LOOKUP,
+  DSLITE_IN2OUT_NEXT_IP6_ICMP,
+  DSLITE_CE_DECAP_NEXT_DROP,
+  DSLITE_CE_DECAP_N_NEXT,
+} dslite_ce_decap_next_t;
 
-static char *dslite_ce_encap_error_strings[] = {
+static char *dslite_ce_decap_error_strings[] = {
 #define _(sym,string) string,
   foreach_dslite_error
 #undef _
 };
 
-VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
+VLIB_NODE_FN (dslite_ce_decap_node) (vlib_main_t * vm,
 				     vlib_node_runtime_t * node,
 				     vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
-  dslite_ce_encap_next_t next_index;
-  dslite_main_t *dm = &dslite_main;
+  dslite_ce_decap_next_t next_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -50,8 +50,8 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 = DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP;
-	  u8 error0 = DSLITE_ERROR_CE_ENCAP;
+	  u32 next0 = DSLITE_CE_DECAP_NEXT_IP4_LOOKUP;
+	  u8 error0 = DSLITE_ERROR_CE_DECAP;
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  u32 proto0;
@@ -65,28 +65,35 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  ip40 = vlib_buffer_get_current (b0);
+	  ip60 = vlib_buffer_get_current (b0);
+
+	  if (PREDICT_FALSE (ip60->protocol != IP_PROTOCOL_IP_IN_IP))
+	    {
+	      if (ip60->protocol == IP_PROTOCOL_ICMP6)
+		{
+		  next0 = DSLITE_IN2OUT_NEXT_IP6_ICMP;
+		  goto trace0;
+		}
+	      error0 = DSLITE_ERROR_BAD_IP6_PROTOCOL;
+	      next0 = DSLITE_CE_DECAP_NEXT_DROP;
+	      goto trace0;
+	    }
+
+	  ip40 = vlib_buffer_get_current (b0) + sizeof (ip6_header_t);
 	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
 	      error0 = DSLITE_ERROR_UNSUPPORTED_PROTOCOL;
-	      next0 = DSLITE_CE_ENCAP_NEXT_DROP;
+	      next0 = DSLITE_CE_DECAP_NEXT_DROP;
 	      goto trace0;
 	    }
 
-	  /* Construct IPv6 header */
-	  vlib_buffer_advance (b0, -(sizeof (ip6_header_t)));
-	  ip60 = vlib_buffer_get_current (b0);
-	  ip60->ip_version_traffic_class_and_flow_label =
-	    clib_host_to_net_u32 ((6 << 28) + (ip40->tos << 20));
-	  ip60->payload_length = ip40->length;
-	  ip60->protocol = IP_PROTOCOL_IP_IN_IP;
-	  ip60->hop_limit = ip40->ttl;
-	  ip60->dst_address.as_u64[0] = dm->aftr_ip6_addr.as_u64[0];
-	  ip60->dst_address.as_u64[1] = dm->aftr_ip6_addr.as_u64[1];
-	  ip60->src_address.as_u64[0] = dm->b4_ip6_addr.as_u64[0];
-	  ip60->src_address.as_u64[1] = dm->b4_ip6_addr.as_u64[1];
+	  ip40->tos =
+	    (clib_net_to_host_u32
+	     (ip60->ip_version_traffic_class_and_flow_label) & 0x0ff00000) >>
+	    20;
+	  vlib_buffer_advance (b0, sizeof (ip6_header_t));
 
 	trace0:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -109,18 +116,19 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
-  .name = "dslite-ce-encap",
+VLIB_REGISTER_NODE (dslite_ce_decap_node) = {
+  .name = "dslite-ce-decap",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_ce_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (dslite_ce_encap_error_strings),
-  .error_strings = dslite_ce_encap_error_strings,
-  .n_next_nodes = DSLITE_CE_ENCAP_N_NEXT,
+  .n_errors = ARRAY_LEN (dslite_ce_decap_error_strings),
+  .error_strings = dslite_ce_decap_error_strings,
+  .n_next_nodes = DSLITE_CE_DECAP_N_NEXT,
   /* edit / add dispositions here */
   .next_nodes = {
-    [DSLITE_CE_ENCAP_NEXT_DROP] = "error-drop",
-    [DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [DSLITE_CE_DECAP_NEXT_DROP] = "error-drop",
+    [DSLITE_CE_DECAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [DSLITE_IN2OUT_NEXT_IP6_ICMP] = "ip6-icmp-input",
   },
 };
 /* *INDENT-ON* */

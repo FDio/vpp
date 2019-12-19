@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <nat/dslite.h>
+#include <nat/dslite/dslite.h>
 #include <nat/nat_inlines.h>
 
 typedef enum

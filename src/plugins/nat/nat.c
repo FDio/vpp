@@ -25,7 +25,6 @@
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
 #include <nat/nat66.h>
-#include <nat/dslite.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_affinity.h>
 #include <nat/nat_syslog.h>
@@ -636,15 +635,6 @@ is_snat_address_used_in_static_mapping (snat_main_t * sm, ip4_address_t addr)
   /* *INDENT-ON* */
 
   return 0;
-}
-
-void
-increment_v4_address (ip4_address_t * a)
-{
-  u32 v;
-
-  v = clib_net_to_host_u32 (a->as_u32) + 1;
-  a->as_u32 = clib_host_to_net_u32 (v);
 }
 
 static void
@@ -2505,8 +2495,6 @@ snat_init (vlib_main_t * vm)
   if (error)
     return error;
 
-  dslite_init (vm);
-
   nat66_init (vm);
 
   ip4_table_bind_callback_t cbt4 = {
@@ -3753,7 +3741,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t *sm = &snat_main;
   nat66_main_t *nm = &nat66_main;
-  dslite_main_t *dm = &dslite_main;
+  //dslite_main_t *dm = &dslite_main;
   snat_main_per_thread_data_t *tsm;
 
   u32 static_mapping_buckets = 1024;
@@ -3838,8 +3826,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "out2in dpo"))
 	sm->out2in_dpo = 1;
-      else if (unformat (input, "dslite ce"))
-	dslite_set_ce (dm, 1);
+      //else if (unformat (input, "dslite ce"))
+      //dslite_set_ce (dm, 1);
       else if (unformat (input, "endpoint-dependent"))
 	sm->endpoint_dependent = 1;
       else
