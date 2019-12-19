@@ -757,9 +757,6 @@ create_sub_interfaces (vlib_main_t * vm,
 	  continue;
 	}
 
-      kp = clib_mem_alloc (sizeof (*kp));
-      *kp = sup_and_sub_key;
-
       template.type = VNET_SW_INTERFACE_TYPE_SUB;
       template.flood_class = VNET_FLOOD_CLASS_NORMAL;
       template.sup_sw_if_index = hi->sw_if_index;
@@ -770,6 +767,9 @@ create_sub_interfaces (vlib_main_t * vm,
       error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
       if (error)
 	goto done;
+
+      kp = clib_mem_alloc (sizeof (*kp));
+      *kp = sup_and_sub_key;
 
       hash_set (hi->sub_interface_sw_if_index_by_id, id, sw_if_index);
       hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
