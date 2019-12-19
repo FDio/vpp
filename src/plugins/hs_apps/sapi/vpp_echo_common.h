@@ -263,6 +263,20 @@ typedef struct teardown_stat_
   u32 s;			/* stream sessions */
 } teardown_stat_t;
 
+typedef struct echo_stats_
+{
+  u64 tx_total;
+  u64 rx_total;
+  u64 tx_expected;
+  u64 rx_expected;
+  teardown_stat_t reset_count;	/* received reset from vpp */
+  teardown_stat_t close_count;	/* received close from vpp */
+  teardown_stat_t active_count;	/* sent close to vpp */
+  teardown_stat_t clean_count;	/* cleaned up stale session */
+  teardown_stat_t connected_count;	/* connected sessions count */
+  teardown_stat_t accepted_count;	/* connected sessions count */
+} echo_stats_t;
+
 typedef struct
 {
   svm_queue_t *vl_input_queue;	/* vpe input queue */
@@ -320,6 +334,7 @@ typedef struct
   u32 ckpair_index;		/* Cert key pair used */
   u8 crypto_engine;		/* crypto engine used */
   u8 connect_flag;		/* flags to pass to mq connect */
+  u32 periodic_stats_delta;	/* seconds between periodic stats */
 
   u8 *appns_id;
   u64 appns_flags;
@@ -343,19 +358,9 @@ typedef struct
   uword *error_string_by_error_number;
   echo_proto_cb_vft_t *available_proto_cb_vft[TRANSPORT_N_PROTO];
 
-  struct
-  {
-    u64 tx_total;
-    u64 rx_total;
-    u64 tx_expected;
-    u64 rx_expected;
-    teardown_stat_t reset_count;	/* received reset from vpp */
-    teardown_stat_t close_count;	/* received close from vpp */
-    teardown_stat_t active_count;	/* sent close to vpp */
-    teardown_stat_t clean_count;	/* cleaned up stale session */
-    teardown_stat_t connected_count;	/* connected sessions count */
-    teardown_stat_t accepted_count;	/* connected sessions count */
-  } stats;
+  echo_stats_t stats;
+  echo_stats_t last_stat_sampling;	/* copy of stats at last sampling */
+  f64 last_stat_sampling_ts;
 
   struct			/* Event based timing : start & end depend on CLI specified events */
   {
@@ -434,6 +439,7 @@ void echo_notify_event (echo_main_t * em, echo_test_evt_t e);
 void echo_session_print_stats (echo_main_t * em, echo_session_t * session);
 u8 *echo_format_crypto_engine (u8 * s, va_list * args);
 uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
+u8 *echo_format_bytes_per_sec (u8 * s, va_list * args);
 
 /* Binary API */
 
