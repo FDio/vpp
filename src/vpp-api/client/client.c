@@ -423,12 +423,12 @@ vac_read (char **p, int *l, u16 timeout)
   vl_shmem_hdr_t *shmem_hdr;
 
   /* svm_queue_sub(below) returns {-1, -2} */
-  if (!pm->connected_to_vlib) return -3;
+  if (!pm->connected_to_vlib) return VAC_NOT_CONNECTED;
 
   *l = 0;
 
   /* svm_queue_sub(below) returns {-1, -2} */
-  if (am->our_pid == 0) return (-4);
+  if (am->our_pid == 0) return (VAC_SHM_NOT_READY);
 
   /* Poke timeout thread */
   if (timeout)
@@ -492,7 +492,7 @@ vac_read (char **p, int *l, u16 timeout)
   vl_msg_api_free((void *) msg);
   /* Client might forget to resume RX thread on failure */
   vac_rx_resume ();
-  return -1;
+  return VAC_TIMEOUT;
 }
 
 /*
@@ -518,7 +518,7 @@ vac_write (char *p, int l)
   svm_queue_t *q;
   vac_main_t *pm = &vac_main;
 
-  if (!pm->connected_to_vlib) return -1;
+  if (!pm->connected_to_vlib) return VAC_NOT_CONNECTED;
   if (!mp) return (-1);
 
   memcpy(mp, p, l);
