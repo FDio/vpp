@@ -72,7 +72,9 @@ crypto_ia32_init (vlib_main_t * vm)
     vnet_crypto_register_engine (vm, "ia32", 100,
 				 "Intel IA32 ISA Optimized Crypto");
 
-  if (clib_cpu_supports_avx512f ())
+  if (clib_cpu_supports_vaes ())
+    error = crypto_ia32_aesni_cbc_init_vaes (vm);
+  else if (clib_cpu_supports_avx512f ())
     error = crypto_ia32_aesni_cbc_init_avx512 (vm);
   else if (clib_cpu_supports_avx2 ())
     error = crypto_ia32_aesni_cbc_init_avx2 (vm);
@@ -84,7 +86,9 @@ crypto_ia32_init (vlib_main_t * vm)
 
   if (clib_cpu_supports_pclmulqdq ())
     {
-      if (clib_cpu_supports_avx512f ())
+      if (clib_cpu_supports_vaes ())
+	error = crypto_ia32_aesni_gcm_init_vaes (vm);
+      else if (clib_cpu_supports_avx512f ())
 	error = crypto_ia32_aesni_gcm_init_avx512 (vm);
       else if (clib_cpu_supports_avx2 ())
 	error = crypto_ia32_aesni_gcm_init_avx2 (vm);
