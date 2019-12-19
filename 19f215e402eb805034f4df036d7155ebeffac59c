@@ -22,6 +22,30 @@
       "revId": "19f215e402eb805034f4df036d7155ebeffac59c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c2fa7d5_60cfaefe",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-19T18:21:50Z",
+      "side": 1,
+      "message": "Will add the outer_vlan_id_any check and resubmit.\nSo (two_tags \u0026\u0026 (inner any || outer any) \u0026\u0026 exact_match)  right?\n\nThis check is in the common function used by both the CLI and the API.\n(See interface_api.c line 1212.)",
+      "parentUuid": "d4693751_97edce6b",
+      "range": {
+        "startLine": 586,
+        "startChar": 32,
+        "endLine": 586,
+        "endChar": 33
+      },
+      "revId": "19f215e402eb805034f4df036d7155ebeffac59c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
