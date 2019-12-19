@@ -582,6 +582,16 @@ vnet_create_sw_interface (vnet_main_t * vnm, vnet_sw_interface_t * template,
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
 
+  if (template->sub.eth.flags.two_tags == 1
+      && template->sub.eth.flags.exact_match == 1
+      && (template->sub.eth.flags.inner_vlan_id_any == 1
+	  || template->sub.eth.flags.outer_vlan_id_any == 1))
+    {
+      error = clib_error_return (0,
+				 "inner-dot1q any exact-match is unsupported");
+      return error;
+    }
+
   hi = vnet_get_sup_hw_interface (vnm, template->sup_sw_if_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
