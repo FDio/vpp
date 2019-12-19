@@ -338,6 +338,9 @@ class VppPapiProvider(object):
         """
         return cli + "\n" + self.cli(cli)
 
+    def vpp_log(self, msg):
+        return self.cli(cli=f'test log notice log default {msg}')
+
     def ip6nd_send_router_solicitation(self, sw_if_index, irt=1, mrt=120,
                                        mrc=0, mrd=0):
         return self.api(self.papi.ip6nd_send_router_solicitation,

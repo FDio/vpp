@@ -725,8 +725,11 @@ unformat_vlib_log_subclass (unformat_input_t * input, va_list * args)
     va_arg (*args, vlib_log_subclass_data_t **);
   uword rv = 0;
   u8 *subclass_str = NULL;
+  u8 *default_sc = format (0, "default");
   if (unformat (input, "%v", &subclass_str))
     {
+      if vec_is_equal (subclass_str, default_sc)
+	subclass_str = 0;
       vlib_log_subclass_data_t *scdata;
       vec_foreach (scdata, class->subclasses)
       {
