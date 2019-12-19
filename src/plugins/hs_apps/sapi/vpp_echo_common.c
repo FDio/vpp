@@ -258,6 +258,20 @@ echo_unformat_timing_event (unformat_input_t * input, va_list * args)
 }
 
 u8 *
+echo_format_bytes_per_sec (u8 * s, va_list * args)
+{
+  f64 bps = va_arg (*args, f64) * 8;
+  if (bps > 1e9)
+    return format (s, "%.3f Gb/s", bps / 1e9);
+  else if (bps > 1e6)
+    return format (s, "%.3f Mb/s", bps / 1e6);
+  else if (bps > 1e3)
+    return format (s, "%.3f Kb/s", bps / 1e3);
+  else
+    return format (s, "%.3f b/s", bps);
+}
+
+u8 *
 echo_format_timing_event (u8 * s, va_list * args)
 {
   u32 timing_event = va_arg (*args, u32);
