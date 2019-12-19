@@ -574,19 +574,27 @@ class VppTestCase(unittest.TestCase):
             raise
 
     @classmethod
+    def _debug_quit(cls):
+        if (cls.debug_gdbserver or cls.debug_gdb):
+            try:
+                cls.vpp.poll()
+
+                if cls.vpp.returncode is None:
+                    print()
+                    print(double_line_delim)
+                    print("VPP or GDB server is still running")
+                    print(single_line_delim)
+                    input("When done debugging, press ENTER to kill the "
+                          "process and finish running the testcase...")
+            except AttributeError:
+                pass
+
+    @classmethod
     def quit(cls):
         """
         Disconnect vpp-api, kill vpp and cleanup shared memory files
         """
-        if (cls.debug_gdbserver or cls.debug_gdb) and hasattr(cls, 'vpp'):
-            cls.vpp.poll()
-            if cls.vpp.returncode is None:
-                print()
-                print(double_line_delim)
-                print("VPP or GDB server is still running")
-                print(single_line_delim)
-                input("When done debugging, press ENTER to kill the "
-                      "process and finish running the testcase...")
+        cls._debug_quit()
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, 'pump_thread_stop_flag'):
@@ -597,7 +605,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
         if hasattr(cls, 'vpp_stderr_reader_thread'):
-            cls.logger.debug("Waiting for stdderr pump to stop")
+            cls.logger.debug("Waiting for stderr pump to stop")
             cls.vpp_stderr_reader_thread.join()
 
         if hasattr(cls, 'vpp'):

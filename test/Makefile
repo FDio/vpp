@@ -241,8 +241,10 @@ shell: test-dep
 	@echo "source $(VENV_PATH)/bin/activate;\
 		cd $(BUILD_TEST_SRC);\
 		export PYTHONPATH=$(BUILD_TEST_SRC);\
+		export RND_SEED=$(RND_SEED);\
 		echo '***';\
 		echo PYTHONPATH=$(BUILD_TEST_SRC);\
+		echo RND_SEED=$(RND_SEED);\
 		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
 		echo VPP_BIN=$(VPP_BIN);\
 		echo VPP_PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
