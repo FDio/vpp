@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26843e2b_8a5770fe",
+        "filename": "src/plugins/srv6-mobile/extra/runner.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 868,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-19T18:13:28Z",
+      "side": 1,
+      "message": "1. Remove the trailing whitespace.\n2. Why are we waiting here? Building suspension for a human watching the logs?\n3. Note that the sleep between sending and receiving packet is already there (at line 879).\n4. Instead of sleeping (at line 879), consider applying something like wait_for_capture_file (from test/vpp_pg_interface.py).\n5. Sleeping in tests is bad in general. https://sqa.stackexchange.com/questions/3764/what-are-some-examples-of-why-explicitly-sleep-statements-are-bad",
+      "range": {
+        "startLine": 868,
+        "startChar": 8,
+        "endLine": 868,
+        "endChar": 23
+      },
+      "revId": "77022b88e90c47754c4046e49eeae9c960044597",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
