@@ -21,6 +21,8 @@
 #include <picotls/openssl.h>
 #include <quicly.h>
 
+#define QUICLY_EPOCH_1RTT 3
+
 typedef void (*quicly_do_transform_fn) (ptls_cipher_context_t *, void *,
 					const void *, size_t);
 
@@ -45,9 +47,42 @@ typedef struct quic_crypto_op_
   u32 key_index;
 } quic_crypto_op_t;
 
-vnet_crypto_op_t aead_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS];
-quic_crypto_op_t crypto_tx_ops[QUIC_SEND_MAX_BATCH_PACKETS];
-size_t aead_crypto_nb_tx_packets = 0;
+vnet_crypto_op_t aead_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS],
+  aead_crypto_rx_packets_ops[QUIC_RCV_MAX_BATCH_PACKETS];
+quic_crypto_op_t crypto_tx_ops[QUIC_SEND_MAX_BATCH_PACKETS],
+  crypto_rx_ops[QUIC_RCV_MAX_BATCH_PACKETS];
+size_t aead_crypto_nb_tx_packets = 0, aead_crypto_nb_rx_packets = 0;
+
+typedef struct quic_traffic_keys_t
+{
+  ptls_cipher_context_t *hp_ctx;
+  ptls_aead_context_t **aead_ctx;
+} quic_traffic_keys_t;
+
+typedef struct quic_crypto_conn_ciphers_
+{
+  quicly_conn_t *conn;
+  quic_traffic_keys_t traffic_keys[32];
+  int key_phase;
+} quic_crypto_conn_ciphers_t;
+
+quic_crypto_conn_ciphers_t quic_conn_ciphers_list[32];
+int ciphers_count = 0;
+
+void
+clean_ciphers ()
+{
+  fprintf (stderr, "%s \n\r", __FUNCTION__);
+  memset (&quic_conn_ciphers_list, 0,
+	  32 * sizeof (quic_crypto_conn_ciphers_t));
+  ciphers_count = 0;
+}
+
+static size_t
+quic_crypto_aead_decrypt_push (ptls_aead_context_t * _ctx, void *_output,
+			       const void *input, size_t inlen,
+			       uint64_t decrypted_pn, const void *aad,
+			       size_t aadlen);
 
 vnet_crypto_main_t *cm = &crypto_main;
 
@@ -58,10 +93,132 @@ quic_crypto_batch_tx_packets ()
 
   if (aead_crypto_nb_tx_packets <= 0)
     return;
+  // fprintf (stderr, "%s : aead_crypto_nb_tx_packets %ld \n\r", __FUNCTION__,
+//         aead_crypto_nb_tx_packets);
 
   vnet_crypto_process_ops (vm, aead_crypto_tx_packets_ops,
 			   aead_crypto_nb_tx_packets);
   aead_crypto_nb_tx_packets = 0;
+}
+
+void
+quic_crypto_batch_rx_packets ()
+{
+  vlib_main_t *vm = vlib_get_main ();
+  if (aead_crypto_nb_rx_packets <= 0)
+    return;
+
+  fprintf (stderr, "%s : aead_crypto_nb_rx_packets %ld \n\r", __FUNCTION__,
+	   aead_crypto_nb_rx_packets);
+
+  vnet_crypto_process_ops (vm, aead_crypto_rx_packets_ops,
+			   aead_crypto_nb_rx_packets);
+  aead_crypto_nb_rx_packets = 0;
+}
+
+void
+build_iv (ptls_aead_context_t * ctx, uint8_t * iv, uint64_t seq)
+{
+  size_t iv_size = ctx->algo->iv_size, i;
+  const uint8_t *s = ctx->static_iv;
+  uint8_t *d = iv;
+  /* build iv */
+  for (i = iv_size - 8; i != 0; --i)
+    *d++ = *s++;
+  i = 64;
+  do
+    {
+      i -= 8;
+      *d++ = *s++ ^ (uint8_t) (seq >> i);
+    }
+  while (i != 0);
+}
+
+static void
+save_conn_ciphers (quicly_conn_t * conn, ptls_cipher_context_t * hp_ctx,
+		   ptls_aead_context_t ** aead_ctx)
+{
+  fprintf (stderr, "%s conn %p hp %p aead %p \n\r", __FUNCTION__,
+	   conn, hp_ctx, aead_ctx);
+
+  quic_crypto_conn_ciphers_t *find_cipher = NULL;
+  for (int i = 0; i < ciphers_count; i++)
+    {
+      if (quic_conn_ciphers_list[i].conn == conn)
+	find_cipher = &quic_conn_ciphers_list[i];
+      break;
+    }
+
+  if (!find_cipher)
+    {
+      find_cipher = &quic_conn_ciphers_list[ciphers_count];
+      find_cipher->conn = conn;
+      find_cipher->key_phase = 0;
+      ciphers_count++;
+    }
+  else
+    {
+      find_cipher->key_phase++;
+    }
+
+  find_cipher->traffic_keys[find_cipher->key_phase].hp_ctx = hp_ctx;
+  find_cipher->traffic_keys[find_cipher->key_phase].aead_ctx = aead_ctx;
+}
+
+static quic_crypto_conn_ciphers_t *
+get_conn_ciphers (quicly_conn_t * conn)
+{
+  quic_crypto_conn_ciphers_t *cipher = NULL;
+  for (int i = 0; i < ciphers_count; i++)
+    {
+      if (quic_conn_ciphers_list[i].conn == conn)
+	{
+	  cipher = &quic_conn_ciphers_list[i];
+	  break;
+	}
+    }
+  return cipher;
+}
+
+static void
+do_finalize_send_packet (ptls_cipher_context_t * hp,
+			 quicly_datagram_t * packet,
+			 size_t first_byte_at, size_t payload_from)
+{
+  uint8_t hpmask[1 + QUICLY_SEND_PN_SIZE] = {
+    0
+  };
+  size_t i;
+
+  ptls_cipher_init (hp,
+		    packet->data.base + payload_from - QUICLY_SEND_PN_SIZE +
+		    QUICLY_MAX_PN_SIZE);
+  ptls_cipher_encrypt (hp, hpmask, hpmask, sizeof (hpmask));
+
+  packet->data.base[first_byte_at] ^=
+    hpmask[0] &
+    (QUICLY_PACKET_IS_LONG_HEADER (packet->data.base[first_byte_at]) ? 0xf :
+     0x1f);
+
+  for (i = 0; i != QUICLY_SEND_PN_SIZE; ++i)
+    packet->data.base[payload_from + i - QUICLY_SEND_PN_SIZE] ^=
+      hpmask[i + 1];
+}
+
+void
+quic_crypto_finalize_send_packet (quicly_datagram_t * packet)
+{
+  quic_encrypt_cb_ctx *encrypt_cb_ctx =
+    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
+
+  for (int i = 0; i < encrypt_cb_ctx->snd_ctx_count; i++)
+    {
+      do_finalize_send_packet (encrypt_cb_ctx->snd_ctx[i].hp,
+			       packet,
+			       encrypt_cb_ctx->snd_ctx[i].first_byte_at,
+			       encrypt_cb_ctx->snd_ctx[i].payload_from);
+    }
+  encrypt_cb_ctx->snd_ctx_count = 0;
 }
 
 static int
@@ -116,7 +273,11 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t * engine,
       free (hpkey_hex);
     }
 
+  if (epoch == QUICLY_EPOCH_1RTT)
+    save_conn_ciphers (conn, *hp_ctx, aead_ctx);
+
   ret = 0;
+
 Exit:
   if (ret != 0)
     {
@@ -136,66 +297,8 @@ Exit:
 }
 
 void
-build_iv (ptls_aead_context_t * ctx, uint8_t * iv, uint64_t seq)
-{
-  size_t iv_size = ctx->algo->iv_size, i;
-  const uint8_t *s = ctx->static_iv;
-  uint8_t *d = iv;
-  /* build iv */
-  for (i = iv_size - 8; i != 0; --i)
-    *d++ = *s++;
-  i = 64;
-  do
-    {
-      i -= 8;
-      *d++ = *s++ ^ (uint8_t) (seq >> i);
-    }
-  while (i != 0);
-}
-
-static void
-do_finalize_send_packet (ptls_cipher_context_t * hp,
-			 quicly_datagram_t * packet,
-			 size_t first_byte_at, size_t payload_from)
-{
-  uint8_t hpmask[1 + QUICLY_SEND_PN_SIZE] = { 0 };
-  size_t i;
-
-  ptls_cipher_init (hp,
-		    packet->data.base + payload_from - QUICLY_SEND_PN_SIZE +
-		    QUICLY_MAX_PN_SIZE);
-  ptls_cipher_encrypt (hp, hpmask, hpmask, sizeof (hpmask));
-
-  packet->data.base[first_byte_at] ^=
-    hpmask[0] &
-    (QUICLY_PACKET_IS_LONG_HEADER (packet->data.base[first_byte_at]) ? 0xf :
-     0x1f);
-
-  for (i = 0; i != QUICLY_SEND_PN_SIZE; ++i)
-    packet->data.base[payload_from + i - QUICLY_SEND_PN_SIZE] ^=
-      hpmask[i + 1];
-}
-
-void
-quic_crypto_finalize_send_packet (quicly_datagram_t * packet)
-{
-  quic_encrypt_cb_ctx *encrypt_cb_ctx =
-    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
-
-  for (int i = 0; i < encrypt_cb_ctx->snd_ctx_count; i++)
-    {
-      do_finalize_send_packet (encrypt_cb_ctx->snd_ctx[i].hp,
-			       packet,
-			       encrypt_cb_ctx->snd_ctx[i].first_byte_at,
-			       encrypt_cb_ctx->snd_ctx[i].payload_from);
-    }
-  encrypt_cb_ctx->snd_ctx_count = 0;
-}
-
-
-void
-quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
-				     quicly_conn_t * conn,
+quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t
+				     *engine, quicly_conn_t * conn,
 				     ptls_cipher_context_t * hp,
 				     ptls_aead_context_t * aead,
 				     quicly_datagram_t * packet,
@@ -211,6 +314,102 @@ quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
   encrypt_cb_ctx->snd_ctx[encrypt_cb_ctx->snd_ctx_count].payload_from =
     payload_from;
   encrypt_cb_ctx->snd_ctx_count++;
+}
+
+int
+quic_crypto_decrypt_packet (quicly_conn_t * conn,
+			    quicly_decoded_packet_t * packet,
+			    struct sockaddr *dest_addr,
+			    struct sockaddr *src_addr)
+{
+  ptls_cipher_context_t *header_protection = NULL;
+  ptls_aead_context_t **aead = NULL;
+  int pn;
+
+  /* Long Header packets are not decrypted by vpp */
+  if (QUICLY_PACKET_IS_LONG_HEADER (packet->octets.base[0]))
+    goto Error;
+
+  size_t aead_index = (packet->octets.base[0] & QUICLY_KEY_PHASE_BIT) != 0;
+  if (aead_index == 1)
+    goto Error;
+
+  struct st_quicly_application_space_t *space =
+    quicly_get_application_space (conn);
+
+  aead = space->cipher.ingress.aead;
+  header_protection = space->cipher.ingress.header_protection.one_rtt;
+
+  fprintf (stderr, "%s  header_protection %p aead %p\n\r", __FUNCTION__,
+	   header_protection, aead);
+
+  fprintf (stderr, "%s aead_index %ld \n\r", __FUNCTION__, aead_index);
+
+  quic_crypto_conn_ciphers_t *ciphers = get_conn_ciphers (conn);
+
+  header_protection = ciphers->traffic_keys[ciphers->key_phase].hp_ctx;
+  aead = ciphers->traffic_keys[ciphers->key_phase].aead_ctx;
+
+  if (!aead[aead_index] || !header_protection)
+    goto Error;
+
+  size_t encrypted_len = packet->octets.len - packet->encrypted_off;
+  uint8_t hpmask[5] = { 0 };
+  uint32_t pnbits = 0;
+  size_t pnlen, ptlen, i;
+
+  /* decipher the header protection, as well as obtaining pnbits, pnlen */
+  if (encrypted_len < header_protection->algo->iv_size + QUICLY_MAX_PN_SIZE)
+    return QUICLY_ERROR_PACKET_IGNORED;
+  ptls_cipher_init (header_protection,
+		    packet->octets.base + packet->encrypted_off +
+		    QUICLY_MAX_PN_SIZE);
+  ptls_cipher_encrypt (header_protection, hpmask, hpmask, sizeof (hpmask));
+  packet->octets.base[0] ^=
+    hpmask[0] & (QUICLY_PACKET_IS_LONG_HEADER (packet->octets.base[0]) ? 0xf :
+		 0x1f);
+  pnlen = (packet->octets.base[0] & 0x3) + 1;
+  for (i = 0; i != pnlen; ++i)
+    {
+      packet->octets.base[packet->encrypted_off + i] ^= hpmask[i + 1];
+      pnbits = (pnbits << 8) | packet->octets.base[packet->encrypted_off + i];
+    }
+
+  size_t aead_off = packet->encrypted_off + pnlen;
+  pn =
+    quicly_determine_packet_number (pnbits, pnlen * 8,
+				    space->super.next_expected_packet_number);
+
+  fprintf (stderr,
+	   "%s pn %d space->super.next_expected_packet_number %ld\n\r",
+	   __FUNCTION__, pn, space->super.next_expected_packet_number);
+
+  if ((ptlen =
+       quic_crypto_aead_decrypt_push (aead[aead_index],
+				      packet->octets.base + aead_off,
+				      packet->octets.base + aead_off,
+				      packet->octets.len - aead_off, pn,
+				      packet->octets.base,
+				      aead_off)) == SIZE_MAX)
+    {
+      fprintf (stderr,
+	       "%s: aead decryption failure (pn: %d)\n", __FUNCTION__, pn);
+      goto Error;
+    }
+
+  if (space->super.next_expected_packet_number <= pn)
+    space->super.next_expected_packet_number = pn + 1;
+
+  packet->encrypted_off = aead_off;
+  packet->octets.len = ptlen + aead_off;
+
+  packet->decrypted.pn = pn;
+  //packet->decrypted.key_phase = ciphers->key_phase;
+  packet->decrypted.key_phase = 0;
+
+  return ptlen;
+Error:
+  return -1;
 }
 
 #ifdef QUIC_HP_CRYPTO
@@ -405,6 +604,49 @@ quic_crypto_aead_decrypt (ptls_aead_context_t * _ctx, void *_output,
   vnet_crypto_process_ops (vm, &ctx->op, 1);
 
   return ctx->op.len;
+}
+
+static size_t
+quic_crypto_aead_decrypt_push (ptls_aead_context_t * _ctx, void *_output,
+			       const void *input, size_t inlen,
+			       uint64_t decrypted_pn, const void *aad,
+			       size_t aadlen)
+{
+  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
+  vnet_crypto_op_id_t id;
+  if (!strcmp (ctx->super.algo->name, "AES128-GCM"))
+    {
+      id = VNET_CRYPTO_OP_AES_128_GCM_DEC;
+    }
+  else if (!strcmp (ctx->super.algo->name, "AES256-GCM"))
+    {
+      id = VNET_CRYPTO_OP_AES_256_GCM_DEC;
+    }
+//   else if (!strcmp (ctx->super.algo->name, "AES256-CTR"))
+//     {
+//       id = VNET_CRYPTO_OP_AES_256_CTR_DEC;
+//     }
+  else
+    {
+      assert (0);
+    }
+
+
+  vnet_crypto_op_t *vnet_op =
+    &aead_crypto_rx_packets_ops[aead_crypto_nb_rx_packets];
+  vnet_crypto_op_init (vnet_op, id);
+  vnet_op->aad = (u8 *) aad;
+  vnet_op->aad_len = aadlen;
+  build_iv (_ctx, crypto_tx_ops[aead_crypto_nb_rx_packets].iv, decrypted_pn);
+  vnet_op->iv = (u8 *) crypto_tx_ops[aead_crypto_nb_rx_packets].iv;
+  vnet_op->src = (u8 *) input;
+  vnet_op->dst = _output;
+  vnet_op->key_index = ctx->key_index;
+  vnet_op->len = inlen - ctx->super.algo->tag_size;
+  vnet_op->tag_len = ctx->super.algo->tag_size;
+  vnet_op->tag = vnet_op->src + vnet_op->len;
+  aead_crypto_nb_rx_packets++;
+  return vnet_op->len;
 }
 
 static void

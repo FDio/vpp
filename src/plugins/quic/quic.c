@@ -34,6 +34,8 @@
 
 extern quicly_crypto_engine_t quic_crypto_engine;
 
+FILE *quicly_trace_fp;
+
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
 #include <quic/quic_error.def>
@@ -88,6 +90,9 @@ quic_crypto_context_free_if_needed (crypto_context_t * crctx, u8 thread_index)
   clib_mem_free (crctx->data);
   pool_put (qm->wrk_ctx[thread_index].crypto_ctx_pool, crctx);
 }
+
+extern quicly_crypto_engine_t quic_crypto_engine;
+
 
 static quicly_datagram_t *
 quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
@@ -572,6 +577,9 @@ quic_connection_closed (quic_ctx_t * ctx)
 
   /* TODO if connection is not established, just delete the session? */
   /* Actually should send connect or accept error */
+
+
+  //clean_ciphers ();
 
   switch (ctx->conn_state)
     {
@@ -1158,7 +1166,6 @@ quic_expired_timers_dispatch (u32 * expired_timers)
 }
 
 /* Transport proto functions */
-
 static int
 quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 {
@@ -2102,6 +2109,29 @@ quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
   return rv;
 }
 
+static inline void
+print_epoch (uint8_t first_byte)
+{
+  if (!QUICLY_PACKET_IS_LONG_HEADER (first_byte))
+    fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_1RTT");
+
+  switch (first_byte & QUICLY_PACKET_TYPE_BITMASK)
+    {
+    case QUICLY_PACKET_TYPE_INITIAL:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_INITIAL");
+      break;
+    case QUICLY_PACKET_TYPE_HANDSHAKE:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_HANDSHAKE");
+      break;
+    case QUICLY_PACKET_TYPE_0RTT:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_0RTT");
+      break;
+    default:
+      fprintf (stderr, "FIXME");
+      break;
+    }
+}
+
 static int
 quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 			    u32 fifo_offset, quic_rx_packet_ctx_t * pctx)
@@ -2150,6 +2180,12 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
+      quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
+      if (quic_crypto_decrypt_packet
+	  (qctx->conn, &pctx->packet, NULL, &pctx->sa) == -1)
+	{
+	  return 1;
+	}
       return 0;
     }
   else if (rv == QUIC_PACKET_TYPE_MIGRATE)
@@ -2215,8 +2251,10 @@ rx_start:
 	  QUIC_ERR ("Fifo %d < header size in RX", cur_deq);
 	  break;
 	}
+
       rv = quic_process_one_rx_packet (udp_session_handle, f,
 				       fifo_offset, &packets_ctx[i]);
+
       if (packets_ctx[i].ptype != QUIC_PACKET_TYPE_MIGRATE)
 	fifo_offset += SESSION_CONN_HDR_LEN + packets_ctx[i].ph.data_length;
       if (rv)
@@ -2225,6 +2263,8 @@ rx_start:
 	  break;
 	}
     }
+
+  quic_crypto_batch_rx_packets ();
 
   for (i = 0; i < max_packets; i++)
     {

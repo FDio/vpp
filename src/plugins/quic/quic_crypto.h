@@ -28,7 +28,14 @@ int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
 
 void quic_crypto_batch_tx_packets ();
 void quic_crypto_batch_rx_packets ();
+void clean_ciphers ();
 void quic_crypto_finalize_send_packet (quicly_datagram_t * packet);
+
+int quic_crypto_decrypt_packet (quicly_conn_t * conn,
+				quicly_decoded_packet_t * packet,
+				struct sockaddr *dest_addr,
+				struct sockaddr *src_addr);
+
 
 typedef struct quic_finalize_send_packet_cb_ctx_
 {
@@ -52,6 +59,7 @@ quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
 				     quicly_datagram_t * packet,
 				     size_t first_byte_at,
 				     size_t payload_from, int coalesced);
+
 #endif /* __included_vpp_quic_crypto_h__ */
 
 /*
