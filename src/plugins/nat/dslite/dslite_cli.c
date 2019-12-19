@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <nat/dslite.h>
+#include <nat/dslite/dslite.h>
 
 static clib_error_t *
 dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,

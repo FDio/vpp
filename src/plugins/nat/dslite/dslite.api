@@ -1,0 +1,134 @@
+/*
+ * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
+
+/**
+ * @file nat.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane API messages which are generally
+ * called through a shared memory interface.
+ */
+
+
+/*
+ * DS-Lite APIs
+ */
+
+/** \brief Add/delete address range to DS-Lite pool
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_addr - start IPv4 address of the range
+    @param end_addr - end IPv4 address of the range
+    @param is_add - true if add, false if delete
+*/
+autoreply define dslite_add_del_pool_addr_range {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
+  bool is_add;
+};
+
+/** \brief Dump DS-Lite addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief DS-Lite address details response
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+*/
+define dslite_address_details {
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+};
+
+/** \brief Set AFTR IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IPv6 address
+*/
+autoreply define dslite_set_aftr_addr {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
+};
+
+/** \brief Get AFTR IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_get_aftr_addr {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get AFTR IPv6 and IPv4 addresses
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IPv6 address
+*/
+define dslite_get_aftr_addr_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
+};
+
+/** \brief Set B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IPv6 address
+*/
+autoreply define dslite_set_b4_addr {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
+};
+
+/** \brief Get B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_get_b4_addr {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get B4 IPv6 and IPv4 addresses
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IPv6 address
+*/
+define dslite_get_b4_addr_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
+};
