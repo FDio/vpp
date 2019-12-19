@@ -13,6 +13,7 @@ Session synchronization traffic is distributed through an IPv4 UDP connection. T
 
 The two NAT nodes have a dedicated link (interface GE0/0/3 on both) to synchronize NAT sessions using NAT HA protocol.
 
+```
         +-----------------------+
         |    outside network    |
         +-----------------------+
@@ -36,6 +37,7 @@ The two NAT nodes have a dedicated link (interface GE0/0/3 on both) to synchroni
         +-----------------------+
         |    inside network     |
         +-----------------------+
+```
 
 ### Active node configuration
 
