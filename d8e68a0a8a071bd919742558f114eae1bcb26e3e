@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "728274cf_4147dad6",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 2084
+      },
+      "writtenOn": "2019-12-19T09:43:50Z",
+      "side": 1,
+      "message": "I don\u0027t think graph node path for vxlan encap direction would traverse l2_bvi_tx node. In my case, packet trace show the node path is: af-packet-input -\u003e ethernet-iput -\u003e l2-input -\u003e l2-learn -\u003e l2-fwd -\u003e ip4-input -\u003e ip4-lookup -\u003e ip4-rewrite -\u003e vxlan4-encap -\u003e ip4-load-balance -\u003e ip4-rewrite -\u003e eth1-output -\u003e eth1-tx. and l2.l2-len is cleared by ip4-lookup to set ip.flow_hash\u003d0 at ip4_forward.h line 375 ip4_lookup_inline\nI will send separated email with vpp config, topo, etc to explain the detail.",
+      "parentUuid": "36c63ccb_22c81deb",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "34f7befa_a8b49b82",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 3
@@ -87,6 +105,24 @@
       "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e2f1bc2_089967dd",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 2084
+      },
+      "writtenOn": "2019-12-19T09:43:50Z",
+      "side": 1,
+      "message": "ok,  to reuse inner header flow hash for outer header ECMP path selection is better to compute new one.\nso should I change all these cases in this commit? or fix them one by one? and how about UT test for other cases, should have really traffic to verify codes changes too?",
+      "parentUuid": "3f77e974_c86b5f62",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
