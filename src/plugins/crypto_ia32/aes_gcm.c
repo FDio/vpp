@@ -746,7 +746,9 @@ foreach_aesni_gcm_handler_type;
 #undef _
 
 clib_error_t *
-#ifdef __AVX512F__
+#ifdef __VAES__
+crypto_ia32_aesni_gcm_init_vaes (vlib_main_t * vm)
+#elif __AVX512F__
 crypto_ia32_aesni_gcm_init_avx512 (vlib_main_t * vm)
 #elif __AVX2__
 crypto_ia32_aesni_gcm_init_avx2 (vlib_main_t * vm)
