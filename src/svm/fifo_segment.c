@@ -26,11 +26,11 @@
  * @return		number of free bytes
  */
 static uword
-fs_free_space (fifo_segment_t * fs)
+fsh_free_space (fifo_segment_header_t * fsh)
 {
   struct dlmallinfo dlminfo;
 
-  dlminfo = mspace_mallinfo (fs->ssvm.sh->heap);
+  dlminfo = mspace_mallinfo (fsh->ssvm_sh->heap);
   return dlminfo.fordblks;
 }
 
@@ -48,10 +48,9 @@ fsh_n_free_bytes (fifo_segment_header_t * fsh)
 }
 
 static inline void
-fsh_update_free_btes (fifo_segment_header_t * fsh)
+fsh_update_free_bytes (fifo_segment_header_t * fsh)
 {
-  clib_atomic_store_rel_n (&fsh->n_free_bytes,
-			   fs_free_space (fsh->ssvm_sh->heap));
+  clib_atomic_store_rel_n (&fsh->n_free_bytes, fsh_free_space (fsh));
 }
 
 static void
@@ -68,7 +67,7 @@ fsh_check_mem (fifo_segment_header_t * fsh)
     return;
 
   fsh->flags |= FIFO_SEGMENT_F_MEM_LIMIT;
-  fsh_update_free_btes (fsh);
+  fsh_update_free_bytes (fsh);
 }
 
 static inline fifo_segment_slice_t *
@@ -116,7 +115,7 @@ fifo_segment_init (fifo_segment_t * fs)
 
   fsh->ssvm_sh = fs->ssvm.sh;
   fsh->n_slices = fs->n_slices;
-  max_fifo = clib_min ((fs_free_space (fs) - 4096) / 2,
+  max_fifo = clib_min ((fsh_free_space (fsh) - 4096) / 2,
 		       FIFO_SEGMENT_MAX_FIFO_SIZE);
   fsh->max_log2_chunk_size = max_log2 (max_fifo);
 
@@ -132,7 +131,7 @@ fifo_segment_init (fifo_segment_t * fs)
 
   ssvm_pop_heap (oldheap);
 
-  fsh->n_free_bytes = fs_free_space (fs);
+  fsh->n_free_bytes = fsh_free_space (fsh);
   max_chunks = fsh->n_free_bytes / FIFO_SEGMENT_MIN_FIFO_SIZE;
   fsh->n_reserved_bytes = (max_chunks / 4) * sizeof (rb_node_t);
   sh->ready = 1;
@@ -702,7 +701,7 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 
   /* Calculate space requirements */
   pair_size = 2 * hdrs + rx_rounded_data_size + tx_rounded_data_size;
-  space_available = fs_free_space (fs);
+  space_available = fsh_free_space (fsh);
   pairs_to_alloc = space_available / pair_size;
   pairs_to_alloc = clib_min (pairs_to_alloc, *n_fifo_pairs);
   pairs_per_slice = pairs_to_alloc / fs->n_slices;
@@ -902,8 +901,7 @@ fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size)
 void
 fifo_segment_update_free_bytes (fifo_segment_t * fs)
 {
-  fifo_segment_header_t *fsh = fs->h;
-  clib_atomic_store_rel_n (&fsh->n_free_bytes, fs_free_space (fs));
+  fsh_update_free_bytes (fs->h);
 }
 
 uword
