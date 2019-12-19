@@ -2227,6 +2227,7 @@ rx_start:
 					    &packets_ctx[i])))
 	    {
 	      QUIC_ERR ("quic accept errored with %d", rv);
+	      packets_ctx[i].ptype = QUIC_PACKET_TYPE_DROP;
 	    }
 	  break;
 	case QUIC_PACKET_TYPE_RESET:
