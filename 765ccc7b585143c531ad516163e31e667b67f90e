@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5457b455_72916220",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-12-19T17:04:19Z",
+      "side": 1,
+      "message": "I think this branch leaks allocated packets - we should probably free the remaining packets here.",
+      "range": {
+        "startLine": 711,
+        "startChar": 5,
+        "endLine": 711,
+        "endChar": 23
+      },
+      "revId": "765ccc7b585143c531ad516163e31e667b67f90e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
