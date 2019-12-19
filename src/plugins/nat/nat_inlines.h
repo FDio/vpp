@@ -692,6 +692,15 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
   return 1;
 }
 
+static inline void
+increment_v4_address (ip4_address_t * a)
+{
+  u32 v;
+
+  v = clib_net_to_host_u32 (a->as_u32) + 1;
+  a->as_u32 = clib_host_to_net_u32 (v);
+}
+
 #endif /* __included_nat_inlines_h__ */
 
 /*

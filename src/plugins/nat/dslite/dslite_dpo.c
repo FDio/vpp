@@ -14,7 +14,7 @@
  */
 
 #include <vnet/ip/ip.h>
-#include <nat/dslite_dpo.h>
+#include <nat/dslite/dslite_dpo.h>
 
 dpo_type_t dslite_dpo_type;
 dpo_type_t dslite_ce_dpo_type;
