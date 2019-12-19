@@ -685,6 +685,11 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             cls.logger.debug("Exception connecting to VPP: %s" % e)
             cls.quit()
             raise e
+        try:
+            cls.vapi.vpp_log(f'setUpClass {cls.__name__}')
+        except AttributeError:
+            pass
+
 
     @classmethod
     def _debug_quit(cls):
@@ -780,6 +785,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         """ Perform final cleanup after running all tests in this test-case """
         cls.logger.debug("--- tearDownClass() for %s called ---" %
                          cls.__name__)
+        try:
+            cls.vapi.vpp_log(f'tearDownClass {cls.__name__}')
+        except AttributeError:
+            pass
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
         cls.file_handler.close()
@@ -796,6 +805,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
+        self.vapi.vpp_log(f'tearDown {self.__class__.__name__}.'
+                          f'{self._testMethodName}')
 
         try:
             if not self.vpp_dead:
@@ -843,6 +854,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
             (self.__class__.__name__, self._testMethodName,
              self._testMethodDoc))
+        self.vapi.vpp_log(f'setUp {self.__class__.__name__}.'
+                          f'{self._testMethodName}')
         self.vapi.cli("clear trace")
         # store the test instance inside the test class - so that objects
         # holding the class can access instance methods (like assertEqual)
