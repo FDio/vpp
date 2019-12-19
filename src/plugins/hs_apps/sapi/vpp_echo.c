@@ -245,11 +245,6 @@ echo_update_count_on_session_close (echo_main_t * em, echo_session_t * s)
 	    echo_format_session, s, s->bytes_sent,
 	    s->bytes_sent + s->bytes_to_send);
 
-  ASSERT (em->stats.tx_total + s->bytes_sent <= em->stats.tx_expected);
-  ASSERT (em->stats.rx_total + s->bytes_received <= em->stats.rx_expected);
-  clib_atomic_fetch_add (&em->stats.tx_total, s->bytes_sent);
-  clib_atomic_fetch_add (&em->stats.rx_total, s->bytes_received);
-
   if (PREDICT_FALSE
       ((em->stats.rx_total == em->stats.rx_expected)
        && (em->stats.tx_total == em->stats.tx_expected)))
@@ -318,6 +313,7 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 
   s->bytes_received += n_read;
   s->bytes_to_receive -= n_read;
+  clib_atomic_fetch_add (&em->stats.rx_total, n_read);
   return n_read;
 }
 
@@ -326,6 +322,8 @@ send_data_chunk (echo_session_t * s, u8 * tx_buf, int offset, int len)
 {
   int n_sent;
   int bytes_this_chunk = clib_min (s->bytes_to_send, len - offset);
+  echo_main_t *em = &echo_main;
+
   if (!bytes_this_chunk)
     return 0;
   n_sent = app_send ((app_session_t *) s, tx_buf + offset,
@@ -334,6 +332,7 @@ send_data_chunk (echo_session_t * s, u8 * tx_buf, int offset, int len)
     return 0;
   s->bytes_to_send -= n_sent;
   s->bytes_sent += n_sent;
+  clib_atomic_fetch_add (&em->stats.tx_total, n_sent);
   return n_sent;
 }
 
@@ -758,6 +757,34 @@ echo_process_rpcs (echo_main_t * em)
     }
 }
 
+static inline void
+echo_print_periodic_stats (echo_main_t * em)
+{
+  f64 delta, now = clib_time_now (&em->clib_time);
+  echo_stats_t _st, *st = &_st;
+  echo_stats_t *lst = &em->last_stat_sampling;
+  delta = now - em->last_stat_sampling_ts;
+  if (delta < em->periodic_stats_delta)
+    return;
+
+  clib_memcpy_fast (st, &em->stats, sizeof (*st));
+  if (st->rx_total - lst->rx_total)
+    clib_warning ("RX: %U", echo_format_bytes_per_sec,
+		  (st->rx_total - lst->rx_total) / delta);
+  if (st->tx_total - lst->tx_total)
+    clib_warning ("TX: %U", echo_format_bytes_per_sec,
+		  (st->tx_total - lst->tx_total) / delta);
+  if (st->connected_count.q - lst->connected_count.q)
+    clib_warning ("conn: %d/s",
+		  st->connected_count.q - lst->connected_count.q);
+  if (st->accepted_count.q - lst->accepted_count.q)
+    clib_warning ("accept: %d/s",
+		  st->accepted_count.q - lst->accepted_count.q);
+
+  clib_memcpy_fast (lst, st, sizeof (*st));
+  em->last_stat_sampling_ts = now;
+}
+
 static void *
 echo_mq_thread_fn (void *arg)
 {
@@ -781,6 +808,9 @@ echo_mq_thread_fn (void *arg)
 
   while (em->state < STATE_DETACHED && !em->time_to_stop)
     {
+      if (em->periodic_stats_delta)
+	echo_print_periodic_stats (em);
+
       svm_msg_q_lock (mq);
       if (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait (mq, 1))
 	{
@@ -918,6 +948,7 @@ print_usage_and_exit (void)
 	   "  rx-results-diff     Rx results different to pass test\n"
 	   "  tx-results-diff     Tx results different to pass test\n"
 	   "  json                Output global stats in json\n"
+	   "  stats N             Output stats evry N secs\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
 	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
 	   "\n"
@@ -1052,6 +1083,8 @@ echo_process_opts (int argc, char **argv)
 	em->tx_results_diff = 1;
       else if (unformat (a, "json"))
 	em->output_json = 1;
+      else if (unformat (a, "stats %d", &em->periodic_stats_delta))
+	;
       else if (unformat (a, "wait-for-gdb"))
 	em->wait_for_gdb = 1;
       else if (unformat (a, "log=%d", &em->log_lvl))
