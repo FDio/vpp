@@ -73,6 +73,24 @@
     },
     {
       "key": {
+        "uuid": "5723078f_62e69580",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-12-19T16:50:35Z",
+      "side": 1,
+      "message": "VXLAN tunnel is used to setup L2 overlay networks by connecting bridge domains (BDs) in separate hosts via underlay L3 network.  Thus, the VXLAN tunnel interfaces are supposed to be put in BDs and never have IP addresses/ARP assigned as how you are configuring it, such as the following command in the configs in your email: \"set ip arp static vxlan_tunnel1 1.1.1.2 00:1b:21:8b:48:c0\" and \"ip route add 10.0.2.0/24 table 1 via 1.1.1.2 vxlan_tunnel1\".  This is why you are getting your node path where vxlan-encap node is used after ip4-lookup which clears l2_len.  This is not a valid usage of VXLAN tunnel.  The proper VXLAN tunnel node path is usually: ...-\u003e l2-output -\u003e vxlan4-encap -\u003e ip4-load-balance -\u003e ip4-rewrite -\u003e ... where vxlan encap happens right after l2-output node, before ip4 forwarding nodes are used. Thus what you assumed to be a problem where l2-len is cleared by ip4-lookup which is later used by encap node happens only because your misuse of VXLAN tunnel.",
+      "parentUuid": "728274cf_4147dad6",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "34f7befa_a8b49b82",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 3
@@ -120,6 +138,24 @@
       "side": 1,
       "message": "ok,  to reuse inner header flow hash for outer header ECMP path selection is better to compute new one.\nso should I change all these cases in this commit? or fix them one by one? and how about UT test for other cases, should have really traffic to verify codes changes too?",
       "parentUuid": "3f77e974_c86b5f62",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c23e715_2bbd6053",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-12-19T16:50:35Z",
+      "side": 1,
+      "message": "These should be almost identical code sequence with the same fix so I would think it is OK to fix with this commit.  There are no UT test case for encap followed by load balance so it should not matter.",
+      "parentUuid": "0e2f1bc2_089967dd",
       "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
