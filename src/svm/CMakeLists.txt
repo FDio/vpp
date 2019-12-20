@@ -28,6 +28,7 @@ add_vpp_library(svm
 
   INSTALL_HEADERS
   fifo_segment.h
+  fifo_types.h
   message_queue.h
   queue.h
   ssvm.h
