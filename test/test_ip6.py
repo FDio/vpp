@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from socket import inet_pton, inet_ntop
+from socket import AF_INET6, inet_pton, inet_ntop
 import unittest
 
 from parameterized import parameterized
@@ -28,8 +28,6 @@ from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from ipaddress import IPv6Network, IPv6Address
-
-AF_INET6 = socket.AF_INET6
 
 try:
     text_type = unicode
@@ -222,6 +220,7 @@ class TestIPv6(TestIPv6ND):
         """Run standard test teardown and log ``show ip6 neighbors``."""
         for i in self.interfaces:
             i.unconfig_ip6()
+            i.ip6_disable()
             i.admin_down()
         for i in self.sub_interfaces:
             i.remove_vpp_config()
@@ -1045,6 +1044,7 @@ class TestICMPv6Echo(VppTestCase):
         super(TestICMPv6Echo, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
+            i.ip6_disable()
             i.admin_down()
 
     def test_icmpv6_echo(self):
@@ -1241,6 +1241,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
 
     @staticmethod
     def create_ra_packet(pg, routerlifetime=None):
+        """ craft a packet to our interface from a synthetic router"""
         src_ip = pg.remote_ip6_ll
         dst_ip = pg.local_ip6
         if routerlifetime is not None:
@@ -1258,10 +1259,10 @@ class TestIPv6RDControlPlane(TestIPv6ND):
             if entry.route.prefix.prefixlen == 0:
                 for path in entry.route.paths:
                     if path.sw_if_index != 0xFFFFFFFF:
-                        defaut_route = {}
-                        defaut_route['sw_if_index'] = path.sw_if_index
-                        defaut_route['next_hop'] = path.nh.address.ip6
-                        list.append(defaut_route)
+                        default_route = {}
+                        default_route['sw_if_index'] = path.sw_if_index
+                        default_route['next_hop'] = path.nh.address.ip6
+                        list.append(default_route)
         return list
 
     @staticmethod
@@ -1291,10 +1292,13 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         fib = self.vapi.ip_route_dump(0, True)
         default_routes = self.get_default_routes(fib)
         initial_addresses = set(self.get_interface_addresses(fib, self.pg0))
-        self.assertEqual(default_routes, [])
+        self.assertEqual(default_routes, [],
+                         "Expected no default routes.")
         router_address = IPv6Address(text_type(self.pg0.remote_ip6_ll))
 
-        self.vapi.ip6_nd_address_autoconfig(self.pg0.sw_if_index, 1, 1)
+        self.vapi.ip6_nd_address_autoconfig(sw_if_index=self.pg0.sw_if_index,
+                                            enable=1,
+                                            install_default_routes=1)
 
         self.sleep(0.1)
 
@@ -1305,15 +1309,15 @@ class TestIPv6RDControlPlane(TestIPv6ND):
             prefixlen=64,
             validlifetime=2,
             preferredlifetime=2,
-            L=1,
-            A=1,
+            L=1,  # on-link prefix
+            A=1,  # autonomous address configuration
         ) / ICMPv6NDOptPrefixInfo(
             prefix="7::",
             prefixlen=20,
             validlifetime=1500,
             preferredlifetime=1000,
-            L=1,
-            A=0,
+            L=1,  # on-link prefix
+            A=0,  # autonomous address configuration
         ))
         self.pg0.add_stream([packet])
         self.pg_start()
@@ -1347,7 +1351,8 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         # check that default route is deleted
         fib = self.vapi.ip_route_dump(0, True)
         default_routes = self.get_default_routes(fib)
-        self.assertEqual(len(default_routes), 0)
+        self.assertEqual(len(default_routes), 0,
+                         "Expected the default route to be deleted.")
 
         self.sleep_on_vpp_time(0.1)
 
@@ -1358,14 +1363,19 @@ class TestIPv6RDControlPlane(TestIPv6ND):
 
         self.sleep_on_vpp_time(0.1)
 
-        # check FIB for new default route
-        fib = self.vapi.ip_route_dump(0, True)
-        default_routes = self.get_default_routes(fib)
-        self.assertEqual(len(default_routes), 1)
-        dr = default_routes[0]
-        self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
-        self.assertEqual(dr['next_hop'], router_address)
+        def verify_default_route(self):
+            # check FIB for new default route
+            fib = self.vapi.ip_route_dump(0, True)
+            default_routes = self.get_default_routes(fib)
+            self.assertEqual(len(default_routes), 1)
+            dr = default_routes[0]
+            self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index,
+                             "Expected default route on different interface.")
+            self.assertEqual(dr['next_hop'], router_address,
+                             "Expected default route to have different "
+                             "next hop address.")
 
+        verify_default_route(self)
         # send RA, updating router lifetime to 1s
         packet = self.create_ra_packet(self.pg0, 1)
         self.pg0.add_stream([packet])
@@ -1373,13 +1383,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
 
         self.sleep_on_vpp_time(0.1)
 
-        # check that default route still exists
-        fib = self.vapi.ip_route_dump(0, True)
-        default_routes = self.get_default_routes(fib)
-        self.assertEqual(len(default_routes), 1)
-        dr = default_routes[0]
-        self.assertEqual(dr['sw_if_index'], self.pg0.sw_if_index)
-        self.assertEqual(dr['next_hop'], router_address)
+        verify_default_route(self)
 
         self.sleep_on_vpp_time(1)
 
@@ -1390,7 +1394,9 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(initial_addresses)
 
-        self.assertEqual(len(new_addresses), 1)
+        self.assertEqual(len(new_addresses), 1,
+                         "Expected the FIB would still "
+                         "contain the SLAAC address.")
         prefix = IPv6Network(text_type("%s/%d" % (list(new_addresses)[0], 20)),
                              strict=False)
         self.assertEqual(prefix, IPv6Network(text_type('1::/20')))
@@ -1401,7 +1407,8 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         fib = self.vapi.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(initial_addresses)
-        self.assertEqual(len(new_addresses), 0)
+        self.assertEqual(len(new_addresses), 0,
+                         "Expected that the SLAAC address is now deleted.")
 
 
 class IPv6NDProxyTest(TestIPv6ND):
@@ -2387,147 +2394,6 @@ class TestIP6Input(VppTestCase):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-
-
-class TestIPReplace(VppTestCase):
-    """ IPv6 Table Replace """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPReplace, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPReplace, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestIPReplace, self).setUp()
-
-        self.create_pg_interfaces(range(4))
-
-        table_id = 1
-        self.tables = []
-
-        for i in self.pg_interfaces:
-            i.admin_up()
-            i.config_ip6()
-            i.resolve_arp()
-            i.generate_remote_hosts(2)
-            self.tables.append(VppIpTable(self, table_id,
-                                          True).add_vpp_config())
-            table_id += 1
-
-    def tearDown(self):
-        super(TestIPReplace, self).tearDown()
-        for i in self.pg_interfaces:
-            i.admin_down()
-            i.unconfig_ip4()
-
-    def test_replace(self):
-        """ IP Table Replace """
-
-        N_ROUTES = 20
-        links = [self.pg0, self.pg1, self.pg2, self.pg3]
-        routes = [[], [], [], []]
-
-        # the sizes of 'empty' tables
-        for t in self.tables:
-            self.assertEqual(len(t.dump()), 2)
-            self.assertEqual(len(t.mdump()), 5)
-
-        # load up the tables with some routes
-        for ii, t in enumerate(self.tables):
-            for jj in range(1, N_ROUTES):
-                uni = VppIpRoute(
-                    self, "2001::%d" % jj if jj != 0 else "2001::", 128,
-                    [VppRoutePath(links[ii].remote_hosts[0].ip6,
-                                  links[ii].sw_if_index),
-                     VppRoutePath(links[ii].remote_hosts[1].ip6,
-                                  links[ii].sw_if_index)],
-                    table_id=t.table_id).add_vpp_config()
-                multi = VppIpMRoute(
-                    self, "::",
-                    "ff:2001::%d" % jj, 128,
-                    MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-                    [VppMRoutePath(self.pg0.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT,
-                                   proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
-                     VppMRoutePath(self.pg1.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                   proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
-                     VppMRoutePath(self.pg2.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                   proto=FibPathProto.FIB_PATH_NH_PROTO_IP6),
-                     VppMRoutePath(self.pg3.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                   proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)],
-                    table_id=t.table_id).add_vpp_config()
-                routes[ii].append({'uni': uni,
-                                   'multi': multi})
-
-        #
-        # replace the tables a few times
-        #
-        for kk in range(3):
-            # replace each table
-            for t in self.tables:
-                t.replace_begin()
-
-            # all the routes are still there
-            for ii, t in enumerate(self.tables):
-                dump = t.dump()
-                mdump = t.mdump()
-                for r in routes[ii]:
-                    self.assertTrue(find_route_in_dump(dump, r['uni'], t))
-                    self.assertTrue(find_mroute_in_dump(mdump, r['multi'], t))
-
-            # redownload the even numbered routes
-            for ii, t in enumerate(self.tables):
-                for jj in range(0, N_ROUTES, 2):
-                    routes[ii][jj]['uni'].add_vpp_config()
-                    routes[ii][jj]['multi'].add_vpp_config()
-
-            # signal each table converged
-            for t in self.tables:
-                t.replace_end()
-
-            # we should find the even routes, but not the odd
-            for ii, t in enumerate(self.tables):
-                dump = t.dump()
-                mdump = t.mdump()
-                for jj in range(0, N_ROUTES, 2):
-                    self.assertTrue(find_route_in_dump(
-                        dump, routes[ii][jj]['uni'], t))
-                    self.assertTrue(find_mroute_in_dump(
-                        mdump, routes[ii][jj]['multi'], t))
-                for jj in range(1, N_ROUTES - 1, 2):
-                    self.assertFalse(find_route_in_dump(
-                        dump, routes[ii][jj]['uni'], t))
-                    self.assertFalse(find_mroute_in_dump(
-                        mdump, routes[ii][jj]['multi'], t))
-
-            # reload all the routes
-            for ii, t in enumerate(self.tables):
-                for r in routes[ii]:
-                    r['uni'].add_vpp_config()
-                    r['multi'].add_vpp_config()
-
-            # all the routes are still there
-            for ii, t in enumerate(self.tables):
-                dump = t.dump()
-                mdump = t.mdump()
-                for r in routes[ii]:
-                    self.assertTrue(find_route_in_dump(dump, r['uni'], t))
-                    self.assertTrue(find_mroute_in_dump(mdump, r['multi'], t))
-
-        #
-        # finally flush the tables for good measure
-        #
-        for t in self.tables:
-            t.flush()
-            self.assertEqual(len(t.dump()), 2)
-            self.assertEqual(len(t.mdump()), 5)
-
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
