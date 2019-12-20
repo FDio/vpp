@@ -505,6 +505,69 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                 p.tun_sa_in.remove_vpp_config()
 
 
+class TestIpsec4TunIfEspNoAlgo(TemplateIpsec, IpsecTun4):
+    """ IPsec IPv4 Tunnel interface all Algos """
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+
+    def config_network(self, p):
+
+        p.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_NONE)
+        p.auth_algo = 'NULL'
+        p.auth_key = []
+
+        p.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                               IPSEC_API_CRYPTO_ALG_NONE)
+        p.crypt_algo = 'NULL'
+        p.crypt_key = []
+
+        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                        p.scapy_tun_spi,
+                                        p.crypt_algo_vpp_id,
+                                        p.crypt_key, p.crypt_key,
+                                        p.auth_algo_vpp_id, p.auth_key,
+                                        p.auth_key,
+                                        salt=p.salt)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        config_tun_params(p, self.encryption_type, p.tun_if)
+        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
+        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+
+        p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
+                             [VppRoutePath(p.tun_if.remote_ip4,
+                                           0xffffffff)])
+        p.route.add_vpp_config()
+
+    def unconfig_network(self, p):
+        p.tun_if.unconfig_ip4()
+        p.tun_if.remove_vpp_config()
+        p.route.remove_vpp_config()
+
+    def setUp(self):
+        super(TestIpsec4TunIfEspNoAlgo, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsec4TunIfEspNoAlgo, self).tearDown()
+
+    def test_tun_44(self):
+        p = self.ipv4_params
+
+        self.config_network(p)
+
+        tx = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
+                           dst=p.remote_tun_if_host)
+        self.send_and_assert_no_replies(self.pg1, tx)
+
+        self.unconfig_network(p)
+
+
 class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
     """ IPsec IPv6 Multi Tunnel interface """
 
@@ -1363,7 +1426,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         super(TestIpsec6TunProtect, self).tearDown()
 
     def test_tun_66(self):
-        """IPSEC tunnel protect"""
+        """IPSEC tunnel protect 6o6"""
 
         p = self.ipv6_params
 
@@ -1442,7 +1505,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.unconfig_network(p)
 
     def test_tun_46(self):
-        """IPSEC tunnel protect"""
+        """IPSEC tunnel protect 4o6"""
 
         p = self.ipv6_params
 

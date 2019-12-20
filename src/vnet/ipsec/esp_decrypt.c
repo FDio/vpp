@@ -311,9 +311,10 @@ esp_decrypt_inline (vlib_main_t * vm,
       b += 1;
     }
 
-  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-				   current_sa_index, current_sa_pkts,
-				   current_sa_bytes);
+  if (PREDICT_TRUE (~0 != current_sa_index))
+    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+				     current_sa_index, current_sa_pkts,
+				     current_sa_bytes);
 
   if ((n = vec_len (ptd->integ_ops)))
     {
