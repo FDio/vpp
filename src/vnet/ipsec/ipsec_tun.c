@@ -35,35 +35,61 @@ typedef struct ipsec_protect_db_t_
 
 static ipsec_protect_db_t ipsec_protect_db;
 
-static int
+static void
 ipsec_tun_protect_feature_set (ipsec_tun_protect_t * itp, u8 enable)
 {
-  u32 sai = itp->itp_out_sa;
-  int rv;
+  u32 sai;
 
-  const char *enc_node = (ip46_address_is_ip4 (&itp->itp_tun.src) ?
-			  "esp4-encrypt-tun" : "esp6-encrypt-tun");
+  sai = itp->itp_out_sa;
 
   if (itp->itp_flags & IPSEC_PROTECT_L2)
     {
-      rv = vnet_feature_enable_disable ("ethernet-output",
-					enc_node,
-					itp->itp_sw_if_index, enable,
-					&sai, sizeof (sai));
+      /* l2-GRE only supported by the vnet ipsec code */
+      vnet_feature_enable_disable ("ethernet-output",
+				   (ip46_address_is_ip4 (&itp->itp_tun.src) ?
+				    "esp4-encrypt-tun" :
+				    "esp6-encrypt-tun"),
+				   itp->itp_sw_if_index, enable,
+				   &sai, sizeof (sai));
     }
   else
     {
-      rv = vnet_feature_enable_disable ("ip4-output",
-					enc_node,
-					itp->itp_sw_if_index, enable,
-					&sai, sizeof (sai));
-      rv = vnet_feature_enable_disable ("ip6-output",
-					enc_node,
-					itp->itp_sw_if_index, enable,
-					&sai, sizeof (sai));
+      ipsec_main_t *im;
+      ipsec_sa_t *sa;
+      u32 fi4, fi6;
+
+      im = &ipsec_main;
+      sa = ipsec_sa_get (sai);
+
+      if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+	  sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+	{
+	  fi4 = im->esp4_no_crypto_tun_feature_index;
+	  fi6 = im->esp6_no_crypto_tun_feature_index;
+	}
+      else
+	{
+	  if (ip46_address_is_ip4 (&itp->itp_tun.src))
+	    {
+	      /* tunnel destination is v4 so we need the Xo4 indexes */
+	      fi4 = im->esp44_encrypt_tun_feature_index;
+	      fi6 = im->esp64_encrypt_tun_feature_index;
+	    }
+	  else
+	    {
+	      /* tunnel destination is v6 so we need the Xo6 indexes */
+	      fi4 = im->esp46_encrypt_tun_feature_index;
+	      fi6 = im->esp66_encrypt_tun_feature_index;
+	    }
+	}
+
+      vnet_feature_enable_disable_with_index
+	(vnet_get_feature_arc_index ("ip4-output"),
+	 fi4, itp->itp_sw_if_index, enable, &sai, sizeof (sai));
+      vnet_feature_enable_disable_with_index
+	(vnet_get_feature_arc_index ("ip6-output"),
+	 fi6, itp->itp_sw_if_index, enable, &sai, sizeof (sai));
     }
-  ASSERT (!rv);
-  return (rv);
 }
 
 static void
@@ -504,6 +530,12 @@ ipsec_tunnel_protect_init (vlib_main_t * vm)
 					     sizeof (ipsec6_tunnel_key_t),
 					     sizeof (u64));
   im->tun4_protect_by_key = hash_create (0, sizeof (u64));
+
+  /* set up feature nodes to drop outbound packets with no crypto alg set */
+  ipsec_add_feature ("ip4-output", "esp4-no-crypto",
+		     &im->esp4_no_crypto_tun_feature_index);
+  ipsec_add_feature ("ip6-output", "esp6-no-crypto",
+		     &im->esp6_no_crypto_tun_feature_index);
 
   return 0;
 }

@@ -176,17 +176,19 @@ ext_hdr_is_pre_esp (u8 nexthdr)
 }
 
 static_always_inline u8
-esp_get_ip6_hdr_len (ip6_header_t * ip6)
+esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
 {
   /* this code assumes that HbH, route and frag headers will be before
      others, if that is not the case, they will end up encrypted */
-
   u8 len = sizeof (ip6_header_t);
   ip6_ext_header_t *p;
 
   /* if next packet doesn't have ext header */
   if (ext_hdr_is_pre_esp (ip6->protocol) == 0)
-    return len;
+    {
+      *ext_hdr = NULL;
+      return len;
+    }
 
   p = (void *) (ip6 + 1);
   len += ip6_ext_header_len (p);
@@ -197,6 +199,7 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6)
       p = ip6_ext_next_header (p);
     }
 
+  *ext_hdr = p;
   return len;
 }
 
@@ -401,11 +404,12 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       else			/* transport mode */
 	{
 	  u8 *l2_hdr, l2_len, *ip_hdr, ip_len;
+	  ip6_ext_header_t *ext_hdr;
 	  udp_header_t *udp = 0;
 	  u8 *old_ip_hdr = vlib_buffer_get_current (b[0]);
 
 	  ip_len = is_ip6 ?
-	    esp_get_ip6_hdr_len ((ip6_header_t *) old_ip_hdr) :
+	    esp_get_ip6_hdr_len ((ip6_header_t *) old_ip_hdr, &ext_hdr) :
 	    ip4_header_bytes ((ip4_header_t *) old_ip_hdr);
 
 	  vlib_buffer_advance (b[0], ip_len);
@@ -445,21 +449,27 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    l2_len = 0;
 
-	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
-
 	  if (is_ip6)
 	    {
-	      ip6_header_t *ip6 = (ip6_header_t *) (ip_hdr);
-	      *next_hdr_ptr = ip6->protocol;
-	      ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
+	      ip6_header_t *ip6 = (ip6_header_t *) (old_ip_hdr);
+	      if (PREDICT_TRUE (NULL == ext_hdr))
+		{
+		  *next_hdr_ptr = ip6->protocol;
+		  ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
+		}
+	      else
+		{
+		  *next_hdr_ptr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IP_PROTOCOL_IPSEC_ESP;
+		}
 	      ip6->payload_length =
 		clib_host_to_net_u16 (payload_len + hdr_len - l2_len -
-				      ip_len);
+				      sizeof (ip6_header_t));
 	    }
 	  else
 	    {
 	      u16 len;
-	      ip4_header_t *ip4 = (ip4_header_t *) (ip_hdr);
+	      ip4_header_t *ip4 = (ip4_header_t *) (old_ip_hdr);
 	      *next_hdr_ptr = ip4->protocol;
 	      len = payload_len + hdr_len - l2_len;
 	      if (udp)
@@ -470,6 +480,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
 	    }
+
+	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (!is_tun)
 	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;

@@ -2044,7 +2044,6 @@ class TestMPLSPIC(VppTestCase):
         #
         # put the connected routes back
         #
-        print(self.vapi.cli("sh log"))
         self.pg2.admin_up()
         self.pg2.config_ip6()
         self.pg2.resolve_ndp()
