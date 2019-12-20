@@ -91,6 +91,24 @@
     },
     {
       "key": {
+        "uuid": "8f829264_2a1a9f65",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 2084
+      },
+      "writtenOn": "2019-12-20T10:17:36Z",
+      "side": 1,
+      "message": "Yes, you are correct. After changing to following commands, I got supposed node path for symmetric IRB case:  …---\u003eip4-rewrite---\u003eloop1-output---\u003el2-input---\u003el2-fwd---\u003el2_output---\u003evxlan4-encap---\u003e…\nl2fib add 00:1b:21:8b:48:c0 2 vxlan_tunnel1 static\nset ip arp static loop1 1.1.1.2 00:1b:21:8b:48:c0 fib-id 1\nip route add 10.0.2.0/24 table 1 via 1.1.1.2 loop1\n\nI will correct my configuration. And resubmit patches as your comments too.",
+      "parentUuid": "5723078f_62e69580",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "34f7befa_a8b49b82",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 3
@@ -156,6 +174,24 @@
       "side": 1,
       "message": "These should be almost identical code sequence with the same fix so I would think it is OK to fix with this commit.  There are no UT test case for encap followed by load balance so it should not matter.",
       "parentUuid": "0e2f1bc2_089967dd",
+      "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c267ee5c_6900305b",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 2084
+      },
+      "writtenOn": "2019-12-20T10:17:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0c23e715_2bbd6053",
       "revId": "d8e68a0a8a071bd919742558f114eae1bcb26e3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
