@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -196,6 +196,40 @@ ip_address_encode (const ip46_address_t * in,
   ip_address_union_encode (in, out->af, &out->un);
 }
 
+/*
+ * This probably also works for prefixes "without address".
+ * The primary consumer is lb plugin, so we are using
+ * ip46_address_t, not ip_address_t nor ip_prefix_t.
+ */
+ip46_type_t
+ip_address_with_prefix_decode (const vl_api_address_with_prefix_t * in,
+			       ip46_address_t * out, u8 * len)
+{
+  ip46_type_t type;
+  ip_address_t address;
+  fib_protocol_t ignored;
+
+  *len = in->len;
+  type = ip_address_decode (&in->address, &address);
+  ip_address_to_46 (&address, &out, &ignored);
+  return type;
+}
+
+/* This probably also works for prefixes "without address".
+ * The primary consumer is lb plugin, so we are using
+ * ip46_address_t, not ip_address_t nor ip_prefix_t.
+ */
+void
+ip_address_with_prefix_encode (const ip46_address_t * in, const u8 len,
+			       ip46_type_t type,
+			       vl_api_address_with_prefix_t * out)
+/* TODO: The type argument should be const, but that affects functions above. */
+{
+  out->len = len;
+  ip_address_encode (&in, type, &out->address);
+}
+
+/* TODO: Rename, so it is more obvious that out is not ip_prefix_t. */
 void
 ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 {
@@ -213,6 +247,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
   ip_address_decode (&in->address, &out->fp_addr);
 }
 
+/* TODO: Rename, so it is more obvious that in is not ip_prefix_t. */
 void
 ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 {

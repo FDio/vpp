@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -93,18 +93,18 @@ vl_api_lb_add_del_vip_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy (&(args.prefix.ip6), &mp->pfx.address.un.ip6, sizeof(args.prefix.ip6));
+  ip_address_with_prefix_decode(&mp->pfx, &args.prefix, &args.plen);
 
   if (mp->is_del) {
     u32 vip_index;
-    if (!(rv = lb_vip_find_index(&(args.prefix), mp->pfx.len,
+    if (!(rv = lb_vip_find_index(&(args.prefix), args.plen,
                                  mp->protocol, ntohs(mp->port), &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
     lb_vip_type_t type = 0;
 
-    if (ip46_prefix_is_ip4(&(args.prefix), mp->pfx.len)) {
+    if (ip46_prefix_is_ip4(&(args.prefix), args.plen)) {
         if (mp->encap == LB_API_ENCAP_TYPE_GRE4)
             type = LB_VIP_TYPE_IP4_GRE4;
         else if (mp->encap == LB_API_ENCAP_TYPE_GRE6)
@@ -122,7 +122,6 @@ vl_api_lb_add_del_vip_t_handler
             type = LB_VIP_TYPE_IP6_NAT6;
     }
 
-    args.plen = mp->pfx.len;
     args.protocol = mp->protocol;
     args.port = ntohs(mp->port);
     args.type = type;
@@ -182,7 +181,8 @@ vl_api_lb_add_del_as_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
   u32 vip_index;
-  ip46_address_t vip_ip_prefix;
+  ip46_address_t as_address, vip_ip_prefix;
+  u8 prefix_length;
 
   /* if port == 0, it means all-port VIP */
   if (mp->port == 0)
@@ -190,15 +190,10 @@ vl_api_lb_add_del_as_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy(&vip_ip_prefix.ip6, &mp->pfx.address.un.ip6,
-              sizeof(vip_ip_prefix.ip6));
+  ip_address_with_prefix_decode (&mp->pfx, &vip_ip_prefix, &prefix_length);
+  ip_address_decode (&mp->as_address, &as_address);
 
-  ip46_address_t as_address;
-
-  memcpy(&as_address.ip6, &mp->as_address.un.ip6,
-         sizeof(as_address.ip6));
-
-  if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->pfx.len,
+  if ((rv = lb_vip_find_index(&vip_ip_prefix, prefix_length,
                               mp->protocol, ntohs(mp->port), &vip_index)))
     goto done;
 
@@ -319,13 +314,14 @@ vl_api_lb_as_dump_t_handler
   lb_vip_t *vip = 0;
   u8 dump_all = 0;
   ip46_address_t prefix;
+  u8 prefix_length;
 
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  clib_memcpy(&prefix.ip6, mp->pfx.address.un.ip6, sizeof(mp->pfx.address.un.ip6));
+  ip_address_with_prefix_decode (mp->pfx, &prefix, &prefix_length);
 
   dump_all = (prefix.ip6.as_u64[0] == 0) && (prefix.ip6.as_u64[1] == 0);
 

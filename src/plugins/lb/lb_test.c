@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -79,7 +79,7 @@ static int api_lb_conf (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_lb_conf_t *mp;
   u32 ip4_src_address = 0xffffffff;
-  ip46_address_t ip6_src_address;
+  ip6_address_t ip6_src_address;
   u32 sticky_buckets_per_core = LB_DEFAULT_PER_CPU_STICKY_BUCKETS;
   u32 flow_timeout = LB_DEFAULT_FLOW_TIMEOUT;
   int ret;
@@ -104,8 +104,8 @@ static int api_lb_conf (vat_main_t * vam)
   }
 
   M(LB_CONF, mp);
-  clib_memcpy (&(mp->ip4_src_address), &ip4_src_address, sizeof (ip4_src_address));
-  clib_memcpy (&(mp->ip6_src_address), &ip6_src_address, sizeof (ip6_src_address));
+  ip4_address_encode (&ip4_src_address, &(mp->ip4_src_address));
+  ip6_address_encode (&ip6_src_address, &(mp->ip6_src_address));
   mp->sticky_buckets_per_core = htonl (sticky_buckets_per_core);
   mp->flow_timeout = htonl (flow_timeout);
 
@@ -120,7 +120,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   vl_api_lb_add_del_vip_t *mp;
   int ret;
   ip46_address_t ip_prefix;
-  u8 prefix_length = 0;
+  u8 prefix_length;
   u8 protocol = 0;
   u32 port = 0;
   u32 encap = 0;
@@ -130,8 +130,9 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   u32 new_length = 1024;
   int is_del = 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &ip_prefix,
-                &prefix_length, IP46_TYPE_ANY, &prefix_length)) {
+  if (!unformat(line_input, "%U", unformat_ip46_prefix,
+                &ip_prefix, &prefix_length, IP46_TYPE_ANY))
+  {
     errmsg ("lb_add_del_vip: invalid vip prefix\n");
     return -99;
   }
@@ -189,8 +190,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     }
 
   M(LB_ADD_DEL_VIP, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &ip_prefix.ip6, sizeof (ip_prefix.ip6));
-  mp->pfx.len = prefix_length;
+  ip_address_with_prefix_encode (&ip_prefix, prefix_length, IP46_TYPE_ANY, &mp->pfx)
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
   mp->encap = (u8)encap;
@@ -208,20 +208,18 @@ static int api_lb_add_del_vip (vat_main_t * vam)
 
 static int api_lb_add_del_as (vat_main_t * vam)
 {
-
   unformat_input_t *line_input = vam->input;
   vl_api_lb_add_del_as_t *mp;
   int ret;
-  ip46_address_t vip_prefix, as_addr;
-  u8 vip_plen;
-  ip46_address_t *as_array = 0;
+  ip46_address_t vip_prefix, as_addr, *as_array = 0;
+  u8 prefix_length;
   u32 port = 0;
   u8 protocol = 0;
   u8 is_del = 0;
   u8 is_flush = 0;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix,
-                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+                &vip_prefix, &prefix_length, IP46_TYPE_ANY))
   {
       errmsg ("lb_add_del_as: invalid vip prefix\n");
       return -99;
@@ -264,11 +262,10 @@ static int api_lb_add_del_as (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_AS, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
-  mp->pfx.len = vip_plen;
+  ip_prefix_with_address_encode (&vip_prefix, prefix_length, IP46_TYPE_ANY, &mp->pfx);
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
-  clib_memcpy (&mp->as_address.un.ip6, &as_addr.ip6, sizeof (as_addr.ip6));
+  ip_address_encode (&as_addr, IP46_TYPE_ANY, &mp->as_address);
   mp->is_del = is_del;
   mp->is_flush = is_flush;
 
@@ -284,18 +281,17 @@ static int api_lb_flush_vip (vat_main_t * vam)
   vl_api_lb_flush_vip_t *mp;
   int ret;
   ip46_address_t vip_prefix;
-  u8 vip_plen;
+  u8 prefix_length;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix,
-                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+                &vip_prefix, &prefix_length, IP46_TYPE_ANY))
   {
       errmsg ("lb_add_del_as: invalid vip prefix\n");
       return -99;
   }
 
   M(LB_FLUSH_VIP, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
-  mp->pfx.len = vip_plen;
+  ip_prefix_with_adress_encode (&vip_prefix, prefix_length, IP46_TYPE_ANY, &mp->pfx);
   S(mp);
   W (ret);
   return ret;
@@ -391,14 +387,13 @@ static int api_lb_as_dump (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_lb_as_dump_t *mp;
   int ret;
-  ip46_address_t vip_prefix, as_addr;
-  u8 vip_plen;
-  ip46_address_t *as_array = 0;
+  ip46_address_t vip_prefix, as_addr, *as_array = 0;
+  u8 prefix_length;
   u32 port = 0;
   u8 protocol = 0;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix,
-                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+                &vip_prefix, &prefix_length, IP46_TYPE_ANY))
   {
       errmsg ("lb_add_del_as: invalid vip prefix\n");
       return -99;
@@ -433,8 +428,7 @@ static int api_lb_as_dump (vat_main_t * vam)
   }
 
   M(LB_AS_DUMP, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
-  mp->pfx.len = vip_plen;
+  ip_prefix_with_address_encode (&vip_prefix, prefix_length, IP46_TYPE_ANY, &mp->pfx);
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
 
