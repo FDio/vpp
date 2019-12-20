@@ -532,7 +532,8 @@ vlib_put_next_frame (vlib_main_t * vm,
       if (PREDICT_FALSE (v1 < v0))
 	{
 	  vlib_node_t *node = vlib_get_node (vm, r->node_index);
-	  vec_elt (node->n_vectors_by_next_node, next_index) += v0;
+	  vec_elt (node->n_vectors_by_next_node, next_index) +=
+	    ((u64) 1 << 32);
 	}
     }
 }
