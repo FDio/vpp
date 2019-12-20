@@ -1277,7 +1277,7 @@ fib_table_lock_inc (fib_table_t *fib_table,
 {
     vec_validate(fib_table->ft_locks, source);
 
-    ASSERT(fib_table->ft_locks[source] < (0xffff - 1));
+    ASSERT(fib_table->ft_total_locks < (0xffffffff - 1));
     fib_table->ft_locks[source]++;
     fib_table->ft_total_locks++;
 }
