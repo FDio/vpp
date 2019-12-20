@@ -16,6 +16,7 @@
 #define __included_fifo_segment_h__
 
 #include <svm/ssvm.h>
+#include <svm/fifo_types.h>
 #include <svm/svm_fifo.h>
 
 typedef enum
@@ -37,26 +38,6 @@ typedef enum fifo_segment_flags_
   FIFO_SEGMENT_F_WILL_DELETE = 1 << 1,
   FIFO_SEGMENT_F_MEM_LIMIT = 1 << 2,
 } fifo_segment_flags_t;
-
-typedef struct fifo_segment_slice_
-{
-  svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
-  svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
-  svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
-  uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
-} fifo_segment_slice_t;
-
-typedef struct
-{
-  fifo_segment_slice_t *slices;		/** Fixed array of slices */
-  ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
-  uword n_free_bytes;			/**< Segment free bytes */
-  u32 n_active_fifos;			/**< Number of active fifos */
-  u32 n_reserved_bytes;			/**< Bytes not to be allocated */
-  u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
-  u8 flags;				/**< Segment flags */
-  u8 n_slices;				/**< Number of slices */
-} fifo_segment_header_t;
 
 typedef struct
 {
@@ -158,25 +139,12 @@ void fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 					  u32 rx_fifo_size,
 					  u32 tx_fifo_size,
 					  u32 * n_fifo_pairs);
-/**
- * Grow fifo size by adding an additional chunk of memory
- *
- * @param fs		fifo segment for fifo
- * @param f		fifo to be grown
- * @param chunk_size	number of bytes to be added to fifo
- * @return		0 on success or a negative number otherwise
- */
-int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
-			    u32 chunk_size);
 
-/**
- * Collect unused chunks for fifo
- *
- * @param fs		fifo segment for fifo
- * @param f		fifo whose chunks are to be collected
- * @return		0 on success, error otherwise
- */
-int fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f);
+svm_fifo_chunk_t *fsh_alloc_chunk (fifo_segment_header_t * fsh,
+				   u32 slice_index, u32 chunk_size);
+
+void fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
+			 svm_fifo_chunk_t * cur);
 
 /**
  * Fifo segment estimate of number of free bytes
