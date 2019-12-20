@@ -3197,7 +3197,8 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 
 	  /* VPP-TBD */
 	  *(size_t *) buffer = (session->sndbuf_size ? session->sndbuf_size :
-				session->tx_fifo ? session->tx_fifo->nitems :
+				session->tx_fifo ?
+				svm_fifo_size (session->tx_fifo) :
 				vcm->cfg.tx_fifo_size);
 	  *buflen = sizeof (u32);
 
@@ -3228,7 +3229,8 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 
 	  /* VPP-TBD */
 	  *(size_t *) buffer = (session->rcvbuf_size ? session->rcvbuf_size :
-				session->rx_fifo ? session->rx_fifo->nitems :
+				session->rx_fifo ?
+				svm_fifo_size (session->rx_fifo) :
 				vcm->cfg.rx_fifo_size);
 	  *buflen = sizeof (u32);
 
