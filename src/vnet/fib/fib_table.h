@@ -83,7 +83,7 @@ typedef struct fib_table_t_
     /**
      * per-source number of locks on the table
      */
-    u16 *ft_locks;
+    u32 *ft_locks;
     u32 ft_total_locks;
 
     /**
