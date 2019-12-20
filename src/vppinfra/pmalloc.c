@@ -95,7 +95,8 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 
   if (pm->base == MAP_FAILED)
     {
-      pm->error = clib_error_return_unix (0, "failed to reserve %u pages");
+      pm->error = clib_error_return_unix (0, "failed to reserve %u pages",
+					  pm->max_pages);
       return -1;
     }
 
