@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "efccec2a_8e3b22a8",
+        "filename": "src/vnet/gre/gre.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-12-20T14:23:32Z",
+      "side": 1,
+      "message": "v4",
+      "range": {
+        "startLine": 99,
+        "startChar": 47,
+        "endLine": 99,
+        "endChar": 49
+      },
+      "revId": "4c16d80067b35973ebc5a86d685db52fea2fd052",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
