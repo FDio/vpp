@@ -287,7 +287,7 @@ ip_neighbor_api_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ip_neighbor_api_init);
+VLIB_API_INIT_FUNCTION (ip_neighbor_api_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
