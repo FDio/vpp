@@ -1074,12 +1074,16 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
 {
   u32 tail, head, free_count;
 
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
   f_load_head_tail_prod (f, &head, &tail);
+
+  in_use = tail - head;
+  n_free = f->size - in_use;
+  n_free_alloc =
 
   /* free space in fifo can only increase during enqueue: SPSC */
   free_count = f_free_count (f, head, tail);
-
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   if (PREDICT_FALSE (free_count == 0))
     return SVM_FIFO_EFULL;
