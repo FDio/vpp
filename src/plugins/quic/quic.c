@@ -30,6 +30,11 @@
 
 #include <quicly/constants.h>
 #include <quicly/defaults.h>
+#include <picotls.h>
+
+extern quicly_crypto_engine_t quic_crypto_engine;
+
+FILE *quicly_trace_fp;
 
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
@@ -47,6 +52,7 @@ static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
 static quicly_stream_open_t on_stream_open;
 static quicly_closed_by_peer_t on_closed_by_peer;
 static quicly_now_t quicly_vpp_now_cb;
+
 
 /* Crypto contexts */
 
@@ -84,6 +90,36 @@ quic_crypto_context_free_if_needed (crypto_context_t * crctx, u8 thread_index)
   clib_mem_free (crctx->data);
   pool_put (qm->wrk_ctx[thread_index].crypto_ctx_pool, crctx);
 }
+
+extern quicly_crypto_engine_t quic_crypto_engine;
+
+
+static quicly_datagram_t *
+quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
+{
+  quicly_datagram_t *packet;
+  if ((packet =
+       clib_mem_alloc (sizeof (*packet) + payloadsize +
+		       sizeof (quic_encrypt_cb_ctx))) == NULL)
+    return NULL;
+  packet->data.base =
+    (uint8_t *) packet + sizeof (*packet) + sizeof (quic_encrypt_cb_ctx);
+  quic_encrypt_cb_ctx *encrypt_cb_ctx =
+    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
+
+  clib_memset (encrypt_cb_ctx, 0, sizeof (*encrypt_cb_ctx));
+  return packet;
+}
+
+static void
+quic_free_packet (quicly_packet_allocator_t * self,
+		  quicly_datagram_t * packet)
+{
+  clib_mem_free (packet);
+}
+
+quicly_packet_allocator_t quic_packet_allocator =
+  { quic_alloc_packet, quic_free_packet };
 
 static int
 quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
@@ -208,6 +244,9 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   quicly_ctx->closed_by_peer = &on_closed_by_peer;
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
+
+  quicly_ctx->packet_allocator = &quic_packet_allocator;
+  quicly_ctx->crypto_engine = &quic_crypto_engine;
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
@@ -669,8 +708,10 @@ quic_send_packets (quic_ctx_t * ctx)
       if ((err = quicly_send (conn, packets, &num_packets)))
 	goto quicly_error;
 
+      quic_crypto_batch_tx_packets ();
       for (i = 0; i != num_packets; ++i)
 	{
+	  quic_crypto_finalize_send_packet (packets[i]);
 	  if ((err = quic_send_datagram (udp_session, packets[i])))
 	    goto quicly_error;
 
@@ -1122,7 +1163,6 @@ quic_expired_timers_dispatch (u32 * expired_timers)
 }
 
 /* Transport proto functions */
-
 static int
 quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 {
@@ -2079,6 +2119,29 @@ quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
   return rv;
 }
 
+static inline void
+print_epoch (uint8_t first_byte)
+{
+  if (!QUICLY_PACKET_IS_LONG_HEADER (first_byte))
+    fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_1RTT");
+
+  switch (first_byte & QUICLY_PACKET_TYPE_BITMASK)
+    {
+    case QUICLY_PACKET_TYPE_INITIAL:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_INITIAL");
+      break;
+    case QUICLY_PACKET_TYPE_HANDSHAKE:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_HANDSHAKE");
+      break;
+    case QUICLY_PACKET_TYPE_0RTT:
+      fprintf (stderr, "%s\n\r", "QUICLY_EPOCH_0RTT");
+      break;
+    default:
+      fprintf (stderr, "FIXME");
+      break;
+    }
+}
+
 static int
 quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 			    u32 fifo_offset, quic_rx_packet_ctx_t * pctx)
@@ -2128,6 +2191,12 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
+      quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
+      if (quic_crypto_decrypt_packet
+	  (qctx->conn, &pctx->packet, NULL, &pctx->sa) == -1)
+	{
+	  return 1;
+	}
       return 0;
     }
   else if (rv == QUIC_PACKET_TYPE_MIGRATE)
@@ -2201,8 +2270,10 @@ rx_start:
 	  QUIC_ERR ("Fifo %d < header size in RX", cur_deq);
 	  break;
 	}
+
       rv = quic_process_one_rx_packet (udp_session_handle, f,
 				       fifo_offset, &packets_ctx[i]);
+
       if (packets_ctx[i].ptype != QUIC_PACKET_TYPE_MIGRATE)
 	fifo_offset += SESSION_CONN_HDR_LEN + packets_ctx[i].ph.data_length;
       if (rv)
@@ -2211,6 +2282,8 @@ rx_start:
 	  break;
 	}
     }
+
+  quic_crypto_batch_rx_packets ();
 
   for (i = 0; i < max_packets; i++)
     {
@@ -2437,7 +2510,7 @@ quic_init (vlib_main_t * vm)
   quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
+  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
   vec_free (a->name);
   return 0;
 }
