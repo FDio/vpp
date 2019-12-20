@@ -61,8 +61,10 @@ typedef struct
   u32 esp6_decrypt_node_index;
   u32 esp6_encrypt_next_index;
   u32 esp6_decrypt_next_index;
-  u32 esp4_encrypt_tun_feature_index;
-  u32 esp6_encrypt_tun_feature_index;
+  u32 esp44_encrypt_tun_feature_index;
+  u32 esp46_encrypt_tun_feature_index;
+  u32 esp66_encrypt_tun_feature_index;
+  u32 esp64_encrypt_tun_feature_index;
 } ipsec_esp_backend_t;
 
 typedef struct
@@ -135,8 +137,10 @@ typedef struct
   u32 ah6_decrypt_next_index;
 
   /* tun encrypt arcs and feature nodes */
-  u32 esp4_encrypt_tun_feature_index;
-  u32 esp6_encrypt_tun_feature_index;
+  u32 esp44_encrypt_tun_feature_index;
+  u32 esp64_encrypt_tun_feature_index;
+  u32 esp46_encrypt_tun_feature_index;
+  u32 esp66_encrypt_tun_feature_index;
 
   /* tun nodes to drop packets when no crypto alg set on outbound SA */
   u32 esp4_no_crypto_tun_feature_index;
