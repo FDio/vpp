@@ -492,14 +492,14 @@ always_inline u32
 transport_rx_fifo_size (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return s->rx_fifo->nitems;
+  return s->rx_fifo->size;
 }
 
 always_inline u32
 transport_tx_fifo_size (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return s->tx_fifo->nitems;
+  return s->tx_fifo->size;
 }
 
 always_inline u8
