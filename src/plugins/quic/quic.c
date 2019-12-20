@@ -848,10 +848,10 @@ int
 quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
 		       size_t * len, int *wrote_all)
 {
-  u32 deq_max, first_deq, max_rd_chunk, rem_offset;
   quic_stream_data_t *stream_data;
   session_t *stream_session;
   svm_fifo_t *f;
+  u32 deq_max;
 
   stream_data = (quic_stream_data_t *) stream->data;
   stream_session = get_stream_session_from_stream (stream);
@@ -875,22 +875,7 @@ quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
   if (off + *len > stream_data->app_tx_data_len)
     stream_data->app_tx_data_len = off + *len;
 
-  /* TODO, use something like : return svm_fifo_peek (f, off, *len, dst); */
-  max_rd_chunk = svm_fifo_max_read_chunk (f);
-
-  first_deq = 0;
-  if (off < max_rd_chunk)
-    {
-      first_deq = clib_min (*len, max_rd_chunk - off);
-      clib_memcpy_fast (dst, svm_fifo_head (f) + off, first_deq);
-    }
-
-  if (max_rd_chunk < off + *len)
-    {
-      rem_offset = max_rd_chunk < off ? off - max_rd_chunk : 0;
-      clib_memcpy_fast (dst + first_deq, f->head_chunk->data + rem_offset,
-			*len - first_deq);
-    }
+  svm_fifo_peek (f, off, *len, dst);
 
   return 0;
 }
