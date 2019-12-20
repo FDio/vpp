@@ -9,7 +9,8 @@ from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
     config_tun_params, IPsecIPv4Params, IPsecIPv6Params, \
     IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6, \
-    IpsecTun6HandoffTests, IpsecTun4HandoffTests
+    IpsecTun6HandoffTests, IpsecTun4HandoffTests, \
+    IpsecTra6ExtTests, IpsecTunEsp4Tests
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
     VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -286,7 +287,9 @@ class TemplateIpsecEsp(ConfigIpsecESP):
         super(TemplateIpsecEsp, self).tearDown()
 
 
-class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
+                    IpsecTun46Tests, IpsecTunEsp4Tests,
+                    IpsecTra6ExtTests):
     """ Ipsec ESP - TUN & TRA tests """
     pass
 

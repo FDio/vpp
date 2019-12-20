@@ -311,58 +311,6 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_bytes = len0;
 	    }
 
-	  /*
-	   * compare the packet's outer IP headers to that of the tunnels
-	   */
-	  if (is_ip6)
-	    {
-	      if (PREDICT_FALSE
-		  (!ip46_address_is_equal_v6
-		   (&itp0->itp_crypto.dst, &ip60->src_address)
-		   || !ip46_address_is_equal_v6 (&itp0->itp_crypto.src,
-						 &ip60->dst_address)))
-		{
-		  b[0]->error =
-		    node->errors
-		    [IPSEC_TUN_PROTECT_INPUT_ERROR_TUNNEL_MISMATCH];
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
-		  goto trace00;
-		}
-	    }
-	  else
-	    {
-	      if (PREDICT_FALSE
-		  (!ip46_address_is_equal_v4
-		   (&itp0->itp_crypto.dst, &ip40->src_address)
-		   || !ip46_address_is_equal_v4 (&itp0->itp_crypto.src,
-						 &ip40->dst_address)))
-		{
-		  b[0]->error =
-		    node->errors
-		    [IPSEC_TUN_PROTECT_INPUT_ERROR_TUNNEL_MISMATCH];
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
-		  goto trace00;
-		}
-	    }
-
-	  /*
-	   * There are two encap possibilities
-	   * 1) the tunnel and ths SA are prodiving encap, i.e. it's
-	   *   MAC | SA-IP | TUN-IP | ESP | PAYLOAD
-	   * implying the SA is in tunnel mode (on a tunnel interface)
-	   * 2) only the tunnel provides encap
-	   *   MAC | TUN-IP | ESP | PAYLOAD
-	   * implying the SA is in transport mode.
-	   *
-	   * For 2) we need only strip the tunnel encap and we're good.
-	   *  since the tunnel and crypto ecnap (int the tun=protect
-	   * object) are the same and we verified above that these match
-	   * for 1) we need to strip the SA-IP outer headers, to
-	   * reveal the tunnel IP and then check that this matches
-	   * the configured tunnel. this we can;t do here since it
-	   * involves a lookup in the per-tunnel-type DB - so ship
-	   * the packet to the tunnel-types provided node to do that
-	   */
 	  next[0] = IPSEC_TUN_PROTECT_NEXT_DECRYPT;
 	}
     trace00:
