@@ -23,22 +23,11 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
-#include <vppinfra/rbtree.h>
+#include <svm/fifo_types.h>
 
-/** Out-of-order segment */
-typedef struct
-{
-  u32 next;	/**< Next linked-list element pool index */
-  u32 prev;	/**< Previous linked-list element pool index */
-  u32 start;	/**< Start of segment, normalized*/
-  u32 length;	/**< Length of segment */
-} ooo_segment_t;
-
-#define SVM_FIFO_TRACE 			(0)
 #define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
-#define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
 
 typedef enum svm_fifo_deq_ntf_
 {
@@ -47,22 +36,6 @@ typedef enum svm_fifo_deq_ntf_
   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL = 2,	/**< Notify on transition from full */
   SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY = 4,	/**< Notify on transition to empty */
 } svm_fifo_deq_ntf_t;
-
-typedef struct
-{
-  u32 offset;
-  u32 len;
-  u32 action;
-} svm_fifo_trace_elem_t;
-
-typedef struct svm_fifo_chunk_
-{
-  u32 start_byte;		/**< chunk start byte */
-  u32 length;			/**< length of chunk in bytes */
-  struct svm_fifo_chunk_ *next;	/**< pointer to next chunk in linked-lists */
-  rb_node_index_t rb_index;	/**< node index if chunk in rbtree */
-  u8 data[0];			/**< start of chunk data */
-} svm_fifo_chunk_t;
 
 typedef enum svm_fifo_flag_
 {
@@ -74,59 +47,11 @@ typedef enum svm_fifo_flag_
   SVM_FIFO_F_SINGLE_THREAD_OWNED = 1 << 5,
 } svm_fifo_flag_t;
 
-typedef struct _svm_fifo
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
-  u32 size;			/**< size of the fifo in bytes */
-  u32 nitems;			/**< usable size (size-1) */
-  svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
-  svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
-  rb_tree_t ooo_enq_lookup;	/**< rbtree for ooo enq chunk lookup */
-  rb_tree_t ooo_deq_lookup;	/**< rbtree for ooo deq chunk lookup */
-  u8 flags;			/**< fifo flags */
-  u8 slice_index;		/**< segment slice for fifo */
-
-    CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
-  volatile u32 has_event;	/**< non-zero if deq event exists */
-  u32 master_session_index;	/**< session layer session index */
-  u32 client_session_index;	/**< app session index */
-  u8 master_thread_index;	/**< session layer thread index */
-  u8 client_thread_index;	/**< app worker index */
-  i8 refcnt;			/**< reference count  */
-  u32 segment_manager;		/**< session layer segment manager index */
-  u32 segment_index;		/**< segment index in segment manager */
-  struct _svm_fifo *next;	/**< next in freelist/active chain */
-  struct _svm_fifo *prev;	/**< prev in active chain */
-  svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
-  u32 size_decrement;		/**< bytes to remove from fifo */
-
-    CLIB_CACHE_LINE_ALIGN_MARK (consumer);
-  u32 head;			/**< fifo head position/byte */
-  svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
-  svm_fifo_chunk_t *ooo_deq;	/**< last chunk used for ooo dequeue */
-  volatile u32 want_deq_ntf;	/**< producer wants nudge */
-  volatile u32 has_deq_ntf;
-
-    CLIB_CACHE_LINE_ALIGN_MARK (producer);
-  u32 tail;			/**< fifo tail position/byte */
-  u32 ooos_list_head;		/**< Head of out-of-order linked-list */
-  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
-  svm_fifo_chunk_t *ooo_enq;	/**< last chunk used for ooo enqueue */
-  ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
-  u32 ooos_newest;		/**< Last segment to have been updated */
-  volatile u8 n_subscribers;	/**< Number of subscribers for io events */
-  u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
-
-#if SVM_FIFO_TRACE
-  svm_fifo_trace_elem_t *trace;
-#endif
-
-} svm_fifo_t;
-
 typedef enum
 {
   SVM_FIFO_EFULL = -2,
   SVM_FIFO_EEMPTY = -3,
+  SVM_FIFO_EGROW = -4,
 } svm_fifo_err_t;
 
 typedef struct svm_fifo_seg_
@@ -193,28 +118,6 @@ f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
 }
 
 /**
- * Distance to a from b, i.e., a - b in the fifo
- *
- * Internal function.
- */
-static inline u32
-f_distance_to (svm_fifo_t * f, u32 a, u32 b)
-{
-  return ((f->size + a - b) % f->size);
-}
-
-/**
- * Distance from a to b, i.e., b - a in the fifo
- *
- * Internal function.
- */
-static inline u32
-f_distance_from (svm_fifo_t * f, u32 a, u32 b)
-{
-  return ((f->size + b - a) % f->size);
-}
-
-/**
  * Fifo current size, i.e., number of bytes enqueued
  *
  * Internal function.
@@ -222,7 +125,7 @@ f_distance_from (svm_fifo_t * f, u32 a, u32 b)
 static inline u32
 f_cursize (svm_fifo_t * f, u32 head, u32 tail)
 {
-  return (head <= tail ? tail - head : f->size + tail - head);
+  return tail - head;
 }
 
 /**
@@ -233,15 +136,14 @@ f_cursize (svm_fifo_t * f, u32 head, u32 tail)
 static inline u32
 f_free_count (svm_fifo_t * f, u32 head, u32 tail)
 {
-  return (f->nitems - f_cursize (f, head, tail));
+  return (f->size - f_cursize (f, head, tail));
 }
 
-/**
- * Try to shrink fifo size.
- *
- * Internal function.
- */
-void svm_fifo_try_shrink (svm_fifo_t * f, u32 head, u32 tail);
+always_inline u32
+f_chunk_end (svm_fifo_chunk_t * c)
+{
+  return c->start_byte + c->length;
+}
 
 /**
  * Create fifo of requested size
@@ -252,7 +154,7 @@ void svm_fifo_try_shrink (svm_fifo_t * f, u32 head, u32 tail);
  * 			rounded to the next highest power-of-two value.
  * @return 		pointer to new fifo
  */
-svm_fifo_t *svm_fifo_create (u32 size);
+svm_fifo_t *svm_fifo_alloc (u32 size);
 /**
  * Initialize fifo
  *
@@ -260,12 +162,6 @@ svm_fifo_t *svm_fifo_create (u32 size);
  * @param size		size for fifo
  */
 void svm_fifo_init (svm_fifo_t * f, u32 size);
-/**
- * Initialize fifo chunks and rbtree
- *
- * @param f		fifo
- */
-void svm_fifo_init_chunks (svm_fifo_t * f);
 /**
  * Allocate a fifo chunk on heap
  *
@@ -287,23 +183,7 @@ svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
  * @param c 	chunk or linked list of chunks to be added
  */
 void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
-/**
- * Request to reduce fifo size by amount of bytes
- *
- * Because the producer might be enqueuing data when this is called, the
- * actual size update is only applied when producer tries to enqueue new
- * data, unless @param try_shrink is set.
- *
- * @param f		fifo
- * @param len		number of bytes to remove from fifo. The actual number
- * 			of bytes to be removed will be less or equal to this
- * 			value.
- * @param try_shrink	flg to indicate if it's safe to try to shrink fifo
- * 			size. It should be set only if this is called by the
- * 			producer of if the producer is not using the fifo
- * @return		actual length fifo size will be reduced by
- */
-int svm_fifo_reduce_size (svm_fifo_t * f, u32 len, u8 try_shrink);
+int svm_fifo_fill_chunk_list (svm_fifo_t * f);
 /**
  * Removes chunks that are after fifo end byte
  *
@@ -481,6 +361,7 @@ ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
  * @return 	1 if sane, 0 otherwise
  */
 u8 svm_fifo_is_sane (svm_fifo_t * f);
+u32 svm_fifo_n_chunks (svm_fifo_t * f);
 /**
  * Declare this fifo is used by only a single thread.
  * In this special case, fifo-growth can be done in an efficient way without delay.
@@ -543,7 +424,7 @@ svm_fifo_max_dequeue (svm_fifo_t * f)
 static inline int
 svm_fifo_is_full_prod (svm_fifo_t * f)
 {
-  return (svm_fifo_max_dequeue_prod (f) == f->nitems);
+  return (svm_fifo_max_dequeue_prod (f) == f->size);
 }
 
 /* Check if fifo is full.
@@ -555,7 +436,7 @@ svm_fifo_is_full_prod (svm_fifo_t * f)
 static inline int
 svm_fifo_is_full (svm_fifo_t * f)
 {
-  return (svm_fifo_max_dequeue (f) == f->nitems);
+  return (svm_fifo_max_dequeue (f) == f->size);
 }
 
 /**
@@ -622,8 +503,6 @@ svm_fifo_max_enqueue_prod (svm_fifo_t * f)
 {
   u32 head, tail;
   f_load_head_tail_prod (f, &head, &tail);
-  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SHRINK))
-    svm_fifo_try_shrink (f, head, tail);
   return f_free_count (f, head, tail);
 }
 
@@ -638,38 +517,38 @@ svm_fifo_max_enqueue (svm_fifo_t * f)
 {
   u32 head, tail;
   f_load_head_tail_all_acq (f, &head, &tail);
-  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SHRINK))
-    svm_fifo_try_shrink (f, head, tail);
   return f_free_count (f, head, tail);
 }
 
 /**
  * Max contiguous chunk of data that can be read
  */
-static inline u32
-svm_fifo_max_read_chunk (svm_fifo_t * f)
-{
-  u32 head, tail;
-  f_load_head_tail_cons (f, &head, &tail);
-  return tail >= head ? (tail - head) : (f->size - head);
-}
+u32 svm_fifo_max_read_chunk (svm_fifo_t * f);
 
 /**
  * Max contiguous chunk of data that can be written
  */
-static inline u32
-svm_fifo_max_write_chunk (svm_fifo_t * f)
+u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
+
+static inline svm_fifo_chunk_t *
+svm_fifo_head_chunk (svm_fifo_t * f)
 {
-  u32 head, tail;
-  f_load_head_tail_prod (f, &head, &tail);
-  return tail >= head ? f->size - tail : f_free_count (f, head, tail);
+  return f->head_chunk;
 }
 
 static inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
+  if (!f->head_chunk)
+    return 0;
   /* load-relaxed: consumer owned index */
   return (f->head_chunk->data + (f->head - f->head_chunk->start_byte));
+}
+
+static inline svm_fifo_chunk_t *
+svm_fifo_tail_chunk (svm_fifo_t * f)
+{
+  return f->tail_chunk;
 }
 
 static inline u8 *
@@ -718,13 +597,25 @@ ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
   /* load-relaxed: producer owned index */
   tail = f->tail;
 
-  return f_distance_to (f, s->start, tail);
+  return (s->start - tail);
 }
 
 static inline u32
 ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
 {
   return s->length;
+}
+
+static inline u32
+svm_fifo_size (svm_fifo_t * f)
+{
+  return f->size;
+}
+
+static inline void
+svm_fifo_set_size (svm_fifo_t * f, u32 size)
+{
+  f->size = size;
 }
 
 /**
@@ -850,9 +741,8 @@ svm_fifo_needs_deq_ntf (svm_fifo_t * f, u32 n_last_deq)
   if (want_ntf & SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL)
     {
       u32 max_deq = svm_fifo_max_dequeue_cons (f);
-      u32 nitems = f->nitems;
-      if (!f->has_deq_ntf && max_deq < nitems
-	  && max_deq + n_last_deq >= nitems)
+      u32 size = f->size;
+      if (!f->has_deq_ntf && max_deq < size && max_deq + n_last_deq >= size)
 	return 1;
     }
   if (want_ntf & SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY)

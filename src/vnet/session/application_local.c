@@ -180,7 +180,8 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
   props = application_segment_manager_properties (server);
   round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
   round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
-  seg_size = round_rx_fifo_sz + round_tx_fifo_sz + margin;
+  /* Double the size because we may be inefficient with chunk allocation */
+  seg_size = 2 * (round_rx_fifo_sz + round_tx_fifo_sz + margin);
 
   sm = app_worker_get_listen_segment_manager (server_wrk, ll);
   seg_index = segment_manager_add_segment (sm, seg_size);
