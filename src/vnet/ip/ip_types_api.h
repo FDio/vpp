@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -44,14 +44,21 @@ extern ip46_type_t ip_address_decode (const struct _vl_api_address *in,
 				      ip46_address_t * out);
 extern void ip_address_encode (const ip46_address_t * in,
 			       ip46_type_t type, struct _vl_api_address *out);
-extern void ip6_address_encode (const ip6_address_t * in,
-				vl_api_ip6_address_t out);
 extern void ip6_address_decode (const vl_api_ip6_address_t in,
 				ip6_address_t * out);
-extern void ip4_address_encode (const ip4_address_t * in,
-				vl_api_ip4_address_t out);
+extern void ip6_address_encode (const ip6_address_t * in,
+				vl_api_ip6_address_t out);
 extern void ip4_address_decode (const vl_api_ip4_address_t in,
 				ip4_address_t * out);
+extern void ip4_address_encode (const ip4_address_t * in,
+				vl_api_ip4_address_t out);
+
+extern ip46_type_t ip_address_with_prefix_decode (const
+						  vl_api_address_with_prefix_t
+						  * in, ip_prefix_t * out);
+extern void ip_address_with_prefix_encode (const ip_prefix_t * in,
+					   ip46_type_t type,
+					   vl_api_prefix_t * out);
 
 extern void ip_prefix_decode (const struct _vl_api_prefix *in,
 			      fib_prefix_t * out);
