@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a704d71_6801dab5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-20T15:26:36Z",
+      "side": 1,
+      "message": "Remove these two lines.  Instead, add this line below \"Fix:\"\n\nFixes: d6d50cebde647f9a5ee7251a7fef977506f315d7",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 0
+      },
+      "revId": "04833e707ba086edbbe8d9a0cbdd116f304fafe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9764dbf2_38b51bfc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-20T15:26:36Z",
+      "side": 1,
+      "message": "Do we need to figure out what this reason is?\nMight it be hiding some other issue as well?",
+      "range": {
+        "startLine": 12,
+        "startChar": 8,
+        "endLine": 12,
+        "endChar": 20
+      },
+      "revId": "04833e707ba086edbbe8d9a0cbdd116f304fafe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edc982c5_e21ab765",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-12-20T15:26:36Z",
+      "side": 1,
+      "message": "is",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 2
+      },
+      "revId": "04833e707ba086edbbe8d9a0cbdd116f304fafe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
