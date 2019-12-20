@@ -1231,7 +1231,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
    *  Add with fifo wrapped
    */
 
-  svm_fifo_init_pointers (f, f->nitems - 100, f->nitems + 100);
+  svm_fifo_init_pointers (f, f->size - 100, f->size + 100);
   c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
   c->length = 100;
   c->start_byte = ~0;
@@ -1262,7 +1262,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Add N chunks
    */
-  svm_fifo_init_pointers (f, f->nitems - 100, f->nitems + 100);
+  svm_fifo_init_pointers (f, f->size - 100, f->size + 100);
 
   prev = 0;
   for (i = 0; i < 5; i++)
@@ -1306,7 +1306,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
    * Enqueue/dequeue tests
    */
 
-  test_n_bytes = f->nitems;
+  test_n_bytes = f->size;
   vec_validate (test_data, test_n_bytes - 1);
   vec_validate (data_buf, vec_len (test_data));
   n_deqs = n_enqs = 6;
@@ -1333,7 +1333,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Simple enqueue/deq and data validation (1)
    */
-  svm_fifo_init_pointers (f, f->nitems / 2, f->nitems / 2);
+  svm_fifo_init_pointers (f, f->size / 2, f->size / 2);
   for (i = 0; i < test_n_bytes; i++)
     {
       rv = svm_fifo_enqueue (f, sizeof (u8), &test_data[i]);
@@ -1635,7 +1635,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
    */
 
   /* Init test data and fifo */
-  test_n_bytes = f->nitems;
+  test_n_bytes = f->size;
   vec_validate (test_data, test_n_bytes - 1);
   vec_validate (data_buf, vec_len (test_data));
 
@@ -1684,8 +1684,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_max_enqueue (f);
 
   /* We've dequeued more than 3*chunk_size so nitems should be updated */
-  SFIFO_TEST (f->nitems == 8 * chunk_size, "nitems expected %u is %u",
-	      8 * chunk_size, f->nitems);
+  SFIFO_TEST (f->size == 8 * chunk_size, "nitems expected %u is %u",
+	      8 * chunk_size, f->size);
   /* Free space should be what was dequeued - 3 * chunk_size, which was
    * consumed by shrinking the fifo */
   diff = deq_bytes - 3 * chunk_size;
@@ -1703,8 +1703,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
     SFIFO_TEST (0, "dequeue returned");
 
   rv = svm_fifo_max_enqueue (f);
-  SFIFO_TEST (f->nitems == 8 * chunk_size, "nitems expected %u is %u",
-	      8 * chunk_size, f->nitems);
+  SFIFO_TEST (f->size == 8 * chunk_size, "nitems expected %u is %u",
+	      8 * chunk_size, f->size);
   SFIFO_TEST (rv == diff + 1, "free space expected %u is %u", diff + 1, rv);
   SFIFO_TEST (f->size == 8 * chunk_size + 1, "size expected %u is %u",
 	      8 * chunk_size + 1, f->size);
@@ -1797,8 +1797,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      vec_len (test_data) - 200, rv);
   SFIFO_TEST (f->size == 11 * chunk_size + 1, "size expected %u is %u",
 	      11 * chunk_size + 1, f->size);
-  SFIFO_TEST (f->nitems == 11 * chunk_size - 200, "nitems expected %u is %u",
-	      11 * chunk_size - 200, f->nitems);
+  SFIFO_TEST (f->size == 11 * chunk_size - 200, "nitems expected %u is %u",
+	      11 * chunk_size - 200, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
@@ -1829,8 +1829,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 0, "free space expected %u is %u", 0, rv);
   SFIFO_TEST (f->size == 11 * chunk_size + 1, "size expected %u is %u",
 	      11 * chunk_size + 1, f->size);
-  SFIFO_TEST (f->nitems == 11 * chunk_size - 300, "nitems expected %u is %u",
-	      11 * chunk_size - 300, f->nitems);
+  SFIFO_TEST (f->size == 11 * chunk_size - 300, "nitems expected %u is %u",
+	      11 * chunk_size - 300, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
@@ -1846,8 +1846,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      300 + deq_bytes - 300, rv);
   SFIFO_TEST (f->size == 8 * chunk_size + 1, "size expected %u is %u",
 	      8 * chunk_size + 1, f->size);
-  SFIFO_TEST (f->nitems == 8 * chunk_size, "nitems expected %u is %u",
-	      8 * chunk_size, f->nitems);
+  SFIFO_TEST (f->size == 8 * chunk_size, "nitems expected %u is %u",
+	      8 * chunk_size, f->size);
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_SHRINK), "shrink flag should not be"
 	      " set");
   SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS, "collect flag should"
@@ -1884,8 +1884,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      7 * chunk_size, rv);
   SFIFO_TEST (f->size == 6 * chunk_size + 1, "size expected %u is %u",
 	      6 * chunk_size + 1, f->size);
-  SFIFO_TEST (f->nitems == 1 * chunk_size, "nitems expected %u is %u",
-	      1 * chunk_size, f->nitems);
+  SFIFO_TEST (f->size == 1 * chunk_size, "nitems expected %u is %u",
+	      1 * chunk_size, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
@@ -1934,8 +1934,8 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 	      7 * chunk_size, rv);
   SFIFO_TEST (f->size == 7 * chunk_size + 1, "size expected %u is %u",
 	      7 * chunk_size + 1, f->size);
-  SFIFO_TEST (f->nitems == 1 * chunk_size, "nitems expected %u is %u",
-	      1 * chunk_size, f->nitems);
+  SFIFO_TEST (f->size == 1 * chunk_size, "nitems expected %u is %u",
+	      1 * chunk_size, f->size);
   SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
   SFIFO_TEST (!(f->flags & SVM_FIFO_F_COLLECT_CHUNKS), "collect flag should"
 	      " not be set");
