@@ -107,69 +107,183 @@ openssl_lctx_get (u32 lctx_index)
 }
 
 static int
+openssl_read_from_bio_into_fifo (svm_fifo_t * f, BIO * bio)
+{
+  u32 enq_now, enq_max;
+  svm_fifo_chunk_t *c;
+  int read, rv;
+
+  enq_max = svm_fifo_max_enqueue_prod (f);
+  if (!enq_max)
+    return 0;
+
+  if (svm_fifo_fill_chunk_list (f))
+    os_panic ();
+
+  enq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
+  if (!enq_now)
+    return 0;
+
+  read = BIO_read (bio, svm_fifo_tail (f), enq_now);
+  if (read <= 0)
+    return 0;
+
+  if (read == enq_now)
+    {
+      c = svm_fifo_tail_chunk (f);
+      while (read < enq_max)
+	{
+	  c = c->next;
+	  enq_now = clib_min (c->length, enq_max - read);
+	  rv = BIO_read (bio, c->data, enq_now);
+	  read += rv > 0 ? rv : 0;
+
+	  if (rv < enq_now)
+	    break;
+	}
+    }
+
+  svm_fifo_enqueue_nocopy (f, read);
+
+  return read;
+}
+
+static int
+openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
+{
+  u32 enq_now, enq_max;
+  svm_fifo_chunk_t *c;
+  int read, rv;
+
+  enq_max = svm_fifo_max_enqueue_prod (f);
+  if (!enq_max)
+    return 0;
+
+  svm_fifo_fill_chunk_list (f);
+
+  enq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
+  if (!enq_now)
+    return 0;
+
+  read = SSL_read (ssl, svm_fifo_tail (f), enq_now);
+  if (read <= 0)
+    return 0;
+
+  if (read == enq_now)
+    {
+      c = svm_fifo_tail_chunk (f);
+      while (read < enq_max)
+	{
+	  c = c->next;
+	  if (!c)
+	    break;
+	  enq_now = clib_min (c->length, enq_max - read);
+	  rv = SSL_read (ssl, c->data, enq_now);
+	  read += rv > 0 ? rv : 0;
+
+	  if (rv < enq_now)
+	    break;
+	}
+    }
+
+  svm_fifo_enqueue_nocopy (f, read);
+
+  return read;
+}
+
+static int
+openssl_write_from_fifo_into_bio (svm_fifo_t * f, BIO * bio, u32 len)
+{
+  svm_fifo_chunk_t *c;
+  int wrote, rv;
+  u32 deq_now;
+
+  svm_fifo_fill_chunk_list (f);
+
+  deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
+  wrote = BIO_write (bio, svm_fifo_head (f), deq_now);
+  if (wrote <= 0)
+    return 0;
+
+  if (wrote == deq_now)
+    {
+      c = svm_fifo_head_chunk (f);
+      while (wrote < len)
+	{
+	  c = c->next;
+	  deq_now = clib_min (c->length, len - wrote);
+	  rv = BIO_write (bio, c->data, deq_now);
+	  wrote += rv > 0 ? rv : 0;
+
+	  if (rv < deq_now)
+	    break;
+	}
+    }
+
+  svm_fifo_dequeue_drop (f, wrote);
+
+  return wrote;
+}
+
+static int
+openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 len)
+{
+  svm_fifo_chunk_t *c;
+  int wrote = 0, rv;
+  u32 deq_now;
+
+  svm_fifo_fill_chunk_list (f);
+
+  deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
+  wrote = SSL_write (ssl, svm_fifo_head (f), deq_now);
+  if (wrote <= 0)
+    return 0;
+
+  if (wrote == deq_now)
+    {
+      c = svm_fifo_head_chunk (f);
+      while (wrote < len)
+	{
+	  c = c->next;
+	  deq_now = clib_min (c->length, len - wrote);
+	  rv = SSL_write (ssl, c->data, deq_now);
+	  wrote += rv > 0 ? rv : 0;
+
+	  if (rv < deq_now)
+	    break;
+	}
+    }
+
+  svm_fifo_dequeue_drop (f, wrote);
+
+  return wrote;
+}
+
+static int
 openssl_try_handshake_read (openssl_ctx_t * oc, session_t * tls_session)
 {
-  u32 deq_max, deq_now;
   svm_fifo_t *f;
-  int wrote, rv;
+  u32 deq_max;
 
   f = tls_session->rx_fifo;
   deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     return 0;
 
-  deq_now = clib_min (svm_fifo_max_read_chunk (f), deq_max);
-  wrote = BIO_write (oc->wbio, svm_fifo_head (f), deq_now);
-  if (wrote <= 0)
-    return 0;
-
-  svm_fifo_dequeue_drop (f, wrote);
-  if (wrote < deq_max)
-    {
-      deq_now = clib_min (svm_fifo_max_read_chunk (f), deq_max - wrote);
-      rv = BIO_write (oc->wbio, svm_fifo_head (f), deq_now);
-      if (rv > 0)
-	{
-	  svm_fifo_dequeue_drop (f, rv);
-	  wrote += rv;
-	}
-    }
-  return wrote;
+  return openssl_write_from_fifo_into_bio (f, oc->wbio, deq_max);
 }
 
 static int
 openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
 {
-  u32 enq_max, deq_now;
-  svm_fifo_t *f;
-  int read, rv;
+  u32 read;
 
   if (BIO_ctrl_pending (oc->rbio) <= 0)
     return 0;
 
-  f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
-    return 0;
-
-  deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  read = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
-  if (read <= 0)
-    return 0;
-
-  svm_fifo_enqueue_nocopy (f, read);
-  tls_add_vpp_q_tx_evt (tls_session);
-
-  if (read < enq_max)
-    {
-      deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
-      rv = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
-      if (rv > 0)
-	{
-	  svm_fifo_enqueue_nocopy (f, rv);
-	  read += rv;
-	}
-    }
+  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio);
+  if (read)
+    tls_add_vpp_q_tx_evt (tls_session);
 
   return read;
 }
@@ -334,42 +448,34 @@ static inline int
 openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int wrote = 0, rv, read, max_buf = 100 * TLS_CHUNK_SIZE, max_space;
-  u32 enq_max, deq_max, deq_now, to_write;
+  int wrote = 0, read, max_buf = 100 * TLS_CHUNK_SIZE, max_space;
+  u32 deq_max, to_write;
   session_t *tls_session;
   svm_fifo_t *f;
 
   f = app_session->tx_fifo;
+
   deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     goto check_tls_fifo;
 
+  /* Figure out how much data to write */
   max_space = max_buf - BIO_ctrl_pending (oc->rbio);
   max_space = (max_space < 0) ? 0 : max_space;
-  deq_now = clib_min (deq_max, (u32) max_space);
-  to_write = clib_min (svm_fifo_max_read_chunk (f), deq_now);
-  wrote = SSL_write (oc->ssl, svm_fifo_head (f), to_write);
-  if (wrote <= 0)
+  to_write = clib_min (deq_max, (u32) max_space);
+
+  wrote = openssl_write_from_fifo_into_ssl (f, oc->ssl, to_write);
+  if (!wrote)
     {
       tls_add_vpp_q_builtin_tx_evt (app_session);
       goto check_tls_fifo;
     }
-  svm_fifo_dequeue_drop (app_session->tx_fifo, wrote);
-  if (wrote < deq_now)
-    {
-      to_write = clib_min (svm_fifo_max_read_chunk (f), deq_now - wrote);
-      rv = SSL_write (oc->ssl, svm_fifo_head (f), to_write);
-      if (rv > 0)
-	{
-	  svm_fifo_dequeue_drop (app_session->tx_fifo, rv);
-	  wrote += rv;
-	}
-    }
 
-  if (svm_fifo_needs_deq_ntf (app_session->tx_fifo, wrote))
+  if (svm_fifo_needs_deq_ntf (f, wrote))
     session_dequeue_notify (app_session);
 
-  if (wrote < deq_max)
+//  if (wrote < deq_max)
+  if (svm_fifo_max_dequeue_cons (f))
     tls_add_vpp_q_builtin_tx_evt (app_session);
 
 check_tls_fifo:
@@ -378,32 +484,15 @@ check_tls_fifo:
     return wrote;
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
+
+  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio);
+  if (!read)
     {
       tls_add_vpp_q_builtin_tx_evt (app_session);
       return wrote;
     }
 
-  deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  read = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
-  if (read <= 0)
-    {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
-      return wrote;
-    }
-
-  svm_fifo_enqueue_nocopy (f, read);
   tls_add_vpp_q_tx_evt (tls_session);
-
-  if (read < enq_max && BIO_ctrl_pending (oc->rbio) > 0)
-    {
-      deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
-      read = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
-      if (read > 0)
-	svm_fifo_enqueue_nocopy (f, read);
-    }
 
   if (BIO_ctrl_pending (oc->rbio) > 0)
     tls_add_vpp_q_builtin_tx_evt (app_session);
@@ -416,9 +505,9 @@ check_tls_fifo:
 static inline int
 openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
-  int read, wrote = 0, max_space, max_buf = 100 * TLS_CHUNK_SIZE, rv;
+  int read, wrote = 0, max_space, max_buf = 100 * TLS_CHUNK_SIZE;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  u32 deq_max, enq_max, deq_now, to_read;
+  u32 deq_max, to_write;
   session_t *app_session;
   svm_fifo_t *f;
 
@@ -429,31 +518,21 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
     }
 
   f = tls_session->rx_fifo;
+
   deq_max = svm_fifo_max_dequeue_cons (f);
   max_space = max_buf - BIO_ctrl_pending (oc->wbio);
   max_space = max_space < 0 ? 0 : max_space;
-  deq_now = clib_min (deq_max, max_space);
-  if (!deq_now)
+  to_write = clib_min (deq_max, max_space);
+  if (!to_write)
     goto check_app_fifo;
 
-  to_read = clib_min (svm_fifo_max_read_chunk (f), deq_now);
-  wrote = BIO_write (oc->wbio, svm_fifo_head (f), to_read);
-  if (wrote <= 0)
+  wrote = openssl_write_from_fifo_into_bio (f, oc->wbio, to_write);
+  if (!wrote)
     {
       tls_add_vpp_q_builtin_rx_evt (tls_session);
       goto check_app_fifo;
     }
-  svm_fifo_dequeue_drop (f, wrote);
-  if (wrote < deq_now)
-    {
-      to_read = clib_min (svm_fifo_max_read_chunk (f), deq_now - wrote);
-      rv = BIO_write (oc->wbio, svm_fifo_head (f), to_read);
-      if (rv > 0)
-	{
-	  svm_fifo_dequeue_drop (f, rv);
-	  wrote += rv;
-	}
-    }
+
   if (svm_fifo_max_dequeue_cons (f))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
@@ -464,27 +543,12 @@ check_app_fifo:
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
-    {
-      tls_add_vpp_q_builtin_rx_evt (tls_session);
-      return wrote;
-    }
 
-  deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
-  if (read <= 0)
+  read = openssl_read_from_ssl_into_fifo (f, oc->ssl);
+  if (!read)
     {
       tls_add_vpp_q_builtin_rx_evt (tls_session);
       return wrote;
-    }
-  svm_fifo_enqueue_nocopy (f, read);
-  if (read < enq_max && SSL_pending (oc->ssl) > 0)
-    {
-      deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
-      read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
-      if (read > 0)
-	svm_fifo_enqueue_nocopy (f, read);
     }
 
   tls_notify_app_enqueue (ctx, app_session);
