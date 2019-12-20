@@ -279,7 +279,7 @@ fs_try_alloc_fifo_freelist (fifo_segment_slice_t * fss,
 
   fss->free_fifos = f->next;
   fss->free_chunks[fl_index] = c->next;
-  c->next = c;
+  c->next = 0;
   c->start_byte = 0;
   c->length = data_bytes;
   memset (f, 0, sizeof (*f));
@@ -341,7 +341,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
     }
   f->start_chunk = first;
   f->end_chunk = last;
-  last->next = first;
+//  last->next = first;
   fss->n_fl_chunk_bytes -= n_alloc;
   return f;
 }
@@ -449,6 +449,8 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 
 done:
 
+  if (f)
+    f->fs_hdr = fsh;
   return f;
 }
 
@@ -536,7 +538,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   /* Free fifo chunks */
   cur = f->start_chunk;
-  do
+  while (cur)
     {
       next = cur->next;
       fl_index = fs_freelist_for_size (cur->length);
@@ -547,7 +549,6 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
       fss->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
       cur = next;
     }
-  while (cur != f->start_chunk);
 
   f->start_chunk = f->end_chunk = f->new_chunks = 0;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
@@ -719,9 +720,8 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 }
 
 int
-fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
+fsh_grow_fifo (fifo_segment_header_t *fsh, svm_fifo_t * f, u32 chunk_size)
 {
-  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
   void *oldheap;
@@ -757,6 +757,31 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   svm_fifo_add_chunk (f, c);
 
   return 0;
+}
+
+int
+fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
+{
+  return fsh_grow_fifo (fs->h, f, chunk_size);
+}
+
+void
+fsh_collect_chunks (fifo_segment_header_t *fsh, svm_fifo_t *f, svm_fifo_chunk_t *cur)
+{
+  fifo_segment_slice_t *fss;
+  svm_fifo_chunk_t *next;
+  int fl_index;
+
+  fss = fsh_slice_get (fsh, f->slice_index);
+
+  while (cur)
+    {
+      next = cur->next;
+      fl_index = fs_freelist_for_size (cur->length);
+      cur->next = fss->free_chunks[fl_index];
+      fss->free_chunks[fl_index] = cur;
+      cur = next;
+    }
 }
 
 int
