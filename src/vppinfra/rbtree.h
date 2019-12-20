@@ -64,6 +64,7 @@ rb_node_t *rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x,
 					  u32 key, rb_tree_lt_fn ltfn);
 rb_node_t *rb_tree_successor (rb_tree_t * rt, rb_node_t * x);
 rb_node_t *rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x);
+int rb_tree_is_init (rb_tree_t * rt);
 
 static inline rb_node_index_t
 rb_node_index (rb_tree_t * rt, rb_node_t * n)

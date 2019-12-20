@@ -274,7 +274,7 @@ proxy_tx_callback (session_t * proxy_s)
   u32 min_free;
   uword *p;
 
-  min_free = clib_min (proxy_s->tx_fifo->nitems >> 3, 128 << 10);
+  min_free = clib_min (svm_fifo_size (proxy_s->tx_fifo) >> 3, 128 << 10);
   if (svm_fifo_max_enqueue (proxy_s->tx_fifo) < min_free)
     {
       svm_fifo_add_want_deq_ntf (proxy_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -356,6 +356,9 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   s->tx_fifo->refcnt++;
   s->rx_fifo->refcnt++;
 
+  svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* deq ooo */ );
+  svm_fifo_init_ooo_lookup (s->rx_fifo, 0 /* enq ooo */ );
+
   hash_set (pm->proxy_session_by_active_open_handle,
 	    ps->vpp_active_open_handle, opaque);
 
@@ -425,7 +428,7 @@ active_open_tx_callback (session_t * ao_s)
   u32 min_free;
   uword *p;
 
-  min_free = clib_min (ao_s->tx_fifo->nitems >> 3, 128 << 10);
+  min_free = clib_min (svm_fifo_size (ao_s->tx_fifo) >> 3, 128 << 10);
   if (svm_fifo_max_enqueue (ao_s->tx_fifo) < min_free)
     {
       svm_fifo_add_want_deq_ntf (ao_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
