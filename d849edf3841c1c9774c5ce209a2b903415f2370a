@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "44573b30_69ab6a95",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2019-12-21T06:17:30Z",
+      "side": 1,
+      "message": "May I assume fl_index is still OK if fl_index is 0 in the if statement above so it is not decremented?",
+      "range": {
+        "startLine": 321,
+        "startChar": 39,
+        "endLine": 321,
+        "endChar": 47
+      },
+      "revId": "d849edf3841c1c9774c5ce209a2b903415f2370a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
