@@ -1115,8 +1115,14 @@ show_ip4_reass (vlib_main_t * vm,
   vlib_cli_output (vm, "Current IP4 reassemblies count: %lu\n",
 		   (long unsigned) sum_reass_n);
   vlib_cli_output (vm,
-		   "Maximum configured concurrent IP4 reassemblies per worker-thread: %lu\n",
+		   "Maximum configured concurrent shallow virtual IP4 reassemblies per worker-thread: %lu\n",
 		   (long unsigned) rm->max_reass_n);
+  vlib_cli_output (vm,
+		   "Maximum configured shallow virtual IP4 reassembly timeout: %lums\n",
+		   (long unsigned) rm->timeout_ms);
+  vlib_cli_output (vm,
+		   "Maximum configured shallow virtual IP4 reassembly expire walk interval: %lums\n",
+		   (long unsigned) rm->expire_walk_interval_ms);
   return 0;
 }
 
