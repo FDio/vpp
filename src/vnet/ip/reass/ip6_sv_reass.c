@@ -1151,8 +1151,15 @@ show_ip6_sv_reass (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "---------------------");
   vlib_cli_output (vm, "Current IP6 reassemblies count: %lu\n",
 		   (long unsigned) sum_reass_n);
-  vlib_cli_output (vm, "Maximum configured concurrent IP6 reassemblies per "
-		   "worker-thread: %lu\n", (long unsigned) rm->max_reass_n);
+  vlib_cli_output (vm,
+		   "Maximum configured concurrent shallow virtual IP6 reassemblies per worker-thread: %lu\n",
+		   (long unsigned) rm->max_reass_n);
+  vlib_cli_output (vm,
+		   "Maximum configured shallow virtual IP6 reassembly timeout: %lums\n",
+		   (long unsigned) rm->timeout_ms);
+  vlib_cli_output (vm,
+		   "Maximum configured shallow virtual IP6 reassembly expire walk interval: %lums\n",
+		   (long unsigned) rm->expire_walk_interval_ms);
   vlib_cli_output (vm, "Buffers in use: %lu\n",
 		   (long unsigned) sum_buffers_n);
   return 0;
