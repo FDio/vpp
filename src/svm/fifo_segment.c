@@ -314,7 +314,10 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
       fss->free_fifos = f->next;
     }
 
-  fl_index = fs_freelist_for_size (data_bytes) - 1;
+  fl_index = fs_freelist_for_size (data_bytes);
+  if (fl_index > 0)
+    fl_index -= 1;
+
   fl_size = fs_freelist_index_to_size (fl_index);
 
   while (data_bytes)
@@ -333,11 +336,38 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 	}
       else
 	{
-	  ASSERT (fl_index > 0);
+	  /* Failed to allocate with smaller chunks */
+	  if (fl_index == 0)
+	    {
+	      /* free all chunks if any allocated */
+	      c = first;
+	      while (c)
+		{
+		  fl_index = fs_freelist_for_size (c->length);
+		  fl_size = fs_freelist_index_to_size (fl_index);
+		  c->next = fss->free_chunks[fl_index];
+		  fss->free_chunks[fl_index] = c;
+		  fss->n_fl_chunk_bytes += fl_size;
+		  data_bytes += fl_size;
+		}
+	      first = last = 0;
+	      fl_index = fs_freelist_for_size (data_bytes);
+	      if (fss->free_chunks[fl_index + 1])
+		{
+		  fl_index += 1;
+		  fl_size = fs_freelist_index_to_size (fl_index);
+		  continue;
+		}
+
+	      f->next = fss->free_fifos;
+	      fss->free_fifos = f;
+	      return 0;
+	    }
 	  fl_index -= 1;
 	  fl_size = fl_size >> 1;
 	}
     }
+
   f->start_chunk = first;
   f->end_chunk = last;
   last->next = first;
