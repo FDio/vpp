@@ -268,6 +268,7 @@ class VppTestCase(unittest.TestCase):
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
+    term_timeout = 15
     vapi_response_timeout = 5
 
     @property
@@ -567,10 +568,10 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except Exception as e:
-            cls.logger.debug("Exception connecting to VPP: %s" % e)
+        except Exception:
+            cls.logger.debug("setUpClass failed.")
+            cls.quit_and_cleanup()
 
-            cls.quit()
             raise
 
     @classmethod
@@ -588,6 +589,17 @@ class VppTestCase(unittest.TestCase):
                           "process and finish running the testcase...")
             except AttributeError:
                 pass
+
+    @classmethod
+    def quit_and_cleanup(cls):
+        cls.quit()
+
+        # run_tests may still want to write to the logs after the test ends,
+        # so we can't clean up the logger or we will raise BrokenPipeError
+        # in the runner.
+        if hasattr(cls, 'parallel_handler'):
+            return
+        cls.file_handler.close()
 
     @classmethod
     def quit(cls):
@@ -623,7 +635,15 @@ class VppTestCase(unittest.TestCase):
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
-                cls.vpp.communicate()
+                # set a fixed time to return
+                # https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate  # noqa
+                try:
+                    cls.vpp.communicate(timeout=cls.term_timeout)
+                except subprocess.TimeoutExpired:
+                    cls.logger.debug("Timed out waiting for vpp to TERM.  "
+                                     "Sending KILL.")
+                    cls.vpp.kill()
+                    cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
             del cls.vpp
@@ -661,8 +681,7 @@ class VppTestCase(unittest.TestCase):
         cls.logger.debug("--- tearDownClass() for %s called ---" %
                          cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
-        cls.quit()
-        cls.file_handler.close()
+        cls.quit_and_cleanup()
         cls.reset_packet_infos()
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
