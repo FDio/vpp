@@ -16,8 +16,8 @@
 #ifndef included_vnet_crypto_crypto_h
 #define included_vnet_crypto_crypto_h
 
-#define VNET_CRYPTO_LOG2_RING_SIZE 9
-#define VNET_CRYPTO_RING_SIZE (1 << VNET_CRYPTO_LOG2_RING_SIZE)
+#define VNET_CRYPTO_RING_SIZE 512
+#define VNET_CRYPTO_QUEUE_MASK (VNET_CRYPTO_RING_SIZE - 1)
 
 #include <vlib/vlib.h>
 #include <vnet/buffer.h>
@@ -64,11 +64,14 @@ typedef enum
 } vnet_crypto_op_type_t;
 
 #define foreach_crypto_op_status \
+  _(AVAILABLE, "available") \
+  _(READY, "ready") \
   _(PENDING, "pending") \
-  _(WORK_IN_PROGRESS, "work in progress") \
+  _(WORK_IN_PROGRESS, "work-in-progress") \
   _(COMPLETED, "completed") \
   _(FAIL_NO_HANDLER, "no-handler") \
-  _(FAIL_BAD_HMAC, "bad-hmac")
+  _(FAIL_BAD_HMAC, "bad-hmac") \
+  _(ENGINE_ERR, "engine-error")
 
 typedef enum
 {
@@ -136,17 +139,24 @@ typedef struct
   u32 key_index;
   u32 len;
   u16 aad_len;
-  u8 digest_len, tag_len;
+  union
+  {
+    u8 digest_len;
+    u8 tag_len;
+  };
   u8 *iv;
   u8 *src;
   u8 *dst;
   u8 *aad;
-  u8 *tag;
-  u8 *digest;
+  union
+  {
+    u8 *tag;
+    u8 *digest;
+  };
   uword user_data;
   /* for async mode */
-  u16 next_node;
-  u16 next_index;
+  u32 bi;
+  u16 next;
 } vnet_crypto_op_t;
 
 typedef struct
@@ -154,6 +164,7 @@ typedef struct
   vnet_crypto_op_type_t type;
   vnet_crypto_alg_t alg;
   u32 active_engine_index;
+  u32 active_async_engine_index;
 } vnet_crypto_op_data_t;
 
 typedef struct
@@ -161,23 +172,21 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 head;
   u32 tail;
-  u32 size;
-  vnet_crypto_alg_t alg:8;
-  vnet_crypto_op_type_t op:8;
-  vnet_crypto_op_t *jobs[0];
+  u32 last;
+  u8 *ops_buf;
 } vnet_crypto_queue_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_bitmap_t *act_queues;
-  vnet_crypto_queue_t *queues[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_queue_t *queues;
 } vnet_crypto_thread_t;
 
 typedef u32 vnet_crypto_key_index_t;
 
-typedef vnet_crypto_op_t *
-  (vnet_crypto_queue_handler_t) (vlib_main_t * vm, vnet_crypto_queue_t * q);
+typedef u32 (vnet_crypto_queue_handler_t) (vlib_main_t * vm, u32 thread_idx,
+					   vnet_crypto_queue_t * q);
 
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
@@ -195,15 +204,12 @@ void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_key_handler_t * keyh);
 
-u32 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
-				 char *desc);
+void vnet_crypto_register_queue_handler (vlib_main_t * vm, u32 engine_index,
+					 vnet_crypto_op_id_t opt,
+					 vnet_crypto_queue_handler_t * qh);
 
-vlib_error_t *vnet_crypto_register_async_queue_handler (vlib_main_t * vm,
-							u32 provider_index,
-							vnet_crypto_op_id_t
-							opt,
-							vnet_crypto_queue_handler_t
-							* f);
+/* register private data size for async crypto ops */
+void vnet_crypto_async_register_op_priv_size (u32 priv_size);
 
 typedef struct
 {
@@ -212,7 +218,14 @@ typedef struct
   int priority;
   vnet_crypto_key_handler_t *key_op_handler;
   vnet_crypto_ops_handler_t *ops_handlers[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_queue_handler_t *queue_handlers[VNET_CRYPTO_N_OP_IDS];
 } vnet_crypto_engine_t;
+
+typedef struct
+{
+  u32 node_idx;
+  u32 next_idx;
+} vnet_crypto_async_next_node_t;
 
 typedef struct
 {
@@ -226,21 +239,9 @@ typedef struct
   uword *alg_index_by_name;
   vnet_crypto_queue_handler_t **queue_handlers;
   int async_mode;
-  u32 n_crypto_dispatch_next_nodes;
+  vnet_crypto_async_next_node_t *next_nodes;
+  u32 async_op_size;
 } vnet_crypto_main_t;
-
-typedef struct
-{
-  u32 next_index;
-} crypto_buffer_opaque_t;
-
-STATIC_ASSERT (sizeof (crypto_buffer_opaque_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
-	       "Custom meta-data too large for vnet_buffer_opaque_t");
-
-#define crypto_buffer_opaque(b) \
-    ((crypto_buffer_opaque_t *)((u8 *)((b)->opaque) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
 
 u32 crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
 
@@ -254,9 +255,6 @@ vnet_crypto_is_async_mode ()
 }
 
 void vnet_crypto_async_mode_enable_disable (u8 is_enabled);
-
-u32 vnet_crypto_submit_ops (vlib_main_t * vm,
-			    vnet_crypto_op_t ** jobs, u32 n_jobs);
 
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
@@ -301,29 +299,131 @@ vnet_crypto_get_key (vnet_crypto_key_index_t index)
   return vec_elt_at_index (cm->keys, index);
 }
 
+
+/* get an async op ptr from queue, used by crypto infra only */
 static_always_inline vnet_crypto_op_t *
-vnet_crypto_dequeue_one_job (vnet_crypto_queue_t * q)
+vnet_crypto_async_get_op (vnet_crypto_queue_t * q, u32 idx)
 {
-  u32 i;
-  vnet_crypto_op_t *j;
-  u32 mask = q->size - 1;
-  u32 tail = q->tail;
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  return (vnet_crypto_op_t *) (q->ops_buf + idx * cm->async_op_size);
+}
+
+/* get async op private data, used by async op engine only */
+static_always_inline void *
+vnet_crypto_async_get_op_priv (vnet_crypto_op_t * op)
+{
+  return (void *) ((u8 *) op + sizeof (vnet_crypto_op_t));
+}
+
+/**
+ * Get one not processed op from queue, mark its status as in_progress, and
+ * return to the caller. Used by crypto engine only. If is possible to use
+ * fast "thread unsafe" mode to avoid atomic operation. However this mode
+ * should only be used when the crypto engine runs on the same lcore as
+ * the worker who owns the queue.
+ *
+ * @param q:      the queue pointer.
+ * @param atomic: 1 as using thread safe atomic operation, 0 as thread unsafe
+ *                mode. Only set to 0 when crypto engine runs on the same lcore
+ *                as the worker.
+ * @return:       the pointer to a vnet_crypto_op_t data to be processed by the
+ *                engine.
+ **/
+static_always_inline vnet_crypto_op_t *
+vnet_crypto_async_get_pending_op (vnet_crypto_queue_t * q, u32 atomic)
+{
+  vnet_crypto_op_t *op;
   u32 head = q->head;
+  u32 last;
+  u32 i;
 
-  for (i = tail; i < head; i++)
+  if (atomic)
     {
-      j = q->jobs[i & mask];
-      if (!j)
-	continue;
-
-      if (clib_atomic_bool_cmp_and_swap (&j->status,
-					 VNET_CRYPTO_OP_STATUS_PENDING,
-					 VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS))
+      last = clib_atomic_load_acq_n (&q->last);
+      for (i = last; i < head; i++)
 	{
-	  return j;
+	  op = vnet_crypto_async_get_op (q, i & VNET_CRYPTO_QUEUE_MASK);
+
+	  if (clib_atomic_bool_cmp_and_swap (&op->status,
+					     VNET_CRYPTO_OP_STATUS_PENDING,
+					     VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS))
+	    {
+	      clib_atomic_cmp_and_swap (&q->last, last, i + 1);
+	      return op;
+	    }
+	}
+
+      return 0;
+    }
+
+  last = q->last;
+  for (i = last; i < head; i++)
+    {
+      op = vnet_crypto_async_get_op (q, i & VNET_CRYPTO_QUEUE_MASK);
+
+      if (op->status == VNET_CRYPTO_OP_STATUS_PENDING)
+	{
+	  op->status = VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS;
+	  q->last = i + 1;
+	  return op;
 	}
     }
+
   return 0;
+}
+
+/**
+ * get an available op to be submit, only used by application who want to
+ * use async crypto service.
+ **/
+static_always_inline vnet_crypto_op_t *
+vnet_crypto_async_get_available_op (vlib_main_t * vm,
+				    vnet_crypto_op_id_t op_id)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, vm->thread_index);
+  vnet_crypto_queue_t *q = &ct->queues[op_id];
+  vnet_crypto_op_t *op;
+
+  CLIB_MEMORY_STORE_BARRIER ();
+  clib_bitmap_set_no_check (ct->act_queues, op_id, 1);
+
+  if (PREDICT_FALSE (q->ops_buf == 0))
+    {
+      clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
+      q->ops_buf = clib_pmalloc_alloc_aligned_on_numa (pm, cm->async_op_size *
+						       VNET_CRYPTO_RING_SIZE,
+						       CLIB_CACHE_LINE_BYTES,
+						       vm->numa_node);
+      if (q->ops_buf == 0)
+	return 0;
+      q->head = 0;
+      q->tail = 0;
+      q->last = 0;
+    }
+
+  op = vnet_crypto_async_get_op (q, q->head & VNET_CRYPTO_QUEUE_MASK);
+
+  if (PREDICT_FALSE (op->status != VNET_CRYPTO_OP_STATUS_AVAILABLE))
+    return 0;
+
+  op->status = VNET_CRYPTO_OP_STATUS_READY;
+  op->op = op_id;
+  op->flags = 0;
+  op->key_index = ~0;
+  q->head++;
+  return op;
+}
+
+/**
+ * change op status to "pending" so the crypto engine will pick it up and
+ * process.
+ **/
+static_always_inline void
+vnet_crypto_async_submit_op (vnet_crypto_op_t * op)
+{
+  op->status = VNET_CRYPTO_OP_STATUS_PENDING;
 }
 
 #endif /* included_vnet_crypto_crypto_h */
