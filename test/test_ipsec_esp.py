@@ -286,7 +286,7 @@ class TemplateIpsecEsp(ConfigIpsecESP):
         super(TemplateIpsecEsp, self).tearDown()
 
 
-class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+class TestIpsecEsp1(IpsecTra46Tests, IpsecTun46Tests, TemplateIpsecEsp):
     """ Ipsec ESP - TUN & TRA tests """
     pass
 
@@ -296,9 +296,9 @@ class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
     pass
 
 
-class TestIpsecEspHandoff(TemplateIpsecEsp,
-                          IpsecTun6HandoffTests,
-                          IpsecTun4HandoffTests):
+class TestIpsecEspHandoff(IpsecTun6HandoffTests,
+                          IpsecTun4HandoffTests,
+                          TemplateIpsecEsp):
     """ Ipsec ESP - handoff tests """
     pass
 
@@ -485,8 +485,6 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
             p.crypt_key = algo['key']
             p.salt = algo['salt']
             p.flags = p.flags | flag
-
-        self.reporter.send_keep_alive(self)
 
         #
         # configure the SPDs. SAs, etc
