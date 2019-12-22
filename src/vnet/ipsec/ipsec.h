@@ -87,6 +87,8 @@ typedef struct
 {
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
+  u16 *async_drop_nexts;
+  u32 *async_drop_bis;
 } ipsec_per_thread_data_t;
 
 typedef struct

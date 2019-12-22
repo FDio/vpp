@@ -128,6 +128,101 @@ esp_aad_fill (vnet_crypto_op_t * op,
       op->aad_len = 8;
     }
 }
+
+/**
+ * Function prototype to get a vnet_crypto_op_t for both sync and async modes,
+ * to avoid branch in esp_encrypt/decrypt_inline.
+ **/
+typedef vnet_crypto_op_t *(esp_get_crypto_op_t) (vlib_main_t * vm,
+						 vnet_crypto_op_t ** ops_vec,
+						 u32 op_id);
+
+static_always_inline vnet_crypto_op_t *
+esp_get_sync_op (vlib_main_t * vm, vnet_crypto_op_t ** ops_vec, u32 op_id)
+{
+  vnet_crypto_op_t *op;
+  vec_add2_aligned (*ops_vec, op, 1, CLIB_CACHE_LINE_BYTES);
+  vnet_crypto_op_init (op, op_id);
+  return op;
+}
+
+static_always_inline vnet_crypto_op_t *
+esp_get_async_op (vlib_main_t * vm, vnet_crypto_op_t ** ops_vec, u32 op_id)
+{
+  vnet_crypto_op_t *op = vnet_crypto_async_get_available_op (vm, op_id);
+  return op;
+}
+
+/* move esp_decrypt_packet_data_t declaration from esp_decrypt to here */
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      u8 icv_sz;
+      u8 iv_sz;
+      ipsec_sa_flags_t flags;
+      u32 sa_index;
+    };
+    u64 sa_data;
+  };
+
+  u32 seq;
+  i16 current_data;
+  i16 current_length;
+  u16 hdr_sz;
+} esp_decrypt_packet_data_t;
+
+STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
+
+/**
+ * The post data structure to for esp_encrypt/decrypt_inline to write to
+ * vib_buffer_t opaque unused field, and for post nodes to pick up after
+ * dequeue.
+ **/
+typedef union
+{
+  u16 next_index;
+  esp_decrypt_packet_data_t decrypt_data;
+} esp_post_data_t;
+
+STATIC_ASSERT (sizeof (esp_post_data_t) <=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+	       "Custom meta-data too large for vnet_buffer_opaque_t");
+
+#define esp_post_data(b) \
+    ((esp_post_data_t *)((u8 *)((b)->opaque) \
+        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+
+typedef enum
+{
+  ESP_PROCESS_SYNC_MODE = 0,
+  ESP_PROCESS_ASYNC_MODE,
+  ESP_PROCESS_N_MODES
+} esp_process_mode_t;
+
+typedef struct
+{
+  /* esp encrypt post node index for async crypto */
+  u32 esp4_encrypt_post_index;
+  u32 esp6_encrypt_post_index;
+  u32 esp4_encrypt_tun_post_index;
+  u32 esp6_encrypt_tun_post_index;
+} esp_encrypt_async_index_t;
+
+typedef struct
+{
+  /* esp decrypt post node index for async crypto */
+  u32 esp4_decrypt_post_index[ESP_PROCESS_N_MODES];
+  u32 esp6_decrypt_post_index[ESP_PROCESS_N_MODES];
+  u32 esp4_decrypt_tun_post_index[ESP_PROCESS_N_MODES];
+  u32 esp6_decrypt_tun_post_index[ESP_PROCESS_N_MODES];
+} esp_decrypt_async_index_t;
+
+extern esp_encrypt_async_index_t esp_encrypt_async_next;
+extern esp_decrypt_async_index_t esp_decrypt_async_next;
+
 #endif /* __ESP_H__ */
 
 /*
