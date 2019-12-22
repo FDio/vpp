@@ -567,10 +567,10 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except Exception as e:
-            cls.logger.debug("Exception connecting to VPP: %s" % e)
-
+        except Exception:
+            cls.logger.debug("setUpClass failed.")
             cls.quit()
+
             raise
 
     @classmethod
@@ -594,7 +594,20 @@ class VppTestCase(unittest.TestCase):
         """
         Disconnect vpp-api, kill vpp and cleanup shared memory files
         """
+<<<<<<< HEAD
         cls._debug_quit()
+=======
+        cls.reporter.send_keep_alive(cls, 'quit')
+        if (cls.debug_gdbserver or cls.debug_gdb) and hasattr(cls, 'vpp'):
+            cls.vpp.poll()
+            if cls.vpp.returncode is None:
+                print()
+                print(double_line_delim)
+                print("VPP or GDB server is still running")
+                print(single_line_delim)
+                input("When done debugging, press ENTER to kill the "
+                      "process and finish running the testcase...")
+>>>>>>> 1086bb5... tests: Experiment - log info in case of startUpClass failure
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, 'pump_thread_stop_flag'):
@@ -655,6 +668,13 @@ class VppTestCase(unittest.TestCase):
             stderr_log('\n%s', vpp_output)
             stderr_log(single_line_delim)
 
+        cls.file_handler.close()
+        with open("%s/log.txt" % cls.tempdir) as f:
+            print('--- log.txt ---')
+            for line in f:
+                print(line)
+            print('---------------')
+
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
@@ -662,7 +682,6 @@ class VppTestCase(unittest.TestCase):
                          cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
-        cls.file_handler.close()
         cls.reset_packet_infos()
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
