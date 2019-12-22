@@ -1422,6 +1422,10 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
+  /* If reneging, wait for timer based retransmits */
+  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tc->sack_sb.is_reneging))
+    return;
+
   /*
    * If not in recovery, figure out if we should enter
    */
@@ -1551,10 +1555,6 @@ tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
    * defined to be 'duplicate' as well */
   *is_dack = tc->sack_sb.last_sacked_bytes
     || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
-
-  /* If reneging, wait for timer based retransmits */
-  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tc->sack_sb.is_reneging))
-    return 0;
 
   return (*is_dack || tcp_in_cong_recovery (tc));
 }
