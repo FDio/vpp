@@ -2,12 +2,9 @@ import os
 import sys
 import traceback
 import ipaddress
-from subprocess import check_output, CalledProcessError
 
 import scapy.compat
-import framework
 from log import RED, single_line_delim, double_line_delim
-from util import check_core_path, get_core_path
 
 
 class Hook(object):
@@ -77,47 +74,6 @@ class PollHook(Hook):
     def __init__(self, test):
         super(PollHook, self).__init__(test)
 
-    def on_crash(self, core_path):
-        self.logger.error("Core file present, debug with: gdb %s %s",
-                          self.test.vpp_bin, core_path)
-        check_core_path(self.logger, core_path)
-        self.logger.error("Running `file %s':", core_path)
-        try:
-            info = check_output(["file", core_path])
-            self.logger.error(info)
-        except CalledProcessError as e:
-            self.logger.error(
-                "Subprocess returned with error running `file' utility on "
-                "core-file, "
-                "rc=%s",  e.returncode)
-        except OSError as e:
-            self.logger.error(
-                "Subprocess returned OS error running `file' utility on "
-                "core-file, "
-                "oserror=(%s) %s", e.errno, e.strerror)
-        except Exception as e:
-            self.logger.error(
-                "Subprocess returned unanticipated error running `file' "
-                "utility on core-file, "
-                "%s", e)
-
-    def poll_vpp(self):
-        """
-        Poll the vpp status and throw an exception if it's not running
-        :raises VppDiedError: exception if VPP is not running anymore
-        """
-        if self.test.vpp_dead:
-            # already dead, nothing to do
-            return
-
-        self.test.vpp.poll()
-        if self.test.vpp.returncode is not None:
-            self.test.vpp_dead = True
-            raise framework.VppDiedError(rv=self.test.vpp.returncode)
-            core_path = get_core_path(self.test.tempdir)
-            if os.path.isfile(core_path):
-                self.on_crash(core_path)
-
     def before_api(self, api_name, api_args):
         """
         Check if VPP died before executing an API
@@ -128,7 +84,7 @@ class PollHook(Hook):
 
         """
         super(PollHook, self).before_api(api_name, api_args)
-        self.poll_vpp()
+        self.test.poll_vpp()
 
     def before_cli(self, cli):
         """
@@ -139,7 +95,7 @@ class PollHook(Hook):
 
         """
         super(PollHook, self).before_cli(cli)
-        self.poll_vpp()
+        self.test.poll_vpp()
 
 
 class StepHook(PollHook):

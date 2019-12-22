@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import itertools
 import sys
 import shutil
 import os
@@ -9,6 +10,7 @@ import argparse
 import time
 import threading
 import signal
+import logging
 import psutil
 import re
 import multiprocessing
@@ -26,6 +28,7 @@ from discover_tests import discover_tests
 from subprocess import check_output, CalledProcessError
 from util import check_core_path, get_core_path, is_core_present
 
+logger = logging.getLogger('run_tests')
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
 # that child process is stuck (e.g. waiting for shm mutex, which will never
@@ -122,20 +125,12 @@ class TestResult(dict):
         return doc_name
 
 
-def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
-                        finished_pipe, result_pipe, logger):
-    sys.stdout = stdouterr_queue
-    sys.stderr = stdouterr_queue
-    VppTestCase.parallel_handler = logger.handlers[0]
-    result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
-                           descriptions=descriptions,
-                           verbosity=verbose,
-                           result_pipe=result_pipe,
-                           failfast=failfast,
-                           print_summary=False).run(suite)
-    finished_pipe.send(result.wasSuccessful())
-    finished_pipe.close()
-    keep_alive_pipe.close()
+def get_worker_name():
+    for i in itertools.count():
+        yield f'[W{i}]'
+
+
+worker_name = get_worker_name()
 
 
 class TestCaseWrapper(object):
@@ -151,7 +146,8 @@ class TestCaseWrapper(object):
             from multiprocessing import get_context
             self.stdouterr_queue = manager.StreamQueue(ctx=get_context())
         self.logger = get_parallel_logger(self.stdouterr_queue)
-        self.child = Process(target=test_runner_wrapper,
+        self.child = Process(target=self.test_runner_wrapper,
+                             name=next(worker_name),
                              args=(testcase_suite,
                                    self.keep_alive_child_end,
                                    self.stdouterr_queue,
@@ -187,6 +183,22 @@ class TestCaseWrapper(object):
                 self._last_test = str(testcase)
         else:
             self._last_test = test_id
+
+    @staticmethod
+    def test_runner_wrapper(testcase_suite, keep_alive_pipe, stdouterr_queue,
+                            finished_pipe, result_pipe, logger):
+        sys.stdout = stdouterr_queue
+        sys.stderr = stdouterr_queue
+        VppTestCase.parallel_handler = logger.handlers[0]
+        result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
+                               descriptions=descriptions,
+                               verbosity=verbose,
+                               result_pipe=result_pipe,
+                               failfast=failfast,
+                               print_summary=False).run(testcase_suite)
+        finished_pipe.send(result.wasSuccessful())
+        finished_pipe.close()
+        keep_alive_pipe.close()
 
     def add_testclass_with_core(self):
         if self.last_test_id in self.testcases_by_id:
@@ -230,56 +242,35 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             data = ''
             while data is not None:
                 sys.stdout.write(data)
-                data = read_testcase.stdouterr_queue.get()
+                try:
+                    data = read_testcase.stdouterr_queue.get()
+                except EOFError:
+                    break
 
             read_testcase.stdouterr_queue.close()
             finished_unread_testcases.discard(read_testcase)
             read_testcase = None
 
 
-def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
-    if last_test_temp_dir:
+def handle_failed_suite(testcase):
+    if testcase.last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
-        lttd = os.path.basename(last_test_temp_dir)
+        lttd = os.path.basename(testcase.last_test_temp_dir)
         failed_dir = os.getenv('FAILED_DIR')
         link_path = '%s%s-FAILED' % (failed_dir, lttd)
         if not os.path.exists(link_path):
-            os.symlink(last_test_temp_dir, link_path)
-        logger.error("Symlink to failed testcase directory: %s -> %s"
-                     % (link_path, lttd))
+            os.symlink(testcase.last_test_temp_dir, link_path)
+            testcase.logger.error(
+                "Symlink to failed testcase directory: %s -> %s"
+                % (link_path, lttd))
 
         # Report core existence
-        core_path = get_core_path(last_test_temp_dir)
+        core_path = get_core_path(testcase.last_test_temp_dir)
         if os.path.exists(core_path):
-            logger.error(
+            testcase.logger.error(
                 "Core-file exists in test temporary directory: %s!" %
                 core_path)
-            check_core_path(logger, core_path)
-            logger.debug("Running 'file %s':" % core_path)
-            try:
-                info = check_output(["file", core_path])
-                logger.debug(info)
-            except CalledProcessError as e:
-                logger.error("Subprocess returned with return code "
-                             "while running `file' utility on core-file "
-                             "returned: "
-                             "rc=%s", e.returncode)
-            except OSError as e:
-                logger.error("Subprocess returned with OS error while "
-                             "running 'file' utility "
-                             "on core-file: "
-                             "(%s) %s", e.errno, e.strerror)
-            except Exception as e:
-                logger.exception("Unexpected error running `file' utility "
-                                 "on core-file")
-
-    if vpp_pid:
-        # Copy api post mortem
-        api_post_mortem_path = "/tmp/api_post_mortem.%d" % vpp_pid
-        if os.path.isfile(api_post_mortem_path):
-            logger.error("Copying api_post_mortem.%d to %s" %
-                         (vpp_pid, last_test_temp_dir))
-            shutil.copy2(api_post_mortem_path, last_test_temp_dir)
+            testcase.on_crash(core_path)
 
 
 def check_and_handle_core(vpp_binary, tempdir, core_crash_test):
@@ -315,11 +306,9 @@ def process_finished_testsuite(wrapped_testcase_suite,
 
     if not wrapped_testcase_suite.was_successful():
         failed_wrapped_testcases.add(wrapped_testcase_suite)
-        handle_failed_suite(wrapped_testcase_suite.logger,
-                            wrapped_testcase_suite.last_test_temp_dir,
-                            wrapped_testcase_suite.vpp_pid)
+        handle_failed_suite(wrapped_testcase_suite)
 
-    return stop_run
+    return stop_run, results
 
 
 def run_forked(testcase_suites):
@@ -371,11 +360,11 @@ def run_forked(testcase_suites):
                 if wrapped_testcase_suite.finished_parent_end.poll():
                     wrapped_testcase_suite.finished_parent_end.recv()
                     wrapped_testcase_suite.last_heard = time.time()
-                    stop_run = process_finished_testsuite(
+                    stop_run, results = process_finished_testsuite(
                         wrapped_testcase_suite,
                         finished_testcase_suites,
                         failed_wrapped_testcases,
-                        results) or stop_run
+                        results) or (stop_run, results)
                     continue
 
                 fail = False
@@ -426,24 +415,27 @@ def run_forked(testcase_suites):
                     wrapped_testcase_suite.result.crashed = True
                     wrapped_testcase_suite.result.process_result(
                         wrapped_testcase_suite.last_test_id, ERROR)
-                    stop_run = process_finished_testsuite(
+                    stop_run, results = process_finished_testsuite(
                         wrapped_testcase_suite,
                         finished_testcase_suites,
                         failed_wrapped_testcases,
-                        results) or stop_run
+                        results) or (stop_run, results)
 
             for finished_testcase in finished_testcase_suites:
                 # Somewhat surprisingly, the join below may
                 # timeout, even if client signaled that
                 # it finished - so we note it just in case.
-                join_start = time.time()
-                finished_testcase.child.join(test_finished_join_timeout)
-                join_end = time.time()
-                if join_end - join_start >= test_finished_join_timeout:
-                    finished_testcase.logger.error(
-                        "Timeout joining finished test: %s (pid %d)" %
-                        (finished_testcase.last_test,
-                         finished_testcase.child.pid))
+
+                if finished_testcase.child.is_alive():
+                    join_start = time.time()
+
+                    finished_testcase.child.join(test_finished_join_timeout)
+                    join_end = time.time()
+                    if join_end - join_start >= test_finished_join_timeout:
+                        logger.error(
+                            "Timeout joining finished test: %s (pid %d)" %
+                            (finished_testcase.last_test,
+                             finished_testcase.child.pid))
                 finished_testcase.close_pipes()
                 wrapped_testcase_suites.remove(finished_testcase)
                 finished_unread_testcases.add(finished_testcase)
@@ -750,6 +742,8 @@ if __name__ == '__main__':
 
     run_interactive = debug or step or force_foreground
 
+    print(f'Running as user')
+
     try:
         num_cpus = len(os.sched_getaffinity(0))
     except AttributeError:
@@ -760,29 +754,30 @@ if __name__ == '__main__':
         num_cpus, "{:,}MB".format(shm_free / (1024 * 1024))))
 
     test_jobs = os.getenv("TEST_JOBS", "1").lower()  # default = 1 process
+
+    if shm_free < min_req_shm:
+        raise RuntimeError('Not enough free space in /dev/shm. Required '
+                           'free space is at least %sM.'
+                           % (min_req_shm >> 20))
+    extra_shm = shm_free - min_req_shm
+    shm_max_processes = 1
+    shm_max_processes += extra_shm // shm_per_process
+
     if test_jobs == 'auto':
         if run_interactive:
             concurrent_tests = 1
             print('Interactive mode required, running on one core')
         else:
-            shm_max_processes = 1
-            if shm_free < min_req_shm:
-                raise Exception('Not enough free space in /dev/shm. Required '
-                                'free space is at least %sM.'
-                                % (min_req_shm >> 20))
-            else:
-                extra_shm = shm_free - min_req_shm
-                shm_max_processes += extra_shm // shm_per_process
+
             concurrent_tests = min(cpu_count(), shm_max_processes)
             print('Found enough resources to run tests with %s cores'
                   % concurrent_tests)
     elif test_jobs.isdigit():
-        concurrent_tests = int(test_jobs)
+        concurrent_tests = min(int(test_jobs), shm_max_processes)
         print("Running on %s core(s) as set by 'TEST_JOBS'." %
               concurrent_tests)
     else:
-        concurrent_tests = 1
-        print('Running on one core.')
+        raise RuntimeError('TEST_JOBS must be not set, "auto" or an integer.')
 
     if run_interactive and concurrent_tests > 1:
         raise NotImplementedError(
@@ -841,9 +836,7 @@ if __name__ == '__main__':
         was_successful = result.wasSuccessful()
         if not was_successful:
             for test_case_info in result.failed_test_cases_info:
-                handle_failed_suite(test_case_info.logger,
-                                    test_case_info.tempdir,
-                                    test_case_info.vpp_pid)
+                handle_failed_suite(test_case_info)
                 if test_case_info in result.core_crash_test_cases_info:
                     check_and_handle_core(test_case_info.vpp_bin_path,
                                           test_case_info.tempdir,

@@ -11,7 +11,7 @@ from collections import deque
 
 from six import moves, iteritems
 from vpp_papi import VPPApiClient, mac_pton
-from hook import Hook
+import hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
@@ -153,7 +153,10 @@ class VppPapiProvider(object):
     _zero, _negative = range(2)
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
-        self.hook = Hook(test_class)
+        if test_class.step:
+            self.hook = hook.StepHook(test_class)
+        else:
+            self.hook = hook.PollHook(test_class)
         self.name = name
         self.shm_prefix = shm_prefix
         self.test_class = test_class
