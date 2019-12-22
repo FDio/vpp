@@ -6,7 +6,11 @@ from vpp_devices import VppTAPInterface
 
 
 def check_tuntap_driver_access():
-    return os.access("/dev/net/tun", os.R_OK and os.W_OK)
+    try:
+        os.open("/dev/net/tun", os.O_RDWR | os.O_NONBLOCK)
+        return True
+    except PermissionError:
+        return False
 
 
 @unittest.skipIf(check_tuntap_driver_access(), "Permission denied")
