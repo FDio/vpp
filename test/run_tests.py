@@ -230,7 +230,10 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             data = ''
             while data is not None:
                 sys.stdout.write(data)
-                data = read_testcase.stdouterr_queue.get()
+                try:
+                    data = read_testcase.stdouterr_queue.get()
+                except EOFError:
+                    break
 
             read_testcase.stdouterr_queue.close()
             finished_unread_testcases.discard(read_testcase)
@@ -739,7 +742,7 @@ if __name__ == '__main__':
         print("Using provided RND_SEED=%s" % os.environ["RND_SEED"])
     verbose = parse_digit_env("V", 0)
 
-    test_timeout = parse_digit_env("TIMEOUT", 600)  # default = 10 minutes
+    test_timeout = parse_digit_env("TIMEOUT", 120)  # default = 10 minutes
 
     test_finished_join_timeout = 15
 
