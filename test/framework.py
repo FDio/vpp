@@ -568,9 +568,9 @@ class VppTestCase(unittest.TestCase):
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
         except Exception as e:
-            cls.logger.debug("Exception connecting to VPP: %s" % e)
+            cls.logger.debug("setUpClass failed.")
 
-            cls.quit()
+            cls.tearDownClass()
             raise
 
     @classmethod
