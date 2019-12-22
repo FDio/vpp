@@ -5,9 +5,10 @@ import os
 import logging
 
 """ @var formatting delimiter consisting of '=' characters """
-double_line_delim = '=' * 78
+double_line_delim = '=' * 88
 """ @var formatting delimiter consisting of '-' characters """
-single_line_delim = '-' * 78
+single_line_delim = '-' * 88
+fmt_str = '%(asctime)s,%(msecs)03d %(message)s'
 
 
 def colorize(msg, color):
@@ -24,6 +25,8 @@ class ColorFormatter(logging.Formatter):
         if hasattr(record, 'color'):
             message = colorize(message, record.color)
         return message
+
+
 try:
     verbose = int(os.getenv("V", 0))
 except:
@@ -31,14 +34,14 @@ except:
 
 # 40 = ERROR, 30 = WARNING, 20 = INFO, 10 = DEBUG, 0 = NOTSET (all messages)
 if verbose >= 2:
-    log_level = 10
+    log_level = logging.DEBUG
 elif verbose == 1:
-    log_level = 20
+    log_level = logging.INFO
 else:
-    log_level = 40
+    log_level = logging.ERROR
 
 handler = logging.StreamHandler(sys.stdout)
-color_formatter = ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
+color_formatter = ColorFormatter(fmt=fmt_str,
                                  datefmt="%H:%M:%S")
 handler.setFormatter(color_formatter)
 handler.setLevel(log_level)
@@ -65,6 +68,7 @@ def get_parallel_logger(stream):
     handler.setLevel(log_level)
     logger.addHandler(handler)
     return logger
+
 
 # Static variables to store color formatting strings.
 #
