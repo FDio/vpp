@@ -291,36 +291,6 @@ vcl_worker_ctrl_mq (vcl_worker_t * wrk)
 }
 
 void
-vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index)
-{
-  clib_rwlock_writer_lock (&vcm->segment_table_lock);
-  hash_set (vcm->segment_table, segment_handle, svm_segment_index);
-  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
-}
-
-u32
-vcl_segment_table_lookup (u64 segment_handle)
-{
-  uword *seg_indexp;
-
-  clib_rwlock_reader_lock (&vcm->segment_table_lock);
-  seg_indexp = hash_get (vcm->segment_table, segment_handle);
-  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
-
-  if (!seg_indexp)
-    return VCL_INVALID_SEGMENT_INDEX;
-  return ((u32) * seg_indexp);
-}
-
-void
-vcl_segment_table_del (u64 segment_handle)
-{
-  clib_rwlock_writer_lock (&vcm->segment_table_lock);
-  hash_unset (vcm->segment_table, segment_handle);
-  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
-}
-
-void
 vcl_cleanup_bapi (void)
 {
   socket_client_main_t *scm = &socket_client_main;
@@ -419,14 +389,33 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
   if (type == SSVM_SEGMENT_MEMFD)
     a->memfd_fd = fd;
 
+  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+
   if ((rv = fifo_segment_attach (&vcm->segment_main, a)))
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
     }
-  vcl_segment_table_add (segment_handle, a->new_segment_indices[0]);
+  hash_set (vcm->segment_table, segment_handle, a->new_segment_indices[0]);
+
+  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+
   vec_reset_length (a->new_segment_indices);
   return 0;
+}
+
+u32
+vcl_segment_table_lookup (u64 segment_handle)
+{
+  uword *seg_indexp;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+  seg_indexp = hash_get (vcm->segment_table, segment_handle);
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  if (!seg_indexp)
+    return VCL_INVALID_SEGMENT_INDEX;
+  return ((u32) * seg_indexp);
 }
 
 void
@@ -439,9 +428,15 @@ vcl_segment_detach (u64 segment_handle)
   segment_index = vcl_segment_table_lookup (segment_handle);
   if (segment_index == (u32) ~ 0)
     return;
+
+  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+
   segment = fifo_segment_get_segment (sm, segment_index);
   fifo_segment_delete (sm, segment);
-  vcl_segment_table_del (segment_handle);
+  hash_unset (vcm->segment_table, segment_handle);
+
+  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+
   VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
 }
 
