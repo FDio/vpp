@@ -230,7 +230,10 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             data = ''
             while data is not None:
                 sys.stdout.write(data)
-                data = read_testcase.stdouterr_queue.get()
+                try:
+                    data = read_testcase.stdouterr_queue.get()
+                except EOFError:
+                    break
 
             read_testcase.stdouterr_queue.close()
             finished_unread_testcases.discard(read_testcase)
