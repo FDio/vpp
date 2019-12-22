@@ -567,10 +567,10 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except Exception as e:
-            cls.logger.debug("Exception connecting to VPP: %s" % e)
-
+        except Exception:
+            cls.logger.debug("setUpClass failed.")
             cls.quit()
+
             raise
 
     @classmethod
@@ -655,6 +655,13 @@ class VppTestCase(unittest.TestCase):
             stderr_log('\n%s', vpp_output)
             stderr_log(single_line_delim)
 
+        cls.file_handler.close()
+        with open("%s/log.txt" % cls.tempdir) as f:
+            print('--- log.txt ---')
+            for line in f:
+                print(line)
+            print('---------------')
+
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
@@ -662,7 +669,6 @@ class VppTestCase(unittest.TestCase):
                          cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
-        cls.file_handler.close()
         cls.reset_packet_infos()
         if debug_framework:
             debug_internal.on_tear_down_class(cls)

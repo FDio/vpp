@@ -113,10 +113,10 @@ class PollHook(Hook):
         self.test.vpp.poll()
         if self.test.vpp.returncode is not None:
             self.test.vpp_dead = True
-            raise framework.VppDiedError(rv=self.test.vpp.returncode)
             core_path = get_core_path(self.test.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
+            raise framework.VppDiedError(rv=self.test.vpp.returncode)
 
     def before_api(self, api_name, api_args):
         """
