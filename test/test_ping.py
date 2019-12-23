@@ -1,12 +1,8 @@
-import socket
 
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
-from scapy.packet import Raw
+from scapy.layers.inet import IP, ICMP
 
 from framework import VppTestCase
-from util import ppp
+
 
 """ TestPing is a subclass of  VPPTestCase classes.
 

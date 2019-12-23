@@ -22,14 +22,12 @@ from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import ppp
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import UnexpectedApiReturnValueError, \
     CliFailedCommandError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
-from vpp_papi import VppEnum
 
 USEC_IN_SEC = 1000000
 

@@ -5,7 +5,6 @@
 """
 
 from vpp_object import VppObject
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, INVALID_INDEX, VppIpAddressUnion, \
     VppIpMPrefix
 from ipaddress import ip_address, IPv4Network, IPv6Network
@@ -87,7 +86,7 @@ def ip_to_dpo_proto(addr):
 
 
 def address_proto(ip_addr):
-    if ip_addr.ip_addr.version is 4:
+    if ip_addr.ip_addr.version == 4:
         return FibPathProto.FIB_PATH_NH_PROTO_IP4
     else:
         return FibPathProto.FIB_PATH_NH_PROTO_IP6
@@ -96,7 +95,7 @@ def address_proto(ip_addr):
 def find_route(test, addr, len, table_id=0):
     prefix = mk_network(addr, len)
 
-    if 4 is prefix.version:
+    if 4 == prefix.version:
         routes = test.vapi.ip_route_dump(table_id, False)
     else:
         routes = test.vapi.ip_route_dump(table_id, True)
@@ -131,7 +130,7 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
                               text_type(grp_addr),
                               grp_addr_len)
 
-    if 4 is ip_mprefix.version:
+    if 4 == ip_mprefix.version:
         routes = test.vapi.ip_mroute_dump(table_id, False)
     else:
         routes = test.vapi.ip_mroute_dump(table_id, True)
@@ -337,15 +336,15 @@ class VppFibPathNextHop(object):
         self.obj_id = next_hop_id
 
     def encode(self):
-        if self.via_label is not MPLS_LABEL_INVALID:
+        if self.via_label != MPLS_LABEL_INVALID:
             return {'via_label': self.via_label}
-        if self.obj_id is not INVALID_INDEX:
+        if self.obj_id != INVALID_INDEX:
             return {'obj_id': self.obj_id}
         else:
             return {'address': self.addr.encode()}
 
     def proto(self):
-        if self.via_label is MPLS_LABEL_INVALID:
+        if self.via_label == MPLS_LABEL_INVALID:
             return address_proto(self.addr)
         else:
             return FibPathProto.FIB_PATH_NH_PROTO_MPLS
@@ -441,7 +440,7 @@ class VppMRoutePath(VppRoutePath):
                  type=FibPathType.FIB_PATH_TYPE_NORMAL,
                  bier_imp=INVALID_INDEX):
         if not nh:
-            nh = "::" if proto is FibPathProto.FIB_PATH_NH_PROTO_IP6 \
+            nh = "::" if proto == FibPathProto.FIB_PATH_NH_PROTO_IP6 \
                  else "0.0.0.0"
         super(VppMRoutePath, self).__init__(nh,
                                             nh_sw_if_index,

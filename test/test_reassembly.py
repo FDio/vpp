@@ -2,9 +2,7 @@
 
 import six
 import unittest
-from random import shuffle, choice, randrange
-
-from framework import VppTestCase, VppTestRunner
+from random import shuffle, randrange
 
 import scapy.compat
 from scapy.packet import Raw
@@ -13,10 +11,9 @@ from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment, IPv6ExtHdrHopByHop
 from framework import VppTestCase, VppTestRunner
-from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
+from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 
 # 35 is enough to have >257 400-byte fragments

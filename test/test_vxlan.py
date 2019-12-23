@@ -252,7 +252,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         pkt = ether / pkt
         self.check_encapsulation(pkt, self.single_tunnel_bd)
 
-        payload = self.decapsulate(pkt)
+        # payload = self.decapsulate(pkt)
         # TODO: Scapy bug?
         # self.assert_eq_pkts(payload, frame)
 
