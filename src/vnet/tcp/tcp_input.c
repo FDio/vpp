@@ -1509,6 +1509,24 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
 }
 
+static void
+tcp_handle_old_ack (tcp_connection_t * tc, vlib_buffer_t * b,
+		    tcp_rate_sample_t * rs)
+{
+  if (!tcp_in_cong_recovery (tc))
+    return;
+
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
+
+  tc->bytes_acked = 0;
+
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+    tcp_bt_sample_delivery_rate (tc, rs);
+
+  tcp_cc_handle_event (tc, rs, 1);
+}
+
 /**
  * Check if duplicate ack as per RFC5681 Sec. 2
  */
@@ -1574,8 +1592,12 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       tc->errors.below_ack_wnd += 1;
       *error = TCP_ERROR_ACK_OLD;
       TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 1, vnet_buffer (b)->tcp.ack_number);
-      if (tcp_in_fastrecovery (tc) && tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-	tcp_cc_handle_event (tc, 0, 1);
+
+      if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - tc->rcv_wnd))
+	return -1;
+
+      tcp_handle_old_ack (tc, b, &rs);
+
       /* Don't drop yet */
       return 0;
     }
