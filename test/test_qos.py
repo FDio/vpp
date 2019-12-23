@@ -4,9 +4,8 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsLabel, VppMplsTable, FibPathProto
+    VppMplsLabel, VppMplsTable
 
 import scapy.compat
 from scapy.packet import Raw
@@ -109,8 +108,8 @@ class TestQOS(VppTestCase):
                 {'outputs': os}]
 
         qem4 = VppQosEgressMap(self, 4, rows).add_vpp_config()
-        qem5 = VppQosEgressMap(self, 5, rows).add_vpp_config()
-        qem6 = VppQosEgressMap(self, 6, rows).add_vpp_config()
+        VppQosEgressMap(self, 5, rows).add_vpp_config()
+        VppQosEgressMap(self, 6, rows).add_vpp_config()
         qem7 = VppQosEgressMap(self, 7, rows).add_vpp_config()
 
         self.assertTrue(qem7.query_vpp_config())
@@ -256,7 +255,7 @@ class TestQOS(VppTestCase):
             self.assertEqual(p[IP].tos, 254)
 
         #
-        # enable QoS stroe instead of record
+        # enable QoS store instead of record
         #
         qst1 = VppQosStore(self, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
@@ -341,10 +340,10 @@ class TestQOS(VppTestCase):
         # enable IP QoS recording on the input Pg0 and MPLS egress marking
         # on Pg1
         #
-        qr1 = VppQosRecord(self, self.pg0,
-                           self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm1 = VppQosMark(self, self.pg1, qem1,
-                         self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
+        VppQosRecord(self, self.pg0,
+                     self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        VppQosMark(self, self.pg1, qem1,
+                   self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
 
         #
         # packet that will get one label added and 3 labels added resp.
@@ -386,10 +385,10 @@ class TestQOS(VppTestCase):
         # enable MPLS QoS recording on the input Pg0 and IP egress marking
         # on Pg1
         #
-        qr2 = VppQosRecord(
+        VppQosRecord(
             self, self.pg0,
             self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
-        qm2 = VppQosMark(
+        VppQosMark(
             self, self.pg1, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 
@@ -467,20 +466,20 @@ class TestQOS(VppTestCase):
         #
         # enable VLAN QoS recording/marking on the input Pg0 subinterface and
         #
-        qr_v = VppQosRecord(
+        VppQosRecord(
             self, sub_if,
             self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
-        qm_v = VppQosMark(
+        VppQosMark(
             self, sub_if, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
 
         #
         # IP marking/recording on pg1
         #
-        qr_ip = VppQosRecord(
+        VppQosRecord(
             self, self.pg1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm_ip = VppQosMark(
+        VppQosMark(
             self, self.pg1, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """CLI functional tests"""
 
-import datetime
-import time
 import unittest
 
 from vpp_papi import vpp_transport_shmem
@@ -41,8 +39,8 @@ class TestCLI(VppTestCase):
     def test_long_cli_delay(self):
         """ Test that VppApiClient raises VppTransportShmemIOError if timeout."""  # noqa
         with self.assertRaises(
-                vpp_transport_shmem.VppTransportShmemIOError) as ctx:
-            rv = self.vapi.papi.cli_inband(cmd='wait 10')
+                vpp_transport_shmem.VppTransportShmemIOError):
+            self.vapi.papi.cli_inband(cmd='wait 10')
 
     def test_long_cli_delay_override(self):
         """ Test per-command _timeout option."""  # noqa
@@ -77,7 +75,7 @@ class TestCLIExtendedVapiTimeout(VppTestCase):
         # get vpp time as float
         start = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True).vpe_system_time
-        rv = self.vapi.papi.cli_inband(cmd='wait %s' % wait_secs)
+        self.vapi.papi.cli_inband(cmd='wait %s' % wait_secs)
         now = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True).vpe_system_time
 

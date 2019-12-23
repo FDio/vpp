@@ -839,7 +839,7 @@ class TestBier(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw())
 
-        rx = self.send_and_expect(self.pg0, [p], self.pg1)
+        self.send_and_expect(self.pg0, [p], self.pg1)
 
 
 if __name__ == '__main__':
