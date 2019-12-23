@@ -1584,4 +1584,3 @@ class Worker(Thread):
 
 
 if __name__ == '__main__':
-    pass

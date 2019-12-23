@@ -8,7 +8,6 @@ from template_bd import BridgeDomain
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, UDP
 from scapy.layers.vxlan import VXLAN
-from scapy.utils import atol
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 

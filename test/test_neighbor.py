@@ -14,7 +14,6 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 

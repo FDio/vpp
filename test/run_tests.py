@@ -862,4 +862,4 @@ if __name__ == '__main__':
                 print('Test run was successful')
             else:
                 print('%s attempt(s) left.' % attempts)
-        sys.exit(exit_code)
+        sys.exit(exit_c

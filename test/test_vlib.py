@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestVlib(VppTestCase):
@@ -182,6 +181,7 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

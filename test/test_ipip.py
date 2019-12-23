@@ -5,7 +5,6 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_papi import VppEnum

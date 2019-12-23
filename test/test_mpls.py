@@ -2356,4 +2356,4 @@ class TestMPLSL2(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    unittest.main(testRunner=V

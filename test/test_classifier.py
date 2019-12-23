@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 
-import binascii
 import socket
 import unittest
 
 from framework import VppTestCase, VppTestRunner
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, TCP
-from util import ppp
+from scapy.layers.inet import UDP, TCP
 from template_classifier import TestClassifier
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX

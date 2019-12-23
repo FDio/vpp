@@ -1,4 +1,4 @@
-import binascii
+
 import socket
 import abc
 

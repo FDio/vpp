@@ -3,14 +3,13 @@
 import binascii
 import socket
 from socket import AF_INET, AF_INET6
-import unittest
 import sys
 
 from framework import VppTestCase
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, TCP
+from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from util import ppp
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import socket
 from util import ip4_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner

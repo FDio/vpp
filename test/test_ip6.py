@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 from socket import inet_pton, inet_ntop
+import socket
 import unittest
 
 from parameterized import parameterized
-import scapy.compat
+
 import scapy.layers.inet6 as inet6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
@@ -13,8 +14,7 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
-from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid
+from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr
 from six import moves
 
 from framework import VppTestCase, VppTestRunner

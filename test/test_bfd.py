@@ -29,7 +29,6 @@ from vpp_papi_provider import UnexpectedApiReturnValueError, \
     CliFailedCommandError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
-from vpp_papi import VppEnum
 
 USEC_IN_SEC = 1000000
 

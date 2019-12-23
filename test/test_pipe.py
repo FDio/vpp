@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from socket import AF_INET, AF_INET6, inet_pton
+from socket import AF_INET, inet_pton
 import unittest
 
 from scapy.packet import Raw
