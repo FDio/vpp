@@ -8,6 +8,10 @@ except NameError:
     text_type = str
 
 
+def mk_counter():
+    return {'packets': 0, 'bytes': 0}
+
+
 class VppIpsecSpd(VppObject):
     """
     VPP SPD DB
@@ -163,9 +167,16 @@ class VppIpsecSpdEntry(VppObject):
                 return True
         return False
 
-    def get_stats(self):
+    def get_stats(self, worker=None):
         c = self.test.statistics.get_counter("/net/ipsec/policy")
-        return c[0][self.stat_index]
+        if worker is None:
+            total = mk_counter()
+            for t in c:
+                total['packets'] += t[self.stat_index]['packets']
+            return total
+        else:
+            # +1 to skip main thread
+            return c[worker+1][self.stat_index]
 
 
 class VppIpsecSA(VppObject):
@@ -244,9 +255,16 @@ class VppIpsecSA(VppObject):
                 return True
         return False
 
-    def get_stats(self):
+    def get_stats(self, worker=None):
         c = self.test.statistics.get_counter("/net/ipsec/sa")
-        return c[0][self.stat_index]
+        if worker is None:
+            total = mk_counter()
+            for t in c:
+                total['packets'] += t[self.stat_index]['packets']
+            return total
+        else:
+            # +1 to skip main thread
+            return c[worker+1][self.stat_index]
 
 
 class VppIpsecTunProtect(VppObject):

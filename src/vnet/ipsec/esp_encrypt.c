@@ -642,7 +642,7 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
   .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-handoff",
+    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
   },
 };
@@ -689,7 +689,7 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
   .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-handoff",
+    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
   },
 };

@@ -1133,9 +1133,9 @@ class VppTestCase(unittest.TestCase):
                 "Finished sleep (%s) - slept %es (wanted %es)",
                 remark, after - before, timeout)
 
-    def pg_send(self, intf, pkts):
+    def pg_send(self, intf, pkts, worker=None):
         self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
+        intf.add_stream(pkts, worker=worker)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1148,10 +1148,10 @@ class VppTestCase(unittest.TestCase):
             i.assert_nothing_captured(remark=remark)
             timeout = 0.1
 
-    def send_and_expect(self, intf, pkts, output, n_rx=None):
+    def send_and_expect(self, intf, pkts, output, n_rx=None, worker=None):
         if not n_rx:
             n_rx = len(pkts)
-        self.pg_send(intf, pkts)
+        self.pg_send(intf, pkts, worker=worker)
         rx = output.get_capture(n_rx)
         return rx
 

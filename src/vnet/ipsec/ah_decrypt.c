@@ -440,7 +440,7 @@ VLIB_REGISTER_NODE (ah4_decrypt_node) = {
     [AH_DECRYPT_NEXT_DROP] = "ip4-drop",
     [AH_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [AH_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
-    [AH_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-tun-handoff",
+    [AH_DECRYPT_NEXT_HANDOFF] = "ah4-decrypt-handoff",
   },
 };
 /* *INDENT-ON* */
@@ -467,7 +467,7 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
     [AH_DECRYPT_NEXT_DROP] = "ip6-drop",
     [AH_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [AH_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
-    [AH_DECRYPT_NEXT_HANDOFF] = "esp6-decrypt-handoff",
+    [AH_DECRYPT_NEXT_HANDOFF] = "ah6-decrypt-handoff",
   },
 };
 /* *INDENT-ON* */
