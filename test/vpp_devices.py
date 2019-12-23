@@ -1,7 +1,8 @@
 from vpp_interface import VppInterface
+from vpp_object import VppObject
 
 
-class VppTAPInterface(VppInterface):
+class VppTAPInterface(VppObject, VppInterface):
 
     @property
     def tap_id(self):

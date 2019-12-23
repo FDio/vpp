@@ -1,4 +1,4 @@
-import binascii
+
 import socket
 import abc
 
@@ -6,8 +6,8 @@ import six
 from six import moves
 
 from util import Host, mk_ll_addr
-from vpp_papi import mac_ntop, VppEnum
-from ipaddress import IPv4Network, IPv6Network
+from vpp_papi import VppEnum
+from ipaddress import IPv4Network
 
 try:
     text_type = unicode

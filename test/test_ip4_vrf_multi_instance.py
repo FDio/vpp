@@ -64,9 +64,7 @@
 
 import unittest
 import random
-import socket
 
-import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
@@ -182,8 +180,6 @@ class TestIp4VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.local_ip4n
-            dest_addr_len = 24
             self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id})
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:

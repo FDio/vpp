@@ -2,23 +2,21 @@
 
 import unittest
 import socket
-import struct
 import six
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
 import scapy.compat
-from scapy.layers.l2 import Ether, getmacbyip, ARP, Dot1Q
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.l2 import Ether, ARP, Dot1Q
+from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
-from scapy.utils6 import in6_mactoifaceid
 from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
-from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
+from scapy.layers.dhcp6 import DHCP6_Solicit, DHCP6_RelayForward, \
     DHCP6_RelayReply, DHCP6_Advertise, DHCP6OptRelayMsg, DHCP6OptIfaceId, \
     DHCP6OptStatusCode, DHCP6OptVSS, DHCP6OptClientLinkLayerAddr, DHCP6_Request
-from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
+from socket import AF_INET, inet_pton
 from scapy.utils6 import in6_ptop
 from vpp_papi import mac_pton, VppEnum
 from vpp_sub_interface import VppDot1QSubint
@@ -217,8 +215,8 @@ class TestDHCP(VppTestCase):
         self.assertEqual(udp.sport, DHCP4_SERVER_PORT)
 
         self.verify_dhcp_msg_type(pkt, "offer")
-        data = self.validate_relay_options(pkt, intf, intf.local_ip4,
-                                           vpn_id, fib_id, oui)
+        self.validate_relay_options(pkt, intf, intf.local_ip4,
+                                    vpn_id, fib_id, oui)
 
     def verify_orig_dhcp_pkt(self, pkt, intf, dscp, l2_bc=True):
         ether = pkt[Ether]
@@ -347,7 +345,6 @@ class TestDHCP(VppTestCase):
 
         relay = pkt[DHCP6_RelayForward]
         self.assertEqual(in6_ptop(relay.peeraddr), in6_ptop(peer_ip))
-        oid = pkt[DHCP6OptIfaceId]
         cll = pkt[DHCP6OptClientLinkLayerAddr]
         self.assertEqual(cll.optlen, 8)
         self.assertEqual(cll.lltype, 1)
@@ -1658,8 +1655,8 @@ class TestDHCP(VppTestCase):
                 {'outputs': os}]
 
         qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
-        qm1 = VppQosMark(self, vlan_100, qem1,
-                         vqos.QOS_API_SOURCE_VLAN).add_vpp_config()
+        VppQosMark(self, vlan_100, qem1,
+                   vqos.QOS_API_SOURCE_VLAN).add_vpp_config()
 
         #
         # Configure DHCP client on PG3 and capture the discover sent

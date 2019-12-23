@@ -1,30 +1,24 @@
 #!/usr/bin/env python3
-import binascii
 import random
 import socket
 import os
 import threading
-import struct
 import copy
 import fcntl
 import time
 
-from struct import unpack, unpack_from
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-from util import ppp, ppc
-from re import compile
-import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
+from scapy.layers.inet6 import IPv6
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
 from framework import VppTestCase, VppTestRunner
 
@@ -233,8 +227,6 @@ class TestIP4PuntSocket(TestPuntSocket):
         """ Punt socket registration/deregistration"""
 
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
-        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
 
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
@@ -784,7 +776,6 @@ class TestExceptionPuntSocket(TestPuntSocket):
     def test_traffic(self):
         """ Punt socket traffic """
 
-        port = self.ports[0]
         pt_ex = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_EXCEPTION
         punt_ex = {
             'type': pt_ex,
