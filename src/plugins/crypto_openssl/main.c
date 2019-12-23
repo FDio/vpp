@@ -211,6 +211,28 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   return n_ops - n_fail;
 }
 
+typedef u32 (*_opessl_cipher_t) (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+				 u32 n_ops, const EVP_CIPHER * cipher);
+
+static_always_inline u32
+openssl_async_cipher_queue_handler (vlib_main_t * vm, u32 thread_idx,
+				    vnet_crypto_queue_t * q, _opessl_cipher_t f,
+				    const EVP_CIPHER * cipher)
+{
+  vnet_crypto_op_t *ops[VLIB_FRAME_SIZE], **op = ops;
+  u32 atomic = (thread_idx != vm->thread_index);
+  u32 n = 0;
+
+  while (n < VLIB_FRAME_SIZE &&
+      (op[0] = vnet_crypto_async_get_pending_op (q, atomic)))
+    {
+      op++;
+      n++;
+    }
+
+  return f (vm, ops, n, cipher);
+}
+
 #define _(m, a, b) \
 static u32 \
 openssl_ops_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
@@ -218,7 +240,18 @@ openssl_ops_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
 \
 u32 \
 openssl_ops_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return openssl_ops_dec_##m (vm, ops, n_ops, b ()); }
+{ return openssl_ops_dec_##m (vm, ops, n_ops, b ()); } \
+\
+static u32 \
+openssl_queue_enc_##a (vlib_main_t * vm, u32 thread_idx, \
+                       vnet_crypto_queue_t * q) \
+{ return openssl_async_cipher_queue_handler (vm, thread_idx, q, \
+                                             openssl_ops_enc_##m, b ()); } \
+static u32 \
+openssl_queue_dec_##a (vlib_main_t * vm, u32 thread_idx, \
+                       vnet_crypto_queue_t * q) \
+{ return openssl_async_cipher_queue_handler (vm, thread_idx, q, \
+                                             openssl_ops_dec_##m, b ()); } \
 
 foreach_openssl_evp_op;
 #undef _
@@ -247,8 +280,11 @@ crypto_openssl_init (vlib_main_t * vm)
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
 				    openssl_ops_enc_##a); \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
-				    openssl_ops_dec_##a);
-
+				    openssl_ops_dec_##a); \
+  vnet_crypto_register_queue_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
+                                      openssl_queue_enc_##a); \
+  vnet_crypto_register_queue_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
+                                      openssl_queue_dec_##a);
   foreach_openssl_evp_op;
 #undef _
 
