@@ -25,7 +25,7 @@ class VppNhrp(VppObject):
         self.nh = nh
 
     def add_vpp_config(self):
-        r = self._test.vapi.nhrp_entry_add_del(
+        self._test.vapi.nhrp_entry_add_del(
             is_add=1,
             entry={
                 'nh_table_id': self.table_id,
@@ -36,7 +36,7 @@ class VppNhrp(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        r = self._test.vapi.nhrp_entry_add_del(
+        self._test.vapi.nhrp_entry_add_del(
             is_add=0,
             entry={
                 'nh_table_id': self.table_id,

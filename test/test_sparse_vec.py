@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestSparseVec(VppTestCase):
@@ -29,6 +28,7 @@ class TestSparseVec(VppTestCase):
         if error.find("failed") != -1:
             self.logger.critical("FAILURE in the sparse_vec test")
         self.assertNotIn("failed", error)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -269,7 +269,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
                              "running 'file' utility "
                              "on core-file: "
                              "(%s) %s", e.errno, e.strerror)
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error running `file' utility "
                                  "on core-file")
 

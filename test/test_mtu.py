@@ -12,9 +12,6 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
 from scapy.layers.inet import ICMP
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
-from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
 
@@ -101,7 +98,7 @@ class TestMTU(VppTestCase):
                           dst=self.pg0.remote_ip4,
                           ttl=254, len=576, id=0) /
                        p_icmp4 / p_ip4 / p_payload)
-        n = icmp4_reply.__class__(icmp4_reply)
+        icmp4_reply.__class__(icmp4_reply)
         s = bytes(icmp4_reply)
         icmp4_reply = s[0:576]
         rx = self.send_and_expect(self.pg0, p4*11, self.pg0)
@@ -181,7 +178,7 @@ class TestMTU(VppTestCase):
                             hlim=255, plen=1240) /
                        p_icmp6 / p_ip6 / p_payload)
         icmp6_reply[2].hlim -= 1
-        n = icmp6_reply.__class__(icmp6_reply)
+        icmp6_reply.__class__(icmp6_reply)
         s = bytes(icmp6_reply)
         icmp6_reply_str = s[0:1280]
 

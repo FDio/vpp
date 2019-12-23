@@ -11,18 +11,11 @@
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
+from scapy.layers.inet6 import Ether, IP
 from scapy.layers.inet import TCP, ICMP
-from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_interface import VppInterface
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
-from socket import AF_INET, AF_INET6, inet_pton
-from util import reassemble4
 
 
 """ Test_gso is a subclass of VPPTestCase classes.

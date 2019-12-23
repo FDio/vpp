@@ -28,7 +28,7 @@ class VppMPLSTunnelInterface(VppInterface):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        reply = self.test.vapi.mpls_tunnel_add_del(
+        self.test.vapi.mpls_tunnel_add_del(
             self.sw_if_index,
             self.encoded_paths,
             is_add=0)

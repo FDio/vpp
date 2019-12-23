@@ -3,8 +3,6 @@
 import abc
 import six
 
-from six import moves
-
 
 @six.add_metaclass(abc.ABCMeta)
 class VppObject(object):

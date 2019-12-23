@@ -3,7 +3,6 @@
 
 import unittest
 import os
-import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
@@ -33,7 +32,7 @@ class QUICAppWorker(Worker):
             logger.debug("Killing worker process (pid %d)" % self.process.pid)
             os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
             self.join(timeout)
-        except OSError as e:
+        except OSError:
             logger.debug("Couldn't kill worker process")
             return True
         return False
