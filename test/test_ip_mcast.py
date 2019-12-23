@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, FibPathProto
 from vpp_gre_interface import VppGreInterface

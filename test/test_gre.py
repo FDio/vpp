@@ -14,7 +14,7 @@ from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_nhrp import VppNhrp
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from util import ppp, ppc
 from vpp_papi import VppEnum
 

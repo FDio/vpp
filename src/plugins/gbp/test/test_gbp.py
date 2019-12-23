@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
+from socket import AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
 
@@ -11,18 +11,18 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
     ICMPv6ND_NA, ICMPv6EchoRequest
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.data import ETH_P_IP, ETH_P_IPV6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, FibPathProto, \
+    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, \
     FibPathType
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
+from vpp_l2 import VppBridgeDomain, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_ip import DpoProto, get_dpo_proto
+from vpp_ip import get_dpo_proto
 from vpp_papi import VppEnum, MACAddress
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel

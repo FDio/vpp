@@ -7,7 +7,6 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol

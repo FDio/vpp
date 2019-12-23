@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import ipaddress
 import unittest
 
 from framework import VppTestCase, VppTestRunner

@@ -3,16 +3,11 @@
 
 import unittest
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.packet import Packet
 from socket import inet_pton, AF_INET, AF_INET6
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
-from scapy.layers.inet6 import IPv6ExtHdrFragment
-from pprint import pprint
-from random import randint
+from scapy.layers.inet6 import IPv6
+
 from util import L4_Conn
 
 

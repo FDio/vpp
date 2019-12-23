@@ -5,7 +5,7 @@ import unittest
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase
+from framework import VppTestCase, VppTestRunner
 
 
 class TestL2tp(VppTestCase):
@@ -45,3 +45,7 @@ class TestL2tp(VppTestCase):
             '/err/l2tp-decap-local/l2tpv3 session not found')[0]
         self.assertEqual(err, 1)
         err_count = err
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)

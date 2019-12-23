@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto, INVALID_INDEX
@@ -9,7 +8,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
     VppMplsLabel, MplsLspMode, find_mpls_route, \
-    FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
+    FibPathProto, FibPathType, FibPathFlags
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 import scapy.compat

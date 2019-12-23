@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """CLI functional tests"""
 
-import datetime
-import time
 import unittest
 
 from vpp_papi import vpp_transport_shmem

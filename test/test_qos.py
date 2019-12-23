@@ -4,9 +4,8 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsLabel, VppMplsTable, FibPathProto
+    VppMplsLabel, VppMplsTable
 
 import scapy.compat
 from scapy.packet import Raw

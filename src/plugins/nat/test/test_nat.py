@@ -15,14 +15,13 @@ from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
 from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
-from scapy.packet import bind_layers, Raw
+from scapy.packet import Raw
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
-from vpp_papi import mac_pton
 from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
+from syslog_rfc5424_parser.constants import SyslogSeverity
 from io import BytesIO
 from vpp_papi import VppEnum
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
@@ -30,7 +29,6 @@ from vpp_neighbor import VppNeighbor
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
-from ipaddress import IPv6Network
 
 
 # NAT HA protocol event data

@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import binascii
 import random
 import socket
 import unittest
 
-import scapy.compat
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.l2 import Ether, Dot1Q, ARP

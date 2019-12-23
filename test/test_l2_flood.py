@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
