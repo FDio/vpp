@@ -976,9 +976,9 @@ ip_neighbor_advertise (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
 
   if (type == IP46_TYPE_IP4 || type == IP46_TYPE_BOTH)
-    ip4_neighbor_advertise (vm, vnm, sw_if_index, &addr->ip4);
+    ip4_neighbor_advertise (vm, vnm, sw_if_index, (addr) ? &addr->ip4 : NULL);
   if (type == IP46_TYPE_IP6 || type == IP46_TYPE_BOTH)
-    ip6_neighbor_advertise (vm, vnm, sw_if_index, &addr->ip6);
+    ip6_neighbor_advertise (vm, vnm, sw_if_index, (addr) ? &addr->ip6 : NULL);
 }
 
 void
