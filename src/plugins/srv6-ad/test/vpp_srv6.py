@@ -5,7 +5,7 @@
 """
 
 from vpp_object import VppObject
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+from socket import inet_pton, AF_INET, AF_INET6
 
 
 class SRv6LocalSIDBehaviors():

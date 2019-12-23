@@ -7,7 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
+from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = '/usr/bin/iperf3'
 

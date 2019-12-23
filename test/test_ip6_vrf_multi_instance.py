@@ -65,14 +65,12 @@
 
 import unittest
 import random
-import socket
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
     RouterAlert, IPv6ExtHdrHopByHop
-from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
-from scapy.pton_ntop import inet_ntop
+from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
@@ -193,8 +191,6 @@ class TestIP6VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.local_ip6n
-            dest_addr_len = 64
             self.vapi.ip_table_add_del(is_add=1,
                                        table={'table_id': vrf_id, 'is_ip6': 1})
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)

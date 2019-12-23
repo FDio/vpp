@@ -158,7 +158,7 @@ class RemoteClass(Process):
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
         if path is not None and path.split('.')[-1] == 'sleep':
-            if args and isinstance(args[0], (long, int)):
+            if args and isinstance(args[0], int):
                 timeout += args[0]
             elif 'timeout' in kwargs:
                 timeout += kwargs['timeout']

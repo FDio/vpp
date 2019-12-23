@@ -11,7 +11,7 @@ from scapy.layers.inet import IP
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_pppoe_interface import VppPppoeInterface
-from util import ppp, ppc
+from util import ppp
 
 
 class TestPPPoE(VppTestCase):
