@@ -1,10 +1,7 @@
 """ test framework utilities """
 
-import abc
 import socket
 from socket import AF_INET6
-import six
-import sys
 import os.path
 
 import scapy.compat

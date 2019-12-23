@@ -3,7 +3,6 @@
 from __future__ import print_function
 from multiprocessing import Pipe
 import sys
-import os
 from framework import VppDiedError, VppTestCase, KeepAliveReporter
 
 

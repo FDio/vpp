@@ -3,16 +3,11 @@
 
 import unittest
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.packet import Packet
 from socket import inet_pton, AF_INET, AF_INET6
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
-from scapy.layers.inet6 import IPv6ExtHdrFragment
-from pprint import pprint
-from random import randint
+from scapy.layers.inet6 import IPv6
+
 from util import L4_Conn
 
 
@@ -51,6 +46,7 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
           'proto': rule_l4_proto,
          }
     return new_rule
+
 
 Packet.to_acl_rule = to_acl_rule
 
@@ -409,3 +405,7 @@ class ACLPluginConnTestCase(VppTestCase):
     def test_3006_tcp_transient_teardown_conn_test(self):
         """ IPv6: transient TCP session (3WHS,ACK,FINACK), ref. on egress """
         self.run_tcp_transient_teardown_conn_test(AF_INET6, 1)
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)

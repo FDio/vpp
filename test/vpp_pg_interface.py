@@ -1,10 +1,10 @@
 import os
 import time
 from socket import inet_pton, inet_ntop
+import socket
 import struct
 from traceback import format_exc, format_stack
 
-import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface

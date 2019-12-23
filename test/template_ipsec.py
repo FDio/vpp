@@ -327,8 +327,8 @@ class IpsecTra4(object):
                                           dst=self.tra_if.local_ip4) /
                                        ICMP(),
                                        seq_num=35))
-        recv_pkts = self.send_and_expect(self.tra_if, pkts * 8,
-                                         self.tra_if, n_rx=1)
+        self.send_and_expect(self.tra_if, pkts * 8,
+                             self.tra_if, n_rx=1)
         replay_count += 7
         self.assert_error_counter_equal(replay_node_name, replay_count)
 
@@ -341,7 +341,7 @@ class IpsecTra4(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=257))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
@@ -356,7 +356,7 @@ class IpsecTra4(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=200))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(self.encryption_type,
@@ -441,8 +441,8 @@ class IpsecTra4(object):
         #
         # move VPP's SA TX seq-num to just before the seq-number wrap.
         # then fire in a packet that VPP should drop on TX because it
-        # causes the TX seq number to wrap; unless we're using extened sequence
-        # numbers.
+        # causes the TX seq number to wrap;
+        # unless we're using extended sequence numbers.
         #
         self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
         self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
@@ -494,11 +494,11 @@ class IpsecTra4(object):
                                           ICMP(),
                                           seq_num=0xfffffffd))
             rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
-            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+            p.vpp_tra_sa.decrypt(rx[0][IP])
 
             #
             # While in case A we cannot wrap the high sequence number again
-            # becuase VPP will consider this packet to be one that moves the
+            # because VPP will consider this packet to be one that moves the
             # window forward
             #
             pkt = (Ether(src=self.tra_if.remote_mac,
@@ -525,7 +525,7 @@ class IpsecTra4(object):
                                           ICMP(),
                                           seq_num=0x100000555))
             rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
-            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+            p.vpp_tra_sa.decrypt(rx[0][IP])
 
             p.scapy_tra_sa.seq_num = 0x200000444
             pkt = (Ether(src=self.tra_if.remote_mac,
@@ -535,7 +535,7 @@ class IpsecTra4(object):
                                           ICMP(),
                                           seq_num=0x200000444))
             rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
-            decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
+            p.vpp_tra_sa.decrypt(rx[0][IP])
 
         else:
             #
