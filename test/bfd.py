@@ -1,7 +1,7 @@
 """ BFD protocol implementation """
 
 from random import randint
-from socket import AF_INET, AF_INET6, inet_pton
+from socket import AF_INET, AF_INET6
 from scapy.all import bind_layers
 from scapy.layers.inet import UDP
 from scapy.packet import Packet

@@ -1,7 +1,5 @@
-import socket
-from ipaddress import IPv4Network
 
-import six
+from ipaddress import IPv4Network
 
 from vpp_object import VppObject
 from vpp_papi import VppEnum

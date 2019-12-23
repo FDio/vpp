@@ -34,7 +34,7 @@ from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
+from util import is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
@@ -455,7 +455,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.critical("Subprocess returned with OS error: "
                                 "(%s) %s", e.errno, e.strerror)
             raise
-        except Exception as e:
+        except Exception:
             cls.logger.exception("Subprocess returned unexpected from "
                                  "%s:", cmdline)
             raise

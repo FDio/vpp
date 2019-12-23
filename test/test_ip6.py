@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 from socket import inet_pton, inet_ntop
+import socket
 import unittest
 
 from parameterized import parameterized
-import scapy.compat
+
 import scapy.layers.inet6 as inet6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
@@ -13,13 +14,11 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
-from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid
+from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, FibPathProto, \
@@ -1278,7 +1277,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         while (n_tries):
             fib = self.vapi.ip_route_dump(0, True)
             default_routes = self.get_default_routes(fib)
-            if 0 is len(default_routes):
+            if 0 == len(default_routes):
                 return True
             n_tries = n_tries - 1
             self.sleep(s_time)
@@ -1759,12 +1758,12 @@ class TestIPDisabled(VppTestCase):
         self.pg1.add_stream(pu)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0.get_capture(1)
+        self.pg0.get_capture(1)
 
         self.pg1.add_stream(pm)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0.get_capture(1)
+        self.pg0.get_capture(1)
 
         #
         # Disable PG1
@@ -1824,7 +1823,7 @@ class TestIP6LoadBalance(VppTestCase):
 
     def send_and_expect_one_itf(self, input, pkts, itf):
         self.pg_send(input, pkts)
-        rx = itf.get_capture(len(pkts))
+        itf.get_capture(len(pkts))
 
     def test_ip6_load_balance(self):
         """ IPv6 Load-Balancing """

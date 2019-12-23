@@ -10,9 +10,8 @@ import time
 from collections import deque
 
 from six import moves, iteritems
-from vpp_papi import VPPApiClient, mac_pton
+from vpp_papi import VPPApiClient
 from hook import Hook
-from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
 #

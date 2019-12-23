@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, FibPathProto
 from vpp_gre_interface import VppGreInterface
@@ -649,8 +648,8 @@ class TestIPMcast(VppTestCase):
                                                route_232_1_1_2,
                                                self.pg0.sw_if_index,
                                                tx[0])
-        tx = self._mcast_connected_send_stream("232.1.1.1")
-        tx2 = self._mcast_connected_send_stream("232.1.1.2")
+        self._mcast_connected_send_stream("232.1.1.1")
+        self._mcast_connected_send_stream("232.1.1.2")
 
         #
         # read the only expected signal

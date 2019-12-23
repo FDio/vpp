@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, VppIpTable
+from vpp_ip_route import VppRoutePath
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
 
 from vpp_object import VppObject
 
@@ -127,11 +124,11 @@ class TestL3xc(VppTestCase):
         # fire in packets. If it's forwarded then the L3XC was successful,
         # since default routing will drop it
         #
-        p_1 = (Ether(src=self.pg0.remote_mac,
-                     dst=self.pg0.local_mac) /
-               IP(src="1.1.1.1", dst="1.1.1.2") /
-               UDP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 100))
+        # p_1 = (Ether(src=self.pg0.remote_mac,
+        #              dst=self.pg0.local_mac) /
+        #        IP(src="1.1.1.1", dst="1.1.1.2") /
+        #        UDP(sport=1234, dport=1234) /
+        #        Raw(b'\xa5' * 100))
         # self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
 
         p_2 = []
