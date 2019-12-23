@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+from socket import inet_pton, AF_INET, AF_INET6
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
-    VppIpTable, FibPathProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, \
+    VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

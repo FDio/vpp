@@ -1,10 +1,9 @@
-
 from vpp_interface import VppInterface
-import socket
+from vpp_object import VppObject
 from vpp_papi import VppEnum
 
 
-class VppGreInterface(VppInterface):
+class VppGreInterface(VppObject, VppInterface):
     """
     VPP GRE interface
     """

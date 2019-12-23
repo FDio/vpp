@@ -2,7 +2,7 @@
 
 import unittest
 import os
-from socket import AF_INET, AF_INET6, inet_pton
+from socket import AF_INET, inet_pton
 
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
@@ -14,7 +14,6 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 
@@ -1378,7 +1377,7 @@ class ARPTestCase(VppTestCase):
                                   self.pg1.sw_if_index,
                                   self.pg1.remote_hosts[2].ip4))
 
-    def test_arp_incomplete(self):
+    def test_arp_incomplete_1(self):
         """ Incomplete Entries """
 
         #
@@ -1539,13 +1538,13 @@ class NeighborStatsTestCase(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw())
 
-        rx = self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
-        rx = self.send_and_expect(self.pg0, p2 * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p2 * NUM_PKTS, self.pg1)
 
         self.assertEqual(NUM_PKTS, arp1.get_stats()['packets'])
         self.assertEqual(NUM_PKTS, arp2.get_stats()['packets'])
 
-        rx = self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
         self.assertEqual(NUM_PKTS*2, arp1.get_stats()['packets'])
 
     def test_nd_stats(self):
@@ -1578,13 +1577,13 @@ class NeighborStatsTestCase(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw())
 
-        rx = self.send_and_expect(self.pg1, p1 * 16, self.pg0)
-        rx = self.send_and_expect(self.pg1, p2 * 16, self.pg0)
+        self.send_and_expect(self.pg1, p1 * 16, self.pg0)
+        self.send_and_expect(self.pg1, p2 * 16, self.pg0)
 
         self.assertEqual(16, nd1.get_stats()['packets'])
         self.assertEqual(16, nd2.get_stats()['packets'])
 
-        rx = self.send_and_expect(self.pg1, p1 * NUM_PKTS, self.pg0)
+        self.send_and_expect(self.pg1, p1 * NUM_PKTS, self.pg0)
         self.assertEqual(NUM_PKTS+16, nd1.get_stats()['packets'])
 
 
@@ -1725,12 +1724,12 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # expect probes from all these ARP entries as they age
         # 3 probes for each neighbor 3*200 = 600
-        rxs = self.pg0.get_capture(600, timeout=8)
+        self.pg0.get_capture(600, timeout=8)
 
-        for ii in range(3):
-            for jj in range(200):
-                rx = rxs[ii*200 + jj]
-                # rx.show()
+        # for ii in range(3):
+        #     for jj in range(200):
+        #         rx = rxs[ii*200 + jj]
+        #         # rx.show()
 
         #
         # 3 probes sent then 1 more second to see if a reply comes, before

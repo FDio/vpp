@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import ipaddress
 import unittest
 
 from framework import VppTestCase, VppTestRunner
@@ -385,7 +384,6 @@ class TestMAP(VppTestCase):
         map_dst = '2001::/32'
         map_src = '3000::1/128'
         client_pfx = '192.168.0.0/16'
-        map_translated_addr = '2001:0:101:5000:0:c0a8:101:5'
         tag = 'MAP-E TCP tag.'
         self.vapi.map_add_domain(ip4_prefix=client_pfx,
                                  ip6_prefix=map_dst,

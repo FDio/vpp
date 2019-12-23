@@ -15,22 +15,20 @@ from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
 from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
-from scapy.packet import bind_layers, Raw
+from scapy.packet import Raw
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
-from vpp_papi import mac_pton
 from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
+from syslog_rfc5424_parser.constants import SyslogSeverity
 from io import BytesIO
 from vpp_papi import VppEnum
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
+from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
-from ipaddress import IPv6Network
 
 
 # NAT HA protocol event data
@@ -4474,7 +4472,6 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg4._remote_hosts[1]._ip4 = cls.pg4._remote_hosts[0]._ip4
             cls.pg4.resolve_arp()
 
-            zero_ip4 = socket.inet_pton(socket.AF_INET, "0.0.0.0")
             cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 1})
 
             cls.pg5._local_ip4 = "10.1.1.1"
@@ -6895,7 +6892,6 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_start()
         self.pg1.get_capture(1)
 
-        nsessions = 0
         users = self.vapi.nat44_user_dump()
         self.assertEqual(len(users), 1)
         self.assertEqual(str(users[0].ip_address),
@@ -7664,7 +7660,7 @@ class TestDeterministicNAT(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(len(pkts))
+        self.pg1.get_capture(len(pkts))
         sleep(15)
 
         dms = self.vapi.nat_det_map_dump()
@@ -8212,7 +8208,7 @@ class TestNAT64(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(len(pkts))
+        self.pg1.get_capture(len(pkts))
 
         ses_num_before_timeout = self.nat64_get_ses_num()
 
@@ -9500,7 +9496,6 @@ class TestDSliteCE(MethodHolder):
 
         aftr_ip4 = '192.0.0.1'
         aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
-        aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
         self.vapi.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
 
         r1 = VppIpRoute(self, aftr_ip6, 128,

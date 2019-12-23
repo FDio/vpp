@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4n_range, ip4_range
+from util import ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.gtp import GTP_U_Header
@@ -79,35 +78,35 @@ class TestGtpuUDP(VppTestCase):
         self._check_udp_port_ip4(False)
         self._check_udp_port_ip6(False)
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip4,
-                                          dst_address=self.pg0.remote_ip4)
+        self.vapi.gtpu_add_del_tunnel(is_add=True,
+                                      mcast_sw_if_index=0xFFFFFFFF,
+                                      decap_next_index=0xFFFFFFFF,
+                                      src_address=self.pg0.local_ip4,
+                                      dst_address=self.pg0.remote_ip4)
 
         # UDP port 2152 enabled for ip4
         self._check_udp_port_ip4()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip6,
-                                          dst_address=self.pg0.remote_ip6)
+        self.vapi.gtpu_add_del_tunnel(is_add=True,
+                                      mcast_sw_if_index=0xFFFFFFFF,
+                                      decap_next_index=0xFFFFFFFF,
+                                      src_address=self.pg0.local_ip6,
+                                      dst_address=self.pg0.remote_ip6)
 
         # UDP port 2152 enabled for ip6
         self._check_udp_port_ip6()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip4,
-                                          dst_address=self.pg0.remote_ip4)
+        self.vapi.gtpu_add_del_tunnel(is_add=False,
+                                      mcast_sw_if_index=0xFFFFFFFF,
+                                      decap_next_index=0xFFFFFFFF,
+                                      src_address=self.pg0.local_ip4,
+                                      dst_address=self.pg0.remote_ip4)
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip6,
-                                          dst_address=self.pg0.remote_ip6)
+        self.vapi.gtpu_add_del_tunnel(is_add=False,
+                                      cast_sw_if_index=0xFFFFFFFF,
+                                      decap_next_index=0xFFFFFFFF,
+                                      src_address=self.pg0.local_ip6,
+                                      dst_address=self.pg0.remote_ip6)
 
 
 class TestGtpu(BridgeDomain, VppTestCase):

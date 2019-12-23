@@ -5,11 +5,9 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_papi import VppEnum
-from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
 """ Testipip is a subclass of  VPPTestCase classes.
@@ -367,7 +365,7 @@ class TestIPIP(VppTestCase):
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip4=1)
 
@@ -537,7 +535,7 @@ class TestIPIP6(VppTestCase):
         self.tunnel_ip4_via_tunnel.remove_vpp_config()
         self.tunnel_ip6_via_tunnel.remove_vpp_config()
 
-        rv = self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
+        self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
 
     def validate(self, rx, expected):
         self.assertEqual(rx, expected.__class__(expected))
@@ -892,15 +890,12 @@ class TestIPIP6(VppTestCase):
     def test_frag(self):
         """ ip{v4,v6} over ip6 test frag """
 
-        p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
         p_ip6 = IPv6(src="1::1", dst="DEAD::1", tc=42, nh='UDP')
-        p_ip4 = IP(src="1.2.3.4", dst=self.pg0.remote_ip4)
-        p_payload = UDP(sport=1234, dport=1234)
 
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip6=1)
 

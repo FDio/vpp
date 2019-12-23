@@ -25,20 +25,18 @@
 
 import unittest
 from socket import inet_pton, AF_INET, AF_INET6
-from random import choice, shuffle
-from pprint import pprint
+from random import shuffle
 
 import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
+from scapy.layers.inet6 import IPv6, ICMPv6Unknown
+from scapy.layers.inet6 import IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
 from framework import VppTestCase, VppTestRunner
 from vpp_l2 import L2_PORT_TYPE
-import time
 
 
 class TestACLpluginL2L3(VppTestCase):
@@ -103,11 +101,11 @@ class TestACLpluginL2L3(VppTestCase):
         half = cls.remote_hosts_count // 2
         cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
         cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
-        reply = cls.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+        cls.vapi.papi.acl_stats_intf_counters_enable(enable=1)
 
     @classmethod
     def tearDownClass(cls):
-        reply = cls.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        cls.vapi.papi.acl_stats_intf_counters_enable(enable=0)
         super(TestACLpluginL2L3, cls).tearDownClass()
 
     def tearDown(self):
@@ -342,7 +340,7 @@ class TestACLpluginL2L3(VppTestCase):
             # MAC: src, dst
             if not reverse:
                 self.assertEqual(packet.src, dst_ip_if.local_mac)
-                host = dst_ip_if.host_by_mac(packet.dst)
+                dst_ip_if.host_by_mac(packet.dst)
 
             # IP: src, dst
             # self.assertEqual(ip.src, src_ip_if.remote_ip4)
@@ -456,7 +454,7 @@ class TestACLpluginL2L3(VppTestCase):
                                          bridged_to_routed,
                                          self.pg_if_packet_sizes, is_ip6,
                                          not is_reflect, False, add_eh)
-        stream = stream_dict['stream']
+
         acl_idx = self.create_acls_for_a_stream(stream_dict, test_l2_deny,
                                                 is_reflect)
         n_input_l3 = 0 if bridged_to_routed else 1

@@ -4,7 +4,6 @@
 """
 
 from vpp_object import VppObject
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 
 
 def find_udp_encap(test, ue):
