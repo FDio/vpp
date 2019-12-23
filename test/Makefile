@@ -318,9 +318,9 @@ wipe-all: wipe wipe-papi wipe-doc wipe-cov
 .PHONY: checkstyle
 checkstyle: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  $(PYTHON_INTERP) -m pip install pycodestyle"
+		  $(PYTHON_INTERP) -m pip install flake8 flake8-isort"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(BUILD_TEST_SRC)/*.py ||\
+		flake8 --show-source --no-isort-config --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(BUILD_TEST_SRC)/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\

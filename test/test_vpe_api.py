@@ -14,7 +14,7 @@
 import datetime
 import time
 import unittest
-from framework import VppTestCase
+from framework import VppTestCase, VppTestRunner
 
 enable_print = False
 
@@ -53,3 +53,7 @@ class TestVpeApi(VppTestCase):
             print('\n'.join([str(v) for v in rv]))
             print('%r %s' % (rv.vpe_system_time,
                              rv.vpe_system_time))
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)

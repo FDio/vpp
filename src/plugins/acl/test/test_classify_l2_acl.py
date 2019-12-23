@@ -4,9 +4,6 @@
 
 import unittest
 import random
-import binascii
-import socket
-
 
 from scapy.packet import Raw
 from scapy.data import ETH_P_IP
@@ -14,7 +11,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestRunner
 from util import Host, ppp
 from template_classifier import TestClassifier
 
@@ -602,6 +599,7 @@ class TestClassifyAcl(TestClassifier):
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
         self.acl_active_table = key
         self.run_verify_test(self.IP, self.IPV4, -1)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

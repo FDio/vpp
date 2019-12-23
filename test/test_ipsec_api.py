@@ -1,7 +1,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from template_ipsec import TemplateIpsec, IPsecIPv4Params
+from template_ipsec import IPsecIPv4Params
 from vpp_papi import VppEnum
 
 
@@ -62,7 +62,6 @@ class IpsecApiTestCase(VppTestCase):
         """ attempt to change backend while sad configured """
         params = self.ipv4_params
         addr_type = params.addr_type
-        is_ipv6 = params.is_ipv6
         scapy_tun_sa_id = params.scapy_tun_sa_id
         scapy_tun_spi = params.scapy_tun_spi
         auth_algo_vpp_id = params.auth_algo_vpp_id

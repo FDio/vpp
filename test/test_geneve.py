@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import socket
-from util import ip4_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -10,6 +8,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.contrib.geneve import GENEVE
 from scapy.utils import atol
+
+from util import ip4_range
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
