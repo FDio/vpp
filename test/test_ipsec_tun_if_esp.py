@@ -9,7 +9,8 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
-    IpsecTun4, IpsecTun6,  IpsecTcpTests, mk_scapy_crypt_key
+    IpsecTun4, IpsecTun6,  IpsecTcpTests, mk_scapy_crypt_key, \
+    IpsecTun6HandoffTests, IpsecTun4HandoffTests
 from vpp_ipsec_tun_interface import VppIpsecTunInterface
 from vpp_gre_interface import VppGreInterface
 from vpp_ipip_tun_interface import VppIpIpTunInterface
@@ -243,7 +244,8 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec):
         super(TemplateIpsec6TunIfEsp, self).tearDown()
 
 
-class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
+class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp,
+                          IpsecTun6Tests):
     """ Ipsec ESP - TUN tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
     tun6_decrypt_node_name = "esp6-decrypt-tun"
@@ -257,6 +259,20 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
         """ ipsec 4o6 tunnel burst test """
         self.tun6_encrypt_node_name = "esp6-encrypt-tun"
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
+
+
+class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
+                                IpsecTun6HandoffTests):
+    """ Ipsec ESP 6 Handoff tests """
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
+    tun6_decrypt_node_name = "esp6-decrypt-tun"
+
+
+class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
+                                IpsecTun4HandoffTests):
+    """ Ipsec ESP 4 Handoff tests """
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
 
 
 class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):

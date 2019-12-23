@@ -685,7 +685,7 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
-    [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-handoff",
+    [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-tun-handoff",
   },
 };
 
@@ -702,7 +702,7 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
-    [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-handoff",
+    [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-tun-handoff",
   },
 };
 /* *INDENT-ON* */
