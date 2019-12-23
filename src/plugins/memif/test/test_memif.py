@@ -1,11 +1,9 @@
-import socket
 import unittest
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, ICMP
-import six
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import remove_all_memif_vpp_config, \
     VppSocketFilename, VppMemif

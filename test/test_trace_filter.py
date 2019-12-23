@@ -2,8 +2,7 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from framework import VppTestCase, VppTestRunner
 
 from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw

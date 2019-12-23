@@ -3,15 +3,11 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
-from ipaddress import *
+from ipaddress import IPv4Address
 
-import scapy.compat
-from scapy.contrib.mpls import MPLS
-from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
-from scapy.layers.dns import DNSRR, DNS, DNSQR
+from scapy.layers.inet import IP, UDP
+from scapy.layers.dns import DNS, DNSQR
 
 
 class TestDns(VppTestCase):
@@ -104,6 +100,7 @@ class TestDns(VppTestCase):
         str = self.vapi.cli("show dns cache verbose")
         self.assertIn('1.2.3.4', str)
         self.assertIn('[P] no.clown.org:', str)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

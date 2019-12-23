@@ -2,7 +2,6 @@
 
 import unittest
 import random
-import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
 from framework import VppTestCase, VppTestRunner

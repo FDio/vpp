@@ -3,8 +3,11 @@
 from framework import VppTestCase
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
-from scapy.contrib.gtp import *
-from scapy.all import *
+
+from scapy.contrib.gtp import GTP_U_Header
+from scapy.layers.inet import UDP, IP
+from scapy.layers.inet6 import IPv6ExtHdrSegmentRouting, IPv6
+from scapy.layers.l2 import Ether
 
 
 class TestSRv6EndMGTP4E(VppTestCase):

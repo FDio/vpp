@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto, INVALID_INDEX
+from vpp_ip import INVALID_INDEX
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
     VppMplsLabel, MplsLspMode, find_mpls_route, \
-    FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
+    FibPathProto, FibPathType, FibPathFlags
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 import scapy.compat
@@ -379,10 +378,10 @@ class TestMPLS(VppTestCase):
                 self.assertEqual(rx_ip.dst, tx_ip.src)
                 # ICMP sourced from the interface's address
                 self.assertEqual(rx_ip.src, src_if.local_ip6)
-                # hop-limit reset to 255 for IMCP packet
+                # hop-limit reset to 255 for ICMP packet
                 self.assertEqual(rx_ip.hlim, 255)
 
-                icmp = rx[ICMPv6TimeExceeded]
+                icmp = rx[ICMPv6TimeExceeded]  # noqa: F841
 
         except:
             raise
@@ -1615,7 +1614,7 @@ class TestMPLSDisabled(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture(1)
+        self.pg0.get_capture(1)
 
         #
         # Disable PG1
