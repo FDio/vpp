@@ -650,7 +650,7 @@ class TestACLplugin(VppTestCase):
         acl_idx = self.apply_rules(rules, b"permit per-flow")
 
         # enable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
 
         # Traffic should still pass
         self.run_verify_test(self.IP, self.IPV4, -1)
@@ -666,7 +666,7 @@ class TestACLplugin(VppTestCase):
         self.assertEqual(total_hits, 64)
 
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
 
         self.logger.info("ACLP_TEST_FINISH_0002")
 
@@ -686,7 +686,7 @@ class TestACLplugin(VppTestCase):
         acl_idx = self.apply_rules(rules, b"deny per-flow;permit all")
 
         # enable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
 
         # Traffic should not pass
         self.run_verify_negat_test(self.IP, self.IPV4,
@@ -700,7 +700,7 @@ class TestACLplugin(VppTestCase):
         self.logger.info(self.vapi.ppcli(cli))
         self.assertEqual(matches[0][0]['packets'], 64)
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
         self.logger.info("ACLP_TEST_FINISH_0003")
         # self.assertEqual(, 0)
 
