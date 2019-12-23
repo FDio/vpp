@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -300,7 +299,7 @@ class TestL2Flood(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
+        self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")

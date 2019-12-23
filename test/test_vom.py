@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" VAPI test """
+""" VPP Object Model Test """
 
 import unittest
 import os

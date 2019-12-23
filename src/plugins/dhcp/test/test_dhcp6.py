@@ -6,7 +6,6 @@ from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
     DHCP6_Rebind, DUID_LL, DHCP6_Release, DHCP6OptElapsedTime, DHCP6OptIA_NA, \
     DHCP6OptIAAddress
 from scapy.layers.inet6 import IPv6, Ether, UDP
-from scapy.utils6 import in6_mactoifaceid
 
 from framework import VppTestCase
 from vpp_papi import VppEnum

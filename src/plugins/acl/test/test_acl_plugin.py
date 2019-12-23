@@ -666,7 +666,7 @@ class TestACLplugin(VppTestCase):
         self.assertEqual(total_hits, 64)
 
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
 
         self.logger.info("ACLP_TEST_FINISH_0002")
 
@@ -700,7 +700,7 @@ class TestACLplugin(VppTestCase):
         self.logger.info(self.vapi.ppcli(cli))
         self.assertEqual(matches[0][0]['packets'], 64)
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
         self.logger.info("ACLP_TEST_FINISH_0003")
         # self.assertEqual(, 0)
 

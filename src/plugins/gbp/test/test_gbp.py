@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
+from socket import AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
 
@@ -11,18 +11,18 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
     ICMPv6ND_NA, ICMPv6EchoRequest
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.data import ETH_P_IP, ETH_P_IPV6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, FibPathProto, \
+    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, \
     FibPathType
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
+from vpp_l2 import VppBridgeDomain, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_ip import DpoProto, get_dpo_proto
+from vpp_ip import get_dpo_proto
 from vpp_papi import VppEnum, MACAddress
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
@@ -770,7 +770,6 @@ class TestGBP(VppTestCase):
         self.pg_send(src, tx)
         dst.get_capture(0, timeout=1)
         dst.assert_nothing_captured(remark="")
-        timeout = 0.1
 
     def send_and_expect_arp(self, src, tx, dst):
         rx = self.send_and_expect(src, tx, dst)
@@ -786,8 +785,6 @@ class TestGBP(VppTestCase):
 
     def test_gbp(self):
         """ Group Based Policy """
-
-        ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
 
         #
         # Route Domains
@@ -1565,7 +1562,6 @@ class TestGBP(VppTestCase):
         allow_intra_class = self.statistics.get_err_counter(
             '/err/gbp-policy-port/allow-intra-sclass')
 
-        ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         learnt = [{'mac': '00:00:11:11:11:01',
                    'ip': '10.0.0.1',
                    'ip6': '2001:10::2'},
@@ -2609,7 +2605,6 @@ class TestGBP(VppTestCase):
     def test_gbp_learn_vlan_l2(self):
         """ GBP L2 Endpoint w/ VLANs"""
 
-        ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         learnt = [{'mac': '00:00:11:11:11:01',
                    'ip': '10.0.0.1',
                    'ip6': '2001:10::2'},
@@ -3289,15 +3284,14 @@ class TestGBP(VppTestCase):
         self.vapi.cli("set logging class gbp level debug")
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
-        routed_dst_mac = "00:0c:0c:0c:0c:0c"
         routed_src_mac = "00:22:bd:f8:19:ff"
 
-        learnt = [{'mac': '00:00:11:11:11:02',
-                   'ip': '10.0.1.2',
-                   'ip6': '2001:10::2'},
-                  {'mac': '00:00:11:11:11:03',
-                   'ip': '10.0.1.3',
-                   'ip6': '2001:10::3'}]
+        # learnt = [{'mac': '00:00:11:11:11:02',
+        #            'ip': '10.0.1.2',
+        #            'ip6': '2001:10::2'},
+        #           {'mac': '00:00:11:11:11:03',
+        #            'ip': '10.0.1.3',
+        #            'ip6': '2001:10::3'}]
 
         #
         # IP tables
@@ -4182,16 +4176,15 @@ class TestGBP(VppTestCase):
 
         self.vapi.cli("set logging class gbp level debug")
 
-        ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
         routed_src_mac = "00:22:bd:f8:19:ff"
 
-        learnt = [{'mac': '00:00:11:11:11:02',
-                   'ip': '10.0.1.2',
-                   'ip6': '2001:10::2'},
-                  {'mac': '00:00:11:11:11:03',
-                   'ip': '10.0.1.3',
-                   'ip6': '2001:10::3'}]
+        # learnt = [{'mac': '00:00:11:11:11:02',
+        #            'ip': '10.0.1.2',
+        #            'ip6': '2001:10::2'},
+        #           {'mac': '00:00:11:11:11:03',
+        #            'ip': '10.0.1.3',
+        #            'ip6': '2001:10::3'}]
 
         #
         # IP tables
@@ -4341,10 +4334,10 @@ class TestGBP(VppTestCase):
                               epg_320, None,
                               "12.0.0.1", "13.0.0.1",
                               "4001:10::1", "5001:10::1")
-        sep2 = VppGbpEndpoint(self, self.pg4,
-                              epg_320, None,
-                              "12.0.0.2", "13.0.0.2",
-                              "4001:10::2", "5001:10::2")
+        # sep2 = VppGbpEndpoint(self, self.pg4,
+        #                       epg_320, None,
+        #                       "12.0.0.2", "13.0.0.2",
+        #                       "4001:10::2", "5001:10::2")
 
         # sep1 and sep2 are not added to config yet
         # they are unknown for now
@@ -4639,9 +4632,6 @@ class TestGBP(VppTestCase):
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         self.vapi.cli("set logging class gbp level debug")
-
-        routed_dst_mac = "00:0c:0c:0c:0c:0c"
-        routed_src_mac = "00:22:bd:f8:19:ff"
 
         #
         # IP tables

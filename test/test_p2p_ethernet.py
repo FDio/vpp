@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import random
 import unittest
-import datetime
 import re
 
 from scapy.packet import Raw
@@ -11,7 +10,6 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
-from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import mac_pton
 

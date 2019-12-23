@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import binascii
 import random
 import socket
 import unittest
 
-import scapy.compat
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -309,7 +307,7 @@ class TestIPv4IfAddrRoute(VppTestCase):
         """
 
         # create a loopback and configure IPv4
-        loopbacks = self.create_loopback_interfaces(1)
+        self.create_loopback_interfaces(1)
         lo_if = self.lo_interfaces[0]
 
         lo_if.local_ip4_prefix_len = 32
@@ -766,7 +764,7 @@ class TestIPNull(VppTestCase):
 
         self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "Drop Route")
         r2.remove_vpp_config()
-        rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
 
 class TestIPDisabled(VppTestCase):
@@ -851,7 +849,7 @@ class TestIPDisabled(VppTestCase):
         self.pg1.add_stream(pm)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0.get_capture(1)
+        self.pg0.get_capture(1)
 
         #
         # Disable PG1
@@ -960,7 +958,6 @@ class TestIPSubNets(VppTestCase):
         # A /31 is a special case where the 'other-side' is an attached host
         # packets to that peer generate ARP requests
         #
-        ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
@@ -976,7 +973,6 @@ class TestIPSubNets(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = self.pg0.get_capture(1)
-        rx[ARP]
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
@@ -1036,7 +1032,7 @@ class TestIPLoadBalance(VppTestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = itf.get_capture(len(pkts))
+        itf.get_capture(len(pkts))
 
     def test_ip_load_balance(self):
         """ IP Load-Balancing """
@@ -1894,8 +1890,8 @@ class TestIPLPM(VppTestCase):
                 Raw(b'\xa5' * 2000))
 
         self.logger.info(self.vapi.cli("sh ip fib mtrie"))
-        rx = self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
-        rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
 
 class TestIPv4Frag(VppTestCase):
@@ -2131,19 +2127,19 @@ class TestIPCover(VppTestCase):
         # add a loop back with a /32 prefix
         lo = VppLoInterface(self)
         lo.admin_up()
-        a = VppIpInterfaceAddress(self, lo, "127.0.0.1", 32).add_vpp_config()
+        VppIpInterfaceAddress(self, lo, "127.0.0.1", 32).add_vpp_config()
 
         # add a neighbour that matches the loopback's /32
-        nbr = VppNeighbor(self,
-                          lo.sw_if_index,
-                          lo.remote_mac,
-                          "127.0.0.1").add_vpp_config()
+        VppNeighbor(self,
+                    lo.sw_if_index,
+                    lo.remote_mac,
+                    "127.0.0.1").add_vpp_config()
 
         # add the default route which will be the cover for /32
-        r = VppIpRoute(self, "0.0.0.0", 0,
-                       [VppRoutePath("127.0.0.1",
-                                     lo.sw_if_index)],
-                       register=False).add_vpp_config()
+        r0 = VppIpRoute(self, "0.0.0.0", 0,
+                        [VppRoutePath("127.0.0.1",
+                                      lo.sw_if_index)],
+                        register=False).add_vpp_config()
 
         # add/remove/add a longer mask cover
         r = VppIpRoute(self, "127.0.0.0", 8,
@@ -2153,7 +2149,8 @@ class TestIPCover(VppTestCase):
         r.add_vpp_config()
 
         # remove the default route
-        r.remove_vpp_config()
+        r0.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
