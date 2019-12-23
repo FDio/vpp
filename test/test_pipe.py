@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from socket import AF_INET, AF_INET6, inet_pton
+from socket import AF_INET, inet_pton
 import unittest
 
 from scapy.packet import Raw
@@ -52,10 +52,10 @@ class VppPipe(VppInterface):
         return False
 
     def set_unnumbered(self, ip_sw_if_index, is_add=True):
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.east, is_add)
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.west, is_add)
+        self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                    self.east, is_add)
+        self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                    self.west, is_add)
 
 
 class TestPipe(VppTestCase):

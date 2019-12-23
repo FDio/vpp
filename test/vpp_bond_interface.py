@@ -2,7 +2,7 @@ from vpp_object import VppObject
 from vpp_interface import VppInterface
 
 
-class VppBondInterface(VppInterface):
+class VppBondInterface(VppObject, VppInterface):
     """VPP bond interface."""
 
     def __init__(self, test, mode, lb=0, numa_only=0,

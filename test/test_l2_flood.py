@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -103,9 +102,9 @@ class TestL2Flood(VppTestCase):
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:12]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -129,7 +128,7 @@ class TestL2Flood(VppTestCase):
         self.pg_start()
 
         for i in self.pg_interfaces[1:]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
@@ -140,9 +139,9 @@ class TestL2Flood(VppTestCase):
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:13]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -265,7 +264,7 @@ class TestL2Flood(VppTestCase):
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # remove the uu-fwd interface and expect UU to be flooded again
@@ -279,7 +278,7 @@ class TestL2Flood(VppTestCase):
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(NUM_PKTS, timeout=1)
+            i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # change the BD config to not support UU-flood
@@ -300,7 +299,7 @@ class TestL2Flood(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
+        self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")

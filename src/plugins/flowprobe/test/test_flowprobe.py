@@ -3,9 +3,8 @@ from __future__ import print_function
 import binascii
 import random
 import socket
-import unittest
 import time
-import re
+import unittest
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

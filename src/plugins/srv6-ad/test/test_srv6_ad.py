@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 
 import unittest
-import binascii
-from socket import AF_INET6
+
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
-from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
-    SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
+from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
 from util import ppp
@@ -216,7 +213,7 @@ class TestSRv6(VppTestCase):
         # get first (outer) IPv6 header of rx'ed packet
         rx_ip = rx_pkt.getlayer(IPv6)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
+        tx_pkt.getlayer(IPv6)
         tx_ip2 = tx_pkt.getlayer(IPv6, 2)
 
         # verify if rx'ed packet has no SRH
@@ -350,7 +347,7 @@ class TestSRv6(VppTestCase):
         # get IPv4 header of rx'ed packet
         rx_ip = rx_pkt.getlayer(IP)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
+        tx_pkt.getlayer(IPv6)
         tx_ip2 = tx_pkt.getlayer(IP)
 
         # verify if rx'ed packet has no SRH
@@ -492,7 +489,7 @@ class TestSRv6(VppTestCase):
         # get IPv4 header of rx'ed packet
         rx_eth = rx_pkt.getlayer(Ether)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
+        tx_pkt.getlayer(IPv6)
         # we can't just get the 2nd Ether layer
         # get the Raw content and dissect it as Ether
         tx_eth1 = Ether(scapy.compat.raw(tx_pkt[Raw]))
