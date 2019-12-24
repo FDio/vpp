@@ -55,10 +55,11 @@ static_always_inline u16
 tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vnet_interface_per_thread_data_t * ptd,
 		   vlib_buffer_t * b0, u32 n_bytes_b0, u16 l234_sz,
-		   u16 gso_size)
+		   u16 gso_size, gso_header_offset_t * gho)
 {
   u16 size =
-    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz);
+    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz
+	      - gho->l2_hdr_offset);
 
   /* rounded-up division */
   u16 n_bufs = (n_bytes_b0 - l234_sz + (size - 1)) / size;
@@ -170,7 +171,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
   next_tcp_seq += first_data_size;
 
   if (PREDICT_FALSE
-      (!tso_alloc_tx_bufs (vm, ptd, sb0, n_bytes_b0, l234_sz, gso_size)))
+      (!tso_alloc_tx_bufs (vm, ptd, sb0, n_bytes_b0, l234_sz, gso_size, gho)))
     return 0;
 
   vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[0]);
