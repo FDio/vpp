@@ -170,8 +170,8 @@ class TestVlib(VppTestCase):
         """ Vlib format.c Code Coverage Test """
 
         cmds = ["loopback create",
-                "classify filter pcap mask l2 proto ipv6 match l2 proto 86dd",
-                "classify filter del",
+                "classify filter pcap mask l2 proto match l2 proto 0x86dd",
+                "classify filter pcap del",
                 "test format-vlib",
                 ]
 
