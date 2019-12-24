@@ -549,6 +549,7 @@ bihash_test_init (vlib_main_t * vm)
 {
   bihash_test_main_t *tm = &bihash_test_main;
 
+  clib_time_init (&tm->clib_time);
   tm->vlib_main = vm;
   return (0);
 }
