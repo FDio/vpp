@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "31e575e9_7cfe022c",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "this function is unused.",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d13d78a8_8c7e6a40",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "maybe make the handler an attribute of the q, rather than store the q and handlers separately.",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6e5ad2cf_fead82bc",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "is this swap guaranteed to succeed?",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0cd2d6f4_3e84125d",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "another thread could be changing this at the same time, using the \u0027atomic\u0027 version above.\ni think \u0027atomic\u0027 case is the only one we can use.",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b9cadf2d_419bf32f",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "i appreciate that physmen is needed for the qat card/engine, but it\u0027s not needed for the others. can we have the engine alloc these operations?\ncan we alloc/free them when engine is promoted/demoted to the used (highest prio) queue handler?",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23772bca_bd31900e",
+        "filename": "src/vnet/crypto/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-24T07:17:16Z",
+      "side": 1,
+      "message": "why carry the current_index, i.e. the last index checked in q n, to be the start index used in q n+1. shouldn\u0027t we start from the beginning for each q?",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
