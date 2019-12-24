@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "9ec1fd69_c01f79e2",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-12-24T11:34:20Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nYou are right. I will remove them.\n\nJust want to state I want to add this function back when adding cryptodev engine. So that cryptodev engine does not have to allocate memory from somewhere else to construct its own cryptodev operation.",
+      "parentUuid": "31e575e9_7cfe022c",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d13d78a8_8c7e6a40",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "0f3242fa_ddefab27",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-12-24T11:34:20Z",
+      "side": 1,
+      "message": "No. I found the problem also. I am working on v2 of the patch now. In v2 q-\u003elast will be only updated by the worker but no one else. When it is different worker want to fetch the op from this worker\u0027s queue, it has to start from tail all the way up to head and check and try swapping the status of each op. It is slower but safer.\n\nBut when race condition does not happen (the worker fetches the op from its own queue) the q-\u003elast keep record of the last index of the op it accessed, on single core situation it is 50% faster.\n\nHere is the fraction of the code:\n\n/* when it is different worker want to fetch the op from this worker\u0027s queue, \n  if (atomic)\n    {\n      u32 tail;\n      tail \u003d clib_atomic_load_acq_n (\u0026q-\u003etail);\n      for (i \u003d tail; i \u003c head; i++)\n\t{\n\t  op \u003d vnet_crypto_async_get_op (q, i \u0026 VNET_CRYPTO_QUEUE_MASK);\n\n\t  if (clib_atomic_bool_cmp_and_swap (\u0026op-\u003estatus,\n\t\t\t\t\t     VNET_CRYPTO_OP_STATUS_PENDING,\n\t\t\t\t\t     VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS))\n\t    {\n\t      return op;\n\t    }\n\t}\n\n      return 0;\n    }\n\n  last \u003d q-\u003elast;\n  for (i \u003d last; i \u003c head; i++)\n    {\n      op \u003d vnet_crypto_async_get_op (q, i \u0026 VNET_CRYPTO_QUEUE_MASK);\n\n      if (op-\u003estatus \u003d\u003d VNET_CRYPTO_OP_STATUS_PENDING)\n\t{\n\t  op-\u003estatus \u003d VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS;\n\t  q-\u003elast \u003d i + 1;\n\t  return op;\n\t}\n    }",
+      "parentUuid": "6e5ad2cf_fead82bc",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0cd2d6f4_3e84125d",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "504ace3a_84f1a01a",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-12-24T11:34:20Z",
+      "side": 1,
+      "message": "Then it will be much slower on this case (\u003e50%). I had a discussion with Damjan eariler, what we decided is when it is the worker who process the op for its queue the atomic is not needed.",
+      "parentUuid": "0cd2d6f4_3e84125d",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b9cadf2d_419bf32f",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
@@ -81,6 +135,24 @@
       "writtenOn": "2019-12-24T07:17:16Z",
       "side": 1,
       "message": "i appreciate that physmen is needed for the qat card/engine, but it\u0027s not needed for the others. can we have the engine alloc these operations?\ncan we alloc/free them when engine is promoted/demoted to the used (highest prio) queue handler?",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a98d576_048aa23c",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-12-24T11:34:20Z",
+      "side": 1,
+      "message": "Great idea! So in addtion to existing queue handler, we need something like alloc/free op handler? I was wondering if it will faster to make them working in burst, for example, in esp_encrypt_inline say a frame-\u003en_vectors packets coming in, the application can call the handler to get these ops in one go, and free up unused ones (in case some packets are dropped) in the end of the function?\n\nAlso it occurred to me since the engine is handling ops alloc/free, we should also leave the async op dispatch to specific engine as well? For sw it make more sense to use atomic operation to distribute all ops to different workers, for hw like QAT card we can simply enqueue them into the HW?",
+      "parentUuid": "b9cadf2d_419bf32f",
       "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
