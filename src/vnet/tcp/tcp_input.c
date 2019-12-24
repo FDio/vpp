@@ -2436,11 +2436,15 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
     }
 
   lb = load_balance_get (lb_idx);
+  if (PREDICT_FALSE (lb->lb_n_buckets > 1))
+    return;
   dpo = load_balance_get_bucket_i (lb, 0);
 
-  sw_if_idx = dpo->dpoi_index;
-  hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
+  sw_if_idx = dpo_get_urpf (dpo);
+  if (PREDICT_FALSE (sw_if_idx == ~0))
+    return;
 
+  hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
   if (hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     tc->cfg_flags |= TCP_CFG_F_TSO;
 }
