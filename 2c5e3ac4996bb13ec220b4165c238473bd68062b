@@ -19,6 +19,93 @@
     },
     {
       "key": {
+        "uuid": "08ea4b88_a8ce624b",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "Agreed with the comment",
+      "parentUuid": "744949eb_127fdb35",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "71f6fcbe_00d22ea9",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "clib_atomic_fetch_add_rel maybe. For now I\u0027m recommending relaxed mem ordering. If we realize we need stronger memory ordering for cpus with a relaxed memory model (arm) we can change ...",
+      "range": {
+        "startLine": 170,
+        "startChar": 2,
+        "endLine": 170,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "deeceb8d_c24b4802",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "clib_atomic_fetch_sub_rel?",
+      "range": {
+        "startLine": 207,
+        "startChar": 2,
+        "endLine": 207,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "866db08d_a25d9e92",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "clib_atomic_load_relax_n?",
+      "range": {
+        "startLine": 1008,
+        "startChar": 2,
+        "endLine": 1008,
+        "endChar": 22
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5f4aede2_3da25729",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 1
@@ -36,6 +123,69 @@
     },
     {
       "key": {
+        "uuid": "19bb9878_9dc5ff24",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "clib_atomic_store_rel_n?",
+      "range": {
+        "startLine": 1024,
+        "startChar": 2,
+        "endLine": 1024,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b961f06e_fec0179c",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "If we enforce everything per segment manager (which seems to be the right way), we probably want to smarten up the segment manager fifo allocation code, to make sure we don\u0027t allocate fifos on segments that are close to full. \n\nCurrently we only check to see if we have enough space to allocate the fifo + first chunk. This can completely fill a segment and prevent all other fifo growth (fifos are associated to a single segment)",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34ccee2e_589603d5",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "What is pool size?",
+      "range": {
+        "startLine": 66,
+        "startChar": 6,
+        "endLine": 66,
+        "endChar": 15
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b23b85ac_ffe38e3f",
         "filename": "src/vnet/session/segment_manager.h",
         "patchSetId": 1
@@ -47,6 +197,24 @@
       "writtenOn": "2019-12-25T09:26:48Z",
       "side": 1,
       "message": "Just to confirm the thinking here i that this will be shared by both internal FIFO code and any app code?",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "095d0472_27318f49",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-25T20:58:44Z",
+      "side": 1,
+      "message": "Fifos and fifo segment cannot depend on segment manager code. That\u0027s because the svm library is built separately and because the segment manager is the one that depends on fifo/fifo_segment (i.e., we\u0027d have a circular dependency).\n\nI guess we want the segment manager to be aware of overall memory pressure but then each fifo segment needs to keep track of its own. Depending on its state, the fifo segment can refuse to allocate new chunks at fifo request (see [1]).\n\n\n[1] https://gerrit.fd.io/r/c/vpp/+/24086/20/src/svm/svm_fifo.c#910)",
+      "parentUuid": "b23b85ac_ffe38e3f",
       "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
