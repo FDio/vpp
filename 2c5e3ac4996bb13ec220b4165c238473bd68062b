@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "744949eb_127fdb35",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-25T09:26:48Z",
+      "side": 1,
+      "message": "Do we need this given we\u0027ve set watermarks in segment_manager_init ?",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f4aede2_3da25729",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1016,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-25T09:26:48Z",
+      "side": 1,
+      "message": "Should we account for \u0027reserved\u0027 bytes here? I.e. turn this into\n\nu8 usage \u003d (sm-\u003ein_use * 100) / (sm-\u003eallocated - sm-\u003ereserved);",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b23b85ac_ffe38e3f",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-25T09:26:48Z",
+      "side": 1,
+      "message": "Just to confirm the thinking here i that this will be shared by both internal FIFO code and any app code?",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
