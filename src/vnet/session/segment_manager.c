@@ -29,6 +29,8 @@ typedef struct segment_manager_main_
   u32 default_fifo_size;		/**< default rx/tx fifo size */
   u32 default_segment_size;		/**< default fifo segment size */
   u32 default_app_mq_size;		/**< default app msg q size */
+  u8 default_high_watermark;		/**< default high watermark % */
+  u8 default_low_watermark;		/**< default low watermark % */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -54,6 +56,8 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->high_watermark = sm_main.default_high_watermark;
+  props->low_watermark = sm_main.default_low_watermark;
   props->n_slices = vlib_num_workers () + 1;
   return props;
 }
@@ -160,6 +164,11 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
    */
   fs_index = fs - sm->segments;
 
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_fetch_add_rel (&sm->allocated, segment_size);
+
 done:
 
   if (vlib_num_workers ())
@@ -191,6 +200,11 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
     }
 
   ssvm_delete (&fs->ssvm);
+
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_fetch_sub_rel (&sm->allocated, fs->ssvm.ssvm_size);
 
   if (CLIB_DEBUG)
     clib_memset (fs, 0xfb, sizeof (*fs));
@@ -308,7 +322,8 @@ segment_manager_alloc (void)
  */
 int
 segment_manager_init (segment_manager_t * sm, uword first_seg_size,
-		      u32 prealloc_fifo_pairs)
+		      u32 prealloc_fifo_pairs,
+		      u8 high_watermark, u8 low_watermark)
 {
   u32 rx_fifo_size, tx_fifo_size, pair_size;
   u32 rx_rounded_data_size, tx_rounded_data_size;
@@ -372,6 +387,8 @@ segment_manager_init (segment_manager_t * sm, uword first_seg_size,
       sm->event_queue = segment_manager_alloc_queue (segment, props);
     }
 
+  segment_manager_set_watermarks (sm, high_watermark, low_watermark);
+
   return 0;
 }
 
@@ -432,6 +449,28 @@ segment_manager_get_if_valid (u32 index)
   if (pool_is_free_index (sm_main.segment_managers, index))
     return 0;
   return pool_elt_at_index (sm_main.segment_managers, index);
+}
+
+fifo_segment_t *
+find_least_in_use_segment (segment_manager_t * sm, u32 thread_index)
+{
+  fifo_segment_t *cur, *fs = NULL;
+  u8 usage, min_usage = 101;
+
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+  pool_foreach (cur, sm->segments, (
+				     {
+				     if ((usage =
+					  fifo_segment_slice_usage (cur,
+								    thread_index))
+					 < min_usage)
+				     {
+				     min_usage = usage; fs = cur;}
+				     }
+		));
+  clib_rwlock_reader_unlock (&sm->segments_rwlock);
+
+  return fs;
 }
 
 u32
@@ -571,6 +610,7 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
    */
 
   /* *INDENT-OFF* */
+#if 0
   segment_manager_foreach_segment_w_lock (fs, sm, ({
     alloc_fail = segment_manager_try_alloc_fifos (fs,
                                                   thread_index,
@@ -581,15 +621,27 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
     if (!alloc_fail)
       goto alloc_success;
   }));
+#else
+  fs = find_least_in_use_segment (sm, thread_index);
+
+  /* keep lock until notifying to app is done */
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+  alloc_fail = ((!fs) ||
+                (segment_manager_try_alloc_fifos (fs,
+                                                  thread_index,
+                                                  props->rx_fifo_size,
+                                                  props->tx_fifo_size,
+                                                  rx_fifo, tx_fifo)));
+#endif
   /* *INDENT-ON* */
 
 alloc_check:
 
   if (!alloc_fail)
     {
-
+#if 0
     alloc_success:
-
+#endif
       ASSERT (rx_fifo && tx_fifo);
       sm_index = segment_manager_index (sm);
       fs_index = segment_manager_segment_index (sm, fs);
@@ -831,6 +883,8 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_high_watermark = 80;
+  sm->default_low_watermark = 50;
 }
 
 static clib_error_t *
@@ -952,6 +1006,62 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
   /* *INDENT-ON* */
 
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
+}
+
+void
+segment_manager_set_watermarks (segment_manager_t * sm,
+				u8 high_watermark, u8 low_watermark)
+{
+  ASSERT (high_watermark >= 0 && high_watermark <= 100 &&
+	  low_watermark >= 0 && low_watermark <= 100 &&
+	  low_watermark <= high_watermark);
+
+  sm->high_watermark = high_watermark;
+  sm->low_watermark = low_watermark;
+}
+
+void
+segment_manager_update_mem_usage (segment_manager_t * sm,
+				  int in_use_delta,
+				  int pool_size_delta, int reserved_delta)
+{
+  ASSERT (in_use_delta >= 0 || sm->in_use >= -(in_use_delta));
+  ASSERT (pool_size_delta >= 0 || sm->pool_size >= -(pool_size_delta));
+  ASSERT (reserved_delta >= 0 || sm->reserved >= -(reserved_delta));
+
+  clib_atomic_add_fetch (&sm->in_use, in_use_delta);
+  clib_atomic_add_fetch (&sm->pool_size, pool_size_delta);
+  clib_atomic_add_fetch (&sm->reserved, reserved_delta);
+}
+
+void
+segment_manager_notify_allocation_failure (segment_manager_t * sm)
+{
+  clib_atomic_store_rel_n (&sm->no_memory_detected, 1);
+}
+
+segment_manager_mem_status_t
+segment_manager_get_mem_status (segment_manager_t * sm)
+{
+  ASSERT (sm->allocated > 0);
+
+  u8 usage = (sm->in_use * 100) / sm->allocated;
+
+  /* once the no-memory is detected, the status continues
+   * until memory usage gets below the high watermark
+   */
+  if (sm->no_memory_detected && usage >= sm->high_watermark)
+    return MEM_PRESSURE_NO_MEMORY;
+
+  clib_atomic_store_rel_n (&sm->no_memory_detected, 0);
+
+  if (usage >= sm->high_watermark)
+    return MEM_PRESSURE_HIGH_PRESSURE;
+
+  else if (usage >= sm->low_watermark)
+    return MEM_PRESSURE_LOW_PRESSURE;
+
+  return MEM_PRESSURE_NO_PRESSURE;
 }
 
 /*

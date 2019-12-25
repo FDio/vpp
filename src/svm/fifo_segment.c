@@ -127,6 +127,8 @@ fifo_segment_init (fifo_segment_t * fs)
     {
       fss = fsh_slice_get (fsh, i);
       vec_validate_init_empty (fss->free_chunks, max_chunk_sz, 0);
+      fss->size = fsh_free_space (fsh) / fs->n_slices;
+      fss->in_use = 0;
     }
 
   ssvm_pop_heap (oldheap);
@@ -286,6 +288,7 @@ fs_try_alloc_fifo_freelist (fifo_segment_slice_t * fss,
   f->end_chunk = c;
 
   fss->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
+  fss->in_use += fs_freelist_index_to_size (fl_index) + sizeof(*c);
   return f;
 }
 
@@ -331,6 +334,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 	  c->next = first;
 	  first = c;
 	  n_alloc += fl_size;
+          fss->in_use += fl_size + sizeof(*c);
 	  c->length = clib_min (fl_size, data_bytes);
 	  data_bytes -= c->length;
 	}
@@ -348,6 +352,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 		  c->next = fss->free_chunks[fl_index];
 		  fss->free_chunks[fl_index] = c;
 		  fss->n_fl_chunk_bytes += fl_size;
+                  fss->in_use -= fl_size + sizeof(*c);
 		  data_bytes += fl_size;
 		}
 	      first = last = 0;
@@ -372,6 +377,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
   f->end_chunk = last;
   last->next = first;
   fss->n_fl_chunk_bytes -= n_alloc;
+
   return f;
 }
 
@@ -577,6 +583,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
       cur->next = fss->free_chunks[fl_index];
       fss->free_chunks[fl_index] = cur;
       fss->n_fl_chunk_bytes += fs_freelist_index_to_size (fl_index);
+      fss->in_use -= fs_freelist_index_to_size (fl_index) + sizeof(*cur);
       cur = next;
     }
   while (cur != f->start_chunk);
@@ -982,6 +989,29 @@ fifo_segment_get_slice_fifo_list (fifo_segment_t * fs, u32 slice_index)
   fss = fsh_slice_get (fsh, slice_index);
   return fss->fifos;
 }
+
+u8
+fifo_segment_slice_usage (fifo_segment_t * fs, u32 slice_index)
+{
+  fifo_segment_header_t *fsh = fs->h;
+  fifo_segment_slice_t *fss;
+
+  fss = fsh_slice_get (fsh, slice_index);
+
+  return ((fss->in_use * 100) / fss->size);
+}
+
+u64
+fifo_segment_slice_available (fifo_segment_t * fs, u32 slice_index)
+{
+  fifo_segment_header_t *fsh = fs->h;
+  fifo_segment_slice_t *fss;
+
+  fss = fsh_slice_get (fsh, slice_index);
+
+  return (fss->size - fss->in_use * 100);
+}
+
 
 u8 *
 format_fifo_segment_type (u8 * s, va_list * args)

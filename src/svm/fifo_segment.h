@@ -44,6 +44,8 @@ typedef struct fifo_segment_slice_
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
+  u64 in_use;
+  u64 size;
 } fifo_segment_slice_t;
 
 typedef struct
@@ -223,6 +225,9 @@ u32 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size);
 
 void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 			     u32 timeout_in_seconds);
+
+u8 fifo_segment_slice_usage (fifo_segment_t * fs, u32 slice_index);
+u64 fifo_segment_slice_available (fifo_segment_t * fs, u32 slice_index);
 
 format_function_t format_fifo_segment;
 format_function_t format_fifo_segment_type;
