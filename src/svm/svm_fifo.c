@@ -796,13 +796,14 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
 }
 
 static int
-f_try_grow (svm_fifo_t * f, u32 head, u32 tail)
+f_try_grow (svm_fifo_t * f, u32 head, u32 tail, u32 len)
 {
   svm_fifo_chunk_t *c;
   u32 alloc_size, free_alloced;
 
   free_alloced = f_chunk_end (f->end_chunk) - tail;
   alloc_size = f->size - f_cursize (f, head, tail) - free_alloced;
+  alloc_size = clib_min (len - free_alloced, alloc_size);
 
   c = fsh_alloc_chunk (f->fs_hdr, f->slice_index, alloc_size);
   if (PREDICT_FALSE (!c))
@@ -833,7 +834,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
 
   if (f_pos_gt (tail + len, f_chunk_end (f->end_chunk)))
     {
-      if (PREDICT_FALSE (f_try_grow (f, head, tail)))
+      if (PREDICT_FALSE (f_try_grow (f, head, tail, len)))
 	{
 	  len = f_chunk_end (f->end_chunk) - tail;
 	  if (!len)
@@ -890,7 +891,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   if (f_pos_gt (tail_idx + len, f_chunk_end (f->end_chunk)))
     {
-      if (PREDICT_FALSE (f_try_grow (f, head, tail)))
+      if (PREDICT_FALSE (f_try_grow (f, head, tail, len)))
 	return SVM_FIFO_EGROW;
     }
 
