@@ -51,6 +51,7 @@ typedef struct
   fifo_segment_slice_t *slices;		/** Fixed array of slices */
   ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
   uword n_free_bytes;			/**< Segment free bytes */
+  uword n_cached_bytes;			/**< Cached bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
@@ -179,6 +180,31 @@ int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
 int fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f);
 
 /**
+ * Fifo segment has reached mem limit
+ *
+ * @param fs            fifo segment
+ * @return              1 (if reached) or 0 (otherwise)
+ */
+u8 fifo_segment_has_reached_mem_limit (fifo_segment_t * fs);
+
+/**
+ * Fifo segment reset mem limit record
+ *
+ * @param fs            fifo segment
+ */
+void fifo_segment_reset_mem_limit_record (fifo_segment_t * fs);
+
+/**
+ * Fifo segment allocated size
+ *
+ * Returns fifo segment's allocated size
+ *
+ * @param fs            fifo segment
+ * @return              allocated size in bytes
+ */
+uword fifo_segment_size (fifo_segment_t * fs);
+
+/**
  * Fifo segment estimate of number of free bytes
  *
  * Returns fifo segment's internal estimate of the number of free bytes.
@@ -199,6 +225,16 @@ uword fifo_segment_free_bytes (fifo_segment_t * fs);
  * @param fs		fifo segment
  */
 void fifo_segment_update_free_bytes (fifo_segment_t * fs);
+
+/**
+ * Fifo segment number of cached bytes
+ *
+ * Returns fifo segment's number of cached bytes.
+ *
+ * @param fs            fifo segment
+ * @return              cached bytes
+ */
+uword fifo_segment_cached_bytes (fifo_segment_t * fs);
 
 /**
  * Number of bytes on chunk free lists

@@ -34,6 +34,8 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u8 high_watermark;			/**< memory usage high watermark % */
+  u8 low_watermark;			/**< memory usage low watermark % */
 } segment_manager_props_t;
 
 typedef struct _segment_manager
@@ -58,6 +60,11 @@ typedef struct _segment_manager
    * App event queue allocated in first segment
    */
   svm_msg_q_t *event_queue;
+
+  u64 allocated;
+  u8 high_watermark;
+  u8 low_watermark;
+  u8 no_memory_detected;
 } segment_manager_t;
 
 typedef struct segment_manager_main_init_args_
@@ -68,9 +75,16 @@ typedef struct segment_manager_main_init_args_
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
+typedef enum segment_manager_mem_status_
+{
+  MEM_PRESSURE_NO_PRESSURE,
+  MEM_PRESSURE_LOW_PRESSURE,
+  MEM_PRESSURE_HIGH_PRESSURE,
+  MEM_PRESSURE_NO_MEMORY,
+} segment_manager_mem_status_t;
+
 segment_manager_t *segment_manager_alloc (void);
-int segment_manager_init (segment_manager_t * sm, uword first_seg_size,
-			  u32 prealloc_fifo_pairs);
+int segment_manager_init (segment_manager_t * sm);
 
 /**
  * Cleanup segment manager
@@ -97,6 +111,8 @@ fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
 fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
 						    u32 segment_index);
+fifo_segment_t *find_least_in_use_segment (segment_manager_t * sm,
+					   u32 thread_index);
 int segment_manager_add_first_segment (segment_manager_t * sm,
 				       u32 segment_size);
 u64 segment_manager_make_segment_handle (u32 segment_manager_index,
@@ -117,6 +133,13 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
+
+void segment_manager_set_watermarks (segment_manager_t * sm,
+				     u8 high_watermark, u8 low_watermark);
+void segment_manager_notify_allocation_failure (segment_manager_t * sm);
+segment_manager_mem_status_t segment_manager_get_mem_status
+  (segment_manager_t * sm);
+
 
 /**
  * Grows fifo owned by segment manager
