@@ -34,6 +34,8 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u8 high_watermark;			/**< memory usage high watermark % */
+  u8 low_watermark;			/**< memory usage low watermark % */
 } segment_manager_props_t;
 
 typedef struct _segment_manager
@@ -58,6 +60,11 @@ typedef struct _segment_manager
    * App event queue allocated in first segment
    */
   svm_msg_q_t *event_queue;
+
+  u64 allocated;
+  u8 high_watermark;
+  u8 low_watermark;
+  u8 no_memory_detected;
 } segment_manager_t;
 
 typedef struct segment_manager_main_init_args_
@@ -68,9 +75,16 @@ typedef struct segment_manager_main_init_args_
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
+typedef enum segment_manager_mem_status_
+{
+  MEM_PRESSURE_NO_PRESSURE,
+  MEM_PRESSURE_LOW_PRESSURE,
+  MEM_PRESSURE_HIGH_PRESSURE,
+  MEM_PRESSURE_NO_MEMORY,
+} segment_manager_mem_status_t;
+
 segment_manager_t *segment_manager_alloc (void);
-int segment_manager_init (segment_manager_t * sm, uword first_seg_size,
-			  u32 prealloc_fifo_pairs);
+int segment_manager_init (segment_manager_t * sm);
 
 /**
  * Cleanup segment manager
@@ -97,6 +111,8 @@ fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
 fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
 						    u32 segment_index);
+fifo_segment_t *find_least_in_use_segment (segment_manager_t * sm,
+					   u32 thread_index);
 int segment_manager_add_first_segment (segment_manager_t * sm,
 				       u32 segment_size);
 u64 segment_manager_make_segment_handle (u32 segment_manager_index,
@@ -118,6 +134,59 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
 
+void segment_manager_set_watermarks (segment_manager_t * sm,
+				     u8 high_watermark, u8 low_watermark);
+void segment_manager_notify_allocation_failure (segment_manager_t * sm);
+segment_manager_mem_status_t segment_manager_get_mem_status
+  (segment_manager_t * sm);
+
+u8 segment_manager_get_mem_usage (segment_manager_t * sm);
+
+
+/**
+ * Grows fifo owned by segment manager
+ *
+ * @param sm	segment manager that owns the fifo
+ * @param f	fifo to be grown
+ * @param size	amount of bytes to add to fifo
+ * @return	0 on success, negative number otherwise
+ */
+int segment_manager_grow_fifo (segment_manager_t * sm, svm_fifo_t * f,
+			       u32 size);
+
+/**
+ * Request to shrink fifo owned by segment manager
+ *
+ * If this is not called by the producer, no attempt is made to reduce the
+ * size until the producer tries to enqueue more data. To collect the chunks
+ * that are to be removed call @ref segment_manager_collect_fifo_chunks
+ *
+ * Size reduction does not affect fifo chunk boundaries. Therefore chunks are
+ * not split and the amount of bytes to be removed can be equal to or less
+ * than what was requested.
+ *
+ * @param sm		segment manager that owns the fifo
+ * @param f		fifo to be shrunk
+ * @param size		amount of bytes to remove from fifo
+ * @param is_producer	flag that indicates is caller is the producer for the
+ * 			fifo.
+ * @return		actual number of bytes to be removed
+ */
+int segment_manager_shrink_fifo (segment_manager_t * sm, svm_fifo_t * f,
+				 u32 size, u8 is_producer);
+
+/**
+ * Collect fifo chunks that are no longer used
+ *
+ * This should not be called unless SVM_FIFO_F_COLLECT_CHUNKS is set for
+ * the fifo. The chunks are returned to the fifo segment freelist.
+ *
+ * @param sm		segment manager that owns the fifo
+ * @param f		fifo whose chunks are to be collected
+ * @return		0 on success, error otherwise
+ */
+int segment_manager_collect_fifo_chunks (segment_manager_t * sm,
+					 svm_fifo_t * f);
 u8 segment_manager_has_fifos (segment_manager_t * sm);
 
 svm_msg_q_t *segment_manager_alloc_queue (fifo_segment_t * fs,
