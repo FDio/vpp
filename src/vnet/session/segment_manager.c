@@ -29,6 +29,8 @@ typedef struct segment_manager_main_
   u32 default_fifo_size;		/**< default rx/tx fifo size */
   u32 default_segment_size;		/**< default fifo segment size */
   u32 default_app_mq_size;		/**< default app msg q size */
+  u8 default_high_watermark;		/**< default high watermark % */
+  u8 default_low_watermark;		/**< default low watermark % */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -54,6 +56,8 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->high_watermark = sm_main.default_high_watermark;
+  props->low_watermark = sm_main.default_low_watermark;
   props->n_slices = vlib_num_workers () + 1;
   return props;
 }
@@ -160,6 +164,11 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
    */
   fs_index = fs - sm->segments;
 
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_fetch_add_rel (&sm->allocated, fifo_segment_size (fs));
+
 done:
 
   if (vlib_num_workers ())
@@ -191,6 +200,11 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
     }
 
   ssvm_delete (&fs->ssvm);
+
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_fetch_sub_rel (&sm->allocated, fs->ssvm.ssvm_size);
 
   if (CLIB_DEBUG)
     clib_memset (fs, 0xfb, sizeof (*fs));
@@ -307,11 +321,12 @@ segment_manager_alloc (void)
  * Returns error if ssvm segment(s) allocation fails.
  */
 int
-segment_manager_init (segment_manager_t * sm, uword first_seg_size,
-		      u32 prealloc_fifo_pairs)
+segment_manager_init (segment_manager_t * sm)
 {
   u32 rx_fifo_size, tx_fifo_size, pair_size;
   u32 rx_rounded_data_size, tx_rounded_data_size;
+  uword first_seg_size;
+  u32 prealloc_fifo_pairs;
   u64 approx_total_size, max_seg_size = ((u64) 1 << 32) - (128 << 10);
   segment_manager_props_t *props;
   fifo_segment_t *segment;
@@ -319,7 +334,9 @@ segment_manager_init (segment_manager_t * sm, uword first_seg_size,
   int seg_index, i;
 
   props = segment_manager_properties_get (sm);
-  first_seg_size = clib_max (first_seg_size, sm_main.default_segment_size);
+  first_seg_size = clib_max (props->segment_size,
+			     sm_main.default_segment_size);
+  prealloc_fifo_pairs = props->prealloc_fifos;
 
   if (prealloc_fifo_pairs)
     {
@@ -371,6 +388,10 @@ segment_manager_init (segment_manager_t * sm, uword first_seg_size,
       segment = segment_manager_get_segment (sm, seg_index);
       sm->event_queue = segment_manager_alloc_queue (segment, props);
     }
+
+  segment_manager_set_watermarks (sm,
+				  props->high_watermark,
+				  props->low_watermark);
 
   return 0;
 }
@@ -432,6 +453,26 @@ segment_manager_get_if_valid (u32 index)
   if (pool_is_free_index (sm_main.segment_managers, index))
     return 0;
   return pool_elt_at_index (sm_main.segment_managers, index);
+}
+
+fifo_segment_t *
+find_max_free_segment (segment_manager_t * sm, u32 thread_index)
+{
+  fifo_segment_t *cur, *fs = NULL;
+  uword free_bytes, max_free_bytes = 0;
+
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+  /* *INDENT-OFF* */
+  pool_foreach (cur, sm->segments, ({
+    if ((free_bytes = fifo_segment_free_bytes (cur)) > max_free_bytes)
+      {
+        max_free_bytes = free_bytes; fs = cur;
+      }
+  }));
+  /* *INDENT-ON* */
+  clib_rwlock_reader_unlock (&sm->segments_rwlock);
+
+  return fs;
 }
 
 u32
@@ -522,7 +563,6 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
   *rx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
 					      rx_fifo_size,
 					      FIFO_SEGMENT_RX_FIFO);
-
   tx_fifo_size = clib_max (tx_fifo_size, sm_main.default_fifo_size);
   *tx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
 					      tx_fifo_size,
@@ -569,27 +609,21 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   /*
    * Find the first free segment to allocate the fifos in
    */
+  fs = find_max_free_segment (sm, thread_index);
 
-  /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (fs, sm, ({
-    alloc_fail = segment_manager_try_alloc_fifos (fs,
-                                                  thread_index,
-                                                  props->rx_fifo_size,
-                                                  props->tx_fifo_size,
-                                                  rx_fifo, tx_fifo);
-    /* Exit with lock held, drop it after notifying app */
-    if (!alloc_fail)
-      goto alloc_success;
-  }));
-  /* *INDENT-ON* */
+  /* keep lock until notifying to app is done */
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+  alloc_fail = ((!fs) ||
+		(segment_manager_try_alloc_fifos (fs,
+						  thread_index,
+						  props->rx_fifo_size,
+						  props->tx_fifo_size,
+						  rx_fifo, tx_fifo)));
 
 alloc_check:
 
   if (!alloc_fail)
     {
-
-    alloc_success:
-
       ASSERT (rx_fifo && tx_fifo);
       sm_index = segment_manager_index (sm);
       fs_index = segment_manager_segment_index (sm, fs);
@@ -787,6 +821,8 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_high_watermark = 80;
+  sm->default_low_watermark = 50;
 }
 
 static clib_error_t *
@@ -909,6 +945,107 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
 
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
 }
+
+void
+segment_manager_set_watermarks (segment_manager_t * sm,
+				u8 high_watermark, u8 low_watermark)
+{
+  ASSERT (high_watermark >= 0 && high_watermark <= 100 &&
+	  low_watermark >= 0 && low_watermark <= 100 &&
+	  low_watermark <= high_watermark);
+
+  sm->high_watermark = high_watermark;
+  sm->low_watermark = low_watermark;
+}
+
+void
+segment_manager_notify_allocation_failure (segment_manager_t * sm)
+{
+  clib_atomic_store_rel_n (&sm->no_memory_detected, 1);
+}
+
+segment_manager_mem_status_t
+segment_manager_get_mem_status (segment_manager_t * sm)
+{
+  u8 usage;
+  uword total_size = 0, total_free_bytes = 0, total_cached_bytes = 0;
+  fifo_segment_t *fs;
+  u8 reached_mem_limit = 0;
+
+  /* *INDENT-OFF* */
+  segment_manager_foreach_segment_w_lock (fs, sm, ({
+    fifo_segment_update_free_bytes (fs);
+    total_size += fifo_segment_size (fs);
+    total_free_bytes += fifo_segment_free_bytes (fs);
+    total_cached_bytes += fifo_segment_cached_bytes (fs);
+    reached_mem_limit |= fifo_segment_has_reached_mem_limit (fs);
+  }));
+  /* *INDENT-ON* */
+
+  /* one of segments has reached memory limit */
+  if (reached_mem_limit)
+    clib_atomic_store_rel_n (&sm->no_memory_detected, 1);
+
+  if (total_size == 0)
+    return MEM_PRESSURE_NO_MEMORY;
+
+  ASSERT (total_size == sm->allocated);
+  ASSERT (total_free_bytes + total_cached_bytes <= total_size);
+
+  usage = ((total_size - total_free_bytes - total_cached_bytes) * 100
+	   / total_size);
+
+  /* once the no-memory is detected, the status continues
+   * until memory usage gets below the high watermark
+   */
+  if (sm->no_memory_detected && usage >= sm->high_watermark)
+    return MEM_PRESSURE_NO_MEMORY;
+
+  if (reached_mem_limit)
+    {
+      /* the record of reached-mem-limit is found, but
+       * the current usage level is lower than high watermark
+       * so reset the record.
+       */
+      clib_atomic_store_rel_n (&sm->no_memory_detected, 0);
+      segment_manager_foreach_segment_w_lock (fs, sm, (
+							{
+							fifo_segment_reset_mem_limit_record
+							(fs);
+							}
+					      ));
+    }
+
+  if (usage >= sm->high_watermark)
+    return MEM_PRESSURE_HIGH_PRESSURE;
+
+  else if (usage >= sm->low_watermark)
+    return MEM_PRESSURE_LOW_PRESSURE;
+
+  return MEM_PRESSURE_NO_PRESSURE;
+}
+
+u8 segment_manager_get_mem_usage (segment_manager_t * sm)
+{
+  u8 usage;
+  uword total_size = 0, total_free_bytes = 0, total_cached_bytes = 0;
+  fifo_segment_t *fs;
+
+  /* *INDENT-OFF* */
+  segment_manager_foreach_segment_w_lock (fs, sm, ({
+    fifo_segment_update_free_bytes (fs);
+    total_size += fifo_segment_size (fs);
+    total_free_bytes += fifo_segment_free_bytes (fs);
+    total_cached_bytes += fifo_segment_cached_bytes (fs);
+  }));
+  /* *INDENT-ON* */
+
+  usage = ((total_size - total_free_bytes - total_cached_bytes) * 100
+           / total_size);
+
+  return usage;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

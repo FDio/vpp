@@ -804,6 +804,10 @@ f_try_grow (svm_fifo_t * f, u32 head, u32 tail)
   free_alloced = f_chunk_end (f->end_chunk) - tail;
   alloc_size = f->size - f_cursize (f, head, tail) - free_alloced;
 
+  /* Don't attempt to allocate if the state is no-memory */
+  if (fsh_has_reached_mem_limit (f->fs_hdr))
+    return -1;
+
   c = fsh_alloc_chunk (f->fs_hdr, f->slice_index, alloc_size);
   if (PREDICT_FALSE (!c))
     return -1;
@@ -1214,6 +1218,7 @@ svm_fifo_is_sane (svm_fifo_t * f)
       if (f_pos_lt (f->ooo_deq->start_byte, f->start_chunk->start_byte)
 	  || f_pos_gt (f->ooo_deq->start_byte, f_chunk_end (f->end_chunk)))
 	return 0;
+    }
 
       tmp = svm_fifo_find_chunk (f, f->ooo_deq->start_byte);
       if (tmp != f->ooo_deq)

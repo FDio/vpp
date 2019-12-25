@@ -39,6 +39,14 @@ typedef enum fifo_segment_flags_
   FIFO_SEGMENT_F_MEM_LIMIT = 1 << 2,
 } fifo_segment_flags_t;
 
+typedef enum fifo_segment_mem_status_
+{
+  MEMORY_PRESSURE_NO_PRESSURE,
+  MEMORY_PRESSURE_LOW_PRESSURE,
+  MEMORY_PRESSURE_HIGH_PRESSURE,
+  MEMORY_PRESSURE_NO_MEMORY,
+} fifo_segment_mem_status_t;
+
 typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
@@ -139,12 +147,57 @@ void fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 					  u32 rx_fifo_size,
 					  u32 tx_fifo_size,
 					  u32 * n_fifo_pairs);
+#if 0
+/**
+ * Grow fifo size by adding an additional chunk of memory
+ *
+ * @param fs		fifo segment for fifo
+ * @param f		fifo to be grown
+ * @param chunk_size	number of bytes to be added to fifo
+ * @return		0 on success or a negative number otherwise
+ */
+int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
+			    u32 chunk_size);
+#endif
 
 svm_fifo_chunk_t *fsh_alloc_chunk (fifo_segment_header_t * fsh,
 				   u32 slice_index, u32 chunk_size);
 
 void fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
 			 svm_fifo_chunk_t * cur);
+
+/**
+ * Fifo segment has reached mem limit
+ *
+ * @param fsh           fifo segment header
+ * @return              1 (if reached) or 0 (otherwise)
+ */
+u8 fsh_has_reached_mem_limit (fifo_segment_headert * fsh);
+
+/**
+ * Fifo segment has reached mem limit
+ *
+ * @param fs            fifo segment
+ * @return              1 (if reached) or 0 (otherwise)
+ */
+u8 fifo_segment_has_reached_mem_limit (fifo_segment_t * fs);
+
+/**
+ * Fifo segment reset mem limit record
+ *
+ * @param fs            fifo segment
+ */
+void fifo_segment_reset_mem_limit_record (fifo_segment_t * fs);
+
+/**
+ * Fifo segment allocated size
+ *
+ * Returns fifo segment's allocated size
+ *
+ * @param fs            fifo segment
+ * @return              allocated size in bytes
+ */
+uword fifo_segment_size (fifo_segment_t * fs);
 
 /**
  * Fifo segment estimate of number of free bytes
@@ -169,6 +222,16 @@ uword fifo_segment_free_bytes (fifo_segment_t * fs);
 void fifo_segment_update_free_bytes (fifo_segment_t * fs);
 
 /**
+ * Fifo segment number of cached bytes
+ *
+ * Returns fifo segment's number of cached bytes.
+ *
+ * @param fs            fifo segment
+ * @return              cached bytes
+ */
+uword fifo_segment_cached_bytes (fifo_segment_t * fs);
+
+/**
  * Number of bytes on chunk free lists
  *
  * @param fs		fifo segment
@@ -188,6 +251,9 @@ u32 fifo_segment_num_free_fifos (fifo_segment_t * fs);
  * @return	number of chunks of given size
  */
 u32 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size);
+
+fifo_segment_mem_status_t fifo_segment_get_mem_status
+  (fifo_segment_t * fs);
 
 void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 			     u32 timeout_in_seconds);
