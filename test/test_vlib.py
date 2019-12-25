@@ -24,8 +24,7 @@ class TestVlib(VppTestCase):
     def tearDown(self):
         super(TestVlib, self).tearDown()
 
-    # @unittest.skipUnless(running_extended_tests, "part of extended tests")
-
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_vlib_main_unittest(self):
         """ Vlib main.c Code Coverage Test """
 

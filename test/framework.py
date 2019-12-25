@@ -381,6 +381,7 @@ class VppTestCase(unittest.TestCase):
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
                            "main-core", str(cpu_core_number),
                            cls.worker_config, "}",
+                           "physmem", "{", "max-size", "32m", "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "plugins",
