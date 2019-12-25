@@ -932,6 +932,30 @@ fifo_segment_update_free_bytes (fifo_segment_t * fs)
 }
 
 uword
+fifo_segment_size (fifo_segment_t * fs)
+{
+  return fs->ssvm.ssvm_size;
+}
+
+u8
+fsh_has_reached_mem_limit (fifo_segment_header_t * fsh)
+{
+  return (fsh->flags & FIFO_SEGMENT_F_MEM_LIMIT) ? 1 : 0;
+}
+
+u8
+fifo_segment_has_reached_mem_limit (fifo_segment_t * fs)
+{
+  return fsh_has_reached_mem_limit (fs->h);
+}
+
+void
+fifo_segment_reset_mem_limit_record (fifo_segment_t * fs)
+{
+  fs->h->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
+}
+
+uword
 fifo_segment_free_bytes (fifo_segment_t * fs)
 {
   return fsh_n_free_bytes (fs->h);

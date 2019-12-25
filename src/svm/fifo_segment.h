@@ -147,6 +147,39 @@ void fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
 			 svm_fifo_chunk_t * cur);
 
 /**
+ * Fifo segment has reached mem limit
+ *
+ * @param fsh           fifo segment header
+ * @return              1 (if reached) or 0 (otherwise)
+ */
+u8 fsh_has_reached_mem_limit (fifo_segment_header_t * fsh);
+
+/**
+ * Fifo segment has reached mem limit
+ *
+ * @param fs            fifo segment
+ * @return              1 (if reached) or 0 (otherwise)
+ */
+u8 fifo_segment_has_reached_mem_limit (fifo_segment_t * fs);
+
+/**
+ * Fifo segment reset mem limit record
+ *
+ * @param fs            fifo segment
+ */
+void fifo_segment_reset_mem_limit_record (fifo_segment_t * fs);
+
+/**
+ * Fifo segment allocated size
+ *
+ * Returns fifo segment's allocated size
+ *
+ * @param fs            fifo segment
+ * @return              allocated size in bytes
+ */
+uword fifo_segment_size (fifo_segment_t * fs);
+
+/**
  * Fifo segment estimate of number of free bytes
  *
  * Returns fifo segment's internal estimate of the number of free bytes.
