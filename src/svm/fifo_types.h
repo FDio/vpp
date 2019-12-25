@@ -112,11 +112,14 @@ struct fifo_segment_header_
   fifo_segment_slice_t *slices;		/** Fixed array of slices */
   ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
   uword n_free_bytes;			/**< Segment free bytes */
+  uword n_cached_bytes;			/**< Cached bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
   u8 flags;				/**< Segment flags */
   u8 n_slices;				/**< Number of slices */
+  u8 high_watermark;                    /**< Memory pressure watermark high */
+  u8 low_watermark;                     /**< Memory pressure watermark low */
 };
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
