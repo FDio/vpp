@@ -36,6 +36,7 @@ add_vpp_plugin(unittest
   sparse_vec_test.c
   string_test.c
   svm_fifo_test.c
+  segment_manager_test.c
   tcp_test.c
   test_buffer.c
   unittest.c
