@@ -542,6 +542,10 @@ application_alloc_and_init (app_init_args_t * a)
     props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
     app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
+  if (options[APP_OPTIONS_HIGH_WATERMARK])
+    props->high_watermark = options[APP_OPTIONS_HIGH_WATERMARK];
+  if (options[APP_OPTIONS_LOW_WATERMARK])
+    props->low_watermark = options[APP_OPTIONS_LOW_WATERMARK];
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
@@ -690,8 +694,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
-  if ((rv = segment_manager_init (sm, app->sm_properties.segment_size,
-				  app->sm_properties.prealloc_fifos)))
+  if ((rv = segment_manager_init (sm)))
     {
       app_worker_free (app_wrk);
       return rv;
