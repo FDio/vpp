@@ -34,6 +34,8 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u8 high_watermark;			/**< memory usage high watermark % */
+  u8 low_watermark;			/**< memory usage low watermark % */
 } segment_manager_props_t;
 
 typedef struct _segment_manager
@@ -58,6 +60,9 @@ typedef struct _segment_manager
    * App event queue allocated in first segment
    */
   svm_msg_q_t *event_queue;
+
+  u8 high_watermark;
+  u8 low_watermark;
 } segment_manager_t;
 
 typedef struct segment_manager_main_init_args_
@@ -69,8 +74,7 @@ typedef struct segment_manager_main_init_args_
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
 segment_manager_t *segment_manager_alloc (void);
-int segment_manager_init (segment_manager_t * sm, uword first_seg_size,
-			  u32 prealloc_fifo_pairs);
+int segment_manager_init (segment_manager_t * sm);
 
 /**
  * Cleanup segment manager
@@ -117,6 +121,9 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
+
+void segment_manager_set_watermarks (segment_manager_t * sm,
+				     u8 high_watermark, u8 low_watermark);
 
 u8 segment_manager_has_fifos (segment_manager_t * sm);
 
