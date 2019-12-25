@@ -29,6 +29,8 @@ typedef struct segment_manager_main_
   u32 default_fifo_size;		/**< default rx/tx fifo size */
   u32 default_segment_size;		/**< default fifo segment size */
   u32 default_app_mq_size;		/**< default app msg q size */
+  u8 default_high_watermark;            /**< default high watermark % */
+  u8 default_low_watermark;             /**< default low watermark % */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -54,6 +56,8 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->high_watermark = sm_main.default_high_watermark;
+  props->low_watermark = sm_main.default_low_watermark;
   props->n_slices = vlib_num_workers () + 1;
   return props;
 }
@@ -160,6 +164,11 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
    */
   fs_index = fs - sm->segments;
 
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_add_fetch (&sm->allocated, segment_size);
+
 done:
 
   if (vlib_num_workers ())
@@ -191,6 +200,11 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
     }
 
   ssvm_delete (&fs->ssvm);
+
+  /*
+   * Update total allocated size across segments in this sm
+   */
+  clib_atomic_sub_fetch (&sm->allocated, fs->ssvm.ssvm_size);
 
   if (CLIB_DEBUG)
     clib_memset (fs, 0xfb, sizeof (*fs));
@@ -371,6 +385,10 @@ segment_manager_init (segment_manager_t * sm, uword first_seg_size,
       segment = segment_manager_get_segment (sm, seg_index);
       sm->event_queue = segment_manager_alloc_queue (segment, props);
     }
+
+  segment_manager_set_watermarks (sm,
+                                  props->high_watermark,
+                                  props->low_watermark);
 
   return 0;
 }
@@ -831,6 +849,8 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_high_watermark = 80;
+  sm->default_low_watermark = 50;
 }
 
 static clib_error_t *
@@ -952,6 +972,64 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
   /* *INDENT-ON* */
 
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
+}
+
+void
+segment_manager_set_watermarks (segment_manager_t * sm,
+                                u8 high_watermark,
+                                u8 low_watermark)
+{
+  ASSERT (high_watermark >= 0 && high_watermark <= 100 &&
+          low_watermark >= 0 && low_watermark <= 100 &&
+          low_watermark <= high_watermark);
+
+  sm->high_watermark = high_watermark;
+  sm->low_watermark = low_watermark;
+}
+
+void
+segment_manager_update_mem_usage (segment_manager_t * sm,
+                                  int in_use_delta,
+                                  int pool_size_delta,
+                                  int reserved_delta)
+{
+  ASSERT (in_use_delta >= 0 || sm->in_use >= -(in_use_delta));
+  ASSERT (pool_size_delta >= 0 || sm->pool_size >= -(pool_size_delta));
+  ASSERT (reserved_delta >= 0 || sm->reserved >= -(reserved_delta));
+
+  clib_atomic_add_fetch (&sm->in_use, in_use_delta);
+  clib_atomic_add_fetch (&sm->pool_size, pool_size_delta);
+  clib_atomic_add_fetch (&sm->reserved, reserved_delta);
+}
+
+void
+segment_manager_notify_allocation_failure (segment_manager_t * sm)
+{
+  clib_atomic_fetch_or (&sm->no_memory_detected, 1);
+}
+
+segment_manager_mem_status_t
+segment_manager_get_mem_status (segment_manager_t * sm)
+{
+  ASSERT (sm->allocated > 0);
+
+  u8 usage = (sm->in_use * 100) / sm->allocated;
+
+  /* once the no-memory is detected, the status continues
+   * until memory usage gets below the high watermark
+   */
+  if (sm->no_memory_detected && usage >= sm->high_watermark)
+    return MEM_PRESSURE_NO_MEMORY;
+
+  clib_atomic_fetch_and (&sm->no_memory_detected, 0);
+
+  if (usage >= sm->high_watermark)
+    return MEM_PRESSURE_HIGH_PRESSURE;
+
+  else if (usage >= sm->low_watermark)
+    return MEM_PRESSURE_LOW_PRESSURE;
+
+  return MEM_PRESSURE_NO_PRESSURE;
 }
 
 /*
