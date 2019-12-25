@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96cb9e19_48f113b9",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-25T23:23:49Z",
+      "side": 1,
+      "message": "please add a packet trace here:\n     next:\n+      if (PREDICT_FALSE (b[0]-\u003eflags \u0026 VLIB_BUFFER_IS_TRACED))\n+       {\n+         esp_decrypt_trace_t *tr;\n+         tr \u003d vlib_add_trace (vm, node, b[0], sizeof (*tr));\n+         tr-\u003ecrypto_alg \u003d sa0-\u003ecrypto_alg;\n+         tr-\u003einteg_alg \u003d sa0-\u003einteg_alg;\n+         tr-\u003eseq \u003d cpd.seq;\n+         tr-\u003esa_seq \u003d sa0-\u003elast_seq;\n+         tr-\u003esa_seq_hi \u003d sa0-\u003eseq_hi;\n+       }\n+",
+      "revId": "cae268fc51643a7a1ae633bb0ece21cedb17586c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c44ccce_26d3c3d7",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 644,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-25T23:23:49Z",
+      "side": 1,
+      "message": "add a packet trace here too.\ni suspect this should be at least a quad loop.",
+      "revId": "cae268fc51643a7a1ae633bb0ece21cedb17586c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6bf6bc89_80b0667b",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-25T23:23:49Z",
+      "side": 1,
+      "message": "we should not call these \u0027post\u0027 nodes when the operation is synchronous.",
+      "revId": "cae268fc51643a7a1ae633bb0ece21cedb17586c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
