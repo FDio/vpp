@@ -396,6 +396,107 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
   return 0;
 }
 
+static u32
+default_fifo_tuning_increase (fifo_segment_t * fs, u8 usage,
+                              svm_fifo_t * f)
+{
+  fifo_segment_mem_status_t s;
+  u32 to_increase = 0;
+  u32 cur_size = svm_fifo_size (f);
+  u32 max_dequeue = svm_fifo_max_dequeue (f);
+
+  s = fifo_segment_determine_status (fs->h, usage);
+  switch (s)
+    {
+      case MEMORY_PRESSURE_NO_PRESSURE :
+        if (max_dequeue > cur_size * 0.8)
+          to_increase = max_dequeue * 2;
+        else if (max_dequeue > cur_size / 2)
+          to_increase = max_dequeue;
+        break;
+      case MEMORY_PRESSURE_LOW_PRESSURE :
+      case MEMORY_PRESSURE_HIGH_PRESSURE :
+      case MEMORY_PRESSURE_NO_MEMORY :
+      default:
+        break;
+    }
+
+  if (cur_size + to_increase > (2 << 20))
+    to_increase = (2 << 20) - cur_size;
+
+  return to_increase;
+}
+
+static u32
+default_fifo_tuning_decrease (fifo_segment_t * fs, u8 usage,
+                              svm_fifo_t * f, u32 dropped)
+{
+  fifo_segment_mem_status_t s;
+  u32 to_decrease = 0;
+  u32 cur_size = svm_fifo_size (f);
+  u32 max_dequeue = svm_fifo_max_dequeue (f);
+
+  s = fifo_segment_determine_status (fs->h, usage);
+  switch (s)
+    {
+      case MEMORY_PRESSURE_NO_PRESSURE :
+        if (max_dequeue + dropped < cur_size / 5)
+          to_decrease = dropped;
+        break;
+      case MEMORY_PRESSURE_LOW_PRESSURE :
+      case MEMORY_PRESSURE_HIGH_PRESSURE :
+      case MEMORY_PRESSURE_NO_MEMORY :
+      default:
+        to_decrease = dropped;
+        break;
+    }
+  return to_decrease;
+}
+
+static void
+session_fifo_tuning_increase (u32 app_wrk_index, svm_fifo_t * f)
+{
+  segment_manager_t* sm = segment_manager_get (f->segment_manager);
+  fifo_segment_t* fs = segment_manager_get_segment (sm, f->segment_index);
+  u8 usage = fifo_segment_get_mem_usage (fs);
+  u32 to_increase = 0, new_size, cur_size;
+
+  application_t *app = application_get (app_wrk_index);
+
+  if (app && app->cb_fns.fifo_tuning_increase_callback)
+    to_increase = app->cb_fns.fifo_tuning_increase_callback (usage, f);
+  else
+    to_increase = default_fifo_tuning_increase (fs, usage, f);
+
+  cur_size = svm_fifo_size (f);
+  new_size = clib_min (FIFO_SEGMENT_MAX_FIFO_SIZE, cur_size + to_increase);
+
+  if (cur_size != new_size)
+     svm_fifo_set_size (f, new_size);
+}
+
+static void
+session_fifo_tuning_decrease (u32 app_wrk_index, svm_fifo_t * f, u32 dropped)
+{
+  segment_manager_t* sm = segment_manager_get (f->segment_manager);
+  fifo_segment_t* fs = segment_manager_get_segment (sm, f->segment_index);
+  u8 usage = fifo_segment_get_mem_usage (fs);
+  u32 to_decrease = 0, new_size, cur_size;
+
+  application_t *app = application_get (app_wrk_index);
+
+  if (app && app->cb_fns.fifo_tuning_decrease_callback)
+    to_decrease = app->cb_fns.fifo_tuning_decrease_callback (usage, f, dropped);
+  else
+    to_decrease = default_fifo_tuning_decrease (fs, usage, f, dropped);
+
+  cur_size = svm_fifo_size (f);
+  new_size = clib_max (FIFO_SEGMENT_MIN_FIFO_SIZE, cur_size - to_decrease);
+
+  if (cur_size != new_size)
+     svm_fifo_set_size (f, new_size);
+}
+
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
@@ -425,6 +526,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
       enqueued = svm_fifo_enqueue (s->rx_fifo,
 				   b->current_length,
 				   vlib_buffer_get_current (b));
+      if (enqueued != SVM_FIFO_EGROW)
+        session_fifo_tuning_increase (s->app_wrk_index, s->rx_fifo);
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
 			 && enqueued >= 0))
 	{
@@ -439,6 +542,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
       rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
 					 b->current_length,
 					 vlib_buffer_get_current (b));
+      if (rv != SVM_FIFO_EGROW)
+        session_fifo_tuning_increase (s->app_wrk_index, s->rx_fifo);
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
 	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
       /* if something was enqueued, report even this as success for ooo
@@ -514,6 +619,7 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
   u32 rv;
 
   rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  session_fifo_tuning_decrease (s->app_wrk_index, s->tx_fifo, rv);
 
   if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);

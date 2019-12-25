@@ -68,6 +68,15 @@ typedef struct session_cb_vft_
   /** Cert and key pair delete notification */
   int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t * ckpair);
 
+  /** Delegate fifo-tuning-logic to application (post-enqueue)
+   *  Expected to return the amount to increase */
+  u32 (*fifo_tuning_increase_callback) (u8 segment_usage, svm_fifo_t* f);
+
+  /** Delegate fifo-tuning-logic to application (post-dequeue-drop)
+   *  Expected to return the amount to decrease
+   *  Not possible to decrease more than the recently dropped size */
+  u32 (*fifo_tuning_decrease_callback) (u8 segment_usage, svm_fifo_t* f,
+                                        u32 dropped);
 } session_cb_vft_t;
 
 #define foreach_app_init_args			\
@@ -201,6 +210,8 @@ typedef enum
   APP_OPTIONS_PROXY_TRANSPORT,
   APP_OPTIONS_ACCEPT_COOKIE,
   APP_OPTIONS_TLS_ENGINE,
+  APP_OPTIONS_HIGH_WATERMARK,
+  APP_OPTIONS_LOW_WATERMARK,
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
