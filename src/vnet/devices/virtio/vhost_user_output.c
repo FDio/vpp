@@ -44,6 +44,7 @@
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
+#include <vnet/gso/gso.h>
 /*
  * On the transmit side, we keep processing the buffers from vlib in the while
  * loop and prepare the copy order to be executed later. However, the static
@@ -235,17 +236,28 @@ static_always_inline void
 vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 			      virtio_net_hdr_t * hdr)
 {
+  gso_header_offset_t gho =
+    vnet_gso_header_offset_parser (b, b->flags & VNET_BUFFER_F_IS_IP6);
+  if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+    {
+      ip4_header_t *ip4;
+
+      ip4 =
+	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+      ip4->checksum = ip4_header_checksum (ip4);
+    }
+
   /* checksum offload */
   if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
     {
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;
+      hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (udp_header_t, checksum);
     }
   else if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
     {
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;
+      hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (tcp_header_t, checksum);
     }
 
