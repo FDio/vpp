@@ -54,6 +54,23 @@
     },
     {
       "key": {
+        "uuid": "b7b5d818_4e33bdd7",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-26T00:11:44Z",
+      "side": 1,
+      "message": "head is u32. what happens when it wraps?",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6e5ad2cf_fead82bc",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
