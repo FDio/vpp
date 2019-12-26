@@ -765,7 +765,10 @@ u8 *format_tcp_connection (u8 * s, va_list * args);
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
 {
-  return pool_elt_at_index (tcp_main.listener_pool, tli);
+  tcp_connection_t *tc = 0;
+  if (!pool_is_free_index (tcp_main.listener_pool, tli))
+    tc = pool_elt_at_index (tcp_main.listener_pool, tli);
+  return tc;
 }
 
 always_inline tcp_connection_t *
