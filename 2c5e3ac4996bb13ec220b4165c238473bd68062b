@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "3a6a4869_057fd940",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "08ea4b88_a8ce624b",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "71f6fcbe_00d22ea9",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 1
@@ -57,6 +75,30 @@
       "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0df6444e_bc52cc59",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71f6fcbe_00d22ea9",
+      "range": {
+        "startLine": 170,
+        "startChar": 2,
+        "endLine": 170,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -83,6 +125,30 @@
     },
     {
       "key": {
+        "uuid": "2ea87171_b6653f1e",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "deeceb8d_c24b4802",
+      "range": {
+        "startLine": 207,
+        "startChar": 2,
+        "endLine": 207,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "866db08d_a25d9e92",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 1
@@ -106,6 +172,30 @@
     },
     {
       "key": {
+        "uuid": "99e6ea4e_b84916e0",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "866db08d_a25d9e92",
+      "range": {
+        "startLine": 1008,
+        "startChar": 2,
+        "endLine": 1008,
+        "endChar": 22
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f4aede2_3da25729",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 1
@@ -117,6 +207,24 @@
       "writtenOn": "2019-12-25T09:26:48Z",
       "side": 1,
       "message": "Should we account for \u0027reserved\u0027 bytes here? I.e. turn this into\n\nu8 usage \u003d (sm-\u003ein_use * 100) / (sm-\u003eallocated - sm-\u003ereserved);",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03491455_ece58c0c",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1016,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "The \"allocated\" here is the total size of the fifo segments in this segment manager.",
+      "parentUuid": "5f4aede2_3da25729",
       "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -146,6 +254,30 @@
     },
     {
       "key": {
+        "uuid": "dd81704d_3c65349c",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "19bb9878_9dc5ff24",
+      "range": {
+        "startLine": 1024,
+        "startChar": 2,
+        "endLine": 1024,
+        "endChar": 23
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b961f06e_fec0179c",
         "filename": "src/vnet/session/segment_manager.h",
         "patchSetId": 1
@@ -163,6 +295,24 @@
     },
     {
       "key": {
+        "uuid": "ce61dbeb_a95542ed",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "That sounds reasonable to let segment manager to balance fifo-allocation across the segments.\nIt doesn\u0027t mean chunk-allocation is balanced, but is it OK? (If we want to balance chunk-allocation as well, it should be possible but it would be overkill.)",
+      "parentUuid": "b961f06e_fec0179c",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "34ccee2e_589603d5",
         "filename": "src/vnet/session/segment_manager.h",
         "patchSetId": 1
@@ -174,6 +324,30 @@
       "writtenOn": "2019-12-25T20:58:44Z",
       "side": 1,
       "message": "What is pool size?",
+      "range": {
+        "startLine": 66,
+        "startChar": 6,
+        "endLine": 66,
+        "endChar": 15
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a2fc0ca_8b7df060",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "I mean the size of pooled chunks. There may be better name.",
+      "parentUuid": "34ccee2e_589603d5",
       "range": {
         "startLine": 66,
         "startChar": 6,
@@ -215,6 +389,24 @@
       "side": 1,
       "message": "Fifos and fifo segment cannot depend on segment manager code. That\u0027s because the svm library is built separately and because the segment manager is the one that depends on fifo/fifo_segment (i.e., we\u0027d have a circular dependency).\n\nI guess we want the segment manager to be aware of overall memory pressure but then each fifo segment needs to keep track of its own. Depending on its state, the fifo segment can refuse to allocate new chunks at fifo request (see [1]).\n\n\n[1] https://gerrit.fd.io/r/c/vpp/+/24086/20/src/svm/svm_fifo.c#910)",
       "parentUuid": "b23b85ac_ffe38e3f",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cad24c1e_c2ce74ed",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T08:50:47Z",
+      "side": 1,
+      "message": "OK. Let\u0027s make fifo segment to track memory usage.\nWhich is more appropriate : per fifo-segment or per fifo-segment-slice ?",
+      "parentUuid": "095d0472_27318f49",
       "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
