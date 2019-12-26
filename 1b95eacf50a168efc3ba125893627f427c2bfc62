@@ -22,6 +22,30 @@
       "revId": "1b95eacf50a168efc3ba125893627f427c2bfc62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f9b6256_e56e971f",
+        "filename": "src/plugins/unittest/svm_fifo_test.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T02:02:12Z",
+      "side": 1,
+      "message": "I\u0027m still figuring out what to do with these tests. Most probable the grow and shrink ones will have to be completely rewritten because, amongst others, we won\u0027t have fifo wrapping anymore (as you\u0027re pointing out).\n\nInstead, we\u0027ll have to check that fifo chunks are allocated as requested/configured (especially after we add virtual-fifo-size to the fifo) and that state variables (e.g., head_chunk and ooo_enq) are properly updated.",
+      "parentUuid": "d5334f9d_6a91b030",
+      "range": {
+        "startLine": 1230,
+        "startChar": 0,
+        "endLine": 1235,
+        "endChar": 0
+      },
+      "revId": "1b95eacf50a168efc3ba125893627f427c2bfc62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
