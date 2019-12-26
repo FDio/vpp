@@ -1,15 +1,23 @@
 import unittest
 import os
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, capabilities
 from vpp_devices import VppTAPInterface
 
 
 def check_tuntap_driver_access():
-    return os.access("/dev/net/tun", os.R_OK and os.W_OK)
+    try:
+        os.open("/dev/net/tun", os.O_RDWR | os.O_NONBLOCK)
+        return True
+    except PermissionError:
+        return False
+    except FileNotFoundError:
+        return False
 
 
-@unittest.skipIf(check_tuntap_driver_access(), "Permission denied")
+@unittest.skipUnless('cap_net_admin' in capabilities(),
+                     "Missing capability: cap_net_admin.")
+@unittest.skipUnless(check_tuntap_driver_access(), "Permission denied")
 class TestTAP(VppTestCase):
     """ TAP Test Case """
 
