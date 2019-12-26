@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03b98aa7_4286ffd2",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2525,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T17:35:38Z",
+      "side": 1,
+      "message": "You should be able to replace that with vcl_session_write_ready",
+      "range": {
+        "startLine": 2523,
+        "startChar": 3,
+        "endLine": 2525,
+        "endChar": 47
+      },
+      "revId": "e18b8571d0cb8ac1d76c50bb213e072c11dfe474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "305d45d8_40adba2e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2563,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T17:35:38Z",
+      "side": 1,
+      "message": "Same comment",
+      "range": {
+        "startLine": 2560,
+        "startChar": 3,
+        "endLine": 2563,
+        "endChar": 47
+      },
+      "revId": "e18b8571d0cb8ac1d76c50bb213e072c11dfe474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
