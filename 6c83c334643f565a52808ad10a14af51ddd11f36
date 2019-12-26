@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "98b653c0_7a0145de",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T18:41:36Z",
+      "side": 1,
+      "message": "Yes, because we use it for modular arithmetic. The fifo space (u32) will wrap every 4GB (like tcp seq numbers) at which point, (1 \u003c\u003c 32 - 1) must \"interpreted\" as less than 0 ((1 \u003c\u003c 32 - 1) + 1). Therefore, we cast to signed int. Moreover, we need (1 \u003c\u003c 31 -1) to be less than 1 \u003c\u003c 31 as signed ints, hence the difference.",
+      "parentUuid": "d744df2a_e9139687",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cde21106_09cf2dd7",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 21
@@ -30,6 +48,24 @@
       "writtenOn": "2019-12-26T10:18:34Z",
       "side": 1,
       "message": "Can we still hit f_try_grow (f) given len never exceeds free_count?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de34aa0a_fdae07fa",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 946,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T18:41:36Z",
+      "side": 1,
+      "message": "Yes. Free count tracks a \u0027theoretical\u0027 amount of free bytes. In fact, if a fifo is almost filled (let\u0027s assume it has only one chunk) and then drained, free bytes will be the size of the fifo but the chunk is left with almost no free space. \n\nThis is a side effect of us not pre-allocating chunks to cover all of the free bytes. Instead, we allocate them \"on write\"/\"on demand\".",
+      "parentUuid": "cde21106_09cf2dd7",
       "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "50fbd1f4_a5308c38",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T18:41:36Z",
+      "side": 1,
+      "message": "We can\u0027t here because rb_tree_del_node is used externally. I didn\u0027t move it to the .h file because we don\u0027t want to expose the internal function.",
+      "parentUuid": "e95586ce_a35fde81",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "04f3cea8_beae1271",
         "filename": "src/vppinfra/rbtree.c",
         "patchSetId": 21
@@ -64,6 +118,24 @@
       "writtenOn": "2019-12-26T10:18:34Z",
       "side": 1,
       "message": "Call rb_tree_del_node and delete pool_put below?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68d310ca_fdce5895",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T18:41:36Z",
+      "side": 1,
+      "message": "Yeah, excessive zeal on my behalf. The internal function could be inlined in the callers so we could avoid a function call like this. Almost certainly not worth it ...",
+      "parentUuid": "04f3cea8_beae1271",
       "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
