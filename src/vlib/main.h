@@ -495,6 +495,28 @@ int vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *);
 vlib_main_t *vlib_get_main_not_inline (void);
 elog_main_t *vlib_get_elog_main_not_inline ();
 
+#define foreach_vlib_main_exit_code \
+  _(0, NORMAL, normal) \
+  _(1, ERROR, error) \
+  _(2, VLIB_PHYSMEM_INIT, vlib_physmem_init) \
+  _(3, VLIB_MAP_STAT_SEGMENT_INIT, vlib_map_stat_segment_init) \
+  _(4, VLIB_BUFFER_MAIN_INIT, vlib_buffer_main_init) \
+  _(5, VLIB_THREAD_INIT, vlib_thread_init) \
+  _(6, VLIB_NODE_MAIN_INIT, vlib_node_main_init) \
+  _(7, VPE_API_INIT, vpe_api_init) \
+  _(8, VLIBMEMORY_INIT, vlibmemory_init) \
+  _(9, MAP_API_SEGMENT_INIT, map_api_segment_init) \
+  _(10, VLIB_CALL_ALL_INIT_FUNCTIONS, vlib_call_all_init_functions) \
+  _(11, VLIB_CALL_ALL_CONFIG_FUNCTIONS, vlib_call_all_config_functions) \
+
+
+typedef enum
+{
+#define _(n,uc,lc) VLIB_MAIN_EXIT_##uc = n,
+  foreach_vlib_main_exit_code
+#undef _
+} vlib_main_exit_code_t;
+
 #endif /* included_vlib_main_h */
 
 /*

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
+import enum
 import gc
 import logging
 import sys
@@ -100,8 +101,36 @@ if debug_framework:
 class VppDiedError(Exception):
     """ exception for reporting that the subprocess has died."""
 
+    class VppExitCodes(enum.IntEnum):
+        # src/vlib/main.h:412
+        NORMAL = 0
+        ERROR = 1
+        VLIB_PHYSMEM_INIT = 2
+        VLIB_MAP_STAT_SEGMENT_INIT = 3
+        VLIB_BUFFER_MAIN_INIT = 4
+        VLIB_THREAD_INIT = 5,
+        VLIB_NODE_MAIN_INIT = 6
+        VPE_API_INIT = 7
+        VLIBMEMORY_INIT = 8
+        MAP_API_SEGMENT_INIT = 9
+        VLIB_CALL_ALL_INIT_FUNCTIONS = 10
+        VLIB_CALL_ALL_CONFIG_FUNCTIONS = 11
+
     signals_by_value = {v: k for k, v in signal.__dict__.items() if
                         k.startswith('SIG') and not k.startswith('SIG_')}
+
+    @classmethod
+    def friendly_name(cls, rc):
+        if rc is None:
+            return '[ Still Running?! ]'
+        try:
+            return f' [{cls.VppExitCodes(rc)._name_}]'
+        except ValueError:
+            pass
+        try:
+            return f' [{cls.signals_by_value[-rc]}]'
+        except (KeyError, TypeError):
+            return ''
 
     def __init__(self, rv=None, testcase=None, method_name=None):
         self.rv = rv
@@ -109,21 +138,15 @@ class VppDiedError(Exception):
         self.testcase = testcase
         self.method_name = method_name
 
-        try:
-            self.signal_name = VppDiedError.signals_by_value[-rv]
-        except (KeyError, TypeError):
-            pass
-
         if testcase is None and method_name is None:
             in_msg = ''
         else:
             in_msg = 'running %s.%s ' % (testcase, method_name)
 
-        msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
+        msg = "VPP subprocess died %sunexpectedly with return code: %s%s." % (
             in_msg,
             self.rv,
-            ' [%s]' % (self.signal_name if
-                       self.signal_name is not None else ''))
+            self.friendly_name(rv))
         super(VppDiedError, self).__init__(msg)
 
 

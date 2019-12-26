@@ -2129,6 +2129,7 @@ vl_api_get_elog_trace_api_messages (void)
 int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 {
+  int rv = VLIB_MAIN_EXIT_NORMAL;
   clib_error_t *volatile error;
   vlib_node_main_t *nm = &vm->node_main;
 
@@ -2147,24 +2148,28 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   if ((error = vlib_physmem_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VLIB_PHYSMEM_INIT;
       clib_error_report (error);
       goto done;
     }
 
   if ((error = vlib_map_stat_segment_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VLIB_MAP_STAT_SEGMENT_INIT;
       clib_error_report (error);
       goto done;
     }
 
   if ((error = vlib_buffer_main_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VLIB_BUFFER_MAIN_INIT;
       clib_error_report (error);
       goto done;
     }
 
   if ((error = vlib_thread_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VLIB_THREAD_INIT;
       clib_error_report (error);
       goto done;
     }
@@ -2185,24 +2190,28 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       if (CLIB_DEBUG > 0)
 	clib_error_report (error);
       else
-	goto done;
+	rv = VLIB_MAIN_EXIT_VLIB_NODE_MAIN_INIT;
+      goto done;
     }
 
   /* Direct call / weak reference, for vlib standalone use-cases */
   if ((error = vpe_api_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VPE_API_INIT;
       clib_error_report (error);
       goto done;
     }
 
   if ((error = vlibmemory_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_VLIBMEMORY_INIT;
       clib_error_report (error);
       goto done;
     }
 
   if ((error = map_api_segment_init (vm)))
     {
+      rv = VLIB_MAIN_EXIT_MAP_API_SEGMENT_INIT;
       clib_error_report (error);
       goto done;
     }
@@ -2211,7 +2220,11 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   if (vm->init_functions_called == 0)
     vm->init_functions_called = hash_create (0, /* value bytes */ 0);
   if ((error = vlib_call_all_init_functions (vm)))
-    goto done;
+    {
+
+      rv = VLIB_MAIN_EXIT_VLIB_CALL_ALL_INIT_FUNCTIONS;
+      goto done;
+    }
 
   nm->timing_wheel = clib_mem_alloc_aligned (sizeof (TWT (tw_timer_wheel)),
 					     CLIB_CACHE_LINE_BYTES);
@@ -2238,7 +2251,10 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     }
 
   if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
-    goto done;
+    {
+      rv = VLIB_MAIN_EXIT_VLIB_CALL_ALL_CONFIG_FUNCTIONS;
+      goto done;
+    }
 
   /*
    * Use exponential smoothing, with a half-life of 1 second
@@ -2289,7 +2305,7 @@ done:
   if (error)
     clib_error_report (error);
 
-  return 0;
+  return rv;
 }
 
 int
