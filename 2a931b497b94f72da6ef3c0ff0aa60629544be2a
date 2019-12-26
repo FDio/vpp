@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dbe1baa2_cd679436",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T19:57:14Z",
+      "side": 1,
+      "message": "I should\u0027ve checked this before commenting on the previous version of the patch. \n\nThis is definitely an option. What I\u0027m not sure about is the fairness of the approach. It could be that statistical multiplexing will give us a relatively even distribution of chunks, in which case there\u0027s nothing to worry about. Conversely, we may end up rejecting connections with enough free memory on the segment heap... \n\nAs far as I can tell, this requires less atomic ops to update per fifo segment memory consumption. That might be a significant advantage. \n\nAs mentioned in my other comments, this option could be complemented by allowing slices to do bulk allocations of memory (instead of having a fixed size). But then we might also want to force them to free it, if it\u0027s underutilized. However, logic gets complicated quickly ...",
+      "range": {
+        "startLine": 130,
+        "startChar": 6,
+        "endLine": 130,
+        "endChar": 54
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd3035a9_89ab4135",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 699,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T19:57:14Z",
+      "side": 1,
+      "message": "Can\u0027t you grab this from the sm_properties in init? sm_properties is initialized in application_alloc_and_init, and then can be reused whenever adding new app workers. \n\nThe segment size and prealloc_fifos are passed here because of legacy code. Probably they can also be removed.",
+      "range": {
+        "startLine": 699,
+        "startChar": 6,
+        "endLine": 699,
+        "endChar": 40
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f5d9bfc_fe383a81",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T19:57:14Z",
+      "side": 1,
+      "message": "Unfortunately indent doesn\u0027t play nice with some of our macros. To solve this, we wrap the code in: \n/* *INDENT-OFF* */\n\u003ccode\u003e\n/* *INDENT-ON* */",
+      "range": {
+        "startLine": 461,
+        "startChar": 2,
+        "endLine": 461,
+        "endChar": 14
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c62e4acc_eafed5fe",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-26T19:57:14Z",
+      "side": 1,
+      "message": "I like this. Will need to think some more to convince myself that I\u0027m not missing something, but for now, it looks like the best approach.",
+      "range": {
+        "startLine": 625,
+        "startChar": 2,
+        "endLine": 626,
+        "endChar": 0
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
