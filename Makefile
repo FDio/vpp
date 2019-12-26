@@ -71,6 +71,7 @@ DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
+DEB_DEPENDS += libcap2-bin   # capsh for capabilities
 # python3.6 on 16.04 requires python36-dev
  
 ifeq ($(OS_VERSION_ID),14.04)
@@ -94,6 +95,7 @@ RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
 RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
+RPM_DEPENDS += libcap  # capsh for capabilities
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils

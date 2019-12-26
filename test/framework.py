@@ -90,6 +90,19 @@ if debug_framework:
 """
 
 
+def capabilities():
+    caps = []
+    out = subprocess.check_output(['capsh', '--print']).decode()
+    for line in out.splitlines():
+        if line.startswith('Current:'):
+            cap_string = line.strip().split('=')[1].strip().split(',')
+            # if the line is empty, we get a list with ''. don't show ''.
+            if len(cap_string[0]) > 1:
+                caps.extend(cap_string)
+            break
+    return caps
+
+
 class VppDiedError(Exception):
     """ exception for reporting that the subprocess has died."""
 
