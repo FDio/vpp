@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d744df2a_e9139687",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 1,
+      "message": "Is there an advantage compared to plain \u0027return a \u003c b\u0027 ?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cde21106_09cf2dd7",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 946,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 1,
+      "message": "Can we still hit f_try_grow (f) given len never exceeds free_count?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e95586ce_a35fde81",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 1,
+      "message": "always_inline ?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04f3cea8_beae1271",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 1,
+      "message": "Call rb_tree_del_node and delete pool_put below?",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "999fb9ef_06fffb15",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 1,
+      "message": "Same as above",
+      "revId": "6c83c334643f565a52808ad10a14af51ddd11f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

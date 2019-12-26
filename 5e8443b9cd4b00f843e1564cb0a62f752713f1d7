@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d70f0560_27a620e7",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2019-12-26T10:18:34Z",
+      "side": 0,
+      "message": "Guess we need\n\nc-\u003enext \u003d NULL;\n\nhere now?",
+      "revId": "5e8443b9cd4b00f843e1564cb0a62f752713f1d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
