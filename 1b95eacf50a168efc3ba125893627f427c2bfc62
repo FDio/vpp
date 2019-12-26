@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5334f9d_6a91b030",
+        "filename": "src/plugins/unittest/svm_fifo_test.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2019-12-26T01:10:46Z",
+      "side": 1,
+      "message": "So, it is not wrapped any longer. And svm_fifo_init_pointers() is updated.\nThen, maybe I\u0027m wrong but I wonder if this svm_fifo_init_pointers() wouldn\u0027t hit the ASSERT\n      c \u003d svm_fifo_find_chunk (f, tail);\n      ASSERT (c !\u003d 0);\nsince f contains only 2 chunks at this point,\n  (1) start_byte \u003d 0, length \u003d 201,\n  (2) start_bytes \u003d 201, length \u003d 100,\nand I suppose the second chunk does not contain f-\u003etail\u003d301.",
+      "range": {
+        "startLine": 1230,
+        "startChar": 0,
+        "endLine": 1235,
+        "endChar": 0
+      },
+      "revId": "1b95eacf50a168efc3ba125893627f427c2bfc62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
