@@ -2518,6 +2518,17 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	svm_fifo_add_want_deq_ntf (session->tx_fifo,
 				   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
+      /* Generate EPOLLOUT when tx_fifo/ct_tx_fifo not full */
+      if ((event->events & EPOLLOUT) &&
+	  (session->session_state & STATE_OPEN) &&
+	  !svm_fifo_is_full (vcl_session_is_ct (session) ?
+			     session->ct_tx_fifo : session->tx_fifo))
+	{
+	  session_event_t e = { 0 };
+	  e.event_type = SESSION_IO_EVT_TX;
+	  e.session_index = session->session_index;
+	  vec_add1 (wrk->unhandled_evts_vector, e);
+	}
       VDBG (1, "EPOLL_CTL_ADD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
 	    vep_handle, session_handle, event->events, event->data.u64);
       vcl_evt (VCL_EVT_EPOLL_CTLADD, session, event->events, event->data.u64);
@@ -2542,6 +2553,19 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 		session_handle, session->vep.vep_sh, vep_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
+	}
+
+      /* Generate EPOLLOUT when tx_fifo/ct_tx_fifo not full */
+      if ((event->events & EPOLLOUT) &&
+	  !(session->vep.ev.events & EPOLLOUT) &&
+	  (session->session_state & STATE_OPEN) &&
+	  !svm_fifo_is_full (vcl_session_is_ct (session) ?
+			     session->ct_tx_fifo : session->tx_fifo))
+	{
+	  session_event_t e = { 0 };
+	  e.event_type = SESSION_IO_EVT_TX;
+	  e.session_index = session->session_index;
+	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
       session->vep.et_mask = VEP_DEFAULT_ET_MASK;
       session->vep.ev = *event;
