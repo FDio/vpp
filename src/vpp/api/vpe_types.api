@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-option version = "1.0.0";
+option version = "1.1.0";
 
 typedef version
 {
@@ -40,4 +40,26 @@ typedef version
   VPE_API_LOG_LEVEL_INFO = 6,     /* info */
   VPE_API_LOG_LEVEL_DEBUG = 7,    /* debug */
   VPE_API_LOG_LEVEL_DISABLED = 8, /* disabled */
+};
+
+/* manually keep in syc with src/vlib/main.h */
+
+/** \brief Application exit codes
+*/
+enum exit_codes : u8 {
+  VPE_API_EXIT_CODE_NORMAL = 0,
+  VPE_API_EXIT_CODE_ERROR = 1,
+  VPE_API_EXIT_CODE_INVALID_ARGS = 2,
+  VPE_API_EXIT_CODE_UNIMPLEMENTED_FEAT = 3,
+  VPE_API_EXIT_CODE_INSUFFICIENT_PRIV = 4,
+  VPE_API_EXIT_CODE_VLIB_PHYSMEM_INIT = 150,
+  VPE_API_EXIT_CODE_VLIB_MAP_STAT_SEGMENT_INIT = 151,
+  VPE_API_EXIT_CODE_VLIB_BUFFER_MAIN_INIT = 152,
+  VPE_API_EXIT_CODE_VLIB_THREAD_INIT = 153,
+  VPE_API_EXIT_CODE_VLIB_NODE_MAIN_INIT = 154,
+  VPE_API_EXIT_CODE_VPE_API_INIT = 155,
+  VPE_API_EXIT_CODE_VLIBMEMORY_INIT= 156,
+  VPE_API_EXIT_CODE_MAP_API_SEGMENT_INIT = 157,
+  VPE_API_EXIT_CODE_VLIB_CALL_ALL_INIT_FUNCTIONS = 158,
+  VPE_API_EXIT_CODE_VLIB_CALL_ALL_CONFIG_FUNCTIONS = 159,
 };
