@@ -10,6 +10,7 @@ import time
 import threading
 import signal
 import psutil
+import pwd
 import re
 import multiprocessing
 from multiprocessing import Process, Pipe, cpu_count
@@ -749,6 +750,10 @@ if __name__ == '__main__':
     force_foreground = framework.BoolEnvironmentVariable("FORCE_FOREGROUND")
 
     run_interactive = debug or step or force_foreground
+
+    print(f'Running as {pwd.getpwuid( os.getuid() )[0]}({os.getuid()}):'
+          f'{pwd.getpwuid( os.getgid() )[0]}({os.getgid() })')
+    print(f'Capabilities: {framework.capabilities()}')
 
     try:
         num_cpus = len(os.sched_getaffinity(0))
