@@ -134,7 +134,7 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
       svm_msg_q_lock (mq);
       while (svm_msg_q_is_full (mq)
 	     || svm_msg_q_ring_is_full (mq, ring_index))
-	svm_msg_q_wait (mq);
+	svm_msg_q_timedwait (mq, 0.1);
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
     }
   return 0;
