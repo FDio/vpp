@@ -77,6 +77,7 @@ int svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
 		   u32 time);
 int svm_queue_sub2 (svm_queue_t * q, u8 * elem);
 void svm_queue_lock (svm_queue_t * q);
+void svm_queue_send_signal (svm_queue_t * q, u8 is_prod);
 void svm_queue_unlock (svm_queue_t * q);
 int svm_queue_is_full (svm_queue_t * q);
 int svm_queue_add_nolock (svm_queue_t * q, u8 * elem);
