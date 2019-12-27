@@ -14,7 +14,7 @@ def checkQat():
     if r:
         return True
     else:
-        print("NO QAT! EXIT!")
+        # print("NO QAT! EXIT!")
         return False
 
 
@@ -30,7 +30,8 @@ def checkOpenSSLVersion():
         status = p.returncode
 
         if status:
-            print("openssl version error!")
+            pass
+            # print("openssl version error!")
         else:
             ssl_ver_src = re.findall(r"(\d+)\.+\d+.+\d+", output)
             ssl_ver = int(ssl_ver_src[0])
@@ -39,7 +40,8 @@ def checkOpenSSLVersion():
             else:
                 ret = True
     else:
-        print("NO OPENSSL_ROOT_DIR!")
+        # print("NO OPENSSL_ROOT_DIR!")
+        pass
 
     return ret
 
@@ -140,6 +142,7 @@ class TestTLS(VppTestCase):
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
