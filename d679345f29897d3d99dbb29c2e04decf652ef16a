@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "4df984aa_97ee28b6",
+        "filename": "src/svm/message_queue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T06:33:16Z",
+      "side": 1,
+      "message": "Yup, let\u0027s try to fix this separately. I suspect the ring is full but the queue is not. The queue broadcasts only if the queue is full, not the ring ...",
+      "parentUuid": "f8d4ab5d_c8663d81",
+      "range": {
+        "startLine": 137,
+        "startChar": 1,
+        "endLine": 137,
+        "endChar": 31
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f55c62f2_6b3d9b00",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "actually I refer tcp_lookup_connection. :)",
       "parentUuid": "f55c62f2_6b3d9b00",
+      "range": {
+        "startLine": 2371,
+        "startChar": 6,
+        "endLine": 2371,
+        "endChar": 47
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b8453c3c_e89d367e",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2371,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T06:33:16Z",
+      "side": 1,
+      "message": "Ouch. Fair enough :-) \n\nStill, we should slowly clean these out in preparation for the day when somebody asks about ip4 options ... :/",
+      "parentUuid": "966395ce_8c06a01e",
       "range": {
         "startLine": 2371,
         "startChar": 6,
