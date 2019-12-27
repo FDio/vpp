@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6fbb9b7c_f4f9fec5",
+        "filename": "src/svm/message_queue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T05:05:13Z",
+      "side": 1,
+      "message": "This seems unrelated to the subject of the patch. Could you remove it and if need be send a separate patch?\n\nAny idea about the state of queue vs the ctrl ring? That is, was the ring full but the queue not?",
+      "range": {
+        "startLine": 137,
+        "startChar": 1,
+        "endLine": 137,
+        "endChar": 31
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f55c62f2_6b3d9b00",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2371,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T05:05:13Z",
+      "side": 1,
+      "message": "Use tcp_buffer_hdr instead. This way, when we add support for ip options, we only have to change tcp_input.",
+      "range": {
+        "startLine": 2371,
+        "startChar": 6,
+        "endLine": 2371,
+        "endChar": 47
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4e4fbf50_98c74294",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2385,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T05:05:13Z",
+      "side": 1,
+      "message": "Maybe not the best practice, but throughput tcp/session layer/vcl we use 0 as NULL. For consistency, let\u0027s stick to that.",
+      "range": {
+        "startLine": 2385,
+        "startChar": 25,
+        "endLine": 2385,
+        "endChar": 29
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "562efe13_db4a70fa",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2390,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T05:05:13Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 2390,
+        "startChar": 11,
+        "endLine": 2390,
+        "endChar": 15
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15b546e0_0db8d752",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3245,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-12-27T05:05:13Z",
+      "side": 1,
+      "message": "You can handle this in the branch at line 3194. You can also move the test on line 3235 there. It saves 2 more ifs on the \u0027normal accept\u0027 path and it consolidates all the \u0027exception\u0027 logic in one place.",
+      "range": {
+        "startLine": 3241,
+        "startChar": 0,
+        "endLine": 3245,
+        "endChar": 2
+      },
+      "revId": "d679345f29897d3d99dbb29c2e04decf652ef16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
