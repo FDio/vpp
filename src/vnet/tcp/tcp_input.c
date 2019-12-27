@@ -3195,20 +3195,25 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
 				    my_thread_index);
-	  /* clean up the old session */
+	  if (tc0->state != TCP_STATE_TIME_WAIT)
+	    {
+	      error0 = TCP_ERROR_CREATE_EXISTS;
+	      goto drop;
+	    }
 	  lc0 = tcp_lookup_listener (b0, tc0->c_fib_index, is_ip4);
+	  /* clean up the old session */
 	  tcp_connection_del (tc0);
 	}
 
       if (is_ip4)
 	{
 	  ip40 = vlib_buffer_get_current (b0);
-	  th0 = ip4_next_header (ip40);
+	  th0 = tcp_buffer_hdr (b0);
 	}
       else
 	{
 	  ip60 = vlib_buffer_get_current (b0);
-	  th0 = ip6_next_header (ip60);
+	  th0 = tcp_buffer_hdr (b0);
 	}
 
       /* Create child session. For syn-flood protection use filter */
