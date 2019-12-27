@@ -169,6 +169,7 @@ void
 svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   svm_msg_q_ring_t *ring;
+  int need_signal;
 
   ASSERT (vec_len (mq->rings) > msg->ring_index);
   ring = &mq->rings[msg->ring_index];
@@ -182,7 +183,12 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
       /* for now, expect messages to be processed in order */
       ASSERT (0);
     }
+
+  need_signal = ring->cursize == ring->nitems;
   clib_atomic_fetch_sub (&ring->cursize, 1);
+
+  if (PREDICT_FALSE (need_signal))
+    svm_queue_send_signal (mq->q, 0);
 }
 
 static int
