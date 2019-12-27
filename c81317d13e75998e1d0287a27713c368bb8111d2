@@ -89,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "fd1dac8f_bd2d9368",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-27T08:50:50Z",
+      "side": 1,
+      "message": "that would be ok i suppose.\nthe alternative is to let it wrap (more often so we know it works, i.e. u16) and loop with (while last !\u003d head).",
+      "parentUuid": "39de9692_8ee23805",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6e5ad2cf_fead82bc",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
@@ -154,6 +172,24 @@
       "side": 1,
       "message": "You are right. Again making the atomic call for in-worker cmp and swap or cross-work ones the performance will drop ~50%. Any suggestions to avoid this?",
       "parentUuid": "8ba1e891_af6bd7d0",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3980200_657b1a07",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-12-27T08:50:50Z",
+      "side": 1,
+      "message": "maybe lock the q, then claim all available ops without atomics. other threads can skipped locked queues, rather than wait.",
+      "parentUuid": "fbcf5a7a_44fd21b0",
       "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
