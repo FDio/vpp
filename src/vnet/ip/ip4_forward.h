@@ -116,6 +116,17 @@ ip4_lookup_inline (vlib_main_t * vm,
       mtrie2 = &ip4_fib_get (vnet_buffer (b[2])->ip.fib_index)->mtrie;
       mtrie3 = &ip4_fib_get (vnet_buffer (b[3])->ip.fib_index)->mtrie;
 
+#ifdef CLIB_HAVE_VEC256
+      ip4_fib_mtrie_lookup_step_one_vx4 (mtrie0, mtrie1, mtrie2, mtrie3,
+					 dst_addr0, dst_addr1, dst_addr2,
+					 dst_addr3, &leaf0, &leaf1, &leaf2,
+					 &leaf3);
+#elif defined(CLIB_HAVE_VEC128)
+      ip4_fib_mtrie_lookup_step_one_vx2 (mtrie0, mtrie1, dst_addr0, dst_addr1,
+					 &leaf0, &leaf1);
+      ip4_fib_mtrie_lookup_step_one_vx2 (mtrie2, mtrie3, dst_addr2, dst_addr3,
+					 &leaf2, &leaf3);
+#else
       leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
       leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, dst_addr1);
       leaf2 = ip4_fib_mtrie_lookup_step_one (mtrie2, dst_addr2);
@@ -130,7 +141,7 @@ ip4_lookup_inline (vlib_main_t * vm,
       leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
       leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 3);
       leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 3);
-
+#endif
       lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
       lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
       lb_index2 = ip4_fib_mtrie_leaf_get_adj_index (leaf2);

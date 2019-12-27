@@ -342,6 +342,12 @@ u64x4_transpose (u64x4 a[8])
   a[3] = u64x4_permute_lanes (r[1], r[3], 0x31);
 }
 
+static_always_inline u8x32
+u8x32_shuffle (u8x32 v, u8x32 m)
+{
+  return (u8x32) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) m);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*

@@ -231,6 +231,172 @@ ip4_fib_mtrie_lookup_step_one (const ip4_fib_mtrie_t * m,
   return next_leaf;
 }
 
+always_inline u64x2
+u64x2_deref (u64x2 a, u64x2 o)
+{
+  u64x2 r = a + o;
+  u64x2 s = { *(u32 *) r[0], *(u32 *) r[1] };
+  return s;
+}
+
+always_inline u64x2
+u64x2_deref2 (u64x2 p, u64x2 o, u64x2 l)
+{
+  u64x2 t = l & 1;
+  u64x2 r = { t[0] ? l[0] : *(ip4_fib_mtrie_leaf_t *) (p[0] + o[0]),
+    t[1] ? l[1] : *(ip4_fib_mtrie_leaf_t *) (p[1] + o[1])
+  };
+  return r;
+}
+
+always_inline void
+ip4_fib_mtrie_lookup_step_one_vx2 (const ip4_fib_mtrie_t * m1,
+				   const ip4_fib_mtrie_t * m2,
+				   const ip4_address_t * a1,
+				   const ip4_address_t * a2,
+				   ip4_fib_mtrie_leaf_t * n1,
+				   ip4_fib_mtrie_leaf_t * n2)
+{
+  u32x4 ad = { 0, a1->as_u32, 0, a2->as_u32 };
+  u64x2 a = (u64x2) ad;
+  u64x2 base = { (u64) m1->root_ply.leaves, (u64) m2->root_ply.leaves };
+
+  // permute the address vector so we get the ply lookup indicess
+#if CLIB_ARCH_IS_BIG_ENDIAN
+  u8x16 o1, s_ply1 = {
+    0, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 0, 0, 12, 13,
+  };
+  u8x16 o2, s_ply2 = {
+    0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 14,
+  };
+  u8x16 o3, s_ply3 = {
+    0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 15,
+  };
+#else
+  u8x16 o1, s_ply1 = {
+    4, 5, 0, 0, 0, 0, 0, 0, 12, 13, 0, 0, 0, 0, 0, 0,
+  };
+  u8x16 o2, s_ply2 = {
+    6, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0,
+  };
+  u8x16 o3, s_ply3 = {
+    7, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0,
+  };
+#endif
+  u64x2 ply1, ply2, l, pool = { (u64) ip4_ply_pool, (u64) ip4_ply_pool };
+
+  // << 2 is *4, which is for u32 pointer arthmetic on ply bucket
+  o1 = u8x16_shuffle ((u8x16) a, s_ply1) << 2;
+  o2 = u8x16_shuffle ((u8x16) a, s_ply2) << 2;
+  o3 = u8x16_shuffle ((u8x16) a, s_ply3) << 2;
+
+  l = u64x2_deref (base, (u64x2) o1);
+  ply1 = pool + ((l >> 1) * sizeof (ip4_fib_mtrie_8_ply_t));
+  l = u64x2_deref2 (ply1, (u64x2) o2, l);
+  ply2 = pool + ((l >> 1) * sizeof (ip4_fib_mtrie_8_ply_t));
+  l = u64x2_deref2 (ply2, (u64x2) o3, l);
+  l = (l >> 1);
+  *n1 = l[0];
+  *n2 = l[1];
+}
+
+#ifdef CLIB_HAVE_VEC256
+
+always_inline u64x4
+u64x4_deref (u64x4 a, u64x4 o)
+{
+  u64x4 r = a + o;
+  u64x4 s = { *(u32 *) r[0], *(u32 *) r[1], *(u32 *) r[2], *(u32 *) r[3] };
+  return s;
+}
+
+always_inline u64x4
+u64x4_deref2 (u64x4 p, u64x4 o, u64x4 l)
+{
+  u64x4 t = l & 1;
+  u64x4 r = { t[0] ? l[0] : *(ip4_fib_mtrie_leaf_t *) (p[0] + o[0]),
+    t[1] ? l[1] : *(ip4_fib_mtrie_leaf_t *) (p[1] + o[1]),
+    t[2] ? l[2] : *(ip4_fib_mtrie_leaf_t *) (p[2] + o[2]),
+    t[3] ? l[1] : *(ip4_fib_mtrie_leaf_t *) (p[1] + o[3])
+  };
+  return r;
+}
+
+always_inline void
+ip4_fib_mtrie_lookup_step_one_vx4 (const ip4_fib_mtrie_t * m1,
+				   const ip4_fib_mtrie_t * m2,
+				   const ip4_fib_mtrie_t * m3,
+				   const ip4_fib_mtrie_t * m4,
+				   const ip4_address_t * a1,
+				   const ip4_address_t * a2,
+				   const ip4_address_t * a3,
+				   const ip4_address_t * a4,
+				   ip4_fib_mtrie_leaf_t * n1,
+				   ip4_fib_mtrie_leaf_t * n2,
+				   ip4_fib_mtrie_leaf_t * n3,
+				   ip4_fib_mtrie_leaf_t * n4)
+{
+  u32x8 ad = { 0, a1->as_u32, 0, a2->as_u32, 0, a2->as_u32, 0, a3->as_u32 };
+  u64x4 a = (u64x4) ad;
+  u64x4 base = { (u64) m1->root_ply.leaves, (u64) m2->root_ply.leaves,
+    (u64) m3->root_ply.leaves, (u64) m4->root_ply.leaves
+  };
+
+  // permute the address vector so we get the ply lookup indicess
+#if CLIB_ARCH_IS_BIG_ENDIAN
+  u8x16 o1, s_ply1 = {
+    0, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 0, 0, 12, 13,
+    0, 0, 0, 0, 0, 0, 20, 21, 0, 0, 0, 0, 0, 0, 28, 29,
+  };
+  u8x16 o2, s_ply2 = {
+    0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 14,
+    0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 30,
+  };
+  u8x16 o3, s_ply3 = {
+    0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 15,
+    0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 31,
+  };
+#else
+  u8x32 o1, s_ply1 = {
+    4, 5, 0, 0, 0, 0, 0, 0, 12, 13, 0, 0, 0, 0, 0, 0,
+    20, 21, 0, 0, 0, 0, 0, 0, 28, 29, 0, 0, 0, 0, 0, 0,
+  };
+  u8x32 o2, s_ply2 = {
+    6, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0,
+    22, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0,
+  };
+  u8x32 o3, s_ply3 = {
+    7, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0,
+    23, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0,
+  };
+#endif
+  u64x4 ply1, ply2, l;
+  u64x4 pool = u64x4_splat ((u64) ip4_ply_pool);
+
+  // << 2 is *4, which is for u32 pointer arthmetic on ply bucket
+  o1 = u8x32_shuffle ((u8x32) a, s_ply1) << 2;
+  o2 = u8x32_shuffle ((u8x32) a, s_ply2) << 2;
+  o3 = u8x32_shuffle ((u8x32) a, s_ply3) << 2;
+
+  // 3 successvie layer in the mrtie
+  l = u64x4_deref (base, (u64x4) o1);
+  // (l >> 1) results in the index. the LSB signals terminal (or not)
+  // pointer arithmetic on the pool address
+  ply1 = pool + ((l >> 1) * sizeof (ip4_fib_mtrie_8_ply_t));
+  l = u64x4_deref2 (ply1, (u64x4) o2, l);
+  ply2 = pool + ((l >> 1) * sizeof (ip4_fib_mtrie_8_ply_t));
+  l = u64x4_deref2 (ply2, (u64x4) o3, l);
+
+  // return the last leafs
+  l = (l >> 1);
+  *n1 = l[0];
+  *n2 = l[1];
+  *n3 = l[2];
+  *n4 = l[3];
+}
+
+#endif
+
 #endif /* included_ip_ip4_fib_h */
 
 /*
