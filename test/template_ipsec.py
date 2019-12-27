@@ -597,7 +597,7 @@ class IpsecTra4(object):
 class IpsecTra4Tests(IpsecTra4):
     """ UT test methods for Transport v4 """
     def test_tra_anti_replay(self):
-        """ ipsec v4 transport anti-reply test """
+        """ ipsec v4 transport anti-replay test """
         self.verify_tra_anti_replay()
 
     def test_tra_basic(self, count=1):
