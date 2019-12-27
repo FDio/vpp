@@ -112,7 +112,7 @@ svm_queue_is_full (svm_queue_t * q)
 }
 
 static inline void
-svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
+svm_queue_send_signal_inline (svm_queue_t * q, u8 is_prod)
 {
   if (q->producer_evtfd == -1)
     {
@@ -126,6 +126,12 @@ svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
       fd = is_prod ? q->producer_evtfd : q->consumer_evtfd;
       rv = write (fd, &data, sizeof (data));
     }
+}
+
+void
+svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
+{
+  svm_queue_send_signal_inline (q, is_prod);
 }
 
 static inline void
@@ -212,7 +218,7 @@ svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
     q->tail = 0;
 
   if (need_broadcast)
-    svm_queue_send_signal (q, 1);
+    svm_queue_send_signal_inline (q, 1);
   return 0;
 }
 
@@ -228,7 +234,7 @@ svm_queue_add_raw (svm_queue_t * q, u8 * elem)
   q->cursize++;
 
   if (q->cursize == 1)
-    svm_queue_send_signal (q, 1);
+    svm_queue_send_signal_inline (q, 1);
 }
 
 
@@ -275,7 +281,7 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
     q->tail = 0;
 
   if (need_broadcast)
-    svm_queue_send_signal (q, 1);
+    svm_queue_send_signal_inline (q, 1);
 
   svm_queue_unlock (q);
 
@@ -334,7 +340,7 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
     q->tail = 0;
 
   if (need_broadcast)
-    svm_queue_send_signal (q, 1);
+    svm_queue_send_signal_inline (q, 1);
 
   svm_queue_unlock (q);
 
@@ -402,7 +408,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
     q->head = 0;
 
   if (need_broadcast)
-    svm_queue_send_signal (q, 0);
+    svm_queue_send_signal_inline (q, 0);
 
   svm_queue_unlock (q);
 
@@ -434,7 +440,7 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
   svm_queue_unlock (q);
 
   if (need_broadcast)
-    svm_queue_send_signal (q, 0);
+    svm_queue_send_signal_inline (q, 0);
 
   return 0;
 }
@@ -442,6 +448,7 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
 int
 svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
 {
+  int need_broadcast;
   i8 *headp;
 
   if (PREDICT_FALSE (q->cursize == 0))
@@ -453,8 +460,13 @@ svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
   headp = (i8 *) (&q->data[0] + q->elsize * q->head);
   clib_memcpy_fast (elem, headp, q->elsize);
 
+  need_broadcast = q->cursize == q->maxsize;
+
   q->head = (q->head + 1) % q->maxsize;
   q->cursize--;
+
+  if (PREDICT_FALSE (need_broadcast))
+    svm_queue_send_signal_inline (q, 0);
 
   return 0;
 }
