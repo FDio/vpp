@@ -196,6 +196,24 @@
     },
     {
       "key": {
+        "uuid": "78c29f89_fb639c07",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-12-28T20:33:44Z",
+      "side": 1,
+      "message": "Hi Neale, thanks for the fast reply!\nI thought about applying the lock also. However again hasn’t done so due to the performance reason. Applying lock will resolve the problem but this does not make much of sense to QAT since it is a dedicated HW that works in parallel with CPU and a number of HW queues have already been provided - you are not supposed to make two or more cores access the same queue.\nCan we only make the enqueue and dequeue function calls common to all crypto engines (plus the “get_op” function pointer to avoid global sized crypto op as we discussed earlier), but leave the generic queue structure and locks to SW crypto engines only?",
+      "parentUuid": "c3980200_657b1a07",
+      "revId": "c81317d13e75998e1d0287a27713c368bb8111d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0cd2d6f4_3e84125d",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 1
