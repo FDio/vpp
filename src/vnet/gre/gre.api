@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-option version = "2.0.1";
+option version = "2.0.2";
 
 import "vnet/interface_types.api";
+import "vnet/tunnel/tunnel_types.api";
 import "vnet/ip/ip_types.api";
 
 /** \brief A GRE tunnel type
@@ -26,16 +27,6 @@ enum gre_tunnel_type : u8
   GRE_API_TUNNEL_TYPE_L3 = 0,
   GRE_API_TUNNEL_TYPE_TEB,
   GRE_API_TUNNEL_TYPE_ERSPAN,
-};
-
-/** \brief A GRE tunnel mode
-*/
-enum gre_tunnel_mode : u8
-{
-  /* point-to-point */
-  GRE_API_TUNNEL_MODE_P2P,
-  /* multi-point */
-  GRE_API_TUNNEL_MODE_MP,
 };
 
 /** \brief A GRE tunnel
@@ -52,7 +43,7 @@ enum gre_tunnel_mode : u8
 typedef gre_tunnel
 {
   vl_api_gre_tunnel_type_t type;
-  vl_api_gre_tunnel_mode_t mode;
+  vl_api_tunnel_mode_t mode;
   u16 session_id;
   u32 instance;
   u32 outer_table_id;

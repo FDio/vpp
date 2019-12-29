@@ -161,7 +161,7 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP6_INPUT;
 
-	      if (t0->flags & IPIP_TUNNEL_FLAG_DECAP_COPY_ECN)
+	      if (t0->flags & TUNNEL_ENCAP_DECAP_FLAG_DECAP_COPY_ECN)
 		{
 		  if (is_ipv6)
 		    ip6_set_ecn_network_order ((ip60 + 1),
@@ -174,7 +174,7 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP4_INPUT;
-	      if (t0->flags & IPIP_TUNNEL_FLAG_DECAP_COPY_ECN)
+	      if (t0->flags & TUNNEL_ENCAP_DECAP_FLAG_DECAP_COPY_ECN)
 		{
 		  if (is_ipv6)
 		    ip4_header_set_ecn_w_chksum ((ip4_header_t *) (ip60 + 1),

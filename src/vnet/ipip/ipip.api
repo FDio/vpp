@@ -49,11 +49,11 @@
  *
  */
 
-option version = "2.0.0";
+option version = "2.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
-import "vnet/ipip/ipip_types.api";
+import "vnet/tunnel/tunnel_types.api";
 
 /**
  * An IP{v4,v6} over IP{v4,v6} tunnel.
@@ -66,7 +66,7 @@ typedef ipip_tunnel
   vl_api_interface_index_t sw_if_index; /* ignored on create, set in
 					   details/dump */
   u32 table_id;
-  vl_api_ipip_tunnel_flags_t flags;
+  vl_api_tunnel_encap_decap_flags_t flags;
   vl_api_ip_dscp_t dscp; /* DSCP value for the tunnel encap,
                             ignored if ECNAP_COPY_DSCP flag is set */
 };
