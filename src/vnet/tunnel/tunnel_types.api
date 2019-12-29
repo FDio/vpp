@@ -17,17 +17,34 @@
 /**
  * Flags controlling tunnel behaviour
  */
-enum ipip_tunnel_flags : u8
+enum tunnel_encap_decap_flags : u8
 {
-  IPIP_TUNNEL_API_FLAG_NONE = 0,
+  TUNNEL_API_ENCAP_DECAP_FLAG_NONE = 0,
   /** at encap, copy the DF bit of the payload into the tunnel header */
-  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DF = 0x1,
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF = 0x1,
   /** at encap, set the DF bit in the tunnel header */
-  IPIP_TUNNEL_API_FLAG_ENCAP_SET_DF = 0x2,
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_SET_DF = 0x2,
   /** at encap, copy the DSCP bits of the payload into the tunnel header */
-  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP = 0x4,
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP = 0x4,
   /** at encap, copy the ECN bit of the payload into the tunnel header */
-  IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN = 0x8,
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN = 0x8,
   /** at decap, copy the ECN bit of the tunnel header into the payload */
-  IPIP_TUNNEL_API_FLAG_DECAP_COPY_ECN = 0x10,
+  TUNNEL_API_ENCAP_DECAP_FLAG_DECAP_COPY_ECN = 0x10,
 };
+
+/**
+ * tunnel mode
+ */
+enum tunnel_mode : u8
+{
+  /** point-to-point */
+  TUNNEL_API_MODE_P2P,
+  /** multi-point */
+  TUNNEL_API_MODE_MP,
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

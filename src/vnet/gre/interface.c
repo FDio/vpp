@@ -44,23 +44,6 @@ format_gre_tunnel_type (u8 * s, va_list * args)
   return (s);
 }
 
-u8 *
-format_gre_tunnel_mode (u8 * s, va_list * args)
-{
-  gre_tunnel_mode_t mode = va_arg (*args, int);
-
-  switch (mode)
-    {
-#define _(n, v) case GRE_TUNNEL_MODE_##n:       \
-      s = format (s, "%s", v);                  \
-      break;
-      foreach_gre_tunnel_mode
-#undef _
-    }
-
-  return (s);
-}
-
 static u8 *
 format_gre_tunnel (u8 * s, va_list * args)
 {
@@ -73,7 +56,7 @@ format_gre_tunnel (u8 * s, va_list * args)
 	      t->outer_fib_index, t->sw_if_index);
 
   s = format (s, "payload %U ", format_gre_tunnel_type, t->type);
-  s = format (s, "%U ", format_gre_tunnel_mode, t->mode);
+  s = format (s, "%U ", format_tunnel_mode, t->mode);
 
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     s = format (s, "session %d ", t->session_id);
@@ -212,12 +195,12 @@ gre_nhrp_mk_key (const gre_tunnel_t * t,
     gre_mk_key4 (t->tunnel_src.ip4,
 		 nh->fp_addr.ip4,
 		 nhrp_entry_get_fib_index (ne),
-		 t->type, GRE_TUNNEL_MODE_P2P, 0, &key->gtk_v4);
+		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v4);
   else
     gre_mk_key6 (&t->tunnel_src.ip6,
 		 &nh->fp_addr.ip6,
 		 nhrp_entry_get_fib_index (ne),
-		 t->type, GRE_TUNNEL_MODE_P2P, 0, &key->gtk_v6);
+		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v6);
 }
 
 static void
@@ -336,7 +319,7 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   if (t->type == GRE_TUNNEL_TYPE_L3)
     {
-      if (t->mode == GRE_TUNNEL_MODE_P2P)
+      if (t->mode == TUNNEL_MODE_P2P)
 	hw_if_index =
 	  vnet_register_interface (vnm, gre_device_class.index, t_idx,
 				   gre_hw_interface_class.index, t_idx);
@@ -404,7 +387,7 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   gre_tunnel_db_add (t, &key);
 
-  if (t->mode == GRE_TUNNEL_MODE_MP)
+  if (t->mode == TUNNEL_MODE_MP)
     nhrp_walk_itf (t->sw_if_index, gre_tunnel_add_nhrp_walk, t);
 
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
@@ -460,7 +443,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  if (t->mode == GRE_TUNNEL_MODE_MP)
+  if (t->mode == TUNNEL_MODE_MP)
     nhrp_walk_itf (t->sw_if_index, gre_tunnel_delete_nhrp_walk, t);
 
   sw_if_index = t->sw_if_index;
@@ -518,7 +501,7 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
   if (a->session_id > GTK_SESSION_ID_MAX)
     return VNET_API_ERROR_INVALID_SESSION_ID;
 
-  if (a->mode == GRE_TUNNEL_MODE_MP && !ip46_address_is_zero (&a->dst))
+  if (a->mode == TUNNEL_MODE_MP && !ip46_address_is_zero (&a->dst))
     return (VNET_API_ERROR_INVALID_DST_ADDRESS);
 
   if (a->is_add)
@@ -572,7 +555,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u32 instance = ~0;
   u32 outer_table_id = 0;
   gre_tunnel_type_t t_type = GRE_TUNNEL_TYPE_L3;
-  gre_tunnel_mode_t t_mode = GRE_TUNNEL_MODE_P2P;
+  tunnel_mode_t t_mode = TUNNEL_MODE_P2P;
   u32 session_id = 0;
   int rv;
   u8 is_add = 1;
@@ -596,7 +579,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "outer-table-id %d", &outer_table_id))
 	;
       else if (unformat (line_input, "multipoint"))
-	t_mode = GRE_TUNNEL_MODE_MP;
+	t_mode = TUNNEL_MODE_MP;
       else if (unformat (line_input, "teb"))
 	t_type = GRE_TUNNEL_TYPE_TEB;
       else if (unformat (line_input, "erspan %d", &session_id))
@@ -615,7 +598,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  if (t_mode != GRE_TUNNEL_MODE_MP && ip46_address_is_zero (&dst))
+  if (t_mode != TUNNEL_MODE_MP && ip46_address_is_zero (&dst))
     {
       error = clib_error_return (0, "destination address not specified");
       goto done;

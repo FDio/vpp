@@ -842,7 +842,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
       rv =
 	ipip_add_tunnel (ipv6_set ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
 			 instance, &local_ip, &remote_ip, fib_index,
-			 IPIP_TUNNEL_FLAG_NONE, IP_DSCP_CS0, &sw_if_index);
+			 TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
+			 &sw_if_index);
       rv |=
 	ipsec_sa_add_and_lock (ipsec_tun_mk_local_sa_id (sw_if_index),
 			       local_spi, IPSEC_PROTOCOL_ESP, crypto_alg,

@@ -1014,8 +1014,8 @@ class TestGRE(VppTestCase):
             gre_if = VppGreInterface(self,
                                      itf.local_ip4,
                                      "0.0.0.0",
-                                     mode=(VppEnum.vl_api_gre_tunnel_mode_t.
-                                           GRE_API_TUNNEL_MODE_MP))
+                                     mode=(VppEnum.vl_api_tunnel_mode_t.
+                                           TUNNEL_API_MODE_MP))
             gre_if.add_vpp_config()
             gre_if.admin_up()
             gre_if.config_ip4()
@@ -1117,8 +1117,8 @@ class TestGRE(VppTestCase):
             gre_if = VppGreInterface(self,
                                      itf.local_ip6,
                                      "::",
-                                     mode=(VppEnum.vl_api_gre_tunnel_mode_t.
-                                           GRE_API_TUNNEL_MODE_MP))
+                                     mode=(VppEnum.vl_api_tunnel_mode_t.
+                                           TUNNEL_API_MODE_MP))
             gre_if.add_vpp_config()
             gre_if.admin_up()
             gre_if.config_ip6()

@@ -734,7 +734,6 @@ list(APPEND VNET_SOURCES
   ipip/sixrd.c
   ipip/ipip_api.c
   ipip/ipip_cli.c
-  ipip/ipip_types_api.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -743,12 +742,26 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   ipip/ipip.h
-  ipip/ipip_types_api.h
 )
 
 list(APPEND VNET_API_FILES
-  ipip/ipip_types.api
   ipip/ipip.api
+)
+
+##############################################################################
+# Tunnel infra
+##############################################################################
+list(APPEND VNET_SOURCES
+  tunnel/tunnel.c
+  tunnel/tunnel_types_api.c
+)
+
+list(APPEND VNET_API_FILES
+  tunnel/tunnel_types.api
+)
+
+list(APPEND VNET_HEADERS
+  tunnel/tunnel.h
 )
 
 ##############################################################################
