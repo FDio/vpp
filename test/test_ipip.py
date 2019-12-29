@@ -116,7 +116,7 @@ class TestIPIP(VppTestCase):
 
         self.pg1.generate_remote_hosts(5)
         self.pg1.configure_ipv4_neighbors()
-        e = VppEnum.vl_api_ipip_tunnel_flags_t
+        e = VppEnum.vl_api_tunnel_encap_decap_flags_t
         d = VppEnum.vl_api_ip_dscp_t
         self.p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         self.p_payload = UDP(sport=1234, dport=1234) / Raw(b'X' * 100)
@@ -133,15 +133,17 @@ class TestIPIP(VppTestCase):
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[0].ip4,
-            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP).add_vpp_config()
+            flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+        tun_dscp.add_vpp_config()
         # IPv4 transport that copies the DCSP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
             self,
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[1].ip4,
-            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP |
-                   e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN)).add_vpp_config()
+            flags=(e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+        tun_dscp_ecn.add_vpp_config()
         # IPv4 transport that copies the ECN from the payload and sets the
         # DF bit on encap. copies the ECN on decap
         tun_ecn = VppIpIpTunInterface(
@@ -149,9 +151,10 @@ class TestIPIP(VppTestCase):
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[2].ip4,
-            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN |
-                   e.IPIP_TUNNEL_API_FLAG_ENCAP_SET_DF |
-                   e.IPIP_TUNNEL_API_FLAG_DECAP_COPY_ECN)).add_vpp_config()
+            flags=(e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_SET_DF |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_DECAP_COPY_ECN))
+        tun_ecn.add_vpp_config()
         # IPv4 transport that sets a fixed DSCP in the encap and copies
         # the DF bit
         tun = VppIpIpTunInterface(
@@ -160,7 +163,8 @@ class TestIPIP(VppTestCase):
             self.pg0.local_ip4,
             self.pg1.remote_hosts[3].ip4,
             dscp=d.IP_API_DSCP_AF11,
-            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DF).add_vpp_config()
+            flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF)
+        tun.add_vpp_config()
 
         # array of all the tunnels
         tuns = [tun_dscp, tun_dscp_ecn, tun_ecn, tun]
@@ -657,7 +661,7 @@ class TestIPIP6(VppTestCase):
 
         self.pg1.generate_remote_hosts(5)
         self.pg1.configure_ipv6_neighbors()
-        e = VppEnum.vl_api_ipip_tunnel_flags_t
+        e = VppEnum.vl_api_tunnel_encap_decap_flags_t
         d = VppEnum.vl_api_ip_dscp_t
         self.p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         self.p_payload = UDP(sport=1234, dport=1234) / Raw(b'X' * 100)
@@ -674,15 +678,17 @@ class TestIPIP6(VppTestCase):
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[0].ip6,
-            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP).add_vpp_config()
+            flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+        tun_dscp.add_vpp_config()
         # IPv4 transport that copies the DCSP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
             self,
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[1].ip6,
-            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DSCP |
-                   e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN)).add_vpp_config()
+            flags=(e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+        tun_dscp_ecn.add_vpp_config()
         # IPv4 transport that copies the ECN from the payload and sets the
         # DF bit on encap. copies the ECN on decap
         tun_ecn = VppIpIpTunInterface(
@@ -690,9 +696,10 @@ class TestIPIP6(VppTestCase):
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[2].ip6,
-            flags=(e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_ECN |
-                   e.IPIP_TUNNEL_API_FLAG_ENCAP_SET_DF |
-                   e.IPIP_TUNNEL_API_FLAG_DECAP_COPY_ECN)).add_vpp_config()
+            flags=(e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_SET_DF |
+                   e.TUNNEL_API_ENCAP_DECAP_FLAG_DECAP_COPY_ECN))
+        tun_ecn.add_vpp_config()
         # IPv4 transport that sets a fixed DSCP in the encap and copies
         # the DF bit
         tun = VppIpIpTunInterface(
@@ -701,7 +708,8 @@ class TestIPIP6(VppTestCase):
             self.pg0.local_ip6,
             self.pg1.remote_hosts[3].ip6,
             dscp=d.IP_API_DSCP_AF11,
-            flags=e.IPIP_TUNNEL_API_FLAG_ENCAP_COPY_DF).add_vpp_config()
+            flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF)
+        tun.add_vpp_config()
 
         # array of all the tunnels
         tuns = [tun_dscp, tun_dscp_ecn, tun_ecn, tun]
