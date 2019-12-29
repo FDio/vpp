@@ -20,7 +20,7 @@
 
 #include <vlib/vlib.h>
 
-#define foreach_tunnel_mode \
+#define foreach_tunnel_mode     \
   _(P2P, "point-to-point")      \
   _(MP, "multi-point")          \
 
@@ -32,11 +32,12 @@ typedef enum tunnel_mode_t_
 } __clib_packed tunnel_mode_t;
 
 extern u8 *format_tunnel_mode (u8 * s, va_list * args);
+extern uword unformat_tunnel_mode (unformat_input_t * input, va_list * args);
 
 /**
  * Keep these idenitical to those in ipip.api
  */
-#define forech_tunnel_encap_decap_flag                     \
+#define forech_tunnel_encap_decap_flag              \
   _(NONE, "none", 0x0)                              \
   _(ENCAP_COPY_DF, "encap-copy-df", 0x1)            \
   _(ENCAP_SET_DF, "encap-set-df", 0x2)              \
