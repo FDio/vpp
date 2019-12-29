@@ -906,15 +906,19 @@ adj_nbr_show (vlib_main_t * vm,
 	      vlib_cli_command_t * cmd)
 {
     adj_index_t ai = ADJ_INDEX_INVALID;
+    ip46_address_t nh = ip46_address_initializer;
     u32 sw_if_index = ~0;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-	if (unformat (input, "%d", &ai))
+	if (unformat (input, "%U",
+                      unformat_vnet_sw_interface, vnet_get_main(),
+                      &sw_if_index))
 	    ;
 	else if (unformat (input, "%U",
-			   unformat_vnet_sw_interface, vnet_get_main(),
-			   &sw_if_index))
+			   unformat_ip46_address, &nh, IP46_TYPE_ANY))
+	    ;
+	else if (unformat (input, "%d", &ai))
 	    ;
 	else
 	    break;
@@ -931,12 +935,24 @@ adj_nbr_show (vlib_main_t * vm,
     {
 	fib_protocol_t proto;
 
-	for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
-	{
-	    adj_nbr_walk(sw_if_index, proto,
-			 adj_nbr_show_one,
-			 vm);
-	}
+        if (ip46_address_is_zero(&nh))
+        {
+            for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+            {
+                adj_nbr_walk(sw_if_index, proto,
+                             adj_nbr_show_one,
+                             vm);
+            }
+        }
+        else
+        {
+            proto = (ip46_address_is_ip4(&nh) ?
+                     FIB_PROTOCOL_IP4 :
+                     FIB_PROTOCOL_IP6);
+            adj_nbr_walk_nh(sw_if_index, proto, &nh,
+                            adj_nbr_show_one,
+                            vm);
+        }
     }
     else
     {

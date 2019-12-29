@@ -283,12 +283,10 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   ip46_address_t src = ip46_address_initializer, dst =
     ip46_address_initializer;
   ip_set (&src, ip4_src, true);
-  ipip_tunnel_key_t key = {
-    .transport = IPIP_TRANSPORT_IP4,
-    .fib_index = ip4_fib_index,
-    .src = src,
-    .dst = dst
-  };
+  ipip_tunnel_key_t key;
+
+  ipip_mk_key_i (IPIP_TRANSPORT_IP4, IPIP_MODE_6RD, &src, &dst, ip4_fib_index,
+		 &key);
 
   t = ipip_tunnel_db_find (&key);
   if (t)
@@ -377,6 +375,7 @@ sixrd_del_tunnel (u32 sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
   ipip_tunnel_t *t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
+  ipip_tunnel_key_t key;
 
   if (!t)
     {
@@ -408,7 +407,8 @@ sixrd_del_tunnel (u32 sw_if_index)
   gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
   vnet_delete_hw_interface (vnet_get_main (), t->hw_if_index);
-  ipip_tunnel_db_remove (t);
+  ipip_mk_key (t, &key);
+  ipip_tunnel_db_remove (t, &key);
   pool_put (gm->tunnels, t);
 
   return 0;
