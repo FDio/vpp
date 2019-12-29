@@ -83,9 +83,6 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  u32 next0 = IPIP_INPUT_NEXT_DROP;
-	  ip46_address_t src0 = ip46_address_initializer, dst0 =
-	    ip46_address_initializer;
-	  ipip_transport_t transport0;
 	  u8 inner_protocol0;
 
 	  bi0 = to_next[0] = from[0];
@@ -95,6 +92,11 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
+	  ipip_tunnel_key_t key0 = {
+	    .fib_index = vnet_buffer (b0)->ip.fib_index,
+	    .mode = IPIP_MODE_P2P,
+	  };
 
 	  if (is_ipv6)
 	    {
@@ -108,10 +110,10 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 
 	      vlib_buffer_advance (b0, sizeof (*ip60));
-	      ip_set (&src0, &ip60->src_address, false);
-	      ip_set (&dst0, &ip60->dst_address, false);
+	      ip_set (&key0.dst, &ip60->src_address, false);
+	      ip_set (&key0.src, &ip60->dst_address, false);
 	      inner_protocol0 = ip60->protocol;
-	      transport0 = IPIP_TRANSPORT_IP6;
+	      key0.transport = IPIP_TRANSPORT_IP6;
 	    }
 	  else
 	    {
@@ -125,25 +127,21 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto drop;
 		}
 	      vlib_buffer_advance (b0, sizeof (*ip40));
-	      ip_set (&src0, &ip40->src_address, true);
-	      ip_set (&dst0, &ip40->dst_address, true);
+	      ip_set (&key0.dst, &ip40->src_address, true);
+	      ip_set (&key0.src, &ip40->dst_address, true);
 	      inner_protocol0 = ip40->protocol;
-	      transport0 = IPIP_TRANSPORT_IP4;
+	      key0.transport = IPIP_TRANSPORT_IP4;
 	    }
 
 	  /*
 	   * Find tunnel. First a lookup for P2P tunnels, then a lookup
 	   * for multipoint tunnels
 	   */
-	  ipip_tunnel_key_t key0 = {.transport = transport0,
-	    .fib_index = vnet_buffer (b0)->ip.fib_index,
-	    .src = dst0,
-	    .dst = src0
-	  };
 	  ipip_tunnel_t *t0 = ipip_tunnel_db_find (&key0);
 	  if (!t0)
 	    {
 	      ip46_address_reset (&key0.dst);
+	      key0.mode = IPIP_MODE_6RD;
 	      t0 = ipip_tunnel_db_find (&key0);
 	      if (!t0)
 		{

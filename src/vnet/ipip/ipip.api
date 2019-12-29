@@ -67,6 +67,7 @@ typedef ipip_tunnel
 					   details/dump */
   u32 table_id;
   vl_api_tunnel_encap_decap_flags_t flags;
+  vl_api_tunnel_mode_t mode;
   vl_api_ip_dscp_t dscp; /* DSCP value for the tunnel encap,
                             ignored if ECNAP_COPY_DSCP flag is set */
 };

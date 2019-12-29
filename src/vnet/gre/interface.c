@@ -203,10 +203,14 @@ gre_nhrp_mk_key (const gre_tunnel_t * t,
 		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v6);
 }
 
+/**
+ * An NHRP entry has been added
+ */
 static void
 gre_nhrp_entry_added (const nhrp_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
+  const ip46_address_t *nh;
   gre_tunnel_key_t key;
   gre_tunnel_t *t;
   u32 sw_if_index;
@@ -221,16 +225,35 @@ gre_nhrp_entry_added (const nhrp_entry_t * ne)
   if (INDEX_INVALID == t_idx)
     return;
 
+  /* entry has been added on an interface for which there is a GRE tunnel */
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
+  if (t->mode != TUNNEL_MODE_MP)
+    return;
+
+  /* the next-hop (underlay) of the NHRP entry will form part of the key for
+   * ingress lookup to match packets to this interface */
   gre_nhrp_mk_key (t, ne, &key);
   gre_tunnel_db_add (t, &key);
+
+  /* update the rewrites for each of the adjacencies for this peer (overlay)
+   * using  the next-hop (underlay) */
+  mgre_walk_ctx_t ctx = {
+    .t = t,
+    .ne = ne
+  };
+  nh = nhrp_entry_get_peer (ne);
+  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+		   (ip46_address_is_ip4 (nh) ?
+		    FIB_PROTOCOL_IP4 :
+		    FIB_PROTOCOL_IP6), nh, mgre_mk_complete_walk, &ctx);
 }
 
 static void
 gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
+  const ip46_address_t *nh;
   gre_tunnel_key_t key;
   gre_tunnel_t *t;
   u32 sw_if_index;
@@ -247,8 +270,17 @@ gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
+  /* remove the next-hop as an ingress lookup key */
   gre_nhrp_mk_key (t, ne, &key);
   gre_tunnel_db_remove (t, &key);
+
+  nh = nhrp_entry_get_peer (ne);
+
+  /* make all the adjacencies incomplete */
+  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+		   (ip46_address_is_ip4 (nh) ?
+		    FIB_PROTOCOL_IP4 :
+		    FIB_PROTOCOL_IP6), nh, mgre_mk_incomplete_walk, t);
 }
 
 static walk_rc_t

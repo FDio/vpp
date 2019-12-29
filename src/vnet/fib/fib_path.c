@@ -1870,7 +1870,8 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
     }
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
     case FIB_PATH_TYPE_ATTACHED:
-	if (adj_recursive_loop_detect(path->fp_dpo.dpoi_index,
+	if (dpo_is_adj(&path->fp_dpo) &&
+            adj_recursive_loop_detect(path->fp_dpo.dpoi_index,
                                       entry_indicies))
 	{
 	    FIB_PATH_DBG(path, "recursive loop formed");

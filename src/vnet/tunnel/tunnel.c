@@ -34,6 +34,20 @@ format_tunnel_mode (u8 * s, va_list * args)
   return (s);
 }
 
+uword
+unformat_tunnel_mode (unformat_input_t * input, va_list * args)
+{
+  tunnel_mode_t *m = va_arg (*args, tunnel_mode_t *);
+
+  if (unformat (input, "p2p"))
+    *m = TUNNEL_MODE_P2P;
+  else if (unformat (input, "p2mp") || unformat (input, "mp"))
+    *m = TUNNEL_MODE_MP;
+  else
+    return 0;
+  return 1;
+}
+
 u8 *
 format_tunnel_encap_decap_flags (u8 * s, va_list * args)
 {

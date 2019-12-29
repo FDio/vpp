@@ -163,13 +163,13 @@ adj_delegate_format (u8* s, ip_adjacency_t *adj)
     {
         if (ad_vfts[aed->ad_type].adv_format)
         {
-            s = format(s, "{");
+            s = format(s, "\n  {");
             s = ad_vfts[aed->ad_type].adv_format(aed, s);
             s = format(s, "}");
         }
         else
         {
-            s = format(s, "{unknown delegate}");
+            s = format(s, "\n  {unknown delegate}");
         }
     }
 

@@ -76,22 +76,6 @@ nhrp_entry_adj_stack (const nhrp_entry_t * ne, adj_index_t ai)
   adj_midchain_delegate_stack (ai, ne->ne_fib_index, &ne->ne_nh);
 }
 
-static adj_walk_rc_t
-nhrp_entry_add_adj_walk (adj_index_t ai, void *ctx)
-{
-  nhrp_entry_adj_stack (ctx, ai);
-
-  return (ADJ_WALK_RC_CONTINUE);
-}
-
-static adj_walk_rc_t
-nhrp_entry_del_adj_walk (adj_index_t ai, void *ctx)
-{
-  adj_midchain_delegate_unstack (ai);
-
-  return (ADJ_WALK_RC_CONTINUE);
-}
-
 nhrp_entry_t *
 nhrp_entry_get (index_t nei)
 {
@@ -157,10 +141,6 @@ nhrp_entry_add (u32 sw_if_index,
 
       hash_set_mem (nhrp_db, ne->ne_key, nei);
 
-      adj_nbr_walk_nh (sw_if_index,
-		       ne->ne_nh.fp_proto,
-		       &ne->ne_key->nk_peer, nhrp_entry_add_adj_walk, ne);
-
       NHRP_NOTIFY (ne, nv_added);
     }
   else
@@ -179,10 +159,6 @@ nhrp_entry_del (u32 sw_if_index, const ip46_address_t * peer)
   if (ne != NULL)
     {
       hash_unset_mem (nhrp_db, ne->ne_key);
-
-      adj_nbr_walk_nh (sw_if_index,
-		       ne->ne_nh.fp_proto,
-		       &ne->ne_key->nk_peer, nhrp_entry_del_adj_walk, ne);
 
       NHRP_NOTIFY (ne, nv_deleted);
 
