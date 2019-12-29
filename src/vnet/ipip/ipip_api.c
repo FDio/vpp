@@ -40,6 +40,7 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
   tunnel_encap_decap_flags_t flags;
   ip46_address_t src, dst;
   ip46_type_t itype[2];
+  tunnel_mode_t mode;
 
   itype[0] = ip_address_decode (&mp->tunnel.src, &src);
   itype[1] = ip_address_decode (&mp->tunnel.dst, &dst);
@@ -61,6 +62,11 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
   if (rv)
     goto out;
 
+  rv = tunnel_mode_decode (mp->tunnel.mode, &mode);
+
+  if (rv)
+    goto out;
+
   fib_index = fib_table_find (fib_proto_from_ip46 (itype[0]),
 			      ntohl (mp->tunnel.table_id));
 
@@ -75,7 +81,8 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 			     IPIP_TRANSPORT_IP4),
 			    ntohl (mp->tunnel.instance), &src, &dst,
 			    fib_index, flags,
-			    ip_dscp_decode (mp->tunnel.dscp), &sw_if_index);
+			    ip_dscp_decode (mp->tunnel.dscp), mode,
+			    &sw_if_index);
     }
 
 out:

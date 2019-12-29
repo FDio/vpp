@@ -1,5 +1,6 @@
 from vpp_tunnel_interface import VppTunnelInterface
 from ipaddress import ip_address
+from vpp_papi import VppEnum
 
 
 class VppIpIpTunInterface(VppTunnelInterface):
@@ -9,13 +10,17 @@ class VppIpIpTunInterface(VppTunnelInterface):
 
     def __init__(self, test, parent_if, src, dst,
                  table_id=0, dscp=0x0,
-                 flags=0):
+                 flags=0, mode=None):
         super(VppIpIpTunInterface, self).__init__(test, parent_if)
         self.src = src
         self.dst = dst
         self.table_id = table_id
         self.dscp = dscp
         self.flags = flags
+        self.mode = mode
+        if not self.mode:
+            self.mode = (VppEnum.vl_api_tunnel_mode_t.
+                         TUNNEL_API_MODE_P2P)
 
     def add_vpp_config(self):
         r = self.test.vapi.ipip_add_tunnel(
@@ -26,6 +31,7 @@ class VppIpIpTunInterface(VppTunnelInterface):
                 'flags': self.flags,
                 'dscp': self.dscp,
                 'instance': 0xffffffff,
+                'mode': self.mode,
             })
         self.set_sw_if_index(r.sw_if_index)
         self.test.registry.register(self, self.test.logger)

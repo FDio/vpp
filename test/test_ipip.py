@@ -8,6 +8,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_nhrp import VppNhrp
 from vpp_papi import VppEnum
 from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
@@ -470,6 +471,116 @@ class TestIPIP(VppTestCase):
 
     def payload(self, len):
         return 'x' * len
+
+    def test_mipip4(self):
+        """ p2mp IPv4 tunnel Tests """
+
+        for itf in self.pg_interfaces:
+            #
+            # one underlay nh for each overlay/tunnel peer
+            #
+            itf.generate_remote_hosts(4)
+            itf.configure_ipv4_neighbors()
+
+            #
+            # Create an p2mo IPIP tunnel.
+            #  - set it admin up
+            #  - assign an IP Addres
+            #  - Add a route via the tunnel
+            #
+            ipip_if = VppIpIpTunInterface(self, itf,
+                                          itf.local_ip4,
+                                          "0.0.0.0",
+                                          mode=(VppEnum.vl_api_tunnel_mode_t.
+                                                TUNNEL_API_MODE_MP))
+            ipip_if.add_vpp_config()
+            ipip_if.admin_up()
+            ipip_if.config_ip4()
+            ipip_if.generate_remote_hosts(4)
+
+            self.logger.info(self.vapi.cli("sh adj"))
+            self.logger.info(self.vapi.cli("sh ip fib"))
+
+            #
+            # ensure we don't match to the tunnel if the source address
+            # is all zeros
+            #
+            # tx = self.create_tunnel_stream_4o4(self.pg0,
+            #                                    "0.0.0.0",
+            #                                    itf.local_ip4,
+            #                                    self.pg0.local_ip4,
+            #                                    self.pg0.remote_ip4)
+            # self.send_and_assert_no_replies(self.pg0, tx)
+
+            #
+            # for-each peer
+            #
+            for ii in range(1, 4):
+                route_addr = "4.4.4.%d" % ii
+
+                #
+                # route traffic via the peer
+                #
+                route_via_tun = VppIpRoute(
+                    self, route_addr, 32,
+                    [VppRoutePath(ipip_if._remote_hosts[ii].ip4,
+                                  ipip_if.sw_if_index)])
+                route_via_tun.add_vpp_config()
+
+                #
+                # Add a NHRP entry resolves the peer
+                #
+                nhrp = VppNhrp(self, ipip_if,
+                               ipip_if._remote_hosts[ii].ip4,
+                               itf._remote_hosts[ii].ip4)
+                nhrp.add_vpp_config()
+                self.logger.info(self.vapi.cli("sh adj nbr ipip0 %s" %
+                                               ipip_if._remote_hosts[ii].ip4))
+
+                #
+                # Send a packet stream that is routed into the tunnel
+                #  - packets are IPIP encapped
+                #
+                inner = (IP(dst=route_addr, src="5.5.5.5") /
+                         UDP(sport=1234, dport=1234) /
+                         Raw(b'0x44' * 100))
+                tx_e = [(Ether(dst=self.pg0.local_mac,
+                               src=self.pg0.remote_mac) /
+                         inner) for x in range(63)]
+
+                rxs = self.send_and_expect(self.pg0, tx_e, itf)
+
+                for rx in rxs:
+                    self.assertEqual(rx[IP].src, itf.local_ip4)
+                    self.assertEqual(rx[IP].dst, itf._remote_hosts[ii].ip4)
+
+                tx_i = [(Ether(dst=self.pg0.local_mac,
+                               src=self.pg0.remote_mac) /
+                         IP(src=itf._remote_hosts[ii].ip4,
+                            dst=itf.local_ip4) /
+                         IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4) /
+                         UDP(sport=1234, dport=1234) /
+                         Raw(b'0x44' * 100)) for x in range(63)]
+
+                self.logger.info(self.vapi.cli("sh ipip tunnel-hash"))
+                rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
+
+                #
+                # delete and re-add the NHRP
+                #
+                nhrp.remove_vpp_config()
+                self.send_and_assert_no_replies(self.pg0, tx_e)
+                self.send_and_assert_no_replies(self.pg0, tx_i)
+
+                nhrp.add_vpp_config()
+                rx = self.send_and_expect(self.pg0, tx_e, itf)
+                for rx in rxs:
+                    self.assertEqual(rx[IP].src, itf.local_ip4)
+                    self.assertEqual(rx[IP].dst, itf._remote_hosts[ii].ip4)
+                rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
+
+            ipip_if.admin_down()
+            ipip_if.unconfig_ip4()
 
 
 class TestIPIP6(VppTestCase):

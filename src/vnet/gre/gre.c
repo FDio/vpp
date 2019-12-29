@@ -18,7 +18,6 @@
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
 #include <vnet/adj/adj_midchain.h>
-#include <vnet/nhrp/nhrp.h>
 
 extern gre_main_t gre_main;
 
@@ -331,10 +330,38 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   gre_tunnel_stack (ai);
 }
 
-static adj_walk_rc_t
-mgre_mk_complete_walk (adj_index_t ai, void *ctx)
+adj_walk_rc_t
+mgre_mk_complete_walk (adj_index_t ai, void *data)
 {
-  nhrp_entry_adj_stack (ctx, ai);
+  mgre_walk_ctx_t *ctx = data;
+  adj_midchain_fixup_t f;
+
+  f = (ctx->t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP4 ?
+       gre4_fixup : gre6_fixup);
+
+  adj_nbr_midchain_update_rewrite
+    (ai, f, NULL, ADJ_FLAG_MIDCHAIN_IP_STACK,
+     gre_build_rewrite (vnet_get_main (),
+			ctx->t->sw_if_index,
+			adj_get_link_type (ai),
+			&nhrp_entry_get_nh (ctx->ne)->fp_addr));
+
+  nhrp_entry_adj_stack (ctx->ne, ai);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+adj_walk_rc_t
+mgre_mk_incomplete_walk (adj_index_t ai, void *data)
+{
+  gre_tunnel_t *t = data;
+  adj_midchain_fixup_t f;
+
+  f = (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP4 ? gre4_fixup : gre6_fixup);
+
+  adj_nbr_midchain_update_rewrite (ai, f, NULL, ADJ_FLAG_NONE, NULL);
+
+  adj_midchain_delegate_unstack (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -346,20 +373,11 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ip_adjacency_t *adj;
   nhrp_entry_t *ne;
   gre_tunnel_t *t;
-  adj_flags_t af;
-  u8 is_ipv6;
   u32 ti;
 
   adj = adj_get (ai);
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
-  is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
-  af = ADJ_FLAG_MIDCHAIN_IP_STACK;
-
-  adj_nbr_midchain_update_rewrite
-    (ai, !is_ipv6 ? gre4_fixup : gre6_fixup, NULL, af,
-     gre_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai),
-			&adj->sub_type.nbr.next_hop));
 
   ne = nhrp_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
 
@@ -367,8 +385,13 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
     // no NHRP entry to provide the next-hop
     return;
 
-  adj_nbr_walk_nh (sw_if_index, t->tunnel_dst.fp_proto,
-		   &adj->sub_type.nbr.next_hop, mgre_mk_complete_walk, ne);
+  mgre_walk_ctx_t ctx = {
+    .t = t,
+    .ne = ne
+  };
+  adj_nbr_walk_nh (sw_if_index,
+		   adj->ia_nh_proto,
+		   &adj->sub_type.nbr.next_hop, mgre_mk_complete_walk, &ctx);
 }
 #endif /* CLIB_MARCH_VARIANT */
 

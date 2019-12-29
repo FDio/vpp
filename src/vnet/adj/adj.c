@@ -182,7 +182,7 @@ format_ip_adjacency (u8 * s, va_list * args)
         s = format (s, "\n   flags:%U", format_adj_flags, adj->ia_flags);
         s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
-	s = format(s, "\n delegates:\n  ");
+	s = format(s, "\n delegates:");
         s = adj_delegate_format(s, adj);
 
 	s = format(s, "\n children:");
