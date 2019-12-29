@@ -82,7 +82,7 @@ static clib_error_t *create_ipip_tunnel_command_fn(vlib_main_t *vm,
                            &src,
                            &dst,
                            fib_index,
-                           IPIP_TUNNEL_FLAG_NONE,
+                           TUNNEL_ENCAP_DECAP_FLAG_NONE,
                            IP_DSCP_CS0,
                            &sw_if_index);
     }
@@ -192,7 +192,7 @@ static u8 *format_ipip_tunnel(u8 *s, va_list *args) {
 
   s = format(s, "table-ID %d sw-if-idx %d flags [%U] dscp %U",
              table_id, t->sw_if_index,
-             format_ipip_tunnel_flags, t->flags,
+             format_tunnel_encap_decap_flags, t->flags,
              format_ip_dscp, t->dscp);
 
   return s;

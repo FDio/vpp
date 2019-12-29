@@ -24,8 +24,8 @@ class VppGreInterface(VppInterface):
                            GRE_API_TUNNEL_TYPE_L3)
         self.t_mode = mode
         if not self.t_mode:
-            self.t_mode = (VppEnum.vl_api_gre_tunnel_mode_t.
-                           GRE_API_TUNNEL_MODE_P2P)
+            self.t_mode = (VppEnum.vl_api_tunnel_mode_t.
+                           TUNNEL_API_MODE_P2P)
 
     def add_vpp_config(self):
         r = self.test.vapi.gre_tunnel_add_del(

@@ -24,6 +24,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
+#include <vnet/tunnel/tunnel.h>
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 extern vnet_hw_interface_class_t mgre_hw_interface_class;
@@ -61,18 +62,6 @@ typedef enum gre_tunnel_type_t_
 
 extern u8 *format_gre_tunnel_type (u8 * s, va_list * args);
 
-#define foreach_gre_tunnel_mode \
-  _(P2P, "point-to-point")      \
-  _(MP, "multi-point")          \
-
-typedef enum gre_tunnel_mode_t_
-{
-#define _(n, s) GRE_TUNNEL_MODE_##n,
-  foreach_gre_tunnel_mode
-#undef _
-} __clib_packed gre_tunnel_mode_t;
-
-extern u8 *format_gre_tunnel_mode (u8 * s, va_list * args);
 
 /**
  * A GRE payload protocol registration
@@ -107,7 +96,7 @@ typedef struct gre_tunnel_key_common_t_
       u32 fib_index;
       u16 session_id;
       gre_tunnel_type_t type;
-      gre_tunnel_mode_t mode;
+      tunnel_mode_t mode;
     };
     u64 as_u64;
   };
@@ -215,7 +204,7 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   gre_tunnel_type_t type;
-  gre_tunnel_mode_t mode;
+  tunnel_mode_t mode;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
@@ -363,7 +352,7 @@ typedef struct
 {
   u8 is_add;
   gre_tunnel_type_t type;
-  gre_tunnel_mode_t mode;
+  tunnel_mode_t mode;
   u8 is_ipv6;
   u32 instance;
   ip46_address_t src, dst;
@@ -379,7 +368,7 @@ gre_mk_key4 (ip4_address_t src,
 	     ip4_address_t dst,
 	     u32 fib_index,
 	     gre_tunnel_type_t ttype,
-	     gre_tunnel_mode_t tmode, u16 session_id, gre_tunnel_key4_t * key)
+	     tunnel_mode_t tmode, u16 session_id, gre_tunnel_key4_t * key)
 {
   key->gtk_src = src;
   key->gtk_dst = dst;
@@ -402,7 +391,7 @@ gre_mk_key6 (const ip6_address_t * src,
 	     const ip6_address_t * dst,
 	     u32 fib_index,
 	     gre_tunnel_type_t ttype,
-	     gre_tunnel_mode_t tmode, u16 session_id, gre_tunnel_key6_t * key)
+	     tunnel_mode_t tmode, u16 session_id, gre_tunnel_key6_t * key)
 {
   key->gtk_src = *src;
   key->gtk_dst = *dst;

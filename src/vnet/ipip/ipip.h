@@ -22,7 +22,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/format.h>
 #include <vnet/ip/ip.h>
-#include <vnet/vnet.h>
+#include <vnet/tunnel/tunnel.h>
 
 extern vnet_hw_interface_class_t ipip_hw_interface_class;
 
@@ -65,28 +65,6 @@ typedef enum
 } ipip_mode_t;
 
 /**
- * Keep these idenitical to those in ipip.api
- */
-#define forech_ipip_tunnel_flag                     \
-  _(NONE, "none", 0x0)                              \
-  _(ENCAP_COPY_DF, "encap-copy-df", 0x1)            \
-  _(ENCAP_SET_DF, "encap-set-df", 0x2)              \
-  _(ENCAP_COPY_DSCP, "encap-copy-dscp", 0x4)        \
-  _(ENCAP_COPY_ECN, "encap-copy-ecn", 0x8)          \
-  _(DECAP_COPY_ECN, "decap-copy-ecn", 0x10)
-
-typedef enum ipip_tunnel_flags_t_
-{
-#define _(a,b,c) IPIP_TUNNEL_FLAG_##a = c,
-  forech_ipip_tunnel_flag
-#undef _
-} __clib_packed ipip_tunnel_flags_t;
-
-#define IPIP_TUNNEL_FLAG_MASK (0x1f)
-
-extern u8 *format_ipip_tunnel_flags (u8 * s, va_list * args);
-
-/**
  * @brief A representation of a IPIP tunnel
  */
 typedef struct
@@ -104,7 +82,7 @@ typedef struct
   u32 sw_if_index;
   u32 dev_instance;		/* Real device instance in tunnel vector */
   u32 user_instance;		/* Instance name being shown to user */
-  ipip_tunnel_flags_t flags;
+  tunnel_encap_decap_flags_t flags;
   ip_dscp_t dscp;
 
   struct
@@ -166,7 +144,7 @@ sixrd_get_addr_net (const ipip_tunnel_t * t, u64 dal)
 
 int ipip_add_tunnel (ipip_transport_t transport, u32 instance,
 		     ip46_address_t * src, ip46_address_t * dst,
-		     u32 fib_index, ipip_tunnel_flags_t flags,
+		     u32 fib_index, tunnel_encap_decap_flags_t flags,
 		     ip_dscp_t dscp, u32 * sw_if_indexp);
 int ipip_del_tunnel (u32 sw_if_index);
 int sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
