@@ -109,7 +109,11 @@ typedef struct
 
 #define LDBG(_lvl, _fmt, _args...) 					\
   if (ldp->debug > _lvl)						\
-    clib_warning ("ldp<%d>: " _fmt, getpid(), ##_args)
+    {									\
+      int errno_saved = errno;						\
+      clib_warning ("ldp<%d>: " _fmt, getpid(), ##_args);		\
+      errno = errno_saved;						\
+    }
 
 static ldp_main_t ldp_main = {
   .vlsh_bit_val = (1 << LDP_SID_BIT_MIN),
