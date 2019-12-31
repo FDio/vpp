@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "407b0bd3_3fb61264",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-12-31T13:58:38Z",
+      "side": 1,
+      "message": "verified in the testing. One comment is that the local and global has much similar code. Is it possible to merge them together?",
+      "range": {
+        "startLine": 220,
+        "startChar": 3,
+        "endLine": 220,
+        "endChar": 38
+      },
+      "revId": "dcfdef452b0c2f7ff3effc5c657823dbf6ab6ca5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
