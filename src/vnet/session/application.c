@@ -115,7 +115,7 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
     }
 
   fib_proto = session_endpoint_fib_proto (sep);
-  table_index = application_session_table (app, fib_proto);
+  table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
   handle = session_lookup_endpoint_listener (table_index, sep, 1);
   if (handle != SESSION_INVALID_HANDLE)
     {
@@ -133,10 +133,10 @@ app_listener_alloc_and_init (application_t * app,
 {
   app_listener_t *app_listener;
   transport_connection_t *tc;
+  u32 al_index, table_index;
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
-  u32 al_index;
   int rv;
 
   app_listener = app_listener_alloc (app);
@@ -151,7 +151,6 @@ app_listener_alloc_and_init (application_t * app,
       && session_endpoint_is_local ((session_endpoint_t *) sep))
     {
       session_type_t local_st;
-      u32 table_index;
 
       local_st = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
 						 sep->is_ip4);
@@ -213,7 +212,16 @@ app_listener_alloc_and_init (application_t * app,
        * connections */
       tc = session_get_transport (ls);
       if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-	session_lookup_add_connection (tc, lh);
+	{
+	  fib_protocol_t fib_proto;
+	  fib_proto = session_endpoint_fib_proto ((session_endpoint_t *) sep);
+	  table_index = session_lookup_get_index_for_fib (fib_proto,
+							  sep->fib_index);
+	  ASSERT (table_index != SESSION_TABLE_INVALID_INDEX);
+	  session_lookup_add_session_endpoint (table_index,
+					       (session_endpoint_t *) sep,
+					       lh);
+	}
     }
 
   if (!ls)

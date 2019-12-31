@@ -394,6 +394,9 @@ udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
     return -1;
   listener = udp_listener_get (li_index);
   listener->flags |= UDP_CONN_F_CONNECTED;
+  /* Fake udp listener, i.e., make sure session layer adds a udp instead of
+   * udpc listener to the lookup table */
+  ((session_endpoint_cfg_t *) lcl)->transport_proto = TRANSPORT_PROTO_UDP;
   return li_index;
 }
 
