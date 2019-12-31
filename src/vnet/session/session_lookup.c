@@ -1317,7 +1317,7 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
   for (fp = 0; fp < ARRAY_LEN (fib_index_to_table_index); fp++)
     {
       fib_index = app_namespace_get_fib_index (app_ns, fp);
-      st = session_table_get_for_fib_index (fp, fib_index);
+      st = session_table_get_or_alloc (fp, fib_index);
       if (st)
 	st->appns_index = app_namespace_index (app_ns);
     }
