@@ -206,6 +206,7 @@ typedef struct
   u32 sw_if_index;
   gre_tunnel_type_t type;
   tunnel_mode_t mode;
+  tunnel_encap_decap_flags_t flags;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
@@ -368,6 +369,7 @@ typedef struct
   ip46_address_t src, dst;
   u32 outer_table_id;
   u16 session_id;
+  tunnel_encap_decap_flags_t flags;
 } vnet_gre_tunnel_add_del_args_t;
 
 extern int vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,

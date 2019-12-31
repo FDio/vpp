@@ -762,6 +762,7 @@ list(APPEND VNET_API_FILES
 
 list(APPEND VNET_HEADERS
   tunnel/tunnel.h
+  tunnel/tunnel_dp.h
 )
 
 ##############################################################################
