@@ -89,6 +89,7 @@ static void vl_api_gre_tunnel_add_del_t_handler
 {
   vnet_gre_tunnel_add_del_args_t _a = { }, *a = &_a;
   vl_api_gre_tunnel_add_del_reply_t *rmp;
+  tunnel_encap_decap_flags_t flags;
   u32 sw_if_index = ~0;
   ip46_type_t itype[2];
   int rv = 0;
@@ -118,11 +119,17 @@ static void vl_api_gre_tunnel_add_del_t_handler
   if (rv)
     goto out;
 
+  rv = tunnel_encap_decap_flags_decode (mp->tunnel.flags, &flags);
+
+  if (rv)
+    goto out;
+
   a->is_add = mp->is_add;
   a->is_ipv6 = (itype[0] == IP46_TYPE_IP6);
   a->instance = ntohl (mp->tunnel.instance);
   a->session_id = ntohs (mp->tunnel.session_id);
   a->outer_table_id = ntohl (mp->tunnel.outer_table_id);
+  a->flags = flags;
 
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
