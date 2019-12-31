@@ -1474,6 +1474,71 @@ class ARPTestCase(VppTestCase):
                              self.pg0.remote_hosts[1].ip4,
                              self.pg0.remote_ip4)
 
+    def test_arp_table_swap(self):
+        #
+        # Generate some hosts on the LAN
+        #
+        N_NBRS = 4
+        self.pg1.generate_remote_hosts(N_NBRS)
+
+        for n in range(N_NBRS):
+            # a route thru each neighbour
+            VppIpRoute(self, "10.0.0.%d" % n, 32,
+                       [VppRoutePath(self.pg1.remote_hosts[n].ip4,
+                                     self.pg1.sw_if_index)]).add_vpp_config()
+
+            # resolve each neighbour
+            p1 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+                  ARP(op="is-at", hwdst=self.pg1.local_mac,
+                      hwsrc="00:00:5e:00:01:09", pdst=self.pg1.local_ip4,
+                      psrc=self.pg1.remote_hosts[n].ip4))
+
+            self.send_and_assert_no_replies(self.pg1, p1, "ARP reply")
+
+        self.logger.info(self.vapi.cli("sh ip neighbors"))
+
+        #
+        # swap the table pg1 is in
+        #
+        table = VppIpTable(self, 100).add_vpp_config()
+
+        self.pg1.unconfig_ip4()
+        self.pg1.set_table_ip4(100)
+        self.pg1.config_ip4()
+
+        #
+        # all neighbours are cleared
+        #
+        for n in range(N_NBRS):
+            self.assertFalse(find_nbr(self,
+                                      self.pg1.sw_if_index,
+                                      self.pg1.remote_hosts[n].ip4))
+
+        #
+        # packets to all neighbours generate ARP requests
+        #
+        for n in range(N_NBRS):
+            # a route thru each neighbour
+            VppIpRoute(self, "10.0.0.%d" % n, 32,
+                       [VppRoutePath(self.pg1.remote_hosts[n].ip4,
+                                     self.pg1.sw_if_index)],
+                       table_id=100).add_vpp_config()
+
+            p = (Ether(src=self.pg1.remote_hosts[n].mac,
+                       dst=self.pg1.local_mac) /
+                 IP(src=self.pg1.remote_hosts[n].ip4,
+                    dst="10.0.0.%d" % n) /
+                 Raw(b'0x5' * 100))
+            rxs = self.send_and_expect(self.pg1, [p], self.pg1)
+            for rx in rxs:
+                self.verify_arp_req(rx,
+                                    self.pg1.local_mac,
+                                    self.pg1.local_ip4,
+                                    self.pg1.remote_hosts[n].ip4)
+
+        self.pg1.unconfig_ip4()
+        self.pg1.set_table_ip4(0)
+
 
 class NeighborStatsTestCase(VppTestCase):
     """ ARP/ND Counters """

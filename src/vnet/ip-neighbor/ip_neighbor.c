@@ -339,7 +339,7 @@ ip_neighbor_mk_incomplete (adj_index_t ai)
 			  ethernet_build_rewrite (vnet_get_main (),
 						  adj->
 						  rewrite_header.sw_if_index,
-						  adj_get_link_type (ai),
+						  VNET_LINK_ARP,
 						  VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
 }
 
