@@ -19,7 +19,7 @@
 #include <vnet/ipip/ipip.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/pg/pg.h>
+#include <vnet/tunnel/tunnel_dp.h>
 #include <vppinfra/sparse_vec.h>
 
 #define foreach_ipip_input_next                                                \
@@ -159,29 +159,21 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP6_INPUT;
 
-	      if (t0->flags & TUNNEL_ENCAP_DECAP_FLAG_DECAP_COPY_ECN)
-		{
-		  if (is_ipv6)
-		    ip6_set_ecn_network_order ((ip60 + 1),
-					       ip6_ecn_network_order (ip60));
-		  else
-		    ip6_set_ecn_network_order ((ip6_header_t *) (ip40 + 1),
-					       ip4_header_get_ecn (ip40));
-		}
+	      if (is_ipv6)
+		tunnel_decap_fixup_6o6 (t0->flags, (ip60 + 1), ip60);
+	      else
+		tunnel_decap_fixup_6o4 (t0->flags,
+					(ip6_header_t *) (ip40 + 1), ip40);
 	    }
 	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP4_INPUT;
-	      if (t0->flags & TUNNEL_ENCAP_DECAP_FLAG_DECAP_COPY_ECN)
-		{
-		  if (is_ipv6)
-		    ip4_header_set_ecn_w_chksum ((ip4_header_t *) (ip60 + 1),
-						 ip6_ecn_network_order
-						 (ip60));
-		  else
-		    ip4_header_set_ecn_w_chksum (ip40 + 1,
-						 ip4_header_get_ecn (ip40));
-		}
+
+	      if (is_ipv6)
+		tunnel_decap_fixup_4o6 (t0->flags,
+					(ip4_header_t *) (ip60 + 1), ip60);
+	      else
+		tunnel_decap_fixup_4o4 (t0->flags, ip40 + 1, ip40);
 	    }
 
 	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD

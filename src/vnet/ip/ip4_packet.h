@@ -322,7 +322,7 @@ ip4_header_clear_df (ip4_header_t * ip4)
 }
 
 always_inline u8
-ip4_header_get_df (ip4_header_t * ip4)
+ip4_header_get_df (const ip4_header_t * ip4)
 {
   return (! !(ip4->flags_and_fragment_offset &
 	      clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)));

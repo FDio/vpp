@@ -34,6 +34,8 @@ enum gre_tunnel_type : u8
     @param context - sender context, to match reply w/ request
     @param tunnel_type - 0: L3, 1: TEB, 2: ERSPAN
     @param instance - optional unique custom device instance, else ~0.
+    @param mode - P2P or P2MP
+    @param flags - to control encap/decap behaviour
     @param src - Source IP address
     @param dst - Destination IP address, can be multicast
     @param outer_table_id - Encap FIB table ID
@@ -44,6 +46,7 @@ typedef gre_tunnel
 {
   vl_api_gre_tunnel_type_t type;
   vl_api_tunnel_mode_t mode;
+  vl_api_tunnel_encap_decap_flags_t flags;
   u16 session_id;
   u32 instance;
   u32 outer_table_id;
