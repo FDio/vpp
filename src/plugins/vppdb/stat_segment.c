@@ -647,7 +647,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
  * Accept connection on the socket and exchange the fd for the shared
  * memory segment.
  */
-clib_error_t *
+static clib_error_t *
 stats_socket_accept_ready (clib_file_t * uf)
 {
   stat_segment_main_t *sm = &stat_segment_main;
