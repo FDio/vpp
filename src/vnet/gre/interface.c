@@ -346,6 +346,7 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   t->type = a->type;
   t->mode = a->mode;
+  t->flags = a->flags;
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     t->session_id = a->session_id;
 

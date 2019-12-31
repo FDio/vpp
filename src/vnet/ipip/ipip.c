@@ -26,6 +26,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/ipip/ipip.h>
 #include <vnet/nhrp/nhrp.h>
+#include <vnet/tunnel/tunnel_dp.h>
 
 ipip_main_t ipip_main;
 
@@ -84,6 +85,18 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       if (t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_SET_DF)
 	ip4_header_set_df (ip4);
       ip4->checksum = ip4_header_checksum (ip4);
+
+      switch (link_type)
+	{
+	case VNET_LINK_IP6:
+	  ip4->protocol = IP_PROTOCOL_IPV6;
+	  break;
+	case VNET_LINK_IP4:
+	  ip4->protocol = IP_PROTOCOL_IP_IN_IP;
+	  break;
+	default:
+	  break;
+	}
       break;
 
     case IPIP_TRANSPORT_IP6:
@@ -99,14 +112,26 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
       ip6->dst_address.as_u64[1] = dst->ip6.as_u64[1];
       if (!(t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
 	ip6_set_dscp_network_order (ip6, t->dscp);
+
+      switch (link_type)
+	{
+	case VNET_LINK_IP6:
+	  ip6->protocol = IP_PROTOCOL_IPV6;
+	  break;
+	case VNET_LINK_IP4:
+	  ip6->protocol = IP_PROTOCOL_IP_IN_IP;
+	  break;
+	default:
+	  break;
+	}
       break;
     }
   return (rewrite);
 }
 
 static void
-ipip4_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
-	     const void *data)
+ipip64_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
   ip4_header_t *ip4;
@@ -115,41 +140,30 @@ ipip4_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
 
   ip4 = vlib_buffer_get_current (b);
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
-  switch (adj->ia_link)
-    {
-    case VNET_LINK_IP6:
-      ip4->protocol = IP_PROTOCOL_IPV6;
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
-	ip4_header_set_dscp (ip4,
-			     ip6_dscp_network_order ((ip6_header_t *) (ip4 +
-								       1)));
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
-	ip4_header_set_ecn (ip4,
-			    ip6_ecn_network_order ((ip6_header_t *) (ip4 +
-								     1)));
-      break;
-
-    case VNET_LINK_IP4:
-      ip4->protocol = IP_PROTOCOL_IP_IN_IP;
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
-	ip4_header_set_dscp (ip4, ip4_header_get_dscp (ip4 + 1));
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
-	ip4_header_set_ecn (ip4, ip4_header_get_ecn (ip4 + 1));
-      if ((flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DF) &&
-	  ip4_header_get_df (ip4 + 1))
-	ip4_header_set_df (ip4);
-      break;
-
-    default:
-      break;
-    }
+  tunnel_encap_fixup_6o4 (flags, ((ip6_header_t *) (ip4 + 1)), ip4);
 
   ip4->checksum = ip4_header_checksum (ip4);
 }
 
 static void
-ipip6_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
-	     const void *data)
+ipip44_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+	      const void *data)
+{
+  tunnel_encap_decap_flags_t flags;
+  ip4_header_t *ip4;
+
+  flags = pointer_to_uword (data);
+
+  ip4 = vlib_buffer_get_current (b);
+  ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
+  tunnel_encap_fixup_4o4 (flags, ip4 + 1, ip4);
+
+  ip4->checksum = ip4_header_checksum (ip4);
+}
+
+static void
+ipip46_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
   ip6_header_t *ip6;
@@ -164,29 +178,27 @@ ipip6_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
   ip6->payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
 			  sizeof (*ip6));
-  switch (adj->ia_link)
-    {
-    case VNET_LINK_IP6:
-      ip6->protocol = IP_PROTOCOL_IPV6;
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
-	ip6_set_dscp_network_order (ip6, ip6_dscp_network_order (ip6 + 1));
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
-	ip6_set_ecn_network_order (ip6, ip6_ecn_network_order (ip6 + 1));
-      break;
+  tunnel_encap_fixup_4o6 (flags, ((ip4_header_t *) (ip6 + 1)), ip6);
+}
 
-    case VNET_LINK_IP4:
-      ip6->protocol = IP_PROTOCOL_IP_IN_IP;
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
-	ip6_set_dscp_network_order
-	  (ip6, ip4_header_get_dscp ((ip4_header_t *) (ip6 + 1)));
-      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
-	ip6_set_ecn_network_order
-	  (ip6, ip4_header_get_ecn ((ip4_header_t *) (ip6 + 1)));
-      break;
+static void
+ipip66_fixup (vlib_main_t * vm,
+	      const ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
+{
+  tunnel_encap_decap_flags_t flags;
+  ip6_header_t *ip6;
 
-    default:
-      break;
-    }
+  flags = pointer_to_uword (data);
+
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ip6 = vlib_buffer_get_current (b);
+  ip6->payload_length =
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
+			  sizeof (*ip6));
+  tunnel_encap_fixup_6o6 (flags, ip6 + 1, ip6);
 }
 
 static void
@@ -246,10 +258,25 @@ ipip_tunnel_restack (ipip_tunnel_t * gt)
   }
 }
 
+static adj_midchain_fixup_t
+ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt)
+{
+  if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_IP6)
+    return (ipip66_fixup);
+  if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_IP4)
+    return (ipip46_fixup);
+  if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP6)
+    return (ipip64_fixup);
+  if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP4)
+    return (ipip44_fixup);
+
+  ASSERT (0);
+  return (ipip44_fixup);
+}
+
 void
 ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
-  adj_midchain_fixup_t f;
   ipip_tunnel_t *t;
   adj_flags_t af;
 
@@ -257,13 +284,13 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (!t)
     return;
 
-  f = t->transport == IPIP_TRANSPORT_IP6 ? ipip6_fixup : ipip4_fixup;
   af = ADJ_FLAG_MIDCHAIN_IP_STACK;
   if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
   adj_nbr_midchain_update_rewrite
-    (ai, f, uword_to_pointer (t->flags, void *), af,
+    (ai, ipip_get_fixup (t, adj_get_link_type (ai)),
+     uword_to_pointer (t->flags, void *), af,
      ipip_build_rewrite (vnm, sw_if_index,
 			 adj_get_link_type (ai), &t->tunnel_dst));
   ipip_tunnel_stack (ai);
@@ -279,12 +306,10 @@ static adj_walk_rc_t
 mipip_mk_complete_walk (adj_index_t ai, void *data)
 {
   mipip_walk_ctx_t *ctx = data;
-  adj_midchain_fixup_t f;
-
-  f = ctx->t->transport == IPIP_TRANSPORT_IP6 ? ipip6_fixup : ipip4_fixup;
 
   adj_nbr_midchain_update_rewrite
-    (ai, f, uword_to_pointer (ctx->t->flags, void *),
+    (ai, ipip_get_fixup (ctx->t, adj_get_link_type (ai)),
+     uword_to_pointer (ctx->t->flags, void *),
      ADJ_FLAG_MIDCHAIN_IP_STACK, ipip_build_rewrite (vnet_get_main (),
 						     ctx->t->sw_if_index,
 						     adj_get_link_type (ai),
@@ -300,11 +325,10 @@ static adj_walk_rc_t
 mipip_mk_incomplete_walk (adj_index_t ai, void *data)
 {
   ipip_tunnel_t *t = data;
-  adj_midchain_fixup_t f;
 
-  f = t->transport == IPIP_TRANSPORT_IP6 ? ipip6_fixup : ipip4_fixup;
-
-  adj_nbr_midchain_update_rewrite (ai, f, NULL, ADJ_FLAG_NONE, NULL);
+  adj_nbr_midchain_update_rewrite
+    (ai, ipip_get_fixup (t, adj_get_link_type (ai)),
+     NULL, ADJ_FLAG_NONE, NULL);
 
   adj_midchain_delegate_unstack (ai);
 
@@ -315,7 +339,6 @@ void
 mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   ipip_main_t *gm = &ipip_main;
-  adj_midchain_fixup_t f;
   ip_adjacency_t *adj;
   nhrp_entry_t *ne;
   ipip_tunnel_t *t;
@@ -324,7 +347,6 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   adj = adj_get (ai);
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
-  f = t->transport == IPIP_TRANSPORT_IP6 ? ipip6_fixup : ipip4_fixup;
 
   ne = nhrp_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
 
@@ -332,7 +354,8 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
     {
       // no NHRP entry to provide the next-hop
       adj_nbr_midchain_update_rewrite
-	(ai, f, uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
+	(ai, ipip_get_fixup (t, adj_get_link_type (ai)),
+	 uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
       return;
     }
 

@@ -10,7 +10,7 @@ class VppGreInterface(VppInterface):
     """
 
     def __init__(self, test, src_ip, dst_ip, outer_table_id=0,
-                 type=None, mode=None,
+                 type=None, mode=None, flags=0,
                  session=0):
         """ Create VPP GRE interface """
         super(VppGreInterface, self).__init__(test)
@@ -18,6 +18,7 @@ class VppGreInterface(VppInterface):
         self.t_dst = dst_ip
         self.t_outer_table = outer_table_id
         self.t_session = session
+        self.t_flags = flags
         self.t_type = type
         if not self.t_type:
             self.t_type = (VppEnum.vl_api_gre_tunnel_type_t.
@@ -29,12 +30,16 @@ class VppGreInterface(VppInterface):
 
     def add_vpp_config(self):
         r = self.test.vapi.gre_tunnel_add_del(
-            self.t_src,
-            self.t_dst,
-            outer_table_id=self.t_outer_table,
-            type=self.t_type,
-            mode=self.t_mode,
-            session_id=self.t_session)
+            is_add=1,
+            tunnel={
+                'src': self.t_src,
+                'dst': self.t_dst,
+                'outer_table_id': self.t_outer_table,
+                'instance': 0xffffffff,
+                'type': self.t_type,
+                'mode': self.t_mode,
+                'flags': self.t_flags,
+                'session_id': self.t_session})
         self.set_sw_if_index(r.sw_if_index)
         self.generate_remote_hosts()
         self.test.registry.register(self, self.test.logger)
@@ -42,13 +47,17 @@ class VppGreInterface(VppInterface):
 
     def remove_vpp_config(self):
         self.unconfig()
-        self.test.vapi.gre_tunnel_add_del(self.t_src,
-                                          self.t_dst,
-                                          outer_table_id=self.t_outer_table,
-                                          type=self.t_type,
-                                          mode=self.t_mode,
-                                          session_id=self.t_session,
-                                          is_add=0)
+        self.test.vapi.gre_tunnel_add_del(
+            is_add=0,
+            tunnel={
+                'src': self.t_src,
+                'dst': self.t_dst,
+                'outer_table_id': self.t_outer_table,
+                'instance': 0xffffffff,
+                'type': self.t_type,
+                'mode': self.t_mode,
+                'flags': self.t_flags,
+                'session_id': self.t_session})
 
     def object_id(self):
         return "gre-%d" % self.sw_if_index
