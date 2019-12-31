@@ -615,11 +615,11 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
       return -1;
     }
 
-  sep->transport_proto = TRANSPORT_PROTO_TCP;
   clib_memset (args, 0, sizeof (*args));
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
+  args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
   if (vnet_listen (args))
     return -1;
 

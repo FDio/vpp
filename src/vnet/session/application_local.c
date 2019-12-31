@@ -398,7 +398,7 @@ global_scope:
     return VNET_API_ERROR_APP_CONNECT_SCOPE;
 
   fib_proto = session_endpoint_fib_proto (sep);
-  table_index = application_session_table (app, fib_proto);
+  table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
   ll = session_lookup_listener_wildcard (table_index, sep);
 
   if (ll)
