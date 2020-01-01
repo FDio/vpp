@@ -245,14 +245,12 @@ ip6_link_delegate_flush (ip6_link_t * il)
 {
   ip6_link_delegate_t *ild;
 
-  /* *INDET-OFF* */
-  FOREACH_IP6_LINK_DELEGATE (ild, il, (
-					{
-					il_delegate_vfts[ild->
-							 ild_type].ildv_disable
-					(ild->ild_index);
-					}));
-  /* *INDET-ON* */
+  /* *INDENT-OFF* */
+  FOREACH_IP6_LINK_DELEGATE (ild, il,
+  ({
+    il_delegate_vfts[ild->ild_type].ildv_disable(ild->ild_index);
+  }));
+  /* *INDENT-ON* */
 
   vec_free (il->il_delegates);
   il->il_delegates = NULL;
