@@ -47,6 +47,8 @@ class IPsecIPv4Params(object):
         self.salt = 0
         self.flags = 0
         self.nat_header = None
+        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
+                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
 
 
 class IPsecIPv6Params(object):
@@ -177,8 +179,10 @@ class TemplateIpsec(VppTestCase):
         super(TemplateIpsec, cls).tearDownClass()
 
     def setup_params(self):
-        self.ipv4_params = IPsecIPv4Params()
-        self.ipv6_params = IPsecIPv6Params()
+        if not hasattr(self, 'ipv4_params'):
+            self.ipv4_params = IPsecIPv4Params()
+        if not hasattr(self, 'ipv6_params'):
+            self.ipv6_params = IPsecIPv6Params()
         self.params = {self.ipv4_params.addr_type: self.ipv4_params,
                        self.ipv6_params.addr_type: self.ipv6_params}
 
