@@ -1,0 +1,14 @@
+---
+name: IPSec crypto engine provided by Openssl library
+maintainer: Damjan Marion <damarion@cisco.com>
+features:
+  - SHA(1, 224, 256, 384, 512)
+  - CBC(128, 192, 256)
+  - GCM(128, 192, 256)
+  - CTR(128, 192, 256)
+  - DES, 3DES
+  - MD5
+
+description: "openssl crypto-engine"
+state: production
+properties: [API, CLI, MULTITHREAD]

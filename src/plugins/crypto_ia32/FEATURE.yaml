@@ -1,0 +1,10 @@
+---
+name: IPSec crypto engine provided by native implementation
+maintainer: Damjan Marion <damarion@cisco.com>
+features:
+  - CBC(128, 192, 256)
+  - GCM(128, 192, 256)
+
+description: "native crypto-engine"
+state: production
+properties: [API, CLI, MULTITHREAD]
