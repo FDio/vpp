@@ -1,0 +1,10 @@
+---
+name: Static http/https server (http_static)
+maintainer: Dave Barach <dave@barachs.net>
+features:
+  - An extensible static http/https server with caching
+description: "A simple caching static http / https server
+              A built-in vpp host stack application.
+              Supports HTTP GET and HTTP POST methods."
+state: production
+properties: [API, CLI, MULTITHREAD]
