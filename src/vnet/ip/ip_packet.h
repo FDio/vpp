@@ -42,6 +42,7 @@
 
 #include <vppinfra/byte_order.h>
 #include <vppinfra/error.h>
+#include <vppinfra/format.h>
 
 typedef enum ip_protocol
 {
@@ -119,6 +120,7 @@ typedef enum ip_dscp_t_
 } __clib_packed ip_dscp_t;
 
 extern u8 *format_ip_dscp (u8 * s, va_list * va);
+unformat_function_t unformat_ip_dscp;
 
 /**
  * IP DSCP bit shift

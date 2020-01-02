@@ -19,6 +19,7 @@
 #include <vnet/crypto/crypto.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_node.h>
+#include <vnet/tunnel/tunnel.h>
 
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
@@ -163,7 +164,9 @@ typedef struct
   u32 salt;
 
   ipsec_protocol_t protocol;
-  u8 __pad[3];
+  tunnel_encap_decap_flags_t tunnel_flags;
+  ip_dscp_t dscp;
+  u8 __pad[1];
 
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
@@ -258,6 +261,8 @@ extern int ipsec_sa_add_and_lock (u32 id,
 				  u32 salt,
 				  const ip46_address_t * tunnel_src_addr,
 				  const ip46_address_t * tunnel_dst_addr,
+				  tunnel_encap_decap_flags_t tunnel_flags,
+				  ip_dscp_t dscp,
 				  u32 * sa_index, u16 src_port, u16 dst_port);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);

@@ -2841,6 +2841,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
     def verify_encrypted(self, p, sa, rxs):
         for rx in rxs:
             try:
+                self.assertEqual(rx[IP].tos,
+                                 VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF << 2)
                 pkt = sa.decrypt(rx[IP])
                 if not pkt.haslayer(IP):
                     pkt = IP(pkt[Raw].load)
@@ -2887,20 +2889,24 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
             p.scapy_tra_spi = p.scapy_tra_spi + ii
             p.vpp_tra_sa_id = p.vpp_tra_sa_id + ii
             p.vpp_tra_spi = p.vpp_tra_spi + ii
-            p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
-                                      p.auth_algo_vpp_id, p.auth_key,
-                                      p.crypt_algo_vpp_id, p.crypt_key,
-                                      self.vpp_esp_protocol,
-                                      self.pg0.local_ip4,
-                                      self.pg0.remote_hosts[ii].ip4)
+            p.tun_sa_out = VppIpsecSA(
+                self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                p.auth_algo_vpp_id, p.auth_key,
+                p.crypt_algo_vpp_id, p.crypt_key,
+                self.vpp_esp_protocol,
+                self.pg0.local_ip4,
+                self.pg0.remote_hosts[ii].ip4,
+                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF)
             p.tun_sa_out.add_vpp_config()
 
-            p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
-                                     p.auth_algo_vpp_id, p.auth_key,
-                                     p.crypt_algo_vpp_id, p.crypt_key,
-                                     self.vpp_esp_protocol,
-                                     self.pg0.remote_hosts[ii].ip4,
-                                     self.pg0.local_ip4)
+            p.tun_sa_in = VppIpsecSA(
+                self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                p.auth_algo_vpp_id, p.auth_key,
+                p.crypt_algo_vpp_id, p.crypt_key,
+                self.vpp_esp_protocol,
+                self.pg0.remote_hosts[ii].ip4,
+                self.pg0.local_ip4,
+                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF)
             p.tun_sa_in.add_vpp_config()
 
             p.tun_protect = VppIpsecTunProtect(
