@@ -318,10 +318,11 @@ format_ipsec_sa (u8 * s, va_list * args)
     {
       tx_table_id = fib_table_get_table_id (sa->tx_fib_index,
 					    FIB_PROTOCOL_IP4);
-      s = format (s, "\n   table-ID %d tunnel src %U dst %U",
+      s = format (s, "\n   table-ID %d tunnel src %U dst %U flags %U",
 		  tx_table_id,
 		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
-		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY);
+		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY,
+		  format_tunnel_encap_decap_flags, sa->tunnel_flags);
       if (!ipsec_sa_is_set_IS_INBOUND (sa))
 	{
 	  s =
