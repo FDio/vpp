@@ -3,7 +3,6 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestVlib(VppTestCase):
@@ -30,25 +29,25 @@ class TestVlib(VppTestCase):
         """ Vlib main.c Code Coverage Test """
 
         cmds = ["loopback create",
-                "packet-generator new {\n"
-                " name vlib\n"
-                " limit 15\n"
-                " size 128-128\n"
-                " interface loop0\n"
-                " node ethernet-input\n"
-                " data {\n"
-                "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
-                "   ICMP: db00::1 -> db00::2\n"
-                "   incrementing 30\n"
-                "   }\n"
-                "}\n",
+                """packet-generator new {
+                name vlib
+                limit 15
+                size 128-128
+                interface loop0
+                node ethernet-input
+                data {
+                  IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00
+                  ICMP: db00::1 -> db00::2
+                  incrementing 30
+                  }
+                }""",
                 "elog trace dispatch",
                 "event-logger stop",
                 "event-logger clear",
                 "event-logger resize 102400",
                 "event-logger restart",
                 "pcap dispatch trace on max 100 buffer-trace pg-input 15",
-                "set pmc instructions-per-clock",
+                # "set pmc instructions-per-clock",
                 "pa en",
                 "show event-log 100 all",
                 "event-log save",
@@ -71,18 +70,18 @@ class TestVlib(VppTestCase):
         """ Vlib node_cli.c Code Coverage Test """
 
         cmds = ["loopback create",
-                "packet-generator new {\n"
-                " name vlib\n"
-                " limit 15\n"
-                " size 128-128\n"
-                " interface loop0\n"
-                " node ethernet-input\n"
-                " data {\n"
-                "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
-                "   ICMP: db00::1 -> db00::2\n"
-                "   incrementing 30\n"
-                "   }\n"
-                "}\n",
+                """packet-generator new {
+                name vlib
+                limit 15
+                size 128-128
+                interface loop0
+                node ethernet-input
+                data {
+                  IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00
+                  ICMP: db00::1 -> db00::2
+                  incrementing 30
+                  }
+                }""",
                 "show vlib graph",
                 "show vlib graph ethernet-input",
                 "show vlib graphviz",
@@ -115,18 +114,18 @@ class TestVlib(VppTestCase):
         """ Vlib buffer.c Code Coverage Test """
 
         cmds = ["loopback create",
-                "packet-generator new {\n"
-                " name vlib\n"
-                " limit 15\n"
-                " size 128-128\n"
-                " interface loop0\n"
-                " node ethernet-input\n"
-                " data {\n"
-                "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
-                "   ICMP: db00::1 -> db00::2\n"
-                "   incrementing 30\n"
-                "   }\n"
-                "}\n",
+                """packet-generator new {
+                name vlib
+                limit 15
+                size 128-128
+                interface loop0
+                node ethernet-input
+                data {
+                  IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00
+                  ICMP: db00::1 -> db00::2
+                  incrementing 30
+                  }
+                }""",
                 "elog trace",
                 "elog trace enable",
                 "elog trace api cli barrier",
@@ -182,6 +181,7 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
