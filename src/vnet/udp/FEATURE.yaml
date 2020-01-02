@@ -1,0 +1,9 @@
+---
+name: User Datagram Protocol (UDP)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - host stack integration via session layer
+  - standalone per port dispatcher for tunneling protocols
+description: "UDP implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
