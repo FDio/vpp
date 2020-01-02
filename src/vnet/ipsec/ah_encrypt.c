@@ -22,6 +22,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
+#include <vnet/tunnel/tunnel_dp.h>
 
 #define foreach_ah_encrypt_next \
   _ (DROP, "error-drop")                           \
@@ -209,8 +210,6 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       ssize_t adv;
       ih0 = vlib_buffer_get_current (b[0]);
-      pd->ttl = ih0->ip4.ttl;
-      pd->tos = ih0->ip4.tos;
 
       if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	{
@@ -250,6 +249,14 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  pd->hop_limit = ih6_0->ip6.hop_limit;
 	  pd->ip_version_traffic_class_and_flow_label =
 	    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
+
+	  if (!(sa0->tunnel_flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
+	    pd->ip_version_traffic_class_and_flow_label &=
+	      ~IP6_PACKET_DSCP_MASK;
+	  if (!(sa0->tunnel_flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+	    pd->ip_version_traffic_class_and_flow_label &=
+	      ~IP6_PACKET_ECN_MASK;
+
 	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
 	      next_hdr_type = IP_PROTOCOL_IPV6;
@@ -275,8 +282,16 @@ ah_encrypt_inline (vlib_main_t * vm,
 	{
 	  ip_hdr_size = sizeof (ip4_header_t);
 	  oh0 = vlib_buffer_get_current (b[0]);
-	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
+	  pd->ttl = ih0->ip4.ttl;
+	  pd->tos = ih0->ip4.tos;
+
+	  if (!(sa0->tunnel_flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
+	    pd->tos &= 0x3;
+	  if (!(sa0->tunnel_flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+	    pd->tos &= 0xfc;
+
 	  pd->current_data = b[0]->current_data;
+	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
 	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
