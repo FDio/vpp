@@ -44,6 +44,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.features = feature_mask;
       else if (unformat (line_input, "gso-enabled"))
 	args.gso_enabled = 1;
+      else if (unformat (line_input, "csum-enabled"))
+	args.checksum_offload_enabled = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -59,7 +61,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>] [gso-enabled]",
+                "[feature-mask <hex-mask>] [gso-enabled] [csum-enabled]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -114,6 +116,68 @@ VLIB_CLI_COMMAND (virtio_pci_delete_command, static) = {
   .short_help = "delete interface virtio "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = virtio_pci_delete_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  vnet_hw_interface_t *hw;
+  virtio_main_t *vim = &virtio_main;
+  virtio_if_t *vif;
+  vnet_main_t *vnm = vnet_get_main ();
+  int gso_enabled = 0, checksum_offload_enabled = 0;
+  int offloads_disabled = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "gso-enabled"))
+	gso_enabled = 1;
+      else if (unformat (line_input, "csum-offload-enabled"))
+	checksum_offload_enabled = 1;
+      else if (unformat (line_input, "offloads-disabled"))
+	offloads_disabled = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+    return clib_error_return (0, "not a virtio interface");
+
+  vif = pool_elt_at_index (vim->interfaces, hw->dev_instance);
+
+  if (virtio_pci_enable_disable_offloads
+      (vm, vif, gso_enabled, checksum_offload_enabled, offloads_disabled) < 0)
+    return clib_error_return (0, "not able to enable/disable offloads");
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (virtio_pci_enable_command, static) = {
+  .path = "set virtio pci",
+  .short_help = "set virtio pci {<interface> | sw_if_index <sw_idx>}"
+                " [gso-enabled | csum-offload-enabled | offloads-disabled]",
+  .function = virtio_pci_enable_command_fn,
 };
 /* *INDENT-ON* */
 
