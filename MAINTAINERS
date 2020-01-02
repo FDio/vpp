@@ -255,6 +255,7 @@ F:	src/vnet/session
 
 VNET TCP
 I:	tcp
+Y:	src/vnet/tcp/FEATURE.yaml
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
 
