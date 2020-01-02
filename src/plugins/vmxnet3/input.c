@@ -387,7 +387,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ethernet_header_t *e = (ethernet_header_t *) hb->data;
 
 	      next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-	      if (!ethernet_frame_is_tagged (e->type))
+	      if (!ethernet_frame_is_tagged (clib_net_to_host_u16 (e->type)))
 		vmxnet3_handle_offload (rx_comp, hb, gso_size);
 	    }
 
