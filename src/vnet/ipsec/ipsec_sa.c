@@ -178,8 +178,10 @@ ipsec_sa_add_and_lock (u32 id,
 		       u32 tx_table_id,
 		       u32 salt,
 		       const ip46_address_t * tun_src,
-		       const ip46_address_t * tun_dst, u32 * sa_out_index,
-		       u16 src_port, u16 dst_port)
+		       const ip46_address_t * tun_dst,
+		       tunnel_encap_decap_flags_t tunnel_flags,
+		       ip_dscp_t dscp,
+		       u32 * sa_out_index, u16 src_port, u16 dst_port)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -206,6 +208,8 @@ ipsec_sa_add_and_lock (u32 id,
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->flags = flags;
+  sa->tunnel_flags = tunnel_flags;
+  sa->dscp = dscp;
   sa->salt = salt;
   sa->encrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
   sa->decrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
@@ -297,6 +301,8 @@ ipsec_sa_add_and_lock (u32 id,
       if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
 	{
 	  sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
+	  ip6_set_dscp_network_order (&sa->ip6_hdr, sa->dscp);
+
 	  sa->ip6_hdr.hop_limit = 254;
 	  sa->ip6_hdr.src_address.as_u64[0] =
 	    sa->tunnel_src_addr.ip6.as_u64[0];
@@ -317,6 +323,7 @@ ipsec_sa_add_and_lock (u32 id,
 	  sa->ip4_hdr.ttl = 254;
 	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
 	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
+	  sa->ip4_hdr.tos = sa->dscp << 2;
 
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
 	    sa->ip4_hdr.protocol = IP_PROTOCOL_UDP;
