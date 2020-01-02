@@ -27,6 +27,7 @@
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vnet/fib/fib.h>
 #include <vnet/ipip/ipip.h>
+#include <vnet/tunnel/tunnel_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -330,6 +331,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip46_address_t tun_src = { }, tun_dst =
   {
   };
+  tunnel_encap_decap_flags_t tunnel_flags;
   ipsec_key_t crypto_key, integ_key;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -358,6 +360,12 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   if (rv)
     goto out;
 
+  rv =
+    tunnel_encap_decap_flags_decode (mp->entry.tunnel_flags, &tunnel_flags);
+
+  if (rv)
+    goto out;
+
   ipsec_key_decode (&mp->entry.crypto_key, &crypto_key);
   ipsec_key_decode (&mp->entry.integrity_key, &integ_key);
 
@@ -371,7 +379,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
 				crypto_alg, &crypto_key,
 				integ_alg, &integ_key, flags,
 				0, mp->entry.salt, &tun_src, &tun_dst,
-				&sa_index);
+				tunnel_flags, &sa_index);
   else
     rv = ipsec_sa_unlock_id (id);
 
@@ -661,7 +669,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 				  &integ_key,
 				  (flags | IPSEC_SA_FLAG_IS_INBOUND),
 				  ntohl (mp->tx_table_id),
-				  mp->salt, &remote_ip, &local_ip, NULL);
+				  mp->salt, &remote_ip, &local_ip,
+				  TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
 
       if (rv)
 	goto done;
@@ -675,7 +684,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 				  &integ_key,
 				  flags,
 				  ntohl (mp->tx_table_id),
-				  mp->salt, &local_ip, &remote_ip, NULL);
+				  mp->salt, &local_ip, &remote_ip,
+				  TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
 
       if (rv)
 	goto done;

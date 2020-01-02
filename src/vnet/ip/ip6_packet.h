@@ -307,31 +307,36 @@ typedef struct
   ip6_address_t src_address, dst_address;
 } ip6_header_t;
 
+#define IP6_PACKET_TC_MASK 0x0FF00000
+#define IP6_PACKET_DSCP_MASK 0x0FC00000
+#define IP6_PACKET_ECN_MASK 0x00300000
+
 always_inline ip_dscp_t
 ip6_traffic_class (const ip6_header_t * i)
 {
-  return (i->ip_version_traffic_class_and_flow_label & 0x0FF00000) >> 20;
+  return (i->ip_version_traffic_class_and_flow_label & IP6_PACKET_TC_MASK) >>
+    20;
 }
 
 static_always_inline ip_dscp_t
 ip6_traffic_class_network_order (const ip6_header_t * ip6)
 {
   return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & 0x0ff00000) >> 20;
+	  & IP6_PACKET_TC_MASK) >> 20;
 }
 
 static_always_inline ip_dscp_t
 ip6_dscp_network_order (const ip6_header_t * ip6)
 {
   return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & 0x0fc00000) >> 22;
+	  & IP6_PACKET_DSCP_MASK) >> 22;
 }
 
 static_always_inline ip_ecn_t
 ip6_ecn_network_order (const ip6_header_t * ip6)
 {
   return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & 0x00300000) >> 20;
+	  & IP6_PACKET_ECN_MASK) >> 20;
 }
 
 static_always_inline void
