@@ -306,7 +306,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	{
 	  clib_memcpy_fast (&oh0->ip4.address_pair,
 			    &sa0->ip4_hdr.address_pair,
-			    sizeof (ip4_address_t));
+			    sizeof (ip4_address_pair_t));
 
 	  next[0] = sa0->dpo.dpoi_next_node;
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;

@@ -10,7 +10,7 @@ from scapy.layers.inet6 import IPv6
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
     IpsecTun4, IpsecTun6,  IpsecTcpTests, mk_scapy_crypt_key, \
-    IpsecTun6HandoffTests, IpsecTun4HandoffTests
+    IpsecTun6HandoffTests, IpsecTun4HandoffTests, config_tun_params
 from vpp_ipsec_tun_interface import VppIpsecTunInterface
 from vpp_gre_interface import VppGreInterface
 from vpp_ipip_tun_interface import VppIpIpTunInterface
@@ -26,14 +26,16 @@ def config_tun_params(p, encryption_type, tun_if):
     esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                              IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
+    p.tun_dst = tun_if.remote_ip
+    p.tun_src = tun_if.local_ip
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
-            src=tun_if.remote_ip,
-            dst=tun_if.local_ip),
+            src=p.tun_dst,
+            dst=p.tun_src),
         nat_t_header=p.nat_header,
         esn_en=esn_en)
     p.vpp_tun_sa = SecurityAssociation(
@@ -42,8 +44,8 @@ def config_tun_params(p, encryption_type, tun_if):
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
-            dst=tun_if.remote_ip,
-            src=tun_if.local_ip),
+            dst=p.tun_dst,
+            src=p.tun_src),
         nat_t_header=p.nat_header,
         esn_en=esn_en)
 
@@ -53,6 +55,8 @@ def config_tra_params(p, encryption_type, tun_if):
     esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                              IPSEC_API_SAD_FLAG_USE_ESN))
     crypt_key = mk_scapy_crypt_key(p)
+    p.tun_dst = tun_if.remote_ip
+    p.tun_src = tun_if.local_ip
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -1233,8 +1237,8 @@ class TemplateIpsec4TunProtect(object):
                                   p.auth_algo_vpp_id, p.auth_key,
                                   p.crypt_algo_vpp_id, p.crypt_key,
                                   self.vpp_esp_protocol,
-                                  self.tun_if.remote_addr[p.addr_type],
                                   self.tun_if.local_addr[p.addr_type],
+                                  self.tun_if.remote_addr[p.addr_type],
                                   flags=p.flags)
         p.tun_sa_out.add_vpp_config()
 
@@ -1563,8 +1567,8 @@ class TemplateIpsec6TunProtect(object):
                                   p.auth_algo_vpp_id, p.auth_key,
                                   p.crypt_algo_vpp_id, p.crypt_key,
                                   self.vpp_esp_protocol,
-                                  self.tun_if.remote_addr[p.addr_type],
-                                  self.tun_if.local_addr[p.addr_type])
+                                  self.tun_if.local_addr[p.addr_type],
+                                  self.tun_if.remote_addr[p.addr_type])
         p.tun_sa_out.add_vpp_config()
 
         p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,

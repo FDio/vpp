@@ -98,6 +98,8 @@ def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
     esn_en = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                              IPSEC_API_SAD_FLAG_USE_ESN))
+    p.tun_dst = tun_if.remote_addr[p.addr_type]
+    p.tun_src = tun_if.local_addr[p.addr_type]
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
@@ -105,8 +107,8 @@ def config_tun_params(p, encryption_type, tun_if):
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
-            src=tun_if.remote_addr[p.addr_type],
-            dst=tun_if.local_addr[p.addr_type]),
+            src=p.tun_dst,
+            dst=p.tun_src),
         nat_t_header=p.nat_header,
         esn_en=esn_en)
     p.vpp_tun_sa = SecurityAssociation(
@@ -115,8 +117,8 @@ def config_tun_params(p, encryption_type, tun_if):
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
-            dst=tun_if.remote_addr[p.addr_type],
-            src=tun_if.local_addr[p.addr_type]),
+            dst=p.tun_dst,
+            src=p.tun_src),
         nat_t_header=p.nat_header,
         esn_en=esn_en)
 
@@ -843,6 +845,10 @@ class IpsecTun4(object):
                                              self.tun_if, n_rx)
             self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
 
+            for rx in recv_pkts:
+                self.assertEqual(rx[IP].src, p.tun_src)
+                self.assertEqual(rx[IP].dst, p.tun_dst)
+
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
@@ -1068,6 +1074,10 @@ class IpsecTun6(object):
                                        payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
             self.verify_encrypted6(p_out, p_out.vpp_tun_sa, recv_pkts)
+
+            for rx in recv_pkts:
+                self.assertEqual(rx[IPv6].src, p_out.tun_src)
+                self.assertEqual(rx[IPv6].dst, p_out.tun_dst)
 
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
