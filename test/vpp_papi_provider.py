@@ -946,10 +946,6 @@ class VppPapiProvider(object):
                         {'spd_index': spd_index if spd_index else 0,
                          'spd_index_valid': 1 if spd_index else 0})
 
-    def ipsec_sa_dump(self, sa_id=None):
-        return self.api(self.papi.ipsec_sa_dump,
-                        {'sa_id': sa_id if sa_id else 0xffffffff})
-
     def ipsec_spd_entry_add_del(self,
                                 spd_id,
                                 sa_id,
