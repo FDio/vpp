@@ -17,6 +17,7 @@
 option version = "3.0.0";
 
 import "vnet/ip/ip_types.api";
+import "vnet/tunnel/tunnel_types.api";
 
 /*
  * @brief Support cryptographic algorithms
@@ -121,6 +122,7 @@ typedef ipsec_sad_entry
 
   vl_api_address_t tunnel_src;
   vl_api_address_t tunnel_dst;
+  vl_api_tunnel_encap_decap_flags_t tunnel_flags;
   u32 tx_table_id;
   u32 salt;
 };

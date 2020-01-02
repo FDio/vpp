@@ -135,7 +135,9 @@ ipsec_sa_add_and_lock (u32 id,
 		       u32 tx_table_id,
 		       u32 salt,
 		       const ip46_address_t * tun_src,
-		       const ip46_address_t * tun_dst, u32 * sa_out_index)
+		       const ip46_address_t * tun_dst,
+		       tunnel_encap_decap_flags_t tunnel_flags,
+		       u32 * sa_out_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -162,6 +164,7 @@ ipsec_sa_add_and_lock (u32 id,
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->flags = flags;
+  sa->tunnel_flags = tunnel_flags;
   sa->salt = salt;
   sa->encrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
   sa->decrypt_thread_index = (vlib_num_workers ())? ~0 : 0;

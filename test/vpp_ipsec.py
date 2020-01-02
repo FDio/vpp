@@ -189,7 +189,7 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None, salt=0):
+                 flags=None, salt=0, tun_flags=None):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -214,6 +214,10 @@ class VppIpsecSA(VppObject):
                 self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
             self.tun_dst = ip_address(text_type(tun_dst))
+        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
+                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        if tun_flags:
+            self.tun_flags = tun_flags
 
     def add_vpp_config(self):
         r = self.test.vapi.ipsec_sad_entry_add_del(
@@ -226,6 +230,7 @@ class VppIpsecSA(VppObject):
             self.proto,
             (self.tun_src if self.tun_src else []),
             (self.tun_dst if self.tun_dst else []),
+            tunnel_flags=self.tun_flags,
             flags=self.flags,
             salt=self.salt)
         self.stat_index = r.stat_index
