@@ -17,9 +17,9 @@ schema = {
     "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
-        "maintainer": {"type": "string"},
+        "maintainer": {"$ref": "#/definitions/maintainers"},
         "state": {"type": "string",
-                  "enum": ["production", "experimental"]},
+                  "enum": ["production", "experimental", "development"]},
         "features": {"$ref": "#/definitions/features"},
         "missing": {"$ref": "#/definitions/features"},
         "properties": {"type": "array",
@@ -30,6 +30,14 @@ schema = {
     },
     "additionalProperties": False,
     "definitions": {
+        "maintainers": {
+            "anyof": [{
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                },
+                {"type": "string"}],
+        },
         "featureobject": {
             "type": "object",
             "patternProperties": {
@@ -86,7 +94,11 @@ def output_features(indent, fl):
 def output_markdown(features):
     for k, v in features.items():
         print('# {}'.format(v['name']))
-        print('Maintainer: {}  '.format(v['maintainer']))
+        if type(v['maintainer']) is list:
+            print('Maintainers: ' +
+                  ', '.join('{}'.format(m) for m in v['maintainer']))
+        else:
+            print('Maintainer: {}  '.format(v['maintainer']))
         print('State: {}\n'.format(v['state']))
         print('{}\n'.format(v['description']))
         output_features(0, v['features'])
