@@ -1,0 +1,14 @@
+---
+name: Transport Layer Security (TLS)
+maintainer:
+  - Florin Coras <fcoras@cisco.com>
+  - Ping Yu <ping.yu@intel.com>
+features:
+  - Framework that supports pluggable TLS engines
+  - OpenSSL, Picotls and MbedTLS engines
+description: "TLS protocol implementation that consists of a set of engines
+              that act as wrappers for existing TLS implementations, e.g.,
+              OpenSSL, Picotls and MbedTLS, and a framework that integrates
+              the engines into VPP's host stack"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]

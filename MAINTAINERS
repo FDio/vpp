@@ -294,6 +294,7 @@ M:	Ping Yu <ping.yu@intel.com>
 F:	src/vnet/tls
 F:	src/plugins/tlsopenssl
 F:	src/plugins/tlsmbedtls
+F:	src/plugins/tlspicotls
 
 VNET SYSLOG
 I:	syslog
