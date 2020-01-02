@@ -260,6 +260,7 @@ F:	src/vnet/tcp
 
 VNET UDP
 I:	udp
+Y:	src/vnet/udp/FEATURE.yaml
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/udp
 
