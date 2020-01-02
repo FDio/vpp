@@ -700,10 +700,10 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 				     u32 * n_fifo_pairs)
 {
   u32 rx_rounded_data_size, tx_rounded_data_size, pair_size, pairs_to_alloc;
+  u32 hdrs, pairs_per_slice, alloc_now;
   fifo_segment_header_t *fsh = fs->h;
   int rx_fl_index, tx_fl_index, i;
   fifo_segment_slice_t *fss;
-  u32 hdrs, pairs_per_slice;
   uword space_available;
 
   /* Parameter check */
@@ -735,6 +735,7 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   pairs_to_alloc = space_available / pair_size;
   pairs_to_alloc = clib_min (pairs_to_alloc, *n_fifo_pairs);
   pairs_per_slice = pairs_to_alloc / fs->n_slices;
+  pairs_per_slice += pairs_to_alloc % fs->n_slices ? 1 : 0;
 
   if (!pairs_per_slice)
     return;
@@ -742,14 +743,15 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   for (i = 0; i < fs->n_slices; i++)
     {
       fss = fsh_slice_get (fsh, i);
-      if (fs_try_alloc_fifo_batch (fsh, fss, rx_fl_index, pairs_to_alloc))
-	clib_warning ("rx prealloc failed: pairs %u", pairs_to_alloc);
-      if (fs_try_alloc_fifo_batch (fsh, fss, tx_fl_index, pairs_to_alloc))
-	clib_warning ("tx prealloc failed: pairs %u", pairs_to_alloc);
-    }
+      alloc_now = clib_min (pairs_per_slice, *n_fifo_pairs);
+      if (fs_try_alloc_fifo_batch (fsh, fss, rx_fl_index, alloc_now))
+	clib_warning ("rx prealloc failed: pairs %u", alloc_now);
+      if (fs_try_alloc_fifo_batch (fsh, fss, tx_fl_index, alloc_now))
+	clib_warning ("tx prealloc failed: pairs %u", alloc_now);
 
-  /* Account for the pairs allocated */
-  *n_fifo_pairs -= pairs_per_slice * fs->n_slices;
+      /* Account for the pairs allocated */
+      *n_fifo_pairs -= alloc_now;
+    }
 }
 
 int
