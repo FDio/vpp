@@ -1399,6 +1399,7 @@ class VppPapiProvider(object):
                                 protocol,
                                 tunnel_src_address='',
                                 tunnel_dst_address='',
+                                tunnel_flags=0,
                                 flags=0,
                                 salt=0,
                                 is_add=1):
@@ -1427,6 +1428,7 @@ class VppPapiProvider(object):
                         'spi': spi,
                         'tunnel_src': tunnel_src_address,
                         'tunnel_dst': tunnel_dst_address,
+                        'tunnel_flags': tunnel_flags,
                         'protocol': protocol,
                         'integrity_algorithm': integrity_algorithm,
                         'integrity_key': {

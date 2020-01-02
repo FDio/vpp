@@ -1,7 +1,10 @@
 import socket
 import unittest
 from scapy.layers.ipsec import ESP
-from scapy.layers.inet import UDP
+from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from parameterized import parameterized
 from framework import VppTestRunner
@@ -106,6 +109,7 @@ class ConfigIpsecESP(TemplateIpsec):
         addr_bcast = params.addr_bcast
         e = VppEnum.vl_api_ipsec_spd_action_t
         flags = params.flags
+        tun_flags = params.tun_flags
         salt = params.salt
         objs = []
 
@@ -115,6 +119,7 @@ class ConfigIpsecESP(TemplateIpsec):
                                       self.vpp_esp_protocol,
                                       self.tun_if.local_addr[addr_type],
                                       self.tun_if.remote_addr[addr_type],
+                                      tun_flags=tun_flags,
                                       flags=flags,
                                       salt=salt)
         params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
@@ -123,6 +128,7 @@ class ConfigIpsecESP(TemplateIpsec):
                                        self.vpp_esp_protocol,
                                        self.tun_if.remote_addr[addr_type],
                                        self.tun_if.local_addr[addr_type],
+                                       tun_flags=tun_flags,
                                        flags=flags,
                                        salt=salt)
         objs.append(params.tun_sa_in)
@@ -292,6 +298,50 @@ class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
                     IpsecTra6ExtTests):
     """ Ipsec ESP - TUN & TRA tests """
     pass
+
+
+class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
+    """ Ipsec ESP - TUN encap tests """
+
+    def setUp(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+
+        c = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
+             TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+        c1 = c | (VppEnum.vl_api_tunnel_encap_decap_flags_t.
+                  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
+
+        self.ipv4_params.tun_flags = c
+        self.ipv6_params.tun_flags = c1
+
+        super(TestIpsecEspTun, self).setUp()
+
+    def gen_pkts(self, sw_intf, src, dst, count=1, payload_size=54):
+        # set the DSCP + ECN - flags are set to copy only DSCP
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IP(src=src, dst=dst, tos=5) /
+                UDP(sport=4444, dport=4444) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+        # set the DSCP + ECN - flags are set to copy both
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IPv6(src=src, dst=dst, tc=5) /
+                UDP(sport=4444, dport=4444) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_encrypted(self, p, sa, rxs):
+        # just check that only the DSCP is copied
+        for rx in rxs:
+            self.assertEqual(rx[IP].tos, 4)
+
+    def verify_encrypted6(self, p, sa, rxs):
+        # just check that the DSCP & ECN are copied
+        for rx in rxs:
+            self.assertEqual(rx[IPv6].tc, 5)
 
 
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):

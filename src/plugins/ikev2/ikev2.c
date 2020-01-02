@@ -1569,13 +1569,15 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
 			       &a->loc_ckey, a->integ_type, &a->loc_ikey,
 			       a->flags, 0, a->salt_local, &a->local_ip,
-			       &a->remote_ip, NULL);
+			       &a->remote_ip,
+			       TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
   rv |= ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
 			       a->integ_type, &a->rem_ikey,
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
 			       a->salt_remote, &a->remote_ip,
-			       &a->local_ip, NULL);
+			       &a->local_ip,
+			       TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
 
   u32 *sas_in = NULL;
   vec_add1 (sas_in, a->remote_sa_id);

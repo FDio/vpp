@@ -149,7 +149,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
 				&ck, integ_alg, &ik, flags,
 				0, clib_host_to_net_u32 (salt),
-				&tun_src, &tun_dst, NULL);
+				&tun_src, &tun_dst,
+				TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
   else
     rv = ipsec_sa_unlock_id (id);
 
@@ -849,14 +850,15 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 			       local_spi, IPSEC_PROTOCOL_ESP, crypto_alg,
 			       &lck, integ_alg, &lik, flags, table_id,
 			       clib_host_to_net_u32 (salt), &local_ip,
-			       &remote_ip, NULL);
+			       &remote_ip,
+			       TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
       rv |=
 	ipsec_sa_add_and_lock (ipsec_tun_mk_remote_sa_id (sw_if_index),
 			       remote_spi, IPSEC_PROTOCOL_ESP, crypto_alg,
 			       &rck, integ_alg, &rik,
 			       (flags | IPSEC_SA_FLAG_IS_INBOUND), table_id,
 			       clib_host_to_net_u32 (salt), &remote_ip,
-			       &local_ip, NULL);
+			       &local_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE, NULL);
       rv |=
 	ipsec_tun_protect_update_one (sw_if_index,
 				      ipsec_tun_mk_local_sa_id (sw_if_index),
