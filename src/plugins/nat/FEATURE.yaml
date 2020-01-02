@@ -1,0 +1,27 @@
+---
+name: Network Address Translation (NAT)
+maintainer:
+  - Ole Troan <ot@cisco.com>
+  - Filip Varga <fivarga@cisco.com>
+features:
+  - NAT44:
+      - 1:1 NAT
+      - 1:1 NAT with ports
+      - VRF awareness
+      - Multiple inside interfaces
+      - Hairpinning
+      - IPFIX
+      - Syslog
+      - Endpoint dependent NAT
+      - TCP MSS clamping
+      - Local bypass (DHCP)
+  - CGN - deterministic NAT
+  - NAT64
+  - NAT66
+  - DS-lite
+  - 464XLAT
+description: "The NAT plugin offers a multiple address translation functions.
+              These can be used in a raft of different scenarios. CPE, CGN,
+              etc."
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
