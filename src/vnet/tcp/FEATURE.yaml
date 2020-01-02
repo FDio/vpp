@@ -1,0 +1,14 @@
+name: Transmission Control Protocol (TCP)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+        - Core functionality (RFC793, RFC5681)
+        - Extensions for high performance (RFC7323)
+        - Congestion control extensions (RFC3465, RFC8312)
+        - Loss recovery extensions (RFC2018, RFC3042, RFC6582, RFC6675, RFC6937)
+        - Detection and prevention of spurious retransits (RFC3522)
+        - Partly implemented (RFC1122, RFC4898, RFC5961, RFC6691)
+        - Delivery rate estimation (draft-cheng-iccrg-delivery-rate-estimation-00)
+description: "High speed/scale TCP implementation"
+state: production
+properties: [API, CLI, MULTITHREAD]
+
