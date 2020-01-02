@@ -22,6 +22,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
+#include <vnet/tunnel/tunnel_dp.h>
 
 #define foreach_ah_encrypt_next \
   _ (DROP, "error-drop")                           \
@@ -111,12 +112,13 @@ typedef struct
 {
   union
   {
+    /* Variable fields in the IP header not covered by the AH
+     * integrity check */
     struct
     {
       u8 hop_limit;
       u32 ip_version_traffic_class_and_flow_label;
     };
-
     struct
     {
       u8 ttl;
@@ -209,8 +211,6 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       ssize_t adv;
       ih0 = vlib_buffer_get_current (b[0]);
-      pd->ttl = ih0->ip4.ttl;
-      pd->tos = ih0->ip4.tos;
 
       if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	{
@@ -246,10 +246,20 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  ip_hdr_size = sizeof (ip6_header_t);
 	  oh6_0 = vlib_buffer_get_current (b[0]);
 	  pd->current_data = b[0]->current_data;
-
 	  pd->hop_limit = ih6_0->ip6.hop_limit;
-	  pd->ip_version_traffic_class_and_flow_label =
+
+	  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 	    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
+
+	  ip6_set_dscp_network_order (&oh6_0->ip6, sa0->dscp);
+
+	  tunnel_encap_fixup_6o6 (sa0->tunnel_flags,
+				  &ih6_0->ip6, &oh6_0->ip6);
+
+	  pd->ip_version_traffic_class_and_flow_label =
+	    oh6_0->ip6.ip_version_traffic_class_and_flow_label;
+	  oh6_0->ip6.ip_version_traffic_class_and_flow_label = 0;
+
 	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
 	      next_hdr_type = IP_PROTOCOL_IPV6;
@@ -275,8 +285,24 @@ ah_encrypt_inline (vlib_main_t * vm,
 	{
 	  ip_hdr_size = sizeof (ip4_header_t);
 	  oh0 = vlib_buffer_get_current (b[0]);
-	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
+	  pd->ttl = ih0->ip4.ttl;
+
+	  if (sa0->dscp)
+	    pd->tos = sa0->dscp << 2;
+	  else
+	    {
+	      pd->tos = ih0->ip4.tos;
+	      if (!
+		  (sa0->tunnel_flags &
+		   TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
+		pd->tos &= 0x3;
+	      if (!
+		  (sa0->tunnel_flags &
+		   TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+		pd->tos &= 0xfc;
+	    }
 	  pd->current_data = b[0]->current_data;
+	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
 	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {

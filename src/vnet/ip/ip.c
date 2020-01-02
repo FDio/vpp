@@ -155,6 +155,24 @@ format_ip_dscp (u8 * s, va_list * va)
   return (format (s, "unknown"));
 }
 
+uword
+unformat_ip_dscp (unformat_input_t * input, va_list * args)
+{
+  ip_dscp_t *dscp = va_arg (*args, ip_dscp_t *);
+
+  if (0)
+    ;
+#define _(n,v)                                                  \
+  else if (unformat (input, #v))                                \
+    *dscp = IP_DSCP_##v;
+  foreach_ip_dscp
+#undef _
+    else
+    return 0;
+
+  return 1;
+}
+
 u8 *
 format_ip_ecn (u8 * s, va_list * va)
 {
