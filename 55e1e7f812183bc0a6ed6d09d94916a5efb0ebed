@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "03a5fb78_4cb691e3",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-01-03T04:25:45Z",
+      "side": 1,
+      "message": "L3",
+      "parentUuid": "b6ba5739_811d8514",
+      "range": {
+        "startLine": 9,
+        "startChar": 25,
+        "endLine": 9,
+        "endChar": 26
+      },
+      "revId": "55e1e7f812183bc0a6ed6d09d94916a5efb0ebed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55277eee_f95a391b",
         "filename": "src/plugins/abf/FEATURE.yaml",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "55e1e7f812183bc0a6ed6d09d94916a5efb0ebed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1eee551f_9c2e16dd",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-01-03T04:25:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "55277eee_f95a391b",
+      "range": {
+        "startLine": 15,
+        "startChar": 25,
+        "endLine": 15,
+        "endChar": 32
+      },
+      "revId": "55e1e7f812183bc0a6ed6d09d94916a5efb0ebed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
