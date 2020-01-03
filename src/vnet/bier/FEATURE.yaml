@@ -1,0 +1,12 @@
+---
+name: Bit Indexed Explicit Replication
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Multicast Using Bit Index Explicit Replication
+    (https://tools.ietf.org/html/rfc8279)
+  - Encapsulation for Bit Index Explicit Replication (BIER) in MPLS and
+    Non-MPLS Networks (https://tools.ietf.org/html/rfc8296)
+
+description: "BIER"
+state: production
+properties: [API, CLI, MULTITHREAD]
