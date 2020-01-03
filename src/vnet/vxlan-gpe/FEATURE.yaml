@@ -1,0 +1,10 @@
+---
+name: VxLAN-GPE
+maintainer: Hongjun Ni <hongjun.ni@intel.com>
+features:
+  - VxLAN-GPE decapsulation
+  - VxLAN-GPE encapsulation
+
+description: "VxLAN-GPE tunnel handling"
+state: production
+properties: [API, CLI, MULTITHREAD]
