@@ -213,6 +213,8 @@ F:	src/vnet/lldp/
 
 VNET LISP
 I:	lisp
+Y:	src/vnet/lisp-cp/FEATURE.yaml
+Y:	src/vnet/lisp-gpe/FEATURE.yaml
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
