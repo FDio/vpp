@@ -27,6 +27,7 @@ import "vnet/pci/pci_types.api";
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_random not set
     @param gso_enabled - enable gso feature if available, 1 to enable
+    @param checksum_offload_enabled - enable checksum feature if available, 1 to enable
     @param features - the virtio features which driver should negotiate with device
 */
 define virtio_pci_create
@@ -37,6 +38,7 @@ define virtio_pci_create
   bool use_random_mac;
   vl_api_mac_address_t mac_address;
   bool gso_enabled;
+  bool checksum_offload_enabled;
   u64 features;
 };
 
