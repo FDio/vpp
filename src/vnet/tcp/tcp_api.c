@@ -22,6 +22,8 @@
 
 #include <vnet/tcp/tcp.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -51,20 +53,25 @@ static void
   vl_api_tcp_configure_src_addresses_reply_t *rmp;
   u32 vrf_id;
   int rv;
+  ip46_address_t first_address, last_address;
+  ip46_type_t fa_af, la_af;
 
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
 
-  if (mp->is_ipv6)
-    rv = tcp_configure_v6_source_address_range
-      (vm,
-       (ip6_address_t *) mp->first_address,
-       (ip6_address_t *) mp->last_address, vrf_id);
-  else
-    rv = tcp_configure_v4_source_address_range
-      (vm,
-       (ip4_address_t *) mp->first_address,
-       (ip4_address_t *) mp->last_address, vrf_id);
+  fa_af = ip_address_decode (&mp->first_address, &first_address);
+  la_af = ip_address_decode (&mp->last_address, &last_address);
 
+  if (fa_af != la_af)
+    goto error;
+
+  if (fa_af == IP46_TYPE_IP6)
+    rv = tcp_configure_v6_source_address_range
+      (vm, &first_address.ip6, &last_address.ip6, vrf_id);
+  else if (fa_af == IP46_TYPE_IP4)
+    rv = tcp_configure_v4_source_address_range
+      (vm, &first_address.ip4, &last_address.ip4, vrf_id);
+
+error:
   REPLY_MACRO (VL_API_TCP_CONFIGURE_SRC_ADDRESSES_REPLY);
 }
 
