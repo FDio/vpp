@@ -225,6 +225,7 @@ typedef struct
   u8 mac_addr[6];
   u64 features;
   u8 gso_enabled;
+  u8 checksum_offload_enabled;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 
@@ -233,7 +234,10 @@ extern void device_status (vlib_main_t * vm, virtio_if_t * vif);
 void virtio_pci_create_if (vlib_main_t * vm,
 			   virtio_pci_create_if_args_t * args);
 int virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * ad);
-
+int virtio_pci_enable_disable_offloads (vlib_main_t * vm, virtio_if_t * vif,
+					int gso_enabled,
+					int checksum_offload_enabled,
+					int offloads_disabled);
 #endif /* __included_virtio_pci_h__ */
 /*
  * fd.io coding-style-patch-verification: ON

@@ -7507,6 +7507,7 @@ api_virtio_pci_create (vat_main_t * vam)
   u8 mac_address[6];
   u8 random_mac = 1;
   u8 gso_enabled = 0;
+  u8 checksum_offload_enabled = 0;
   u32 pci_addr = 0;
   u64 features = (u64) ~ (0ULL);
   int ret;
@@ -7526,6 +7527,8 @@ api_virtio_pci_create (vat_main_t * vam)
 	;
       else if (unformat (i, "gso-enabled"))
 	gso_enabled = 1;
+      else if (unformat (i, "csum-offload-enabled"))
+	checksum_offload_enabled = 1;
       else
 	break;
     }
@@ -7548,6 +7551,7 @@ api_virtio_pci_create (vat_main_t * vam)
 
   mp->features = clib_host_to_net_u64 (features);
   mp->gso_enabled = gso_enabled;
+  mp->checksum_offload_enabled = checksum_offload_enabled;
 
   if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);
@@ -20721,7 +20725,7 @@ _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(virtio_pci_create,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled]") \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled | csum-offload-enabled]") \
 _(virtio_pci_delete,                                                    \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_virtio_pci_dump, "")                                     \
