@@ -1,0 +1,21 @@
+---
+name: Layer 2 Forwarding (L2)
+maintainer: John Lo <loj@cisco.com>
+features:
+  - L2 Cross-connect (xconnect) of two interfaces
+  - L2 Bridging of multiple interfaces in a bridge domain (BD):
+    - Forwarding via destination MAC address of packet
+    - MAC learning enable/disable on BD or per interface
+    - MAC aging with specified aging interval enable/disable
+    - Unicast forwarding enable/disable
+    - Unknown unicast flooding enable/disable
+    - Multicast/broadcast flooding enable/disable
+    - ARP-termination to avoid flooding of ARP requests
+    - Enable/disable unicast of ARP requests instead of flooding
+    - BVI (Bridge Virtual Interface) for IP forwarding from or to BD
+    - Set interface in BD to send unknown unicast packets instead of flooding
+    - Support of split horizon group (SHG) on BD interfaces
+  - VLAN tag rewrite on L2 bridging or xconnect interfaces
+description: "Layer 2 Bridging and Cross-Connect Support"
+state: production
+properties: [API, CLI, MULTITHREAD]
