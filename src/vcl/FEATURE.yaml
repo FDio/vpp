@@ -1,0 +1,22 @@
+---
+name: VPP Comms Library (VCL)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - Abstracts vpp host stack sessions to integer session handles
+  - Exposes its own async communication functions, i.e., epoll, select, poll
+  - Supports multi-worker applications
+  - Sessions cannot be shared between multiple threads/processes
+  - VCL Locked Sessions (VLS):
+      - Ensure through locking that only one thread accesses a session at a
+        time
+      - Detects and registers forked processes as new VCL workers. It does not
+        register threads as new workers.
+  - LD_PRELOAD shim (LDP):
+      - Intercepts syscalls and injects them into VLS.
+      - Applications that are supported work with VCL and implicitly with VPP's
+        host stack without any code change
+      - It does not support all syscalls and syscall options
+description: "VCL simplifies app interaction with session layer by exposing
+              APIs that are similar to but not POSIX-compliant."
+state: production
+properties: [API, CLI, MULTITHREAD]

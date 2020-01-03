@@ -579,6 +579,7 @@ F:	extras/libmemif
 
 VPP Comms Library
 I:	vcl
+Y:	src/vnet/vcl/FEATURE.yaml
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vcl
 
