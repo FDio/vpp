@@ -1,0 +1,15 @@
+---
+name: Data-Plane Objects
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - A DPO is a generic term (a.k.a abstract base class) for objects that
+    perform [a set of] actions on packets in the data-plane
+  - Concrete examples of DPO types are; adjacency, mpls-imposition, replication.
+  - DPOs are stacked/joined to form a processing graph that packets traverse
+    to describe the full set of actions a packet should experience.
+  - DPO graphs can be rooted at any point in the VLIB graph - notable examples
+    are L3 FIB lookup, ABF, L3XC.
+
+description: "DPO"
+state: production
+properties: [API, CLI, MULTITHREAD]
