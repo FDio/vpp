@@ -249,6 +249,7 @@ F:	src/vnet/bier/
 
 VNET Session Layer
 I:	session
+Y:	src/vnet/session/FEATURE.yaml
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/session
 

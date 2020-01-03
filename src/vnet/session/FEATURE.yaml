@@ -1,0 +1,29 @@
+---
+name: Session Layer
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - Manages allocation and tracking of sessions (6-tuple lookup tables)
+  - App namespaces that constrain application access to network resources
+  - Conveys data and notifications (ctrl and io) between transport protocols
+    and apps
+  - Transport protocol interface:
+      - Provides generic transport protocol template
+      - Converts between transport and application representation of data
+      - Schedules sessions/connections for sending
+  - Application interface:
+      - Maintains per application state
+      - Manages allocation of shared memory resources used for exchanging data
+        between applications and transports
+      - Exposes a native C and a binary api for builtin and external apps
+        respectively
+description: "The session layer facilitates the interaction between northbound
+              applications and southbound transport protocols. To this end,
+              northbound, through the app-interface sub layer, the session
+              layer exposes APIs for applications to interact with abstract
+              units of communication, i.e., sessions. And southbound, through
+              the transport protocol interface, it exposes APIs that allow
+              transport protocols to exchange data and events (ctrl and io)
+              with applications, without actually being aware of how that
+              communication is carried out."
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
