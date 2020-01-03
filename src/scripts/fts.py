@@ -6,7 +6,7 @@ import ipaddress
 import yaml
 from pprint import pprint
 import re
-from jsonschema import validate
+from jsonschema import validate, exceptions
 import argparse
 from subprocess import run, PIPE
 
@@ -96,10 +96,11 @@ def output_markdown(features):
         print('# {}'.format(v['name']))
         if type(v['maintainer']) is list:
             print('Maintainers: ' +
-                  ', '.join('{}'.format(m) for m in v['maintainer']))
+                  ', '.join('{}'.format(m) for m in
+                            v['maintainer']) + '  ')
         else:
             print('Maintainer: {}  '.format(v['maintainer']))
-        print('State: {}\n'.format(v['state']))
+        print('State: {}  \n'.format(v['state']))
         print('{}\n'.format(v['description']))
         output_features(0, v['features'])
         if 'missing' in v:
@@ -137,7 +138,12 @@ def main():
         # Load configuration file
         with open(featurefile) as f:
             cfg = yaml.load(f, Loader=yaml.SafeLoader)
-        validate(instance=cfg, schema=schema)
+        try:
+            validate(instance=cfg, schema=schema)
+        except exceptions.ValidationError:
+            print('File does not validate: {}'.format(featurefile),
+                  file=sys.stderr)
+            raise
         features[featurefile] = cfg
 
     if args.markdown:

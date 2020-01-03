@@ -68,7 +68,7 @@ DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml yamllint
+DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 # python3.6 on 16.04 requires python36-dev
@@ -93,7 +93,6 @@ RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
-RPM_DEPENDS += yamllint
 RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 
 ifeq ($(OS_ID),fedora)
@@ -629,9 +628,8 @@ cscope: cscope.files
 	@cscope -b -q -v
 
 .PHONY: checkstyle
-checkstyle:
+checkstyle: checkfeaturelist
 	@build-root/scripts/checkstyle.sh
-	yamllint $(WS_ROOT)/src
 
 .PHONY: checkstyle-commit
 checkstyle-commit:
@@ -665,7 +663,7 @@ featurelist: centos-pyyaml
 
 .PHONY: checkfeaturelist
 checkfeaturelist: centos-pyyaml
-	@build-root/scripts/fts.py --validate --git-status
+	@build-root/scripts/fts.py --validate --all
 
 #
 # Build the documentation
