@@ -621,6 +621,8 @@ __clib_unused
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
   if (mp->gso_enabled)
     s = format (s, "gso-enabled");
+  if (mp->checksum_offload_enabled)
+    s = format (s, "checksum_offload_enabled");
   FINISH;
 }
 
