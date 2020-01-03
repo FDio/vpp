@@ -498,6 +498,8 @@ session_unlisten_handler (session_unlisten_reply_msg_t * mp)
   echo_main_t *em = &echo_main;
 
   ls = echo_get_session_from_handle (em, mp->handle);
+  if (!ls)
+    return;
   em->proto_cb_vft->cleanup_cb (ls, 0 /* parent_died */ );
   ls->session_state = ECHO_SESSION_STATE_CLOSED;
   if (--em->listen_session_cnt == 0)
