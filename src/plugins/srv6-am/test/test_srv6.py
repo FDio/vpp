@@ -546,9 +546,18 @@ class TestSRv6(VppTestCase):
 
         # TODO: test behavior with SL=0 packet (needs 2*SRH?)
 
+        expected_count = len(pkts)
+
+        # packets without SRH (should not crash)
+        packet_header = self.create_packet_header_IPv6('a3::')
+        # create traffic stream pg0->pg1
+        pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
+                                       self.pg_packet_sizes, count))
+
         # send packets and verify received packets
         self.send_and_verify_pkts(self.pg0, pkts, self.pg1,
-                                  self.compare_rx_tx_packet_End)
+                                  self.compare_rx_tx_packet_End,
+                                  expected_count=expected_count)
 
         # log the localsid counters
         self.logger.info(self.vapi.cli("show sr localsid"))
@@ -1823,13 +1832,16 @@ class TestSRv6(VppTestCase):
         self.logger.info("Done creating packets")
         return pkts
 
-    def send_and_verify_pkts(self, input, pkts, output, compare_func):
+    def send_and_verify_pkts(self, input, pkts, output, compare_func,
+                             expected_count=None):
         """Send packets and verify received packets using compare_func
 
         :param input: ingress interface of DUT
         :param pkts: list of packets to transmit
         :param output: egress interface of DUT
         :param compare_func: function to compare in and out packets
+        :param expected_count: expected number of captured packets (if
+               different than len(pkts))
         """
         # add traffic stream to input interface
         input.add_stream(pkts)
@@ -1843,7 +1855,7 @@ class TestSRv6(VppTestCase):
 
         # get output capture
         self.logger.info("Getting packet capture")
-        capture = output.get_capture()
+        capture = output.get_capture(expected_count=expected_count)
 
         # assert nothing was captured on input interface
         input.assert_nothing_captured()
@@ -2126,13 +2138,18 @@ class TestSRv6(VppTestCase):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
+        # FIXME: there is no need to check manually that all the packets
+        #        arrived (already done so by get_capture); checking here
+        #        prevents testing packets that are expected to be dropped, so
+        #        commenting this out for now
+
         # have all expected packets arrived?
-        for i in self.pg_interfaces:
-            remaining_packet = self.get_next_packet_info_for_interface2(
-                i.sw_if_index, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(remaining_packet is None,
-                            "Interface %s: Packet expected from interface %s "
-                            "didn't arrive" % (dst_if.name, i.name))
+        # for i in self.pg_interfaces:
+        #     remaining_packet = self.get_next_packet_info_for_interface2(
+        #         i.sw_if_index, dst_sw_if_index, last_info[i.sw_if_index])
+        #     self.assertTrue(remaining_packet is None,
+        #                     "Interface %s: Packet expected from interface %s "
+        #                     "didn't arrive" % (dst_if.name, i.name))
 
 
 if __name__ == '__main__':
