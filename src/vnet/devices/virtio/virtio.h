@@ -174,6 +174,7 @@ typedef struct
   u8 host_ip6_prefix_len;
   u32 host_mtu_size;
   int gso_enabled;
+  int csum_offload_enabled;
   int ifindex;
   virtio_vring_t *cxq_vring;
 } virtio_if_t;
