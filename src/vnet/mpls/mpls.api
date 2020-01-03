@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-option version = "1.1.0";
+option version = "1.1.1";
 import "vnet/fib/fib_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
            a per-prefix label entry.
@@ -35,16 +36,16 @@ autoreply define mpls_ip_bind_unbind
   u32 mb_mpls_table_id;
   u32 mb_label;
   u32 mb_ip_table_id;
-  u8 mb_is_bind;
+  bool mb_is_bind;
   vl_api_prefix_t mb_prefix;
 };
 
 typedef mpls_tunnel
 {
-  u32 mt_sw_if_index;
+  vl_api_interface_index_t mt_sw_if_index;
   u32 mt_tunnel_index;
-  u8 mt_l2_only;
-  u8 mt_is_multicast;
+  bool mt_l2_only;
+  bool mt_is_multicast;
   u8 mt_n_paths;
   vl_api_fib_path_t mt_paths[mt_n_paths];
 };
@@ -52,7 +53,7 @@ define mpls_tunnel_add_del
 {
   u32 client_index;
   u32 context;
-  u8 mt_is_add;
+  bool mt_is_add [default=true];
   vl_api_mpls_tunnel_t mt_tunnel;
 };
 
@@ -65,7 +66,7 @@ define mpls_tunnel_add_del_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 tunnel_index;
 };
 
@@ -78,7 +79,7 @@ define mpls_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief mpls tunnel details
@@ -101,13 +102,13 @@ manual_endian manual_print define mpls_tunnel_details
 typedef mpls_table
 {
   u32 mt_table_id;
-  u8  mt_name[64];
+  string mt_name[64];
 };
 autoreply define mpls_table_add_del
 {
   u32 client_index;
   u32 context;
-  u8  mt_is_add;
+  bool  mt_is_add [default=true];
   vl_api_mpls_table_t mt_table;
 };
 
@@ -127,11 +128,10 @@ define mpls_table_details
 };
 
 /** \brief MPLS Route
+    @param mr_table_id - The MPLS table-id the route is added in
     @param mr_label - The MPLS label value
     @param mr_eos - The End of stack bit
     @param mr_eos_proto - If EOS then this is the DPO packect's proto post pop
-    @param mr_table_id - The MPLS table-id the route is added in
-    @param mr_is_add - Is this a route add or delete
     @param mr_is_multicast - Is this a multicast route
     @param mr_n_paths - The number of paths
     @param mr_paths - The paths
@@ -140,9 +140,10 @@ typedef mpls_route
 {
   u32 mr_table_id;
   u32 mr_label;
+  /* TODO: check data type */
   u8 mr_eos;
   u8 mr_eos_proto;
-  u8 mr_is_multicast;
+  bool mr_is_multicast;
   u8 mr_n_paths;
   vl_api_fib_path_t mr_paths[mr_n_paths];
 };
@@ -160,8 +161,8 @@ define mpls_route_add_del
 {
   u32 client_index;
   u32 context;
-  u8 mr_is_add;
-  u8 mr_is_multipath;
+  bool mr_is_add;
+  bool mr_is_multipath;
   vl_api_mpls_route_t mr_route;
 };
 
@@ -205,8 +206,8 @@ autoreply define sw_interface_set_mpls_enable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 enable;
+  vl_api_interface_index_t sw_if_index;
+  bool enable [default=true];
 };
 
 /*
@@ -214,4 +215,3 @@ autoreply define sw_interface_set_mpls_enable
  * eval: (c-set-style "gnu")
  * End:
  */
- 
