@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-option version = "1.1.0";
+option version = "1.1.1";
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 enum vxlan_gbp_api_tunnel_mode
 {
@@ -28,7 +29,7 @@ enum vxlan_gbp_api_tunnel_mode
     @param src - Source IP address
     @param dst - Destination IP address, can be multicast
     @param mcast_sw_if_index - Interface for multicast destination
-    @param encap_table_id - Encap route table 
+    @param encap_table_id - Encap route table
     @param vni - The VXLAN Network Identifier, uint24
     @param sw_ifindex - Ignored in add message, set in details
 */
@@ -37,10 +38,10 @@ typedef vxlan_gbp_tunnel
   u32 instance;
   vl_api_address_t src;
   vl_api_address_t dst;
-  u32 mcast_sw_if_index;
+  vl_api_interface_index_t mcast_sw_if_index;
   u32 encap_table_id;
   u32 vni;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_vxlan_gbp_api_tunnel_mode_t mode;
 };
 
@@ -53,7 +54,7 @@ define vxlan_gbp_tunnel_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   vl_api_vxlan_gbp_tunnel_t tunnel;
 };
 
@@ -61,14 +62,14 @@ define vxlan_gbp_tunnel_add_del_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define vxlan_gbp_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define vxlan_gbp_tunnel_details
@@ -88,8 +89,7 @@ autoreply define sw_interface_set_vxlan_gbp_bypass
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
-  u8 enable;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
+  bool enable [default=true];
 };
-
