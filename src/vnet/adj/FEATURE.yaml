@@ -1,0 +1,24 @@
+---
+name: Adjacency
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - An adjacency represents how to send different traffic types to a peer
+  - The principles properties of an adjacency are the interface and rewrite.
+    The rewrite will be prepended to the packet as it is forward through the
+    interface.
+  - The rewrite is provided either by the interface type. It can be constructed
+    either from fixed interface properties (i.e. src,dst IP address on a P2P
+    tunnel) or from a resolution protocol (like ARP on an Ethernet link).
+  - An Adjacency is said to be complete when the rewrite is present and
+    incomplete when it is not,
+  - An adjacency that is a leaf in the DPO graph is terminal/normal (i.e on
+    a physical interface). When not terminal it is termed a midchain (i.e.
+    one on a virtual interface, e.g. GRE tunnel). Midchain adjacencies can be
+    stacked/joined onto the the DPO graph that described subsequent forwarding
+    (i.e. how to send the the GRE tunnel's destination address).
+  - Glean adjacencies describe how to broadcast packets onto a subnet
+
+
+description: "Adjacency"
+state: production
+properties: [API, CLI, MULTITHREAD]
