@@ -1,0 +1,14 @@
+---
+name: Locator/ID Separation Protocol (LISP) Control Plane
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - ITR, ETR and RTR mode of operation
+  - Multitenancy
+  - Multihoming
+  - Source/dest map-cache lookups
+  - RLOC-probing
+  - Support for Ethernet, IPv4, IPv6 and NSH EIDs (payloads)
+  - Map-resolver failover algorithm
+description: "LISP control plane implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
