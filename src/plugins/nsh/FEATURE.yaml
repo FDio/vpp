@@ -1,0 +1,14 @@
+---
+name: NSH
+maintainer: Hongjun Ni <hongjun.ni@intel.com>, Vengada <venggovi@cisco.com>
+features:
+  - NSH Classifier
+  - NSH Forwarder
+  - NSH SF
+  - NSH Proxy
+  - NSH OAM
+  - NSH Metadata
+
+description: "NSH for SFC"
+state: production
+properties: [API, CLI, MULTITHREAD]

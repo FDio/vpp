@@ -1,0 +1,10 @@
+---
+name: GTPU
+maintainer: Hongjun Ni <hongjun.ni@intel.com>
+features:
+  - GTPU decapsulation
+  - GTPU encapsulation
+
+description: "GPRS Tunnelling Protocol"
+state: production
+properties: [API, CLI, MULTITHREAD]
