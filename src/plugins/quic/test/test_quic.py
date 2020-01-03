@@ -7,6 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
+import log
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -15,16 +16,67 @@ class QUICAppWorker(Worker):
     process = None
 
     def __init__(self, build_dir, appname, args, logger, role, testcase,
-                 env={}):
+                 env=None):
         app = "%s/vpp/bin/%s" % (build_dir, appname)
+        env = {} if env is None else env
         self.args = [app] + args
         self.role = role
         self.wait_for_gdb = 'wait-for-gdb'
         self.testcase = testcase
+        try:
+            if self.testcase.debug_all:
+                if self.testcase.debug_gdbserver:
+                    self.args = ['/usr/bin/gdbserver',
+                                 'localhost:{port}'
+                                 .format(
+                                     port=self.testcase.gdbserver_port)] + \
+                                args
+                elif self.testcase.debug_gdb and hasattr(self, 'wait_for_gdb'):
+                    self.args.append(self.wait_for_gdb)
+        except AttributeError:
+            pass
         super(QUICAppWorker, self).__init__(self.args, logger, env)
+        self.app_name += ' {role}'.format(role=self.role)
 
     def run(self):
         super(QUICAppWorker, self).run()
+
+    def wait_for_enter(self):
+        if not hasattr(self, 'testcase'):
+            return
+        try:
+            if self.testcase.debug_all and self.testcase.debug_gdbserver:
+                print()
+                print(log.double_line_delim)
+                print("Spawned GDB Server for '{app}' with PID: {pid}"
+                      .format(app=self.app_name, pid=self.process.pid))
+            elif self.testcase.debug_all and self.testcase.debug_gdb:
+                print()
+                print(log.double_line_delim)
+                print("Spawned '{app}' with PID: {pid}"
+                      .format(app=self.app_name, pid=self.process.pid))
+            else:
+                return
+            print(log.single_line_delim)
+            print("You can debug '{app}' using:".format(app=self.app_name))
+            if self.testcase.debug_gdbserver:
+                print("sudo gdb " + self.app_bin +
+                      " -ex 'target remote localhost:{port}'"
+                      .format(port=self.testcase.gdbserver_port))
+                print("Now is the time to attach gdb by running the above "
+                      "command, set up breakpoints etc., then resume from "
+                      "within gdb by issuing the 'continue' command")
+                self.testcase.gdbserver_port += 1
+            elif self.testcase.debug_gdb:
+                print("sudo gdb " + self.app_bin +
+                      " -ex 'attach {pid}'".format(pid=self.process.pid))
+                print("Now is the time to attach gdb by running the above "
+                      "command and set up breakpoints etc., then resume from"
+                      " within gdb by issuing the 'continue' command")
+            print(log.single_line_delim)
+            input("Press ENTER to continue running the testcase...")
+        except AttributeError:
+            pass
 
     def teardown(self, logger, timeout):
         if self.process is None:
@@ -236,7 +288,10 @@ class QUICEchoExtTestCase(QUICTestCase):
             'client',
             self)
         self.worker_client.start()
-        timeout = None if self.debug_all else self.timeout
+        try:
+            timeout = None if self.debug_all else self.timeout
+        except AttributeError:
+            timeout = self.timeout
         self.worker_client.join(timeout)
         self.worker_server.join(timeout)
         self.sleep(self.post_test_sleep)
