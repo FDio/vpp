@@ -71,6 +71,11 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
     ap->gso_enabled = 1;
   else
     ap->gso_enabled = 0;
+  if (mp->checksum_offload_enabled)
+    ap->checksum_offload_enabled = 1;
+  else
+    ap->checksum_offload_enabled = 0;
+
   ap->features = clib_net_to_host_u64 (mp->features);
 
   virtio_pci_create_if (vm, ap);

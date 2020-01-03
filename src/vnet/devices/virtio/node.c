@@ -242,7 +242,7 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 static_always_inline uword
 virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
-			    int gso_enabled)
+			    int gso_enabled, int checksum_offload_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
@@ -289,7 +289,8 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->total_length_not_including_first_buffer = 0;
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-	  virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz);
+	  if (checksum_offload_enabled)
+	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz);
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr, l4_proto, l4_hdr_sz);
@@ -396,10 +397,13 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
       {
 	if (vif->gso_enabled)
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 1);
+					      dq->queue_id, 1, 1);
+	else if (vif->csum_offload_enabled)
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
+					      dq->queue_id, 0, 1);
 	else
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 0);
+					      dq->queue_id, 0, 0);
       }
   }
 
