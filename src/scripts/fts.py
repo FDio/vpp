@@ -6,7 +6,7 @@ import ipaddress
 import yaml
 from pprint import pprint
 import re
-from jsonschema import validate
+from jsonschema import validate, exceptions
 import argparse
 from subprocess import run, PIPE
 
@@ -137,7 +137,11 @@ def main():
         # Load configuration file
         with open(featurefile) as f:
             cfg = yaml.load(f, Loader=yaml.SafeLoader)
-        validate(instance=cfg, schema=schema)
+        try:
+            validate(instance=cfg, schema=schema)
+        except exceptions.ValidationError:
+            print('File does not validate: {}'.format(featurefile), file=sys.stderr)
+            raise
         features[featurefile] = cfg
 
     if args.markdown:
