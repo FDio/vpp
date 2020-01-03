@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6ba5739_811d8514",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-03T04:00:23Z",
+      "side": 1,
+      "message": "L2 or L3?",
+      "range": {
+        "startLine": 9,
+        "startChar": 25,
+        "endLine": 9,
+        "endChar": 26
+      },
+      "revId": "55e1e7f812183bc0a6ed6d09d94916a5efb0ebed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55277eee_f95a391b",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-03T04:00:23Z",
+      "side": 1,
+      "message": "feature",
+      "range": {
+        "startLine": 15,
+        "startChar": 25,
+        "endLine": 15,
+        "endChar": 32
+      },
+      "revId": "55e1e7f812183bc0a6ed6d09d94916a5efb0ebed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
