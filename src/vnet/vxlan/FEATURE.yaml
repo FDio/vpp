@@ -1,0 +1,14 @@
+---
+name: Virtual eXtensible LAN (VXLAN)
+maintainer: John Lo <loj@cisco.com>
+features:
+  - VXLAN tunnel for support of L2 overlay/virtual networks (RFC-7348)
+  - Support either IPv4 or IPv6 underlay network VTEPs
+  - Flooding via headend replication if all VXLAN tunnels in BD are unicast ones
+  - Multicast VXLAN tunnel can be added to BD to flood via IP multicast
+  - VXLAN encap with flow-hashed source port for better underlay IP load balance
+  - VXLAN decap optimization via vxlan-bypass IP feature on underlay interfaces
+  - VXLAN decap HW offload using flow director with DPDK on Intel Fortville NICs
+description: "VXLAN tunnels support L2 overlay networks that span L3 networks"
+state: production
+properties: [API, CLI, MULTITHREAD]
