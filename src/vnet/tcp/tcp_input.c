@@ -1097,7 +1097,10 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   hole = pool_elt_at_index (sb->holes, sb->head);
 
   if (PREDICT_FALSE (sb->is_reneging))
-    sb->last_bytes_delivered += hole->start - tc->snd_una;
+    {
+      if (seq_geq (ack, hole->start))
+	sb->last_bytes_delivered += hole->start - tc->snd_una;
+    }
 
   while (hole && blk_index < vec_len (rcv_sacks))
     {
