@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Dave Barach <openvpp@barachs.net>
+Code-Review+2: Paul Vinciguerra <pvinci@vinciconsulting.com>
+Submitted-by: Paul Vinciguerra <pvinci@vinciconsulting.com>
+Submitted-at: Sat, 04 Jan 2020 16:14:04 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/24186
+Project: vpp
+Branch: refs/heads/master
