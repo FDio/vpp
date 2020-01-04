@@ -1542,6 +1542,7 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
       last_check->src.as_u32 = ip0->src_address.as_u32;
       last_check->lbi = lbi0;
       last_check->error = *error0;
+      last_check->first = 0;
     }
   else
     {
@@ -1549,7 +1550,6 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
 	vnet_buffer (b)->ip.adj_index[VLIB_TX];
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = last_check->lbi;
       *error0 = last_check->error;
-      last_check->first = 0;
     }
 }
 
@@ -1638,6 +1638,7 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
       last_check->src.as_u32 = ip[1]->src_address.as_u32;
       last_check->lbi = lbi[1];
       last_check->error = error[1];
+      last_check->first = 0;
     }
   else
     {
@@ -1651,7 +1652,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
 
       error[0] = last_check->error;
       error[1] = last_check->error;
-      last_check->first = 0;
     }
 }
 
