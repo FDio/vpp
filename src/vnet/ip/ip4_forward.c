@@ -1502,8 +1502,8 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
    * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
    *  adjacency for the source address (the remote sender's address)
    */
-  if (PREDICT_FALSE (last_check->first ||
-		     (last_check->src.as_u32 != ip0->src_address.as_u32)))
+  if (PREDICT_TRUE (last_check->src.as_u32 != ip0->src_address.as_u32) ||
+      last_check->first)
     {
       mtrie0 = &ip4_fib_get (vnet_buffer (b)->ip.fib_index)->mtrie;
       leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
@@ -1540,6 +1540,7 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
       last_check->src.as_u32 = ip0->src_address.as_u32;
       last_check->lbi = lbi0;
       last_check->error = *error0;
+      last_check->first = 0;
     }
   else
     {
@@ -1547,7 +1548,6 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
 	vnet_buffer (b)->ip.adj_index[VLIB_TX];
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = last_check->lbi;
       *error0 = last_check->error;
-      last_check->first = 0;
     }
 }
 
@@ -1582,7 +1582,7 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
    * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
    *  adjacency for the source address (the remote sender's address)
    */
-  if (PREDICT_FALSE (not_last_hit))
+  if (PREDICT_TRUE (not_last_hit))
     {
       mtrie[0] = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
       mtrie[1] = &ip4_fib_get (vnet_buffer (b[1])->ip.fib_index)->mtrie;
@@ -1636,6 +1636,7 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
       last_check->src.as_u32 = ip[1]->src_address.as_u32;
       last_check->lbi = lbi[1];
       last_check->error = error[1];
+      last_check->first = 0;
     }
   else
     {
@@ -1649,7 +1650,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
 
       error[0] = last_check->error;
       error[1] = last_check->error;
-      last_check->first = 0;
     }
 }
 
