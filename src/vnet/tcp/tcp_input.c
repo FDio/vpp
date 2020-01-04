@@ -1097,7 +1097,11 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   hole = pool_elt_at_index (sb->holes, sb->head);
 
   if (PREDICT_FALSE (sb->is_reneging))
-    sb->last_bytes_delivered += hole->start - tc->snd_una;
+    {
+      sb->last_bytes_delivered += clib_min (hole->start - tc->snd_una,
+					    ack - tc->snd_una);
+      sb->is_reneging = seq_lt (ack, hole->start);
+    }
 
   while (hole && blk_index < vec_len (rcv_sacks))
     {
@@ -1180,7 +1184,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  || sb->is_reneging || sb->holes[sb->head].start == ack);
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
   ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
-	  - sb->last_bytes_delivered >= sb->rxt_sacked);
+	  - sb->last_bytes_delivered >= sb->rxt_sacked || sb->is_reneging);
   ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered
 	  || (tc->flags & TCP_CONN_FINSNT));
 
@@ -1510,14 +1514,13 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 }
 
 static void
-tcp_handle_old_ack (tcp_connection_t * tc, vlib_buffer_t * b,
-		    tcp_rate_sample_t * rs)
+tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   if (!tcp_in_cong_recovery (tc))
     return;
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
+    tcp_rcv_sacks (tc, tc->snd_una);
 
   tc->bytes_acked = 0;
 
@@ -1596,7 +1599,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - tc->rcv_wnd))
 	return -1;
 
-      tcp_handle_old_ack (tc, b, &rs);
+      tcp_handle_old_ack (tc, &rs);
 
       /* Don't drop yet */
       return 0;
