@@ -132,11 +132,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   /*
-   * Inject odd blocks
+   * Inject odd blocks except the last
+   *
    */
 
   vec_reset_length (tc->rcv_opts.sacks);
-  for (i = 0; i < 1000 / 200; i++)
+  for (i = 0; i < 800 / 200; i++)
     {
       vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
     }
@@ -148,33 +149,43 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 		     sb, tc);
 
   hole = scoreboard_first_hole (sb);
-  TCP_TEST ((pool_elts (sb->holes) == 1),
+  TCP_TEST ((pool_elts (sb->holes) == 2),
 	    "scoreboard has %d holes", pool_elts (sb->holes));
   TCP_TEST ((hole->start == 0 && hole->end == 100),
 	    "first hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->sacked_bytes == 900), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->sacked_bytes == 800), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
-  TCP_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
-  TCP_TEST ((sb->last_sacked_bytes == 500),
+  TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
+  TCP_TEST ((sb->last_sacked_bytes == 400),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
 
   /*
-   *  Ack until byte 100 - this is reneging because we should ack until 1000
+   *  Ack until byte 100 - this is reneging because we should ack until 900
    */
   tcp_rcv_sacks (tc, 100);
   if (verbose)
     vlib_cli_output (vm, "\nack until byte 100:\n%U", format_tcp_scoreboard,
 		     sb, tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements",
+  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements",
 	    pool_elts (sb->holes));
   TCP_TEST ((sb->is_reneging), "is reneging");
 
   /*
-   * Sack all up to 1000
+   * Make sure we accept duplicate acks while reneging.
    */
   tc->snd_una = 100;
+  tcp_rcv_sacks (tc, 100);
+  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
+  TCP_TEST ((sb->is_reneging), "is reneging");
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+
+  /*
+   * Sack all up to 1000
+   */
   tcp_rcv_sacks (tc, 1000);
   TCP_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
