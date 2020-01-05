@@ -1,0 +1,12 @@
+---
+name: IPv6 Neeighbour Discovery
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Nieghbour discovery.
+  - ND Auto address configuration
+  - Multicast Listener Discovery - only as host role to send adverts
+  - Router Advertisements
+
+description: "IPv6-ND"
+state: production
+properties: [API, CLI, MULTITHREAD]
