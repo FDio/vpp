@@ -1,0 +1,12 @@
+---
+name: Quality of Service
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Record - extract QoS bits from packets headers and write in metadata
+  - Mapp - defines simple transform of QoS bits from/to each packet layer
+  - Mark - write [mapped] QoS bits into packet headers
+  - Store - write in packet metadata a fixed QoS value
+
+description: "QoS"
+state: production
+properties: [API, CLI, MULTITHREAD]
