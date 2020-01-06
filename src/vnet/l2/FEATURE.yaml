@@ -7,6 +7,9 @@ features:
       - Forwarding via destination MAC address of packet
       - MAC learning enable/disable on BD or per interface
       - MAC aging with specified aging interval enable/disable
+      - MAC flush of learned MACs on interface down, BD deletion, or by user
+      - User added static MACs not subject to aging nor overwritten by MAC learn
+      - User added MACs not subject to aging but can be overwritten by MAC learn
       - Unicast forwarding enable/disable
       - Unknown unicast flooding enable/disable
       - Multicast/broadcast flooding enable/disable
