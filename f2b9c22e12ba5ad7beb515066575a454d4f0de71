@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7c9e19fe_f58e0890",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-01-06T11:47:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d1e5adb_0c4a94f6",
+      "range": {
+        "startLine": 181,
+        "startChar": 0,
+        "endLine": 181,
+        "endChar": 47
+      },
+      "revId": "f2b9c22e12ba5ad7beb515066575a454d4f0de71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b91df865_1fdb420c",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 10
@@ -36,6 +60,30 @@
       "writtenOn": "2020-01-06T10:44:23Z",
       "side": 1,
       "message": "my impression was that GSO implies the checksum offload. Have you tested what happens if the GSO is enabled but the checksum is not ? in all permutations ?",
+      "range": {
+        "startLine": 292,
+        "startChar": 7,
+        "endLine": 292,
+        "endChar": 31
+      },
+      "revId": "f2b9c22e12ba5ad7beb515066575a454d4f0de71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "532fd84d_3c67a1ed",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-01-06T11:47:45Z",
+      "side": 1,
+      "message": "You are right! This condition will always be true, if GSO is enabled. You can see at line number 399.",
+      "parentUuid": "b91df865_1fdb420c",
       "range": {
         "startLine": 292,
         "startChar": 7,
