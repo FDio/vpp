@@ -2397,13 +2397,11 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
   if (mp->acl_index == ~0)
     {
       /* Just dump all ACLs for now, with sw_if_index = ~0 */
-      pool_foreach (acl, am->macip_acls, (
-					   {
-					   send_macip_acl_details (am, reg,
-								   acl,
-								   mp->context);
-					   }
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (acl, am->macip_acls,
+        ({
+          send_macip_acl_details (am, reg, acl, mp->context);
+        }));
       /* *INDENT-ON* */
     }
   else
@@ -3290,41 +3288,32 @@ acl_plugin_show_sessions (acl_main_t * am,
 	  vlib_cli_output (vm, "    link list id: %u", sess->link_list_id);
 	}
       vlib_cli_output (vm, "  connection add/del stats:", wk);
-      pool_foreach (swif, im->sw_interfaces, (
-					       {
-					       u32 sw_if_index =
-					       swif->sw_if_index;
-					       u64 n_adds =
-					       sw_if_index <
-					       vec_len
-					       (pw->fa_session_adds_by_sw_if_index)
-					       ?
-					       pw->fa_session_adds_by_sw_if_index
-					       [sw_if_index] : 0;
-					       u64 n_dels =
-					       sw_if_index <
-					       vec_len
-					       (pw->fa_session_dels_by_sw_if_index)
-					       ?
-					       pw->fa_session_dels_by_sw_if_index
-					       [sw_if_index] : 0;
-					       u64 n_epoch_changes =
-					       sw_if_index <
-					       vec_len
-					       (pw->fa_session_epoch_change_by_sw_if_index)
-					       ?
-					       pw->fa_session_epoch_change_by_sw_if_index
-					       [sw_if_index] : 0;
-					       vlib_cli_output (vm,
-								"    sw_if_index %d: add %lu - del %lu = %lu; epoch chg: %lu",
-								sw_if_index,
-								n_adds,
-								n_dels,
-								n_adds -
-								n_dels,
-								n_epoch_changes);
-					       }
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (swif, im->sw_interfaces,
+        ({
+          u32 sw_if_index = swif->sw_if_index;
+          u64 n_adds =
+            (sw_if_index < vec_len (pw->fa_session_adds_by_sw_if_index) ?
+             pw->fa_session_adds_by_sw_if_index[sw_if_index] :
+             0);
+          u64 n_dels =
+            (sw_if_index < vec_len (pw->fa_session_dels_by_sw_if_index) ?
+             pw->fa_session_dels_by_sw_if_index[sw_if_index] :
+             0);
+          u64 n_epoch_changes =
+            (sw_if_index < vec_len (pw->fa_session_epoch_change_by_sw_if_index) ?
+             pw->fa_session_epoch_change_by_sw_if_index[sw_if_index] :
+             0);
+          vlib_cli_output (vm,
+                           "    sw_if_index %d: add %lu - del %lu = %lu; epoch chg: %lu",
+                           sw_if_index,
+                           n_adds,
+                           n_dels,
+                           n_adds -
+                           n_dels,
+                           n_epoch_changes);
+        }));
+      /* *INDENT-ON* */
 
       vlib_cli_output (vm, "  connection timeout type lists:", wk);
       u8 tt = 0;

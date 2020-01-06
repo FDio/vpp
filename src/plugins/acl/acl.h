@@ -63,17 +63,6 @@ enum acl_timeout_e {
   ACL_N_TIMEOUTS
 };
 
-
-enum address_e { IP4, IP6 };
-typedef struct
-{
-  enum address_e type;
-  union {
-    ip6_address_t ip6;
-    ip4_address_t ip4;
-  } addr;
-} address_t;
-
 typedef struct
 {
   u8 is_permit;
