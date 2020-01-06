@@ -404,7 +404,9 @@ clib_socket_init (clib_socket_t * s)
   socket_type = s->flags & CLIB_SOCKET_F_SEQPACKET ?
     SOCK_SEQPACKET : SOCK_STREAM;
 
-  s->fd = socket (addr.sa.sa_family, socket_type, 0);
+  while ((s->fd = socket (addr.sa.sa_family, socket_type, 0)) == EAGAIN)
+    ;
+
   if (s->fd < 0)
     {
       error = clib_error_return_unix (0, "socket (fd %d, '%s')",
