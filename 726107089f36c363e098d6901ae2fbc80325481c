@@ -16,6 +16,24 @@
       "revId": "726107089f36c363e098d6901ae2fbc80325481c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "555f3234_77c24f73",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-01-06T18:28:13Z",
+      "side": 1,
+      "message": "here csum_offload_enabled shows separate feature while gso_enabled includes checksum offload functionality. I am using two different feature flags for optimizing the rx/tx nodes. You can see the three way conditional check for inline function there.",
+      "parentUuid": "260651cd_41f383f9",
+      "revId": "726107089f36c363e098d6901ae2fbc80325481c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
