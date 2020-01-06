@@ -1,0 +1,10 @@
+---
+name: Multi-Protocol Label Switching
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Label imposition/disposition - pipe and uniform mode
+  - Tunnels - unidirectional
+
+description: "MPLS"
+state: production
+properties: [API, CLI, MULTITHREAD]
