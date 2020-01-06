@@ -1,0 +1,10 @@
+---
+name: IP Neighbour Database
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - IP protocol independent Database of Neighbours (aka peers)
+  - limits on number of peers, recycling and aging
+
+description: "IP-neighbor"
+state: production
+properties: [API, CLI, MULTITHREAD]
