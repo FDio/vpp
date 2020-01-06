@@ -389,7 +389,7 @@ clib_socket_init (clib_socket_t * s)
     struct sockaddr_un su;
   } addr;
   socklen_t addr_len = 0;
-  int socket_type;
+  int socket_type, rv;
   clib_error_t *error = 0;
   word port;
 
@@ -502,9 +502,11 @@ clib_socket_init (clib_socket_t * s)
 	  goto done;
 	}
 
-      if (connect (s->fd, &addr.sa, addr_len) < 0
-	  && !((s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT) &&
-	       errno == EINPROGRESS))
+      while ((rv = connect (s->fd, &addr.sa, addr_len)) < 0
+	     && errno == EAGAIN)
+	;
+      if (rv < 0 && !((s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT) &&
+		      errno == EINPROGRESS))
 	{
 	  error = clib_error_return_unix (0, "connect (fd %d, '%s')",
 					  s->fd, s->config);
