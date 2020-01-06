@@ -1,0 +1,9 @@
+---
+name: vmxnet3 device driver
+maintainer: Steven Luong <sluong@cisco.com>
+features:
+  - vmxnet3 device driver to connect to ESXi server, VMWare Fusion, and VMWare
+    Workstation
+description: "vmxnet3 device driver support"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
