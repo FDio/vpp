@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d1e5adb_0c4a94f6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-01-06T10:44:23Z",
+      "side": 1,
+      "message": "if we are offloading the checksum - won\u0027t this be calculated by h/w ? (I don\u0027t know, hence the question). Maybe some clarification here would be useful for the future readers.",
+      "range": {
+        "startLine": 181,
+        "startChar": 0,
+        "endLine": 181,
+        "endChar": 47
+      },
+      "revId": "f2b9c22e12ba5ad7beb515066575a454d4f0de71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b91df865_1fdb420c",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-01-06T10:44:23Z",
+      "side": 1,
+      "message": "my impression was that GSO implies the checksum offload. Have you tested what happens if the GSO is enabled but the checksum is not ? in all permutations ?",
+      "range": {
+        "startLine": 292,
+        "startChar": 7,
+        "endLine": 292,
+        "endChar": 31
+      },
+      "revId": "f2b9c22e12ba5ad7beb515066575a454d4f0de71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
