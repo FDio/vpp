@@ -1,0 +1,16 @@
+---
+name: Bonding
+maintainer: Steven Luong <sluong@cisco.com>
+features:
+  - Interface bonding support with the following options
+    - mode active-backup
+    - mode lacp
+      - load-balance l2 | l23 | l34
+      	- numa-only
+    - mode xor
+      - load-balance l2 | l23 | l34
+    - mode round-robin
+    - mode broadcast
+description: "Bonding implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
