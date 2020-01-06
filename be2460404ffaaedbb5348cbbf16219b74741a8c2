@@ -16,6 +16,24 @@
       "revId": "be2460404ffaaedbb5348cbbf16219b74741a8c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2adb6ccb_5631ffca",
+        "filename": "src/vppinfra/hash.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-01-06T21:32:24Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/c/vpp/+/24202",
+      "parentUuid": "dcf71105_c6e0900f",
+      "revId": "be2460404ffaaedbb5348cbbf16219b74741a8c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
