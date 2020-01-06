@@ -83,6 +83,7 @@ typedef struct
   u8 mode;
   u8 lb;
   u8 numa_only;
+  u8 gso;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -193,6 +194,7 @@ typedef struct
      on local numa node works for lacp mode if have at least one,
      otherwise it works as usual. */
   u8 numa_only;
+  u8 gso;
 
   /* How many slaves on local numa node are there in lacp mode? */
   word n_numa_slaves;

@@ -344,6 +344,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw;
   bond_if_t *bif;
+  vnet_hw_interface_t *hw;
 
   if ((args->mode == BOND_MODE_LACP) && bm->lacp_plugin_loaded == 0)
     {
@@ -369,6 +370,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->id = args->id;
   bif->lb = args->lb;
   bif->mode = args->mode;
+  bif->gso = args->gso;
 
   // Adjust requested interface id
   if (bif->id == ~0)
@@ -419,6 +421,10 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->sw_if_index = sw->sw_if_index;
   bif->group = bif->sw_if_index;
   bif->numa_only = args->numa_only;
+
+  hw = vnet_get_hw_interface (vnm, bif->hw_if_index);
+  hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
 
@@ -461,6 +467,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.hw_addr_set = 1;
       else if (unformat (line_input, "id %u", &args.id))
 	;
+      else if (unformat (line_input, "gso"))
+	args.gso = 1;
       else if (unformat (line_input, "numa-only"))
 	{
 	  if (args.mode == BOND_MODE_LACP)
@@ -491,8 +499,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} [hw-addr <mac-address>] "
-    "[id <if-id>]",
+    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} "
+    "[hw-addr <mac-address>] [id <if-id>] [gso]",
   .function = bond_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -578,6 +586,13 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
 	clib_error_return (0, "bond interface cannot be enslaved");
+      return;
+    }
+  if (bif->gso && !(sif_hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO))
+    {
+      args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+      args->error =
+	clib_error_return (0, "slave interface is not gso capable");
       return;
     }
   if (bif->mode == BOND_MODE_LACP)
@@ -851,6 +866,8 @@ show_bond_details (vlib_main_t * vm)
 		     format_bond_mode, bif->mode);
     vlib_cli_output (vm, "  load balance: %U",
 		     format_bond_load_balance, bif->lb);
+    if (bif->gso)
+      vlib_cli_output (vm, "  gso enable");
     if (bif->mode == BOND_MODE_ROUND_ROBIN)
       vlib_cli_output (vm, "  last xmit slave index: %u",
 		       bif->lb_rr_last_index);
