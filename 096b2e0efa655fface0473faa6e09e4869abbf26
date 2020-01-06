@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e7469b3_53f922b0",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-01-06T18:34:53Z",
+      "side": 1,
+      "message": "The line is unreadable if both gso and checksum offload are configured. Need a space at the end for gso.",
+      "revId": "096b2e0efa655fface0473faa6e09e4869abbf26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
