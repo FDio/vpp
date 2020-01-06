@@ -1,0 +1,8 @@
+---
+name: Link Aggregation Control Protocol (LACP)
+maintainer: Steven Luong <sluong@cisco.com>
+features:
+  - Support LACP version 1 specification including marker protocol
+description: "Link Aggregation Control Protocol implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
