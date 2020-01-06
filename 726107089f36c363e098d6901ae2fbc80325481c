@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "260651cd_41f383f9",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-01-06T17:32:49Z",
+      "side": 1,
+      "message": "Should this be set to 1 since we set it in hw-\u003eflags",
+      "revId": "726107089f36c363e098d6901ae2fbc80325481c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
