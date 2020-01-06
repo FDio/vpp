@@ -1,0 +1,11 @@
+---
+name: IP Security
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - IPSec (https://tools.ietf.org/html/rfc4301)
+  - Authetication Header (https://tools.ietf.org/html/rfc4302)
+  - Encapsulating Security Payload (https://tools.ietf.org/html/rfc4303)
+
+description: "IPSec"
+state: production
+properties: [API, CLI, MULTITHREAD]
