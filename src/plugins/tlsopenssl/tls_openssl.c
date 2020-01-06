@@ -424,8 +424,8 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 
   if (PREDICT_FALSE (SSL_in_init (oc->ssl)))
     {
-      openssl_ctx_handshake_rx (ctx, tls_session);
-      return 0;
+      if (openssl_ctx_handshake_rx (ctx, tls_session) < 0)
+	return 0;
     }
 
   f = tls_session->rx_fifo;
@@ -459,7 +459,8 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 
 check_app_fifo:
 
-  if (BIO_ctrl_pending (oc->wbio) <= 0)
+  if (PREDICT_FALSE
+      ((BIO_ctrl_pending (oc->wbio) <= 0) && SSL_pending (oc->ssl) <= 0))
     return wrote;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
@@ -487,7 +488,9 @@ check_app_fifo:
 	svm_fifo_enqueue_nocopy (f, read);
     }
 
-  tls_notify_app_enqueue (ctx, app_session);
+  /* Session may still in accepting status */
+  if (app_session->session_state >= SESSION_STATE_READY)
+    tls_notify_app_enqueue (ctx, app_session);
   if (SSL_pending (oc->ssl) > 0)
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
