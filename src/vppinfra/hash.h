@@ -276,7 +276,7 @@ uword hash_bytes (void *v);
 
 /* Public inline function allocate and copy key to use in hash for pointer key */
 always_inline void
-hash_set_mem_alloc (uword ** h, void *key, uword v)
+hash_set_mem_alloc (uword ** h, const void *key, uword v)
 {
   size_t ksz = hash_header (*h)->user;
   void *copy = clib_mem_alloc (ksz);
@@ -292,14 +292,14 @@ hash_set_mem_alloc (uword ** h, void *key, uword v)
 
 /* Public inline function to unset pointer key and then free the key memory */
 always_inline void
-hash_unset_mem_free (uword ** h, void *key)
+hash_unset_mem_free (uword ** h, const void *key)
 {
   hash_pair_t *hp = hash_get_pair_mem (*h, key);
   if (PREDICT_TRUE (hp != NULL))
     {
-      key = uword_to_pointer (hp->key, void *);
-      hash_unset_mem (*h, key);
-      clib_mem_free (key);
+      void *_k = uword_to_pointer (hp->key, void *);
+      hash_unset_mem (*h, _k);
+      clib_mem_free (_k);
     }
 }
 
