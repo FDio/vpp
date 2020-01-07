@@ -199,6 +199,7 @@ static_always_inline
 	{
 	  /* no wrap, transmit in one burst */
 	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
+	  n_retry--;
 	}
       else
 	{
