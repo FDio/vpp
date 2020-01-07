@@ -267,7 +267,7 @@ ct6_in2out_inline (vlib_main_t * vm,
        */
       if (PREDICT_FALSE (!ip6_address_is_global_unicast (&ip0->src_address)
 			 ||
-			 !ip6_address_is_global_unicast (&ip0->src_address)))
+			 !ip6_address_is_global_unicast (&ip0->dst_address)))
 	goto trace0;
       /* Pass non-udp, non-tcp traffic */
       if (PREDICT_FALSE (ip0->protocol != IP_PROTOCOL_TCP &&
