@@ -6,7 +6,7 @@ features:
     - mode active-backup
     - mode lacp
       - load-balance l2 | l23 | l34
-      	- numa-only
+        - numa-only
     - mode xor
       - load-balance l2 | l23 | l34
     - mode round-robin
