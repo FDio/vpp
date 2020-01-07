@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5547624a_e43c9a68",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 428,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-07T05:33:36Z",
+      "side": 1,
+      "message": "Maybe add after this:\nif (!svm_fifo_max_dequeue_cons (tls_session-\u003erx_fifo))\n  return 0;\n\nTo avoid all the jumps for pure handshakes",
+      "range": {
+        "startLine": 427,
+        "startChar": 3,
+        "endLine": 428,
+        "endChar": 10
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "892f4eb6_9f8e87c6",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-07T05:33:36Z",
+      "side": 1,
+      "message": "Why the predict_false and do we really need to check both ways. Isn\u0027t one enough?",
+      "range": {
+        "startLine": 462,
+        "startChar": 6,
+        "endLine": 462,
+        "endChar": 19
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "450dc790_74015024",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-07T05:33:36Z",
+      "side": 1,
+      "message": "Maybe rephrase to: If handshake just completed session may still be in accepting state",
+      "range": {
+        "startLine": 491,
+        "startChar": 5,
+        "endLine": 491,
+        "endChar": 42
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
