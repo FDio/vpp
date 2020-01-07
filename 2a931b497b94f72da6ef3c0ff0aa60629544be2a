@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3dc3a69e_08529b6f",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Thanks for the feedback.\nI wouldn\u0027t stick to the per-segment-slice accounting. Per-segment-slice acounting may be revisited later, but let me drop this now.",
+      "parentUuid": "dbe1baa2_cd679436",
+      "range": {
+        "startLine": 130,
+        "startChar": 6,
+        "endLine": 130,
+        "endChar": 54
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bd3035a9_89ab4135",
         "filename": "src/vnet/session/application.c",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ce91a48_435694bd",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 699,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bd3035a9_89ab4135",
+      "range": {
+        "startLine": 699,
+        "startChar": 6,
+        "endLine": 699,
+        "endChar": 40
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "22eaaf65_5361545c",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6f5d9bfc_fe383a81",
+      "range": {
+        "startLine": 461,
+        "startChar": 2,
+        "endLine": 461,
+        "endChar": 14
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c62e4acc_eafed5fe",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 2
@@ -91,6 +163,30 @@
       "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bdeac8a6_51197511",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c62e4acc_eafed5fe",
+      "range": {
+        "startLine": 625,
+        "startChar": 2,
+        "endLine": 626,
+        "endChar": 0
+      },
+      "revId": "2a931b497b94f72da6ef3c0ff0aa60629544be2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
