@@ -589,8 +589,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   u16 qid;
   int i;
 
-  args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
-  args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
+  args->rxq_size = args->rxq_size ? args->rxq_size : 1024;
+  args->txq_size = args->txq_size ? args->txq_size : 1024;
   args->rxq_num = args->rxq_num ? args->rxq_num : 1;
 
   if (!is_pow2 (args->rxq_num))
@@ -609,6 +609,19 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	clib_error_return (0, "queue size must be a power of two >= %i",
 			   VLIB_FRAME_SIZE);
       goto err0;
+    }
+
+  switch (args->mode)
+    {
+    case RDMA_MODE_AUTO:
+      break;
+    case RDMA_MODE_IBV:
+      break;
+    case RDMA_MODE_DV:
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "unsupported mode");
+      goto err0;
+      break;
     }
 
   dev_list = ibv_get_device_list (&n_devs);
