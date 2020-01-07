@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "b166d894_a509ea10",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 428,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-01-07T08:50:45Z",
+      "side": 1,
+      "message": "Sorry, it might be a bit confusion. SSL_read just handles one record, so SSL_pending check is not correct, and instead, we need to check BIO. actually here check_app_fifo has done it already, so no need to duplicate the code.",
+      "parentUuid": "09c800a1_306a0d61",
+      "range": {
+        "startLine": 427,
+        "startChar": 3,
+        "endLine": 428,
+        "endChar": 10
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "892f4eb6_9f8e87c6",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -141,6 +165,30 @@
       "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cea2254e_34e522d6",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-01-07T08:50:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "85b34039_21fe8385",
+      "range": {
+        "startLine": 462,
+        "startChar": 6,
+        "endLine": 462,
+        "endChar": 19
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
