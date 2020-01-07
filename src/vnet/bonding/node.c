@@ -163,7 +163,6 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       *bond_sw_if_index = slave_sw_if_index;
       *error = node->errors[BOND_INPUT_ERROR_IF_DOWN];
-      return;
     }
 
   if (PREDICT_FALSE ((bif->mode == BOND_MODE_ACTIVE_BACKUP) &&
