@@ -46,6 +46,30 @@
       "revId": "f3aebda7eace119444c88df52fb8d6c3e9f4323b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca0bf19e_70816b2f",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-07T14:42:02Z",
+      "side": 1,
+      "message": "Ah, so basically the same edit as in line 103, I just wrongly counted the brackets.\nGot it.",
+      "parentUuid": "c9195d58_7c0b2606",
+      "range": {
+        "startLine": 100,
+        "startChar": 44,
+        "endLine": 100,
+        "endChar": 51
+      },
+      "revId": "f3aebda7eace119444c88df52fb8d6c3e9f4323b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
