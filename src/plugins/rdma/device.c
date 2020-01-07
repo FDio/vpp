@@ -611,6 +611,19 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       goto err0;
     }
 
+  switch (args->mode)
+    {
+    case RDMA_MODE_AUTO:
+      break;
+    case RDMA_MODE_IBV:
+      break;
+    case RDMA_MODE_DV:
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "unsupported mode");
+      goto err0;
+      break;
+    }
+
   dev_list = ibv_get_device_list (&n_devs);
   if (n_devs == 0)
     {

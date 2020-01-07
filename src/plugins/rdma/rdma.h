@@ -102,6 +102,13 @@ typedef struct
 
 extern rdma_main_t rdma_main;
 
+typedef enum
+{
+  RDMA_MODE_AUTO = 0,
+  RDMA_MODE_IBV,
+  RDMA_MODE_DV,
+} rdma_mode_t;
+
 typedef struct
 {
   u8 *ifname;
@@ -109,6 +116,7 @@ typedef struct
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
+  rdma_mode_t mode;
 
   /* return */
   int rv;
