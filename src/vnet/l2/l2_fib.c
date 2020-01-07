@@ -414,6 +414,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
 
   /* set up key */
   key.raw = l2fib_make_key (mac, bd_index);
+  kv.key = key.raw;
 
   /* check if entry already exist */
   if (BV (clib_bihash_search) (&fm->mac_table, &kv, &kv))
@@ -433,7 +434,6 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
   /* no aging for provisioned entry */
   l2fib_entry_result_set_AGE_NOT (&result);
 
-  kv.key = key.raw;
   kv.value = result.raw;
 
   BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1 /* is_add */ );
