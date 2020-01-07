@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "09c800a1_306a0d61",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 428,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-07T07:08:22Z",
+      "side": 1,
+      "message": "Then I guess you can check \n\nif (SSL_pending (oc-\u003essl) \u003c\u003d 0)\n return 0;\n\ngoto check_app_fifo;",
+      "parentUuid": "f17060a5_cae26b07",
+      "range": {
+        "startLine": 427,
+        "startChar": 3,
+        "endLine": 428,
+        "endChar": 10
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "892f4eb6_9f8e87c6",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "Even though the BIO queue storage is empty, but SSL_read may have un-processed data when read_ahead is not enabled.",
       "parentUuid": "892f4eb6_9f8e87c6",
+      "range": {
+        "startLine": 462,
+        "startChar": 6,
+        "endLine": 462,
+        "endChar": 19
+      },
+      "revId": "939c5f4d193a45b18d215a0d7f611ce20aae8de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85b34039_21fe8385",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-07T07:08:22Z",
+      "side": 1,
+      "message": "So won\u0027t SSL_pending () catch all the cases when we have pending data?\n\nIf not, why the PREDICT_FALSE?",
+      "parentUuid": "74b5cc1d_af952448",
       "range": {
         "startLine": 462,
         "startChar": 6,
