@@ -1217,7 +1217,7 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
 		    vec_len (p->sub_rules));
       vec_add2 (p->sub_rules, sr, 1);
       sr->name = sub_name;
-      sr->rule_index = q[0];
+      sr->rule_index = sr - p->sub_rules;
       sr->command_index = child_index;
       return;
     }
