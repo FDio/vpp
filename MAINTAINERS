@@ -541,6 +541,11 @@ I:	papi
 M:	Ole Troan <ot@cisco.com>
 F:	src/vpp-api/python
 
+IPv6 Connection Tracker
+I:      ct6
+M:      Dave Barach <dave@barachs.net>
+F:      src/plugins/ct6
+
 Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
