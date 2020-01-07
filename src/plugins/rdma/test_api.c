@@ -43,6 +43,21 @@ typedef struct
 
 rdma_test_main_t rdma_test_main;
 
+static vl_api_rdma_mode_t
+api_rdma_mode (rdma_mode_t mode)
+{
+  switch (mode)
+    {
+    case RDMA_MODE_AUTO:
+      return RDMA_API_MODE_AUTO;
+    case RDMA_MODE_IBV:
+      return RDMA_API_MODE_IBV;
+    case RDMA_MODE_DV:
+      return RDMA_API_MODE_DV;
+    }
+  return ~0;
+}
+
 /* rdma create API */
 static int
 api_rdma_create (vat_main_t * vam)
@@ -64,6 +79,7 @@ api_rdma_create (vat_main_t * vam)
   mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
+  mp->mode = api_rdma_mode (args.mode);
 
   S (mp);
   W (ret);

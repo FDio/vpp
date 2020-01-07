@@ -29,6 +29,21 @@
 
 #include <vlibapi/api_helper_macros.h>
 
+static rdma_mode_t
+rdma_api_mode (vl_api_rdma_mode_t mode)
+{
+  switch (mode)
+    {
+    case RDMA_API_MODE_AUTO:
+      return RDMA_MODE_AUTO;
+    case RDMA_API_MODE_IBV:
+      return RDMA_MODE_IBV;
+    case RDMA_API_MODE_DV:
+      return RDMA_MODE_DV;
+    }
+  return RDMA_MODE_AUTO;
+}
+
 static void
 vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
 {
@@ -45,6 +60,7 @@ vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
   args.rxq_num = ntohs (mp->rxq_num);
   args.rxq_size = ntohs (mp->rxq_size);
   args.txq_size = ntohs (mp->txq_size);
+  args.mode = rdma_api_mode (mp->mode);
 
   rdma_create_if (vm, &args);
   rv = args.rv;

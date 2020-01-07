@@ -42,6 +42,12 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	;
       else if (unformat (line_input, "num-rx-queues %u", &args->rxq_num))
 	;
+      else if (unformat (line_input, "mode auto"))
+	args->mode = RDMA_MODE_AUTO;
+      else if (unformat (line_input, "mode ibv"))
+	args->mode = RDMA_MODE_IBV;
+      else if (unformat (line_input, "mode dv"))
+	args->mode = RDMA_MODE_DV;
       else
 	{
 	  /* return failure on unknown input */
