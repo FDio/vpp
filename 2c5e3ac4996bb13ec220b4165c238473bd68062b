@@ -331,6 +331,24 @@
     },
     {
       "key": {
+        "uuid": "7a1d04f6_a5184fd8",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3966a0f0_09449770",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "34ccee2e_589603d5",
         "filename": "src/vnet/session/segment_manager.h",
         "patchSetId": 1
@@ -402,6 +420,30 @@
     },
     {
       "key": {
+        "uuid": "b3ad9dd6_aef250c6",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "Renaming it to \"cached\".\nThanks.",
+      "parentUuid": "1b922ae4_97c98fad",
+      "range": {
+        "startLine": 66,
+        "startChar": 6,
+        "endLine": 66,
+        "endChar": 15
+      },
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b23b85ac_ffe38e3f",
         "filename": "src/vnet/session/segment_manager.h",
         "patchSetId": 1
@@ -470,6 +512,24 @@
       "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25e9137e_2b6ba22d",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-07T07:59:25Z",
+      "side": 1,
+      "message": "I\u0027m changing to adopt per-fifo-segment accounting. Please see the next revision.",
+      "parentUuid": "a649beb6_19b87cf1",
+      "revId": "2c5e3ac4996bb13ec220b4165c238473bd68062b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
