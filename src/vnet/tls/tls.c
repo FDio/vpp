@@ -727,6 +727,44 @@ format_tls_ctx (u8 * s, va_list * args)
   return s;
 }
 
+static u8 *
+format_tls_listener_ctx (u8 * s, va_list * args)
+{
+  session_t *tls_listener;
+  app_listener_t *al;
+  u32 app_si, app_ti;
+  tls_ctx_t *ctx;
+
+  ctx = va_arg (*args, tls_ctx_t *);
+
+  al = app_listener_get_w_handle (ctx->tls_session_handle);
+  tls_listener = app_listener_get_session (al);
+  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
+  s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
+	      app_ti, app_si, ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
+	      tls_listener->thread_index, tls_listener->session_index);
+
+  return s;
+}
+
+static u8 *
+format_tls_ctx_state (u8 * s, va_list * args)
+{
+  tls_ctx_t *ctx;
+  session_t *ts;
+
+  ctx = va_arg (*args, tls_ctx_t *);
+  ts = session_get_from_handle (ctx->app_session_handle);
+  if (ts->session_state == SESSION_STATE_LISTENING)
+    s = format (s, "%s", "LISTEN");
+  else if (tls_ctx_handshake_is_over (ctx))
+    s = format (s, "%s", "ESTABLISHED");
+  else
+    s = format (s, "%s", "HANDSHAKE");
+
+  return s;
+}
+
 u8 *
 format_tls_connection (u8 * s, va_list * args)
 {
@@ -742,9 +780,7 @@ format_tls_connection (u8 * s, va_list * args)
   s = format (s, "%-50U", format_tls_ctx, ctx);
   if (verbose)
     {
-      session_t *ts;
-      ts = session_get_from_handle (ctx->app_session_handle);
-      s = format (s, "state: %-7u", ts->session_state);
+      s = format (s, "%-15U", format_tls_ctx_state, ctx);
       if (verbose > 1)
 	s = format (s, "\n");
     }
@@ -756,18 +792,12 @@ format_tls_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 __clib_unused verbose = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
-  session_t *tls_listener;
-  app_listener_t *al;
-  u32 app_si, app_ti;
 
-  al = app_listener_get_w_handle (ctx->tls_session_handle);
-  tls_listener = app_listener_get_session (al);
-  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
-  s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
-	      app_ti, app_si, ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
-	      tls_listener->thread_index, tls_listener->session_index);
+  s = format (s, "%-50U", format_tls_listener_ctx, ctx);
+  if (verbose)
+    s = format (s, "%-15U", format_tls_ctx_state, ctx);
   return s;
 }
 
