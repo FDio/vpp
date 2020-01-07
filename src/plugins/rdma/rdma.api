@@ -18,14 +18,6 @@
 option version = "1.0.0";
 import "vnet/interface_types.api";
 
-enum rdma_mode
-{
-  RDMA_API_MODE_AUTO = 0,
-  RDMA_API_MODE_IBV = 1,
-  RDMA_API_MODE_DV = 2,
-};
-
-
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -34,7 +26,6 @@ enum rdma_mode
     @param rxq_num - number of receive queues (optional)
     @param rxq_size - receive queue size (optional)
     @param txq_size - transmit queue size (optional)
-    @param mode - operation mode (optional)
 */
 
 define rdma_create
@@ -47,8 +38,7 @@ define rdma_create
   u16 rxq_num [default=1];
   u16 rxq_size [default=1024];
   u16 txq_size [default=1024];
-  vl_api_rdma_mode_t mode [default=0];
-  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>]";
+  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>]";
 };
 
 /** \brief
