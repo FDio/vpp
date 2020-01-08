@@ -1186,7 +1186,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  || sb->is_reneging || sb->holes[sb->head].start == ack);
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
   ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
-	  - sb->last_bytes_delivered >= sb->rxt_sacked || sb->is_reneging);
+	  - sb->last_bytes_delivered >= sb->rxt_sacked);
   ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered
 	  || (tc->flags & TCP_CONN_FINSNT));
 
