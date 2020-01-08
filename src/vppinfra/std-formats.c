@@ -300,14 +300,14 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
-/* Unformat base 10 e.g 100M, 20G. */
+/* Unformat unsigned base 10 e.g 100M, 20G. */
 __clib_export uword
 unformat_base10 (unformat_input_t *input, va_list *va)
 {
-  uword amount, multiplier, c;
-  uword *result = va_arg (*va, uword *);
+  u64 amount, multiplier = 1llu, c;
+  u64 *result = va_arg (*va, u64 *);
 
-  if (!unformat (input, "%wd%_", &amount))
+  if (!unformat (input, "%llu%_", &amount))
     return 0;
 
   c = unformat_get_input (input);
@@ -315,15 +315,19 @@ unformat_base10 (unformat_input_t *input, va_list *va)
     {
     case 'k':
     case 'K':
-      multiplier = 1000;
+      multiplier = 1000ull;
       break;
     case 'm':
     case 'M':
-      multiplier = 1000000;
+      multiplier = 1000ull * 1000ull;
       break;
     case 'g':
     case 'G':
-      multiplier = 1000000000;
+      multiplier = 1000ull * 1000ull * 1000ull;
+      break;
+    case 't':
+    case 'T':
+      multiplier = 1000ull * 1000ull * 1000ull * 1000ull;
       break;
     default:
       multiplier = 1;
@@ -553,5 +557,122 @@ format_uword_bitmap (u8 *s, va_list *args)
 	vec_add1 (s, '\n');
     }
 
+  return s;
+}
+
+/*
+ * format_hexdump_trunc()
+ *  - Pack the head and tail of a packet in a buffer.
+ *  - Head starts at buffer[0] and goes to buffer[lenH - 1]
+ *  - Tail starts at buffer[lenH] and goes to buffer [lenH + lenT - 1]
+ *  - total data length = lenH + lenT
+ *  - Also pass the original packet length so that the left-column
+ *    index values printed for the tail block will be correct
+ *
+ *  Parameters:
+ *    u8* buffer_start = &buffer[0]
+ *    u32 total_display_length = lenH + lenT
+ *    u32 total_packet_length = original length
+ *    u32 tail_display_length = lenT
+ *
+ * Example:
+ *
+ *    u8 pktbuf[2048];
+ *    u32 len_packet = 1538;
+ *    u32 len_head = 32;
+ *    u32 len_tail = 32;
+ *
+ *    struct trace_foo {
+ *      u8 tracebuf[256];
+ *      u32 len_head;
+ *      u32 len_tail;
+ *      u32 len_packet;
+ *    } t;
+ *
+ *    ASSERT(len_head + len_tail <= sizeof(t.tracebuf));
+ *    memcpy(t.tracebuf, pktbuf, len_head);
+ *    memcpy(t.tracebuf + len_head, pktbuf + len_packet - len_tail, len_tail);
+ *    t.len_head = len_head;
+ *    t.len_tail = len_tail;
+ *    t.len_packet = len_packet;
+ *
+ *    ...
+ *
+ *     s = format(s, "%U", format_hexdump_trunc, t.tracebuf,
+ *         t.len_head + t.len_tail, len_packet, t.len_tail);
+ *
+ *   00000: 02 42 0d 0c 0c 0c 02 41 0b 0c 0c 0c 88 e5 4c 00 [.B.....A......L.]
+ *   00010: 00 00 00 01 68 85 c3 ae cf e6 51 24 16 4b e4 e5 [....h.....Q$.K..]
+ *    ...
+ *   005e0:       c6 93 54 76 2c c6 59 97 00 0f e1 a5 e7 93 [  ..Tv,.Y.......]
+ *   005f0: fe 8a f5 b7 59 44 38 e3 f4 e2 17 77 b5 be 72 32 [....YD8....w..r2]
+ *   00600: 5a a6                                           [Z.]
+ */
+__clib_export u8 *
+format_hexdump_trunc (u8 *s, va_list *args)
+{
+  u8 *data = va_arg (*args, u8 *);
+  u32 total_display_length = va_arg (*args, u32);
+  u32 total_packet_length = va_arg (*args, u32);
+  u32 tail_display_length = va_arg (*args, u32);
+  u32 len = total_display_length;
+  u32 i, j, index = 0;
+  const u32 line_len = 16;
+  u8 *line_hex = 0;
+  u8 *line_str = 0;
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  ASSERT (total_packet_length >= len);
+  ASSERT (len > tail_display_length);
+
+  /* Dump first part sans the last N bytes */
+  if (tail_display_length)
+    len -= tail_display_length;
+  i = 0;
+again:
+  for (; i < len; i++)
+    {
+      line_hex = format (line_hex, "%02x ", *data);
+      line_str = format (line_str, "%c", isprint (*data) ? *data : '.');
+      data++;
+      if (!((i + 1) % line_len))
+	{
+	  s = format (s, "%U%05x: %v[%v]\n", format_white_space, index ? indent : 0, index,
+		      line_hex, line_str);
+	  index = i + 1;
+	  vec_reset_length (line_hex);
+	  vec_reset_length (line_str);
+	}
+    }
+
+  j = i;
+  while (j++ % line_len)
+    line_hex = format (line_hex, "   ");
+
+  if (vec_len (line_hex))
+    s = format (s, "%U%05x: %v[%v]\n", format_white_space, index ? indent : 0, index, line_hex,
+		line_str);
+
+  vec_free (line_hex);
+  vec_free (line_str);
+
+  if (i < total_packet_length)
+    {
+      s = format (s, "%U ...\n", format_white_space, indent);
+      len = total_packet_length;
+      i = len - tail_display_length;
+      j = i & ~(16 - 1);
+      index = j;
+      for (; j < i; j++)
+	{
+	  line_hex = format (line_hex, "   ");
+	  line_str = format (line_str, "%c", ' ');
+	}
+
+      goto again;
+    }
   return s;
 }

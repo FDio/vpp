@@ -192,7 +192,6 @@ format_clib_mem_trace (u8 *s, va_list *va)
   clib_mem_trace_main_t *tm = va_arg (*va, clib_mem_trace_main_t *);
   int verbose = va_arg (*va, int);
   int have_traces = 0;
-  int i;
   int n = 0;
 
   CLIB_SPINLOCK_LOCK (tm->lock);
@@ -203,7 +202,7 @@ format_clib_mem_trace (u8 *s, va_list *va)
 
       /* Make a copy of traces since we'll be sorting them. */
       clib_mem_trace_t *t, *traces_copy;
-      u32 indent, total_objects_traced;
+      u32 total_objects_traced;
 
       traces_copy = vec_dup (tm->traces);
 
@@ -229,19 +228,7 @@ format_clib_mem_trace (u8 *s, va_list *va)
 	    s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
 			"Sample");
 	  s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, t->offset);
-	  indent = format_get_indent (s);
-	  for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
-	    {
-	      if (i > 0)
-		s = format (s, "%U", format_white_space, indent);
-#if defined(CLIB_UNIX) && !defined(__APPLE__)
-	      /* $$$$ does this actually work? */
-	      s = format (s, " %U\n", format_clib_elf_symbol_with_address,
-			  t->callers[i]);
-#else
-	      s = format (s, " %p\n", t->callers[i]);
-#endif
-	    }
+	  s = format (s, "\n         %U", format_backtrace, t->callers, ARRAY_LEN (t->callers));
 	}
 
       s = format (s, "%d total traced objects\n", total_objects_traced);
