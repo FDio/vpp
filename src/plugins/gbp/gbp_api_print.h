@@ -242,9 +242,11 @@ vl_api_gbp_contract_add_del_t_print (vl_api_gbp_contract_add_del_t * a,
   s = format (s, "scope %d ", ntohl (a->contract.scope));
   s = format (s, "sclass %d ", ntohs (a->contract.sclass));
   s = format (s, "dclass %d ", ntohs (a->contract.dclass));
-  s = format (s, "acl_index %d \n", ntohl (a->contract.acl_index));
   for (int i = 0; i < a->contract.n_rules; i++)
     {
+      s =
+	format (s, "\t rule %d \n", format_match_rule,
+		&a->contract.rules[i].match);
       s = format (s, "\t action %d\n", ntohl (a->contract.rules[i].action));
       s =
 	format (s, "\t hash_mode %d",

@@ -1,0 +1,144 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+typedef match_mac_mask
+{
+  vl_api_mac_address_t mmm_mac;
+  vl_api_mac_address_t mmm_mask;
+};
+
+/*
+ * Ranges are inclusive, i.e. to match "any" TCP/UDP port,
+ * use first=0,last=65535. For ICMP(v6),
+ * use first=0,last=255.
+ */
+typedef match_port_range
+{
+  u16 mpr_begin;
+  u16 mpr_end;
+};
+
+/*
+ * Ranges are inclusive, i.e. to match "any" ICMP(v6),
+ * use first=0,last=255.
+ */
+typedef match_icmp_type_range
+{
+  u8 mitr_begin;
+  u8 mitr_end;
+};
+typedef match_icmp_code_range
+{
+  u8 micr_begin;
+  u8 micr_end;
+};
+
+typedef match_icmp_range
+{
+  vl_api_match_icmp_code_range_t mir_codes;
+  vl_api_match_icmp_type_range_t mir_types;
+};
+
+/*
+ * for proto = 6, this matches if the
+ * TCP flags in the packet, ANDed with tcp_flags_mask,
+ * is equal to tcp_flags_value.
+ */
+typedef match_tcp_flags
+{
+  u8 mtf_flags;
+  u8 mtf_mask;
+};
+
+enum match_type:u8
+{
+  /* masked match on src IP and MAC */
+  MATCH_API_TYPE_MASK_SRC_IP_MAC = 0,
+  /* masked n-tuple match */
+  MATCH_API_TYPE_MASK_N_TUPLE,
+};
+
+/* match on src ip and mac */
+typedef match_mask_ip_mac
+{
+  vl_api_prefix_t mmim_ip;
+  vl_api_match_mac_mask_t mmim_mac;
+};
+
+/*
+ * Match L4 (TCP/UDP) parameters
+ */
+typedef match_l4
+{
+  /*
+   */
+  vl_api_match_port_range_t ml4_src_port;
+  vl_api_match_port_range_t ml4_dst_port;
+  vl_api_match_tcp_flags_t ml4_tcp;
+};
+
+union match_l4_union
+{
+  vl_api_match_l4_t mlu_l4;
+  vl_api_match_icmp_range_t mlu_icmp;
+};
+
+typedef match_mask_n_tuple
+{
+  vl_api_prefix_t mnt_src_ip;
+  vl_api_prefix_t mnt_dst_ip;
+  /*
+   * L4 protocol. IANA number. 1 = ICMP, 58 = ICMPv6, 6 = TCP, 17 = UDP.
+   * 0 => ignore L4 and ignore the ports/tcpflags when matching.
+   */
+  vl_api_ip_proto_t mnt_proto;
+
+  /*
+   * UDP/TCP or ICMP - depending on the protocol above
+   */
+  vl_api_match_l4_union_t mnt_l4;
+};
+
+union match_union
+{
+  vl_api_match_mask_ip_mac_t mask_ip_mac;
+  vl_api_match_mask_n_tuple_t mask_n_tuple;
+};
+
+typedef match_rule
+{
+  vl_api_match_type_t mr_type;
+  vl_api_match_union_t mr_union;
+};
+
+typedef match_list
+{
+  u16 ml_count;
+  vl_api_match_rule_t ml_entrues[ml_count];
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

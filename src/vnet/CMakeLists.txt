@@ -1568,6 +1568,31 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
+# match
+##############################################################################
+
+list (APPEND VNET_SOURCES
+  match/match_list.c
+  match/match_engine.c
+  match/match_set.c
+  match/match_types.c
+  match/match_types_api.c
+  match/engines/classifier/match_classifier.c
+  match/engines/classifier/match_classifier_mask_ip_mac.c
+  match/engines/classifier/match_classifier_mask_n_tuple.c
+  match/engines/linear/match_linear.c
+)
+
+list(APPEND VNET_HEADERS
+  match/match_types.h
+  match/match.h
+)
+
+list(APPEND VNET_API_FILES
+  match/match_types.api
+)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 
