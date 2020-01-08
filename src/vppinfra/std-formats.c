@@ -555,3 +555,70 @@ format_uword_bitmap (u8 *s, va_list *args)
 
   return s;
 }
+
+u8 *
+format_hexdump_trunc (u8 *s, va_list *args)
+{
+  u8 *data = va_arg (*args, u8 *);
+  uint len = va_arg (*args, uint);
+  uint actual_len = va_arg (*args, uint);
+  int i, j, index = 0;
+  const int line_len = 16;
+  u8 *line_hex = 0;
+  u8 *line_str = 0;
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  ASSERT (actual_len >= len);
+  ASSERT (len > 16);
+
+  /* Dump first part sans the last 16 bytes */
+  if (actual_len > len)
+    len -= 16;
+  i = 0;
+again:
+  for (; i < len; i++)
+    {
+      line_hex = format (line_hex, "%02x ", *data);
+      line_str = format (line_str, "%c", isprint (*data) ? *data : '.');
+      data++;
+      if (!((i + 1) % line_len))
+	{
+	  s = format (s, "%U%05x: %v[%v]\n", format_white_space,
+		      index ? indent : 0, index, line_hex, line_str);
+	  index = i + 1;
+	  vec_reset_length (line_hex);
+	  vec_reset_length (line_str);
+	}
+    }
+
+  j = i;
+  while (j++ % line_len)
+    line_hex = format (line_hex, "   ");
+
+  if (vec_len (line_hex))
+    s = format (s, "%U%05x: %v[%v]\n", format_white_space, index ? indent : 0,
+		index, line_hex, line_str);
+
+  vec_free (line_hex);
+  vec_free (line_str);
+
+  if (i < actual_len)
+    {
+      s = format (s, "%U ...\n", format_white_space, indent);
+      len = actual_len;
+      i = len - 16;
+      j = i & ~(16 - 1);
+      index = j;
+      for (; j < i; j++)
+	{
+	  line_hex = format (line_hex, "   ");
+	  line_str = format (line_str, "%c", ' ');
+	}
+
+      goto again;
+    }
+  return s;
+}
