@@ -1,10 +1,14 @@
 ---
 name: Virtio PCI Device
-maintainer: Mohsin Kazmi <sykazmi@cisco.com>
+maintainer: sykazmi@cisco.com sluong@cisco.com
 features:
-  - connection to the emulated pci interface presented to vpp from
+  - driver mode to emulate PCI interface presented to VPP from
     the host interface.
-description: "Create a virtio-backed PCI device interface"
+  - device mode to emulate vhost-user interface presented to VPP from the
+    guest VM.
+  - support multi-queue, GSO, checksum offload, indirect descriptor,
+    and jumbo frame.
+description: "Virtio v1.0 implementation"
 missing:
   - API dump filtering by sw_if_index
 state: production
