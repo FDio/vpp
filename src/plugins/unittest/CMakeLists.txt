@@ -15,6 +15,7 @@ add_vpp_plugin(unittest
   SOURCES
   bier_test.c
   bihash_test.c
+  conntrack_test.c
   crypto/aes_cbc.c
   crypto/aes_ctr.c
   crypto/aes_gcm.c
@@ -28,6 +29,7 @@ add_vpp_plugin(unittest
   lisp_cp_test.c
   llist_test.c
   mactime_test.c
+  match_test.c
   mfib_test.c
   mpcap_node.c
   punt_test.c

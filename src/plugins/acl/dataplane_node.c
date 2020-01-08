@@ -413,11 +413,11 @@ process_established_session (vlib_main_t * vm, acl_main_t * am,
   fa_session_t *sess = get_session_ptr_no_check (am, f_sess_id.thread_index,
 						 f_sess_id.session_index);
 
-  int old_timeout_type = fa_session_get_timeout_type (am, sess);
+  acl_timeout_e old_timeout_type = fa_session_get_timeout_type (am, sess);
   action =
     acl_fa_track_session (am, is_input, sw_if_index[0], now,
 			  sess, &fa_5tuple[0], pkt_len);
-  int new_timeout_type = fa_session_get_timeout_type (am, sess);
+  acl_timeout_e new_timeout_type = fa_session_get_timeout_type (am, sess);
   /* Tracking might have changed the session timeout type, e.g. from transient to established */
   if (PREDICT_FALSE (old_timeout_type != new_timeout_type))
     {
