@@ -125,8 +125,8 @@ svm_queue_send_signal_inline (svm_queue_t * q, u8 is_prod)
       ASSERT (q->consumer_evtfd > 0 && q->producer_evtfd > 0);
       fd = is_prod ? q->producer_evtfd : q->consumer_evtfd;
       rv = write (fd, &data, sizeof (data));
-      if (PREDICT_FALSE (rv))
-	clib_unix_warning ("signal write returned %d", rv);
+      if (PREDICT_FALSE (rv < 0))
+	clib_unix_warning ("signal write on %d returned %d", fd, rv);
     }
 }
 
