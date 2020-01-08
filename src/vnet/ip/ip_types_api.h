@@ -26,15 +26,12 @@
 #include <vlibapi/api_types.h>
 #include <vnet/ip/ip.api_types.h>
 
-/**
- * These enum decode/encodes use 'int' as the type for the enum because
- * one cannot forward declare an enum
- */
-extern int ip_address_family_decode (int _af, ip_address_family_t * out);
+extern int ip_address_family_decode (vl_api_address_family_t _af,
+				     ip_address_family_t * out);
 extern int ip_address_family_encode (ip_address_family_t af);
-extern int ip_proto_decode (int _af, ip_protocol_t * out);
+extern int ip_proto_decode (vl_api_ip_proto_t _af, ip_protocol_t * out);
 extern int ip_proto_encode (ip_protocol_t af);
-extern ip_dscp_t ip_dscp_decode (u8 _dscp);
+extern ip_dscp_t ip_dscp_decode (vl_api_ip_dscp_t _dscp);
 extern u8 ip_dscp_encode (ip_dscp_t dscp);
 
 /**
@@ -42,12 +39,13 @@ extern u8 ip_dscp_encode (ip_dscp_t dscp);
  */
 extern ip46_type_t ip_address_decode (const vl_api_address_t * in,
 				      ip46_address_t * out);
-extern void ip_address_encode (const ip46_address_t * in,
-			       ip46_type_t type, vl_api_address_t * out);
 extern void ip_address_decode2 (const vl_api_address_t * in,
 				ip_address_t * out);
+extern void ip_address_encode (const ip46_address_t * in,
+			       ip46_type_t type, vl_api_address_t * out);
 extern void ip_address_encode2 (const ip_address_t * in,
 				vl_api_address_t * out);
+
 extern void ip6_address_encode (const ip6_address_t * in,
 				vl_api_ip6_address_t out);
 extern void ip6_address_decode (const vl_api_ip6_address_t in,
@@ -59,6 +57,8 @@ extern void ip4_address_decode (const vl_api_ip4_address_t in,
 
 extern void ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out);
 extern void ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out);
+extern int ip_prefix_decode2 (const vl_api_prefix_t * in, ip_prefix_t * out);
+extern void ip_prefix_encode2 (const ip_prefix_t * in, vl_api_prefix_t * out);
 
 extern void ip_mprefix_decode (const vl_api_mprefix_t * in,
 			       mfib_prefix_t * out);
