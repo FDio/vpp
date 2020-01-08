@@ -390,6 +390,44 @@ unformat_log2_page_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+/* Parse memory size e.g. 100, 100k, 100m, 100g. */
+__clib_export uword
+unformat_bitrate (unformat_input_t *input, va_list *va)
+{
+  uword c;
+  u64 amount, multiplier = 1;
+  u64 *result = va_arg (*va, u64 *);
+  if (!unformat (input, "%llu%_", &amount))
+    return 0;
+
+  c = unformat_get_input (input);
+  switch (c)
+    {
+    case 't':
+    case 'T':
+      multiplier = 1000ull * 1000ull * 1000ull * 1000ull;
+      break;
+    case 'g':
+    case 'G':
+      multiplier = 1000ull * 1000ull * 1000ull;
+      break;
+    case 'm':
+    case 'M':
+      multiplier = 1000ull * 1000ull;
+      break;
+    case 'k':
+    case 'K':
+      multiplier = 1000ull;
+      break;
+    default:
+      unformat_put_input (input);
+      break;
+    }
+
+  *result = amount * multiplier;
+  return 1;
+}
+
 /* Format c identifier: e.g. a_name -> "a name".
    Works for both vector names and null terminated c strings. */
 __clib_export u8 *
@@ -553,5 +591,73 @@ format_uword_bitmap (u8 *s, va_list *args)
 	vec_add1 (s, '\n');
     }
 
+  return s;
+}
+
+__clib_export u8 *
+format_hexdump_trunc (u8 *s, va_list *args)
+{
+  u8 *data = va_arg (*args, u8 *);
+  uint len = va_arg (*args, uint);
+  uint actual_len = va_arg (*args, uint);
+  uint tail_length = va_arg (*args, uint);
+  int i, j, index = 0;
+  const int line_len = 16;
+  u8 *line_hex = 0;
+  u8 *line_str = 0;
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  ASSERT (actual_len >= len);
+  ASSERT (len > tail_length);
+
+  /* Dump first part sans the last N bytes */
+  if (tail_length)
+    len -= tail_length;
+  i = 0;
+again:
+  for (; i < len; i++)
+    {
+      line_hex = format (line_hex, "%02x ", *data);
+      line_str = format (line_str, "%c", isprint (*data) ? *data : '.');
+      data++;
+      if (!((i + 1) % line_len))
+	{
+	  s = format (s, "%U%05x: %v[%v]\n", format_white_space, index ? indent : 0, index,
+		      line_hex, line_str);
+	  index = i + 1;
+	  vec_reset_length (line_hex);
+	  vec_reset_length (line_str);
+	}
+    }
+
+  j = i;
+  while (j++ % line_len)
+    line_hex = format (line_hex, "   ");
+
+  if (vec_len (line_hex))
+    s = format (s, "%U%05x: %v[%v]\n", format_white_space, index ? indent : 0, index, line_hex,
+		line_str);
+
+  vec_free (line_hex);
+  vec_free (line_str);
+
+  if (i < actual_len)
+    {
+      s = format (s, "%U ...\n", format_white_space, indent);
+      len = actual_len;
+      i = len - tail_length;
+      j = i & ~(16 - 1);
+      index = j;
+      for (; j < i; j++)
+	{
+	  line_hex = format (line_hex, "   ");
+	  line_str = format (line_str, "%c", ' ');
+	}
+
+      goto again;
+    }
   return s;
 }
