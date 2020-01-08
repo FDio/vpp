@@ -784,6 +784,8 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
   if (!right)
     {
       sb->sacked_bytes = sb->high_sacked - ack;
+      sb->last_sacked_bytes = sb->sacked_bytes
+	- (old_sacked - sb->last_bytes_delivered);
       return;
     }
 
