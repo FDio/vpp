@@ -282,7 +282,7 @@ ip6_mask_to_preflen (ip6_address_t * mask)
 u8 *
 format_ip_address_family (u8 * s, va_list * args)
 {
-  ip_address_family_t af = va_arg (*args, ip_address_family_t);
+  ip_address_family_t af = va_arg (*args, int);	// int promo ip_address_family_t);
 
   switch (af)
     {

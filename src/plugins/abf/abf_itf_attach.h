@@ -26,13 +26,8 @@ typedef struct abf_itf_attach_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (marker);
   /**
-   * The ACL and DPO are cached for fast DP access
+   * The DPO is cached for fast DP access
    */
-  /**
-   * ACL index to match
-   */
-  u32 aia_acl;
-
   /**
    * The DPO actually used for forwarding
    */

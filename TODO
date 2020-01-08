@@ -1,0 +1,19 @@
+
+unformat match-rule
+
+macip - egress
+match engine selection based on # rules
+set-update;
+   pre-post could be different engines
+
+get the match function from the match-app.
+fix a set's rule type
+
+application is only for one ip address family
+
+user can fix the engine.
+
+change the update so its a 'commit' style;
+  user gets old list, modifies it, then commits the new.
+
+match_classifier port-range

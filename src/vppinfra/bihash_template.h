@@ -438,7 +438,8 @@ static inline void BV (clib_bihash_prefetch_data)
 
 static inline int BV (clib_bihash_search_inline_2_with_hash)
   (BVT (clib_bihash) * h,
-   u64 hash, BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
+   u64 hash, const BVT (clib_bihash_kv) * search_key,
+   BVT (clib_bihash_kv) * valuep)
 {
   u32 bucket_index;
   BVT (clib_bihash_value) * v;

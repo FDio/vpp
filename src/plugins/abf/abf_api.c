@@ -22,6 +22,7 @@
 #include <vnet/mpls/mpls_types.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_api.h>
+#include <vnet/match/match_types_api.h>
 
 #include <vpp/app/version.h>
 
@@ -83,8 +84,11 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
 
   if (mp->is_add)
     {
-      rv = abf_policy_update (ntohl (mp->policy.policy_id),
-			      ntohl (mp->policy.acl_index), paths);
+      match_rule_t mr;
+
+      match_rule_decode (&mp->policy.rule, &mr);
+
+      rv = abf_policy_update (ntohl (mp->policy.policy_id), &mr, paths);
     }
   else
     {
@@ -153,8 +157,9 @@ abf_policy_send_details (u32 api, void *args)
   /* fill in the message */
   mp->context = ctx->context;
   mp->policy.n_paths = n_paths;
-  mp->policy.acl_index = htonl (ap->ap_acl);
   mp->policy.policy_id = htonl (ap->ap_id);
+
+  match_rule_encode (&ap->ap_rule, &mp->policy.rule);
 
   fib_path_list_walk_w_ext (ap->ap_pl, NULL, fib_path_encode, &walk_ctx);
 

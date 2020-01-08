@@ -14,6 +14,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from vpp_object import VppObject
+from vpp_papi import VppEnum
 
 NUM_PKTS = 67
 
@@ -35,16 +36,50 @@ def find_abf_itf_attach(test, id, sw_if_index):
     return False
 
 
+class VppMatchMaskNTuple():
+    def __init__(self, src_pfx, dst_pfx, proto, src_ports, dst_ports):
+        self.src_pfx = src_pfx
+        self.dst_pfx = dst_pfx
+        self.proto = proto
+        self.src_ports = src_ports
+        self.dst_ports = dst_ports
+
+    def encode(self):
+        e = VppEnum.vl_api_match_type_t
+        return {
+            'mr_type': e.MATCH_API_TYPE_MASK_N_TUPLE,
+            'mr_union':
+            {
+                'mask_n_tuple':
+                {
+                    'mnt_src_ip': self.src_pfx,
+                    'mnt_dst_ip': self.dst_pfx,
+                    'mnt_proto': self.proto,
+                    'mnt_src_port':
+                    {
+                        'mpr_begin': self.src_ports[0],
+                        'mpr_end': self.src_ports[1],
+                    },
+                    'mnt_dst_port':
+                    {
+                        'mpr_begin': self.dst_ports[0],
+                        'mpr_end': self.dst_ports[1],
+                    },
+                }
+            }
+        }
+
+
 class VppAbfPolicy(VppObject):
 
     def __init__(self,
                  test,
                  policy_id,
-                 acl,
+                 rule,
                  paths):
         self._test = test
         self.policy_id = policy_id
-        self.acl = acl
+        self.rule = rule
         self.paths = paths
         self.encoded_paths = []
         for path in self.paths:
@@ -54,7 +89,7 @@ class VppAbfPolicy(VppObject):
         self._test.vapi.abf_policy_add_del(
             1,
             {'policy_id': self.policy_id,
-             'acl_index': self.acl.acl_index,
+             'rule': self.rule.encode(),
              'n_paths': len(self.paths),
              'paths': self.encoded_paths})
         self._test.registry.register(self, self._test.logger)
@@ -63,7 +98,7 @@ class VppAbfPolicy(VppObject):
         self._test.vapi.abf_policy_add_del(
             0,
             {'policy_id': self.policy_id,
-             'acl_index': self.acl.acl_index,
+             'rule': self.rule.encode(),
              'n_paths': len(self.paths),
              'paths': self.encoded_paths})
 
@@ -161,23 +196,13 @@ class TestAbf(VppTestCase):
         #
         # Rule 1
         #
-        rule_1 = ({'is_permit': 1,
-                   'is_ipv6': 0,
-                   'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1234,
-                   'src_ip_prefix_len': 32,
-                   'src_ip_addr': inet_pton(AF_INET, "1.1.1.1"),
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_prefix_len': 32,
-                   'dst_ip_addr': inet_pton(AF_INET, "1.1.1.2")})
-        acl_1 = self.vapi.acl_add_replace(acl_index=4294967295, r=[rule_1])
+        rule_1 = VppMatchMaskNTuple("1.1.1.1/32", "1.1.1.2/32",
+                                    17, [1234, 1234], [1234, 1234])
 
         #
-        # ABF policy for ACL 1 - path via interface 1
+        # ABF policy for rule 1 - path via interface 1
         #
-        abf_1 = VppAbfPolicy(self, 10, acl_1,
+        abf_1 = VppAbfPolicy(self, 10, rule_1,
                              [VppRoutePath(self.pg1.remote_ip4,
                                            self.pg1.sw_if_index)])
         abf_1.add_vpp_config()
@@ -202,7 +227,7 @@ class TestAbf(VppTestCase):
         #
         # Attach a 'better' priority policy to the same interface
         #
-        abf_2 = VppAbfPolicy(self, 11, acl_1,
+        abf_2 = VppAbfPolicy(self, 11, rule_1,
                              [VppRoutePath(self.pg2.remote_ip4,
                                            self.pg2.sw_if_index)])
         abf_2.add_vpp_config()
@@ -214,7 +239,7 @@ class TestAbf(VppTestCase):
         #
         # Attach a policy with priority in the middle
         #
-        abf_3 = VppAbfPolicy(self, 12, acl_1,
+        abf_3 = VppAbfPolicy(self, 12, rule_1,
                              [VppRoutePath(self.pg3.remote_ip4,
                                            self.pg3.sw_if_index)])
         abf_3.add_vpp_config()
@@ -260,7 +285,7 @@ class TestAbf(VppTestCase):
         self.pg4.config_ip4()
         self.pg4.resolve_arp()
 
-        abf_13 = VppAbfPolicy(self, 13, acl_1,
+        abf_13 = VppAbfPolicy(self, 13, rule_1,
                               [VppRoutePath(self.pg4.remote_ip4,
                                             0xffffffff,
                                             nh_table_id=table_20.table_id)])
@@ -284,24 +309,13 @@ class TestAbf(VppTestCase):
         #
         # Rule 1
         #
-        rule_1 = ({'is_permit': 1,
-                   'is_ipv6': 1,
-                   'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1234,
-                   'src_ip_prefix_len': 128,
-                   'src_ip_addr': inet_pton(AF_INET6, "2001::2"),
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_prefix_len': 128,
-                   'dst_ip_addr': inet_pton(AF_INET6, "2001::1")})
-        acl_1 = self.vapi.acl_add_replace(acl_index=4294967295,
-                                          r=[rule_1])
+        rule_1 = VppMatchMaskNTuple("2001::2/128", "2001::1/128",
+                                    17, [1234, 1234], [1234, 1234])
 
         #
         # ABF policy for ACL 1 - path via interface 1
         #
-        abf_1 = VppAbfPolicy(self, 10, acl_1,
+        abf_1 = VppAbfPolicy(self, 10, rule_1,
                              [VppRoutePath("3001::1",
                                            0xffffffff)])
         abf_1.add_vpp_config()
@@ -323,7 +337,7 @@ class TestAbf(VppTestCase):
         # packets are dropped because there is no route to the policy's
         # next hop
         #
-        self.send_and_assert_no_replies(self.pg1, p * NUM_PKTS, "no route")
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "no route")
 
         #
         # add a route resolving the next-hop

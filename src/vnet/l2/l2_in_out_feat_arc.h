@@ -41,18 +41,6 @@ typedef enum
   IN_OUT_FEAT_ARC_N_TABLE_GROUPS
 } in_out_feat_arc_table_group_id_t;
 
-typedef struct
-{
-  /* convenience variables */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-  vnet_classify_main_t *vnet_classify_main;
-    vnet_config_main_t
-    *
-    vnet_config_main[IN_OUT_FEAT_ARC_N_TABLE_GROUPS]
-    [IN_OUT_FEAT_ARC_N_TABLES];
-} in_out_feat_arc_main_t;
-
 int vnet_l2_feature_enable_disable (const char *arc_name,
 				    const char *node_name, u32 sw_if_index,
 				    int enable_disable, void *feature_config,
