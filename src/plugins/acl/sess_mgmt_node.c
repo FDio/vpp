@@ -129,8 +129,7 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 static u64
 fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 {
-  u64 timeout = am->vlib_main->clib_time.clocks_per_second / 1000;
-  timeout = fa_session_get_timeout (am, sess);
+  u64 timeout = fa_session_get_timeout (am, sess);
   /* for all user lists, check them twice per timeout */
   timeout >>= (sess->link_list_id != ACL_TIMEOUT_PURGATORY);
   return timeout;
@@ -193,7 +192,7 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 
 
   {
-    u8 tt = 0;
+    acl_timeout_e tt = 0;
     int n_pending_swipes = 0;
     for (tt = 0; tt < ACL_N_TIMEOUTS; tt++)
       {

@@ -53,7 +53,7 @@ extern vlib_node_registration_t acl_out_node;
 void input_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32 *acl_match_p, u32 *rule_match_p, u32 *trace_bitmap);
 void output_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32 *acl_match_p, u32 *rule_match_p, u32 *trace_bitmap);
 
-enum acl_timeout_e {
+typedef enum acl_timeout_e_ {
   ACL_TIMEOUT_UNUSED = 0,
   ACL_TIMEOUT_UDP_IDLE,
   ACL_TIMEOUT_TCP_IDLE,
@@ -61,7 +61,7 @@ enum acl_timeout_e {
   ACL_N_USER_TIMEOUTS,
   ACL_TIMEOUT_PURGATORY = ACL_N_USER_TIMEOUTS, /* a special-case queue for deletion-in-progress sessions */
   ACL_N_TIMEOUTS
-};
+} acl_timeout_e;
 
 typedef struct
 {

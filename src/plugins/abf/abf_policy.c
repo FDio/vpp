@@ -78,7 +78,7 @@ abf_policy_find (u32 policy_id)
 
 int
 abf_policy_update (u32 policy_id,
-		   u32 acl_index, const fib_route_path_t * rpaths)
+		   const match_rule_t * mr, const fib_route_path_t * rpaths)
 {
   abf_policy_t *ap;
   u32 api;
@@ -94,7 +94,7 @@ abf_policy_update (u32 policy_id,
 
       api = ap - abf_policy_pool;
       fib_node_init (&ap->ap_node, abf_policy_fib_node_type);
-      ap->ap_acl = acl_index;
+      ap->ap_rule = *mr;
       ap->ap_id = policy_id;
       ap->ap_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
 					 FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
@@ -128,7 +128,7 @@ abf_policy_update (u32 policy_id,
 
       ap = abf_policy_get (api);
       old_pl = ap->ap_pl;
-      if (ap->ap_acl != acl_index)
+      if (!match_rule_cmp (&ap->ap_rule, mr))
 	{
 	  /* Should change this error code to something more descriptive */
 	  return (VNET_API_ERROR_INVALID_VALUE);
@@ -246,12 +246,12 @@ abf_policy_cmd (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
-  u32 acl_index, policy_id, is_del;
   dpo_proto_t payload_proto;
+  u32 policy_id, is_del;
+  match_rule_t mrule;
   int rv = 0;
 
   is_del = 0;
-  acl_index = INDEX_INVALID;
   policy_id = INDEX_INVALID;
 
   /* Get a line of input. */
@@ -260,7 +260,7 @@ abf_policy_cmd (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "acl %d", &acl_index))
+      if (unformat (line_input, "rule %U", unformat_match_rule, &mrule))
 	;
       else if (unformat (line_input, "id %d", &policy_id))
 	;
@@ -284,13 +284,13 @@ abf_policy_cmd (vlib_main_t * vm,
 
   if (!is_del)
     {
-      if (INDEX_INVALID == acl_index)
-	{
-	  vlib_cli_output (vm, "ACL index must be set");
-	  return 0;
-	}
+      /* if (INDEX_INVALID == acl_index) */
+      /*   { */
+      /*     vlib_cli_output (vm, "ACL index must be set"); */
+      /*     return 0; */
+      /*   } */
 
-      rv = abf_policy_update (policy_id, acl_index, rpaths);
+      rv = abf_policy_update (policy_id, &mrule, rpaths);
       /* Should change this error code to something more descriptive */
       if (rv == VNET_API_ERROR_INVALID_VALUE)
 	{
@@ -325,8 +325,9 @@ format_abf (u8 * s, va_list * args)
 {
   abf_policy_t *ap = va_arg (*args, abf_policy_t *);
 
-  s = format (s, "abf:[%d]: policy:%d acl:%d",
-	      ap - abf_policy_pool, ap->ap_id, ap->ap_acl);
+  s = format (s, "abf:[%d]: policy:%d rule:%d",
+	      ap - abf_policy_pool, ap->ap_id,
+	      format_match_rule, &ap->ap_rule);
   s = format (s, "\n ");
   if (FIB_NODE_INDEX_INVALID == ap->ap_pl)
     {
