@@ -15,7 +15,8 @@
 
 #include <plugins/abf/abf_itf_attach.h>
 #include <vnet/fib/fib_path_list.h>
-#include <plugins/acl/exports.h>
+#include <vnet/match/match_set_dp.h>
+#include <vnet/match/match_engine.h>
 
 /**
  * Forward declarations;
@@ -34,24 +35,24 @@ static fib_node_type_t abf_itf_attach_fib_node_type;
 abf_itf_attach_t *abf_itf_attach_pool;
 
 /**
- * A per interface vector of attached policies. used in the data-plane
+ * Per interface values of match-set applications. used in the data-plane
  */
-static u32 **abf_per_itf[FIB_PROTOCOL_MAX];
+typedef struct abf_itf_t_
+{
+  index_t *ai_attachments;
+  match_set_app_t ai_app;
+  index_t ai_set;
+  match_handle_t ai_hdl;
+  match_list_t ai_ml;
+} abf_itf_t;
 
-/**
- * Per interface values of ACL lookup context IDs. used in the data-plane
- */
-static u32 *abf_alctx_per_itf[FIB_PROTOCOL_MAX];
+const static abf_itf_t ABF_ITF_INVALID = {
+  .ai_app = MATCH_SET_APP_INITIALISOR,
+  .ai_hdl = ~0,
+  .ai_set = INDEX_INVALID,
+};
 
-/**
- * ABF ACL module user id returned during the initialization
- */
-static u32 abf_acl_user_id;
-/*
- * ACL plugin method vtable
- */
-
-static acl_plugin_methods_t acl_plugin;
+static abf_itf_t *abf_itfs[N_AF];
 
 /**
  * A DB of attachments; key={abf_index,sw_if_index}
@@ -118,13 +119,13 @@ abf_itf_attach_stack (abf_itf_attach_t * aia)
   ap = abf_policy_get (aia->aia_abf);
 
   fib_path_list_contribute_forwarding (ap->ap_pl,
-				       (FIB_PROTOCOL_IP4 == aia->aia_proto ?
+				       (AF_IP4 == aia->aia_af ?
 					FIB_FORW_CHAIN_TYPE_UNICAST_IP4 :
 					FIB_FORW_CHAIN_TYPE_UNICAST_IP6),
 				       FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
 				       &via_dpo);
 
-  dpo_stack_from_node ((FIB_PROTOCOL_IP4 == aia->aia_proto ?
+  dpo_stack_from_node ((AF_IP4 == aia->aia_af ?
 			abf_ip4_node.index :
 			abf_ip6_node.index), &aia->aia_dpo, &via_dpo);
   dpo_reset (&via_dpo);
@@ -142,38 +143,66 @@ abf_cmp_attach_for_sort (void *v1, void *v2)
   return (aia1->aia_prio - aia2->aia_prio);
 }
 
-void
-abf_setup_acl_lc (fib_protocol_t fproto, u32 sw_if_index)
-{
-  u32 *acl_vec = 0;
-  u32 *aiai;
-  abf_itf_attach_t *aia;
-
-  if (~0 == abf_alctx_per_itf[fproto][sw_if_index])
-    return;
-
-  vec_foreach (aiai, abf_per_itf[fproto][sw_if_index])
-  {
-    aia = abf_itf_attach_get (*aiai);
-    vec_add1 (acl_vec, aia->aia_acl);
-  }
-  acl_plugin.set_acl_vec_for_context (abf_alctx_per_itf[fproto][sw_if_index],
-				      acl_vec);
-  vec_free (acl_vec);
-}
-
-int
-abf_itf_attach (fib_protocol_t fproto,
-		u32 policy_id, u32 priority, u32 sw_if_index)
+static void
+abf_match_set_update (ip_address_family_t af, u32 sw_if_index)
 {
   abf_itf_attach_t *aia;
   abf_policy_t *ap;
+  abf_itf_t *ai;
+  u32 *aiai;
+  u8 *name;
+
+  ai = &abf_itfs[af][sw_if_index];
+
+  name = format (NULL, "abf-%U-%U",
+		 format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
+		 format_ip_address_family, af);
+
+  if (~0 != ai->ai_hdl)
+    match_list_free (&ai->ai_ml);
+
+  match_list_init (&ai->ai_ml, name, vec_len (ai->ai_attachments));
+
+  vec_foreach (aiai, ai->ai_attachments)
+  {
+    aia = abf_itf_attach_get (*aiai);
+    ap = abf_policy_get (aia->aia_abf);
+    ap->ap_rule.mr_result = *aiai;
+
+    match_list_push_back (&ai->ai_ml, &ap->ap_rule);
+  }
+
+  if (~0 == ai->ai_hdl)
+    {
+      ai->ai_hdl = match_set_list_add (ai->ai_set, &ai->ai_ml, 0);
+
+      match_set_apply (ai->ai_set,
+		       MATCH_SEMANTIC_FIRST,
+		       match_set_get_itf_tag_flags (sw_if_index),
+		       &ai->ai_app);
+    }
+  else
+    {
+      if (match_list_length (&ai->ai_ml))
+	match_set_list_replace (ai->ai_set, ai->ai_hdl, &ai->ai_ml, 0);
+      else
+	match_set_list_del (ai->ai_set, &ai->ai_hdl);
+    }
+
+  vec_free (name);
+}
+
+int
+abf_itf_attach (ip_address_family_t af,
+		u32 policy_id, u32 priority, u32 sw_if_index)
+{
+  abf_itf_attach_t *aia;
+  abf_itf_t *ai;
   u32 api, aiai;
 
   api = abf_policy_find (policy_id);
 
   ASSERT (INDEX_INVALID != api);
-  ap = abf_policy_get (api);
 
   /*
    * check this is not a duplicate
@@ -190,8 +219,7 @@ abf_itf_attach (fib_protocol_t fproto,
 
   fib_node_init (&aia->aia_node, abf_itf_attach_fib_node_type);
   aia->aia_prio = priority;
-  aia->aia_proto = fproto;
-  aia->aia_acl = ap->ap_acl;
+  aia->aia_af = af;
   aia->aia_abf = api;
   aia->aia_sw_if_index = sw_if_index;
   aiai = aia - abf_itf_attach_pool;
@@ -205,35 +233,48 @@ abf_itf_attach (fib_protocol_t fproto,
   /*
    * Insert the policy on the interfaces list.
    */
-  vec_validate_init_empty (abf_per_itf[fproto], sw_if_index, NULL);
-  vec_add1 (abf_per_itf[fproto][sw_if_index], aia - abf_itf_attach_pool);
-  if (1 == vec_len (abf_per_itf[fproto][sw_if_index]))
+  vec_validate_init_empty (abf_itfs[af], sw_if_index, ABF_ITF_INVALID);
+
+  ai = &abf_itfs[af][sw_if_index];
+
+  vec_add1 (ai->ai_attachments, aia - abf_itf_attach_pool);
+  if (1 == vec_len (ai->ai_attachments))
     {
       /*
        * when enabling the first ABF policy on the interface
        * we need to enable the interface input feature
        */
-      vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
+      vnet_feature_enable_disable ((AF_IP4 == af ?
 				    "ip4-unicast" :
 				    "ip6-unicast"),
-				   (FIB_PROTOCOL_IP4 == fproto ?
+				   (AF_IP4 == af ?
 				    "abf-input-ip4" :
 				    "abf-input-ip6"),
 				   sw_if_index, 1, NULL, 0);
 
-      /* if this is the first ABF policy, we need to acquire an ACL lookup context */
-      vec_validate_init_empty (abf_alctx_per_itf[fproto], sw_if_index, ~0);
-      abf_alctx_per_itf[fproto][sw_if_index] =
-	acl_plugin.get_lookup_context_index (abf_acl_user_id, sw_if_index, 0);
+      /*
+       * if this is the first ABF policy, we need to create the match-set
+       * that will perform the matching
+       */
+      u8 *name = format (NULL, "abf-%U-%U",
+			 format_vnet_sw_if_index_name, vnet_get_main (),
+			 sw_if_index,
+			 format_ip_address_family, af);
+      ai->ai_set = match_set_create_and_lock (name,
+					      MATCH_TYPE_MASK_N_TUPLE,
+					      MATCH_BOTH,
+					      ip_address_family_to_ether_type
+					      (af), NULL);
+
+      vec_free (name);
     }
   else
     {
-      vec_sort_with_function (abf_per_itf[fproto][sw_if_index],
-			      abf_cmp_attach_for_sort);
+      vec_sort_with_function (ai->ai_attachments, abf_cmp_attach_for_sort);
     }
 
   /* Prepare and set the list of ACLs for lookup within the context */
-  abf_setup_acl_lc (fproto, sw_if_index);
+  abf_match_set_update (af, sw_if_index);
 
   /*
    * become a child of the ABF policy so we are notified when
@@ -247,9 +288,10 @@ abf_itf_attach (fib_protocol_t fproto,
 }
 
 int
-abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
+abf_itf_detach (ip_address_family_t af, u32 policy_id, u32 sw_if_index)
 {
   abf_itf_attach_t *aia;
+  abf_itf_t *ai;
   u32 index;
 
   /*
@@ -260,45 +302,38 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
   if (NULL == aia)
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
+  ai = &abf_itfs[af][sw_if_index];
+
   /*
    * first remove from the interface's vector
    */
-  ASSERT (abf_per_itf[fproto]);
-  ASSERT (abf_per_itf[fproto][sw_if_index]);
-
-  index = vec_search (abf_per_itf[fproto][sw_if_index],
-		      aia - abf_itf_attach_pool);
+  index = vec_search (ai->ai_attachments, aia - abf_itf_attach_pool);
 
   ASSERT (index != ~0);
-  vec_del1 (abf_per_itf[fproto][sw_if_index], index);
+  vec_del1 (ai->ai_attachments, index);
+  vec_sort_with_function (ai->ai_attachments, abf_cmp_attach_for_sort);
 
-  if (0 == vec_len (abf_per_itf[fproto][sw_if_index]))
+  /* Prepare and set the list of ACLs for lookup within the context */
+  abf_match_set_update (af, sw_if_index);
+
+  if (0 == vec_len (ai->ai_attachments))
     {
       /*
        * when deleting the last ABF policy on the interface
        * we need to disable the interface input feature
        */
-      vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
+      vnet_feature_enable_disable ((AF_IP4 == af ?
 				    "ip4-unicast" :
 				    "ip6-unicast"),
-				   (FIB_PROTOCOL_IP4 == fproto ?
+				   (AF_IP4 == af ?
 				    "abf-input-ip4" :
 				    "abf-input-ip6"),
 				   sw_if_index, 0, NULL, 0);
 
-      /* Return the lookup context, invalidate its id in our records */
-      acl_plugin.put_lookup_context_index (abf_alctx_per_itf[fproto]
-					   [sw_if_index]);
-      abf_alctx_per_itf[fproto][sw_if_index] = ~0;
+      /* free the match set */
+      match_set_unlock (&ai->ai_set);
+      ai->ai_set = ~0;
     }
-  else
-    {
-      vec_sort_with_function (abf_per_itf[fproto][sw_if_index],
-			      abf_cmp_attach_for_sort);
-    }
-
-  /* Prepare and set the list of ACLs for lookup within the context */
-  abf_setup_acl_lc (fproto, sw_if_index);
 
   /*
    * remove the dependency on the policy
@@ -331,7 +366,9 @@ format_abf_intf_attach (u8 * s, va_list * args)
   abf_policy_t *ap;
 
   ap = abf_policy_get (aia->aia_abf);
-  s = format (s, "abf-interface-attach: policy:%d priority:%d",
+  s = format (s, "[%d] abf-interface-attach: %U policy:%d priority:%d",
+	      aia - abf_itf_attach_pool,
+	      format_ip_address_family, aia->aia_af,
 	      ap->ap_id, aia->aia_prio);
   s = format (s, "\n  %U", format_dpo_id, &aia->aia_dpo, 2);
 
@@ -343,14 +380,14 @@ abf_itf_attach_cmd (vlib_main_t * vm,
 		    unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   u32 policy_id, sw_if_index;
-  fib_protocol_t fproto;
+  ip_address_family_t af;
   u32 is_del, priority;
   vnet_main_t *vnm;
 
   is_del = 0;
   sw_if_index = policy_id = ~0;
   vnm = vnet_get_main ();
-  fproto = FIB_PROTOCOL_MAX;
+  af = N_AF;
   priority = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -359,10 +396,8 @@ abf_itf_attach_cmd (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (input, "add"))
 	is_del = 0;
-      else if (unformat (input, "ip4"))
-	fproto = FIB_PROTOCOL_IP4;
-      else if (unformat (input, "ip6"))
-	fproto = FIB_PROTOCOL_IP6;
+      else if (unformat (input, "%U", unformat_ip_address_family, &af))
+	;
       else if (unformat (input, "policy %d", &policy_id))
 	;
       else if (unformat (input, "priority %d", &priority))
@@ -383,7 +418,7 @@ abf_itf_attach_cmd (vlib_main_t * vm,
     {
       return (clib_error_return (0, "invalid interface name"));
     }
-  if (FIB_PROTOCOL_MAX == fproto)
+  if (N_AF == af)
     {
       return (clib_error_return (0, "Specify either ip4 or ip6"));
     }
@@ -392,9 +427,9 @@ abf_itf_attach_cmd (vlib_main_t * vm,
     return (clib_error_return (0, "invalid policy ID:%d", policy_id));
 
   if (is_del)
-    abf_itf_detach (fproto, policy_id, sw_if_index);
+    abf_itf_detach (af, policy_id, sw_if_index);
   else
-    abf_itf_attach (fproto, policy_id, priority, sw_if_index);
+    abf_itf_attach (af, policy_id, priority, sw_if_index);
 
   return (NULL);
 }
@@ -411,6 +446,16 @@ VLIB_CLI_COMMAND (abf_itf_attach_cmd_node, static) = {
 };
 /* *INDENT-ON* */
 
+static u8 *
+format_abf_attach_action (u8 * s, va_list * args)
+{
+  match_result_t mr = va_arg (*args, match_result_t);
+
+  s = format (s, "%lld", mr);
+
+  return (s);
+}
+
 static clib_error_t *
 abf_show_attach_cmd (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -419,6 +464,7 @@ abf_show_attach_cmd (vlib_main_t * vm,
   u32 sw_if_index, *aiai;
   fib_protocol_t fproto;
   vnet_main_t *vnm;
+  abf_itf_t *ai;
 
   sw_if_index = ~0;
   vnm = vnet_get_main ();
@@ -441,16 +487,24 @@ abf_show_attach_cmd (vlib_main_t * vm,
   /* *INDENT-OFF* */
   FOR_EACH_FIB_IP_PROTOCOL(fproto)
   {
-    if (sw_if_index < vec_len(abf_per_itf[fproto]))
+    if (sw_if_index < vec_len(abf_itfs[fproto]))
       {
-        if (vec_len(abf_per_itf[fproto][sw_if_index]))
-          vlib_cli_output(vm, "%U:", format_fib_protocol, fproto);
+        ai = &abf_itfs[fproto][sw_if_index];
 
-        vec_foreach(aiai, abf_per_itf[fproto][sw_if_index])
+        if (!vec_len(ai->ai_attachments))
+          continue;
+
+        vlib_cli_output(vm, "%U:", format_fib_protocol, fproto);
+
+        vec_foreach(aiai, ai->ai_attachments)
           {
             aia = pool_elt_at_index(abf_itf_attach_pool, *aiai);
             vlib_cli_output(vm, " %U", format_abf_intf_attach, aia);
           }
+        vlib_cli_output(vm, " %U", format_match_list_w_result,
+                        &ai->ai_ml, 3,
+                        format_abf_attach_action);
+        vlib_cli_output(vm, " %U", format_match_set, ai->ai_set);
       }
   }
   /* *INDENT-ON* */
@@ -490,6 +544,7 @@ typedef struct abf_input_trace_t_
 {
   abf_next_t next;
   index_t index;
+  index_t result;
 } abf_input_trace_t;
 
 typedef enum
@@ -503,121 +558,83 @@ typedef enum
 always_inline uword
 abf_input_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, fib_protocol_t fproto)
+		  vlib_frame_t * frame, ip_address_family_t af)
 {
-  u32 n_left_from, *from, *to_next, next_index, matches, misses;
+  u32 *from, n_left, sw_if_index0, matches, misses;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  const abf_itf_attach_t *aia;
+  const match_set_app_t *app;
+  match_result_t aiai;
+  bool match;
+  f64 now;
 
+  b = bufs;
+  next = nexts;
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  n_left = frame->n_vectors;
   matches = misses = 0;
+  now = vlib_time_now (vm);
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left > 0)
     {
-      u32 n_left_to_next;
+      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      app = &abf_itfs[af][sw_if_index0].ai_app;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      /* we don't care about the l2 offset, since we are always dealing
+       * with IP packets. we appl ytis feature in the L3 input path,
+       * consequently the buffer's current data is pointing at the
+       * l3 header, hence the l3-offset is 0
+       */
+      match = match_match_one (vm, b[0], 0, 0, app, now, &aiai);
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (match)
 	{
-	  const u32 *attachments0;
-	  const abf_itf_attach_t *aia0;
-	  abf_next_t next0 = ABF_NEXT_DROP;
-	  vlib_buffer_t *b0;
-	  u32 bi0, sw_if_index0;
-	  fa_5tuple_opaque_t fa_5tuple0;
-	  u32 match_acl_index = ~0;
-	  u32 match_acl_pos = ~0;
-	  u32 match_rule_index = ~0;
-	  u32 trace_bitmap = 0;
-	  u32 lc_index;
-	  u8 action;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-	  ASSERT (vec_len (abf_per_itf[fproto]) > sw_if_index0);
-	  attachments0 = abf_per_itf[fproto][sw_if_index0];
-
-	  ASSERT (vec_len (abf_alctx_per_itf[fproto]) > sw_if_index0);
 	  /*
-	   * check if any of the policies attached to this interface matches.
+	   * match:
+	   *  follow the DPO chain
 	   */
-	  lc_index = abf_alctx_per_itf[fproto][sw_if_index0];
-
+	  aia = abf_itf_attach_get (aiai);
+	  next[0] = aia->aia_dpo.dpoi_next_node;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = aia->aia_dpo.dpoi_index;
+	  matches++;
+	}
+      else
+	{
 	  /*
-	     A non-inline version looks like this:
-
-	     acl_plugin.fill_5tuple (lc_index, b0, (FIB_PROTOCOL_IP6 == fproto),
-	     1, 0, &fa_5tuple0);
-	     if (acl_plugin.match_5tuple
-	     (lc_index, &fa_5tuple0, (FIB_PROTOCOL_IP6 == fproto), &action,
-	     &match_acl_pos, &match_acl_index, &match_rule_index,
-	     &trace_bitmap))
-	     . . .
+	   * miss:
+	   *  move on down the feature arc
 	   */
-	  acl_plugin_fill_5tuple_inline (acl_plugin.p_acl_main, lc_index, b0,
-					 (FIB_PROTOCOL_IP6 == fproto), 1, 0,
-					 &fa_5tuple0);
-
-	  if (acl_plugin_match_5tuple_inline
-	      (acl_plugin.p_acl_main, lc_index, &fa_5tuple0,
-	       (FIB_PROTOCOL_IP6 == fproto), &action, &match_acl_pos,
-	       &match_acl_index, &match_rule_index, &trace_bitmap))
-	    {
-	      /*
-	       * match:
-	       *  follow the DPO chain
-	       */
-	      aia0 = abf_itf_attach_get (attachments0[match_acl_pos]);
-
-	      next0 = aia0->aia_dpo.dpoi_next_node;
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-		aia0->aia_dpo.dpoi_index;
-	      matches++;
-	    }
-	  else
-	    {
-	      /*
-	       * miss:
-	       *  move on down the feature arc
-	       */
-	      vnet_feature_next (&next0, b0);
-	      misses++;
-	    }
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      abf_input_trace_t *tr;
-
-	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->next = next0;
-	      tr->index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	    }
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next, bi0,
-					   next0);
+	  vnet_feature_next_u16 (&next[0], b[0]);
+	  misses++;
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  abf_input_trace_t *tr;
+
+	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  tr->next = next[0];
+	  tr->result = match;
+	  tr->index = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+	}
+
+      n_left--;
+      b++;
+      next++;
     }
 
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
   vlib_node_increment_counter (vm,
-			       (fproto = FIB_PROTOCOL_IP6 ?
+			       (af = AF_IP6 ?
 				abf_ip4_node.index :
 				abf_ip6_node.index),
 			       ABF_ERROR_MATCHED, matches);
   vlib_node_increment_counter (vm,
-			       (fproto = FIB_PROTOCOL_IP6 ?
+			       (af = AF_IP6 ?
 				abf_ip4_node.index :
 				abf_ip6_node.index),
 			       ABF_ERROR_MISSED, misses);
@@ -629,14 +646,14 @@ static uword
 abf_input_ip4 (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return abf_input_inline (vm, node, frame, FIB_PROTOCOL_IP4);
+  return abf_input_inline (vm, node, frame, AF_IP4);
 }
 
 static uword
 abf_input_ip6 (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return abf_input_inline (vm, node, frame, FIB_PROTOCOL_IP6);
+  return abf_input_inline (vm, node, frame, AF_IP6);
 }
 
 static u8 *
@@ -646,7 +663,7 @@ format_abf_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   abf_input_trace_t *t = va_arg (*args, abf_input_trace_t *);
 
-  s = format (s, " next %d index %d", t->next, t->index);
+  s = format (s, " next %d index %d result %d", t->next, t->index, t->result);
   return s;
 }
 
@@ -761,12 +778,6 @@ abf_itf_bond_init (vlib_main_t * vm)
 {
   abf_itf_attach_fib_node_type =
     fib_node_register_new_type (&abf_itf_attach_vft);
-  clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
-  if (acl_init_res)
-    return (acl_init_res);
-
-  abf_acl_user_id =
-    acl_plugin.register_user_module ("ABF plugin", "sw_if_index", NULL);
 
   return (NULL);
 }

@@ -46,8 +46,8 @@ BVT (clib_bihash)
 
 #define LISP_ADJ_SET_KEY(_key, _itf, _nh)       \
 {						\
-  _key.key[0] = (_nh)->ip.v6.as_u64[0];		\
-  _key.key[1] = (_nh)->ip.v6.as_u64[1];		\
+  _key.key[0] = ip_addr_v6((_nh)).as_u64[0];    \
+  _key.key[1] = ip_addr_v6((_nh)).as_u64[1];    \
   _key.key[2] = (_itf);				\
 }
 
