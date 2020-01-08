@@ -9,6 +9,7 @@ from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
 from struct import pack, unpack
 import re
 import unittest
+from ipaddress import ip_address
 
 import scapy.compat
 from scapy.packet import Raw
@@ -1289,6 +1290,91 @@ class TestACL_dot1ad_routed(MethodHolder):
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP, self.ROUTED,
                          self.IS_IP4, 9, True, tags=self.DOT1AD, isMACIP=False,
                          permit_tags=self.DENY_TAGS)
+
+
+class TestACLMacip(VppTestCase):
+    """ MACIP prefix """
+    def setUp(self):
+        super(TestACLMacip, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestACLMacip, self).tearDown()
+
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def test_macip_pfx(self):
+        """ more->less specific rule ordering """
+        #
+        # order the rule set so the more specific match is first
+        # at least specific match last (the least specific mask len
+        # is the same for both rules)
+        #
+        rules = [
+            # drop from a specific dodgy user
+            {'is_permit': 0,
+             'is_ipv6': 0,
+             'src_ip_addr': ip_address("10.10.10.10").packed,
+             'src_ip_prefix_len': 32,
+             'src_mac': "",
+             'src_mac_mask': ""},
+            # allow from some frientdly subnets
+            {'is_permit': 1,
+             'is_ipv6': 0,
+             'src_ip_addr': ip_address("10.10.10.0").packed,
+             'src_ip_prefix_len': 24,
+             'src_mac': "",
+             'src_mac_mask': ""},
+            {'is_permit': 1,
+             'is_ipv6': 0,
+             'src_ip_addr': ip_address("10.10.11.0").packed,
+             'src_ip_prefix_len': 24,
+             'src_mac': "",
+             'src_mac_mask': ""}]
+
+        acl = self.vapi.macip_acl_add(rules)
+
+        self.logger.info(self.vapi.cli("show acl-plugin macip acl index 0"))
+
+        # apply to pg0
+        self.vapi.macip_acl_interface_add_del(self.pg0.sw_if_index,
+                                              acl.acl_index)
+
+        # packets from the friendly subnets ...
+        tx = [(Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+               IP(src="10.10.10.1", dst=self.pg1.remote_ip4) /
+               UDP(sport=333, dport=444) /
+               Raw(b'ox0'*100)),
+              (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+               IP(src="10.10.11.1", dst=self.pg1.remote_ip4) /
+               UDP(sport=333, dport=444) /
+               Raw(b'ox0'*100))]
+
+        # ... are permitted from pg0
+        self.send_and_expect(self.pg0, tx, self.pg1)
+
+        # packet from dodgy host ...
+        tx = [(Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+               IP(src="10.10.10.10", dst=self.pg1.remote_ip4) /
+               UDP(sport=333, dport=444) /
+               Raw(b'ox0'*100))]
+
+        # ... are denied
+        self.send_and_assert_no_replies(self.pg0, tx, "ACL deny")
+
+        # cleanup
+        self.vapi.macip_acl_interface_add_del(self.pg0.sw_if_index,
+                                              acl.acl_index,
+                                              is_add=0)
+        self.vapi.macip_acl_del(acl.acl_index)
 
 
 if __name__ == '__main__':

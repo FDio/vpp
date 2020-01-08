@@ -1072,12 +1072,13 @@ match_type_metric (macip_match_type_t * m)
 	mac_bits_set += mac_byte & 1;
     }
   /*
-   * Attempt to place the more specific and the more used rules on top.
+   * Attempt to place the more specific rules on top. this gives the appearence
+   * that the rules as requested are matched in sequential order.
    * There are obvious caveat corner cases to this, but they do not
    * seem to be sensible in real world (e.g. specific IPv4 with wildcard MAC
    * going with a wildcard IPv4 with a specific MAC).
    */
-  return m->prefix_len + mac_bits_set + m->is_ipv6 + 10 * m->count;
+  return m->prefix_len + mac_bits_set + m->is_ipv6;
 }
 
 static int
