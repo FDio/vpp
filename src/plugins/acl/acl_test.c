@@ -23,7 +23,8 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
-#include <arpa/inet.h>
+#include <vnet/ip/ip_format_fns.h>
+#include <vnet/ethernet/ethernet_format_fns.h>
 
 #define __plugin_msg_base acl_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -70,25 +71,6 @@ _(macip_acl_add_replace_reply)
 foreach_reply_retval_aclindex_handler;
 #undef _
 
-/* These two ought to be in a library somewhere but they aren't */
-static uword
-my_unformat_mac_address (unformat_input_t * input, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return unformat (input, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3],
-                   &a[4], &a[5]);
-}
-
-static u8 *
-my_format_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-                 a[0], a[1], a[2], a[3], a[4], a[5]);
-}
-
-
-
 static void vl_api_acl_plugin_get_version_reply_t_handler
     (vl_api_acl_plugin_get_version_reply_t * mp)
     {
@@ -116,6 +98,11 @@ static void vl_api_acl_interface_list_details_t_handler
         vec_free(out);
         vam->result_ready = 1;
     }
+
+static void
+vl_api_macip_acl_details_t_handler (vl_api_macip_acl_details_t * mp)
+{
+}
 
 static void vl_api_macip_acl_interface_list_details_t_handler
 (vl_api_macip_acl_interface_list_details_t * mp)
@@ -186,39 +173,6 @@ static void vl_api_acl_details_t_handler
 	for(i=0; i<mp->count; i++) {
           out = format(out, "   ");
           out = vl_api_acl_rule_t_pretty_format(out, &mp->r[i]);
-          out = format(out, "%s\n", i<mp->count-1 ? "," : "");
-	}
-        clib_warning("%s", out);
-        vec_free(out);
-        vam->result_ready = 1;
-    }
-
-static inline u8 *
-vl_api_macip_acl_rule_t_pretty_format (u8 *out, vl_api_macip_acl_rule_t * a)
-{
-  int af = a->is_ipv6 ? AF_INET6 : AF_INET;
-  u8 src[INET6_ADDRSTRLEN];
-  inet_ntop(af, a->src_ip_addr, (void *)src, sizeof(src));
-
-  out = format(out, "%s action %d ip %s/%d mac %U mask %U",
-                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
-                     src, a->src_ip_prefix_len,
-                     my_format_mac_address, a->src_mac,
-                     my_format_mac_address, a->src_mac_mask);
-  return(out);
-}
-
-
-static void vl_api_macip_acl_details_t_handler
-    (vl_api_macip_acl_details_t * mp)
-    {
-        int i;
-        vat_main_t * vam = acl_test_main.vat_main;
-        vl_api_macip_acl_details_t_endian(mp);
-        u8 *out = format(0,"MACIP acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
-	for(i=0; i<mp->count; i++) {
-          out = format(out, "   ");
-          out = vl_api_macip_acl_rule_t_pretty_format(out, &mp->r[i]);
           out = format(out, "%s\n", i<mp->count-1 ? "," : "");
 	}
         clib_warning("%s", out);
@@ -1156,297 +1110,299 @@ static int api_acl_interface_etype_whitelist_dump (vat_main_t * vam)
 
 static int api_macip_acl_add (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
-    unformat_input_t * i = vam->input;
-    vl_api_macip_acl_add_t * mp;
-    u32 msg_size = sizeof (*mp); /* without the rules */
+    /* acl_test_main_t * sm = &acl_test_main; */
+    /* unformat_input_t * i = vam->input; */
+    /* vl_api_macip_acl_add_t * mp; */
+    /* u32 msg_size = sizeof (*mp); /\* without the rules *\/ */
 
-    vl_api_macip_acl_rule_t *rules = 0;
-    int rule_idx = 0;
-    int n_rules = 0;
-    int n_rules_override = -1;
-    u32 src_prefix_length = 0;
-    u32 action = 0;
-    ip4_address_t src_v4address;
-    ip6_address_t src_v6address;
-    u8 src_mac[6];
-    u8 *tag = 0;
-    u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-    int ret;
+    /* vl_api_macip_acl_rule_t *rules = 0; */
+    /* int rule_idx = 0; */
+    /* int n_rules = 0; */
+    /* int n_rules_override = -1; */
+    /* u32 src_prefix_length = 0; */
+    /* u32 action = 0; */
+    /* ip4_address_t src_v4address; */
+    /* ip6_address_t src_v6address; */
+    /* u8 src_mac[6]; */
+    /* u8 *tag = 0; */
+    /* u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }; */
+    /* int ret; */
 
-    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-        if (unformat (i, "ipv6"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_ipv6 = 1;
-          }
-        else if (unformat (i, "ipv4"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_ipv6 = 0;
-          }
-        else if (unformat (i, "permit"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 1;
-          }
-        else if (unformat (i, "deny"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 0;
-          }
-        else if (unformat (i, "count %d", &n_rules_override))
-          {
-            /* we will use this later */
-          }
-        else if (unformat (i, "action %d", &action))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = action;
-          }
-        else if (unformat (i, "ip %U/%d",
-         unformat_ip4_address, &src_v4address, &src_prefix_length) ||
-                 unformat (i, "ip %U",
-         unformat_ip4_address, &src_v4address))
-          {
-            if (src_prefix_length == 0)
-              src_prefix_length = 32;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
-            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
-            rules[rule_idx].is_ipv6 = 0;
-          }
-        else if (unformat (i, "src"))
-          {
-            /* Everything in MACIP is "source" but allow this verbosity */
-          }
-        else if (unformat (i, "ip %U/%d",
-         unformat_ip6_address, &src_v6address, &src_prefix_length) ||
-                 unformat (i, "ip %U",
-         unformat_ip6_address, &src_v6address))
-          {
-            if (src_prefix_length == 0)
-              src_prefix_length = 128;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
-            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
-            rules[rule_idx].is_ipv6 = 1;
-          }
-        else if (unformat (i, "mac %U",
-         my_unformat_mac_address, &src_mac))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_mac, &src_mac, 6);
-            memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1, 6);
-          }
-        else if (unformat (i, "mask %U",
-         my_unformat_mac_address, &src_mac))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_mac_mask, &src_mac, 6);
-          }
-        else if (unformat (i, "tag %s", &tag))
-          {
-          }
-        else if (unformat (i, ","))
-          {
-            rule_idx++;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-          }
-        else
-    break;
-    }
+    /* while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) */
+    /* { */
+    /*     if (unformat (i, "ipv6")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_ipv6 = 1; */
+    /*       } */
+    /*     else if (unformat (i, "ipv4")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_ipv6 = 0; */
+    /*       } */
+    /*     else if (unformat (i, "permit")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = 1; */
+    /*       } */
+    /*     else if (unformat (i, "deny")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = 0; */
+    /*       } */
+    /*     else if (unformat (i, "count %d", &n_rules_override)) */
+    /*       { */
+    /*         /\* we will use this later *\/ */
+    /*       } */
+    /*     else if (unformat (i, "action %d", &action)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = action; */
+    /*       } */
+    /*     else if (unformat (i, "ip %U/%d", */
+    /*      unformat_ip4_address, &src_v4address, &src_prefix_length) || */
+    /*              unformat (i, "ip %U", */
+    /*      unformat_ip4_address, &src_v4address)) */
+    /*       { */
+    /*         if (src_prefix_length == 0) */
+    /*           src_prefix_length = 32; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4); */
+    /*         rules[rule_idx].src_ip_prefix_len = src_prefix_length; */
+    /*         rules[rule_idx].is_ipv6 = 0; */
+    /*       } */
+    /*     else if (unformat (i, "src")) */
+    /*       { */
+    /*         /\* Everything in MACIP is "source" but allow this verbosity *\/ */
+    /*       } */
+    /*     else if (unformat (i, "ip %U/%d", */
+    /*      unformat_ip6_address, &src_v6address, &src_prefix_length) || */
+    /*              unformat (i, "ip %U", */
+    /*      unformat_ip6_address, &src_v6address)) */
+    /*       { */
+    /*         if (src_prefix_length == 0) */
+    /*           src_prefix_length = 128; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16); */
+    /*         rules[rule_idx].src_ip_prefix_len = src_prefix_length; */
+    /*         rules[rule_idx].is_ipv6 = 1; */
+    /*       } */
+    /*     else if (unformat (i, "mac %U", */
+    /*      my_unformat_mac_address, &src_mac)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_mac, &src_mac, 6); */
+    /*         memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1, 6); */
+    /*       } */
+    /*     else if (unformat (i, "mask %U", */
+    /*      my_unformat_mac_address, &src_mac)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_mac_mask, &src_mac, 6); */
+    /*       } */
+    /*     else if (unformat (i, "tag %s", &tag)) */
+    /*       { */
+    /*       } */
+    /*     else if (unformat (i, ",")) */
+    /*       { */
+    /*         rule_idx++; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*       } */
+    /*     else */
+    /* break; */
+    /* } */
 
-    /* Construct the API message */
-    vam->result_ready = 0;
+    /* /\* Construct the API message *\/ */
+    /* vam->result_ready = 0; */
 
-    if(rules)
-      n_rules = vec_len(rules);
+    /* if(rules) */
+    /*   n_rules = vec_len(rules); */
 
-    if (n_rules_override >= 0)
-      n_rules = n_rules_override;
+    /* if (n_rules_override >= 0) */
+    /*   n_rules = n_rules_override; */
 
-    msg_size += n_rules*sizeof(rules[0]);
+    /* msg_size += n_rules*sizeof(rules[0]); */
 
-    mp = vl_msg_api_alloc_as_if_client(msg_size);
-    clib_memset (mp, 0, msg_size);
-    mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD + sm->msg_id_base);
-    mp->client_index = vam->my_client_index;
-    if ((n_rules > 0) && rules)
-      clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0]));
-    if (tag)
-      {
-        if (vec_len(tag) >= sizeof(mp->tag))
-          {
-            tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
-      }
+    /* mp = vl_msg_api_alloc_as_if_client(msg_size); */
+    /* clib_memset (mp, 0, msg_size); */
+    /* mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD + sm->msg_id_base); */
+    /* mp->client_index = vam->my_client_index; */
+    /* if ((n_rules > 0) && rules) */
+    /*   clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0])); */
+    /* if (tag) */
+    /*   { */
+    /*     if (vec_len(tag) >= sizeof(mp->tag)) */
+    /*       { */
+    /*         tag[sizeof(mp->tag)-1] = 0; */
+    /*         _vec_len(tag) = sizeof(mp->tag); */
+    /*       } */
+    /*     clib_memcpy(mp->tag, tag, vec_len(tag)); */
+    /*     vec_free(tag); */
+    /*   } */
 
-    mp->count = htonl(n_rules);
+    /* mp->count = htonl(n_rules); */
 
-    /* send it... */
-    S(mp);
+    /* /\* send it... *\/ */
+    /* S(mp); */
 
-    /* Wait for a reply... */
-    W (ret);
-    return ret;
+    /* /\* Wait for a reply... *\/ */
+    /* W (ret); */
+    /* return ret; */
+    return (0);
 }
 
 static int api_macip_acl_add_replace (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
-    unformat_input_t * i = vam->input;
-    vl_api_macip_acl_add_replace_t * mp;
-    u32 acl_index = ~0;
-    u32 msg_size = sizeof (*mp); /* without the rules */
+    /* acl_test_main_t * sm = &acl_test_main; */
+    /* unformat_input_t * i = vam->input; */
+    /* vl_api_macip_acl_add_replace_t * mp; */
+    /* u32 acl_index = ~0; */
+    /* u32 msg_size = sizeof (*mp); /\* without the rules *\/ */
 
-    vl_api_macip_acl_rule_t *rules = 0;
-    int rule_idx = 0;
-    int n_rules = 0;
-    int n_rules_override = -1;
-    u32 src_prefix_length = 0;
-    u32 action = 0;
-    ip4_address_t src_v4address;
-    ip6_address_t src_v6address;
-    u8 src_mac[6];
-    u8 *tag = 0;
-    u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-    int ret;
+    /* vl_api_macip_acl_rule_t *rules = 0; */
+    /* int rule_idx = 0; */
+    /* int n_rules = 0; */
+    /* int n_rules_override = -1; */
+    /* u32 src_prefix_length = 0; */
+    /* u32 action = 0; */
+    /* ip4_address_t src_v4address; */
+    /* ip6_address_t src_v6address; */
+    /* u8 src_mac[6]; */
+    /* u8 *tag = 0; */
+    /* u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }; */
+    /* int ret; */
 
-    if (!unformat (i, "%d", &acl_index)) {
-        /* Just assume -1 */
-    }
+    /* if (!unformat (i, "%d", &acl_index)) { */
+    /*     /\* Just assume -1 *\/ */
+    /* } */
 
-    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-        if (unformat (i, "ipv6"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_ipv6 = 1;
-          }
-        else if (unformat (i, "ipv4"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_ipv6 = 0;
-          }
-        else if (unformat (i, "permit"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 1;
-          }
-        else if (unformat (i, "deny"))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 0;
-          }
-        else if (unformat (i, "count %d", &n_rules_override))
-          {
-            /* we will use this later */
-          }
-        else if (unformat (i, "action %d", &action))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = action;
-          }
-        else if (unformat (i, "ip %U/%d",
-         unformat_ip4_address, &src_v4address, &src_prefix_length) ||
-                 unformat (i, "ip %U",
-         unformat_ip4_address, &src_v4address))
-          {
-            if (src_prefix_length == 0)
-              src_prefix_length = 32;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
-            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
-            rules[rule_idx].is_ipv6 = 0;
-          }
-        else if (unformat (i, "src"))
-          {
-            /* Everything in MACIP is "source" but allow this verbosity */
-          }
-        else if (unformat (i, "ip %U/%d",
-         unformat_ip6_address, &src_v6address, &src_prefix_length) ||
-                 unformat (i, "ip %U",
-         unformat_ip6_address, &src_v6address))
-          {
-            if (src_prefix_length == 0)
-              src_prefix_length = 128;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
-            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
-            rules[rule_idx].is_ipv6 = 1;
-          }
-        else if (unformat (i, "mac %U",
-         my_unformat_mac_address, &src_mac))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_mac, &src_mac, 6);
-            memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1, 6);
-          }
-        else if (unformat (i, "mask %U",
-         my_unformat_mac_address, &src_mac))
-          {
-            vec_validate_macip_acl_rules(rules, rule_idx);
-            memcpy (rules[rule_idx].src_mac_mask, &src_mac, 6);
-          }
-        else if (unformat (i, "tag %s", &tag))
-          {
-          }
-        else if (unformat (i, ","))
-          {
-            rule_idx++;
-            vec_validate_macip_acl_rules(rules, rule_idx);
-          }
-        else
-    break;
-    }
+    /* while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) */
+    /* { */
+    /*     if (unformat (i, "ipv6")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_ipv6 = 1; */
+    /*       } */
+    /*     else if (unformat (i, "ipv4")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_ipv6 = 0; */
+    /*       } */
+    /*     else if (unformat (i, "permit")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = 1; */
+    /*       } */
+    /*     else if (unformat (i, "deny")) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = 0; */
+    /*       } */
+    /*     else if (unformat (i, "count %d", &n_rules_override)) */
+    /*       { */
+    /*         /\* we will use this later *\/ */
+    /*       } */
+    /*     else if (unformat (i, "action %d", &action)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         rules[rule_idx].is_permit = action; */
+    /*       } */
+    /*     else if (unformat (i, "ip %U/%d", */
+    /*      unformat_ip4_address, &src_v4address, &src_prefix_length) || */
+    /*              unformat (i, "ip %U", */
+    /*      unformat_ip4_address, &src_v4address)) */
+    /*       { */
+    /*         if (src_prefix_length == 0) */
+    /*           src_prefix_length = 32; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4); */
+    /*         rules[rule_idx].src_ip_prefix_len = src_prefix_length; */
+    /*         rules[rule_idx].is_ipv6 = 0; */
+    /*       } */
+    /*     else if (unformat (i, "src")) */
+    /*       { */
+    /*         /\* Everything in MACIP is "source" but allow this verbosity *\/ */
+    /*       } */
+    /*     else if (unformat (i, "ip %U/%d", */
+    /*      unformat_ip6_address, &src_v6address, &src_prefix_length) || */
+    /*              unformat (i, "ip %U", */
+    /*      unformat_ip6_address, &src_v6address)) */
+    /*       { */
+    /*         if (src_prefix_length == 0) */
+    /*           src_prefix_length = 128; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16); */
+    /*         rules[rule_idx].src_ip_prefix_len = src_prefix_length; */
+    /*         rules[rule_idx].is_ipv6 = 1; */
+    /*       } */
+    /*     else if (unformat (i, "mac %U", */
+    /*      my_unformat_mac_address, &src_mac)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_mac, &src_mac, 6); */
+    /*         memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1, 6); */
+    /*       } */
+    /*     else if (unformat (i, "mask %U", */
+    /*      my_unformat_mac_address, &src_mac)) */
+    /*       { */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*         memcpy (rules[rule_idx].src_mac_mask, &src_mac, 6); */
+    /*       } */
+    /*     else if (unformat (i, "tag %s", &tag)) */
+    /*       { */
+    /*       } */
+    /*     else if (unformat (i, ",")) */
+    /*       { */
+    /*         rule_idx++; */
+    /*         vec_validate_macip_acl_rules(rules, rule_idx); */
+    /*       } */
+    /*     else */
+    /* break; */
+    /* } */
 
-    if (!rules)
-      {
-      errmsg ("rule/s required\n");
-      return -99;
-      }
-    /* Construct the API message */
-    vam->result_ready = 0;
+    /* if (!rules) */
+    /*   { */
+    /*   errmsg ("rule/s required\n"); */
+    /*   return -99; */
+    /*   } */
+    /* /\* Construct the API message *\/ */
+    /* vam->result_ready = 0; */
 
-    if(rules)
-      n_rules = vec_len(rules);
+    /* if(rules) */
+    /*   n_rules = vec_len(rules); */
 
-    if (n_rules_override >= 0)
-      n_rules = n_rules_override;
+    /* if (n_rules_override >= 0) */
+    /*   n_rules = n_rules_override; */
 
-    msg_size += n_rules*sizeof(rules[0]);
+    /* msg_size += n_rules*sizeof(rules[0]); */
 
-    mp = vl_msg_api_alloc_as_if_client(msg_size);
-    clib_memset (mp, 0, msg_size);
-    mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD_REPLACE + sm->msg_id_base);
-    mp->client_index = vam->my_client_index;
-    if ((n_rules > 0) && rules)
-      clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0]));
-    if (tag)
-      {
-        if (vec_len(tag) >= sizeof(mp->tag))
-          {
-            tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
-      }
+    /* mp = vl_msg_api_alloc_as_if_client(msg_size); */
+    /* clib_memset (mp, 0, msg_size); */
+    /* mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD_REPLACE + sm->msg_id_base); */
+    /* mp->client_index = vam->my_client_index; */
+    /* if ((n_rules > 0) && rules) */
+    /*   clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0])); */
+    /* if (tag) */
+    /*   { */
+    /*     if (vec_len(tag) >= sizeof(mp->tag)) */
+    /*       { */
+    /*         tag[sizeof(mp->tag)-1] = 0; */
+    /*         _vec_len(tag) = sizeof(mp->tag); */
+    /*       } */
+    /*     clib_memcpy(mp->tag, tag, vec_len(tag)); */
+    /*     vec_free(tag); */
+    /*   } */
 
-    mp->acl_index = ntohl(acl_index);
-    mp->count = htonl(n_rules);
+    /* mp->acl_index = ntohl(acl_index); */
+    /* mp->count = htonl(n_rules); */
 
-    /* send it... */
-    S(mp);
+    /* /\* send it... *\/ */
+    /* S(mp); */
 
-    /* Wait for a reply... */
-    W (ret);
-    return ret;
+    /* /\* Wait for a reply... *\/ */
+    /* W (ret); */
+    /* return ret; */
+    return (0);
 }
 
 #define VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE local_setup_message_id_table

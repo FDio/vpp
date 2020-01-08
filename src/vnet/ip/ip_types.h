@@ -37,18 +37,14 @@ extern u8 *format_ip_address_family (u8 * s, va_list * args);
 /* *INDENT-OFF* */
 typedef struct ip_address
 {
-  union
-  {
-    ip4_address_t v4;
-    ip6_address_t v6;
-  } ip;
+  ip46_address_t ip;
   ip_address_family_t version;
 } __clib_packed ip_address_t;
 /* *INDENT-ON* */
 
 #define ip_addr_addr(_a) (_a)->ip
-#define ip_addr_v4(_a) (_a)->ip.v4
-#define ip_addr_v6(_a) (_a)->ip.v6
+#define ip_addr_v4(_a) (_a)->ip.ip4
+#define ip_addr_v6(_a) (_a)->ip.ip6
 #define ip_addr_version(_a) (_a)->version
 
 extern int ip_address_cmp (const ip_address_t * ip1,

@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
- 
+import "vnet/match/match_types.api";
+
 /** \brief Access List Rule entry
     @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
@@ -80,20 +81,7 @@ typedef acl_rule
 typedef macip_acl_rule
 {
   u8 is_permit;
-  u8 is_ipv6;
-/*
- * The source mac of the packet ANDed with src_mac_mask.
- * The source ip[46] address in the packet is matched
- * against src_ip_addr, with src_ip_prefix_len set to 0.
- *
- * For better performance, minimize the number of
- * (src_mac_mask, src_ip_prefix_len) combinations
- * in a MACIP ACL.
- */
-  u8 src_mac[6];
-  u8 src_mac_mask[6];
-  u8 src_ip_addr[16];
-  u8 src_ip_prefix_len;
+  vl_api_match_mask_ip_mac_t rule;
 };
 
 

@@ -118,7 +118,7 @@ ip_address_copy (ip_address_t * dst, const ip_address_t * src)
     {
       /* don't copy any garbage from the union */
       clib_memset (dst, 0, sizeof (*dst));
-      dst->ip.v4 = src->ip.v4;
+      ip_addr_v4 (dst) = ip_addr_v4 (src);
       dst->version = AF_IP4;
     }
   else
@@ -161,18 +161,7 @@ ip_address_to_46 (const ip_address_t * addr,
 {
   *proto = (AF_IP4 == ip_addr_version (addr) ?
 	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-  switch (*proto)
-    {
-    case FIB_PROTOCOL_IP4:
-      ip46_address_set_ip4 (a, &addr->ip.v4);
-      break;
-    case FIB_PROTOCOL_IP6:
-      a->ip6 = addr->ip.v6;
-      break;
-    default:
-      ASSERT (0);
-      break;
-    }
+  *a = ip_addr_addr (addr);
 }
 
 static void

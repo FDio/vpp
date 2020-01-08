@@ -18,7 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_output.h>
-
+#include <acl/macip.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -63,16 +63,6 @@ enum acl_timeout_e {
   ACL_N_TIMEOUTS
 };
 
-typedef struct
-{
-  u8 is_permit;
-  u8 is_ipv6;
-  u8 src_mac[6];
-  u8 src_mac_mask[6];
-  ip46_address_t src_ip_addr;
-  u8 src_prefixlen;
-} macip_acl_rule_t;
-
 /*
  * ACL
  */
@@ -84,22 +74,6 @@ typedef struct
   acl_rule_t *rules;
 } acl_list_t;
 
-typedef struct
-{
-  /** Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  u8 tag[64];
-  u32 count;
-  macip_acl_rule_t *rules;
-  /* References to the classifier tables that will enforce the rules */
-  u32 ip4_table_index;
-  u32 ip6_table_index;
-  u32 l2_table_index;
-  /* outacl classifier tables */
-  u32 out_ip4_table_index;
-  u32 out_ip6_table_index;
-  u32 out_l2_table_index;
-} macip_acl_list_t;
 
 /*
  * An element describing a particular configuration fo the mask,
@@ -152,8 +126,6 @@ typedef struct {
   /* context user id for interface ACLs */
   u32 interface_acl_user_id;
 
-  macip_acl_list_t *macip_acls;	/* Pool of MAC-IP ACLs */
-
   /* ACLs associated with interfaces */
   u32 **input_acl_vec_by_sw_if_index;
   u32 **output_acl_vec_by_sw_if_index;
@@ -176,8 +148,6 @@ typedef struct {
   /* whether we need to take the epoch of the session into account */
   int reclassify_sessions;
 
-
-
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
 
@@ -197,31 +167,11 @@ typedef struct {
   /* vec of vectors of all info of all mask types present in ACEs contained in each lc_index */
   hash_applied_mask_info_t **hash_applied_mask_info_vec_by_lc_index;
 
-  /*
-   * Classify tables used to grab the packets for the ACL check,
-   * and serving as the 5-tuple session tables at the same time
-   */
-  u32 *acl_ip4_input_classify_table_by_sw_if_index;
-  u32 *acl_ip6_input_classify_table_by_sw_if_index;
-  u32 *acl_ip4_output_classify_table_by_sw_if_index;
-  u32 *acl_ip6_output_classify_table_by_sw_if_index;
-
-  u32 *acl_dot1q_input_classify_table_by_sw_if_index;
-  u32 *acl_dot1ad_input_classify_table_by_sw_if_index;
-  u32 *acl_dot1q_output_classify_table_by_sw_if_index;
-  u32 *acl_dot1ad_output_classify_table_by_sw_if_index;
-
   u32 *acl_etype_input_classify_table_by_sw_if_index;
   u32 *acl_etype_output_classify_table_by_sw_if_index;
 
   u16 **input_etype_whitelist_by_sw_if_index;
   u16 **output_etype_whitelist_by_sw_if_index;
-
-  /* MACIP (input) ACLs associated with the interfaces */
-  u32 *macip_acl_by_sw_if_index;
-
-  /* Vector of interfaces on which given MACIP ACLs are applied */
-  u32 **sw_if_index_vec_by_macip_acl;
 
   /* bitmaps when set the processing is enabled on the interface */
   uword *fa_in_acl_on_sw_if_index;
@@ -379,7 +329,8 @@ AH has a special treatment of its length, it is in 32-bit words, not 64-bit word
 
 extern acl_main_t acl_main;
 
-void *acl_plugin_set_heap();
+void *acl_plugin_set_heap (void);
+void *acl_mk_heap (void);
 
 typedef enum {
   ACL_FA_REQ_SESS_RESCHEDULE = 0,

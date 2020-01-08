@@ -19,7 +19,7 @@
     used to control the ACL plugin
 */
 
-option version = "1.0.1";
+option version = "2.0.0";
 
 import "plugins/acl/acl_types.api";
 
@@ -260,7 +260,7 @@ define acl_interface_list_details
     @param r - vector of MACIP ACL rules
 */
 
-manual_endian manual_print define macip_acl_add
+define macip_acl_add
 {
   u32 client_index;
   u32 context;
@@ -292,7 +292,7 @@ define macip_acl_add_reply
     @param r - vector of MACIP ACL rules
 */
 
-manual_endian manual_print define macip_acl_add_replace
+define macip_acl_add_replace
 {
   u32 client_index;
   u32 context;
@@ -322,7 +322,7 @@ define macip_acl_add_replace_reply
     @param acl_index - MACIP ACL index to delete
 */
 
-autoreply manual_print define macip_acl_del
+autoreply define macip_acl_del
 {
   u32 client_index;
   u32 context;
@@ -338,7 +338,7 @@ autoreply manual_print define macip_acl_del
     @param acl_index - MACIP ACL index
 */
 
-autoreply manual_print define macip_acl_interface_add_del
+autoreply define macip_acl_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -371,7 +371,7 @@ define macip_acl_dump
     @param r - rules comprising this MACIP ACL
 */
 
-manual_endian manual_print define macip_acl_details
+autoreply define macip_acl_details
 {
   u32 context;
   u32 acl_index;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,25 +13,31 @@
  * limitations under the License.
  */
 
-#ifndef __ETHERNET_TYPES_API_H__
-#define __ETHERNET_TYPES_API_H__
+#ifndef __MATCH_SET_DP_H__
+#define __MATCH_SET_DP_H__
 
-/**
- * Conversion functions to/from (decode/encode) API types to VPP internal types
- */
+#include <vnet/match/match_set.h>
 
-#include <vnet/ethernet/mac_address.h>
-#include <vnet/ethernet/packet.h>
-#include <vlibapi/api_types.h>
+extern match_set_t *match_set_pool;
+extern match_set_entry_t *match_set_entry_pool;
 
-#include <vnet/ethernet/ethernet_types.api_types.h>
+static_always_inline index_t
+match_set_get_index (const match_set_t * ms)
+{
+  return (ms - match_set_pool);
+}
 
+static_always_inline match_set_t *
+match_set_get (index_t msi)
+{
+  return (pool_elt_at_index (match_set_pool, msi));
+}
 
-extern void mac_address_decode (const u8 * in, mac_address_t * out);
-extern void mac_address_encode (const mac_address_t * in, u8 * out);
-
-extern int ether_type_decode (vl_api_ether_type_t in, ethernet_type_t * out);
-extern vl_api_ether_type_t ether_type_encode (ethernet_type_t in);
+static_always_inline match_set_entry_t *
+match_set_entry_get (index_t msei)
+{
+  return (pool_elt_at_index (match_set_entry_pool, msei));
+}
 
 #endif
 

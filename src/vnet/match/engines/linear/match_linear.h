@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,26 +13,24 @@
  * limitations under the License.
  */
 
-#ifndef __ETHERNET_TYPES_API_H__
-#define __ETHERNET_TYPES_API_H__
+#ifndef _MATCH_ENGINE_LINEAR_H__
+#define _MATCH_ENGINE_LINEAR_H__
+
+#include <vnet/match/match_set.h>
+#include <vnet/classify/vnet_classify.h>
 
 /**
- * Conversion functions to/from (decode/encode) API types to VPP internal types
+ * Engine Context.
+ *  Per-set data that this linear engine stores
  */
+typedef struct match_engine_linear_t_
+{
+  i8 mel_offset;
+  index_t mel_set;
+  vnet_link_t mel_linkt;
+} match_engine_linear_t;
 
-#include <vnet/ethernet/mac_address.h>
-#include <vnet/ethernet/packet.h>
-#include <vlibapi/api_types.h>
-
-#include <vnet/ethernet/ethernet_types.api_types.h>
-
-
-extern void mac_address_decode (const u8 * in, mac_address_t * out);
-extern void mac_address_encode (const mac_address_t * in, u8 * out);
-
-extern int ether_type_decode (vl_api_ether_type_t in, ethernet_type_t * out);
-extern vl_api_ether_type_t ether_type_encode (ethernet_type_t in);
-
+extern match_engine_linear_t *match_engine_linear_pool;
 #endif
 
 /*
