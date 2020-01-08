@@ -1,0 +1,70 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+typedef match_ip_prefix
+{
+  vl_api_address_t mip_ip;
+  u8 mip_len;
+};
+
+typedef match_mac_mask
+{
+  vl_api_mac_address_t mmm_mac;
+  vl_api_mac_address_t mmm_mask;
+};
+
+typedef enum match_type
+{
+  /* masked match on src IP and MAC */
+  MATCH_API_TYPE_MASK_SRC_IP_MAC,
+} match_type;
+
+typedef struct match_mask_src_ip_mac_t_
+{
+  /* Which ethernet protocol to match against -
+     sensible values are ARP and IP[4|6]. */
+  ethernet_type_t mesim_proto;
+  vl_api_match_ip_prefix_t mesim_ip;
+  vl_api_match_mac_mask_t mesim_mac;
+} match_mask_src_ip_mac_t;
+
+typedef match_entry
+{
+  vl_match_type_t me_type;
+  union
+  {
+    match_mask_src_ip_mac_t mask_src_ip_mac;
+  };
+};
+
+typedef match_list
+{
+  u16 ml_count;
+  match_entry_t ml_entrues[ml_count];
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -16,17 +16,10 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_in_out_feat_arc.h>
 
 #include <vppinfra/error.h>
@@ -43,10 +36,6 @@ typedef struct
   u8 ip6_feat_arc_index[IN_OUT_FEAT_ARC_N_TABLE_GROUPS];
   u8 nonip_feat_arc_index[IN_OUT_FEAT_ARC_N_TABLE_GROUPS];
   u32 next_slot[IN_OUT_FEAT_ARC_N_TABLE_GROUPS];
-
-  /* convenience variables */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
 } l2_in_out_feat_arc_main_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
 
 typedef struct
@@ -539,9 +528,6 @@ clib_error_t *
 l2_in_out_feat_arc_init (vlib_main_t * vm)
 {
   l2_in_out_feat_arc_main_t *mp = &l2_in_out_feat_arc_main;
-
-  mp->vlib_main = vm;
-  mp->vnet_main = vnet_get_main ();
 
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
