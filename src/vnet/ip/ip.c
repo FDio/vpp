@@ -16,6 +16,20 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 
+ethernet_type_t
+ip_address_family_to_ether_type (ip_address_family_t af)
+{
+  switch (af)
+    {
+    case AF_IP4:
+      return (ETHERNET_TYPE_IP4);
+    case AF_IP6:
+      return (ETHERNET_TYPE_IP6);
+    }
+  ASSERT (0);
+  return (AF_IP4);
+}
+
 u8
 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
 {
@@ -184,8 +198,8 @@ unformat_ip_address_family (unformat_input_t * input, va_list * args)
 {
   ip_address_family_t *af = va_arg (*args, ip_address_family_t *);
 
-  if (unformat (input, "ip4") || unformat (input, "ipv4") ||
-      unformat (input, "IP4") || unformat (input, "IPv4"))
+  if (unformat (input, "ip4") || unformat (input, "ipv6") ||
+      unformat (input, "IP4") || unformat (input, "IPv6"))
     {
       *af = AF_IP4;
       return (1);
