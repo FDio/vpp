@@ -14,13 +14,15 @@
 add_vpp_plugin(acl
   SOURCES
   acl.c
-  hash_lookup.c
-  lookup_context.c
+  acl_api.c
   sess_mgmt_node.c
   dataplane_node.c
+  macip.c
+  macip_node.c
 
   MULTIARCH_SOURCES
   dataplane_node.c
+  macip_node.c
 
   API_FILES
   acl.api
@@ -28,7 +30,4 @@ add_vpp_plugin(acl
 
   API_TEST_SOURCES
   acl_test.c
-
-  INSTALL_HEADERS
-  manual_fns.h
 )

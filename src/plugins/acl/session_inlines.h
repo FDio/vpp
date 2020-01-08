@@ -53,21 +53,7 @@ acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
   return am->fa_sessions_hash_is_initialized;
 }
 
-always_inline int
-acl_fa_ifc_has_in_acl (acl_main_t * am, int sw_if_index0)
-{
-  int it_has = clib_bitmap_get (am->fa_in_acl_on_sw_if_index, sw_if_index0);
-  return it_has;
-}
-
-always_inline int
-acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
-{
-  int it_has = clib_bitmap_get (am->fa_out_acl_on_sw_if_index, sw_if_index0);
-  return it_has;
-}
-
-always_inline int
+always_inline acl_timeout_e
 fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 {
   /* seen both SYNs and ACKs but not FINs means we are in established state */
@@ -265,28 +251,20 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
     }
 }
 
-always_inline int
-is_ip6_5tuple (fa_5tuple_t * p5t)
-{
-  return (p5t->l3_zero_pad[0] | p5t->
-	  l3_zero_pad[1] | p5t->l3_zero_pad[2] | p5t->l3_zero_pad[3] | p5t->
-	  l3_zero_pad[4] | p5t->l3_zero_pad[5]) != 0;
-}
-
 always_inline u8
-acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple,
+acl_fa_track_session (acl_main_t * am, vlib_dir_t dir, u32 sw_if_index,
+		      u64 now, fa_session_t * sess, fa_5tuple_t * pkt_5tuple,
 		      u32 pkt_len)
 {
   sess->last_active_time = now;
-  u8 old_flags = sess->tcp_flags_seen.as_u8[is_input];
+  u8 old_flags = sess->tcp_flags_seen.as_u8[dir];
   u8 new_flags = old_flags | pkt_5tuple->pkt.tcp_flags;
 
   int flags_need_update = pkt_5tuple->pkt.tcp_flags_valid
     && (old_flags != new_flags);
   if (PREDICT_FALSE (flags_need_update))
     {
-      sess->tcp_flags_seen.as_u8[is_input] = new_flags;
+      sess->tcp_flags_seen.as_u8[dir] = new_flags;
     }
   return 3;
 }
@@ -466,7 +444,7 @@ acl_fa_two_stage_delete_session (acl_main_t * am, u32 sw_if_index,
 }
 
 always_inline int
-acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
+acl_fa_can_add_session (acl_main_t * am, u32 sw_if_index)
 {
   u64 curr_sess_count;
   curr_sess_count = am->fa_session_total_adds - am->fa_session_total_dels;
@@ -476,7 +454,7 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 
 
 always_inline void
-acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
+acl_fa_try_recycle_session (acl_main_t * am, u16 thread_index,
 			    u32 sw_if_index, u64 now)
 {
   /* try to recycle a TCP transient session */
@@ -516,7 +494,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
 
 
 always_inline fa_full_session_id_t
-acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
+acl_fa_add_session (acl_main_t * am, ip_address_family_t af,
 		    u32 sw_if_index, u64 now, fa_5tuple_t * p5tuple,
 		    u16 current_policy_epoch)
 {
@@ -537,7 +515,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   f_sess_id.session_index = sess - pw->fa_sessions_pool;
   f_sess_id.intf_policy_epoch = current_policy_epoch;
 
-  if (is_ip6)
+  if (af == AF_IP6)
     {
       sess->info.kv_40_8.key[0] = p5tuple->kv_40_8.key[0];
       sess->info.kv_40_8.key[1] = p5tuple->kv_40_8.key[1];
@@ -545,12 +523,14 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
       sess->info.kv_40_8.key[3] = p5tuple->kv_40_8.key[3];
       sess->info.kv_40_8.key[4] = p5tuple->kv_40_8.key[4];
       sess->info.kv_40_8.value = f_sess_id.as_u64;
+      sess->is_ip6 = 1;
     }
   else
     {
       sess->info.kv_16_8.key[0] = p5tuple->kv_16_8.key[0];
       sess->info.kv_16_8.key[1] = p5tuple->kv_16_8.key[1];
       sess->info.kv_16_8.value = f_sess_id.as_u64;
+      sess->is_ip6 = 0;
     }
 
   sess->last_active_time = now;
@@ -561,12 +541,11 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   sess->link_prev_idx = FA_SESSION_BOGUS_INDEX;
   sess->link_next_idx = FA_SESSION_BOGUS_INDEX;
   sess->deleted = 0;
-  sess->is_ip6 = is_ip6;
 
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 
   ASSERT (am->fa_sessions_hash_is_initialized == 1);
-  if (is_ip6)
+  if (sess->is_ip6)
     {
       reverse_session_add_del_ip6 (am, &sess->info.kv_40_8, 1);
       clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash,
@@ -609,41 +588,45 @@ acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
 }
 
 always_inline u64
-acl_fa_make_session_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
-			  fa_5tuple_t * p5tuple)
+acl_fa_make_session_hash (acl_main_t * am,
+			  ip_address_family_t af,
+			  u32 sw_if_index0, fa_5tuple_t * p5tuple)
 {
-  if (is_ip6)
+  if (AF_IP6 == af)
     return clib_bihash_hash_40_8 (&p5tuple->kv_40_8);
   else
     return clib_bihash_hash_16_8 (&p5tuple->kv_16_8);
 }
 
 always_inline void
-acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am, int is_ip6,
-					 u64 hash)
+acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am,
+					 ip_address_family_t af, u64 hash)
 {
-  if (is_ip6)
+  if (AF_IP6 == af)
     clib_bihash_prefetch_bucket_40_8 (&am->fa_ip6_sessions_hash, hash);
   else
     clib_bihash_prefetch_bucket_16_8 (&am->fa_ip4_sessions_hash, hash);
 }
 
 always_inline void
-acl_fa_prefetch_session_data_for_hash (acl_main_t * am, int is_ip6, u64 hash)
+acl_fa_prefetch_session_data_for_hash (acl_main_t * am,
+				       ip_address_family_t af, u64 hash)
 {
-  if (is_ip6)
+  if (AF_IP6 == af)
     clib_bihash_prefetch_data_40_8 (&am->fa_ip6_sessions_hash, hash);
   else
     clib_bihash_prefetch_data_16_8 (&am->fa_ip4_sessions_hash, hash);
 }
 
 always_inline int
-acl_fa_find_session_with_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
-			       u64 hash, fa_5tuple_t * p5tuple,
-			       u64 * pvalue_sess)
+acl_fa_find_session_with_hash (acl_main_t * am,
+			       ip_address_family_t af,
+			       u32 sw_if_index0,
+			       u64 hash,
+			       const fa_5tuple_t * p5tuple, u64 * pvalue_sess)
 {
   int res = 0;
-  if (is_ip6)
+  if (AF_IP6 == af)
     {
       clib_bihash_kv_40_8_t kv_result;
       kv_result.value = ~0ULL;

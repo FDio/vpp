@@ -163,6 +163,22 @@ ip_address_decode (const vl_api_address_t * in, ip46_address_t * out)
   return (ip_address_union_decode (&in->un, in->af, out));
 }
 
+void
+ip_address_decode2 (const struct _vl_api_address *in, ip_address_t * out)
+{
+  switch (ip_address_union_decode (&in->un, in->af, &out->ip))
+    {
+    case IP46_TYPE_IP4:
+      out->version = AF_IP4;
+      break;
+    case IP46_TYPE_IP6:
+      out->version = AF_IP6;
+      break;
+    default:
+      break;
+    }
+}
+
 static void
 ip_address_union_encode (const ip46_address_t * in,
 			 vl_api_address_family_t af,
@@ -197,6 +213,21 @@ ip_address_encode (const ip46_address_t * in,
 }
 
 void
+ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
+{
+  switch (in->version)
+    {
+    case AF_IP4:
+      out->af = clib_net_to_host_u32 (ADDRESS_IP4);
+      break;
+    case AF_IP6:
+      out->af = clib_net_to_host_u32 (ADDRESS_IP6);
+      break;
+    }
+  ip_address_union_encode (&in->ip, out->af, &out->un);
+}
+
+void
 ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 {
   switch (clib_net_to_host_u32 (in->address.af))
@@ -213,12 +244,30 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
   ip_address_decode (&in->address, &out->fp_addr);
 }
 
+int
+ip_prefix_decode2 (const vl_api_prefix_t * in, ip_prefix_t * out)
+{
+  out->len = in->len;
+  ip_address_decode2 (&in->address, &out->addr);
+
+  if (!ip_prefix_validate (out))
+    return (VNET_API_ERROR_IP_PREFIX_INVALID);
+  return (0);
+}
+
 void
 ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 {
   out->len = in->fp_len;
   ip_address_encode (&in->fp_addr,
 		     fib_proto_to_ip46 (in->fp_proto), &out->address);
+}
+
+void
+ip_prefix_encode2 (const ip_prefix_t * in, vl_api_prefix_t * out)
+{
+  out->len = in->len;
+  ip_address_encode2 (&in->addr, &out->address);
 }
 
 void

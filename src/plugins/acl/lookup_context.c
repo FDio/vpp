@@ -16,8 +16,6 @@
 #include <plugins/acl/acl.h>
 #include <plugins/acl/fa_node.h>
 #include <vlib/unix/plugin.h>
-#include <plugins/acl/public_inlines.h>
-#include "hash_lookup.h"
 #include "elog_acl_trace.h"
 
 /* check if a given ACL exists */
@@ -73,8 +71,8 @@ static int acl_lc_index_valid(acl_main_t *am, u32 lc_index)
  * If you are using ACL plugin, get this unique ID first,
  * so you can identify yourself when creating the lookup contexts.
  */
-
-static u32 acl_plugin_register_user_module (char *user_module_name, char *val1_label, char *val2_label)
+u32
+acl_register_user_module (char *user_module_name, char *val1_label, char *val2_label)
 {
   acl_main_t *am = &acl_main;
   /*
@@ -94,8 +92,8 @@ static u32 acl_plugin_register_user_module (char *user_module_name, char *val1_l
  * of use within your module. They are useful for debugging.
  * If >= 0 - context id. If < 0 - error code.
  */
-
-static int acl_plugin_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2)
+int
+acl_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2)
 {
   acl_main_t *am = &acl_main;
   acl_lookup_context_t *acontext;
@@ -187,7 +185,8 @@ unapply_acl_vec(u32 lc_index, u32 *acls)
  * Release the lookup context index and destroy
  * any associated data structures.
  */
-static void acl_plugin_put_lookup_context_index (u32 lc_index)
+void
+acl_put_lookup_context_index (u32 lc_index)
 {
   acl_main_t *am = &acl_main;
 
@@ -215,7 +214,8 @@ static void acl_plugin_put_lookup_context_index (u32 lc_index)
  * Prepare the sequential vector of ACL#s to lookup within a given context.
  * Any existing list will be overwritten. acl_list is a vector.
  */
-static int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
+int
+acl_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
 {
   int rv = 0;
   uword *seen_acl_bitmap = 0;
@@ -290,23 +290,6 @@ void acl_plugin_lookup_context_notify_acl_change(u32 acl_num)
 
 /* Fill the 5-tuple from the packet */
 
-static void acl_plugin_fill_5tuple (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
-                                int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
-{
-  acl_plugin_fill_5tuple_inline(&acl_main, lc_index, b0, is_ip6, is_input, is_l2_path, p5tuple_pkt);
-}
-
-static int acl_plugin_match_5tuple (u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap)
-{
-  return acl_plugin_match_5tuple_inline (&acl_main, lc_index, pkt_5tuple, is_ip6, r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-}
-
 
 void
 acl_plugin_show_lookup_user (u32 user_index)
@@ -362,13 +345,4 @@ void *
 acl_plugin_get_p_acl_main(void)
 {
   return &acl_main;
-}
-
-clib_error_t *acl_plugin_methods_vtable_init(acl_plugin_methods_t *m)
-{
-  m->p_acl_main = &acl_main;
-#define _(name) m->name = acl_plugin_ ## name;
-  foreach_acl_plugin_exported_method_name
-#undef _
-  return 0;
 }

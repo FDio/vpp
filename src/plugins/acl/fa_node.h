@@ -5,8 +5,6 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_40_8.h>
 
-#include <plugins/acl/exported_types.h>
-
 // #define FA_NODE_VERBOSE_DEBUG 3
 
 #define TCP_FLAG_FIN    0x01
@@ -23,6 +21,16 @@
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE (1ULL<<30)
 #define ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES 500000
+
+/* 
+ * The overlay struct matching an internal type. Contents/size may change. 
+ * During the compile of the ACL plugin it is checked to have the same size
+ * as the internal structure.
+ */
+
+typedef struct {
+  u64 opaque[6];
+} fa_5tuple_opaque_t;
 
 typedef union {
   u64 as_u64;
@@ -73,7 +81,7 @@ typedef union {
            after padding so we can still
            use them as (shorter) key together with
            L4 info */
-        u32 l3_zero_pad[6];
+        u64 l3_zero_pad[3];
         ip4_address_t ip4_addr[2];
       };
       ip6_address_t ip6_addr[2];
@@ -88,6 +96,8 @@ typedef union {
     clib_bihash_kv_16_8_t kv_16_8;
   };
 } fa_5tuple_t;
+
+STATIC_ASSERT_SIZEOF(fa_5tuple_t, 48);
 
 static_always_inline u8 *
 format_fa_session_l4_key(u8 * s, va_list * args)
@@ -107,7 +117,7 @@ typedef struct {
   u64 last_active_time;   /* +8 bytes = 56 */
   u32 sw_if_index;        /* +4 bytes = 60 */
   union {
-    u8 as_u8[2];
+    u8 as_u8[VLIB_N_RX_TX];
     u16 as_u16;
   } tcp_flags_seen; ;     /* +2 bytes = 62 */
   u16 thread_index;          /* +2 bytes = 64 */
@@ -228,6 +238,7 @@ typedef struct {
     */
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   u32 sw_if_indices[VLIB_FRAME_SIZE];
+  u32 match_apps[VLIB_FRAME_SIZE];
   fa_5tuple_t fa_5tuples[VLIB_FRAME_SIZE];
   u64 hashes[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE];
@@ -247,7 +258,7 @@ typedef enum
   ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,
 } acl_fa_cleaner_process_event_e;
 
-void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
+void acl_fa_enable_disable(u32 sw_if_index, int enable_disable);
 
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 

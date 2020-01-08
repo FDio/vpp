@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
+import "vnet/match/match_types.api";
 import "vnet/interface_types.api";
 
 enum gbp_bridge_domain_flags
@@ -299,6 +300,7 @@ enum gbp_rule_action
 
 typedef gbp_rule
 {
+  vl_api_match_mask_n_tuple_t match;
   vl_api_gbp_rule_action_t action;
   vl_api_gbp_next_hop_set_t nh_set;
 };
@@ -308,7 +310,6 @@ typedef gbp_contract
   vl_api_gbp_scope_t scope;
   u16 sclass;
   u16 dclass;
-  u32 acl_index;
   u8 n_ether_types;
   u16 allowed_ethertypes[16];
   u8  n_rules;

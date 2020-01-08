@@ -110,9 +110,9 @@ lisp_gpe_sub_interface_find_ip6 (const ip6_address_t * addr, u32 vni)
   lisp_gpe_sub_interface_key_t key;
   const uword *p;
 
-  key.local_rloc.ip.v6.as_u64[0] = addr->as_u64[0];
-  key.local_rloc.ip.v6.as_u64[1] = addr->as_u64[1];
-  key.local_rloc.version = AF_IP6;
+  ip_addr_v6 (&key.local_rloc).as_u64[0] = addr->as_u64[0];
+  ip_addr_v6 (&key.local_rloc).as_u64[1] = addr->as_u64[1];
+  ip_addr_version (&key.local_rloc) = AF_IP6;
   key.vni = vni;
 
   p = hash_get_mem (&lisp_gpe_sub_interfaces_sw_if_index, &key);
@@ -134,7 +134,7 @@ lisp_gpe_sub_interface_find_ip4 (const ip4_address_t * addr, u32 vni)
   lisp_gpe_sub_interface_key_t key;
   const uword *p;
 
-  key.local_rloc.ip.v4.as_u32 = addr->as_u32;
+  ip_addr_v4 (&key.local_rloc).as_u32 = addr->as_u32;
   key.local_rloc.version = AF_IP4;
   key.vni = vni;
 

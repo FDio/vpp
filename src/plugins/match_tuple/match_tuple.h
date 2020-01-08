@@ -15,12 +15,10 @@
  *------------------------------------------------------------------
  */
 
-#ifndef _ACL_HASH_LOOKUP_H_
-#define _ACL_HASH_LOOKUP_H_
+#ifndef __MATCH_TUPLE_H__
+#define __MATCH_TUPLE_H__
 
 #include <stddef.h>
-#include "lookup_context.h"
-#include "acl.h"
 
 /*
  * Do the necessary to logically apply the ACL to the existing vector of ACLs looked up
@@ -43,5 +41,40 @@ void hash_acl_delete(acl_main_t *am, int acl_index);
 
 /* return if there is already a filled-in hash acl info */
 int hash_acl_exists(acl_main_t *am, int acl_index);
+
+
+typedef sturct match_tuple_main_t_
+{
+  hash_acl_info_t *hash_acl_infos;	/* corresponding hash matching housekeeping info */
+  clib_bihash_48_8_t acl_lookup_hash;	/* ACL lookup hash table. */
+  u32 hash_lookup_hash_buckets;
+  uword hash_lookup_hash_memory;
+
+  /* a pool of all mask types present in all ACEs */
+  ace_mask_type_entry_t *ace_mask_type_pool;
+applied_hash_ace_entry_t **hash_entry_vec_by_lc_index;
+  applied_hash_acl_info_t *applied_hash_acl_info_by_lc_index;
+
+    /* vec of vectors of all info of all mask types present in ACEs contained in each lc_index */
+  hash_applied_mask_info_t **hash_applied_mask_info_vec_by_lc_index;
+  /* Do we use the TupleMerge for hash ACLs or not */
+  int use_tuple_merge;
+
+  /* Max collision vector length before splitting the tuple */
+#define TM_SPLIT_THRESHOLD 39
+  int tuple_merge_split_threshold;
+
+
+} matxh_tuple_main_t;
+
+
+/*
+  am->hash_lookup_hash_buckets = ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS;
+  am->hash_lookup_hash_memory = ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY;
+*/
+/* use tuplemerge by default */
+//  am->use_tuple_merge = 1;
+  /* Set the default threshold */
+//  am->tuple_merge_split_threshold = TM_SPLIT_THRESHOLD;
 
 #endif
