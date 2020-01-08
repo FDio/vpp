@@ -317,6 +317,10 @@ u8 *format_hexdump_u64 (u8 *s, va_list *va);
 /* Format bitmap of array of uword numbers */
 u8 *format_uword_bitmap (u8 *s, va_list *va);
 
+/* Format hexdump with both hex and printable chars - last line is last 16
+ * bytes */
+u8 *format_hexdump_trunc (u8 *s, va_list *va);
+
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
 /* Setup input from Unix file. */
