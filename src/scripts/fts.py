@@ -9,6 +9,7 @@ import re
 from jsonschema import validate, exceptions
 import argparse
 from subprocess import run, PIPE
+from io import StringIO
 
 # VPP feature JSON schema
 schema = {
@@ -35,7 +36,7 @@ schema = {
                 "type": "array",
                 "items": {"type": "string"},
                 "minItems": 1,
-                },
+            },
                 {"type": "string"}],
         },
         "featureobject": {
@@ -80,34 +81,128 @@ def filelist_from_git_ls():
             filelist.append(l)
     return filelist
 
+def version_from_git():
+    git_describe = 'git describe'
+    rv = run(git_describe.split(), stdout=PIPE, stderr=PIPE)
+    if rv.returncode != 0:
+        sys.exit(rv.returncode)
+    return rv.stdout.decode('ascii').split('\n')[0]
 
-def output_features(indent, fl):
-    for f in fl:
-        if type(f) is dict:
-            for k, v in f.items():
-                print('{}- {}'.format(' ' * indent, k))
-                output_features(indent + 2, v)
+class MarkDown():
+    _dispatch = {}
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.toc = []
+
+    def print_maintainer(self, o):
+        write = self.stream.write
+        if type(o) is list:
+            write('Maintainers: ' +
+                  ', '.join(f'{m}' for m in
+                            o) + '  \n')
         else:
-            print('{}- {}'.format(' ' * indent, f))
+            write(f'Maintainer: {o}  \n')
 
+    _dispatch['maintainer'] = print_maintainer
 
-def output_markdown(features):
-    for k, v in features.items():
-        print('# {}'.format(v['name']))
-        if type(v['maintainer']) is list:
-            print('Maintainers: ' +
-                  ', '.join('{}'.format(m) for m in
-                            v['maintainer']) + '  ')
+    def print_features(self, o, indent=0):
+        write = self.stream.write
+        for f in o:
+            indentstr = ' ' * indent
+            if type(f) is dict:
+                for k, v in f.items():
+                    write(f'{indentstr}- {k}\n')
+                    self.print_features(v, indent + 2)
+            else:
+                write(f'{indentstr}- {f}\n')
+        write('\n')
+    _dispatch['features'] = print_features
+
+    def print_name(self, o):
+        write = self.stream.write
+        write(f'## {o}\n')
+        self.toc.append(o)
+    _dispatch['name'] = print_name
+
+    def print_description(self, o):
+        write = self.stream.write
+        write(f'\n{o}\n\n')
+    _dispatch['description'] = print_description
+
+    def print_state(self, o):
+        write = self.stream.write
+        write(f'Feature maturity level: {o}  \n')
+    _dispatch['state'] = print_state
+
+    def print_properties(self, o):
+        write = self.stream.write
+        write(f'Supports: {" ".join(o)}  \n')
+    _dispatch['properties'] = print_properties
+
+    def print_missing(self, o):
+        write = self.stream.write
+        write('\nNot yet implemented:  \n')
+        self.print_features(o)
+    _dispatch['missing'] = print_missing
+
+    def print_code(self, o):
+        write = self.stream.write
+        write(f'Code: [{o}]({o}) \n')
+    _dispatch['code'] = print_code
+
+    def print(self, t, o):
+        write = self.stream.write
+        if t in self._dispatch:
+            self._dispatch[t](self, o,)
         else:
-            print('Maintainer: {}  '.format(v['maintainer']))
-        print('State: {}  \n'.format(v['state']))
-        print('{}\n'.format(v['description']))
-        output_features(0, v['features'])
-        if 'missing' in v:
-            print('\n## Missing')
-            output_features(0, v['missing'])
-        print()
+            write('NOT IMPLEMENTED: {t}\n')
 
+def output_toc(toc, stream):
+    write = stream.write
+    write('# VPP Feature list\n')
+    version = version_from_git()
+    write(f'**Generated for version: {version}**  \n')
+
+    for t in toc:
+        ref = t.lower().replace(' ', '-')
+        write(f'[{t}](#{ref})  \n')
+
+def featuresort(k):
+    return k[1]['name']
+
+def featurelistsort(k):
+    orderedfields = {
+        'name': 0,
+        'maintainer': 1,
+        'description': 2,
+        'features': 3,
+        'state': 4,
+        'properties': 5,
+        'missing': 6,
+        'code': 7,
+    }
+    return orderedfields[k[0]]
+
+def output_markdown(features, fields, notfields):
+    stream = StringIO()
+    m = MarkDown(stream)
+    for path, featuredef in sorted(features.items(), key=featuresort):
+        codeurl = 'https://git.fd.io/vpp/tree/src/' + '/'.join(os.path.normpath(path).split('/')[1:-1])
+        featuredef['code'] = codeurl
+        for k, v in sorted(featuredef.items(), key=featurelistsort):
+            if notfields:
+                if k not in notfields:
+                    m.print(k, v)
+            elif fields:
+                if k in fields:
+                    m.print(k, v)
+            else:
+                m.print(k, v)
+
+    tocstream = StringIO()
+    output_toc(m.toc, tocstream)
+    return tocstream, stream
 
 def main():
     parser = argparse.ArgumentParser(description='VPP Feature List.')
@@ -121,8 +216,10 @@ def main():
                         help='Output feature table in markdown')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
                         default=sys.stdin)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--include', help='List of fields to include')
+    group.add_argument('--exclude', help='List of fields to exclude')
     args = parser.parse_args()
-
     features = {}
 
     if args.git_status:
@@ -131,6 +228,15 @@ def main():
         filelist = filelist_from_git_ls()
     else:
         filelist = args.infile
+
+    if args.include:
+        fields = args.include.split(',')
+    else:
+        fields = []
+    if args.exclude:
+        notfields = args.exclude.split(',')
+    else:
+        notfields = []
 
     for featurefile in filelist:
         featurefile = featurefile.rstrip()
@@ -141,13 +247,17 @@ def main():
         try:
             validate(instance=cfg, schema=schema)
         except exceptions.ValidationError:
-            print('File does not validate: {}'.format(featurefile),
+            print('File does not validate: {featurefile}',
                   file=sys.stderr)
             raise
         features[featurefile] = cfg
 
     if args.markdown:
-        output_markdown(features)
+        stream = StringIO()
+        tocstream, stream = output_markdown(features, fields, notfields)
+        print(tocstream.getvalue())
+        print(stream.getvalue())
+        stream.close()
 
 
 if __name__ == '__main__':
