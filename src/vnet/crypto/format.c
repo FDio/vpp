@@ -105,6 +105,16 @@ format_vnet_crypto_engine (u8 * s, va_list * args)
   return format (s, "%s", e->name);
 }
 
+u8 *
+format_vnet_crypto_async_status (u8 * s, va_list * args)
+{
+  u32 is_async = va_arg (*args, u32);
+
+  if (is_async)
+    return format (s, "async");
+
+  return format (s, "sync");
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
