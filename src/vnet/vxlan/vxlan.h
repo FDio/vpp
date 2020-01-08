@@ -37,13 +37,13 @@ typedef CLIB_PACKED (struct {
   ip4_header_t ip4;	/* 20 bytes */
   udp_header_t udp;	/* 8 bytes */
   vxlan_header_t vxlan;	/* 8 bytes */
-}) ip4_vxlan_header_t;
+}) __clib_packed ip4_vxlan_header_t;
 
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;	/* 40 bytes */
   udp_header_t udp;	/* 8 bytes */
   vxlan_header_t vxlan;	/* 8 bytes */
-}) ip6_vxlan_header_t;
+}) __clib_packed ip6_vxlan_header_t;
 /* *INDENT-ON* */
 
 /*

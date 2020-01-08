@@ -250,7 +250,6 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, u8 is_ip6)
 {
-  gbp_main_t *gm = &gbp_main;
   u32 n_left_from, next_index, *from, *to_next;
   u32 n_allow_intra, n_allow_a_bit, n_allow_sclass_1;
 
@@ -324,12 +323,13 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  key0.gck_scope = gpd0->gpd_scope;
 	  key0.gck_dst = gpd0->gpd_sclass;
 
-	  action0 =
-	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
-				&n_allow_sclass_1, &acl_match, &rule_match,
-				&err0,
-				is_ip6 ? GBP_CONTRACT_APPLY_IP6 :
-				GBP_CONTRACT_APPLY_IP4);
+	  action0 = gbp_contract_apply (vm,
+					(is_ip6 ?
+					 GBP_POLICY_NODE_IP6 :
+					 GBP_POLICY_NODE_IP4),
+					&key0, b0, &rule0, &n_allow_intra,
+					&n_allow_sclass_1, &acl_match,
+					&rule_match, &err0);
 	  switch (action0)
 	    {
 	    case GBP_RULE_PERMIT:
