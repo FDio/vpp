@@ -262,11 +262,44 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->rxt_sacked);
 
   /*
-   * Sack all up to 1000
+   * Sack remaining bytes [990 1000]
    */
+  tc->rcv_opts.sacks[0].start = 990;
+  tc->rcv_opts.sacks[0].end = 1000;
+
+  tcp_rcv_sacks (tc, 960);
+
+  TCP_TEST ((sb->is_reneging), "is reneging");
+  TCP_TEST ((sb->sacked_bytes == 40), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 10),
+	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d",
+	    sb->rxt_sacked);
+  TCP_TEST (pool_elts (sb->holes) == 0, "no holes left");
+
+  /*
+   * Ack up to 970 no sack blocks
+   */
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tcp_rcv_sacks (tc, 970);
+
+  TCP_TEST ((sb->is_reneging), "is reneging");
+  TCP_TEST ((sb->sacked_bytes == 30), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0),
+	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d",
+	    sb->rxt_sacked);
+
+  /*
+   * Ack all up to 1000
+   */
+  tc->snd_una = 970;
   tcp_rcv_sacks (tc, 1000);
   TCP_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST (sb->last_bytes_delivered == 30, "last bytes delivered %d",
+	    sb->last_bytes_delivered);
   TCP_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
@@ -276,6 +309,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Add new block
    */
   tc->flags = 0;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   vec_reset_length (tc->rcv_opts.sacks);
 
   block.start = 1200;
