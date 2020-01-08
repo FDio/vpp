@@ -61,6 +61,8 @@
 # include <netinet/if_ether.h>
 #endif /* __KERNEL__ */
 
+#include <vppinfra/elf_clib.h>
+#include <vppinfra/stack.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
@@ -464,4 +466,56 @@ unformat_unix_gid (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+/*
+ * format_backtrace()
+ *
+ * Usage:
+ *
+ *   void *pc[15];
+ *   count = clib_stack_frame_get_raw (pc, ARRAY_LEN (pc), 2);
+ *   ...
+ *   s = format (s, "%U", format_backtrace, pc, count);
+ *
+ * Output:
+ *
+ * #0  0x00007f99763d8e7a _clib_error + 0xda
+ * #1  0x00007f99359d493f test_command_fn + 0x3ff
+ * #2  0x00007f9976472950 vlib_cli_dispatch_sub_commands + 0xa60
+ * #3  0x00007f9976472746 vlib_cli_dispatch_sub_commands + 0x856
+ * #4  0x00007f9976472746 vlib_cli_dispatch_sub_commands + 0x856
+ * #5  0x00007f9976471e6d vlib_cli_input + 0x7d
+ * #6  0x00007f99764f4c49 unix_cli_exec + 0x6b9
+ * #7  0x00007f9976472950 vlib_cli_dispatch_sub_commands + 0xa60
+ * #8  0x00007f9976471e6d vlib_cli_input + 0x7d
+ * #9  0x00007f99764fe953 startup_config_process + 0xf3
+ * #10 0x00007f997648fa77 vlib_process_bootstrap + 0x17
+ * #11 0x00007f99764425e0 0x7f99764425e0
+ */
+__clib_export u8 *
+format_backtrace (u8 *s, va_list *args)
+{
+  void **pc = va_arg (*args, void **); /* array: program counter addresses */
+  int n = va_arg (*args, int);	       /* number of addresses to print */
+  u32 indent;
+  int i;
+
+  indent = format_get_indent (s);
+
+  for (i = 0; i < n; ++i)
+    {
+      if (!pc[i])
+	break;
+      if (i)
+	s = format (s, "%U", format_white_space, indent);
+
+/* Is this qualification needed? */
+#if defined(CLIB_UNIX) && !defined(__APPLE__)
+      s = format (s, "#%-2d 0x%016lx %U\n", i, pc[i], format_clib_elf_symbol_with_address, pc[i]);
+#else
+      s = format (s, " %p\n", pc[i]);
+#endif
+    }
+
+  return s;
+}
 #endif /* __KERNEL__ */
