@@ -1,0 +1,126 @@
+
+/** \brief MACIP Access List Rule entry
+    @param is_permit - deny (0), permit (1) action on this rule.
+    @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
+    @param src_mac - match masked source MAC address against this value
+    @param src_mac_mask - AND source MAC address with this value before matching
+    @param src_ip_addr - Source prefix value
+    @param src_ip_prefix_len - Source prefix length
+*/
+
+typedef macip2_rule
+{
+  u8 is_permit;
+  vl_api_match_mask_ip_mac_t rule;
+};
+
+/** \brief Add/Replace a MACIP ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - an existing MACIP ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new MACIP ACL
+    @param tag - descriptive value for this MACIP ACL
+    @param count - number of rules in this MACIP ACL
+    @param r - vector of MACIP ACL rules
+*/
+define macip2_update
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 to add, existing MACIP ACL# to replace */
+  u8 tag[64];
+  u32 count;
+  vl_api_macip2_rule_t r[count];
+};
+
+/** \brief Reply to add/replace MACIP ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of the newly created MACIP ACL
+    @param retval 0 - no error
+*/
+define macip2_update_reply
+{
+  u32 context;
+  u32 acl_index;
+  i32 retval;
+};
+
+/** \brief Delete a MACIP ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - MACIP ACL index to delete
+*/
+autoreply define macip2_del
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index;
+};
+
+/** \brief Add or delete a MACIP ACL to/from interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to apply the action to. ~0 to unbind
+    @param acl_index - MACIP ACL index
+*/
+autoreply define macip2_bind
+{
+  u32 client_index;
+  u32 context;
+  /* MACIP ACLs are always input */
+  u32 sw_if_index;
+  u32 acl_index;
+};
+
+/** \brief Dump one or all defined MACIP ACLs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - MACIP ACL index or ~0 to dump all MACIP ACLs
+*/
+define macip2_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 for all ACLs */
+};
+
+/** \brief Details about one MACIP ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of this MACIP ACL
+    @param tag - descriptive tag which was supplied during the creation
+    @param count - length of the vector of MACIP ACL rules
+    @param r - rules comprising this MACIP ACL
+*/
+autoreply define macip2_details
+{
+  u32 context;
+  u32 acl_index;
+  u8 tag[64];
+  u32 count;
+  vl_api_macip2_rule_t r[count];
+};
+
+/** \brief Dump the list(s) of MACIP ACLs applied to specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the MACIP ACL list for
+*/
+define macip2_bind_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index; /* ~0 for all interfaces */
+};
+
+/** \brief Details about a single MACIP ACL contents
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of MACIP ACLs is applied
+    @param count - total length of acl indices vector
+    @param acls - the vector of MACIP ACL indices
+*/
+define macip2_bind_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 count;
+  u32 acls[count];
+};

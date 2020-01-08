@@ -499,8 +499,8 @@ class VppTestCase(unittest.TestCase):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
 
-        cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-%s-' % cls.__name__)
+        cls.tempdir = '/tmp/vpp-unittest-%s' % cls.__name__
+        os.mkdir(cls.tempdir)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
         cls.api_sock = "%s/api.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
@@ -1142,7 +1142,7 @@ class VppTestCase(unittest.TestCase):
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
         self.pg_send(intf, pkts)
         if not timeout:
-            timeout = 1
+            timeout = 0.5
         for i in self.pg_interfaces:
             i.get_capture(0, timeout=timeout)
             i.assert_nothing_captured(remark=remark)
