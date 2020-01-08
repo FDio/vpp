@@ -22,6 +22,8 @@
 #include <vnet/mpls/mpls_types.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_api.h>
+#include <vnet/match/match_types_api.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vpp/app/version.h>
 
@@ -83,8 +85,11 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
 
   if (mp->is_add)
     {
-      rv = abf_policy_update (ntohl (mp->policy.policy_id),
-			      ntohl (mp->policy.acl_index), paths);
+      match_rule_t mr;
+
+      match_rule_decode (&mp->policy.rule, &mr);
+
+      rv = abf_policy_update (ntohl (mp->policy.policy_id), &mr, paths);
     }
   else
     {
@@ -100,24 +105,29 @@ static void
 vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t * mp)
 {
   vl_api_abf_itf_attach_add_del_reply_t *rmp;
-  fib_protocol_t fproto = (mp->attach.is_ipv6 ?
-			   FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
-  int rv = 0;
+  ip_address_family_t af;
+  int rv;
 
-  if (mp->is_add)
-    {
-      abf_itf_attach (fproto,
-		      ntohl (mp->attach.policy_id),
-		      ntohl (mp->attach.priority),
-		      ntohl (mp->attach.sw_if_index));
-    }
-  else
-    {
-      abf_itf_detach (fproto,
-		      ntohl (mp->attach.policy_id),
-		      ntohl (mp->attach.sw_if_index));
-    }
+  VALIDATE_SW_IF_INDEX (&(mp->attach));
+  rv = ip_address_family_decode (mp->attach.af, &af);
 
+  if (!rv)
+    {
+      if (mp->is_add)
+	{
+	  abf_itf_attach (af,
+			  ntohl (mp->attach.policy_id),
+			  ntohl (mp->attach.priority),
+			  ntohl (mp->attach.sw_if_index));
+	}
+      else
+	{
+	  abf_itf_detach (af,
+			  ntohl (mp->attach.policy_id),
+			  ntohl (mp->attach.sw_if_index));
+	}
+    }
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_ABF_ITF_ATTACH_ADD_DEL_REPLY + abf_base_msg_id);
 }
 
@@ -153,8 +163,9 @@ abf_policy_send_details (u32 api, void *args)
   /* fill in the message */
   mp->context = ctx->context;
   mp->policy.n_paths = n_paths;
-  mp->policy.acl_index = htonl (ap->ap_acl);
   mp->policy.policy_id = htonl (ap->ap_id);
+
+  match_rule_encode (&ap->ap_rule, &mp->policy.rule);
 
   fib_path_list_walk_w_ext (ap->ap_pl, NULL, fib_path_encode, &walk_ctx);
 
@@ -208,7 +219,7 @@ abf_itf_attach_send_details (u32 aiai, void *args)
   mp->attach.policy_id = htonl (ap->ap_id);
   mp->attach.sw_if_index = htonl (aia->aia_sw_if_index);
   mp->attach.priority = htonl (aia->aia_prio);
-  mp->attach.is_ipv6 = (aia->aia_proto == FIB_PROTOCOL_IP6);
+  mp->attach.af = ip_address_family_encode (aia->aia_af);
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
