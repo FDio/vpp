@@ -346,13 +346,13 @@ make_arp_ndp_key (BVT (clib_bihash_kv) * kv, u32 bd, ip_address_t * addr)
   kv->key[0] = ((u64) bd << 32) | (u32) ip_addr_version (addr);
   if (ip_addr_version (addr) == AF_IP4)
     {
-      kv->key[1] = (u64) addr->ip.v4.as_u32;
+      kv->key[1] = (u64) ip_addr_v4 (addr).as_u32;
       kv->key[2] = (u64) 0;
     }
   else
     {
-      kv->key[1] = (u64) addr->ip.v6.as_u64[0];
-      kv->key[2] = (u64) addr->ip.v6.as_u64[1];
+      kv->key[1] = (u64) ip_addr_v6 (addr).as_u64[0];
+      kv->key[2] = (u64) ip_addr_v6 (addr).as_u64[1];
     }
 }
 

@@ -15,26 +15,36 @@
 #ifndef included_acl_types_h
 #define included_acl_types_h
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
+#include <vnet/match/match_types.h>
 
-typedef struct
+#define foreach_acl_action                      \
+  _(DENY, "deny")                               \
+  _(PERMIT, "permit")                           \
+  _(REFLECT, "reflect")
+
+typedef enum acl_action_t_
 {
-  u8 is_permit;
-  u8 is_ipv6;
-  ip46_address_t src;
-  u8 src_prefixlen;
-  ip46_address_t dst;
-  u8 dst_prefixlen;
-  u8 proto;
-  u16 src_port_or_type_first;
-  u16 src_port_or_type_last;
-  u16 dst_port_or_code_first;
-  u16 dst_port_or_code_last;
-  u8 tcp_flags_value;
-  u8 tcp_flags_mask;
+#define _(a,b) ACL_ACTION_##a,
+  foreach_acl_action
+#undef _
+} __clib_packed acl_action_t;
+
+extern u8 *format_acl_action (u8 * s, va_list * a);
+
+typedef struct acl_rule_t_
+{
+  acl_action_t action;
+  match_rule_t rule;
 } acl_rule_t;
 
+extern u8 *format_acl_rule (u8 * s, va_list * a);
 
 #endif // included_acl_types_h
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

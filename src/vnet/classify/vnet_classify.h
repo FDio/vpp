@@ -46,6 +46,7 @@ extern vlib_node_registration_t ip6_classify_node;
  */
 typedef enum vnet_classify_action_t_
 {
+  CLASSIFY_ACTION_NONE = 0,
   CLASSIFY_ACTION_SET_IP4_FIB_INDEX = 1,
   CLASSIFY_ACTION_SET_IP6_FIB_INDEX = 2,
   CLASSIFY_ACTION_SET_METADATA = 3,
@@ -169,8 +170,6 @@ typedef struct
   /* Free entry freelists */
   vnet_classify_entry_t **freelists;
 
-  u8 *name;
-
   /* Private allocation arena, protected by the writer lock */
   void *mheap;
 
@@ -211,6 +210,7 @@ struct _vnet_classify_main
 extern vnet_classify_main_t vnet_classify_main;
 
 u8 *format_classify_table (u8 * s, va_list * args);
+u8 *format_vnet_classify_table (u8 * s, va_list * args);
 
 u64 vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h);
 
@@ -301,7 +301,7 @@ vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
   u8 *hp = t->mheap;
   u8 *vp = hp + offset;
 
-  return (void *) vp;
+  return (vnet_classify_entry_t *) vp;
 }
 
 static inline uword
@@ -518,6 +518,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
 				 u8 current_data_flag,
 				 i16 current_data_offset,
 				 int is_add, int del_chain);
+void vnet_classify_delete_table_index (vnet_classify_main_t * cm,
+				       u32 table_index, int del_chain);
 
 unformat_function_t unformat_ip4_mask;
 unformat_function_t unformat_ip6_mask;

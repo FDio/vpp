@@ -27,7 +27,6 @@
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/acl.h>
 #include <plugins/acl/lookup_context.h>
-#include <plugins/acl/public_inlines.h>
 #include <plugins/acl/session_inlines.h>
 
 
@@ -856,63 +855,28 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 
 void
-acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
+acl_fa_enable_disable (u32 sw_if_index, int enable)
 {
   acl_main_t *am = &acl_main;
-  if (enable_disable)
+  if (enable)
     {
       acl_fa_verify_init_sessions (am);
       am->fa_total_enabled_count++;
-      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
+
       vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
 				 ACL_FA_CLEANER_RESCHEDULE, 0);
-      clib_mem_set_heap (oldheap);
     }
   else
     {
       am->fa_total_enabled_count--;
-    }
 
-  if (is_input)
-    {
-      ASSERT (clib_bitmap_get (am->fa_in_acl_on_sw_if_index, sw_if_index) !=
-	      enable_disable);
-      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
-      vnet_feature_enable_disable ("ip4-unicast", "acl-plugin-in-ip4-fa",
-				   sw_if_index, enable_disable, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast", "acl-plugin-in-ip6-fa",
-				   sw_if_index, enable_disable, 0, 0);
-      clib_mem_set_heap (oldheap);
-      am->fa_in_acl_on_sw_if_index =
-	clib_bitmap_set (am->fa_in_acl_on_sw_if_index, sw_if_index,
-			 enable_disable);
-    }
-  else
-    {
-      ASSERT (clib_bitmap_get (am->fa_out_acl_on_sw_if_index, sw_if_index) !=
-	      enable_disable);
-      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
-      vnet_feature_enable_disable ("ip4-output", "acl-plugin-out-ip4-fa",
-				   sw_if_index, enable_disable, 0, 0);
-      vnet_feature_enable_disable ("ip6-output", "acl-plugin-out-ip6-fa",
-				   sw_if_index, enable_disable, 0, 0);
-      clib_mem_set_heap (oldheap);
-      am->fa_out_acl_on_sw_if_index =
-	clib_bitmap_set (am->fa_out_acl_on_sw_if_index, sw_if_index,
-			 enable_disable);
-    }
-  if ((!enable_disable) && (!acl_fa_ifc_has_in_acl (am, sw_if_index))
-      && (!acl_fa_ifc_has_out_acl (am, sw_if_index)))
-    {
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning ("ENABLE-DISABLE: clean the connections on interface %d",
 		    sw_if_index);
 #endif
-      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
       vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
 				 ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,
 				 sw_if_index);
-      clib_mem_set_heap (oldheap);
     }
 }
 

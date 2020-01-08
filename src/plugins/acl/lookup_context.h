@@ -54,7 +54,12 @@ void acl_plugin_show_tables_bihash (u32 show_bihash_verbose);
 void acl_plugin_hash_acl_set_validate_heap(int on);
 void acl_plugin_hash_acl_set_trace_heap(int on);
 
-
+extern int acl_get_lookup_context_index (u32 acl_user_id, u32 val1, u32 val2);
+extern void acl_put_lookup_context_index (u32 lc_index);
+extern int acl_set_acl_vec_for_context (u32 lc_index, u32 *acl_list);
+extern u32 acl_register_user_module (char *user_module_name,
+                                     char *val1_label,
+                                     char *val2_label);
 
 #endif
 

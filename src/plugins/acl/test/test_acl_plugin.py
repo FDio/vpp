@@ -14,6 +14,7 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
 from vpp_lo_interface import VppLoInterface
+from vpp_papi import VppEnum
 
 
 class TestACLplugin(VppTestCase):
@@ -28,9 +29,8 @@ class TestACLplugin(VppTestCase):
     IPV4 = 0
     IPV6 = 1
 
-    # rule types
-    DENY = 0
-    PERMIT = 1
+    P_IP4 = "0.0.0.0/0"
+    P_IP6 = "::/0"
 
     # supported protocols
     proto = [[6, 17], [1, 58]]
@@ -149,6 +149,15 @@ class TestACLplugin(VppTestCase):
         super(TestACLplugin, cls).tearDownClass()
 
     def setUp(self):
+        # rule types
+        self.DENY = VppEnum.vl_api_acl_action_t.ACL_API_ACTION_DENY
+        self.PERMIT = VppEnum.vl_api_acl_action_t.ACL_API_ACTION_PERMIT
+
+        self.UDP = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        self.TCP = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        self.ICMP4 = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_ICMP
+        self.ICMP6 = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_ICMP6
+
         super(TestACLplugin, self).setUp()
         self.reset_packet_infos()
 
@@ -174,54 +183,58 @@ class TestACLplugin(VppTestCase):
         self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
                                          % self.bd_id))
 
-    def create_rule(self, ip=0, permit_deny=0, ports=PORTS_ALL, proto=-1,
-                    s_prefix=0, s_ip=b'\x00\x00\x00\x00',
-                    d_prefix=0, d_ip=b'\x00\x00\x00\x00'):
+    def create_rule(self, s_prefix, action, ports=PORTS_ALL, proto=-1,
+                    d_prefix=None):
+        if not d_prefix:
+            d_prefix = s_prefix
         if proto == -1:
             return
         if ports == self.PORTS_ALL:
             sport_from = 0
             dport_from = 0
-            sport_to = 65535 if proto != 1 and proto != 58 else 255
+            if proto != self.ICMP4 and proto != self.ICMP6:
+                sport_to = 65535
+            else:
+                sport_to = 255
             dport_to = sport_to
         elif ports == self.PORTS_RANGE:
-            if proto == 1:
+            if proto == self.ICMP4:
                 sport_from = self.icmp4_type
                 sport_to = self.icmp4_type
                 dport_from = self.icmp4_code
                 dport_to = self.icmp4_code
-            elif proto == 58:
+            elif proto == self.ICMP6:
                 sport_from = self.icmp6_type
                 sport_to = self.icmp6_type
                 dport_from = self.icmp6_code
                 dport_to = self.icmp6_code
-            elif proto == self.proto[self.IP][self.TCP]:
+            elif proto == self.TCP:
                 sport_from = self.tcp_sport_from
                 sport_to = self.tcp_sport_to
                 dport_from = self.tcp_dport_from
                 dport_to = self.tcp_dport_to
-            elif proto == self.proto[self.IP][self.UDP]:
+            elif proto == self.UDP:
                 sport_from = self.udp_sport_from
                 sport_to = self.udp_sport_to
                 dport_from = self.udp_dport_from
                 dport_to = self.udp_dport_to
         elif ports == self.PORTS_RANGE_2:
-            if proto == 1:
+            if proto == self.ICMP4:
                 sport_from = self.icmp4_type_2
                 sport_to = self.icmp4_type_2
                 dport_from = self.icmp4_code_from_2
                 dport_to = self.icmp4_code_to_2
-            elif proto == 58:
+            elif proto == self.ICMP6:
                 sport_from = self.icmp6_type_2
                 sport_to = self.icmp6_type_2
                 dport_from = self.icmp6_code_from_2
                 dport_to = self.icmp6_code_to_2
-            elif proto == self.proto[self.IP][self.TCP]:
+            elif proto == self.TCP:
                 sport_from = self.tcp_sport_from_2
                 sport_to = self.tcp_sport_to_2
                 dport_from = self.tcp_dport_from_2
                 dport_to = self.tcp_dport_to_2
-            elif proto == self.proto[self.IP][self.UDP]:
+            elif proto == self.UDP:
                 sport_from = self.udp_sport_from_2
                 sport_to = self.udp_sport_to_2
                 dport_from = self.udp_dport_from_2
@@ -232,15 +245,62 @@ class TestACLplugin(VppTestCase):
             dport_from = ports
             dport_to = ports
 
-        rule = ({'is_permit': permit_deny, 'is_ipv6': ip, 'proto': proto,
-                 'srcport_or_icmptype_first': sport_from,
-                 'srcport_or_icmptype_last': sport_to,
-                 'src_ip_prefix_len': s_prefix,
-                 'src_ip_addr': s_ip,
-                 'dstport_or_icmpcode_first': dport_from,
-                 'dstport_or_icmpcode_last': dport_to,
-                 'dst_ip_prefix_len': d_prefix,
-                 'dst_ip_addr': d_ip})
+        if proto == self.TCP or proto == self.UDP:
+            rule = ({'action': action,
+                     'rule': {
+                         'mnt_src_ip': s_prefix,
+                         'mnt_dst_ip': d_prefix,
+                         'mnt_proto': proto,
+                         'mnt_l4':
+                         {
+                             'mlu_l4':
+                             {
+                                 'ml4_src_port':
+                                 {
+                                     'mpr_begin': sport_from,
+                                     'mpr_end': sport_to,
+                                 },
+                                 'ml4_dst_port':
+                                 {
+                                     'mpr_begin': dport_from,
+                                     'mpr_end': dport_to,
+                                 },
+                                 'ml4_tcp':
+                                 {
+                                     'mtf_flags': 0,
+                                     'mtf_mask': 0,
+                                 },
+                             },
+                         }}})
+        elif proto == self.ICMP or proto == self.ICMP6:
+            rule = ({'action': action,
+                     'rule': {
+                         'mnt_src_ip': s_prefix,
+                         'mnt_dst_ip': d_prefix,
+                         'mnt_proto': proto,
+                         'mnt_l4':
+                         {
+                             'mlu_icmp':
+                             {
+                                 'mir_codes':
+                                 {
+                                     'micr_begin': dport_from,
+                                     'micr_end': dport_to,
+                                 },
+                                 'mir_types':
+                                 {
+                                     'mitr_begin': sport_from,
+                                     'mitr_end': sport_to,
+                                 },
+                             },
+                         }}})
+        else:
+            rule = ({'action': action,
+                     'rule': {
+                         'mnt_src_ip': s_prefix,
+                         'mnt_dst_ip': d_prefix,
+                         'mnt_proto': 0
+                     }})
         return rule
 
     def apply_rules(self, rules, tag=b''):
@@ -527,31 +587,34 @@ class TestACLplugin(VppTestCase):
                     capture = dst_if.get_capture(0)
                     self.assertEqual(len(capture), 0)
 
-    def test_0000_warmup_test(self):
-        """ ACL plugin version check; learn MACs
-        """
-        reply = self.vapi.papi.acl_plugin_get_version()
-        self.assertEqual(reply.major, 1)
-        self.logger.info("Working with ACL plugin version: %d.%d" % (
-            reply.major, reply.minor))
-        # minor version changes are non breaking
-        # self.assertEqual(reply.minor, 0)
-
     def test_0001_acl_create(self):
         """ ACL create/delete test
         """
 
         self.logger.info("ACLP_TEST_START_0001")
         # Add an ACL
-        r = [{'is_permit': 1, 'is_ipv6': 0, 'proto': 17,
-              'srcport_or_icmptype_first': 1234,
-              'srcport_or_icmptype_last': 1235,
-              'src_ip_prefix_len': 0,
-              'src_ip_addr': b'\x00\x00\x00\x00',
-              'dstport_or_icmpcode_first': 1234,
-              'dstport_or_icmpcode_last': 1234,
-              'dst_ip_addr': b'\x00\x00\x00\x00',
-              'dst_ip_prefix_len': 0}]
+        r = [{'action': VppEnum.vl_api_acl_action_t.ACL_API_ACTION_PERMIT,
+              'rule': {
+                  'mnt_src_ip': "0.0.0.0/0",
+                  'mnt_dst_ip': "0.0.0.0/0",
+                  'mnt_proto': VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+                  'mnt_l4':
+                  {
+                      'mlu_l4':
+                      {
+                          'ml4_src_port':
+                          {
+                              'mpr_begin': 1234,
+                              'mpr_end': 1234,
+                          },
+                          'ml4_dst_port':
+                          {
+                              'mpr_begin': 1234,
+                              'mpr_end': 1234,
+                          },
+                      },
+                  }
+              }}]
         # Test 1: add a new ACL
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r,
                                           tag=b"permit 1234")
@@ -573,24 +636,50 @@ class TestACLplugin(VppTestCase):
                                  r[i_rule][rule_key])
 
         # Add a deny-1234 ACL
-        r_deny = [{'is_permit': 0, 'is_ipv6': 0, 'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1235,
-                   'src_ip_prefix_len': 0,
-                   'src_ip_addr': b'\x00\x00\x00\x00',
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_addr': b'\x00\x00\x00\x00',
-                   'dst_ip_prefix_len': 0},
-                  {'is_permit': 1, 'is_ipv6': 0, 'proto': 17,
-                   'srcport_or_icmptype_first': 0,
-                   'srcport_or_icmptype_last': 0,
-                   'src_ip_prefix_len': 0,
-                   'src_ip_addr': b'\x00\x00\x00\x00',
-                   'dstport_or_icmpcode_first': 0,
-                   'dstport_or_icmpcode_last': 0,
-                   'dst_ip_addr': b'\x00\x00\x00\x00',
-                   'dst_ip_prefix_len': 0}]
+        r_deny = [{'action': VppEnum.vl_api_acl_action_t.ACL_API_ACTION_DENY,
+                   'rule': {
+                       'mnt_src_ip': "0.0.0.0/0",
+                       'mnt_dst_ip': "0.0.0.0/0",
+                       'mnt_proto': VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+                       'mnt_l4':
+                       {
+                           'mlu_l4':
+                           {
+                               'ml4_src_port':
+                               {
+                                   'mpr_begin': 1234,
+                                   'mpr_end': 1234,
+                               },
+                               'ml4_dst_port':
+                               {
+                                   'mpr_begin': 1234,
+                                   'mpr_end': 1234,
+                               },
+                           },
+                       }
+                   }},
+                  {'action': VppEnum.vl_api_acl_action_t.ACL_API_ACTION_PERMIT,
+                   'rule': {
+                       'mnt_src_ip': "0.0.0.0/0",
+                       'mnt_dst_ip': "0.0.0.0/0",
+                       'mnt_proto': VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+                       'mnt_l4':
+                       {
+                           'mlu_l4':
+                           {
+                               'ml4_src_port':
+                               {
+                                   'mpr_begin': 0,
+                                   'mpr_end': 0xffff,
+                               },
+                               'ml4_dst_port':
+                               {
+                                   'mpr_begin': 0,
+                                   'mpr_end': 0xffff,
+                               },
+                           },
+                       }
+                   }}]
 
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_deny,
                                           tag=b"deny 1234;permit all")
@@ -620,6 +709,7 @@ class TestACLplugin(VppTestCase):
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=0,
                                              acls=[second_acl])
+
         reply = self.vapi.acl_del(acl_index=second_acl, expected_retval=-143)
         # Unapply the ACL and then try to delete it - must be ok
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
@@ -641,10 +731,8 @@ class TestACLplugin(VppTestCase):
         self.logger.info("ACLP_TEST_START_0002")
 
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
-                     0, self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
-                     0, self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT, 0, self.UDP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT, 0, self.TCP))
 
         # Apply rules
         acl_idx = self.apply_rules(rules, b"permit per-flow")
@@ -676,10 +764,10 @@ class TestACLplugin(VppTestCase):
         self.logger.info("ACLP_TEST_START_0003")
         # Add a deny-flows ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY,
-                     self.PORTS_ALL, self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                     self.PORTS_ALL, self.UDP))
         # Permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
@@ -689,8 +777,7 @@ class TestACLplugin(VppTestCase):
         reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPV4,
-                                   self.proto[self.IP][self.UDP])
+        self.run_verify_negat_test(self.IP, self.IPV4, self.UDP)
 
         matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
         self.logger.info("stat segment counters: %s" % repr(matches))
@@ -711,17 +798,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.ICMP][self.ICMPv4]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.ICMP4))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, self.ICMP4))
 
         # Apply rules
         self.apply_rules(rules, b"permit icmpv4")
 
         # Traffic should still pass
-        self.run_verify_test(self.ICMP, self.IPV4,
-                             self.proto[self.ICMP][self.ICMPv4])
+        self.run_verify_test(self.ICMP, self.IPV4, self.ICMP4)
 
         self.logger.info("ACLP_TEST_FINISH_0004")
 
@@ -732,17 +819,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.ICMP][self.ICMPv6]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE, self.ICMP6))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, self.ICMP6))
 
         # Apply rules
         self.apply_rules(rules, b"permit icmpv6")
 
         # Traffic should still pass
-        self.run_verify_test(self.ICMP, self.IPV6,
-                             self.proto[self.ICMP][self.ICMPv6])
+        self.run_verify_test(self.ICMP, self.IPV6, self.ICMP6)
 
         self.logger.info("ACLP_TEST_FINISH_0005")
 
@@ -752,10 +839,11 @@ class TestACLplugin(VppTestCase):
         self.logger.info("ACLP_TEST_START_0006")
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.ICMP][self.ICMPv4]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE,
+                                      self.ICMP4))
         # permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
@@ -772,10 +860,10 @@ class TestACLplugin(VppTestCase):
         self.logger.info("ACLP_TEST_START_0007")
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.ICMP][self.ICMPv6]))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE, self.ICMP6))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
@@ -793,16 +881,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.TCP])
+        self.run_verify_test(self.IP, self.IPV4, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0008")
 
@@ -813,16 +902,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip6 tcp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6, self.proto[self.IP][self.TCP])
+        self.run_verify_test(self.IP, self.IPV6, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0008")
 
@@ -833,16 +923,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv udp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.UDP])
+        self.run_verify_test(self.IP, self.IPV4, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0010")
 
@@ -853,16 +944,17 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip6 udp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6, self.proto[self.IP][self.UDP])
+        self.run_verify_test(self.IP, self.IPV6, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0011")
 
@@ -873,22 +965,21 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE, self.TCP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE, self.TCP))
         # permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 tcp")
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.TCP])
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0012")
 
@@ -899,22 +990,21 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE, self.UDP))
         # permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 udp")
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.UDP])
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0013")
 
@@ -923,24 +1013,24 @@ class TestACLplugin(VppTestCase):
         """
         self.logger.info("ACLP_TEST_START_0014")
 
-        r = [[self.IPV4, self.PERMIT, 1234, self.proto[self.IP][self.TCP]],
-             [self.IPV4, self.PERMIT, 2345, self.proto[self.IP][self.UDP]],
-             [self.IPV4, self.PERMIT, 0, self.proto[self.IP][self.TCP]],
-             [self.IPV4, self.PERMIT, 0, self.proto[self.IP][self.UDP]],
-             [self.IPV4, self.PERMIT, 5, self.proto[self.ICMP][self.ICMPv4]],
-             [self.IPV6, self.PERMIT, 4321, self.proto[self.IP][self.TCP]],
-             [self.IPV6, self.PERMIT, 5432, self.proto[self.IP][self.UDP]],
-             [self.IPV6, self.PERMIT, 0, self.proto[self.IP][self.TCP]],
-             [self.IPV6, self.PERMIT, 0, self.proto[self.IP][self.UDP]],
-             [self.IPV6, self.PERMIT, 6, self.proto[self.ICMP][self.ICMPv6]],
-             [self.IPV4, self.DENY, self.PORTS_ALL, 0],
-             [self.IPV4, self.DENY, 1234, self.proto[self.IP][self.TCP]],
-             [self.IPV4, self.DENY, 2345, self.proto[self.IP][self.UDP]],
-             [self.IPV4, self.DENY, 5, self.proto[self.ICMP][self.ICMPv4]],
-             [self.IPV6, self.DENY, 4321, self.proto[self.IP][self.TCP]],
-             [self.IPV6, self.DENY, 5432, self.proto[self.IP][self.UDP]],
-             [self.IPV6, self.DENY, 6, self.proto[self.ICMP][self.ICMPv6]],
-             [self.IPV6, self.DENY, self.PORTS_ALL, 0]
+        r = [[self.P_IP4, self.PERMIT, 1234, self.TCP],
+             [self.P_IP4, self.PERMIT, 2345, self.UDP],
+             [self.P_IP4, self.PERMIT, 0, self.TCP],
+             [self.P_IP4, self.PERMIT, 0, self.UDP],
+             [self.P_IP4, self.PERMIT, 5, self.ICMPv4],
+             [self.P_IP6, self.PERMIT, 4321, self.TCP],
+             [self.P_IP6, self.PERMIT, 5432, self.UDP],
+             [self.P_IP6, self.PERMIT, 0, self.TCP],
+             [self.P_IP6, self.PERMIT, 0, self.UDP],
+             [self.P_IP6, self.PERMIT, 6, self.ICMPv6],
+             [self.P_IP4, self.DENY, self.PORTS_ALL, 0],
+             [self.P_IP4, self.DENY, 1234, self.TCP],
+             [self.P_IP4, self.DENY, 2345, self.UDP],
+             [self.P_IP4, self.DENY, 5, self.ICMP4],
+             [self.P_IP6, self.DENY, 4321, self.TCP],
+             [self.P_IP6, self.DENY, 5432, self.UDP],
+             [self.P_IP6, self.DENY, 6, self.ICMP6],
+             [self.P_IP6, self.DENY, self.PORTS_ALL, 0]
              ]
 
         # Add and verify new ACLs
@@ -951,39 +1041,50 @@ class TestACLplugin(VppTestCase):
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules)
         result = self.vapi.acl_dump(reply.acl_index)
 
-        i = 0
         for drules in result:
-            for dr in drules.r:
-                self.assertEqual(dr.is_ipv6, r[i][0])
-                self.assertEqual(dr.is_permit, r[i][1])
-                self.assertEqual(dr.proto, r[i][3])
+            for dr, rule in zip(drules.r, rules):
+                self.assertEqual(dr.action, rule['action'])
 
-                if r[i][2] > 0:
-                    self.assertEqual(dr.srcport_or_icmptype_first, r[i][2])
-                else:
-                    if r[i][2] < 0:
-                        self.assertEqual(dr.srcport_or_icmptype_first, 0)
-                        self.assertEqual(dr.srcport_or_icmptype_last, 65535)
-                    else:
-                        if dr.proto == self.proto[self.IP][self.TCP]:
-                            self.assertGreater(dr.srcport_or_icmptype_first,
-                                               self.tcp_sport_from-1)
-                            self.assertLess(dr.srcport_or_icmptype_first,
-                                            self.tcp_sport_to+1)
-                            self.assertGreater(dr.dstport_or_icmpcode_last,
-                                               self.tcp_dport_from-1)
-                            self.assertLess(dr.dstport_or_icmpcode_last,
-                                            self.tcp_dport_to+1)
-                        elif dr.proto == self.proto[self.IP][self.UDP]:
-                            self.assertGreater(dr.srcport_or_icmptype_first,
-                                               self.udp_sport_from-1)
-                            self.assertLess(dr.srcport_or_icmptype_first,
-                                            self.udp_sport_to+1)
-                            self.assertGreater(dr.dstport_or_icmpcode_last,
-                                               self.udp_dport_from-1)
-                            self.assertLess(dr.dstport_or_icmpcode_last,
-                                            self.udp_dport_to+1)
-                i += 1
+                mnt = rule['rule']
+                dmnt = dr.rule
+
+                self.assertEqual(str(dmnt.mnt_src_ip), mnt['mnt_src_ip'])
+                self.assertEqual(str(dmnt.mnt_dst_ip), mnt['mnt_dst_ip'])
+
+                self.assertEqual(dmnt.mnt_proto, mnt['mnt_proto'])
+
+                if dmnt.mnt_proto == self.TCP or \
+                   dmnt.mnt_proto == self.UDP:
+                    l4 = mnt['mnt_l4']['mlu_l4']
+                    dl4 = dmnt.mnt_l4.mlu_l4
+
+                    self.assertEqual(dl4.ml4_src_port.mpr_begin,
+                                     l4['ml4_src_port']['mpr_begin'])
+                    self.assertEqual(dl4.ml4_src_port.mpr_end,
+                                     l4['ml4_src_port']['mpr_end'])
+                    self.assertEqual(dl4.ml4_dst_port.mpr_begin,
+                                     l4['ml4_dst_port']['mpr_begin'])
+                    self.assertEqual(dl4.ml4_dst_port.mpr_end,
+                                     l4['ml4_dst_port']['mpr_end'])
+
+                    if dmnt.mnt_proto == self.TCP:
+                        self.assertEqual(dl4.ml4_tcp.mtf_flags,
+                                         l4['ml4_tcp']['mtf_flags'])
+                        self.assertEqual(dl4.ml4_tcp.mtf_mask,
+                                         l4['ml4_tcp']['mtf_mask'])
+                elif (dmnt.mnt_proto == self.ICMP4 or
+                      dmnt.mnt_proto == self.ICMP6):
+                    ic = mnt['mnt_l4']['mlu_icmp']
+                    dic = dmnt.mnt_l4.mlu_icmp
+
+                    self.assertEqual(dic.mir_types.mitr_begin,
+                                     ic['mir_types']['mitr_begin'])
+                    self.assertEqual(dic.mir_types.mitr_end,
+                                     ic['mir_types']['mitr_end'])
+                    self.assertEqual(dic.mir_codes.micr_begin,
+                                     ic['mir_codes']['micr_begin'])
+                    self.assertEqual(dic.mir_codes.micr_end,
+                                     ic['mir_codes']['micr_end'])
 
         self.logger.info("ACLP_TEST_FINISH_0014")
 
@@ -995,17 +1096,16 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT, port, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip4 tcp %d" % port)
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4,
-                             self.proto[self.IP][self.TCP], port)
+        self.run_verify_test(self.IP, self.IPV4, self.TCP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0015")
 
@@ -1017,17 +1117,16 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT, port, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip4 tcp %d" % port)
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4,
-                             self.proto[self.IP][self.UDP], port)
+        self.run_verify_test(self.IP, self.IPV4, self.UDP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0016")
 
@@ -1039,17 +1138,16 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT, port, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip4 tcp %d" % port)
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6,
-                             self.proto[self.IP][self.TCP], port)
+        self.run_verify_test(self.IP, self.IPV6, self.TCP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0017")
 
@@ -1061,18 +1159,16 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT, port, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY,
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip4 tcp %d" % port)
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6,
-                             self.proto[self.IP][self.UDP], port)
+        self.run_verify_test(self.IP, self.IPV6, self.UDP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0018")
 
@@ -1084,22 +1180,19 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, port,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, port,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY, port, self.TCP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY, port, self.TCP))
         # Permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 udp %d" % port)
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.TCP], port)
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.TCP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0019")
 
@@ -1111,22 +1204,19 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, port,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY, port, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY, port, self.UDP))
         # Permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 udp %d" % port)
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.UDP], port)
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.UDP, port)
 
         self.logger.info("ACLP_TEST_FINISH_0020")
 
@@ -1139,14 +1229,12 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, port,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY, port, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY, port, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
@@ -1154,7 +1242,7 @@ class TestACLplugin(VppTestCase):
 
         # Traffic should not pass
         self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.UDP], port, True)
+                                   self.UDP, port, True)
 
         self.logger.info("ACLP_TEST_FINISH_0021")
 
@@ -1165,11 +1253,10 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT, port, self.UDP))
         # deny ip any any in the end
-        rules.append(
-            self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit empty udp ip4 %d" % port)
@@ -1179,7 +1266,7 @@ class TestACLplugin(VppTestCase):
         pkts_cnt = 0
         pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes,
                                   self.IP, self.IPV4,
-                                  self.proto[self.IP][self.UDP], port,
+                                  self.UDP, port,
                                   False, False)
         if len(pkts) > 0:
             self.pg0.add_stream(pkts)
@@ -1200,10 +1287,10 @@ class TestACLplugin(VppTestCase):
         port = random.randint(16384, 65535)
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT, port, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit empty udp ip6 %d" % port)
@@ -1213,7 +1300,7 @@ class TestACLplugin(VppTestCase):
         pkts_cnt = 0
         pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes,
                                   self.IP, self.IPV6,
-                                  self.proto[self.IP][self.UDP], port,
+                                  self.UDP, port,
                                   False, False)
         if len(pkts) > 0:
             self.pg0.add_stream(pkts)
@@ -1235,18 +1322,19 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.TCP])
+        self.run_verify_test(self.IP, self.IPV4, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0108")
 
@@ -1257,18 +1345,19 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip6 tcp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6, self.proto[self.IP][self.TCP])
+        self.run_verify_test(self.IP, self.IPV6, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0109")
 
@@ -1279,18 +1368,19 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.UDP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 udp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.UDP])
+        self.run_verify_test(self.IP, self.IPV4, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0110")
 
@@ -1301,18 +1391,19 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE_2, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE, self.UDP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ip6 udp")
 
         # Traffic should still pass
-        self.run_verify_test(self.IP, self.IPV6, self.proto[self.IP][self.UDP])
+        self.run_verify_test(self.IP, self.IPV6, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0111")
 
@@ -1323,28 +1414,25 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
-                                      self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
-                                      self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE, self.TCP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE, self.TCP))
         # permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 tcp")
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.TCP])
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.TCP)
 
         self.logger.info("ACLP_TEST_FINISH_0112")
 
@@ -1355,28 +1443,25 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
-                                      self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
-                                      self.PORTS_RANGE_2,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
-        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_RANGE,
-                                      self.proto[self.IP][self.UDP]))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE_2, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
+                                      self.PORTS_RANGE_2, self.UDP))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE, self.UDP))
+        rules.append(self.create_rule(self.P_IP6, self.DENY,
+                                      self.PORTS_RANGE, self.UDP))
         # permit ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
                                       self.PORTS_ALL, 0))
-        rules.append(self.create_rule(self.IPV6, self.PERMIT,
+        rules.append(self.create_rule(self.P_IP6, self.PERMIT,
                                       self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"deny ip4/ip6 udp")
 
         # Traffic should not pass
-        self.run_verify_negat_test(self.IP, self.IPRANDOM,
-                                   self.proto[self.IP][self.UDP])
+        self.run_verify_negat_test(self.IP, self.IPRANDOM, self.UDP)
 
         self.logger.info("ACLP_TEST_FINISH_0113")
 
@@ -1387,18 +1472,19 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
 
         # Traffic should still pass also for an odd ethertype
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.TCP],
+        self.run_verify_test(self.IP, self.IPV4, self.TCP,
                              0, False, True, 0xaaaa)
         self.logger.info("ACLP_TEST_FINISH_0300")
 
@@ -1409,12 +1495,13 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
@@ -1424,8 +1511,7 @@ class TestACLplugin(VppTestCase):
 
         # The oddball ethertype should be blocked
         self.run_verify_negat_test(self.IP, self.IPV4,
-                                   self.proto[self.IP][self.TCP],
-                                   0, False, 0xaaaa)
+                                   self.TCP, 0, False, 0xaaaa)
 
         # remove the whitelist
         self.etype_whitelist([], 0)
@@ -1439,12 +1525,13 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
@@ -1453,7 +1540,7 @@ class TestACLplugin(VppTestCase):
         self.etype_whitelist([0xbbb], 1)
 
         # The whitelisted traffic, should pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.TCP],
+        self.run_verify_test(self.IP, self.IPV4, self.TCP,
                              0, False, True, 0x0bbb)
 
         # remove the whitelist, the previously blocked 0xAAAA should pass now
@@ -1468,12 +1555,13 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # Apply rules
         self.apply_rules(rules, b"permit ipv4 tcp")
@@ -1484,7 +1572,7 @@ class TestACLplugin(VppTestCase):
         self.etype_whitelist([], 0)
 
         # The whitelisted traffic, should pass
-        self.run_verify_test(self.IP, self.IPV4, self.proto[self.IP][self.TCP],
+        self.run_verify_test(self.IP, self.IPV4, self.TCP,
                              0, False, True, 0xaaaa)
 
         self.logger.info("ACLP_TEST_FINISH_0306")
@@ -1496,12 +1584,13 @@ class TestACLplugin(VppTestCase):
 
         # Add an ACL
         rules = []
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_RANGE_2,
-                     self.proto[self.IP][self.TCP]))
-        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_RANGE,
-                     self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_RANGE_2, self.TCP))
+        rules.append(self.create_rule(self.P_IP4, self.PERMIT,
+                                      self.PORTS_RANGE, self.TCP))
         # deny ip any any in the end
-        rules.append(self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.P_IP4, self.DENY,
+                                      self.PORTS_ALL, 0))
 
         # create an interface
         intf = []

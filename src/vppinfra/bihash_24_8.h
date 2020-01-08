@@ -66,7 +66,7 @@ format_bihash_kvp_24_8 (u8 * s, va_list * args)
 }
 
 static inline int
-clib_bihash_key_compare_24_8 (u64 * a, u64 * b)
+clib_bihash_key_compare_24_8 (const u64 * a, const u64 * b)
 {
 #if defined (CLIB_HAVE_VEC512)
   u64x8 v = u64x8_load_unaligned (a) ^ u64x8_load_unaligned (b);
