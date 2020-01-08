@@ -990,8 +990,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sb->last_bytes_delivered = 0;
   sb->rxt_sacked = 0;
 
-  if (!tcp_opts_sack (&tc->rcv_opts)
-      && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
+  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes)
     return;
 
   has_rxt = tcp_in_cong_recovery (tc);
