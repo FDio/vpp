@@ -19,6 +19,9 @@
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_types.h>
 
+#include <vnet/match/match_set.h>
+#include <vnet/match/match_engine.h>
+
 #define foreach_gbp_contract_error                         \
   _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
   _(ALLOW_INTRA,        "allow-intra-sclass")              \
@@ -117,6 +120,7 @@ typedef enum gbp_policy_node_t_
 
 typedef struct gbp_rule_t_
 {
+  match_rule_t gu_match;
   gbp_rule_action_t gu_action;
   gbp_hash_mode_t gu_hash_mode;
   index_t *gu_nhs;
@@ -129,7 +133,7 @@ typedef struct gbp_rule_t_
 
 /**
  * A Group Based Policy Contract.
- *  Determines the ACL that applies to traffic pass between two endpoint groups
+ *  Determines the match-set that applies to traffic pass between two endpoint groups
  */
 typedef struct gbp_contract_t_
 {
@@ -138,11 +142,13 @@ typedef struct gbp_contract_t_
    */
   gbp_contract_key_t gc_key;
 
-  u32 gc_acl_index;
-  u32 gc_lc_index;
+  match_list_t gc_ml;
+  match_handle_t gc_hdl;
+  match_set_app_t gc_app[GBP_POLICY_N_NODES];
+  index_t gc_set;
 
   /**
-   * The ACL to apply for packets from the source to the destination EPG
+   * The actions to apply for packets from the source to the destination EPG
    */
   index_t *gc_rules;
 
@@ -166,14 +172,14 @@ typedef struct gbp_contract_db_t_
 extern int gbp_contract_update (gbp_scope_t scope,
 				sclass_t sclass,
 				sclass_t dclass,
-				u32 acl_index,
 				index_t * rules,
 				u16 * allowed_ethertypes, u32 * stats_index);
 extern int gbp_contract_delete (gbp_scope_t scope, sclass_t sclass,
 				sclass_t dclass);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
-			       gbp_hash_mode_t hash_mode, index_t * nhs);
+			       gbp_hash_mode_t hash_mode,
+			       const match_rule_t * match, index_t * nhs);
 extern void gbp_rule_free (index_t gui);
 extern index_t gbp_next_hop_alloc (const ip46_address_t * ip,
 				   index_t grd,
@@ -230,22 +236,18 @@ typedef enum
 } gbp_contract_apply_type_t;
 
 static_always_inline gbp_rule_action_t
-gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
+gbp_contract_apply (vlib_main_t * vm, gbp_policy_node_t pnode,
 		    gbp_contract_key_t * key, vlib_buffer_t * b,
 		    gbp_rule_t ** rule, u32 * intra, u32 * sclass1,
 		    u32 * acl_match, u32 * rule_match,
-		    gbp_contract_error_t * err,
-		    gbp_contract_apply_type_t type)
+		    gbp_contract_error_t * err)
 {
-  fa_5tuple_opaque_t fa_5tuple;
   const gbp_contract_t *contract;
+  match_set_result_t result;
   index_t contract_index;
-  u32 acl_pos, trace_bitmap;
   u16 etype;
-  u8 ip6, action;
 
   *rule = 0;
-  trace_bitmap = 0;
 
   if (key->gck_src == key->gck_dst)
     {
@@ -275,63 +277,34 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
 
   *err = GBP_CONTRACT_ERROR_DROP_CONTRACT;
 
-  switch (type)
+  if (GBP_POLICY_NODE_L2 == pnode)
     {
-    case GBP_CONTRACT_APPLY_IP4:
-      ip6 = 0;
-      break;
-    case GBP_CONTRACT_APPLY_IP6:
-      ip6 = 1;
-      break;
-    case GBP_CONTRACT_APPLY_L2:
-      {
-	/* check ethertype */
-	etype =
-	  ((u16 *) (vlib_buffer_get_current (b) +
-		    vnet_buffer (b)->l2.l2_len))[-1];
+      /* check ethertype */
+      etype = ((u16 *) (vlib_buffer_get_current (b) +
+			vnet_buffer (b)->l2.l2_len))[-1];
 
-	if (~0 == vec_search (contract->gc_allowed_ethertypes, etype))
-	  {
-	    *err = GBP_CONTRACT_ERROR_DROP_ETHER_TYPE;
-	    goto contract_deny;
-	  }
-
-	switch (clib_net_to_host_u16 (etype))
-	  {
-	  case ETHERNET_TYPE_IP4:
-	    ip6 = 0;
-	    break;
-	  case ETHERNET_TYPE_IP6:
-	    ip6 = 1;
-	    break;
-	  default:
-	    goto contract_deny;
-	  }
-      }
-      break;
+      if (~0 == vec_search (contract->gc_allowed_ethertypes, etype))
+	{
+	  *err = GBP_CONTRACT_ERROR_DROP_ETHER_TYPE;
+	  goto contract_deny;
+	}
     }
 
   /* check ACL */
-  action = 0;
-  acl_plugin_fill_5tuple_inline (gm->acl_plugin.p_acl_main,
-				 contract->gc_lc_index, b, ip6,
-				 GBP_CONTRACT_APPLY_L2 != type /* input */ ,
-				 GBP_CONTRACT_APPLY_L2 == type /* l2_path */ ,
-				 &fa_5tuple);
-  acl_plugin_match_5tuple_inline (gm->acl_plugin.p_acl_main,
-				  contract->gc_lc_index, &fa_5tuple, ip6,
-				  &action, &acl_pos, acl_match, rule_match,
-				  &trace_bitmap);
-  if (action <= 0)
+  contract->gc_app[pnode].msa_match
+    (vm, b, &contract->gc_app[pnode], 0, &result);
+
+  if (MATCH_RESULT_MISS != result.msr_pos.msp_rule_index)
     goto contract_deny;
 
-  if (PREDICT_FALSE (*rule_match >= vec_len (contract->gc_rules)))
+  if (PREDICT_FALSE
+      (result.msr_pos.msp_rule_index >= vec_len (contract->gc_rules)))
     {
       *err = GBP_CONTRACT_ERROR_DROP_NO_RULE;
       goto contract_deny;
     }
 
-  *rule = gbp_rule_get (contract->gc_rules[*rule_match]);
+  *rule = gbp_rule_get (contract->gc_rules[result.msr_pos.msp_rule_index]);
   switch ((*rule)->gu_action)
     {
     case GBP_RULE_PERMIT:

@@ -22,6 +22,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/match/match_types_api.h>
 #include <vpp/app/version.h>
 
 #include <gbp/gbp.h>
@@ -43,8 +44,6 @@
 #include <vlibapi/api_helper_macros.h>
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #include "gbp_api_print.h"
-
-gbp_main_t gbp_main;
 
 static u16 msg_id_base;
 
@@ -855,6 +854,7 @@ gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, index_t * gui)
   gbp_hash_mode_t hash_mode;
   gbp_rule_action_t action;
   index_t *nhs = NULL;
+  match_rule_t mr;
   int rv;
 
   rv = gbp_contract_rule_action_deocde (in->action, &action);
@@ -874,7 +874,12 @@ gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, index_t * gui)
       hash_mode = GBP_HASH_MODE_SRC_IP;
     }
 
-  *gui = gbp_rule_alloc (action, hash_mode, nhs);
+  rv = match_rule_mask_n_tuple_decode (&in->match, &mr);
+
+  if (0 != rv)
+    return rv;
+
+  *gui = gbp_rule_alloc (action, hash_mode, &mr, nhs);
 
   return (rv);
 }
@@ -946,7 +951,6 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
       rv = gbp_contract_update (ntohs (mp->contract.scope),
 				ntohs (mp->contract.sclass),
 				ntohs (mp->contract.dclass),
-				ntohl (mp->contract.acl_index),
 				rules, allowed_ethertypes, &stats_index);
     }
   else
@@ -980,7 +984,6 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 
   mp->contract.sclass = ntohs (gbpc->gc_key.gck_src);
   mp->contract.dclass = ntohs (gbpc->gc_key.gck_dst);
-  mp->contract.acl_index = ntohl (gbpc->gc_acl_index);
   mp->contract.scope = ntohs (gbpc->gc_key.gck_scope);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
@@ -1126,10 +1129,6 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
 static clib_error_t *
 gbp_init (vlib_main_t * vm)
 {
-  gbp_main_t *gbpm = &gbp_main;
-
-  gbpm->gbp_acl_user_id = ~0;
-
   /* Ask for a correctly-sized block of API message decode slots */
   msg_id_base = setup_message_id_table ();
 

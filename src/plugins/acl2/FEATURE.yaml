@@ -1,0 +1,26 @@
+---
+name: ACLs for Security Groups
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - Inbound MACIP ACLs:
+      - filter the source IP:MAC address statically configured bindings
+  - Stateless inbound and outbound ACLs:
+      - permit/deny packets based on their L3/L4 info
+  - Stateful inbound and outbound ACLs:
+      - create inbound sessions based on outbound traffic and vice versa
+
+description: |-
+        The ACL plugin allows to implement access control policies
+        at the levels of IP address ownership (by locking down
+        the IP-MAC associations by MACIP ACLs), and by using network
+        and transport level policies in inbound and outbound ACLs.
+        For non-initial fragments the matching is done on network
+        layer only. The session state in stateful ACLs is maintained
+        per-interface (e.g. outbound interface ACL creates the session
+        while inbound ACL matches it), which simplifies the design
+        and operation. For TCP handling, the session processing
+        tracks "established" (seen both SYN segments and seen ACKs for them),
+        and "transient" (all the other TCP states) sessions.
+
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]

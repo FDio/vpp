@@ -97,7 +97,6 @@ gbp_policy_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
 		   vlib_frame_t * frame, const gbp_policy_type_t type)
 {
-  gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index;
@@ -220,9 +219,10 @@ gbp_policy_inline (vlib_main_t * vm,
 	    gbp_bridge_domain_get_scope (vnet_buffer (b0)->l2.bd_index);
 
 	  action0 =
-	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
+	    gbp_contract_apply (vm, GBP_POLICY_NODE_L2,
+				&key0, b0, &rule0, &n_allow_intra,
 				&n_allow_sclass_1, &acl_match, &rule_match,
-				&err0, GBP_CONTRACT_APPLY_L2);
+				&err0);
 	  switch (action0)
 	    {
 	    case GBP_RULE_PERMIT:
