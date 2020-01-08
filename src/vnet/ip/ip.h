@@ -288,6 +288,7 @@ void ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 					ip6_address_t * res);
 void ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask);
 u32 ip6_mask_to_preflen (ip6_address_t * mask);
+ethernet_type_t ip_address_family_to_ether_type (ip_address_family_t af);
 
 always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b);
 always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b);
