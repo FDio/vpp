@@ -32,3 +32,4 @@ add_vpp_plugin(lb
   lb_test.c
 )
 
+target_link_libraries(lb_test_plugin vatclient)
