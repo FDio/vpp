@@ -16,6 +16,7 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vppinfra/error.h>
 #include <lb/lb.h>
@@ -189,7 +190,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     }
 
   M(LB_ADD_DEL_VIP, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &ip_prefix.ip6, sizeof (ip_prefix.ip6));
+  ip_address_encode(&ip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
   mp->pfx.len = prefix_length;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
@@ -264,11 +265,11 @@ static int api_lb_add_del_as (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_AS, mp);
-  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  ip_address_encode(&vip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
   mp->pfx.len = vip_plen;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
-  clib_memcpy (&mp->as_address.un.ip6, &as_addr.ip6, sizeof (as_addr.ip6));
+  ip_address_encode(&as_addr, IP46_TYPE_ANY, &mp->as_address);
   mp->is_del = is_del;
   mp->is_flush = is_flush;
 
