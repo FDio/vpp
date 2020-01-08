@@ -49,9 +49,12 @@ typedef union
   u16 as_u16[8];
   u32 as_u32[4];
   u64 as_u64[2];
+  u64x2 as_u128;
   uword as_uword[16 / sizeof (uword)];
 }
-ip6_address_t;
+__clib_packed ip6_address_t;
+
+STATIC_ASSERT_SIZEOF (ip6_address_t, 16);
 
 typedef struct
 {

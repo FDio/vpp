@@ -17,6 +17,7 @@
 #define __ABF_H__
 
 #include <vnet/fib/fib_node.h>
+#include <vnet/match/match_types.h>
 
 #define ABF_PLUGIN_VERSION_MAJOR 1
 #define ABF_PLUGIN_VERSION_MINOR 0
@@ -40,7 +41,7 @@ typedef struct abf_policy_t_
   /**
    * ACL index to match
    */
-  u32 ap_acl;
+  match_rule_t ap_rule;
 
   /**
    * The path-list describing how to forward in case of a match
@@ -85,7 +86,8 @@ extern fib_node_type_t abf_policy_fib_node_type;
  * @return error code
  */
 extern int abf_policy_update (u32 policy_id,
-			      u32 acl_index, const fib_route_path_t * rpaths);
+			      const match_rule_t * mr,
+			      const fib_route_path_t * rpaths);
 
 /**
  * Delete paths from an ABF Policy. If no more paths exist, the policy

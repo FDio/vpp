@@ -25,8 +25,8 @@ enum if_status_flags
 /* Per protocol MTU */
 enum mtu_proto
 {
-  MTU_PROTO_API_L3,			/* Default payload MTU (without L2 headers) */
-  MTU_PROTO_API_IP4,			/* Per-protocol MTUs overriding default */
+  MTU_PROTO_API_L3,		/* Default payload MTU (without L2 headers) */
+  MTU_PROTO_API_IP4,		/* Per-protocol MTUs overriding default */
   MTU_PROTO_API_IP6,
   MTU_PROTO_API_MPLS,
   MTU_PROTO_API_N,
@@ -49,7 +49,7 @@ enum sub_if_flags
   SUB_IF_API_FLAG_DEFAULT = 32,
   SUB_IF_API_FLAG_OUTER_VLAN_ID_ANY = 64,
   SUB_IF_API_FLAG_INNER_VLAN_ID_ANY = 128,
-  SUB_IF_API_FLAG_MASK_VNET = 254, /* use with vnet_sub_interface_t raw_flags */
+  SUB_IF_API_FLAG_MASK_VNET = 254,	/* use with vnet_sub_interface_t raw_flags */
   SUB_IF_API_FLAG_DOT1AH = 256,
 };
 
@@ -64,11 +64,25 @@ enum rx_mode
 
 enum if_type
 {
-	/* A hw interface. */
-	IF_API_TYPE_HARDWARE,
+  /* A hw interface. */
+  IF_API_TYPE_HARDWARE,
 
-	/* A sub-interface. */
-	IF_API_TYPE_SUB,
-	IF_API_TYPE_P2P,
-	IF_API_TYPE_PIPE,
+  /* A sub-interface. */
+  IF_API_TYPE_SUB,
+  IF_API_TYPE_P2P,
+  IF_API_TYPE_PIPE,
 };
+
+enum direction:u8
+{
+  RX = 0,
+  TX,
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

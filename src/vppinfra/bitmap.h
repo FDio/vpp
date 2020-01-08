@@ -115,6 +115,24 @@ clib_bitmap_is_equal (uword * a, uword * b)
 #define clib_bitmap_validate(v,n_bits) \
   clib_bitmap_vec_validate ((v), ((n_bits) - 1) / BITS (uword))
 
+/** Copy a bitmap
+    @param dst - copy to
+    @param src - copy from
+*/
+static_always_inline void
+clib_bitmap_copy (clib_bitmap_t ** dst, const clib_bitmap_t * src)
+{
+  if (vec_len (src))
+    {
+      clib_bitmap_vec_validate (*dst, vec_len (src) - 1);
+      vec_copy (*dst, src);
+    }
+  else
+    {
+      vec_reset_length (*dst);
+    }
+}
+
 /* low-level routine to remove trailing zeros from a bitmap */
 always_inline uword *
 _clib_bitmap_remove_trailing_zeros (uword * a)
