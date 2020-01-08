@@ -43,7 +43,7 @@
 u8 *
 format_ip_protocol (u8 * s, va_list * args)
 {
-  ip_protocol_t protocol = va_arg (*args, ip_protocol_t);
+  ip_protocol_t protocol = va_arg (*args, int);	// int promo of ip_protocol_t);
   ip_main_t *im = &ip_main;
   ip_protocol_info_t *pi = ip_get_protocol_info (im, protocol);
 

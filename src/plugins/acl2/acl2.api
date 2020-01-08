@@ -1,0 +1,312 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the ACL plugin
+*/
+
+option version = "3.0.0";
+
+import "plugins/acl2/acl2_types.api";
+import "vnet/interface_types.api";
+
+/** \brief Get Connection table max entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define acl2_plugin_get_conn_table_max_entries
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get connection table max entries
+    @param context - sender context, to match reply w/ request
+    @param conn_table_max_entries - the value of maximum entries of connection table
+*/
+define acl2_plugin_get_conn_table_max_entries_reply
+{
+  u32 context;
+  u64 conn_table_max_entries;
+};
+
+/** \brief Replace an existing ACL in-place or create a new ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - an existing ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new ACL
+    @param tag - a string value stored along with the ACL, for descriptive purposes
+    @param count - number of ACL rules
+    @r - Rules for this access-list
+*/
+
+define acl2_update
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 to add, existing ACL# to replace */
+  u8 tag[64]; /* What gets in here gets out in the corresponding tag field when dumping the ACLs. */
+  u32 count;
+  vl_api_acl2_rule_t r[count];
+  option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...";
+};
+
+/** \brief Reply to add/replace ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of the updated or newly created ACL
+    @param retval 0 - no error
+*/
+
+define acl2_update_reply
+{
+  u32 context;
+  u32 acl_index;
+  i32 retval;
+};
+
+/** \brief Delete an ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - ACL index to delete
+*/
+
+autoreply define acl2_del
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index;
+  option vat_help = "<acl-idx>";
+};
+
+/** \brief Bind a list of ACLs to an interface in a particular direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface to alter the list of ACLs on
+    @param dir - Direction to apply the ACLs
+    @param count - total number of ACL indices in the vector
+    @param acls - vector of ACL indices
+*/
+
+autoreply define acl2_bind
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_direction_t dir;
+  u8 count;
+  u32 acls[count];
+  option vat_help = "<intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]";
+};
+
+/** \brief Reply to set the ACL list on an interface
+    @param context - returned sender context, to match reply w/ request
+    @param retval 0 - no error
+*/
+
+/** \brief Dump the specific ACL contents or all of the ACLs' contents
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - ACL index to dump, ~0 to dump all ACLs
+*/
+
+define acl2_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 for all ACLs */
+  option vat_help = "[<acl-idx>]";
+};
+
+/** \brief Details about a single ACL contents
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - ACL index whose contents are being sent in this message
+    @param tag - Descriptive tag value which was supplied at ACL creation
+    @param count - Number of rules in this ACL
+    @param r - Array of rules within this ACL
+*/
+
+define acl2_details
+{
+  u32 context;
+  u32 acl_index;
+  u8 tag[64]; /* Same blob that was supplied to us when creating the ACL, one hopes. */
+  u32 count;
+  vl_api_acl2_rule_t r[count];
+};
+
+/** \brief Dump the list(s) of ACL applied to specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the ACL list for
+*/
+
+define acl2_bind_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index; /* ~0 for all interfaces */
+  option vat_help = "[<intfc> | sw_if_index <if-idx>]";
+};
+
+/** \brief Details about a single ACL contents
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of ACLs is applied
+    @param count - total length of acl indices vector
+    @param n_input - this many of indices in the beginning are input ACLs, the rest - output
+    @param acls - the vector of ACL indices
+*/
+
+define acl2_bind_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_direction_t dir;
+  u8 count;
+  u32 acls[count];
+};
+
+/** \brief Add/Replace a MACIP ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - an existing MACIP ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new MACIP ACL
+    @param tag - descriptive value for this MACIP ACL
+    @param count - number of rules in this MACIP ACL
+    @param r - vector of MACIP ACL rules
+*/
+
+define macip2_update
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 to add, existing MACIP ACL# to replace */
+  u8 tag[64];
+  u32 count;
+  vl_api_macip2_rule_t r[count];
+  option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...";
+};
+
+/** \brief Reply to add/replace MACIP ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of the newly created MACIP ACL
+    @param retval 0 - no error
+*/
+
+define macip2_update_reply
+{
+  u32 context;
+  u32 acl_index;
+  i32 retval;
+};
+
+/** \brief Delete a MACIP ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - MACIP ACL index to delete
+*/
+
+autoreply define macip2_del
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index;
+  option vat_help = "<acl-idx>";
+};
+
+/** \brief Add or delete a MACIP ACL to/from interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to apply the action to. ~0 to unbind
+    @param acl_index - MACIP ACL index
+*/
+
+autoreply define macip2_bind
+{
+  u32 client_index;
+  u32 context;
+  /* MACIP ACLs are always input */
+  u32 sw_if_index;
+  u32 acl_index;
+  option vat_help = "<intfc> | sw_if_index <if-idx> [add|del] acl <acl-idx>";
+};
+
+/** \brief Dump one or all defined MACIP ACLs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - MACIP ACL index or ~0 to dump all MACIP ACLs
+*/
+define macip2_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 for all ACLs */
+  option vat_help = "[<acl-idx>]";
+};
+
+/** \brief Details about one MACIP ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of this MACIP ACL
+    @param tag - descriptive tag which was supplied during the creation
+    @param count - length of the vector of MACIP ACL rules
+    @param r - rules comprising this MACIP ACL
+*/
+autoreply define macip2_details
+{
+  u32 context;
+  u32 acl_index;
+  u8 tag[64];
+  u32 count;
+  vl_api_macip2_rule_t r[count];
+};
+
+/** \brief Dump the list(s) of MACIP ACLs applied to specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the MACIP ACL list for
+*/
+define macip2_bind_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index; /* ~0 for all interfaces */
+};
+
+/** \brief Details about a single MACIP ACL contents
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of MACIP ACLs is applied
+    @param count - total length of acl indices vector
+    @param acls - the vector of MACIP ACL indices
+*/
+define macip2_bind_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 count;
+  u32 acls[count];
+};
+
+/** \brief Enable or disable incrementing ACL counters in stats segment by interface processing
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - whether to enable or disable incrementing the counters
+*/
+autoreply define acl2_stats_enable
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  option vat_help = "[disable]";
+};
