@@ -1,0 +1,12 @@
+---
+name: VNET GSO
+maintainer: ayourtch@gmail.com sykazmi@cisco.com
+features:
+  - Basic GSO support
+  - GSO for VLAN tagged packets
+  - Provide inline function to get header offsets
+description: "Generic Segmentation Offload"
+missing:
+  - Tunnels i.e. VXLAN
+state: experimental
+properties: [API, CLI]
