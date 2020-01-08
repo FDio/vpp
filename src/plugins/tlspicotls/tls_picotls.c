@@ -398,9 +398,7 @@ picotls_content_process (ptls_t * tls, svm_fifo_t * src_fifo,
     {
       ptls_buffer_init (buf, svm_fifo_tail (dst_fifo), total_length);
       ptls_send (tls, buf, svm_fifo_head (src_fifo), content_len);
-
       assert (!buf->is_allocated);
-      assert (buf->base == svm_fifo_tail (dst_fifo));
 
       svm_fifo_dequeue_drop (src_fifo, content_len);
       svm_fifo_enqueue_nocopy (dst_fifo, buf->off);
@@ -451,7 +449,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
     /** There is no engough enqueue space for one record **/
   if (enq_max < record_overhead)
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+      tls_add_vpp_q_tx_evt (tls_session);
       return 0;
     }
 
@@ -467,8 +465,6 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
       total_overhead = num_records * record_overhead;
       if (from_app_len + total_overhead > enq_now)
 	from_app_len = enq_now - total_overhead;
-
-
     }
   else
     {
@@ -478,7 +474,6 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
       total_overhead = num_records * record_overhead;
       if (from_app_len + total_overhead > enq_max)
 	from_app_len = enq_max - total_overhead;
-
     }
 
   to_tls_len =
@@ -490,7 +485,9 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 
   if (to_tls_len)
     tls_add_vpp_q_tx_evt (tls_session);
-  tls_add_vpp_q_builtin_tx_evt (app_session);
+  
+  if (from_app_len < deq_max)
+    tls_add_vpp_q_builtin_tx_evt (app_session);
 
   return 0;
 }
