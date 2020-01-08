@@ -42,6 +42,44 @@ mac_address_encode (const mac_address_t * in, u8 * out)
   clib_memcpy_fast (out, in->bytes, 6);
 }
 
+int
+ether_type_decode (vl_api_ether_type_t in, ethernet_type_t * out)
+{
+  switch (clib_net_to_host_u16 (in))
+    {
+    case ETHERTYPE_API_ARP:
+      *out = ETHERNET_TYPE_ARP;
+      return 0;
+    case ETHERTYPE_API_IP4:
+      *out = ETHERNET_TYPE_IP4;
+      return 0;
+    case ETHERTYPE_API_IP6:
+      *out = ETHERNET_TYPE_IP6;
+      return 0;
+    }
+
+  return 1;
+}
+
+vl_api_ether_type_t
+ether_type_encode (ethernet_type_t in)
+{
+  switch (in)
+    {
+    case ETHERNET_TYPE_ARP:
+      return (clib_host_to_net_u16 (ETHERTYPE_API_ARP));
+    case ETHERNET_TYPE_IP4:
+      return (clib_host_to_net_u16 (ETHERTYPE_API_IP4));
+    case ETHERNET_TYPE_IP6:
+      return (clib_host_to_net_u16 (ETHERTYPE_API_IP6));
+    default:
+      break;
+    }
+
+  return (0);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

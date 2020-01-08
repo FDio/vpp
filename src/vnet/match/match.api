@@ -1,0 +1,94 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/match/match_types.api";
+
+typedef match_set
+{
+  vl_api_match_type_t ms_type;
+  vl_api_match_orientation_t ms_orientation;
+  vl_api_ether_type_t ms_ether_type;
+  u32 ms_index;
+  string ms_tag[];
+};
+
+define match_set_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_match_set_t set;
+};
+
+define match_set_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 match_set_index;
+};
+
+autoreply define match_set_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 match_set_index;
+};
+
+define match_set_list_update
+{
+  u32 client_index;
+  u32 context;
+  u32 match_set_index;
+  u32 match_list_index;
+  u32 priority;
+  vl_api_match_list_t list;
+};
+
+define match_set_list_update_reply
+{
+  u32 context;
+  i32 retval;
+  u32 match_list_index;
+};
+
+autoreply define match_set_list_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 match_set_index;
+  u32 match_list_index;
+};
+
+define match_set_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define match_set_details
+{
+  u32 context;
+  vl_api_match_set_t set;
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

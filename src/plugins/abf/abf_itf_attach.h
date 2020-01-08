@@ -26,13 +26,8 @@ typedef struct abf_itf_attach_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (marker);
   /**
-   * The ACL and DPO are cached for fast DP access
+   * The DPO is cached for fast DP access
    */
-  /**
-   * ACL index to match
-   */
-  u32 aia_acl;
-
   /**
    * The DPO actually used for forwarding
    */
@@ -57,7 +52,7 @@ typedef struct abf_itf_attach_t_
    * The protocol for the attachment. i.e. the protocol
    * of the packets that are being forwarded
    */
-  fib_protocol_t aia_proto;
+  ip_address_family_t aia_af;
 
   /**
    * The interface for the attachment
@@ -83,10 +78,10 @@ abf_itf_attach_get (u32 index)
   return (pool_elt_at_index (abf_itf_attach_pool, index));
 }
 
-extern int abf_itf_attach (fib_protocol_t fproto,
+extern int abf_itf_attach (ip_address_family_t fproto,
 			   u32 policy_id, u32 priority, u32 sw_if_index);
 
-extern int abf_itf_detach (fib_protocol_t fproto,
+extern int abf_itf_detach (ip_address_family_t fproto,
 			   u32 policy_id, u32 sw_if_index);
 
 typedef int (*abf_itf_attach_walk_cb_t) (index_t aii, void *ctx0);

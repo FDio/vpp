@@ -111,11 +111,7 @@ mac_address_is_zero (const mac_address_t * mac)
 static_always_inline u64
 mac_address_as_u64 (const mac_address_t * mac)
 {
-  u64 *as_u64;
-
-  as_u64 = (u64 *) mac->bytes;
-
-  return (*as_u64);
+  return (ethernet_mac_address_u64 (mac->bytes));
 }
 
 static_always_inline void
