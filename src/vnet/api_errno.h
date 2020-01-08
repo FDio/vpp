@@ -79,7 +79,7 @@ _(IP6_MULTICAST_ADDRESS_NOT_PRESENT, -83, "IP6 multicast address required") \
 _(SR_POLICY_NAME_NOT_PRESENT, -84, "Segment routing policy name required") \
 _(NOT_RUNNING_AS_ROOT, -85, "Not running as root") \
 _(ALREADY_CONNECTED, -86, "Connection to the data plane already exists") \
-_(UNSUPPORTED_JNI_VERSION, -87, "Unsupported JNI version") \
+_(LIST_EMPTY, -87, "List Empty")                                        \
 _(IP_PREFIX_INVALID, -88, "IP prefix invalid (masked bits set in address") \
 _(INVALID_WORKER, -89, "Invalid worker thread")                         \
 _(LISP_DISABLED, -90, "LISP is disabled")                               \
