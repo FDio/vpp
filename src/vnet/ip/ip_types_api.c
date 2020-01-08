@@ -31,7 +31,8 @@
 #undef vl_printfun
 
 int
-ip_address_family_decode (int _af, ip_address_family_t * out)
+ip_address_family_decode (vl_api_address_family_t _af,
+			  ip_address_family_t * out)
 {
   vl_api_address_family_t af = clib_host_to_net_u32 (_af);
 
@@ -63,7 +64,7 @@ ip_address_family_encode (ip_address_family_t af)
 }
 
 int
-ip_proto_decode (int _ipp, ip_protocol_t * out)
+ip_proto_decode (vl_api_ip_proto_t _ipp, ip_protocol_t * out)
 {
   ip_protocol_t ipp = clib_host_to_net_u32 (_ipp);
 
@@ -96,7 +97,7 @@ ip_proto_encode (ip_protocol_t ipp)
 }
 
 ip_dscp_t
-ip_dscp_decode (u8 in)
+ip_dscp_decode (vl_api_ip_dscp_t in)
 {
   return ((ip_dscp_t) in);
 }

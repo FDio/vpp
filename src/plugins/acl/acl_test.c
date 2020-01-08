@@ -625,7 +625,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
     fd = open(file_name, O_RDONLY);
     if (fd < 0)
       {
-        clib_warning("Could not open file '%s'");
+          clib_warning("Could not open file '%s'", file_name);
         goto done;
       }
 

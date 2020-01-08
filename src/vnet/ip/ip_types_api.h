@@ -26,15 +26,12 @@
 #include <vlibapi/api_types.h>
 #include <vnet/ip/ip.api_types.h>
 
-/**
- * These enum decode/encodes use 'int' as the type for the enum because
- * one cannot forward declare an enum
- */
-extern int ip_address_family_decode (int _af, ip_address_family_t * out);
+extern int ip_address_family_decode (vl_api_address_family_t _af,
+				     ip_address_family_t * out);
 extern int ip_address_family_encode (ip_address_family_t af);
-extern int ip_proto_decode (int _af, ip_protocol_t * out);
+extern int ip_proto_decode (vl_api_ip_proto_t _af, ip_protocol_t * out);
 extern int ip_proto_encode (ip_protocol_t af);
-extern ip_dscp_t ip_dscp_decode (u8 _dscp);
+extern ip_dscp_t ip_dscp_decode (vl_api_ip_dscp_t _dscp);
 extern u8 ip_dscp_encode (ip_dscp_t dscp);
 
 /**

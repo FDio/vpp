@@ -278,6 +278,7 @@ u8 ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
 void *ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4);
+ethernet_type_t ip_address_family_to_ether_type (ip_address_family_t af);
 
 always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b);
 always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b);
