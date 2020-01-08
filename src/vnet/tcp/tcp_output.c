@@ -1688,10 +1688,7 @@ tcp_timer_persist_handler (u32 index, u32 thread_index)
     }
 
   if (available_bytes <= offset)
-    {
-      ASSERT (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT));
-      return;
-    }
+    return;
 
   /* Increment RTO backoff */
   tc->rto_boff += 1;
