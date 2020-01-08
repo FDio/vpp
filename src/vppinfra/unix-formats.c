@@ -61,6 +61,8 @@
 # include <netinet/if_ether.h>
 #endif /* __KERNEL__ */
 
+#include <vppinfra/elf_clib.h>
+#include <vppinfra/stack.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
@@ -462,6 +464,31 @@ unformat_unix_gid (unformat_input_t * input, va_list * args)
       return 1;
     }
   return 0;
+}
+
+__clib_export u8 *
+format_backtrace (u8 *s, va_list *args)
+{
+  int i;
+
+  /* Address of callers: outer first, inner last. */
+  uword callers[15];
+
+  /* Copied new method from mheap_get_trace_internal() */
+  i = -2; /* skip first 2 stack frames */
+  foreach_clib_stack_frame (sf)
+    {
+      if (i >= 0)
+	{
+	  if (i == ARRAY_LEN (callers))
+	    break;
+	  s = format (s, "#%-2d 0x%016lx %U\n", i, sf->ip, format_clib_elf_symbol_with_address,
+		      sf->ip);
+	}
+      i++;
+    }
+
+  return s;
 }
 
 #endif /* __KERNEL__ */

@@ -89,6 +89,7 @@ _(format_timeval);
 _(format_time_float);
 _(format_signal);
 _(format_ucontext_pc);
+_ (format_backtrace);
 #endif
 
 #undef _
@@ -290,7 +291,7 @@ unformat_function_t unformat_hex_string;
    Useful to ensure that the entire input matches with no trailing junk. */
 unformat_function_t unformat_eof;
 
-/* Parse memory size e.g. 100, 100k, 100m, 100g. */
+/* Parse memory size uword(!) e.g. 100, 100k, 100m, 100g. (base 2) */
 unformat_function_t unformat_memory_size;
 
 /* Unformat base 10 e.g 100M, 20G. */
@@ -306,7 +307,10 @@ unformat_function_t unformat_double_quoted_string;
 /* Format base 10 e.g. 100, 100K, 100M, 100G */
 u8 *format_base10 (u8 *s, va_list *va);
 
-/* Unparse memory size e.g. 100, 100k, 100m, 100g. */
+/* Parse u64 bitrate e.g. 100, 100k, 100m, 100g. (base 10) */
+unformat_function_t unformat_bitrate;
+
+/* Unparse memory size uword(!) e.g. 100, 100k, 100m, 100g. (base 2) */
 u8 *format_memory_size (u8 * s, va_list * va);
 
 /* Parse memory page size e.g. 4K, 2M */
@@ -326,6 +330,9 @@ u8 *format_hexdump_u64 (u8 *s, va_list *va);
 
 /* Format bitmap of array of uword numbers */
 u8 *format_uword_bitmap (u8 *s, va_list *va);
+
+/* Format hexdump with both hex and printable chars - last line is last 16 bytes */
+u8 *format_hexdump_trunc (u8 *s, va_list *va);
 
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
