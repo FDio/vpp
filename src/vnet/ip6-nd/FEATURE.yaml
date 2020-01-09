@@ -1,12 +1,12 @@
 ---
-name: IPv6 Neeighbour Discovery
+name: IPv6 Neighbor Discovery
 maintainer: Neale Ranns <nranns@cisco.com>
 features:
-  - Nieghbour discovery.
+  - Neighbor discovery.
   - ND Auto address configuration
   - Multicast Listener Discovery - only as host role to send adverts
   - Router Advertisements
 
-description: "IPv6-ND"
+description: "An implementation of the IPv6 Neighbor discovery protocol as described in RFC4861 and RFC4862."
 state: production
 properties: [API, CLI, MULTITHREAD]
