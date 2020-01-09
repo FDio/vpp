@@ -106,7 +106,7 @@ static void
   int rv = 0;
   ip4_address_t this_addr;
   u32 start_host_order, end_host_order;
-  int i, count;
+  int count;
   u32 *tmp;
 
   tmp = (u32 *) mp->start_addr;
@@ -114,23 +114,19 @@ static void
   tmp = (u32 *) mp->end_addr;
   end_host_order = clib_host_to_net_u32 (tmp[0]);
 
+  // TODO:
+  // end_host_order < start_host_order
+
   count = (end_host_order - start_host_order) + 1;
   memcpy (&this_addr.as_u8, mp->start_addr, 4);
 
-  for (i = 0; i < count; i++)
-    {
-      if ((rv = dslite_add_del_pool_addr (dm, &this_addr, mp->is_add)))
-	goto send_reply;
+  rv = add_del_ip4_pool_addrs (&dm->pool, this_addr, count, mp->is_add, 0);
 
-      increment_v4_address (&this_addr);
-    }
-
-send_reply:
   REPLY_MACRO (VL_API_DSLITE_ADD_DEL_POOL_ADDR_RANGE_REPLY);
 }
 
 static void
-send_dslite_address_details (snat_address_t * ap,
+send_dslite_address_details (ip4_pool_addr_t * a,
 			     vl_api_registration_t * reg, u32 context)
 {
   dslite_main_t *dm = &dslite_main;
@@ -141,7 +137,7 @@ send_dslite_address_details (snat_address_t * ap,
   clib_memset (rmp, 0, sizeof (*rmp));
 
   rmp->_vl_msg_id = ntohs (VL_API_DSLITE_ADDRESS_DETAILS + dm->msg_id_base);
-  clib_memcpy (rmp->ip_address, &(ap->addr), 4);
+  clib_memcpy (rmp->ip_address, &(a->addr), 4);
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -152,16 +148,16 @@ vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
 {
   vl_api_registration_t *reg;
   dslite_main_t *dm = &dslite_main;
-  snat_address_t *ap;
+  ip4_pool_addr_t *a;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
   /* *INDENT-OFF* */
-  vec_foreach (ap, dm->addr_pool)
+  vec_foreach (a, dm->pool.pool_addr)
     {
-      send_dslite_address_details (ap, reg, mp->context);
+      send_dslite_address_details (a, reg, mp->context);
     }
   /* *INDENT-ON* */
 }

@@ -24,7 +24,7 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
-  int i, count, rv;
+  int count, rv;
   u8 is_add = 1;
   clib_error_t *error = 0;
 
@@ -62,27 +62,20 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
   count = (end_host_order - start_host_order) + 1;
   this_addr = start_addr;
 
-  for (i = 0; i < count; i++)
+  rv = add_del_ip4_pool_addrs (&dm->pool, this_addr, count, is_add, 0);
+
+  switch (rv)
     {
-      rv = dslite_add_del_pool_addr (dm, &this_addr, is_add);
-
-      switch (rv)
-	{
-	case VNET_API_ERROR_NO_SUCH_ENTRY:
-	  error =
-	    clib_error_return (0, "DS-Lite pool address %U not exist.",
-			       format_ip4_address, &this_addr);
-	  goto done;
-	case VNET_API_ERROR_VALUE_EXIST:
-	  error =
-	    clib_error_return (0, "DS-Lite pool address %U exist.",
-			       format_ip4_address, &this_addr);
-	  goto done;
-	default:
-	  break;
-
-	}
-      increment_v4_address (&this_addr);
+      case VNET_API_ERROR_NO_SUCH_ENTRY:
+	error =
+	  clib_error_return (0, "DS-Lite pool address %U not exist.",
+			     format_ip4_address, &this_addr);
+        break;
+      case VNET_API_ERROR_VALUE_EXIST:
+	error =
+	  clib_error_return (0, "DS-Lite pool address %U exist.",
+			     format_ip4_address, &this_addr);
+        break;
     }
 
 done:
@@ -97,14 +90,14 @@ dslite_show_pool_command_fn (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   dslite_main_t *dm = &dslite_main;
-  snat_address_t *ap;
+  ip4_pool_addr_t *a;
 
   vlib_cli_output (vm, "DS-Lite pool:");
 
   /* *INDENT-OFF* */
-  vec_foreach (ap, dm->addr_pool)
+  vec_foreach (a, dm->pool.pool_addr)
     {
-      vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);
+      vlib_cli_output (vm, "%U", format_ip4_address, &a->addr);
     }
   /* *INDENT-ON* */
   return 0;

@@ -28,7 +28,7 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
