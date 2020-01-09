@@ -149,6 +149,13 @@ typedef struct
   ip6_address_t segments[0];
 } __attribute__ ((packed)) ip6_sr_header_t;
 
+typedef struct
+{
+  u8 type;
+  u8 length;
+  u8 value[0];
+} __attribute__ ((packed)) ip6_sr_tlv_t;
+
 /*
 * fd.io coding-style-patch-verification: ON
 *
