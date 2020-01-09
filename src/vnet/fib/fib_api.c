@@ -21,6 +21,7 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/bier/bier_disp_table.h>
 #include <vpp/api/types.h>
+#include <vnet/classify/vnet_classify.h>
 
 #include <vnet/vnet_msg_enum.h>
 

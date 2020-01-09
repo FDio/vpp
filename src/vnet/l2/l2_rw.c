@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_rw.h>
+#include <vnet/classify/vnet_classify.h>
 
 /**
  * @file
