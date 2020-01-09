@@ -211,16 +211,6 @@ is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
     return 0;
 }
 
-always_inline u8
-maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
-{
-  if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
-      sm->max_translations)
-    return 1;
-
-  return 0;
-}
-
 always_inline void
 nat_send_all_to_node (vlib_main_t * vm, u32 * bi_vector,
 		      vlib_node_runtime_t * node, vlib_error_t * error,

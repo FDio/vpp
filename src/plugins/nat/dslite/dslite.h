@@ -18,6 +18,7 @@
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
+#include <nat/lib/alloc.h>
 #include <nat/nat.h>
 #include <nat/nat_inlines.h>
 
@@ -83,10 +84,12 @@ typedef struct
   ip6_address_t b4_ip6_addr;
   ip4_address_t b4_ip4_addr;
   dslite_per_thread_data_t *per_thread_data;
-  snat_address_t *addr_pool;
   u32 num_workers;
   u32 first_worker_index;
   u16 port_per_thread;
+
+  /* nat address pool */
+  nat_ip4_pool_t pool;
 
   /* counters/gauges */
   vlib_simple_counter_main_t total_b4s;

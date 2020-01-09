@@ -43,6 +43,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   u32 oldest_index;
   dslite_session_t *s;
   snat_session_key_t out2in_key;
+  nat_ip4_addr_port_t addr_port;
   u32 b4_index;
 
   out2in_key.protocol = in2out_key->proto;
@@ -105,28 +106,39 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       out2in_kv.key = s->out2in.as_u64;
       clib_bihash_add_del_8_8 (&dm->per_thread_data[thread_index].out2in,
 			       &out2in_kv, 0);
-      snat_free_outside_address_and_port (dm->addr_pool, thread_index,
-					  &s->out2in);
+
+      addr_port.addr.as_u32 = s->out2in.addr.as_u32;
+      addr_port.port = s->out2in.port;
+
+      nat_free_ip4_addr_and_port (&dm->pool, thread_index,
+				  s->out2in.protocol, &addr_port);
 
       nat_syslog_dslite_apmdel (b4_index, &s->in2out.softwire_id,
 				&s->in2out.addr, s->in2out.port,
 				&s->out2in.addr, s->out2in.port,
 				s->in2out.proto);
 
-      if (snat_alloc_outside_address_and_port
-	  (dm->addr_pool, 0, thread_index, &out2in_key,
-	   dm->port_per_thread, thread_index))
+      if (nat_alloc_ip4_addr_and_port
+	  (&dm->pool, 0, thread_index, thread_index,
+	   dm->port_per_thread, out2in_key.protocol, &addr_port))
 	ASSERT (0);
+
+      out2in_key.addr.as_u32 = addr_port.addr.as_u32;
+      out2in_key.port = addr_port.port;
     }
   else
     {
-      if (snat_alloc_outside_address_and_port
-	  (dm->addr_pool, 0, thread_index, &out2in_key,
-	   dm->port_per_thread, thread_index))
+      if (nat_alloc_ip4_addr_and_port
+	  (&dm->pool, 0, thread_index, thread_index,
+	   dm->port_per_thread, out2in_key.protocol, &addr_port))
 	{
 	  *error = DSLITE_ERROR_OUT_OF_PORTS;
 	  return DSLITE_IN2OUT_NEXT_DROP;
 	}
+
+      out2in_key.addr.as_u32 = addr_port.addr.as_u32;
+      out2in_key.port = addr_port.port;
+
       pool_get (dm->per_thread_data[thread_index].sessions, s);
       clib_memset (s, 0, sizeof (*s));
       b4->nsessions++;

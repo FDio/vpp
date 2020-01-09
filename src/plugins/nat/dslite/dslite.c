@@ -23,6 +23,9 @@ fib_source_t nat_fib_src_hi;
 
 clib_error_t *dslite_api_hookup (vlib_main_t * vm);
 
+void
+add_del_dslite_pool_addr_cb (ip4_address_t addr, u8 is_add, void *opaque);
+
 static clib_error_t *
 dslite_init (vlib_main_t * vm)
 {
@@ -48,6 +51,10 @@ dslite_init (vlib_main_t * vm)
 
   dm->first_worker_index = 0;
   dm->num_workers = 0;
+
+  // init nat address pool
+  dm->pool.add_del_pool_addr_cb = add_del_dslite_pool_addr_cb;
+  dm->pool.alloc_addr_and_port_cb = nat_alloc_ip4_addr_and_port_cb_default;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -195,57 +202,27 @@ dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
   return 0;
 }
 
-int
-dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr, u8 is_add)
+void
+add_del_dslite_pool_addr_cb (ip4_address_t addr, u8 is_add, void *opaque)
 {
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  snat_address_t *a = 0;
-  int i = 0;
   dpo_id_t dpo_v4 = DPO_INVALID;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_len = 32,
-    .fp_addr.ip4.as_u32 = addr->as_u32,
+    .fp_addr.ip4.as_u32 = addr.as_u32,
   };
 
-  for (i = 0; i < vec_len (dm->addr_pool); i++)
-    {
-      if (dm->addr_pool[i].addr.as_u32 == addr->as_u32)
-	{
-	  a = dm->addr_pool + i;
-	  break;
-	}
-    }
   if (is_add)
     {
-      if (a)
-	return VNET_API_ERROR_VALUE_EXIST;
-      vec_add2 (dm->addr_pool, a, 1);
-      a->addr = *addr;
-#define _(N, i, n, s) \
-      clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535); \
-      a->busy_##n##_ports = 0; \
-      vec_validate_init_empty (a->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
-      foreach_snat_protocol
-#undef _
-	dslite_dpo_create (DPO_PROTO_IP4, 0, &dpo_v4);
+      dslite_dpo_create (DPO_PROTO_IP4, 0, &dpo_v4);
       fib_table_entry_special_dpo_add (0, &pfx, nat_fib_src_hi,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v4);
       dpo_reset (&dpo_v4);
     }
   else
     {
-      if (!a)
-	return VNET_API_ERROR_NO_SUCH_ENTRY;
-#define _(N, id, n, s) \
-      clib_bitmap_free (a->busy_##n##_port_bitmap); \
-      vec_free (a->busy_##n##_ports_per_thread);
-      foreach_snat_protocol
-#undef _
-	fib_table_entry_special_remove (0, &pfx, nat_fib_src_hi);
-      vec_del1 (dm->addr_pool, i);
+      fib_table_entry_special_remove (0, &pfx, nat_fib_src_hi);
     }
-  return 0;
 }
 
 u8 *
