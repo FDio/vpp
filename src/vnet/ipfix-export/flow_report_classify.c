@@ -15,6 +15,7 @@
 #include <vnet/ipfix-export/flow_report.h>
 #include <vnet/ipfix-export/flow_report_classify.h>
 #include <vnet/api_errno.h>
+#include <vnet/classify/vnet_classify.h>
 
 /* Common prefix of tcp and udp headers
  * containing only source and destination port fields */

@@ -49,6 +49,7 @@
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
+#include <vnet/classify/vnet_classify.h>
 
 #ifndef CLIB_MARCH_VARIANT
 #include <vppinfra/bihash_template.c>
