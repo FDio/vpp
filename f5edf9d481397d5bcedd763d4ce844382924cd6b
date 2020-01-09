@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "439b54aa_1d070ecd",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2020-01-09T14:01:20Z",
+      "side": 1,
+      "message": "Drop unused \u0027f\u0027",
+      "revId": "f5edf9d481397d5bcedd763d4ce844382924cd6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66d83275_53e9c319",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 716,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2020-01-09T14:01:20Z",
+      "side": 1,
+      "message": "Do we need to increment f-\u003esize by chunk size here?",
+      "revId": "f5edf9d481397d5bcedd763d4ce844382924cd6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
