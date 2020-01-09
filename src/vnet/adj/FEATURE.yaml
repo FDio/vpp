@@ -18,7 +18,6 @@ features:
     (i.e. how to send the the GRE tunnel's destination address).
   - Glean adjacencies describe how to broadcast packets onto a subnet
 
-
-description: "Adjacency"
+description: "Adjacencies represent the next-hop information required to reach a directly connected neighbour."
 state: production
 properties: [API, CLI, MULTITHREAD]

@@ -4,6 +4,6 @@ maintainer: Neale Ranns <nranns@cisco.com>
 features:
   - ARP responder
 
-description: "ARP"
+description: "An implementation of the Address resolution protocol (ARP) as described in RFC826"
 state: production
 properties: [API, CLI, MULTITHREAD]
