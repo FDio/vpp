@@ -1488,7 +1488,7 @@ fib_path_copy (fib_node_index_t path_index,
     orig_path = fib_path_get(path_index);
     ASSERT(NULL != orig_path);
 
-    memcpy(path, orig_path, sizeof(*path));
+    clib_memcpy(path, orig_path, sizeof(*path));
 
     FIB_PATH_DBG(path, "create-copy:%d", path_index);
 
