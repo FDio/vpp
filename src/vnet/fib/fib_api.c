@@ -75,9 +75,9 @@ fib_api_next_hop_decode (const vl_api_fib_path_t *in,
                          ip46_address_t *out)
 {
     if (in->proto == FIB_API_PATH_NH_PROTO_IP4)
-        memcpy (&out->ip4, &in->nh.address.ip4, sizeof (out->ip4));
+        clib_memcpy (&out->ip4, &in->nh.address.ip4, sizeof (out->ip4));
     else if (in->proto == FIB_API_PATH_NH_PROTO_IP6)
-        memcpy (&out->ip6, &in->nh.address.ip6, sizeof (out->ip6));
+        clib_memcpy (&out->ip6, &in->nh.address.ip6, sizeof (out->ip6));
 }
 
 static vl_api_fib_path_nh_proto_t
@@ -110,11 +110,11 @@ fib_api_next_hop_encode (const fib_route_path_t *rpath,
     fp->proto = fib_api_path_dpo_proto_to_nh(rpath->frp_proto);
 
     if (rpath->frp_proto == DPO_PROTO_IP4)
-        memcpy (&fp->nh.address.ip4,
+        clib_memcpy (&fp->nh.address.ip4,
                 &rpath->frp_addr.ip4,
                 sizeof (rpath->frp_addr.ip4));
     else if (rpath->frp_proto == DPO_PROTO_IP6)
-        memcpy (&fp->nh.address.ip6,
+        clib_memcpy (&fp->nh.address.ip6,
                 &rpath->frp_addr.ip6,
                 sizeof (rpath->frp_addr.ip6));
 }
