@@ -831,7 +831,12 @@ tls_init_ca_chain (void)
       return -1;
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  rv = X509_STORE_load_file (om->cert_store, tm->ca_cert_path);
+#else
   rv = X509_STORE_load_locations (om->cert_store, tm->ca_cert_path, 0);
+#endif
+
   if (rv < 0)
     {
       clib_warning ("failed to load ca certificate");
