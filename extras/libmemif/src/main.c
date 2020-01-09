@@ -2504,10 +2504,13 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
   memif_buffer_t *b0;
   *rx = 0;
 
-  uint64_t b;
-  ssize_t r = read (mq->int_fd, &b, sizeof (b));
-  if (EXPECT_FALSE ((r == -1) && (errno != EAGAIN)))
-    return memif_syscall_error_handler (errno);
+  if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)
+  {
+    uint64_t b;
+    ssize_t r = read (mq->int_fd, &b, sizeof (b));
+    if (EXPECT_FALSE ((r == -1) && (errno != EAGAIN)))
+      return memif_syscall_error_handler (errno);
+  }
 
   cur_slot = (c->args.is_master) ? mq->last_head : mq->last_tail;
   last_slot = (c->args.is_master) ? ring->head : ring->tail;
