@@ -18,11 +18,29 @@
 
 #include <quicly.h>
 
+struct quic_ctx_t;
+struct quic_rx_packet_ctx_t;
+struct quic_crypto_batch_ctx_t;
+
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 
 int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
 			    int is_encrypt, ptls_buffer_t * dst,
 			    ptls_iovec_t src);
+void quic_crypto_decrypt_packet (quic_ctx_t * qctx,
+				 quic_rx_packet_ctx_t * pctx);
+void quic_crypto_batch_tx_packets (quic_crypto_batch_ctx_t * batch_ctx);
+void quic_crypto_batch_rx_packets (quic_crypto_batch_ctx_t * batch_ctx);
+void quic_crypto_finalize_send_packet (quicly_datagram_t * packet);
+
+void
+quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
+				     quicly_conn_t * conn,
+				     ptls_cipher_context_t * hp,
+				     ptls_aead_context_t * aead,
+				     quicly_datagram_t * packet,
+				     size_t first_byte_at,
+				     size_t payload_from, int coalesced);
 
 #endif /* __included_vpp_quic_crypto_h__ */
 
