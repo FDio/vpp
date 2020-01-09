@@ -471,7 +471,7 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
 
 error:
   memif_msg_send_disconnect (fd, err_string, 0);
-  lm->control_fd_update (fd, MEMIF_FD_EVENT_DEL, c->private_ctx);
+  lm->control_fd_update (fd, MEMIF_FD_EVENT_DEL, NULL/*c->private_ctx*/);
   free_list_elt (lm->pending_list, lm->pending_list_len, fd);
   close (fd);
   fd = -1;
