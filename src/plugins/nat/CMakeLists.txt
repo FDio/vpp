@@ -70,6 +70,7 @@ add_vpp_plugin(nat
 
 add_vpp_plugin(dslite
   SOURCES
+  lib/alloc.c
   nat_format.c
   dslite/dslite_api.c
   dslite/dslite_dpo.c
