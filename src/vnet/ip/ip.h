@@ -64,7 +64,6 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_error.h>
 #include <vnet/ip/icmp6.h>
-#include <vnet/classify/vnet_classify.h>
 
 /* Per protocol info. */
 typedef struct

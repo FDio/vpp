@@ -52,6 +52,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/classify/vnet_classify.h>
 
 static int
 compare_interface_names (void *a1, void *a2)

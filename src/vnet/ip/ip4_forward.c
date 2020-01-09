@@ -56,6 +56,7 @@
 
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
+#include <vnet/classify/vnet_classify.h>
 
 /** @brief IPv4 lookup node.
     @node ip4-lookup
