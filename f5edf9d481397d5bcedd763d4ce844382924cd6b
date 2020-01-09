@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "45d710a2_ad9cc309",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-09T17:26:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "439b54aa_1d070ecd",
+      "revId": "f5edf9d481397d5bcedd763d4ce844382924cd6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "66d83275_53e9c319",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 30
@@ -30,6 +48,24 @@
       "writtenOn": "2020-01-09T14:01:20Z",
       "side": 1,
       "message": "Do we need to increment f-\u003esize by chunk size here?",
+      "revId": "f5edf9d481397d5bcedd763d4ce844382924cd6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96b2ef57_485aad73",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 716,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-09T17:26:59Z",
+      "side": 1,
+      "message": "Not with the algorithm currently implemented. The fifo size is fixed from fifo perspective, only the session layer/fifo tuning logic can change it. Practically, size is the virtual-fifo-size we\u0027ve been discussing over email. \n\nfifo_try_grow, which might be a misnomer, only requests enough memory to make sure that f-\u003esize bytes can be written to the fifo. With the fifo segment logic we currently have we\u0027ll probably end up with sum (chunk_memory) \u003e f-\u003esize. However, only f-\u003esize of those bytes are writeable, the reset are unusable (the start of the first and the end of the last chunk).",
+      "parentUuid": "66d83275_53e9c319",
       "revId": "f5edf9d481397d5bcedd763d4ce844382924cd6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
