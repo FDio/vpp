@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4d21a69_a340ab5f",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2439,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-09T05:35:15Z",
+      "side": 1,
+      "message": "Is this for safety? That is, to avoid checking if all the buckets support GSO?",
+      "range": {
+        "startLine": 2439,
+        "startChar": 0,
+        "endLine": 2439,
+        "endChar": 43
+      },
+      "revId": "915bdb3843f552775f20eeac6754c323de198a92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5b0f881_e897fe4b",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2443,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-09T05:35:15Z",
+      "side": 1,
+      "message": "I guess this means the sw_if_idx could be ~0. We need to check that or validate the interface lower",
+      "range": {
+        "startLine": 2443,
+        "startChar": 14,
+        "endLine": 2443,
+        "endChar": 26
+      },
+      "revId": "915bdb3843f552775f20eeac6754c323de198a92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5a93974_757189cf",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2448,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-09T05:35:15Z",
+      "side": 1,
+      "message": "No need for the return",
+      "range": {
+        "startLine": 2448,
+        "startChar": 2,
+        "endLine": 2448,
+        "endChar": 8
+      },
+      "revId": "915bdb3843f552775f20eeac6754c323de198a92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
