@@ -106,7 +106,7 @@ void
 fib_prefix_copy (fib_prefix_t *dst,
                  const fib_prefix_t *src)
 {
-    memcpy(dst, src, sizeof(*dst));
+    clib_memcpy(dst, src, sizeof(*dst));
 }
 
 int
