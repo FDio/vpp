@@ -1,0 +1,8 @@
+---
+name: SRv6 - Service Chaining Masquerading Proxy
+maintainer: Francois Clad <fclad@cisco.com>
+features:
+        - SRv6 - masquerading service chaining proxy (draft-ietf-spring-sr-service-programming-01)
+description: "SRv6 masquerading proxy"
+state: production
+properties: [CLI, MULTITHREAD]

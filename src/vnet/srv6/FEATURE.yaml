@@ -1,0 +1,16 @@
+---
+name: Segment Routing for IPv6 (SRv6)
+maintainer: Pablo Camarillo <pcamaril@cisco.com>
+features:
+        - Support for SRv6 Network Programming (draft-ietf-spring-srv6-network-programming-07)
+        - SR Headend behaviors (H.Encaps, H.Encaps.Red, H.Encaps.L2, H.Encaps.L2.Red)
+        - SR Endpoint behaviors (End, End.X, End.T) for intermediate TE with PSP support
+        - SR Endpoint behaviors (End.DX4, End.DX6, End.DT4, End.DT6, End.DX2) for overlay creation
+        - SR Endpoint behaviors (End.B6.Encaps.Red) for BindingSID instantiation
+        - Support for SRH insertion (draft-filsfils-spring-srv6-net-pgm-insertion-01)
+        - SR counters 
+        - SR policy implementation (draft-ietf-spring-segment-routing-policy-02)
+        - SR steering based on IP prefix / L2 interface classification
+description: "Full SRv6 Network Programming implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
