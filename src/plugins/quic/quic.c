@@ -26,10 +26,14 @@
 #include <quic/quic.h>
 #include <quic/certs.h>
 #include <quic/error.h>
-#include <quic/quic_crypto.h>
 
 #include <quicly/constants.h>
 #include <quicly/defaults.h>
+#include <picotls.h>
+
+#include <quic/quic_crypto.h>
+
+extern quicly_crypto_engine_t quic_crypto_engine;
 
 static char *quic_error_strings[] = {
 #define quic_error(n,s) s,
@@ -37,7 +41,9 @@ static char *quic_error_strings[] = {
 #undef quic_error
 };
 
-static quic_main_t quic_main;
+#define DEFAULT_MAX_PACKETS_PER_KEY 16777216
+
+quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 static void quic_check_quic_session_connected (quic_ctx_t * ctx);
 static int quic_reset_connection (u64 udp_session_handle,
@@ -84,6 +90,33 @@ quic_crypto_context_free_if_needed (crypto_context_t * crctx, u8 thread_index)
   clib_mem_free (crctx->data);
   pool_put (qm->wrk_ctx[thread_index].crypto_ctx_pool, crctx);
 }
+
+static quicly_datagram_t *
+quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
+{
+  quicly_datagram_t *packet;
+  if ((packet =
+       clib_mem_alloc (sizeof (*packet) + payloadsize +
+		       sizeof (quic_encrypt_cb_ctx))) == NULL)
+    return NULL;
+  packet->data.base =
+    (uint8_t *) packet + sizeof (*packet) + sizeof (quic_encrypt_cb_ctx);
+  quic_encrypt_cb_ctx *encrypt_cb_ctx =
+    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
+
+  clib_memset (encrypt_cb_ctx, 0, sizeof (*encrypt_cb_ctx));
+  return packet;
+}
+
+static void
+quic_free_packet (quicly_packet_allocator_t * self,
+		  quicly_datagram_t * packet)
+{
+  clib_mem_free (packet);
+}
+
+quicly_packet_allocator_t quic_packet_allocator =
+  { quic_alloc_packet, quic_free_packet };
 
 static int
 quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
@@ -154,6 +187,32 @@ quic_list_crypto_context_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+quic_set_max_packets_per_key_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  quic_main_t *qm = &quic_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u64 tmp;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_memory_size, &tmp))
+	{
+	  qm->max_packets_per_key = tmp;
+	}
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  return 0;
+}
+
 static void
 quic_release_crypto_context (u32 crypto_context_index, u8 thread_index)
 {
@@ -203,12 +262,15 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
 
   quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
+  quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
   quicly_ctx->tls = ptls_ctx;
   quicly_ctx->stream_open = &on_stream_open;
   quicly_ctx->closed_by_peer = &on_closed_by_peer;
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
 
+  quicly_ctx->packet_allocator = &quic_packet_allocator;
+  quicly_ctx->crypto_engine = &quic_crypto_engine;
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
@@ -350,7 +412,7 @@ quic_ctx_get_if_valid (u32 ctx_index, u32 thread_index)
   return pool_elt_at_index (quic_main.ctx_pool[thread_index], ctx_index);
 }
 
-static quic_ctx_t *
+quic_ctx_t *
 quic_get_conn_ctx (quicly_conn_t * conn)
 {
   u64 conn_data;
@@ -633,12 +695,14 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
 static int
 quic_send_packets (quic_ctx_t * ctx)
 {
+  quic_main_t *qm = &quic_main;
   quicly_datagram_t *packets[QUIC_SEND_PACKET_VEC_SIZE];
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
   quicly_packet_allocator_t *pa;
   int err = 0;
+  u32 thread_index = vlib_get_thread_index ();
 
   /* We have sctx, get qctx */
   if (quic_ctx_is_stream (ctx))
@@ -669,8 +733,12 @@ quic_send_packets (quic_ctx_t * ctx)
       if ((err = quicly_send (conn, packets, &num_packets)))
 	goto quicly_error;
 
+      quic_crypto_batch_tx_packets (&qm->wrk_ctx
+				    [thread_index].crypto_context_batch);
+
       for (i = 0; i != num_packets; ++i)
 	{
+	  quic_crypto_finalize_send_packet (packets[i]);
 	  if ((err = quic_send_datagram (udp_session, packets[i])))
 	    goto quicly_error;
 
@@ -1122,7 +1190,6 @@ quic_expired_timers_dispatch (u32 * expired_timers)
 }
 
 /* Transport proto functions */
-
 static int
 quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 {
@@ -1990,7 +2057,7 @@ quic_accept_connection (quic_rx_packet_ctx_t * pctx)
   ctx = quic_ctx_get (pctx->ctx_index, pctx->thread_index);
   if (ctx->c_s_index != QUIC_SESSION_INVALID)
     {
-      QUIC_DBG (2, "already accepted ctx 0x%x", ctx_index);
+      QUIC_DBG (2, "already accepted ctx 0x%x", ctx->c_s_index);
       return;
     }
 
@@ -2128,6 +2195,8 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
+      quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
+      quic_crypto_decrypt_packet (qctx, pctx);
       return 0;
     }
   else if (rv == QUIC_PACKET_TYPE_MIGRATE)
@@ -2153,6 +2222,7 @@ static int
 quic_udp_session_rx_callback (session_t * udp_session)
 {
   /*  Read data from UDP rx_fifo and pass it to the quicly conn. */
+  quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx = NULL, *prev_ctx = NULL;
   svm_fifo_t *f = udp_session->rx_fifo;
   u32 max_deq;
@@ -2211,6 +2281,9 @@ rx_start:
 	  break;
 	}
     }
+
+  quic_crypto_batch_rx_packets (&qm->
+				wrk_ctx[thread_index].crypto_context_batch);
 
   for (i = 0; i < max_packets; i++)
     {
@@ -2412,6 +2485,7 @@ quic_init (vlib_main_t * vm)
 
   vec_validate (qm->ctx_pool, num_threads - 1);
   vec_validate (qm->wrk_ctx, num_threads - 1);
+
   for (i = 0; i < num_threads; i++)
     {
       qm->wrk_ctx[i].next_cid.thread_id = i;
@@ -2421,6 +2495,9 @@ quic_init (vlib_main_t * vm)
       tw->last_run_time = vlib_time_now (vlib_get_main ());
       clib_bihash_init_24_8 (&qm->wrk_ctx[i].crypto_context_hash,
 			     "quic crypto contexts", 64, 128 << 10);
+
+      qm->wrk_ctx[i].crypto_context_batch.nb_rx_packets = 0;
+      qm->wrk_ctx[i].crypto_context_batch.nb_tx_packets = 0;
     }
 
   clib_bihash_init_16_8 (&qm->connection_hash, "quic connections", 1024,
@@ -2441,7 +2518,9 @@ quic_init (vlib_main_t * vm)
   quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
+  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+  qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
+  clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
   vec_free (a->name);
   return 0;
 }
@@ -2759,6 +2838,12 @@ VLIB_CLI_COMMAND (quic_list_crypto_context_command, static) =
   .path = "show quic crypto context",
   .short_help = "list quic crypto contextes",
   .function = quic_list_crypto_context_command_fn,
+};
+VLIB_CLI_COMMAND (quic_set_max_packets_per_key, static) =
+{
+  .path = "set quic max_packets_per_key",
+  .short_help = "set quic max_packets_per_key 16777216",
+  .function = quic_set_max_packets_per_key_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {
