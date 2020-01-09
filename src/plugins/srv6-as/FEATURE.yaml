@@ -1,0 +1,8 @@
+---
+name: SRv6 - Service Chaining Static Proxy
+maintainer: Francois Clad <fclad@cisco.com>
+features:
+        - SRv6 - static service chaining proxy (draft-ietf-spring-sr-service-programming-01)
+description: "SRv6 static proxy"
+state: production
+properties: [CLI, MULTITHREAD]
