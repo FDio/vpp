@@ -1,0 +1,33 @@
+diff --git a/include/quicly.h b/include/quicly.h
+index 5cbab08..83eb14a 100644
+--- a/include/quicly.h
++++ b/include/quicly.h
+@@ -782,6 +782,9 @@ void quicly_get_max_data(quicly_conn_t *conn, uint64_t *send_permitted, uint64_t
+  *
+  */
+ static void **quicly_get_data(quicly_conn_t *conn);
++
++uint64_t quicly_get_next_expedcted_packet_number(quicly_conn_t *conn);
++
+ /**
+  * destroys a connection object.
+  */
+diff --git a/lib/quicly.c b/lib/quicly.c
+index 8b9ffa1..75aed73 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -2219,6 +2219,14 @@ int64_t quicly_get_first_timeout(quicly_conn_t *conn)
+     return at;
+ }
+ 
++uint64_t quicly_get_next_expedcted_packet_number(quicly_conn_t *conn)
++{
++    if(!conn->application)
++         return UINT64_MAX;
++
++    return conn->application->super.next_expected_packet_number;
++}
++
+ /* data structure that is used during one call through quicly_send()
+  */
+ struct st_quicly_send_context_t {

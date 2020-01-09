@@ -228,6 +228,7 @@ typedef struct quic_main_
   ptls_cipher_suite_t ***quic_ciphers;	/**< available ciphers by crypto engine */
   uword *available_crypto_engines;	/**< Bitmap for registered engines */
   u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
+  u64 max_packets_per_key;		/**< number of packets that can be sent without a key update */
 
   ptls_handshake_properties_t hs_properties;
   quic_session_cache_t session_cache;
