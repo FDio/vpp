@@ -5,6 +5,6 @@ features:
   - CBC(128, 192, 256)
   - GCM(128, 192, 256)
 
-description: "native crypto-engine"
+description: "An implentation of a native crypto-engine"
 state: production
 properties: [API, CLI, MULTITHREAD]

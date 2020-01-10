@@ -1,5 +1,5 @@
 ---
-name: Time-range-based MAC-address filter (mactime)
+name: Time-range-based MAC-address filter
 maintainer: Dave Barach <dave@barachs.net>
 features:
   - Static / time-range / data quota based MAC address filter

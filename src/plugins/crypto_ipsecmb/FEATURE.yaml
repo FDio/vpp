@@ -6,6 +6,6 @@ features:
   - CBC(128, 192, 256)
   - GCM(128, 192, 256)
 
-description: "IPSecMB crypto-engine"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

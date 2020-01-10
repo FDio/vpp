@@ -1,5 +1,5 @@
 ---
-name: LB
+name: Load Balancer
 maintainer: Pfister <ppfister@cisco.com>, Hongjun Ni <hongjun.ni@intel.com>
 features:
   - GRE tunnel mode
@@ -8,6 +8,6 @@ features:
   - Consistent Hash
   - Connection Track
 
-description: "Load Balancer"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

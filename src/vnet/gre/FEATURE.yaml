@@ -8,6 +8,6 @@ features:
   - L2 tunnels
 missing:
   - GRE keys
-description: "GRE"
+description: "An implementation of Generic Routing Encapsulation (GRE)"
 state: production
 properties: [API, CLI, MULTITHREAD]

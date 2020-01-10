@@ -1,5 +1,5 @@
 ---
-name: Transmission Control Protocol (TCP)
+name: Transmission Control Protocol
 maintainer: Florin Coras <fcoras@cisco.com>
 features:
         - Core functionality (RFC793, RFC5681, RFC6691)
@@ -10,6 +10,6 @@ features:
         - Defending spoofing and flooding attacks (RFC6528)
         - Partly implemented features (RFC1122, RFC4898, RFC5961)
         - Delivery rate estimation (draft-cheng-iccrg-delivery-rate-estimation)
-description: "High speed and scale TCP implementation"
+description: "High speed and scale Transmission Control Protocol (TCP) implementation"
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
