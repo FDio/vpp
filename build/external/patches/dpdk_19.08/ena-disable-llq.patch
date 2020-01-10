@@ -1,0 +1,29 @@
+ drivers/net/ena/ena_ethdev.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/net/ena/ena_ethdev.c b/drivers/net/ena/ena_ethdev.c
+index 7d4a3b225..39da7feaa 100644
+--- a/drivers/net/ena/ena_ethdev.c
++++ b/drivers/net/ena/ena_ethdev.c
+@@ -1602,6 +1602,13 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
+ 	int rc;
+ 	u32 llq_feature_mask;
+ 
++	const char *llq_enable = getenv("DPDK_ENA_LLQ_ENABLE");
++	if (!llq_enable || !atoi(llq_enable)) {
++		RTE_LOG(INFO, PMD, "Forcing host mode policy (disabling LLQ for performance).\n");
++		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
++		return 0;
++	}
++
+ 	llq_feature_mask = 1 << ENA_ADMIN_LLQ;
+ 	if (!(ena_dev->supported_features & llq_feature_mask)) {
+ 		RTE_LOG(INFO, PMD,
+@@ -1754,6 +1761,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
+ 	calc_queue_ctx.get_feat_ctx = &get_feat_ctx;
+ 	adapter->num_queues = ena_calc_io_queue_num(ena_dev,
+ 						    &get_feat_ctx);
++	RTE_LOG(INFO, PMD, "Support up to %i IO queues\n", adapter->num_queues);
+ 
+ 	rc = ena_calc_queue_size(&calc_queue_ctx);
+ 	if (unlikely((rc != 0) || (adapter->num_queues <= 0))) {
