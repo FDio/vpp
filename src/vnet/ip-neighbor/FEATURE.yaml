@@ -5,6 +5,6 @@ features:
   - IP protocol independent Database of Neighbours (aka peers)
   - limits on number of peers, recycling and aging
 
-description: "IP-neighbor"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

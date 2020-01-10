@@ -7,6 +7,6 @@ features:
   - Encapsulation for Bit Index Explicit Replication (BIER) in MPLS and
     Non-MPLS Networks (https://tools.ietf.org/html/rfc8296)
 
-description: "BIER"
+description: "An implementation of Bit Indexed Explicit Replication (BIER)"
 state: production
 properties: [API, CLI, MULTITHREAD]

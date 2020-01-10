@@ -9,6 +9,6 @@ features:
   - DES, 3DES
   - MD5
 
-description: "openssl crypto-engine"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

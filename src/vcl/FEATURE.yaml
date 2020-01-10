@@ -1,5 +1,5 @@
 ---
-name: VPP Comms Library (VCL)
+name: VPP Comms Library
 maintainer: Florin Coras <fcoras@cisco.com>
 features:
   - Abstracts vpp host stack sessions to integer session handles
@@ -16,7 +16,7 @@ features:
       - Applications that are supported work with VCL and implicitly with VPP's
         host stack without any code change
       - It does not support all syscalls and syscall options
-description: "VCL simplifies app interaction with session layer by exposing
-              APIs that are similar to but not POSIX-compliant."
+description: "VPP Comms Library (VCL) simplifies app interaction with session layer
+              by exposing APIs that are similar to but not POSIX-compliant."
 state: production
 properties: [API, CLI, MULTITHREAD]

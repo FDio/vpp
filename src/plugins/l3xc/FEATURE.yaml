@@ -8,6 +8,6 @@ features:
     and adding a default route with the same path. However, the L3XC is more
     efficient in memory and CPU
 
-description: "L3-xconnect"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

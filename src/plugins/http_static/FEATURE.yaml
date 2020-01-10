@@ -1,5 +1,5 @@
 ---
-name: Static http/https server (http_static)
+name: Static http https server
 maintainer: Dave Barach <dave@barachs.net>
 features:
   - An extensible static http/https server with caching

@@ -1,9 +1,9 @@
 ---
-name: Layer 2 Forwarding (L2)
+name: Layer 2 Forwarding
 maintainer: John Lo <loj@cisco.com>
 features:
-  - L2 Cross-connect (xconnect) of two interfaces
-  - L2 Bridging of multiple interfaces in a bridge domain (BD):
+  - Layer 2 (L2) Cross-connect (xconnect) of two interfaces
+  - Layer 2 (L2) Bridging of multiple interfaces in a bridge domain (BD):
       - Forwarding via destination MAC address of packet
       - MAC learning enable/disable on BD or per interface
       - MAC aging with specified aging interval enable/disable

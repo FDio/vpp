@@ -1,5 +1,5 @@
 ---
-name: Network Address Translation (NAT)
+name: Network Address Translation
 maintainer:
   - Ole Troan <ot@cisco.com>
   - Filip Varga <fivarga@cisco.com>
@@ -20,8 +20,8 @@ features:
   - NAT66
   - DS-lite
   - 464XLAT
-description: "The NAT plugin offers a multiple address translation functions.
-              These can be used in a raft of different scenarios. CPE, CGN,
-              etc."
+description: "The Network Address Translation (NAT) plugin offers a multiple address
+              translation functions. These can be used in a raft of different
+              scenarios. CPE, CGN, etc."
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]

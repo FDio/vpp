@@ -10,6 +10,6 @@ features:
   - DPO graphs can be rooted at any point in the VLIB graph - notable examples
     are L3 FIB lookup, ABF, L3XC.
 
-description: "DPO"
+description: "Data-Plane Objects (DPO)"
 state: production
 properties: [API, CLI, MULTITHREAD]
