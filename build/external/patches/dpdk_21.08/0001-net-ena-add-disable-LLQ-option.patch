@@ -1,0 +1,39 @@
+From 5d703de4e0e4b326ebae05d7ddd840d1ced4168e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Beno=C3=AEt=20Ganne?= <bganne@cisco.com>
+Date: Mon, 20 Dec 2021 11:41:47 +0100
+Subject: [PATCH] net/ena: add disable LLQ option
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+AWS ENA enables LLQ (Low Latency Queue) by default, locating packets
+desc and headers in the NIC memory instead of host memory to improve
+latency. However this has a significant impact on throughput even when
+mitigated by write-combining.
+
+Signed-off-by: Benoît Ganne <bganne@cisco.com>
+---
+ drivers/net/ena/ena_ethdev.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/net/ena/ena_ethdev.c b/drivers/net/ena/ena_ethdev.c
+index 4cebf60a68..5b3593dd94 100644
+--- a/drivers/net/ena/ena_ethdev.c
++++ b/drivers/net/ena/ena_ethdev.c
+@@ -1557,6 +1557,13 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
+ 	int rc;
+ 	u32 llq_feature_mask;
+ 
++	const char *llq_enable = getenv("DPDK_ENA_LLQ_ENABLE");
++	if (!llq_enable || !atoi(llq_enable)) {
++		RTE_LOG(INFO, PMD, "Forcing host mode policy (disabling LLQ for performance).\n");
++		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
++		return 0;
++	}
++
+ 	llq_feature_mask = 1 << ENA_ADMIN_LLQ;
+ 	if (!(ena_dev->supported_features & llq_feature_mask)) {
+ 		PMD_DRV_LOG(INFO,
+-- 
+2.25.1
+
