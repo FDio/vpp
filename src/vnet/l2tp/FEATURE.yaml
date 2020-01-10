@@ -1,0 +1,8 @@
+---
+name: L2TPv3
+maintainer: unmaintained
+features:
+  - L2TPv3 over IPv6
+description: "An initial and incomplete implementation of L2TPv3 (RFC3931)."
+state: experimental
+properties: [API, CLI]
