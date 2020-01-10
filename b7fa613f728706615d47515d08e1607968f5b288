@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "3ac510ed_2dc1b657",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1507,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-10T04:31:37Z",
+      "side": 1,
+      "message": "Not sure about the PREDICT_TRUE. When receiving bursts of packets for a flow, I\u0027d expect some locality even when multiplexing. Having said that, I don\u0027t have actual data to back that up...",
+      "parentUuid": "3132489b_a3d965ad",
+      "range": {
+        "startLine": 1507,
+        "startChar": 6,
+        "endLine": 1507,
+        "endChar": 19
+      },
+      "revId": "b7fa613f728706615d47515d08e1607968f5b288",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "52cd8dd3_9f55af87",
         "filename": "src/vnet/ip/ip4_forward.c",
         "patchSetId": 2
