@@ -1,9 +1,9 @@
 ---
-name: Builtin URL support for the static http/https server (builtinurl)
+name: Builtin URL support for the static http or https server
 maintainer: Dave Barach <dave@barachs.net>
 features:
   - Builtin URLs for the static http/https server
-description: "Adds a set of URLs to the static http/https server.
+description: "The (builtinurl) plugin adds a set of URLs to the static http/https server.
               Current URLs, all of which return data in .json fmt:
               <root-url>/version.json - vpp version info
               <root-url>/interface_list.json - list of interfaces

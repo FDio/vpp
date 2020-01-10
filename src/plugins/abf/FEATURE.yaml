@@ -15,6 +15,6 @@ features:
   - ABF runs as an input feature in the L3 path
 
 
-description: "ACL Based Forwarding"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

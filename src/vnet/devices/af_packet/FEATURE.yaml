@@ -1,5 +1,5 @@
 ---
-name: host-interface Device (AF_PACKET)
+name: host-interface Device AF_PACKET
 maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - L4 checksum offload

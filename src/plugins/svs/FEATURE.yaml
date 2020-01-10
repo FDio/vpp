@@ -10,6 +10,6 @@ features:
   - Tables are bound to interfaces.
   - SVS runs as an input feature in the L3 path
 
-description: "Source VRF Select"
+description: ""
 state: production
 properties: [API, CLI, MULTITHREAD]

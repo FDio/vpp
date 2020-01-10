@@ -7,6 +7,6 @@ features:
   - Mark - write [mapped] QoS bits into packet headers
   - Store - write in packet metadata a fixed QoS value
 
-description: "QoS"
+description: "An implentation of Quality of Service (QoS)"
 state: production
 properties: [API, CLI, MULTITHREAD]

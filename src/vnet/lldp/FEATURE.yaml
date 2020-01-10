@@ -1,8 +1,8 @@
 ---
-name: Link Layer Discovery Protocol (LLDP)
+name: Link Layer Discovery Protocol
 maintainer: Klement Sekera <ksekera@cisco.com>
 features:
   - link layer discovery protocol implementation
-description: "Link Layer Discovery Protocol implementation"
+description: "Link Layer Discovery Protocol (LLDP) implementation"
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]

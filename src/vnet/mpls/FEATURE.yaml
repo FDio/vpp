@@ -5,6 +5,6 @@ features:
   - Label imposition/disposition - pipe and uniform mode
   - Tunnels - unidirectional
 
-description: "MPLS"
+description: "An implementation of Multi-Protocol Label Switching (MPLS)"
 state: production
 properties: [API, CLI, MULTITHREAD]
