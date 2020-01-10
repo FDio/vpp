@@ -863,6 +863,7 @@ svm_fifo_needs_deq_ntf (svm_fifo_t * f, u32 n_last_deq)
 
 #endif /* __included_ssvm_fifo_h__ */
 
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
