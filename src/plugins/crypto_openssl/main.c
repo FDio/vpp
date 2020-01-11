@@ -24,6 +24,19 @@
 #include <vnet/crypto/crypto.h>
 #include <vpp/app/version.h>
 
+#define CRYPTO_OPENSSL_RING_SIZE 512
+#define CRYPTO_OPENSSL_RING_MASK (CRYPTO_OPENSSL_RING_SIZE - 1)
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u64 head;
+  u64 tail;
+  u32 size;
+  vnet_crypto_op_id_t op:8;
+  vnet_crypto_op_t *jobs[0];
+} openssl_queue_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -32,6 +45,8 @@ typedef struct
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   HMAC_CTX _hmac_ctx;
 #endif
+  clib_bitmap_t *act_queues;
+  openssl_queue_t *queues[VNET_CRYPTO_N_OP_IDS];
 } openssl_per_thread_data_t;
 
 static openssl_per_thread_data_t *per_thread_data = 0;
@@ -56,6 +71,141 @@ static openssl_per_thread_data_t *per_thread_data = 0;
   _(SHA256, EVP_sha256) \
   _(SHA384, EVP_sha384) \
   _(SHA512, EVP_sha512)
+
+static_always_inline vnet_crypto_op_t *
+openssl_alloc_job (vlib_main_t * vm, vnet_crypto_op_id_t op_id)
+{
+  vnet_crypto_op_t *j = clib_mem_alloc_aligned (sizeof (vnet_crypto_op_t),
+						CLIB_CACHE_LINE_BYTES);
+  if (PREDICT_FALSE (j == 0))
+    return 0;
+
+  vnet_crypto_op_init (j, op_id);
+  j->flags = VNET_CRYPTO_OP_FLAG_ASYNC;
+  return j;
+}
+
+static_always_inline void
+openssl_free_job (vlib_main_t * vm, vnet_crypto_op_t * j)
+{
+  clib_mem_free_s (j);
+}
+
+static_always_inline u32
+openssl_enqueue_ops (vlib_main_t * vm, vnet_crypto_op_id_t opt,
+		     vnet_crypto_op_t * jobs[], u32 n_jobs)
+{
+  openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
+						     vm->thread_index);
+  openssl_queue_t *q = ptd->queues[opt];
+  u32 n_enq = 0;
+  u64 head = q->head;
+
+  while (n_enq < n_jobs)
+    {
+      vnet_crypto_op_t *j = jobs[n_enq];
+
+      /* job is not taken from the queue if pointer is still set */
+      if (q->jobs[head & CRYPTO_OPENSSL_RING_MASK])
+	break;
+      j->status = VNET_CRYPTO_OP_STATUS_PENDING;
+      q->jobs[head & CRYPTO_OPENSSL_RING_MASK] = j;
+      head += 1;
+      n_enq += 1;
+    }
+
+  if (n_enq)
+    {
+      CLIB_MEMORY_STORE_BARRIER ();
+      q->head = head;
+    }
+  return n_enq;
+}
+
+static_always_inline u32
+openssl_get_pending_jobs (openssl_queue_t * q, vnet_crypto_op_t * jobs[],
+			  u32 n_jobs)
+{
+  u32 i;
+  vnet_crypto_op_t *j;
+  u32 tail = q->tail;
+  u32 head = q->head;
+  u32 n_got = 0;
+
+  for (i = tail; i < head; i++)
+    {
+      j = q->jobs[i & CRYPTO_OPENSSL_RING_MASK];
+      if (!j)
+	continue;
+
+      if (clib_atomic_bool_cmp_and_swap (&j->sta,
+					 VNET_CRYPTO_OP_STATUS_PENDING,
+					 VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS))
+	{
+	  jobs[n_got++] = j;
+	  if (PREDICT_FALSE (n_got == n_jobs))
+	    break;
+	}
+    }
+  return n_got;
+}
+
+static_always_inline u32
+openssl_dequeue_ops (vlib_main_t * vm, vnet_crypto_op_id_t opt,
+		     vnet_crypto_op_t * jobs[], u32 n_jobs,
+		     vnet_crypto_ops_handler_t * f)
+{
+  openssl_per_thread_data_t *ptd;
+  openssl_queue_t *q;
+  u64 head;
+  u32 n_total = 0;
+  u32 i;
+
+  /* *INDENT-OFF* */
+  vec_foreach_index (i, per_thread_data)
+  {
+    ptd = per_thread_data + i;
+    q = ptd->queues[opt];
+    if (q->head != q->tail)
+      n_total += openssl_get_pending_jobs (q, jobs + n_total,
+						 n_jobs - n_total);
+    if (n_total == n_jobs)
+      break;
+  }
+  /* *INDENT-ON* */
+
+  if (n_total)
+    (f) (vm, jobs, n_total);
+
+  ptd = per_thread_data + vm->thread_index;
+  q = ptd->queues[opt];
+  head = q->head;
+  n_total = 0;
+
+  while (1)
+    {
+      u32 tail = clib_atomic_load_acq_n (&q->tail);
+      vnet_crypto_op_t *job = q->jobs[tail & CRYPTO_OPENSSL_RING_MASK];
+
+      if (head == tail)
+	{
+	  clib_bitmap_set_no_check (ptd->act_queues, opt, 0);
+	  break;
+	}
+
+      if (job->status == VNET_CRYPTO_OP_STATUS_COMPLETED)
+	{
+	  q->jobs[tail & CRYPTO_OPENSSL_RING_MASK] = 0;
+	  clib_atomic_fetch_add (&q->tail, 1);
+	  jobs[n_total++] = job;
+	}
+
+      if (n_total == n_jobs)
+	break;
+    }
+
+  return n_total;
+}
 
 static_always_inline u32
 openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
@@ -218,7 +368,25 @@ openssl_ops_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
 \
 u32 \
 openssl_ops_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return openssl_ops_dec_##m (vm, ops, n_ops, b ()); }
+{ return openssl_ops_dec_##m (vm, ops, n_ops, b ()); } \
+\
+u32 \
+openssl_enq_enc_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_enqueue_ops (vm, VNET_CRYPTO_OP_##a##_ENC, jobs, n_jobs); } \
+\
+u32 \
+openssl_enq_dec_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_enqueue_ops (vm, VNET_CRYPTO_OP_##a##_DEC, jobs, n_jobs); } \
+\
+u32 \
+openssl_deq_enc_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_dequeue_ops (vm, VNET_CRYPTO_OP_##a##_ENC, jobs, n_jobs, \
+			      openssl_ops_enc_##a); } \
+\
+u32 \
+openssl_deq_dec_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_dequeue_ops (vm, VNET_CRYPTO_OP_##a##_ENC, jobs, n_jobs, \
+			      openssl_ops_dec_##a); }
 
 foreach_openssl_evp_op;
 #undef _
@@ -227,6 +395,15 @@ foreach_openssl_evp_op;
 static u32 \
 openssl_ops_hmac_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
 { return openssl_ops_hmac (vm, ops, n_ops, b ()); } \
+\
+u32 \
+openssl_enq_hmac_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_enqueue_ops (vm, VNET_CRYPTO_OP_##a##_HMAC, jobs, n_jobs); } \
+\
+u32 \
+openssl_deq_hmac_##a (vlib_main_t *vm, vnet_crypto_op_t * jobs[], u32 n_jobs) \
+{ return openssl_dequeue_ops (vm, VNET_CRYPTO_OP_##a##_HMAC, jobs, n_jobs, \
+			      openssl_ops_hmac_##a); }
 
 foreach_openssl_hmac_op;
 #undef _
@@ -243,18 +420,42 @@ crypto_openssl_init (vlib_main_t * vm)
 
   u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
 
+  void vnet_crypto_register_async_handlers (vlib_main_t * vm,
+					    u32 engine_index,
+					    vnet_crypto_op_id_t opt,
+					    vnet_crypto_ops_handler_t *
+					    enqueue_oph,
+					    vnet_crypto_ops_handler_t *
+					    dequeue_oph,
+					    vnet_crypto_op_alloc_t *
+					    alloc_oph,
+					    vnet_crypto_op_free_t * free_oph);
 #define _(m, a, b) \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
 				    openssl_ops_enc_##a); \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
-				    openssl_ops_dec_##a);
-
+				    openssl_ops_dec_##a); \
+  vnet_crypto_register_async_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
+				       openssl_enq_enc_##a, \
+				       openssl_deq_enc_##a, \
+				       openssl_alloc_job, \
+				       openssl_free_job); \
+  vnet_crypto_register_async_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
+				       openssl_enq_dec_##a, \
+				       openssl_deq_dec_##a, \
+				       openssl_alloc_job, \
+				       openssl_free_job);
   foreach_openssl_evp_op;
 #undef _
 
 #define _(a, b) \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
 				    openssl_ops_hmac_##a); \
+  vnet_crypto_register_async_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
+				       openssl_enq_hmac_##a, \
+				       openssl_deq_hmac_##a, \
+				       openssl_alloc_job, \
+				       openssl_free_job);
 
   foreach_openssl_hmac_op;
 #undef _
@@ -262,8 +463,11 @@ crypto_openssl_init (vlib_main_t * vm)
   vec_validate_aligned (per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
+  u32 queue_size = CRYPTO_OPENSSL_RING_SIZE * sizeof (void *) +
+    sizeof (openssl_queue_t);
   vec_foreach (ptd, per_thread_data)
   {
+    u32 i;
     ptd->evp_cipher_ctx = EVP_CIPHER_CTX_new ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     ptd->hmac_ctx = HMAC_CTX_new ();
@@ -271,6 +475,18 @@ crypto_openssl_init (vlib_main_t * vm)
     HMAC_CTX_init (&(ptd->_hmac_ctx));
     ptd->hmac_ctx = &ptd->_hmac_ctx;
 #endif
+
+    for (i = 0; i < VNET_CRYPTO_N_OP_IDS; i++)
+      {
+	openssl_queue_t *q = clib_mem_alloc_aligned (queue_size,
+						     CLIB_CACHE_LINE_BYTES);
+	ASSERT (q != 0);
+	ptd->queues[i] = q;
+	clib_memset_u8 (q, 0, queue_size);
+	q->size = CRYPTO_OPENSSL_RING_SIZE;
+	q->op = i;
+      }
+    clib_bitmap_vec_validate (ptd->act_queues, VNET_CRYPTO_N_OP_IDS);
   }
 
   t = time (NULL);
