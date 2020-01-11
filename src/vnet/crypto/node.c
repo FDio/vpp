@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -44,13 +44,15 @@ typedef enum
 
 static_always_inline u32
 vnet_crypto_post_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vnet_crypto_async_op_data_t *odt,
-			      vnet_crypto_op_t **job, u32 *bi, u16 *next,
-			      u32 n_job)
+			      vnet_crypto_async_op_data_t * odt,
+			      vnet_crypto_op_t ** jobs, u32 * bis,
+			      u16 * nexts, u32 n_job)
 {
-  u32 i;
+  vnet_crypto_op_t **job = jobs;
+  u32 *bi = bis, n_left = n_job;
+  u16 *next = nexts;
 
-  if (n_job > 4)
+  if (n_left > 4)
     {
       CLIB_PREFETCH (job[0], sizeof (vnet_crypto_op_t), LOAD);
       CLIB_PREFETCH (job[1], sizeof (vnet_crypto_op_t), LOAD);
@@ -58,78 +60,88 @@ vnet_crypto_post_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
       CLIB_PREFETCH (job[3], sizeof (vnet_crypto_op_t), LOAD);
     }
 
-  for (i = 0; i < n_job - 8; i += 4)
+  while (n_left > 8)
     {
-      CLIB_PREFETCH (job[i + 4], sizeof (vnet_crypto_op_t), LOAD);
-      CLIB_PREFETCH (job[i + 5], sizeof (vnet_crypto_op_t), LOAD);
-      CLIB_PREFETCH (job[i + 6], sizeof (vnet_crypto_op_t), LOAD);
-      CLIB_PREFETCH (job[i + 7], sizeof (vnet_crypto_op_t), LOAD);
+      CLIB_PREFETCH (job[4], sizeof (vnet_crypto_op_t), LOAD);
+      CLIB_PREFETCH (job[5], sizeof (vnet_crypto_op_t), LOAD);
+      CLIB_PREFETCH (job[6], sizeof (vnet_crypto_op_t), LOAD);
+      CLIB_PREFETCH (job[7], sizeof (vnet_crypto_op_t), LOAD);
 
-      if (PREDICT_FALSE (job[i]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	  {
-	    next[i] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-	    vlib_node_increment_counter (vm, node->node_index, job[i]->status,
-					 1);
-	  }
-	else
-	  next[i] = job[i]->next;
-      bi[i] = job[i]->bi;
-      (odt->op_free) (vm, job[i]);
+      if (PREDICT_FALSE (job[0]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  next[0] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+	  vlib_node_increment_counter (vm, node->node_index,
+				       job[0]->status, 1);
+	}
+      else
+	next[0] = job[0]->next;
+      bi[0] = job[0]->bi;
+      (odt->op_free) (vm, job[0]);
 
-      if (PREDICT_FALSE (job[i + 1]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	  {
-	    next[i + 1] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-	    vlib_node_increment_counter (vm, node->node_index,
-					 job[i + 1]->status, 1);
-	  }
-	else
-	  next[i + 1] = job[i + 1]->next;
-      bi[i + 1] = job[i + 1]->bi;
-      (odt->op_free) (vm, job[i + 1]);
+      if (PREDICT_FALSE (job[1]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  next[1] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+	  vlib_node_increment_counter (vm, node->node_index,
+				       job[1]->status, 1);
+	}
+      else
+	next[1] = job[1]->next;
+      bi[1] = job[1]->bi;
+      (odt->op_free) (vm, job[1]);
 
-      if (PREDICT_FALSE (job[i + 2]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	  {
-	    next[i + 2] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-	    vlib_node_increment_counter (vm, node->node_index,
-					 job[i + 2]->status, 1);
-	  }
-	else
-	  next[i + 2] = job[i + 2]->next;
-      bi[i + 2] = job[i + 2]->bi;
-      (odt->op_free) (vm, job[i + 2]);
+      if (PREDICT_FALSE (job[2]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  next[2] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+	  vlib_node_increment_counter (vm, node->node_index,
+				       job[2]->status, 1);
+	}
+      else
+	next[2] = job[2]->next;
+      bi[2] = job[2]->bi;
+      (odt->op_free) (vm, job[2]);
 
-      if (PREDICT_FALSE (job[i + 3]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	  {
-	    next[i + 3] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-	    vlib_node_increment_counter (vm, node->node_index,
-					 job[i + 3]->status, 1);
-	  }
-	else
-	  next[i + 3] = job[i + 3]->next;
-      bi[i + 3] = job[i + 3]->bi;
-      (odt->op_free) (vm, job[i + 3]);
+      if (PREDICT_FALSE (job[3]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  next[3] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+	  vlib_node_increment_counter (vm, node->node_index,
+				       job[3]->status, 1);
+	}
+      else
+	next[3] = job[3]->next;
+      bi[3] = job[3]->bi;
+      (odt->op_free) (vm, job[3]);
+
+      job += 4;
+      bi += 4;
+      next += 4;
+      n_left -= 4;
     }
 
-  for (; i < n_job; i++)
+  while (n_left)
     {
-      if (PREDICT_FALSE (job[i]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	  {
-	    next[i] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-	    vlib_node_increment_counter (vm, node->node_index, job[i]->status,
-					 1);
-	  }
-	else
-	  next[i] = job[i]->next;
-      bi[i] = job[i]->bi;
-      (odt->op_free) (vm, job[i]);
+      if (PREDICT_FALSE (job[0]->status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  next[0] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+	  vlib_node_increment_counter (vm, node->node_index,
+				       job[0]->status, 1);
+	}
+      else
+	next[0] = job[0]->next;
+      bi[0] = job[0]->bi;
+      (odt->op_free) (vm, job[0]);
+
+      job += 1;
+      bi += 1;
+      next += 1;
+      n_left -= 1;
     }
 
   return n_job;
 }
 
 VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
-                                     vlib_node_runtime_t * node,
-                                     vlib_frame_t * frame)
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
@@ -137,7 +149,7 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   u16 nexts[VLIB_FRAME_SIZE];
   u32 n_dispatched = 0;
   u32 index;
-  vnet_crypto_op_t *jobs[VLIB_FRAME_SIZE], **job = jobs;
+  vnet_crypto_op_t *jobs[VLIB_FRAME_SIZE];
 
   vec_foreach_index (index, cm->async_ops)
   {
@@ -151,7 +163,7 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 
     ct->inflight[index] -= n_deq;
 
-    vnet_crypto_post_process_ops (vm, node, odt, job, bis, nexts, n_deq);
+    vnet_crypto_post_process_ops (vm, node, odt, jobs, bis, nexts, n_deq);
     vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n_deq);
     n_dispatched += n_deq;
   }
@@ -177,3 +189,11 @@ VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   },
 };
 /* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
