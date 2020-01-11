@@ -9,7 +9,7 @@ def check_tuntap_driver_access():
     return os.access("/dev/net/tun", os.R_OK and os.W_OK)
 
 
-@unittest.skipIf(check_tuntap_driver_access(), "Permission denied")
+@unittest.skip("Requires root")
 class TestTAP(VppTestCase):
     """ TAP Test Case """
 
