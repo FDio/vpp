@@ -344,7 +344,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 				 u8 *rewrite)
 {
     ip_adjacency_t *walk_adj;
-    adj_index_t walk_ai;
+    adj_index_t walk_ai, ai;
     vlib_main_t * vm;
     u32 old_next;
     int do_walk;
@@ -352,7 +352,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
     vm = vlib_get_main();
     old_next = adj->lookup_next_index;
 
-    walk_ai = adj_get_index(adj);
+    ai = walk_ai = adj_get_index(adj);
     if (VNET_LINK_MPLS == adj->ia_link)
     {
         /*
@@ -396,7 +396,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      * DPO, this adj will no longer be in use and its lock count will drop to 0.
      * We don't want it to be deleted as part of this endeavour.
      */
-    adj_lock(adj_get_index(adj));
+    adj_lock(ai);
     adj_lock(walk_ai);
 
     /*
@@ -510,7 +510,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
         walk_adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
     }
 
-    adj_unlock(adj_get_index(adj));
+    adj_unlock(ai);
     adj_unlock(walk_ai);
 }
 
