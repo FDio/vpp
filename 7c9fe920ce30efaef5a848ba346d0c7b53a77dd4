@@ -16,6 +16,24 @@
       "revId": "7c9fe920ce30efaef5a848ba346d0c7b53a77dd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aed486f7_5721c3bb",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-01-12T20:24:49Z",
+      "side": 1,
+      "message": "Nor providing a description of the feature. Just a repeat of feature name.",
+      "parentUuid": "4ba781dc_fba460d5",
+      "revId": "7c9fe920ce30efaef5a848ba346d0c7b53a77dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
