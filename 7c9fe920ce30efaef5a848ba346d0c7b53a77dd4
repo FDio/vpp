@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ba781dc_fba460d5",
+        "filename": "src/plugins/abf/FEATURE.yaml",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-01-12T20:16:30Z",
+      "side": 1,
+      "message": "what was wrong with the description field in some of these files?",
+      "revId": "7c9fe920ce30efaef5a848ba346d0c7b53a77dd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
