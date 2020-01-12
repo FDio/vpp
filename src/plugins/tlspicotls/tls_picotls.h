@@ -7,6 +7,12 @@
 #include <vnet/tls/tls.h>
 #include <vpp/app/version.h>
 
+#define TLS_RX_LEN(x) ((x)->rx_content + (x)->rx_len)
+#define TLS_RX_OFFSET(x) ((x)->rx_content + (x)->rx_offset)
+#define TLS_RX_IS_LEFT(x) ((x)->rx_len != (x)->rx_offset)
+#define TLS_RX_LEFT_LEN(x) ((x)->rx_len - (x)->rx_offset)
+
+
 typedef struct tls_ctx_picotls_
 {
   tls_ctx_t ctx;
