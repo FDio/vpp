@@ -1342,26 +1342,24 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Drop packets from unroutable hosts. */
 	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
-	  u8 unroutable[2];
-	  unroutable[0] = error[0] == IP6_ERROR_UNKNOWN_PROTOCOL
-	    && type[0] != IP_BUILTIN_PROTOCOL_ICMP
-	    && !ip6_address_is_link_local_unicast (&ip[0]->src_address);
-	  unroutable[1] = error[1] == IP6_ERROR_UNKNOWN_PROTOCOL
-	    && type[1] != IP_BUILTIN_PROTOCOL_ICMP
-	    && !ip6_address_is_link_local_unicast (&ip[1]->src_address);
-	  if (PREDICT_FALSE (unroutable[0]))
+	  if (error[0] == IP6_ERROR_UNKNOWN_PROTOCOL &&
+	      !(b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
 	    {
-	      error[0] =
-		!ip6_urpf_loose_check (im, b[0],
-				       ip[0]) ? IP6_ERROR_SRC_LOOKUP_MISS
-		: error[0];
+	      int urpf_pass = ip6_urpf_loose_check (im, b[0], ip[0]);
+
+	      if (type[0] != IP_BUILTIN_PROTOCOL_ICMP && !urpf_pass
+		  && !ip6_address_is_link_local_unicast (&ip[0]->src_address))
+		error[0] = IP6_ERROR_SRC_LOOKUP_MISS;
 	    }
-	  if (PREDICT_FALSE (unroutable[1]))
+
+	  if (error[1] == IP6_ERROR_UNKNOWN_PROTOCOL &&
+	      !(b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
 	    {
-	      error[1] =
-		!ip6_urpf_loose_check (im, b[1],
-				       ip[1]) ? IP6_ERROR_SRC_LOOKUP_MISS
-		: error[1];
+	      int urpf_pass = ip6_urpf_loose_check (im, b[1], ip[1]);
+
+	      if (type[1] != IP_BUILTIN_PROTOCOL_ICMP && !urpf_pass
+		  && !ip6_address_is_link_local_unicast (&ip[1]->src_address))
+		error[1] = IP6_ERROR_SRC_LOOKUP_MISS;
 	    }
 
 	  vnet_buffer (b[0])->ip.fib_index =
@@ -1466,7 +1464,6 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 
-
 	  error = len_diff < 0 ? IP6_ERROR_UDP_LENGTH : error;
 
 	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
@@ -1480,15 +1477,14 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Drop packets from unroutable hosts. */
 	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
-	  u8 unroutable = error == IP6_ERROR_UNKNOWN_PROTOCOL
-	    && type != IP_BUILTIN_PROTOCOL_ICMP
-	    && !ip6_address_is_link_local_unicast (&ip->src_address);
-	  if (PREDICT_FALSE (unroutable))
+	  if (error == IP6_ERROR_UNKNOWN_PROTOCOL &&
+	      !(b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
 	    {
-	      error =
-		!ip6_urpf_loose_check (im, b[0],
-				       ip) ? IP6_ERROR_SRC_LOOKUP_MISS :
-		error;
+	      int urpf_pass = ip6_urpf_loose_check (im, b[0], ip);
+
+	      if (type != IP_BUILTIN_PROTOCOL_ICMP && !urpf_pass
+		  && !ip6_address_is_link_local_unicast (&ip->src_address))
+		error = IP6_ERROR_SRC_LOOKUP_MISS;
 	    }
 
 	  vnet_buffer (b[0])->ip.fib_index =
