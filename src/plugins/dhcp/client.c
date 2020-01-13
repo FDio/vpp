@@ -98,14 +98,17 @@ format_dhcp_client (u8 * s, va_list * va)
 
   if (c->installed.leased_address.as_u32)
     {
-      s = format (s, " addr %U/%d gw %U server %U",
+      s = format (s, " addr %U/%d",
 		  format_ip4_address, &c->installed.leased_address,
-		  c->installed.subnet_mask_width,
-		  format_ip4_address, &c->installed.router_address,
+		  c->installed.subnet_mask_width);
+      if (!c->nodefault)
+	s = format (s, " gw %U",
+		    format_ip4_address, &c->installed.router_address);
+      s = format (s, " server %U",
 		  format_ip4_address, &c->installed.dhcp_server);
-
-      vec_foreach (addr, c->domain_server_address)
-	s = format (s, " dns %U", format_ip4_address, addr);
+      if (!c->nodns)
+	vec_foreach (addr, c->domain_server_address)
+	  s = format (s, " dns %U", format_ip4_address, addr);
     }
   else
     {
@@ -141,7 +144,7 @@ dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 				     (void *) &c->learned.leased_address,
 				     c->learned.subnet_mask_width,
 				     0 /*is_del */ );
-      if (c->learned.router_address.as_u32)
+      if (c->learned.router_address.as_u32 && !c->nodefault)
 	{
 	  fib_prefix_t all_0s = {
 	    .fp_len = 0,
@@ -194,7 +197,7 @@ dhcp_client_release_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 				     1 /*is_del */ );
 
       /* Remove the default route */
-      if (c->installed.router_address.as_u32)
+      if (c->installed.router_address.as_u32 && !c->nodefault)
 	{
 	  fib_prefix_t all_0s = {
 	    .fp_len = 0,
@@ -369,18 +372,20 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  }
 	  break;
 	case 3:		/* router address */
-	  {
-	    u32 router_address = o->data_as_u32[0];
-	    c->learned.router_address.as_u32 = router_address;
-	  }
+	  if (!c->nodefault)
+	    {
+	      u32 router_address = o->data_as_u32[0];
+	      c->learned.router_address.as_u32 = router_address;
+	    }
 	  break;
 	case 6:		/* domain server address */
-	  {
-	    vec_free (c->domain_server_address);
-	    vec_validate (c->domain_server_address,
-			  o->length / sizeof (ip4_address_t) - 1);
-	    clib_memcpy (c->domain_server_address, o->data, o->length);
-	  }
+	  if (!c->nodns)
+	    {
+	      vec_free (c->domain_server_address);
+	      vec_validate (c->domain_server_address,
+			    o->length / sizeof (ip4_address_t) - 1);
+	      clib_memcpy (c->domain_server_address, o->data, o->length);
+	    }
 	  break;
 	case 12:		/* hostname */
 	  {
@@ -998,6 +1003,8 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       c->hostname = a->hostname;
       c->client_identifier = a->client_identifier;
       c->set_broadcast_flag = a->set_broadcast_flag;
+      c->nodns = a->nodns;
+      c->nodefault = a->nodefault;
       c->dscp = a->dscp;
       c->ai_ucast = ADJ_INDEX_INVALID;
       c->ai_bcast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
@@ -1043,7 +1050,8 @@ dhcp_client_config (u32 is_add,
 		    u8 * hostname,
 		    u8 * client_id,
 		    dhcp_event_cb_t event_callback,
-		    u8 set_broadcast_flag, ip_dscp_t dscp, u32 pid)
+		    u8 set_broadcast_flag,
+		    u8 nodns, u8 nodefault, ip_dscp_t dscp, u32 pid)
 {
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -1055,6 +1063,8 @@ dhcp_client_config (u32 is_add,
   a->pid = pid;
   a->event_callback = event_callback;
   a->set_broadcast_flag = set_broadcast_flag;
+  a->nodns = nodns;
+  a->nodefault = nodefault;
   a->dscp = dscp;
   vec_validate (a->hostname, strlen ((char *) hostname) - 1);
   strncpy ((char *) a->hostname, (char *) hostname, vec_len (a->hostname));
@@ -1147,6 +1157,8 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   u8 *hostname = 0;
   u8 sw_if_index_set = 0;
   u8 set_broadcast_flag = 1;
+  u8 nodns = 0;
+  u8 nodefault = 0;
   int is_add = 1;
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -1162,6 +1174,10 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (input, "broadcast", &set_broadcast_flag))
 	is_add = 0;
+      else if (unformat (input, "nodns"))
+	nodns = 1;
+      else if (unformat (input, "nodefault"))
+	nodefault = 1;
       else
 	break;
     }
@@ -1175,6 +1191,8 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   a->hostname = hostname;
   a->client_identifier = format (0, "vpp 1.1%c", 0);
   a->set_broadcast_flag = set_broadcast_flag;
+  a->nodns = nodns;
+  a->nodefault = nodefault;
 
   /*
    * Option 55 request list. These data precisely match
@@ -1240,7 +1258,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_client_set_command, static) = {
   .path = "set dhcp client",
-  .short_help = "set dhcp client [del] intfc <interface> [hostname <name>]",
+  .short_help = "set dhcp client [del] intfc <interface> [hostname <name>] [broadcast] [nodns] [nodefault]",
   .function = dhcp_client_set_command_fn,
 };
 /* *INDENT-ON* */

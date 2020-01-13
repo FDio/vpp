@@ -104,6 +104,11 @@ typedef struct dhcp_client_t_
 
   /* Set the broadcast Flag in the Discover/Request messages */
   u8 set_broadcast_flag;
+
+  /* Default route & DNS settings flags */
+  u8 nodns;
+  u8 nodefault;
+
   /* Interface MAC address, so we can do an rx-packet-for-us check */
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
@@ -135,6 +140,8 @@ typedef struct
   int is_add;
   u32 sw_if_index;
   u8 set_broadcast_flag;
+  u8 nodns;
+  u8 nodefault;
 
   /* vectors, consumed by dhcp client code */
   u8 *hostname;
@@ -170,7 +177,8 @@ extern int dhcp_client_config (u32 is_add,
 			       u8 * client_id,
 			       dhcp_event_cb_t event_callback,
 			       u8 set_broadcast_flag,
-			       ip_dscp_t dscp, u32 pid);
+			       u8 nodns,
+			       u8 nodefault, ip_dscp_t dscp, u32 pid);
 
 /**
  * callback function for clients walking the DHCP client configurations
