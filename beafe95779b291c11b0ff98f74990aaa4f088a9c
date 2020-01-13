@@ -70,6 +70,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "14931545_bd024524",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-13T20:01:32Z",
+      "side": 1,
+      "message": "Hi Florin,\nMaybe I\u0027m wrong, but I thought the free_alloced given by \n  free_alloced \u003d f_chunk_end (f-\u003eend_chunk) - tail;\nseems to have different meaning.",
+      "parentUuid": "7d1ea968_16732df6",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
