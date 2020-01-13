@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11889d07_1f368455",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-13T19:32:09Z",
+      "side": 1,
+      "message": "This would constantly force at most 4kB chunk allocations when tcp writes to the fifo as len is at most the mtu which is typically ~1.5kB. Therefore, we\u0027d never allocate larger chunks which may be useful, due to less fifo allocator interaction and pointer chasing, for elephant flows. \n\nIf the issue here is overshooting f-\u003esize in terms of allocated chunk memory, we could have the following knobs: \n- if fifo is underutilized, f-\u003esize should be lowered by the fifo tuning logic externally. That ensures that the next chunk to be allocated won\u0027t be that large. \n- we could maintain a max-chunk-size per fifo and make sure we don\u0027t allocate more than that\n- or do what you proposed above but then we\u0027ll only use 4kB chunks in rx fifos.",
+      "range": {
+        "startLine": 806,
+        "startChar": 25,
+        "endLine": 806,
+        "endChar": 43
+      },
+      "revId": "29c4ff468454c8365b22adda4cbf4087e44df8c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
