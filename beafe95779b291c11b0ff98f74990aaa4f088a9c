@@ -16,6 +16,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "009d1eb7_d1668bea",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-13T15:40:37Z",
+      "side": 1,
+      "message": "alloc_size is the \"size of the chunk(s) to be added\", i.e., len from your comment. So did I miss something wrt your comment?",
+      "parentUuid": "b5dc3e70_54be3e2d",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
