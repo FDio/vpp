@@ -27,6 +27,7 @@
 
 ipsec_main_t ipsec_main;
 esp_encrypt_async_index_t esp_encrypt_async_next;
+esp_decrypt_async_index_t esp_decrypt_async_next;
 
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
@@ -269,6 +270,9 @@ static void
 crypto_engine_backend_register_post_node (vlib_main_t * vm)
 {
   esp_encrypt_async_index_t *eit;
+  esp_decrypt_async_index_t *dit;
+  u32 post_node;
+
 
   eit = &esp_encrypt_async_next;
   eit->esp4_encrypt_post_index =
@@ -279,6 +283,26 @@ crypto_engine_backend_register_post_node (vlib_main_t * vm)
     vnet_crypto_register_post_node (vm, "esp4-encrypt-tun-post");
   eit->esp6_encrypt_tun_post_index =
     vnet_crypto_register_post_node (vm, "esp6-encrypt-tun-post");
+
+  dit = &esp_decrypt_async_next;
+
+  ipsec_add_node (vm, "esp4-decrypt-post", "esp4-decrypt", &post_node,
+		  &dit->esp4_decrypt_post_index[VNET_CRYPTO_MODE_SYNC]);
+  ipsec_add_node (vm, "esp6-decrypt-post", "esp6-decrypt", &post_node,
+		  &dit->esp6_decrypt_post_index[VNET_CRYPTO_MODE_SYNC]);
+  ipsec_add_node (vm, "esp4-decrypt-tun-post", "esp4-decrypt-tun", &post_node,
+		  &dit->esp4_decrypt_tun_post_index[VNET_CRYPTO_MODE_SYNC]);
+  ipsec_add_node (vm, "esp6-decrypt-tun-post", "esp6-decrypt-tun", &post_node,
+		  &dit->esp6_decrypt_tun_post_index[VNET_CRYPTO_MODE_SYNC]);
+
+  dit->esp4_decrypt_post_index[VNET_CRYPTO_MODE_ASYNC] =
+    vnet_crypto_register_post_node (vm, "esp4-decrypt-post");
+  dit->esp6_decrypt_post_index[VNET_CRYPTO_MODE_ASYNC] =
+    vnet_crypto_register_post_node (vm, "esp6-decrypt-post");
+  dit->esp4_decrypt_tun_post_index[VNET_CRYPTO_MODE_ASYNC] =
+    vnet_crypto_register_post_node (vm, "esp4-decrypt-tun-post");
+  dit->esp6_decrypt_tun_post_index[VNET_CRYPTO_MODE_ASYNC] =
+    vnet_crypto_register_post_node (vm, "esp6-decrypt-tun-post");
 }
 
 static clib_error_t *
