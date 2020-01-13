@@ -1101,7 +1101,7 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
                                           src=p.remote_tun_if_host,
                                           dst=self.pg1.remote_ip6)
         self.send_and_assert_no_replies(self.tun_if, tx)
-        node_name = ('/err/%s/unsupported payload' %
+        node_name = ('/err/%s-post/unsupported payload' %
                      self.tun4_decrypt_node_name)
         self.assertEqual(1, self.statistics.get_err_counter(node_name))
 
