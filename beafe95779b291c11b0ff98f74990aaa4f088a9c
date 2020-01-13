@@ -88,6 +88,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33029146_6f919e91",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-13T21:37:22Z",
+      "side": 1,
+      "message": "Apologies, the first \"free_allocated\" should\u0027ve been \"alloc_size\". \n\nThe point I was trying to make there was with respect to how \"free_allocated\" could be 1kB. That is, for it to be 1kB one possibility would be for f_chunk_end (end_chunk) to be 2MB and tail to be 2MB - 1kB.",
+      "parentUuid": "14931545_bd024524",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
