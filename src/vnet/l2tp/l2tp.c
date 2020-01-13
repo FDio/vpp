@@ -185,7 +185,7 @@ test_counters_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_counters_command, static) = {
-    .path = "test counters",
+    .path = "test lt2p counters",
     .short_help = "increment all active counters",
     .function = test_counters_command_fn,
 };
@@ -220,7 +220,7 @@ clear_counters_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_counters_command, static) = {
-  .path = "clear counters",
+  .path = "clear l2tp counters",
   .short_help = "clear all active counters",
   .function = clear_counters_command_fn,
 };
