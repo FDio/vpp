@@ -307,6 +307,8 @@ dhcp_client_data_encode (vl_api_dhcp_client_t * vclient,
   else
     vclient->want_dhcp_event = 0;
   vclient->set_broadcast_flag = client->set_broadcast_flag;
+  vclient->nodns = client->nodns;
+  vclient->nodefault = client->nodefault;
   vclient->dscp = ip_dscp_encode (client->dscp);
   vclient->pid = client->pid;
 }
@@ -355,6 +357,8 @@ static void vl_api_dhcp_client_config_t_handler
 			    dhcp_compl_event_callback :
 			    NULL),
 			   mp->client.set_broadcast_flag,
+			   mp->client.nodns,
+			   mp->client.nodefault,
 			   dscp, mp->client.pid);
 
   BAD_SW_IF_INDEX_LABEL;

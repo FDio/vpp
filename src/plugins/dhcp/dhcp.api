@@ -150,6 +150,8 @@ autoreply define dhcp_proxy_set_vss
            via dhcp_compl_event API message if non-zero
     @param set_broadcast_flag - in the DHCP Discover to control
                                 how the resulting OFFER is addressed.
+    @param nodns - DNS flag
+    @param nodefault - Default route flag
     @param dscp - DSCP value set in IP packets sent by the client
     @param pid - sender's pid
 */
@@ -160,6 +162,8 @@ typedef dhcp_client
   u8 id[64];
   bool want_dhcp_event;
   bool set_broadcast_flag;
+  u8 nodns;
+  u8 nodefault;
   vl_api_ip_dscp_t dscp;
   u32 pid;
 };
