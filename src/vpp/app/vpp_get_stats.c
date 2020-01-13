@@ -143,6 +143,7 @@ main (int argc, char **argv)
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   int rv;
+  bool machine = false;
   enum stat_client_cmd_e cmd = STAT_CLIENT_CMD_UNKNOWN;
 
   /* Create a heap of 64MB */
@@ -159,6 +160,11 @@ main (int argc, char **argv)
       else if (unformat (a, "ls"))
 	{
 	  cmd = STAT_CLIENT_CMD_LS;
+	}
+      else if (unformat (a, "dump-machine"))
+	{
+	  cmd = STAT_CLIENT_CMD_DUMP;
+	  machine = true;
 	}
       else if (unformat (a, "dump"))
 	{
@@ -224,9 +230,12 @@ reconnect:
 		continue;
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
-		  fformat (stdout, "[%d @ %d]: %llu packets %s\n",
-			   j, k, res[i].simple_counter_vec[k][j],
-			   res[i].name);
+		  if (machine)
+		    fformat (stdout, "%d:%d:%d:%llu:%s\n", res[i].type, j, k,
+			     res[i].simple_counter_vec[k][j], res[i].name);
+		  else
+		    fformat (stdout, "[%d @ %d]: %llu packets %s\n", j, k,
+			     res[i].simple_counter_vec[k][j], res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
@@ -234,15 +243,26 @@ reconnect:
 		continue;
 	      for (k = 0; k < vec_len (res[i].combined_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
-		  fformat (stdout, "[%d @ %d]: %llu packets, %llu bytes %s\n",
-			   j, k, res[i].combined_counter_vec[k][j].packets,
-			   res[i].combined_counter_vec[k][j].bytes,
-			   res[i].name);
+		  if (machine)
+		    fformat (stdout, "%d:%d:%d:%llu:%llu:%s\n", res[i].type, j,
+			     k, res[i].combined_counter_vec[k][j].packets,
+			     res[i].combined_counter_vec[k][j].bytes,
+			     res[i].name);
+		  else
+		    fformat (
+		      stdout, "[%d @ %d]: %llu packets, %llu bytes %s\n", j, k,
+		      res[i].combined_counter_vec[k][j].packets,
+		      res[i].combined_counter_vec[k][j].bytes, res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
 	    case STAT_DIR_TYPE_GAUGE:
-	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
+	      if (machine)
+		fformat (stdout, "%d:%.2f:%s\n", res[i].type,
+			 res[i].scalar_value, res[i].name);
+	      else
+		fformat (stdout, "%.2f %s\n", res[i].scalar_value,
+			 res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
@@ -277,8 +297,14 @@ reconnect:
 		continue;
 	      for (k = 0; k < vec_len (res[i].name_vector); k++)
 		if (res[i].name_vector[k])
-		  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
-			   res[i].name);
+		  {
+		    if (machine)
+		      fformat (stdout, "%d:%d:%s:%s\n", res[i].type, k,
+			       res[i].name_vector[k], res[i].name);
+		    else
+		      fformat (stdout, "[%d]: %s %s\n", k,
+			       res[i].name_vector[k], res[i].name);
+		  }
 	      break;
 
 	    case STAT_DIR_TYPE_EMPTY:
