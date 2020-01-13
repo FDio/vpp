@@ -52,6 +52,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d1ea968_16732df6",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-13T18:01:43Z",
+      "side": 1,
+      "message": "free_allocated \u003d f-\u003esize - 16kB (cursize) - (end_chunk_last_byte - tail). \n\nAssuming end_chunk_last_byte \u003d 2MB and tail \u003d 2MB - 1KB, then the numbers are the ones above, i.e., alloc_size \u003d 2MB - 16kB - 1kB.\n\nTherefore, the next allocated chunk will be 2MB (rounded to power-of-2) and out of it only alloc_size will be available for writing. f-\u003esize does not change and it is similar to the virtual fifo size we’ve discussed over email. The one important difference is that it’s not a cap on the maximum amount of memory allocated for a fifo. In the example above, 2MB - 17kB at the beginning of the first chunk are not usable but allocated. However, this example should be the exception because fifos should not be this underutilized (0.08%). With better utilization, fifo chunks should be more and smaller in size. Therefore the error should be lower.",
+      "parentUuid": "f8570621_641880b7",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
