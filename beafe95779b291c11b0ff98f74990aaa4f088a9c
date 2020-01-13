@@ -34,6 +34,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8570621_641880b7",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-13T15:50:34Z",
+      "side": 1,
+      "message": "For example assume...\n  f-\u003esize \u003d 2MB,\n  f_cur_size (...) \u003d 16KB,\n  free_allocated \u003d 1KB,\nthen alloc_size \u003d (2MB - 16KB - 1KB).\nAfter calling fsh_alloc_chunk() with this alloc_size, I guess the actual fifo size becomes almost same as the virtual fifo size. Isn\u0027t it?",
+      "parentUuid": "009d1eb7_d1668bea",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
