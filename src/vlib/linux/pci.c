@@ -208,6 +208,7 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   u32 tmp;
   int fd;
   u8 *tmpstr;
+  clib_bitmap_t *bmp = 0;
 
   di = clib_mem_alloc (sizeof (vlib_pci_device_info_t));
   clib_memset (di, 0, sizeof (vlib_pci_device_info_t));
@@ -260,11 +261,21 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   di->numa_node = -1;
   vec_reset_length (f);
   f = format (f, "%v/numa_node%c", dev_dir_name, 0);
-  err = clib_sysfs_read ((char *) f, "%u", &di->numa_node);
+  err = clib_sysfs_read ((char *) f, "%d", &di->numa_node);
   if (err)
     {
       di->numa_node = -1;
       clib_error_free (err);
+    }
+  if (di->numa_node == -1)
+    {
+      /* if '/sys/bus/pci/devices/<device id>/numa_node' returns -1 and
+         it is a SMP system, set numa_node to 0. */
+      if ((err = clib_sysfs_read ("/sys/devices/system/node/online", "%U",
+				  unformat_bitmap_list, &bmp)))
+	clib_error_free (err);
+      if (clib_bitmap_count_set_bits (bmp) == 1)
+	di->numa_node = 0;
     }
 
   vec_reset_length (f);
@@ -362,6 +373,7 @@ error:
   di = 0;
 
 done:
+  vec_free (bmp);
   vec_free (f);
   vec_free (dev_dir_name);
   if (error)
