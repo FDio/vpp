@@ -16,6 +16,24 @@
       "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b0681b4b_57214e8f",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-14T18:17:52Z",
+      "side": 1,
+      "message": "That\u0027s right, this is an issue unless we shrink the fifos. The current approach only works if we aggressively monitor fifo sizes with the fifo tuning logic. \n\nIf it turns out we can\u0027t do that, then we need to change the way we grow the fifos. The two other options we\u0027ve discussed:\n- Constrain the growth based on the length of the write (as you were proposing)\n- Have a max-chunk-size cap per fifo. The fifo segment must allocate enough chunks, smaller or equal to the cap, to cover the amount of bytes requested.",
+      "parentUuid": "41849ea6_90cf1a1c",
+      "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
