@@ -67,6 +67,7 @@ typedef struct
 {
   u8 is_permit;
   u8 is_ipv6;
+  u8 tos;
   u8 src_mac[6];
   u8 src_mac_mask[6];
   ip46_address_t src_ip_addr;
