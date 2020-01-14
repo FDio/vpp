@@ -81,6 +81,7 @@ typedef macip_acl_rule
 {
   u8 is_permit;
   u8 is_ipv6;
+  u8 tos;
 /*
  * The source mac of the packet ANDed with src_mac_mask.
  * The source ip[46] address in the packet is matched
