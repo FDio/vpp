@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "693878b8_6c75e559",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-01-14T16:24:15Z",
+      "side": 1,
+      "message": "i guess you need vnet_crypto_ops_handler_t **chained_ops_handlers; here...",
+      "range": {
+        "startLine": 247,
+        "startChar": 2,
+        "endLine": 247,
+        "endChar": 43
+      },
+      "revId": "5c7524324fb732e0329c7d4775239132f03d8e23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2994579a_f10973b3",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 12
