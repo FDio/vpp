@@ -135,7 +135,7 @@ class Container(object):
         self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
         self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
         self.vppctl_exec(
-            "set ip neighbor pg0 {} {}".format(remote_ip, remote_mac))
+            "set ip6 neighbor pg0 {} {}".format(remote_ip, remote_mac))
         self.vppctl_exec("set int state pg0 up")
 
     def pg_create_interface4(self, local_ip, remote_ip, local_mac, remote_mac):
@@ -145,7 +145,7 @@ class Container(object):
         self.vppctl_exec("create packet-generator interface pg0")
         self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
         self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
-        self.vppctl_exec("set ip neighbor pg0 {} {}".format(remote_ip, remote_mac))
+        self.vppctl_exec("set ip arp pg0 {} {}".format(remote_ip, remote_mac))
         self.vppctl_exec("set int state pg0 up")
 
     def pg_create_interface6(self, local_ip, remote_ip, local_mac, remote_mac):
@@ -154,29 +154,9 @@ class Container(object):
         time.sleep(2)
         self.vppctl_exec("create packet-generator interface pg0")
         self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
-        self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
-        self.vppctl_exec("set ip neighbor pg0 {} {}".format(remote_ip, remote_mac))
+        self.vppctl_exec("set int ip6 addr pg0 {}".format(local_ip))
+        self.vppctl_exec("set ip6 arp pg0 {} {}".format(remote_ip, remote_mac))
         self.vppctl_exec("set int state pg0 up")
-
-    def pg_create_interface4_name(self, ifname, local_ip, remote_ip, local_mac, remote_mac):
-        # remote_ip can't have subnet mask
-
-        time.sleep(2)
-        self.vppctl_exec("create packet-generator interface {}".format(ifname))
-        self.vppctl_exec("set int mac address {} {}".format(ifname, local_mac))
-        self.vppctl_exec("set int ip addr {} {}".format(ifname, local_ip))
-        self.vppctl_exec("set ip neighbor {} {} {}".format(ifname, remote_ip, remote_mac))
-        self.vppctl_exec("set int state {} up".format(ifname))
-
-    def pg_create_interface6_name(self, ifname, local_ip, remote_ip, local_mac, remote_mac):
-        # remote_ip can't have subnet mask
-
-        time.sleep(2)
-        self.vppctl_exec("create packet-generator interface {}".format(ifname))
-        self.vppctl_exec("set int mac address {} {}".format(ifname, local_mac))
-        self.vppctl_exec("set int ip addr {} {}".format(ifname, local_ip))
-        self.vppctl_exec("set ip neighbor {} {} {}".format(ifname, remote_ip, remote_mac))
-        self.vppctl_exec("set int state {} up".format(ifname))
 
     def pg_enable(self):
         # start packet generator
@@ -196,24 +176,12 @@ class Container(object):
             "packet-generator capture pg0 pcap {}".format(
                 self.pg_output_file_in))
 
-    def pg_start_capture_name(self, ifname):
-        if exists(self.pg_output_file):
-            remove(self.pg_output_file)
-        self.vppctl_exec(
-            "packet-generator capture {} pcap {}".format(
-                ifname, self.pg_output_file_in))
-
     def pg_read_packets(self):
         return rdpcap(self.pg_output_file)
 
     def set_ipv6_route(self, out_if_name, next_hop_ip, subnet):
         self.vppctl_exec(
             "ip route add {} via host-{} {}".format(
-                subnet, out_if_name, next_hop_ip))
-
-    def set_ipv6_route2(self, out_if_name, next_hop_ip, subnet):
-        self.vppctl_exec(
-            "ip route add {} via {} {}".format(
                 subnet, out_if_name, next_hop_ip))
 
     def set_ip_pgroute(self, out_if_name, next_hop_ip, subnet):
@@ -1121,142 +1089,6 @@ class Program(object):
         for p in c4.pg_read_packets():
             p.show2()
 
-    def test_gtp4_reply(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-        c2 = self.containers.get(self.get_name(self.instance_names[1]))
-        c3 = self.containers.get(self.get_name(self.instance_names[2]))
-        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
-
-        c1.pg_create_interface4(
-            local_ip="172.16.0.1/30",
-            remote_ip="172.16.0.2/30",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-        c4.pg_create_interface4(
-            local_ip="1.0.0.2/30",
-            remote_ip="1.0.0.1",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
-        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
-
-        c2.vppctl_exec("sr localsid address D2:: behavior end")
-
-        c3.vppctl_exec("sr localsid address D3:: behavior end")
-
-        c4.vppctl_exec(
-            "sr localsid prefix D4::/32 "
-            "behavior end.m.gtp4.e v4src_position 64")
-
-        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
-        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
-        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
-        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
-        c4.set_ip_pgroute("pg0", "1.0.0.1", "172.20.0.1/32")
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IP(src="172.20.0.2", dst="172.20.0.1") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="echo_response", S=1, teid=200, seq=200))
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-        c4.enable_trace(10)
-
-        c4.pg_start_capture()
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c4.name))
-        for p in c4.pg_read_packets():
-            p.show2()
-
-    def test_gtp4_error(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-        c2 = self.containers.get(self.get_name(self.instance_names[1]))
-        c3 = self.containers.get(self.get_name(self.instance_names[2]))
-        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
-
-        c1.pg_create_interface4(
-            local_ip="172.16.0.1/30",
-            remote_ip="172.16.0.2/30",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-        c4.pg_create_interface4(
-            local_ip="1.0.0.2/30",
-            remote_ip="1.0.0.1",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
-        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
-
-        c2.vppctl_exec("sr localsid address D2:: behavior end")
-
-        c3.vppctl_exec("sr localsid address D3:: behavior end")
-
-        c4.vppctl_exec(
-            "sr localsid prefix D4::/32 "
-            "behavior end.m.gtp4.e v4src_position 64")
-
-        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
-        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
-        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
-        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
-        c4.set_ip_pgroute("pg0", "1.0.0.1", "172.20.0.1/32")
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IP(src="172.20.0.2", dst="172.20.0.1") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="error_indication", S=1, teid=200, seq=200)/
-             IE_TEIDI(TEIDI=65535)/IE_GSNAddress(address="1.1.1.1")/
-             IE_PrivateExtension(extention_value="z"))
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-        c4.enable_trace(10)
-
-        c4.pg_start_capture()
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c4.name))
-        for p in c4.pg_read_packets():
-            p.show2()
-
     def test_gtp4_ipv6(self):
         # TESTS:
         # trace add af-packet-input 10
@@ -1620,154 +1452,6 @@ class Program(object):
         for p in c4.pg_read_packets():
             p.show2()
 
-    def test_gtp6_drop_in_reply(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        print("Deleting the old containers...")
-        time.sleep(30)
-        print("Starting the new containers...")
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-        c2 = self.containers.get(self.get_name(self.instance_names[1]))
-        c3 = self.containers.get(self.get_name(self.instance_names[2]))
-        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
-
-        c1.pg_create_interface(
-            local_ip="C::1/120",
-            remote_ip="C::2",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-        c4.pg_create_interface(
-            local_ip="B::1/120",
-            remote_ip="B::2",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-
-        c1.vppctl_exec(
-            "sr localsid prefix D::/64 behavior end.m.gtp6.d.di D4::/64")
-
-        c2.vppctl_exec("sr localsid address D2:: behavior end")
-
-        c3.vppctl_exec("sr localsid address D3:: behavior end")
-
-        c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.m.gtp6.e")
-
-        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
-        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
-        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
-        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
-        c4.set_ip_pgroute("pg0", "B::2", "D::2/128")
-
-        print("Waiting...")
-        time.sleep(30)
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IPv6(src="C::2", dst="D::2") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="echo_response", S=1, teid=200, seq=300))
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-        c4.enable_trace(10)
-
-        c4.pg_start_capture()
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c4.name))
-        for p in c4.pg_read_packets():
-            p.show2()
-
-    def test_gtp6_drop_in_error(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        print("Deleting the old containers...")
-        time.sleep(30)
-        print("Starting the new containers...")
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-        c2 = self.containers.get(self.get_name(self.instance_names[1]))
-        c3 = self.containers.get(self.get_name(self.instance_names[2]))
-        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
-
-        c1.pg_create_interface(
-            local_ip="C::1/120",
-            remote_ip="C::2",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-        c4.pg_create_interface(
-            local_ip="B::1/120",
-            remote_ip="B::2",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-
-        c1.vppctl_exec(
-            "sr localsid prefix D::/64 behavior end.m.gtp6.d.di D4::/64")
-
-        c2.vppctl_exec("sr localsid address D2:: behavior end")
-
-        c3.vppctl_exec("sr localsid address D3:: behavior end")
-
-        c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.m.gtp6.e")
-
-        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
-        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
-        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
-        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
-        c4.set_ip_pgroute("pg0", "B::2", "D::2/128")
-
-        print("Waiting...")
-        time.sleep(30)
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IPv6(src="C::2", dst="D::2") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="error_indication", S=1, teid=200, seq=300)/
-             IE_TEIDI(TEIDI=65535)/IE_GSNAddress(address="1.1.1.1")/
-             IE_PrivateExtension(extention_value="z"))
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-        c4.enable_trace(10)
-
-        c4.pg_start_capture()
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c4.name))
-        for p in c4.pg_read_packets():
-            p.show2()
-
     def test_gtp6_drop_in_ipv6(self):
         # TESTS:
         # trace add af-packet-input 10
@@ -1957,7 +1641,6 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("set ip neighbor pg0 1.0.0.1 aa:bb:cc:dd:ee:22")
         c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.dt4 2")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
@@ -2033,7 +1716,6 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("set ip neighbor pg0 1.0.0.1 aa:bb:cc:dd:ee:22")
         c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.dt4 2")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
@@ -2110,7 +1792,6 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("set ip neighbor pg0 B::2 aa:bb:cc:dd:ee:22")
         c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.dt6 2")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
@@ -2186,7 +1867,6 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("set ip neighbor pg0 B::2 aa:bb:cc:dd:ee:22")
         c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.dt6 2")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
@@ -2223,133 +1903,6 @@ class Program(object):
 
         print("Receiving packet on {}:".format(c4.name))
         for p in c4.pg_read_packets():
-            p.show2()
-
-    def test_gtp6_dt(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        print("Deleting the old containers...")
-        time.sleep(30)
-        print("Starting the new containers...")
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-
-        c1.pg_create_interface6_name(
-            ifname="pg0",
-            local_ip="C::1/120",
-            remote_ip="C::2",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-
-        c1.pg_create_interface4_name(
-            ifname="pg1",
-            local_ip="1.0.0.2/30",
-            remote_ip="1.0.0.1",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-
-        c1.vppctl_exec(
-            "sr localsid prefix D::/64 behavior end.m.gtp6.dt46 fib-table 0 local-fib-table 0")
-
-        c1.vppctl_exec("set ip neighbor pg1 1.0.0.1 aa:bb:cc:dd:ee:22")
-        c1.set_ip_pgroute("pg1", "1.0.0.1", "172.200.0.1/32")
-
-        print("Waiting...")
-        time.sleep(30)
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IPv6(src="C::2", dst="D::2") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="g_pdu", teid=200) /
-             IP(src="172.100.0.1", dst="172.200.0.1") /
-             ICMP())
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-
-        c1.pg_start_capture_name(ifname="pg1")
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c1.name))
-        for p in c1.pg_read_packets():
-            p.show2()
-
-    def test_gtp4_dt(self):
-        # TESTS:
-        # trace add af-packet-input 10
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
-
-        self.start_containers()
-
-        print("Deleting the old containers...")
-        time.sleep(30)
-        print("Starting the new containers...")
-
-        c1 = self.containers.get(self.get_name(self.instance_names[0]))
-
-        c1.pg_create_interface4_name(
-            ifname="pg0",
-            local_ip="172.16.0.1/30",
-            remote_ip="172.16.0.2",
-            local_mac="aa:bb:cc:dd:ee:01",
-            remote_mac="aa:bb:cc:dd:ee:02")
-
-        c1.pg_create_interface4_name(
-            ifname="pg1",
-            local_ip="1.0.0.2/30",
-            remote_ip="1.0.0.1",
-            local_mac="aa:bb:cc:dd:ee:11",
-            remote_mac="aa:bb:cc:dd:ee:22")
-
-        c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D5:: behavior t.m.gtp4.dt4 fib-table 0")
-        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D5::")
-
-        c1.vppctl_exec("set ip neighbor pg1 1.0.0.1 aa:bb:cc:dd:ee:22")
-        c1.set_ip_pgroute("pg1", "1.0.0.1", "172.200.0.1/32")
-
-        print("Waiting...")
-        time.sleep(30)
-
-        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01") /
-             IP(src="172.20.0.2", dst="172.20.0.1") /
-             UDP(sport=2152, dport=2152) /
-             GTP_U_Header(gtp_type="g_pdu", teid=200) /
-             IP(src="172.100.0.1", dst="172.200.0.1") /
-             ICMP())
-
-        print("Sending packet on {}:".format(c1.name))
-        p.show2()
-
-        c1.enable_trace(10)
-
-        c1.pg_start_capture_name(ifname="pg1")
-
-        c1.pg_create_stream(p)
-        c1.pg_enable()
-
-        # timeout (sleep) if needed
-        print("Sleeping")
-        time.sleep(5)
-
-        print("Receiving packet on {}:".format(c1.name))
-        for p in c1.pg_read_packets():
             p.show2()
 
     def status_containers(self):
@@ -2455,23 +2008,17 @@ def get_args():
             "gtp4_usid",
             "gtp4_5g",
             "gtp4_echo",
-            "gtp4_reply",
-            "gtp4_error",
             "gtp4_ipv6",
             "gtp4_ipv6_5g",
             "gtp6_drop_in",
             "gtp6_drop_in_5g",
             "gtp6_drop_in_echo",
-            "gtp6_drop_in_reply",
-            "gtp6_drop_in_error",
             "gtp6_drop_in_ipv6",
             "gtp6_drop_in_ipv6_5g",
             "gtp6",
             "gtp6_5g",
             "gtp6_ipv6",
-            "gtp6_ipv6_5g",
-            "gtp6_dt",
-            "gtp4_dt"])
+            "gtp6_ipv6_5g"])
 
     args = parser.parse_args()
     if not hasattr(args, "op") or not args.op:
@@ -2491,7 +2038,7 @@ def main(op=None, prefix=None, verbose=None,
         image = "srv6m-release-image"
     elif image == 'debug':
         image = "srv6m-image"
-    else:
+    else
         image = "srv6m-image"
 
     print("Target image: {}".format(image))
@@ -2533,10 +2080,6 @@ def main(op=None, prefix=None, verbose=None,
             program.test_gtp4_5g()
         elif op == 'gtp4_echo':
             program.test_gtp4_echo()
-        elif op == 'gtp4_reply':
-            program.test_gtp4_reply()
-        elif op == 'gtp4_error':
-            program.test_gtp4_error()
         elif op == 'gtp4_ipv6':
             program.test_gtp4_ipv6()
         elif op == 'gtp4_ipv6_5g':
@@ -2547,10 +2090,6 @@ def main(op=None, prefix=None, verbose=None,
             program.test_gtp6_drop_in_5g()
         elif op == 'gtp6_drop_in_echo':
             program.test_gtp6_drop_in_echo()
-        elif op == 'gtp6_drop_in_reply':
-            program.test_gtp6_drop_in_reply()
-        elif op == 'gtp6_drop_in_error':
-            program.test_gtp6_drop_in_error()
         elif op == 'gtp6_drop_in_ipv6':
             program.test_gtp6_drop_in_ipv6()
         elif op == 'gtp6_drop_in_ipv6_5g':
@@ -2563,10 +2102,6 @@ def main(op=None, prefix=None, verbose=None,
             program.test_gtp6_ipv6()
         elif op == 'gtp6_ipv6_5g':
             program.test_gtp6_ipv6_5g()
-        elif op == 'gtp6_dt':
-            program.test_gtp6_dt()
-        elif op == 'gtp4_dt':
-            program.test_gtp4_dt()
 
     except Exception:
         program.logger.exception("")

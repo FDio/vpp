@@ -1,168 +1,173 @@
-Test and Demonstrate SRv6 Mobile User Plane Plugin
-========================
+# What's `runner.py` doing?
 
+## Common configurations
 
-## Getting started
-To play with SRv6 Mobile User Plane on VPP, you need to install following packages:
-
-	docker
-	python3
-	pip3
-
-	Python packages (use pip):
-	docker
-	scapy
-	jinja2
-
-
-### Quick-start
-
-1. Build up the docker container image as following:
-
+### VPP1
 ```
-$ git clone https://github.com/filvarga/srv6-mobile.git
-$ cd ./srv6-mobile/src/plugins/srv6-mobile/extra
-$ ./runner.py infra build
-
-$ docker images
-REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
-srv6m-image         latest              577e786b7ec6        2 days ago          8GB
-ubuntu              18.04               4c108a37151f        4 weeks ago         64.2MB
-
-```
-
-The runner script [runner.py](runner.py) has features to automate configurations and procedures for the test.
-
-2. Instantiate test Scenario
-
-Let's try following command to instantiate a topology:
-
-```
-$ ./runner.py infra start
-```
-
-This command instantiates 4 VPP containers with following topology:
-
-![Topology Diagram](topo-init.png)
-
-You can check the instantiated docker instances with "docker ps".
-
-
-```
-$ docker ps
-CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS               NAMES
-44cb98994500        srv6m-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-4
-6d65fff8aee9        srv6m-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-3
-ad123b516b24        srv6m-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-2
-5efed405b96a        srv6m-image       "/bin/sh -c 'vpp -c …"   About a minute ago   Up About a minute                       hck-vpp-1
-
-```
-
-You can login to and configure each instantiated container.
-
-```
-$ ./runner.py cmd vppctl 0
-
-Verified image: None
-connecting to: hck-vpp-1
-    _______    _        _   _____  ___
- __/ __/ _ \  (_)__    | | / / _ \/ _ \
- _/ _// // / / / _ \   | |/ / ___/ ___/
- /_/ /____(_)_/\___/   |___/_/  /_/    
-
-vpp#
-```
-
-## Test Scenarios
-### SRv6 Drop-in between GTP-U tunnel
-
-This test scenario introduces SRv6 path between GTP-U tunnel transparently. A GTP-U packet sent out from one end to another is translated to SRv6 and then back to GTP-U. All GTP-U tunnel identifiers are preserved in IPv6 header and SRH.
-
-
-#### GTP-U over UDP/IPv4 case
-
-This case uses SRv6 end functions, T.M.GTP4.D and End.M.GTP4.E.
-
-![Topology Diagram](topo-test_gtp4d.png)
-
-VPP1 is configured with "T.M.GTP4.D", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv4 toward the packet capture. VPP1 translates it to SRv6 toward D4::TEID with SR policy <D2::, D3::> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
-
-To start this case with IPv4 payload over GTP-U, you can run:
-
-```
-$ ./runner.py test gtp4
-```
-
-If you want to use IPv6 payload instead of IPv4, you can run:
-
-```
-$ ./runner.py test gtp4_ipv6
-```
-
-If you use the latest scapy codes from the master branch, you can test the functions with GTP-U packet in 5G format:
-
-```
-$ ./runner.py test gtp4_5g
+create host-interface name eth1
+set int ip addr host-eth1 A1::1/120
+set int state host-eth1 up
+ip route add ::/0 via host-eth1 A1::2
 ```
 
 
-
-#### GTP-U over UDP/IPv6 case
-
-This case uses SRv6 end functions, End.M.GTP6.D.Di and End.M.GTP6.E.
-
-![Topology Diagram](topo-test_gtp6d.png)
-
-VPP1 is configured with "End.M.GTP6.D.Di", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D:: of the packet capture. VPP1 translates it to SRv6 toward D:: with SR policy <D2::, D3::, D4::TEID> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
-
-To start this case with IPv4 payload over GTP-U, you can run:
+### VPP2
 
 ```
-$ ./runner.py test gtp6_drop_in
-```
-
-If you want to use IPv6 payload instead of IPv4, you can run:
-
-```
-$ ./runner.py test gtp6_drop_in_ipv6
+create host-interface name eth1
+set int ip addr host-eth1 A1::2/120
+create host-interface name eth2
+set int ip addr host-eth2 A2::1/120
+set int state host-eth1 up
+set int state host-eth2 up
+ip route add ::/0 via host-eth2 A2::2
 ```
 
 
-### GTP-U to SRv6
-
-This test scenario demonstrates GTP-U to SRv6 translation. A GTP-U packet sent out from one end to another is translated to SRv6.
-
-#### GTP-U over UDP/IPv6 case
-
-##### IPv4 payload
-
-This case uses SRv6 end functions, End.M.GTP6.D and End.DT4.
-
-![Topology Diagram](topo-test_gtp6.png)
-
-VPP1 is configured with "End.M.GTP6.D", and VPP4 is configured with "End.DT4". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D::2. VPP1 translates it to SRv6 toward the IPv6 destination consists of D4:: and TEID of GTP-U with SR policy <D2::, D3::> in SRH. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv4 packet and send out to the packet capture.
-
-To start this case, you can run:
+### VPP3
 
 ```
-$ ./runner.py test gtp6
+create host-interface name eth1
+set int ip addr host-eth1 A2::2/120
+create host-interface name eth2
+set int ip addr host-eth2 A3::1/120
+set int state host-eth1 up
+set int state host-eth2 up
+ip route add ::/0 via host-eth1 A2::1
 ```
 
-##### IPv6 payload
-
-This case uses SRv6 end functions, End.M.GTP6.D and End.DT6.
-
-
-![Topology Diagram](topo-test_gtp6ip6.png)
-
-The configurations are same with IPv4 payload case, except D4:: is configured as "End.DT6" in VPP4. VPP4 decapsulates the SRv6 packet and lookup the table for the inner IPv6 packet and send out to the packet capture.
-
-If you want to use IPv6 payload instead of IPv4, you can run:
+### VPP4
 
 ```
-$ ./runner.py test gtp6_ipv6
+create host-interface name eth1
+set int ip addr host-eth1 A3::2/120
+set int state host-eth1 up
+ip route add ::/0 via host-eth1 A3::1
 ```
 
-## More information
 
-- @subpage runner_doc.md
+## Drop-in for GTP-U over IPv4
+
+What's happened when you run `test tmap`:
+
+    $ ./runner.py test tmap
+
+
+Setting up a virtual interface of packet generator:
+
+#### VPP1
+
+```
+create packet-generator interface pg0
+set int mac address pg0 aa:bb:cc:dd:ee:01
+set int ip addr pg0 172.16.0.1/30
+set ip arp pg0 172.16.0.2/30 aa:bb:cc:dd:ee:02
+```
+
+#### VPP4
+
+```
+create packet-generator interface pg0
+set int mac address pg0 aa:bb:cc:dd:ee:11
+set int ip addr pg0 1.0.0.2/30
+set ip arp pg0 1.0.0.1 aa:bb:cc:dd:ee:22
+```
+
+SRv6 and IP routing settings:
+
+#### VPP1
+
+```
+sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 v6src_prefix C1::/64
+sr steer l3 172.20.0.1/32 via bsid D1::
+
+```
+
+#### VPP2
+
+```
+sr localsid address D2:: behavior end
+ip route add D3::/128 via host-eth2 A2::2
+```
+
+#### VPP3
+
+```
+sr localsid address D3:: behavior end
+ip route add D4::/32 via host-eth2 A3::2
+```
+
+#### VPP4
+
+```
+sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64
+ip route add 172.20.0.1/32 via pg0 1.0.0.1
+```
+
+
+
+
+## Packet generator and testing
+
+    Example how to build custom SRv6 packet in scapy and ipaddress pkgs
+
+    s = '\x11' * 4 + IPv4Address(u"192.168.192.10").packed + '\x11' * 8
+    ip6 = IPv6Address(s)
+    IPv6(dst=ip6, src=ip6)
+
+
+## end.m.gtp4.e
+
+    First set behavior so our localsid node is called with the packet
+    matching C1::1 in fib table
+    sr localsid address C1::1 behavior end.m.gtp4.ess
+
+    show sr localsids behaviors
+    show sr localsid
+
+    We should send a well formated packet to C::1 destination address
+    that contains the correct spec as for end.m.gtp4.e with encapsulated
+    ipv4 src and dst address and teid with port for the conversion to
+    GTPU IPv4 packet
+
+
+## additional commands
+
+    gdb - breakpoint
+
+    break sr_policy_rewrite.c:1620
+
+    break src/plugins/srv6-end/node.c:84
+
+    TMAP
+    Linux:
+
+    ip link add tmp1 type veth peer name tmp2
+    ip link set dev tmp1 up
+    ip link set dev tmp2 up
+    ip addr add 172.20.0.2/24 dev tmp2
+
+    create host-interface name tmp1
+    set int mac address host-tmp1 02:fe:98:c6:c8:7b
+    set interface ip address host-tmp1 172.20.0.1/24
+    set interface state host-tmp1 up
+
+    VPP
+    set sr encaps source addr C1::
+    sr policy add bsid D1::999:2 next D2:: next D3:: gtp4_removal sr-prefix fc34:5678::/64 local-prefix C1::/64
+    sr steer l3 172.21.0.0/24 via bsid d1::999:2
+
+    END
+    Linux
+    create host-interface name tmp1
+    set int mac address host-tmp1 02:fe:98:c6:c8:7b
+    set interface ip address host-tmp1 A1::1/64
+    set interface state host-tmp1 up
+
+    VPP
+    sr localsid address 1111:1111:c0a8:c00a:1122:1111:1111:1111 behavior end.m.gtp4.e
+
+    trace add af-packet-input 10
+
+    sr localsid address C3:: behavior end.m.gtp4.e
+    sr localsid address 2001:200:0:1ce1:3000:757f:0:2 behavior end.m.gtp4.e
