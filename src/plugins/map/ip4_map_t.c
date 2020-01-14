@@ -22,6 +22,7 @@ typedef enum
   IP4_MAPT_NEXT_MAPT_TCP_UDP,
   IP4_MAPT_NEXT_MAPT_ICMP,
   IP4_MAPT_NEXT_MAPT_FRAGMENTED,
+  IP4_MAPT_NEXT_ICMP_ERROR,
   IP4_MAPT_NEXT_DROP,
   IP4_MAPT_N_NEXT
 } ip4_mapt_next_t;
@@ -575,21 +576,26 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto exit;
 	    }
 
+	  dst_port0 = -1;
+
 	  bool df0 =
 	    ip40->flags_and_fragment_offset &
 	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
 
-	  if (PREDICT_FALSE
-	      (df0 && !map_main.frag_ignore_df && (ip4_len0 > d0->mtu)))
-	    {
-	      p0->error = error_node->errors[MAP_ERROR_FRAGMENT_DROPPED];
-	      next0 = IP4_MAPT_NEXT_DROP;
-	      goto exit;
-	    }
-
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
-	  dst_port0 = -1;
+	  if (PREDICT_FALSE
+	      (df0 && !map_main.frag_ignore_df
+	       && ((ip4_len0 - 20) > vnet_buffer (p0)->map_t.mtu)))
+	    {
+	      icmp4_error_set_vnet_buffer (p0, ICMP4_destination_unreachable,
+					   ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+					   vnet_buffer (p0)->map_t.mtu);
+	      p0->error = error_node->errors[MAP_ERROR_DF_SET];
+	      next0 = IP4_MAPT_NEXT_ICMP_ERROR;
+	      goto trace;
+	    }
+
 	  ip4_map_t_classify (p0, d0, ip40, ip4_len0, &dst_port0, &error0,
 			      &next0, l4_dst_port);
 
@@ -626,7 +632,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP4_MAPT_NEXT_DROP : next0;
 	  p0->error = error_node->errors[error0];
-
+	trace:
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      map_add_trace (vm, node, p0, d0 - map_main.domains, dst_port0);
@@ -730,6 +736,7 @@ VLIB_REGISTER_NODE(ip4_map_t_node) = {
       [IP4_MAPT_NEXT_MAPT_TCP_UDP] = "ip4-map-t-tcp-udp",
       [IP4_MAPT_NEXT_MAPT_ICMP] = "ip4-map-t-icmp",
       [IP4_MAPT_NEXT_MAPT_FRAGMENTED] = "ip4-map-t-fragmented",
+      [IP4_MAPT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
       [IP4_MAPT_NEXT_DROP] = "error-drop",
   },
 };
