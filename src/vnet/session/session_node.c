@@ -653,7 +653,10 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
     {
       n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->tx_offset,
 				    len_to_deq, data0);
-      ASSERT (n_bytes_read > 0);
+      if (n_bytes_read <= 0)
+        /* do we need enqueue an event? */
+        return;
+//      ASSERT (n_bytes_read > 0);
       /* Keep track of progress locally, transport is also supposed to
        * increment it independently when pushing the header */
       ctx->tx_offset += n_bytes_read;
@@ -1003,8 +1006,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
 
   /* If we couldn't dequeue all bytes mark as partially read */
-  ASSERT (ctx->left_to_snd == 0);
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
+//  ASSERT (ctx->left_to_snd == 0);
+//  if (ctx->max_len_to_snd < ctx->max_dequeue)
+if (ctx->left_to_snd > 0 ||
+    ctx->max_len_to_snd < ctx->max_dequeue)
     if (svm_fifo_set_event (ctx->s->tx_fifo))
       session_evt_add_old (wrk, elt);
 

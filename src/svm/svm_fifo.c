@@ -810,7 +810,7 @@ static int
 f_try_grow (svm_fifo_t * f, u32 head, u32 tail, u32 len)
 {
   svm_fifo_chunk_t *c;
-  u32 alloc_size, free_alloced;
+  u32 alloc_size, alloc_chunk_size, free_alloced;
 
   free_alloced = f_chunk_end (f->end_chunk) - tail;
   ASSERT (free_alloced < len);
@@ -849,8 +849,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
     {
       if (PREDICT_FALSE (f_try_grow (f, head, tail, len)))
 	{
-	  len = f_chunk_end (f->end_chunk) - tail;
-	  if (!len)
+          if (f_chunk_end (f->end_chunk) - tail < len)
 	    return SVM_FIFO_EGROW;
 	}
     }

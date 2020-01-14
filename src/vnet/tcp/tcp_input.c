@@ -2004,6 +2004,7 @@ in_order:
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
+
   if (tcp_can_delack (tc))
     {
       if (!tcp_timer_is_active (tc, TCP_TIMER_DELACK))

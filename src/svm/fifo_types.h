@@ -57,6 +57,7 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   u32 min_alloc;		/**< min chunk alloc if space available */
   u32 size;			/**< size of the fifo in bytes */
+u32 size_at_largest;
   u8 flags;			/**< fifo flags */
   u8 slice_index;		/**< segment slice for fifo */
 
@@ -111,11 +112,14 @@ struct fifo_segment_header_
   fifo_segment_slice_t *slices;		/** Fixed array of slices */
   ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
   uword n_free_bytes;			/**< Segment free bytes */
+  uword n_cached_bytes;			/**< Cached bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
   u8 flags;				/**< Segment flags */
   u8 n_slices;				/**< Number of slices */
+  u8 high_watermark;                    /**< Memory pressure watermark high */
+  u8 low_watermark;                     /**< Memory pressure watermark low */
 };
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */

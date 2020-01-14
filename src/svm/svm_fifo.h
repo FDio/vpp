@@ -599,6 +599,7 @@ static inline void
 svm_fifo_set_size (svm_fifo_t * f, u32 size)
 {
   f->size = size;
+  f->size_at_largest = clib_max (f->size_at_largest, f->size);
 }
 
 /**
