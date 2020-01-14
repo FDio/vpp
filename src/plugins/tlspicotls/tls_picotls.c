@@ -206,7 +206,13 @@ picotls_transport_close (tls_ctx_t * ctx)
 static int
 picotls_app_close (tls_ctx_t * ctx)
 {
-  picotls_confirm_app_close (ctx);
+  session_t *app_session;
+
+  app_session = session_get_from_handle (ctx->app_session_handle);
+  if (!svm_fifo_max_dequeue_cons (app_session->tx_fifo))
+    picotls_confirm_app_close (ctx);
+  else
+    ctx->app_closed = 1;
 
   return 0;
 }
@@ -491,6 +497,9 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   if (to_tls_len)
     tls_add_vpp_q_tx_evt (tls_session);
   tls_add_vpp_q_builtin_tx_evt (app_session);
+
+  if (ctx->app_closed)
+    picotls_app_close (ctx);
 
   return 0;
 }
