@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a0032b8_3f283173",
+        "filename": "src/vnet/ipsec/esp.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-01-14T16:17:32Z",
+      "side": 0,
+      "message": "i guess this is just dead code, so it should be removed in separate patch...",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 136,
+        "endChar": 0
+      },
+      "revId": "affc5f6d3d3c17eb8ae1cf7b04a1a1e638516ca4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
