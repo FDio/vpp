@@ -28,6 +28,7 @@
 #include <tlsopenssl/tls_openssl.h>
 
 #define MAX_CRYPTO_LEN 64
+static int openssl_app_close (tls_ctx_t * ctx);
 
 openssl_main_t openssl_main;
 static u32
@@ -287,7 +288,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	   SSL_state_string_long (oc->ssl));
 
   if (SSL_in_init (oc->ssl))
-    return 0;
+    return -1;
 
   /*
    * Handshake complete
@@ -417,6 +418,7 @@ static inline int
 openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
   int read, wrote = 0, max_space, max_buf = 100 * TLS_CHUNK_SIZE, rv;
+  int err, has_read = 0;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   u32 deq_max, enq_max, deq_now, to_read;
   session_t *app_session;
@@ -473,20 +475,25 @@ check_app_fifo:
       return wrote;
     }
 
-  deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
-  if (read <= 0)
+  while (has_read < enq_max)
     {
-      tls_add_vpp_q_builtin_rx_evt (tls_session);
-      return wrote;
-    }
-  svm_fifo_enqueue_nocopy (f, read);
-  if (read < enq_max && SSL_pending (oc->ssl) > 0)
-    {
-      deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
+      deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
       read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
-      if (read > 0)
-	svm_fifo_enqueue_nocopy (f, read);
+      if (read <= 0)
+	{
+	  err = SSL_get_error (oc->ssl, read);
+	  if (err == SSL_ERROR_ZERO_RETURN)
+	    {
+	      /* Received a closure alert */
+	      openssl_app_close (ctx);
+	    }
+	  break;
+	}
+      else
+	{
+	  svm_fifo_enqueue_nocopy (f, read);
+	  has_read += read;
+	}
     }
 
   /* If handshake just completed, session may still be in accepting state */
