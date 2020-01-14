@@ -22,6 +22,30 @@
       "revId": "29c4ff468454c8365b22adda4cbf4087e44df8c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52d047c6_48cb9d72",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-14T08:45:20Z",
+      "side": 1,
+      "message": "Oh I see. So it is on-purpose to allocate larger than the actually needed size.\nI\u0027m going to remove this line.\n\nI suppose it implicitly expects that the f-\u003esize is larger than [the current actual size] but not *far* larger than that.",
+      "parentUuid": "11889d07_1f368455",
+      "range": {
+        "startLine": 806,
+        "startChar": 25,
+        "endLine": 806,
+        "endChar": 43
+      },
+      "revId": "29c4ff468454c8365b22adda4cbf4087e44df8c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
