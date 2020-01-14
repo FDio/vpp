@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1b614f82_b1beeaa4",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2439,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2020-01-14T05:08:44Z",
+      "side": 1,
+      "message": "This is for avoid the load balance scenario, if check all the ports in lb dpo, the CPS performance would be impacted.",
+      "parentUuid": "b4d21a69_a340ab5f",
+      "range": {
+        "startLine": 2439,
+        "startChar": 0,
+        "endLine": 2439,
+        "endChar": 43
+      },
+      "revId": "915bdb3843f552775f20eeac6754c323de198a92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f5b0f881_e897fe4b",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2020-01-09T05:35:15Z",
       "side": 1,
       "message": "I guess this means the sw_if_idx could be ~0. We need to check that or validate the interface lower",
+      "range": {
+        "startLine": 2443,
+        "startChar": 14,
+        "endLine": 2443,
+        "endChar": 26
+      },
+      "revId": "915bdb3843f552775f20eeac6754c323de198a92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e298f023_beba22e8",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2443,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2020-01-14T05:08:44Z",
+      "side": 1,
+      "message": "different type of dpo define its own dpo_get_urpf function. This is for fix the previous error that get sw index from dpo directly. A normal lookup should get a adjencency dpo.",
+      "parentUuid": "f5b0f881_e897fe4b",
       "range": {
         "startLine": 2443,
         "startChar": 14,
