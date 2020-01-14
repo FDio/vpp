@@ -117,8 +117,6 @@ evt_pool_init (vlib_main_t * vm)
     }
   om->polling = NULL;
 
-  openssl_async_node_enable_disable (0);
-
   return;
 }
 
@@ -521,8 +519,8 @@ VLIB_REGISTER_NODE (tls_async_process_node,static) = {
     .function = tls_async_process,
     .type = VLIB_NODE_TYPE_INPUT,
     .name = "tls-async-process",
+    .state = VLIB_NODE_STATE_DISABLED,
 };
-
 
 /* *INDENT-ON* */
 
