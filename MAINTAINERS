@@ -576,6 +576,7 @@ M:	Aloys Augustin <aloaugus@cisco.com>
 M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Dave Wallace <dwallacelf@gmail.com>
 M:	Florin Coras <fcoras@cisco.com>
+Y:	src/plugins/quic/FEATURE.yaml
 F:	src/plugins/quic/
 
 libmemif
