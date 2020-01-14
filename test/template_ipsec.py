@@ -181,8 +181,10 @@ class TemplateIpsec(VppTestCase):
         super(TemplateIpsec, cls).tearDownClass()
 
     def setup_params(self):
-        self.ipv4_params = IPsecIPv4Params()
-        self.ipv6_params = IPsecIPv6Params()
+        if not hasattr(self, 'ipv4_params'):
+            self.ipv4_params = IPsecIPv4Params()
+        if not hasattr(self, 'ipv6_params'):
+            self.ipv6_params = IPsecIPv6Params()
         self.params = {self.ipv4_params.addr_type: self.ipv4_params,
                        self.ipv6_params.addr_type: self.ipv6_params}
 
