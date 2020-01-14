@@ -106,6 +106,24 @@
       "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2c28ecd3_578c4bf6",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-14T16:37:50Z",
+      "side": 1,
+      "message": "Hi Florin,\nThanks for all the explanations.\nI didn\u0027t understand the intention of allocating larger than requested, but now I see.",
+      "parentUuid": "33029146_6f919e91",
+      "revId": "beafe95779b291c11b0ff98f74990aaa4f088a9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
