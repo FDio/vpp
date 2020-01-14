@@ -1305,6 +1305,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   {
     int mask_len;
     int is6 = mt->is_ipv6;
+    int l3_offset;
     int l3_src_offs;
     int l3_dst_offs;
     int tags;
@@ -1324,20 +1325,25 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  case 0:
 	  default:
 	    clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+	    l3_offset = 14;
 	    last_tag_table = &mt->table_index;
 	    break;
 	  case 1:
 	    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
 	    clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+	    l3_offset = 18;
 	    last_tag_table = &mt->dot1q_table_index;
 	    break;
 	  case 2:
 	    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
 	    clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
 	    clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+	    l3_offset = 22;
 	    last_tag_table = &mt->dot1ad_table_index;
 	    break;
 	  }
+	/* tos */
+	mask[l3_offset + 1] = 0xff;
 	for (i = 0; i < (mt->prefix_len / 8); i++)
 	  {
 	    mask[l3_src_offs + i] = 0xff;
@@ -1371,20 +1377,25 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	      case 0:
 	      default:
 		clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 14;
 		out_last_tag_table = &mt->out_table_index;
 		break;
 	      case 1:
 		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
 		clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 18;
 		out_last_tag_table = &mt->out_dot1q_table_index;
 		break;
 	      case 2:
 		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
 		clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
 		clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		l3_offset = 22;
 		out_last_tag_table = &mt->out_dot1ad_table_index;
 		break;
 	      }
+	    /* tos */
+	    mask[l3_offset + 1] = 0xff;
 	    for (i = 0; i < (mt->prefix_len / 8); i++)
 	      {
 		mask[l3_dst_offs + i] = 0xff;
@@ -1473,6 +1484,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	      mask[eth] = 0x08;
 	      mask[eth + 1] = 0x00;
 	    }
+	  mask[eth + 3] = a->rules[i].tos;
 
 	  /* add session to table mvec[match_type_index].table_index; */
 	  vnet_classify_add_del_session (cm, tag_table,
@@ -1571,6 +1583,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 		  mask[eth] = 0x08;
 		  mask[eth + 1] = 0x00;
 		}
+	      mask[eth + 3] = a->rules[i].tos;
 
 	      /* add session to table mvec[match_type_index].table_index; */
 	      vnet_classify_add_del_session (cm, tag_table,
@@ -1740,6 +1753,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
       r = &acl_new_rules[i];
       r->is_permit = rules[i].is_permit;
       r->is_ipv6 = rules[i].is_ipv6;
+      r->tos = rules[i].tos;
       memcpy (&r->src_mac, rules[i].src_mac, 6);
       memcpy (&r->src_mac_mask, rules[i].src_mac_mask, 6);
       if (rules[i].is_ipv6)
@@ -2359,6 +2373,7 @@ send_macip_acl_details (acl_main_t * am, vl_api_registration_t * reg,
 	  r = &acl->rules[i];
 	  rules[i].is_permit = r->is_permit;
 	  rules[i].is_ipv6 = r->is_ipv6;
+	  rules[i].tos = r->tos;
 	  memcpy (rules[i].src_mac, &r->src_mac, sizeof (r->src_mac));
 	  memcpy (rules[i].src_mac_mask, &r->src_mac_mask,
 		  sizeof (r->src_mac_mask));
@@ -2908,8 +2923,8 @@ my_macip_acl_rule_t_pretty_format (u8 * out, va_list * args)
 {
   macip_acl_rule_t *a = va_arg (*args, macip_acl_rule_t *);
 
-  out = format (out, "%s action %d ip %U/%d mac %U mask %U",
-		a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
+  out = format (out, "%s action %d tos %d ip %U/%d mac %U mask %U",
+		a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit, a->tos,
 		format_ip46_address, &a->src_ip_addr,
 		a->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		a->src_prefixlen,

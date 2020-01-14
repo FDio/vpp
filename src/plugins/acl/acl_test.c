@@ -200,8 +200,8 @@ vl_api_macip_acl_rule_t_pretty_format (u8 *out, vl_api_macip_acl_rule_t * a)
   u8 src[INET6_ADDRSTRLEN];
   inet_ntop(af, a->src_ip_addr, (void *)src, sizeof(src));
 
-  out = format(out, "%s action %d ip %s/%d mac %U mask %U",
-                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
+  out = format(out, "%s action %d tos %d ip %s/%d mac %U mask %U",
+                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit, a->tos,
                      src, a->src_ip_prefix_len,
                      my_format_mac_address, a->src_mac,
                      my_format_mac_address, a->src_mac_mask);
@@ -1170,6 +1170,7 @@ static int api_macip_acl_add (vat_main_t * vam)
     ip4_address_t src_v4address;
     ip6_address_t src_v6address;
     u8 src_mac[6];
+    u8 tos = 0;
     u8 *tag = 0;
     u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
     int ret;
@@ -1204,6 +1205,11 @@ static int api_macip_acl_add (vat_main_t * vam)
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
             rules[rule_idx].is_permit = action;
+          }
+        else if (unformat (i, "tos %d", &tos))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].tos = tos;
           }
         else if (unformat (i, "ip %U/%d",
          unformat_ip4_address, &src_v4address, &src_prefix_length) ||
@@ -1313,6 +1319,7 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
     ip4_address_t src_v4address;
     ip6_address_t src_v6address;
     u8 src_mac[6];
+    u8 tos = 0;
     u8 *tag = 0;
     u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
     int ret;
@@ -1351,6 +1358,11 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
             rules[rule_idx].is_permit = action;
+          }
+        else if (unformat (i, "tos %d", &tos))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].tos = tos;
           }
         else if (unformat (i, "ip %U/%d",
          unformat_ip4_address, &src_v4address, &src_prefix_length) ||
