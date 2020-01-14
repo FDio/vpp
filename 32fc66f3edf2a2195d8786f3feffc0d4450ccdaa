@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "41849ea6_90cf1a1c",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-14T16:37:50Z",
+      "side": 1,
+      "message": "A minor concern occurred to me now.\nThe large alloc_size here means the allocation of a large chunk. And, since (currently) we don\u0027t shrink the fifo to zero-chunk, this large chunk may be the one lasting chunk in the fifo when the flow becomes idle. Maybe it would happen just very rarely.\nWhat are your thoughts?",
+      "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
