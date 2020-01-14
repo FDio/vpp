@@ -294,6 +294,30 @@ class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
     pass
 
 
+class TestIpsecEspAsync(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec ESP Async - TUN & TRA tests """
+    worker_config = "workers 1"
+
+    def setUp(self):
+        self.ipv4_params = IPsecIPv4Params()
+
+        self.ipv4_params.crypt_algo_vpp_id = (VppEnum.
+                                              vl_api_ipsec_crypto_alg_t.
+                                              IPSEC_API_CRYPTO_ALG_AES_GCM_128)
+        self.ipv4_params.crypt_key = b"JPjyOWBeVEQiMe7h"
+        self.ipv4_params.crypt_algo = "AES-GCM"
+        self.ipv4_params.salt = 2020
+        self.ipv4_params.auth_algo_vpp_id = (VppEnum.
+                                             vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_NONE)
+        self.ipv4_params.auth_key = b''
+        self.ipv4_params.auth_algo = "NULL"
+
+        self.vapi.cli("set crypto async handler aes-128-gcm openssl")
+        self.vapi.cli("set crypto async mode aes-128-gcm on")
+        super(TestIpsecEspAsync, self).setUp()
+
+
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
     """ Ipsec ESP - TCP tests """
     pass
