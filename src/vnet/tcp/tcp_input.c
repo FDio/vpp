@@ -1461,7 +1461,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  tc->rcv_dupacks += 1;
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	}
-      tc->rxt_delivered = clib_max (tc->rxt_delivered + tc->bytes_acked,
+      tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked,
 				    tc->snd_rxt_bytes);
       if (is_dack)
 	tc->prr_delivered += clib_min (tc->snd_mss,
