@@ -113,7 +113,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
   udp_register_dst_port (vm, clib_net_to_host_u16 (lcl->port), node_index,
-			 1 /* is_ipv4 */ );
+			 lcl->is_ip4);
   return listener->c_c_index;
 }
 
