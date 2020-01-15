@@ -48,6 +48,7 @@ static_always_inline gso_header_offset_t
 vnet_gso_header_offset_parser (vlib_buffer_t * b0, int is_ip6)
 {
   gso_header_offset_t gho = { 0 };
+  u16 l2hdr_sz = 0;
   u8 l4_proto = 0;
   u8 l4_hdr_sz = 0;
 
@@ -65,25 +66,30 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0, int is_ip6)
       return gho;
     }
 
-  ethernet_header_t *eh = (ethernet_header_t *) vlib_buffer_get_current (b0);
-  u16 ethertype = clib_net_to_host_u16 (eh->type);
-  u16 l2hdr_sz = sizeof (ethernet_header_t);
-
-  if (ethernet_frame_is_tagged (ethertype))
+  if (b0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
     {
-      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+      ethernet_header_t *eh =
+	(ethernet_header_t *) vlib_buffer_get_current (b0);
+      u16 ethertype = clib_net_to_host_u16 (eh->type);
+      l2hdr_sz = sizeof (ethernet_header_t);
 
-      ethertype = clib_net_to_host_u16 (vlan->type);
-      l2hdr_sz += sizeof (*vlan);
-      if (ethertype == ETHERNET_TYPE_VLAN)
+      if (ethernet_frame_is_tagged (ethertype))
 	{
-	  vlan++;
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
 	  ethertype = clib_net_to_host_u16 (vlan->type);
 	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
 	}
+
+      gho.l2_hdr_offset = b0->current_data;
     }
 
-  gho.l2_hdr_offset = b0->current_data;
   gho.l3_hdr_offset = l2hdr_sz;
 
   if (PREDICT_TRUE (is_ip6 == 0))
