@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d49cfd4_a9b0bd84",
+        "filename": "src/vnet/gso/gso.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-01-15T12:18:41Z",
+      "side": 1,
+      "message": "Nodes set VNET_BUFFER_F_L2_HDR_OFFSET_VALID flag to vlib_buffer_t flags, when l2_hdr_offset is calculated and set by nodes in the buffer metadata. And if the flag is valid, it means offset is already calculated. But there is no guarantee that l2_hdr_offset is always the updated one. The following code should not be in conditional block.",
+      "range": {
+        "startLine": 69,
+        "startChar": 0,
+        "endLine": 69,
+        "endChar": 52
+      },
+      "revId": "09fbb6a5d96222a1f9b0e7ea136531ee1f470254",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
