@@ -32,7 +32,7 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
   return (void *) (uword) (rv + alloc_arena (h));
 }
 
-void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
+static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 {
   uword bucket_size;
 
@@ -185,6 +185,7 @@ void BV (clib_bihash_master_init_svm)
   h->freelists = (void *) (freelist_vh->vector_data);
 
   h->fmt_fn = NULL;
+  h->instantiated = 1;
 }
 
 void BV (clib_bihash_slave_init_svm)
@@ -269,7 +270,7 @@ never_initialized:
 	}
     }
   clib_warning ("Couldn't find hash table %llx on clib_all_bihashes...",
-		(u64) h);
+		(u64) (uword) h);
 }
 
 static
