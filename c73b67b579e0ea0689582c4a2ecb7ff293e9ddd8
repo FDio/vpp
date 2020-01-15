@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "637fe788_1ffc0c0b",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-15T15:41:31Z",
+      "side": 1,
+      "message": "When we initialize free_chunks in fifo_segment_init, we make sure we initialize up to  fsh-\u003emax_log2_chunk_size. \n\nSo if this ever crashes, something is wrong.",
+      "parentUuid": "fd75d75b_3f99b06c",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e1a9b090_046c349a",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 45
