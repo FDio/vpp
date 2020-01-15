@@ -414,8 +414,8 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
   if ((rv = fn (p, ip4, ip6, ctx)) != 0)
     return rv;
 
-  //Truncate when the packet exceeds the minimal IPv6 MTU
-  if (p->current_length > 1280)
+  //Truncate when ICMPv6 error message exceeds the minimal IPv6 MTU
+  if (p->current_length > 1280 && icmp->type < 128)
     {
       ip6->payload_length = clib_host_to_net_u16 (1280 - sizeof (*ip6));
       p->current_length = 1280;	//Looks too simple to be correct...
