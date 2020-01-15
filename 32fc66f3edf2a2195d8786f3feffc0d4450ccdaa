@@ -34,6 +34,24 @@
       "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90895e3d_93d9020c",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-15T12:41:31Z",
+      "side": 1,
+      "message": "I expect the latter option to provide better result, when a good fifo tuning logic is not implemented yet : larger chunks (for better computational cost) and not-too-large chunks (for better memory foot print).",
+      "parentUuid": "b0681b4b_57214e8f",
+      "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
