@@ -38,7 +38,6 @@ if(VPP_BUILD_HS_SAPI_APPS)
     sapi/vpp_echo_proto_udp.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
     DEPENDS api_headers
-    NO_INSTALL
   )
 endif(VPP_BUILD_HS_SAPI_APPS)
 
