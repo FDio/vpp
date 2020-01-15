@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd75d75b_3f99b06c",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-15T12:41:31Z",
+      "side": 1,
+      "message": "This may cause SEGV if the given chunk_size is too big (so the fl_index is too big).",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
