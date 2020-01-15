@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "060b33b6_00e30fe1",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-15T17:46:43Z",
+      "side": 1,
+      "message": "max_log2_chunk_size is supposed to be log2(segment_size / 2). So that is large enough to accomodate 2 fifo chunks half of the size of the segment. Fifos will never be larger than that when allocated and as long as the fifo tuning logic takes care not to increment fifo size beyond that maximum size, this should not happen. If it does, it\u0027ll be a bug on the fifo tuning logic side.\n\nSo, because things are implicitly capped, we should avoid constantly validating all the input, especially on code paths that are often exercised.",
+      "parentUuid": "5db34379_954072ff",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e1a9b090_046c349a",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 45
