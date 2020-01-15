@@ -53,6 +53,8 @@
 #include <vppinfra/bihash_template.h>
 #include <vnet/util/radix.h>
 #include <vnet/util/throttle.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/mfib/mfib_types.h>
 
 /*
  * Default size of the ip6 fib hash table
@@ -115,6 +117,34 @@ typedef struct
   ip6_table_bind_function_t *function;
   uword function_opaque;
 } ip6_table_bind_callback_t;
+
+typedef void (ip6_add_del_fib_table_entry_function_t)
+  (struct ip6_main_t * im,
+   uword opaque,
+   u32 fib_index,
+   const fib_prefix_t * prefix,
+   fib_source_t source,
+   fib_entry_flag_t flags, const fib_route_path_t * rpath, u32 is_del);
+
+typedef void (ip6_add_del_mfib_table_entry_function_t)
+  (struct ip6_main_t * im,
+   uword opaque,
+   u32 fib_index,
+   const mfib_prefix_t * prefix,
+   mfib_source_t source,
+   mfib_entry_flags_t flags, const fib_route_path_t * rpath, u32 is_del);
+
+typedef struct
+{
+  ip6_add_del_fib_table_entry_function_t *function;
+  uword function_opaque;
+} ip6_add_del_fib_table_entry_callback_t;
+
+typedef struct
+{
+  ip6_add_del_mfib_table_entry_function_t *function;
+  uword function_opaque;
+} ip6_add_del_mfib_table_entry_callback_t;
 
 /**
  * Enumeration of the FIB table instance types
@@ -217,6 +247,14 @@ typedef struct ip6_main_t
 
   /** Functions to call when interface to table biding changes. */
   ip6_table_bind_callback_t *table_bind_callbacks;
+
+  /** Functions to call when fib table changes. */
+    ip6_add_del_fib_table_entry_callback_t
+    * add_del_fib_table_entry_callbacks;
+
+  /** Functions to call when mfib table changes. */
+    ip6_add_del_mfib_table_entry_callback_t
+    * add_del_mfib_table_entry_callbacks;
 
   /* ip6 lookup table config parameters */
   u32 lookup_table_nbuckets;

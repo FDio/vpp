@@ -294,6 +294,9 @@ mfib_table_entry_paths_update_i (u32 fib_index,
                                  mfib_source_t source,
                                  const fib_route_path_t *rpaths)
 {
+	ip4_main_t *im4 = &ip4_main;
+	ip6_main_t *im6 = &ip6_main;
+
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
@@ -302,6 +305,21 @@ mfib_table_entry_paths_update_i (u32 fib_index,
 
     if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
     {
+		if (prefix->fp_proto == FIB_PROTOCOL_IP4)
+    	{
+		ip4_add_del_mfib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im4->add_del_mfib_table_entry_callbacks)
+			cb->function (im4, cb->function_opaque, fib_index,
+			prefix, source, MFIB_ENTRY_FLAG_NONE, rpaths, 0);
+		}
+        else if (prefix->fp_proto == FIB_PROTOCOL_IP6)
+    	{
+		ip6_add_del_mfib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im6->add_del_mfib_table_entry_callbacks)
+			cb->function (im6, cb->function_opaque, fib_index,
+			prefix, source, MFIB_ENTRY_FLAG_NONE, rpaths, 0);
+		}
+
         mfib_entry_index = mfib_entry_create(fib_index,
                                              source,
                                              prefix,
@@ -355,6 +373,9 @@ mfib_table_entry_paths_remove_i (u32 fib_index,
                                  mfib_source_t source,
                                  const fib_route_path_t *rpaths)
 {
+    ip4_main_t *im4 = &ip4_main;
+    ip6_main_t *im6 = &ip6_main;
+
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
@@ -370,6 +391,21 @@ mfib_table_entry_paths_remove_i (u32 fib_index,
     else
     {
         int no_more_sources;
+
+		if (prefix->fp_proto == FIB_PROTOCOL_IP4)
+    	{
+		ip4_add_del_mfib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im4->add_del_mfib_table_entry_callbacks)
+			cb->function (im4, cb->function_opaque, fib_index,
+			prefix, source, 0, rpaths, 1);
+		}
+        else if (prefix->fp_proto == FIB_PROTOCOL_IP6)
+    	{
+		ip6_add_del_mfib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im6->add_del_mfib_table_entry_callbacks)
+			cb->function (im6, cb->function_opaque, fib_index,
+			prefix, source, 0, rpaths, 1);
+		}
 
         /*
          * don't nobody go nowhere

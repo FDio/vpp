@@ -587,9 +587,27 @@ fib_table_entry_path_add2 (u32 fib_index,
 			   fib_entry_flag_t flags,
 			   fib_route_path_t *rpaths)
 {
+	ip4_main_t *im4 = &ip4_main;
+	ip6_main_t *im6 = &ip6_main;
+
     fib_node_index_t fib_entry_index;
     fib_table_t *fib_table;
     u32 ii;
+
+	if (prefix->fp_proto == FIB_PROTOCOL_IP4)
+	{
+		ip4_add_del_fib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im4->add_del_fib_table_entry_callbacks)
+			cb->function (im4, cb->function_opaque, fib_index,
+			prefix, source, flags, rpaths, 0);
+	}
+	else if (prefix->fp_proto == FIB_PROTOCOL_IP6)
+	{
+		ip6_add_del_fib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im6->add_del_fib_table_entry_callbacks)
+			cb->function (im6, cb->function_opaque, fib_index,
+			prefix, source, flags, rpaths, 0);
+	}
 
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
@@ -636,9 +654,27 @@ fib_table_entry_path_remove2 (u32 fib_index,
      *    2 - is it still sourced?
      *      no => cover walk
      */
+	ip4_main_t *im4 = &ip4_main;
+	ip6_main_t *im6 = &ip6_main;
+
     fib_node_index_t fib_entry_index;
     fib_route_path_t *rpath;
     fib_table_t *fib_table;
+
+	if (prefix->fp_proto == FIB_PROTOCOL_IP4)
+	{
+		ip4_add_del_fib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im4->add_del_fib_table_entry_callbacks)
+			cb->function (im4, cb->function_opaque, fib_index,
+			prefix, source, 0, rpaths, 1);
+	}
+	else if (prefix->fp_proto == FIB_PROTOCOL_IP6)
+	{
+		ip6_add_del_fib_table_entry_callback_t *cb;
+      	vec_foreach (cb, im6->add_del_fib_table_entry_callbacks)
+			cb->function (im6, cb->function_opaque, fib_index,
+			prefix, source, 0, rpaths, 1);
+	}
 
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
