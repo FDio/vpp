@@ -209,13 +209,13 @@ typedef struct
 	      /* shallow virtual reassembly output variables */
 	      struct
 	      {
-		u8 ip_proto;	/* protocol in ip header */
-		u8 icmp_type_or_tcp_flags;
-		u8 is_non_first_fragment;
-		u8 save_rewrite_length;
 		u16 l4_src_port;	/* tcp/udp/icmp src port */
 		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
 		u32 tcp_ack_number;
+		u8 save_rewrite_length;
+		u8 ip_proto;	/* protocol in ip header */
+		u8 icmp_type_or_tcp_flags;
+		u8 is_non_first_fragment;
 		u32 tcp_seq_number;
 	      };
 	      /* full reassembly output variables */
@@ -396,6 +396,15 @@ STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
 				  mpls.save_rewrite_length) == 1
 	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
 	       "save_rewrite_length member must be able to hold the max value of rewrite length");
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
+	       == STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
+				    ip.reass.save_rewrite_length)
+	       && STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
+				    mpls.save_rewrite_length) ==
+	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
+				 ip.reass.save_rewrite_length),
+	       "save_rewrite_length must be aligned so that reass doesn't overwrite it");
 
 /*
  * The opaque field of the vlib_buffer_t is interpreted as a

@@ -466,8 +466,6 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
-	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		vnet_buffer (b0)->ip.save_rewrite_length;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
 	      if (IP_PROTOCOL_TCP == ip0->protocol)
@@ -547,8 +545,6 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
-	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		vnet_buffer (b0)->ip.save_rewrite_length;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		! !fragment_first;
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
@@ -620,9 +616,6 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		to_next[0] = bi0;
 		to_next += 1;
 		n_left_to_next -= 1;
-		ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
-		vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		  vnet_buffer (b0)->ip.save_rewrite_length;
 		vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		  ! !ip4_get_fragment_offset (vlib_buffer_get_current (b0));
 		vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
