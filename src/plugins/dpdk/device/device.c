@@ -15,6 +15,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
+#include <vppinfra/crc32.h>
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
@@ -147,6 +148,66 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     }
 }
 
+static_always_inline u32
+tx_burst_vector_internal_mq (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     dpdk_device_t *xd, struct rte_mbuf **mb,
+			     u32 n_left)
+{
+  static __thread struct rte_mbuf *tx[DPDK_NB_TX_PER_WORKER][VLIB_FRAME_SIZE];
+  vlib_buffer_t *b;
+  const ethernet_header_t *eth;
+  const ip4_header_t *ip;
+  u32 hash, qid, txidx[DPDK_NB_TX_PER_WORKER] = {}, n = n_left;
+  int i, j, sent[DPDK_NB_TX_PER_WORKER];
+
+  while (n > 0)
+    {
+      b = vlib_buffer_from_rte_mbuf (mb[0]);
+      eth = vlib_buffer_get_current (b);
+      ip = (void *) (eth + 1);
+      hash =
+	clib_crc32c ((void *) &ip->address_pair, sizeof (ip->address_pair));
+      qid = hash % DPDK_NB_TX_PER_WORKER;
+      tx[qid][txidx[qid]] = mb[0];
+      txidx[qid]++;
+      mb++;
+      n--;
+    }
+
+  for (i = 0; i < DPDK_NB_TX_PER_WORKER; i++)
+    {
+      sent[i] = rte_eth_tx_burst (xd->port_id,
+				  vm->thread_index * DPDK_NB_TX_PER_WORKER + i,
+				  tx[i], txidx[i]);
+      if (PREDICT_FALSE (sent[i] < 0))
+	{
+	  clib_warning ("rte_eth_tx_burst[%d]: error %d", xd->port_id, sent);
+	  sent[i] = 0;
+	}
+    }
+
+  for (i = 0; i < DPDK_NB_TX_PER_WORKER; i++)
+    {
+      int err = txidx[i] - sent[i];
+      if (PREDICT_FALSE (err > 0))
+	{
+	  vlib_simple_counter_main_t *cm;
+	  vnet_main_t *vnm = vnet_get_main ();
+	  cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
+				 VNET_INTERFACE_COUNTER_TX_ERROR);
+	  vlib_increment_simple_counter (cm, vm->thread_index, xd->sw_if_index,
+					 err);
+	  vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
+			    err);
+	  for (j = 0; j < err; j++)
+	    rte_pktmbuf_free (tx[i][sent[i] + j]);
+	}
+    }
+
+  return n_left;
+}
+
+#if 0
 /*
  * This function calls the dpdk's tx_burst function to transmit the packets.
  * It manages a lock per-device if the device does not
@@ -165,6 +226,7 @@ static_always_inline
   int queue_id;
 
   n_retry = 16;
+
   queue_id = vm->thread_index % xd->tx_q_used;
   txq = vec_elt_at_index (xd->tx_queues, queue_id);
 
@@ -206,6 +268,7 @@ static_always_inline
 
   return n_left;
 }
+#endif
 
 static_always_inline __clib_unused void
 dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
@@ -427,6 +490,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 
   /* transmit as many packets as possible */
   tx_pkts = n_packets = mb - ptd->mbufs;
+#if 0
   n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets);
 
   {
@@ -450,6 +514,9 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left - 1]);
       }
   }
+#else
+  tx_pkts = tx_burst_vector_internal_mq (vm, node, xd, ptd->mbufs, n_packets);
+#endif
 
   return tx_pkts;
 }

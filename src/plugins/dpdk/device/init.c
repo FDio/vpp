@@ -386,7 +386,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
-      xd->tx_q_used = clib_min (dev_info.max_tx_queues, tm->n_vlib_mains);
+      xd->tx_q_used = clib_min (dev_info.max_tx_queues,
+				tm->n_vlib_mains * DPDK_NB_TX_PER_WORKER);
 
       if (devconf->num_tx_queues > 0
 	  && devconf->num_tx_queues < xd->tx_q_used)

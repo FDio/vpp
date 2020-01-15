@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#define DPDK_NB_TX_PER_WORKER 2
+
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_NB_RX_DESC_VIRTIO    256
