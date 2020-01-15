@@ -52,6 +52,24 @@
       "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "022028b9_ebf0016e",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-15T15:41:31Z",
+      "side": 1,
+      "message": "Still thinking about it. In theory we\u0027ll soon have the fifo tuning logic, but I agree the latter might be good to have.",
+      "parentUuid": "90895e3d_93d9020c",
+      "revId": "32fc66f3edf2a2195d8786f3feffc0d4450ccdaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
