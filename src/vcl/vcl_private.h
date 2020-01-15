@@ -518,6 +518,14 @@ vcl_session_is_ct (vcl_session_t * s)
 }
 
 static inline u8
+vcl_session_is_cl (vcl_session_t * s)
+{
+  if (s->session_type == VPPCOM_PROTO_UDP)
+    return 1;
+  return 0;
+}
+
+static inline u8
 vcl_session_is_open (vcl_session_t * s)
 {
   return ((s->session_state & STATE_OPEN)

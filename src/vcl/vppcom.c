@@ -589,7 +589,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   vec_validate (wrk->vpp_event_queues, 0);
   wrk->vpp_event_queues[0] = session->vpp_evt_q;
 
-  if (session->is_dgram)
+  if (vcl_session_is_cl (session))
     {
       svm_fifo_t *rx_fifo, *tx_fifo;
       session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
@@ -2518,12 +2518,20 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	svm_fifo_add_want_deq_ntf (session->tx_fifo,
 				   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
-      /* Generate EPOLLOUT when tx_fifo/ct_tx_fifo not full */
+      /* Generate EPOLLOUT if tx fifo not full */
       if ((event->events & EPOLLOUT) &&
 	  (vcl_session_write_ready (session) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_TX;
+	  e.session_index = session->session_index;
+	  vec_add1 (wrk->unhandled_evts_vector, e);
+	}
+      /* Generate EPOLLIN if rx fifo has data */
+      if ((event->events & EPOLLIN) && (vcl_session_read_ready (session) > 0))
+	{
+	  session_event_t e = { 0 };
+	  e.event_type = SESSION_IO_EVT_RX;
 	  e.session_index = session->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
