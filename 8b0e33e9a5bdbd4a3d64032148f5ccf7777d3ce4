@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa4316e0_baa628e4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-15T06:12:25Z",
+      "side": 1,
+      "message": "We\u0027re reading bytes from the bio and we enqueue them in the app\u0027s fifo. This is then not an app close, i.e., notification that the app closed the app session. This should probably be handled like tls_session_disconnect_callback, i.e., openssl_transport_close and ctx-\u003eis_passive_close \u003d 1.\n\nI guess you may need to also start disconnecting tcp so tls_disconnect_transport should also be called.",
+      "range": {
+        "startLine": 488,
+        "startChar": 7,
+        "endLine": 488,
+        "endChar": 31
+      },
+      "revId": "8b0e33e9a5bdbd4a3d64032148f5ccf7777d3ce4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
