@@ -46,6 +46,8 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/util/throttle.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/mfib/mfib_types.h>
 
 typedef struct ip4_mfib_t
 {
@@ -92,6 +94,34 @@ typedef struct
   ip4_table_bind_function_t *function;
   uword function_opaque;
 } ip4_table_bind_callback_t;
+
+typedef void (ip4_add_del_fib_table_entry_function_t)
+  (struct ip4_main_t * im,
+   uword opaque,
+   u32 fib_index,
+   const fib_prefix_t * prefix,
+   fib_source_t source,
+   fib_entry_flag_t flags, const fib_route_path_t * rpath, u32 is_del);
+
+typedef void (ip4_add_del_mfib_table_entry_function_t)
+  (struct ip4_main_t * im,
+   uword opaque,
+   u32 fib_index,
+   const mfib_prefix_t * prefix,
+   mfib_source_t source,
+   mfib_entry_flags_t flags, const fib_route_path_t * rpath, u32 is_del);
+
+typedef struct
+{
+  ip4_add_del_fib_table_entry_function_t *function;
+  uword function_opaque;
+} ip4_add_del_fib_table_entry_callback_t;
+
+typedef struct
+{
+  ip4_add_del_mfib_table_entry_function_t *function;
+  uword function_opaque;
+} ip4_add_del_mfib_table_entry_callback_t;
 
 /**
  * @brief IPv4 main type.
@@ -144,6 +174,14 @@ typedef struct ip4_main_t
 
   /** Functions to call when interface to table biding changes. */
   ip4_table_bind_callback_t *table_bind_callbacks;
+
+  /** Functions to call when fib table changes. */
+    ip4_add_del_fib_table_entry_callback_t
+    * add_del_fib_table_entry_callbacks;
+
+  /** Functions to call when mfib table changes. */
+    ip4_add_del_mfib_table_entry_callback_t
+    * add_del_mfib_table_entry_callbacks;
 
   /** Template used to generate IP4 ARP packets. */
   vlib_packet_template_t ip4_arp_request_packet_template;

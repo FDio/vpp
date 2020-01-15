@@ -16,112 +16,12 @@
 #ifndef __FIB_ENTRY_H__
 #define __FIB_ENTRY_H__
 
+#include <vnet/fib/fib_types.h>
 #include <vnet/fib/fib_node.h>
 #include <vnet/fib/fib_source.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
-
-/**
- * The different sources that can create a route.
- * The sources are defined here with their relative priority order.
- * The lower the value the higher the priority
- */
-typedef enum fib_entry_attribute_t_ {
-    /**
-     * Marker. Add new values after this one.
-     */
-    FIB_ENTRY_ATTRIBUTE_FIRST,
-    /**
-     * Connected. The prefix is configured on an interface.
-     */
-    FIB_ENTRY_ATTRIBUTE_CONNECTED = FIB_ENTRY_ATTRIBUTE_FIRST,
-    /**
-     * Attached. The prefix is attached to an interface.
-     */
-    FIB_ENTRY_ATTRIBUTE_ATTACHED,
-    /**
-     * The route is an explicit drop.
-     */
-    FIB_ENTRY_ATTRIBUTE_DROP,
-    /**
-     * The route is exclusive. The client creating the route is
-     * providing an exclusive adjacency.
-     */
-    FIB_ENTRY_ATTRIBUTE_EXCLUSIVE,
-    /**
-     * The route is attached cross tables and thus imports covered
-     * prefixes from the other table.
-     */
-    FIB_ENTRY_ATTRIBUTE_IMPORT,
-    /**
-     * The prefix/address is local to this device
-     */
-    FIB_ENTRY_ATTRIBUTE_LOCAL,
-    /**
-     * The prefix/address is a multicast prefix.
-     *  this aplies only to MPLS. IP multicast is handled by mfib
-     */
-    FIB_ENTRY_ATTRIBUTE_MULTICAST,
-    /**
-     * The prefix/address exempted from loose uRPF check
-     * To be used with caution
-     */
-    FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
-    /**
-     * The prefix/address exempted from attached export
-     */
-    FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT,
-    /**
-     * This FIB entry imposes its source information on all prefixes
-     * that is covers
-     */
-    FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
-    /**
-     * The interpose attribute.
-     * place the forwarding provided by the source infront of the forwarding
-     * provided by the best source, or failing that, by the cover.
-     */
-    FIB_ENTRY_ATTRIBUTE_INTERPOSE,
-    /**
-     * Marker. add new entries before this one.
-     */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_INTERPOSE,
-} fib_entry_attribute_t;
-
-#define FIB_ENTRY_ATTRIBUTES {		       		\
-    [FIB_ENTRY_ATTRIBUTE_CONNECTED] = "connected",	\
-    [FIB_ENTRY_ATTRIBUTE_ATTACHED]  = "attached",	\
-    [FIB_ENTRY_ATTRIBUTE_IMPORT]    = "import",	        \
-    [FIB_ENTRY_ATTRIBUTE_DROP]      = "drop",		\
-    [FIB_ENTRY_ATTRIBUTE_EXCLUSIVE] = "exclusive",      \
-    [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
-    [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
-    [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
-    [FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT] = "no-attached-export",	\
-    [FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT] = "covered-inherit",  \
-    [FIB_ENTRY_ATTRIBUTE_INTERPOSE] = "interpose",  \
-}
-
-#define FOR_EACH_FIB_ATTRIBUTE(_item)			\
-    for (_item = FIB_ENTRY_ATTRIBUTE_FIRST;		\
-	 _item <= FIB_ENTRY_ATTRIBUTE_LAST;		\
-	 _item++)
-
-typedef enum fib_entry_flag_t_ {
-    FIB_ENTRY_FLAG_NONE      = 0,
-    FIB_ENTRY_FLAG_CONNECTED = (1 << FIB_ENTRY_ATTRIBUTE_CONNECTED),
-    FIB_ENTRY_FLAG_ATTACHED  = (1 << FIB_ENTRY_ATTRIBUTE_ATTACHED),
-    FIB_ENTRY_FLAG_DROP      = (1 << FIB_ENTRY_ATTRIBUTE_DROP),
-    FIB_ENTRY_FLAG_EXCLUSIVE = (1 << FIB_ENTRY_ATTRIBUTE_EXCLUSIVE),
-    FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
-    FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
-    FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT = (1 << FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT),
-    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
-    FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
-    FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),
-    FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
-} __attribute__((packed)) fib_entry_flag_t;
 
 extern u8 * format_fib_entry_flags(u8 *s, va_list *args);
 
