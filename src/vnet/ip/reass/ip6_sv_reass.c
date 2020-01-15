@@ -559,9 +559,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		  next0 = IP6_SV_REASSEMBLY_NEXT_DROP;
 		  goto packet_enqueue;
 		}
-	      ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
-	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		vnet_buffer (b0)->ip.save_rewrite_length;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      next0 = IP6_SV_REASSEMBLY_NEXT_INPUT;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -631,9 +628,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 
 	  if (reass->is_complete)
 	    {
-	      ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
-	      vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		vnet_buffer (b0)->ip.save_rewrite_length;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		! !ip6_frag_hdr_offset (frag_hdr);
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
@@ -712,9 +706,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		frag_hdr =
 		  vlib_buffer_get_current (b0) +
 		  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset;
-		ASSERT (vnet_buffer (b0)->ip.save_rewrite_length < (2 << 14));
-		vnet_buffer (b0)->ip.reass.save_rewrite_length =
-		  vnet_buffer (b0)->ip.save_rewrite_length;
 		vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		  ! !ip6_frag_hdr_offset (frag_hdr);
 		vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
