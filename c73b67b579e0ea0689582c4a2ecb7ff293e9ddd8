@@ -51,6 +51,24 @@
       "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "736aaa4d_d7f0240d",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-15T15:43:05Z",
+      "side": 1,
+      "message": "We should not go under any circumstances beyond the end of the fifo. The callers make sure with f_grow_fifo that enough chunks were allocated.",
+      "parentUuid": "e1a9b090_046c349a",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
