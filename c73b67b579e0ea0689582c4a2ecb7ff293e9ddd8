@@ -16,6 +16,23 @@
       "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1a9b090_046c349a",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-15T15:31:05Z",
+      "side": 1,
+      "message": "NULL-check for c is needed here.",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
