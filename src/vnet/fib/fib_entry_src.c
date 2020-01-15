@@ -1231,6 +1231,8 @@ fib_entry_src_action_installed (const fib_entry_t *fib_entry,
 
     esrc = fib_entry_src_find(fib_entry, source);
 
+    if (esrc == NULL) return;
+
     FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_installed,
                              (esrc, fib_entry));
 
