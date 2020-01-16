@@ -34,6 +34,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6b5b25e3_e3fd863a",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-16T15:43:29Z",
+      "side": 1,
+      "message": "At this moment I\u0027m using a tentative simple fifo-tuning-logic which would increase or decrease f-\u003esize per certain conditions, just to do some functional tests. Then I see this ASSERT hits frequently.\nIf this ASSERT is valid, fifo-tuning-logic needs to be careful about the limit of reduction.",
+      "parentUuid": "8ffa2e3b_793112e9",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
