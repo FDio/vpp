@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,11 +15,21 @@
 /**
  * @brief The NAT44 inline functions
  */
-#ifndef __included_nat44_inlines_h__
-#define __included_nat44_inlines_h__
+
+#ifndef included_nat44_inlines_h__
+#define included_nat44_inlines_h__
 
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
+
+static_always_inline u8
+nat44_maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
+{
+  if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
+      sm->max_translations)
+    return 1;
+  return 0;
+}
 
 static_always_inline void
 nat44_session_cleanup (snat_session_t * s, u32 thread_index)
@@ -98,7 +108,7 @@ nat44_session_try_cleanup (ip4_address_t * addr,
 			  thread_index, now);
 }
 
-#endif /* __included_nat44_inlines_h__ */
+#endif /* included_nat44_inlines_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

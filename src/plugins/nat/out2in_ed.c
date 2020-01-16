@@ -28,7 +28,7 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
@@ -205,7 +205,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 
   nat44_session_try_cleanup (&l_key.addr, l_key.fib_index, thread_index, now);
 
-  if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_elog_notice ("maximum sessions exceeded");
@@ -369,7 +369,7 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
     {
       u32 proto;
 
-      if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
 	return;
 
       u = nat_user_get_or_create (sm, &ip->dst_address, sm->inside_fib_index,
@@ -592,7 +592,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t * sm,
     }
   else
     {
-      if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_elog_notice ("maximum sessions exceeded");

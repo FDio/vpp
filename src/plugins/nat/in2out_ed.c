@@ -28,7 +28,7 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
@@ -211,7 +211,7 @@ slow_path_ed (snat_main_t * sm,
 
   nat44_session_try_cleanup (&key->l_addr, rx_fib_index, thread_index, now);
 
-  if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
@@ -685,7 +685,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
     }
   else
     {
-      if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
