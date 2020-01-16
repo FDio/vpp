@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "04d29cc1_8f1019f0",
+        "filename": "src/plugins/map/ip4_map_t.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-01-16T15:18:43Z",
+      "side": 1,
+      "message": "Is the 20 being added to ip4_len0 because it\u0027s the difference in size of an IPv4 header and an IPv6 header? If so, can you change the 20 to (sizeof(ip6_header_t) - sizeof(ip4_header_t))? It will be easier for someone reading the code to understand what\u0027s being added to the packet length and why.",
+      "range": {
+        "startLine": 589,
+        "startChar": 24,
+        "endLine": 589,
+        "endChar": 26
+      },
+      "revId": "62ddfcaac4e055d2d602c336ae1a5d2db6e3b970",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
