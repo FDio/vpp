@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a774a270_28e822ca",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1398,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-01-16T07:54:47Z",
+      "side": 1,
+      "message": "this sets the mask to always require an exact match on the rules TOS - even if the API user didn\u0027t specify one (i.e. it default to 0).\ni.e. an attacker could bypass a deny rule if the TOS is set to non-zero. in other words if i want to deny a specific mac/ip combination, now i have to specify all possible TOS values?",
+      "revId": "45d33a959be88f76e7d076546886b38b15b1831a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
