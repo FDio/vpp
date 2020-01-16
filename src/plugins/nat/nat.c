@@ -161,12 +161,14 @@ VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ed-in2out-output",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
+  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
+  .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_hairpin_src, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ed-hairpin-src",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
+  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
+  .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 
 /* Hook up ip4-local features */
