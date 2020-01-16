@@ -2956,7 +2956,7 @@ vnet_classify_init (vlib_main_t * vm)
   set->table_indices[0] = ~0;
   /* Initialize the pcap filter set */
   vec_validate (cm->filter_set_by_sw_if_index, 0);
-  cm->filter_set_by_sw_if_index[0] = ~0;
+  cm->filter_set_by_sw_if_index[0] = 0;
   /* Initialize the packet tracer filter set */
   vlib_global_main.trace_filter.trace_filter_set_index = ~0;
 
