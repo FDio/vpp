@@ -1583,7 +1583,7 @@ add_vpp_library(vnet
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
   LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
-  DEPENDS api_headers
+  DEPENDS vpp_version_h api_headers
 )
 
 ##############################################################################
