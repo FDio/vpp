@@ -59,4 +59,5 @@ Available SRv6 plugins include:
 - @subpage srv6_as_plugin_doc
 - @subpage srv6_ad_plugin_doc
 - @subpage srv6_am_plugin_doc
+- @subpage srv6_mobile_plugin_doc
 
