@@ -1767,6 +1767,7 @@ static void *vl_api_sw_interface_vhost_user_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sw_interface_vhost_user_dump ");
+  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }

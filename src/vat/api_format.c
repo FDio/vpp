@@ -12638,6 +12638,7 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
 
   /* Get list of vhost-user interfaces */
   M (SW_INTERFACE_VHOST_USER_DUMP, mp);
+  mp->sw_if_index = ntohl (~0);
   S (mp);
 
   /* Use a control ping for synchronization */
