@@ -70,6 +70,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fcbeba17_f70f1d0e",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-16T17:17:42Z",
+      "side": 1,
+      "message": "Got it. Thanks.",
+      "parentUuid": "6c2c8ae5_81cac8af",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
