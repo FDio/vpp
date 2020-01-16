@@ -28,7 +28,7 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
@@ -191,7 +191,7 @@ create_session_for_static_mapping (snat_main_t * sm,
   nat44_session_try_cleanup (&in2out.addr, in2out.fib_index, thread_index,
 			     now);
 
-  if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_elog_notice ("maximum sessions exceeded");
