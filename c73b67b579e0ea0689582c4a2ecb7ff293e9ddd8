@@ -73,6 +73,24 @@
     },
     {
       "key": {
+        "uuid": "02629e34_762185db",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-16T14:46:45Z",
+      "side": 1,
+      "message": "I see. I agree it is reasonable to omit that validation.",
+      "parentUuid": "060b33b6_00e30fe1",
+      "revId": "c73b67b579e0ea0689582c4a2ecb7ff293e9ddd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e1a9b090_046c349a",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 45
