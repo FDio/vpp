@@ -2952,13 +2952,11 @@ vnet_classify_init (vlib_main_t * vm)
   vnet_classify_register_unformat_acl_next_index_fn (unformat_acl_next_node);
 
   /* Filter set 0 is grounded... */
-  pool_get (cm->filter_sets, set);
+  pool_get_zero (cm->filter_sets, set);
   set->refcnt = 0x7FFFFFFF;
-  vec_validate (set->table_indices, 0);
-  set->table_indices[0] = ~0;
   /* Initialize the pcap filter set */
   vec_validate (cm->filter_set_by_sw_if_index, 0);
-  cm->filter_set_by_sw_if_index[0] = ~0;
+  cm->filter_set_by_sw_if_index[0] = 0;
   /* Initialize the packet tracer filter set */
   vlib_global_main.trace_filter.trace_filter_set_index = ~0;
 
