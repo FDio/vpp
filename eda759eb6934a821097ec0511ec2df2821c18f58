@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "986cb73d_5e9f7acd",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-16T14:46:45Z",
+      "side": 1,
+      "message": "Hi Florin,\nIs this ASSERT still valid, whereas we may decrease f-\u003esize regardless of the actual size?",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
