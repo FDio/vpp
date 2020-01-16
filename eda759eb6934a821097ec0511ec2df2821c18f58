@@ -16,6 +16,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ffa2e3b_793112e9",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-16T15:23:02Z",
+      "side": 1,
+      "message": "I think it still is. That is, we shouldn\u0027t have more out-of-order data than the full size of the fifo. And although we can reduce the size of the fifo externally, we shouldn\u0027t reduce it to a point where it covers less than the amount of data written. \n\nAre you thinking that it may be too loose or too strict?",
+      "parentUuid": "986cb73d_5e9f7acd",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
