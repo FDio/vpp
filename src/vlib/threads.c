@@ -387,7 +387,7 @@ vlib_frame_queue_alloc (int nelts)
       if (nelts & (nelts - 1))
 	{
 	  fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
-	  abort ();
+         abort ();
 	}
     }
 
@@ -1216,6 +1216,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *name;
   uword *bitmap;
   u32 count;
+  u8 manual_auto_pin = 0;
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
 
@@ -1247,6 +1248,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	       unformat (input, "corelist-%s %U", &name,
 			 unformat_bitmap_list, &bitmap))
 	{
+      if (manual_auto_pin)
+        return clib_error_return (0, "Invalid config: worker already specified");
+
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
 	  if (p == 0)
 	    return clib_error_return (0, "no such thread type '%s'", name);
@@ -1260,6 +1264,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
+      manual_auto_pin = 1;
 	}
       else
 	if (unformat
@@ -1270,6 +1275,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "%s %u", &name, &count))
 	{
+      if (manual_auto_pin)
+        return clib_error_return (0, "Invalid config: corelist already specified");
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
 	  if (p == 0)
 	    return clib_error_return (0, "no such thread type 3 '%s'", name);
@@ -1279,6 +1286,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	    return clib_error_return
 	      (0, "number of %s threads not configurable", tr->name);
 	  tr->count = count;
+      manual_auto_pin = 1;
 	}
       else
 	break;
