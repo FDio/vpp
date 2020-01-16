@@ -52,6 +52,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c2c8ae5_81cac8af",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-16T15:56:57Z",
+      "side": 1,
+      "message": "Hm. I believe size reduction should always ensure that head + f-\u003esize is more than the last byte written out-of-order. \n\nThat\u0027s why the best way to reduce fifo size would be after a dequeue because reducing the size by the amount of bytes dequeued would have no impact (head + f-\u003esize)",
+      "parentUuid": "6b5b25e3_e3fd863a",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
