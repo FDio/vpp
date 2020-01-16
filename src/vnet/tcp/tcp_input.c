@@ -3221,7 +3221,20 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left_from -= 1;
 
       b0 = vlib_get_buffer (vm, bi0);
+
+      if (is_ip4)
+	{
+	  ip40 = vlib_buffer_get_current (b0);
+	  th0 = tcp_buffer_hdr (b0);
+	}
+      else
+	{
+	  ip60 = vlib_buffer_get_current (b0);
+	  th0 = tcp_buffer_hdr (b0);
+	}
+
       lc0 = tcp_listener_get (vnet_buffer (b0)->tcp.connection_index);
+
       if (PREDICT_FALSE (lc0 == 0))
 	{
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
@@ -3234,17 +3247,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  lc0 = tcp_lookup_listener (b0, tc0->c_fib_index, is_ip4);
 	  /* clean up the old session */
 	  tcp_connection_del (tc0);
-	}
-
-      if (is_ip4)
-	{
-	  ip40 = vlib_buffer_get_current (b0);
-	  th0 = tcp_buffer_hdr (b0);
-	}
-      else
-	{
-	  ip60 = vlib_buffer_get_current (b0);
-	  th0 = tcp_buffer_hdr (b0);
 	}
 
       /* Create child session. For syn-flood protection use filter */
