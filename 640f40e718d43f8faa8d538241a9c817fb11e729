@@ -46,6 +46,30 @@
       "revId": "640f40e718d43f8faa8d538241a9c817fb11e729",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "331a6098_3a6b9ff7",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2011,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-17T15:31:02Z",
+      "side": 1,
+      "message": "Hi Shibuya-san, \n\nActually the ack is built based on the current rcv_nxt, not based on the segment. So we\u0027ll practically generate a duplicate ack and send an updated rcv_wnd to the peer.",
+      "parentUuid": "46b70363_f1ea4a74",
+      "range": {
+        "startLine": 2010,
+        "startChar": 1,
+        "endLine": 2011,
+        "endChar": 17
+      },
+      "revId": "640f40e718d43f8faa8d538241a9c817fb11e729",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
