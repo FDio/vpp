@@ -2004,6 +2004,12 @@ in_order:
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
+
+  /* In the case of enqueuing failure, drop the segment.
+   * The peer (sender) should detect the drop and retransmit it. */
+  if (error < 0)
+    return error;
+
   if (tcp_can_delack (tc))
     {
       if (!tcp_timer_is_active (tc, TCP_TIMER_DELACK))
@@ -2207,7 +2213,11 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (vnet_buffer (b0)->tcp.data_len)
 	error0 = tcp_segment_rcv (wrk, tc0, b0);
 
-      /* 8: check the FIN bit */
+      /* 8. ignore the segment, if we failed to enqueue it */
+      if (error0 < 0)
+	goto done;
+
+      /* 9 check the FIN bit */
       if (PREDICT_FALSE (tcp_is_fin (th0)))
 	tcp_rcv_fin (wrk, tc0, b0, &error0);
 
@@ -2673,6 +2683,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  error0 = tcp_segment_rcv (wrk, new_tc0, b0);
 	  if (error0 == TCP_ERROR_ACK_OK)
 	    error0 = TCP_ERROR_SYN_ACKS_RCVD;
+	  else if (error0 == SVM_FIFO_EGROW || error0 == SVM_FIFO_EFULL)
+	    goto drop;
 	}
       else
 	{
