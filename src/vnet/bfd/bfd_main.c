@@ -1054,6 +1054,19 @@ bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
       now + bm->wheel_inaccuracy)
     {
       BFD_DBG ("Rx timeout, session goes down");
+      /*
+       * RFC 5880 6.8.1. State Variables
+
+       * bfd.RemoteDiscr
+
+       * The remote discriminator for this BFD session.  This is the
+       * discriminator chosen by the remote system, and is totally opaque
+       * to the local system.  This MUST be initialized to zero.  If a
+       * period of a Detection Time passes without the receipt of a valid,
+       * authenticated BFD packet from the remote system, this variable
+       * MUST be set to zero.
+       */
+      bs->remote_discr = 0;
       bfd_set_diag (bs, BFD_DIAG_CODE_det_time_exp);
       bfd_set_state (bm, bs, BFD_STATE_down, handling_wakeup);
       /*
