@@ -85,7 +85,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   u32 *fragments_to_drop = 0;
-  u32 *fragments_to_loopback = 0;
   u32 next_in2out = 0, next_out2in = 0, frag_cached = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -107,7 +106,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	  snat_address_t *ap;
 	  snat_session_key_t m_key0;
 	  clib_bihash_kv_8_8_t kv0, value0;
-	  u8 cached0 = 0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -166,48 +164,17 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	    {
 	      nat44_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->cached = cached0;
-	      if (!cached0)
-		t->next_in2out = next0 == NAT44_CLASSIFY_NEXT_IN2OUT ? 1 : 0;
+	      t->cached = 0;
+	      t->next_in2out = next0 == NAT44_CLASSIFY_NEXT_IN2OUT ? 1 : 0;
 	    }
 
-	  if (cached0)
-	    {
-	      n_left_to_next++;
-	      to_next--;
-	      frag_cached++;
-	    }
-	  else
-	    {
-	      next_in2out += next0 == NAT44_CLASSIFY_NEXT_IN2OUT;
-	      next_out2in += next0 == NAT44_CLASSIFY_NEXT_OUT2IN;
+	  next_in2out += next0 == NAT44_CLASSIFY_NEXT_IN2OUT;
+	  next_out2in += next0 == NAT44_CLASSIFY_NEXT_OUT2IN;
 
-	      /* verify speculative enqueue, maybe switch current next frame */
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       bi0, next0);
-	    }
-
-	  if (n_left_from == 0 && vec_len (fragments_to_loopback))
-	    {
-	      from = vlib_frame_vector_args (frame);
-	      u32 len = vec_len (fragments_to_loopback);
-	      if (len <= VLIB_FRAME_SIZE)
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback,
-				    sizeof (u32) * len);
-		  n_left_from = len;
-		  vec_reset_length (fragments_to_loopback);
-		}
-	      else
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback +
-				    (len - VLIB_FRAME_SIZE),
-				    sizeof (u32) * VLIB_FRAME_SIZE);
-		  n_left_from = VLIB_FRAME_SIZE;
-		  _vec_len (fragments_to_loopback) = len - VLIB_FRAME_SIZE;
-		}
-	    }
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -240,7 +207,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 *fragments_to_drop = 0;
-  u32 *fragments_to_loopback = 0;
   u32 next_in2out = 0, next_out2in = 0, frag_cached = 0;
   u8 in_loopback = 0;
 
@@ -265,7 +231,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  snat_session_key_t m_key0;
 	  clib_bihash_kv_8_8_t kv0, value0;
 	  clib_bihash_kv_16_8_t ed_kv0, ed_value0;
-	  u8 cached0 = 0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -351,50 +316,17 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	    {
 	      nat44_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->cached = cached0;
-	      if (!cached0)
-		t->next_in2out =
-		  next0 == NAT_NEXT_IN2OUT_ED_FAST_PATH ? 1 : 0;
+	      t->cached = 0;
+	      t->next_in2out = next0 == NAT_NEXT_IN2OUT_ED_FAST_PATH ? 1 : 0;
 	    }
 
-	  if (cached0)
-	    {
-	      n_left_to_next++;
-	      to_next--;
-	      frag_cached++;
-	    }
-	  else
-	    {
-	      next_in2out += next0 == NAT_NEXT_IN2OUT_ED_FAST_PATH;
-	      next_out2in += next0 == NAT_NEXT_OUT2IN_ED_FAST_PATH;
+	  next_in2out += next0 == NAT_NEXT_IN2OUT_ED_FAST_PATH;
+	  next_out2in += next0 == NAT_NEXT_OUT2IN_ED_FAST_PATH;
 
-	      /* verify speculative enqueue, maybe switch current next frame */
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       bi0, next0);
-	    }
-
-	  if (n_left_from == 0 && vec_len (fragments_to_loopback))
-	    {
-	      in_loopback = 1;
-	      from = vlib_frame_vector_args (frame);
-	      u32 len = vec_len (fragments_to_loopback);
-	      if (len <= VLIB_FRAME_SIZE)
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback,
-				    sizeof (u32) * len);
-		  n_left_from = len;
-		  vec_reset_length (fragments_to_loopback);
-		}
-	      else
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback +
-				    (len - VLIB_FRAME_SIZE),
-				    sizeof (u32) * VLIB_FRAME_SIZE);
-		  n_left_from = VLIB_FRAME_SIZE;
-		  _vec_len (fragments_to_loopback) = len - VLIB_FRAME_SIZE;
-		}
-	    }
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
