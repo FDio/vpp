@@ -819,6 +819,16 @@ class BFD4TestCase(VppTestCase):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.down)
 
+    def test_peer_discr_reset_sess_down(self):
+        """ peer discriminator reset after session goes down """
+        bfd_session_up(self)
+        detection_time = self.test_session.detect_mult *\
+            self.vpp_session.required_min_rx / USEC_IN_SEC
+        self.sleep(detection_time, "waiting for BFD session time-out")
+        self.test_session.my_discriminator = 0
+        wait_for_bfd_packet(self,
+                            pcap_time_min=time.time() - self.vpp_clock_offset)
+
     def test_large_required_min_rx(self):
         """ large remote required min rx interval """
         bfd_session_up(self)
@@ -2100,6 +2110,7 @@ class BFDSHA1TestCase(VppTestCase):
         self.test_session.vpp_seq_number = None
         # now throw away any pending packets
         self.pg0.enable_capture()
+        self.test_session.my_discriminator = 0
         bfd_session_up(self)
 
 
