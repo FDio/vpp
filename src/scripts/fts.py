@@ -88,6 +88,22 @@ def version_from_git():
         sys.exit(rv.returncode)
     return rv.stdout.decode('ascii').split('\n')[0]
 
+def subfeatures_from_git(path, revisionrange):
+    git_log = ['git', 'log', '--oneline', '--grep', '^Type: feature',
+               f'{revisionrange}', '--', f'{path}']
+    rv = run(git_log, stdout=PIPE, stderr=PIPE)
+    if rv.returncode != 0:
+        sys.exit(rv.returncode)
+    return rv.stdout.decode('ascii').splitlines()
+
+def fix_from_git(path, revisionrange):
+    git_log = ['git', 'log', '--oneline', '--grep', '^Type: fix',
+               f'{revisionrange}', '--', f'{path}']
+    rv = run(git_log, stdout=PIPE, stderr=PIPE)
+    if rv.returncode != 0:
+        sys.exit(rv.returncode)
+    return rv.stdout.decode('ascii').splitlines()
+
 class MarkDown():
     _dispatch = {}
 
@@ -189,13 +205,16 @@ def featurelistsort(k):
     }
     return orderedfields[k[0]]
 
-def output_markdown(features, fields, notfields):
+def output_markdown(features, fields, notfields, subfeatures, revisionrange):
     stream = StringIO()
     m = MarkDown(stream)
     m.print('markdown_header', 'Feature Details:')
     for path, featuredef in sorted(features.items(), key=featuresort):
-        codeurl = 'https://git.fd.io/vpp/tree/src/' + '/'.join(os.path.normpath(path).split('/')[1:-1])
+        npath = '/'.join(os.path.normpath(path).split('/')[1:-1])
+        codeurl = 'https://git.fd.io/vpp/tree/src/' + npath
         featuredef['code'] = codeurl
+        if subfeatures:
+            featuredef['subfeatures'] = {'path': 'src/' + npath, 'rev': revisionrange}
         for k, v in sorted(featuredef.items(), key=featurelistsort):
             if notfields:
                 if k not in notfields:
@@ -210,6 +229,42 @@ def output_markdown(features, fields, notfields):
     output_toc(m.toc, tocstream)
     return tocstream, stream
 
+def get_subfeatures(path, revisionrange):
+    sf = subfeatures_from_git(path, revisionrange)
+    return sf
+
+def output_releasenotes(features, revisionrange):
+    stream = StringIO()
+    url = 'https://git.fd.io/vpp/commit/?id='
+
+    write = stream.write
+    write('# Releasenotes\n')
+    for path, featuredef in sorted(features.items(), key=featuresort):
+        npath = '/'.join(os.path.normpath(path).split('/')[1:-1])
+        sf = get_subfeatures('src/' + npath, revisionrange)
+        fixes = fix_from_git('src/' + npath, revisionrange)
+
+        if len(sf) or len(fixes):
+            write(f'## {featuredef["name"]}:\n')
+            if len(sf):
+                write('### New features:\n')
+                for s in sf:
+                    id = s.split(' ')[0]
+                    title = s.split(' ', 1)[1]
+                    u = url + id
+                    write(f'  - [{id}]({u}) {title}\n')
+                write('\n')
+            if len(fixes):
+                write('### Bugfixes:\n')
+                for s in fixes:
+                    id = s.split(' ')[0]
+                    title = s.split(' ', 1)[1]
+                    u = url + id
+                    write(f'  - [{id}]({u}) {title}\n')
+                write('\n')
+
+    return stream
+
 def main():
     parser = argparse.ArgumentParser(description='VPP Feature List.')
     parser.add_argument('--validate', dest='validate', action='store_true',
@@ -218,13 +273,17 @@ def main():
                         help='Get filelist from git status')
     parser.add_argument('--all', dest='all', action='store_true',
                         help='Validate all files in repository')
-    parser.add_argument('--markdown', dest='markdown', action='store_true',
-                        help='Output feature table in markdown')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
                         default=sys.stdin)
+    parser.add_argument('--revision', dest='revision', help='<revision range>')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--include', help='List of fields to include')
     group.add_argument('--exclude', help='List of fields to exclude')
+    group2 = parser.add_mutually_exclusive_group()
+    group2.add_argument('--markdown', dest='markdown', action='store_true',
+                        help='Output feature table in markdown')
+    group2.add_argument('--releasenote', dest='releasenote', action='store_true',
+                        help='Output release notes in markdown')
     args = parser.parse_args()
     features = {}
 
@@ -259,11 +318,15 @@ def main():
         features[featurefile] = cfg
 
     if args.markdown:
-        stream = StringIO()
         tocstream, stream = output_markdown(features, fields, notfields)
         print(tocstream.getvalue())
         print(stream.getvalue())
         stream.close()
+    elif args.releasenote:
+        stream = output_releasenotes(features, args.revision)
+        print(stream.getvalue())
+        stream.close()
+
 
 
 if __name__ == '__main__':
