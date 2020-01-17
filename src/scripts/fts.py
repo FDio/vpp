@@ -88,6 +88,14 @@ def version_from_git():
         sys.exit(rv.returncode)
     return rv.stdout.decode('ascii').split('\n')[0]
 
+def subfeatures_from_git(path, revisionrange):
+    git_log = ['git', 'log', '--oneline', '--grep', '^Type: feature',
+               f'{revisionrange}', '--', f'{path}']
+    rv = run(git_log, stdout=PIPE, stderr=PIPE)
+    if rv.returncode != 0:
+        sys.exit(rv.returncode)
+    return rv.stdout.decode('ascii').splitlines()
+
 class MarkDown():
     _dispatch = {}
 
@@ -158,6 +166,22 @@ class MarkDown():
         write(f'Source Code: [{o}]({o}) \n')
     _dispatch['code'] = print_code
 
+    def print_subfeatures(self, o):
+        write = self.stream.write
+        path = o['path']
+        revisionrange = o['rev']
+        url = 'https://git.fd.io/vpp/commit/?id='
+        sf = subfeatures_from_git(path, revisionrange)
+        if len(sf):
+            write('Feature commits:\n')
+            for s in sf:
+                id = s.split(' ')[0]
+                title = s.split(' ', 1)[1]
+                u = url + id
+                write(f'  - [{id}]({u}) {title}\n')
+            write('\n')
+    _dispatch['subfeatures'] = print_subfeatures
+
     def print(self, t, o):
         write = self.stream.write
         if t in self._dispatch:
@@ -185,17 +209,21 @@ def featurelistsort(k):
         'state': 4,
         'properties': 5,
         'missing': 6,
-        'code': 7,
+        'subfeatures': 7,
+        'code': 8,
     }
     return orderedfields[k[0]]
 
-def output_markdown(features, fields, notfields):
+def output_markdown(features, fields, notfields, subfeatures, revisionrange):
     stream = StringIO()
     m = MarkDown(stream)
     m.print('markdown_header', 'Feature Details:')
     for path, featuredef in sorted(features.items(), key=featuresort):
-        codeurl = 'https://git.fd.io/vpp/tree/src/' + '/'.join(os.path.normpath(path).split('/')[1:-1])
+        npath = '/'.join(os.path.normpath(path).split('/')[1:-1])
+        codeurl = 'https://git.fd.io/vpp/tree/src/' + npath
         featuredef['code'] = codeurl
+        if subfeatures:
+            featuredef['subfeatures'] = {'path': 'src/' + npath, 'rev': revisionrange}
         for k, v in sorted(featuredef.items(), key=featurelistsort):
             if notfields:
                 if k not in notfields:
@@ -222,6 +250,9 @@ def main():
                         help='Output feature table in markdown')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
                         default=sys.stdin)
+    parser.add_argument('--subfeatures', dest='subfeatures', action='store_true',
+                        help='Include subfeatures')
+    parser.add_argument('--revision', dest='revision', help='<revision range>')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--include', help='List of fields to include')
     group.add_argument('--exclude', help='List of fields to exclude')
@@ -260,7 +291,8 @@ def main():
 
     if args.markdown:
         stream = StringIO()
-        tocstream, stream = output_markdown(features, fields, notfields)
+        tocstream, stream = output_markdown(features, fields, notfields,
+                                            args.subfeatures, args.revision)
         print(tocstream.getvalue())
         print(stream.getvalue())
         stream.close()
