@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13c6acc5_b0179fe8",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-17T18:38:33Z",
+      "side": 1,
+      "message": "by default, min_alloc is 4096 if first_chunk (rounded fifo size) is less than 16kB, first_chunk size / 4 if larger. After 256kB it\u0027s capped to 64kB\n\nI guess this can be fine tuned going forward. Otherwise, fifo tuning logic could change this based on memory pressure",
+      "range": {
+        "startLine": 413,
+        "startChar": 2,
+        "endLine": 414,
+        "endChar": 47
+      },
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20b2c838_9dd30bca",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-17T18:38:33Z",
+      "side": 1,
+      "message": "This means each grow request will add a minimum of min_alloc bytes to the fifo, if enough free space is left. Otherwise, alloc size is bound by the amount of free space. \n\nIf the write is larger than alloc_size, i.e., write is larger than min_alloc, we use len - free_alloced as an upper alloc bound.",
+      "range": {
+        "startLine": 818,
+        "startChar": 25,
+        "endLine": 818,
+        "endChar": 37
+      },
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
