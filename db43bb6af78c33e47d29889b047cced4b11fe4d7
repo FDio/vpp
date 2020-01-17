@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9256e6e4_94c677a5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-17T14:33:46Z",
+      "side": 1,
+      "message": "Can you please use tickets for FD.io Jira?\nI see this is the same ticket as in https://gerrit.fd.io/r/c/vpp/+/23635\nbut I still do not know how to look at it.",
+      "range": {
+        "startLine": 13,
+        "startChar": 8,
+        "endLine": 13,
+        "endChar": 16
+      },
+      "revId": "db43bb6af78c33e47d29889b047cced4b11fe4d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
