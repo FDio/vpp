@@ -59,6 +59,9 @@ openssl_ctx_free (tls_ctx_t * ctx)
 
   SSL_free (oc->ssl);
 
+#ifdef HAVE_OPENSSL_ASYNC
+  openssl_evt_free (ctx->evt_index, ctx->c_thread_index);
+#endif
   vec_free (ctx->srv_hostname);
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
 		  oc->openssl_ctx_index);
@@ -176,31 +179,23 @@ openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
 
 #ifdef HAVE_OPENSSL_ASYNC
 static int
-vpp_ssl_async_process_event (tls_ctx_t * ctx,
-			     openssl_resume_handler * handler)
+openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
+			    session_t * session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  openssl_tls_callback_t *engine_cb;
+  int estatus;
 
-  engine_cb = vpp_add_async_pending_event (ctx, handler);
-  if (engine_cb)
+  SSL_get_async_status (oc->ssl, &estatus);
+  if (estatus == ASYNC_STATUS_EAGAIN)
     {
-      SSL_set_async_callback_arg (oc->ssl, (void *) engine_cb->arg);
-      TLS_DBG (2, "set callback to engine %p\n", engine_cb->callback);
+      vpp_tls_async_update_event (ctx, 1);
     }
-  return 0;
+  else
+    {
+      vpp_tls_async_update_event (ctx, 0);
+    }
 
-}
-
-/* Due to engine busy stat, VPP need to retry later */
-static int
-vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
-{
-
-  if (vpp_add_async_run_event (ctx, handler))
-    return 1;
-
-  return 0;
+  return 1;
 
 }
 
@@ -233,10 +228,6 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
-#ifdef HAVE_OPENSSL_ASYNC
-  int estatus;
-  openssl_resume_handler *myself;
-#endif
 
   while (SSL_in_init (oc->ssl))
     {
@@ -245,18 +236,18 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	  ctx->resume = 0;
 	}
       else if (!openssl_try_handshake_read (oc, tls_session))
-	{
-	  break;
-	}
-
-#ifdef HAVE_OPENSSL_ASYNC
-      myself = openssl_ctx_handshake_rx;
-      vpp_ssl_async_process_event (ctx, myself);
-#endif
+	break;
 
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
 
+#ifdef HAVE_OPENSSL_ASYNC
+      if (err == SSL_ERROR_WANT_ASYNC)
+	{
+	  openssl_check_async_status (ctx, openssl_ctx_handshake_rx,
+				      tls_session);
+	}
+#endif
       if (err == SSL_ERROR_SSL)
 	{
 	  char buf[512];
@@ -268,17 +259,6 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	}
 
       openssl_try_handshake_write (oc, tls_session);
-#ifdef HAVE_OPENSSL_ASYNC
-      if (err == SSL_ERROR_WANT_ASYNC)
-	{
-	  SSL_get_async_status (oc->ssl, &estatus);
-
-	  if (estatus == ASYNC_STATUS_EAGAIN)
-	    {
-	      vpp_ssl_async_retry_func (ctx, myself);
-	    }
-	}
-#endif
 
       if (err != SSL_ERROR_WANT_WRITE)
 	break;
@@ -287,7 +267,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	   SSL_state_string_long (oc->ssl));
 
   if (SSL_in_init (oc->ssl))
-    return 0;
+    return -1;
 
   /*
    * Handshake complete
@@ -507,9 +487,6 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   session_t *tls_session;
   const SSL_METHOD *method;
   int rv, err;
-#ifdef HAVE_OPENSSL_ASYNC
-  openssl_resume_handler *handler;
-#endif
 
   method = SSLv23_client_method ();
   if (method == NULL)
@@ -571,6 +548,10 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 	   oc->openssl_ctx_index);
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
+
+#ifdef HAVE_OPENSSL_ASYNC
+  vpp_tls_async_init_event (ctx, openssl_ctx_handshake_rx, tls_session);
+#endif
   while (1)
     {
       rv = SSL_do_handshake (oc->ssl);
@@ -579,8 +560,8 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 #ifdef HAVE_OPENSSL_ASYNC
       if (err == SSL_ERROR_WANT_ASYNC)
 	{
-	  handler = (openssl_resume_handler *) openssl_ctx_handshake_rx;
-	  vpp_ssl_async_process_event (ctx, handler);
+	  openssl_check_async_status (ctx, openssl_ctx_handshake_rx,
+				      tls_session);
 	  break;
 	}
 #endif
@@ -631,8 +612,10 @@ openssl_start_listen (tls_ctx_t * lctx)
   SSL_CTX_set_mode (ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 #ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
-    SSL_CTX_set_mode (ssl_ctx, SSL_MODE_ASYNC);
-  SSL_CTX_set_async_callback (ssl_ctx, tls_async_openssl_callback);
+    {
+      SSL_CTX_set_mode (ssl_ctx, SSL_MODE_ASYNC);
+      SSL_CTX_set_async_callback (ssl_ctx, tls_async_openssl_callback);
+    }
 #endif
   SSL_CTX_set_options (ssl_ctx, flags);
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
@@ -708,9 +691,6 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
   openssl_listen_ctx_t *olc;
   session_t *tls_session;
   int rv, err;
-#ifdef HAVE_OPENSSL_ASYNC
-  openssl_resume_handler *handler;
-#endif
 
   /* Start a new connection */
 
@@ -735,6 +715,9 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 	   oc->openssl_ctx_index);
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
+#ifdef HAVE_OPENSSL_ASYNC
+  vpp_tls_async_init_event (ctx, openssl_ctx_handshake_rx, tls_session);
+#endif
   while (1)
     {
       rv = SSL_do_handshake (oc->ssl);
@@ -743,8 +726,8 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 #ifdef HAVE_OPENSSL_ASYNC
       if (err == SSL_ERROR_WANT_ASYNC)
 	{
-	  handler = (openssl_resume_handler *) openssl_ctx_handshake_rx;
-	  vpp_ssl_async_process_event (ctx, handler);
+	  openssl_check_async_status (ctx, openssl_ctx_handshake_rx,
+				      tls_session);
 	  break;
 	}
 #endif
@@ -928,7 +911,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char *engine_alg = NULL;
   char *ciphers = NULL;
   u8 engine_name_set = 0;
-  int i;
+  int i, async = 0;
 
   /* By present, it is not allowed to configure engine again after running */
   if (om->engine_init)
@@ -946,8 +929,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (unformat (input, "async"))
 	{
-	  om->async = 1;
-	  openssl_async_node_enable_disable (1);
+	  async = 1;
 	}
       else if (unformat (input, "alg %s", &engine_alg))
 	{
@@ -967,16 +949,23 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!engine_name_set)
     {
       clib_warning ("No engine provided! \n");
-      om->async = 0;
+      async = 0;
     }
   else
     {
-      if (openssl_engine_register (engine_name, engine_alg) < 0)
+      vnet_session_enable_disable (vm, 1);
+      if (openssl_engine_register (engine_name, engine_alg, async) < 0)
 	{
-	  return clib_error_return (0, "failed to register %s polling",
+	  return clib_error_return (0, "Failed to register %s polling",
 				    engine_name);
 	}
+      else
+	{
+	  vlib_cli_output (vm, "Successfully register engine %s\n",
+			   engine_name);
+	}
     }
+  om->async = async;
 
   return 0;
 }
