@@ -211,8 +211,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       return rv;
     }
   ctx->app_session_handle = session_handle (app_session);
-  session_lookup_add_connection (&ctx->connection,
-				 session_handle (app_session));
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
   return app_worker_accept_notify (app_wrk, app_session);

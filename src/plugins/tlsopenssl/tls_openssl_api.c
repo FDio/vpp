@@ -40,12 +40,6 @@ vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t * mp)
   char *ciphers;
   int rv;
 
-  if (mp->async_enable)
-    {
-      om->async = 1;
-      openssl_async_node_enable_disable (1);
-    }
-
   ciphers = (char *) &mp->ciphers;
   ciphers[63] = '\0';
   if (ciphers[0])
@@ -55,7 +49,8 @@ vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t * mp)
   engine[63] = '\0';
   alg = (char *) mp->algorithm;
   alg[63] = '\0';
-  rv = openssl_engine_register (engine, alg);
+  rv = openssl_engine_register (engine, alg, mp->async_enable);
+  om->async = mp->async_enable;
 
   REPLY_MACRO (VL_API_TLS_OPENSSL_SET_ENGINE_REPLY);
 }

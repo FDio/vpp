@@ -54,23 +54,17 @@ typedef struct openssl_main_
   int async;
 } openssl_main_t;
 
-typedef struct openssl_tls_callback_
-{
-  int (*callback) (SSL * ssl, void *arg);
-  void *arg;
-} openssl_tls_callback_t;
-
 typedef int openssl_resume_handler (tls_ctx_t * ctx, session_t * tls_session);
 
 tls_ctx_t *openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index);
-openssl_tls_callback_t *vpp_add_async_pending_event (tls_ctx_t * ctx,
-						     openssl_resume_handler *
-						     handler);
-int vpp_add_async_run_event (tls_ctx_t * ctx, openssl_resume_handler *
-			     handler);
+int vpp_tls_async_init_event (tls_ctx_t * ctx,
+			      openssl_resume_handler * handler,
+			      session_t * session);
+int vpp_tls_async_update_event (tls_ctx_t * ctx, int eagain);
 int tls_async_openssl_callback (SSL * s, void *evt);
+int openssl_evt_free (int event_idx, u8 thread_index);
 void openssl_polling_start (ENGINE * engine);
-int openssl_engine_register (char *engine, char *alg);
+int openssl_engine_register (char *engine, char *alg, int async);
 void openssl_async_node_enable_disable (u8 is_en);
 clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
 int tls_openssl_set_ciphers (char *ciphers);
