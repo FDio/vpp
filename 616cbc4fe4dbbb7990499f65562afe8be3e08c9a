@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "01a679fc_f201e949",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-20T17:02:51Z",
+      "side": 1,
+      "message": "My understanding on ooo-segments seems incorrect more or less, unfortunately.\n\nSo, according to your comments, the existing of an ooo-segment in f-\u003eooo_segments means the corresponding data has been already written in some existing chunk before. Right?\nThen, the happening of the condition `(*tail + bytes \u003e f_chunk_end (f-\u003eend_chunk))` should indicate that the issue happened much earlier. Let me check again if I\u0027ve merged your code correctly.",
+      "parentUuid": "71005f53_92647125",
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "13c6acc5_b0179fe8",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 48
