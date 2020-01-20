@@ -267,7 +267,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 
       vec_foreach (fl_index, xd->parked_lookup_indexes)
 	pool_put_index (xd->flow_lookup_entries, *fl_index);
-      vec_reset_length (xd->flow_lookup_entries);
+      vec_reset_length (xd->parked_lookup_indexes);
     }
 
   if (op == VNET_FLOW_DEV_OP_DEL_FLOW)
