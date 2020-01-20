@@ -45,6 +45,30 @@
       "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f0ec54c_a9f899cc",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-20T11:01:27Z",
+      "side": 1,
+      "message": "I agree with the idea here. It should work fine even with a large difference between the current actual size and the (virtual) size. So it will be kept safe for the large f-\u003esize (relatively too large than the current actual size).\n\nJust to sharing my thoughts..., I thought the calculation would be something as following, but I suppose it doesn\u0027t really matter because of the effect of clib_min with the f-\u003emin_alloc.\n  actual_size \u003d f_chunk_end (f-\u003eend_chunk) - f-\u003estart_chunk-\u003estart_byte;\n  alloc_size \u003d clib_min (f-\u003emin_alloc, f-\u003esize - actual_size);\n  alloc_size \u003d clib_max (alloc_size, len - free_alloced);",
+      "parentUuid": "20b2c838_9dd30bca",
+      "range": {
+        "startLine": 818,
+        "startChar": 25,
+        "endLine": 818,
+        "endChar": 37
+      },
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
