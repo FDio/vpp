@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "83fcb017_27f43fa0",
+        "filename": "src/plugins/map/test/test_map.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-01-20T07:28:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa088091_ea256955",
+      "range": {
+        "startLine": 618,
+        "startChar": 8,
+        "endLine": 618,
+        "endChar": 26
+      },
+      "revId": "625485e2d49edd4a3d453aa3463f864ac4c27489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e8aeb40f_30a97eb8",
         "filename": "src/plugins/map/test/test_map.py",
         "patchSetId": 1
@@ -45,6 +69,30 @@
       "revId": "625485e2d49edd4a3d453aa3463f864ac4c27489",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ced3cb7_a6104eae",
+        "filename": "src/plugins/map/test/test_map.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-01-20T07:28:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e8aeb40f_30a97eb8",
+      "range": {
+        "startLine": 627,
+        "startChar": 8,
+        "endLine": 628,
+        "endChar": 61
+      },
+      "revId": "625485e2d49edd4a3d453aa3463f864ac4c27489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
