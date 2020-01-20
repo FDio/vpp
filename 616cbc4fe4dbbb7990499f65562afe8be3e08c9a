@@ -146,6 +146,23 @@
       "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c5c58ba_a1e9ce4c",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 48
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-20T17:20:23Z",
+      "side": 1,
+      "message": "I guess, this should be something equivalent to:\n  return (f_chunk_end (f-\u003eend_chunk) - (tail - f-\u003estart_chunk-\u003estart_byte));",
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
