@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "ab32938c_45ed448a",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-20T17:28:22Z",
+      "side": 1,
+      "message": "Yes, ooo enqueues means we enqueue data in a chunk and track it with ooo segments. The latter are used to track ooo writes/enqueues and figure out when the data is finally contiguous. \n\nAnd yes, the fact that the condition fails suggests something wrong happened at an earlier stage.",
+      "parentUuid": "01a679fc_f201e949",
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "13c6acc5_b0179fe8",
         "filename": "src/svm/svm_fifo.c",
         "patchSetId": 48
