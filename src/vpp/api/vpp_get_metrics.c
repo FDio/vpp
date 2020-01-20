@@ -81,6 +81,7 @@ setup_signal_handlers (void)
 	case SIGSTOP:
 	case SIGUSR1:
 	case SIGUSR2:
+	case SIGPROF:
 	  continue;
 
 	  /* ignore SIGPIPE, SIGCHLD */
