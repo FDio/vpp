@@ -280,6 +280,259 @@ extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
+ * The different sources that can create a route.
+ * The sources are defined here with their relative priority order.
+ * The lower the value the higher the priority
+ */
+typedef enum fib_entry_attribute_t_ {
+    /**
+     * Marker. Add new values after this one.
+     */
+    FIB_ENTRY_ATTRIBUTE_FIRST,
+    /**
+     * Connected. The prefix is configured on an interface.
+     */
+    FIB_ENTRY_ATTRIBUTE_CONNECTED = FIB_ENTRY_ATTRIBUTE_FIRST,
+    /**
+     * Attached. The prefix is attached to an interface.
+     */
+    FIB_ENTRY_ATTRIBUTE_ATTACHED,
+    /**
+     * The route is an explicit drop.
+     */
+    FIB_ENTRY_ATTRIBUTE_DROP,
+    /**
+     * The route is exclusive. The client creating the route is
+     * providing an exclusive adjacency.
+     */
+    FIB_ENTRY_ATTRIBUTE_EXCLUSIVE,
+    /**
+     * The route is attached cross tables and thus imports covered
+     * prefixes from the other table.
+     */
+    FIB_ENTRY_ATTRIBUTE_IMPORT,
+    /**
+     * The prefix/address is local to this device
+     */
+    FIB_ENTRY_ATTRIBUTE_LOCAL,
+    /**
+     * The prefix/address is a multicast prefix.
+     *  this aplies only to MPLS. IP multicast is handled by mfib
+     */
+    FIB_ENTRY_ATTRIBUTE_MULTICAST,
+    /**
+     * The prefix/address exempted from loose uRPF check
+     * To be used with caution
+     */
+    FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
+    /**
+     * The prefix/address exempted from attached export
+     */
+    FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT,
+    /**
+     * This FIB entry imposes its source information on all prefixes
+     * that is covers
+     */
+    FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
+    /**
+     * The interpose attribute.
+     * place the forwarding provided by the source infront of the forwarding
+     * provided by the best source, or failing that, by the cover.
+     */
+    FIB_ENTRY_ATTRIBUTE_INTERPOSE,
+    /**
+     * Marker. add new entries before this one.
+     */
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_INTERPOSE,
+} fib_entry_attribute_t;
+
+#define FIB_ENTRY_ATTRIBUTES {		       		\
+    [FIB_ENTRY_ATTRIBUTE_CONNECTED] = "connected",	\
+    [FIB_ENTRY_ATTRIBUTE_ATTACHED]  = "attached",	\
+    [FIB_ENTRY_ATTRIBUTE_IMPORT]    = "import",	        \
+    [FIB_ENTRY_ATTRIBUTE_DROP]      = "drop",		\
+    [FIB_ENTRY_ATTRIBUTE_EXCLUSIVE] = "exclusive",      \
+    [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
+    [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
+    [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
+    [FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT] = "no-attached-export",	\
+    [FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT] = "covered-inherit",  \
+    [FIB_ENTRY_ATTRIBUTE_INTERPOSE] = "interpose",  \
+}
+
+#define FOR_EACH_FIB_ATTRIBUTE(_item)			\
+    for (_item = FIB_ENTRY_ATTRIBUTE_FIRST;		\
+	 _item <= FIB_ENTRY_ATTRIBUTE_LAST;		\
+	 _item++)
+
+typedef enum fib_entry_flag_t_ {
+    FIB_ENTRY_FLAG_NONE      = 0,
+    FIB_ENTRY_FLAG_CONNECTED = (1 << FIB_ENTRY_ATTRIBUTE_CONNECTED),
+    FIB_ENTRY_FLAG_ATTACHED  = (1 << FIB_ENTRY_ATTRIBUTE_ATTACHED),
+    FIB_ENTRY_FLAG_DROP      = (1 << FIB_ENTRY_ATTRIBUTE_DROP),
+    FIB_ENTRY_FLAG_EXCLUSIVE = (1 << FIB_ENTRY_ATTRIBUTE_EXCLUSIVE),
+    FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
+    FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
+    FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT = (1 << FIB_ENTRY_ATTRIBUTE_NO_ATTACHED_EXPORT),
+    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
+    FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
+    FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),
+    FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
+} __attribute__((packed)) fib_entry_flag_t;
+
+/**
+ * The different sources that can create a route.
+ * The sources are defined here with their relative priority order.
+ * The lower the value the higher the priority
+ */
+typedef enum fib_source_t_ {
+    /**
+     * An invalid source
+     * This is not a real source, so don't use it to source a prefix.
+     * It exists here to provide a value for inexistant/uninitialized source
+     */
+    FIB_SOURCE_INVALID = 0,
+    /**
+     * Marker. Add new values after this one.
+     */
+    FIB_SOURCE_FIRST,
+    /**
+     * Special sources. These are for entries that are added to all
+     * FIBs by default, and should never be over-ridden (hence they
+     * are the highest priority)
+     */
+    FIB_SOURCE_SPECIAL = FIB_SOURCE_FIRST,
+    /**
+     * Classify. A route that links directly to a classify adj
+     */
+    FIB_SOURCE_CLASSIFY,
+    /**
+     * A route the is being 'proxied' on behalf of another device
+     */
+    FIB_SOURCE_PROXY,
+    /**
+     * Route added as a result of interface configuration.
+     * this will also come from the API/CLI, but the distinction is
+     * that is from confiiguration on an interface, not a 'ip route' command
+     */
+    FIB_SOURCE_INTERFACE,
+    /**
+     * SRv6 and SR-MPLS
+     */
+    FIB_SOURCE_SR,
+    /**
+     * From the BIER subsystem
+     */
+    FIB_SOURCE_BIER,
+    /**
+     * From 6RD.
+     */
+    FIB_SOURCE_6RD,
+    /**
+     * From the control plane API
+     */
+    FIB_SOURCE_API,
+    /**
+     * From the CLI.
+     */
+    FIB_SOURCE_CLI,
+    /**
+     * LISP
+     */
+    FIB_SOURCE_LISP,
+    /**
+     * IPv[46] Mapping
+     */
+    FIB_SOURCE_MAP,
+    /**
+     * DHCP
+     */
+    FIB_SOURCE_DHCP,
+    /**
+     * IPv6 Proxy ND
+     */
+    FIB_SOURCE_IP6_ND_PROXY,
+    /**
+     * IPv6 ND (seen in the link-local tables)
+     */
+    FIB_SOURCE_IP6_ND,
+    /**
+     * Adjacency source.
+     * routes created as a result of ARP/ND entries. This is lower priority
+     * then the API/CLI. This is on purpose. trust me.
+     */
+    FIB_SOURCE_ADJ,
+    /**
+     * MPLS label. The prefix has been assigned a local label. This source
+     * never provides forwarding information, instead it acts as a place-holder
+     * so the association of label to prefix can be maintained
+     */
+    FIB_SOURCE_MPLS,
+    /**
+     * Attached Export source.
+     * routes created as a result of attahced export. routes thus sourced
+     * will be present in the export tables
+     */
+    FIB_SOURCE_AE,
+    /**
+     * Recursive resolution source.
+     * Used to install an entry that is the resolution traget of another.
+     */
+    FIB_SOURCE_RR,
+    /**
+     * uRPF bypass/exemption.
+     * Used to install an entry that is exempt from the loose uRPF check
+     */
+    FIB_SOURCE_URPF_EXEMPT,
+    /**
+     * The default route source.
+     * The default route is always added to the FIB table (like the
+     * special sources) but we need to be able to over-ride it with
+     * 'ip route' sources when provided
+     */
+    FIB_SOURCE_DEFAULT_ROUTE,
+    /**
+     * The interpose source.
+     * This is not a real source, so don't use it to source a prefix.
+     * It exists here to provide a value against which to register to the
+     * VFT for providing the interpose actions to a real source.
+     */
+    FIB_SOURCE_INTERPOSE,
+    /**
+     * Marker. add new entries before this one.
+     */
+    FIB_SOURCE_LAST = FIB_SOURCE_INTERPOSE,
+} __attribute__ ((packed)) fib_source_t;
+
+STATIC_ASSERT (sizeof(fib_source_t) == 1,
+	       "FIB too many sources");
+
+#define FIB_SOURCES {					\
+    [FIB_SOURCE_INVALID] = "invalid",			\
+    [FIB_SOURCE_SPECIAL] = "special",			\
+    [FIB_SOURCE_INTERFACE] = "interface",		\
+    [FIB_SOURCE_PROXY] = "proxy",                       \
+    [FIB_SOURCE_BIER] = "BIER",			        \
+    [FIB_SOURCE_6RD] = "6RD",			        \
+    [FIB_SOURCE_API] = "API",			        \
+    [FIB_SOURCE_CLI] = "CLI",			        \
+    [FIB_SOURCE_ADJ] = "adjacency",			\
+    [FIB_SOURCE_MAP] = "MAP",			        \
+    [FIB_SOURCE_SR] = "SR",			        \
+    [FIB_SOURCE_LISP] = "LISP", 			\
+    [FIB_SOURCE_CLASSIFY] = "classify",			\
+    [FIB_SOURCE_DHCP] = "DHCP",   			\
+    [FIB_SOURCE_IP6_ND_PROXY] = "IPv6-proxy-nd",        \
+    [FIB_SOURCE_IP6_ND] = "IPv6-nd",                    \
+    [FIB_SOURCE_RR] = "recursive-resolution",	        \
+    [FIB_SOURCE_AE] = "attached_export",	        \
+    [FIB_SOURCE_MPLS] = "mpls",           	        \
+    [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
+    [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
+    [FIB_SOURCE_INTERPOSE] = "interpose",               \
+}
+
+/**
  * Convert from BIER next-hop proto to FIB proto
  */
 extern fib_protocol_t bier_hdr_proto_to_fib(bier_hdr_proto_id_t bproto);
