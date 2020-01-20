@@ -123,6 +123,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a1ad8094_41299307",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 1047,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-20T17:02:51Z",
+      "side": 1,
+      "message": "I was trying to cause some memory pressure (i.e. small segment size, and rate-limited clients) with the hs_apps/proxy and saw this.",
+      "parentUuid": "ab262d7b_27fbf4fd",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
