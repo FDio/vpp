@@ -199,6 +199,24 @@
       "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "14582a64_8e452d20",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 48
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-20T17:45:34Z",
+      "side": 1,
+      "message": "OK. Then maybe we need another function as an alternative of f_free_count() for svm_fifo_enqueue_with_offset(). Otherwise, the order of function calling in the svm_fifo_enqueue_with_offset() should be reorganized.\nAs the current implementation, it just checks f_free_count() and then call ooo_segment_add(), but the f_try_grow() after this may fail (so the enqueue may fail too).",
+      "parentUuid": "a53424aa_11db2511",
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
