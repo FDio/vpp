@@ -181,6 +181,24 @@
       "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a53424aa_11db2511",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 48
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-20T17:36:13Z",
+      "side": 1,
+      "message": "This is free bytes in the fifo. Fifo starts at head and ends at head + f-\u003esize and tail - head is the amount of bytes that are used. At most tail \u003d head + f-\u003esize.\n\nSo this is not the amount of bytes that are not used at the end of the fifo. Also, keep in mind that head !\u003d f-\u003estart_chunk-\u003estart_byte and head - f-\u003estart_chunk-\u003estart_byte are unusable but not \"free-able\". \n\nAlso, we try to separate fifo logic (head, tail, size, used bytes, free bytes) from chunk allocation logic (chunk linked list).",
+      "parentUuid": "7c5c58ba_a1e9ce4c",
+      "revId": "616cbc4fe4dbbb7990499f65562afe8be3e08c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
