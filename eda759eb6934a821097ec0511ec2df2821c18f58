@@ -141,6 +141,24 @@
       "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2b5c09e_cad8f8cf",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 1047,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-20T17:28:22Z",
+      "side": 1,
+      "message": "This might be something different. I haven\u0027t tested with the proxy app. I suspect this might be related to the fact that you\u0027re doing both ooo writes and reads to the same chunk. We have only one rbtree index in the chunk and that may lead to collisions. So we may end up needing an ooo_enq and ooo_deq index. \n\nWill try to reproduce this.",
+      "parentUuid": "a1ad8094_41299307",
+      "revId": "eda759eb6934a821097ec0511ec2df2821c18f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
