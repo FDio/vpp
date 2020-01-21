@@ -58,7 +58,8 @@ typedef struct
   u64 len;
 #else
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
-  u32 dlmalloc_header_offset;	/**< offset to memory allocator offset  */
+  u8 numa_id; /**< NUMA socket-id. */
+  u8 vpad[3]; /**< pad to 8 bytes */
 #endif
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
@@ -207,6 +208,16 @@ for (var = vec_end (vec) - 1; var >= (vec); var--)
 /** \brief Iterate over vector indices (reverse). */
 #define vec_foreach_index_backwards(var,v) \
   for ((var) = vec_len((v)) - 1; (var) >= 0; (var)--)
+
+/** \brief return the NUMA socket index for a vector */
+always_inline uword vec_numa_socket (void *v)
+{
+  vec_header_t *vh;
+  if (v == 0)
+    return 0;
+  vh = _vec_find(v);
+  return vh->numa_id;
+}
 
 #endif /* included_clib_vec_bootstrap_h */
 

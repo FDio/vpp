@@ -20,8 +20,10 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
+#include <numaif.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+void *clib_per_socket_mheaps[CLIB_MAX_SOCKETS];
 
 typedef struct
 {
@@ -229,6 +231,51 @@ void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init (memory, memory_size);
+}
+
+void *
+clib_mem_init_thread_safe_numa (void *memory, uword memory_size)
+{
+  void *heap;
+  unsigned long this_node;
+
+  heap = clib_mem_init (memory, memory_size);
+
+  ASSERT(heap);
+
+  this_node = os_get_socket_index();
+
+#if HAVE_NUMA_LIBRARY > 0
+  unsigned long nodemask = 1<<this_node;
+  void *page_base;
+  unsigned long page_mask;
+  long rv;
+
+  /*
+   * Bind the heap to the current thread's NUMA node.
+   * heap is not naturally page-aligned, so fix it.
+   */
+
+  page_mask = ~(clib_mem_get_page_size()-1);
+  page_base = (void *)(((unsigned long)heap) & page_mask);
+
+  clib_warning ("Bind heap at %llx size %llx to NUMA socket %d", 
+                page_base, memory_size, this_node);
+
+  rv = mbind (page_base, memory_size, 
+              MPOL_BIND /* mode */,
+              &nodemask /* nodemask */,
+              BITS(nodemask) /* max node number*/,
+              MPOL_MF_MOVE /* flags */);
+
+  if (rv < 0)
+    clib_unix_warning ("mbind");
+#else
+  clib_warning ("mbind unavailable, can't bind to socket %d",
+                this_node);
+#endif
+
+  return heap;
 }
 
 u8 *
