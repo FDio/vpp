@@ -38,6 +38,21 @@ vl (void *p)
 }
 
 /**
+ * @brief GDB callable function: pvh - Return vector header of vector
+ *
+ * @param *p - void - address of vector
+ *
+ * @return vh - vec_header_t, the vector header
+ *
+ */
+vec_header_t *
+pvh (void *p)
+{
+  return _vec_find (p);
+}
+
+
+/**
  * @brief GDB callable function: pe - call pool_elts - number of elements in a pool
  *
  * @param *v - void - address of pool
