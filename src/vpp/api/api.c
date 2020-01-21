@@ -273,7 +273,7 @@ get_thread_data (vl_api_thread_data_t * td, int index)
   td->pid = htonl (w->lwp);
   td->cpu_id = htonl (w->cpu_id);
   td->core = htonl (w->core_id);
-  td->cpu_socket = htonl (w->socket_id);
+  td->cpu_socket = htonl (w->numa_id);
 }
 
 static void

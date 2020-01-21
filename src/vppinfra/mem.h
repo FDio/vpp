@@ -56,9 +56,46 @@
 #include <vppinfra/sanitizer.h>
 
 #define CLIB_MAX_MHEAPS 256
+#define CLIB_MAX_NUMAS 8
+
+/* Unspecified NUMA socket */
+#define VEC_NUMA_UNSPECIFIED (0xFF)
 
 /* Per CPU heaps. */
 extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+extern void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
+
+always_inline void *
+clib_mem_get_per_cpu_heap (void)
+{
+  int cpu = os_get_thread_index ();
+  return clib_per_cpu_mheaps[cpu];
+}
+
+always_inline void *
+clib_mem_set_per_cpu_heap (u8 * new_heap)
+{
+  int cpu = os_get_thread_index ();
+  void *old = clib_per_cpu_mheaps[cpu];
+  clib_per_cpu_mheaps[cpu] = new_heap;
+  return old;
+}
+
+always_inline void *
+clib_mem_get_per_numa_heap (u32 numa_id)
+{
+  ASSERT (numa_id >= 0 && numa_id < ARRAY_LEN (clib_per_numa_mheaps));
+  return clib_per_numa_mheaps[numa_id];
+}
+
+always_inline void *
+clib_mem_set_per_numa_heap (u8 * new_heap)
+{
+  int numa = os_get_numa_index ();
+  void *old = clib_per_numa_mheaps[numa];
+  clib_per_numa_mheaps[numa] = new_heap;
+  return old;
+}
 
 always_inline void
 clib_mem_set_thread_index (void)
@@ -79,22 +116,6 @@ clib_mem_set_thread_index (void)
 	break;
       }
   ASSERT (__os_thread_index > 0);
-}
-
-always_inline void *
-clib_mem_get_per_cpu_heap (void)
-{
-  int cpu = os_get_thread_index ();
-  return clib_per_cpu_mheaps[cpu];
-}
-
-always_inline void *
-clib_mem_set_per_cpu_heap (u8 * new_heap)
-{
-  int cpu = os_get_thread_index ();
-  void *old = clib_per_cpu_mheaps[cpu];
-  clib_per_cpu_mheaps[cpu] = new_heap;
-  return old;
 }
 
 always_inline uword
@@ -287,6 +308,7 @@ clib_mem_set_heap (void *heap)
 
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
+void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size);
 
 void clib_mem_exit (void);
 

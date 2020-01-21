@@ -20,8 +20,10 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
+#include <numaif.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
 
 typedef struct
 {
@@ -202,8 +204,8 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
 
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
-void *
-clib_mem_init (void *memory, uword memory_size)
+static void *
+clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
 {
   u8 *heap;
 
@@ -217,7 +219,8 @@ clib_mem_init (void *memory, uword memory_size)
 
   CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
 
-  clib_mem_set_heap (heap);
+  if (set_heap)
+    clib_mem_set_heap (heap);
 
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
@@ -226,9 +229,62 @@ clib_mem_init (void *memory, uword memory_size)
 }
 
 void *
+clib_mem_init (void *memory, uword memory_size)
+{
+  return clib_mem_init_internal (memory, memory_size,
+				 1 /* do clib_mem_set_heap */ );
+}
+
+void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
-  return clib_mem_init (memory, memory_size);
+  return clib_mem_init_internal (memory, memory_size,
+				 1 /* do clib_mem_set_heap */ );
+}
+
+void *
+clib_mem_init_thread_safe_numa (void *memory, uword memory_size)
+{
+  void *heap;
+  unsigned long this_numa;
+
+  heap =
+    clib_mem_init_internal (memory, memory_size,
+			    0 /* do NOT clib_mem_set_heap */ );
+
+  ASSERT (heap);
+
+  this_numa = os_get_numa_index ();
+
+#if HAVE_NUMA_LIBRARY > 0
+  unsigned long nodemask = 1 << this_numa;
+  void *page_base;
+  unsigned long page_mask;
+  long rv;
+
+  /*
+   * Bind the heap to the current thread's NUMA node.
+   * heap is not naturally page-aligned, so fix it.
+   */
+
+  page_mask = ~(clib_mem_get_page_size () - 1);
+  page_base = (void *) (((unsigned long) heap) & page_mask);
+
+  clib_warning ("Bind heap at %llx size %llx to NUMA numa %d",
+		page_base, memory_size, this_numa);
+
+  rv = mbind (page_base, memory_size, MPOL_BIND /* mode */ ,
+	      &nodemask /* nodemask */ ,
+	      BITS (nodemask) /* max node number */ ,
+	      MPOL_MF_MOVE /* flags */ );
+
+  if (rv < 0)
+    clib_unix_warning ("mbind");
+#else
+  clib_warning ("mbind unavailable, can't bind to numa %d", this_numa);
+#endif
+
+  return heap;
 }
 
 u8 *
