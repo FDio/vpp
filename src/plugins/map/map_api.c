@@ -54,7 +54,7 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u32 index;
   u8 flags = 0;
 
-  u8 *tag = format (0, "%s", mp->tag);
+  mp->tag[ARRAY_LEN (mp->tag) - 1] = '\0';
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix.address,
 		       mp->ip4_prefix.len,
@@ -62,8 +62,9 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_prefix.len,
 		       (ip6_address_t *) & mp->ip6_src.address,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, ntohs (mp->mtu), flags, tag);
-  vec_free (tag);
+		       mp->psid_length, &index, ntohs (mp->mtu), flags,
+		       mp->tag);
+
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
