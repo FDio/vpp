@@ -338,6 +338,10 @@ typedef struct
   /* callbacks */
   vlib_thread_callbacks_t cb;
   int extern_thread_mgmt;
+
+  /* NUMA-bound heap size */
+  uword numa_socket_heap_size;
+
 } vlib_thread_main_t;
 
 extern vlib_thread_main_t vlib_thread_main;
@@ -613,6 +617,10 @@ void
 vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 				     args);
 void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
+void
+vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id);
+
+
 #endif /* included_vlib_threads_h */
 
 /*

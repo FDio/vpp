@@ -20,8 +20,10 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
+#include <numaif.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+void *clib_per_socket_mheaps[CLIB_MAX_SOCKETS];
 
 typedef struct
 {
@@ -229,6 +231,42 @@ void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init (memory, memory_size);
+}
+
+void *
+clib_mem_init_thread_safe_numa (void *memory, uword memory_size)
+{
+  void *heap;
+  unsigned long maxnode;
+
+  heap = clib_mem_init (memory, memory_size);
+
+  ASSERT(heap);
+
+  maxnode = os_get_socket_index();
+
+#if HAVE_NUMA_LIBRARY > 0
+  unsigned long nodemask = 1<<maxnode;
+  long rv;
+
+  /*
+   * Bind the heap to the current thread's NUMA node.
+   */
+  clib_warning ("Bind memory to NUMA socket %d", maxnode);
+
+  rv = mbind (heap, memory_size, MPOL_BIND /* mode */,
+              &nodemask /* nodemask */,
+              maxnode /* max node number*/,
+              MPOL_MF_MOVE /* flags */);
+
+  if (rv < 0)
+    clib_unix_warning ("mbind");
+#else
+  clib_warning ("mbind unavailable, can't bind to socket %d",
+                maxnode);
+#endif
+
+  return heap;
 }
 
 u8 *

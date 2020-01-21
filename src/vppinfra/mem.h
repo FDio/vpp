@@ -56,9 +56,11 @@
 #include <vppinfra/sanitizer.h>
 
 #define CLIB_MAX_MHEAPS 256
+#define CLIB_MAX_SOCKETS 8
 
 /* Per CPU heaps. */
 extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+extern void *clib_per_socket_mheaps[CLIB_MAX_SOCKETS];
 
 always_inline void
 clib_mem_set_thread_index (void)
@@ -94,6 +96,22 @@ clib_mem_set_per_cpu_heap (u8 * new_heap)
   int cpu = os_get_thread_index ();
   void *old = clib_per_cpu_mheaps[cpu];
   clib_per_cpu_mheaps[cpu] = new_heap;
+  return old;
+}
+
+always_inline void *
+clib_mem_get_per_socket_heap (void)
+{
+  int socket = os_get_socket_index ();
+  return clib_per_socket_mheaps[socket];
+}
+
+always_inline void *
+clib_mem_set_per_socket_heap (u8 * new_heap)
+{
+  int socket = os_get_socket_index ();
+  void *old = clib_per_socket_mheaps[socket];
+  clib_per_socket_mheaps[socket] = new_heap;
   return old;
 }
 
@@ -287,6 +305,7 @@ clib_mem_set_heap (void *heap)
 
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
+void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size);
 
 void clib_mem_exit (void);
 
