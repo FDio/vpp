@@ -179,7 +179,6 @@ void BV (clib_bihash_master_init_svm)
 			sizeof (vec_header_t) +
 			BIHASH_FREELIST_LENGTH * sizeof (u64));
   freelist_vh->len = BIHASH_FREELIST_LENGTH;
-  freelist_vh->dlmalloc_header_offset = 0xDEADBEEF;
   h->sh->freelists_as_u64 =
     (u64) BV (clib_bihash_get_offset) (h, freelist_vh->vector_data);
   h->freelists = (void *) (freelist_vh->vector_data);
