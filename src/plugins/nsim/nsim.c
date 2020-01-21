@@ -182,7 +182,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   vec_validate (nsm->wheel_by_thread, num_workers);
 
   /* Initialize the output scheduler wheels */
-  for (i = num_workers ? 1 : 0; i < num_workers + 1; i++)
+  for (i = 0; i < num_workers + 1; i++)
     {
       nsim_wheel_t *wp;
 
@@ -205,7 +205,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   vlib_worker_thread_barrier_sync (vm);
 
   /* turn on the ring scrapers */
-  for (i = num_workers ? 1 : 0; i < num_workers + 1; i++)
+  for (i = 0; i < num_workers + 1; i++)
     {
       vlib_main_t *this_vm = vlib_mains[i];
 
