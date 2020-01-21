@@ -733,9 +733,10 @@ show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   int verbose __attribute__ ((unused)) = 0;
-  int api_segment = 0, stats_segment = 0, main_heap = 0;
+  int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps = 0;
   clib_error_t *error;
   u32 index = 0;
+  int i;
   uword clib_mem_trace_enable_disable (uword enable);
   uword was_enabled;
 
@@ -750,6 +751,8 @@ show_memory_usage (vlib_main_t * vm,
 	stats_segment = 1;
       else if (unformat (input, "main-heap"))
 	main_heap = 1;
+      else if (unformat (input, "numa-heaps"))
+	numa_heaps = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -758,9 +761,9 @@ show_memory_usage (vlib_main_t * vm,
 	}
     }
 
-  if ((api_segment + stats_segment + main_heap) == 0)
+  if ((api_segment + stats_segment + main_heap + numa_heaps) == 0)
     return clib_error_return
-      (0, "Please supply one of api-segment, stats-segment or main-heap");
+      (0, "Need one of api-segment, stats-segment, main-heap or numa-heaps");
 
   if (api_segment)
     {
@@ -800,6 +803,7 @@ show_memory_usage (vlib_main_t * vm,
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
     }
+
 
 #if USE_DLMALLOC == 0
   /* *INDENT-OFF* */
@@ -849,6 +853,32 @@ show_memory_usage (vlib_main_t * vm,
 	/* Restore the trace flag */
 	clib_mem_trace_enable_disable (was_enabled);
       }
+    if (numa_heaps)
+      {
+	struct dlmallinfo mi;
+	void *mspace;
+
+	for (i = 0; i < ARRAY_LEN (clib_per_numa_mheaps); i++)
+	  {
+	    if (clib_per_numa_mheaps[i] == 0)
+	      continue;
+	    if (clib_per_numa_mheaps[i] == clib_per_cpu_mheaps[i])
+	      {
+		vlib_cli_output (vm, "Numa %d uses the main heap...", i);
+		continue;
+	      }
+	    was_enabled = clib_mem_trace_enable_disable (0);
+	    mspace = clib_per_numa_mheaps[i];
+
+	    mi = mspace_mallinfo (mspace);
+	    vlib_cli_output (vm, "Numa %d:", i);
+	    vlib_cli_output (vm, "  %U\n", format_page_map,
+			     pointer_to_uword (mspace_least_addr (mspace)),
+			     mi.arena);
+	    vlib_cli_output (vm, "  %U\n", format_mheap,
+			     clib_per_numa_mheaps[index], verbose);
+	  }
+      }
   }
 #endif /* USE_DLMALLOC */
   return 0;
@@ -857,7 +887,8 @@ show_memory_usage (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
-  .short_help = "show memory [api-segment][stats-segment][verbose]",
+  .short_help = "show memory [api-segment][stats-segment][verbose]\n"
+  "            [numa-heaps]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
@@ -905,6 +936,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
   int api_segment = 0;
   int stats_segment = 0;
   int main_heap = 0;
+  u32 numa_id = ~0;
   void *oldheap;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -920,6 +952,8 @@ enable_disable_memory_trace (vlib_main_t * vm,
 	stats_segment = 1;
       else if (unformat (line_input, "main-heap"))
 	main_heap = 1;
+      else if (unformat (line_input, "numa-heap %d", &numa_id))
+	;
       else
 	{
 	  unformat_free (line_input);
@@ -928,10 +962,12 @@ enable_disable_memory_trace (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  if ((api_segment + stats_segment + main_heap + (enable == 0)) == 0)
+  if ((api_segment + stats_segment + main_heap + (enable == 0)
+       + (numa_id != ~0)) == 0)
     {
       return clib_error_return
-	(0, "Need one of main-heap, stats-segment or api-segment");
+	(0, "Need one of main-heap, stats-segment, api-segment,\n"
+	 "numa-heap <nn> or disable");
     }
 
   /* Turn off current trace, if any */
@@ -975,13 +1011,31 @@ enable_disable_memory_trace (vlib_main_t * vm,
       clib_mem_trace (main_heap);
     }
 
+  if (numa_id != ~0)
+    {
+      if (numa_id >= ARRAY_LEN (clib_per_numa_mheaps))
+	return clib_error_return (0, "Numa %d out of range", numa_id);
+      if (clib_per_numa_mheaps[numa_id] == 0)
+	return clib_error_return (0, "Numa %d heap not active", numa_id);
+
+      if (clib_per_numa_mheaps[numa_id] == clib_mem_get_heap ())
+	return clib_error_return (0, "Numa %d uses the main heap...",
+				  numa_id);
+      current_traced_heap = clib_per_numa_mheaps[numa_id];
+      oldheap = clib_mem_set_heap (current_traced_heap);
+      clib_mem_trace (1);
+      clib_mem_set_heap (oldheap);
+    }
+
+
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
-  .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n",
+  .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
+  "                   [numa-heap <numa-id>]\n",
   .function = enable_disable_memory_trace,
 };
 /* *INDENT-ON* */

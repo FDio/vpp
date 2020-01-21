@@ -577,12 +577,12 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   return rv;
 }
 
-static void
-vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id)
+void
+vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 {
   const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
   u8 *p = 0;
-  int core_id = -1, socket_id = -1;
+  int core_id = -1, numa_id = -1;
 
   p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
   clib_sysfs_read ((char *) p, "%d", &core_id);
@@ -590,11 +590,11 @@ vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id)
   p =
     format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, cpu_id,
 	    0);
-  clib_sysfs_read ((char *) p, "%d", &socket_id);
+  clib_sysfs_read ((char *) p, "%d", &numa_id);
   vec_free (p);
 
   w->core_id = core_id;
-  w->socket_id = socket_id;
+  w->numa_id = numa_id;
 }
 
 static clib_error_t *
@@ -602,9 +602,29 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   void *(*fp_arg) (void *) = fp;
+  void *numa_heap;
 
   w->cpu_id = cpu_id;
-  vlib_get_thread_core_socket (w, cpu_id);
+  vlib_get_thread_core_numa (w, cpu_id);
+  os_set_numa_index (w->numa_id);
+
+  /* Set up NUMA-bound heap if indicated */
+  if (clib_per_numa_mheaps[w->numa_id] == 0)
+    {
+      /* If the user requested a NUMA heap, create it... */
+      if (tm->numa_heap_size)
+	{
+	  numa_heap = clib_mem_init_thread_safe_numa
+	    (0 /* DIY */ , tm->numa_heap_size);
+	  clib_per_numa_mheaps[w->numa_id] = numa_heap;
+	}
+      else
+	{
+	  /* Or, use the main heap */
+	  clib_per_numa_mheaps[w->numa_id] = w->thread_mheap;
+	}
+    }
+
   if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
     return tm->cb.vlib_launch_thread_cb (fp, (void *) w, cpu_id);
   else
@@ -1241,6 +1261,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "main-core %u", &tm->main_lcore))
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
+	;
+      else if (unformat (input, "numa-heap-size %U",
+			 unformat_memory_size, &tm->numa_heap_size))
 	;
       else if (unformat (input, "coremask-%s %U", &name,
 			 unformat_bitmap_mask, &bitmap) ||

@@ -67,8 +67,8 @@ show_threads_fn (vlib_main_t * vm,
       if (cpu_id > -1)
 	{
 	  int core_id = w->core_id;
-	  int socket_id = w->socket_id;
-	  line = format (line, "%-7u%-7u%-7u%", cpu_id, core_id, socket_id);
+	  int numa_id = w->numa_id;
+	  line = format (line, "%-7u%-7u%-7u%", cpu_id, core_id, numa_id);
 	}
       else
 	{
