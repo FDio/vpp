@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe17d9b6_7d4ec7bd",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2020-01-21T14:19:09Z",
+      "side": 1,
+      "message": "When svm_fifo_enqueue quits via:\n\n  if (PREDICT_FALSE (free_count \u003d\u003d 0))\n    return SVM_FIFO_EFULL;\n\nWould this test prevent us from requesting fifo growth? Might need to extend condition to include SVM_FIFO_EFULL case as well?",
+      "revId": "5e2138239b6e0f1a0c4769916e7ae885e5f1b0c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
