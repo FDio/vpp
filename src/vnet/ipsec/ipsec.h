@@ -61,6 +61,10 @@ typedef struct
   u32 esp6_decrypt_node_index;
   u32 esp6_encrypt_next_index;
   u32 esp6_decrypt_next_index;
+  u32 esp4_decrypt_tun_node_index;
+  u32 esp4_decrypt_tun_next_index;
+  u32 esp6_decrypt_tun_node_index;
+  u32 esp6_decrypt_tun_next_index;
   u32 esp44_encrypt_tun_feature_index;
   u32 esp46_encrypt_tun_feature_index;
   u32 esp66_encrypt_tun_feature_index;
@@ -120,19 +124,23 @@ typedef struct
   u32 error_drop_node_index;
   u32 esp4_encrypt_node_index;
   u32 esp4_decrypt_node_index;
+  u32 esp4_decrypt_tun_node_index;
   u32 ah4_encrypt_node_index;
   u32 ah4_decrypt_node_index;
   u32 esp6_encrypt_node_index;
   u32 esp6_decrypt_node_index;
+  u32 esp6_decrypt_tun_node_index;
   u32 ah6_encrypt_node_index;
   u32 ah6_decrypt_node_index;
   /* next node indices */
   u32 esp4_encrypt_next_index;
   u32 esp4_decrypt_next_index;
+  u32 esp4_decrypt_tun_next_index;
   u32 ah4_encrypt_next_index;
   u32 ah4_decrypt_next_index;
   u32 esp6_encrypt_next_index;
   u32 esp6_decrypt_next_index;
+  u32 esp6_decrypt_tun_next_index;
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
@@ -248,9 +256,11 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 				const char *esp4_encrypt_node_name,
 				const char *esp4_encrypt_tun_node_name,
 				const char *esp4_decrypt_node_name,
+				const char *esp4_decrypt_tun_node_name,
 				const char *esp6_encrypt_node_name,
 				const char *esp6_encrypt_tun_node_name,
 				const char *esp6_decrypt_node_name,
+				const char *esp6_decrypt_tun_node_name,
 				check_support_cb_t esp_check_support_cb,
 				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
 
