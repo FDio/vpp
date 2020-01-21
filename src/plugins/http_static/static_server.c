@@ -133,8 +133,10 @@ http_static_server_session_alloc (u32 thread_index)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   http_session_t *hs;
-  pool_get (hsm->sessions[thread_index], hs);
-  memset (hs, 0, sizeof (*hs));
+  pool_get_aligned_zero_numa (hsm->sessions[thread_index], hs,
+			      0 /* not aligned */ ,
+			      1 /* zero */ ,
+			      os_get_numa_index ());
   hs->session_index = hs - hsm->sessions[thread_index];
   hs->thread_index = thread_index;
   hs->timer_handle = ~0;

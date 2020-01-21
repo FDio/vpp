@@ -46,6 +46,7 @@
 #include <stdio.h>		/* for sprintf */
 
 __thread uword __os_thread_index = 0;
+__thread uword __os_numa_index = 0;
 
 clib_error_t *
 clib_file_n_bytes (char *file, uword * result)

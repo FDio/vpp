@@ -44,15 +44,23 @@ void *
 vec_resize_allocate_memory (void *v,
 			    word length_increment,
 			    uword data_bytes,
-			    uword header_bytes, uword data_align)
+			    uword header_bytes, uword data_align,
+			    uword numa_id)
 {
   vec_header_t *vh = _vec_find (v);
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
+  void *oldheap;
 
   header_bytes = vec_header_bytes (header_bytes);
 
   data_bytes += header_bytes;
+
+  if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
+    {
+      oldheap = clib_mem_get_per_cpu_heap ();
+      clib_mem_set_per_cpu_heap (clib_mem_get_per_numa_heap (numa_id));
+    }
 
   if (!v)
     {
@@ -64,6 +72,9 @@ vec_resize_allocate_memory (void *v,
       CLIB_MEM_POISON (new + data_bytes, new_alloc_bytes - data_bytes);
       v = new + header_bytes;
       _vec_len (v) = length_increment;
+      _vec_numa (v) = numa_id;
+      if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
+	clib_mem_set_per_cpu_heap (oldheap);
       return v;
     }
 
@@ -79,6 +90,8 @@ vec_resize_allocate_memory (void *v,
   if (data_bytes <= old_alloc_bytes)
     {
       CLIB_MEM_UNPOISON (v, data_bytes);
+      if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
+	clib_mem_set_per_cpu_heap (oldheap);
       return v;
     }
 
@@ -109,6 +122,10 @@ vec_resize_allocate_memory (void *v,
   CLIB_MEM_UNPOISON (new + data_bytes, new_alloc_bytes - data_bytes);
   memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
   CLIB_MEM_POISON (new + data_bytes, new_alloc_bytes - data_bytes);
+
+  _vec_numa ((v + header_bytes)) = numa_id;
+  if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
+    clib_mem_set_per_cpu_heap (oldheap);
 
   return v + header_bytes;
 }

@@ -57,6 +57,7 @@ void os_out_of_memory (void);
 f64 os_cpu_clock_frequency (void);
 
 extern __thread uword __os_thread_index;
+extern __thread uword __os_numa_index;
 
 static_always_inline uword
 os_get_thread_index (void)
@@ -68,6 +69,18 @@ static_always_inline void
 os_set_thread_index (uword thread_index)
 {
   __os_thread_index = thread_index;
+}
+
+static_always_inline uword
+os_get_numa_index (void)
+{
+  return __os_numa_index;
+}
+
+static_always_inline void
+os_set_numa_index (uword numa_index)
+{
+  __os_numa_index = numa_index;
 }
 
 static_always_inline uword
