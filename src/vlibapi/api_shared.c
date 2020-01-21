@@ -595,7 +595,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
    * Special-case, so we can e.g. bounce messages off the vnet
    * main thread without copying them...
    */
-  if (!(am->message_bounce[id]))
+  if (id >= vec_len (am->message_bounce) || !(am->message_bounce[id]))
     vl_msg_api_free (the_msg);
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
