@@ -209,7 +209,8 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   vec_validate (nsm->wheel_by_thread, num_workers);
 
   /* Initialize the output scheduler wheels */
-  for (i = num_workers ? 1 : 0; i < num_workers + 1; i++)
+  i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
+  for (; i < num_workers + 1; i++)
     {
       nsim_wheel_t *wp;
 
@@ -232,7 +233,8 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   vlib_worker_thread_barrier_sync (vm);
 
   /* turn on the ring scrapers */
-  for (i = num_workers ? 1 : 0; i < num_workers + 1; i++)
+  i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
+  for (; i < num_workers + 1; i++)
     {
       vlib_main_t *this_vm = vlib_mains[i];
 
@@ -313,6 +315,28 @@ nsim_cross_connect_enable_disable_command_fn (vlib_main_t * vm,
     }
   return 0;
 }
+
+static clib_error_t *
+nsim_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  nsim_main_t *nsm = &nsim_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "poll-main-thread"))
+	{
+	  nsm->poll_main_thread = 1;
+	}
+      else
+	{
+	  return clib_error_return (0, "unknown input '%U'",
+				    format_unformat_error, input);
+	}
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (nsim_config, "nsim");
 
 /*?
  * Enable or disable network simulation cross-connect on two interfaces
@@ -653,6 +677,8 @@ set_nsim_command_fn (vlib_main_t * vm,
 	    return clib_error_return
 	      (0, "drop fraction must be between zero and 1");
 	}
+      else if (unformat (input, "poll-main-thread"))
+	nsm->poll_main_thread = 1;
       else
 	break;
     }

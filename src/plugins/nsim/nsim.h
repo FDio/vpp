@@ -68,6 +68,7 @@ typedef struct
   f64 bandwidth;
   f64 packet_size;
   f64 drop_fraction;
+  u32 poll_main_thread;
 
   u64 mmap_size;
 
