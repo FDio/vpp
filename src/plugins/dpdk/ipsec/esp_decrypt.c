@@ -255,8 +255,10 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	  if (is_ip6)
 	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT6_POST;
-	  else
+	  else {
 	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT4_POST;
+            b0->flags |= VNET_BUFFER_F_IS_IP4;
+          }
 
 	  /* FIXME multi-seg */
 	  vlib_increment_combined_counter
