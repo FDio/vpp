@@ -551,7 +551,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
-      else if (unformat (line_input, "tag %v", &tag))
+      else if (unformat (line_input, "tag %s", &tag))
 	;
       else
 	{
@@ -571,6 +571,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
 		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
 		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
 		     mtu, flags, tag);
+  vec_free (tag);
 
 done:
   unformat_free (line_input);
