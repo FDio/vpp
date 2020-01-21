@@ -430,7 +430,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     }
 
   file_size = statb.st_size;
-  file_size = (file_size + 4095) & ~(4096);
+  file_size = (file_size + 4095) & ~(4095);
 
   hp = mmap (0, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
