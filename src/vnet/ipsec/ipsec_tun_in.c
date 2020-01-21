@@ -55,8 +55,7 @@ typedef enum ipsec_tun_next_t_
 #define _(v, s) IPSEC_TUN_PROTECT_NEXT_##v,
   foreach_ipsec_input_next
 #undef _
-    IPSEC_TUN_PROTECT_NEXT_DECRYPT,
-  IPSEC_TUN_PROTECT_N_NEXT,
+    IPSEC_TUN_PROTECT_N_NEXT,
 } ipsec_tun_next_t;
 
 typedef struct
@@ -311,7 +310,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_bytes = len0;
 	    }
 
-	  next[0] = IPSEC_TUN_PROTECT_NEXT_DECRYPT;
+	  next[0] = im->esp4_decrypt_tun_next_index;	//IPSEC_TUN_PROTECT_NEXT_DECRYPT;
 	}
     trace00:
       if (PREDICT_FALSE (is_trace))
@@ -358,8 +357,7 @@ VLIB_NODE_FN (ipsec4_tun_input_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * from_frame)
 {
-  return ipsec_tun_protect_input_inline (vm, node, from_frame,
-					 0 /* is_ip6 */ );
+  return ipsec_tun_protect_input_inline (vm, node, from_frame, 0);
 }
 
 /* *INDENT-OFF* */
@@ -374,7 +372,6 @@ VLIB_REGISTER_NODE (ipsec4_tun_input_node) = {
   .next_nodes = {
     [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip4-drop",
     [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-    [IPSEC_TUN_PROTECT_NEXT_DECRYPT] = "esp4-decrypt-tun",
   }
 };
 /* *INDENT-ON* */
@@ -383,8 +380,7 @@ VLIB_NODE_FN (ipsec6_tun_input_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * from_frame)
 {
-  return ipsec_tun_protect_input_inline (vm, node, from_frame,
-					 1 /* is_ip6 */ );
+  return ipsec_tun_protect_input_inline (vm, node, from_frame, 1);
 }
 
 /* *INDENT-OFF* */
@@ -399,7 +395,6 @@ VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
   .next_nodes = {
     [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip6-drop",
     [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-    [IPSEC_TUN_PROTECT_NEXT_DECRYPT] = "esp6-decrypt-tun",
   }
 };
 /* *INDENT-ON* */
