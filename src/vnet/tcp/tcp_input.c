@@ -2151,6 +2151,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, *first_buffer;
   u16 err_counters[TCP_N_ERROR] = { 0 };
 
+  uword *cons_with_data = hash_create (0, sizeof (tcp_connection_t *));
+
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
 
@@ -2205,7 +2207,12 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* 7: process the segment text */
       if (vnet_buffer (b0)->tcp.data_len)
-	error0 = tcp_segment_rcv (wrk, tc0, b0);
+        {
+          hash_set (cons_with_data, tc0, 1);
+	  error0 = tcp_segment_rcv (wrk, tc0, b0);
+          if (error0 == SVM_FIFO_EGROW)
+            hash_unset (cons_with_data, tc0);
+        }
 
       /* 8: check the FIN bit */
       if (PREDICT_FALSE (tcp_is_fin (th0)))
@@ -2214,6 +2221,19 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     done:
       tcp_inc_err_counter (err_counters, error0, 1);
     }
+
+  if (hash_elts (cons_with_data))
+    {
+      hash_pair_t *p;
+      tcp_connection_t *c;
+
+      /* *INDENT-OFF* */
+      hash_foreach_pair (p, cons_with_data, {
+        c = (tcp_connection_t*)p->key;
+        session_fifo_tuning_increase (&c->connection);
+      });
+    }
+  hash_free (cons_with_data);
 
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 					      thread_index);

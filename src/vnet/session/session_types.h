@@ -154,6 +154,7 @@ typedef enum
   _(CUSTOM_TX, "custom-tx")				\
   _(IS_MIGRATING, "migrating")				\
   _(UNIDIRECTIONAL, "unidirectional")			\
+  _(CUSTOM_FIFO_TUNING, "custom-fifo-tuning")		\
 
 typedef enum session_flags_bits_
 {
