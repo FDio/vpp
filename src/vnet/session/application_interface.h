@@ -68,6 +68,10 @@ typedef struct session_cb_vft_
   /** Cert and key pair delete notification */
   int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t * ckpair);
 
+  /** Delegate fifo-tuning-logic to application */
+  int (*fifo_tuning_callback) (session_t * s, svm_fifo_t * f,
+			       session_ft_action_t act, u32 bytes);
+
 } session_cb_vft_t;
 
 #define foreach_app_init_args			\
@@ -201,6 +205,7 @@ typedef enum
   APP_OPTIONS_PROXY_TRANSPORT,
   APP_OPTIONS_ACCEPT_COOKIE,
   APP_OPTIONS_TLS_ENGINE,
+  APP_OPTIONS_MAX_FIFO_SIZE,
   APP_OPTIONS_HIGH_WATERMARK,
   APP_OPTIONS_LOW_WATERMARK,
   APP_OPTIONS_N_OPTIONS
