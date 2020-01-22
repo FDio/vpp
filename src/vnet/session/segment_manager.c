@@ -26,11 +26,12 @@ typedef struct segment_manager_main_
   /*
    * Configuration
    */
-  u32 default_fifo_size;		/**< default rx/tx fifo size */
-  u32 default_segment_size;		/**< default fifo segment size */
-  u32 default_app_mq_size;		/**< default app msg q size */
-  u8 default_high_watermark;		/**< default high watermark % */
-  u8 default_low_watermark;		/**< default low watermark % */
+  u32 default_fifo_size;	/**< default rx/tx fifo size */
+  u32 default_segment_size;	/**< default fifo segment size */
+  u32 default_app_mq_size;	/**< default app msg q size */
+  u32 default_max_fifo_size;	/**< default max fifo size */
+  u8 default_high_watermark;	/**< default high watermark % */
+  u8 default_low_watermark;	/**< default low watermark % */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -56,6 +57,7 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->max_fifo_size = sm_main.default_max_fifo_size;
   props->high_watermark = sm_main.default_high_watermark;
   props->low_watermark = sm_main.default_low_watermark;
   props->n_slices = vlib_num_workers () + 1;
@@ -334,6 +336,10 @@ segment_manager_init (segment_manager_t * sm)
   first_seg_size = clib_max (props->segment_size,
 			     sm_main.default_segment_size);
   prealloc_fifo_pairs = props->prealloc_fifos;
+
+  sm->max_fifo_size = props->max_fifo_size ?
+    props->max_fifo_size : sm_main.default_max_fifo_size;
+  sm->max_fifo_size = clib_max (sm->max_fifo_size, 4096);
 
   segment_manager_set_watermarks (sm,
 				  props->high_watermark,
@@ -832,6 +838,7 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_max_fifo_size = 4 << 20;
   sm->default_high_watermark = 80;
   sm->default_low_watermark = 50;
 }
@@ -844,6 +851,9 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 show_segments = 0, verbose = 0;
   segment_manager_t *sm;
   fifo_segment_t *seg;
+  app_worker_t *app_wrk;
+  application_t *app;
+  u8 custom_logic;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -859,13 +869,22 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 		   pool_elts (smm->segment_managers));
   if (verbose && pool_elts (smm->segment_managers))
     {
-      vlib_cli_output (vm, "%-10s%=15s%=12s", "Index", "App Index",
-		       "Segments");
+      vlib_cli_output (vm, "%-6s%=10s%=10s%=13s%=11s%=11s%=12s",
+		       "Index", "AppIndex", "Segments", "MaxFifoSize",
+		       "HighWater", "LowWater", "FifoTuning");
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
-	vlib_cli_output (vm, "%-10d%=15d%=12d", segment_manager_index (sm),
-			   sm->app_wrk_index, pool_elts (sm->segments));
+        app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
+        app = app_wrk ? application_get (app_wrk->app_index) : 0;
+        custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
+
+	vlib_cli_output (vm, "%-6d%=10d%=10d%=13U%=11d%=11d%=12s",
+                         segment_manager_index (sm),
+			 sm->app_wrk_index, pool_elts (sm->segments),
+                         format_memory_size, sm->max_fifo_size,
+                         sm->high_watermark, sm->low_watermark,
+                         custom_logic ? "custom" : "none");
       }));
       /* *INDENT-ON* */
 
