@@ -273,12 +273,17 @@ int
 app_worker_init_accepted (session_t * s)
 {
   app_worker_t *app_wrk;
+  application_t *app;
   segment_manager_t *sm;
   session_t *listener;
 
   listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
+
+  app = application_get (app_wrk->app_index);
+  if (app->cb_fns.fifo_tuning_callback)
+    s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
 
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
   if (app_worker_alloc_session_fifos (sm, s))
