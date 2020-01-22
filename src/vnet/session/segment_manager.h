@@ -19,6 +19,7 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/valloc.h>
 #include <svm/fifo_segment.h>
+#include <vnet/session/session_types.h>
 
 typedef struct _segment_manager_props
 {
@@ -34,8 +35,11 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u32 max_fifo_size;                    /**< max fifo size */
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
+  u8 fifo_inc_thresh;                   /**< fifo increase threshold % */
+  u8 fifo_dec_thresh;                   /**< fifo decrease threshold % */
 } segment_manager_props_t;
 
 typedef struct _segment_manager
@@ -61,8 +65,11 @@ typedef struct _segment_manager
    */
   svm_msg_q_t *event_queue;
 
+  u32 max_fifo_size;
   u8 high_watermark;
   u8 low_watermark;
+  u8 fifo_inc_thresh;
+  u8 fifo_dec_thresh;
 } segment_manager_t;
 
 typedef struct segment_manager_main_init_args_
@@ -121,6 +128,9 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
+
+void segment_manager_fifo_tuning (session_t * s, svm_fifo_t * f,
+                                  u32 bytes);
 
 void segment_manager_set_watermarks (segment_manager_t * sm,
 				     u8 high_watermark, u8 low_watermark);

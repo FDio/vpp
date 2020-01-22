@@ -607,7 +607,8 @@ fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
  */
 svm_fifo_t *
 fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
-				 u32 data_bytes, fifo_segment_ftype_t ftype)
+				 u32 data_bytes,
+                                 fifo_segment_ftype_t ftype)
 {
   fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;

@@ -26,11 +26,14 @@ typedef struct segment_manager_main_
   /*
    * Configuration
    */
-  u32 default_fifo_size;		/**< default rx/tx fifo size */
-  u32 default_segment_size;		/**< default fifo segment size */
-  u32 default_app_mq_size;		/**< default app msg q size */
-  u8 default_high_watermark;		/**< default high watermark % */
-  u8 default_low_watermark;		/**< default low watermark % */
+  u32 default_fifo_size;	/**< default rx/tx fifo size */
+  u32 default_segment_size;	/**< default fifo segment size */
+  u32 default_app_mq_size;	/**< default app msg q size */
+  u32 default_max_fifo_size;    /**< default max fifo size */
+  u8 default_high_watermark;	/**< default high watermark % */
+  u8 default_low_watermark;	/**< default low watermark % */
+  u8 default_fifo_inc_thresh;   /**< default fifo increase threshold % */
+  u8 default_fifo_dec_thresh;   /**< default fifo decrease threshold % */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -56,8 +59,11 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->max_fifo_size = sm_main.default_max_fifo_size;
   props->high_watermark = sm_main.default_high_watermark;
   props->low_watermark = sm_main.default_low_watermark;
+  props->fifo_inc_thresh = sm_main.default_fifo_inc_thresh;
+  props->fifo_dec_thresh = sm_main.default_fifo_dec_thresh;
   props->n_slices = vlib_num_workers () + 1;
   return props;
 }
@@ -334,6 +340,14 @@ segment_manager_init (segment_manager_t * sm)
   first_seg_size = clib_max (props->segment_size,
 			     sm_main.default_segment_size);
   prealloc_fifo_pairs = props->prealloc_fifos;
+
+  sm->max_fifo_size = props->max_fifo_size ?
+                      props->max_fifo_size :
+                      sm_main.default_max_fifo_size;
+  sm->max_fifo_size = clib_max (sm->max_fifo_size, 4096);
+
+  sm->fifo_inc_thresh = clib_min (100, props->fifo_inc_thresh);
+  sm->fifo_dec_thresh = clib_min (100, props->fifo_dec_thresh);
 
   segment_manager_set_watermarks (sm,
                                   props->high_watermark,
@@ -719,6 +733,101 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
     segment_manager_segment_reader_unlock (sm);
 }
 
+static u32
+default_fifo_tuning_logic (session_t * s, svm_fifo_t * f, u32 bytes)
+{
+  segment_manager_t *sm = segment_manager_get (f->segment_manager);
+  fifo_segment_t* fs = segment_manager_get_segment (sm, f->segment_index);
+
+  session_fifo_last_action_type_t act = s->opaque;
+  fifo_segment_mem_status_t st = fifo_segment_get_mem_status (fs);
+  u32 fifo_in_use = svm_fifo_max_dequeue_prod (f);
+  u32 fifo_size = svm_fifo_size (f);
+  u8 fifo_usage = fifo_in_use * 100 / fifo_size;
+  u32 ret = 0;
+
+  if (act == SESSION_FIFO_LAST_ACTION_ENQUEUED)
+    {
+      switch (st)
+        {
+          case MEMORY_PRESSURE_NO_PRESSURE :
+            if (fifo_usage > 50)
+              ret = fifo_in_use;
+            /* fall through */
+          case MEMORY_PRESSURE_LOW_PRESSURE :
+            if (fifo_usage > 80)
+              ret = fifo_in_use;
+            /* fall through */
+          case MEMORY_PRESSURE_HIGH_PRESSURE :
+          case MEMORY_PRESSURE_NO_MEMORY :
+          default :
+            break;
+        }
+    }
+  else /* dequeued */
+    {
+      switch (st)
+        {
+          case MEMORY_PRESSURE_HIGH_PRESSURE :
+          case MEMORY_PRESSURE_NO_MEMORY :
+            ret = bytes;
+            break;
+          case MEMORY_PRESSURE_LOW_PRESSURE :
+            if (fifo_usage < 50)
+              ret = bytes / 2;
+            /* fall through */
+          case MEMORY_PRESSURE_NO_PRESSURE :
+          default :
+            if (fifo_usage < 20)
+              ret = bytes;
+        }
+    }
+
+  return ret;
+}
+
+void
+segment_manager_fifo_tuning (session_t * s, svm_fifo_t * f, u32 bytes)
+{
+  segment_manager_t *sm = segment_manager_get (f->segment_manager);
+  u32 fifo_in_use = svm_fifo_max_dequeue_prod (f);
+  u32 fifo_size = svm_fifo_size (f);
+  u8 fifo_usage = fifo_in_use * 100 / fifo_size;
+  session_fifo_last_action_type_t act = s->opaque;
+  u32 update = 0;
+
+  if ((act == SESSION_FIFO_LAST_ACTION_ENQUEUED &&
+       (fifo_usage <= sm->fifo_inc_thresh ||
+        fifo_size == sm->max_fifo_size)) ||
+      (act == SESSION_FIFO_LAST_ACTION_DEQUEUED &&
+       (fifo_usage >= sm->fifo_dec_thresh || fifo_size == 4096)))
+    return;
+
+  ASSERT (fifo_size <= sm->max_fifo_size);
+
+  if (s->flags & SESSION_F_CUSTOM_FIFO_TUNING)
+    {
+      app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
+      application_t *app = application_get (app_wrk->app_index);
+      update = app->cb_fns.fifo_tuning_callback (s, f, bytes);
+    }
+  else
+    update = default_fifo_tuning_logic (s, f, bytes);
+
+  if (act == SESSION_FIFO_LAST_ACTION_ENQUEUED)
+    {
+      update = clib_min (update,
+                         sm->max_fifo_size - svm_fifo_size (f));
+      svm_fifo_set_size (f, svm_fifo_size (f) + update);
+    }
+  else /* dequeued */
+    {
+      update = clib_min (update,
+                         svm_fifo_size (f) - 4096);
+      svm_fifo_set_size (f, svm_fifo_size (f) - update);
+    }
+}
+
 u32
 segment_manager_evt_q_expected_size (u32 q_len)
 {
@@ -820,8 +929,11 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_max_fifo_size = 128 << 20;
   sm->default_high_watermark = 80;
   sm->default_low_watermark = 50;
+  sm->default_fifo_inc_thresh = 50;
+  sm->default_fifo_dec_thresh = 95;
 }
 
 static clib_error_t *
@@ -832,6 +944,9 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 show_segments = 0, verbose = 0;
   segment_manager_t *sm;
   fifo_segment_t *seg;
+  app_worker_t *app_wrk;
+  application_t *app;
+  u8 custom_logic;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -846,14 +961,25 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%d segment managers allocated",
 		   pool_elts (smm->segment_managers));
   if (verbose && pool_elts (smm->segment_managers))
-    {
-      vlib_cli_output (vm, "%-10s%=15s%=12s", "Index", "App Index",
-		       "Segments");
+     {
+      vlib_cli_output (vm, "%-6s%=10s%=10s%=13s%=11s%=11s%=15s%=15s%=12s",
+                       "Index", "AppIndex","Segments", "MaxFifoSize",
+                       "HighWater", "LowWater", "FifoIncThresh",
+                       "FifoDecThresh", "FifoTuning");
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
-	vlib_cli_output (vm, "%-10d%=15d%=12d", segment_manager_index (sm),
-			   sm->app_wrk_index, pool_elts (sm->segments));
+        app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
+        app = app_wrk ? application_get (app_wrk->app_index) : 0;
+        custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
+
+	vlib_cli_output (vm, "%-6d%=10d%=10d%=13U%=11d%=11d%=15d%=15d%=12s",
+                         segment_manager_index (sm),
+			 sm->app_wrk_index, pool_elts (sm->segments),
+                         format_memory_size, sm->max_fifo_size,
+                         sm->high_watermark, sm->low_watermark,
+                         sm->fifo_inc_thresh, sm->fifo_dec_thresh,
+                         custom_logic ? "custom" : "default");
       }));
       /* *INDENT-ON* */
 
