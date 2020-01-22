@@ -396,6 +396,30 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
   return 0;
 }
 
+void
+session_fifo_tuning (session_t * s, svm_fifo_t * f,
+		     session_ft_action_t act, u32 len)
+{
+  if (s->flags & SESSION_F_CUSTOM_FIFO_TUNING)
+    {
+      app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+      app_worker_session_fifo_tuning (app_wrk, s, f, act, len);
+      if (CLIB_ASSERT_ENABLE)
+        {
+          segment_manager_t *sm;
+          sm = segment_manager_get (f->segment_manager);
+          ASSERT (f->size >= 4096);
+          ASSERT (f->size <= sm->max_fifo_size);
+        }
+    }
+  else
+    {
+      segment_manager_t *sm;
+      sm = segment_manager_get (f->segment_manager);
+      segment_manager_fifo_tuning (sm, s, s->tx_fifo, act, len);
+    }
+}
+
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
@@ -458,6 +482,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 	  s->flags |= SESSION_F_RX_EVT;
 	  vec_add1 (wrk->session_to_enqueue[tc->proto], s->session_index);
 	}
+
+      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
 
   return enqueued;
@@ -495,6 +521,8 @@ session_enqueue_dgram_connection (session_t * s,
 	  s->flags |= SESSION_F_RX_EVT;
 	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
 	}
+
+      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
   return enqueued;
 }
@@ -514,6 +542,7 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
   u32 rv;
 
   rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  session_fifo_tuning (s, s->tx_fifo, SESSION_FT_ACTION_DEQUEUED, rv);
 
   if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
@@ -673,6 +702,9 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  errors++;
 	  continue;
 	}
+
+      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
+			   0 /* TODO/not needed */ );
 
       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;
