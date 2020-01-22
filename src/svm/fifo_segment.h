@@ -251,8 +251,7 @@ u32 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size);
 u8 fifo_segment_get_mem_usage (fifo_segment_t * fs);
 fifo_segment_mem_status_t fifo_segment_determine_status
   (fifo_segment_header_t * fsh, u8 usage);
-fifo_segment_mem_status_t fifo_segment_get_mem_status
-  (fifo_segment_t * fs);
+fifo_segment_mem_status_t fifo_segment_get_mem_status (fifo_segment_t * fs);
 
 void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 			     u32 timeout_in_seconds);

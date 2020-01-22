@@ -103,7 +103,7 @@ fs_freelist_index_to_size (u32 fl_index)
   return 1 << (fl_index + FIFO_SEGMENT_MIN_LOG2_FIFO_SIZE);
 }
 
-static char* states_str[] = {
+static char *states_str[] = {
 #define _(sym,str) str,
   foreach_segment_mem_status
 #undef _
@@ -123,7 +123,7 @@ static u32 size_2MB = 2 << 20;
 
 
 static int
-fifo_tuning_logic_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
+segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv;
   segment_manager_t *sm;
@@ -141,7 +141,7 @@ fifo_tuning_logic_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .name = format (0, "fifo_tuning_logic_test_pressure_1"),
+    .name = format (0, "segment_manager_test_pressure_1"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -287,7 +287,7 @@ fifo_tuning_logic_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-fifo_tuning_logic_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
+segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv, i;
   segment_manager_t *sm;
@@ -305,7 +305,7 @@ fifo_tuning_logic_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .name = format (0, "fifo_tuning_logic_test_pressure_1"),
+    .name = format (0, "segment_manager_test_pressure_1"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -416,8 +416,8 @@ fifo_tuning_logic_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-fifo_tuning_logic_test_fifo_balanced_alloc (vlib_main_t * vm,
-					    unformat_input_t * input)
+segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
+					  unformat_input_t * input)
 {
   int rv, i, fs_index;
   segment_manager_t *sm;
@@ -435,7 +435,7 @@ fifo_tuning_logic_test_fifo_balanced_alloc (vlib_main_t * vm,
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .name = format (0, "fifo_tuning_logic_test_pressure_1"),
+    .name = format (0, "segment_manager_test_pressure_1"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -536,8 +536,7 @@ fifo_tuning_logic_test_fifo_balanced_alloc (vlib_main_t * vm,
 }
 
 static int
-fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
-                                 unformat_input_t * input)
+segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv, i;
   segment_manager_t *sm;
@@ -556,7 +555,7 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .name = format (0, "fifo_tuning_logic_test_pressure_1"),
+    .name = format (0, "segment_manager_test_pressure_1"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -568,19 +567,19 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
 
   sm =
     segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-                         (attach_args.segment_handle));
+			 (attach_args.segment_handle));
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
   fs = segment_manager_get_segment (sm, 0);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* allocate fifos : 4KB x2 */
   rv = segment_manager_alloc_session_fifos (sm,
-                                            vlib_get_thread_index (),
-                                            &rx_fifo, &tx_fifo);
+					    vlib_get_thread_index (),
+					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
   /* check the initial fifo size : 4KB */
@@ -636,10 +635,11 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
       svm_fifo_enqueue (rx_fifo, size_32KB, data);
     }
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_52KB + size_32KB * 55)), "max_dequeue %u", max_dequeue);
+  SEG_MGR_TEST ((max_dequeue == (size_52KB + size_32KB * 55)),
+		"max_dequeue %u", max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
   most_grown = svm_fifo_size (rx_fifo);
 
   /* dequeue */
@@ -650,37 +650,41 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
   for (i = 0; i < 20; ++i)
     svm_fifo_dequeue_drop (rx_fifo, size_32KB);
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u", max_dequeue);
+  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u",
+		max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* bulk dequeue */
   for (i = 0; i < 10; ++i)
     svm_fifo_dequeue_drop (rx_fifo, size_32KB);
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 25)), "max_dequeue %u", max_dequeue);
+  SEG_MGR_TEST ((max_dequeue == (size_32KB * 25)), "max_dequeue %u",
+		max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* bulk enqueue */
   for (i = 0; i < 30; ++i)
     svm_fifo_enqueue (rx_fifo, size_32KB, data);
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 55)), "max_dequeue %u", max_dequeue);
+  SEG_MGR_TEST ((max_dequeue == (size_32KB * 55)), "max_dequeue %u",
+		max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* bulk dequeue */
   for (i = 0; i < 20; ++i)
     svm_fifo_dequeue_drop (rx_fifo, size_32KB);
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u", max_dequeue);
+  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u",
+		max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* bulk dequeue */
   for (i = 0; i < 35; ++i)
@@ -689,10 +693,11 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
   SEG_MGR_TEST ((max_dequeue == 0), "max_dequeue %u", max_dequeue);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-                "fifo_segment_get_mem_status %s", states_str[rv]);
+		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* (virtual) fifo size is still large as it is not updated */
-  SEG_MGR_TEST ((rx_fifo->size == most_grown), "rx_fifo->size %u", rx_fifo->size);
+  SEG_MGR_TEST ((rx_fifo->size == most_grown), "rx_fifo->size %u",
+		rx_fifo->size);
 
   vnet_app_detach_args_t detach_args = {
     .app_index = attach_args.app_index,
@@ -706,9 +711,8 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
 
 
 static clib_error_t *
-fifo_tuning_logic_test (vlib_main_t * vm,
-			unformat_input_t * input,
-			vlib_cli_command_t * cmd_arg)
+segment_manager_test (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
 {
   int res = 0;
 
@@ -717,24 +721,24 @@ fifo_tuning_logic_test (vlib_main_t * vm,
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "pressure_levels_1"))
-	res = fifo_tuning_logic_test_pressure_1 (vm, input);
+	res = segment_manager_test_pressure_1 (vm, input);
       else if (unformat (input, "pressure_levels_2"))
-	res = fifo_tuning_logic_test_pressure_2 (vm, input);
+	res = segment_manager_test_pressure_2 (vm, input);
       else if (unformat (input, "alloc"))
-	res = fifo_tuning_logic_test_fifo_balanced_alloc (vm, input);
+	res = segment_manager_test_fifo_balanced_alloc (vm, input);
       else if (unformat (input, "fifo_ops"))
-        res = fifo_tuning_logic_test_fifo_ops (vm, input);
+	res = segment_manager_test_fifo_ops (vm, input);
 
       else if (unformat (input, "all"))
 	{
-	  if ((res = fifo_tuning_logic_test_pressure_1 (vm, input)))
+	  if ((res = segment_manager_test_pressure_1 (vm, input)))
 	    goto done;
-	  if ((res = fifo_tuning_logic_test_pressure_2 (vm, input)))
+	  if ((res = segment_manager_test_pressure_2 (vm, input)))
 	    goto done;
-	  if ((res = fifo_tuning_logic_test_fifo_balanced_alloc (vm, input)))
+	  if ((res = segment_manager_test_fifo_balanced_alloc (vm, input)))
 	    goto done;
-          if ((res = fifo_tuning_logic_test_fifo_ops (vm, input)))
-            goto done;
+	  if ((res = segment_manager_test_fifo_ops (vm, input)))
+	    goto done;
 	}
       else
 	break;
@@ -742,17 +746,17 @@ fifo_tuning_logic_test (vlib_main_t * vm,
 
 done:
   if (res)
-    return clib_error_return (0, "Fifo tuning logic unit test failed.");
+    return clib_error_return (0, "Segment manager unit test failed.");
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
-  .path = "test fifo tuning logic",
-  .short_help = "fifo tuning logic [pressure_levels_1]"
+  .path = "test segment manager",
+  .short_help = "test segment manager [pressure_levels_1]"
                 "[pressure_level_2][alloc][fifo_ops][all]",
-  .function = fifo_tuning_logic_test,
+  .function = segment_manager_test,
 };
 
 /*
