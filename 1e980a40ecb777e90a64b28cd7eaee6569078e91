@@ -46,6 +46,30 @@
       "revId": "1e980a40ecb777e90a64b28cd7eaee6569078e91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d0b08364_0240002c",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2236,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-22T15:55:31Z",
+      "side": 1,
+      "message": "Ow. My bad, I should\u0027ve been more specific.\n\nI was thinking about doing something similar to or reusing session_main_flush_enqueue_events. That is, when we generate enqueue notifications, we can also do the fifo tuning. \n\nThat mechanism is much more efficient in that it uses preallocated vectors to track the sessions with enqueued data.",
+      "parentUuid": "573f7772_62e1dec8",
+      "range": {
+        "startLine": 2225,
+        "startChar": 0,
+        "endLine": 2236,
+        "endChar": 29
+      },
+      "revId": "1e980a40ecb777e90a64b28cd7eaee6569078e91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
