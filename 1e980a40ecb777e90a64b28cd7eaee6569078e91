@@ -22,6 +22,30 @@
       "revId": "1e980a40ecb777e90a64b28cd7eaee6569078e91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "573f7772_62e1dec8",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2236,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-22T15:45:49Z",
+      "side": 1,
+      "message": "Maybe I took your advise wrongly. https://gerrit.fd.io/r/c/vpp/+/24278/18/src/vnet/session/session.c#529\n\nI tried to bring it out from session_enqueue_stream_connection() which is typically called multiple times per a single connection / single tcp46_established_inline call. So I thought this is better location to call increase function. But I admit it is not a significant improvement. Could you suggest an example of better location to do that?",
+      "parentUuid": "e93da260_61d45608",
+      "range": {
+        "startLine": 2225,
+        "startChar": 0,
+        "endLine": 2236,
+        "endChar": 29
+      },
+      "revId": "1e980a40ecb777e90a64b28cd7eaee6569078e91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
