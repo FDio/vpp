@@ -118,8 +118,8 @@ struct fifo_segment_header_
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
   u8 flags;				/**< Segment flags */
   u8 n_slices;				/**< Number of slices */
-  u8 high_watermark;                    /**< Memory pressure watermark high */
-  u8 low_watermark;                     /**< Memory pressure watermark low */
+  u8 high_watermark;			/**< Memory pressure watermark high */
+  u8 low_watermark;			/**< Memory pressure watermark low */
 };
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
