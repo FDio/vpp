@@ -123,6 +123,13 @@ typedef enum
   SESSION_CLEANUP_SESSION,
 } session_cleanup_ntf_t;
 
+typedef enum session_ft_action_
+{
+  SESSION_FT_ACTION_ENQUEUED,
+  SESSION_FT_ACTION_DEQUEUED,
+  SESSION_FT_ACTION_N_ACTIONS
+} session_ft_action_t;
+
 /*
  * Session states
  */
@@ -154,6 +161,7 @@ typedef enum
   _(CUSTOM_TX, "custom-tx")				\
   _(IS_MIGRATING, "migrating")				\
   _(UNIDIRECTIONAL, "unidirectional")			\
+  _(CUSTOM_FIFO_TUNING, "custom-fifo-tuning")		\
 
 typedef enum session_flags_bits_
 {

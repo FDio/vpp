@@ -19,6 +19,7 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/valloc.h>
 #include <svm/fifo_segment.h>
+#include <vnet/session/session_types.h>
 
 typedef struct _segment_manager_props
 {
@@ -34,6 +35,7 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u32 max_fifo_size;			/**< max fifo size */
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
 } segment_manager_props_t;
@@ -61,6 +63,7 @@ typedef struct _segment_manager
    */
   svm_msg_q_t *event_queue;
 
+  u32 max_fifo_size;
   u8 high_watermark;
   u8 low_watermark;
 } segment_manager_t;

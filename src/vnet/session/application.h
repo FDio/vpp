@@ -261,6 +261,9 @@ int app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			       session_handle_t new_sh);
 int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
 int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
+int app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
+				    svm_fifo_t * f,
+				    session_ft_action_t act, u32 len);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
