@@ -42,6 +42,24 @@
     },
     {
       "key": {
+        "uuid": "46b6f7b4_3997b942",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-22T10:06:10Z",
+      "side": 1,
+      "message": "This if-condition was wrong. I\u0027m fixing it to\n  if (enqueued !\u003d SVM_FIFO_EGROW)\n\nEither of SVM_FIFO_EFULL and (enqueued \u003c b-\u003ecurrent_length) wouldn\u0027t be the reason we should skip the session_fifo_tuning_increase.",
+      "parentUuid": "fe17d9b6_7d4ec7bd",
+      "revId": "5e2138239b6e0f1a0c4769916e7ae885e5f1b0c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dd0b98ad_873443a7",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 18
@@ -53,6 +71,30 @@
       "writtenOn": "2020-01-21T15:33:29Z",
       "side": 1,
       "message": "We might end up calling this multiple times per tcp-established dispatch per session, if we get a large burst of packets per session. Let\u0027s see how it works. If it eats up too much time, we could build a list of sessions that had new data and call the tuning logic once per dispatch.",
+      "range": {
+        "startLine": 530,
+        "startChar": 8,
+        "endLine": 530,
+        "endChar": 36
+      },
+      "revId": "5e2138239b6e0f1a0c4769916e7ae885e5f1b0c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13f84b46_b7dc0b3b",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-22T10:06:10Z",
+      "side": 1,
+      "message": "Thanks for the advice. It sounds reasonable.\nI put this approach in the next patchset.",
+      "parentUuid": "dd0b98ad_873443a7",
       "range": {
         "startLine": 530,
         "startChar": 8,
