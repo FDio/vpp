@@ -34,6 +34,7 @@ typedef struct _segment_manager_props
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
+  u32 max_fifo_size;                    /**< max fifo size */
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
 } segment_manager_props_t;
@@ -61,6 +62,7 @@ typedef struct _segment_manager
    */
   svm_msg_q_t *event_queue;
 
+  u32 max_fifo_size;
   u8 high_watermark;
   u8 low_watermark;
 } segment_manager_t;
@@ -121,6 +123,12 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
+
+void segment_manager_fifo_tuning_increase (svm_fifo_t * rx_fifo,
+                                           u8 custom_logic);
+void segment_manager_fifo_tuning_decrease (svm_fifo_t * tx_fifo,
+					   u32 max_decrease,
+                                           u8 custom_logic);
 
 void segment_manager_set_watermarks (segment_manager_t * sm,
 				     u8 high_watermark, u8 low_watermark);

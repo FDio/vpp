@@ -29,6 +29,7 @@ typedef struct segment_manager_main_
   u32 default_fifo_size;		/**< default rx/tx fifo size */
   u32 default_segment_size;		/**< default fifo segment size */
   u32 default_app_mq_size;		/**< default app msg q size */
+  u32 default_max_fifo_size;            /**< default max fifo size */
   u8 default_high_watermark;		/**< default high watermark % */
   u8 default_low_watermark;		/**< default low watermark % */
 } segment_manager_main_t;
@@ -56,6 +57,7 @@ segment_manager_props_init (segment_manager_props_t * props)
   props->rx_fifo_size = sm_main.default_fifo_size;
   props->tx_fifo_size = sm_main.default_fifo_size;
   props->evt_q_size = sm_main.default_app_mq_size;
+  props->max_fifo_size = sm_main.default_max_fifo_size;
   props->high_watermark = sm_main.default_high_watermark;
   props->low_watermark = sm_main.default_low_watermark;
   props->n_slices = vlib_num_workers () + 1;
@@ -334,6 +336,11 @@ segment_manager_init (segment_manager_t * sm)
   first_seg_size = clib_max (props->segment_size,
 			     sm_main.default_segment_size);
   prealloc_fifo_pairs = props->prealloc_fifos;
+
+  sm->max_fifo_size = props->max_fifo_size ?
+                      props->max_fifo_size :
+                      sm_main.default_max_fifo_size;
+  sm->max_fifo_size = clib_max (sm->max_fifo_size, 4096);
 
   segment_manager_set_watermarks (sm,
                                   props->high_watermark,
@@ -719,6 +726,152 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
     segment_manager_segment_reader_unlock (sm);
 }
 
+static u32
+default_fifo_tuning_increase_logic (fifo_segment_mem_status_t s,
+				    u32 fifo_in_use,
+                                    u8 fifo_usage)
+{
+  u32 to_increase = 0;
+
+  switch (s)
+    {
+      case MEMORY_PRESSURE_NO_PRESSURE :
+        if (fifo_usage > 50)
+          to_increase = fifo_in_use;
+        /* fall through */
+      case MEMORY_PRESSURE_LOW_PRESSURE :
+        if (fifo_usage > 80)
+          to_increase = fifo_in_use;
+        /* fall through */
+      case MEMORY_PRESSURE_HIGH_PRESSURE :
+      case MEMORY_PRESSURE_NO_MEMORY :
+      default :
+        break;
+    }
+
+  return to_increase;
+}
+
+static u32
+default_fifo_tuning_decrease_logic (fifo_segment_mem_status_t s,
+                                    u8 fifo_usage,
+                                    u32 max_decrease)
+{
+  u32 to_decrease = 0;
+
+  switch (s)
+    {
+      case MEMORY_PRESSURE_HIGH_PRESSURE :
+      case MEMORY_PRESSURE_NO_MEMORY :
+        to_decrease = max_decrease;
+        break;
+      case MEMORY_PRESSURE_LOW_PRESSURE :
+        if (fifo_usage < 50)
+          to_decrease = max_decrease / 2;
+        /* fall through */
+      case MEMORY_PRESSURE_NO_PRESSURE :
+      default :
+        if (fifo_usage < 20)
+          to_decrease = max_decrease;
+    }
+
+  return to_decrease;
+}
+
+void
+segment_manager_fifo_tuning_increase (svm_fifo_t * rx_fifo,
+                                      u8 custom_logic)
+{
+  segment_manager_t *sm = segment_manager_get (rx_fifo->segment_manager);
+  u32 fifo_in_use = svm_fifo_max_dequeue_prod (rx_fifo);
+  u32 fifo_size = svm_fifo_size (rx_fifo);
+  u8 fifo_usage = fifo_in_use * 100 / fifo_size;
+  u8 fifo_inc_thresh = 50; /* TODO to be parameter of sm? */
+  fifo_segment_t* fs;
+  fifo_segment_mem_status_t s;
+  u8 seg_usage;
+  u32 to_increase = 0;
+
+  if (fifo_usage < fifo_inc_thresh)
+    return;
+
+  if (fifo_size == sm->max_fifo_size)
+    return;
+
+  ASSERT (fifo_size < sm->max_fifo_size);
+
+  fs = segment_manager_get_segment (sm, rx_fifo->segment_index);
+  seg_usage = fifo_segment_get_mem_usage (fs);
+
+  if (custom_logic)
+    {
+      app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
+      application_t *app = application_get (app_wrk->app_index);
+      to_increase = app->cb_fns.fifo_tuning_increase_callback (
+                       fs, seg_usage,
+                       rx_fifo, fifo_size, fifo_usage);
+    }
+  else
+    {
+      s = fifo_segment_determine_status (fs->h, seg_usage);
+      to_increase = default_fifo_tuning_increase_logic (
+                      s, fifo_in_use, fifo_usage);
+    }
+
+  to_increase = clib_min (to_increase, sm->max_fifo_size - fifo_size);
+
+  if (to_increase)
+    svm_fifo_set_size (rx_fifo, fifo_size + to_increase);
+}
+
+void
+segment_manager_fifo_tuning_decrease (svm_fifo_t * tx_fifo,
+                                      u32 max_decrease,
+                                      u8 custom_logic)
+{
+  segment_manager_t *sm = segment_manager_get (tx_fifo->segment_manager);
+  u32 fifo_in_use = svm_fifo_max_dequeue_prod (tx_fifo);
+  u32 fifo_size = svm_fifo_size (tx_fifo);
+  u8 fifo_usage = fifo_in_use * 100 / fifo_size;
+  u8 fifo_dec_thresh = 95; /* TODO to be parameter of sm? */
+  fifo_segment_t* fs;
+  fifo_segment_mem_status_t s;
+  u8 seg_usage;
+  u32 to_decrease = 0;
+
+  if (fifo_usage > fifo_dec_thresh)
+    return;
+
+  if (fifo_size == 4096)
+    return;
+
+  ASSERT (fifo_size > 4096);
+
+  fs = segment_manager_get_segment (sm, tx_fifo->segment_index);
+  seg_usage = fifo_segment_get_mem_usage (fs);
+
+  if (custom_logic)
+    {
+      app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
+      application_t *app = application_get (app_wrk->app_index);
+      to_decrease = app->cb_fns.fifo_tuning_decrease_callback (
+                       fs, seg_usage,
+                       tx_fifo, fifo_size, fifo_usage,
+                       max_decrease);
+    }
+  else
+    {
+      s = fifo_segment_determine_status (fs->h, seg_usage);
+      to_decrease = default_fifo_tuning_decrease_logic (s, fifo_usage,
+                                                        max_decrease);
+    }
+
+  to_decrease = clib_min (to_decrease, fifo_size - 4096);
+
+  if (to_decrease)
+    svm_fifo_set_size (tx_fifo, fifo_size - to_decrease);
+}
+
 u32
 segment_manager_evt_q_expected_size (u32 q_len)
 {
@@ -820,6 +973,7 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
   sm->default_app_mq_size = 128;
+  sm->default_max_fifo_size = 128 << 20;
   sm->default_high_watermark = 80;
   sm->default_low_watermark = 50;
 }
@@ -832,6 +986,9 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 show_segments = 0, verbose = 0;
   segment_manager_t *sm;
   fifo_segment_t *seg;
+  app_worker_t *app_wrk;
+  application_t *app;
+  u8 custom_logic;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -846,14 +1003,25 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%d segment managers allocated",
 		   pool_elts (smm->segment_managers));
   if (verbose && pool_elts (smm->segment_managers))
-    {
-      vlib_cli_output (vm, "%-10s%=15s%=12s", "Index", "App Index",
-		       "Segments");
+     {
+      vlib_cli_output (vm, "%-10s%=15s%=12s%=16s%=13s%=13s%=14s",
+                       "Index", "App Index","Segments", "Max FifoSize",
+                       "HighWater", "LowWater", "FifoTuning");
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
-	vlib_cli_output (vm, "%-10d%=15d%=12d", segment_manager_index (sm),
-			   sm->app_wrk_index, pool_elts (sm->segments));
+        app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
+        app = app_wrk ? application_get (app_wrk->app_index) : 0;
+        custom_logic = app ?
+                       (app->cb_fns.fifo_tuning_increase_callback &&
+                        app->cb_fns.fifo_tuning_decrease_callback) : 0;
+
+	vlib_cli_output (vm, "%-10d%=15d%=12d%=16U%=13d%=13d%=14s",
+                         segment_manager_index (sm),
+			 sm->app_wrk_index, pool_elts (sm->segments),
+                         format_memory_size, sm->max_fifo_size,
+                         sm->high_watermark, sm->low_watermark,
+                         custom_logic ? "custom" : "default");
       }));
       /* *INDENT-ON* */
 

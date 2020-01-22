@@ -142,6 +142,46 @@ delete_proxy_session (session_t * s, int is_active_open)
     }
 }
 
+static u32
+common_fifo_tuning_increase_callback (fifo_segment_t * fs,
+                                     u8 seg_usage,
+                                     svm_fifo_t * rx_fifo,
+                                     u32 fifo_size,
+                                     u8 fifo_usage)
+{
+  proxy_main_t *pm = &proxy_main;
+  u32 fifo_in_use = svm_fifo_max_dequeue_prod (rx_fifo);
+
+  if (seg_usage < pm->low_watermark && fifo_usage > 50)
+    return fifo_in_use;
+
+  if (seg_usage < pm->high_watermark && fifo_usage > 80)
+    return fifo_in_use;
+
+  return 0;
+}
+
+static u32
+common_fifo_tuning_decrease_callback (fifo_segment_t * fs,
+                                      u8 seg_usage,
+                                      svm_fifo_t * rx_fifo,
+                                      u32 fifo_size,
+                                      u8 fifo_usage,
+                                      u32 max_decrease)
+{
+  proxy_main_t *pm = &proxy_main;
+
+  if (seg_usage > pm->high_watermark || fifo_usage < 20)
+    return max_decrease;
+
+  if (seg_usage > pm->low_watermark && fifo_usage < 50)
+    return max_decrease / 2;
+
+  return 0;
+}
+
+
+
 static int
 proxy_accept_callback (session_t * s)
 {
@@ -268,7 +308,9 @@ static session_cb_vft_t proxy_session_cb_vft = {
   .session_connected_callback = proxy_connected_callback,
   .add_segment_callback = proxy_add_segment_callback,
   .builtin_app_rx_callback = proxy_rx_callback,
-  .session_reset_callback = proxy_reset_callback
+  .session_reset_callback = proxy_reset_callback,
+  .fifo_tuning_increase_callback = common_fifo_tuning_increase_callback,
+  .fifo_tuning_decrease_callback = common_fifo_tuning_decrease_callback
 };
 
 static int
@@ -375,7 +417,9 @@ static session_cb_vft_t active_open_clients = {
   .session_connected_callback = active_open_connected_callback,
   .session_accept_callback = active_open_create_callback,
   .session_disconnect_callback = active_open_disconnect_callback,
-  .builtin_app_rx_callback = active_open_rx_callback
+  .builtin_app_rx_callback = active_open_rx_callback,
+  .fifo_tuning_increase_callback = common_fifo_tuning_increase_callback,
+  .fifo_tuning_decrease_callback = common_fifo_tuning_decrease_callback
 };
 /* *INDENT-ON* */
 
@@ -414,6 +458,9 @@ proxy_server_attach ()
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
+  a->options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
+  a->options[APP_OPTIONS_HIGH_WATERMARK] = pm->high_watermark;
+  a->options[APP_OPTIONS_LOW_WATERMARK] = pm->low_watermark;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
@@ -447,6 +494,9 @@ active_open_attach (void)
   options[APP_OPTIONS_SEGMENT_SIZE] = 512 << 20;
   options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
+  options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
+  options[APP_OPTIONS_HIGH_WATERMARK] = pm->high_watermark;
+  options[APP_OPTIONS_LOW_WATERMARK] = pm->low_watermark;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
@@ -533,6 +583,9 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u64 tmp;
 
   pm->fifo_size = 64 << 10;
+  pm->max_fifo_size = 128 << 20;
+  pm->high_watermark = 80;
+  pm->low_watermark = 50;
   pm->rcv_buffer_size = 1024;
   pm->prealloc_fifos = 0;
   pm->private_segment_count = 0;
@@ -541,8 +594,16 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "fifo-size %d", &pm->fifo_size))
-	pm->fifo_size <<= 10;
+      if (unformat (input, "fifo-size %U",
+                    unformat_memory_size, &pm->fifo_size))
+	;
+      else if (unformat (input, "max-fifo-size %U",
+                         unformat_memory_size, &pm->max_fifo_size))
+        ;
+      else if (unformat (input, "high-watermark %d", &pm->high_watermark))
+        ;
+      else if (unformat (input, "low-watermark %d", &pm->low_watermark))
+        ;
       else if (unformat (input, "rcv-buf-size %d", &pm->rcv_buffer_size))
 	;
       else if (unformat (input, "prealloc-fifos %d", &pm->prealloc_fifos))
@@ -599,7 +660,9 @@ VLIB_CLI_COMMAND (proxy_create_command, static) =
 {
   .path = "test proxy server",
   .short_help = "test proxy server [server-uri <tcp://ip/port>]"
-      "[client-uri <tcp://ip/port>][fifo-size <nn>][rcv-buf-size <nn>]"
+      "[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
+      "[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
+      "[low-watermark <nn>][rcv-buf-size <nn>]"
       "[prealloc-fifos <nn>][private-segment-size <mem>]"
       "[private-segment-count <nn>]",
   .function = proxy_server_create_command_fn,
