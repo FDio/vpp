@@ -798,6 +798,7 @@ session_switch_pool (void *cb_args)
       session_handle_t new_sh;
       new_sh = session_make_handle (args->new_session_index,
 				    args->new_thread_index);
+
       app_worker_migrate_notify (app_wrk, s, new_sh);
 
       /* Trigger app read on the new thread */
