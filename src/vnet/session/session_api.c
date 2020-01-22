@@ -470,7 +470,28 @@ mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 static void
 mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
 {
-  clib_warning ("not supported");
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_migrated_msg_t *mp;
+  svm_msg_q_t *vpp_evt_q;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  svm_msg_q_t *app_mq;
+
+  app_wrk = app_worker_get (s->app_wrk_index);
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_MIGRATED;
+  mp = (session_migrated_msg_t *) evt->data;
+  mp->handle = session_handle (s);
+  mp->new_handle = new_sh;
+  mp->vpp_thread_index = session_thread_from_handle (new_sh);
+  vpp_evt_q = session_main_get_vpp_event_queue (mp->vpp_thread_index);
+  mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static int

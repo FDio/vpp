@@ -629,6 +629,36 @@ vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
   vcl_session_free (wrk, s);
 }
 
+static void
+vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
+{
+  session_migrated_msg_t *mp = (session_migrated_msg_t *) data;
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
+  if (!s)
+    {
+      VDBG (0, "Migrated notification with wrong handle %llx", mp->handle);
+      return;
+    }
+
+  s->vpp_thread_index = mp->vpp_thread_index;
+  s->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+
+  vec_validate (wrk->vpp_event_queues, s->vpp_thread_index);
+  wrk->vpp_event_queues[s->vpp_thread_index] = s->vpp_evt_q;
+
+  vcl_session_table_del_vpp_handle (wrk, mp->handle);
+  vcl_session_table_add_vpp_handle (wrk, mp->new_handle, s->session_index);
+
+  /* Generate new tx event if we have outstanding data */
+  if (svm_fifo_has_event (s->tx_fifo))
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
+			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
+
+  VDBG (0, "Migrated 0x%x to thread %u", mp->handle, s->vpp_thread_index);
+}
+
 static vcl_session_t *
 vcl_session_accepted (vcl_worker_t * wrk, session_accepted_msg_t * msg)
 {
@@ -811,6 +841,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_MIGRATED:
+      vcl_session_migrated_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
@@ -2127,6 +2160,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_MIGRATED:
+      vcl_session_migrated_handler (wrk, e->data);
+      break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
       break;
@@ -2738,6 +2774,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_MIGRATED:
+      vcl_session_migrated_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
