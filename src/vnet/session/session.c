@@ -512,8 +512,13 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   u32 rv;
+  u32 tmp;
 
   rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  tmp = s->opaque;
+  s->opaque = SESSION_FIFO_LAST_ACTION_DEQUEUED;
+  segment_manager_fifo_tuning (s, s->tx_fifo, rv);
+  s->opaque = tmp;
 
   if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
@@ -662,6 +667,7 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
   session_t *s;
   int i, errors = 0;
   u32 *indices;
+  u32 tmp;
 
   indices = wrk->session_to_enqueue[transport_proto];
 
@@ -673,6 +679,11 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  errors++;
 	  continue;
 	}
+
+      tmp = s->opaque;
+      s->opaque = SESSION_FIFO_LAST_ACTION_ENQUEUED;
+      segment_manager_fifo_tuning (s, s->rx_fifo, 0 /* TODO */ );
+      s->opaque = tmp;
 
       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;
@@ -700,6 +711,7 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 {
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
+  application_t *app;
   session_t *s = 0;
   u64 ho_handle;
 
@@ -721,6 +733,7 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
   if (!app_wrk)
     return -1;
 
+  app = application_get (app_wrk->app_index);
   opaque = tc->s_index;
 
   if (is_fail)
@@ -731,6 +744,9 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
   s->app_wrk_index = app_wrk->wrk_index;
   new_si = s->session_index;
   new_ti = s->thread_index;
+
+  if (app->cb_fns.fifo_tuning_callback)
+    s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
 
   if (app_worker_init_connected (app_wrk, s))
     {
@@ -1040,6 +1056,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
+  application_t *app;
   app_worker_t *app_wrk;
   session_handle_t sh;
   session_t *s;
@@ -1057,6 +1074,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   /* For dgram type of service, allocate session and fifos now */
   app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
@@ -1065,6 +1083,9 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
       session_free (s);
       return -1;
     }
+
+  if (app->cb_fns.fifo_tuning_callback)
+    s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
 
   sh = session_handle (s);
   session_lookup_add_connection (tc, sh);
