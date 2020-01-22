@@ -550,10 +550,16 @@ application_alloc_and_init (app_init_args_t * a)
     props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
     app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
+  if (options[APP_OPTIONS_MAX_FIFO_SIZE])
+    props->max_fifo_size = options[APP_OPTIONS_MAX_FIFO_SIZE];
   if (options[APP_OPTIONS_HIGH_WATERMARK])
     props->high_watermark = options[APP_OPTIONS_HIGH_WATERMARK];
   if (options[APP_OPTIONS_LOW_WATERMARK])
     props->low_watermark = options[APP_OPTIONS_LOW_WATERMARK];
+  if (options[APP_OPTIONS_FIFO_INC_THRESH])
+    props->fifo_inc_thresh = options[APP_OPTIONS_FIFO_INC_THRESH];
+  if (options[APP_OPTIONS_FIFO_DEC_THRESH])
+    props->fifo_dec_thresh = options[APP_OPTIONS_FIFO_DEC_THRESH];
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
