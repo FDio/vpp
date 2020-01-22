@@ -69,9 +69,10 @@ delete_proxy_session (session_t * s, int is_active_open)
   uword *p;
   u64 handle;
 
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
   handle = session_handle (s);
 
-  clib_spinlock_lock_if_init (&pm->sessions_lock);
   if (is_active_open)
     {
       active_open_session = s;
@@ -91,6 +92,8 @@ delete_proxy_session (session_t * s, int is_active_open)
 	  else
 	    server_session = 0;
 	}
+      else
+	active_open_session = 0;
     }
   else
     {
@@ -112,6 +115,8 @@ delete_proxy_session (session_t * s, int is_active_open)
 	  else
 	    active_open_session = 0;
 	}
+      else
+	server_session = 0;
     }
 
   if (ps)
@@ -120,8 +125,6 @@ delete_proxy_session (session_t * s, int is_active_open)
 	clib_memset (ps, 0xFE, sizeof (*ps));
       pool_put (pm->sessions, ps);
     }
-
-  clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
   if (active_open_session)
     {
@@ -140,6 +143,8 @@ delete_proxy_session (session_t * s, int is_active_open)
 		  session_handle (server_session));
       vnet_disconnect_session (a);
     }
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
 }
 
 static int
@@ -233,13 +238,14 @@ proxy_rx_callback (session_t * s)
 	return 0;
 
       actual_transfer = svm_fifo_peek (rx_fifo, 0 /* relative_offset */ ,
-				       max_dequeue, pm->rx_buf[thread_index]);
+				       pm->rcv_buffer_size,
+				       pm->rx_buf[thread_index]);
 
       /* $$$ your message in this space: parse url, etc. */
 
       clib_memset (a, 0, sizeof (*a));
 
-      clib_spinlock_lock_if_init (&pm->sessions_lock);
+//      clib_spinlock_lock_if_init (&pm->sessions_lock);
       pool_get (pm->sessions, ps);
       clib_memset (ps, 0, sizeof (*ps));
       ps->server_rx_fifo = rx_fifo;
@@ -329,6 +335,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 static void
 active_open_reset_callback (session_t * s)
 {
+  clib_warning ("Reset session %U", format_session, s, 2);
   delete_proxy_session (s, 1 /* is_active_open */ );
 }
 
@@ -377,20 +384,20 @@ static session_cb_vft_t active_open_clients = {
 /* *INDENT-ON* */
 
 
-static void
-create_api_loopbacks (vlib_main_t * vm)
-{
-  proxy_main_t *pm = &proxy_main;
-  api_main_t *am = vlibapi_get_main ();
-  vl_shmem_hdr_t *shmem_hdr;
-
-  shmem_hdr = am->shmem_hdr;
-  pm->vl_input_queue = shmem_hdr->vl_input_queue;
-  pm->server_client_index =
-    vl_api_memclnt_create_internal ("proxy_server", pm->vl_input_queue);
-  pm->active_open_client_index =
-    vl_api_memclnt_create_internal ("proxy_active_open", pm->vl_input_queue);
-}
+//static void
+//create_api_loopbacks (vlib_main_t * vm)
+//{
+//  proxy_main_t *pm = &proxy_main;
+//  api_main_t *am = vlibapi_get_main ();
+//  vl_shmem_hdr_t *shmem_hdr;
+//
+//  shmem_hdr = am->shmem_hdr;
+//  pm->vl_input_queue = shmem_hdr->vl_input_queue;
+//  pm->server_client_index =
+//    vl_api_memclnt_create_internal ("proxy_server", pm->vl_input_queue);
+//  pm->active_open_client_index =
+//    vl_api_memclnt_create_internal ("proxy_active_open", pm->vl_input_queue);
+//}
 
 static int
 proxy_server_attach ()
@@ -405,6 +412,7 @@ proxy_server_attach ()
 
   if (pm->private_segment_size)
     segment_size = pm->private_segment_size;
+  a->name = format (0, "proxy-server");
   a->api_client_index = pm->server_client_index;
   a->session_cb_vft = &proxy_session_cb_vft;
   a->options = options;
@@ -424,6 +432,7 @@ proxy_server_attach ()
     }
   pm->server_app_index = a->app_index;
 
+  vec_free (a->name);
   return 0;
 }
 
@@ -439,6 +448,7 @@ active_open_attach (void)
 
   a->api_client_index = pm->active_open_client_index;
   a->session_cb_vft = &active_open_clients;
+  a->name = format (0, "proxy-active-open");
 
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = 512 << 20;
@@ -457,6 +467,8 @@ active_open_attach (void)
     return -1;
 
   pm->active_open_app_index = a->app_index;
+
+  vec_free (a->name);
 
   return 0;
 }
@@ -480,8 +492,8 @@ proxy_server_create (vlib_main_t * vm)
   u32 num_threads;
   int i;
 
-  if (pm->server_client_index == (u32) ~ 0)
-    create_api_loopbacks (vm);
+//  if (pm->server_client_index == (u32) ~ 0)
+//    create_api_loopbacks (vm);
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (proxy_main.server_event_queue, num_threads - 1);
@@ -535,6 +547,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   pm->private_segment_count = 0;
   pm->private_segment_size = 0;
   pm->server_uri = 0;
+  pm->client_uri = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -556,9 +569,9 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  pm->private_segment_size = tmp;
 	}
       else if (unformat (input, "server-uri %s", &pm->server_uri))
-	;
+	vec_add1 (pm->server_uri, 0);
       else if (unformat (input, "client-uri %s", &pm->client_uri))
-	pm->client_uri = format (0, "%s%c", pm->client_uri, 0);
+	vec_add1 (pm->client_uri, 0);
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
