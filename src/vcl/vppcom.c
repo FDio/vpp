@@ -2755,8 +2755,6 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!session)
 	break;
       session_events = session->vep.ev.events;
-      if (!((EPOLLHUP | EPOLLRDHUP) & session_events))
-	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
@@ -2766,8 +2764,6 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!(session = vcl_session_get (wrk, sid)))
 	break;
       session_events = session->vep.ev.events;
-      if (!((EPOLLHUP | EPOLLRDHUP) & session_events))
-	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
