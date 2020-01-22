@@ -502,6 +502,14 @@ typedef struct app_unmap_segment_msg_
   u64 segment_handle;
 } session_app_del_segment_msg_t;
 
+typedef struct session_migrate_msg_
+{
+  uword vpp_evt_q;
+  session_handle_t handle;
+  session_handle_t new_handle;
+  u32 vpp_thread_index;
+} __clib_packed session_migrated_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
