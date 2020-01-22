@@ -171,6 +171,8 @@ fifo_tuning_logic_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 
   svm_fifo_set_size (rx_fifo, size_1MB);
   svm_fifo_set_size (tx_fifo, size_1MB);
+  svm_fifo_set_max_size (rx_fifo, size_1MB);
+  svm_fifo_set_max_size (tx_fifo, size_1MB);
 
   fs = segment_manager_get_segment (sm, rx_fifo->segment_index);
   SEG_MGR_TEST ((fs == fs0), "fs %p", fs);
@@ -336,6 +338,8 @@ fifo_tuning_logic_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 
   svm_fifo_set_size (rx_fifo, size_2MB);
   svm_fifo_set_size (tx_fifo, size_2MB);
+  svm_fifo_set_max_size (rx_fifo, size_2MB);
+  svm_fifo_set_max_size (tx_fifo, size_2MB);
 
   /* fill fifos (but not add chunks) */
   svm_fifo_enqueue (rx_fifo, fifo_size - 1, data);
@@ -468,6 +472,7 @@ fifo_tuning_logic_test_fifo_balanced_alloc (vlib_main_t * vm,
 
   /* grow fifos */
   svm_fifo_set_size (rx_fifo[0], size_1MB);
+  svm_fifo_set_max_size (rx_fifo[0], size_1MB);
   for (i = 0; i < 200; ++i)
     {
       svm_fifo_enqueue (rx_fifo[0], fifo_size, data);
@@ -506,6 +511,7 @@ fifo_tuning_logic_test_fifo_balanced_alloc (vlib_main_t * vm,
    * higher than the first one.
    */
   svm_fifo_set_size (rx_fifo[1], size_1MB);
+  svm_fifo_set_max_size (rx_fifo[1], size_1MB);
   for (i = 0; i < 400; ++i)
     {
       svm_fifo_enqueue (rx_fifo[1], fifo_size, data);
@@ -582,6 +588,8 @@ fifo_tuning_logic_test_fifo_ops (vlib_main_t * vm,
                                             vlib_get_thread_index (),
                                             &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
+
+  svm_fifo_set_max_size (rx_fifo, size_2MB);
 
   /* check the initial fifo size : 4KB */
   rv = svm_fifo_size (rx_fifo);

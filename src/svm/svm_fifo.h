@@ -156,7 +156,7 @@ svm_fifo_t *svm_fifo_alloc (u32 size);
  * @param f		fifo
  * @param size		size for fifo
  */
-void svm_fifo_init (svm_fifo_t * f, u32 size);
+void svm_fifo_init (svm_fifo_t * f, u32 size, u32 max_size);
 /**
  * Allocate a fifo chunk on heap
  *
@@ -600,6 +600,12 @@ static inline void
 svm_fifo_set_size (svm_fifo_t * f, u32 size)
 {
   f->size = size;
+}
+
+static inline void
+svm_fifo_set_max_size (svm_fifo_t * f, u32 max_size)
+{
+  f->max_size = max_size;
 }
 
 /**

@@ -180,7 +180,7 @@ ft_fifo_segment_free (fifo_segment_main_t * sm, fifo_segment_t * fs)
 
 static svm_fifo_t *
 fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
-			 fifo_segment_ftype_t ftype)
+                         u32 fifo_max_size, fifo_segment_ftype_t ftype)
 {
   return fifo_segment_alloc_fifo_w_slice (fs, 0, data_bytes, ftype);
 }
@@ -190,7 +190,8 @@ fifo_prepare (fifo_segment_t * fs, u32 fifo_size)
 {
   svm_fifo_t *f;
 
-  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, fifo_size, 2 << 20,
+                               FIFO_SEGMENT_RX_FIFO);
 
   /* Paint fifo data vector with -1's */
   clib_memset (svm_fifo_head_chunk (f)->data, 0xFF, fifo_size);
@@ -2028,7 +2029,8 @@ sfifo_test_fifo_segment_hello_world (int verbose)
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
   fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = fifo_segment_alloc_fifo (fs, 4096, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, 4096, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
@@ -2085,7 +2087,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    * Alloc fifo
    */
   fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, fifo_size, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
@@ -2151,7 +2154,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   /*
    * Realloc fifo
    */
-  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, fifo_size, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
 
   /* Force chunk allocation */
   svm_fifo_set_size (f, svm_fifo_size (f) + fifo_size);
@@ -2194,7 +2198,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    * is correctly updated
    */
 
-  f = fifo_segment_alloc_fifo (fs, 16 * fifo_size - 1, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, 16 * fifo_size - 1, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
   rv = fifo_segment_fl_chunk_bytes (fs);
 
   SFIFO_TEST (n_free_chunk_bytes - 16 * fifo_size == rv, "free chunk bytes "
@@ -2217,7 +2222,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   SFIFO_TEST (rv < 32 * fifo_size, "free bytes %u less than %u", rv,
 	      32 * fifo_size);
 
-  f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   rv = fifo_segment_fl_chunk_bytes (fs);
@@ -2237,7 +2243,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   /*
    * Allocate fifo that has all chunks
    */
-  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f != 0, "allocation should work");
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
@@ -2252,13 +2259,14 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    */
 
   f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes + fifo_size,
-			       FIFO_SEGMENT_RX_FIFO);
+			       128 << 10, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f == 0, "allocation should fail");
 
   /*
    * Allocate fifo and try to grow beyond available space
    */
-  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, fifo_size, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
 
   /* Try to force fifo growth */
   svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes);
@@ -2356,7 +2364,8 @@ sfifo_test_fifo_segment_master_slave (int verbose)
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
   sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (sp, 4096, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo alloc");
 
@@ -2408,7 +2417,8 @@ sfifo_test_fifo_segment_mempig (int verbose)
 
   for (i = 0; i < 1000; i++)
     {
-      f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
+      f = fifo_segment_alloc_fifo (sp, 4096, 128 << 10,
+                                   FIFO_SEGMENT_RX_FIFO);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -2426,7 +2436,8 @@ sfifo_test_fifo_segment_mempig (int verbose)
 
   for (i = 0; i < 1000; i++)
     {
-      f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
+      f = fifo_segment_alloc_fifo (sp, 4096, 128 << 10,
+                                   FIFO_SEGMENT_RX_FIFO);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -2496,7 +2507,8 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (clib_abs (rv - (int) free_space) < 512,
 	      "free space expected %u is %u", free_space, rv);
 
-  f = fifo_segment_alloc_fifo (fs, 200 << 10, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, 200 << 10, 128 << 10,
+                               FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f != 0, "fifo allocated");
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == 0, "prealloc chunks expected %u is %u", 0, rv);
@@ -2544,7 +2556,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (pairs_req == 1, "prealloc pairs should not work");
 
   old = f;
-  f = fifo_segment_alloc_fifo (fs, 200 << 10, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, 200 << 10, 128 << 10, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f == 0, "fifo alloc should fail");
 
   rv = fifo_segment_prealloc_fifo_chunks (fs, 0, 4096, 50);

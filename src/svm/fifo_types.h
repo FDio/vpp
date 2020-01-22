@@ -58,6 +58,7 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   u32 min_alloc;		/**< min chunk alloc if space available */
   u32 size;			/**< size of the fifo in bytes */
+  u32 max_size;                 /**< max size of the fifo */
   u8 flags;			/**< fifo flags */
   u8 slice_index;		/**< segment slice for fifo */
 

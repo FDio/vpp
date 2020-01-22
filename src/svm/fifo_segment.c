@@ -21,6 +21,9 @@ static char* fifo_segment_mem_status_strings[] = {
 #undef _
 };
 
+/* TODO consider appropriate size */
+#define INITIAL_FIFO_MAX_SIZE (20 << 20)
+
 /**
  * Fifo segment free space
  *
@@ -607,11 +610,15 @@ fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
  */
 svm_fifo_t *
 fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
-				 u32 data_bytes, fifo_segment_ftype_t ftype)
+				 u32 data_bytes, 
+                                 fifo_segment_ftype_t ftype)
 {
   fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   svm_fifo_t *f = 0;
+
+  /* TODO : to be an argument of the function */
+  u32 fifo_max_size = INITIAL_FIFO_MAX_SIZE;
 
   ASSERT (slice_index < fs->n_slices);
 
@@ -622,7 +629,9 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
 
   f->slice_index = slice_index;
 
-  svm_fifo_init (f, data_bytes);
+  fifo_max_size = clib_min (fifo_max_size, fifo_segment_size (fs));
+  fifo_max_size = clib_max (fifo_max_size, 4096);
+  svm_fifo_init (f, data_bytes, fifo_max_size);
 
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since

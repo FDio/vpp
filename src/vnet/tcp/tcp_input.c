@@ -585,7 +585,6 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
   u32 *pending_deq_acked;
   tcp_connection_t *tc;
   int i;
-
   if (!vec_len (wrk->pending_deq_acked))
     return;
 

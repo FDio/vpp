@@ -396,12 +396,13 @@ ooo_segment_last (svm_fifo_t * f)
 }
 
 void
-svm_fifo_init (svm_fifo_t * f, u32 size)
+svm_fifo_init (svm_fifo_t * f, u32 size, u32 max_size)
 {
   svm_fifo_chunk_t *c, *prev;
   u32 first_chunk, min_alloc;
 
   f->size = size;
+  f->max_size = max_size;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
   f->segment_index = SVM_FIFO_INVALID_INDEX;
   f->refcnt = 1;
@@ -1456,7 +1457,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 #endif
 
   dummy_fifo = svm_fifo_alloc (f->size);
-  svm_fifo_init (f, f->size);
+  svm_fifo_init (f, f->size, f->max_size);
   clib_memset (f->head_chunk->data, 0xFF, f->size);
   vec_validate (data, f->size);
   for (i = 0; i < vec_len (data); i++)
@@ -1524,8 +1525,8 @@ format_svm_fifo (u8 * s, va_list * args)
     return s;
 
   indent = format_get_indent (s);
-  s = format (s, "cursize %u nitems %u has_event %d min_alloc %u\n",
-	      svm_fifo_max_dequeue (f), f->size, f->has_event, f->min_alloc);
+  s = format (s, "cursize %u nitems %u has_event %d min_alloc %u max_size %u\n",
+	      svm_fifo_max_dequeue (f), f->size, f->has_event, f->min_alloc, f->max_size);
   s = format (s, "%Uhead %u tail %u segment manager %u\n", format_white_space,
 	      indent, f->head, f->tail, f->segment_manager);
 
