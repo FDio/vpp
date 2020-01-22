@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e93da260_61d45608",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2236,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-22T15:30:57Z",
+      "side": 1,
+      "message": "We should not need to change tcp in any way. The fifo tuning logic should work for all transports. \n\nMoreover, we can\u0027t do something this heavy in tcp.",
+      "range": {
+        "startLine": 2225,
+        "startChar": 0,
+        "endLine": 2236,
+        "endChar": 29
+      },
+      "revId": "1e980a40ecb777e90a64b28cd7eaee6569078e91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
