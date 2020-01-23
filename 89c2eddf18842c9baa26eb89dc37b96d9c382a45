@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d072afe7_7096eea0",
+        "filename": "src/plugins/unittest/fifo_tuning_logic_test.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "I think we should try to grow/shrink fifos by just manipulating f-\u003esize and enqueuing/dequeueing, since that\u0027s the way they\u0027re used in practice. It also avoids rewriting these functions if we decide to change the fifo internals.\n\nSee for instance the unit test functions I\u0027ve been using to write data to fifos such that they grow incrementally. Alternatively you could try to make use of enqueue_nocopy to avoid the actual memcpy overhead. Make sure you update min_alloc if you need custom sized chunk allocations.\n\nFor reducing the amount of chunks associated to the fifo, just dequeue data.",
+      "range": {
+        "startLine": 107,
+        "startChar": 0,
+        "endLine": 121,
+        "endChar": 1
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1339d43f_3bf83db7",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "Do this once only at the end.",
+      "range": {
+        "startLine": 363,
+        "startChar": 3,
+        "endLine": 363,
+        "endChar": 39
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b42f849_877d7ed2",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "Not needed as per comment above",
+      "range": {
+        "startLine": 381,
+        "startChar": 4,
+        "endLine": 381,
+        "endChar": 24
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8497997_ca9be873",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "Compute the sum and add it only once after loop completes since it involves an atomic operation",
+      "range": {
+        "startLine": 587,
+        "startChar": 6,
+        "endLine": 587,
+        "endChar": 26
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "481d43d1_713cd142",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 975,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "Record? Just curious why not just \"fsh_reset_mem_limit\" since that\u0027s the name of the flag?",
+      "range": {
+        "startLine": 975,
+        "startChar": 19,
+        "endLine": 975,
+        "endChar": 26
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b942f36_ecd144d8",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T05:48:02Z",
+      "side": 1,
+      "message": "If this function is often used (as far as I can tell it\u0027s not), we need to avoid calling update free bytes because underneath it checks with dlmalloc which, as far as I remember, leads to a scan of all the objects allocated on the heap.",
+      "range": {
+        "startLine": 1040,
+        "startChar": 2,
+        "endLine": 1040,
+        "endChar": 32
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
