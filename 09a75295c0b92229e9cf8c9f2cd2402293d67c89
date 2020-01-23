@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "d30bd0cc_c4645ef2",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T14:48:57Z",
+      "side": 1,
+      "message": "By \"per session\", do you mean the per-UE (IP endpoint) shared max fifo size?\nOr do you mean the per-TCP-session?",
+      "parentUuid": "0991bc46_11c4acd3",
+      "range": {
+        "startLine": 424,
+        "startChar": 31,
+        "endLine": 424,
+        "endChar": 40
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0090d480_394430b0",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2020-01-23T06:30:30Z",
       "side": 1,
       "message": "I think that most of these functions are better suited for the segment manager, since they interact a lot with the fifo segment. \n\nAlso, we\u0027ll have to guard the calls to these functions based on fifo \"utilization\", to avoid the churn of constantly grabbing all of these data structures.",
+      "range": {
+        "startLine": 457,
+        "startChar": 0,
+        "endLine": 457,
+        "endChar": 28
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "21a8da37_627c43ef",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T14:48:57Z",
+      "side": 1,
+      "message": "Agree to move them to segment manager.\n\nSegment Manager doesn\u0027t have a pointer to app (application_t*). So I guess the function would be something like this. Right?\n  void\n  segment_manager_fifo_tuning_increase (segment_manager_t* sm,\n                                        svm_fifo_t* f,\n                                        application_t* app);\n\nI\u0027m not so sure what you mean by `based on fifo \"utilization\"`.\nAdopting the fifo-utilization as one of the factors is fine, but did you mean the fifo-utilization should be only one factor to determine fifo size change? If so, how can we reflect the memory pressure?\n\nIt would be possible to separate the logic into (1) fifo size update (based on current fifo-size, max-fifo-size, fifo utilization, and optional factors in a custom logic), and (2) max-fifo-size update (based on memory pressure).",
+      "parentUuid": "0090d480_394430b0",
       "range": {
         "startLine": 457,
         "startChar": 0,
@@ -68,6 +116,30 @@
       "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d223f67_6580a101",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1147,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T14:48:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a14044a_74a79412",
+      "range": {
+        "startLine": 1143,
+        "startChar": 0,
+        "endLine": 1147,
+        "endChar": 49
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
