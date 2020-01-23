@@ -543,7 +543,7 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_translated)
 
-        # IPv4 TTL
+        # IPv4 TTL=0
         ip4_ttl_expired = IP(src=self.pg0.remote_ip4, dst='192.168.0.1', ttl=0)
         p4 = (p_ether / ip4_ttl_expired / payload)
 
@@ -557,20 +557,19 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], icmp4_reply)
 
-        '''
-        This one is broken, cause it would require hairpinning...
-        # IPv4 TTL TTL1
+        # IPv4 TTL=1
         ip4_ttl_expired = IP(src=self.pg0.remote_ip4, dst='192.168.0.1', ttl=1)
         p4 = (p_ether / ip4_ttl_expired / payload)
 
-        icmp4_reply = IP(id=0, ttl=254, src=self.pg0.local_ip4,
-        dst=self.pg0.remote_ip4) / \
-        ICMP(type='time-exceeded', code='ttl-zero-during-transit' ) / \
-        IP(src=self.pg0.remote_ip4, dst='192.168.0.1', ttl=0) / payload
+        icmp4_reply = (IP(id=0, ttl=254, src=self.pg0.local_ip4,
+                          dst=self.pg0.remote_ip4) /
+                       ICMP(type='time-exceeded',
+                            code='ttl-zero-during-transit') /
+                       IP(src=self.pg0.remote_ip4,
+                          dst='192.168.0.1', ttl=1) / payload)
         rx = self.send_and_expect(self.pg0, p4*1, self.pg0)
         for p in rx:
             self.validate(p[1], icmp4_reply)
-        '''
 
         # IPv6 Hop limit
         ip6_hlim_expired = IPv6(hlim=0, src='2001:db8:1ab::c0a8:1:ab',
