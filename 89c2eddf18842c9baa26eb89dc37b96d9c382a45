@@ -281,6 +281,30 @@
       "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a12cbc56_fa9342a3",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T15:13:22Z",
+      "side": 1,
+      "message": "Because we\u0027ve moved the rbtrees off of the fifo-segment, I hope that not much. That is, we have our per segment estimate of the number of free bytes and the only error it should have is dlmalloc\u0027s per allocation overhead + potentially wasted space due to aligned allocations. \n\nWe could use fsh_check_mem here as it checks with dlmalloc only once after a threshold is passed (x % of segment is full according to our estimate).",
+      "parentUuid": "97b22156_11746320",
+      "range": {
+        "startLine": 1040,
+        "startChar": 2,
+        "endLine": 1040,
+        "endChar": 32
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
