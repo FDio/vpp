@@ -671,6 +671,16 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   am->replay_in_progress = 0;
 }
 
+/** api_trace_command_fn - control the binary API trace / replay feature
+
+    Note: this command MUST be marked thread-safe. Replay with
+    multiple worker threads depends in many cases on worker thread
+    graph replica maintenance. If we (implicitly) assert a worker
+    thread barrier at the debug CLI level, all graph replica changes
+    are deferred until the replay operation completes. If an interface
+    is deleted, the wheels fall off.
+ */
+
 static clib_error_t *
 api_trace_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -691,12 +701,16 @@ api_trace_command_fn (vlib_main_t * vm,
 	{
 	  if (unformat (input, "nitems %d", &nitems))
 	    ;
+	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_configure (am, which, nitems);
 	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
+	  vlib_worker_thread_barrier_release (vm);
 	}
       else if (unformat (input, "off"))
 	{
+	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_onoff (am, which, 0);
+	  vlib_worker_thread_barrier_release (vm);
 	}
       else if (unformat (input, "save %s", &filename))
 	{
@@ -718,7 +732,9 @@ api_trace_command_fn (vlib_main_t * vm,
 	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
 	      goto out;
 	    }
+	  vlib_worker_thread_barrier_sync (vm);
 	  rv = vl_msg_api_trace_save (am, which, fp);
+	  vlib_worker_thread_barrier_release (vm);
 	  fclose (fp);
 	  if (rv == -1)
 	    vlib_cli_output (vm, "API Trace data not present\n");
@@ -775,8 +791,10 @@ api_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "free"))
 	{
+	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_onoff (am, which, 0);
 	  vl_msg_api_trace_free (am, which);
+	  vlib_worker_thread_barrier_release (vm);
 	}
       else if (unformat (input, "post-mortem-on"))
 	vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
@@ -801,8 +819,9 @@ VLIB_CLI_COMMAND (api_trace_command, static) =
 {
   .path = "api trace",
   .short_help = "api trace [on|off][first <n>][last <n>][status][free]"
-      "[post-mortem-on][dump|custom-dump|save|replay <file>]",
+                "[post-mortem-on][dump|custom-dump|save|replay <file>]",
   .function = api_trace_command_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
