@@ -511,6 +511,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      */
     if (do_walk)
     {
+        walk_adj = adj_get(walk_ai);
         walk_adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
     }
 
