@@ -225,7 +225,8 @@ typedef struct
  _(FRAGMENT_MALFORMED, "fragment has unexpected format")\
  _(FRAGMENT_DROPPED, "dropped cached fragment")         \
  _(MALFORMED, "malformed packet")			\
- _(DF_SET, "can't fragment, DF set")
+ _(DF_SET, "can't fragment, DF set")			\
+ _(TIME_EXCEEDED, "time exceeded")			\
 
 typedef enum
 {
