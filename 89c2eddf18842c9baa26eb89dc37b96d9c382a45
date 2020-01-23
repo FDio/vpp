@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "46adbd14_a228bcb5",
+        "filename": "src/plugins/unittest/fifo_tuning_logic_test.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "I agree. Let me rework on the unit tests.\n\nI attempted to reduce the dependency on the implementation of other components (e.g. fifo) when I started to write the unit tests, but there isn\u0027t such a need any longer.",
+      "parentUuid": "d072afe7_7096eea0",
+      "range": {
+        "startLine": 107,
+        "startChar": 0,
+        "endLine": 121,
+        "endChar": 1
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1339d43f_3bf83db7",
         "filename": "src/svm/fifo_segment.c",
         "patchSetId": 22
@@ -45,6 +69,30 @@
       "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cd11cce2_1211c384",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1339d43f_3bf83db7",
+      "range": {
+        "startLine": 363,
+        "startChar": 3,
+        "endLine": 363,
+        "endChar": 39
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "b6f5ea25_42f16d95",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4b42f849_877d7ed2",
+      "range": {
+        "startLine": 381,
+        "startChar": 4,
+        "endLine": 381,
+        "endChar": 24
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d8497997_ca9be873",
         "filename": "src/svm/fifo_segment.c",
         "patchSetId": 22
@@ -91,6 +163,30 @@
       "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9778b6be_c8a8357c",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d8497997_ca9be873",
+      "range": {
+        "startLine": 587,
+        "startChar": 6,
+        "endLine": 587,
+        "endChar": 26
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "f761aeef_56299a9a",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 975,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "Well, I tried to mean \"the flag as the record of hitting the memory limit\".\nBut I agree it\u0027s redundant. Let me rename it to simple.",
+      "parentUuid": "481d43d1_713cd142",
+      "range": {
+        "startLine": 975,
+        "startChar": 19,
+        "endLine": 975,
+        "endChar": 26
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4b942f36_ecd144d8",
         "filename": "src/svm/fifo_segment.c",
         "patchSetId": 22
@@ -128,6 +248,30 @@
       "writtenOn": "2020-01-23T05:48:02Z",
       "side": 1,
       "message": "If this function is often used (as far as I can tell it\u0027s not), we need to avoid calling update free bytes because underneath it checks with dlmalloc which, as far as I remember, leads to a scan of all the objects allocated on the heap.",
+      "range": {
+        "startLine": 1040,
+        "startChar": 2,
+        "endLine": 1040,
+        "endChar": 32
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97b22156_11746320",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-23T07:58:24Z",
+      "side": 1,
+      "message": "This function is used frequently. So I\u0027m going to remove it from this location.\nWhat would happen if fifo_segment_update_free_bytes is not called at all?",
+      "parentUuid": "4b942f36_ecd144d8",
       "range": {
         "startLine": 1040,
         "startChar": 2,
