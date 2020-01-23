@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0991bc46_11c4acd3",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T06:30:30Z",
+      "side": 1,
+      "message": "We\u0027ll need a per session max fifo size.",
+      "range": {
+        "startLine": 424,
+        "startChar": 31,
+        "endLine": 424,
+        "endChar": 40
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0090d480_394430b0",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T06:30:30Z",
+      "side": 1,
+      "message": "I think that most of these functions are better suited for the segment manager, since they interact a lot with the fifo segment. \n\nAlso, we\u0027ll have to guard the calls to these functions based on fifo \"utilization\", to avoid the churn of constantly grabbing all of these data structures.",
+      "range": {
+        "startLine": 457,
+        "startChar": 0,
+        "endLine": 457,
+        "endChar": 28
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3a14044a_74a79412",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1147,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-23T06:30:30Z",
+      "side": 1,
+      "message": "Move these to the application workers. That is, have the application workers set these flags, if needed, prior to notifying the applications about session creation events. \n\nIt feels more natural because they have a pointer to the app either way and it makes more sense for them to verify if the applications have requested special handling of the sessions",
+      "range": {
+        "startLine": 1143,
+        "startChar": 0,
+        "endLine": 1147,
+        "endChar": 49
+      },
+      "revId": "09a75295c0b92229e9cf8c9f2cd2402293d67c89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
