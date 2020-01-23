@@ -578,6 +578,16 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  dst_port0 = -1;
 
+	  if (PREDICT_FALSE (ip40->ttl == 1))
+	    {
+	      icmp4_error_set_vnet_buffer (p0, ICMP4_time_exceeded,
+					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
+					   0);
+	      p0->error = error_node->errors[MAP_ERROR_TIME_EXCEEDED];
+	      next0 = IP4_MAPT_NEXT_ICMP_ERROR;
+	      goto trace;
+	    }
+
 	  bool df0 =
 	    ip40->flags_and_fragment_offset &
 	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
