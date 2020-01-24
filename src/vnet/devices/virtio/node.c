@@ -272,7 +272,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left && n_left_to_next)
 	{
-	  u8 l4_proto, l4_hdr_sz;
+	  u8 l4_proto, l4_hdr_sz, drop = 0;
 	  u16 num_buffers = 1;
 	  struct vring_used_elem *e = &vring->used->ring[last & mask];
 	  struct virtio_net_hdr_v1 *hdr;
@@ -303,6 +303,32 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      vlib_buffer_t *pb, *cb;
 	      pb = b0;
+	      if (PREDICT_FALSE (num_buffers > n_left))
+		{
+		  /* *INDENT-OFF* */
+		  ELOG_TYPE_DECLARE (el) =
+		  {
+		    .format = "virtio multisegment overflow: hw_if_index %u, qid %u, n_left %u, num_buf %u",
+		    .format_args = "i4i4i2i2",
+		  };
+		  struct
+		  {
+		    u32 hw_if_index;
+		    u32 qid;
+		    u16 n_left;
+		    u16 num_buffers;
+		  } *ed;
+		  /* *INDENT-ON* */
+		  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+		  ed->hw_if_index = vif->hw_if_index;
+		  ed->qid = qid;
+		  ed->n_left = n_left;
+		  ed->num_buffers = num_buffers;
+
+		  num_buffers = n_left;
+		  drop = 1;
+		}
+
 	      while (num_buffers > 1)
 		{
 		  last++;
@@ -327,7 +353,9 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
-	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
+	  if (PREDICT_FALSE (drop))
+	    next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+	  else if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
 	    next0 = vif->per_interface_next_index;
 
 	  /* redirect if feature path enabled */
