@@ -29,6 +29,7 @@ SITE_USERNAME=$1
 VPP_BRANCH=$2
 
 #Build the docs
+make docs-clean
 make docs-venv
 make docs
 
@@ -46,27 +47,30 @@ git merge -m "Publish the Docs" upstream/master
 VERSION=`source $WS_ROOT/src/scripts/version`
 VERSION=${VERSION/"~"/"-"}
 
-# Create a branch for the commit
-git checkout -b $VERSION
-git branch
-
 # Copy the files to the appropriate directory
 SRC_DIR=../docs/_build/html/.
 if [ "$VPP_BRANCH" == "master" ]
 then
     TARGET_DIR=./static/docs/vpp/master
-    rm -fr ./static/docs/vpp/master
+    rm -fr $TARGET_DIR
 else
     TARGET_DIR=./static/docs/vpp/v$VPP_BRANCH
-    rm -fr ./static/docs/vpp/$TARGET_DIR
-    mkdir -p ./static/docs/vpp/$TARGET_DIR
+    rm -fr $TARGET_DIR
+    mkdir -p $TARGET_DIR
+    VERSION=v$VPP_BRANCH
+    ln -s $VERSION ./static/docs/vpp/latest
 fi
 
+# Create a branch for the commit
+git checkout -b $VERSION
+git branch
+
+# Copy the docs
 cp -r $SRC_DIR $TARGET_DIR
 
 # Push the new docs
-git add "*"
-git commit -s -m "Publish docs from VPP $VERSION"
-git push origin "$VERSION"
+#git add "*"
+#git commit -s -m "Publish docs from VPP $VERSION"
+#git push origin "$VERSION"
 
 exit 0

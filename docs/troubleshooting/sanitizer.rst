@@ -1,15 +1,15 @@
 .. _sanitizer:
 
-**************
+*****************
 Google Sanitizers
-**************
+*****************
 
 VPP is instrumented to support `Google Sanitizers <https://github.com/google/sanitizers>`_.
 As of today, only `AddressSanitizer <https://github.com/google/sanitizers/wiki/AddressSanitizer>`_
 is supported and only for the heap.
 
 AddressSanitizer
-==============
+================
 
 `AddressSanitizer <https://github.com/google/sanitizers/wiki/AddressSanitizer>`_  (aka ASan) is a memory
 error detector for C/C++. Think Valgrind but much faster.
