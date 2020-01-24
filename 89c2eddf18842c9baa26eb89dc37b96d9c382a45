@@ -305,6 +305,30 @@
       "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9332767a_3e1b07f5",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-24T10:21:59Z",
+      "side": 1,
+      "message": "Thanks for explanation.",
+      "parentUuid": "a12cbc56_fa9342a3",
+      "range": {
+        "startLine": 1040,
+        "startChar": 2,
+        "endLine": 1040,
+        "endChar": 32
+      },
+      "revId": "89c2eddf18842c9baa26eb89dc37b96d9c382a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
