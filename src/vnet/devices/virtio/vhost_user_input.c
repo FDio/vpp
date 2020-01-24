@@ -559,17 +559,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	    }
 	}
 
-      if (PREDICT_TRUE (vui->is_any_layout) ||
-	  (!(desc_table[desc_current].flags & VIRTQ_DESC_F_NEXT)))
-	{
-	  /* ANYLAYOUT or single buffer */
-	  desc_data_offset = vui->virtio_net_hdr_sz;
-	}
-      else
-	{
-	  /* CSR case without ANYLAYOUT, skip 1st buffer */
-	  desc_data_offset = desc_table[desc_current].len;
-	}
+      desc_data_offset = vui->virtio_net_hdr_sz;
 
       if (enable_csum)
 	{
