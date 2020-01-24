@@ -1954,8 +1954,11 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	       u16 adj_packet_bytes, bool df, u16 * next,
 	       u8 is_midchain, u32 * error)
 {
-  if (packet_len > adj_packet_bytes)
+  if (PREDICT_FALSE (packet_len > adj_packet_bytes))
     {
+      if ((b->flags & VNET_BUFFER_F_GSO)
+	  && gso_mtu_sz (b) <= adj_packet_bytes)
+	return;
       *error = IP4_ERROR_MTU_EXCEEDED;
       if (df)
 	{
@@ -2049,10 +2052,10 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
 
 
 always_inline uword
-ip4_rewrite_inline_with_gso (vlib_main_t * vm,
-			     vlib_node_runtime_t * node,
-			     vlib_frame_t * frame,
-			     int do_counters, int is_midchain, int is_mcast)
+ip4_rewrite_inline (vlib_main_t * vm,
+		    vlib_node_runtime_t * node,
+		    vlib_frame_t * frame,
+		    int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2133,11 +2136,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
       u16 ip1_len = clib_net_to_host_u16 (ip1->length);
-
-      if (b[0]->flags & VNET_BUFFER_F_GSO)
-	ip0_len = gso_mtu_sz (b[0]);
-      if (b[1]->flags & VNET_BUFFER_F_GSO)
-	ip1_len = gso_mtu_sz (b[1]);
 
       ip4_mtu_check (b[0], ip0_len,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
@@ -2310,9 +2308,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
 
-      if (b[0]->flags & VNET_BUFFER_F_GSO)
-	ip0_len = gso_mtu_sz (b[0]);
-
       ip4_mtu_check (b[0], ip0_len,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
@@ -2408,8 +2403,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
-      if (b[0]->flags & VNET_BUFFER_F_GSO)
-	ip0_len = gso_mtu_sz (b[0]);
 
       ip4_mtu_check (b[0], ip0_len,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
@@ -2483,17 +2476,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
-
-always_inline uword
-ip4_rewrite_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame,
-		    int do_counters, int is_midchain, int is_mcast)
-{
-  return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
-				      is_midchain, is_mcast);
-}
-
 
 /** @brief IPv4 rewrite node.
     @node ip4-rewrite
