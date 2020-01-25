@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e653885_d2d0a4b3",
+        "filename": "src/svm/fifo_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-25T19:44:11Z",
+      "side": 1,
+      "message": "This property is more of the session than of the fifo. As recommended in the previous comments, let\u0027s use the properties of the segment manager to decide the max achievable size for the fifo. Going forward, we\u0027ll decide how/if we\u0027ll support max fifo sizes per session (i.e., allow sessions to grow their buffers outside of the range registered at app attach time). \n\nSo one way to do this is to add a default fifo max size (say 128MB) to the segment manager properties and then going forward we\u0027ll add attach time properties to allow applications to configure that. \n\nNote that the session_t structure is cache alined and smaller than a cache line and, for now at least, we want to keep it that way.",
+      "range": {
+        "startLine": 61,
+        "startChar": 6,
+        "endLine": 61,
+        "endChar": 14
+      },
+      "revId": "8d8d14d7424033ef4dace15caf5d5375f26c3ede",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
