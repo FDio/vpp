@@ -39,6 +39,7 @@
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
+#include <math.h>
 
 #ifdef CLIB_UNIX
 
@@ -51,11 +52,8 @@
 static f64
 estimate_clock_frequency (f64 sample_time)
 {
-  /* Round to nearest 100KHz. */
-  const f64 round_to_units = 100e5;
-
   f64 time_now, time_start, time_limit, freq;
-  u64 ifreq, t[2];
+  u64 t[2];
 
   time_start = time_now = unix_time_now ();
   time_limit = time_now + sample_time;
@@ -65,8 +63,6 @@ estimate_clock_frequency (f64 sample_time)
   t[1] = clib_cpu_time_now ();
 
   freq = (t[1] - t[0]) / (time_now - time_start);
-  ifreq = flt_round_nearest (freq / round_to_units);
-  freq = ifreq * round_to_units;
 
   return freq;
 }
@@ -185,10 +181,11 @@ os_cpu_clock_frequency (void)
     }
 #endif
 
+  /* If we have an invariant TSC, use it to estimate the clock frequency */
   if (clib_cpu_supports_invariant_tsc ())
     return estimate_clock_frequency (1e-3);
 
-  /* First try /sys version. */
+  /* Next, try /sys version. */
   cpu_freq = clock_frequency_from_sys_filesystem ();
   if (cpu_freq != 0)
     return cpu_freq;
@@ -214,23 +211,40 @@ clib_time_init (clib_time_t * c)
   c->seconds_per_clock = 1 / c->clocks_per_second;
   c->log2_clocks_per_second = min_log2_u64 ((u64) c->clocks_per_second);
 
-  /* Initially verify frequency every sec */
-  c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second;
+  /* Verify frequency every 16 sec */
+  c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second + 4;
 
   c->last_verify_reference_time = unix_time_now ();
+  c->init_reference_time = c->last_verify_reference_time;
   c->last_cpu_time = clib_cpu_time_now ();
   c->init_cpu_time = c->last_verify_cpu_time = c->last_cpu_time;
+  c->total_cpu_time = 0ULL;
+
+  /*
+   * Use exponential smoothing, with a half-life of 1 minute
+   * reported_rate(t) = reported_rate(t-1) * K + rate(t)*(1-K)
+   * where K = e**(-1.0/3.75);
+   * 15 samples in 4 minutes
+   * 7.5 samples in 2 minutes,
+   * 3.75 samples in 1 minute, etc.
+   */
+  c->damping_constant = exp (-1.0 / 3.75);
 }
 
 void
 clib_time_verify_frequency (clib_time_t * c)
 {
-  f64 now_reference = unix_time_now ();
-  f64 dtr = now_reference - c->last_verify_reference_time;
-  f64 dtr_max;
-  u64 dtc = c->last_cpu_time - c->last_verify_cpu_time;
+  f64 now_reference, delta_reference, delta_reference_max;
+  u64 delta_clock;
   f64 new_clocks_per_second, delta;
-  f64 save_total_cpu_time_in_seconds;
+
+  /* Ask the kernel and the CPU what time it is... */
+  now_reference = unix_time_now ();
+  c->last_cpu_time = clib_cpu_time_now ();
+
+  /* Calculate a new clock rate sample */
+  delta_reference = now_reference - c->last_verify_reference_time;
+  delta_clock = c->last_cpu_time - c->last_verify_cpu_time;
 
   c->last_verify_cpu_time = c->last_cpu_time;
   c->last_verify_reference_time = now_reference;
@@ -240,68 +254,70 @@ clib_time_verify_frequency (clib_time_t * c)
    * or off by a factor of two - or 8 seconds - whichever is larger?
    * Someone reset the clock behind our back.
    */
-  dtr_max = (f64) (2ULL << c->log2_clocks_per_frequency_verify) /
+  delta_reference_max = (f64) (2ULL << c->log2_clocks_per_frequency_verify) /
     (f64) (1ULL << c->log2_clocks_per_second);
-  dtr_max = dtr_max > 8.0 ? dtr_max : 8.0;
+  delta_reference_max = delta_reference_max > 8.0 ? delta_reference_max : 8.0;
 
-  if (dtr <= 0.0 || dtr > dtr_max)
-    {
-      c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second;
-      return;
-    }
-
-  if (PREDICT_FALSE (c->round_to_units == 0.0))
-    {
-      f64 next_pow10, est_round_to_units;
-      /*
-       * Compute the first power of ten which is greater than
-       * 0.1% of the new clock rate. Save the result, and use it
-       * to round future results, so we don't end up calculating
-       * silly-looking clock rates.
-       */
-      est_round_to_units = ((f64) dtc / dtr) * 0.001;
-      next_pow10 = ceil (log10 (est_round_to_units));
-      c->round_to_units = pow (10.0, next_pow10);
-    }
+  /* Ignore this sample */
+  if (delta_reference <= 0.0 || delta_reference > delta_reference_max)
+    return;
 
   /*
    * Reject large frequency changes, another consequence of
    * system clock changes particularly with old kernels.
    */
-  new_clocks_per_second =
-    flt_round_nearest ((f64) dtc / (dtr * c->round_to_units))
-    * c->round_to_units;
+  new_clocks_per_second = ((f64) delta_clock) / delta_reference;
 
   /* Compute abs(rate change) */
   delta = new_clocks_per_second - c->clocks_per_second;
   if (delta < 0.0)
     delta = -delta;
 
-  /* If rate change > 1%, reject it and try again */
+  /* If rate change > 1%, reject this sample */
   if (PREDICT_FALSE ((delta / c->clocks_per_second) > .01))
     {
       clib_warning ("Rejecting large frequency change of %.2f%%",
 		    (delta / c->clocks_per_second) * 100.0);
-      c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second;
       return;
     }
 
-  /* Save total cpu time in seconds */
-  save_total_cpu_time_in_seconds = c->total_cpu_time * c->seconds_per_clock;
-
-  /* Recalculate clock rate */
-  c->clocks_per_second = new_clocks_per_second;
-  c->seconds_per_clock = 1 / c->clocks_per_second;
+  /* Add sample to the exponentially-smoothed rate */
+  c->clocks_per_second = c->clocks_per_second * c->damping_constant +
+    (1.0 - c->damping_constant) * new_clocks_per_second;
+  c->seconds_per_clock = 1.0 / c->clocks_per_second;
 
   /*
-   * Restore total cpu time in seconds. Otherwise, if c->clocks_per_second
-   * has decreased, time may appear to flow backwards.
+   * Recalculate total_cpu_time based on the kernel timebase, and
+   * the calculated clock rate
    */
-  c->total_cpu_time = save_total_cpu_time_in_seconds * c->clocks_per_second;
+  c->total_cpu_time =
+    (now_reference - c->init_reference_time) * c->clocks_per_second;
+}
 
-  /* Double time between verifies; max at 64 secs ~ 1 minute. */
-  if (c->log2_clocks_per_frequency_verify < c->log2_clocks_per_second + 6)
-    c->log2_clocks_per_frequency_verify += 1;
+
+u8 *
+format_clib_time (u8 * s, va_list * args)
+{
+  clib_time_t *c = va_arg (*args, clib_time_t *);
+  int verbose = va_arg (*args, int);
+  f64 now, reftime, delta_reftime_in_seconds, error;
+
+  /* Compute vpp elapsed time from the CPU clock */
+  reftime = unix_time_now ();
+  now = clib_time_now (c);
+
+  s = format (s, "Time now %.6f", now);
+  if (verbose == 0)
+    return s;
+
+  /* And also from the kernel */
+  delta_reftime_in_seconds = reftime - c->init_reference_time;
+
+  error = now - delta_reftime_in_seconds;
+
+  s = format (s, ", reftime %.6f, error %.6f, clocks/sec %.6f",
+	      delta_reftime_in_seconds, error, c->clocks_per_second);
+  return (s);
 }
 
 /*
