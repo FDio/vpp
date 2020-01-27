@@ -16,6 +16,7 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage lldp_doc
 - @subpage map_doc
 - @subpage marvel_plugin_doc
+- @subpage srv6_mobile_plugin
 - @subpage mtu_doc
 - @subpage nat64_doc
 - @subpage nat_ha_doc
