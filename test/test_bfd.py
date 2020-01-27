@@ -1175,7 +1175,7 @@ class BFD4TestCase(VppTestCase):
                     if echo_seen:
                         self.assertGreaterEqual(
                             p[BFD].required_min_rx_interval,
-                            1000000)
+                            800000)
                     if "P" in p.sprintf("%BFD.flags%"):
                         final = self.test_session.create_packet()
                         final[BFD].flags = "F"
@@ -1211,7 +1211,7 @@ class BFD4TestCase(VppTestCase):
                     if "P" in p.sprintf("%BFD.flags%"):
                         self.assertGreaterEqual(
                             p[BFD].required_min_rx_interval,
-                            1000000)
+                            800000)
                         final = self.test_session.create_packet()
                         final[BFD].flags = "F"
                         self.test_session.send_packet(final)
@@ -1668,7 +1668,7 @@ class BFD6TestCase(VppTestCase):
                     if echo_seen:
                         self.assertGreaterEqual(
                             p[BFD].required_min_rx_interval,
-                            1000000)
+                            800000)
                     if "P" in p.sprintf("%BFD.flags%"):
                         final = self.test_session.create_packet()
                         final[BFD].flags = "F"
