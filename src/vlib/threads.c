@@ -1848,11 +1848,11 @@ show_clock_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   int i;
-  f64 now;
+  int verbose = 0;
 
-  now = vlib_time_now (vm);
+  (void) unformat (input, "verbose %=", &verbose, 1);
 
-  vlib_cli_output (vm, "Time now %.9f", now);
+  vlib_cli_output (vm, "%U", format_clib_time, &vm->clib_time, verbose);
 
   if (vec_len (vlib_mains) == 1)
     return 0;
@@ -1864,6 +1864,10 @@ show_clock_command_fn (vlib_main_t * vm,
     {
       if (vlib_mains[i] == 0)
 	continue;
+
+      vlib_cli_output (vm, "%d: %U", i, format_clib_time,
+		       &vlib_mains[i]->clib_time, verbose);
+
       vlib_cli_output (vm, "Thread %d offset %.9f error %.9f", i,
 		       vlib_mains[i]->time_offset,
 		       vm->time_last_barrier_release -
