@@ -1,3 +1,5 @@
+# Code coverage analysis with lcov  {#lcov_code_coverage}
+
 ## Prerequisites
 
 The Linux gcov and lcov tools are fussy about gcc / g++ compiler
