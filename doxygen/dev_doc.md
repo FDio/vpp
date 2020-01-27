@@ -17,3 +17,6 @@ Programming notes for developers.
 - @subpage if_stats_client_doc
 - @subpage api_lang_doc
 - @subpage handoff_queue_demo_plugin
+- @subpage lcov_code_coverage
+- @subpage mdata_doc
+
