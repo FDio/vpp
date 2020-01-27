@@ -1744,6 +1744,10 @@ classify_filter_command_fn (vlib_main_t * vm,
   if (sw_if_index == ~0 && pkt_trace == 0 && pcap == 0)
     return clib_error_return (0, "Must specify trace, pcap or interface...");
 
+  if (pkt_trace && pcap)
+    return clib_error_return
+      (0, "Packet trace and pcap are mutually exclusive...");
+
   if (pkt_trace && sw_if_index != ~0)
     return clib_error_return (0, "Packet trace filter is per-system");
 
