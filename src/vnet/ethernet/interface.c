@@ -247,7 +247,7 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	     * Complete the remaining fields of the adj's rewrite to direct the
 	     * complete of the rewrite at switch time by copying in the IP
 	     * dst address's bytes.
-	     * Ofset is 2 bytes into the destintation address.
+	     * Offset is 2 bytes into the destination address.
 	     */
 	    offset = vec_len (rewrite) - 2;
 	    adj_mcast_update_rewrite (ai, rewrite, offset);
@@ -724,7 +724,7 @@ loopback_instance_alloc (u8 is_specified, u32 want)
   ethernet_main_t *em = &ethernet_main;
 
   /*
-   * Check for dynamically allocaetd instance number.
+   * Check for dynamically allocated instance number.
    */
   if (!is_specified)
     {
@@ -826,7 +826,10 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
     {
       address[0] = 0xde;
       address[1] = 0xad;
-      address[5] = instance;
+      address[2] = instance >> 24 & 0xFF;
+      address[3] = instance >> 16 & 0xFF;
+      address[4] = instance >> 8 & 0xFF;
+      address[5] = instance & 0xFF;
     }
 
   error = ethernet_register_interface
