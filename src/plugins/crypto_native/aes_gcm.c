@@ -19,9 +19,9 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
 #include <x86intrin.h>
-#include <crypto_ia32/crypto_ia32.h>
-#include <crypto_ia32/aesni.h>
-#include <crypto_ia32/ghash.h>
+#include <crypto_native/crypto_native.h>
+#include <crypto_native/aes.h>
+#include <crypto_native/ghash.h>
 
 #if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
 #pragma GCC optimize ("O3")
@@ -650,9 +650,9 @@ aes_gcm (const u8 * in, u8 * out, const u8 * addt, const u8 * iv, u8 * tag,
 
 static_always_inline u32
 aesni_ops_enc_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		       u32 n_ops, aesni_key_size_t ks)
+		       u32 n_ops, aes_key_size_t ks)
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
@@ -661,7 +661,7 @@ aesni_ops_enc_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
   aes_gcm (op->src, op->dst, op->aad, op->iv, op->tag, op->len, op->aad_len,
-	   op->tag_len, kd, AESNI_KEY_ROUNDS (ks), /* is_encrypt */ 1);
+	   op->tag_len, kd, AES_KEY_ROUNDS (ks), /* is_encrypt */ 1);
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   if (--n_left)
@@ -675,9 +675,9 @@ next:
 
 static_always_inline u32
 aesni_ops_dec_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		       u32 n_ops, aesni_key_size_t ks)
+		       u32 n_ops, aes_key_size_t ks)
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
   aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
@@ -686,7 +686,7 @@ aesni_ops_dec_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
   rv = aes_gcm (op->src, op->dst, op->aad, op->iv, op->tag, op->len,
-		op->aad_len, op->tag_len, kd, AESNI_KEY_ROUNDS (ks),
+		op->aad_len, op->tag_len, kd, AES_KEY_ROUNDS (ks),
 		/* is_encrypt */ 0);
 
   if (rv)
@@ -709,7 +709,7 @@ next:
 }
 
 static_always_inline void *
-aesni_gcm_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
+aesni_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
 {
   aes_gcm_key_data_t *kd;
   __m128i H;
@@ -722,7 +722,7 @@ aesni_gcm_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 
   /* pre-calculate H */
   H = kd->Ke[0];
-  for (i = 1; i < AESNI_KEY_ROUNDS (ks); i += 1)
+  for (i = 1; i < AES_KEY_ROUNDS (ks); i += 1)
     H = _mm_aesenc_si128 (H, kd->Ke[i]);
   H = _mm_aesenclast_si128 (H, kd->Ke[i]);
   H = aesni_gcm_bswap (H);
@@ -735,28 +735,28 @@ aesni_gcm_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 #define _(x) \
 static u32 aesni_ops_dec_aes_gcm_##x                                         \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
-{ return aesni_ops_dec_aes_gcm (vm, ops, n_ops, AESNI_KEY_##x); }            \
+{ return aesni_ops_dec_aes_gcm (vm, ops, n_ops, AES_KEY_##x); }              \
 static u32 aesni_ops_enc_aes_gcm_##x                                         \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
-{ return aesni_ops_enc_aes_gcm (vm, ops, n_ops, AESNI_KEY_##x); }            \
+{ return aesni_ops_enc_aes_gcm (vm, ops, n_ops, AES_KEY_##x); }              \
 static void * aesni_gcm_key_exp_##x (vnet_crypto_key_t *key)                 \
-{ return aesni_gcm_key_exp (key, AESNI_KEY_##x); }
+{ return aesni_gcm_key_exp (key, AES_KEY_##x); }
 
 foreach_aesni_gcm_handler_type;
 #undef _
 
 clib_error_t *
 #ifdef __VAES__
-crypto_ia32_aesni_gcm_init_vaes (vlib_main_t * vm)
+crypto_native_aes_gcm_init_vaes (vlib_main_t * vm)
 #elif __AVX512F__
-crypto_ia32_aesni_gcm_init_avx512 (vlib_main_t * vm)
+crypto_native_aes_gcm_init_avx512 (vlib_main_t * vm)
 #elif __AVX2__
-crypto_ia32_aesni_gcm_init_avx2 (vlib_main_t * vm)
+crypto_native_aes_gcm_init_avx2 (vlib_main_t * vm)
 #else
-crypto_ia32_aesni_gcm_init_sse42 (vlib_main_t * vm)
+crypto_native_aes_gcm_init_sse42 (vlib_main_t * vm)
 #endif
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_native_main_t *cm = &crypto_native_main;
 
 #define _(x) \
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \

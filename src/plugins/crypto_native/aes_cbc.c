@@ -19,8 +19,8 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
 #include <x86intrin.h>
-#include <crypto_ia32/crypto_ia32.h>
-#include <crypto_ia32/aesni.h>
+#include <crypto_native/crypto_native.h>
+#include <crypto_native/aes.h>
 
 #if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
 #pragma GCC optimize ("O3")
@@ -87,7 +87,7 @@ aes_block_store_x4 (u8 * dst[], int i, __m512i r)
 
 static_always_inline void __clib_unused
 aes_cbc_dec (__m128i * k, u8 * src, u8 * dst, u8 * iv, int count,
-	     aesni_key_size_t rounds)
+	     aes_key_size_t rounds)
 {
   __m128i r0, r1, r2, r3, c0, c1, c2, c3, f;
   int i;
@@ -152,7 +152,7 @@ aes_cbc_dec (__m128i * k, u8 * src, u8 * dst, u8 * iv, int count,
 #ifdef __VAES__
 static_always_inline void
 vaes_cbc_dec (__m512i * k, u8 * src, u8 * dst, u8 * iv, int count,
-	      aesni_key_size_t rounds)
+	      aes_key_size_t rounds)
 {
   __m512i permute = { 6, 7, 8, 9, 10, 11, 12, 13 };
   __m512i r0, r1, r2, r3, c0, c1, c2, c3, f = { };
@@ -236,12 +236,12 @@ vaes_cbc_dec (__m512i * k, u8 * src, u8 * dst, u8 * iv, int count,
 
 static_always_inline u32
 aesni_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		       u32 n_ops, aesni_key_size_t ks)
+		       u32 n_ops, aes_key_size_t ks)
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
-  crypto_ia32_per_thread_data_t *ptd = vec_elt_at_index (cm->per_thread_data,
-							 vm->thread_index);
-  int rounds = AESNI_KEY_ROUNDS (ks);
+  crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd =
+    vec_elt_at_index (cm->per_thread_data, vm->thread_index);
+  int rounds = AES_KEY_ROUNDS (ks);
   u8 dummy[8192];
   u32 i, j, count, n_left = n_ops;
   u32xN dummy_mask = { };
@@ -372,10 +372,10 @@ more:
 
 static_always_inline u32
 aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		       u32 n_ops, aesni_key_size_t ks)
+		       u32 n_ops, aes_key_size_t ks)
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
-  int rounds = AESNI_KEY_ROUNDS (ks);
+  crypto_native_main_t *cm = &crypto_native_main;
+  int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
   aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
   u32 n_left = n_ops;
@@ -401,7 +401,7 @@ decrypt:
 }
 
 static_always_inline void *
-aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
+aesni_cbc_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
 {
   __m128i e[15], d[15];
   aes_cbc_key_data_t *kd;
@@ -409,7 +409,7 @@ aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
   aes_key_expand (e, key->data, ks);
   aes_key_expand (d, key->data, ks);
   aes_key_enc_to_dec (d, ks);
-  for (int i = 0; i < AESNI_KEY_ROUNDS (ks) + 1; i++)
+  for (int i = 0; i < AES_KEY_ROUNDS (ks) + 1; i++)
     {
 #if __VAES__
       kd->decrypt_key[i] = _mm512_broadcast_i64x2 (d[i]);
@@ -426,12 +426,12 @@ aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 #define _(x) \
 static u32 aesni_ops_dec_aes_cbc_##x \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aesni_ops_dec_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
+{ return aesni_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
 static u32 aesni_ops_enc_aes_cbc_##x \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aesni_ops_enc_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
+{ return aesni_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
 static void * aesni_cbc_key_exp_##x (vnet_crypto_key_t *key) \
-{ return aesni_cbc_key_exp (key, AESNI_KEY_##x); }
+{ return aesni_cbc_key_exp (key, AES_KEY_##x); }
 
 foreach_aesni_cbc_handler_type;
 #undef _
@@ -440,17 +440,17 @@ foreach_aesni_cbc_handler_type;
 
 clib_error_t *
 #ifdef __VAES__
-crypto_ia32_aesni_cbc_init_vaes (vlib_main_t * vm)
+crypto_native_aes_cbc_init_vaes (vlib_main_t * vm)
 #elif __AVX512F__
-crypto_ia32_aesni_cbc_init_avx512 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_avx512 (vlib_main_t * vm)
 #elif __AVX2__
-crypto_ia32_aesni_cbc_init_avx2 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_avx2 (vlib_main_t * vm)
 #else
-crypto_ia32_aesni_cbc_init_sse42 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_sse42 (vlib_main_t * vm)
 #endif
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
-  crypto_ia32_per_thread_data_t *ptd;
+  crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd;
   clib_error_t *err = 0;
   int fd;
 
