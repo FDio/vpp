@@ -22,6 +22,30 @@
       "revId": "8d8d14d7424033ef4dace15caf5d5375f26c3ede",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56777e96_eebb7fc2",
+        "filename": "src/svm/fifo_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-28T08:50:18Z",
+      "side": 1,
+      "message": "Thanks. That sounds very reasonable.\nIn the revision #4, the segment manager has a property fifo_max_size.",
+      "parentUuid": "2e653885_d2d0a4b3",
+      "range": {
+        "startLine": 61,
+        "startChar": 6,
+        "endLine": 61,
+        "endChar": 14
+      },
+      "revId": "8d8d14d7424033ef4dace15caf5d5375f26c3ede",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
