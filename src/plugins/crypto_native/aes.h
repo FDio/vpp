@@ -23,7 +23,7 @@ typedef enum
   AESNI_KEY_128 = 0,
   AESNI_KEY_192 = 1,
   AESNI_KEY_256 = 2,
-} aesni_key_size_t;
+} aes_key_size_t;
 
 #define AESNI_KEY_ROUNDS(x)		(10 + x *2)
 #define AESNI_KEY_BYTES(x)		(16 + x * 8)
@@ -178,7 +178,7 @@ aes256_key_expand (__m128i * k, u8 * key)
 }
 
 static_always_inline void
-aes_key_expand (__m128i * k, u8 * key, aesni_key_size_t ks)
+aes_key_expand (__m128i * k, u8 * key, aes_key_size_t ks)
 {
   switch (ks)
     {
@@ -196,7 +196,7 @@ aes_key_expand (__m128i * k, u8 * key, aesni_key_size_t ks)
 
 
 static_always_inline void
-aes_key_enc_to_dec (__m128i * k, aesni_key_size_t ks)
+aes_key_enc_to_dec (__m128i * k, aes_key_size_t ks)
 {
   int rounds = AESNI_KEY_ROUNDS (ks);
   __m128i r;
