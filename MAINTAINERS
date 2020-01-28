@@ -186,10 +186,10 @@ I:	nhrp
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/nhrp/
 
-Crypto IA32 Plugin
-I:	crypto-ia32
+Crypto native Plugin
+I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/plugins/crypto_ia32/
+F:	src/plugins/crypto_native/
 
 Crypto openssl Plugin
 I:	crypto-openssl

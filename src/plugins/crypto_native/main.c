@@ -18,16 +18,16 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <crypto_ia32/crypto_ia32.h>
+#include <crypto_native/crypto_native.h>
 
-crypto_ia32_main_t crypto_ia32_main;
+crypto_native_main_t crypto_native_main;
 
 static void
-crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
-			 vnet_crypto_key_index_t idx)
+crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+			   vnet_crypto_key_index_t idx)
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_native_main_t *cm = &crypto_native_main;
 
   if (cm->key_fn[key->alg] == 0)
     return;
@@ -56,9 +56,9 @@ crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 }
 
 clib_error_t *
-crypto_ia32_init (vlib_main_t * vm)
+crypto_native_init (vlib_main_t * vm)
 {
-  crypto_ia32_main_t *cm = &crypto_ia32_main;
+  crypto_native_main_t *cm = &crypto_native_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   clib_error_t *error = 0;
 
@@ -69,17 +69,17 @@ crypto_ia32_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
 
   cm->crypto_engine_index =
-    vnet_crypto_register_engine (vm, "ia32", 100,
-				 "Intel IA32 ISA Optimized Crypto");
+    vnet_crypto_register_engine (vm, "native", 100,
+				 "Native ISA Optimized Crypto");
 
   if (clib_cpu_supports_vaes ())
-    error = crypto_ia32_aesni_cbc_init_vaes (vm);
+    error = crypto_native_aes_cbc_init_vaes (vm);
   else if (clib_cpu_supports_avx512f ())
-    error = crypto_ia32_aesni_cbc_init_avx512 (vm);
+    error = crypto_native_aes_cbc_init_avx512 (vm);
   else if (clib_cpu_supports_avx2 ())
-    error = crypto_ia32_aesni_cbc_init_avx2 (vm);
+    error = crypto_native_aes_cbc_init_avx2 (vm);
   else
-    error = crypto_ia32_aesni_cbc_init_sse42 (vm);
+    error = crypto_native_aes_cbc_init_sse42 (vm);
 
   if (error)
     goto error;
@@ -87,20 +87,20 @@ crypto_ia32_init (vlib_main_t * vm)
   if (clib_cpu_supports_pclmulqdq ())
     {
       if (clib_cpu_supports_vaes ())
-	error = crypto_ia32_aesni_gcm_init_vaes (vm);
+	error = crypto_native_aes_gcm_init_vaes (vm);
       else if (clib_cpu_supports_avx512f ())
-	error = crypto_ia32_aesni_gcm_init_avx512 (vm);
+	error = crypto_native_aes_gcm_init_avx512 (vm);
       else if (clib_cpu_supports_avx2 ())
-	error = crypto_ia32_aesni_gcm_init_avx2 (vm);
+	error = crypto_native_aes_gcm_init_avx2 (vm);
       else
-	error = crypto_ia32_aesni_gcm_init_sse42 (vm);
+	error = crypto_native_aes_gcm_init_sse42 (vm);
 
       if (error)
 	goto error;
     }
 
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_ia32_key_handler);
+				    crypto_native_key_handler);
 
 
 error:
@@ -111,7 +111,7 @@ error:
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (crypto_ia32_init) =
+VLIB_INIT_FUNCTION (crypto_native_init) =
 {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };

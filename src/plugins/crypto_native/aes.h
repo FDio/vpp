@@ -20,13 +20,13 @@
 
 typedef enum
 {
-  AESNI_KEY_128 = 0,
-  AESNI_KEY_192 = 1,
-  AESNI_KEY_256 = 2,
-} aesni_key_size_t;
+  AES_KEY_128 = 0,
+  AES_KEY_192 = 1,
+  AES_KEY_256 = 2,
+} aes_key_size_t;
 
-#define AESNI_KEY_ROUNDS(x)		(10 + x *2)
-#define AESNI_KEY_BYTES(x)		(16 + x * 8)
+#define AES_KEY_ROUNDS(x)		(10 + x * 2)
+#define AES_KEY_BYTES(x)		(16 + x * 8)
 
 
 /* AES-NI based AES key expansion based on code samples from
@@ -178,17 +178,17 @@ aes256_key_expand (__m128i * k, u8 * key)
 }
 
 static_always_inline void
-aes_key_expand (__m128i * k, u8 * key, aesni_key_size_t ks)
+aes_key_expand (__m128i * k, u8 * key, aes_key_size_t ks)
 {
   switch (ks)
     {
-    case AESNI_KEY_128:
+    case AES_KEY_128:
       aes128_key_expand (k, key);
       break;
-    case AESNI_KEY_192:
+    case AES_KEY_192:
       aes192_key_expand (k, key);
       break;
-    case AESNI_KEY_256:
+    case AES_KEY_256:
       aes256_key_expand (k, key);
       break;
     }
@@ -196,9 +196,9 @@ aes_key_expand (__m128i * k, u8 * key, aesni_key_size_t ks)
 
 
 static_always_inline void
-aes_key_enc_to_dec (__m128i * k, aesni_key_size_t ks)
+aes_key_enc_to_dec (__m128i * k, aes_key_size_t ks)
 {
-  int rounds = AESNI_KEY_ROUNDS (ks);
+  int rounds = AES_KEY_ROUNDS (ks);
   __m128i r;
 
   r = k[rounds];
