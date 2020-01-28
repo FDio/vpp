@@ -700,6 +700,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	  template.file_descriptor = fds[0];
 	  template.private_data =
 	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
+	  template.description = format (0, "vhost user");
 	  vui->vrings[q].callfd_idx = clib_file_add (&file_main, &template);
 	}
       else
@@ -1034,6 +1035,7 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
   template.error_function = vhost_user_socket_error;
   template.file_descriptor = client_fd;
   template.private_data = vui - vhost_user_main.vhost_user_interfaces;
+  template.description = format (0, "vhost interface %d", vui->sw_if_index);
   vui->clib_file_index = clib_file_add (&file_main, &template);
   return 0;
 }
@@ -1186,6 +1188,7 @@ vhost_user_process (vlib_main_t * vm,
   sun.sun_family = AF_UNIX;
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
+  template.description = format (0, "vhost user process");
 
   while (1)
     {
@@ -1507,6 +1510,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
       template.read_function = vhost_user_socksvr_accept_ready;
       template.file_descriptor = server_sock_fd;
       template.private_data = vui - vum->vhost_user_interfaces;	//hw index
+      template.description = format (0, "vhost user %d", sw);
       vui->unix_server_index = clib_file_add (&file_main, &template);
     }
   else

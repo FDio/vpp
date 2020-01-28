@@ -410,6 +410,7 @@ socksvr_file_add (clib_file_main_t * fm, int fd)
   template.write_function = vl_socket_write_ready;
   template.error_function = vl_socket_error_ready;
   template.file_descriptor = fd;
+  template.description = format (0, "socksrv");
   template.private_data = rp - socket_main.registration_pool;
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_SERVER;
@@ -767,6 +768,7 @@ vl_sock_api_init (vlib_main_t * vm)
   template.read_function = socksvr_accept_ready;
   template.write_function = socksvr_bogus_write;
   template.file_descriptor = sock->fd;
+  template.description = format (0, "socksvr %s", sock->config);
   template.private_data = rp - sm->registration_pool;
 
   rp->clib_file_index = clib_file_add (fm, &template);
