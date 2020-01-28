@@ -1032,7 +1032,7 @@ format_tcp_vars (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
+u8 *
 format_tcp_connection_id (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);

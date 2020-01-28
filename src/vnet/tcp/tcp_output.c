@@ -55,12 +55,12 @@ format_tcp_tx_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   tcp_tx_trace_t *t = va_arg (*args, tcp_tx_trace_t *);
+  tcp_connection_t *tc = &t->tcp_connection;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U\n%U%U",
-	      format_tcp_header, &t->tcp_header, 128,
-	      format_white_space, indent,
-	      format_tcp_connection, &t->tcp_connection, 1);
+  s = format (s, "%U state %U\n%U%U", format_tcp_connection_id, tc,
+	      format_tcp_state, tc->state, format_white_space, indent,
+	      format_tcp_header, &t->tcp_header, 128);
 
   return s;
 }
@@ -2246,16 +2246,17 @@ static void
 tcp46_output_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  u32 * to_next, u32 n_bufs)
 {
-  u32 n_trace = vlib_get_trace_count (vm, node);
   tcp_connection_t *tc;
   tcp_tx_trace_t *t;
   vlib_buffer_t *b;
   tcp_header_t *th;
   int i;
 
-  for (i = 0; i < clib_min (n_trace, n_bufs); i++)
+  for (i = 0; i < n_bufs; i++)
     {
       b = vlib_get_buffer (vm, to_next[i]);
+      if (!(b->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
       th = vlib_buffer_get_current (b);
       tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
 			       vm->thread_index);

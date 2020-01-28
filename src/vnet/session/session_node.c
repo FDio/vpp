@@ -496,7 +496,7 @@ format_session_queue_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   session_queue_trace_t *t = va_arg (*args, session_queue_trace_t *);
 
-  s = format (s, "SESSION_QUEUE: session index %d, server thread index %d",
+  s = format (s, "session index %d thread index %d",
 	      t->session_index, t->server_thread_index);
   return s;
 }
@@ -538,7 +538,7 @@ session_tx_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   for (i = 0; i < clib_min (n_trace, n_segs); i++)
     {
-      b = vlib_get_buffer (vm, to_next[i - n_segs]);
+      b = vlib_get_buffer (vm, to_next[i]);
       vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ );
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       t->session_index = s->session_index;

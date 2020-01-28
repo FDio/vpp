@@ -758,6 +758,7 @@ int tcp_configure_v6_source_address_range (vlib_main_t * vm,
 					   ip6_address_t * end, u32 table_id);
 void tcp_api_reference (void);
 u8 *format_tcp_connection (u8 * s, va_list * args);
+u8 *format_tcp_connection_id (u8 * s, va_list * args);
 
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
