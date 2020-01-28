@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+
+import ipaddress
+import unittest
+
+from framework import VppTestCase, VppTestRunner
+from vpp_ip import DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from util import fragment_rfc791, fragment_rfc8200
+
+import scapy.compat
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from scapy.layers.inet import IP, UDP, ICMP, TCP
+from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment
+from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply
+
+
+class TestMAPBR(VppTestCase):
+    """ MAP-T Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMAPBR, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMAPBR, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestMAPBR, self).setUp()
+
+        #
+        # Create 2 pg interfaces.
+        # pg0 is IPv4
+        # pg1 is IPv6
+        #
+        self.create_pg_interfaces(range(2))
+
+        self.pg0.admin_up()
+        self.pg0.config_ip4()
+        self.pg1.generate_remote_hosts(20)
+        self.pg1.configure_ipv4_neighbors()
+        self.pg0.resolve_arp()
+
+        self.pg1.admin_up()
+        self.pg1.config_ip6()
+        self.pg1.generate_remote_hosts(20)
+        self.pg1.configure_ipv6_neighbors()
+
+        #
+        # BR configuration parameters used for all test.
+        #
+        self.ip4_prefix = '198.18.0.0/24'
+        self.ip6_prefix = '2001:db8:f0::/48'
+        self.ip6_src = '2001:db8:ffff:ff00::/64'
+        self.ea_bits_len = 12
+        self.psid_offset = 6
+        self.psid_length = 4
+        self.mtu = 1500
+        self.tag = 'MAP-T BR'
+
+        self.ipv4_internet_address = self.pg0.remote_ip4
+        self.ipv4_map_address = "198.18.0.12"
+        self.ipv4_udp_or_tcp_internet_port = 65000
+        self.ipv4_udp_or_tcp_map_port = 16606
+
+        self.ipv6_cpe_address = "2001:db8:f0:c30:0:c612:c:3"      # 198.18.0.12
+        self.ipv6_spoof_address = "2001:db8:f0:c30:0:c612:1c:3"   # 198.18.0.28
+        self.ipv6_spoof_prefix = "2001:db8:f0:c30:0:a00:c:3"      # 10.0.0.12
+        self.ipv6_spoof_psid = "2001:db8:f0:c30:0:c612:c:4"       # 4
+        self.ipv6_spoof_subnet = "2001:db8:f1:c30:0:c612:c:3"     # f1
+
+        self.ipv6_udp_or_tcp_internet_port = 65000
+        self.ipv6_udp_or_tcp_map_port = 16606
+        self.ipv6_udp_or_tcp_spoof_port = 16862
+
+        self.ipv6_map_address = (
+            "2001:db8:ffff:ff00:ac:1001:200:0")         # 176.16.1.2
+        self.ipv6_map_same_rule_diff_addr = (
+            "2001:db8:ffff:ff00:c6:1200:10:0")          # 198.18.0.16
+
+        self.map_br_prefix = "2001:db8:f0::"
+        self.map_br_prefix_len = 48
+        self.psid_number = 3
+
+        #
+        # Add an IPv6 route to the MAP-BR.
+        #
+        map_route = VppIpRoute(self,
+                               self.map_br_prefix,
+                               self.map_br_prefix_len,
+                               [VppRoutePath(self.pg1.remote_ip6,
+                                             self.pg1.sw_if_index)])
+        map_route.add_vpp_config()
+
+        ip4_map_route = VppIpRoute(self,
+                                   "198.18.0.0",
+                                   24,
+                                   [VppRoutePath(self.pg1.remote_ip4,
+                                                 self.pg1.sw_if_index)])
+        ip4_map_route.add_vpp_config()
+
+        #
+        # Add a MAP BR domain that maps from pg0 to pg1.
+        #
+        self.vapi.map_add_domain(ip4_prefix=self.ip4_prefix,
+                                 ip6_prefix=self.ip6_prefix,
+                                 ip6_src=self.ip6_src,
+                                 ea_bits_len=self.ea_bits_len,
+                                 psid_offset=self.psid_offset,
+                                 psid_length=self.psid_length,
+                                 mtu=self.mtu,
+                                 tag=self.tag)
+
+        #
+        # Set BR parameters.
+        #
+        self.vapi.map_param_set_fragmentation(inner=1, ignore_df=0)
+        self.vapi.map_param_set_fragmentation(inner=0, ignore_df=0)
+        self.vapi.map_param_set_icmp(ip4_err_relay_src=self.pg0.local_ip4)
+        self.vapi.map_param_set_traffic_class(copy=1)
+
+        #
+        # Enable MAP-T on interfaces.
+        #
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg0.sw_if_index,
+                                        is_translation=1)
+
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg1.sw_if_index,
+                                        is_translation=1)
+
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg1.sw_if_index,
+                                        is_translation=1)
+
+    def tearDown(self):
+        super(TestMAPBR, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+
+    #
+    # Spoofed IPv4 Source Address v6 -> v4 direction
+    # Send a packet with a wrong IPv4 address embedded in bits 72-103.
+    # The BR should either drop the packet, or rewrite the spoofed
+    # source IPv4 as the actual source IPv4 address.
+    # The BR really should drop the packet.
+    #
+
+    def test_map_t_spoof_ipv4_src_addr_ip6_to_ip4(self):
+        """ MAP-T spoof ipv4 src addr IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_spoof_address,
+                  dst=self.ipv6_map_address)
+        udp = UDP(sport=self.ipv6_udp_or_tcp_map_port,
+                  dport=self.ipv6_udp_or_tcp_internet_port)
+        payload = "a" * 82
+        tx_pkt = eth / ip / udp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv4 spoof address")
+
+    #
+    # Spoofed IPv4 Source Prefix v6 -> v4 direction
+    # Send a packet with a wrong IPv4 prefix embedded in bits 72-103.
+    # The BR should either drop the packet, or rewrite the source IPv4
+    # to the prefix that matches the source IPv4 address.
+    #
+
+    def test_map_t_spoof_ipv4_src_prefix_ip6_to_ip4(self):
+        """ MAP-T spoof ipv4 src prefix IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_spoof_prefix,
+                  dst=self.ipv6_map_address)
+        udp = UDP(sport=self.ipv6_udp_or_tcp_map_port,
+                  dport=self.ipv6_udp_or_tcp_internet_port)
+        payload = "a" * 82
+        tx_pkt = eth / ip / udp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv4 spoof prefix")
+
+    #
+    # Spoofed IPv6 PSID v6 -> v4 direction
+    # Send a packet with a wrong IPv6 port PSID
+    # The BR should drop the packet.
+    #
+
+    def test_map_t_spoof_psid_ip6_to_ip4(self):
+        """ MAP-T spoof psid IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_spoof_psid,
+                  dst=self.ipv6_map_address)
+        udp = UDP(sport=self.ipv6_udp_or_tcp_map_port,
+                  dport=self.ipv6_udp_or_tcp_internet_port)
+        payload = "a" * 82
+        tx_pkt = eth / ip / udp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv6 spoof PSID")
+
+    #
+    # Spoofed IPv6 subnet field v6 -> v4 direction
+    # Send a packet with a wrong IPv6 subnet as "2001:db8:f1"
+    # The BR should drop the packet.
+    #
+
+    def test_map_t_spoof_subnet_ip6_to_ip4(self):
+        """ MAP-T spoof subnet IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_spoof_subnet,
+                  dst=self.ipv6_map_address)
+        udp = UDP(sport=self.ipv6_udp_or_tcp_map_port,
+                  dport=self.ipv6_udp_or_tcp_internet_port)
+        payload = "a" * 82
+        tx_pkt = eth / ip / udp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv6 spoof subnet")
+
+    #
+    # Spoofed IPv6 port PSID v6 -> v4 direction
+    # Send a packet with a wrong IPv6 port PSID
+    # The BR should drop the packet.
+    #
+
+    def test_map_t_spoof_port_psid_ip6_to_ip4(self):
+        """ MAP-T spoof port psid IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_cpe_address,
+                  dst=self.ipv6_map_address)
+        udp = UDP(sport=self.ipv6_udp_or_tcp_spoof_port,
+                  dport=self.ipv6_udp_or_tcp_internet_port)
+        payload = "a" * 82
+        tx_pkt = eth / ip / udp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv6 spoof port PSID")
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)

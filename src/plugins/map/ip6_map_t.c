@@ -105,7 +105,7 @@ ip6_to_ip4_set_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
   // Security check
   // Note that this prevents an intermediate IPv6 router from answering
   // the request.
-  ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->flags);
+  ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->ip6_src_len);
   if (ip6->src_address.as_u64[0] !=
       map_get_pfx_net (ctx->d, ip4_sadr, ctx->sender_port)
       || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr,
@@ -127,7 +127,7 @@ ip6_to_ip4_set_inner_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   u32 inner_ip4_dadr;
 
   //Security check of inner packet
-  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->flags);
+  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->ip6_src_len);
   if (ip6->dst_address.as_u64[0] !=
       map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->sender_port)
       || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d,
@@ -343,6 +343,8 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 
 /*
  * Translate IPv6 UDP/TCP packet to IPv4.
+ * Returns 0 on success.
+ * Returns a non-zero error code on error.
  */
 always_inline int
 map_ip6_to_ip4_tcp_udp (vlib_buffer_t * p, bool udp_checksum)
@@ -406,6 +408,16 @@ map_ip6_to_ip4_tcp_udp (vlib_buffer_t * p, bool udp_checksum)
 
   ip4->dst_address.as_u32 = vnet_buffer (p)->map_t.v6.daddr;
   ip4->src_address.as_u32 = vnet_buffer (p)->map_t.v6.saddr;
+
+  /*
+   * Drop spoofed packets that from a known domain source.
+   */
+  u32 map_domain_index = -1;
+  u8 error = 0;
+
+  ip4_map_get_domain (&ip4->src_address, &map_domain_index, &error);
+  if (error)
+    return error;
 
   ip4->ip_version_and_header_length =
     IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
