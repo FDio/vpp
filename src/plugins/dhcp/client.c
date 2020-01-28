@@ -887,15 +887,18 @@ dhcp_client_process (vlib_main_t * vm,
 	  break;
 
 	case ~0:
-          /* *INDENT-OFF* */
-          DHCP_INFO ("timeout");
-	  pool_foreach (c, dcm->clients,
-          ({
-            timeout = dhcp_client_sm (now, timeout,
-                                      (uword) (c - dcm->clients));
-          }));
-          /* *INDENT-ON* */
-	  if (pool_elts (dcm->clients) == 0)
+	  if (pool_elts (dcm->clients))
+	    {
+	      DHCP_INFO ("timeout");
+              /* *INDENT-OFF* */
+              pool_foreach (c, dcm->clients,
+              ({
+                timeout = dhcp_client_sm (now, timeout,
+                                          (uword) (c - dcm->clients));
+              }));
+              /* *INDENT-ON* */
+	    }
+	  else
 	    timeout = 100.0;
 	  break;
 	}
