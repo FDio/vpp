@@ -194,6 +194,7 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
     template.read_function = netmap_fd_read_ready;
     template.file_descriptor = nif->fd;
     template.private_data = nif->if_index;
+    template.description = format (0, "netmap socket");
     nif->clib_file_index = clib_file_add (&file_main, &template);
   }
 

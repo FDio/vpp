@@ -95,7 +95,7 @@ sendmsg_helper (mc_socket_main_t * msm,
   n_bytes = append_buffer_index_to_iovec (vm, buffer_index, &msm->iovecs);
   ASSERT (n_bytes <= msm->mc_main.transport.max_packet_size);
   if (n_bytes > msm->mc_main.transport.max_packet_size)
-    clib_error ("sending packet larger than interace MTU %d bytes", n_bytes);
+    clib_error ("sending packet larger than interface MTU %d bytes", n_bytes);
 
   h.msg_iov = msm->iovecs;
   h.msg_iovlen = vec_len (msm->iovecs);
@@ -616,6 +616,7 @@ catchup_listen_read_ready (clib_file_t * uf)
   template.write_function = catchup_server_write_ready;
   template.error_function = catchup_socket_error_ready;
   template.file_descriptor = c->socket;
+  template.description = format (0, "multicast catchup socket");
   template.private_data = pointer_to_uword (msm);
   c->clib_file_index = clib_file_add (&file_main, &template);
   hash_set (msm->catchup_index_by_file_descriptor, c->socket,
@@ -786,6 +787,7 @@ socket_setup (mc_socket_main_t * msm)
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY].socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast to_relay socket");
     clib_file_add (&file_main, &template);
 
     /* epoll setup for multicast from_relay socket */
@@ -793,24 +795,28 @@ socket_setup (mc_socket_main_t * msm)
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY].socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast from_relay socket");
     clib_file_add (&file_main, &template);
 
     template.read_function = join_socket_read_ready;
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_JOIN].socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast join socket");
     clib_file_add (&file_main, &template);
 
     /* epoll setup for ack rx socket */
     template.read_function = ack_socket_read_ready;
     template.file_descriptor = msm->ack_socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast ack rx socket");
     clib_file_add (&file_main, &template);
 
     /* epoll setup for TCP catchup server */
     template.read_function = catchup_listen_read_ready;
     template.file_descriptor = msm->catchup_server_socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast tcp catchup socket");
     clib_file_add (&file_main, &template);
   }
 
@@ -903,6 +909,7 @@ catchup_request_fun (void *transport_main,
     template.error_function = catchup_socket_error_ready;
     template.file_descriptor = c->socket;
     template.private_data = (uword) msm;
+    template.description = format (0, "multicast socket");
     c->clib_file_index = clib_file_add (um, &template);
 
     hash_set (msm->catchup_index_by_file_descriptor, c->socket,
