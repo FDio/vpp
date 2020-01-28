@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "19bf98ec_a5b7c5e5",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-01-28T15:46:04Z",
+      "side": 1,
+      "message": "Is this valid markdown syntax?\n\nDoes not render properly in atom.io -\u003e markdown preview:\n\"o  Add /if/lacp/\\/\\/partner-state (aa7257863)\"\n\nNot verified with github markdown renderer.",
+      "range": {
+        "startLine": 61,
+        "startChar": 17,
+        "endLine": 61,
+        "endChar": 63
+      },
+      "revId": "1f036c64196dda15fa66add2daef5ba9ecdab78a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a5a67c95_730e8880",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 789,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-01-28T15:46:04Z",
+      "side": 1,
+      "message": "Is this valid markdown syntax?\n\nIt renders as \"@c\" in atom.io -\u003e markdown preview\nNot verified with github markdown renderer.",
+      "range": {
+        "startLine": 789,
+        "startChar": 2,
+        "endLine": 789,
+        "endChar": 4
+      },
+      "revId": "1f036c64196dda15fa66add2daef5ba9ecdab78a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e4c40115_7d9cdf4f",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-01-28T15:46:04Z",
+      "side": 1,
+      "message": "Extraneous python type formatting \"b\u0027\" and trailing \"\u0027\" shows up in atom.io -\u003e markdown preview\n\nNot verified in github markdown renderer.",
+      "range": {
+        "startLine": 791,
+        "startChar": 3,
+        "endLine": 791,
+        "endChar": 15
+      },
+      "revId": "1f036c64196dda15fa66add2daef5ba9ecdab78a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cae539dc_3555ef39",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-01-28T15:46:04Z",
+      "side": 1,
+      "message": "Extraneous python type formatting \"b\u0027\" and trailing \"\u0027\" breaks the URL:\n\n\"404 - Unknown commit object\"\n\nThe correct URL is:\nhttps://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dcommit;h\u003d8e388390d",
+      "range": {
+        "startLine": 791,
+        "startChar": 68,
+        "endLine": 791,
+        "endChar": 80
+      },
+      "revId": "1f036c64196dda15fa66add2daef5ba9ecdab78a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
