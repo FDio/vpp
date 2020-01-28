@@ -146,6 +146,9 @@ typedef struct
   /* index vector, to sort commands, etc. */
   u32 *sort_vector;
 
+  /* should comments be logged */
+  u8 log_comments;
+
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT

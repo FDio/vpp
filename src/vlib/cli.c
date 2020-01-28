@@ -52,6 +52,10 @@ int vl_api_get_elog_trace_api_messages (void);
 
 static void *current_traced_heap;
 
+vlib_log_class_t cli_comment_logger;
+#define CLI_COMMENT(...)                                \
+    vlib_log_notice (cli_comment_logger, __VA_ARGS__)
+
 /* Root of all show commands. */
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_command, static) = {
@@ -468,6 +472,9 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
   else if (unformat (input, "comment %v", &string))
     {
+      if (cm->log_comments)
+	CLI_COMMENT ((char *) string);
+
       vec_free (string);
     }
 
@@ -477,6 +484,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       error =
 	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
 					parent_command_index);
+      if (cm->log_comments)
+	CLI_COMMENT ((char *) &sub_input);
       unformat_free (&sub_input);
     }
   else if (unformat (input, "leak-check %U",
@@ -1059,7 +1068,7 @@ VLIB_CLI_COMMAND (restart_cmd,static) = {
 #ifdef TEST_CODE
 /*
  * A trivial test harness to verify the per-process output_function
- * is working correcty.
+ * is working correctly.
  */
 
 static clib_error_t *
@@ -1760,6 +1769,34 @@ VLIB_CLI_COMMAND (show_cli_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
+cli_log_comments_fn (vlib_main_t * vm, unformat_input_t * input,
+		     vlib_cli_command_t * cmd)
+{
+  vlib_cli_main_t *cm = &vm->cli_main;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "%U", unformat_vlib_enable_disable, &cm->log_comments))
+	;
+      else
+
+	return clib_error_return (0, "invalid input");
+
+    }
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_log_comments, static) =
+{
+  .path = "cli log-comments",
+  .short_help = "cli log-comments <on|off>",
+  .function = cli_log_comments_fn,
+};
+/* *INDENT-ON* */
+
+
+
+static clib_error_t *
 vlib_cli_init (vlib_main_t * vm)
 {
   vlib_cli_main_t *cm = &vm->cli_main;
@@ -1767,6 +1804,7 @@ vlib_cli_init (vlib_main_t * vm)
   vlib_cli_command_t *cmd;
 
   cmd = cm->cli_command_registrations;
+  cm->log_comments = 0;
 
   while (cmd)
     {
@@ -1775,6 +1813,8 @@ vlib_cli_init (vlib_main_t * vm)
 	return error;
       cmd = cmd->next_cli_command;
     }
+
+  cli_comment_logger = vlib_log_register_class ("cli", "comment");
   return error;
 }
 
