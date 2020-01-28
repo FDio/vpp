@@ -146,12 +146,15 @@ typedef struct vlib_cli_main_t
   /* index vector, to sort commands, etc. */
   u32 *sort_vector;
 
-
   /* performance counter callback */
   void (**perf_counter_cbs)
     (struct vlib_cli_main_t *, u32 id, int before_or_after);
   void (**perf_counter_cbs_tmp)
     (struct vlib_cli_main_t *, u32 id, int before_or_after);
+
+  /* should comments be logged */
+  u8 log_comments;
+
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT
