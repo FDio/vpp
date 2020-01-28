@@ -5,7 +5,7 @@ The VPP API language is used to define a RPC interface between VPP and its
 control plane. The API messages supports shared memory transport and
 Unix domain sockets (SOCK_STREAM).
 
-The wire format is essentially that of a packed C struct.
+The wire format is essentially that of a network formatted (big-endian) packed C struct.
 
 The VPP API compiler is located in *src/tools/vppapigen* and can currently
 compile to JSON or C (used by the VPP binary itself).
@@ -61,10 +61,11 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  string program [limit = 32];
-  string version [limit = 32];
-  string build_date [limit = 32];
-  string build_directory [limit = 256];
+  string program [32];
+  string version [32];
+  string build_date [32];
+  /* The final field can be a variable length argument */
+  string build_directory [];
 };
 
 ```
@@ -140,7 +141,7 @@ typedef u8 ip6_address[16];
 ```
 
 Where the above defines two new types *vl_api_ip4_address_t* and
-*vl_api_ip6_address_t*. These are aliases for the underlaying
+*vl_api_ip6_address_t*. These are aliases for the underlying
 u8 array.
 
 In the other form, it is used to specify an abstract data type.
@@ -270,7 +271,7 @@ receive sw_interface_event messages whenever interface states changes.
 ### Scalar Value Types
 
 .api type|size|C type|Python type
----------|----|------------------
+---------|----|------|-----------
 i8       |   1|i8    |int
 u8       |   1|u8    |int
 i16      |   2|i16   |int
@@ -294,6 +295,8 @@ vl_api_ip6_address_t|16|vl_api_ip6_address_t|`<class 'ipaddress.IPv6Address'>`
 vl_api_prefix_t|21|vl_api_prefix_t|`<class 'ipaddress.IPv4Network'> or <class 'ipaddress.IPv6Network'>`
 vl_api_ip4_prefix_t|5|vl_api_ip4_prefix_t|`<class 'ipaddress.IPv4Network'>`
 vl_api_ip6_prefix_t|17|vl_api_ip6_prefix_t|`<class 'ipaddress.IPv6Network'>`
+vl_api_ip4_address_with_prefix_t|5|vl_api_ip4_address_with_prefix_t|`<class 'ipaddress.IPv4Interface'>`
+vl_api_ip6_address_with_prefix_t|17|vl_api_ip6_address_with_prefix_t|`<class 'ipaddress.IPv6Interface'>`
 
 #### vnet/ethernet/ethernet_types.api
 .api type|size|C type|Python type
