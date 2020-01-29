@@ -46,6 +46,30 @@
       "revId": "62ea1bafead6f7151a2450ff0f53af483ddb6fbd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65eb98cc_8902af9f",
+        "filename": "src/plugins/map/ip6_map_t.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 383,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-29T16:37:21Z",
+      "side": 1,
+      "message": "Yes. My comment was more directed to your opinion as to whether an operator would value a distinction, which you answered.\n\nI\u0027ll submit this in a day or so if no one else comments.",
+      "parentUuid": "13c12231_a5a6711f",
+      "range": {
+        "startLine": 380,
+        "startChar": 0,
+        "endLine": 383,
+        "endChar": 17
+      },
+      "revId": "62ea1bafead6f7151a2450ff0f53af483ddb6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
