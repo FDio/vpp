@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b554f877_7d93c76d",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 860,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-29T05:50:22Z",
+      "side": 1,
+      "message": "Instead of passing all of these data structures to the app, I think it would be better to let it retrieve them itself, as needs will most probably evolve. The session and the fifo should be enough to retrieve everything else. Same comment for tuning increase. \n\nApart from that, we might want to consider the option of having only one tuning function, see also my comment about growing a fifo when dequeuing, and pass as params \"last action\", i.e., enqueue or dequeue, and \"size\", i.e., how many bytes were enqueued or dequeued. That might be enough for the function to decide what to do.",
+      "range": {
+        "startLine": 858,
+        "startChar": 23,
+        "endLine": 860,
+        "endChar": 35
+      },
+      "revId": "d884c758addb12eabba69c4749296e2b9f4769fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b7c9f9b_4a2e0188",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-29T05:50:22Z",
+      "side": 1,
+      "message": "Two comments:\n- I\u0027d like to slightly reorganize this code (to minimize the back and forth). Would it be okay with you?\n- I realized while testing this in iperf that we can\u0027t reduce this fifo size based only on utilization, otherwise we\u0027ll constrain the sending (external applications write to this). If the fifo was previously full, we might even consider growing it.",
+      "range": {
+        "startLine": 519,
+        "startChar": 2,
+        "endLine": 519,
+        "endChar": 38
+      },
+      "revId": "d884c758addb12eabba69c4749296e2b9f4769fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
