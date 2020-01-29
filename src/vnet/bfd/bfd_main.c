@@ -60,7 +60,7 @@ bfd_usec_to_clocks (const bfd_main_t * bm, u64 us)
 u32
 bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks)
 {
-  return (clocks / bm->cpu_cps) * USEC_PER_SECOND;
+  return ((f64) clocks / bm->cpu_cps) * USEC_PER_SECOND;
 }
 
 static vlib_node_registration_t bfd_process_node;
