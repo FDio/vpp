@@ -46,6 +46,30 @@
       "revId": "ccf174ad8b833c5fd84feddf281a9d8d4e1d0a53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b6b86ee_855e3287",
+        "filename": "src/plugins/map/ip4_map_t.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-29T17:01:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "67a9e3f5_99175879",
+      "range": {
+        "startLine": 581,
+        "startChar": 7,
+        "endLine": 581,
+        "endChar": 36
+      },
+      "revId": "ccf174ad8b833c5fd84feddf281a9d8d4e1d0a53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
