@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6d2d85a_143d4fad",
+        "filename": "src/plugins/map/ip6_map_t.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 383,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-29T16:13:21Z",
+      "side": 1,
+      "message": "Is returning NO_DOMAIN sufficient here, or do we need a new counter?",
+      "range": {
+        "startLine": 380,
+        "startChar": 0,
+        "endLine": 383,
+        "endChar": 17
+      },
+      "revId": "62ea1bafead6f7151a2450ff0f53af483ddb6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
