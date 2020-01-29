@@ -552,6 +552,69 @@ session_tx_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_set_trace_count (vm, node, n_trace - i);
 }
 
+static inline int
+session_dgram_dequeue (svm_fifo_t * f, session_dgram_hdr_t * hdr,
+		       u16 len_to_deq, u8 * data0)
+{
+  u32 offset, n_read = 0;
+  u16 deq_now;
+  int n_deq;
+
+  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
+
+  do
+    {
+      ASSERT (hdr->data_length > hdr->data_offset);
+      deq_now = clib_min (hdr->data_length - hdr->data_offset,
+			  len_to_deq - n_read);
+      n_deq = svm_fifo_peek (f, offset, deq_now, data0);
+      ASSERT (n_deq > 0);
+      n_read += n_deq;
+      hdr->data_offset += n_deq;
+      if (hdr->data_offset == hdr->data_length)
+	{
+	  svm_fifo_dequeue_drop (f, hdr->data_length + SESSION_CONN_HDR_LEN);
+	  if (svm_fifo_max_dequeue (f) <= sizeof (*hdr))
+	    break;
+	  svm_fifo_peek (f, 0, sizeof (*hdr), (u8 *) hdr);
+	  offset = SESSION_CONN_HDR_LEN;
+	}
+      if (n_deq < deq_now)
+	break;
+    }
+  while (n_read < len_to_deq);
+
+  return n_read;
+
+//  ASSERT (hdr->data_length > hdr->data_offset);
+//  deq_now = clib_min (hdr->data_length - hdr->data_offset, len_to_deq);
+//  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
+//  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
+//  ASSERT (n_bytes_read > 0);
+//
+//  hdr->data_offset += n_bytes_read;
+//  if (hdr->data_offset == hdr->data_length)
+//    {
+//      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
+//      svm_fifo_dequeue_drop (f, offset);
+//      /* Update cached dgram header */
+//      if (svm_fifo_max_dequeue (f) > sizeof (*hdr))
+//      {
+//        svm_fifo_peek (f, 0, sizeof (ctx->hdr), (u8*) &ctx->hdr);
+//        if (n_bytes_read < len_to_deq)
+//          {
+//            int n_read;
+//            n_read = svm_fifo_peek (f, SESSION_CONN_HDR_LEN,
+//                                           len_to_deq - n_bytes_read,
+//                                           data0 + n_bytes_read);
+//            ASSERT (n_read > 0);
+//            ctx->hdr.data_offset = n_read;
+//            n_bytes_read += n_read;
+//          }
+//      }
+//    }
+}
+
 always_inline void
 session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 			    vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)
@@ -662,29 +725,15 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
     {
       if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
-	  session_dgram_hdr_t *hdr = &ctx->hdr;
-	  svm_fifo_t *f = ctx->s->tx_fifo;
-	  u16 deq_now;
-	  u32 offset;
-
-	  ASSERT (hdr->data_length > hdr->data_offset);
-	  deq_now = clib_min (hdr->data_length - hdr->data_offset,
-			      len_to_deq);
-	  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
-	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
-	  ASSERT (n_bytes_read > 0);
-
 	  if (ctx->s->session_state == SESSION_STATE_LISTENING)
 	    {
-	      ip_copy (&ctx->tc->rmt_ip, &hdr->rmt_ip, ctx->tc->is_ip4);
-	      ctx->tc->rmt_port = hdr->rmt_port;
+	      ip_copy (&ctx->tc->rmt_ip, &ctx->hdr.rmt_ip, ctx->tc->is_ip4);
+	      ctx->tc->rmt_port = ctx->hdr.rmt_port;
 	    }
-	  hdr->data_offset += n_bytes_read;
-	  if (hdr->data_offset == hdr->data_length)
-	    {
-	      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
-	      svm_fifo_dequeue_drop (f, offset);
-	    }
+
+	  n_bytes_read = session_dgram_dequeue (ctx->s->tx_fifo, &ctx->hdr,
+						len_to_deq, data0);
+	  ASSERT (n_bytes_read == len_to_deq);
 	}
       else
 	{
@@ -747,14 +796,47 @@ session_tx_get_transport (session_tx_context_t * ctx, u8 peek_data)
     }
 }
 
+static inline u32
+session_max_dequeue_dgram (svm_fifo_t * f, u8 max_dgrams,
+			   session_dgram_hdr_t * first_hdr)
+{
+  u32 max_deq, offset, deq_len;
+  session_dgram_hdr_t hdr;
+  int rv;
+
+  max_deq = svm_fifo_max_dequeue_cons (f);
+  if (PREDICT_FALSE (max_deq <= sizeof (hdr)))
+    return 0;
+
+  svm_fifo_peek (f, 0, sizeof (hdr), (u8 *) first_hdr);
+  ASSERT (first_hdr->data_length > first_hdr->data_offset);
+
+  deq_len = first_hdr->data_length - first_hdr->data_offset;
+  offset = sizeof (hdr) + first_hdr->data_length;
+  if (offset >= max_deq - sizeof (hdr))
+    return deq_len;
+
+  while (--max_dgrams)
+    {
+      rv = svm_fifo_peek (f, offset, sizeof (hdr), (u8 *) & hdr);
+      ASSERT (rv == sizeof (hdr));
+      deq_len += hdr.data_length;
+      offset += sizeof (hdr) + hdr.data_length;
+      if (offset >= max_deq - sizeof (hdr))
+	break;
+    }
+
+  return deq_len;
+}
+
 always_inline void
 session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 			       u32 max_segs, u8 peek_data)
 {
   u32 n_bytes_per_buf, n_bytes_per_seg;
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
   if (peek_data)
     {
+      ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
       /* Offset in rx fifo from where to peek data */
       ctx->tx_offset = ctx->transport_vft->tx_fifo_offset (ctx->tc);
       if (PREDICT_FALSE (ctx->tx_offset >= ctx->max_dequeue))
@@ -768,16 +850,16 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
     {
       if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
-	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
+	  ctx->max_dequeue = session_max_dequeue_dgram (ctx->s->tx_fifo, 5,
+							&ctx->hdr);
+	  if (PREDICT_FALSE (!ctx->max_dequeue))
 	    {
 	      ctx->max_len_to_snd = 0;
 	      return;
 	    }
-	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
-			 (u8 *) & ctx->hdr);
-	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
 	}
+      else
+	ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
     }
   ASSERT (ctx->max_dequeue > 0);
 
