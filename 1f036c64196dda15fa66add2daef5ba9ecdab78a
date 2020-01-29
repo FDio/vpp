@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "2ff1a918_d436093b",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 789,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-01-29T20:33:29Z",
+      "side": 1,
+      "message": "It\u0027s like that since 18.01 or around that ...",
+      "parentUuid": "a5a67c95_730e8880",
+      "range": {
+        "startLine": 789,
+        "startChar": 2,
+        "endLine": 789,
+        "endChar": 4
+      },
+      "revId": "1f036c64196dda15fa66add2daef5ba9ecdab78a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e4c40115_7d9cdf4f",
         "filename": "RELEASE.md",
         "patchSetId": 4
