@@ -407,8 +407,7 @@ aesni_cbc_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   aes_cbc_key_data_t *kd;
   kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
   aes_key_expand (e, key->data, ks);
-  aes_key_expand (d, key->data, ks);
-  aes_key_enc_to_dec (d, ks);
+  aes_key_enc_to_dec (e, d, ks);
   for (int i = 0; i < AES_KEY_ROUNDS (ks) + 1; i++)
     {
 #if __VAES__

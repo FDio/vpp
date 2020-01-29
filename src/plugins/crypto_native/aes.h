@@ -196,23 +196,20 @@ aes_key_expand (__m128i * k, u8 * key, aes_key_size_t ks)
 
 
 static_always_inline void
-aes_key_enc_to_dec (__m128i * k, aes_key_size_t ks)
+aes_key_enc_to_dec (__m128i * ke, __m128i * kd, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
-  __m128i r;
 
-  r = k[rounds];
-  k[rounds] = k[0];
-  k[0] = r;
+  kd[rounds] = ke[0];
+  kd[0] = ke[rounds];
 
   for (int i = 1; i < (rounds / 2); i++)
     {
-      r = k[rounds - i];
-      k[rounds - i] = _mm_aesimc_si128 (k[i]);
-      k[i] = _mm_aesimc_si128 (r);
+      kd[rounds - i] = _mm_aesimc_si128 (ke[i]);
+      kd[i] = _mm_aesimc_si128 (ke[rounds - i]);
     }
 
-  k[rounds / 2] = _mm_aesimc_si128 (k[rounds / 2]);
+  kd[rounds / 2] = _mm_aesimc_si128 (ke[rounds / 2]);
 }
 
 #endif /* __aesni_h__ */
