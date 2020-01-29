@@ -1955,6 +1955,15 @@ vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
   return (e->event_type == SESSION_IO_EVT_TX && e->session_index == sid);
 }
 
+always_inline u8
+vcl_fifo_is_full (svm_fifo_t * f, u8 is_dgram)
+{
+  if (is_dgram)
+    return svm_fifo_max_enqueue_prod (f) <= sizeof (session_dgram_hdr_t);
+  else
+    return svm_fifo_is_full_prod (f);
+}
+
 static inline int
 vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 			     u8 is_flush)
@@ -1996,13 +2005,13 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
 
   mq = wrk->app_event_queue;
-  if (svm_fifo_is_full_prod (tx_fifo))
+  if (vcl_fifo_is_full (tx_fifo, s->is_dgram))
     {
       if (is_nonblocking)
 	{
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_full_prod (tx_fifo))
+      while (vcl_fifo_is_full (tx_fifo, s->is_dgram))
 	{
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))
