@@ -22,6 +22,30 @@
       "revId": "ccf174ad8b833c5fd84feddf281a9d8d4e1d0a53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67a9e3f5_99175879",
+        "filename": "src/plugins/map/ip4_map_t.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-01-29T16:33:56Z",
+      "side": 1,
+      "message": "The \"d0 \u003d \" lookup 10 lines earlier already guards against the use\nof a non-existent domain here.  I think your question translates to this:\nIf there is no domain, should \"feature_next\" be used, or should the\npacket be dropped and counted as dropped?  Right?\nIf \"feature_next\" is going to be \"drop\" anyway, it\u0027s all good, right?",
+      "parentUuid": "8b7619be_747249f7",
+      "range": {
+        "startLine": 581,
+        "startChar": 7,
+        "endLine": 581,
+        "endChar": 36
+      },
+      "revId": "ccf174ad8b833c5fd84feddf281a9d8d4e1d0a53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
