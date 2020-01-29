@@ -563,6 +563,13 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	   * wouldn't be bad either, but that's more code than i'm prepared to
 	   * write at this time for relatively little reward.
 	   */
+	  /*
+	   * adj_nbr_update_rewrite may actually call fib_walk_sync.
+	   * fib_walk_sync may allocate a new adjacency and potentially cause
+	   * a realloc for adj_pool. When that happens, adj pointer is no
+	   * longer valid here. We refresh adj pointer accordingly.
+	   */
+	  adj = adj_get (ai);
 	  arp_nbr_probe (adj);
 	}
       break;
@@ -574,6 +581,13 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 			       sw_if_index,
 			       VNET_LINK_IP4,
 			       VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+      /*
+       * Caution: adj_nbr_update_rewrite may actually call fib_walk_sync.
+       * fib_walk_sync may allocate a new adjacency and potentially cause a
+       * realloc for adj_pool. When that happens, adj pointer is no longer
+       * valid here. Please refresh adj pointer accordingly if it is still
+       * needed after the aformentioned call.
+       */
       break;
     case IP_LOOKUP_NEXT_MCAST:
       {
