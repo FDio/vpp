@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
-typedef one_local_locator
-{
-  u32 sw_if_index;
-  u8 priority;
-  u8 weight;
-};
+import "vnet/interface_types.api";
+import "vnet/lisp-cp/lisp_types.api";
 
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
@@ -34,10 +30,10 @@ manual_endian manual_print define one_add_del_locator_set
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  string locator_set_name[64];
   u32 locator_num;
-  vl_api_one_local_locator_t locators[locator_num];
+  vl_api_local_locator_t locators[locator_num];
 };
 
 /** \brief Reply for locator_set add/del
@@ -65,12 +61,13 @@ autoreply define one_add_del_locator
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
-  u32 sw_if_index;
+  bool is_add [default=true];
+  string locator_set_name[64];
+  vl_api_interface_index_t sw_if_index;
   u8 priority;
   u8 weight;
 };
+
 
 /** \brief add or delete ONE eid-table
     @param client_index - opaque cookie to identify the sender
@@ -84,24 +81,17 @@ autoreply define one_add_del_locator
     @param prefix_len - prefix len
     @param locator_set_name - name of locator_set to add/del eid-table
     @param vni - virtual network instance
-    @param key_id
-      HMAC_NO_KEY           0
-      HMAC_SHA_1_96         1
-      HMAC_SHA_256_128      2
     @param key - secret key
 */
 autoreply define one_add_del_local_eid
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 eid_type;
-  u8 eid[16];
-  u8 prefix_len;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  vl_api_eid_t eid;
+  string locator_set_name[64];
   u32 vni;
-  u16 key_id;
-  u8 key[64];
+  vl_api_hmac_key_t key;
 };
 
 /** \brief Set TTL for map register messages
@@ -149,9 +139,8 @@ autoreply define one_add_del_map_server
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
 };
 
 /** \brief add or delete map-resolver
@@ -165,21 +154,20 @@ autoreply define one_add_del_map_resolver
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
 };
 
 /** \brief enable or disable ONE feature
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_en - enable protocol if non-zero, else disable
+    @param is_enable - enable protocol if non-zero, else disable
 */
 autoreply define one_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 /** \brief configure or delete ONE NSH mapping
@@ -192,8 +180,8 @@ autoreply define one_nsh_set_locator_set
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 ls_name[64];
+  bool is_add [default=true];
+  string ls_name[64];
 };
 
 /** \brief configure or disable ONE PITR node
@@ -206,8 +194,8 @@ autoreply define one_pitr_set_locator_set
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 ls_name[64];
+  bool is_add [default=true];
+  string ls_name[64];
 };
 
 /** \brief configure or disable use of PETR
@@ -221,9 +209,8 @@ autoreply define one_use_petr
 {
   u32 client_index;
   u32 context;
-  u8 is_ip4;
-  u8 address[16];
-  u8 is_add;
+  vl_api_address_t ip_address;
+  bool is_add [default=true];
 };
 
 /** \brief Request for ONE PETR status
@@ -238,7 +225,7 @@ define show_one_use_petr
 
 /** \brief ONE PETR status, enable or disable
     @param context - sender context, to match reply w/ request
-    @param status - ONE PETR enable if non-zero, else disable
+    @param enable - ONE PETR enable if non-zero, else disable
     @param is_ip4 - Address is IPv4 if non-zero, else IPv6
     @param address - PETR IP address
 */
@@ -246,9 +233,8 @@ define show_one_use_petr_reply
 {
   u32 context;
   i32 retval;
-  u8 status;
-  u8 is_ip4;
-  u8 address[16];
+  bool status;
+  vl_api_address_t ip_address;
 };
 
 /** \brief Get state of ONE RLOC probing
@@ -264,13 +250,13 @@ define show_one_rloc_probe_state
 /** \brief Reply for show_one_rloc_probe_state
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
-    @param is_enabled - state of RLOC probing
+    @param is_enable - state of RLOC probing
 */
 define show_one_rloc_probe_state_reply
 {
   u32 context;
   i32 retval;
-  u8 is_enabled;
+  bool is_enable;
 };
 
 /** \brief enable/disable ONE RLOC probing
@@ -282,7 +268,7 @@ autoreply define one_rloc_probe_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
+  bool is_enable [default=true];
 };
 
 /** \brief enable/disable ONE map-register
@@ -294,7 +280,7 @@ autoreply define one_map_register_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
+  bool is_enable [default=true];
 };
 
 /** \brief Get state of ONE map-register
@@ -315,7 +301,13 @@ define show_one_map_register_state_reply
 {
   u32 context;
   i32 retval;
-  u8 is_enabled;
+  bool is_enable;
+};
+
+enum one_map_mode
+{
+	ONE_MAP_MODE_API_DST_ONLY = 0,
+	ONE_MAP_MODE_API_SRC_DST = 1,
 };
 
 /** \brief set ONE map-request mode. Based on configuration VPP will send
@@ -330,7 +322,7 @@ autoreply define one_map_request_mode
 {
   u32 client_index;
   u32 context;
-  u8 mode;
+  vl_api_one_map_mode_t mode;
 };
 
 /** \brief Request for ONE map-request mode
@@ -352,15 +344,7 @@ define show_one_map_request_mode_reply
 {
   u32 context;
   i32 retval;
-  u8 mode;
-};
-
-typedef one_remote_locator
-{
-  u8 is_ip4;
-  u8 priority;
-  u8 weight;
-  u8 addr[16];
+  vl_api_one_map_mode_t mode;
 };
 
 /** \brief add or delete remote static mapping
@@ -371,16 +355,6 @@ typedef one_remote_locator
     @param del_all - if set, delete all remote mappings
     @param vni - virtual network instance
     @param action - negative map-reply action
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
-      3 : NSH : both information (service path ID and service index) are
-        encoded in 'eid' field in a following way:
-
-        |4 B |1 B |
-        -----------
-        |SPI | SI |
     @param deid - dst EID
     @param seid - src EID, valid only if is_src_dst is enabled
     @param rloc_num - number of remote locators
@@ -390,18 +364,21 @@ autoreply manual_print manual_endian define one_add_del_remote_mapping
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_src_dst;
-  u8 del_all;
+  bool is_add [default=true];
+  bool is_src_dst;
+  bool del_all;
   u32 vni;
   u8 action;
-  u8 eid_type;
-  u8 eid[16];
-  u8 eid_len;
-  u8 seid[16];
-  u8 seid_len;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
   u32 rloc_num;
-  vl_api_one_remote_locator_t rlocs[rloc_num];
+  vl_api_remote_locator_t rlocs[rloc_num];
+};
+
+typedef one_l2_arp_entry
+{
+  vl_api_mac_address_t mac;
+  vl_api_ip4_address_t ip4;
 };
 
 /** \brief Add/delete L2 ARP entries
@@ -409,17 +386,15 @@ autoreply manual_print manual_endian define one_add_del_remote_mapping
     @param context - sender context, to match reply w/ request
     @param is_add - add if non-zero; delete otherwise
     @param bd - bridge domain
-    @param mac - MAC address
-    @param ip4 - IPv4 address
+    @param entry - ARP entry
 */
 autoreply define one_add_del_l2_arp_entry
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 mac[6];
+  bool is_add [default=true];
   u32 bd;
-  u32 ip4;
+  vl_api_one_l2_arp_entry_t entry;
 };
 
 /** \brief Request for L2 ARP entries from specified bridge domain
@@ -432,12 +407,6 @@ define one_l2_arp_entries_get
   u32 client_index;
   u32 context;
   u32 bd;
-};
-
-typedef one_l2_arp_entry
-{
-  u8 mac[6];
-  u32 ip4;
 };
 
 /** \brief Reply with L2 ARP entries from specified bridge domain
@@ -454,14 +423,20 @@ manual_print manual_endian define one_l2_arp_entries_get_reply
   vl_api_one_l2_arp_entry_t entries[count];
 };
 
+typedef one_ndp_entry
+{
+  vl_api_mac_address_t mac;
+  vl_api_ip6_address_t ip6;
+};
+
+
 autoreply define one_add_del_ndp_entry
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 mac[6];
+  bool is_add [default=true];
   u32 bd;
-  u8 ip6[16];
+  vl_api_one_ndp_entry_t entry;
 };
 
 define one_ndp_entries_get
@@ -469,12 +444,6 @@ define one_ndp_entries_get
   u32 client_index;
   u32 context;
   u32 bd;
-};
-
-typedef one_ndp_entry
-{
-  u8 mac[6];
-  u8 ip6[16];
 };
 
 manual_print manual_endian define one_ndp_entries_get_reply
@@ -563,10 +532,6 @@ manual_print manual_endian define one_l2_arp_bd_get_reply
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
     @param vni - virtual network instance
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param reid - remote EID
     @param leid - local EID
 */
@@ -576,11 +541,8 @@ autoreply define one_add_del_adjacency
   u32 context;
   u8 is_add;
   u32 vni;
-  u8 eid_type;
-  u8 reid[16];
-  u8 leid[16];
-  u8 reid_len;
-  u8 leid_len;
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
 };
 
 /** \brief add or delete map request itr rlocs
@@ -593,8 +555,8 @@ autoreply define one_add_del_map_request_itr_rlocs
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  string locator_set_name[64];
 };
 
 /** \brief map/unmap vni/bd_index to vrf
@@ -603,15 +565,16 @@ autoreply define one_add_del_map_request_itr_rlocs
     @param is_add - add or delete mapping
     @param dp_table - virtual network id/bridge domain index
     @param vrf - vrf
+    @param is_l2 - is l2
 */
 autoreply define one_eid_table_add_del_map
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   u32 vni;
   u32 dp_table;
-  u8 is_l2;
+  bool is_l2;
 };
 
 /** \brief Request for map one locator status
@@ -626,8 +589,8 @@ define one_locator_dump
   u32 client_index;
   u32 context;
   u32 ls_index;
-  u8 ls_name[64];
-  u8 is_index_set;
+  string ls_name[64];
+  bool is_index_set;
 };
 
 /** \brief ONE locator_set status
@@ -641,9 +604,8 @@ define one_locator_details
 {
   u32 context;
   u8 local;
-  u32 sw_if_index;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t ip_address;
   u8 priority;
   u8 weight;
 };
@@ -657,7 +619,14 @@ define one_locator_set_details
 {
   u32 context;
   u32 ls_index;
-  u8 ls_name[64];
+  string ls_name[64];
+};
+
+enum one_filter
+{
+	ONE_FILTER_API_ALL = 0,
+	ONE_FILTER_API_LOCAL = 1,
+	ONE_FILTER_API_REMOTE = 2,
 };
 
 /** \brief Request for locator_set summary status
@@ -673,7 +642,7 @@ define one_locator_set_dump
 {
   u32 client_index;
   u32 context;
-  u8 filter;
+  vl_api_one_filter_t filter;
 };
 
 /** \brief Dump ONE eid-table
@@ -683,42 +652,30 @@ define one_locator_set_dump
                                 is negative
     @param action - negative map request action
     @param is_local - local if non-zero, else remote
-    @param eid_type:
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param is_src_dst - EID is type of source/destination
-    @param eid - EID can be ip4, ip6 or mac
-    @param eid_prefix_len - prefix length
+    @param deid - EID can be ip4, ip6 or mac
     @param seid - source EID can be ip4, ip6 or mac
-    @param seid_prefix_len - source prefix length
     @param vni - virtual network instance
     @param ttl - time to live
     @param authoritative - authoritative
-    @param key_id
-      HMAC_NO_KEY           0
-      HMAC_SHA_1_96         1
-      HMAC_SHA_256_128      2
     @param key - secret key
 */
+
+// FIXME: action, authoritative
 
 define one_eid_table_details
 {
   u32 context;
   u32 locator_set_index;
   u8 action;
-  u8 is_local;
-  u8 eid_type;
-  u8 is_src_dst;
+  bool is_local;
+  bool is_src_dst;
   u32 vni;
-  u8 eid[16];
-  u8 eid_prefix_len;
-  u8 seid[16];
-  u8 seid_prefix_len;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
   u32 ttl;
   u8 authoritative;
-  u16 key_id;
-  u8 key[64];
+  vl_api_hmac_key_t key;
 };
 
 /** \brief Request for eid table summary status
@@ -726,19 +683,6 @@ define one_eid_table_details
     @param context - sender context, to match reply w/ request
     @param eid_set - if non-zero request info about specific mapping
     @param vni - virtual network instance; valid only if eid_set != 0
-    @param prefix_length - prefix length if EID is IP address;
-      valid only if eid_set != 0
-    @param eid_type - EID type; valid only if eid_set != 0
-      Supported values:
-        0: EID is IPv4
-        1: EID is IPv6
-        2: EID is ethernet address
-        3 : NSH : both information (service path ID and service index) are
-          encoded in 'eid' field in a following way:
-
-          |4 B |1 B |
-          -----------
-          |SPI | SI |
     @param eid - endpoint identifier
     @param filter - filter type;
       Support values:
@@ -750,12 +694,10 @@ define one_eid_table_dump
 {
   u32 client_index;
   u32 context;
-  u8 eid_set;
-  u8 prefix_length;
+  bool eid_set;
   u32 vni;
-  u8 eid_type;
-  u8 eid[16];
-  u8 filter;
+  vl_api_eid_t eid;
+  vl_api_one_filter_t filter;
 };
 
 /** \brief ONE adjacency
@@ -770,11 +712,8 @@ define one_eid_table_dump
   */
 typedef one_adjacency
 {
-  u8 eid_type;
-  u8 reid[16];
-  u8 leid[16];
-  u8 reid_prefix_len;
-  u8 leid_prefix_len;
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
 };
 
 /** \brief ONE adjacency reply
@@ -821,7 +760,7 @@ define one_eid_table_map_dump
 {
   u32 client_index;
   u32 context;
-  u8 is_l2;
+  bool is_l2;
 };
 
 /** \brief Dumps all VNIs used in mappings
@@ -851,8 +790,7 @@ define one_eid_table_vni_details
 define one_map_resolver_details
 {
   u32 context;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_address_t ip_address;
 };
 
 /** \brief Request for map resolver summary status
@@ -872,8 +810,7 @@ define one_map_resolver_dump
 define one_map_server_details
 {
   u32 context;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_address_t ip_address;
 };
 
 /** \brief Request for map server summary status
@@ -905,8 +842,8 @@ define show_one_status_reply
 {
   u32 context;
   i32 retval;
-  u8 feature_status;
-  u8 gpe_status;
+  bool feature_status;
+  bool gpe_status;
 };
 
 /** \brief Get ONE map request itr rlocs status
@@ -925,7 +862,7 @@ define one_get_map_request_itr_rlocs_reply
 {
   u32 context;
   i32 retval;
-  u8 locator_set_name[64];
+  string locator_set_name[64];
 };
 
 /** \brief Request for ONE NSH mapping
@@ -947,8 +884,8 @@ define show_one_nsh_mapping_reply
 {
   u32 context;
   i32 retval;
-  u8 is_set;
-  u8 locator_set_name[64];
+  bool is_set;
+  string locator_set_name[64];
 };
 
 /** \brief Request for ONE PITR status
@@ -970,8 +907,8 @@ define show_one_pitr_reply
 {
   u32 context;
   i32 retval;
-  u8 status;
-  u8 locator_set_name[64];
+  bool status;
+  string locator_set_name[64];
 };
 
 define one_stats_dump
@@ -984,14 +921,10 @@ define one_stats_details
 {
   u32 context;
   u32 vni;
-  u8 eid_type;
-  u8 deid[16];
-  u8 seid[16];
-  u8 deid_pref_len;
-  u8 seid_pref_len;
-  u8 is_ip4;
-  u8 rloc[16];
-  u8 lloc[16];
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
+  vl_api_address_t rloc;
+  vl_api_address_t lloc;
 
   u32 pkt_count;
   u32 bytes;
@@ -1007,7 +940,7 @@ autoreply define one_stats_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 define show_one_stats_enable_disable
@@ -1020,7 +953,7 @@ define show_one_stats_enable_disable_reply
 {
   u32 context;
   i32 retval;
-  u8 is_en;
+  bool is_enable;
 };
 
 autoreply define one_map_register_fallback_threshold
@@ -1047,7 +980,7 @@ autoreply define one_enable_disable_xtr_mode
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 define one_show_xtr_mode
@@ -1060,14 +993,14 @@ define one_show_xtr_mode_reply
 {
   u32 context;
   i32 retval;
-  u8 is_en;
+  bool is_enable;
 };
 
 autoreply define one_enable_disable_petr_mode
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 define one_show_petr_mode
@@ -1080,14 +1013,14 @@ define one_show_petr_mode_reply
 {
   u32 context;
   i32 retval;
-  u8 is_en;
+  bool is_enable;
 };
 
 autoreply define one_enable_disable_pitr_mode
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 define one_show_pitr_mode
@@ -1100,7 +1033,7 @@ define one_show_pitr_mode_reply
 {
   u32 context;
   i32 retval;
-  u8 is_en;
+  bool is_enable;
 };
 
 /*

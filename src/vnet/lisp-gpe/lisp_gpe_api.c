@@ -29,6 +29,9 @@
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/vnet_msg_enum.h>
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/lisp-gpe/lisp_types_api.h>
 
 #define vl_api_gpe_locator_pair_t_endian vl_noop_handler
 #define vl_api_gpe_locator_pair_t_print vl_noop_handler
@@ -75,7 +78,7 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
       /* local locator */
       r = &((vl_api_gpe_locator_t *) locs)[i];
       clib_memset (&pair, 0, sizeof (pair));
-      ip_address_set (&pair.lcl_loc, &r->addr, r->is_ip4 ? AF_IP4 : AF_IP6);
+      ip_address_decode2 (&r->addr, &pair.lcl_loc);
 
       pair.weight = r->weight;
       vec_add1 (pairs, pair);
@@ -86,41 +89,9 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
       /* remote locators */
       r = &((vl_api_gpe_locator_t *) locs)[i];
       p = &pairs[i - rloc_num];
-      ip_address_set (&p->rmt_loc, &r->addr, r->is_ip4 ? AF_IP4 : AF_IP6);
+      ip_address_decode2 (&r->addr, &p->rmt_loc);
     }
   return pairs;
-}
-
-static int
-unformat_lisp_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
-		       u8 len)
-{
-  switch (type)
-    {
-    case 0:			/* ipv4 */
-      gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP4);
-      gid_address_ippref_len (dst) = len;
-      ip_prefix_normalize (&gid_address_ippref (dst));
-      break;
-    case 1:			/* ipv6 */
-      gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP6);
-      gid_address_ippref_len (dst) = len;
-      ip_prefix_normalize (&gid_address_ippref (dst));
-      break;
-    case 2:			/* l2 mac */
-      gid_address_type (dst) = GID_ADDR_MAC;
-      clib_memcpy (&gid_address_mac (dst), src, 6);
-      break;
-    default:
-      /* unknown type */
-      return VNET_API_ERROR_INVALID_VALUE;
-    }
-
-  gid_address_vni (dst) = vni;
-
-  return 0;
 }
 
 static void
@@ -135,16 +106,7 @@ lisp_api_set_locator (vl_api_gpe_locator_t * loc,
 		      const ip_address_t * addr, u8 weight)
 {
   loc->weight = weight;
-  if (AF_IP4 == ip_addr_version (addr))
-    {
-      loc->is_ip4 = 1;
-      memcpy (loc->addr, addr, 4);
-    }
-  else
-    {
-      loc->is_ip4 = 0;
-      memcpy (loc->addr, addr, 16);
-    }
+  ip_address_encode2 (addr, &loc->addr);
 }
 
 static void
@@ -208,25 +170,20 @@ gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
     switch (fid_addr_type (&e->leid))
       {
       case FID_ADDR_IP_PREF:
-	if (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&e->leid)))
-	  {
-	    memcpy (&dst[i].leid, &fid_addr_ippref (&e->leid), 4);
-	    memcpy (&dst[i].reid, &fid_addr_ippref (&e->reid), 4);
-	    dst[i].eid_type = 0;
-	  }
-	else
-	  {
-	    memcpy (&dst[i].leid, &fid_addr_ippref (&e->leid), 16);
-	    memcpy (&dst[i].reid, &fid_addr_ippref (&e->reid), 16);
-	    dst[i].eid_type = 1;
-	  }
-	dst[i].leid_prefix_len = ip_prefix_len (&fid_addr_ippref (&e->leid));
-	dst[i].reid_prefix_len = ip_prefix_len (&fid_addr_ippref (&e->reid));
+	dst[i].leid.type = EID_TYPE_API_PREFIX;
+	dst[i].reid.type = EID_TYPE_API_PREFIX;
+	ip_prefix_encode2 (&fid_addr_ippref (&e->leid),
+			   &dst[i].leid.address.prefix);
+	ip_prefix_encode2 (&fid_addr_ippref (&e->reid),
+			   &dst[i].reid.address.prefix);
 	break;
       case FID_ADDR_MAC:
-	memcpy (&dst[i].leid, fid_addr_mac (&e->leid), 6);
-	memcpy (&dst[i].reid, fid_addr_mac (&e->reid), 6);
-	dst[i].eid_type = 2;
+	mac_address_encode ((mac_address_t *) fid_addr_mac (&e->leid),
+			    dst[i].leid.address.mac);
+	mac_address_encode ((mac_address_t *) fid_addr_mac (&e->reid),
+			    dst[i].reid.address.mac);
+	dst[i].leid.type = EID_TYPE_API_MAC;
+	dst[i].reid.type = EID_TYPE_API_MAC;
 	break;
       default:
 	clib_warning ("unknown fid type %d!", fid_addr_type (&e->leid));
@@ -334,10 +291,8 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
   gpe_add_del_fwd_entry_t_net_to_host (mp);
   clib_memset (a, 0, sizeof (a[0]));
 
-  rv = unformat_lisp_eid_api (&a->rmt_eid, mp->vni, mp->eid_type,
-			      mp->rmt_eid, mp->rmt_len);
-  rv |= unformat_lisp_eid_api (&a->lcl_eid, mp->vni, mp->eid_type,
-			       mp->lcl_eid, mp->lcl_len);
+  rv = unformat_lisp_eid_api (&a->rmt_eid, mp->vni, &mp->rmt_eid);
+  rv |= unformat_lisp_eid_api (&a->lcl_eid, mp->vni, &mp->lcl_eid);
 
   if (mp->loc_num % 2 != 0)
     {
@@ -375,7 +330,7 @@ vl_api_gpe_enable_disable_t_handler (vl_api_gpe_enable_disable_t * mp)
   int rv = 0;
   vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
 
-  a->is_en = mp->is_en;
+  a->is_en = mp->is_enable;
   vnet_lisp_gpe_enable_disable (a);
 
   REPLY_MACRO (VL_API_GPE_ENABLE_DISABLE_REPLY);
@@ -421,7 +376,7 @@ vl_api_gpe_set_encap_mode_t_handler (vl_api_gpe_set_encap_mode_t * mp)
   vl_api_gpe_set_encap_mode_reply_t *rmp;
   int rv = 0;
 
-  rv = vnet_gpe_set_encap_mode (mp->mode);
+  rv = vnet_gpe_set_encap_mode (mp->is_vxlan);
   REPLY_MACRO (VL_API_GPE_SET_ENCAP_MODE_REPLY);
 }
 
@@ -449,13 +404,15 @@ static void
 
   clib_memset (a, 0, sizeof (a[0]));
 
-  if (mp->is_ip4)
-    clib_memcpy (&a->rpath.frp_addr.ip4, mp->nh_addr, sizeof (ip4_address_t));
+  if (mp->nh_addr.af)
+    clib_memcpy (&a->rpath.frp_addr.ip6, mp->nh_addr.un.ip6,
+		 sizeof (ip6_address_t));
   else
-    clib_memcpy (&a->rpath.frp_addr.ip6, mp->nh_addr, sizeof (ip6_address_t));
+    clib_memcpy (&a->rpath.frp_addr.ip4, mp->nh_addr.un.ip4,
+		 sizeof (ip4_address_t));
 
   a->is_add = mp->is_add;
-  a->rpath.frp_proto = mp->is_ip4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6;
+  a->rpath.frp_proto = mp->nh_addr.af ? DPO_PROTO_IP6 : DPO_PROTO_IP4;
   a->rpath.frp_fib_index =
     fib_table_find (dpo_proto_to_fib (a->rpath.frp_proto),
 		    clib_net_to_host_u32 (mp->table_id));
@@ -475,7 +432,7 @@ done:
 
 static void
 gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
-			    fib_route_path_t * src, u8 is_ip4)
+			    fib_route_path_t * src)
 {
   fib_route_path_t *e;
   fib_table_t *table;
@@ -487,11 +444,7 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
     table = fib_table_get (e->frp_fib_index, dpo_proto_to_fib (e->frp_proto));
     dst[i].fib_index = table->ft_table_id;
     dst[i].nh_sw_if_index = e->frp_sw_if_index;
-    dst[i].is_ip4 = is_ip4;
-    if (is_ip4)
-      clib_memcpy (&dst[i].nh_addr, &e->frp_addr.ip4, sizeof (ip4_address_t));
-    else
-      clib_memcpy (&dst[i].nh_addr, &e->frp_addr.ip6, sizeof (ip6_address_t));
+    ip_address_encode (&e->frp_addr, IP46_TYPE_ANY, &dst[i].nh_addr);
     i++;
   }
 }
@@ -527,7 +480,7 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
   u32 size = 0;
   int rv = 0;
 
-  u8 rpath_index = mp->is_ip4 ? 0 : 1;
+  u8 rpath_index = mp->is_ip4 ? 1 : 0;
 
   size = vec_len (lgm->native_fwd_rpath[rpath_index])
     * sizeof (vl_api_gpe_native_fwd_rpath_t);
@@ -537,8 +490,7 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
   {
     rmp->count = vec_len (lgm->native_fwd_rpath[rpath_index]);
     gpe_native_fwd_rpaths_copy (rmp->entries,
-				lgm->native_fwd_rpath[rpath_index],
-				mp->is_ip4);
+				lgm->native_fwd_rpath[rpath_index]);
     gpe_native_fwd_rpaths_get_reply_t_host_to_net (rmp);
   });
   /* *INDENT-ON* */
