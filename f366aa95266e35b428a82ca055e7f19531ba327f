@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8c5dc22e_ab1e2613",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-01-30T16:03:15Z",
+      "side": 1,
+      "message": "I think a more explicit name might be better, maybe something like crypto_keys_rw_lock ?",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b78626a7_4e360ffe",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-01-30T16:03:15Z",
+      "side": 1,
+      "message": "I think we need to take the reader lock around vnet_crypto_process_ops here so that the keys don\u0027t move while we encrypt stuff",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "886a8774_4922c8b0",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-01-30T16:03:15Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e68f8d92_d86c6c4a",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-01-30T16:03:15Z",
+      "side": 1,
+      "message": "(pctx-\u003epacket.octets.base[0] \u0026 QUICLY_KEY_PHASE_BIT) !\u003d 0\na bit simpler?",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
