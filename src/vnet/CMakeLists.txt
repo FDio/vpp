@@ -893,6 +893,7 @@ list(APPEND VNET_HEADERS
   lisp-cp/control.h
 )
 
+list(APPEND VNET_API_FILES lisp-cp/lisp_types.api)
 list(APPEND VNET_API_FILES lisp-cp/lisp.api)
 list(APPEND VNET_API_FILES lisp-cp/one.api)
 

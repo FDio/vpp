@@ -175,6 +175,14 @@ ip_address_to_46 (const ip_address_t * addr,
     }
 }
 
+void
+ip_address_from_46 (ip_address_t * ip_out, const ip46_address_t * ip46)
+{
+  if (ip46_address_is_ip4 (ip46))
+    return ip_address_set (ip_out, &ip46->ip4, AF_IP4);
+  return ip_address_set (ip_out, &ip46->ip6, AF_IP6);
+}
+
 static void
 ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
 {
