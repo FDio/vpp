@@ -23,7 +23,7 @@
  *            'glean' mean use the packet's destination address as the target
  *            address in the ARP packet.
  *          UNSHARED. Only one per-interface.
- *   - midchain: a nighbour adj on a virtual/tunnel interface.
+ *   - midchain: a neighbour adj on a virtual/tunnel interface.
  *
  * The API to create and update the adjacency is very sub-type specific. This
  * is intentional as it encourages the user to carefully consider which adjacency
@@ -33,9 +33,9 @@
  * is important to enforce this approach as space in the adjacency is a premium,
  * as we need it to fit in 1 cache line.
  *
- * the API is also based around an index to an ajdacency not a raw pointer. This
+ * the API is also based around an index to an adjacency not a raw pointer. This
  * is so the user doesn't suffer the same limp inducing firearm injuries that
- * the author suffered as the adjacenices can realloc.
+ * the author suffered as the adjacencies can realloc.
  */
 
 #ifndef __ADJ_H__
@@ -81,10 +81,10 @@ typedef enum
   /** Multicast Adjacency. */
   IP_LOOKUP_NEXT_MCAST,
 
-  /** Broadcasr Adjacency. */
+  /** Broadcast Adjacency. */
   IP_LOOKUP_NEXT_BCAST,
 
-  /** Multicast Midchain Adjacency. An Adjacency for sending macst packets
+  /** Multicast Midchain Adjacency. An Adjacency for sending multicast packets
    *  on a tunnel/virtual interface */
   IP_LOOKUP_NEXT_MCAST_MIDCHAIN,
 
@@ -142,7 +142,7 @@ typedef enum
 extern const ip46_address_t ADJ_BCAST_ADDR;
 
 /**
- * Forward delcartion
+ * Forward declaration
  */
 struct ip_adjacency_t_;
 
@@ -167,7 +167,7 @@ typedef enum adj_attr_t_
     /**
      * Packets TX through the midchain do not increment the interface
      * counters. This should be used when the adj is associated with an L2
-     * interface and that L2 interface is in a bridege domain. In that case
+     * interface and that L2 interface is in a bridge domain. In that case
      * the packet will have traversed the interface's TX node, and hence have
      * been counted, before it traverses ths midchain
      */
@@ -244,7 +244,7 @@ typedef struct ip_adjacency_t_
   /**
    * The protocol of the neighbor/peer. i.e. the protocol with
    * which to interpret the 'next-hop' attributes of the sub-types.
-   * 1-btyes
+   * 1-bytes
    */
   fib_protocol_t ia_nh_proto;
 
@@ -269,7 +269,7 @@ typedef struct ip_adjacency_t_
        * IP_LOOKUP_NEXT_MIDCHAIN
        *
        * A nbr adj that is also recursive. Think tunnels.
-       * A nbr adj can transition to be of type MDICHAIN
+       * A nbr adj can transition to be of type MIDCHAIN
        * so be sure to leave the two structs with the next_hop
        * fields aligned.
        */
@@ -352,7 +352,7 @@ extern void adj_unlock(adj_index_t adj_index);
 /**
  * @brief
  *  Add a child dependent to an adjacency. The child will
- *  thus be informed via its registerd back-walk function
+ *  thus be informed via its registered back-walk function
  *  when the adjacency state changes.
  */
 extern u32 adj_child_add(adj_index_t adj_index,
