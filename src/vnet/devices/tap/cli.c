@@ -57,7 +57,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  else if (unformat (line_input, "host-ns %s", &args.host_namespace))
 	    ;
 	  else if (unformat (line_input, "host-mac-addr %U",
-			     unformat_ethernet_address, args.host_mac_addr))
+			     unformat_ethernet_address,
+			     args.host_mac_addr.bytes))
 	    ;
 	  else if (unformat (line_input, "host-bridge %s", &args.host_bridge))
 	    ;
