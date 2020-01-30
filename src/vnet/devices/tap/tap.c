@@ -170,10 +170,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->num_rxqs = args->num_rx_queues;
   num_q_pairs = clib_max (vif->num_rxqs, vif->num_txqs);
 
-  if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
-    ethernet_mac_address_generate (args->host_mac_addr.bytes);
-  clib_memcpy (vif->host_mac_addr, args->host_mac_addr.bytes, 6);
-
   if ((vif->tap_fd = tfd = open ("/dev/net/tun", O_RDWR | O_NONBLOCK)) < 0)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
@@ -244,13 +240,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   tap_log_dbg (vif, "TUNSETOFFLOAD: fd %d offload 0x%lx", tfd, offload);
   _IOCTL (tfd, TUNSETOFFLOAD, offload);
-
-  clib_memset (&ifr, 0, sizeof (ifr));
-  ifr.ifr_addr.sa_family = ARPHRD_ETHER;
-  clib_memcpy (ifr.ifr_hwaddr.sa_data, vif->host_mac_addr, 6);
-  tap_log_dbg (vif, "SIOCSIFHWADDR: fd %d hwaddr %U", tfd,
-	       format_hex_bytes, ifr.ifr_hwaddr.sa_data, 6);
-  _IOCTL (tfd, SIOCSIFHWADDR, (void *) &ifr);
 
   /* open vhost-net fd for each queue pair and set ownership */
   for (i = 0; i < num_q_pairs; i++)
@@ -350,15 +339,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  if (!ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
+  if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
+    ethernet_mac_address_generate (args->host_mac_addr.bytes);
+  args->error = vnet_netlink_set_link_addr (vif->ifindex,
+					    args->host_mac_addr.bytes);
+  if (args->error)
     {
-      args->error = vnet_netlink_set_link_addr (vif->ifindex,
-						args->host_mac_addr.bytes);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
+      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+      goto error;
     }
 
   if (args->host_bridge)
