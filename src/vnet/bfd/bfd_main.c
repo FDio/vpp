@@ -874,6 +874,13 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
       pkt->req_min_rx =
 	clib_host_to_net_u32 (bfd_clocks_to_usec
 			      (bm, bs->effective_required_min_rx_clocks));
+      if (pkt->req_min_rx < 1000000)
+	{
+	  BFD_DBG ("echo oops!");
+	  BFD_DBG ("bs->effective_required_min_rx_clocks == %u",
+		   bs->effective_required_min_rx_clocks);
+	  BFD_DBG ("bm->cpu_cps == %f", bm->cpu_cps);
+	}
     }
   else
     {
@@ -1327,6 +1334,7 @@ bfd_main_init (vlib_main_t * vm)
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   clib_memset (&bm->wheel, 0, sizeof (bm->wheel));
+  // quick and dirty hack to avoid fractions messing up calculations
   bm->cpu_cps = (u64) vm->clib_time.clocks_per_second;
   BFD_DBG ("cps is %.2f", bm->cpu_cps);
   bm->default_desired_min_tx_clocks =
