@@ -119,40 +119,6 @@ typedef enum
 
 typedef uint16_t dpdk_portid_t;
 
-typedef struct
-{
-  /* Required for vec_validate_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
-  struct rte_ring *swq;
-
-  u64 hqos_field0_slabmask;
-  u32 hqos_field0_slabpos;
-  u32 hqos_field0_slabshr;
-  u64 hqos_field1_slabmask;
-  u32 hqos_field1_slabpos;
-  u32 hqos_field1_slabshr;
-  u64 hqos_field2_slabmask;
-  u32 hqos_field2_slabpos;
-  u32 hqos_field2_slabshr;
-  u32 hqos_tc_table[64];
-} dpdk_device_hqos_per_worker_thread_t;
-
-typedef struct
-{
-  /* Required for vec_validate_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  struct rte_ring **swq;
-  struct rte_mbuf **pkts_enq;
-  struct rte_mbuf **pkts_deq;
-  struct rte_sched_port *hqos;
-  u32 hqos_burst_enq;
-  u32 hqos_burst_deq;
-  u32 pkts_enq_len;
-  u32 swq_pos;
-  u32 flush_count;
-} dpdk_device_hqos_per_hqos_thread_t;
-
 #define foreach_dpdk_device_flags \
   _( 0, ADMIN_UP, "admin-up") \
   _( 1, PROMISC, "promisc") \
@@ -160,7 +126,6 @@ typedef struct
   _( 3, PMD_INIT_FAIL, "pmd-init-fail") \
   _( 4, MAYBE_MULTISEG, "maybe-multiseg") \
   _( 5, HAVE_SUBIF, "subif") \
-  _( 6, HQOS, "hqos") \
   _( 9, TX_OFFLOAD, "tx-offload") \
   _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
   _(11, RX_FLOW_OFFLOAD, "rx-flow-offload") \
@@ -235,10 +200,6 @@ typedef struct
   u32 parked_loop_count;
   struct rte_flow_error last_flow_error;
 
-  /* HQoS related */
-  dpdk_device_hqos_per_worker_thread_t *hqos_wt;
-  dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
-
   /* af_packet instance number */
   u16 af_packet_instance_num;
 
@@ -278,39 +239,6 @@ typedef struct
 #define HQOS_FLUSH_COUNT_THRESHOLD              100000
 #endif
 
-typedef struct dpdk_device_config_hqos_t
-{
-  u32 hqos_thread;
-  u32 hqos_thread_valid;
-
-  u32 swq_size;
-  u32 burst_enq;
-  u32 burst_deq;
-
-  u32 pktfield0_slabpos;
-  u32 pktfield1_slabpos;
-  u32 pktfield2_slabpos;
-  u64 pktfield0_slabmask;
-  u64 pktfield1_slabmask;
-  u64 pktfield2_slabmask;
-  u32 tc_table[64];
-
-  struct rte_sched_port_params port;
-  struct rte_sched_subport_params *subport;
-  struct rte_sched_pipe_params *pipe;
-  uint32_t *pipe_map;
-} dpdk_device_config_hqos_t;
-
-int dpdk_hqos_validate_mask (u64 mask, u32 n);
-void dpdk_device_config_hqos_pipe_profile_default (dpdk_device_config_hqos_t *
-						   hqos, u32 pipe_profile_id);
-#if 0
-void dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos);
-#endif
-clib_error_t *dpdk_port_setup_hqos (dpdk_device_t * xd,
-				    dpdk_device_config_hqos_t * hqos);
-void dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
-			     struct rte_mbuf **pkts, u32 n_pkts);
 
 #define foreach_dpdk_device_config_item \
   _ (num_rx_queues) \
@@ -333,8 +261,6 @@ typedef struct
     foreach_dpdk_device_config_item
 #undef _
     clib_bitmap_t * workers;
-  u32 hqos_enabled;
-  dpdk_device_config_hqos_t hqos;
   u8 tso;
   u8 *devargs;
 
@@ -397,7 +323,6 @@ typedef struct
 
   /* Devices */
   dpdk_device_t *devices;
-  dpdk_device_and_queue_t **devices_by_hqos_cpu;
   dpdk_per_thread_data_t *per_thread_data;
 
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
@@ -408,10 +333,6 @@ typedef struct
    * (via post_sw_interface_set_flags) is in progress
    */
   u8 admin_up_down_in_progress;
-
-  /* which cpus are running I/O TX */
-  int hqos_cpu_first_index;
-  int hqos_cpu_count;
 
   /* control interval of dpdk link state and stat polling */
   f64 link_state_poll_interval;
@@ -502,8 +423,6 @@ format_function_t format_dpdk_tx_offload_caps;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
-clib_error_t *unformat_hqos (unformat_input_t * input,
-			     dpdk_device_config_hqos_t * hqos);
 
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
