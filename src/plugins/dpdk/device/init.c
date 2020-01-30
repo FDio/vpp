@@ -214,28 +214,8 @@ dpdk_lib_init (dpdk_main_t * dm)
   dpdk_device_t *xd;
   vlib_pci_addr_t last_pci_addr;
   u32 last_pci_addr_port = 0;
-  vlib_thread_registration_t *tr_hqos;
-  uword *p_hqos;
-
-  u32 next_hqos_cpu = 0;
   u8 af_packet_instance_num = 0;
   last_pci_addr.as_u32 = ~0;
-
-  dm->hqos_cpu_first_index = 0;
-  dm->hqos_cpu_count = 0;
-
-  /* find out which cpus will be used for I/O TX */
-  p_hqos = hash_get_mem (tm->thread_registrations_by_name, "hqos-threads");
-  tr_hqos = p_hqos ? (vlib_thread_registration_t *) p_hqos[0] : 0;
-
-  if (tr_hqos && tr_hqos->count > 0)
-    {
-      dm->hqos_cpu_first_index = tr_hqos->first_index;
-      dm->hqos_cpu_count = tr_hqos->count;
-    }
-
-  vec_validate_aligned (dm->devices_by_hqos_cpu, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
 
   nports = rte_eth_dev_count_avail ();
 
@@ -596,38 +576,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* assign interface to input thread */
       int q;
 
-      if (devconf->hqos_enabled)
-	{
-	  xd->flags |= DPDK_DEVICE_FLAG_HQOS;
-
-	  int cpu;
-	  if (devconf->hqos.hqos_thread_valid)
-	    {
-	      if (devconf->hqos.hqos_thread >= dm->hqos_cpu_count)
-		return clib_error_return (0, "invalid HQoS thread index");
-
-	      cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
-	    }
-	  else
-	    {
-	      if (dm->hqos_cpu_count == 0)
-		return clib_error_return (0, "no HQoS threads available");
-
-	      cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
-
-	      next_hqos_cpu++;
-	      if (next_hqos_cpu == dm->hqos_cpu_count)
-		next_hqos_cpu = 0;
-
-	      devconf->hqos.hqos_thread_valid = 1;
-	      devconf->hqos.hqos_thread = cpu;
-	    }
-
-	  dpdk_device_and_queue_t *dq;
-	  vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	  dq->device = xd->device_index;
-	  dq->queue_id = 0;
-	}
 
       error = ethernet_register_interface
 	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
@@ -769,14 +717,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
 		      format_dpdk_device_name, i,
 		      format_dpdk_device_errors, xd);
-
-      if (devconf->hqos_enabled)
-	{
-	  clib_error_t *rv;
-	  rv = dpdk_port_setup_hqos (xd, &devconf->hqos);
-	  if (rv)
-	    return rv;
-	}
 
       /*
        * A note on Cisco VIC (PMD_ENIC) and VLAN:
@@ -1060,11 +1000,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
     }
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
-  devconf->hqos_enabled = 0;
   devconf->tso = DPDK_DEVICE_TSO_DEFAULT;
-#if 0
-  dpdk_device_config_hqos_default (&devconf->hqos);
-#endif
 
   if (!input)
     return 0;
@@ -1097,19 +1033,6 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
       else if (unformat (input, "vlan-strip-offload on"))
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
-      else
-	if (unformat
-	    (input, "hqos %U", unformat_vlib_cli_sub_input, &sub_input))
-	{
-	  devconf->hqos_enabled = 1;
-	  error = unformat_hqos (&sub_input, &devconf->hqos);
-	  if (error)
-	    break;
-	}
-      else if (unformat (input, "hqos"))
-	{
-	  devconf->hqos_enabled = 1;
-	}
       else if (unformat (input, "tso on"))
 	{
 	  devconf->tso = DPDK_DEVICE_TSO_ON;
