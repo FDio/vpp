@@ -20,7 +20,7 @@
 #define __included_bfd_debug_h__
 
 /* controls debug prints */
-#define BFD_DEBUG (0)
+#define BFD_DEBUG (1)
 
 #if BFD_DEBUG
 #define BFD_DEBUG_FILE_DEF            \
