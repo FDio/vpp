@@ -1,0 +1,52 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+enum eid_type
+{
+	EID_TYPE_API_IPV4 = 0,
+	EID_TYPE_API_IPV6 = 1,
+	EID_TYPE_API_MAC = 2,
+};
+
+union eid_address
+{
+	vl_api_prefix_t ip;
+	vl_api_mac_address_t mac;
+};
+
+typedef eid
+{
+	vl_api_eid_type_t type;
+	vl_api_eid_address_t address;
+};
+
+enum hmac_key_id
+{
+	KEY_ID_API_HMAC_NO_KEY = 0,
+	KEY_ID_API_HMAC_SHA_1_96 = 1,
+	KEY_ID_API_HMAC_SHA_256_128 = 2,
+};
+
+typedef hmac_key
+{
+	vl_api_hmac_key_id_t id;
+	u8 key[64];
+};
