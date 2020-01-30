@@ -718,7 +718,7 @@ aesni_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
 
   /* expand AES key */
-  aes_key_expand ((__m128i *) kd->Ke, key->data, ks);
+  aes_key_expand ((u8x16 *) kd->Ke, key->data, ks);
 
   /* pre-calculate H */
   H = kd->Ke[0];
