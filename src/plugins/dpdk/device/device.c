@@ -180,21 +180,6 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-#if 0
-      if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
-	{
-	  /* no wrap, transmit in one burst */
-	  dpdk_device_hqos_per_worker_thread_t *hqos =
-	    &xd->hqos_wt[vm->thread_index];
-
-	  ASSERT (hqos->swq != NULL);
-
-	  dpdk_hqos_metadata_set (hqos, mb, n_left);
-	  n_sent = rte_ring_sp_enqueue_burst (hqos->swq, (void **) mb,
-					      n_left, 0);
-	}
-      else
-#endif
       if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  /* no wrap, transmit in one burst */
