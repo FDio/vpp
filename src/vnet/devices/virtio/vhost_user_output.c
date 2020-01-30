@@ -295,6 +295,7 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
   u8 retry = 8;
   u16 copy_len;
   u16 tx_headers_len;
+  u32 or_flags;
 
   if (PREDICT_FALSE (!vui->admin_up))
     {
@@ -388,8 +389,13 @@ retry:
 	hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
 	hdr->num_buffers = 1;	//This is local, no need to check
 
-	/* Guest supports csum offload? */
-	if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM))
+	or_flags = (b0->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM) ||
+	  (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ||
+	  (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
+
+	/* Guest supports csum offload and buffer requires checksum offload? */
+	if (or_flags
+	    && (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM)))
 	  vhost_user_handle_tx_offload (vui, b0, &hdr->hdr);
 
 	// Prepare a copy order executed later for the header
