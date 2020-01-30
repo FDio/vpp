@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb91d37f_08e0e1b9",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 6
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-30T11:57:57Z",
+      "side": 1,
+      "message": "... followed by what? Looks like an incomplete sentence.\n\nAlso, should the value be ended in \\0? If yes, is the \\0 counted when determining the string size? If no, can \\0 appear in the middle of the string?",
+      "range": {
+        "startLine": 318,
+        "startChar": 42,
+        "endLine": 318,
+        "endChar": 52
+      },
+      "revId": "1ca243beabbae555bd6be332ae195442f04f9a61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
