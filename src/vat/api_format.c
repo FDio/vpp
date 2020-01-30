@@ -19516,7 +19516,7 @@ api_lldp_config (vat_main_t * vam)
   M (LLDP_CONFIG, mp);
   mp->tx_hold = htonl (tx_hold);
   mp->tx_interval = htonl (tx_interval);
-  clib_memcpy (mp->system_name, sys_name, vec_len (sys_name));
+  vl_api_vec_to_api_string (sys_name, &mp->system_name);
   vec_free (sys_name);
 
   S (mp);
@@ -19572,7 +19572,7 @@ api_sw_interface_set_lldp (vat_main_t * vam)
   M (SW_INTERFACE_SET_LLDP, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
-  clib_memcpy (mp->port_desc, port_desc, vec_len (port_desc));
+  vl_api_vec_to_api_string (port_desc, &mp->port_desc);
   clib_memcpy (mp->mgmt_oid, mgmt_oid, vec_len (mgmt_oid));
   clib_memcpy (mp->mgmt_ip4, &ip4_addr, sizeof (ip4_addr));
   clib_memcpy (mp->mgmt_ip6, &ip6_addr, sizeof (ip6_addr));

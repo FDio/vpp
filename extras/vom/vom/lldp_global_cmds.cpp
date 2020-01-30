@@ -25,8 +25,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   , m_system_name(system_name)
   , m_tx_hold(tx_hold)
   , m_tx_interval(tx_interval)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& other) const
@@ -43,8 +42,9 @@ config_cmd::issue(connection& con)
   payload.tx_hold = m_tx_hold;
   payload.tx_interval = m_tx_interval;
 
-  memcpy(payload.system_name, m_system_name.c_str(),
-         std::min(sizeof(payload.system_name), m_system_name.length()));
+  memcpy(
+    payload.system_name.buf, m_system_name.c_str(), m_system_name.length());
+  payload.system_name.length = m_system_name.length();
 
   VAPI_CALL(req.execute());
 

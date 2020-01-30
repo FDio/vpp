@@ -3397,7 +3397,7 @@ static void *vl_api_sw_interface_set_lldp_t_print
   s = format (0, "SCRIPT: sw_interface_set_lldp ");
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
-  if (memcmp (mp->port_desc, null_data, sizeof (mp->port_desc)))
+  if (memcmp (&mp->port_desc, null_data, sizeof (mp->port_desc)))
     s = format (s, "port_desc %s ", mp->port_desc);
 
   if (memcmp (mp->mgmt_ip4, null_data, sizeof (mp->mgmt_ip4)))
