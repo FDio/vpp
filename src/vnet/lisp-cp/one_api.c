@@ -25,6 +25,9 @@
 #include <vnet/lisp-cp/control.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_api_one_add_del_locator_set_t_endian vl_noop_handler
@@ -140,14 +143,17 @@ unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
   u32 i;
   locator_t *locs = 0, loc;
   vl_api_one_remote_locator_t *r;
+  ip46_address_t ip46;
 
   for (i = 0; i < rloc_num; i++)
     {
       /* remote locators */
       r = &rmt_locs[i];
       clib_memset (&loc, 0, sizeof (loc));
-      gid_address_ip_set (&loc.address, &r->addr,
-			  r->is_ip4 ? AF_IP4 : AF_IP6);
+      ip_address_decode (&r->ip_address, &ip46);
+      ip_address_from_46 (&loc.address.ippref.addr, &ip46);
+      loc.address.ippref.len =
+	ip_address_max_len (loc.address.ippref.addr.version);
 
       loc.priority = r->priority;
       loc.weight = r->weight;
@@ -281,34 +287,36 @@ typedef struct
 } __attribute__ ((__packed__)) lisp_nsh_api_t;
 
 static int
-unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
-		      u8 len)
+unformat_one_eid_api (gid_address_t * dst, u32 vni, vl_api_eid_t * eid)
 {
   lisp_nsh_api_t *nsh;
+  fib_prefix_t prefix;
 
-  switch (type)
+  switch (htonl (eid->type))
     {
-    case 0:			/* ipv4 */
+    case EID_TYPE_API_IPV4:
+      ip_prefix_decode (&eid->address.ip, &prefix);
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP4);
-      gid_address_ippref_len (dst) = len;
+      gid_address_ip_set (dst, &prefix.fp_addr.ip4, AF_IP4);
+      gid_address_ippref_len (dst) = prefix.fp_len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
-    case 1:			/* ipv6 */
+    case EID_TYPE_API_IPV6:
+      ip_prefix_decode (&eid->address.ip, &prefix);
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP6);
-      gid_address_ippref_len (dst) = len;
+      gid_address_ip_set (dst, &prefix.fp_addr.ip6, AF_IP6);
+      gid_address_ippref_len (dst) = prefix.fp_len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
-    case 2:			/* l2 mac */
+    case EID_TYPE_API_MAC:
       gid_address_type (dst) = GID_ADDR_MAC;
-      clib_memcpy (&gid_address_mac (dst), src, 6);
+      mac_address_decode (eid->address.mac,
+			  (mac_address_t *) & gid_address_mac (dst));
       break;
-    case 3:			/* NSH */
+    case EID_TYPE_API_NSH:
       gid_address_type (dst) = GID_ADDR_NSH;
-      nsh = src;
-      gid_address_nsh_spi (dst) = clib_net_to_host_u32 (nsh->spi);
-      gid_address_nsh_si (dst) = nsh->si;
+      gid_address_nsh_spi (dst) = clib_net_to_host_u32 (eid->address.nsh.spi);
+      gid_address_nsh_si (dst) = eid->address.nsh.si;
       break;
     default:
       /* unknown type */
