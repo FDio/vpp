@@ -21,6 +21,9 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/format_fns.h>
+
 #include <sctp/sctp.h>
 
 #include <sctp/sctp.api_enum.h>
@@ -36,15 +39,15 @@ static void
   vlib_main_t *vm = vlib_get_main ();
   vl_api_sctp_add_src_dst_connection_reply_t *rmp;
   int rv;
+  ip46_address_t src, dst;
 
-  if (mp->is_ipv6)
-    rv = sctp_sub_connection_add_ip6
-      (vm,
-       (ip6_address_t *) mp->src_address, (ip6_address_t *) mp->dst_address);
+  ip_address_decode (&mp->src_address, &src);
+  ip_address_decode (&mp->dst_address, &dst);
+
+  if (ip46_address_is_ip4 (&src) && ip46_address_is_ip4 (&dst))
+    rv = sctp_sub_connection_add_ip4 (vm, &src.ip4, &dst.ip4);
   else
-    rv = sctp_sub_connection_add_ip4
-      (vm,
-       (ip4_address_t *) mp->src_address, (ip4_address_t *) mp->dst_address);
+    rv = sctp_sub_connection_add_ip6 (vm, &src.ip6, &dst.ip6);
 
   REPLY_MACRO (VL_API_SCTP_ADD_SRC_DST_CONNECTION_REPLY);
 }
@@ -55,13 +58,15 @@ static void
 {
   vl_api_sctp_del_src_dst_connection_reply_t *rmp;
   int rv;
+  ip46_address_t src, dst;
 
-  if (mp->is_ipv6)
-    rv = sctp_sub_connection_del_ip6
-      ((ip6_address_t *) mp->src_address, (ip6_address_t *) mp->dst_address);
+  ip_address_decode (&mp->src_address, &src);
+  ip_address_decode (&mp->dst_address, &dst);
+
+  if (ip46_address_is_ip4 (&src) && ip46_address_is_ip4 (&dst))
+    rv = sctp_sub_connection_del_ip4 (&src.ip4, &dst.ip4);
   else
-    rv = sctp_sub_connection_del_ip4
-      ((ip4_address_t *) mp->src_address, (ip4_address_t *) mp->dst_address);
+    rv = sctp_sub_connection_del_ip6 (&src.ip6, &dst.ip6);
 
   REPLY_MACRO (VL_API_SCTP_ADD_SRC_DST_CONNECTION_REPLY);
 }
