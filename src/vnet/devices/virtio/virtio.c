@@ -299,6 +299,8 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  if (vif->host_mtu_size)
 	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
 			     vif->host_mtu_size);
+	  vlib_cli_output (vm, "  host-mac-addr: %U",
+			   format_ethernet_address, vif->host_mac_addr);
 
 	  vec_foreach_index (i, vif->vhost_fds)
 	    str = format (str, " %d", vif->vhost_fds[i]);
