@@ -2531,8 +2531,10 @@ static void *vl_api_pg_enable_disable_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: pg_enable_disable ");
-  if ((mp->stream_name_length) > 0)
-    s = format (s, "stream %s", mp->stream_name);
+  if (vl_api_string_len (&mp->stream_name) > 0)
+    s =
+      format (s, "stream %s",
+	      vl_api_from_api_to_new_c_string (&mp->stream_name));
   if (!mp->is_enabled)
     s = format (s, "disable");
 
