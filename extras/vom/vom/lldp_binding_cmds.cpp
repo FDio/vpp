@@ -26,8 +26,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_port_desc(port_desc)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -44,8 +43,8 @@ bind_cmd::issue(connection& con)
   payload.sw_if_index = m_itf.value();
   payload.enable = 1;
 
-  memcpy(payload.port_desc, m_port_desc.c_str(),
-         std::min(sizeof(payload.port_desc), m_port_desc.length()));
+  memcpy(payload.port_desc.buf, m_port_desc.c_str(), m_port_desc.length());
+  payload.port_desc.length = m_port_desc.length();
 
   VAPI_CALL(req.execute());
 
@@ -65,8 +64,7 @@ bind_cmd::to_string() const
 unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const

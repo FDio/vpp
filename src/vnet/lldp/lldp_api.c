@@ -24,6 +24,10 @@
 #include <vnet/api_errno.h>
 #include <vnet/lldp/lldp.h>
 
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -53,8 +57,7 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
   int rv = 0;
   u8 *sys_name = 0;
 
-  vec_validate (sys_name, strlen ((char *) mp->system_name) - 1);
-  strncpy ((char *) sys_name, (char *) mp->system_name, vec_len (sys_name));
+  sys_name = vl_api_from_api_to_new_vec (&mp->system_name);
 
   if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval))
       != lldp_ok)
@@ -71,28 +74,31 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 {
   vl_api_sw_interface_set_lldp_reply_t *rmp;
   int rv = 0;
-  u8 *port_desc = 0, *mgmt_ip4 = 0, *mgmt_ip6 = 0, *mgmt_oid = 0;
-  u8 no_data[256];
+  u8 *mgmt_oid = 0, *mgmt_ip4 = 0, *mgmt_ip6 = 0;
+  char *port_desc = 0;
+  u8 no_data[128];
+  ip4_address_t ip4;
+  ip6_address_t ip6;
 
-  clib_memset (no_data, 0, 256);
-
-  if (memcmp (mp->port_desc, no_data, strlen ((char *) mp->port_desc)) != 0)
+  if (vl_api_string_len (&mp->port_desc) > 0)
     {
-      vec_validate (port_desc, strlen ((char *) mp->port_desc) - 1);
-      strncpy ((char *) port_desc, (char *) mp->port_desc,
-	       vec_len (port_desc));
+      port_desc = vl_api_from_api_to_new_c_string (&mp->port_desc);
     }
 
-  if (memcmp (mp->mgmt_ip4, no_data, sizeof (mp->mgmt_ip4)) != 0)
+  ip4_address_decode (mp->mgmt_ip4, &ip4);
+
+  if (ip4.as_u32 != 0)
     {
-      vec_validate (mgmt_ip4, sizeof (mp->mgmt_ip4) - 1);
-      clib_memcpy (mgmt_ip4, mp->mgmt_ip4, vec_len (mgmt_ip4));
+      vec_validate (mgmt_ip4, sizeof (ip4_address_t) - 1);
+      clib_memcpy (mgmt_ip4, &ip4, vec_len (mgmt_ip4));
     }
 
-  if (memcmp (mp->mgmt_ip6, no_data, sizeof (mp->mgmt_ip6)) != 0)
+  ip6_address_decode (mp->mgmt_ip6, &ip6);
+
+  if (!ip6_address_is_zero (&ip6))
     {
-      vec_validate (mgmt_ip6, sizeof (mp->mgmt_ip6) - 1);
-      clib_memcpy (mgmt_ip6, mp->mgmt_ip6, vec_len (mgmt_ip6));
+      vec_validate (mgmt_ip6, sizeof (ip6_address_t) - 1);
+      clib_memcpy (mgmt_ip6, &ip6, vec_len (mgmt_ip6));
     }
 
   if (memcmp (mp->mgmt_oid, no_data, strlen ((char *) mp->mgmt_oid)) != 0)
@@ -103,7 +109,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), &port_desc,
+  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), (u8 **) & port_desc,
 			 &mgmt_ip4, &mgmt_ip6, &mgmt_oid,
 			 mp->enable) != lldp_ok)
     {
