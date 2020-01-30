@@ -28,175 +28,189 @@ typedef enum
 #define AES_KEY_ROUNDS(x)		(10 + x * 2)
 #define AES_KEY_BYTES(x)		(16 + x * 8)
 
+static_always_inline u8x16
+aes_block_load (u8 * p)
+{
+  return (u8x16) _mm_loadu_si128 ((__m128i *) p);
+}
+
+static_always_inline u8x16
+aes_enc_round (u8x16 a, u8x16 k)
+{
+  return (u8x16) _mm_aesenc_si128 ((__m128i) a, (__m128i) k);
+}
+
+static_always_inline u8x16
+aes_enc_last_round (u8x16 a, u8x16 k)
+{
+  return (u8x16) _mm_aesenclast_si128 ((__m128i) a, (__m128i) k);
+}
+
+static_always_inline u8x16
+aes_dec_round (u8x16 a, u8x16 k)
+{
+  return (u8x16) _mm_aesdec_si128 ((__m128i) a, (__m128i) k);
+}
+
+static_always_inline u8x16
+aes_dec_last_round (u8x16 a, u8x16 k)
+{
+  return (u8x16) _mm_aesdeclast_si128 ((__m128i) a, (__m128i) k);
+}
+
+static_always_inline void
+aes_block_store (u8 * p, u8x16 r)
+{
+  _mm_storeu_si128 ((__m128i *) p, (__m128i) r);
+}
+
+static_always_inline u8x16
+aes_inv_mix_column (u8x16 a)
+{
+  return (u8x16) _mm_aesimc_si128 ((__m128i) a);
+}
 
 /* AES-NI based AES key expansion based on code samples from
    Intel(r) Advanced Encryption Standard (AES) New Instructions White Paper
    (323641-001) */
 
-static_always_inline __m128i
-aes128_key_assist (__m128i r1, __m128i r2)
+static_always_inline void
+aes128_key_assist (__m128i * k, __m128i r)
 {
-  r1 ^= _mm_slli_si128 (r1, 4);
-  r1 ^= _mm_slli_si128 (r1, 4);
-  r1 ^= _mm_slli_si128 (r1, 4);
-  return r1 ^ _mm_shuffle_epi32 (r2, 0xff);
+  __m128i t = k[-1];
+  t ^= _mm_slli_si128 (t, 4);
+  t ^= _mm_slli_si128 (t, 4);
+  t ^= _mm_slli_si128 (t, 4);
+  k[0] = t ^ _mm_shuffle_epi32 (r, 0xff);
 }
 
 static_always_inline void
-aes128_key_expand (__m128i * k, u8 * key)
+aes128_key_expand (u8x16 * key_schedule, u8 * key)
 {
+  __m128i *k = (__m128i *) key_schedule;
   k[0] = _mm_loadu_si128 ((const __m128i *) key);
-  k[1] = aes128_key_assist (k[0], _mm_aeskeygenassist_si128 (k[0], 0x01));
-  k[2] = aes128_key_assist (k[1], _mm_aeskeygenassist_si128 (k[1], 0x02));
-  k[3] = aes128_key_assist (k[2], _mm_aeskeygenassist_si128 (k[2], 0x04));
-  k[4] = aes128_key_assist (k[3], _mm_aeskeygenassist_si128 (k[3], 0x08));
-  k[5] = aes128_key_assist (k[4], _mm_aeskeygenassist_si128 (k[4], 0x10));
-  k[6] = aes128_key_assist (k[5], _mm_aeskeygenassist_si128 (k[5], 0x20));
-  k[7] = aes128_key_assist (k[6], _mm_aeskeygenassist_si128 (k[6], 0x40));
-  k[8] = aes128_key_assist (k[7], _mm_aeskeygenassist_si128 (k[7], 0x80));
-  k[9] = aes128_key_assist (k[8], _mm_aeskeygenassist_si128 (k[8], 0x1b));
-  k[10] = aes128_key_assist (k[9], _mm_aeskeygenassist_si128 (k[9], 0x36));
+  aes128_key_assist (k + 1, _mm_aeskeygenassist_si128 (k[0], 0x01));
+  aes128_key_assist (k + 2, _mm_aeskeygenassist_si128 (k[1], 0x02));
+  aes128_key_assist (k + 3, _mm_aeskeygenassist_si128 (k[2], 0x04));
+  aes128_key_assist (k + 4, _mm_aeskeygenassist_si128 (k[3], 0x08));
+  aes128_key_assist (k + 5, _mm_aeskeygenassist_si128 (k[4], 0x10));
+  aes128_key_assist (k + 6, _mm_aeskeygenassist_si128 (k[5], 0x20));
+  aes128_key_assist (k + 7, _mm_aeskeygenassist_si128 (k[6], 0x40));
+  aes128_key_assist (k + 8, _mm_aeskeygenassist_si128 (k[7], 0x80));
+  aes128_key_assist (k + 9, _mm_aeskeygenassist_si128 (k[8], 0x1b));
+  aes128_key_assist (k + 10, _mm_aeskeygenassist_si128 (k[9], 0x36));
 }
 
 static_always_inline void
-aes192_key_assist (__m128i * r1, __m128i * r2, __m128i * r3)
+aes192_key_assist (__m128i * r1, __m128i * r2, __m128i key_assist)
 {
-  __m128i r;
-  *r1 ^= r = _mm_slli_si128 (*r1, 0x4);
-  *r1 ^= r = _mm_slli_si128 (r, 0x4);
-  *r1 ^= _mm_slli_si128 (r, 0x4);
-  *r1 ^= _mm_shuffle_epi32 (*r2, 0x55);
-  *r3 ^= _mm_slli_si128 (*r3, 0x4);
-  *r3 ^= *r2 = _mm_shuffle_epi32 (*r1, 0xff);
+  __m128i t;
+  *r1 ^= t = _mm_slli_si128 (*r1, 0x4);
+  *r1 ^= t = _mm_slli_si128 (t, 0x4);
+  *r1 ^= _mm_slli_si128 (t, 0x4);
+  *r1 ^= _mm_shuffle_epi32 (key_assist, 0x55);
+  *r2 ^= _mm_slli_si128 (*r2, 0x4);
+  *r2 ^= _mm_shuffle_epi32 (*r1, 0xff);
 }
 
 static_always_inline void
-aes192_key_expand (__m128i * k, u8 * key)
+aes192_key_expand (u8x16 * key_schedule, u8 * key)
 {
-  __m128i r1, r2, r3;
+  __m128i r1, r2, *k = (__m128i *) key_schedule;
 
   k[0] = r1 = _mm_loadu_si128 ((__m128i *) key);
   /* load the 24-bytes key as 2 * 16-bytes (and ignore last 8-bytes) */
-  r3 = CLIB_MEM_OVERFLOW_LOAD (_mm_loadu_si128, (__m128i *) (key + 16));
+  k[1] = r2 = CLIB_MEM_OVERFLOW_LOAD (_mm_loadu_si128, (__m128i *) key + 1);
 
-  k[1] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x1);
-  aes192_key_assist (&r1, &r2, &r3);
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x1));
   k[1] = (__m128i) _mm_shuffle_pd ((__m128d) k[1], (__m128d) r1, 0);
-  k[2] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r3, 1);
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x2);
-  aes192_key_assist (&r1, &r2, &r3);
+  k[2] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r2, 1);
+
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x2));
   k[3] = r1;
+  k[4] = r2;
 
-  k[4] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x4);
-  aes192_key_assist (&r1, &r2, &r3);
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x4));
   k[4] = (__m128i) _mm_shuffle_pd ((__m128d) k[4], (__m128d) r1, 0);
-  k[5] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r3, 1);
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x8);
-  aes192_key_assist (&r1, &r2, &r3);
-  k[6] = r1;
+  k[5] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r2, 1);
 
-  k[7] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x10);
-  aes192_key_assist (&r1, &r2, &r3);
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x8));
+  k[6] = r1;
+  k[7] = r2;
+
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x10));
   k[7] = (__m128i) _mm_shuffle_pd ((__m128d) k[7], (__m128d) r1, 0);
-  k[8] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r3, 1);
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x20);
-  aes192_key_assist (&r1, &r2, &r3);
+  k[8] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r2, 1);
+
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x20));
   k[9] = r1;
+  k[10] = r2;
 
-  k[10] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x40);
-  aes192_key_assist (&r1, &r2, &r3);
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x40));
   k[10] = (__m128i) _mm_shuffle_pd ((__m128d) k[10], (__m128d) r1, 0);
-  k[11] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r3, 1);
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x80);
-  aes192_key_assist (&r1, &r2, &r3);
+  k[11] = (__m128i) _mm_shuffle_pd ((__m128d) r1, (__m128d) r2, 1);
+
+  aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x80));
   k[12] = r1;
 }
 
 static_always_inline void
-aes256_key_assist1 (__m128i * r1, __m128i * r2)
+aes256_key_assist (__m128i * k, int i, __m128i key_assist)
 {
-  __m128i r;
-  *r1 ^= r = _mm_slli_si128 (*r1, 0x4);
-  *r1 ^= r = _mm_slli_si128 (r, 0x4);
-  *r1 ^= _mm_slli_si128 (r, 0x4);
-  *r1 ^= *r2 = _mm_shuffle_epi32 (*r2, 0xff);
+  __m128i r, t;
+  k += i;
+  r = k[-2];
+  r ^= t = _mm_slli_si128 (r, 0x4);
+  r ^= t = _mm_slli_si128 (t, 0x4);
+  r ^= _mm_slli_si128 (t, 0x4);
+  r ^= _mm_shuffle_epi32 (key_assist, 0xff);
+  k[0] = r;
+
+  if (i >= 14)
+    return;
+
+  r = k[-1];
+  r ^= t = _mm_slli_si128 (r, 0x4);
+  r ^= t = _mm_slli_si128 (t, 0x4);
+  r ^= _mm_slli_si128 (t, 0x4);
+  r ^= _mm_shuffle_epi32 (_mm_aeskeygenassist_si128 (k[0], 0x0), 0xaa);
+  k[1] = r;
 }
 
 static_always_inline void
-aes256_key_assist2 (__m128i r1, __m128i * r3)
+aes256_key_expand (u8x16 * key_schedule, u8 * key)
 {
-  __m128i r;
-  *r3 ^= r = _mm_slli_si128 (*r3, 0x4);
-  *r3 ^= r = _mm_slli_si128 (r, 0x4);
-  *r3 ^= _mm_slli_si128 (r, 0x4);
-  *r3 ^= _mm_shuffle_epi32 (_mm_aeskeygenassist_si128 (r1, 0x0), 0xaa);
+  __m128i *k = (__m128i *) key_schedule;
+  k[0] = _mm_loadu_si128 ((__m128i *) key);
+  k[1] = _mm_loadu_si128 ((__m128i *) (key + 16));
+  aes256_key_assist (k, 2, _mm_aeskeygenassist_si128 (k[1], 0x01));
+  aes256_key_assist (k, 4, _mm_aeskeygenassist_si128 (k[3], 0x02));
+  aes256_key_assist (k, 6, _mm_aeskeygenassist_si128 (k[5], 0x04));
+  aes256_key_assist (k, 8, _mm_aeskeygenassist_si128 (k[7], 0x08));
+  aes256_key_assist (k, 10, _mm_aeskeygenassist_si128 (k[9], 0x10));
+  aes256_key_assist (k, 12, _mm_aeskeygenassist_si128 (k[11], 0x20));
+  aes256_key_assist (k, 14, _mm_aeskeygenassist_si128 (k[13], 0x40));
 }
 
 static_always_inline void
-aes256_key_expand (__m128i * k, u8 * key)
-{
-  __m128i r1, r2, r3;
-  k[0] = r1 = _mm_loadu_si128 ((__m128i *) key);
-  k[1] = r3 = _mm_loadu_si128 ((__m128i *) (key + 16));
-  r2 = _mm_aeskeygenassist_si128 (k[1], 0x01);
-  aes256_key_assist1 (&r1, &r2);
-  k[2] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[3] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x02);
-  aes256_key_assist1 (&r1, &r2);
-  k[4] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[5] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x04);
-  aes256_key_assist1 (&r1, &r2);
-  k[6] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[7] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x08);
-  aes256_key_assist1 (&r1, &r2);
-  k[8] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[9] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x10);
-  aes256_key_assist1 (&r1, &r2);
-  k[10] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[11] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x20);
-  aes256_key_assist1 (&r1, &r2);
-  k[12] = r1;
-  aes256_key_assist2 (r1, &r3);
-  k[13] = r3;
-  r2 = _mm_aeskeygenassist_si128 (r3, 0x40);
-  aes256_key_assist1 (&r1, &r2);
-  k[14] = r1;
-}
-
-static_always_inline void
-aes_key_expand (__m128i * k, u8 * key, aes_key_size_t ks)
+aes_key_expand (u8x16 * key_schedule, u8 * key, aes_key_size_t ks)
 {
   switch (ks)
     {
     case AES_KEY_128:
-      aes128_key_expand (k, key);
+      aes128_key_expand (key_schedule, key);
       break;
     case AES_KEY_192:
-      aes192_key_expand (k, key);
+      aes192_key_expand (key_schedule, key);
       break;
     case AES_KEY_256:
-      aes256_key_expand (k, key);
+      aes256_key_expand (key_schedule, key);
       break;
     }
 }
 
-
 static_always_inline void
-aes_key_enc_to_dec (__m128i * ke, __m128i * kd, aes_key_size_t ks)
+aes_key_enc_to_dec (u8x16 * ke, u8x16 * kd, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
 
@@ -205,11 +219,11 @@ aes_key_enc_to_dec (__m128i * ke, __m128i * kd, aes_key_size_t ks)
 
   for (int i = 1; i < (rounds / 2); i++)
     {
-      kd[rounds - i] = _mm_aesimc_si128 (ke[i]);
-      kd[i] = _mm_aesimc_si128 (ke[rounds - i]);
+      kd[rounds - i] = aes_inv_mix_column (ke[i]);
+      kd[i] = aes_inv_mix_column (ke[rounds - i]);
     }
 
-  kd[rounds / 2] = _mm_aesimc_si128 (ke[rounds / 2]);
+  kd[rounds / 2] = aes_inv_mix_column (ke[rounds / 2]);
 }
 
 #endif /* __aesni_h__ */

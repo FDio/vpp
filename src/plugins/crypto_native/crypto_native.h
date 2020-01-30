@@ -22,7 +22,7 @@ typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
 
 typedef struct
 {
-  __m128i cbc_iv[4];
+  u8x16 cbc_iv[4];
 } crypto_native_per_thread_data_t;
 
 typedef struct
