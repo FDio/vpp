@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
 
 /** \brief configure global parameter for LLDP
     @param client_index - opaque cookie to identify the sender
@@ -27,29 +30,29 @@ autoreply define lldp_config
 {
   u32 client_index;
   u32 context;
-  u8 system_name[256];
   u32 tx_hold;
   u32 tx_interval;
+  string system_name[];
 };
 
 /** \brief Interface set LLDP request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface for which to enable/disable LLDP
-    @param port_desc - local port description
     @param mgmt_ip4_addr - management ip4 address of the interface
     @param mgmt_ip6_addr - management ip6 address of the interface
     @param mgmt_oid - OID(Object Identifier) of the interface
     @param enable - if non-zero enable, else disable
+    @param port_desc - local port description
 */
 autoreply define sw_interface_set_lldp
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 port_desc[256];
-  u8 mgmt_ip4[4];
-  u8 mgmt_ip6[16];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ip4_address_t mgmt_ip4;
+  vl_api_ip6_address_t mgmt_ip6;
   u8 mgmt_oid[128];
-  u8 enable;
+  bool enable [default=true];
+  string port_desc[];
 };
