@@ -452,6 +452,12 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 	};
 
 	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
+	/*
+	 * fib_walk_sync may allocate a new adjacency and potentially cuase a
+	 * realloc for adj_pool. When that happens, adj pointer is no longer
+	 * valid here. We refresh the adj pointer accordingly.
+	 */
+	adj = adj_get (ai);
     }
 
     /*

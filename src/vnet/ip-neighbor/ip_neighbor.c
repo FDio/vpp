@@ -615,6 +615,13 @@ ip_neighbor_update (vnet_main_t * vnm, adj_index_t ai)
 	   * wouldn't be bad either, but that's more code than i'm prepared to
 	   * write at this time for relatively little reward.
 	   */
+	  /*
+	   * adj_nbr_update_rewrite may actually call fib_walk_sync.
+	   * fib_walk_sync may allocate a new adjacency and potentially cause
+	   * a realloc for adj_pool. When that happens, adj pointer is no
+	   * longer valid here.x We refresh adj pointer accordingly.
+	   */
+	  adj = adj_get (ai);
 	  ip_neighbor_probe (adj);
 	}
       break;
