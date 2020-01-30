@@ -18,7 +18,9 @@
     This file defines packet-generator interface APIs.
 */
 
-option version = "1.1.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
 
 /** \brief PacketGenerator create interface request
     @param client_index - opaque cookie to identify the sender
@@ -31,8 +33,8 @@ define pg_create_interface
 {
   u32 client_index;
   u32 context;
-  u32 interface_id;
-  u8 gso_enabled;
+  vl_api_interface_index_t interface_id;
+  bool gso_enabled;
   u32 gso_size;
 };
 
@@ -44,7 +46,7 @@ define pg_create_interface_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief PacketGenerator capture packets on given interface request
@@ -53,32 +55,30 @@ define pg_create_interface_reply
     @param interface_id - pg interface index
     @param is_enabled - 1 if enabling streams, 0 if disabling
     @param count - number of packets to be captured
-    @param pcap_file - pacp file name to store captured packets
+    @param pcap_file_name - pacp file name to store captured packets
 */
 autoreply define pg_capture
 {
   u32 client_index;
   u32 context;
-  u32 interface_id;
-  u8 is_enabled;
+  vl_api_interface_index_t interface_id;
+  bool is_enabled [default=true];
   u32 count;
-  u32 pcap_name_length;
-  u8 pcap_file_name[pcap_name_length];
+  string pcap_file_name[];
 };
 
 /** \brief Enable / disable packet generator request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_enabled - 1 if enabling streams, 0 if disabling
-    @param stream - stream name to be enable/disabled, if not specified handle all streams
+    @param stream_name - stream name to be enable/disabled, if not specified handle all streams
 */
 autoreply define pg_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
-  u32 stream_name_length;
-  u8 stream_name[stream_name_length];
+  bool is_enabled [default=true];
+  string stream_name[];
 };
 
 /*

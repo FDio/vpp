@@ -18593,17 +18593,15 @@ api_pg_capture (vat_main_t * vam)
 	}
     }
 
-  u32 name_len = vec_len (pcap_file);
   /* Construct the API message */
   M (PG_CAPTURE, mp);
   mp->context = 0;
   mp->interface_id = ntohl (if_id);
   mp->is_enabled = enable;
   mp->count = ntohl (count);
-  mp->pcap_name_length = ntohl (name_len);
   if (pcap_file_set != 0)
     {
-      clib_memcpy (mp->pcap_file_name, pcap_file, name_len);
+      vl_api_vec_to_api_string (pcap_file, &mp->pcap_file_name);
     }
   vec_free (pcap_file);
 
@@ -18641,15 +18639,13 @@ api_pg_enable_disable (vat_main_t * vam)
 	}
     }
 
-  u32 name_len = vec_len (stream_name);
   /* Construct the API message */
   M (PG_ENABLE_DISABLE, mp);
   mp->context = 0;
   mp->is_enabled = enable;
   if (stream_name_set != 0)
     {
-      mp->stream_name_length = ntohl (name_len);
-      clib_memcpy (mp->stream_name, stream_name, name_len);
+      vl_api_vec_to_api_string (stream_name, &mp->stream_name);
     }
   vec_free (stream_name);
 

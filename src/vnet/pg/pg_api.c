@@ -87,10 +87,8 @@ vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
   if (hw_if_index != ~0)
     {
       pg_capture_args_t _a, *a = &_a;
-
-      u32 len = ntohl (mp->pcap_name_length);
-      u8 *pcap_file_name = vec_new (u8, len);
-      clib_memcpy (pcap_file_name, mp->pcap_file_name, len);
+      char *pcap_file_name =
+	vl_api_from_api_to_new_c_string (&mp->pcap_file_name);
 
       hi = vnet_get_sup_hw_interface (vnm, hw_if_index);
       a->hw_if_index = hw_if_index;
@@ -121,12 +119,10 @@ vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
   u32 stream_index = ~0;
 
   int is_enable = mp->is_enabled != 0;
-  u32 len = ntohl (mp->stream_name_length) - 1;
 
-  if (len > 0)
+  if (vl_api_string_len (&mp->stream_name) > 0)
     {
-      u8 *stream_name = vec_new (u8, len);
-      clib_memcpy (stream_name, mp->stream_name, len);
+      u8 *stream_name = vl_api_from_api_to_new_vec (&mp->stream_name);
       uword *p = hash_get_mem (pg->stream_index_by_name, stream_name);
       if (p)
 	stream_index = *p;

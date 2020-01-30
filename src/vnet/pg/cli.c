@@ -86,7 +86,7 @@ pg_capture (pg_capture_args_t * a)
   if (a->is_enabled == 1)
     {
       struct stat sb;
-      if (stat ((char *) a->pcap_file_name, &sb) != -1)
+      if (stat (a->pcap_file_name, &sb) != -1)
 	return clib_error_return (0, "pcap file '%s' already exists.",
 				  a->pcap_file_name);
     }
@@ -632,7 +632,7 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   a->hw_if_index = hw_if_index;
   a->dev_instance = hi->dev_instance;
   a->is_enabled = !is_disable;
-  a->pcap_file_name = pcap_file_name;
+  a->pcap_file_name = (char *) pcap_file_name;
   a->count = count;
 
   error = pg_capture (a);

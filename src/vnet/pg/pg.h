@@ -305,7 +305,7 @@ typedef struct
   u8 gso_enabled;
   u32 gso_size;
   pcap_main_t pcap_main;
-  u8 *pcap_file_name;
+  char *pcap_file_name;
 } pg_interface_t;
 
 /* Per VLIB node data. */
@@ -379,7 +379,7 @@ typedef struct
   u32 hw_if_index;
   u32 dev_instance;
   u8 is_enabled;
-  u8 *pcap_file_name;
+  char *pcap_file_name;
   u32 count;
 } pg_capture_args_t;
 
