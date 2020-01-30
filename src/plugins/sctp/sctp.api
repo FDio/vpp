@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
- 
+option version = "2.0.0";
+
+import "vnet/ip/ip_types.api";
+
 /** \brief Configure SCTP source addresses, for active-open SCTP sessions
 
     SCTP src/dst ports are 16 bits
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ipv6 - 1 for ipv6, 0 for ipv4
     @param vrf_id - fib table / vrf id for local adjacencies
     @param src_address - src address that SCTP will use for this sub-conn
     @param dst_address - dst address that SCTP will use for this sub-conn
@@ -28,24 +29,22 @@ option version = "1.0.0";
 autoreply define sctp_add_src_dst_connection {
     u32 client_index;
     u32 context;
-    u8 is_ipv6;
     u32 vrf_id;
-    u8 src_address[16];
-    u8 dst_address[16];
+    vl_api_address_t src_address;
+    vl_api_address_t dst_address;
  };
- 
+
 autoreply define sctp_del_src_dst_connection {
     u32 client_index;
     u32 context;
-    u8 is_ipv6;
     u32 vrf_id;
-    u8 src_address[16];
-    u8 dst_address[16];
+    vl_api_address_t src_address;
+    vl_api_address_t dst_address;
  };
- 
+
 autoreply define sctp_config {
     u32 client_index;
     u32 context;
-    u8 never_delay_sack;
-    u8 never_bundle;
+    bool never_delay_sack;
+    bool never_bundle;
  };
