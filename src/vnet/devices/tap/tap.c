@@ -411,18 +411,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  /* switch back to old net namespace */
-  if (args->host_namespace)
-    {
-      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
-	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	  args->error = clib_error_return_unix (0, "setns '%s'",
-						args->host_namespace);
-	  goto error;
-	}
-    }
-
   if (args->host_mtu_set)
     {
       args->error =
@@ -444,6 +432,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
       args->host_mtu_set = 1;
       args->host_mtu_size = tm->host_mtu_size;
+    }
+
+  /* switch back to old net namespace */
+  if (args->host_namespace)
+    {
+      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "setns '%s'",
+						args->host_namespace);
+	  goto error;
+	}
     }
 
   for (i = 0; i < num_q_pairs; i++)
@@ -621,6 +621,7 @@ error:
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
     }
 
+  tap_log_err (vif, "%U", format_clib_error, args->error);
   tap_free (vm, vif);
 done:
   if (vhost_mem)
