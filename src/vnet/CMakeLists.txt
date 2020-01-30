@@ -896,6 +896,7 @@ list(APPEND VNET_SOURCES
   lisp-cp/lisp_cli.c
   lisp-cp/one_api.c
   lisp-cp/lisp_api.c
+  lisp-cp/lisp_types_api.c
 )
 
 list(APPEND VNET_HEADERS
@@ -905,8 +906,10 @@ list(APPEND VNET_HEADERS
   lisp-cp/lisp_cp_messages.h
   lisp-cp/lisp_msg_serdes.h
   lisp-cp/control.h
+  lisp-cp/lisp_types_api.h
 )
 
+list(APPEND VNET_API_FILES lisp-cp/lisp_types.api)
 list(APPEND VNET_API_FILES lisp-cp/lisp.api)
 list(APPEND VNET_API_FILES lisp-cp/one.api)
 

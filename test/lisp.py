@@ -1,4 +1,5 @@
 import socket
+from ipaddress import ip_network
 
 from vpp_object import VppObject
 
@@ -19,13 +20,13 @@ class VppLispLocatorSet(VppObject):
         return self._ls_name
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator_set(ls_name=self._ls_name)
+        self.test.vapi.lisp_add_del_locator_set(locator_set_name=self._ls_name)
         self._test.registry.register(self, self.test.logger)
 
     def get_lisp_locator_sets_dump_entry(self):
         result = self.test.vapi.lisp_locator_set_dump()
         for ls in result:
-            if ls.ls_name.strip(b'\x00') == self._ls_name:
+            if ls.ls_name.strip('\x00') == self._ls_name:
                 return ls
         return None
 
@@ -33,7 +34,7 @@ class VppLispLocatorSet(VppObject):
         return self.get_lisp_locator_sets_dump_entry() is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator_set(ls_name=self._ls_name,
+        self.test.vapi.lisp_add_del_locator_set(locator_set_name=self._ls_name,
                                                 is_add=0)
 
     def object_id(self):
@@ -73,7 +74,7 @@ class VppLispLocator(VppObject):
         return self._weight
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator(ls_name=self._ls_name,
+        self.test.vapi.lisp_add_del_locator(locator_set_name=self._ls_name,
                                             sw_if_index=self._sw_if_index,
                                             priority=self._priority,
                                             weight=self._weight)
@@ -93,7 +94,7 @@ class VppLispLocator(VppObject):
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_locator(
-                ls_name=self._ls_name, sw_if_index=self._sw_if_index,
+                locator_set_name=self._ls_name, sw_if_index=self._sw_if_index,
                 priority=self._priority, weight=self._weight, is_add=0)
         self._test.registry.register(self, self.test.logger)
 
@@ -102,9 +103,9 @@ class VppLispLocator(VppObject):
 
 
 class LispEIDType(object):
-    IP4 = 0
-    IP6 = 1
-    MAC = 2
+    PREFIX = 0
+    MAC = 1
+    NSH = 2
 
 
 class LispKeyIdType(object):
@@ -117,35 +118,52 @@ class LispEID(object):
     """ Lisp endpoint identifier """
     def __init__(self, eid):
         self.eid = eid
+        self._type = -1
 
-        # find out whether EID is ip4 prefix, ip6 prefix or MAC
-        if self.eid.find("/") != -1:
-            if self.eid.find(":") == -1:
-                self.eid_type = LispEIDType.IP4
-                self.data_length = 4
-            else:
-                self.eid_type = LispEIDType.IP6
-                self.data_length = 16
+        # find out whether EID is ip prefix, or MAC
+        try:
+            self.prefix = ip_network(self.eid)
+            self._type = LispEIDType.PREFIX
+            return
+        except ValueError:
+            if self.eid.count(":") == 5:  # MAC address
+                self.mac = self.eid
+                self._type = LispEIDType.MAC
+                return
+        raise Exception('Unsupported EID format {!s}!'.format(eid))
 
-            self.eid_address = self.eid.split("/")[0]
-            self.prefix_length = int(self.eid.split("/")[1])
-        elif self.eid.count(":") == 5:  # MAC address
-            self.eid_type = LispEIDType.MAC
-            self.eid_address = self.eid
-            self.prefix_length = 0
-            self.data_length = 6
-        else:
-            raise Exception('Unsupported EID format {!s}!'.format(eid))
+    @property
+    def eid_type(self):
+        return self._type
+
+    @property
+    def address(self):
+        if self.eid_type == LispEIDType.PREFIX:
+            return self.prefix
+        elif self.eid_type == LispEIDType.MAC:
+            return self.mac
+        elif self.eid_type == LispEIDType.NSH:
+            return Exception('Unimplemented')
 
     @property
     def packed(self):
-        if self.eid_type == LispEIDType.IP4:
-            return socket.inet_pton(socket.AF_INET, self.eid_address)
-        elif self.eid_type == LispEIDType.IP6:
-            return socket.inet_pton(socket.AF_INET6, self.eid_address)
+        if self.eid_type == LispEIDType.PREFIX:
+            return {"type": self._type, "address": {"prefix": self.prefix}}
         elif self.eid_type == LispEIDType.MAC:
+            return {"type": self._type, "address": {"mac": self.mac}}
+        elif self.eid_type == LispEIDType.NSH:
             return Exception('Unimplemented')
-        raise Exception('Unknown EID type {!s}!'.format(self.eid_type))
+
+
+class LispKey(object):
+    """ Lisp Key """
+    def __init__(self, key_type, key):
+        self._key_type = key_type
+        self._key = key
+
+    @property
+    def packed(self):
+        return {"id": self._key_type, "key": self._key}
 
 
 class VppLispMapping(VppObject):
@@ -180,9 +198,7 @@ class VppLispMapping(VppObject):
 
     def get_lisp_mapping_dump_entry(self):
         return self.test.vapi.lisp_eid_table_dump(
-            eid_set=1, prefix_length=self._eid.prefix_length,
-            vni=self._vni, eid_type=self._eid.eid_type,
-            eid=self._eid.packed)
+            eid_set=1, vni=self._vni, eid=self._eid.packed)
 
     def query_vpp_config(self):
         mapping = self.get_lisp_mapping_dump_entry()
@@ -190,7 +206,7 @@ class VppLispMapping(VppObject):
 
     def object_id(self):
         return 'lisp-mapping-[%s]-%s-%s-%s' % (
-            self.vni, self.eid, self.priority, self.weight)
+            self.vni, self.eid.address, self.priority, self.weight)
 
 
 class VppLocalMapping(VppLispMapping):
@@ -199,8 +215,7 @@ class VppLocalMapping(VppLispMapping):
                  key_id=LispKeyIdType.NONE, key=''):
         super(VppLocalMapping, self).__init__(test, eid, vni, priority, weight)
         self._ls_name = ls_name
-        self._key_id = key_id
-        self._key = key
+        self._key = LispKey(key_id, key)
 
     @property
     def ls_name(self):
@@ -216,19 +231,29 @@ class VppLocalMapping(VppLispMapping):
 
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_local_eid(
-                ls_name=self._ls_name, eid_type=self._eid.eid_type,
-                eid=self._eid.packed, prefix_len=self._eid.prefix_length,
-                vni=self._vni, key_id=self._key_id, key=self._key)
+                locator_set_name=self._ls_name, eid=self._eid.packed,
+                vni=self._vni, key=self._key.packed)
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_local_eid(
-                ls_name=self._ls_name, eid_type=self._eid.eid_type,
-                eid=self._eid.packed, prefix_len=self._eid.prefix_length,
+                locator_set_name=self._ls_name, eid=self._eid.packed,
                 vni=self._vni, is_add=0)
 
     def object_id(self):
-        return 'lisp-eid-local-mapping-%s[%d]' % (self._eid, self._vni)
+        return 'lisp-eid-local-mapping-%s[%d]' % (self._eid.address, self._vni)
+
+
+class LispRemoteLocator(object):
+    def __init__(self, addr, priority=1, weight=1):
+        self.addr = addr
+        self.priority = priority
+        self.weight = weight
+
+    @property
+    def packed(self):
+        return {"priority": self.priority, "weight": self.weight,
+                "ip_address": self.addr}
 
 
 class VppRemoteMapping(VppLispMapping):
@@ -240,23 +265,24 @@ class VppRemoteMapping(VppLispMapping):
 
     @property
     def rlocs(self):
-        return self._rlocs
+        rlocs = []
+        for rloc in self._rlocs:
+            rlocs.append(rloc.packed)
+        return rlocs
 
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_remote_mapping(
-                rlocs=self._rlocs, eid_type=self._eid.eid_type,
-                eid=self._eid.packed, eid_prefix_len=self._eid.prefix_length,
-                vni=self._vni, rlocs_num=len(self._rlocs))
+                rlocs=self.rlocs, deid=self._eid.packed,
+                vni=self._vni, rloc_num=len(self._rlocs))
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_remote_mapping(
-                eid_type=self._eid.eid_type, eid=self._eid.packed,
-                eid_prefix_len=self._eid.prefix_length, vni=self._vni,
-                is_add=0, rlocs_num=0)
+                deid=self._eid.packed, vni=self._vni, is_add=0, rloc_num=0)
 
     def object_id(self):
-        return 'lisp-eid-remote-mapping-%s[%d]' % (self._eid, self._vni)
+        return 'lisp-eid-remote-mapping-%s[%d]' % (self._eid.address,
+                                                   self._vni)
 
 
 class VppLispAdjacency(VppObject):
@@ -288,22 +314,19 @@ class VppLispAdjacency(VppObject):
 
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_adjacency(
-                leid=self._leid.packed,
-                reid=self._reid.packed, eid_type=self._leid.eid_type,
-                leid_len=self._leid.prefix_length,
-                reid_len=self._reid.prefix_length, vni=self._vni)
+                leid=self._leid.packed, reid=self._reid.packed, vni=self._vni)
         self._test.registry.register(self, self.test.logger)
 
     @staticmethod
-    def eid_equal(eid, eid_type, eid_data, prefix_len):
-        if eid.eid_type != eid_type:
+    def eid_equal(eid, eid_api):
+        if eid.eid_type != eid_api.type:
             return False
 
-        if eid_type == LispEIDType.IP4 or eid_type == LispEIDType.IP6:
-            if eid.prefix_length != prefix_len:
+        if eid_api.type == LispEIDType.PREFIX:
+            if eid.address.prefixlen != eid_api.address.prefix.prefixlen:
                 return False
 
-        if eid.packed != eid_data[0:eid.data_length]:
+        if eid.address != eid_api.address:
             return False
 
         return True
@@ -311,19 +334,15 @@ class VppLispAdjacency(VppObject):
     def query_vpp_config(self):
         res = self.test.vapi.lisp_adjacencies_get(vni=self._vni)
         for adj in res.adjacencies:
-            if self.eid_equal(self._leid, adj.eid_type, adj.leid,
-                              adj.leid_prefix_len) and \
-                self.eid_equal(self._reid, adj.eid_type, adj.reid,
-                               adj.reid_prefix_len):
+            if self.eid_equal(self._leid, adj.leid) and \
+                    self.eid_equal(self._reid, adj.reid):
                 return True
         return False
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_adjacency(
-                leid=self._leid.packed,
-                reid=self._reid.packed, eid_type=self._leid.eid_type,
-                leid_len=self._leid.prefix_length,
-                reid_len=self._reid.prefix_length, vni=self._vni, is_add=0)
+                leid=self._leid.packed, reid=self._reid.packed,
+                vni=self._vni, is_add=0)
 
     def object_id(self):
         return 'lisp-adjacency-%s-%s[%d]' % (self._leid, self._reid, self._vni)

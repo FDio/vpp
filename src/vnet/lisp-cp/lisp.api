@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
-typedef local_locator
-{
-  u32 sw_if_index;
-  u8 priority;
-  u8 weight;
-};
+import "vnet/interface_types.api";
+import "vnet/lisp-cp/lisp_types.api";
 
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
@@ -34,8 +30,8 @@ manual_endian manual_print define lisp_add_del_locator_set
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  string locator_set_name[64];
   u32 locator_num;
   vl_api_local_locator_t locators[locator_num];
 };
@@ -65,75 +61,59 @@ autoreply define lisp_add_del_locator
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
-  u32 sw_if_index;
+  bool is_add [default=true];
+  string locator_set_name[64];
+  vl_api_interface_index_t sw_if_index;
   u8 priority;
   u8 weight;
 };
 
 /** \brief add or delete lisp eid-table
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add address if non-zero, else delete
-    @param eid_type:
-      0 : ipv4
-      1 : ipv6
-      2 : mac
-    @param eid - EID can be ip4, ip6 or mac
-    @param prefix_len - prefix len
-    @param locator_set_name - name of locator_set to add/del eid-table
-    @param vni - virtual network instance
-    @param key_id
-      HMAC_NO_KEY           0
-      HMAC_SHA_1_96         1
-      HMAC_SHA_256_128      2
-    @param key - secret key
+        @param client_index - opaque cookie to identify the sender
+        @param context - sender context, to match reply w/ request
+        @param is_add - add address if non-zero, else delete
+        @param eid - EID can be ip4, ip6 or mac
+        @param locator_set_name - name of locator_set to add/del eid-table
+        @param vni - virtual network instance
+        @param key - secret key
 */
 autoreply define lisp_add_del_local_eid
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 eid_type;
-  u8 eid[16];
-  u8 prefix_len;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  vl_api_eid_t eid;
+  string locator_set_name[64];
   u32 vni;
-  u16 key_id;
-  u8 key[64];
+  vl_api_hmac_key_t key;
 };
 
 /** \brief Add/delete map server
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero; delete otherwise
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - map server IP address
 */
 autoreply define lisp_add_del_map_server
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
 };
 
 /** \brief add or delete map-resolver
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
-    @param ip_address - array of address bytes
+    @param ip_address - ip address
 */
 autoreply define lisp_add_del_map_resolver
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
 };
 
 /** \brief enable or disable LISP feature
@@ -145,7 +125,7 @@ autoreply define lisp_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_enable [default=true];
 };
 
 /** \brief configure or disable LISP PITR node
@@ -158,24 +138,22 @@ autoreply define lisp_pitr_set_locator_set
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 ls_name[64];
+  bool is_add [default=true];
+  string ls_name[64];
 };
 
 /** \brief configure or disable use of PETR
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - Address is IPv4 if set and IPv6 otherwise
-    @param address - PETR IP address
+    @param ip_address - PETR IP address
     @param is_add - add locator set if non-zero, else disable pitr
 */
 autoreply define lisp_use_petr
 {
   u32 client_index;
   u32 context;
-  u8 is_ip4;
-  u8 address[16];
-  u8 is_add;
+  vl_api_address_t ip_address;
+  bool is_add [default=true];
 };
 
 /** \brief Request for LISP PETR status
@@ -191,16 +169,14 @@ define show_lisp_use_petr
 /** \brief LISP PETR status, enable or disable
     @param context - sender context, to match reply w/ request
     @param status - LISP PETR enable if non-zero, else disable
-    @param is_ip4 - Address is IPv4 if non-zero, else IPv6
     @param address - PETR IP address
 */
 define show_lisp_use_petr_reply
 {
   u32 context;
   i32 retval;
-  u8 status;
-  u8 is_ip4;
-  u8 address[16];
+  bool is_petr_enable [default=true];
+  vl_api_address_t ip_address;
 };
 
 /** \brief Get state of LISP RLOC probing
@@ -222,7 +198,7 @@ define show_lisp_rloc_probe_state_reply
 {
   u32 context;
   i32 retval;
-  u8 is_enabled;
+  bool is_enabled [default=true];
 };
 
 /** \brief enable/disable LISP RLOC probing
@@ -234,7 +210,7 @@ autoreply define lisp_rloc_probe_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
+  bool is_enable [default=true];
 };
 
 /** \brief enable/disable LISP map-register
@@ -246,7 +222,7 @@ autoreply define lisp_map_register_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
+  bool is_enable [default=true];
 };
 
 /** \brief Get state of LISP map-register
@@ -267,22 +243,20 @@ define show_lisp_map_register_state_reply
 {
   u32 context;
   i32 retval;
-  u8 is_enabled;
+  bool is_enabled [default=true];
 };
 
 /** \brief set LISP map-request mode. Based on configuration VPP will send
       src/dest or just normal destination map requests.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param mode - new map-request mode. Supported values are:
-      0 - destination only
-      1 - source/destination
+    @param is_src_dst - if non-zero source/destination else destination only
 */
 autoreply define lisp_map_request_mode
 {
   u32 client_index;
   u32 context;
-  u8 mode;
+  bool is_src_dst;
 };
 
 /** \brief Request for LISP map-request mode
@@ -298,21 +272,13 @@ define show_lisp_map_request_mode
 /** \brief Reply for show_lisp_map_request_mode
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
-    @param mode - map-request mode
+    @param is_src_dst - if non-zero source/destination else destination only
 */
 define show_lisp_map_request_mode_reply
 {
   u32 context;
   i32 retval;
-  u8 mode;
-};
-
-typedef remote_locator
-{
-  u8 is_ip4;
-  u8 priority;
-  u8 weight;
-  u8 addr[16];
+  bool is_src_dst;
 };
 
 /** \brief add or delete remote static mapping
@@ -323,10 +289,6 @@ typedef remote_locator
     @param del_all - if set, delete all remote mappings
     @param vni - virtual network instance
     @param action - negative map-reply action
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param deid - dst EID
     @param seid - src EID, valid only if is_src_dst is enabled
     @param rloc_num - number of remote locators
@@ -336,16 +298,13 @@ autoreply manual_print manual_endian define lisp_add_del_remote_mapping
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_src_dst;
-  u8 del_all;
+  bool is_add [default=true];
+  bool is_src_dst;
+  bool del_all;
   u32 vni;
   u8 action;
-  u8 eid_type;
-  u8 eid[16];
-  u8 eid_len;
-  u8 seid[16];
-  u8 seid_len;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
   u32 rloc_num;
   vl_api_remote_locator_t rlocs[rloc_num];
 };
@@ -355,10 +314,6 @@ autoreply manual_print manual_endian define lisp_add_del_remote_mapping
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
     @param vni - virtual network instance
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param reid - remote EID
     @param leid - local EID
 */
@@ -366,13 +321,10 @@ autoreply define lisp_add_del_adjacency
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   u32 vni;
-  u8 eid_type;
-  u8 reid[16];
-  u8 leid[16];
-  u8 reid_len;
-  u8 leid_len;
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
 };
 
 /** \brief add or delete map request itr rlocs
@@ -385,8 +337,8 @@ autoreply define lisp_add_del_map_request_itr_rlocs
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 locator_set_name[64];
+  bool is_add [default=true];
+  string locator_set_name[64];
 };
 
 /** \brief Reply for lisp_add_del_map_request_itr_rlocs
@@ -405,10 +357,10 @@ autoreply define lisp_eid_table_add_del_map
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   u32 vni;
   u32 dp_table;
-  u8 is_l2;
+  bool is_l2;
 };
 
 /** \brief Request for map lisp locator status
@@ -423,7 +375,7 @@ define lisp_locator_dump
   u32 client_index;
   u32 context;
   u32 ls_index;
-  u8 ls_name[64];
+  string ls_name[64];
   u8 is_index_set;
 };
 
@@ -431,6 +383,7 @@ define lisp_locator_dump
     @param local - if is set, then locator is local
     @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
+    @param ip_address - ip address
     @param priority - locator priority
     @param weight - locator weight
   */
@@ -438,9 +391,8 @@ define lisp_locator_details
 {
   u32 context;
   u8 local;
-  u32 sw_if_index;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t ip_address;
   u8 priority;
   u8 weight;
 };
@@ -454,23 +406,25 @@ define lisp_locator_set_details
 {
   u32 context;
   u32 ls_index;
-  u8 ls_name[64];
+  string ls_name[64];
+};
+
+enum lisp_locator_set_filter : u8 {
+        LISP_LOCATOR_SET_FILTER_API_ALL = 0,
+        LISP_LOCATOR_SET_FILTER_API_LOCAL = 1,
+        LISP_LOCATOR_SET_FILTER_API_REMOTE = 2,
 };
 
 /** \brief Request for locator_set summary status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param filter - filter type
-      Supported values:
-        0: all locator sets
-        1: local locator sets
-        2: remote locator sets
  */
 define lisp_locator_set_dump
 {
   u32 client_index;
   u32 context;
-  u8 filter;
+  vl_api_lisp_locator_set_filter_t filter;
 };
 
 /** \brief Dump lisp eid-table
@@ -504,18 +458,14 @@ define lisp_eid_table_details
   u32 context;
   u32 locator_set_index;
   u8 action;
-  u8 is_local;
-  u8 eid_type;
-  u8 is_src_dst;
+  bool is_local;
+  bool is_src_dst;
   u32 vni;
-  u8 eid[16];
-  u8 eid_prefix_len;
-  u8 seid[16];
-  u8 seid_prefix_len;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
   u32 ttl;
   u8 authoritative;
-  u16 key_id;
-  u8 key[64];
+  vl_api_hmac_key_t key;
 };
 
 /** \brief Request for eid table summary status
@@ -544,9 +494,8 @@ define lisp_eid_table_dump
   u8 eid_set;
   u8 prefix_length;
   u32 vni;
-  u8 eid_type;
-  u8 eid[16];
-  u8 filter;
+  vl_api_eid_t eid;
+  vl_api_lisp_locator_set_filter_t filter;
 };
 
 /** \brief LISP adjacency
@@ -561,11 +510,8 @@ define lisp_eid_table_dump
   */
 typedef lisp_adjacency
 {
-  u8 eid_type;
-  u8 reid[16];
-  u8 leid[16];
-  u8 reid_prefix_len;
-  u8 leid_prefix_len;
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
 };
 
 /** \brief LISP adjacency reply
@@ -612,7 +558,7 @@ define lisp_eid_table_map_dump
 {
   u32 client_index;
   u32 context;
-  u8 is_l2;
+  bool is_l2;
 };
 
 /** \brief Dumps all VNIs used in mappings
@@ -636,14 +582,12 @@ define lisp_eid_table_vni_details
 };
 
 /** \brief LISP map resolver status
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
  */
 define lisp_map_resolver_details
 {
   u32 context;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_address_t ip_address;
 };
 
 /** \brief Request for map resolver summary status
@@ -657,14 +601,12 @@ define lisp_map_resolver_dump
 };
 
 /** \brief LISP map server details
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
  */
 define lisp_map_server_details
 {
   u32 context;
-  u8 is_ipv6;
-  u8 ip_address[16];
+  vl_api_address_t ip_address;
 };
 
 /** \brief Request for map server summary status
@@ -696,8 +638,8 @@ define show_lisp_status_reply
 {
   u32 context;
   i32 retval;
-  u8 feature_status;
-  u8 gpe_status;
+  bool is_lisp_enabled;
+  bool is_gpe_enabled;
 };
 
 /** \brief Get LISP map request itr rlocs status
@@ -716,7 +658,7 @@ define lisp_get_map_request_itr_rlocs_reply
 {
   u32 context;
   i32 retval;
-  u8 locator_set_name[64];
+  string locator_set_name[64];
 };
 
 /** \brief Request for lisp pitr status
@@ -738,8 +680,8 @@ define show_lisp_pitr_reply
 {
   u32 context;
   i32 retval;
-  u8 status;
-  u8 locator_set_name[64];
+  bool is_enabled;
+  string locator_set_name[64];
 };
 
 /*
@@ -747,4 +689,3 @@ define show_lisp_pitr_reply
  * eval: (c-set-style "gnu")
  * End:
  */
- 

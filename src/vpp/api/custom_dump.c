@@ -2607,7 +2607,7 @@ static void *vl_api_lisp_enable_disable_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: lisp_enable_disable %s",
-	      mp->is_en ? "enable" : "disable");
+	      mp->is_enable ? "enable" : "disable");
 
   FINISH;
 }
@@ -2674,13 +2674,11 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", (mp->vni));
 
-  s = format (s, "eid %U ", format_lisp_flat_eid,
-	      mp->eid_type, mp->eid, mp->eid_len);
+  s = format (s, "eid %U ", format_lisp_flat_eid, mp->deid);
 
   if (mp->is_src_dst)
     {
-      s = format (s, "seid %U ", format_lisp_flat_eid,
-		  mp->eid_type, mp->seid, mp->seid_len);
+      s = format (s, "seid %U ", format_lisp_flat_eid, mp->seid);
     }
   rloc_num = (mp->rloc_num);
 
@@ -2700,8 +2698,7 @@ static void *vl_api_lisp_add_del_adjacency_t_print
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", (mp->vni));
   s = format (s, "reid %U leid %U ",
-	      format_lisp_flat_eid, mp->eid_type, mp->reid, mp->reid_len,
-	      format_lisp_flat_eid, mp->eid_type, mp->leid, mp->leid_len);
+	      format_lisp_flat_eid, mp->reid, format_lisp_flat_eid, mp->leid);
 
   FINISH;
 }
@@ -2747,14 +2744,13 @@ static void *vl_api_lisp_add_del_local_eid_t_print
     s = format (s, "del ");
 
   s = format (s, "vni %d ", (mp->vni));
-  s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type, mp->eid,
-	      mp->prefix_len);
+  s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid);
   s = format (s, "locator-set %s ", mp->locator_set_name);
-  if (*mp->key)
+  if (mp->key.id)
     {
-      u32 key_id = mp->key_id;
+      u32 key_id = mp->key.id;
       s = format (s, "key-id %U", format_hmac_key_id, key_id);
-      s = format (s, "secret-key %s", mp->key);
+      s = format (s, "secret-key %s", mp->key.key);
     }
   FINISH;
 }
@@ -2779,10 +2775,10 @@ static void *vl_api_lisp_add_del_map_resolver_t_print
   if (!mp->is_add)
     s = format (s, "del ");
 
-  if (mp->is_ipv6)
-    s = format (s, "%U ", format_ip6_address, mp->ip_address);
+  if (mp->ip_address.af)
+    s = format (s, "%U ", format_ip6_address, mp->ip_address.un.ip6);
   else
-    s = format (s, "%U ", format_ip4_address, mp->ip_address);
+    s = format (s, "%U ", format_ip4_address, mp->ip_address.un.ip4);
 
   FINISH;
 }
@@ -2794,7 +2790,7 @@ static void *vl_api_gpe_enable_disable_t_print
 
   s = format (0, "SCRIPT: gpe_enable_disable ");
 
-  s = format (s, "%s ", mp->is_en ? "enable" : "disable");
+  s = format (s, "%s ", mp->is_enable ? "enable" : "disable");
 
   FINISH;
 }
@@ -2866,16 +2862,7 @@ static void *vl_api_lisp_map_request_mode_t_print
 
   s = format (0, "SCRIPT: lisp_map_request_mode ");
 
-  switch (mp->mode)
-    {
-    case 0:
-      s = format (s, "dst-only");
-      break;
-    case 1:
-      s = format (s, "src-dst");
-    default:
-      break;
-    }
+  s = mp->is_src_dst ? format (s, "src-dst") : format (s, "dst-only");
 
   FINISH;
 }
@@ -2890,8 +2877,7 @@ static void *vl_api_lisp_eid_table_dump_t_print
   if (mp->eid_set)
     {
       s = format (s, "vni %d ", (mp->vni));
-      s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type,
-		  mp->eid, mp->prefix_length);
+      s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid);
       switch (mp->filter)
 	{
 	case 1:
@@ -2899,6 +2885,8 @@ static void *vl_api_lisp_eid_table_dump_t_print
 	  break;
 	case 2:
 	  s = format (s, "remote ");
+	  break;
+	default:
 	  break;
 	}
     }
@@ -2911,7 +2899,7 @@ static void *vl_api_lisp_rloc_probe_enable_disable_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: lisp_rloc_probe_enable_disable ");
-  if (mp->is_enabled)
+  if (mp->is_enable)
     s = format (s, "enable");
   else
     s = format (s, "disable");
@@ -2925,7 +2913,7 @@ static void *vl_api_lisp_map_register_enable_disable_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: lisp_map_register_enable_disable ");
-  if (mp->is_enabled)
+  if (mp->is_enable)
     s = format (s, "enable");
   else
     s = format (s, "disable");

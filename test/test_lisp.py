@@ -11,7 +11,7 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
 from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
-    VppLispLocatorSet, VppRemoteMapping
+    VppLispLocatorSet, VppRemoteMapping, LispRemoteLocator
 from util import ppp, ForeignAddressFactory
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
@@ -151,7 +151,7 @@ class TestLisp(VppTestCase):
 
     def setUp(self):
         super(TestLisp, self).setUp()
-        self.vapi.lisp_enable_disable(is_enabled=1)
+        self.vapi.lisp_enable_disable(is_enable=1)
 
     def test_lisp_basic_encap(self):
         """Test case for basic encapsulation"""
@@ -159,26 +159,21 @@ class TestLisp(VppTestCase):
         self.deid_ip4_net = self.faf.net
         self.deid_ip4 = self.faf.get_ip4()
         self.seid_ip4 = '{!s}/{!s}'.format(self.pg0.local_ip4, 32)
-        self.rloc_ip4 = self.pg1.remote_ip4n
+        self.rloc_ip4 = self.pg1.remote_ip4
 
         test_cases = [
             {
                 'name': 'basic ip4 over ip4',
-                'locator-sets': [VppLispLocatorSet(self, b'ls-4o4')],
+                'locator-sets': [VppLispLocatorSet(self, 'ls-4o4')],
                 'locators': [
-                    VppLispLocator(self, self.pg1.sw_if_index, b'ls-4o4')
+                    VppLispLocator(self, self.pg1.sw_if_index, 'ls-4o4')
                 ],
                 'local-mappings': [
-                    VppLocalMapping(self, self.seid_ip4, b'ls-4o4')
+                    VppLocalMapping(self, self.seid_ip4, 'ls-4o4')
                 ],
                 'remote-mappings': [
                     VppRemoteMapping(self, self.deid_ip4_net,
-                                     [{
-                                         "is_ip4": 1,
-                                         "priority": 1,
-                                         "weight": 1,
-                                         "addr": self.rloc_ip4
-                                     }])
+                                     [LispRemoteLocator(self.rloc_ip4)])
                 ],
                 'adjacencies': [
                     VppLispAdjacency(self, self.seid_ip4, self.deid_ip4_net)
