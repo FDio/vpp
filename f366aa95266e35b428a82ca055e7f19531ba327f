@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f4f4ef3f_c428fdb3",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-01-30T17:26:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8c5dc22e_ab1e2613",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b78626a7_4e360ffe",
         "filename": "src/plugins/quic/quic_crypto.c",
         "patchSetId": 23
@@ -33,6 +51,24 @@
       "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1367468e_9fb78361",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-01-30T17:26:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b78626a7_4e360ffe",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "bd99e823_b136245a",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-01-30T17:26:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "886a8774_4922c8b0",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e68f8d92_d86c6c4a",
         "filename": "src/plugins/quic/quic_crypto.c",
         "patchSetId": 23
@@ -67,6 +121,24 @@
       "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3870afe_3ea7c681",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-01-30T17:26:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e68f8d92_d86c6c4a",
+      "revId": "f366aa95266e35b428a82ca055e7f19531ba327f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
