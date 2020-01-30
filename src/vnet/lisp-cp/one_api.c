@@ -140,14 +140,17 @@ unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
   u32 i;
   locator_t *locs = 0, loc;
   vl_api_one_remote_locator_t *r;
+  ip46_address_t ip46;
 
   for (i = 0; i < rloc_num; i++)
     {
       /* remote locators */
       r = &rmt_locs[i];
       clib_memset (&loc, 0, sizeof (loc));
-      gid_address_ip_set (&loc.address, &r->addr,
-			  r->is_ip4 ? AF_IP4 : AF_IP6);
+      ip_address_decode (&r->addr, &ip46);
+      ip_address_from_46 (&loc.address.ippref.addr, &ip46);
+      loc.address.ippref.len =
+	ip_address_max_len (loc.address.ippref.addr.version);
 
       loc.priority = r->priority;
       loc.weight = r->weight;

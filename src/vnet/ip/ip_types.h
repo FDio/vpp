@@ -62,6 +62,9 @@ extern u8 *format_ip_address (u8 * s, va_list * args);
 extern uword unformat_ip_address (unformat_input_t * input, va_list * args);
 extern void ip_address_to_46 (const ip_address_t * addr,
 			      ip46_address_t * a, fib_protocol_t * proto);
+extern void ip_address_from_46 (ip_address_t * ip_out,
+				const ip46_address_t * ip46);
+
 
 /* *INDENT-OFF* */
 typedef struct ip_prefix
