@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c8a6bb28_c7f81544",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 1135,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-01-30T17:26:42Z",
+      "side": 1,
+      "message": "Please don\u0027t put broken tests in \"extended\".  We can do \u0027@unittest.skip(\"not working\")\u0027",
+      "range": {
+        "startLine": 1135,
+        "startChar": 4,
+        "endLine": 1135,
+        "endChar": 74
+      },
+      "revId": "9ef9f01a8663df04a8e248f76678ea0c945b44c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
