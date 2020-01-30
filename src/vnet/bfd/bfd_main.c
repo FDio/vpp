@@ -874,11 +874,6 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
       pkt->req_min_rx =
 	clib_host_to_net_u32 (bfd_clocks_to_usec
 			      (bm, bs->effective_required_min_rx_clocks));
-      if (clib_net_to_host_u32 (pkt->req_min_rx) < 1000000)
-	{
-	  clib_warning ("BUG: fix echo packet req_min_rx < 1000000");
-	  pkt->req_min_rx = clib_host_to_net_u32 (1000000);
-	}
     }
   else
     {
