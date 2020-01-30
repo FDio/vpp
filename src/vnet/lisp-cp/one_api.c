@@ -25,6 +25,9 @@
 #include <vnet/lisp-cp/control.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_api_one_add_del_locator_set_t_endian vl_noop_handler
@@ -135,19 +138,20 @@ _(ONE_SHOW_PETR_MODE, one_show_petr_mode)                               \
 
 
 static locator_t *
-unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
+unformat_one_locs (vl_api_remote_locator_t * rmt_locs, u32 rloc_num)
 {
   u32 i;
   locator_t *locs = 0, loc;
-  vl_api_one_remote_locator_t *r;
+  vl_api_remote_locator_t *r;
 
   for (i = 0; i < rloc_num; i++)
     {
       /* remote locators */
       r = &rmt_locs[i];
       clib_memset (&loc, 0, sizeof (loc));
-      gid_address_ip_set (&loc.address, &r->addr,
-			  r->is_ip4 ? AF_IP4 : AF_IP6);
+      ip_address_decode2 (&r->ip_address, &loc.address.ippref.addr);
+      loc.address.ippref.len =
+	ip_address_max_len (loc.address.ippref.addr.version);
 
       loc.priority = r->priority;
       loc.weight = r->weight;
@@ -194,7 +198,7 @@ vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *
   int rv = 0;
   vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
   locator_t locator;
-  vl_api_one_local_locator_t *ls_loc;
+  vl_api_local_locator_t *ls_loc;
   u32 ls_index = ~0, locator_num;
   u8 *locator_name = NULL;
   int i;
@@ -281,34 +285,31 @@ typedef struct
 } __attribute__ ((__packed__)) lisp_nsh_api_t;
 
 static int
-unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
-		      u8 len)
+unformat_one_eid_api (gid_address_t * dst, u32 vni, vl_api_eid_t * eid)
 {
-  lisp_nsh_api_t *nsh;
+  fib_prefix_t prefix;
 
-  switch (type)
+  switch (eid->type)
     {
-    case 0:			/* ipv4 */
+    case EID_TYPE_API_PREFIX:
+      ip_prefix_decode (&eid->address.prefix, &prefix);
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP4);
-      gid_address_ippref_len (dst) = len;
+      if (prefix.fp_proto == FIB_PROTOCOL_IP4)
+	gid_address_ip_set (dst, &prefix.fp_addr.ip4, AF_IP4);
+      if (prefix.fp_proto == FIB_PROTOCOL_IP6)
+	gid_address_ip_set (dst, &prefix.fp_addr.ip6, AF_IP6);
+      gid_address_ippref_len (dst) = prefix.fp_len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
-    case 1:			/* ipv6 */
-      gid_address_type (dst) = GID_ADDR_IP_PREFIX;
-      gid_address_ip_set (dst, src, AF_IP6);
-      gid_address_ippref_len (dst) = len;
-      ip_prefix_normalize (&gid_address_ippref (dst));
-      break;
-    case 2:			/* l2 mac */
+    case EID_TYPE_API_MAC:
       gid_address_type (dst) = GID_ADDR_MAC;
-      clib_memcpy (&gid_address_mac (dst), src, 6);
+      mac_address_decode (eid->address.mac,
+			  (mac_address_t *) & gid_address_mac (dst));
       break;
-    case 3:			/* NSH */
+    case EID_TYPE_API_NSH:
       gid_address_type (dst) = GID_ADDR_NSH;
-      nsh = src;
-      gid_address_nsh_spi (dst) = clib_net_to_host_u32 (nsh->spi);
-      gid_address_nsh_si (dst) = nsh->si;
+      gid_address_nsh_spi (dst) = clib_net_to_host_u32 (eid->address.nsh.spi);
+      gid_address_nsh_si (dst) = eid->address.nsh.si;
       break;
     default:
       /* unknown type */
@@ -318,6 +319,32 @@ unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
   gid_address_vni (dst) = vni;
 
   return 0;
+}
+
+static void
+fid_to_api_eid (fid_address_t * fid, vl_api_eid_t * eid)
+{
+  fib_prefix_t fib_prefix;
+  u32 eid_type;
+
+  switch (fid_addr_type (fid))
+    {
+    case FID_ADDR_IP_PREF:
+      eid_type = EID_TYPE_API_PREFIX;
+      ip_prefix_to_fib_prefix (&fid_addr_ippref (fid), &fib_prefix);
+      ip_prefix_encode (&fib_prefix, &eid->address.prefix);
+      break;
+    case FID_ADDR_MAC:
+      eid_type = EID_TYPE_API_MAC;
+      mac_address_encode ((mac_address_t *) fid_addr_mac (fid),
+			  eid->address.mac);
+      break;
+    default:
+      /* unknown type */
+      return;
+    }
+
+  eid->type = eid_type;
 }
 
 static void
@@ -334,8 +361,7 @@ vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
   clib_memset (a, 0, sizeof (a[0]));
   clib_memset (eid, 0, sizeof (eid[0]));
 
-  rv = unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni),
-			     mp->eid_type, mp->eid, mp->prefix_len);
+  rv = unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni), &mp->eid);
   if (rv)
     goto out;
 
@@ -356,8 +382,8 @@ vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
     }
   locator_set_index = p[0];
 
-  if (*mp->key)
-    key = format (0, "%s", mp->key);
+  if (mp->key.id != KEY_ID_API_HMAC_NO_KEY)
+    key = format (0, "%s", mp->key.key);
 
   /* XXX treat batch configuration */
   a->is_add = mp->is_add;
@@ -365,7 +391,7 @@ vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
   a->locator_set_index = locator_set_index;
   a->local = 1;
   a->key = key;
-  a->key_id = clib_net_to_host_u16 (mp->key_id);
+  a->key_id = mp->key.id;
 
   rv = vnet_lisp_add_del_local_mapping (a, &map_index);
 
@@ -397,7 +423,8 @@ vl_api_one_add_del_map_server_t_handler (vl_api_one_add_del_map_server_t * mp)
 
   clib_memset (&addr, 0, sizeof (addr));
 
-  ip_address_set (&addr, mp->ip_address, mp->is_ipv6 ? AF_IP6 : AF_IP4);
+  ip_address_decode2 (&mp->ip_address, &addr);
+
   rv = vnet_lisp_add_del_map_server (&addr, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_MAP_SERVER_REPLY);
@@ -413,8 +440,9 @@ vl_api_one_add_del_map_resolver_t_handler (vl_api_one_add_del_map_resolver_t
 
   clib_memset (a, 0, sizeof (a[0]));
 
+  ip_address_decode2 (&mp->ip_address, &a->address);
+
   a->is_add = mp->is_add;
-  ip_address_set (&a->address, mp->ip_address, mp->is_ipv6 ? AF_IP6 : AF_IP4);
 
   rv = vnet_lisp_add_del_map_resolver (a);
 
@@ -428,7 +456,7 @@ static void
   vl_api_one_map_register_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  vnet_lisp_map_register_enable_disable (mp->is_enabled);
+  vnet_lisp_map_register_enable_disable (mp->is_enable);
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_REPLY);
 }
 
@@ -439,7 +467,7 @@ static void
   vl_api_one_rloc_probe_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  vnet_lisp_rloc_probe_enable_disable (mp->is_enabled);
+  vnet_lisp_rloc_probe_enable_disable (mp->is_enable);
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_REPLY);
 }
 
@@ -449,7 +477,7 @@ vl_api_one_enable_disable_t_handler (vl_api_one_enable_disable_t * mp)
   vl_api_one_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  vnet_lisp_enable_disable (mp->is_en);
+  vnet_lisp_enable_disable (mp->is_enable);
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_REPLY);
 }
 
@@ -520,7 +548,8 @@ vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t * mp)
   int rv = 0;
   ip_address_t addr;
 
-  ip_address_set (&addr, &mp->address, mp->is_ip4 ? AF_IP4 : AF_IP6);
+  ip_address_decode2 (&mp->ip_address, &addr);
+
   rv = vnet_lisp_use_petr (&addr, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_USE_PETR_REPLY);
@@ -557,22 +586,8 @@ vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
   {
     rmp->status = status;
     ip_address_t *ip = &gid_address_ip (&addr);
-    switch (ip_addr_version (ip))
-      {
-      case AF_IP4:
-        clib_memcpy (rmp->address, &ip_addr_v4 (ip),
-                     sizeof (ip_addr_v4 (ip)));
-        break;
 
-      case AF_IP6:
-        clib_memcpy (rmp->address, &ip_addr_v6 (ip),
-                     sizeof (ip_addr_v6 (ip)));
-        break;
-
-      default:
-        ASSERT (0);
-      }
-    rmp->is_ip4 = (gid_address_ip_version (&addr) == AF_IP4);
+    ip_address_encode2 (ip, &rmp->ip_address);
   });
   /* *INDENT-ON* */
 }
@@ -612,8 +627,7 @@ static void
 
   clib_memset (eid, 0, sizeof (eid[0]));
 
-  rv = unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni),
-			     mp->eid_type, mp->eid, mp->eid_len);
+  rv = unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni), &mp->deid);
   if (rv)
     goto send_reply;
 
@@ -666,10 +680,12 @@ vl_api_one_add_del_adjacency_t_handler (vl_api_one_add_del_adjacency_t * mp)
   int rv = 0;
   clib_memset (a, 0, sizeof (a[0]));
 
-  rv = unformat_one_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni),
-			     mp->eid_type, mp->leid, mp->leid_len);
-  rv |= unformat_one_eid_api (&a->reid, clib_net_to_host_u32 (mp->vni),
-			      mp->eid_type, mp->reid, mp->reid_len);
+  rv =
+    unformat_one_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni),
+			  &mp->leid);
+  rv |=
+    unformat_one_eid_api (&a->reid, clib_net_to_host_u32 (mp->vni),
+			  &mp->reid);
 
   if (rv)
     goto send_reply;
@@ -700,8 +716,7 @@ send_one_locator_details (lisp_cp_main_t * lcm,
     }
   else
     {
-      rmp->is_ipv6 = gid_address_ip_version (&loc->address);
-      ip_address_copy_addr (rmp->ip_address, &gid_address_ip (&loc->address));
+      ip_address_encode2 (&loc->address.ippref.addr, &rmp->ip_address);
     }
   rmp->priority = loc->priority;
   rmp->weight = loc->weight;
@@ -811,83 +826,30 @@ vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
 }
 
 static void
-one_fid_put_api (u8 * dst, fid_address_t * src, u8 * prefix_length)
-{
-  ASSERT (prefix_length);
-  ip_prefix_t *ippref = &fid_addr_ippref (src);
-
-  switch (fid_addr_type (src))
-    {
-    case FID_ADDR_IP_PREF:
-      if (ip_prefix_version (ippref) == AF_IP4)
-	clib_memcpy (dst, &ip_prefix_v4 (ippref), 4);
-      else
-	clib_memcpy (dst, &ip_prefix_v6 (ippref), 16);
-      prefix_length[0] = ip_prefix_len (ippref);
-      break;
-
-    case FID_ADDR_MAC:
-      prefix_length[0] = 0;
-      clib_memcpy (dst, fid_addr_mac (src), 6);
-      break;
-
-    default:
-      clib_warning ("Unknown FID type %d!", fid_addr_type (src));
-      break;
-    }
-}
-
-static u8
-fid_type_to_api_type (fid_address_t * fid)
-{
-  ip_prefix_t *ippref;
-
-  switch (fid_addr_type (fid))
-    {
-    case FID_ADDR_IP_PREF:
-      ippref = &fid_addr_ippref (fid);
-      if (ip_prefix_version (ippref) == AF_IP4)
-	return 0;
-      else if (ip_prefix_version (ippref) == AF_IP6)
-	return 1;
-      else
-	return ~0;
-
-    case FID_ADDR_MAC:
-      return 2;
-    case FID_ADDR_NSH:
-      return 3;
-    }
-
-  return ~0;
-}
-
-static void
 send_one_eid_table_details (mapping_t * mapit,
 			    vl_api_registration_t * reg, u32 context,
 			    u8 filter)
 {
-  fid_address_t *fid;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *ls = 0;
   vl_api_one_eid_table_details_t *rmp = NULL;
   gid_address_t *gid = NULL;
-  u8 *mac = 0;
-  ip_prefix_t *ip_prefix = NULL;
+  u32 eid_type;
+  fib_prefix_t fib_prefix;
 
   if (mapit->pitr_set || mapit->nsh_set)
     return;
 
-  switch (filter)
+  switch (ntohl (filter))
     {
-    case 0:			/* all mappings */
+    case ONE_FILTER_API_ALL:	/* all mappings */
       break;
 
-    case 1:			/* local only */
+    case ONE_FILTER_API_LOCAL:	/* local only */
       if (!mapit->local)
 	return;
       break;
-    case 2:			/* remote only */
+    case ONE_FILTER_API_REMOTE:	/* remote only */
       if (mapit->local)
 	return;
       break;
@@ -897,8 +859,6 @@ send_one_eid_table_details (mapping_t * mapit,
     }
 
   gid = &mapit->eid;
-  ip_prefix = &gid_address_ippref (gid);
-  mac = gid_address_mac (gid);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
@@ -918,47 +878,37 @@ send_one_eid_table_details (mapping_t * mapit,
   switch (gid_address_type (gid))
     {
     case GID_ADDR_SRC_DST:
-      rmp->is_src_dst = 1;
-      fid = &gid_address_sd_src (gid);
-      rmp->eid_type = fid_type_to_api_type (fid);
-      one_fid_put_api (rmp->seid, &gid_address_sd_src (gid),
-		       &rmp->seid_prefix_len);
-      one_fid_put_api (rmp->eid, &gid_address_sd_dst (gid),
-		       &rmp->eid_prefix_len);
+      fid_to_api_eid (&gid_address_sd_src (gid), &rmp->seid);
+      fid_to_api_eid (&gid_address_sd_dst (gid), &rmp->deid);
       break;
     case GID_ADDR_IP_PREFIX:
-      rmp->eid_prefix_len = ip_prefix_len (ip_prefix);
-      if (ip_prefix_version (ip_prefix) == AF_IP4)
-	{
-	  rmp->eid_type = 0;	/* ipv4 type */
-	  clib_memcpy (rmp->eid, &ip_prefix_v4 (ip_prefix),
-		       sizeof (ip_prefix_v4 (ip_prefix)));
-	}
-      else
-	{
-	  rmp->eid_type = 1;	/* ipv6 type */
-	  clib_memcpy (rmp->eid, &ip_prefix_v6 (ip_prefix),
-		       sizeof (ip_prefix_v6 (ip_prefix)));
-	}
+      eid_type = EID_TYPE_API_PREFIX;
+      rmp->seid.type = eid_type;
+      ip_prefix_to_fib_prefix (&gid_address_ippref (gid), &fib_prefix);
+      ip_prefix_encode (&fib_prefix, &rmp->seid.address.prefix);
       break;
     case GID_ADDR_MAC:
-      rmp->eid_type = 2;	/* l2 mac type */
-      clib_memcpy (rmp->eid, mac, 6);
+      eid_type = EID_TYPE_API_MAC;
+      rmp->seid.type = eid_type;
+      mac_address_encode ((mac_address_t *) gid_address_mac (gid),
+			  rmp->seid.address.mac);
       break;
     case GID_ADDR_NSH:
-      rmp->eid_type = 3;	/* NSH type */
-      lisp_nsh_api_t nsh;
-      nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (gid));
-      nsh.si = gid_address_nsh_si (gid);
-      clib_memcpy (rmp->eid, &nsh, sizeof (nsh));
+      eid_type = EID_TYPE_API_NSH;
+      rmp->seid.type = eid_type;
+      rmp->seid.address.nsh.spi =
+	clib_host_to_net_u32 (gid_address_nsh_spi (gid));
+      rmp->seid.address.nsh.si = gid_address_nsh_si (gid);
       break;
     default:
-      ASSERT (0);
+      /* unknown type */
+      return;
     }
+
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (gid_address_vni (gid));
-  rmp->key_id = clib_host_to_net_u16 (mapit->key_id);
-  memcpy (rmp->key, mapit->key, vec_len (mapit->key));
+  rmp->key.id = mapit->key_id;
+  memcpy (rmp->key.key, mapit->key, vec_len (mapit->key));
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
@@ -979,8 +929,7 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
     {
       clib_memset (eid, 0, sizeof (*eid));
 
-      unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni),
-			    mp->eid_type, mp->eid, mp->prefix_length);
+      unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni), &mp->eid);
 
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
       if ((u32) ~ 0 == mi)
@@ -1012,23 +961,9 @@ send_one_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ONE_MAP_SERVER_DETAILS);
 
-  switch (ip_addr_version (ip))
-    {
-    case AF_IP4:
-      rmp->is_ipv6 = 0;
-      clib_memcpy (rmp->ip_address, &ip_addr_v4 (ip),
-		   sizeof (ip_addr_v4 (ip)));
-      break;
 
-    case AF_IP6:
-      rmp->is_ipv6 = 1;
-      clib_memcpy (rmp->ip_address, &ip_addr_v6 (ip),
-		   sizeof (ip_addr_v6 (ip)));
-      break;
+  ip_address_encode2 (ip, &rmp->ip_address);
 
-    default:
-      ASSERT (0);
-    }
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -1061,23 +996,7 @@ send_one_map_resolver_details (ip_address_t * ip,
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ONE_MAP_RESOLVER_DETAILS);
 
-  switch (ip_addr_version (ip))
-    {
-    case AF_IP4:
-      rmp->is_ipv6 = 0;
-      clib_memcpy (rmp->ip_address, &ip_addr_v4 (ip),
-		   sizeof (ip_addr_v4 (ip)));
-      break;
-
-    case AF_IP6:
-      rmp->is_ipv6 = 1;
-      clib_memcpy (rmp->ip_address, &ip_addr_v6 (ip),
-		   sizeof (ip_addr_v6 (ip)));
-      break;
-
-    default:
-      ASSERT (0);
-    }
+  ip_address_encode2 (ip, &rmp->ip_address);
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -1164,7 +1083,8 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
   lisp_adjacency_t *adj;
   vl_api_one_adjacency_t a;
   u32 i, n = vec_len (adjs);
-  lisp_nsh_api_t nsh;
+  fib_prefix_t rfib_prefix, lfib_prefix;
+  u32 eid_type;
 
   for (i = 0; i < n; i++)
     {
@@ -1174,39 +1094,35 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
       switch (gid_address_type (&adj->reid))
 	{
 	case GID_ADDR_IP_PREFIX:
-	  a.reid_prefix_len = gid_address_ippref_len (&adj->reid);
-	  a.leid_prefix_len = gid_address_ippref_len (&adj->leid);
-	  if (gid_address_ip_version (&adj->reid) == AF_IP4)
-	    {
-	      a.eid_type = 0;	/* ipv4 type */
-	      clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 4);
-	      clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 4);
-	    }
-	  else
-	    {
-	      a.eid_type = 1;	/* ipv6 type */
-	      clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 16);
-	      clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 16);
-	    }
+	  eid_type = EID_TYPE_API_PREFIX;
+	  ip_prefix_to_fib_prefix (&gid_address_ippref (&adj->reid),
+				   &rfib_prefix);
+	  ip_prefix_to_fib_prefix (&gid_address_ippref (&adj->leid),
+				   &lfib_prefix);
+	  ip_prefix_encode (&rfib_prefix, &a.reid.address.prefix);
+	  ip_prefix_encode (&lfib_prefix, &a.leid.address.prefix);
 	  break;
 	case GID_ADDR_MAC:
-	  a.eid_type = 2;	/* l2 mac type */
-	  mac_copy (a.reid, gid_address_mac (&adj->reid));
-	  mac_copy (a.leid, gid_address_mac (&adj->leid));
+	  eid_type = EID_TYPE_API_PREFIX;
+	  mac_address_encode ((mac_address_t *) gid_address_mac (&adj->reid),
+			      a.reid.address.mac);
+	  mac_address_encode ((mac_address_t *) gid_address_mac (&adj->leid),
+			      a.leid.address.mac);
 	  break;
 	case GID_ADDR_NSH:
-	  a.eid_type = 3;	/* NSH type */
-	  nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (&adj->reid));
-	  nsh.si = gid_address_nsh_si (&adj->reid);
-	  clib_memcpy (a.reid, &nsh, sizeof (nsh));
-
-	  nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (&adj->leid));
-	  nsh.si = gid_address_nsh_si (&adj->leid);
-	  clib_memcpy (a.leid, &nsh, sizeof (nsh));
+	  eid_type = EID_TYPE_API_PREFIX;
+	  a.reid.address.nsh.spi =
+	    clib_host_to_net_u32 (gid_address_nsh_spi (&adj->reid));
+	  a.reid.address.nsh.si = gid_address_nsh_si (&adj->reid);
+	  a.leid.address.nsh.spi =
+	    clib_host_to_net_u32 (gid_address_nsh_spi (&adj->leid));
+	  a.leid.address.nsh.si = gid_address_nsh_si (&adj->leid);
 	  break;
 	default:
 	  ASSERT (0);
 	}
+      a.reid.type = eid_type;
+      a.leid.type = eid_type;
       dst[i] = a;
     }
 }
@@ -1221,7 +1137,7 @@ static void
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_RLOC_PROBE_STATE_REPLY,
   {
-    rmp->is_enabled = vnet_lisp_rloc_probe_state_get ();
+    rmp->is_enable = vnet_lisp_rloc_probe_state_get ();
   });
   /* *INDENT-ON* */
 }
@@ -1236,7 +1152,7 @@ static void
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_STATE_REPLY,
   {
-    rmp->is_enabled = vnet_lisp_map_register_state_get ();
+    rmp->is_enable = vnet_lisp_map_register_state_get ();
   });
   /* *INDENT-ON* */
 }
@@ -1395,10 +1311,10 @@ vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
   u8 *tmp_str = 0;
   int rv = 0;
 
-  u8 is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
+  u8 is_enable = (lcm->flags & LISP_FLAG_PITR_MODE)
     && lcm->pitr_map_index != ~0;
 
-  if (!is_enabled)
+  if (!is_enable)
     {
       tmp_str = format (0, "N/A");
     }
@@ -1438,7 +1354,7 @@ static void
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_STATS_ENABLE_DISABLE_REPLY,
   ({
-    rmp->is_en = vnet_lisp_stats_enable_disable_state ();
+    rmp->is_enable = vnet_lisp_stats_enable_disable_state ();
   }));
   /* *INDENT-ON* */
 }
@@ -1449,36 +1365,8 @@ static void
 {
   vl_api_one_enable_disable_reply_t *rmp = NULL;
 
-  vnet_api_error_t rv = vnet_lisp_stats_enable_disable (mp->is_en);
+  vnet_api_error_t rv = vnet_lisp_stats_enable_disable (mp->is_enable);
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_REPLY);
-}
-
-static void
-lisp_fid_addr_to_api (fid_address_t * fid, u8 * dst, u8 * api_eid_type,
-		      u8 * prefix_length)
-{
-  switch (fid_addr_type (fid))
-    {
-    case FID_ADDR_IP_PREF:
-      *prefix_length = fid_addr_prefix_length (fid);
-      if (fid_addr_ip_version (fid) == AF_IP4)
-	{
-	  *api_eid_type = 0;	/* ipv4 type */
-	  clib_memcpy (dst, &fid_addr_ippref (fid), 4);
-	}
-      else
-	{
-	  *api_eid_type = 1;	/* ipv6 type */
-	  clib_memcpy (dst, &fid_addr_ippref (fid), 16);
-	}
-      break;
-    case FID_ADDR_MAC:
-      *api_eid_type = 2;	/* l2 mac type */
-      mac_copy (dst, fid_addr_mac (fid));
-      break;
-    default:
-      ASSERT (0);
-    }
 }
 
 static void
@@ -1504,15 +1392,12 @@ vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
       /* *INDENT-OFF* */
       REPLY_DETAILS (VL_API_ONE_STATS_DETAILS,
       ({
-        lisp_fid_addr_to_api (&stat->deid, rmp->deid, &rmp->eid_type,
-                              &rmp->deid_pref_len);
-        lisp_fid_addr_to_api (&stat->seid, rmp->seid, &rmp->eid_type,
-                              &rmp->seid_pref_len);
+        fid_to_api_eid (&stat->deid, &rmp->deid);
+        fid_to_api_eid (&stat->seid, &rmp->seid);
         rmp->vni = clib_host_to_net_u32 (stat->vni);
 
-        rmp->is_ip4 = ip_addr_version (&stat->rmt_rloc) == AF_IP4 ? 1 : 0;
-        ip_address_copy_addr (rmp->rloc, &stat->rmt_rloc);
-        ip_address_copy_addr (rmp->lloc, &stat->loc_rloc);
+        ip_address_encode2 (&stat->rmt_rloc, &rmp->rloc);
+        ip_address_encode2 (&stat->loc_rloc, &rmp->lloc);
 
         rmp->pkt_count = clib_host_to_net_u32 (stat->counters.packets);
         rmp->bytes = clib_host_to_net_u32 (stat->counters.bytes);
@@ -1528,15 +1413,18 @@ static void
   vl_api_one_add_del_l2_arp_entry_reply_t *rmp;
   int rv = 0;
   gid_address_t _arp, *arp = &_arp;
+  ip4_address_t ip4;
+  mac_address_t mac;
   clib_memset (arp, 0, sizeof (*arp));
 
   gid_address_type (arp) = GID_ADDR_ARP;
   gid_address_arp_bd (arp) = clib_net_to_host_u32 (mp->bd);
 
-  /* vpp keeps ip4 addresses in network byte order */
-  ip_address_set (&gid_address_arp_ndp_ip (arp), &mp->ip4, AF_IP4);
+  ip4_address_decode (mp->entry.ip4, &ip4);
+  ip_address_set (&gid_address_arp_ndp_ip (arp), &ip4, AF_IP4);
+  mac_address_decode (mp->entry.mac, &mac);
 
-  rv = vnet_lisp_add_del_l2_arp_ndp_entry (arp, mp->mac, mp->is_add);
+  rv = vnet_lisp_add_del_l2_arp_ndp_entry (arp, mac.bytes, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_L2_ARP_ENTRY_REPLY);
 }
@@ -1547,13 +1435,18 @@ vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t * mp)
   vl_api_one_add_del_ndp_entry_reply_t *rmp;
   int rv = 0;
   gid_address_t _g, *g = &_g;
+  ip6_address_t ip6;
+  mac_address_t mac;
   clib_memset (g, 0, sizeof (*g));
 
   gid_address_type (g) = GID_ADDR_NDP;
   gid_address_ndp_bd (g) = clib_net_to_host_u32 (mp->bd);
-  ip_address_set (&gid_address_arp_ndp_ip (g), mp->ip6, AF_IP6);
 
-  rv = vnet_lisp_add_del_l2_arp_ndp_entry (g, mp->mac, mp->is_add);
+  ip6_address_decode (mp->entry.ip6, &ip6);
+  ip_address_set (&gid_address_arp_ndp_ip (g), &ip6, AF_IP6);
+  mac_address_decode (mp->entry.mac, &mac);
+
+  rv = vnet_lisp_add_del_l2_arp_ndp_entry (g, mac.bytes, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_NDP_ENTRY_REPLY);
 }
@@ -1627,8 +1520,8 @@ vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
     rmp->count = clib_host_to_net_u32 (vec_len (entries));
     vec_foreach (e, entries)
       {
-        mac_copy (rmp->entries[i].mac, e->mac);
-        rmp->entries[i].ip4 = e->ip4;
+	mac_address_encode ((mac_address_t *) e->mac, rmp->entries[i].mac);
+	ip4_address_encode ((ip4_address_t *) &e->ip4, rmp->entries[i].ip4);
         i++;
       }
   });
@@ -1713,8 +1606,8 @@ vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t * mp)
     rmp->count = clib_host_to_net_u32 (vec_len (entries));
     vec_foreach (e, entries)
       {
-        mac_copy (rmp->entries[i].mac, e->mac);
-        clib_memcpy (rmp->entries[i].ip6, e->ip6, 16);
+	mac_address_encode ((mac_address_t *) e->mac, rmp->entries[i].mac);
+	ip6_address_encode ((ip6_address_t *) &e->ip6, rmp->entries[i].ip6);
         i++;
       }
   });
@@ -1728,7 +1621,7 @@ static void
   (vl_api_one_enable_disable_xtr_mode_t * mp)
 {
   vl_api_one_enable_disable_xtr_mode_reply_t *rmp = 0;
-  int rv = vnet_lisp_enable_disable_xtr_mode (mp->is_en);
+  int rv = vnet_lisp_enable_disable_xtr_mode (mp->is_enable);
 
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_XTR_MODE_REPLY);
 }
@@ -1742,7 +1635,7 @@ vl_api_one_show_xtr_mode_t_handler (vl_api_one_show_xtr_mode_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_SHOW_XTR_MODE_REPLY,
   {
-    rmp->is_en = vnet_lisp_get_xtr_mode ();
+    rmp->is_enable = vnet_lisp_get_xtr_mode ();
   });
   /* *INDENT-ON* */
 }
@@ -1752,7 +1645,7 @@ static void
   (vl_api_one_enable_disable_pitr_mode_t * mp)
 {
   vl_api_one_enable_disable_pitr_mode_reply_t *rmp = 0;
-  int rv = vnet_lisp_enable_disable_pitr_mode (mp->is_en);
+  int rv = vnet_lisp_enable_disable_pitr_mode (mp->is_enable);
 
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_PITR_MODE_REPLY);
 }
@@ -1766,7 +1659,7 @@ vl_api_one_show_pitr_mode_t_handler (vl_api_one_show_pitr_mode_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_SHOW_PITR_MODE_REPLY,
   {
-    rmp->is_en = vnet_lisp_get_pitr_mode ();
+    rmp->is_enable = vnet_lisp_get_pitr_mode ();
   });
   /* *INDENT-ON* */
 }
@@ -1776,7 +1669,7 @@ static void
   (vl_api_one_enable_disable_petr_mode_t * mp)
 {
   vl_api_one_enable_disable_petr_mode_reply_t *rmp = 0;
-  int rv = vnet_lisp_enable_disable_petr_mode (mp->is_en);
+  int rv = vnet_lisp_enable_disable_petr_mode (mp->is_enable);
 
   REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_PETR_MODE_REPLY);
 }
@@ -1790,7 +1683,7 @@ vl_api_one_show_petr_mode_t_handler (vl_api_one_show_petr_mode_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_SHOW_PETR_MODE_REPLY,
   {
-    rmp->is_en = vnet_lisp_get_petr_mode ();
+    rmp->is_enable = vnet_lisp_get_petr_mode ();
   });
   /* *INDENT-ON* */
 }
