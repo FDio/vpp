@@ -5109,8 +5109,6 @@ _(gpe_add_del_iface_reply)                              \
 _(gpe_add_del_native_fwd_rpath_reply)                   \
 _(af_packet_delete_reply)                               \
 _(policer_classify_set_interface_reply)                 \
-_(netmap_create_reply)                                  \
-_(netmap_delete_reply)                                  \
 _(set_ipfix_exporter_reply)                             \
 _(set_ipfix_classify_stream_reply)                      \
 _(ipfix_classify_table_add_del_reply)                   \
@@ -5386,8 +5384,6 @@ _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
 _(POLICER_CLASSIFY_SET_INTERFACE_REPLY, policer_classify_set_interface_reply) \
 _(POLICER_CLASSIFY_DETAILS, policer_classify_details)                   \
-_(NETMAP_CREATE_REPLY, netmap_create_reply)                             \
-_(NETMAP_DELETE_REPLY, netmap_delete_reply)                             \
 _(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
 _(MPLS_TABLE_DETAILS, mpls_table_details)                               \
 _(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
@@ -17516,100 +17512,6 @@ api_policer_classify_dump (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_netmap_create (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_netmap_create_t *mp;
-  u8 *if_name = 0;
-  u8 hw_addr[6];
-  u8 random_hw_addr = 1;
-  u8 is_pipe = 0;
-  u8 is_master = 0;
-  int ret;
-
-  clib_memset (hw_addr, 0, sizeof (hw_addr));
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "name %s", &if_name))
-	vec_add1 (if_name, 0);
-      else if (unformat (i, "hw_addr %U", unformat_ethernet_address, hw_addr))
-	random_hw_addr = 0;
-      else if (unformat (i, "pipe"))
-	is_pipe = 1;
-      else if (unformat (i, "master"))
-	is_master = 1;
-      else if (unformat (i, "slave"))
-	is_master = 0;
-      else
-	break;
-    }
-
-  if (!vec_len (if_name))
-    {
-      errmsg ("interface name must be specified");
-      return -99;
-    }
-
-  if (vec_len (if_name) > 64)
-    {
-      errmsg ("interface name too long");
-      return -99;
-    }
-
-  M (NETMAP_CREATE, mp);
-
-  clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
-  clib_memcpy (mp->hw_addr, hw_addr, 6);
-  mp->use_random_hw_addr = random_hw_addr;
-  mp->is_pipe = is_pipe;
-  mp->is_master = is_master;
-  vec_free (if_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_netmap_delete (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_netmap_delete_t *mp;
-  u8 *if_name = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "name %s", &if_name))
-	vec_add1 (if_name, 0);
-      else
-	break;
-    }
-
-  if (!vec_len (if_name))
-    {
-      errmsg ("interface name must be specified");
-      return -99;
-    }
-
-  if (vec_len (if_name) > 64)
-    {
-      errmsg ("interface name too long");
-      return -99;
-    }
-
-  M (NETMAP_DELETE, mp);
-
-  clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
-  vec_free (if_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 static u8 *
 format_fib_api_path_nh_proto (u8 * s, va_list * args)
 {
@@ -21040,9 +20942,6 @@ _(policer_classify_set_interface,                                       \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
 _(policer_classify_dump, "type [ip4|ip6|l2]")                           \
-_(netmap_create, "name <interface name> [hw-addr <mac>] [pipe] "        \
-    "[master|slave]")                                                   \
-_(netmap_delete, "name <interface name>")                               \
 _(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
 _(mpls_table_dump, "")                                                  \
 _(mpls_route_dump, "table-id <ID>")                                     \

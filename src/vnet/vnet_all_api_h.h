@@ -35,7 +35,6 @@
 
 #include <vnet/bonding/bond.api.h>
 #include <vnet/devices/af_packet/af_packet.api.h>
-#include <vnet/devices/netmap/netmap.api.h>
 #include <vnet/devices/virtio/vhost_user.api.h>
 #include <vnet/devices/tap/tapv2.api.h>
 #include <vnet/gre/gre.api.h>

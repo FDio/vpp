@@ -1090,7 +1090,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_MULTIARCH_SOURCES
   devices/virtio/vhost_user_input.c
   devices/virtio/vhost_user_output.c
-  devices/netmap/node.c
   devices/virtio/node.c
   devices/af_packet/node.c
   devices/virtio/device.c
@@ -1202,7 +1201,6 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
-  devices/netmap/device.c
   devices/af_packet/device.c
 )
 
@@ -1211,24 +1209,6 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES devices/af_packet/af_packet.api)
-
-##############################################################################
-# NETMAP interface
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  devices/netmap/netmap.c
-  devices/netmap/device.c
-  devices/netmap/node.c
-  devices/netmap/cli.c
-  devices/netmap/netmap_api.c
-)
-
-list(APPEND VNET_HEADERS
-  devices/netmap/netmap.h
-)
-
-list(APPEND VNET_API_FILES devices/netmap/netmap.api)
 
 ##############################################################################
 # Driver feature graph arc support
