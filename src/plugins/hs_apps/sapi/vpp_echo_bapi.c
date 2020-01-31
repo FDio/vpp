@@ -44,9 +44,7 @@ echo_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = em->evt_q_size;
   if (em->appns_id)
     {
-      bmp->namespace_id_len = vec_len (em->appns_id);
-      clib_memcpy_fast (bmp->namespace_id, em->appns_id,
-			bmp->namespace_id_len);
+      vl_api_vec_to_api_string (em->appns_id, &bmp->namespace_id);
       bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
     }
@@ -276,9 +274,11 @@ static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
   echo_main_t *em = &echo_main;
-  int *fds = 0, i;
+  int *fds = 0, i, rv;
   u32 n_fds = 0;
   u64 segment_handle;
+  char *segment_name = 0;
+
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   ECHO_LOG (2, "Attached returned app %u", htons (mp->app_index));
 
@@ -286,13 +286,6 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     {
       ECHO_FAIL (ECHO_FAIL_VL_API_APP_ATTACH, "attach failed: %U",
 		 format_api_error, clib_net_to_host_u32 (mp->retval));
-      return;
-    }
-
-  if (mp->segment_name_length == 0)
-    {
-      ECHO_FAIL (ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,
-		 "segment_name_length zero");
       return;
     }
 
@@ -323,14 +316,22 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  }
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (echo_ssvm_segment_attach ((char *) mp->segment_name,
-				      SSVM_SEGMENT_MEMFD, fds[n_fds++]))
-	  {
-	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
-		       "svm_fifo_segment_attach ('%s') "
-		       "failed on SSVM_SEGMENT_MEMFD", mp->segment_name);
-	    goto failed;
-	  }
+	{
+	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+	  rv =
+	    echo_ssvm_segment_attach (segment_name, SSVM_SEGMENT_MEMFD,
+				      fds[n_fds++]);
+	  if (rv != 0)
+	    {
+	      ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+			 "svm_fifo_segment_attach ('%s') "
+			 "failed on SSVM_SEGMENT_MEMFD", segment_name);
+	      vec_free (segment_name);
+	      goto failed;
+	    }
+	  vec_free (segment_name);
+	}
+
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	svm_msg_q_set_consumer_eventfd (em->app_mq, fds[n_fds++]);
 
@@ -338,14 +339,17 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     }
   else
     {
-      if (echo_ssvm_segment_attach
-	  ((char *) mp->segment_name, SSVM_SEGMENT_SHM, -1))
+      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+      rv = echo_ssvm_segment_attach (segment_name, SSVM_SEGMENT_SHM, -1);
+      if (rv != 0)
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		     "svm_fifo_segment_attach ('%s') "
-		     "failed on SSVM_SEGMENT_SHM", mp->segment_name);
-	  return;
+		     "failed on SSVM_SEGMENT_SHM", segment_name);
+	  vec_free (segment_name);
+	  goto failed;
 	}
+      vec_free (segment_name);
     }
   echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
   ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
