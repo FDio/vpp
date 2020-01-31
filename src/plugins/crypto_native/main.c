@@ -62,7 +62,8 @@ crypto_native_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   clib_error_t *error = 0;
 
-  if (clib_cpu_supports_x86_aes () == 0)
+  if (clib_cpu_supports_x86_aes () == 0 &&
+      clib_cpu_supports_aarch64_aes () == 0)
     return 0;
 
   vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
@@ -72,6 +73,7 @@ crypto_native_init (vlib_main_t * vm)
     vnet_crypto_register_engine (vm, "native", 100,
 				 "Native ISA Optimized Crypto");
 
+#if __x86_64__
   if (clib_cpu_supports_vaes ())
     error = crypto_native_aes_cbc_init_vaes (vm);
   else if (clib_cpu_supports_avx512f ())
@@ -98,6 +100,13 @@ crypto_native_init (vlib_main_t * vm)
       if (error)
 	goto error;
     }
+#endif
+#if __aarch64__
+  error = crypto_native_aes_cbc_init_neon (vm);
+
+  if (error)
+    goto error;
+#endif
 
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_native_key_handler);

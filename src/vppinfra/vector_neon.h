@@ -176,6 +176,12 @@ u32x4_scatter (u32x4 r, void *p0, void *p1, void *p2, void *p3)
   *(u32 *) p3 = vgetq_lane_u32 (r, 3);
 }
 
+static_always_inline u32
+u32x4_min_scalar (u32x4 v)
+{
+  return vminvq_u32 (v);
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
