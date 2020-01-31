@@ -116,6 +116,7 @@ vnet_netlink_set_link_name (int ifindex, char *new_ifname)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
+  clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
@@ -124,7 +125,10 @@ vnet_netlink_set_link_name (int ifindex, char *new_ifname)
   vnet_netlink_msg_add_rtattr (&m, IFLA_IFNAME, new_ifname,
 			       strlen (new_ifname) + 1);
 
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link name %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -132,6 +136,7 @@ vnet_netlink_set_link_netns (int ifindex, int netns_fd, char *new_ifname)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
+  clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
@@ -142,7 +147,10 @@ vnet_netlink_set_link_netns (int ifindex, int netns_fd, char *new_ifname)
     vnet_netlink_msg_add_rtattr (&m, IFLA_IFNAME, new_ifname,
 				 strlen (new_ifname) + 1);
 
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link netns %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -151,6 +159,7 @@ vnet_netlink_set_link_master (int ifindex, char *master_ifname)
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
   int i;
+  clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
 
@@ -161,7 +170,10 @@ vnet_netlink_set_link_master (int ifindex, char *master_ifname)
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MASTER, &i, sizeof (int));
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link master %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -169,13 +181,17 @@ vnet_netlink_set_link_addr (int ifindex, u8 * mac)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
+  clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_ADDRESS, mac, 6);
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link addr %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -183,6 +199,7 @@ vnet_netlink_set_link_state (int ifindex, int up)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
+  clib_error_t *err = 0;
 
   ifmsg.ifi_flags = IFF_UP;
   ifmsg.ifi_change = IFF_UP;
@@ -190,7 +207,10 @@ vnet_netlink_set_link_state (int ifindex, int up)
 
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link state %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -198,13 +218,17 @@ vnet_netlink_set_link_mtu (int ifindex, int mtu)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
+  clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MTU, &mtu, sizeof (int));
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "set link mtu %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -212,6 +236,7 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
 {
   vnet_netlink_msg_t m;
   struct ifaddrmsg ifa = { 0 };
+  clib_error_t *err = 0;
 
   ifa.ifa_family = AF_INET;
   ifa.ifa_prefixlen = pfx_len;
@@ -223,7 +248,10 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "add ip4 addr %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -231,6 +259,7 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
 {
   vnet_netlink_msg_t m;
   struct ifaddrmsg ifa = { 0 };
+  clib_error_t *err = 0;
 
   ifa.ifa_family = AF_INET6;
   ifa.ifa_prefixlen = pfx_len;
@@ -242,7 +271,10 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "add ip6 addr %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -251,6 +283,7 @@ vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
   vnet_netlink_msg_t m;
   struct rtmsg rtm = { 0 };
   u8 dflt[4] = { 0 };
+  clib_error_t *err = 0;
 
   rtm.rtm_family = AF_INET;
   rtm.rtm_table = RT_TABLE_MAIN;
@@ -263,7 +296,10 @@ vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 4);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 4);
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "add ip4 route %U", format_clib_error, err);
+  return err;
 }
 
 clib_error_t *
@@ -272,6 +308,7 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
   vnet_netlink_msg_t m;
   struct rtmsg rtm = { 0 };
   u8 dflt[16] = { 0 };
+  clib_error_t *err = 0;
 
   rtm.rtm_family = AF_INET6;
   rtm.rtm_table = RT_TABLE_MAIN;
@@ -284,7 +321,10 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 16);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 16);
-  return vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m);
+  if (err)
+    err = clib_error_return (0, "add ip6 route %U", format_clib_error, err);
+  return err;
 }
 
 /*
