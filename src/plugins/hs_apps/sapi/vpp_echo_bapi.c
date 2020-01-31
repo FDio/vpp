@@ -44,9 +44,7 @@ echo_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = em->evt_q_size;
   if (em->appns_id)
     {
-      bmp->namespace_id_len = vec_len (em->appns_id);
-      clib_memcpy_fast (bmp->namespace_id, em->appns_id,
-			bmp->namespace_id_len);
+      vl_api_vec_to_api_string (em->appns_id, &bmp->namespace_id);
       bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
     }
@@ -289,13 +287,6 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       return;
     }
 
-  if (mp->segment_name_length == 0)
-    {
-      ECHO_FAIL (ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,
-		 "segment_name_length zero");
-      return;
-    }
-
   if (!mp->app_mq)
     {
       ECHO_FAIL (ECHO_FAIL_VL_API_NULL_APP_MQ, "NULL app_mq");
@@ -323,8 +314,9 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  }
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (echo_ssvm_segment_attach ((char *) mp->segment_name,
-				      SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (echo_ssvm_segment_attach
+	    ((char *) vl_api_from_api_string (&mp->segment_name),
+	     SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
 	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		       "svm_fifo_segment_attach ('%s') "
@@ -339,7 +331,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   else
     {
       if (echo_ssvm_segment_attach
-	  ((char *) mp->segment_name, SSVM_SEGMENT_SHM, -1))
+	  ((char *) vl_api_from_api_string (&mp->segment_name),
+	   SSVM_SEGMENT_SHM, -1))
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		     "svm_fifo_segment_attach ('%s') "
