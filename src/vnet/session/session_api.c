@@ -22,6 +22,8 @@
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -778,18 +780,8 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   a->api_client_index = mp->client_index;
   a->options = mp->options;
   a->session_cb_vft = &session_mq_cb_vft;
-  if (mp->namespace_id_len > 64)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto done;
-    }
 
-  if (mp->namespace_id_len)
-    {
-      vec_validate (a->namespace_id, mp->namespace_id_len - 1);
-      clib_memcpy_fast (a->namespace_id, mp->namespace_id,
-			mp->namespace_id_len);
-    }
+  a->namespace_id = vl_api_from_api_to_new_vec (&mp->namespace_id);
 
   if ((rv = vnet_application_attach (a)))
     {
@@ -836,8 +828,7 @@ done:
 	rmp->fd_flags = fd_flags;
 	if (vec_len (segp->name))
 	  {
-	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
-	    rmp->segment_name_length = vec_len (segp->name);
+	    vl_api_vec_to_api_string (segp->name, &rmp->segment_name);
 	  }
 	rmp->segment_size = segp->ssvm_size;
 	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
@@ -1278,9 +1269,7 @@ done:
       {
 	if (vec_len (args.segment->name))
 	  {
-	    memcpy (rmp->segment_name, args.segment->name,
-	            vec_len (args.segment->name));
-	    rmp->segment_name_length = vec_len (args.segment->name);
+	    vl_api_vec_to_api_string (args.segment->name, &rmp->segment_name);
 	  }
 	rmp->app_event_queue_address = pointer_to_uword (args.evt_q);
 	rmp->n_fds = n_fds;
@@ -1306,14 +1295,8 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
       goto done;
     }
 
-  if (mp->namespace_id_len > ARRAY_LEN (mp->namespace_id))
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto done;
-    }
+  ns_id = vl_api_from_api_to_new_vec (&mp->namespace_id);
 
-  vec_validate (ns_id, mp->namespace_id_len - 1);
-  clib_memcpy_fast (ns_id, mp->namespace_id, mp->namespace_id_len);
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
     .secret = clib_net_to_host_u64 (mp->secret),
@@ -1349,16 +1332,13 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   vl_api_session_rule_add_del_reply_t *rmp;
   session_rule_add_del_args_t args;
   session_rule_table_add_del_args_t *table_args = &args.table_args;
-  u8 fib_proto;
   int rv = 0;
 
   clib_memset (&args, 0, sizeof (args));
-  fib_proto = mp->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 
-  table_args->lcl.fp_len = mp->lcl_plen;
-  table_args->lcl.fp_proto = fib_proto;
-  table_args->rmt.fp_len = mp->rmt_plen;
-  table_args->rmt.fp_proto = fib_proto;
+  ip_prefix_decode (&mp->lcl, &table_args->lcl);
+  ip_prefix_decode (&mp->rmt, &table_args->rmt);
+
   table_args->lcl_port = mp->lcl_port;
   table_args->rmt_port = mp->rmt_port;
   table_args->action_index = clib_net_to_host_u32 (mp->action_index);
@@ -1367,12 +1347,8 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   table_args->tag = format (0, "%s", mp->tag);
   args.appns_index = clib_net_to_host_u32 (mp->appns_index);
   args.scope = mp->scope;
-  args.transport_proto = mp->transport_proto;
+  args.transport_proto = mp->transport_proto == IP_API_PROTO_UDP ? 1 : 0;
 
-  clib_memset (&table_args->lcl.fp_addr, 0, sizeof (table_args->lcl.fp_addr));
-  clib_memset (&table_args->rmt.fp_addr, 0, sizeof (table_args->rmt.fp_addr));
-  ip_set (&table_args->lcl.fp_addr, mp->lcl_ip, mp->is_ip4);
-  ip_set (&table_args->rmt.fp_addr, mp->rmt_ip, mp->is_ip4);
   rv = vnet_session_rule_add_del (&args);
   if (rv)
     clib_warning ("rule add del returned: %d", rv);
@@ -1390,23 +1366,29 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
     (session_mask_or_match_4_t *) & rule->match;
   session_mask_or_match_4_t *mask =
     (session_mask_or_match_4_t *) & rule->mask;
+  fib_prefix_t lcl, rmt;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
-  rmp->is_ip4 = 1;
-  clib_memcpy_fast (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
-  clib_memcpy_fast (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
-  rmp->lcl_plen = ip4_mask_to_preflen (&mask->lcl_ip);
-  rmp->rmt_plen = ip4_mask_to_preflen (&mask->rmt_ip);
+  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
+  ip_set (&lcl.fp_addr, &match->lcl_ip, 1);
+  ip_set (&rmt.fp_addr, &match->rmt_ip, 1);
+  lcl.fp_len = ip4_mask_to_preflen (&mask->lcl_ip);
+  rmt.fp_len = ip4_mask_to_preflen (&mask->rmt_ip);
+
+  ip_prefix_encode (&lcl, &rmp->lcl);
+  ip_prefix_encode (&rmt, &rmp->rmt);
   rmp->lcl_port = match->lcl_port;
   rmp->rmt_port = match->rmt_port;
   rmp->action_index = clib_host_to_net_u32 (rule->action_index);
   rmp->scope =
     is_local ? SESSION_RULE_SCOPE_LOCAL : SESSION_RULE_SCOPE_GLOBAL;
-  rmp->transport_proto = transport_proto;
+  rmp->transport_proto =
+    transport_proto ? IP_API_PROTO_UDP : IP_API_PROTO_TCP;
   rmp->appns_index = clib_host_to_net_u32 (appns_index);
   if (tag)
     {
@@ -1427,23 +1409,29 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
     (session_mask_or_match_6_t *) & rule->match;
   session_mask_or_match_6_t *mask =
     (session_mask_or_match_6_t *) & rule->mask;
+  fib_prefix_t lcl, rmt;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
-  rmp->is_ip4 = 0;
-  clib_memcpy_fast (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
-  clib_memcpy_fast (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
-  rmp->lcl_plen = ip6_mask_to_preflen (&mask->lcl_ip);
-  rmp->rmt_plen = ip6_mask_to_preflen (&mask->rmt_ip);
+  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
+  ip_set (&lcl.fp_addr, &match->lcl_ip, 0);
+  ip_set (&rmt.fp_addr, &match->rmt_ip, 0);
+  lcl.fp_len = ip6_mask_to_preflen (&mask->lcl_ip);
+  rmt.fp_len = ip6_mask_to_preflen (&mask->rmt_ip);
+
+  ip_prefix_encode (&lcl, &rmp->lcl);
+  ip_prefix_encode (&rmt, &rmp->rmt);
   rmp->lcl_port = match->lcl_port;
   rmp->rmt_port = match->rmt_port;
   rmp->action_index = clib_host_to_net_u32 (rule->action_index);
   rmp->scope =
     is_local ? SESSION_RULE_SCOPE_LOCAL : SESSION_RULE_SCOPE_GLOBAL;
-  rmp->transport_proto = transport_proto;
+  rmp->transport_proto =
+    transport_proto ? IP_API_PROTO_UDP : IP_API_PROTO_TCP;
   rmp->appns_index = clib_host_to_net_u32 (appns_index);
   if (tag)
     {
