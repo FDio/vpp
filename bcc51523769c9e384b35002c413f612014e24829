@@ -46,6 +46,30 @@
       "revId": "bcc51523769c9e384b35002c413f612014e24829",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "796e8e51_cda12929",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-01-31T03:39:31Z",
+      "side": 1,
+      "message": "Ow. Still, since the app can do whatever it pleases once we give it the fifo, we can ask it to apply the update, and if we want to make sure everything is fine, assert or validate that the fifo size is within bounds after the call. \n\nI would prefer that we kept the function return value as an int in case we decide in the future we want to return some error codes.",
+      "parentUuid": "844775f1_108204f9",
+      "range": {
+        "startLine": 398,
+        "startChar": 0,
+        "endLine": 415,
+        "endChar": 0
+      },
+      "revId": "bcc51523769c9e384b35002c413f612014e24829",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
