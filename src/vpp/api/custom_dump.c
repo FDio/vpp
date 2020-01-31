@@ -867,7 +867,7 @@ static void *vl_api_sr_mpls_policy_add_t_print
   if (mp->weight != htonl ((u32) 1))
     s = format (s, "%d ", (mp->weight));
 
-  if (mp->type)
+  if (mp->is_spray)
     s = format (s, "spray ");
 
   if (mp->n_segments)

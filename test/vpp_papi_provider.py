@@ -926,7 +926,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.sr_mpls_policy_add,
                         {'bsid': bsid,
                          'weight': weight,
-                         'type': type,
+                         'is_spray': type,
                          'n_segments': len(segments),
                          'segments': segments})
 
