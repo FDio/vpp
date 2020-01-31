@@ -8548,7 +8548,7 @@ api_sr_mpls_policy_add (vat_main_t * vam)
 
   mp->bsid = htonl (bsid);
   mp->weight = htonl (weight);
-  mp->type = type;
+  mp->is_spray = type;
   mp->n_segments = n_segments;
   memcpy (mp->segments, segments, sizeof (u32) * n_segments);
   vec_free (segments);

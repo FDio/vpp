@@ -24,6 +24,8 @@
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -66,7 +68,7 @@ vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t * mp)
 
   int rv = 0;
   rv = sr_mpls_policy_add (ntohl (mp->bsid),
-			   segments, mp->type, ntohl (mp->weight));
+			   segments, mp->is_spray, ntohl (mp->weight));
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ADD_REPLY);
@@ -90,8 +92,8 @@ vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t * mp)
 
   int rv = 0;
   rv = sr_mpls_policy_mod (ntohl (mp->bsid),
-			   mp->operation, segments, ntohl (mp->sl_index),
-			   ntohl (mp->weight));
+			   ntohl (mp->operation), segments,
+			   ntohl (mp->sl_index), ntohl (mp->weight));
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_MOD_REPLY);
@@ -111,28 +113,31 @@ static void vl_api_sr_mpls_steering_add_del_t_handler
   (vl_api_sr_mpls_steering_add_del_t * mp)
 {
   vl_api_sr_mpls_steering_add_del_reply_t *rmp;
-  ip46_address_t prefix;
+  fib_prefix_t prefix;
+  ip46_address_t next_hop;
   clib_memset (&prefix, 0, sizeof (ip46_address_t));
-  if (mp->traffic_type == SR_STEER_IPV4)
-    memcpy (&prefix.ip4, mp->prefix_addr, sizeof (prefix.ip4));
-  else
-    memcpy (&prefix, mp->prefix_addr, sizeof (prefix.ip6));
+
+  ip_prefix_decode (&mp->prefix, &prefix);
+  ip_address_decode (&mp->next_hop, &next_hop);
 
   int rv = 0;
   if (mp->is_del)
-    rv = sr_mpls_steering_policy_del (&prefix,
-				      ntohl (mp->mask_width),
-				      mp->traffic_type,
+    rv = sr_mpls_steering_policy_del (&prefix.fp_addr,
+				      prefix.fp_len,
+				      ip46_address_is_ip4 (&prefix.fp_addr) ?
+				      SR_STEER_IPV4 : SR_STEER_IPV6,
 				      ntohl (mp->table_id),
 				      ntohl (mp->color));
   else
     rv = sr_mpls_steering_policy_add (ntohl (mp->bsid),
 				      ntohl (mp->table_id),
-				      &prefix,
-				      ntohl (mp->mask_width),
-				      mp->traffic_type,
-				      (ip46_address_t *) & mp->next_hop,
-				      mp->nh_type,
+				      &prefix.fp_addr,
+				      prefix.fp_len,
+				      ip46_address_is_ip4 (&prefix.fp_addr) ?
+				      SR_STEER_IPV4 : SR_STEER_IPV6,
+				      &next_hop,
+				      ip46_address_is_ip4 (&next_hop) ?
+				      SR_STEER_IPV4 : SR_STEER_IPV6,
 				      ntohl (mp->color), mp->co_bits,
 				      ntohl (mp->vpn_label));
 
@@ -147,13 +152,12 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
 
   ip46_address_t endpoint;
   clib_memset (&endpoint, 0, sizeof (ip46_address_t));
-  if (mp->endpoint_type == SR_STEER_IPV4)
-    memcpy (&endpoint.ip4, mp->endpoint, sizeof (endpoint.ip4));
-  else
-    memcpy (&endpoint, mp->endpoint, sizeof (endpoint.ip6));
+  ip_address_decode (&mp->endpoint, &endpoint);
 
   rv = sr_mpls_policy_assign_endpoint_color (ntohl (mp->bsid),
-					     &endpoint, mp->endpoint_type,
+					     &endpoint,
+					     ip46_address_is_ip4 (&endpoint) ?
+					     SR_STEER_IPV4 : SR_STEER_IPV6,
 					     ntohl (mp->color));
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR_REPLY);
