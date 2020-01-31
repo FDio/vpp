@@ -28,6 +28,10 @@
 DECLARE_CJ_GLOBAL_LOG;
 
 
+static void
+vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id);
+
+
 u32
 vl (void *p)
 {
@@ -282,6 +286,8 @@ vlib_thread_init (vlib_main_t * vm)
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
+
+  vlib_get_thread_core_socket (w, w->cpu_id);
 
   if (tm->sched_policy != ~0)
     {
