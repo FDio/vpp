@@ -36,9 +36,9 @@ class TestTCP(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id=b"0",
+        self.vapi.app_namespace_add_del(namespace_id="0",
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id=b"1",
+        self.vapi.app_namespace_add_del(namespace_id="1",
                                         sw_if_index=self.loop1.sw_if_index)
 
     def tearDown(self):
