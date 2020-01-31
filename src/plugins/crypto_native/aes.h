@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -27,6 +27,8 @@ typedef enum
 
 #define AES_KEY_ROUNDS(x)		(10 + x * 2)
 #define AES_KEY_BYTES(x)		(16 + x * 8)
+
+#ifdef __x86_64__
 
 static_always_inline u8x16
 aes_block_load (u8 * p)
@@ -191,6 +193,133 @@ aes256_key_expand (u8x16 * key_schedule, u8 * key)
   aes256_key_assist (k, 12, _mm_aeskeygenassist_si128 (k[11], 0x20));
   aes256_key_assist (k, 14, _mm_aeskeygenassist_si128 (k[13], 0x40));
 }
+#endif
+
+#ifdef __aarch64__
+
+static_always_inline u8x16
+aes_inv_mix_column (u8x16 a)
+{
+  return vaesimcq_u8 (a);
+}
+
+static const u8x16 aese_prep_mask1 =
+  { 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12 };
+static const u8x16 aese_prep_mask2 =
+  { 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15 };
+
+static inline void
+aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
+{
+  u8x16 r, t, last_round = rk[-1], z = { };
+  r = vqtbl1q_u8 (last_round, aese_prep_mask1);
+  r = vaeseq_u8 (r, z);
+  r ^= (u8x16) vdupq_n_u32 (rcon);
+  r ^= last_round;
+  r ^= t = vextq_u8 (z, last_round, 12);
+  r ^= t = vextq_u8 (z, t, 12);
+  r ^= vextq_u8 (z, t, 12);
+  rk[0] = r;
+}
+
+void
+aes128_key_expand (u8x16 * rk, const u8 * k)
+{
+  rk[0] = vld1q_u8 (k);
+  aes128_key_expand_round_neon (rk + 1, 0x01);
+  aes128_key_expand_round_neon (rk + 2, 0x02);
+  aes128_key_expand_round_neon (rk + 3, 0x04);
+  aes128_key_expand_round_neon (rk + 4, 0x08);
+  aes128_key_expand_round_neon (rk + 5, 0x10);
+  aes128_key_expand_round_neon (rk + 6, 0x20);
+  aes128_key_expand_round_neon (rk + 7, 0x40);
+  aes128_key_expand_round_neon (rk + 8, 0x80);
+  aes128_key_expand_round_neon (rk + 9, 0x1b);
+  aes128_key_expand_round_neon (rk + 10, 0x36);
+}
+
+static inline void
+aes192_key_expand_round_neon (u8x8 * rk, u32 rcon)
+{
+  u8x8 r, last_round = rk[-1], z = { };
+  u8x16 r2, z2 = { };
+
+  r2 = (u8x16) vdupq_lane_u64 ((uint64x1_t) last_round, 0);
+  r2 = vqtbl1q_u8 (r2, aese_prep_mask1);
+  r2 = vaeseq_u8 (r2, z2);
+  r2 ^= (u8x16) vdupq_n_u32 (rcon);
+
+  r = (u8x8) vdup_laneq_u64 ((u64x2) r2, 0);
+  r ^= rk[-3];
+  r ^= vext_u8 (z, rk[-3], 4);
+  rk[0] = r;
+
+  r = rk[-2] ^ vext_u8 (r, z, 4);
+  r ^= vext_u8 (z, r, 4);
+  rk[1] = r;
+
+  if (rcon == 0x80)
+    return;
+
+  r = rk[-1] ^ vext_u8 (r, z, 4);
+  r ^= vext_u8 (z, r, 4);
+  rk[2] = r;
+}
+
+void
+aes192_key_expand (u8x16 * ek, const u8 * k)
+{
+  u8x8 *rk = (u8x8 *) ek;
+  ek[0] = vld1q_u8 (k);
+  rk[2] = vld1_u8 (k + 16);
+  aes192_key_expand_round_neon (rk + 3, 0x01);
+  aes192_key_expand_round_neon (rk + 6, 0x02);
+  aes192_key_expand_round_neon (rk + 9, 0x04);
+  aes192_key_expand_round_neon (rk + 12, 0x08);
+  aes192_key_expand_round_neon (rk + 15, 0x10);
+  aes192_key_expand_round_neon (rk + 18, 0x20);
+  aes192_key_expand_round_neon (rk + 21, 0x40);
+  aes192_key_expand_round_neon (rk + 24, 0x80);
+}
+
+
+static inline void
+aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
+{
+  u8x16 r, t, z = { };
+
+  r = vqtbl1q_u8 (rk[-1], rcon ? aese_prep_mask1 : aese_prep_mask2);
+  r = vaeseq_u8 (r, z);
+  if (rcon)
+    r ^= (u8x16) vdupq_n_u32 (rcon);
+  r ^= rk[-2];
+  r ^= t = vextq_u8 (z, rk[-2], 12);
+  r ^= t = vextq_u8 (z, t, 12);
+  r ^= vextq_u8 (z, t, 12);
+  rk[0] = r;
+}
+
+void
+aes256_key_expand (u8x16 * rk, const u8 * k)
+{
+  rk[0] = vld1q_u8 (k);
+  rk[1] = vld1q_u8 (k + 16);
+  aes256_key_expand_round_neon (rk + 2, 0x01);
+  aes256_key_expand_round_neon (rk + 3, 0);
+  aes256_key_expand_round_neon (rk + 4, 0x02);
+  aes256_key_expand_round_neon (rk + 5, 0);
+  aes256_key_expand_round_neon (rk + 6, 0x04);
+  aes256_key_expand_round_neon (rk + 7, 0);
+  aes256_key_expand_round_neon (rk + 8, 0x08);
+  aes256_key_expand_round_neon (rk + 9, 0);
+  aes256_key_expand_round_neon (rk + 10, 0x10);
+  aes256_key_expand_round_neon (rk + 11, 0);
+  aes256_key_expand_round_neon (rk + 12, 0x20);
+  aes256_key_expand_round_neon (rk + 13, 0);
+  aes256_key_expand_round_neon (rk + 14, 0x40);
+}
+
+#endif
 
 static_always_inline void
 aes_key_expand (u8x16 * key_schedule, u8 * key, aes_key_size_t ks)
