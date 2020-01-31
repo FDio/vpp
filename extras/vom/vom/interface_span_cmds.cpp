@@ -47,7 +47,7 @@ config_cmd::issue(connection& con)
   payload.is_l2 = 0;
   payload.sw_if_index_from = m_itf_from.value();
   payload.sw_if_index_to = m_itf_to.value();
-  payload.state = m_state.value();
+  payload.state = (vapi_enum_span_state)m_state.value();
 
   VAPI_CALL(req.execute());
 
@@ -89,7 +89,7 @@ unconfig_cmd::issue(connection& con)
   payload.is_l2 = 0;
   payload.sw_if_index_from = m_itf_from.value();
   payload.sw_if_index_to = m_itf_to.value();
-  payload.state = 0;
+  payload.state = SPAN_STATE_API_DISABLED;
 
   VAPI_CALL(req.execute());
 
