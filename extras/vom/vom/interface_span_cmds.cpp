@@ -28,8 +28,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   , m_itf_from(itf_from)
   , m_itf_to(itf_to)
   , m_state(state)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& o) const
@@ -47,7 +46,7 @@ config_cmd::issue(connection& con)
   payload.is_l2 = 0;
   payload.sw_if_index_from = m_itf_from.value();
   payload.sw_if_index_to = m_itf_to.value();
-  payload.state = m_state.value();
+  payload.state = (vapi_enum_span_state)m_state.value();
 
   VAPI_CALL(req.execute());
 
@@ -71,8 +70,7 @@ unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf_from(itf_from)
   , m_itf_to(itf_to)
-{
-}
+{}
 
 bool
 unconfig_cmd::operator==(const unconfig_cmd& o) const
@@ -89,7 +87,7 @@ unconfig_cmd::issue(connection& con)
   payload.is_l2 = 0;
   payload.sw_if_index_from = m_itf_from.value();
   payload.sw_if_index_to = m_itf_to.value();
-  payload.state = 0;
+  payload.state = SPAN_STATE_API_DISABLED;
 
   VAPI_CALL(req.execute());
 
@@ -110,9 +108,7 @@ unconfig_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

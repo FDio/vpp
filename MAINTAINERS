@@ -185,6 +185,11 @@ I:	teib
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/teib/
 
+VNET SPAN
+I:	span
+M:	N/A
+F:	src/vnet/span
+
 Crypto native Plugin
 I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>

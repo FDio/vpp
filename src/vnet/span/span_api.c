@@ -56,7 +56,7 @@ static void
   vlib_main_t *vm = vlib_get_main ();
 
   rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
-			      ntohl (mp->sw_if_index_to), mp->state,
+			      ntohl (mp->sw_if_index_to), ntohl (mp->state),
 			      mp->is_l2 ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE);
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
@@ -95,8 +95,8 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 
           rmp->sw_if_index_from = htonl (si - sm->interfaces);
           rmp->sw_if_index_to = htonl (i);
-          rmp->state = (u8) (clib_bitmap_get (rxm->mirror_ports, i) +
-                             clib_bitmap_get (txm->mirror_ports, i) * 2);
+          rmp->state = htonl ((clib_bitmap_get (rxm->mirror_ports, i) +
+                             clib_bitmap_get (txm->mirror_ports, i) * 2));
 	  rmp->is_l2 = mp->is_l2;
 
           vl_api_send_msg (reg, (u8 *) rmp);
