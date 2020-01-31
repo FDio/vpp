@@ -26,6 +26,8 @@
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/fib/fib_table.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -78,7 +80,6 @@ static void
   ip4_main_t *im = &ip4_main;
   u32 sw_if_index = ~0;
 
-
   p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
   if (!p)
     {
@@ -105,28 +106,21 @@ static void
       decap_fib_index = ntohl (mp->decap_vrf_id);
     }
 
+
+  clib_memset (a, 0, sizeof (*a));
+
+  a->is_add = mp->is_add;
+  ip_address_decode (&mp->local, &a->local);
+  ip_address_decode (&mp->remote, &a->remote);
+
   /* Check src & dst are different */
-  if ((mp->is_ipv6 && memcmp (mp->local, mp->remote, 16) == 0) ||
-      (!mp->is_ipv6 && memcmp (mp->local, mp->remote, 4) == 0))
+  if (ip46_address_is_equal (&a->local, &a->remote))
     {
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
-  clib_memset (a, 0, sizeof (*a));
 
-  a->is_add = mp->is_add;
-  a->is_ip6 = mp->is_ipv6;
-  /* ip addresses sent in network byte order */
-  if (a->is_ip6)
-    {
-      clib_memcpy (&(a->local.ip6), mp->local, 16);
-      clib_memcpy (&(a->remote.ip6), mp->remote, 16);
-    }
-  else
-    {
-      clib_memcpy (&(a->local.ip4), mp->local, 4);
-      clib_memcpy (&(a->remote.ip4), mp->remote, 4);
-    }
+  a->is_ip6 = !ip46_address_is_ip4 (&a->local);
   a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
   a->encap_fib_index = encap_fib_index;
   a->decap_fib_index = decap_fib_index;
@@ -154,25 +148,26 @@ static void send_vxlan_gpe_tunnel_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GPE_TUNNEL_DETAILS);
-  if (is_ipv6)
+
+  ip_address_encode (&t->local, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->local);
+  ip_address_encode (&t->remote, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->remote);
+
+  if (ip46_address_is_ip4 (&t->local))
     {
-      memcpy (rmp->local, &(t->local.ip6.as_u8), 16);
-      memcpy (rmp->remote, &(t->remote.ip6.as_u8), 16);
-      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
-      rmp->decap_vrf_id = htonl (im6->fibs[t->decap_fib_index].ft_table_id);
+      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
+      rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
     }
   else
     {
-      memcpy (rmp->local, &(t->local.ip4.as_u8), 4);
-      memcpy (rmp->remote, &(t->remote.ip4.as_u8), 4);
-      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
-      rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
+      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
+      rmp->decap_vrf_id = htonl (im6->fibs[t->decap_fib_index].ft_table_id);
     }
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   rmp->protocol = t->protocol;
   rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
