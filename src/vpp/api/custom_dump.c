@@ -1898,8 +1898,10 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
 
   s = format (0, "SCRIPT: vxlan_gpe_add_del_tunnel ");
 
-  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local);
-  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote);
+  ip46_address_t local, remote;
+
+  ip_address_decode (&mp->local, &local);
+  ip_address_decode (&mp->remote, &remote);
 
   u8 is_grp = ip46_address_is_multicast (&remote);
   char *remote_name = is_grp ? "group" : "remote";
