@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d38fd910_5ebacc43",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-31T18:29:36Z",
+      "side": 1,
+      "message": "Done, in https://gerrit.fd.io/r/c/vpp/+/24723",
+      "parentUuid": "1810b345_e59f08b5",
+      "revId": "81f04f4e03adabd7b7f3f15bf6de71b5319ad6a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "87139ec1_a7ffa0e4",
         "filename": "src/vnet/gre/gre.api",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "cdf0917f_54e286b9",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-31T18:29:36Z",
+      "side": 1,
+      "message": "Yeah, that is not exactly a style change. Separated to https://gerrit.fd.io/r/c/vpp/+/24723",
+      "parentUuid": "87139ec1_a7ffa0e4",
+      "revId": "81f04f4e03adabd7b7f3f15bf6de71b5319ad6a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "53f33dec_42a0b848",
         "filename": "src/vnet/gre/gre.api",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2020-01-31T13:56:32Z",
       "side": 1,
       "message": "Please add the description",
+      "revId": "81f04f4e03adabd7b7f3f15bf6de71b5319ad6a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a09b87a_12fbd261",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-31T18:29:36Z",
+      "side": 1,
+      "message": "Hmm, the fields look self-explanatory enough, let me try in the next patch set.",
+      "parentUuid": "53f33dec_42a0b848",
       "revId": "81f04f4e03adabd7b7f3f15bf6de71b5319ad6a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
