@@ -12,7 +12,8 @@ import scapy.compat
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment
+from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment, \
+    ICMPv6EchoRequest
 
 
 class TestMAP(VppTestCase):
@@ -597,7 +598,7 @@ class TestMAP(VppTestCase):
         p6 = (p_ether6 / p_ip6 / payload)
         self.send_and_assert_no_replies(self.pg1, p6*1)
 
-        # Packet fragmentation
+        # UDP packet fragmentation
         payload_len = 1453
         payload = UDP(sport=40000, dport=4000) / self.payload(payload_len)
         p4 = (p_ether / p_ip4 / payload)
@@ -613,7 +614,7 @@ class TestMAP(VppTestCase):
 
         self.validate_frag_payload_len(rx, UDP, payload_len)
 
-        # Packet fragmentation send fragments
+        # UDP packet fragmentation send fragments
         payload = UDP(sport=40000, dport=4000) / self.payload(payload_len)
         p4 = (p_ether / p_ip4 / payload)
         frags = fragment_rfc791(p4, fragsize=1000)
@@ -627,10 +628,34 @@ class TestMAP(VppTestCase):
 
         self.validate_frag_payload_len(rx, UDP, payload_len)
 
-        # reass_pkt = reassemble(rx)
-        # p4_reply.ttl -= 1
-        # p4_reply.id = 256
-        # self.validate(reass_pkt, p4_reply)
+        # ICMP packet fragmentation
+        payload = ICMP(id=6529) / self.payload(payload_len)
+        p4 = (p_ether / p_ip4 / payload)
+        self.pg_enable_capture()
+        self.pg0.add_stream(p4)
+        self.pg_start()
+        rx = self.pg1.get_capture(2)
+
+        p_ip6_translated = IPv6(src='1234:5678:90ab:cdef:ac:1001:200:0',
+                                dst='2001:db8:160::c0a8:1:6')
+        for p in rx:
+            self.validate_frag(p, p_ip6_translated)
+
+        self.validate_frag_payload_len(rx, ICMPv6EchoRequest, payload_len)
+
+        # ICMP packet fragmentation send fragments
+        payload = ICMP(id=6529) / self.payload(payload_len)
+        p4 = (p_ether / p_ip4 / payload)
+        frags = fragment_rfc791(p4, fragsize=1000)
+        self.pg_enable_capture()
+        self.pg0.add_stream(frags)
+        self.pg_start()
+        rx = self.pg1.get_capture(2)
+
+        for p in rx:
+            self.validate_frag(p, p_ip6_translated)
+
+        self.validate_frag_payload_len(rx, ICMPv6EchoRequest, payload_len)
 
         # TCP MSS clamping
         self.vapi.map_param_set_tcp(1300)
