@@ -212,7 +212,7 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
-  quicly_ctx->transport_params.idle_timeout = qm->connection_timeout;
+  quicly_ctx->transport_params.max_idle_timeout = qm->connection_timeout;
 
   app = application_get (ctx->parent_app_id);
   quicly_ctx->transport_params.max_stream_data.bidi_local =
