@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c096e893_4ef333d5",
+        "filename": "src/vnet/gre/gre.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-01-31T12:09:45Z",
+      "side": 1,
+      "message": "Line 47 says just \"type\".\nI like \"tunnel_type\" better.\nBut such rename would require a code change, so I did not do that in [0].\n\n[0] https://gerrit.fd.io/r/c/vpp/+/24707",
+      "range": {
+        "startLine": 35,
+        "startChar": 11,
+        "endLine": 35,
+        "endChar": 22
+      },
+      "revId": "e5b94dded0dfd7258d5fd0f4ef897d9ccb48715b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
