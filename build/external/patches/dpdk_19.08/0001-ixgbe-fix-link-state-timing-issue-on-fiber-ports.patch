@@ -1,0 +1,49 @@
+From 0b12d6f9be7fe4101223491716d291ad1bf6ec33 Mon Sep 17 00:00:00 2001
+From: Matthew Smith <mgsmith@netgate.com>
+Date: Fri, 31 Jan 2020 11:36:21 -0600
+Subject: [PATCH] ixgbe: fix link state timing issue on fiber ports
+
+With some models of fiber ports (e.g. X552 device ID 0x15ac), it
+is possible when a port is started to experience a timing issue
+which prevents the link from ever being fully set up.
+
+In ixgbe_dev_link_update_share(), if the media type is fiber and the
+link is down, a flag (IXGBE_FLAG_NEED_LINK_CONFIG) is set. A callback
+to ixgbe_dev_setup_link_alarm_handler() is scheduled for 10us later
+which should try to set up the link and clear the flag afterwards.
+
+If the device is started before the flag is cleared, the scheduled
+callback is canceled. This causes the flag to remain set and
+subsequent calls to ixgbe_dev_link_update_share() return
+without trying to retrieve the link state because the flag is set.
+
+In ixgbe_dev_start(), after cancelling the callback, unset the flag
+on the device to avoid this condition.
+---
+ drivers/net/ixgbe/ixgbe_ethdev.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/net/ixgbe/ixgbe_ethdev.c b/drivers/net/ixgbe/ixgbe_ethdev.c
+index 03fc1f7..3c2936d 100644
+--- a/drivers/net/ixgbe/ixgbe_ethdev.c
++++ b/drivers/net/ixgbe/ixgbe_ethdev.c
+@@ -2598,6 +2598,8 @@ static int eth_ixgbevf_pci_remove(struct rte_pci_device *pci_dev)
+ 	uint32_t *link_speeds;
+ 	struct ixgbe_tm_conf *tm_conf =
+ 		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
++	struct ixgbe_interrupt *intr =
++		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+ 
+ 	PMD_INIT_FUNC_TRACE();
+ 
+@@ -2614,6 +2616,7 @@ static int eth_ixgbevf_pci_remove(struct rte_pci_device *pci_dev)
+ 
+ 	/* Stop the link setup handler before resetting the HW. */
+ 	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
++	intr->flags &= ~IXGBE_FLAG_NEED_LINK_CONFIG;
+ 
+ 	/* disable uio/vfio intr/eventfd mapping */
+ 	rte_intr_disable(intr_handle);
+-- 
+1.8.3.1
+
