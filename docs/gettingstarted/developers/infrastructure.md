@@ -114,6 +114,63 @@ key\_pointer. It is usually a bad mistake to pass the address of a
 vector element as the second argument to hash\_set\_mem. It is perfectly
 fine to memorize constant string addresses in the text segment.
 
+Timekeeping
+-----------
+
+Vppinfra includes high-precision, low-cost timing services. The
+datatype clib_time_t and associated functions reside in
+./src/vppinfra/time.\[ch\]. Call clib_time_init (clib_time_t \*cp) to
+initialize the clib_time_t object.
+
+Clib_time_init(...) can use a variety of different ways to establish
+the hardware clock frequency. At the end of the day, vppinfra
+timekeeping takes the attitude that the operating system's clock is
+the closest thing to a gold standard it has handy.
+
+When properly configured, NTP maintains kernel clock synchronization
+with a highly accurate off-premises reference clock.  Notwithstanding
+network propagation delays, a synchronized NTP client will keep the
+kernel clock accurate to within 50ms or so.
+
+Why should one care? Simply put, oscillators used to generate CPU
+ticks aren't super accurate. They work pretty well, but a 0.1% error
+wouldn't be out of the question. That's a minute and a half's worth of
+error in 1 day. The error changes constantly, due to temperature
+variation, and a host of other physical factors.
+
+It's far too expensive to use system calls for timing, so we're left
+with the problem of continously adjusting our view of the CPU tick
+register's clocks_per_second parameter.
+
+The clock rate adjustment algorithm measures the number of cpu ticks
+and the "gold standard" reference time across an interval of
+approximately 16 seconds. We calculate clocks_per_second for the
+interval: use rdtsc (on x86_64) and a system call to get the latest
+cpu tick count and the kernel's latest nanosecond timestamp. We
+subtract the previous interval end values, and use exponential
+smoothing to merge the new clock rate sample into the clocks_per_second
+parameter.
+
+As of this writing, we maintain the clock rate by way of the following
+first-order differential equation:
+
+
+```
+   clocks_per_second(t) = clocks_per_second(t-1) * K + sample_cps(t)*(1-K)
+   where K = e**(-1.0/3.75);
+```
+
+This yields a per observation "half-life" of 1 minute. Empirically,
+the clock rate converges within 5 minutes, and appears to maintain
+near-perfect agreement with the kernel clock in the face of ongoing
+NTP time adjustments.
+
+See ./src/vppinfra/time.c:clib_time_verify_frequency(...) to look at
+the rate adjustment algorithm. The code rejects frequency samples
+corresponding to the sort of adjustment which might occur if someone
+changes the gold standard kernel clock by several seconds.
+
+
 Format
 ------
 
