@@ -383,7 +383,7 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
   int rv;
 
   memset (a, 0, sizeof (*a));
-  a->segment_name = (char *) name;
+  a->segment_name = name;
   a->segment_type = type;
 
   if (type == SSVM_SEGMENT_MEMFD)

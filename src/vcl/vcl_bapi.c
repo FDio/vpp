@@ -73,8 +73,9 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   vcl_worker_t *wrk = vcl_worker_get (0);
   svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
-  int *fds = 0, i;
+  int *fds = 0, i, rv;
   u32 n_fds = 0;
+  char *segment_name = 0;
 
   if (mp->retval)
     {
@@ -108,9 +109,16 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
-				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
-	  goto failed;
+	{
+	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+	  rv =
+	    vcl_segment_attach (segment_handle, segment_name,
+				SSVM_SEGMENT_MEMFD, fds[n_fds++]);
+	  vec_free (segment_name);
+	  if (rv != 0)
+	    goto failed;
+	}
+
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -123,8 +131,12 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     }
   else
     {
-      if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
-			      SSVM_SEGMENT_SHM, -1))
+      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+      rv =
+	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
+			    -1);
+      vec_free (segment_name);
+      if (rv != 0)
 	goto failed;
     }
 
@@ -143,10 +155,11 @@ static void
 vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
-  int n_fds = 0, *fds = 0, i;
+  int n_fds = 0, *fds = 0, i, rv;
   u64 segment_handle;
   vcl_worker_t *wrk;
   u32 wrk_index;
+  char *segment_name = 0;
 
   if (mp->retval)
     {
@@ -189,9 +202,15 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
-				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
-	  goto failed;
+	{
+	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+	  rv =
+	    vcl_segment_attach (segment_handle, segment_name,
+				SSVM_SEGMENT_MEMFD, fds[n_fds++]);
+	  vec_free (segment_name);
+	  if (rv != 0)
+	    goto failed;
+	}
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -204,8 +223,12 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     }
   else
     {
-      if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
-			      SSVM_SEGMENT_SHM, -1))
+      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
+      rv =
+	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
+			    -1);
+      vec_free (segment_name);
+      if (rv != 0)
 	goto failed;
     }
   vcm->app_state = STATE_APP_READY;
@@ -313,8 +336,7 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
   if (nsid_len)
     {
-      bmp->namespace_id_len = nsid_len;
-      clib_memcpy_fast (bmp->namespace_id, vcm->cfg.namespace_id, nsid_len);
+      vl_api_vec_to_api_string (vcm->cfg.namespace_id, &bmp->namespace_id);
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
     }
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);

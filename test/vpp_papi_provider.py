@@ -1564,8 +1564,7 @@ class VppPapiProvider(object):
              'sw_if_index': sw_if_index,
              'ip4_fib_id': ip4_fib_id,
              'ip6_fib_id': ip6_fib_id,
-             'namespace_id': namespace_id,
-             'namespace_id_len': len(namespace_id)})
+             'namespace_id': namespace_id})
 
     def punt_socket_register(self, reg, pathname,
                              header_version=1):
