@@ -19695,8 +19695,7 @@ api_app_namespace_add_del (vat_main_t * vam)
     }
   M (APP_NAMESPACE_ADD_DEL, mp);
 
-  clib_memcpy (mp->namespace_id, ns_id, vec_len (ns_id));
-  mp->namespace_id_len = vec_len (ns_id);
+  vl_api_vec_to_api_string (ns_id, &mp->namespace_id);
   mp->secret = clib_host_to_net_u64 (secret);
   mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
   mp->ip4_fib_id = clib_host_to_net_u32 (ip4_fib_id);
@@ -19770,15 +19769,20 @@ static void
 vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+  fib_prefix_t lcl, rmt;
 
-  if (mp->is_ip4)
+  ip_prefix_decode (&mp->lcl, &lcl);
+  ip_prefix_decode (&mp->rmt, &rmt);
+
+  if (lcl.fp_proto == FIB_PROTOCOL_IP4)
     {
       print (vam->ofp,
 	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
 	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
-	     mp->scope, format_ip4_address, &mp->lcl_ip, mp->lcl_plen,
+	     mp->scope, format_ip4_address, &lcl.fp_addr.ip4, lcl.fp_len,
 	     clib_net_to_host_u16 (mp->lcl_port), format_ip4_address,
-	     &mp->rmt_ip, mp->rmt_plen, clib_net_to_host_u16 (mp->rmt_port),
+	     &rmt.fp_addr.ip4, rmt.fp_len,
+	     clib_net_to_host_u16 (mp->rmt_port),
 	     clib_net_to_host_u32 (mp->action_index), mp->tag);
     }
   else
@@ -19786,9 +19790,10 @@ vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
       print (vam->ofp,
 	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
 	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
-	     mp->scope, format_ip6_address, &mp->lcl_ip, mp->lcl_plen,
+	     mp->scope, format_ip6_address, &lcl.fp_addr.ip6, lcl.fp_len,
 	     clib_net_to_host_u16 (mp->lcl_port), format_ip6_address,
-	     &mp->rmt_ip, mp->rmt_plen, clib_net_to_host_u16 (mp->rmt_port),
+	     &rmt.fp_addr.ip6, rmt.fp_len,
+	     clib_net_to_host_u16 (mp->rmt_port),
 	     clib_net_to_host_u32 (mp->action_index), mp->tag);
     }
 }
@@ -19802,6 +19807,11 @@ vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
   struct in6_addr ip6;
   struct in_addr ip4;
 
+  fib_prefix_t lcl, rmt;
+
+  ip_prefix_decode (&mp->lcl, &lcl);
+  ip_prefix_decode (&mp->rmt, &rmt);
+
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
       ASSERT (VAT_JSON_NONE == vam->json_tree.type);
@@ -19810,7 +19820,6 @@ vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
   node = vat_json_array_add (&vam->json_tree);
   vat_json_init_object (node);
 
-  vat_json_object_add_uint (node, "is_ip4", mp->is_ip4 ? 1 : 0);
   vat_json_object_add_uint (node, "appns_index",
 			    clib_net_to_host_u32 (mp->appns_index));
   vat_json_object_add_uint (node, "transport_proto", mp->transport_proto);
@@ -19821,21 +19830,21 @@ vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
 			    clib_net_to_host_u16 (mp->lcl_port));
   vat_json_object_add_uint (node, "rmt_port",
 			    clib_net_to_host_u16 (mp->rmt_port));
-  vat_json_object_add_uint (node, "lcl_plen", mp->lcl_plen);
-  vat_json_object_add_uint (node, "rmt_plen", mp->rmt_plen);
+  vat_json_object_add_uint (node, "lcl_plen", lcl.fp_len);
+  vat_json_object_add_uint (node, "rmt_plen", rmt.fp_len);
   vat_json_object_add_string_copy (node, "tag", mp->tag);
-  if (mp->is_ip4)
+  if (lcl.fp_proto == FIB_PROTOCOL_IP4)
     {
-      clib_memcpy (&ip4, mp->lcl_ip, sizeof (ip4));
+      clib_memcpy (&ip4, &lcl.fp_addr.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "lcl_ip", ip4);
-      clib_memcpy (&ip4, mp->rmt_ip, sizeof (ip4));
+      clib_memcpy (&ip4, &rmt.fp_addr.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "rmt_ip", ip4);
     }
   else
     {
-      clib_memcpy (&ip6, mp->lcl_ip, sizeof (ip6));
+      clib_memcpy (&ip6, &lcl.fp_addr.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "lcl_ip", ip6);
-      clib_memcpy (&ip6, mp->rmt_ip, sizeof (ip6));
+      clib_memcpy (&ip6, &rmt.fp_addr.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "rmt_ip", ip6);
     }
 }
@@ -19852,6 +19861,7 @@ api_session_rule_add_del (vat_main_t * vam)
   u8 is_ip4 = 1, conn_set = 0;
   u8 is_add = 1, *tag = 0;
   int ret;
+  fib_prefix_t lcl, rmt;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -19906,26 +19916,33 @@ api_session_rule_add_del (vat_main_t * vam)
 
   M (SESSION_RULE_ADD_DEL, mp);
 
-  mp->is_ip4 = is_ip4;
-  mp->transport_proto = proto;
+  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
+  if (is_ip4)
+    {
+      ip_set (&lcl.fp_addr, &lcl_ip4, 1);
+      ip_set (&rmt.fp_addr, &rmt_ip4, 1);
+      lcl.fp_len = lcl_plen;
+      rmt.fp_len = rmt_plen;
+    }
+  else
+    {
+      ip_set (&lcl.fp_addr, &lcl_ip6, 0);
+      ip_set (&rmt.fp_addr, &rmt_ip6, 0);
+      lcl.fp_len = lcl_plen;
+      rmt.fp_len = rmt_plen;
+    }
+
+
+  ip_prefix_encode (&lcl, &mp->lcl);
+  ip_prefix_encode (&rmt, &mp->rmt);
   mp->lcl_port = clib_host_to_net_u16 ((u16) lcl_port);
   mp->rmt_port = clib_host_to_net_u16 ((u16) rmt_port);
-  mp->lcl_plen = lcl_plen;
-  mp->rmt_plen = rmt_plen;
+  mp->transport_proto = proto ? IP_API_PROTO_UDP : IP_API_PROTO_TCP;
   mp->action_index = clib_host_to_net_u32 (action);
   mp->appns_index = clib_host_to_net_u32 (appns_index);
   mp->scope = scope;
   mp->is_add = is_add;
-  if (is_ip4)
-    {
-      clib_memcpy (mp->lcl_ip, &lcl_ip4, sizeof (lcl_ip4));
-      clib_memcpy (mp->rmt_ip, &rmt_ip4, sizeof (rmt_ip4));
-    }
-  else
-    {
-      clib_memcpy (mp->lcl_ip, &lcl_ip6, sizeof (lcl_ip6));
-      clib_memcpy (mp->rmt_ip, &rmt_ip6, sizeof (rmt_ip6));
-    }
   if (tag)
     {
       clib_memcpy (mp->tag, tag, vec_len (tag));

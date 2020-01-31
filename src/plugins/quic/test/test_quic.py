@@ -77,9 +77,9 @@ class QUICTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id=b"server",
+        self.vapi.app_namespace_add_del(namespace_id="server",
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id=b"client",
+        self.vapi.app_namespace_add_del(namespace_id="client",
                                         sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes

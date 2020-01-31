@@ -120,9 +120,9 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id=b"1", secret=1234,
+        self.vapi.app_namespace_add_del(namespace_id="1", secret=1234,
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id=b"2", secret=5678,
+        self.vapi.app_namespace_add_del(namespace_id="2", secret=5678,
                                         sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
@@ -161,9 +161,9 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id=b"1", secret=1234,
+        self.vapi.app_namespace_add_del(namespace_id="1", secret=1234,
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id=b"2", secret=5678,
+        self.vapi.app_namespace_add_del(namespace_id="2", secret=5678,
                                         sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
