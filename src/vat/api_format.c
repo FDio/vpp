@@ -12706,10 +12706,8 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_add_del_tunnel_t *mp;
-  ip4_address_t local4, remote4;
-  ip6_address_t local6, remote6;
+  ip46_address_t local, remote;
   u8 is_add = 1;
-  u8 ipv4_set = 0, ipv6_set = 0;
   u8 local_set = 0;
   u8 remote_set = 0;
   u8 grp_set = 0;
@@ -12721,65 +12719,30 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   u8 vni_set = 0;
   int ret;
 
-  /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
-  clib_memset (&local4, 0, sizeof local4);
-  clib_memset (&remote4, 0, sizeof remote4);
-  clib_memset (&local6, 0, sizeof local6);
-  clib_memset (&remote6, 0, sizeof remote6);
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
       else if (unformat (line_input, "local %U",
-			 unformat_ip4_address, &local4))
+			 unformat_ip46_address, &local))
 	{
 	  local_set = 1;
-	  ipv4_set = 1;
 	}
       else if (unformat (line_input, "remote %U",
-			 unformat_ip4_address, &remote4))
+			 unformat_ip46_address, &remote))
 	{
 	  remote_set = 1;
-	  ipv4_set = 1;
-	}
-      else if (unformat (line_input, "local %U",
-			 unformat_ip6_address, &local6))
-	{
-	  local_set = 1;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip6_address, &remote6))
-	{
-	  remote_set = 1;
-	  ipv6_set = 1;
 	}
       else if (unformat (line_input, "group %U %U",
-			 unformat_ip4_address, &remote4,
+			 unformat_ip46_address, &remote,
 			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
 	{
 	  grp_set = remote_set = 1;
-	  ipv4_set = 1;
 	}
       else if (unformat (line_input, "group %U",
-			 unformat_ip4_address, &remote4))
+			 unformat_ip46_address, &remote))
 	{
 	  grp_set = remote_set = 1;
-	  ipv4_set = 1;
-	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip6_address, &remote6,
-			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
-	{
-	  grp_set = remote_set = 1;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip6_address, &remote6))
-	{
-	  grp_set = remote_set = 1;
-	  ipv6_set = 1;
 	}
       else
 	if (unformat (line_input, "mcast_sw_if_index %u", &mcast_sw_if_index))
@@ -12820,7 +12783,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
       errmsg ("tunnel nonexistent multicast device");
       return -99;
     }
-  if (ipv4_set && ipv6_set)
+  if (ip46_address_is_ip4 (&local) != ip46_address_is_ip4 (&remote))
     {
       errmsg ("both IPv4 and IPv6 addresses specified");
       return -99;
@@ -12834,17 +12797,12 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 
   M (VXLAN_GPE_ADD_DEL_TUNNEL, mp);
 
-
-  if (ipv6_set)
-    {
-      clib_memcpy (&mp->local, &local6, sizeof (local6));
-      clib_memcpy (&mp->remote, &remote6, sizeof (remote6));
-    }
-  else
-    {
-      clib_memcpy (&mp->local, &local4, sizeof (local4));
-      clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
-    }
+  ip_address_encode (&local,
+		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->local);
+  ip_address_encode (&remote,
+		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
+		     IP46_TYPE_IP6, &mp->remote);
 
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
@@ -12852,7 +12810,6 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   mp->protocol = protocol;
   mp->vni = ntohl (vni);
   mp->is_add = is_add;
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -12863,8 +12820,10 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler
   (vl_api_vxlan_gpe_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local);
-  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote);
+  ip46_address_t local, remote;
+
+  ip_address_decode (&mp->local, &local);
+  ip_address_decode (&mp->remote, &remote);
 
   print (vam->ofp, "%11d%24U%24U%13d%12d%19d%14d%14d",
 	 ntohl (mp->sw_if_index),
@@ -12883,6 +12842,10 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
   vat_json_node_t *node = NULL;
   struct in_addr ip4;
   struct in6_addr ip6;
+  ip46_address_t local, remote;
+
+  ip_address_decode (&mp->local, &local);
+  ip_address_decode (&mp->remote, &remote);
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -12893,19 +12856,19 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  if (mp->is_ipv6)
+  if (ip46_address_is_ip4 (&local))
     {
-      clib_memcpy (&ip6, &(mp->local[0]), sizeof (ip6));
-      vat_json_object_add_ip6 (node, "local", ip6);
-      clib_memcpy (&ip6, &(mp->remote[0]), sizeof (ip6));
-      vat_json_object_add_ip6 (node, "remote", ip6);
+      clib_memcpy (&ip4, &local.ip4, sizeof (ip4));
+      vat_json_object_add_ip6 (node, "local", ip4);
+      clib_memcpy (&ip4, &remote.ip4, sizeof (ip4));
+      vat_json_object_add_ip6 (node, "remote", ip4);
     }
   else
     {
-      clib_memcpy (&ip4, &(mp->local[0]), sizeof (ip4));
-      vat_json_object_add_ip4 (node, "local", ip4);
-      clib_memcpy (&ip4, &(mp->remote[0]), sizeof (ip4));
-      vat_json_object_add_ip4 (node, "remote", ip4);
+      clib_memcpy (&ip6, &local.ip6, sizeof (ip6));
+      vat_json_object_add_ip4 (node, "local", ip6);
+      clib_memcpy (&ip6, &remote.ip6, sizeof (ip6));
+      vat_json_object_add_ip4 (node, "remote", ip6);
     }
   vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
   vat_json_object_add_uint (node, "protocol", ntohl (mp->protocol));
