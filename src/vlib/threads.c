@@ -283,6 +283,8 @@ vlib_thread_init (vlib_main_t * vm)
   w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
 
+  vlib_get_thread_core_numa (w, w->cpu_id);
+
   if (tm->sched_policy != ~0)
     {
       struct sched_param sched_param;
