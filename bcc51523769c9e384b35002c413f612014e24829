@@ -22,6 +22,30 @@
       "revId": "bcc51523769c9e384b35002c413f612014e24829",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "844775f1_108204f9",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-01-31T00:29:03Z",
+      "side": 1,
+      "message": "Thanks for the comment.\nIt is OK to delegate svm_fifo_set_size() to the app too. In the case, the return type of app_worker_session_fifo_tuning() and callback function can be void.\n\nThe intention of calling svm_fifo_set_size() here is just to be defensive against the possible case that the app\u0027s callback attempts to set too small or too large size for the fifo. For the same purpose, the session_fifo_tuning() may need to check return-value is not larger than the dropped len (in the case of ..._ACTION_DEQUEUED), although it is not implemented in the previous revision.",
+      "parentUuid": "863acb3d_a52300f0",
+      "range": {
+        "startLine": 398,
+        "startChar": 0,
+        "endLine": 415,
+        "endChar": 0
+      },
+      "revId": "bcc51523769c9e384b35002c413f612014e24829",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
