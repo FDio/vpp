@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "ff6d4281_ae6de5bc",
+        "filename": "src/vnet/session/application_worker.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 1957
+      },
+      "writtenOn": "2020-01-31T12:41:30Z",
+      "side": 1,
+      "message": "I\u0027ve added fifo_tuning_callback test and that resolved the core however caused severe speed degradataion. I tried 2 options: (a) return 0 from app_worker_session_fifo_tuning  when callback is not available; (b) fall-back to segment_manager_fifo_tuning call if callback is NULL. Neither worked good.\n\nOn the other hand adding same tuning callback (basically duplicating one taken from hs_proxy) on the server-side helped to get proper download speed.\n\nI guess some sanity test is still needed to either not core if callback is NULL or we should turn it into ASSERT if our expectation is that callback should always be implemented.",
+      "parentUuid": "2500cf34_742f1855",
+      "revId": "bcc51523769c9e384b35002c413f612014e24829",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "863acb3d_a52300f0",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 9
