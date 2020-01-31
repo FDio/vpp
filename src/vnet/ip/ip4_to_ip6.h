@@ -226,8 +226,10 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
   icmp46_header_t *icmp;
   ip_csum_t csum;
   ip6_frag_hdr_t *inner_frag;
+  ip6_frag_hdr_t *outer_frag= NULL;
   u32 inner_frag_id;
   u32 inner_frag_offset;
+  u32 outer_frag_id;
   u8 inner_frag_more;
   u16 *inner_L4_checksum = 0;
   int rv;
@@ -397,8 +399,20 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
     }
   else
     {
-      vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6));
-      ip6 = vlib_buffer_get_current (p);
+      if (PREDICT_FALSE (ip4->flags_and_fragment_offset &
+			 clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS)))
+	{
+	  vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6) -
+			       sizeof (*outer_frag));
+	  ip6 = vlib_buffer_get_current (p);
+	  outer_frag = (ip6_frag_hdr_t *) (ip6 + 1);
+	  outer_frag_id = frag_id_4to6 (ip4->fragment_id);
+	}
+      else
+	{
+	  vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6));
+	  ip6 = vlib_buffer_get_current (p);
+	}
       ip6->payload_length =
 	clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
 			      sizeof (*ip4));
@@ -413,6 +427,17 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 
   if ((rv = fn (p, ip4, ip6, ctx)) != 0)
     return rv;
+
+  if (PREDICT_FALSE (outer_frag != NULL))
+    {
+      outer_frag->next_hdr = ip6->protocol;
+      outer_frag->identification = outer_frag_id;
+      outer_frag->rsv = 0;
+      outer_frag->fragment_offset_and_more = ip6_frag_hdr_offset_and_more (0, 1);
+      ip6->protocol = IP_PROTOCOL_IPV6_FRAGMENTATION;
+      ip6->payload_length = u16_net_add (ip6->payload_length,
+					 sizeof (*outer_frag));
+    }
 
   //Truncate when ICMPv6 error message exceeds the minimal IPv6 MTU
   if (p->current_length > 1280 && icmp->type < 128)
