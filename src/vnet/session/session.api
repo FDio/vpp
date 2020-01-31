@@ -13,7 +13,22 @@
  * limitations under the License.
  */
 
-option version = "1.7.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+
+enum transport_proto : u8
+{
+        TRANSPORT_PROTO_API_TCP,
+        TRANSPORT_PROTO_API_UDP,
+        TRANSPORT_PROTO_API_SCTP,
+        TRANSPORT_PROTO_API_NONE,
+        TRANSPORT_PROTO_API_TLS,
+        TRANSPORT_PROTO_API_UDPC,
+        TRANSPORT_PROTO_API_QUIC,
+};
 
 /** \brief client->vpp, attach application to session layer
  	### WILL BE DEPRECATED POST 20.01 ###
@@ -22,16 +37,14 @@ option version = "1.7.0";
     @param initial_segment_size - size of the initial shm segment to be
     							  allocated
     @param options - segment size, fifo sizes, etc.
-    @param namespace_id_len - length of the namespace id c-string
-    @param namespace_id - 0 terminted c-string
+    @param namespace_id - string
 */
  define application_attach {
     u32 client_index;
     u32 context;
     u32 initial_segment_size;
     u64 options[17];
-    u8 namespace_id_len;
-    u8 namespace_id [64];
+    string namespace_id[];
  };
 
  /** \brief Application attach reply
@@ -44,10 +57,9 @@ option version = "1.7.0";
     @param fd_flags - set of flags that indicate which fds are to be expected
     				  over the socket (set only if socket transport available)
     @param segment_size - size of first shm segment
-    @param segment_name_length - length of segment name
-    @param segment_name - name of segment client needs to attach to
     @param app_index - index of the newly created app
     @param segment_handle - handle for segment
+    @param segment_name - name of segment client needs to attach to
 */
 define application_attach_reply {
     u32 context;
@@ -56,25 +68,22 @@ define application_attach_reply {
     u8 n_fds;
     u8 fd_flags;
     u32 segment_size;
-    u8 segment_name_length;
-    u8 segment_name[128];
     u32 app_index;
     u64 segment_handle;
+    string segment_name[];
 };
 
 /** \brief Application attach to session layer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param options - segment size, fifo sizes, etc.
-    @param namespace_id_len - length of the namespace id c-string
-    @param namespace_id - 0 terminted c-string
+    @param namespace_id - string
 */
  define app_attach {
     u32 client_index;
     u32 context;
     u64 options[17];
-    u8 namespace_id_len;
-    u8 namespace_id[64];
+    string namespace_id[];
  };
 
  /** \brief Application attach reply
@@ -89,9 +98,8 @@ define application_attach_reply {
     @param fd_flags - set of flags that indicate which fds are to be expected
     				  over the socket (set only if socket transport available)
     @param segment_size - size of first shm segment
-    @param segment_name_length - length of segment name
-    @param segment_name - name of segment client needs to attach to
     @param segment_handle - handle for segment
+    @param segment_name - name of segment client needs to attach to
 */
 define app_attach_reply {
     u32 context;
@@ -103,9 +111,8 @@ define app_attach_reply {
     u8 n_fds;
     u8 fd_flags;
     u32 segment_size;
-    u8 segment_name_length;
-    u8 segment_name[128];
     u64 segment_handle;
+    string segment_name[];
 };
 
 /** \brief Add certificate and key
@@ -202,7 +209,7 @@ autoreply define map_another_segment {
     u32 context;
     u8 fd_flags;
     u32 segment_size;
-    u8 segment_name[128];
+    string segment_name[128];
     u64 segment_handle;
 };
 
@@ -301,7 +308,6 @@ define disconnect_session_reply {
     @param context - sender context, to match reply w/ request
     @param wrk_index - index of worker requesting the bind
     @param vrf - bind namespace
-    @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
     @param port - port
     @param proto - protocol 0 - TCP 1 - UDP
@@ -312,10 +318,9 @@ autoreply define bind_sock {
   u32 context;
   u32 wrk_index;
   u32 vrf;
-  u8 is_ip4;
-  u8 ip[16];
+  vl_api_address_t ip;
   u16 port;
-  u8 proto;
+  vl_api_transport_proto_t proto;
   u64 options[16];
 };
 
@@ -342,7 +347,6 @@ autoreply define unbind_sock {
                                   used to perform redirects
     @param options - socket options, fifo sizes, etc. when doing redirects
     @param vrf - connection namespace
-    @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
     @param port - port
     @param proto - protocol 0 - TCP 1 - UDP
@@ -358,13 +362,11 @@ autoreply define connect_sock {
   u64 client_queue_address;
   u64 options[16];
   u32 vrf;
-  u8 is_ip4;
-  u8 ip[16];
+  vl_api_address_t ip;
   u16 port;
-  u8 proto;
+  vl_api_transport_proto_t proto;
   u64 parent_handle;
-  u8 hostname_len;
-  u8 hostname[hostname_len];
+  string hostname[];
 };
 
 /** \brief ask app to add a new cut-through registration
@@ -404,7 +406,7 @@ define app_worker_add_del
   u32 context;
   u32 app_index;
   u32 wrk_index;
-  u8 is_add;
+  bool is_add [default=true];
 };
 
 /** \brief Reply for app worker add/del
@@ -415,9 +417,9 @@ define app_worker_add_del
     @param n_fds - number of fds exchanged
     @param fd_flags - set of flags that indicate which fds are to be expected
     				  over the socket (set only if socket transport available)
-    @param segment_name_length - length of segment name
-    @param segment_name - name of segment client needs to attach to
     @param segment_handle - handle for segment
+    @param is_add - add if non zero, else delete
+    @param segment_name - name of segment client needs to attach to
 */
 define app_worker_add_del_reply
 {
@@ -427,10 +429,9 @@ define app_worker_add_del_reply
   u64 app_event_queue_address;
   u8 n_fds;
   u8 fd_flags;
-  u8 segment_name_length;
-  u8 segment_name[128];
   u64 segment_handle;
-  u8 is_add;
+  bool is_add [default=true];
+  string segment_name[];
 };
 
 /** \brief enable/disable session layer
@@ -442,7 +443,7 @@ define app_worker_add_del_reply
 autoreply define session_enable_disable {
   u32 client_index;
   u32 context;
-  u8 is_enable;
+  bool is_enable [default=true];
 };
 
 /** \brief add/del application namespace
@@ -456,18 +457,16 @@ autoreply define session_enable_disable {
                         if sw_if_index set.
     @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored
                         if sw_if_index set.
-    @param namespace_id_len - length of namespace id lower
     @param namespace_id - namespace id
 */
 define app_namespace_add_del {
   u32 client_index;
   u32 context;
   u64 secret;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 ip4_fib_id;
   u32 ip6_fib_id;
-  u8 namespace_id_len;
-  u8 namespace_id[64];
+  string namespace_id[];
 };
 
 /** \brief Reply for app namespace add/del
@@ -482,11 +481,17 @@ define app_namespace_add_del_reply
   u32 appns_index;
 };
 
+enum session_rule_scope {
+	SESSION_RULE_SCOPE_API_GLOBAL = 0,
+	SESSION_RULE_SCOPE_API_LOCAL = 1,
+	SESSION_RULE_SCOPE_API_BOTH = 2,
+};
+
 /** \brief add/del session rule
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
-    @param transport_proto - transport protocol (0 - tcp 1 - udp)
+    @param transport_proto - transport protocol
     @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
     @param lcl_ip - local ip
     @param lcl_plen - local prefix length
@@ -498,25 +503,23 @@ define app_namespace_add_del_reply
                           application with index action_index
     @param is_add - flag to indicate if add or del
     @param appns_index - application namespace where rule is to be applied to
-    @param scope - flag that indicates scope of the rule: global or local.
+    @param scope - enum that indicates scope of the rule: global or local.
                    If 0, default is global, 1 is global 2 is local, 3 is both
+    @param tag - tag
 */
 autoreply define session_rule_add_del {
   u32 client_index;
   u32 context;
-  u8 transport_proto;
-  u8 is_ip4;
-  u8 lcl_ip[16];
-  u8 lcl_plen;
-  u8 rmt_ip[16];
-  u8 rmt_plen;
+  vl_api_transport_proto_t transport_proto;
+  vl_api_prefix_t lcl;
+  vl_api_prefix_t rmt;
   u16 lcl_port;
   u16 rmt_port;
   u32 action_index;
-  u8 is_add;
+  bool is_add [default=true];
   u32 appns_index;
-  u8 scope;
-  u8 tag[64];
+  vl_api_session_rule_scope_t scope;
+  string tag[64];
 };
 
 /** \brief Dump session rules
@@ -531,7 +534,7 @@ define session_rules_dump
 
 /** \brief Session rules details
     @param context - sender context, to match reply w/ request
-    @param transport_proto - transport protocol (0 - tcp 1 - udp)
+    @param transport_proto - transport protocol
     @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
     @param lcl_ip - local ip
     @param lcl_plen - local prefix length
@@ -542,24 +545,22 @@ define session_rules_dump
     @param action_index - the only action defined now is forward to
                           application with index action_index
     @param appns_index - application namespace where rule is to be applied to
-    @param scope - flag that indicates scope of the rule: global or local.
+    @param scope - enum that indicates scope of the rule: global or local.
                    If 0, default is global, 1 is global 2 is local, 3 is both
+    @param tag - tag
   */
 define session_rules_details
 {
   u32 context;
-  u8 transport_proto;
-  u8 is_ip4;
-  u8 lcl_ip[16];
-  u8 lcl_plen;
-  u8 rmt_ip[16];
-  u8 rmt_plen;
+  vl_api_transport_proto_t transport_proto;
+  vl_api_prefix_t lcl;
+  vl_api_prefix_t rmt;
   u16 lcl_port;
   u16 rmt_port;
   u32 action_index;
   u32 appns_index;
-  u8 scope;
-  u8 tag[64];
+  vl_api_session_rule_scope_t scope;
+  string tag[64];
 };
 
 /*

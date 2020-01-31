@@ -3378,13 +3378,13 @@ static void *vl_api_app_namespace_add_del_t_print
   (vl_api_app_namespace_add_del_t * mp, void *handle)
 {
   u8 *s;
-  u8 len = clib_min (mp->namespace_id_len,
-		     ARRAY_LEN (mp->namespace_id) - 1);
-  mp->namespace_id[len] = 0;
+
   s = format (0, "SCRIPT: app_namespace_add_del ");
   s = format (s, "ns-id %s secret %lu sw_if_index %d ipv4_fib_id %d "
-	      "ipv6_fib_id %d", (char *) mp->namespace_id, mp->secret,
-	      (mp->sw_if_index), (mp->ip4_fib_id), (mp->ip6_fib_id));
+	      "ipv6_fib_id %d",
+	      vl_api_from_api_to_new_c_string (&mp->namespace_id),
+	      mp->secret, (mp->sw_if_index), (mp->ip4_fib_id),
+	      (mp->ip6_fib_id));
   FINISH;
 }
 
@@ -3433,21 +3433,25 @@ static void *vl_api_session_rule_add_del_t_print
   (vl_api_session_rule_add_del_t * mp, void *handle)
 {
   u8 *s;
+  fib_prefix_t lcl, rmt;
   char *proto = mp->transport_proto == 0 ? "tcp" : "udp";
   s = format (0, "SCRIPT: session_rule_add_del ");
   mp->tag[sizeof (mp->tag) - 1] = 0;
-  if (mp->is_ip4)
+  ip_prefix_decode (&mp->lcl, &lcl);
+  ip_prefix_decode (&mp->rmt, &rmt);
+
+  if (lcl.fp_proto == FIB_PROTOCOL_IP4)
     s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip4_address,
-		(ip4_address_t *) mp->lcl_ip, mp->lcl_plen,
-		format_ip4_address, (ip4_address_t *) mp->rmt_ip,
-		mp->rmt_plen, mp->action_index, mp->tag);
+		&lcl.fp_addr.ip4, lcl.fp_len,
+		format_ip4_address, &rmt.fp_addr.ip4,
+		rmt.fp_len, mp->action_index, mp->tag);
   else
     s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip6_address,
-		(ip6_address_t *) mp->lcl_ip, mp->lcl_plen,
-		format_ip6_address, (ip6_address_t *) mp->rmt_ip,
-		mp->rmt_plen, mp->action_index, mp->tag);
+		&lcl.fp_addr.ip6, lcl.fp_len,
+		format_ip6_address, &rmt.fp_addr.ip6,
+		rmt.fp_len, mp->action_index, mp->tag);
   FINISH;
 }
 
