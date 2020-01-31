@@ -204,6 +204,26 @@ clib_sysfs_list_to_bitmap (char *filename)
 }
 
 
+static void
+vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id)
+{
+  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
+  u8 *p = 0;
+  int core_id = -1, socket_id = -1;
+
+  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
+  clib_sysfs_read ((char *) p, "%d", &core_id);
+  vec_reset_length (p);
+  p =
+    format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, cpu_id,
+	    0);
+  clib_sysfs_read ((char *) p, "%d", &socket_id);
+  vec_free (p);
+
+  w->core_id = core_id;
+  w->socket_id = socket_id;
+}
+
 /* Called early in the init sequence */
 
 clib_error_t *
@@ -282,6 +302,8 @@ vlib_thread_init (vlib_main_t * vm)
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
+
+  vlib_get_thread_core_socket (w, w->cpu_id);
 
   if (tm->sched_policy != ~0)
     {
@@ -575,26 +597,6 @@ vlib_worker_thread_bootstrap_fn (void *arg)
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
   /* NOTREACHED, we hope */
   return rv;
-}
-
-static void
-vlib_get_thread_core_socket (vlib_worker_thread_t * w, unsigned cpu_id)
-{
-  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
-  u8 *p = 0;
-  int core_id = -1, socket_id = -1;
-
-  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
-  clib_sysfs_read ((char *) p, "%d", &core_id);
-  vec_reset_length (p);
-  p =
-    format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, cpu_id,
-	    0);
-  clib_sysfs_read ((char *) p, "%d", &socket_id);
-  vec_free (p);
-
-  w->core_id = core_id;
-  w->socket_id = socket_id;
 }
 
 static clib_error_t *
