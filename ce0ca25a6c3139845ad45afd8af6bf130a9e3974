@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27ccdd40_e3877b62",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-01T23:35:44Z",
+      "side": 1,
+      "message": "After thinking a bit more about this, the algorithm doesn\u0027t feel right. If there\u0027s a difference in speed between the consumer and the producer, with the consumer being faster, after each write utilization will be minimal. In other words, all this checks will have no effect apart from consuming cpu. Same for tx as a fast producer will always keep the fifo full (more lower).\n\nI believe we should be doing the tuning periodically and tracking just how much data was enqueued/dequeued per period. Probably the best would be per rtt but then the protocols need to be aware of the rtt (udp is not) and/or the tuning might have to be driven by those protocols. Not sure about the best option at this point ... \n\nConsidering that the fifos have an overhead that\u0027s only slightly higher than the amount of data enqueued, i.e., fifo size can be 2MB but only a fraction of that could be allocated, what type of tuning is actually needed short term? Or what\u0027s the minimal algorithm that we need to merge and start testing, while we work on improving this? \n\nI guess we have 2 options: \n- leave the patch mostly as is, but only handle tuning when the custom tuning flag is set, i.e., not do tuning for the general case.\n- have the proxy app do the tuning on rx notification and merge the patch except the session_fifo_tuning changes. \n\nBoth of these are focused on rx fifo tuning, but as far as I can tell, that\u0027s enough for the proxy case. Keep in mind though that we should not constantly check the status of the segment after each rx event. \n\nDid I miss something?\n\nOnce we get the basic features in and testing can start, we can focus on doing more optimizations.",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 25
+      },
+      "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
