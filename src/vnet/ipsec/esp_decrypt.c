@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/l2/l2_input.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -506,6 +507,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 		  switch (clib_net_to_host_u16 (gre->protocol))
 		    {
 		    case GRE_PROTOCOL_teb:
+		      vnet_update_l2_len (b[0]);
 		      next[0] = ESP_DECRYPT_NEXT_L2_INPUT;
 		      break;
 		    case GRE_PROTOCOL_ip4:
