@@ -2086,6 +2086,7 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    * Alloc fifo
    */
   fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  fs->h->pct_first_alloc = 100;
   f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
@@ -2464,6 +2465,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   rv = fifo_segment_create (sm, a);
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
   fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  fs->h->pct_first_alloc = 100;
 
   /*
    * Prealloc chunks and headers

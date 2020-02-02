@@ -120,6 +120,7 @@ struct fifo_segment_header_
   u8 n_slices;				/**< Number of slices */
   u8 high_watermark;			/**< Memory pressure watermark high */
   u8 low_watermark;			/**< Memory pressure watermark low */
+  u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
 };
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
