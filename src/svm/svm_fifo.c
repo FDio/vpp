@@ -368,7 +368,7 @@ void
 svm_fifo_init (svm_fifo_t * f, u32 size)
 {
   svm_fifo_chunk_t *c, *prev;
-  u32 first_chunk, min_alloc;
+  u32 min_alloc;
 
   f->size = size;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
@@ -378,9 +378,8 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->head_chunk = f->tail_chunk = f->start_chunk;
   f->ooo_deq = f->ooo_enq = 0;
 
-  first_chunk = f->start_chunk->length;
-  min_alloc = first_chunk > 16 << 10 ? first_chunk >> 2 : 4096;
-  min_alloc = clib_min (first_chunk, 64 << 10);
+  min_alloc = size > 32 << 10 ? size >> 3 : 4096;
+  min_alloc = clib_min (min_alloc, 64 << 10);
   f->min_alloc = min_alloc;
 
   /*

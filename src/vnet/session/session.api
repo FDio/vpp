@@ -29,7 +29,7 @@ option version = "1.7.0";
     u32 client_index;
     u32 context;
     u32 initial_segment_size;
-    u64 options[16];
+    u64 options[17];
     u8 namespace_id_len;
     u8 namespace_id [64];
  };
@@ -72,7 +72,7 @@ define application_attach_reply {
  define app_attach {
     u32 client_index;
     u32 context;
-    u64 options[16];
+    u64 options[17];
     u8 namespace_id_len;
     u8 namespace_id[64];
  };
