@@ -171,6 +171,7 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
    */
   fs->h->high_watermark = sm->high_watermark;
   fs->h->low_watermark = sm->low_watermark;
+  fs->h->pct_first_alloc = props->pct_first_alloc;
   fs->h->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
 
 done:
