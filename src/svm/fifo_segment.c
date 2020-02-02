@@ -294,8 +294,7 @@ fs_chunk_size_is_valid (fifo_segment_header_t * fsh, u32 size)
 }
 
 static svm_fifo_t *
-fs_try_alloc_fifo_freelist (fifo_segment_slice_t * fss,
-			    u32 fl_index, u32 data_bytes)
+fs_try_alloc_fifo_freelist (fifo_segment_slice_t * fss, u32 fl_index)
 {
   svm_fifo_chunk_t *c;
   svm_fifo_t *f;
@@ -471,14 +470,16 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
   u32 fifo_sz, fl_index;
   svm_fifo_t *f = 0;
   uword n_free_bytes;
+  u32 min_size;
 
-  fl_index = fs_freelist_for_size (data_bytes);
+  min_size = clib_max ((fsh->pct_first_alloc * data_bytes) / 100, 4096);
+  fl_index = fs_freelist_for_size (min_size);
   fifo_sz = sizeof (svm_fifo_t) + sizeof (svm_fifo_chunk_t);
-  fifo_sz += 1 << max_log2 (data_bytes);
+  fifo_sz += 1 << max_log2 (min_size);
 
   if (fss->free_fifos && fss->free_chunks[fl_index])
     {
-      f = fs_try_alloc_fifo_freelist (fss, fl_index, data_bytes);
+      f = fs_try_alloc_fifo_freelist (fss, fl_index);
       if (f)
 	{
 	  fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
@@ -494,7 +495,7 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 				   FIFO_SEGMENT_ALLOC_BATCH_SIZE))
 	goto done;
 
-      f = fs_try_alloc_fifo_freelist (fss, fl_index, data_bytes);
+      f = fs_try_alloc_fifo_freelist (fss, fl_index);
       if (f)
 	fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
       goto done;
@@ -502,7 +503,7 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
   if (fifo_sz <= n_free_bytes)
     {
       void *oldheap = ssvm_push_heap (fsh->ssvm_sh);
-      f = svm_fifo_alloc (data_bytes);
+      f = svm_fifo_alloc (min_size);
       ssvm_pop_heap (oldheap);
       if (f)
 	{
