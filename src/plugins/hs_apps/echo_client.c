@@ -635,7 +635,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
-  u64 options[16];
+  u64 options[17];
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -661,6 +661,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
+  options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
   if (appns_id)
     {
       options[APP_OPTIONS_FLAGS] |= appns_flags;

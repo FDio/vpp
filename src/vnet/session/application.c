@@ -556,6 +556,8 @@ application_alloc_and_init (app_init_args_t * a)
     props->high_watermark = options[APP_OPTIONS_HIGH_WATERMARK];
   if (options[APP_OPTIONS_LOW_WATERMARK])
     props->low_watermark = options[APP_OPTIONS_LOW_WATERMARK];
+  if (options[APP_OPTIONS_PCT_FIRST_ALLOC])
+    props->pct_first_alloc = options[APP_OPTIONS_PCT_FIRST_ALLOC];
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
