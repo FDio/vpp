@@ -1529,19 +1529,25 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
        * ip4 broadcasts are accepted, e.g. to make dhcp client work
        *
        * The checks are:
-       *  - the source is a recieve => it's from us => bogus, do this
-       *    first since it sets a different error code.
+       *  - the source is a recieve => it's from us =>
+       *     bogus,if we are not the source (src ip and dest ip can be same from sender,
+       *     do this first since it sets a different error code.
        *  - uRPF check for any route to source - accept if passes.
        *  - allow packets destined to the broadcast address from unknown sources
        */
 
       *error0 = ((*error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		  && dpo0->dpoi_type == DPO_RECEIVE) ?
-		 IP4_ERROR_SPOOFED_LOCAL_PACKETS : *error0);
+		  && dpo0->dpoi_type == DPO_RECEIVE
+		  && !(b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)) ?
+		 IP4_ERROR_SPOOFED_PACKETS : *error0);
+
       *error0 = ((*error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		  && !fib_urpf_check_size (lb0->lb_urpf)
-		  && ip0->dst_address.as_u32 != 0xFFFFFFFF) ?
-		 IP4_ERROR_SRC_LOOKUP_MISS : *error0);
+		  && ((b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED) ?
+		      fib_urpf_check (lb0->lb_urpf,
+				      vnet_buffer (b)->sw_if_index[VLIB_RX]) :
+		      !fib_urpf_check_size (lb0->lb_urpf))
+		  && ip0->dst_address.as_u32 !=
+		  0xFFFFFFFF) ? IP4_ERROR_SRC_LOOKUP_MISS : *error0);
 
       last_check->src.as_u32 = ip0->src_address.as_u32;
       last_check->lbi = lbi0;
@@ -1624,20 +1630,32 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
       dpo[1] = load_balance_get_bucket_i (lb[1], 0);
 
       error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   dpo[0]->dpoi_type == DPO_RECEIVE) ?
-		  IP4_ERROR_SPOOFED_LOCAL_PACKETS : error[0]);
-      error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   !fib_urpf_check_size (lb[0]->lb_urpf) &&
-		   ip[0]->dst_address.as_u32 != 0xFFFFFFFF)
-		  ? IP4_ERROR_SRC_LOOKUP_MISS : error[0]);
+		   dpo[0]->dpoi_type == DPO_RECEIVE &&
+		   !(b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)) ?
+		  IP4_ERROR_SPOOFED_PACKETS : error[0]);
+
+      error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL
+		   && ((b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED) ?
+		       fib_urpf_check (lb[0]->lb_urpf,
+				       vnet_buffer (b[0])->sw_if_index
+				       [VLIB_RX]) :
+		       !fib_urpf_check_size (lb[0]->lb_urpf))
+		   && ip[0]->dst_address.as_u32 !=
+		   0xFFFFFFFF) ? IP4_ERROR_SRC_LOOKUP_MISS : error[0]);
 
       error[1] = ((error[1] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   dpo[1]->dpoi_type == DPO_RECEIVE) ?
-		  IP4_ERROR_SPOOFED_LOCAL_PACKETS : error[1]);
-      error[1] = ((error[1] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   !fib_urpf_check_size (lb[1]->lb_urpf) &&
-		   ip[1]->dst_address.as_u32 != 0xFFFFFFFF)
-		  ? IP4_ERROR_SRC_LOOKUP_MISS : error[1]);
+		   dpo[1]->dpoi_type == DPO_RECEIVE &&
+		   !(b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)) ?
+		  IP4_ERROR_SPOOFED_PACKETS : error[1]);
+
+      error[1] = ((error[1] == IP4_ERROR_UNKNOWN_PROTOCOL
+		   && ((b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED) ?
+		       fib_urpf_check (lb[1]->lb_urpf,
+				       vnet_buffer (b[1])->sw_if_index
+				       [VLIB_RX]) :
+		       !fib_urpf_check_size (lb[1]->lb_urpf))
+		   && ip[1]->dst_address.as_u32 !=
+		   0xFFFFFFFF) ? IP4_ERROR_SRC_LOOKUP_MISS : error[1]);
 
       last_check->src.as_u32 = ip[1]->src_address.as_u32;
       last_check->lbi = lbi[1];

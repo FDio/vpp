@@ -71,7 +71,7 @@
   _ (UNICAST_SOURCE_CHECK_FAILS, "ip4 unicast source check fails")	\
                                                                         \
   /* Spoofed packets in ip4-rewrite-local */                            \
-  _ (SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")   \
+  _ (SPOOFED_PACKETS, "ip4 spoofed address packet drops")   		\
                                                                         \
   /* Errors signalled by ip4-inacl */                                   \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \

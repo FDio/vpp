@@ -988,6 +988,8 @@ send_ip46_ping (vlib_main_t * vm,
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
 
+  b0->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
   int l4_header_offset = ip46_fill_l3_header (pa46, b0, is_ip6);
 
   /* set the src address in the buffer */
