@@ -476,7 +476,7 @@ void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw)
 	}
     }
 
-#if TW_OVERFLOW_VECVOR > 0
+#if TW_OVERFLOW_VECTOR > 0
   ts = &tw->overflow;
   head = pool_elt_at_index (tw->timers, ts->head_index);
   next_index = head->next;
