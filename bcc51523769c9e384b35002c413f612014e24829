@@ -91,6 +91,24 @@
     },
     {
       "key": {
+        "uuid": "57a6070f_3fc985b6",
+        "filename": "src/vnet/session/application_worker.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-03T15:19:39Z",
+      "side": 1,
+      "message": "Fifo flag is set if the owner of the fifo has that callback. I suspect you\u0027re using the proxy app for testing and only one of those 2 have the tuning callback. Both should have it, since both apps work with the session and implicitly with the fifo.",
+      "parentUuid": "61169122_a531e3c3",
+      "revId": "bcc51523769c9e384b35002c413f612014e24829",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "863acb3d_a52300f0",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 9
