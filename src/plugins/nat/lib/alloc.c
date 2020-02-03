@@ -36,7 +36,7 @@ nat_add_del_ip4_pool_addr (nat_ip4_pool_t * pool, ip4_address_t addr,
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   // lookup for the address
-  for (i = 0; i < vec_len (pool); i++)
+  for (i = 0; i < vec_len (pool->pool_addr); i++)
     {
       if (pool->pool_addr[i].addr.as_u32 == addr.as_u32)
 	{
