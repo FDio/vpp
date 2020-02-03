@@ -538,7 +538,8 @@ vcl_session_is_closing (vcl_session_t * s)
 static inline int
 vcl_session_closing_error (vcl_session_t * s)
 {
-  return s->session_state == STATE_DISCONNECT ? VPPCOM_ECONNRESET : 0;
+  return s->session_state == STATE_DISCONNECT
+    ? VPPCOM_ECONNRESET : VPPCOM_ECONNABORTED;
 }
 
 static inline int
