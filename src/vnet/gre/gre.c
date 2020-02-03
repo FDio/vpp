@@ -438,9 +438,9 @@ mgre_mk_complete_walk (adj_index_t ai, void *data)
      gre_build_rewrite (vnet_get_main (),
 			ctx->t->sw_if_index,
 			adj_get_link_type (ai),
-			&nhrp_entry_get_nh (ctx->ne)->fp_addr));
+			&teib_entry_get_nh (ctx->ne)->fp_addr));
 
-  nhrp_entry_adj_stack (ctx->ne, ai);
+  teib_entry_adj_stack (ctx->ne, ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -464,7 +464,7 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   gre_main_t *gm = &gre_main;
   ip_adjacency_t *adj;
-  nhrp_entry_t *ne;
+  teib_entry_t *ne;
   gre_tunnel_t *t;
   u32 ti;
 
@@ -472,7 +472,7 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = nhrp_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
+  ne = teib_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
     // no NHRP entry to provide the next-hop

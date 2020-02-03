@@ -25,7 +25,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/tunnel/tunnel.h>
-#include <vnet/nhrp/nhrp.h>
+#include <vnet/teib/teib.h>
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 extern vnet_hw_interface_class_t mgre_hw_interface_class;
@@ -328,7 +328,7 @@ extern void gre_update_adj (vnet_main_t * vnm,
 typedef struct mgre_walk_ctx_t_
 {
   const gre_tunnel_t *t;
-  const nhrp_entry_t *ne;
+  const teib_entry_t *ne;
 } mgre_walk_ctx_t;
 
 adj_walk_rc_t mgre_mk_complete_walk (adj_index_t ai, void *data);

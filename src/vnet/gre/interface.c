@@ -25,7 +25,7 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/nhrp/nhrp.h>
+#include <vnet/teib/teib.h>
 
 u8 *
 format_gre_tunnel_type (u8 * s, va_list * args)
@@ -183,23 +183,23 @@ gre_tunnel_restack (gre_tunnel_t * gt)
 }
 
 static void
-gre_nhrp_mk_key (const gre_tunnel_t * t,
-		 const nhrp_entry_t * ne, gre_tunnel_key_t * key)
+gre_teib_mk_key (const gre_tunnel_t * t,
+		 const teib_entry_t * ne, gre_tunnel_key_t * key)
 {
   const fib_prefix_t *nh;
 
-  nh = nhrp_entry_get_nh (ne);
+  nh = teib_entry_get_nh (ne);
 
   /* construct the key using mode P2P so it can be found in the DP */
   if (FIB_PROTOCOL_IP4 == nh->fp_proto)
     gre_mk_key4 (t->tunnel_src.ip4,
 		 nh->fp_addr.ip4,
-		 nhrp_entry_get_fib_index (ne),
+		 teib_entry_get_fib_index (ne),
 		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v4);
   else
     gre_mk_key6 (&t->tunnel_src.ip6,
 		 &nh->fp_addr.ip6,
-		 nhrp_entry_get_fib_index (ne),
+		 teib_entry_get_fib_index (ne),
 		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v6);
 }
 
@@ -207,7 +207,7 @@ gre_nhrp_mk_key (const gre_tunnel_t * t,
  * An NHRP entry has been added
  */
 static void
-gre_nhrp_entry_added (const nhrp_entry_t * ne)
+gre_teib_entry_added (const teib_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
   const ip46_address_t *nh;
@@ -216,7 +216,7 @@ gre_nhrp_entry_added (const nhrp_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  sw_if_index = teib_entry_get_sw_if_index (ne);
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -233,7 +233,7 @@ gre_nhrp_entry_added (const nhrp_entry_t * ne)
 
   /* the next-hop (underlay) of the NHRP entry will form part of the key for
    * ingress lookup to match packets to this interface */
-  gre_nhrp_mk_key (t, ne, &key);
+  gre_teib_mk_key (t, ne, &key);
   gre_tunnel_db_add (t, &key);
 
   /* update the rewrites for each of the adjacencies for this peer (overlay)
@@ -242,15 +242,15 @@ gre_nhrp_entry_added (const nhrp_entry_t * ne)
     .t = t,
     .ne = ne
   };
-  nh = nhrp_entry_get_peer (ne);
-  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+  nh = teib_entry_get_peer (ne);
+  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
 		   (ip46_address_is_ip4 (nh) ?
 		    FIB_PROTOCOL_IP4 :
 		    FIB_PROTOCOL_IP6), nh, mgre_mk_complete_walk, &ctx);
 }
 
 static void
-gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
+gre_teib_entry_deleted (const teib_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
   const ip46_address_t *nh;
@@ -259,7 +259,7 @@ gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  sw_if_index = teib_entry_get_sw_if_index (ne);
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -271,37 +271,37 @@ gre_nhrp_entry_deleted (const nhrp_entry_t * ne)
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
   /* remove the next-hop as an ingress lookup key */
-  gre_nhrp_mk_key (t, ne, &key);
+  gre_teib_mk_key (t, ne, &key);
   gre_tunnel_db_remove (t, &key);
 
-  nh = nhrp_entry_get_peer (ne);
+  nh = teib_entry_get_peer (ne);
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
 		   (ip46_address_is_ip4 (nh) ?
 		    FIB_PROTOCOL_IP4 :
 		    FIB_PROTOCOL_IP6), nh, mgre_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
-gre_tunnel_delete_nhrp_walk (index_t nei, void *ctx)
+gre_tunnel_delete_teib_walk (index_t nei, void *ctx)
 {
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key;
 
-  gre_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  gre_teib_mk_key (t, teib_entry_get (nei), &key);
   gre_tunnel_db_remove (t, &key);
 
   return (WALK_CONTINUE);
 }
 
 static walk_rc_t
-gre_tunnel_add_nhrp_walk (index_t nei, void *ctx)
+gre_tunnel_add_teib_walk (index_t nei, void *ctx)
 {
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key;
 
-  gre_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  gre_teib_mk_key (t, teib_entry_get (nei), &key);
   gre_tunnel_db_add (t, &key);
 
   return (WALK_CONTINUE);
@@ -421,7 +421,7 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   gre_tunnel_db_add (t, &key);
 
   if (t->mode == TUNNEL_MODE_MP)
-    nhrp_walk_itf (t->sw_if_index, gre_tunnel_add_nhrp_walk, t);
+    teib_walk_itf (t->sw_if_index, gre_tunnel_add_teib_walk, t);
 
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     {
@@ -477,7 +477,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   if (t->mode == TUNNEL_MODE_MP)
-    nhrp_walk_itf (t->sw_if_index, gre_tunnel_delete_nhrp_walk, t);
+    teib_walk_itf (t->sw_if_index, gre_tunnel_delete_teib_walk, t);
 
   sw_if_index = t->sw_if_index;
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
@@ -753,16 +753,16 @@ VLIB_CLI_COMMAND (show_gre_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
-const static nhrp_vft_t gre_nhrp_vft = {
-  .nv_added = gre_nhrp_entry_added,
-  .nv_deleted = gre_nhrp_entry_deleted,
+const static teib_vft_t gre_teib_vft = {
+  .nv_added = gre_teib_entry_added,
+  .nv_deleted = gre_teib_entry_deleted,
 };
 
 /* force inclusion from application's main.c */
 clib_error_t *
 gre_interface_init (vlib_main_t * vm)
 {
-  nhrp_register (&gre_nhrp_vft);
+  teib_register (&gre_teib_vft);
 
   return (NULL);
 }
