@@ -513,7 +513,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      * one time only update. since we don't support changing the tunnel
      * src,dst, this is all we need.
      */
-    if (adj->lookup_next_index != IP_LOOKUP_NEXT_MIDCHAIN ||
+    if (adj->lookup_next_index != IP_LOOKUP_NEXT_MIDCHAIN &&
         adj->lookup_next_index != IP_LOOKUP_NEXT_MCAST_MIDCHAIN)
     {
         adj_midchain_setup(adj_index, fixup, fixup_data, flags);
