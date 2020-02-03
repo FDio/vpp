@@ -1,6 +1,12 @@
 # JSON generation
 import json
 
+def walk_imports(s):
+    r = []
+    for e in s:
+        r.append(str(e))
+    return r
+
 
 def walk_enums(s):
     r = []
@@ -69,4 +75,5 @@ def run(filename, s):
     j['options'] = s['Option']
     j['aliases'] = {o.name:o.alias for o in s['types'] if o.__class__.__name__ == 'Using'}
     j['vl_api_version'] = hex(s['file_crc'])
+    j['imports'] = walk_imports(i for i in s['Import'])
     return json.dumps(j, indent=4, separators=(',', ': '))
