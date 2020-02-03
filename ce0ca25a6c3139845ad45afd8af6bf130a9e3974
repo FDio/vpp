@@ -46,6 +46,30 @@
       "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a565c0d_26f0d66e",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-03T06:31:32Z",
+      "side": 1,
+      "message": "Hi Shibuya-san,\n\nAs the code stands now, rx notifications would be as frequent as session_fifo_tuning (since this is called when we deliver the rx notifications). And yes, option 2 looks simpler and would have the same effect, until we decide on the rest of the algorithm. My goal would be to get this under heavy testing as soon as possible since it\u0027s a major refactor, but also to keep on working on fine tuning in parallel. \n\nAs for the other issues\n- I already have a simple patch that initializes the fifo to a minimal chunk (4kB), instead of the full size, but I\u0027m still testing its performance impact. Not entirely sure why it sometimes leads to more drops and higher cpu consumption for the same throughput. Worst case we can make this configurable.\n- After the latest updates, fifos don\u0027t grow by more than max (len enqueued, f-\u003emin_alloc). Currently, min alloc is capped at 64kB (we may still fine tune this) and len for tcp enqueued is at most mss. So, at most we\u0027d waste 64kB, independent of how large fifo size is.",
+      "parentUuid": "7f39afbb_af228ec4",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 25
+      },
+      "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
