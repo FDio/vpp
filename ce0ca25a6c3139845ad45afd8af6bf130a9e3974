@@ -70,6 +70,30 @@
       "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ceee697_fe92e7ba",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-03T07:18:53Z",
+      "side": 1,
+      "message": "I see. Thanks for the patch with minimal chunk and the test with it.",
+      "parentUuid": "9a565c0d_26f0d66e",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 25
+      },
+      "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
