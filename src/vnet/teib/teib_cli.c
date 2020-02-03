@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/nhrp/nhrp.h>
+#include <vnet/teib/teib.h>
 
 static clib_error_t *
-nhrp_add (vlib_main_t * vm,
+teib_add (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -71,7 +71,7 @@ nhrp_add (vlib_main_t * vm,
       goto done;
     }
 
-  rv = nhrp_entry_add (sw_if_index, &peer, nh_table_id, &nh);
+  rv = teib_entry_add (sw_if_index, &peer, nh_table_id, &nh);
 
   if (rv)
     {
@@ -87,15 +87,15 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (nhrp_create_command, static) = {
-  .path = "create nhrp",
-  .short_help = "create nhrp <interface> peer <addr> nh <addr> [nh-table-id <ID>]",
-  .function = nhrp_add,
+VLIB_CLI_COMMAND (teib_create_command, static) = {
+  .path = "create teib",
+  .short_help = "create teib <interface> peer <addr> nh <addr> [nh-table-id <ID>]",
+  .function = teib_add,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-nhrp_del (vlib_main_t * vm,
+teib_del (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -137,7 +137,7 @@ nhrp_del (vlib_main_t * vm,
       goto done;
     }
 
-  rv = nhrp_entry_del (sw_if_index, &peer);
+  rv = teib_entry_del (sw_if_index, &peer);
 
   if (rv)
     {
@@ -153,35 +153,35 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (nhrp_delete_command, static) = {
-  .path = "delete nhrp",
-  .short_help = "delete nhrp <interface> peer <addr>",
-  .function = nhrp_del,
+VLIB_CLI_COMMAND (teib_delete_command, static) = {
+  .path = "delete teib",
+  .short_help = "delete teib <interface> peer <addr>",
+  .function = teib_del,
 };
 /* *INDENT-ON* */
 
 static walk_rc_t
-nhrp_show_one (index_t nei, void *ctx)
+teib_show_one (index_t nei, void *ctx)
 {
-  vlib_cli_output (ctx, "%U", format_nhrp_entry, nei);
+  vlib_cli_output (ctx, "%U", format_teib_entry, nei);
 
   return (WALK_CONTINUE);
 }
 
 
 static clib_error_t *
-nhrp_show (vlib_main_t * vm,
+teib_show (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  nhrp_walk (nhrp_show_one, vm);
+  teib_walk (teib_show_one, vm);
   return (NULL);
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (nhrp_show_command, static) = {
-  .path = "show nhrp",
-  .short_help = "show nhrp",
-  .function = nhrp_show,
+VLIB_CLI_COMMAND (teib_show_command, static) = {
+  .path = "show teib",
+  .short_help = "show teib",
+  .function = teib_show,
 };
 /* *INDENT-ON* */
 

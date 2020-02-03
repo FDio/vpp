@@ -25,7 +25,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/format.h>
 #include <vnet/ipip/ipip.h>
-#include <vnet/nhrp/nhrp.h>
+#include <vnet/teib/teib.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
 ipip_main_t ipip_main;
@@ -299,7 +299,7 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 typedef struct mipip_walk_ctx_t_
 {
   const ipip_tunnel_t *t;
-  const nhrp_entry_t *ne;
+  const teib_entry_t *ne;
 } mipip_walk_ctx_t;
 
 static adj_walk_rc_t
@@ -313,10 +313,10 @@ mipip_mk_complete_walk (adj_index_t ai, void *data)
      ADJ_FLAG_MIDCHAIN_IP_STACK, ipip_build_rewrite (vnet_get_main (),
 						     ctx->t->sw_if_index,
 						     adj_get_link_type (ai),
-						     &nhrp_entry_get_nh
+						     &teib_entry_get_nh
 						     (ctx->ne)->fp_addr));
 
-  nhrp_entry_adj_stack (ctx->ne, ai);
+  teib_entry_adj_stack (ctx->ne, ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -340,7 +340,7 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   ipip_main_t *gm = &ipip_main;
   ip_adjacency_t *adj;
-  nhrp_entry_t *ne;
+  teib_entry_t *ne;
   ipip_tunnel_t *t;
   u32 ti;
 
@@ -348,7 +348,7 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = nhrp_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
+  ne = teib_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
     {
@@ -527,21 +527,21 @@ ipip_mk_key (const ipip_tunnel_t * t, ipip_tunnel_key_t * key)
 }
 
 static void
-ipip_nhrp_mk_key (const ipip_tunnel_t * t,
-		  const nhrp_entry_t * ne, ipip_tunnel_key_t * key)
+ipip_teib_mk_key (const ipip_tunnel_t * t,
+		  const teib_entry_t * ne, ipip_tunnel_key_t * key)
 {
   const fib_prefix_t *nh;
 
-  nh = nhrp_entry_get_nh (ne);
+  nh = teib_entry_get_nh (ne);
 
   /* construct the key using mode P2P so it can be found in the DP */
   ipip_mk_key_i (t->transport, IPIP_MODE_P2P,
 		 &t->tunnel_src, &nh->fp_addr,
-		 nhrp_entry_get_fib_index (ne), key);
+		 teib_entry_get_fib_index (ne), key);
 }
 
 static void
-ipip_nhrp_entry_added (const nhrp_entry_t * ne)
+ipip_teib_entry_added (const teib_entry_t * ne)
 {
   ipip_main_t *gm = &ipip_main;
   const ip46_address_t *nh;
@@ -550,7 +550,7 @@ ipip_nhrp_entry_added (const nhrp_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  sw_if_index = teib_entry_get_sw_if_index (ne);
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -561,7 +561,7 @@ ipip_nhrp_entry_added (const nhrp_entry_t * ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
-  ipip_nhrp_mk_key (t, ne, &key);
+  ipip_teib_mk_key (t, ne, &key);
   ipip_tunnel_db_add (t, &key);
 
   // update the rewrites for each of the adjacencies for this next-hop
@@ -569,15 +569,15 @@ ipip_nhrp_entry_added (const nhrp_entry_t * ne)
     .t = t,
     .ne = ne
   };
-  nh = nhrp_entry_get_peer (ne);
-  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+  nh = teib_entry_get_peer (ne);
+  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
 		   (ip46_address_is_ip4 (nh) ?
 		    FIB_PROTOCOL_IP4 :
 		    FIB_PROTOCOL_IP6), nh, mipip_mk_complete_walk, &ctx);
 }
 
 static void
-ipip_nhrp_entry_deleted (const nhrp_entry_t * ne)
+ipip_teib_entry_deleted (const teib_entry_t * ne)
 {
   ipip_main_t *gm = &ipip_main;
   const ip46_address_t *nh;
@@ -586,7 +586,7 @@ ipip_nhrp_entry_deleted (const nhrp_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = nhrp_entry_get_sw_if_index (ne);
+  sw_if_index = teib_entry_get_sw_if_index (ne);
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -597,37 +597,37 @@ ipip_nhrp_entry_deleted (const nhrp_entry_t * ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
-  ipip_nhrp_mk_key (t, ne, &key);
+  ipip_teib_mk_key (t, ne, &key);
   ipip_tunnel_db_remove (t, &key);
 
-  nh = nhrp_entry_get_peer (ne);
+  nh = teib_entry_get_peer (ne);
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (nhrp_entry_get_sw_if_index (ne),
+  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
 		   (ip46_address_is_ip4 (nh) ?
 		    FIB_PROTOCOL_IP4 :
 		    FIB_PROTOCOL_IP6), nh, mipip_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
-ipip_tunnel_delete_nhrp_walk (index_t nei, void *ctx)
+ipip_tunnel_delete_teib_walk (index_t nei, void *ctx)
 {
   ipip_tunnel_t *t = ctx;
   ipip_tunnel_key_t key;
 
-  ipip_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  ipip_teib_mk_key (t, teib_entry_get (nei), &key);
   ipip_tunnel_db_remove (t, &key);
 
   return (WALK_CONTINUE);
 }
 
 static walk_rc_t
-ipip_tunnel_add_nhrp_walk (index_t nei, void *ctx)
+ipip_tunnel_add_teib_walk (index_t nei, void *ctx)
 {
   ipip_tunnel_t *t = ctx;
   ipip_tunnel_key_t key;
 
-  ipip_nhrp_mk_key (t, nhrp_entry_get (nei), &key);
+  ipip_teib_mk_key (t, teib_entry_get (nei), &key);
   ipip_tunnel_db_add (t, &key);
 
   return (WALK_CONTINUE);
@@ -721,7 +721,7 @@ ipip_add_tunnel (ipip_transport_t transport,
   ipip_tunnel_db_add (t, &key);
 
   if (t->mode == IPIP_MODE_P2MP)
-    nhrp_walk_itf (t->sw_if_index, ipip_tunnel_add_nhrp_walk, t);
+    teib_walk_itf (t->sw_if_index, ipip_tunnel_add_teib_walk, t);
 
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
@@ -754,7 +754,7 @@ ipip_del_tunnel (u32 sw_if_index)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   if (t->mode == IPIP_MODE_P2MP)
-    nhrp_walk_itf (t->sw_if_index, ipip_tunnel_delete_nhrp_walk, t);
+    teib_walk_itf (t->sw_if_index, ipip_tunnel_delete_teib_walk, t);
 
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
@@ -768,9 +768,9 @@ ipip_del_tunnel (u32 sw_if_index)
   return 0;
 }
 
-const static nhrp_vft_t ipip_nhrp_vft = {
-  .nv_added = ipip_nhrp_entry_added,
-  .nv_deleted = ipip_nhrp_entry_deleted,
+const static teib_vft_t ipip_teib_vft = {
+  .nv_added = ipip_teib_entry_added,
+  .nv_deleted = ipip_teib_entry_deleted,
 };
 
 static clib_error_t *
@@ -784,7 +784,7 @@ ipip_init (vlib_main_t * vm)
   gm->tunnel_by_key =
     hash_create_mem (0, sizeof (ipip_tunnel_key_t), sizeof (uword));
 
-  nhrp_register (&ipip_nhrp_vft);
+  teib_register (&ipip_teib_vft);
 
   return 0;
 }

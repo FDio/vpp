@@ -1517,20 +1517,20 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES pci/pci_types.api)
 
 ##############################################################################
-# NHRP
+# Tunnel Endpoint Information Base
 ##############################################################################
 
 list (APPEND VNET_SOURCES
-  nhrp/nhrp_api.c
-  nhrp/nhrp_cli.c
-  nhrp/nhrp.c
+  teib/teib_api.c
+  teib/teib_cli.c
+  teib/teib.c
 )
 
 list(APPEND VNET_HEADERS
-  nhrp/nhrp.h
+  teib/teib.h
 )
 
-list(APPEND VNET_API_FILES nhrp/nhrp.api)
+list(APPEND VNET_API_FILES teib/teib.api)
 
 ##############################################################################
 # ARP/ND

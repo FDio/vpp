@@ -6,8 +6,8 @@
 from vpp_object import VppObject
 
 
-def find_nhrp(test, ne):
-    ns = test.vapi.nhrp_dump()
+def find_teib(test, ne):
+    ns = test.vapi.teib_dump()
     for n in ns:
         if ne.peer == str(n.entry.peer) \
            and ne.itf._sw_if_index == n.entry.sw_if_index:
@@ -25,7 +25,7 @@ class VppNhrp(VppObject):
         self.nh = nh
 
     def add_vpp_config(self):
-        r = self._test.vapi.nhrp_entry_add_del(
+        r = self._test.vapi.teib_entry_add_del(
             is_add=1,
             entry={
                 'nh_table_id': self.table_id,
@@ -36,7 +36,7 @@ class VppNhrp(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        r = self._test.vapi.nhrp_entry_add_del(
+        r = self._test.vapi.teib_entry_add_del(
             is_add=0,
             entry={
                 'nh_table_id': self.table_id,
@@ -45,7 +45,7 @@ class VppNhrp(VppObject):
             })
 
     def query_vpp_config(self):
-        return find_nhrp(self._test, self)
+        return find_teib(self._test, self)
 
     def object_id(self):
-        return ("nhrp-%s-%s" % (self.itf, self.peer))
+        return ("teib-%s-%s" % (self.itf, self.peer))

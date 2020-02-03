@@ -180,10 +180,10 @@ I:	cop
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/cop/
 
-VNET NHRP
-I:	nhrp
+VNET TEIB
+I:	teib
 M:	Neale Ranns <nranns@cisco.com>
-F:	src/vnet/nhrp/
+F:	src/vnet/teib/
 
 Crypto native Plugin
 I:	crypto-native

@@ -12,7 +12,7 @@ from scapy.volatile import RandMAC, RandIP
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
-from vpp_nhrp import VppNhrp
+from vpp_teib import VppNhrp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from util import ppp, ppc
@@ -1069,10 +1069,10 @@ class TestGRE(VppTestCase):
                 #
                 # Add a NHRP entry resolves the peer
                 #
-                nhrp = VppNhrp(self, gre_if,
+                teib = VppNhrp(self, gre_if,
                                gre_if._remote_hosts[ii].ip4,
                                itf._remote_hosts[ii].ip4)
-                nhrp.add_vpp_config()
+                teib.add_vpp_config()
 
                 #
                 # Send a packet stream that is routed into the tunnel
@@ -1095,11 +1095,11 @@ class TestGRE(VppTestCase):
                 #
                 # delete and re-add the NHRP
                 #
-                nhrp.remove_vpp_config()
+                teib.remove_vpp_config()
                 self.send_and_assert_no_replies(self.pg0, tx_e)
                 self.send_and_assert_no_replies(self.pg0, tx_i)
 
-                nhrp.add_vpp_config()
+                teib.add_vpp_config()
                 rx = self.send_and_expect(self.pg0, tx_e, itf)
                 self.verify_tunneled_4o4(self.pg0, rx, tx_e,
                                          itf.local_ip4,
@@ -1154,10 +1154,10 @@ class TestGRE(VppTestCase):
                 #
                 # Add a NHRP entry resolves the peer
                 #
-                nhrp = VppNhrp(self, gre_if,
+                teib = VppNhrp(self, gre_if,
                                gre_if._remote_hosts[ii].ip6,
                                itf._remote_hosts[ii].ip6)
-                nhrp.add_vpp_config()
+                teib.add_vpp_config()
 
                 #
                 # route traffic via the peer
@@ -1190,10 +1190,10 @@ class TestGRE(VppTestCase):
                 #
                 # delete and re-add the NHRP
                 #
-                nhrp.remove_vpp_config()
+                teib.remove_vpp_config()
                 self.send_and_assert_no_replies(self.pg0, tx_e)
 
-                nhrp.add_vpp_config()
+                teib.add_vpp_config()
                 rx = self.send_and_expect(self.pg0, tx_e, itf)
                 self.verify_tunneled_6o6(self.pg0, rx, tx_e,
                                          itf.local_ip6,
