@@ -22,6 +22,30 @@
       "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f39afbb_af228ec4",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-03T04:36:47Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nThanks for the inspection/analysis.\n\nI suppose the option-1 means just removing default-tuning-logic. Correct me if I\u0027m wrong.\n\nOn the other hand, if my recognition is correct, the frequency of RX-notification looks less frequent than that of session_fifo_tuning, right? If so, the option-2 seems better for now from the view of performance impact, and it\u0027s also simpler.\n\nBTW, I have a few concerns on these options, when the fifo tuning logic is disabled by default.\n- The fifo size should be large enough from the beginning, since it won\u0027t be increased. I suppose that a chunk as large as the (initial) fifo size is allocated at the fifo initialization. So this may increase the average in-used size of each fifo.\n- The utilization of this large fifo with a single large chunk (in many cases) may kept very low in the not-so-active connection (e.g. HTTP uplink connection).\n\nIt would be resolved if we call `fs_try_alloc_fifo ()` with minimum chunk size regardless the initial fifo size, although it would have a disadvantage that the average size of allocated chunks will be smaller.",
+      "parentUuid": "27ccdd40_e3877b62",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 25
+      },
+      "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
