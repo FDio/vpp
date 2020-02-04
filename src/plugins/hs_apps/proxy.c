@@ -273,6 +273,12 @@ proxy_tx_callback (session_t * proxy_s)
   session_t *ao_s;
   uword *p;
 
+  if (svm_fifo_max_enqueue (proxy_s->tx_fifo) < 16 << 10)
+    {
+      svm_fifo_add_want_deq_ntf (proxy_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
+
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   handle = session_handle (proxy_s);
@@ -415,6 +421,12 @@ active_open_tx_callback (session_t * ao_s)
   proxy_session_t *ps;
   session_t *proxy_s;
   uword *p;
+
+  if (svm_fifo_max_enqueue (ao_s->tx_fifo) < 16 << 10)
+    {
+      svm_fifo_add_want_deq_ntf (ao_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
