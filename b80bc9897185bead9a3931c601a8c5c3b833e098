@@ -118,6 +118,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c61632b1_55ed61cb",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-04T15:42:11Z",
+      "side": 0,
+      "message": "MCBU keep their own branch so they\u0027re separated from vpp master. As long as we provide them something to cherry-pick they can integrated it and build a new image. \n\nAnd apologies, I should\u0027ve said \"your proxy application\".",
+      "parentUuid": "619cfd48_8be3541e",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
