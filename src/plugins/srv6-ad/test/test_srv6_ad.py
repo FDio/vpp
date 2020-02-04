@@ -718,7 +718,7 @@ class TestSRv6(VppTestCase):
 
         p = IPv6(src=srcaddr, dst=sidlist[segleft]) / \
             IPv6ExtHdrSegmentRouting(addresses=sidlist,
-                                     segleft=segleft, nh=59) / \
+                                     segleft=segleft, nh=143) / \
             eth
         return p
 

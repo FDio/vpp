@@ -1967,34 +1967,34 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
 	    {
 	      sr0 = (void *) (ip0 + 1);
-	      sr0->protocol = IP_PROTOCOL_IP6_NONXT;
+	      sr0->protocol = IP_PROTOCOL_IP6_ETHERNET;
 	    }
 	  else
-	    ip0->protocol = IP_PROTOCOL_IP6_NONXT;
+	    ip0->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
 	  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE)
 	    {
 	      sr1 = (void *) (ip1 + 1);
-	      sr1->protocol = IP_PROTOCOL_IP6_NONXT;
+	      sr1->protocol = IP_PROTOCOL_IP6_ETHERNET;
 	    }
 	  else
-	    ip1->protocol = IP_PROTOCOL_IP6_NONXT;
+	    ip1->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
 	  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE)
 	    {
 	      sr2 = (void *) (ip2 + 1);
-	      sr2->protocol = IP_PROTOCOL_IP6_NONXT;
+	      sr2->protocol = IP_PROTOCOL_IP6_ETHERNET;
 	    }
 	  else
-	    ip2->protocol = IP_PROTOCOL_IP6_NONXT;
+	    ip2->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
 	  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE)
 	    {
 	      sr3 = (void *) (ip3 + 1);
-	      sr3->protocol = IP_PROTOCOL_IP6_NONXT;
+	      sr3->protocol = IP_PROTOCOL_IP6_ETHERNET;
 	    }
 	  else
-	    ip3->protocol = IP_PROTOCOL_IP6_NONXT;
+	    ip3->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
 	  /* Which Traffic class and flow label do I set ? */
 	  //ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(0|((6&0xF)<<28)|((ip0_encap->tos&0xFF)<<20));
@@ -2105,10 +2105,10 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
 	    {
 	      sr0 = (void *) (ip0 + 1);
-	      sr0->protocol = IP_PROTOCOL_IP6_NONXT;
+	      sr0->protocol = IP_PROTOCOL_IP6_ETHERNET;
 	    }
 	  else
-	    ip0->protocol = IP_PROTOCOL_IP6_NONXT;
+	    ip0->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
