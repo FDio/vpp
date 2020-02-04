@@ -156,7 +156,7 @@ end_ad_processing (vlib_buffer_t * b0,
   /* Make sure next header is valid */
   if (PREDICT_FALSE (next_hdr != IP_PROTOCOL_IPV6 &&
 		     next_hdr != IP_PROTOCOL_IP_IN_IP &&
-		     next_hdr != IP_PROTOCOL_IP6_NONXT))
+		     next_hdr != IP_PROTOCOL_IP6_ETHERNET))
     {
       return;
     }
@@ -175,7 +175,7 @@ end_ad_processing (vlib_buffer_t * b0,
   /* Remove IP header and extensions */
   vlib_buffer_advance (b0, total_size);
 
-  if (next_hdr == IP_PROTOCOL_IP6_NONXT)
+  if (next_hdr == IP_PROTOCOL_IP6_ETHERNET)
     {
       /* Set output interface */
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0_mem->sw_if_index_out;

@@ -163,8 +163,9 @@ ip_protocol (139, HIP)
 ip_protocol (140, SHIM6)
 ip_protocol (141, WESP)
 ip_protocol (142, ROHC)
+ip_protocol (143, IP6_ETHERNET)
 
-/* unassigned 143 - 252 */
+/* unassigned 144 - 252 */
 
 ip_protocol (253, EXP1)
 ip_protocol (254, EXP2)
