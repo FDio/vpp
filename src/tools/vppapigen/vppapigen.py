@@ -769,7 +769,7 @@ class VPPAPI(object):
                 if o.autoreply:
                     s[tname].append(self.autoreply_block(o.name))
             elif isinstance(o, Option):
-                s[tname][o[1]] = o[2]
+                s[tname][o.option] = o.value
             elif type(o) is list:
                 for o2 in o:
                     if isinstance(o2, Service):
