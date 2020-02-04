@@ -274,6 +274,9 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 	}
       break;
 
+    case STAT_DIR_TYPE_EMPTY:
+      break;
+
     default:
       fprintf (stderr, "Unknown type: %d\n", ep->type);
     }
