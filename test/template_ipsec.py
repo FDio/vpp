@@ -556,7 +556,7 @@ class IpsecTra4(object):
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
-    def verify_tra_basic4(self, count=1):
+    def verify_tra_basic4(self, count=1, payload_size=54):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
         self.vapi.cli("clear ipsec sa")
@@ -565,7 +565,8 @@ class IpsecTra4(object):
             send_pkts = self.gen_encrypt_pkts(p.scapy_tra_sa, self.tra_if,
                                               src=self.tra_if.remote_ip4,
                                               dst=self.tra_if.local_ip4,
-                                              count=count)
+                                              count=count,
+                                              payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
@@ -611,14 +612,16 @@ class IpsecTra4Tests(IpsecTra4):
 
 class IpsecTra6(object):
     """ verify methods for Transport v6 """
-    def verify_tra_basic6(self, count=1):
+    def verify_tra_basic6(self, count=1, payload_size=54):
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
         try:
             p = self.params[socket.AF_INET6]
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tra_sa, self.tra_if,
                                                src=self.tra_if.remote_ip6,
                                                dst=self.tra_if.local_ip6,
-                                               count=count)
+                                               count=count,
+                                               payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
@@ -834,7 +837,8 @@ class IpsecTun4(object):
             send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host,
                                               dst=self.pg1.remote_ip4,
-                                              count=count)
+                                              count=count,
+                                              payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             self.verify_decrypted(p, recv_pkts)
 
@@ -997,7 +1001,7 @@ class IpsecTun4Tests(IpsecTun4):
 
 
 class IpsecTunEsp4Tests(IpsecTun4):
-    def test_tun_bad_packet_sizes(self):
+    def _test_tun_bad_packet_sizes(self):
         """ ipsec v4 tunnel bad packet size """
         self.verify_tun_44_bad_packet_sizes(self.params[socket.AF_INET])
 
@@ -1064,7 +1068,8 @@ class IpsecTun6(object):
             send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
                                                src=p_in.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
-                                               count=count)
+                                               count=count,
+                                               payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             self.verify_decrypted6(p_in, recv_pkts)
 
