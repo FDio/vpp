@@ -1460,7 +1460,7 @@ show_fib_path_list_command (vlib_main_t * vm,
 	    u8 *s = fib_path_list_format(pli, NULL);
 	    s = format(s, "children:");
 	    s = fib_node_children_format(path_list->fpl_node.fn_children, s);
-	    vlib_cli_output (vm, "%s", s);
+	    vlib_cli_output (vm, "%v", s);
 	    vec_free(s);
 	}
 	else
