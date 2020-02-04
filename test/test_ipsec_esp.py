@@ -18,7 +18,7 @@ from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 NUM_PKTS = 67
-
+engines_supporting_chain_bufs = ["openssl"]
 
 class ConfigIpsecESP(TemplateIpsec):
     encryption_type = ESP
@@ -469,7 +469,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
     def run_test(self):
         self.run_a_test(self.engine, self.flag, self.algo)
 
-    def run_a_test(self, engine, flag, algo):
+    def run_a_test(self, engine, flag, algo, payload_size=None):
         self.vapi.cli("set crypto handler all %s" % engine)
 
         self.ipv4_params = IPsecIPv4Params()
@@ -507,6 +507,16 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
                            count=NUM_PKTS)
         self.verify_tun_44(self.params[socket.AF_INET],
                            count=NUM_PKTS)
+
+        LARGE_PKT_SZ = [4010, 4020]
+        if self.engine in engines_supporting_chain_bufs:
+            for sz in LARGE_PKT_SZ:
+                self.verify_tra_basic4(count=NUM_PKTS, payload_size=sz)
+                self.verify_tra_basic6(count=NUM_PKTS, payload_size=sz)
+                self.verify_tun_66(self.params[socket.AF_INET6],
+                                   count=NUM_PKTS, payload_size=sz)
+                self.verify_tun_44(self.params[socket.AF_INET],
+                                   count=NUM_PKTS, payload_size=sz)
 
         #
         # remove the SPDs, SAs, etc

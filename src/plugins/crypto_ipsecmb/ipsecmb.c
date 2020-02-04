@@ -168,8 +168,9 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 static_always_inline u32                                                \
 ipsecmb_ops_hmac_##a (vlib_main_t * vm,                                 \
                       vnet_crypto_op_t * ops[],                         \
+                      vnet_crypto_op_chunk_t *chunks,                   \
                       u32 n_ops)                                        \
-{ return ipsecmb_ops_hmac_inline (vm, ops, n_ops, d, e, f, b); }        \
+{ return ipsecmb_ops_hmac_inline (vm, ops, n_ops, d, e, f, b); }\
 
 foreach_ipsecmb_hmac_op;
 #undef _
@@ -211,6 +212,7 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
       job->src = op->src;
       job->dst = op->dst;
       job->msg_len_to_cipher_in_bytes = op->len;
+
       job->cipher_start_src_offset_in_bytes = 0;
 
       job->hash_alg = NULL_HASH;
@@ -249,14 +251,16 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 static_always_inline u32                                                     \
 ipsecmb_ops_cbc_cipher_enc_##a (vlib_main_t * vm,                            \
                                 vnet_crypto_op_t * ops[],                    \
+                                vnet_crypto_op_chunk_t *chunks,              \
                                 u32 n_ops)                                   \
 { return ipsecmb_ops_cbc_cipher_inline (vm, ops, n_ops, b, ENCRYPT); }       \
                                                                              \
 static_always_inline u32                                                     \
 ipsecmb_ops_cbc_cipher_dec_##a (vlib_main_t * vm,                            \
                                 vnet_crypto_op_t * ops[],                    \
+                                vnet_crypto_op_chunk_t *chunks,              \
                                 u32 n_ops)                                   \
-{ return ipsecmb_ops_cbc_cipher_inline (vm, ops, n_ops, b, DECRYPT); }       \
+{ return ipsecmb_ops_cbc_cipher_inline (vm, ops, n_ops, b, DECRYPT); }
 
 foreach_ipsecmb_cbc_cipher_op;
 #undef _
@@ -264,7 +268,7 @@ foreach_ipsecmb_cbc_cipher_op;
 #define _(a, b)                                                              \
 static_always_inline u32                                                     \
 ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
-                                u32 n_ops)                                   \
+      vnet_crypto_op_chunk_t *chunks, u32 n_ops)                             \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
   ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
@@ -290,7 +294,7 @@ ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
                                                                              \
 static_always_inline u32                                                     \
 ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
-                                 u32 n_ops)                                  \
+    vnet_crypto_op_chunk_t *chunks, u32 n_ops)                               \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
   ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
