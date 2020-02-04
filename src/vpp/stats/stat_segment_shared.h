@@ -24,6 +24,7 @@ typedef enum
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_NAME_VECTOR,
+  STAT_DIR_TYPE_EMPTY,
 } stat_directory_type_t;
 
 typedef struct

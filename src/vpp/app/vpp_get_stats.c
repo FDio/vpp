@@ -89,6 +89,9 @@ stat_poll_loop (u8 ** patterns)
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
 	      break;
 
+	    case STAT_DIR_TYPE_EMPTY:
+	      break;
+
 	    default:
 	      printf ("Unknown value\n");
 	      ;
@@ -231,6 +234,9 @@ reconnect:
 		if (res[i].name_vector[k])
 		  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
 			   res[i].name);
+	      break;
+
+	    case STAT_DIR_TYPE_EMPTY:
 	      break;
 
 	    default:

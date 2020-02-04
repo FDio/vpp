@@ -60,29 +60,92 @@ vlib_stats_push_heap (void *old)
 }
 
 static u32
-lookup_or_create_hash_index (u8 * name, u32 next_vector_index)
+lookup_hash_index (u8 * name)
 {
   stat_segment_main_t *sm = &stat_segment_main;
-  u32 index;
+  u32 index = STAT_SEGMENT_INDEX_INVALID;
   hash_pair_t *hp;
 
   /* Must be called in the context of the main heap */
   ASSERT (clib_mem_get_heap () != sm->heap);
 
   hp = hash_get_pair (sm->directory_vector_by_name, name);
-  if (!hp)
-    {
-      /* we allocate our private copy of 'name' */
-      hash_set (sm->directory_vector_by_name, format (0, "%s%c", name, 0),
-		next_vector_index);
-      index = next_vector_index;
-    }
-  else
+  if (hp)
     {
       index = hp->value[0];
     }
 
   return index;
+}
+
+static void
+create_hash_index (u8 * name, u32 index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+
+  /* Must be called in the context of the main heap */
+  ASSERT (clib_mem_get_heap () != sm->heap);
+
+  hash_set (sm->directory_vector_by_name, format (0, "%s%c", name, 0), index);
+}
+
+static u32
+vlib_stats_get_next_vector_index ()
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  u32 next_vector_index = vec_len (sm->directory_vector);
+
+  ssize_t i;
+  vec_foreach_index_backwards (i, sm->directory_vector)
+  {
+    if (sm->directory_vector[i].type == STAT_DIR_TYPE_EMPTY)
+      {
+	next_vector_index = i;
+	break;
+      }
+  }
+
+  return next_vector_index;
+}
+
+static u32
+vlib_stats_create_counter (stat_segment_directory_entry_t * e, void *oldheap)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+
+  ASSERT (clib_mem_get_heap () == sm->heap);
+
+  u32 index = vlib_stats_get_next_vector_index ();
+
+  clib_mem_set_heap (oldheap);
+  create_hash_index ((u8 *) e->name, index);
+  clib_mem_set_heap (sm->heap);
+
+  vec_validate (sm->directory_vector, index);
+  sm->directory_vector[index] = *e;
+
+  return index;
+}
+
+static void
+vlib_stats_delete_counter (u32 index, void *oldheap)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_directory_entry_t *e;
+
+  ASSERT (clib_mem_get_heap () == sm->heap);
+
+  if (index > vec_len (sm->directory_vector))
+    return;
+
+  e = &sm->directory_vector[index];
+
+  clib_mem_set_heap (oldheap);
+  hash_unset (sm->directory_vector_by_name, &e->name);
+  clib_mem_set_heap (sm->heap);
+
+  memset (e, 0, sizeof (*e));
+  e->type = STAT_DIR_TYPE_EMPTY;
 }
 
 void
@@ -109,20 +172,18 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
   /* Lookup hash-table is on the main heap */
   stat_segment_name =
     cm->stat_segment_name ? cm->stat_segment_name : cm->name;
-  u32 next_vector_index = vec_len (sm->directory_vector);
   clib_mem_set_heap (oldheap);	/* Exit stats segment */
-  u32 vector_index = lookup_or_create_hash_index ((u8 *) stat_segment_name,
-						  next_vector_index);
+  u32 vector_index = lookup_hash_index ((u8 *) stat_segment_name);
   /* Back to stats segment */
   clib_mem_set_heap (sm->heap);	/* Re-enter stat segment */
 
 
   /* Update the vector */
-  if (vector_index == next_vector_index)
+  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
     {				/* New */
       strncpy (e.name, stat_segment_name, 128 - 1);
       e.type = type;
-      vec_add1 (sm->directory_vector, e);
+      vector_index = vlib_stats_create_counter (&e, oldheap);
     }
 
   stat_segment_directory_entry_t *ep = &sm->directory_vector[vector_index];
@@ -168,23 +229,19 @@ vlib_stats_register_error_index (void *oldheap, u8 * name, u64 * em_vec,
   ASSERT (shared_header);
 
   vlib_stat_segment_lock ();
-  u32 next_vector_index = vec_len (sm->directory_vector);
   clib_mem_set_heap (oldheap);	/* Exit stats segment */
-
-  u32 vector_index = lookup_or_create_hash_index (name,
-						  next_vector_index);
-
+  u32 vector_index = lookup_hash_index (name);
   /* Back to stats segment */
   clib_mem_set_heap (sm->heap);	/* Re-enter stat segment */
 
-  if (next_vector_index == vector_index)
+  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
     {
       memcpy (e.name, name, vec_len (name));
       e.name[vec_len (name)] = '\0';
       e.type = STAT_DIR_TYPE_ERROR_INDEX;
       e.offset = index;
       e.offset_vector = 0;
-      vec_add1 (sm->directory_vector, e);
+      vector_index = vlib_stats_create_counter (&e, oldheap);
 
       /* Warn clients to refresh any pointers they might be holding */
       shared_header->directory_offset =
@@ -385,6 +442,10 @@ format_stat_dir_entry (u8 * s, va_list * args)
       type_name = "NameVector";
       break;
 
+    case STAT_DIR_TYPE_EMPTY:
+      type_name = "empty";
+      break;
+
     default:
       type_name = "illegal!";
       break;
@@ -418,6 +479,11 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 
   for (i = 0; i < vec_len (show_data); i++)
     {
+      stat_segment_directory_entry_t *ep = vec_elt_at_index (show_data, i);
+
+      if (ep->type == STAT_DIR_TYPE_EMPTY)
+	continue;
+
       vlib_cli_output (vm, "%-100U", format_stat_dir_entry,
 		       vec_elt_at_index (show_data, i));
     }
@@ -769,21 +835,18 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
 
   ASSERT (shared_header);
 
-  u32 next_vector_index = vec_len (sm->directory_vector);
-  u32 vector_index = lookup_or_create_hash_index (name,
-						  next_vector_index);
+  u32 vector_index = lookup_hash_index (name);
 
-  if (vector_index < next_vector_index)	/* Already registered */
-    return clib_error_return (0, "%v is alreadty registered", name);
-
-  oldheap = vlib_stats_push_heap (NULL);
-  vlib_stat_segment_lock ();
+  if (vector_index != STAT_SEGMENT_INDEX_INVALID)	/* Already registered */
+    return clib_error_return (0, "%v is already registered", name);
 
   memset (&e, 0, sizeof (e));
   e.type = STAT_DIR_TYPE_SCALAR_INDEX;
-
   memcpy (e.name, name, vec_len (name));
-  vec_add1 (sm->directory_vector, e);
+
+  oldheap = vlib_stats_push_heap (NULL);
+  vlib_stat_segment_lock ();
+  vector_index = vlib_stats_create_counter (&e, oldheap);
 
   shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
@@ -795,7 +858,7 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
   pool_get (sm->gauges, gauge);
   gauge->fn = update_fn;
   gauge->caller_index = caller_index;
-  gauge->directory_index = next_vector_index;
+  gauge->directory_index = vector_index;
 
   return NULL;
 }
@@ -811,21 +874,19 @@ stat_segment_register_state_counter (u8 * name, u32 * index)
   ASSERT (shared_header);
   ASSERT (vlib_get_thread_index () == 0);
 
-  u32 next_vector_index = vec_len (sm->directory_vector);
-  u32 vector_index = lookup_or_create_hash_index (name,
-						  next_vector_index);
+  u32 vector_index = lookup_hash_index (name);
 
-  if (vector_index < next_vector_index)	/* Already registered */
+  if (vector_index != STAT_SEGMENT_INDEX_INVALID)	/* Already registered */
     return clib_error_return (0, "%v is already registered", name);
+
+  memset (&e, 0, sizeof (e));
+  e.type = STAT_DIR_TYPE_SCALAR_INDEX;
+  memcpy (e.name, name, vec_len (name));
 
   oldheap = vlib_stats_push_heap (NULL);
   vlib_stat_segment_lock ();
 
-  memset (&e, 0, sizeof (e));
-  e.type = STAT_DIR_TYPE_SCALAR_INDEX;
-
-  memcpy (e.name, name, vec_len (name));
-  vec_add1 (sm->directory_vector, e);
+  vector_index = vlib_stats_create_counter (&e, oldheap);
 
   shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
@@ -833,7 +894,7 @@ stat_segment_register_state_counter (u8 * name, u32 * index)
   vlib_stat_segment_unlock ();
   clib_mem_set_heap (oldheap);
 
-  *index = next_vector_index;
+  *index = vector_index;
   return 0;
 }
 
@@ -843,6 +904,7 @@ stat_segment_deregister_state_counter (u32 index)
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   stat_segment_directory_entry_t *e;
+  void *oldheap;
 
   ASSERT (shared_header);
 
@@ -853,8 +915,14 @@ stat_segment_deregister_state_counter (u32 index)
   if (e->type != STAT_DIR_TYPE_SCALAR_INDEX)
     return clib_error_return (0, "%u index cannot be deleted", index);
 
-  hash_unset (sm->directory_vector_by_name, &e->name);
-  vec_del1 (sm->directory_vector, index);
+  oldheap = vlib_stats_push_heap (NULL);
+  vlib_stat_segment_lock ();
+
+  vlib_stats_delete_counter (index, oldheap);
+
+  vlib_stat_segment_unlock ();
+  clib_mem_set_heap (oldheap);
+
   return 0;
 }
 

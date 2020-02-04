@@ -171,50 +171,51 @@ class TestBondInterface(VppTestCase):
     def test_bond_enslave(self):
         """ Bond enslave/detach slave test """
 
-        # create interface (BondEthernet0)
+        # create interface (BondEthernet0) and set bond mode to LACP
         self.logger.info("create bond")
-        bond0 = VppBondInterface(self, mode=3)
+        bond0 = VppBondInterface(self, mode=5)
         bond0.add_vpp_config()
         bond0.admin_up()
 
-        # verify pg0 and pg1 not in BondEthernet0
-        if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
-        self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
-        self.assertFalse(self.pg1.is_interface_config_in_dump(if_dump))
+        # verify that interfaces can be enslaved and detached two times
+        for i in range(2):
+            # verify pg0 and pg1 not in BondEthernet0
+            if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
+            self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
+            self.assertFalse(self.pg1.is_interface_config_in_dump(if_dump))
 
-        # enslave pg0 and pg1 to BondEthernet0
-        self.logger.info("bond enslave interface pg0 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+            # enslave pg0 and pg1 to BondEthernet0
+            self.logger.info("bond enslave interface pg0 to BondEthernet0")
+            bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
+                                             is_passive=0,
+                                             is_long_timeout=0)
 
-        self.logger.info("bond enslave interface pg1 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+            self.logger.info("bond enslave interface pg1 to BondEthernet0")
+            bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
+                                             is_passive=0,
+                                             is_long_timeout=0)
+            # verify both slaves in BondEthernet0
+            if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
+            self.assertTrue(self.pg0.is_interface_config_in_dump(if_dump))
+            self.assertTrue(self.pg1.is_interface_config_in_dump(if_dump))
 
-        # verify both slaves in BondEthernet0
-        if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
-        self.assertTrue(self.pg0.is_interface_config_in_dump(if_dump))
-        self.assertTrue(self.pg1.is_interface_config_in_dump(if_dump))
+            # detach interface pg0
+            self.logger.info("detach interface pg0")
+            bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
 
-        # detach interface pg0
-        self.logger.info("detach interface pg0")
-        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+            # verify pg0 is not in BondEthernet0, but pg1 is
+            if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
+            self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
+            self.assertTrue(self.pg1.is_interface_config_in_dump(if_dump))
 
-        # verify pg0 is not in BondEthernet0, but pg1 is
-        if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
-        self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
-        self.assertTrue(self.pg1.is_interface_config_in_dump(if_dump))
+            # detach interface pg1
+            self.logger.info("detach interface pg1")
+            bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
 
-        # detach interface pg1
-        self.logger.info("detach interface pg1")
-        bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
-
-        # verify pg0 and pg1 not in BondEthernet0
-        if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
-        self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
-        self.assertFalse(self.pg1.is_interface_config_in_dump(if_dump))
+            # verify pg0 and pg1 not in BondEthernet0
+            if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
+            self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
+            self.assertFalse(self.pg1.is_interface_config_in_dump(if_dump))
 
         bond0.remove_vpp_config()
 
