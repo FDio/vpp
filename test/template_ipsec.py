@@ -556,7 +556,7 @@ class IpsecTra4(object):
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
-    def verify_tra_basic4(self, count=1):
+    def verify_tra_basic4(self, count=1, payload_size=54):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
         self.vapi.cli("clear ipsec sa")
@@ -565,7 +565,8 @@ class IpsecTra4(object):
             send_pkts = self.gen_encrypt_pkts(p.scapy_tra_sa, self.tra_if,
                                               src=self.tra_if.remote_ip4,
                                               dst=self.tra_if.local_ip4,
-                                              count=count)
+                                              count=count,
+                                              payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
@@ -611,14 +612,16 @@ class IpsecTra4Tests(IpsecTra4):
 
 class IpsecTra6(object):
     """ verify methods for Transport v6 """
-    def verify_tra_basic6(self, count=1):
+    def verify_tra_basic6(self, count=1, payload_size=54):
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
         try:
             p = self.params[socket.AF_INET6]
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tra_sa, self.tra_if,
                                                src=self.tra_if.remote_ip6,
                                                dst=self.tra_if.local_ip6,
-                                               count=count)
+                                               count=count,
+                                               payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
@@ -834,7 +837,8 @@ class IpsecTun4(object):
             send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host,
                                               dst=self.pg1.remote_ip4,
-                                              count=count)
+                                              count=count,
+                                              payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             self.verify_decrypted(p, recv_pkts)
 
@@ -856,41 +860,6 @@ class IpsecTun4(object):
         self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
         self.logger.info(self.vapi.ppcli("show ipsec sa 4"))
         self.verify_counters4(p, count, n_rx)
-
-    """ verify methods for Transport v4 """
-    def verify_tun_44_bad_packet_sizes(self, p):
-        # with a buffer size of 2048, 1989 bytes of payload
-        # means there isn't space to insert the ESP header
-        N_PKTS = 63
-        for p_siz in [1989, 8500]:
-            send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
-                                              src=p.remote_tun_if_host,
-                                              dst=self.pg1.remote_ip4,
-                                              count=N_PKTS,
-                                              payload_size=p_siz)
-            self.send_and_assert_no_replies(self.tun_if, send_pkts)
-            send_pkts = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
-                                      dst=p.remote_tun_if_host, count=N_PKTS,
-                                      payload_size=p_siz)
-            self.send_and_assert_no_replies(self.pg1, send_pkts,
-                                            self.tun_if)
-
-        # both large packets on decrpyt count against chained buffers
-        # the 9000 bytes one does on encrypt
-        self.assertEqual(2 * N_PKTS,
-                         self.statistics.get_err_counter(
-                             '/err/%s/chained buffers (packet dropped)' %
-                             self.tun4_decrypt_node_name))
-        self.assertEqual(N_PKTS,
-                         self.statistics.get_err_counter(
-                             '/err/%s/chained buffers (packet dropped)' %
-                             self.tun4_encrypt_node_name))
-
-        # on encrypt the 1989 size is no trailer space
-        self.assertEqual(N_PKTS,
-                         self.statistics.get_err_counter(
-                             '/err/%s/no trailer space (packet dropped)' %
-                             self.tun4_encrypt_node_name))
 
     def verify_tun_reass_44(self, p):
         self.vapi.cli("clear errors")
@@ -996,12 +965,6 @@ class IpsecTun4Tests(IpsecTun4):
         self.verify_tun_44(self.params[socket.AF_INET], count=127)
 
 
-class IpsecTunEsp4Tests(IpsecTun4):
-    def test_tun_bad_packet_sizes(self):
-        """ ipsec v4 tunnel bad packet size """
-        self.verify_tun_44_bad_packet_sizes(self.params[socket.AF_INET])
-
-
 class IpsecTun6(object):
     """ verify methods for Tunnel v6 """
     def verify_counters6(self, p_in, p_out, count, worker=None):
@@ -1064,7 +1027,8 @@ class IpsecTun6(object):
             send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
                                                src=p_in.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
-                                               count=count)
+                                               count=count,
+                                               payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             self.verify_decrypted6(p_in, recv_pkts)
 
