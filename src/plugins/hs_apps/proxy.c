@@ -271,7 +271,15 @@ proxy_tx_callback (session_t * proxy_s)
   session_handle_t handle;
   proxy_session_t *ps;
   session_t *ao_s;
+  u32 min_free;
   uword *p;
+
+  min_free = clib_min (proxy_s->tx_fifo->nitems >> 3, 128 << 10);
+  if (svm_fifo_max_enqueue (proxy_s->tx_fifo) < min_free)
+    {
+      svm_fifo_add_want_deq_ntf (proxy_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
@@ -414,7 +422,15 @@ active_open_tx_callback (session_t * ao_s)
   session_handle_t handle;
   proxy_session_t *ps;
   session_t *proxy_s;
+  u32 min_free;
   uword *p;
+
+  min_free = clib_min (ao_s->tx_fifo->nitems >> 3, 128 << 10);
+  if (svm_fifo_max_enqueue (ao_s->tx_fifo) < min_free)
+    {
+      svm_fifo_add_want_deq_ntf (ao_s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
