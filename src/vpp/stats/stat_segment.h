@@ -64,6 +64,8 @@ typedef enum
 /* Shared segment memory layout version */
 #define STAT_SEGMENT_VERSION		1
 
+#define STAT_SEGMENT_INDEX_INVALID	UINT32_MAX
+
 static inline uint64_t
 stat_segment_offset (void *start, void *data)
 {

@@ -38,6 +38,8 @@ stat_client::stat_data_t::stat_data_t(const stat_segment_data_t& stat_seg_data)
       break;
     case STAT_DIR_TYPE_ILLEGAL:
       break;
+    case STAT_DIR_TYPE_EMPTY:
+      break;
   }
 }
 
@@ -95,8 +97,7 @@ stat_client::stat_client(std::vector<std::string>& pattern)
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
-{
-}
+{}
 
 stat_client::stat_client(std::string socket_name,
                          std::vector<std::string> patterns)
@@ -106,8 +107,7 @@ stat_client::stat_client(std::string socket_name,
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
-{
-}
+{}
 
 stat_client::stat_client()
   : m_socket_name("/run/vpp/stats.sock")
@@ -131,8 +131,7 @@ stat_client::~stat_client()
 stat_client::stat_client(const stat_client& o)
   : m_socket_name(o.m_socket_name)
   , m_patterns(o.m_patterns)
-{
-}
+{}
 
 int
 stat_client::connect()
