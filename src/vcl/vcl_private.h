@@ -64,7 +64,7 @@ typedef enum
 
 typedef enum
 {
-  STATE_START = 0,
+  STATE_CLOSED = 0,
   STATE_CONNECT = 0x01,
   STATE_LISTEN = 0x02,
   STATE_ACCEPT = 0x04,

@@ -653,6 +653,7 @@ ldp_select_vcl_map_to_libc (clib_bitmap_t * vclb, fd_set * __restrict libcb)
   /* *INDENT-OFF* */
   clib_bitmap_foreach (si, vclb, ({
     vlsh = vls_session_index_to_vlsh (si);
+    ASSERT (vlsh != VLS_INVALID_HANDLE);
     fd = ldp_vlsh_to_fd (vlsh);
     if (PREDICT_FALSE (fd < 0))
       {

@@ -60,8 +60,8 @@ vppcom_session_state_str (vcl_session_state_t state)
 
   switch (state)
     {
-    case STATE_START:
-      st = "STATE_START";
+    case STATE_CLOSED:
+      st = "STATE_CLOSED";
       break;
 
     case STATE_CONNECT:
@@ -1220,7 +1220,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   session = vcl_session_alloc (wrk);
 
   session->session_type = proto;
-  session->session_state = STATE_START;
+  session->session_state = STATE_CLOSED;
   session->vpp_handle = ~0;
   session->is_dgram = vcl_proto_is_dgram (proto);
 
@@ -1308,6 +1308,8 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
       vcl_send_session_reset_reply (mq, wrk->my_client_index,
 				    session->vpp_handle, 0);
     }
+
+  session->session_state = STATE_CLOSED;
 
   /* Session is removed only after vpp confirms the disconnect */
   return rv;
