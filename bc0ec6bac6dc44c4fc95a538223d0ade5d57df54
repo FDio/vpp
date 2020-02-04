@@ -16,6 +16,24 @@
       "revId": "bc0ec6bac6dc44c4fc95a538223d0ade5d57df54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa1e4be9_4774a0b5",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-04T02:53:44Z",
+      "side": 1,
+      "message": "Yup. I didn\u0027t want to remove it for now.",
+      "parentUuid": "e3a75374_b762adf7",
+      "revId": "bc0ec6bac6dc44c4fc95a538223d0ade5d57df54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
