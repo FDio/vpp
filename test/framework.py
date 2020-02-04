@@ -446,8 +446,7 @@ class VppTestCase(unittest.TestCase):
         try:
             cls.vpp = subprocess.Popen(cmdline,
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
-                                       bufsize=1)
+                                       stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             cls.logger.critical("Subprocess returned with non-0 return code: ("
                                 "%s)", e.returncode)

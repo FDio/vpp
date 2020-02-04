@@ -1278,7 +1278,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         while (n_tries):
             fib = self.vapi.ip_route_dump(0, True)
             default_routes = self.get_default_routes(fib)
-            if 0 is len(default_routes):
+            if 0 == len(default_routes):
                 return True
             n_tries = n_tries - 1
             self.sleep(s_time)

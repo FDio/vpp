@@ -93,7 +93,7 @@ VENV_RUN_DIR:=$(VENV_PATH)/run
 endif
 
 ifeq ($(PYTHON),)
-PYTHON_INTERP=python3.6
+PYTHON_INTERP=python3
 else
 PYTHON_INTERP=$(PYTHON)
 endif
@@ -102,7 +102,7 @@ PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.m
 PIP_VERSION=19.1.1
 PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_INTERP) -name site-packages)
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(TEST_BR)/coverage
 
 PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION).done
