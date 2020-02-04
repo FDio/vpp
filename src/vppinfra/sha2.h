@@ -237,6 +237,7 @@ typedef struct
   u8 digest_size;
   union
   {
+    u8 h[0];
     u32 h32[8];
     u64 h64[8];
 #if defined(__SHA__) && defined (__x86_64__)
@@ -333,7 +334,7 @@ shani_sha256_shuffle (u32x4 d[2], u32x4 s[2])
 }
 #endif
 
-void
+static inline void
 clib_sha256_block (clib_sha2_ctx_t * ctx, const u8 * msg, uword n_blocks)
 {
 #if defined(__SHA__) && defined (__x86_64__)
@@ -451,6 +452,15 @@ clib_sha512_block (clib_sha2_ctx_t * ctx, const u8 * msg, uword n_blocks)
       msg += SHA512_BLOCK_SIZE;
       n_blocks--;
     }
+}
+
+static inline void
+clib_sha2_block (clib_sha2_ctx_t * ctx, const u8 * msg, uword n_blocks)
+{
+  if (ctx->block_size == SHA512_BLOCK_SIZE)
+    clib_sha512_block (ctx, msg, n_blocks);
+  else
+    clib_sha256_block (ctx, msg, n_blocks);
 }
 
 static_always_inline void

@@ -101,12 +101,14 @@ crypto_native_init (vlib_main_t * vm)
 	goto error;
     }
 #endif
-#if __aarch64__
-  error = crypto_native_aes_cbc_init_neon (vm);
 
-  if (error)
+#if __aarch64__
+  if ((error = crypto_native_aes_cbc_init_neon (vm)))
     goto error;
 #endif
+
+  if ((error = crypto_native_sha2_init (vm)))
+    goto error;
 
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_native_key_handler);
