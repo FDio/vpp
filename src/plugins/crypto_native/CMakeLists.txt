@@ -34,7 +34,7 @@ if (NOT VARIANTS)
   return()
 endif()
 
-add_vpp_plugin(crypto_native SOURCES main.c)
+add_vpp_plugin(crypto_native SOURCES main.c sha2.c)
 
 foreach(VARIANT ${VARIANTS})
   list(GET VARIANT 0 v)
