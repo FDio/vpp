@@ -19,31 +19,52 @@
 
 vnet_crypto_main_t crypto_main;
 
+static_always_inline void
+crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)
+{
+  while (n_ops--)
+    {
+      ops[0]->status = status;
+      ops++;
+    }
+}
+
 static_always_inline u32
 vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 				      vnet_crypto_main_t * cm,
 				      vnet_crypto_op_id_t opt,
-				      vnet_crypto_op_t * ops[], u32 n_ops)
+				      vnet_crypto_op_t * ops[],
+				      vnet_crypto_op_chunk_t * chunks,
+				      u32 n_ops)
 {
+  u32 rv = 0;
   if (n_ops == 0)
     return 0;
 
-  if (cm->ops_handlers[opt] == 0)
+  if (chunks)
     {
-      while (n_ops--)
-	{
-	  ops[0]->status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
-	  ops++;
-	}
-      return 0;
-    }
 
-  return (cm->ops_handlers[opt]) (vm, ops, n_ops);
+      if (cm->chained_ops_handlers[opt] == 0)
+	crypto_set_op_status (ops, n_ops,
+			      VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
+      else
+	rv = (cm->chained_ops_handlers[opt]) (vm, ops, chunks, n_ops);
+    }
+  else
+    {
+      if (cm->ops_handlers[opt] == 0)
+	crypto_set_op_status (ops, n_ops,
+			      VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
+      else
+	rv = (cm->ops_handlers[opt]) (vm, ops, n_ops);
+    }
+  return rv;
 }
 
 
-u32
-vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
+static_always_inline u32
+vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
+				vnet_crypto_op_chunk_t * chunks, u32 n_ops)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   const int op_q_size = VLIB_FRAME_SIZE;
@@ -61,7 +82,8 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
       if (current_op_type != opt || n_op_queue >= op_q_size)
 	{
 	  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-						      op_queue, n_op_queue);
+						      op_queue, chunks,
+						      n_op_queue);
 	  n_op_queue = 0;
 	  current_op_type = opt;
 	}
@@ -70,8 +92,21 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
     }
 
   rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-					      op_queue, n_op_queue);
+					      op_queue, chunks, n_op_queue);
   return rv;
+}
+
+u32
+vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
+{
+  return vnet_crypto_process_ops_inline (vm, ops, 0, n_ops);
+}
+
+u32
+vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
+				 vnet_crypto_op_chunk_t * chunks, u32 n_ops)
+{
+  return vnet_crypto_process_ops_inline (vm, ops, chunks, n_ops);
 }
 
 u32
@@ -91,13 +126,40 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
   return p - cm->engines;
 }
 
+static_always_inline void
+crypto_set_active_engine (vnet_crypto_op_data_t * od,
+			  vnet_crypto_op_id_t id, u32 ei,
+			  crypto_op_class_type_t oct)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_t *ce = vec_elt_at_index (cm->engines, ei);
+
+  if (oct == CRYPTO_OP_BOTH || oct == CRYPTO_OP_CHAINED)
+    {
+      if (ce->chained_ops_handlers[id])
+	{
+	  od->active_engine_index_chained = ei;
+	  cm->chained_ops_handlers[id] = ce->chained_ops_handlers[id];
+	}
+    }
+
+  if (oct == CRYPTO_OP_BOTH || oct == CRYPTO_OP_SIMPLE)
+    {
+      if (ce->ops_handlers[id])
+	{
+	  od->active_engine_index_simple = ei;
+	  cm->ops_handlers[id] = ce->ops_handlers[id];
+	}
+    }
+}
+
 int
-vnet_crypto_set_handler (char *alg_name, char *engine)
+vnet_crypto_set_handler2 (char *alg_name, char *engine,
+			  crypto_op_class_type_t oct)
 {
   uword *p;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_data_t *ad;
-  vnet_crypto_engine_t *ce;
   int i;
 
   p = hash_get_mem (cm->alg_index_by_name, alg_name);
@@ -110,20 +172,15 @@ vnet_crypto_set_handler (char *alg_name, char *engine)
   if (!p)
     return -1;
 
-  ce = vec_elt_at_index (cm->engines, p[0]);
-
-  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i += 2)
     {
       vnet_crypto_op_data_t *od;
       vnet_crypto_op_id_t id = ad->op_by_type[i];
       if (id == 0)
 	continue;
+
       od = cm->opt_data + id;
-      if (ce->ops_handlers[id])
-	{
-	  od->active_engine_index = p[0];
-	  cm->ops_handlers[id] = ce->ops_handlers[id];
-	}
+      crypto_set_active_engine (od, id, p[0], oct);
     }
 
   return 0;
@@ -138,31 +195,75 @@ vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
 }
 
 void
-vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
-				  vnet_crypto_op_id_t opt,
-				  vnet_crypto_ops_handler_t * fn)
+vnet_crypto_register_ops_handler_inline (vlib_main_t * vm, u32 engine_index,
+					 vnet_crypto_op_id_t opt,
+					 vnet_crypto_ops_handler_t * fn,
+					 vnet_crypto_chained_ops_handler_t *
+					 cfn)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
   vnet_crypto_op_data_t *otd = cm->opt_data + opt;
   vec_validate_aligned (cm->ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
 			CLIB_CACHE_LINE_BYTES);
-  e->ops_handlers[opt] = fn;
+  vec_validate_aligned (cm->chained_ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
+			CLIB_CACHE_LINE_BYTES);
 
-  if (otd->active_engine_index == ~0)
+  if (fn)
     {
-      otd->active_engine_index = engine_index;
-      cm->ops_handlers[opt] = fn;
-      return;
+      e->ops_handlers[opt] = fn;
+      if (otd->active_engine_index_simple == ~0)
+	{
+	  otd->active_engine_index_simple = engine_index;
+	  cm->ops_handlers[opt] = fn;
+	}
+
+      ae = vec_elt_at_index (cm->engines, otd->active_engine_index_simple);
+      if (ae->priority < e->priority)
+	crypto_set_active_engine (otd, opt, engine_index, CRYPTO_OP_SIMPLE);
     }
-  ae = vec_elt_at_index (cm->engines, otd->active_engine_index);
-  if (ae->priority < e->priority)
+
+  if (cfn)
     {
-      otd->active_engine_index = engine_index;
-      cm->ops_handlers[opt] = fn;
+      e->chained_ops_handlers[opt] = cfn;
+      if (otd->active_engine_index_chained == ~0)
+	{
+	  otd->active_engine_index_chained = engine_index;
+	  cm->chained_ops_handlers[opt] = cfn;
+	}
+
+      ae = vec_elt_at_index (cm->engines, otd->active_engine_index_chained);
+      if (ae->priority < e->priority)
+	crypto_set_active_engine (otd, opt, engine_index, CRYPTO_OP_CHAINED);
     }
 
   return;
+}
+
+void
+vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
+				  vnet_crypto_op_id_t opt,
+				  vnet_crypto_ops_handler_t * fn)
+{
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, 0);
+}
+
+void
+vnet_crypto_register_chained_ops_handler (vlib_main_t * vm, u32 engine_index,
+					  vnet_crypto_op_id_t opt,
+					  vnet_crypto_chained_ops_handler_t *
+					  fn)
+{
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, 0, fn);
+}
+
+void
+vnet_crypto_register_ops_handlers (vlib_main_t * vm, u32 engine_index,
+				   vnet_crypto_op_id_t opt,
+				   vnet_crypto_ops_handler_t * fn,
+				   vnet_crypto_chained_ops_handler_t * cfn)
+{
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, cfn);
 }
 
 void
@@ -253,10 +354,13 @@ vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
 {
   vnet_crypto_op_type_t eopt, dopt;
   vnet_crypto_main_t *cm = &crypto_main;
+
   cm->algs[alg].name = name;
   cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
-  cm->opt_data[eid].active_engine_index = ~0;
-  cm->opt_data[did].active_engine_index = ~0;
+  cm->opt_data[eid].active_engine_index_simple = ~0;
+  cm->opt_data[did].active_engine_index_simple = ~0;
+  cm->opt_data[eid].active_engine_index_chained = ~0;
+  cm->opt_data[did].active_engine_index_chained = ~0;
   if (is_aead)
     {
       eopt = VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT;
@@ -282,7 +386,8 @@ vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
   cm->algs[alg].name = name;
   cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HMAC] = id;
   cm->opt_data[id].alg = alg;
-  cm->opt_data[id].active_engine_index = ~0;
+  cm->opt_data[id].active_engine_index_simple = ~0;
+  cm->opt_data[id].active_engine_index_chained = ~0;
   cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HMAC;
   hash_set_mem (cm->alg_index_by_name, name, alg);
 }

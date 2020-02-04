@@ -90,8 +90,12 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
+  vnet_crypto_op_t *chained_crypto_ops;
+  vnet_crypto_op_t *chained_integ_ops;
+  vnet_crypto_op_chunk_t *chunks;
 } ipsec_per_thread_data_t;
 
 typedef struct

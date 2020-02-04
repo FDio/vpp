@@ -10,7 +10,7 @@ from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     config_tun_params, IPsecIPv4Params, IPsecIPv6Params, \
     IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6, \
     IpsecTun6HandoffTests, IpsecTun4HandoffTests, \
-    IpsecTra6ExtTests, IpsecTunEsp4Tests
+    IpsecTra6ExtTests
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
     VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -18,6 +18,7 @@ from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 NUM_PKTS = 67
+engines_supporting_chain_bufs = ["openssl"]
 
 
 class ConfigIpsecESP(TemplateIpsec):
@@ -288,8 +289,7 @@ class TemplateIpsecEsp(ConfigIpsecESP):
 
 
 class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
-                    IpsecTun46Tests, IpsecTunEsp4Tests,
-                    IpsecTra6ExtTests):
+                    IpsecTun46Tests, IpsecTra6ExtTests):
     """ Ipsec ESP - TUN & TRA tests """
     pass
 
@@ -469,7 +469,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
     def run_test(self):
         self.run_a_test(self.engine, self.flag, self.algo)
 
-    def run_a_test(self, engine, flag, algo):
+    def run_a_test(self, engine, flag, algo, payload_size=None):
         self.vapi.cli("set crypto handler all %s" % engine)
 
         self.ipv4_params = IPsecIPv4Params()
@@ -507,6 +507,21 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
                            count=NUM_PKTS)
         self.verify_tun_44(self.params[socket.AF_INET],
                            count=NUM_PKTS)
+
+        LARGE_PKT_SZ = [
+            4010,  # ICV ends up splitted accross 2 buffers in esp_decrypt
+                   # for transport4; transport6 takes normal path
+
+            4020,  # same as above but tra4 and tra6 are switched
+        ]
+        if self.engine in engines_supporting_chain_bufs:
+            for sz in LARGE_PKT_SZ:
+                self.verify_tra_basic4(count=NUM_PKTS, payload_size=sz)
+                self.verify_tra_basic6(count=NUM_PKTS, payload_size=sz)
+                self.verify_tun_66(self.params[socket.AF_INET6],
+                                   count=NUM_PKTS, payload_size=sz)
+                self.verify_tun_44(self.params[socket.AF_INET],
+                                   count=NUM_PKTS, payload_size=sz)
 
         #
         # remove the SPDs, SAs, etc
