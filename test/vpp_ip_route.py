@@ -87,7 +87,7 @@ def ip_to_dpo_proto(addr):
 
 
 def address_proto(ip_addr):
-    if ip_addr.ip_addr.version is 4:
+    if ip_addr.ip_addr.version == 4:
         return FibPathProto.FIB_PATH_NH_PROTO_IP4
     else:
         return FibPathProto.FIB_PATH_NH_PROTO_IP6
@@ -96,7 +96,7 @@ def address_proto(ip_addr):
 def find_route(test, addr, len, table_id=0):
     prefix = mk_network(addr, len)
 
-    if 4 is prefix.version:
+    if 4 == prefix.version:
         routes = test.vapi.ip_route_dump(table_id, False)
     else:
         routes = test.vapi.ip_route_dump(table_id, True)
@@ -131,7 +131,7 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
                               text_type(grp_addr),
                               grp_addr_len)
 
-    if 4 is ip_mprefix.version:
+    if 4 == ip_mprefix.version:
         routes = test.vapi.ip_mroute_dump(table_id, False)
     else:
         routes = test.vapi.ip_mroute_dump(table_id, True)
