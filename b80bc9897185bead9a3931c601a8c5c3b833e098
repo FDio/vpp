@@ -142,6 +142,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a99e93f8_f98a6927",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-04T23:48:04Z",
+      "side": 0,
+      "message": "Hi Florin,\n\nThanks for explanation.\n\nI recognized that *the proxy application* is the combination of the mutually-depending CUSP (built by MCBU) binaries and CUSP-proxy (built by OWM) binaries.\n\nIn the case, I suppose the steps would be something as following:\n\n  1. MCBU tentatively merges 4 private patches into MCBU\u0027s VPP branch (for CUSP build).\n  2. MCBU builds CUSP upon this VPP branch (which is patched by 4 private patches).\n  3. MCBU provides the tentative CUSP library to OWM.\n  4. OWM syncs OWM\u0027s VPP sources to MCBU\u0027s branch (for CUSP build).\n  5. OWM builds CUSP-proxy upon the sync\u0027d VPP branch and the tentative CUSP library.\n  6. OWM provides the tentative CUSP-proxy to MCBU.\n  7. Each of MCBU and OWM can test the tentative application (CUSP + CUSP-proxy).\n\nIs my view same as yours?",
+      "parentUuid": "c61632b1_55ed61cb",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
