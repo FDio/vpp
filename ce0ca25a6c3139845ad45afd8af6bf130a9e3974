@@ -118,6 +118,30 @@
       "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b2e74841_b2618374",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-04T07:50:06Z",
+      "side": 1,
+      "message": "The patch 24735 looks fine.\n\nBTW, excuse me, I was not aware of one problem when we discussed about the 2 options (2 days ago).\nIf we would go with the option-2, I suppose we don\u0027t know how much we can shrink the fifo size (\u003d how many bytes are recently dropped). If so, we have to go with the option-1.",
+      "parentUuid": "0e9d5e24_6d17190c",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 25
+      },
+      "revId": "ce0ca25a6c3139845ad45afd8af6bf130a9e3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
