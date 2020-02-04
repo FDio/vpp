@@ -94,6 +94,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "619cfd48_8be3541e",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-04T07:50:27Z",
+      "side": 0,
+      "message": "Sorry for delay of response.\nPreparing to merge these patches sounds good to me. But I have something no clear to me, so let me ask.\nI suppose MCBU team would test if we provide the un-merged patches and the library. But what exactly do you mean by \"your library\"?",
+      "parentUuid": "1410fd19_ff07ef22",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
