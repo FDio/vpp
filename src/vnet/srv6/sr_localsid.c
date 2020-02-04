@@ -895,7 +895,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
 	  return;
 	}
       break;
-    case IP_PROTOCOL_IP6_NONXT:
+    case IP_PROTOCOL_IP6_ETHERNET:
       /* L2 encaps */
       if (ls0->behavior == SR_BEHAVIOR_DX2)
 	{

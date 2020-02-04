@@ -128,7 +128,7 @@ index 03b80ec..06ef27f 100644
 +    #     +-+-+-+-+-+-+-+-+
 +
 +    name = "IPv6 Segment Routing Extension Header"
-+    fields_desc = [ ByteEnumField("nh", 59, ipv6nh),
++    fields_desc = [ ByteEnumField("nh", 143, ipv6nh),
 +                    ByteField("len", None),
 +                    ByteField("type", 4),
 +                    ByteField("segleft", None),

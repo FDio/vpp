@@ -1473,8 +1473,8 @@ class TestSRv6(VppTestCase):
         self.assertEqual(rx_srh.segleft, len(tx_seglist)-1)
         # segleft should be equal to lastentry
         self.assertEqual(rx_srh.segleft, rx_srh.lastentry)
-        # nh should be "No Next Header" (59)
-        self.assertEqual(rx_srh.nh, 59)
+        # nh should be "No Next Header" (143)
+        self.assertEqual(rx_srh.nh, 143)
 
         # the whole rx'ed pkt beyond SRH should be equal to tx'ed pkt
         self.assertEqual(Ether(scapy.compat.raw(rx_srh.payload)), tx_ether)
@@ -2042,7 +2042,7 @@ class TestSRv6(VppTestCase):
 
         p = (IPv6(src='1234::1', dst=sidlist[segleft]) /
              IPv6ExtHdrSegmentRouting(addresses=sidlist,
-                                      segleft=segleft, nh=59) /
+                                      segleft=segleft, nh=143) /
              eth)
         return p
 
@@ -2061,7 +2061,7 @@ class TestSRv6(VppTestCase):
         else:
             eth.type = etype
 
-        p = (IPv6(src='1234::1', dst=dst_outer, nh=59) / eth)
+        p = (IPv6(src='1234::1', dst=dst_outer, nh=143) / eth)
         return p
 
     def get_payload_info(self, packet):

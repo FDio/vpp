@@ -182,7 +182,7 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 
       /* Prepare rewrite string */
       ls_mem->rewrite = prepare_rewrite (ls_mem->src_addr, ls_mem->sid_list,
-					 IP_PROTOCOL_IP6_NONXT);
+					 IP_PROTOCOL_IP6_ETHERNET);
 
       /* Associate local SID index to this interface (resize vector if needed) */
       if (ls_mem->sw_if_index_in >= vec_len (sm->sw_iface_localsid2))
