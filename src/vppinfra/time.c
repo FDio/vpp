@@ -208,6 +208,22 @@ clib_time_init (clib_time_t * c)
 {
   clib_memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
+  /*
+   * Sporadic reports of os_cpu_clock_frequency() returning 0.0
+   * in highly parallel container environments.
+   * To avoid immediate division by zero:
+   *   Step 1: try estimate_clock_frequency().
+   *   Step 2: give up. Pretend we have a 2gHz clock.
+   */
+  if (PREDICT_FALSE (c->clocks_per_second == 0.0))
+    {
+      c->clocks_per_second = estimate_clock_frequency (1e-3);
+      if (c->clocks_per_second == 0.0)
+	{
+	  clib_warning ("os_cpu_clock_frequency() returned 0.0, use 2e9...");
+	  c->clocks_per_second = 2e9;
+	}
+    }
   c->seconds_per_clock = 1 / c->clocks_per_second;
   c->log2_clocks_per_second = min_log2_u64 ((u64) c->clocks_per_second);
 
