@@ -102,9 +102,9 @@ crypto_native_init (vlib_main_t * vm)
     }
 #endif
 #if __aarch64__
-  error = crypto_native_aes_cbc_init_neon (vm);
-
-  if (error)
+ if ((error = crypto_native_aes_cbc_init_neon (vm)))
+    goto error;
+ if ((error = crypto_native_sha2_init_neon (vm)))
     goto error;
 #endif
 
