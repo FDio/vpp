@@ -112,6 +112,9 @@ retry:
 		   res[i].scalar_value);
 	  break;
 
+	case STAT_DIR_TYPE_EMPTY:
+	  break;
+
 	default:
 	  fformat (stderr, "Unknown value %d\n", res[i].type);
 	  ;

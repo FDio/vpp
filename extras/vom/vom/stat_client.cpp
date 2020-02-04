@@ -38,6 +38,8 @@ stat_client::stat_data_t::stat_data_t(const stat_segment_data_t& stat_seg_data)
       break;
     case STAT_DIR_TYPE_ILLEGAL:
       break;
+    case STAT_DIR_TYPE_EMPTY:
+      break;
   }
 }
 
