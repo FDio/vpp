@@ -544,6 +544,19 @@ ptr2sname (void *p)
   return info.dli_sname;
 }
 
+static u8 *
+format_switch_info (u8 * s, va_list * args)
+{
+  struct rte_eth_switch_info *si = va_arg (*args, struct rte_eth_switch_info *);
+
+  if (si->name)
+    s = format(s, "name %s ", si->name);
+
+  s = format(s, "domain id %d port id %d", si->domain_id, si->port_id);
+
+  return s;
+}
+
 u8 *
 format_dpdk_device (u8 * s, va_list * args)
 {
@@ -608,6 +621,12 @@ format_dpdk_device (u8 * s, va_list * args)
 		      pci->addr.bus, pci->addr.devid, pci->addr.function, s2);
 	  vec_free (s2);
 	}
+
+      if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+        {
+          s = format (s, "%Uswitch info: %U\n", format_white_space, indent + 2,
+                      format_switch_info, &di.switch_info);
+        }
 
       if (1 < verbose)
 	{
