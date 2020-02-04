@@ -70,6 +70,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1410fd19_ff07ef22",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-04T04:47:54Z",
+      "side": 0,
+      "message": "So, should we start preparing to merge 23974, 24086, 24278 (has some comments) and 24735? That is, if we merge those and provide them to MCBU, could you provide a version your library that would work with the resulting image? I\u0027d like to test these before we cherry-pick them, to make sure we\u0027re not blocking the rest of the testing.",
+      "parentUuid": "525d67d6_ae400a4f",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
