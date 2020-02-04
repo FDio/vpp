@@ -295,8 +295,14 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	devconf = &dm->conf->default_devconf;
 
+      /* Handle representor devices that share the same PCI ID */
+      if (dev_info.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+        {
+          if (dev_info.switch_info.port_id != (uint16_t)-1)
+            xd->interface_name_suffix = format (0, "%d", dev_info.switch_info.port_id);
+        }
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
-      if (pci_dev &&
+      else if (pci_dev &&
 	  ((next_port_id = rte_eth_find_next (i + 1)) != RTE_MAX_ETHPORTS))
 	{
 	  struct rte_eth_dev_info di = { 0 };
