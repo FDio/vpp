@@ -200,16 +200,19 @@ void svm_fifo_init (svm_fifo_t * f, u32 size);
  */
 svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
 /**
- * Grow fifo size by adding chunk to chunk list
+ * Ensure the whole fifo size is writeable
  *
- * If fifos are allocated on a segment, this should be called with
- * the segment's heap pushed.
+ * Allocates enough chunks to cover the whole fifo size.
  *
- * @param f	fifo to be extended
- * @param c 	chunk or linked list of chunks to be added
+ * @param f	fifo
  */
-void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
 int svm_fifo_fill_chunk_list (svm_fifo_t * f);
+/**
+ * Initialize rbtrees used for ooo lookups
+ *
+ * @param f		fifo
+ * @param ooo_type	type of ooo operation (0 enqueue, 1 dequeue)
+ */
 void svm_fifo_init_ooo_lookup (svm_fifo_t * f, u8 ooo_type);
 /**
  * Free fifo and associated state
@@ -380,6 +383,12 @@ ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
  * @return 	1 if sane, 0 otherwise
  */
 u8 svm_fifo_is_sane (svm_fifo_t * f);
+/**
+ * Number of chunks linked into the fifo
+ *
+ * @param f	fifo
+ * @return 	number of chunks in fifo linked list
+ */
 u32 svm_fifo_n_chunks (svm_fifo_t * f);
 format_function_t format_svm_fifo;
 
@@ -545,12 +554,24 @@ u32 svm_fifo_max_read_chunk (svm_fifo_t * f);
  */
 u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
 
+/**
+ * Fifo head chunk getter
+ *
+ * @param f	fifo
+ * @return	head chunk pointer
+ */
 static inline svm_fifo_chunk_t *
 svm_fifo_head_chunk (svm_fifo_t * f)
 {
   return f->head_chunk;
 }
 
+/**
+ * Fifo head pointer getter
+ *
+ * @param f	fifo
+ * @return	head pointer
+ */
 static inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
@@ -560,12 +581,24 @@ svm_fifo_head (svm_fifo_t * f)
   return (f->head_chunk->data + (f->head - f->head_chunk->start_byte));
 }
 
+/**
+ * Fifo tail chunk getter
+ *
+ * @param f	fifo
+ * @return	tail chunk pointer
+ */
 static inline svm_fifo_chunk_t *
 svm_fifo_tail_chunk (svm_fifo_t * f)
 {
   return f->tail_chunk;
 }
 
+/**
+ * Fifo tail pointer getter
+ *
+ * @param f	fifo
+ * @return	tail pointer
+ */
 static inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
@@ -573,6 +606,12 @@ svm_fifo_tail (svm_fifo_t * f)
   return (f->tail_chunk->data + (f->tail - f->tail_chunk->start_byte));
 }
 
+/**
+ * Fifo number of subscribers getter
+ *
+ * @param f	fifo
+ * @return	number of subscribers
+ */
 static inline u8
 svm_fifo_n_subscribers (svm_fifo_t * f)
 {
