@@ -166,6 +166,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9a0941e_a8f95e24",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-05T00:52:31Z",
+      "side": 0,
+      "message": "Hi Shibuya-san, \n\nYes. \n\nI\u0027m not sure about the specifics, especially after we started sharing a repo that has all of the cherry-picks. But the idea would be that both MCBU and OWM add the 4 patches onto branches derived out of the shared repo, exchange those binaries and then both sides can start testing.",
+      "parentUuid": "a99e93f8_f98a6927",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
