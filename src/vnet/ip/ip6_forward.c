@@ -1021,31 +1021,23 @@ u16
 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				   ip6_header_t * ip0, int *bogus_lengthp)
 {
-  ip_csum_t sum0;
-  u16 payload_length_host_byte_order;
+  ip_csum_t sum0 = 0;
+  u16 payload_length, payload_length_host_byte_order;
   u32 i;
   u32 headers_size = sizeof (ip0[0]);
   u8 *data_this_buffer;
+  u8 next_hdr = ip0->protocol;
 
   ASSERT (bogus_lengthp);
   *bogus_lengthp = 0;
 
-  /* Initialize checksum with ip header. */
-  sum0 = ip0->payload_length + clib_host_to_net_u16 (ip0->protocol);
   payload_length_host_byte_order = clib_net_to_host_u16 (ip0->payload_length);
   data_this_buffer = (u8 *) (ip0 + 1);
-
-  for (i = 0; i < ARRAY_LEN (ip0->src_address.as_uword); i++)
-    {
-      sum0 = ip_csum_with_carry
-	(sum0, clib_mem_unaligned (&ip0->src_address.as_uword[i], uword));
-      sum0 = ip_csum_with_carry
-	(sum0, clib_mem_unaligned (&ip0->dst_address.as_uword[i], uword));
-    }
+  payload_length = ip0->payload_length;
 
   /* some icmp packets may come with a "router alert" hop-by-hop extension header (e.g., mldv2 packets)
    * or UDP-Ping packets */
-  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+  if (PREDICT_FALSE (next_hdr == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
     {
       u32 skip_bytes;
       ip6_hop_by_hop_ext_t *ext_hdr =
@@ -1060,6 +1052,24 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
       payload_length_host_byte_order -= skip_bytes;
       headers_size += skip_bytes;
+
+      /* pseudo-header adjustments:
+       *   exclude ext header bytes from payload length
+       *   use payload IP proto rather than ext header IP proto
+       */
+      payload_length = clib_host_to_net_u16 (payload_length_host_byte_order);
+      next_hdr = ext_hdr->next_hdr;
+    }
+
+  /* Initialize checksum with ip pseudo-header. */
+  sum0 = payload_length + clib_host_to_net_u16 (next_hdr);
+
+  for (i = 0; i < ARRAY_LEN (ip0->src_address.as_uword); i++)
+    {
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&ip0->src_address.as_uword[i], uword));
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&ip0->dst_address.as_uword[i], uword));
     }
 
   if (p0)
