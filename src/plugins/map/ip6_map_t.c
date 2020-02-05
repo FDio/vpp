@@ -24,6 +24,7 @@ typedef enum
   IP6_MAPT_NEXT_MAPT_ICMP,
   IP6_MAPT_NEXT_MAPT_FRAGMENTED,
   IP6_MAPT_NEXT_DROP,
+  IP6_MAPT_NEXT_ICMP,
   IP6_MAPT_N_NEXT
 } ip6_mapt_next_t;
 
@@ -475,6 +476,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_map_t_node.index);
+  map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
   u32 thread_index = vm->thread_index;
 
@@ -626,7 +628,19 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 								     payload_length));
 	    }
 
-	  next0 = (error0 != MAP_ERROR_NONE) ? IP6_MAPT_NEXT_DROP : next0;
+	  if (PREDICT_FALSE
+	      (error0 == MAP_ERROR_SEC_CHECK && mm->icmp6_enabled))
+	    {
+	      icmp6_error_set_vnet_buffer (p0, ICMP6_destination_unreachable,
+					   ICMP6_destination_unreachable_source_address_failed_policy,
+					   0);
+	      next0 = IP6_MAPT_NEXT_ICMP;
+	    }
+	  else
+	    {
+	      next0 = (error0 != MAP_ERROR_NONE) ? IP6_MAPT_NEXT_DROP : next0;
+	    }
+
 	  p0->error = error_node->errors[error0];
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -738,6 +752,7 @@ VLIB_REGISTER_NODE(ip6_map_t_node) = {
     [IP6_MAPT_NEXT_MAPT_ICMP] = "ip6-map-t-icmp",
     [IP6_MAPT_NEXT_MAPT_FRAGMENTED] = "ip6-map-t-fragmented",
     [IP6_MAPT_NEXT_DROP] = "error-drop",
+    [IP6_MAPT_NEXT_ICMP] = "ip6-icmp-error",
   },
 };
 /* *INDENT-ON* */
