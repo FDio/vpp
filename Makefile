@@ -65,7 +65,7 @@ DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
-DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
+DEB_DEPENDS += python-all python3-all python3-setuptools
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
@@ -73,8 +73,10 @@ DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 # python3.6 on 16.04 requires python36-dev
  
-ifeq ($(OS_VERSION_ID),14.04)
-	DEB_DEPENDS += libssl-dev
+ifeq ($(OS_VERSION_ID),16.04)
+	DEB_DEPENDS += python-dev
+else ifeq ($(OS_VERSION_ID),18.04)
+	DEB_DEPENDS += python-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += libssl-dev
 	APT_ARGS = -t jessie-backports
