@@ -214,6 +214,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c246e42_da7ee3b6",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-05T01:52:12Z",
+      "side": 0,
+      "message": "I had a comment on https://gerrit.fd.io/r/c/vpp/+/24278 . Could you check that?\n\nI\u0027m pretty convinced cpu consumption has increased in my high throughput testing, i.e., at 37Gbps, although it may be partly driven by more rx/tx losses. But we can accept that for now, unless we see it worsen in cusp testing.\n\nNot sure when these patches will be cherry-picked, but once we get confirmation that they work properly, I do plan to get them merged into vpp master. At that point, I\u0027d like do a bit of cleaning in the fifo-segment and, if possible, some optimizations. There\u0027s also an ask to have the segment manager be numa aware. \n\nIn parallel, we also need to figure out a way to minimize fifo segment overhead.",
+      "parentUuid": "57647ddf_0e1fb833",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
