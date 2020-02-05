@@ -262,6 +262,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03b773dc_ae8fc959",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-05T03:06:38Z",
+      "side": 0,
+      "message": "- We can\u0027t know when the last chunk is removable from within the fifo. That is, we can\u0027t free the chunk in the consumer because the producer may be adding data and the tail was not yet updated. Proxy has control over both ends but that\u0027s more like a corner case. Either way, overhead is one chunk, which can be tuned to be small. So, not sure if it\u0027s worth trying to optimize this. \n- Fifo size can be dropped, as long as it doesn\u0027t cut ooo segments, although with the current implementation it might even survive that. But, as you pointed out, that affects tcp\u0027s advertised rcv_wnd. TCP \"survives\" forced window reductions but it may affect performance. So, is it worth it? Does linux support that? I seem to remember that linux can only grow the rcv buffer, i.e., not even shrinking it, but I may be wrong. \n- Agreed. But not sure how ...",
+      "parentUuid": "5bae9e11_06d232ca",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
