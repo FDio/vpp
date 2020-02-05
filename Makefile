@@ -93,20 +93,20 @@ RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
-RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
+	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
-	RPM_DEPENDS += dnf-utils
+	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10
-	RPM_DEPENDS += python3-devel python3-ply
+	RPM_DEPENDS += python36-devel python3-ply
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'Development Tools'
