@@ -113,7 +113,7 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
 {
   .path = "set ip6 nd proxy",
-  .short_help = "set ip6 nd proxy <HOST> <INTERFACE>",
+  .short_help = "set ip6 nd proxy <interface> [del] <host-ip>",
   .function = set_ip6_nd_proxy_cmd,
 };
 /* *INDENT-ON* */
