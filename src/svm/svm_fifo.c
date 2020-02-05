@@ -748,34 +748,6 @@ f_lookup_clear_deq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 }
 
 void
-svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
-{
-  svm_fifo_chunk_t *cur, *prev;
-
-  cur = c;
-  prev = f->end_chunk;
-
-  while (cur)
-    {
-      cur->start_byte = prev->start_byte + prev->length;
-      cur->enq_rb_index = RBTREE_TNIL_INDEX;
-      cur->deq_rb_index = RBTREE_TNIL_INDEX;
-
-      prev = cur;
-      cur = cur->next;
-    }
-
-  prev->next = 0;
-  f->end_chunk->next = c;
-  f->end_chunk = prev;
-
-  if (!f->tail_chunk)
-    f->tail_chunk = c;
-
-  return;
-}
-
-void
 svm_fifo_free_chunk_lookup (svm_fifo_t * f)
 {
   rb_tree_free_nodes (&f->ooo_enq_lookup);
@@ -823,9 +795,9 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
 }
 
 static int
-f_try_grow (svm_fifo_t * f, u32 head, u32 tail, u32 len)
+f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
 {
-  svm_fifo_chunk_t *c;
+  svm_fifo_chunk_t *c, *cur, *prev;
   u32 alloc_size, free_alloced;
 
   free_alloced = f_chunk_end (f->end_chunk) - tail;
@@ -838,7 +810,26 @@ f_try_grow (svm_fifo_t * f, u32 head, u32 tail, u32 len)
   if (PREDICT_FALSE (!c))
     return -1;
 
-  svm_fifo_add_chunk (f, c);
+  cur = c;
+  prev = f->end_chunk;
+
+  while (cur)
+    {
+      cur->start_byte = prev->start_byte + prev->length;
+      cur->enq_rb_index = RBTREE_TNIL_INDEX;
+      cur->deq_rb_index = RBTREE_TNIL_INDEX;
+
+      prev = cur;
+      cur = cur->next;
+    }
+
+  prev->next = 0;
+  f->end_chunk->next = c;
+  f->end_chunk = prev;
+
+  if (!f->tail_chunk)
+    f->tail_chunk = c;
+
   return 0;
 }
 
@@ -863,7 +854,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
 
   if (f_pos_gt (tail + len, f_chunk_end (f->end_chunk)))
     {
-      if (PREDICT_FALSE (f_try_grow (f, head, tail, len)))
+      if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
 	{
 	  len = f_chunk_end (f->end_chunk) - tail;
 	  if (!len)
@@ -919,7 +910,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   if (f_pos_gt (enq_pos + len, f_chunk_end (f->end_chunk)))
     {
-      if (PREDICT_FALSE (f_try_grow (f, head, tail, offset + len)))
+      if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, offset + len)))
 	return SVM_FIFO_EGROW;
     }
 
@@ -1104,7 +1095,6 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
 /**
  * Drop all data from fifo
  *
- * Should be called only from vpp side because of lookup cleanup
  */
 void
 svm_fifo_dequeue_drop_all (svm_fifo_t * f)
@@ -1136,7 +1126,7 @@ svm_fifo_fill_chunk_list (svm_fifo_t * f)
   if (f_chunk_end (f->end_chunk) - head >= f->size)
     return 0;
 
-  if (f_try_grow (f, head, tail, f->size - (tail - head)))
+  if (f_try_chunk_alloc (f, head, tail, f->size - (tail - head)))
     return SVM_FIFO_EGROW;
 
   return 0;
