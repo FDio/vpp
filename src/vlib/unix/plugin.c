@@ -22,6 +22,13 @@
 
 plugin_main_t vlib_plugin_main;
 
+#define PLUGIN_LOG_DBG(...) \
+  do {vlib_log_debug (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_ERR(...) \
+  do {vlib_log_err (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_NOTICE(...) \
+  do {vlib_log_notice (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
+
 char *vlib_plugin_path __attribute__ ((weak));
 char *vlib_plugin_path = "";
 char *vlib_plugin_app_version __attribute__ ((weak));
@@ -60,6 +67,20 @@ str_array_to_vec (char *array, int len)
   return r;
 }
 
+static u8 *
+extract (u8 * sp, u8 * ep)
+{
+  u8 *rv = 0;
+
+  while (sp <= ep)
+    {
+      vec_add1 (rv, *sp);
+      sp++;
+    }
+  vec_add1 (rv, 0);
+  return rv;
+}
+
 static int
 load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 {
@@ -80,7 +101,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 				   &section);
   if (error)
     {
-      clib_warning ("Not a plugin: %s\n", (char *) pi->name);
+      PLUGIN_LOG_ERR ("Not a plugin: %s\n", (char *) pi->name);
       return -1;
     }
 
@@ -89,8 +110,8 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   if (vec_len (data) != sizeof (*reg))
     {
-      clib_warning ("vlib_plugin_registration size mismatch in plugin %s\n",
-		    (char *) pi->name);
+      PLUGIN_LOG_ERR ("vlib_plugin_registration size mismatch in plugin %s\n",
+		      (char *) pi->name);
       goto error;
     }
 
@@ -103,18 +124,18 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       pc = vec_elt_at_index (pm->configs, p[0]);
       if (pc->is_disabled)
 	{
-	  clib_warning ("Plugin disabled: %s", pi->name);
+	  PLUGIN_LOG_NOTICE ("Plugin disabled: %s", pi->name);
 	  goto error;
 	}
       if (reg->default_disabled && pc->is_enabled == 0)
 	{
-	  clib_warning ("Plugin disabled (default): %s", pi->name);
+	  PLUGIN_LOG_NOTICE ("Plugin disabled (default): %s", pi->name);
 	  goto error;
 	}
     }
   else if (reg->default_disabled)
     {
-      clib_warning ("Plugin disabled (default): %s", pi->name);
+      PLUGIN_LOG_NOTICE ("Plugin disabled (default): %s", pi->name);
       goto error;
     }
 
@@ -125,8 +146,9 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       (strncmp (vlib_plugin_app_version, version_required,
 		strlen (version_required))))
     {
-      clib_warning ("Plugin %s version mismatch: %s != %s",
-		    pi->name, vlib_plugin_app_version, reg->version_required);
+      PLUGIN_LOG_ERR ("Plugin %s version mismatch: %s != %s",
+		      pi->name, vlib_plugin_app_version,
+		      reg->version_required);
       if (!(pc && pc->skip_version_check == 1))
 	{
 	  vec_free (version_required);
@@ -134,16 +156,61 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 	}
     }
 
+  /*
+   * Collect names of plugins overridden (disabled) by the
+   * current plugin.
+   */
+  if (reg->overrides[0])
+    {
+      const char *overrides = reg->overrides;
+      u8 *override_name_copy, *overridden_by_name_copy;
+      u8 *sp, *ep;
+      uword *p;
+
+      sp = ep = (u8 *) overrides;
+
+      while (1)
+	{
+	  if (*sp == 0
+	      || (sp >= (u8 *) overrides + ARRAY_LEN (reg->overrides)))
+	    break;
+	  if (*sp == ' ' || *sp == ',')
+	    {
+	      sp++;
+	      continue;
+	    }
+	  ep = sp;
+	  while (*ep && *ep != ' ' && *ep != ',' &&
+		 ep < (u8 *) overrides + ARRAY_LEN (reg->overrides))
+	    ep++;
+	  if (*ep == ' ' || *ep == ',')
+	    ep--;
+
+	  override_name_copy = extract (sp, ep);
+
+
+	  p = hash_get_mem (pm->plugin_overrides_by_name_hash,
+			    override_name_copy);
+	  /* Already overridden... */
+	  if (p)
+	    vec_free (override_name_copy);
+	  else
+	    {
+	      overridden_by_name_copy = format (0, "%s%c", pi->name, 0);
+	      hash_set_mem (pm->plugin_overrides_by_name_hash,
+			    override_name_copy, overridden_by_name_copy);
+	    }
+	  sp = *ep ? ep + 1 : ep;
+	}
+    }
   vec_free (version_required);
-  vec_free (data);
-  elf_main_free (&em);
 
   handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
   if (handle == 0)
     {
-      clib_warning ("%s", dlerror ());
-      clib_warning ("Failed to load plugin '%s'", pi->name);
+      PLUGIN_LOG_ERR ("%s", dlerror ());
+      PLUGIN_LOG_ERR ("Failed to load plugin '%s'", pi->name);
       goto error;
     }
 
@@ -153,8 +220,8 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   if (reg == 0)
     {
-      /* This should never happen unless somebody chagnes registration macro */
-      clib_warning ("Missing plugin registration in plugin '%s'", pi->name);
+      /* This should never happen unless somebody changes registration macro */
+      PLUGIN_LOG_ERR ("Missing plugin registration in plugin '%s'", pi->name);
       dlclose (pi->handle);
       goto error;
     }
@@ -175,22 +242,29 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 	  error = (*ei) (pm->vlib_main);
 	  if (error)
 	    {
-	      clib_error_report (error);
+	      u8 *err = format (0, "%s: %U%c", pi->name,
+				format_clib_error, error, 0);
+	      PLUGIN_LOG_ERR ((char *) err);
+	      clib_error_free (error);
 	      dlclose (pi->handle);
+	      pi->handle = 0;
 	      goto error;
 	    }
 	}
       else
-	clib_warning ("Plugin %s: early init function %s set but not found",
-		      (char *) pi->name, reg->early_init);
+	PLUGIN_LOG_ERR ("Plugin %s: early init function %s set but not found",
+			(char *) pi->name, reg->early_init);
     }
 
   if (reg->description)
-    clib_warning ("Loaded plugin: %s (%s)", pi->name, reg->description);
+    PLUGIN_LOG_NOTICE ("Loaded plugin: %s (%s)", pi->name, reg->description);
   else
-    clib_warning ("Loaded plugin: %s", pi->name);
+    PLUGIN_LOG_NOTICE ("Loaded plugin: %s", pi->name);
 
+  vec_free (data);
+  elf_main_free (&em);
   return 0;
+
 error:
   vec_free (data);
   elf_main_free (&em);
@@ -233,6 +307,19 @@ plugin_name_sort_cmp (void *a1, void *a2)
   return strcmp ((char *) p1->name, (char *) p2->name);
 }
 
+static int
+index_cmp (void *a1, void *a2)
+{
+  uword *i1 = (uword *) a1, *i2 = (uword *) a2;
+
+  if (*i1 < *i2)
+    return -1;
+  else if (*i1 > *i2)
+    return 1;
+  else
+    return 0;
+}
+
 int
 vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 {
@@ -242,7 +329,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
   uword *p;
   plugin_info_t *pi;
   u8 **plugin_path;
-  u32 *load_fail_indices = 0;
+  uword *not_loaded_indices = 0;
   int i;
 
   plugin_path = split_plugin_path (pm);
@@ -294,6 +381,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 	      pi->name = plugin_name;
 	      pi->filename = filename;
 	      pi->file_info = statb;
+	      pi->handle = 0;
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
@@ -324,26 +412,79 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
       if (load_one_plugin (pm, pi, from_early_init))
 	{
 	  /* Make a note of any which fail to load */
-	  vec_add1 (load_fail_indices, i);
-	  hash_unset_mem (pm->plugin_by_name_hash, pi->name);
-	  vec_free (pi->name);
-	  vec_free (pi->filename);
+	  vec_add1 (not_loaded_indices, i);
+	}
+    }
+
+  /*
+   * Honor override list
+   */
+  for (i = 0; i < vec_len (pm->plugin_info); i++)
+    {
+      uword *p;
+
+      pi = vec_elt_at_index (pm->plugin_info, i);
+
+      p = hash_get_mem (pm->plugin_overrides_by_name_hash, pi->name);
+
+      /* Plugin overridden? */
+      if (p)
+	{
+	  PLUGIN_LOG_NOTICE ("Plugin '%s' overridden by '%s'", pi->name,
+			     p[0]);
+	  vec_add1 (not_loaded_indices, i);
+	}
+    }
+
+  /*
+   * Sort the vector of indices to delete to avoid screwing up
+   * the indices as we delete them.
+   */
+  vec_sort_with_function (not_loaded_indices, index_cmp);
+
+  /*
+   * Remove duplicates, which can happen if a plugin is
+   * disabled from the command line and disabled by
+   * a plugin which is loaded.
+   */
+  for (i = 0; i < vec_len (not_loaded_indices); i++)
+    {
+      if (i < vec_len (not_loaded_indices) - 1)
+	{
+	  if (not_loaded_indices[i + 1] == not_loaded_indices[i])
+	    {
+	      vec_delete (not_loaded_indices, 1, i);
+	      i--;
+	    }
 	}
     }
 
   /* Remove plugin info vector elements corresponding to load failures */
-  if (vec_len (load_fail_indices) > 0)
+  if (vec_len (not_loaded_indices) > 0)
     {
-      for (i = vec_len (load_fail_indices) - 1; i >= 0; i--)
-	vec_delete (pm->plugin_info, 1, load_fail_indices[i]);
-      vec_free (load_fail_indices);
+      for (i = vec_len (not_loaded_indices) - 1; i >= 0; i--)
+	{
+	  pi = vec_elt_at_index (pm->plugin_info, not_loaded_indices[i]);
+	  hash_unset_mem (pm->plugin_by_name_hash, pi->name);
+	  if (pi->handle)
+	    {
+	      dlclose (pi->handle);
+	      PLUGIN_LOG_NOTICE ("Unloaded plugin: %s", pi->name);
+	    }
+	  vec_free (pi->name);
+	  vec_free (pi->filename);
+	  vec_delete (pm->plugin_info, 1, not_loaded_indices[i]);
+	}
+      vec_free (not_loaded_indices);
     }
 
   /* Recreate the plugin name hash */
+  hash_free (pm->plugin_by_name_hash);
+  pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
+
   for (i = 0; i < vec_len (pm->plugin_info); i++)
     {
       pi = vec_elt_at_index (pm->plugin_info, i);
-      hash_unset_mem (pm->plugin_by_name_hash, pi->name);
       hash_set_mem (pm->plugin_by_name_hash, pi->name, pi - pm->plugin_info);
     }
 
@@ -355,12 +496,17 @@ vlib_plugin_early_init (vlib_main_t * vm)
 {
   plugin_main_t *pm = &vlib_plugin_main;
 
+  pm->logger =
+    vlib_log_register_class_rate_limit ("plugin", "load",
+					0x7FFFFFFF /* aka no rate limit */ );
+
   if (pm->plugin_path == 0)
     pm->plugin_path = format (0, "%s%c", vlib_plugin_path, 0);
 
-  clib_warning ("plugin path %s", pm->plugin_path);
+  PLUGIN_LOG_DBG ("plugin path %s", pm->plugin_path);
 
   pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
+  pm->plugin_overrides_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vlib_main = vm;
 
   return vlib_load_new_plugins (pm, 1 /* from_early_init */ );
@@ -401,7 +547,8 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
         {
           pi = vec_elt_at_index (pm->plugin_info, value);
           s = format (s, "%3d. %-40s %-32s %s\n", index, key, pi->version,
-		      pi->reg->description ? pi->reg->description : "");
+		      (pi->reg && pi->reg->description) ?
+                      pi->reg->description : "");
 	  index++;
         }
     });

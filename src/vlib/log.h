@@ -90,6 +90,9 @@ typedef struct
 extern vlib_log_main_t log_main;
 
 vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
+vlib_log_class_t
+vlib_log_register_class_rate_limit (char *class, char *subclass,
+				    u32 rate_limit);
 u32 vlib_log_get_indent ();
 void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	       ...);

@@ -2021,8 +2021,6 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   vm->queue_signal_callback = dummy_queue_signal_callback;
 
-  clib_time_init (&vm->clib_time);
-
   /* Turn on event log. */
   if (!vm->elog_main.event_ring_size)
     vm->elog_main.event_ring_size = 128 << 10;

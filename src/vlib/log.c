@@ -172,8 +172,8 @@ syslog:
 
 }
 
-vlib_log_class_t
-vlib_log_register_class (char *class, char *subclass)
+static vlib_log_class_t
+vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
 {
   vlib_log_main_t *lm = &log_main;
   vlib_log_class_data_t *c = NULL;
@@ -199,11 +199,25 @@ vlib_log_register_class (char *class, char *subclass)
   vec_add2 (c->subclasses, s, 1);
   s->index = s - c->subclasses;
   s->name = subclass ? format (0, "%s", subclass) : 0;
-  s->rate_limit = lm->default_rate_limit;
+  s->rate_limit = (limit == 0) ? lm->default_rate_limit : limit;
   s->level = lm->default_log_level;
   s->syslog_level = lm->default_syslog_log_level;
   return (c->index << 16) | (s->index);
 }
+
+vlib_log_class_t
+vlib_log_register_class (char *class, char *subclass)
+{
+  return vlib_log_register_class_internal (class, subclass,
+					   0 /* default rate limit */ );
+}
+
+vlib_log_class_t
+vlib_log_register_class_rate_limit (char *class, char *subclass, u32 limit)
+{
+  return vlib_log_register_class_internal (class, subclass, limit);
+}
+
 
 u8 *
 format_vlib_log_level (u8 * s, va_list * args)

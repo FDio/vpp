@@ -685,6 +685,8 @@ vlib_unix_main (int argc, char *argv[])
     (((uword) vm->heap_base) & ~(VLIB_FRAME_ALIGN - 1));
   ASSERT (vm->heap_base);
 
+  clib_time_init (&vm->clib_time);
+
   unformat_init_command_line (&input, (char **) vm->argv);
   if ((e = vlib_plugin_config (vm, &input)))
     {
