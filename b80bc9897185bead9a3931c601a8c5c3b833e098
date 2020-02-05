@@ -190,6 +190,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57647ddf_0e1fb833",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-05T01:02:40Z",
+      "side": 0,
+      "message": "Thanks!\n\nI don\u0027t think further update on 4 patches are needed currently. How about you? -- I suppose your answer would depend on the test you are running now.\n\nWhen you would feel happy with the latest patches, it would be the time to freeze the patches (for a while, at least) and ask MCBU to merge them.",
+      "parentUuid": "c9a0941e_a8f95e24",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
