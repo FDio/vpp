@@ -164,11 +164,27 @@ void fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 					  u32 tx_fifo_size,
 					  u32 * n_fifo_pairs);
 
+/**
+ * Allocate chunks in fifo segment
+ *
+ * @param fsh		fifo segment header
+ * @param slice_index	slice where chunks should be alocated
+ * @param chunk_size	chunk size needed
+ * @return		chunk (or chunks) that cover at least chunk_size bytes
+ * 			on success, 0 on failure.
+ */
 svm_fifo_chunk_t *fsh_alloc_chunk (fifo_segment_header_t * fsh,
 				   u32 slice_index, u32 chunk_size);
 
+/**
+ * Return chunks to fifo segment
+ *
+ * @param fsh		fifo segment header
+ * @param slice_index	slice where chunks should be returned
+ * @param c		pointer to first chunk in 0 terminated linked list
+ */
 void fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
-			 svm_fifo_chunk_t * cur);
+			 svm_fifo_chunk_t * c);
 
 /**
  * Fifo segment has reached mem limit
