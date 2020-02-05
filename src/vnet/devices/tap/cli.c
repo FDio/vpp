@@ -90,6 +90,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.tap_flags &= ~TAP_FLAG_GSO;
 	  else if (unformat (line_input, "gso"))
 	    args.tap_flags |= TAP_FLAG_GSO;
+	  else if (unformat (line_input, "tun"))
+	    args.tap_flags |= TAP_FLAG_TUN;
 	  else if (unformat (line_input, "csum-offload"))
 	    args.tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
 	  else if (unformat (line_input, "hw-addr %U",
@@ -131,7 +133,7 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
     "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
-    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload]",
+    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload] [tun]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

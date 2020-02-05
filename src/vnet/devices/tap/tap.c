@@ -57,6 +57,10 @@ tap_main_t tap_main;
       goto error; \
     }
 
+VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) =
+{
+.name = "tun-device",.flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,};
+
 static u32
 virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			u32 flags)
@@ -130,7 +134,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_t *hw;
   int i;
   int old_netns_fd = -1;
-  struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
+  struct ifreq ifr = {.ifr_flags = IFF_NO_PI | IFF_VNET_HDR };
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
@@ -163,7 +167,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   pool_get_zero (vim->interfaces, vif);
-  vif->type = VIRTIO_IF_TYPE_TAP;
+
+  if (args->tap_flags & TAP_FLAG_TUN)
+    {
+      vif->type = VIRTIO_IF_TYPE_TUN;
+      ifr.ifr_flags |= IFF_TUN;
+    }
+  else
+    {
+      vif->type = VIRTIO_IF_TYPE_TAP;
+      ifr.ifr_flags |= IFF_TAP;
+    }
+
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
   vif->num_txqs = thm->n_vlib_mains;
@@ -291,161 +306,164 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   virtio_set_net_hdr_size (vif);
 
-  /* if namespace is specified, all further netlink messages should be executed
-     after we change our net namespace */
-  if (args->host_namespace)
+  if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
-      old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-      if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
+      /* if namespace is specified, all further netlink messages should be executed
+         after we change our net namespace */
+      if (args->host_namespace)
 	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	  args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
-						args->host_namespace);
-	  goto error;
+	  old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
+	  if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
+	    {
+	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	      args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
+						    args->host_namespace);
+	      goto error;
+	    }
+	  args->error = vnet_netlink_set_link_netns (vif->ifindex, nfd,
+						     host_if_name);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	  if (setns (nfd, CLONE_NEWNET) == -1)
+	    {
+	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	      args->error = clib_error_return_unix (0, "setns '%s'",
+						    args->host_namespace);
+	      goto error;
+	    }
+	  if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
+	    {
+	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	      args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
+						    host_if_name);
+	      goto error;
+	    }
 	}
-      args->error = vnet_netlink_set_link_netns (vif->ifindex, nfd,
-						 host_if_name);
+      else
+	{
+	  if (host_if_name)
+	    {
+	      args->error = vnet_netlink_set_link_name (vif->ifindex,
+							host_if_name);
+	      if (args->error)
+		{
+		  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+		  goto error;
+		}
+	    }
+	}
+
+      if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
+	ethernet_mac_address_generate (args->host_mac_addr.bytes);
+      args->error = vnet_netlink_set_link_addr (vif->ifindex,
+						args->host_mac_addr.bytes);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
-      if (setns (nfd, CLONE_NEWNET) == -1)
+
+      if (args->host_bridge)
 	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	  args->error = clib_error_return_unix (0, "setns '%s'",
-						args->host_namespace);
-	  goto error;
-	}
-      if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
-	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	  args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
-						host_if_name);
-	  goto error;
-	}
-    }
-  else
-    {
-      if (host_if_name)
-	{
-	  args->error = vnet_netlink_set_link_name (vif->ifindex,
-						    host_if_name);
+	  args->error = vnet_netlink_set_link_master (vif->ifindex,
+						      (char *)
+						      args->host_bridge);
 	  if (args->error)
 	    {
 	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	      goto error;
 	    }
 	}
-    }
 
-  if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
-    ethernet_mac_address_generate (args->host_mac_addr.bytes);
-  args->error = vnet_netlink_set_link_addr (vif->ifindex,
-					    args->host_mac_addr.bytes);
-  if (args->error)
-    {
-      args->rv = VNET_API_ERROR_NETLINK_ERROR;
-      goto error;
-    }
+      if (args->host_ip4_prefix_len)
+	{
+	  args->error = vnet_netlink_add_ip4_addr (vif->ifindex,
+						   &args->host_ip4_addr,
+						   args->host_ip4_prefix_len);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
 
-  if (args->host_bridge)
-    {
-      args->error = vnet_netlink_set_link_master (vif->ifindex,
-						  (char *) args->host_bridge);
+      if (args->host_ip6_prefix_len)
+	{
+	  args->error = vnet_netlink_add_ip6_addr (vif->ifindex,
+						   &args->host_ip6_addr,
+						   args->host_ip6_prefix_len);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
+
+      args->error = vnet_netlink_set_link_state (vif->ifindex, 1 /* UP */ );
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
-    }
 
-  if (args->host_ip4_prefix_len)
-    {
-      args->error = vnet_netlink_add_ip4_addr (vif->ifindex,
-					       &args->host_ip4_addr,
-					       args->host_ip4_prefix_len);
-      if (args->error)
+      if (args->host_ip4_gw_set)
 	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
+	  args->error = vnet_netlink_add_ip4_route (0, 0, &args->host_ip4_gw);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
+
+      if (args->host_ip6_gw_set)
+	{
+	  args->error = vnet_netlink_add_ip6_route (0, 0, &args->host_ip6_gw);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
+
+      if (args->host_mtu_set)
+	{
+	  args->error =
+	    vnet_netlink_set_link_mtu (vif->ifindex, args->host_mtu_size);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
+      else if (tm->host_mtu_size != 0)
+	{
+	  args->error =
+	    vnet_netlink_set_link_mtu (vif->ifindex, tm->host_mtu_size);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	  args->host_mtu_set = 1;
+	  args->host_mtu_size = tm->host_mtu_size;
+	}
+
+      /* switch back to old net namespace */
+      if (args->host_namespace)
+	{
+	  if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+	    {
+	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	      args->error = clib_error_return_unix (0, "setns '%s'",
+						    args->host_namespace);
+	      goto error;
+	    }
 	}
     }
-
-  if (args->host_ip6_prefix_len)
-    {
-      args->error = vnet_netlink_add_ip6_addr (vif->ifindex,
-					       &args->host_ip6_addr,
-					       args->host_ip6_prefix_len);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
-    }
-
-  args->error = vnet_netlink_set_link_state (vif->ifindex, 1 /* UP */ );
-  if (args->error)
-    {
-      args->rv = VNET_API_ERROR_NETLINK_ERROR;
-      goto error;
-    }
-
-  if (args->host_ip4_gw_set)
-    {
-      args->error = vnet_netlink_add_ip4_route (0, 0, &args->host_ip4_gw);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
-    }
-
-  if (args->host_ip6_gw_set)
-    {
-      args->error = vnet_netlink_add_ip6_route (0, 0, &args->host_ip6_gw);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
-    }
-
-  if (args->host_mtu_set)
-    {
-      args->error =
-	vnet_netlink_set_link_mtu (vif->ifindex, args->host_mtu_size);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
-    }
-  else if (tm->host_mtu_size != 0)
-    {
-      args->error =
-	vnet_netlink_set_link_mtu (vif->ifindex, tm->host_mtu_size);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
-      args->host_mtu_set = 1;
-      args->host_mtu_size = tm->host_mtu_size;
-    }
-
-  /* switch back to old net namespace */
-  if (args->host_namespace)
-    {
-      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
-	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	  args->error = clib_error_return_unix (0, "setns '%s'",
-						args->host_namespace);
-	  goto error;
-	}
-    }
-
   for (i = 0; i < num_q_pairs; i++)
     {
       if (i < vif->num_rxqs && (args->error =
@@ -550,11 +568,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       _IOCTL (fd, VHOST_NET_SET_BACKEND, &file);
     }
 
-  if (!args->mac_addr_set)
-    ethernet_mac_address_generate (args->mac_addr.bytes);
+  if (vif->type == VIRTIO_IF_TYPE_TAP)
+    {
+      if (!args->mac_addr_set)
+	ethernet_mac_address_generate (args->mac_addr.bytes);
 
-  clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
-
+      clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
+    }
   vif->host_if_name = format (0, "%s%c", host_if_name, 0);
   vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
@@ -567,17 +587,28 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->host_ip6_prefix_len)
     clib_memcpy (&vif->host_ip6_addr, &args->host_ip6_addr, 16);
 
-  args->error = ethernet_register_interface (vnm, virtio_device_class.index,
-					     vif->dev_instance,
-					     vif->mac_addr,
-					     &vif->hw_if_index,
-					     virtio_eth_flag_change);
-  if (args->error)
+  if (vif->type != VIRTIO_IF_TYPE_TUN)
     {
-      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      goto error;
-    }
+      args->error =
+	ethernet_register_interface (vnm, virtio_device_class.index,
+				     vif->dev_instance, vif->mac_addr,
+				     &vif->hw_if_index,
+				     virtio_eth_flag_change);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
+	  goto error;
+	}
 
+    }
+  else
+    {
+      vif->hw_if_index = vnet_register_interface
+	(vnm, virtio_device_class.index,
+	 vif->dev_instance /* device instance */ ,
+	 tun_device_hw_interface_class.index, vif->dev_instance);
+
+    }
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 1);
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;

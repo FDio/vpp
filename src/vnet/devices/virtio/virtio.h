@@ -83,6 +83,7 @@ typedef enum
 typedef enum
 {
   VIRTIO_IF_TYPE_TAP = 1,
+  VIRTIO_IF_TYPE_TUN,
   VIRTIO_IF_TYPE_PCI,
   VIRTIO_IF_N_TYPES,
 } virtio_if_type_t;

@@ -33,6 +33,7 @@ typedef struct
   u32 tap_flags;
 #define TAP_FLAG_GSO (1 << 0)
 #define TAP_FLAG_CSUM_OFFLOAD (1 << 1)
+#define TAP_FLAG_TUN (1 << 4)
   u8 *host_namespace;
   u8 *host_if_name;
   mac_address_t host_mac_addr;
