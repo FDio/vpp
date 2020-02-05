@@ -13,7 +13,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment, \
-    ICMPv6EchoRequest
+    ICMPv6EchoRequest, ICMPv6DestUnreach
 
 
 class TestMAP(VppTestCase):
@@ -690,6 +690,36 @@ class TestMAP(VppTestCase):
         rx = self.send_and_expect(self.pg1, p6*1, self.pg0)
         for p in rx:
             self.validate(p[1], p4_translated)
+
+        # TCP MSS clamping cleanup
+        self.vapi.map_param_set_tcp(0)
+
+        # Enable icmp6 param to get back ICMPv6 unreachable messages in case
+        # of security check fails
+        self.vapi.map_param_set_icmp6(enable_unreachable=1)
+
+        # Send back an IPv6 packet that will be droppped due to security
+        # check fail
+        p_ether6 = Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+        p_ip6_sec_check_fail = IPv6(src='2001:db8:1fe::c0a8:1:f',
+                                    dst='1234:5678:90ab:cdef:ac:1001:200:0')
+        payload = TCP(sport=0xabcd, dport=0xabcd)
+        p6 = (p_ether6 / p_ip6_sec_check_fail / payload)
+
+        self.pg_send(self.pg1, p6*1)
+        self.pg0.get_capture(0, timeout=1)
+        rx = self.pg1.get_capture(1)
+
+        icmp6_reply = (IPv6(hlim=255, src=self.pg1.local_ip6,
+                            dst='2001:db8:1fe::c0a8:1:f') /
+                       ICMPv6DestUnreach(code=5) /
+                       p_ip6_sec_check_fail / payload)
+
+        for p in rx:
+            self.validate(p[1], icmp6_reply)
+
+        # ICMPv6 unreachable messages cleanup
+        self.vapi.map_param_set_icmp6(enable_unreachable=0)
 
     def test_map_t_ip6_psid(self):
         """ MAP-T v6->v4 PSID validation"""
