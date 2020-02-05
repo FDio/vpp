@@ -568,7 +568,7 @@ done:
 
 static void
 fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
-			  fifo_segment_slice_t * fss, svm_fifo_chunk_t * cur)
+			  fifo_segment_slice_t * fss, svm_fifo_chunk_t * c)
 {
   svm_fifo_chunk_t *next;
   int fl_index;
@@ -576,16 +576,16 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
 
   clib_spinlock_lock (&fss->chunk_lock);
 
-  while (cur)
+  while (c)
     {
-      next = cur->next;
-      fl_index = fs_freelist_for_size (cur->length);
-      cur->next = fss->free_chunks[fl_index];
-      cur->enq_rb_index = RBTREE_TNIL_INDEX;
-      cur->deq_rb_index = RBTREE_TNIL_INDEX;
-      fss->free_chunks[fl_index] = cur;
+      next = c->next;
+      fl_index = fs_freelist_for_size (c->length);
+      c->next = fss->free_chunks[fl_index];
+      c->enq_rb_index = RBTREE_TNIL_INDEX;
+      c->deq_rb_index = RBTREE_TNIL_INDEX;
+      fss->free_chunks[fl_index] = c;
       n_collect += fs_freelist_index_to_size (fl_index);
-      cur = next;
+      c = next;
     }
 
   fss->n_fl_chunk_bytes += n_collect;
@@ -596,11 +596,11 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
 
 void
 fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
-		    svm_fifo_chunk_t * cur)
+		    svm_fifo_chunk_t * c)
 {
   fifo_segment_slice_t *fss;
   fss = fsh_slice_get (fsh, slice_index);
-  fsh_slice_collect_chunks (fsh, fss, cur);
+  fsh_slice_collect_chunks (fsh, fss, c);
 }
 
 /**
