@@ -23,6 +23,15 @@
 
 plugin_main_t vat_plugin_main;
 
+static vlib_log_class_t vat_builtin_logger;
+
+#define PLUGIN_LOG_DBG(...) \
+  do {vlib_log_debug (vat_builtin_logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_ERR(...) \
+  do {vlib_log_err (vat_builtin_logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_NOTICE(...) \
+  do {vlib_log_notice (vat_builtin_logger, __VA_ARGS__);} while(0)
+
 static int
 load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
 {
@@ -39,7 +48,7 @@ load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
    */
   if (handle == 0)
     {
-      clib_warning ("%s", dlerror ());
+      PLUGIN_LOG_ERR ("%s", dlerror ());
       return 0;
     }
 
@@ -48,7 +57,7 @@ load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
   register_handle = dlsym (pi->handle, "vat_plugin_register");
   if (register_handle == 0)
     {
-      clib_warning ("%s: symbol vat_plugin_register not found", pi->name);
+      PLUGIN_LOG_ERR ("%s: symbol vat_plugin_register not found", pi->name);
       dlclose (handle);
       return 0;
     }
@@ -59,12 +68,15 @@ load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
 
   if (error)
     {
-      clib_error_report (error);
+      u8 *err = format (0, "%U%c", format_clib_error, error, 0);
+      PLUGIN_LOG_ERR ((char *) err);
+      clib_error_free (error);
       dlclose (handle);
+      pi->handle = 0;
       return 1;
     }
 
-  clib_warning ("Loaded plugin: %s", pi->name);
+  PLUGIN_LOG_NOTICE ("Loaded plugin: %s", pi->name);
 
   return 0;
 }
@@ -189,6 +201,10 @@ vat_plugin_init (vat_main_t * vam)
   u8 *vlib_get_vat_plugin_name_filter (void);
   u8 *plugin_path;
   u8 *plugin_name_filter;
+
+  vat_builtin_logger =
+    vlib_log_register_class_rate_limit ("vat-plug", "load",
+					0x7FFFFFFF /* aka no rate limit */ );
 
   plugin_path = vlib_get_vat_plugin_path ();
   plugin_name_filter = vlib_get_vat_plugin_name_filter ();
