@@ -238,6 +238,30 @@
       "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5bae9e11_06d232ca",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-02-05T02:22:40Z",
+      "side": 0,
+      "message": "Yes there are TODOs, but I think these can be deferred until the initial merging into CUSP branch (and confirmation).\n\nW.r.t. optimization/improvement, there would be some more items:\n- Allow shrinkage of actual fifo size to zero (\u003d zero chunk)\n- Allow shrinkage of (virtual) fifo size regardless of recently dropped bytes. If it is not possible, we may want a separate parameter on fifo which can affect rcv-wnd size even if we cannot reduce virtual fifo size (due to ooo-segment management mechanism).\n- Reduce cost for segment-usage calculation; Maybe the usage as percent (which would be referred in many cases) can be kept persistent with *less* frequently update, instead of on-demand calculation.",
+      "parentUuid": "9c246e42_da7ee3b6",
+      "range": {
+        "startLine": 478,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 0
+      },
+      "revId": "b80bc9897185bead9a3931c601a8c5c3b833e098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
