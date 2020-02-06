@@ -352,6 +352,7 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
     {
       nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
+	    snat_event_del (ses, thread_index);
       return 1;
     }
   return 0;
@@ -385,6 +386,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
     {
       nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
+	    snat_event_del (ses, thread_index);
       return 1;
     }
   return 0;

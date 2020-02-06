@@ -177,6 +177,7 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 					  &s->out2in);
     delete:
       nat44_delete_session (sm, s, ctx->thread_index);
+	  snat_event_del (s, ctx->thread_index);
       return 1;
     }
 
@@ -265,6 +266,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_OUT_OF_PORTS];
 	  nat44_delete_session (sm, s, thread_index);
+	  snat_event_del (s, thread_index);
 	  if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &kv, 0))
 	    nat_elog_notice ("out2in-ed key del failed");
 	  return 0;
@@ -305,6 +307,8 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 	       &s->ext_host_nat_addr, s->ext_host_nat_port,
 	       s->in2out.protocol, s->in2out.fib_index, s->flags,
 	       thread_index, 0);
+
+  snat_event_add (s, thread_index);
 
   return s;
 }

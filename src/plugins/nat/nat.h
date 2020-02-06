@@ -20,6 +20,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vlibapi/api_helper_macros.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/api_errno.h>
@@ -691,6 +692,11 @@ typedef struct snat_main_s
 
   /* API message ID base */
   u16 msg_id_base;
+
+  uword *snat_api_client_by_client_index;
+
+  /* API client registered for events */
+  vpe_client_registration_t *api_clients;
 
   /* log class */
   vlib_log_class_t log_class;
@@ -1436,6 +1442,11 @@ typedef struct
 {
   u16 src_port, dst_port;
 } tcp_udp_header_t;
+
+
+void snat_event (u32 a);
+void snat_event_add (snat_session_t *s, u32 thread_index);
+void snat_event_del (snat_session_t *s, u32 thread_index);
 
 #endif /* __included_nat_h__ */
 

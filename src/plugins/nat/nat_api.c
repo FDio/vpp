@@ -47,8 +47,8 @@
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
+#undef REPLY_MSG_ID_BASE
 #define REPLY_MSG_ID_BASE sm->msg_id_base
-#include <vlibapi/api_helper_macros.h>
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
@@ -733,6 +733,265 @@ vl_api_nat_ha_resync_t_print (vl_api_nat_ha_resync_t * mp, void *handle)
   s =
     format (s, "want_resync_event %d pid %d", mp->want_resync_event,
 	    clib_host_to_net_u32 (mp->pid));
+
+  FINISH;
+}
+
+/*****/
+
+static void
+vl_api_nat_set_session_t_handler (vl_api_nat_set_session_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_session_reply_t *rmp;
+  int rv = 0;
+
+  clib_warning ("IN vl_api_nat_set_session_t_handler");
+  clib_warning ("create session : proto=%d, (1)ip:p=%d:%d, (2)ip:p=%d:%d", 
+    clib_net_to_host_u32 (mp->proto),
+    clib_net_to_host_u32 (mp->ip1),
+    clib_net_to_host_u32 (mp->port1),
+    clib_net_to_host_u32 (mp->ip2),
+    clib_net_to_host_u32 (mp->port2)
+  );
+
+  struct in_addr ip1, ip2, exs, exd;
+  ip1.s_addr = ntohl(mp->ip1);
+  ip2.s_addr = ntohl(mp->ip2);
+  exs.s_addr = ntohl(mp->ext_host_ip);
+  exd.s_addr = ntohl(mp->ext_nat_ip);
+  nat_log_warn ("NAT-HA-VPP: NAT op %d, type %d, thread index %d, fib_index %d, user index %d",
+      ntohl(mp->oper), ntohl(mp->type), ntohl(mp->thread_index), ntohl(mp->fib_index), ntohl(mp->user_index));
+  nat_log_warn ("NAT-HA-VPP: NAT proto %d, %s:%d <-> %s:%d",
+      ntohl(mp->proto), inet_ntoa(ip1), ntohl(mp->port1), inet_ntoa(ip2), ntohl(mp->port2));
+  nat_log_warn ("NAT-HA-VPP: NAT proto %d, %d:%d <-> %d:%d",
+      ntohl(mp->proto), ntohl(mp->ip1), ntohl(mp->port1), ntohl(mp->ip2), ntohl(mp->port2));
+  nat_log_warn ("NAT-HA-VPP: NAT ext_host %s:%d, ext_host_nat %s:%d, flags %d",
+      inet_ntoa(exs), ntohl(mp->ext_host_port), inet_ntoa(exd), ntohl(mp->ext_nat_port), ntohl(mp->flags));
+
+  // rv = ;
+  REPLY_MACRO (VL_API_NAT_SET_SESSION_REPLY);
+}
+
+static void *
+vl_api_nat_set_session_t_print (vl_api_nat_set_session_t * mp, void *handle)
+{
+  u8 *s;
+
+  clib_warning ("IN vl_api_nat_set_session_t_print");
+  s = format (0, "SCRIPT: nat_set_session ");
+//  s = format (s, "key: %d", mp->key);
+
+  FINISH;
+}
+
+static void
+vl_api_nat_del_session_t_handler (vl_api_nat_del_session_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_del_session_reply_t *rmp;
+  int rv = 0;
+
+  clib_warning ("delete session : thread_index=%d",
+    clib_net_to_host_u32 (mp->thread_index)
+  );
+//  rv = clib_net_to_host_u32 (mp->key);
+
+  REPLY_MACRO (VL_API_NAT_DEL_SESSION_REPLY);
+}
+
+static void *
+vl_api_nat_del_session_t_print (vl_api_nat_del_session_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_del_session ");
+//  s = format (s, "key: %d", mp->key);
+
+  FINISH;
+}
+
+static vpe_client_registration_t *
+nat_api_client_lookup (snat_main_t * sm, u32 client_index)
+{
+  uword *p;
+  vpe_client_registration_t *api_client = NULL;
+
+  clib_warning ("IN nat_api_client_lookup");
+  p = hash_get (sm->snat_api_client_by_client_index, client_index);
+  if (p)
+    api_client = vec_elt_at_index (sm->api_clients, p[0]);
+
+  return api_client;
+}
+
+static void
+vl_api_want_nat_session_events_t_handler (vl_api_want_nat_session_events_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vpe_client_registration_t *api_client;
+  vl_api_want_nat_session_events_reply_t *rmp;
+  int rv = 0;
+
+  clib_warning ("IN vl_api_want_nat_session_events_t_handler");
+  api_client = nat_api_client_lookup (sm, mp->client_index);
+  if (api_client)
+    {
+      if (mp->enable)
+	{
+	  rv = VNET_API_ERROR_INVALID_REGISTRATION;
+	  goto done;
+	}
+      hash_unset (sm->snat_api_client_by_client_index,
+		  api_client->client_index);
+      pool_put (sm->api_clients, api_client);
+      goto done;
+    }
+  if (mp->enable)
+    {
+      pool_get (sm->api_clients, api_client);
+      clib_memset (api_client, 0, sizeof (vpe_client_registration_t));
+      api_client->client_index = mp->client_index;
+      api_client->client_pid = mp->pid;
+      hash_set (sm->snat_api_client_by_client_index,
+		mp->client_index, api_client - sm->api_clients);
+      goto done;
+    }
+  rv = VNET_API_ERROR_INVALID_REGISTRATION;
+
+done:
+  REPLY_MACRO (VL_API_WANT_NAT_SESSION_EVENTS_REPLY);
+}
+
+static clib_error_t *
+want_snat_session_events_reaper (u32 client_index)
+{
+  snat_main_t *sm = &snat_main;
+  vpe_client_registration_t *api_client;
+  uword *p;
+
+  clib_warning ("IN want_snat_session_events_reaper");
+  p = hash_get (sm->snat_api_client_by_client_index, client_index);
+
+  if (p)
+    {
+      api_client = pool_elt_at_index (sm->api_clients, p[0]);
+      pool_put (sm->api_clients, api_client);
+      hash_unset (sm->snat_api_client_by_client_index, client_index);
+    }
+  return (NULL);
+}
+
+VL_MSG_API_REAPER_FUNCTION (want_snat_session_events_reaper);
+
+static void
+send_nat_session_event (vl_api_registration_t * rp, u32 key)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_session_event_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  clib_warning ("IN send_nat_session_event");
+  mp->_vl_msg_id = ntohs (VL_API_NAT_SESSION_EVENT + sm->msg_id_base);
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+void
+snat_event (u32 key)
+{
+  snat_main_t *sm = &snat_main;
+  vpe_client_registration_t *api_client;
+  vl_api_registration_t *rp;
+
+  clib_warning ("IN snat_event");
+  /* *INDENT-OFF* */
+  pool_foreach (api_client, sm->api_clients,
+    ({
+      rp = vl_api_client_index_to_registration (api_client->client_index);
+      if (rp)
+        send_nat_session_event (rp, key);
+    }));
+  /* *INDENT-ON* */
+}
+
+static void
+send_nat_session_event1 (u32 op, vl_api_registration_t * rp, snat_session_t *s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_session_event_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  clib_warning ("IN send_nat_session_event1");
+  mp->_vl_msg_id = ntohs (VL_API_NAT_SESSION_EVENT + sm->msg_id_base);
+  mp->oper = htonl(op);
+  mp->thread_index = htonl(thread_index);
+  mp->type = htonl(0);
+  mp->proto = htonl(s->in2out.protocol);
+  mp->ip1 = htonl(s->in2out.addr.as_u32);
+  mp->port1 = htonl(s->in2out.port);
+  mp->ip2 = htonl(s->out2in.addr.as_u32);
+  mp->port2 = htonl(s->out2in.port);
+  // mp->fib_index = htonl();
+  // mp->user_index =  htonl();
+  mp->ext_host_ip = htonl(s->ext_host_addr.as_u32);
+  mp->ext_host_port = htonl(s->ext_host_port);
+  mp->ext_nat_ip = htonl(s->ext_host_nat_addr.as_u32);
+  mp->ext_nat_port = htonl(s->ext_host_nat_port);
+  mp->flags = htonl(s->flags);
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+void
+snat_event_add (snat_session_t *s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  vpe_client_registration_t *api_client;
+  vl_api_registration_t *rp;
+
+  clib_warning ("IN snat_event_add");
+  nat_log_warn ("NAT-HA-VPP: create session");
+  if (s) {
+    /* *INDENT-OFF* */
+    pool_foreach (api_client, sm->api_clients,
+      ({
+        rp = vl_api_client_index_to_registration (api_client->client_index);
+        if (rp)
+          send_nat_session_event1 (0, rp, s, thread_index);
+      }));
+  }
+  /* *INDENT-ON* */
+}
+
+void
+snat_event_del (snat_session_t *s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  vpe_client_registration_t *api_client;
+  vl_api_registration_t *rp;
+
+  clib_warning ("IN snat_event_del");
+  nat_log_warn ("NAT-HA-VPP: delete session");
+  if (s) {
+    /* *INDENT-OFF* */
+    pool_foreach (api_client, sm->api_clients,
+      ({
+        rp = vl_api_client_index_to_registration (api_client->client_index);
+        if (rp)
+          send_nat_session_event1 (1, rp, s, thread_index);
+      }));
+  }
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_want_nat_session_events_t_print (vl_api_want_nat_session_events_t * mp, void * handle)
+{
+  u8 *s;
+
+  clib_warning ("IN vl_api_want_nat_session_events_t_print");
+  s = format (0, "SCRIPT: want_nat_session_events");
 
   FINISH;
 }
@@ -2043,6 +2302,7 @@ static void
           s = pool_elt_at_index(tsm->sessions, ses_index[0]);
           nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
           nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+	        snat_event_del (s, tsm - sm->per_thread_data);
         }
         vec_free (ses_to_be_removed);
       }
@@ -3143,7 +3403,6 @@ _(NAT_CONTROL_PING, nat_control_ping)                                   \
 _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
-_(NAT44_DEL_USER, nat44_del_user)                                       \
 _(NAT44_SESSION_CLEANUP, nat44_session_cleanup)                         \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
@@ -3202,7 +3461,10 @@ _(NAT64_ADD_DEL_INTERFACE_ADDR, nat64_add_del_interface_addr)           \
 _(NAT66_ADD_DEL_INTERFACE, nat66_add_del_interface)                     \
 _(NAT66_INTERFACE_DUMP, nat66_interface_dump)                           \
 _(NAT66_ADD_DEL_STATIC_MAPPING, nat66_add_del_static_mapping)           \
-_(NAT66_STATIC_MAPPING_DUMP, nat66_static_mapping_dump)
+_(NAT66_STATIC_MAPPING_DUMP, nat66_static_mapping_dump)                 \
+_(NAT_SET_SESSION, nat_set_session)                                     \
+_(NAT_DEL_SESSION, nat_del_session)                                     \
+_(WANT_NAT_SESSION_EVENTS, want_nat_session_events)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -3257,6 +3519,8 @@ snat_api_init (vlib_main_t * vm, snat_main_t * sm)
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base =
     vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  sm->snat_api_client_by_client_index = hash_create (0, sizeof (u32));
 
   error = snat_plugin_api_hookup (vm);
 

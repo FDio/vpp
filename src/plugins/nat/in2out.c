@@ -232,6 +232,7 @@ nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
 					    &s->out2in);
 
       nat44_delete_session (sm, s, ctx->thread_index);
+      snat_event_del (s, ctx->thread_index);
       return 1;
     }
 
@@ -390,6 +391,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 	       &s->ext_host_nat_addr, s->ext_host_nat_port,
 	       s->in2out.protocol, s->in2out.fib_index, s->flags,
 	       thread_index, 0);
+  snat_event_add (s, thread_index);
 
   return next0;
 }

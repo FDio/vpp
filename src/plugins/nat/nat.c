@@ -999,6 +999,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		      nat_free_session_data (sm, s,
 					     tsm - sm->per_thread_data, 0);
 		      nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+	        snat_event_del (s, tsm - sm->per_thread_data);
 
 		      if (!addr_only && !sm->endpoint_dependent)
 			break;

@@ -153,6 +153,7 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 					  &s->out2in);
     delete:
       nat44_delete_session (sm, s, ctx->thread_index);
+      snat_event_del (s, ctx->thread_index);
       return 1;
     }
 
@@ -359,6 +360,8 @@ slow_path_ed (snat_main_t * sm,
 	       s->in2out.protocol, s->in2out.fib_index, s->flags,
 	       thread_index, 0);
 
+  snat_event_add (s, thread_index);
+
   return next;
 }
 
@@ -479,6 +482,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
 	{
 	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat44_delete_session (sm, s, thread_index);
+	  snat_event_del (s, thread_index);
 	}
       else
 	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;

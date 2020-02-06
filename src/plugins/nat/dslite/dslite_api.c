@@ -24,6 +24,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
 
+#undef REPLY_MSG_ID_BASE
 #define REPLY_MSG_ID_BASE dm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
