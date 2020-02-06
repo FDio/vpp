@@ -130,6 +130,15 @@ enum nat_log_level : u8
   NAT_LOG_DEBUG = 0x05,
 };
 
+/** \brief Run nat44 garbage collection
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define nat44_session_cleanup {
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief Set NAT logging level
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

@@ -108,6 +108,43 @@ nat44_session_try_cleanup (ip4_address_t * addr,
 			  thread_index, now);
 }
 
+static_always_inline void
+nat44_force_session_cleanup (void)
+{
+  snat_user_t *u = 0;
+
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
+
+  // TODO: consider own timeouts
+
+  if (sm->num_workers > 1)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          pool_foreach (u, tsm->users,
+          ({
+            nat44_user_try_cleanup (u, tsm->thread_index, now);
+          }));
+        }
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+      /* *INDENT-OFF* */
+      pool_foreach (u, tsm->users,
+      ({
+        nat44_user_try_cleanup (u, tsm->thread_index, now);
+      }));
+      /* *INDENT-ON* */
+    }
+}
+
 #endif /* included_nat44_inlines_h__ */
 
 /*

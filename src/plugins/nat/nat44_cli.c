@@ -22,6 +22,7 @@
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
 #include <vnet/fib/fib_table.h>
 #include <nat/nat_ha.h>
@@ -113,6 +114,18 @@ nat_show_workers_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   return 0;
+}
+
+static clib_error_t *
+nat44_session_cleanup_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+
+  nat44_force_session_cleanup ();
+
+  return error;
 }
 
 static clib_error_t *
@@ -1974,6 +1987,19 @@ VLIB_CLI_COMMAND (nat_show_timeouts_command, static) = {
   .path = "show nat timeouts",
   .short_help = "show nat timeouts",
   .function = nat_show_timeouts_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat set logging level}
+ * To force garbage collection of nat sessions
+ *  vpp# nat44 session cleanup
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_session_cleanup_command, static) = {
+  .path = "nat44 session cleanup",
+  .function = nat44_session_cleanup_command_fn,
+  .short_help = "nat44 session cleanup",
 };
 
 /*?

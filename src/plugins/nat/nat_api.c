@@ -23,6 +23,7 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_ha.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -239,6 +240,30 @@ vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
 
   FINISH;
 }
+
+static void
+vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_session_cleanup_reply_t *rmp;
+  int rv = 0;
+
+  nat44_force_session_cleanup ();
+
+  REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
+}
+
+static void *
+vl_api_nat44_session_cleanup_t_print (vl_api_nat44_session_cleanup_t * mp,
+				      void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_session_cleanup");
+
+  FINISH;
+}
+
 
 static void
 vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
@@ -3094,6 +3119,7 @@ _(NAT_CONTROL_PING, nat_control_ping)                                   \
 _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
+_(NAT44_SESSION_CLEANUP, nat44_session_cleanup)                         \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \
