@@ -2263,7 +2263,7 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
 
   /* Try to force fifo growth */
-  svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes);
+  svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes + 1);
   validate_test_and_buf_vecs (&test_data, &data_buf, svm_fifo_size (f));
   rv = svm_fifo_enqueue (f, svm_fifo_size (f), test_data);
 
