@@ -2260,10 +2260,11 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   /*
    * Allocate fifo and try to grow beyond available space
    */
-  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  f = fifo_segment_alloc_fifo (fs, fifo_segment_free_bytes (fs),
+			       FIFO_SEGMENT_RX_FIFO);
 
   /* Try to force fifo growth */
-  svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes);
+  svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes + 1);
   validate_test_and_buf_vecs (&test_data, &data_buf, svm_fifo_size (f));
   rv = svm_fifo_enqueue (f, svm_fifo_size (f), test_data);
 
@@ -2570,7 +2571,6 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv, verbose = 0;
 
-  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA, 5);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "verbose"))
@@ -2632,7 +2632,7 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
   int res = 0;
   char *str;
 
-
+  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA << 3, 5);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo1"))
