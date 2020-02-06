@@ -209,12 +209,12 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t * engine,
 Exit:
   if (ret != 0)
     {
-      if (*aead_ctx != NULL)
+      if (aead_ctx && *aead_ctx != NULL)
 	{
 	  ptls_aead_free (*aead_ctx);
 	  *aead_ctx = NULL;
 	}
-      if (*hp_ctx != NULL)
+      if (hp_ctx && *hp_ctx != NULL)
 	{
 	  ptls_cipher_free (*hp_ctx);
 	  *hp_ctx = NULL;
