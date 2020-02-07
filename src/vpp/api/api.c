@@ -212,7 +212,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   unformat_input_t input;
   u8 *out_vec = 0;
-  u32 len = 0;
+  u8 *cmd_vec = 0;
 
   if (vl_msg_api_get_msg_length (mp) <
       vl_api_string_len (&mp->cmd) + sizeof (*mp))
@@ -221,20 +221,21 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
       goto error;
     }
 
-  unformat_init_string (&input, (char *) vl_api_from_api_string (&mp->cmd),
+  cmd_vec = vl_api_from_api_to_new_vec (&mp->cmd);
+
+  unformat_init_string (&input, (char *) cmd_vec,
 			vl_api_string_len (&mp->cmd));
   rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
 
-  len = vec_len (out_vec);
-
 error:
   /* *INDENT-OFF* */
-  REPLY_MACRO3(VL_API_CLI_INBAND_REPLY, len,
+  REPLY_MACRO3(VL_API_CLI_INBAND_REPLY, vec_len (out_vec),
   ({
-    vl_api_to_api_string(len, (const char *)out_vec, &rmp->reply);
+    vl_api_vec_to_api_string(out_vec, &rmp->reply);
   }));
   /* *INDENT-ON* */
   vec_free (out_vec);
+  vec_free (cmd_vec);
 }
 
 static void
