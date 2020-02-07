@@ -111,11 +111,8 @@ api_http_static_enable (vat_main_t * vam)
 
   /* Construct the API message */
   M (HTTP_STATIC_ENABLE, mp);
-  vl_api_to_api_string (strnlen ((const char *) www_root, 256),
-			(const char *) www_root,
-			(vl_api_string_t *) & mp->www_root);
-  vl_api_to_api_string (strnlen ((const char *) uri, 256), (const char *) uri,
-			(vl_api_string_t *) & mp->uri);
+  vl_api_vec_to_api_string (www_root, (vl_api_string_t *) & mp->www_root);
+  vl_api_vec_to_api_string (uri, (vl_api_string_t *) & mp->uri);
   mp->fifo_size = ntohl (fifo_size);
   mp->cache_size_limit = ntohl (cache_size_limit);
   mp->prealloc_fifos = ntohl (prealloc_fifos);
