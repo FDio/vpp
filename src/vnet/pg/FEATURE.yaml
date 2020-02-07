@@ -1,0 +1,13 @@
+---
+name: PG
+maintainer: Dave Barach <dbarach@cisco.com>
+features:
+  - High-speed packet generation
+  - Packet definition CLI
+  - Support for pcap capture replay
+  - Multi-thread packet generation
+  - Packet injection into arbitrary graph nodes
+  - Heavily used by "make test"
+description: "High-speed packet generator"
+state: production
+properties: [CLI, MULTITHREAD]
