@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f14e1ffe_8d02ffe0",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-02-07T12:29:48Z",
+      "side": 0,
+      "message": "file_size \u003d (file_size + 4095) \u0026 ~(4096); is a bad typo. The idea was to round UP the file size to an even multiple of the page size. Should probably use clib_get_page_size() instead of the magic number 4096-1.\n\nThe correct expression is: file_size \u003d (file_size + 4095) \u0026 ~(4095). Let\u0027s go with that.",
+      "revId": "54eda4bcb80cfbaee16b26fad521d6ead5e0a518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
