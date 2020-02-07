@@ -455,6 +455,7 @@ typedef struct
   int fd;		/**< File descriptor to be mapped */
   uword requested_va;	/**< Request fixed position mapping */
   void *addr;		/**< Pointer to mapped memory, if successful */
+  u8 numa_node;
 } clib_mem_vm_map_t;
 
 clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
