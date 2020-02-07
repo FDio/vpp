@@ -1,0 +1,9 @@
+---
+name: Tunnel Infra
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Common types and functions for IP tunnels
+
+description: "Tunnel Infrastructure"
+state: production
+properties: [API, CLI, MULTITHREAD]
