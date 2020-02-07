@@ -10,7 +10,8 @@ from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
+    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, \
+    IPv6ExtHdrHopByHop, ICMPv6MLReport2, ICMPv6MLDMultAddrRec
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
@@ -944,6 +945,35 @@ class TestIPv6(TestIPv6ND):
         # Reset the periodic advertisements back to default values
         #
         self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
+
+    def test_mld(self):
+        """ MLD Report """
+        #
+        # test one MLD is sent after applying an IPv6 Address on an interface
+        #
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        subitf = VppDot1QSubint(self, self.pg1, 99)
+
+        subitf.admin_up()
+        subitf.config_ip6()
+
+        rxs = self.pg1._get_capture(timeout=2, filter_out_fn=None)
+
+        #
+        # hunt for the MLD on vlan 99
+        #
+        for rx in rxs:
+            # make sure ipv6 packets with hop by hop options have
+            # correct checksums
+            self.assert_packet_checksums_valid(rx)
+            if rx.haslayer(IPv6ExtHdrHopByHop) and \
+               rx.haslayer(Dot1Q) and \
+               rx[Dot1Q].vlan == 99:
+                mld = rx[ICMPv6MLReport2]
+
+        self.assertEqual(mld.records_number, 4)
 
 
 class TestIPv6IfAddrRoute(VppTestCase):

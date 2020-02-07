@@ -257,7 +257,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   icmp6_multicast_listener_report_header_t *rh0;
   icmp6_multicast_listener_report_packet_t *rp0;
 
-  if (! !vnet_sw_interface_is_admin_up (vnm, sw_if_index))
+  if (!vnet_sw_interface_is_admin_up (vnm, sw_if_index))
     return;
 
   imd = ip6_mld_get_itf (sw_if_index);
@@ -390,14 +390,14 @@ ip6_mld_timer_event (vlib_main_t * vm,
   /* *INDENT-OFF* */
   pool_foreach (imd, ip6_mld_pool,
   ({
-    if(!vnet_sw_interface_is_admin_up (vnm, imd->sw_if_index))
+    if (!vnet_sw_interface_is_admin_up (vnm, imd->sw_if_index))
       {
         imd->all_routers_mcast = 0;
         continue;
       }
 
     /* Make sure that we've joined the all-routers multicast group */
-    if(!imd->all_routers_mcast)
+    if (!imd->all_routers_mcast)
       {
         /* send MDLP_REPORT_EVENT message */
         ip6_neighbor_send_mldpv2_report(imd->sw_if_index);
