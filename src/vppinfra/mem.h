@@ -363,6 +363,8 @@ clib_mem_vm_alloc (uword size)
   mmap_addr = mmap (0, size, PROT_READ | PROT_WRITE, flags, -1, 0);
   if (mmap_addr == (void *) -1)
     mmap_addr = 0;
+  else
+    CLIB_MEM_UNPOISON (mmap_addr, size);
 
   return mmap_addr;
 }
@@ -371,6 +373,7 @@ always_inline void
 clib_mem_vm_free (void *addr, uword size)
 {
   munmap (addr, size);
+  CLIB_MEM_POISON (addr, size);
 }
 
 always_inline void *
@@ -386,6 +389,8 @@ clib_mem_vm_unmap (void *addr, uword size)
   mmap_addr = mmap (addr, size, PROT_NONE, flags, -1, 0);
   if (mmap_addr == (void *) -1)
     mmap_addr = 0;
+  else
+    CLIB_MEM_UNPOISON (mmap_addr, size);
 
   return mmap_addr;
 }
@@ -399,6 +404,8 @@ clib_mem_vm_map (void *addr, uword size)
   mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
   if (mmap_addr == (void *) -1)
     mmap_addr = 0;
+  else
+    CLIB_MEM_UNPOISON (mmap_addr, size);
 
   return mmap_addr;
 }

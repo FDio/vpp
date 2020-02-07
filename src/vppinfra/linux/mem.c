@@ -321,6 +321,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
   a->n_pages = n_pages;
   a->addr = addr;
   a->fd = fd;
+  CLIB_MEM_UNPOISON (addr, a->size);
   goto done;
 
 error:
@@ -398,6 +399,7 @@ clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
     return clib_error_return_unix (0, "mmap");
 
   a->addr = addr;
+  CLIB_MEM_UNPOISON (addr, a->size);
   return 0;
 }
 
