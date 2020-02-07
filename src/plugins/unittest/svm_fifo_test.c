@@ -14,6 +14,7 @@
  */
 #include <svm/svm_fifo.h>
 #include <vlib/vlib.h>
+#include <svm/svm_common.h>
 #include <svm/fifo_segment.h>
 
 #define SFIFO_TEST_I(_cond, _comment, _args...)			\
@@ -2627,7 +2628,7 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv, verbose = 0;
 
-  fifo_segment_main_init (&segment_main, 3ULL << 30, 5);
+  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA, 5);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "verbose"))
