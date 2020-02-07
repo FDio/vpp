@@ -136,10 +136,9 @@ class Printfun():
         if o.modern_vla:
             write('    if (vl_api_string_len(&a->{f}) > 0) {{\n'
                   .format(f=o.fieldname))
-            write('        s = format(s, "\\n%U{f}: %.*s", '
+            write('        s = format(s, "\\n%U{f}: %U", '
                   'format_white_space, indent, '
-                  'vl_api_string_len(&a->{f}) - 1, '
-                  'vl_api_from_api_string(&a->{f}));\n'.format(f=o.fieldname))
+                  'vl_api_format_string, (&a->{f}));\n'.format(f=o.fieldname))
             write('    } else {\n')
             write('        s = format(s, "\\n%U{f}:", '
                   'format_white_space, indent);\n'.format(f=o.fieldname))
