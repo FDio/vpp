@@ -1,0 +1,10 @@
+---
+name: Classify
+maintainer: Dave Barach <dbarach@cisco.com>
+features:
+  - Swiss-army-knife mask-match engine for classifying packets
+  - Uses 128-bit SIMD vector operations for performance
+  - Many use-cases, including packet trace / pcap capture filtration
+description: "Mask / match packet classifier"
+state: production
+properties: [API, CLI, MULTITHREAD]
