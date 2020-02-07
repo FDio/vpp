@@ -40,9 +40,9 @@ typedef struct
 
 extern int vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str);
 extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);
-extern u8 * vl_api_from_api_string (vl_api_string_t * astr);
 extern u32 vl_api_string_len (vl_api_string_t * astr);
-extern u8 * vl_api_from_api_to_vec (vl_api_string_t *astr);
+/* Returns new vector. Nul terminated */
+extern u8 * vl_api_from_api_to_new_vec (vl_api_string_t *astr);
 extern u8 *vl_api_format_string (u8 *s, va_list *args);
 
 #ifdef __cplusplus
