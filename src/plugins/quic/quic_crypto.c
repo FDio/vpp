@@ -160,13 +160,12 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t * engine,
   uint8_t hpkey[PTLS_MAX_SECRET_SIZE];
   int ret;
 
-  if (hp_ctx != NULL)
-    *hp_ctx = NULL;
   *aead_ctx = NULL;
 
   /* generate new header protection key */
   if (hp_ctx != NULL)
     {
+      *hp_ctx = NULL;
       if ((ret =
 	   ptls_hkdf_expand_label (hash, hpkey, aead->ctr_cipher->key_size,
 				   ptls_iovec_init (secret,
