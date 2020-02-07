@@ -1127,18 +1127,12 @@ vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
-  u32 length = vl_api_string_len (&mp->reply);
 
   vec_reset_length (vam->cmd_reply);
 
   vam->retval = retval;
   if (retval == 0)
-    {
-      vec_validate (vam->cmd_reply, length);
-      clib_memcpy ((char *) (vam->cmd_reply),
-		   vl_api_from_api_string (&mp->reply), length);
-      vam->cmd_reply[length] = 0;
-    }
+    vam->cmd_reply = vl_api_from_api_to_new_vec (&mp->reply);
   vam->result_ready = 1;
 }
 
@@ -1147,16 +1141,18 @@ vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
+  u8 *reply = 0;		/* reply vector */
 
+  reply = vl_api_from_api_to_new_vec (&mp->reply);
   vec_reset_length (vam->cmd_reply);
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_string_copy (&node, "reply",
-				   vl_api_from_api_string (&mp->reply));
+  vat_json_object_add_string_copy (&node, "reply", reply);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
+  vec_free (reply);
 
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
@@ -5638,9 +5634,8 @@ exec_inband (vat_main_t * vam)
    * must be a vector ending in \n, not a C-string ending
    * in \n\0.
    */
-  u32 len = vec_len (vam->input->buffer);
-  M2 (CLI_INBAND, mp, len);
-  vl_api_to_api_string (len - 1, (const char *) vam->input->buffer, &mp->cmd);
+  M2 (CLI_INBAND, mp, vec_len (vam->input->buffer));
+  vl_api_vec_to_api_string (vam->input->buffer, &mp->cmd);
 
   S (mp);
   W (ret);
