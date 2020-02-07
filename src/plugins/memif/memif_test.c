@@ -112,9 +112,7 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
   mp->is_add = is_add;
   mp->socket_id = htonl (socket_id);
   char *p = (char *) &mp->socket_filename;
-  p +=
-    vl_api_to_api_string (strlen ((char *) socket_filename),
-			  (char *) socket_filename, (vl_api_string_t *) p);
+  p += vl_api_vec_to_api_string (socket_filename, (vl_api_string_t *) p);
 
   vec_free (socket_filename);
 
@@ -218,8 +216,7 @@ api_memif_create (vat_main_t * vam)
   if (secret != 0)
     {
       char *p = (char *) &mp->secret;
-      p += vl_api_to_api_string (strlen ((char *) secret), (char *) secret,
-				 (vl_api_string_t *) p);
+      p += vl_api_vec_to_api_string (secret, (vl_api_string_t *) p);
       vec_free (secret);
     }
   memcpy (mp->hw_addr, hw_addr, 6);

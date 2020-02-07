@@ -134,7 +134,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   /* If a tag was supplied... */
   if (vl_api_string_len (&mp->tag))
     {
-      u8 *tag = format (0, "%s%c", vl_api_from_api_string (&mp->tag), 0);
+      u8 *tag = vl_api_from_api_to_new_vec (&mp->tag);
       vnet_set_sw_interface_tag (vnm, tag, ap->sw_if_index);
     }
 

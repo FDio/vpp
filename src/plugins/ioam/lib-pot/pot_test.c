@@ -88,7 +88,7 @@ static int api_pot_profile_add (vat_main_t *vam)
 
     M2(POT_PROFILE_ADD, mp, sizeof(vl_api_string_t) + vec_len(name));
 
-    vl_api_to_api_string(vec_len(name), (const char *)name, &mp->list_name);
+    vl_api_vec_to_api_string(name, &mp->list_name);
     mp->secret_share = clib_host_to_net_u64(secret_share);
     mp->polynomial_public = clib_host_to_net_u64(poly2);
     mp->lpc = clib_host_to_net_u64(lpc);
@@ -142,7 +142,7 @@ static int api_pot_profile_activate (vat_main_t *vam)
       }
 
     M2(POT_PROFILE_ACTIVATE, mp, sizeof(vl_api_string_t) + vec_len(name));
-    vl_api_to_api_string(vec_len(name), (const char *)name, &mp->list_name);
+    vl_api_vec_to_api_string(name, &mp->list_name);
     mp->id = id;
 
     S(mp);

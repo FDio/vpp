@@ -811,6 +811,8 @@ class TestExceptionPuntSocket(TestPuntSocket):
         rs = self.vapi.punt_reason_dump()
         for key in cfgs:
             for r in rs:
+                print(r.reason.name)
+                print(key)
                 if r.reason.name == key:
                     cfgs[key]['id'] = r.reason.id
                     cfgs[key]['vpp'] = copy.deepcopy(

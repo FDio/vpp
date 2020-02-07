@@ -1091,15 +1091,19 @@ vl_msg_pop_heap (void *oldheap)
   vl_msg_pop_heap_w_region (am->vlib_rp, oldheap);
 }
 
+/* Must be nul terminated */
 int
-vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
+vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
 {
-  if (len)
+  /* copy without nul terminator */
+  u32 len = strlen (buf);
+  if (len > 0)
     clib_memcpy_fast (str->buf, buf, len);
   str->length = htonl (len);
   return len + sizeof (u32);
 }
 
+/* Must NOT be nul terminated */
 int
 vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
 {
@@ -1107,13 +1111,6 @@ vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
   clib_memcpy (str->buf, vec, len);
   str->length = htonl (len);
   return len + sizeof (u32);
-}
-
-/* Return a pointer to the API string (not nul terminated */
-u8 *
-vl_api_from_api_string (vl_api_string_t * astr)
-{
-  return astr->buf;
 }
 
 u32
@@ -1132,12 +1129,29 @@ vl_api_format_string (u8 * s, va_list * args)
 
 /*
  * Returns a new vector. Remember to free it after use.
+ * NOT nul terminated.
  */
 u8 *
-vl_api_from_api_to_vec (vl_api_string_t * astr)
+vl_api_from_api_to_new_vec (vl_api_string_t * astr)
 {
   u8 *v = 0;
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
+  return v;
+}
+
+/*
+ * Returns a new vector. Remember to free it after use.
+ * Nul terminated.
+ */
+char *
+vl_api_from_api_to_new_c_string (vl_api_string_t * astr)
+{
+  char *v = 0;
+  if (clib_net_to_host_u32 (astr->length) > 0)
+    {
+      vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
+      vec_add1 (v, 0);
+    }
   return v;
 }
 
