@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-message(STATUS "Looking for quicly")
 unset(QUIC_LINK_LIBRARIES)
+set(EXPECTED_QUICLY_VERSION "0.1.0-vpp")
 
 find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
 find_path(PICOTLS_INCLUDE_DIR NAMES picotls.h)
@@ -28,22 +28,32 @@ list(APPEND QUIC_LINK_LIBRARIES
 )
 
 if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
-  include_directories (${QUICLY_INCLUDE_DIR})
-
-  if(PICOTLS_INCLUDE_DIR)
-    include_directories (${PICOTLS_INCLUDE_DIR})
+  if(EXISTS "${QUICLY_INCLUDE_DIR}/quicly/version.h")
+    file(STRINGS "${QUICLY_INCLUDE_DIR}/quicly/version.h" quicly_version_str REGEX "^#define[\t ]+LIBQUICLY_VERSION[\t ]+\".*\"")
+    string(REGEX REPLACE "^#define[\t ]+LIBQUICLY_VERSION[\t ]+\"([^\"]*)\".*" "\\1" QUICLY_VERSION_STRING "${quicly_version_str}")
+    unset(quicly_version_str)
   endif()
 
-  add_vpp_plugin(quic
-    SOURCES
-    certs.c
-    error.c
-    quic.c
-    quic_crypto.c
+  if (${QUICLY_VERSION_STRING} MATCHES "${EXPECTED_QUICLY_VERSION}")
+    include_directories (${QUICLY_INCLUDE_DIR})
 
-    LINK_LIBRARIES ${QUIC_LINK_LIBRARIES}
-  )
-  message(STATUS "Found quicly in ${QUICLY_INCLUDE_DIR}")
+    if(PICOTLS_INCLUDE_DIR)
+      include_directories (${PICOTLS_INCLUDE_DIR})
+    endif()
+
+    add_vpp_plugin(quic
+      SOURCES
+      certs.c
+      error.c
+      quic.c
+      quic_crypto.c
+
+      LINK_LIBRARIES ${QUIC_LINK_LIBRARIES}
+    )
+    message(STATUS "Found quicly ${EXPECTED_QUICLY_VERSION} in ${QUICLY_INCLUDE_DIR}")
+  else()
+    message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - QUIC plugin disabled")
+  endif()
 else()
-  message(WARNING "-- quicly not found - quic_plugin disabled")
+  message(WARNING "-- quicly headers not found - QUIC plugin disabled")
 endif()
