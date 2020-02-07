@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fadb921e_cf96861d",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-02-07T17:47:14Z",
+      "side": 1,
+      "message": "Why is python 2 required in ubuntu 20.04?\n\nI thought we had upgraded everything to python 3...",
+      "range": {
+        "startLine": 79,
+        "startChar": 16,
+        "endLine": 79,
+        "endChar": 23
+      },
+      "revId": "1209e1664fc28281a6b3acfd8d26f980d9385e42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
