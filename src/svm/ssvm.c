@@ -90,6 +90,7 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   mapa.requested_va = requested_va;
   mapa.size = ssvm->ssvm_size;
   mapa.fd = ssvm_fd;
+  mapa.numa_node = ssvm->numa;
   if (clib_mem_vm_ext_map (&mapa))
     {
       clib_unix_warning ("mmap");
@@ -237,6 +238,11 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
   alloc.size = memfd->ssvm_size;
   alloc.flags = CLIB_MEM_VM_F_SHARED;
   alloc.requested_va = memfd->requested_va;
+  if (memfd->numa)
+    {
+      alloc.numa_node = memfd->numa;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_PREFER;
+    }
   if ((err = clib_mem_vm_ext_alloc (&alloc)))
     {
       clib_error_report (err);
@@ -348,27 +354,31 @@ int
 ssvm_master_init_private (ssvm_private_t * ssvm)
 {
   uword pagesize = clib_mem_get_page_size (), rnd_size = 0;
+  clib_mem_vm_alloc_t alloc = { 0 };
+  struct dlmallinfo dlminfo;
   ssvm_shared_header_t *sh;
+  clib_error_t *err;
   u8 *heap;
 
   rnd_size = clib_max (ssvm->ssvm_size + (pagesize - 1), ssvm->ssvm_size);
   rnd_size &= ~(pagesize - 1);
 
-#if USE_DLMALLOC == 0
-  {
-    mheap_t *heap_header;
+  alloc.name = (char *) ssvm->name;
+  alloc.size = rnd_size + pagesize;
+  if (ssvm->numa)
+    {
+      alloc.numa_node = ssvm->numa;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_PREFER;
+    }
 
-    heap = mheap_alloc (0, rnd_size);
-    if (heap == 0)
-      {
-	clib_unix_warning ("mheap alloc");
-	return -1;
-      }
-    heap_header = mheap_header (heap);
-    heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
-  }
-#else
-  heap = create_mspace (rnd_size, 1 /* locked */ );
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+    {
+      clib_error_report (err);
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  heap = create_mspace_with_base ((u8 *) alloc.addr + pagesize, rnd_size,
+				  1 /* locked */ );
   if (heap == 0)
     {
       clib_unix_warning ("mheap alloc");
@@ -378,18 +388,16 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   mspace_disable_expand (heap);
 
   /* Find actual size because mspace size is rounded up by dlmalloc */
-  struct dlmallinfo dlminfo;
   dlminfo = mspace_mallinfo (heap);
   rnd_size = dlminfo.fordblks;
-#endif
 
   ssvm->ssvm_size = rnd_size;
   ssvm->i_am_master = 1;
   ssvm->my_pid = getpid ();
   ssvm->requested_va = ~0;
 
-  /* Allocate a [sic] shared memory header, in process memory... */
-  sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
+  /* First page in allocated memory is set aside for the shared header */
+  sh = alloc.addr;
   ssvm->sh = sh;
 
   clib_memset (sh, 0, sizeof (*sh));
@@ -413,12 +421,8 @@ void
 ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
-#if USE_DLMALLOC == 0
-  mheap_free (ssvm->sh->heap);
-#else
   destroy_mspace (ssvm->sh->heap);
-#endif
-  clib_mem_free (ssvm->sh);
+  clib_mem_vm_free (ssvm->sh, ssvm->ssvm_size + clib_mem_get_page_size ());
 }
 
 int
