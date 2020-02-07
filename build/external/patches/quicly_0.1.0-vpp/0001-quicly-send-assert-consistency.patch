@@ -1,0 +1,21 @@
+diff --git a/lib/quicly.c b/lib/quicly.c
+index 71fa149..668677f 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -3631,10 +3631,14 @@ int quicly_send(quicly_conn_t *conn, quicly_datagram_t **packets, size_t *num_pa
+      * progress (i.e. due to the payload of lost packet being cancelled), then PTO for the previously sent packet.  To accomodate
+      * that, we allow to rerun the do_send function just once.
+      */
+-    if (s.num_packets == 0 && conn->egress.loss.alarm_at <= now) {
++    if (conn->egress.loss.alarm_at <= now) {
+         assert(conn->egress.loss.alarm_at == now);
+-        if ((ret = do_send(conn, &s)) != 0)
+-            return ret;
++        if (s.num_packets == 0) {
++            if ((ret = do_send(conn, &s)) != 0)
++                return ret;
++        } else {
++            conn->egress.loss.alarm_at = now + 1;
++        }
+     }
+     assert_consistency(conn, 1);
