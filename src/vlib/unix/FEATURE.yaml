@@ -1,0 +1,13 @@
+---
+name: vlib/unix
+maintainer: Dave Barach <dbarach@cisco.com>
+features:
+  - epoll-based file I/O support
+  - Linux signal handling
+  - Syslog support
+  - Startup configuration processing, logging
+  - Configuration debug CLI pager, banner, main loop polling interval
+  - Per-thread stack allocation, guard-page setup
+description: "Linux-specific support routines"
+state: production
+properties: [CLI, MULTITHREAD]
