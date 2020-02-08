@@ -861,7 +861,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
   sm = segment_manager_get (app_wrk->first_segment_manager);
-  fs = segment_manager_get_segment_w_lock (sm, 0);
+  fs = segment_manager_get_segment_w_lock (sm, sm->first_seg_id);
 
   if (application_is_proxy (app))
     application_setup_proxy (app);
