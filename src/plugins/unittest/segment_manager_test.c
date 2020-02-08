@@ -145,7 +145,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
-  fs0 = segment_manager_get_segment (sm, 0);
+  fs0 = segment_manager_get_segment_w_id (sm, 0);
   rv = fifo_segment_get_mem_status (fs0);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -160,7 +160,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_set_size (rx_fifo, size_1MB);
   svm_fifo_set_size (tx_fifo, size_1MB);
 
-  fs = segment_manager_get_segment (sm, rx_fifo->segment_index);
+  fs = segment_manager_get_segment_w_id (sm, rx_fifo->segment_index);
   SEG_MGR_TEST ((fs == fs0), "fs %p", fs);
 
   /* fill fifos (but not add chunks) */
@@ -309,7 +309,7 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
-  fs0 = segment_manager_get_segment (sm, 0);
+  fs0 = segment_manager_get_segment_w_id (sm, 0);
   fifo_segment_update_free_bytes (fs0);
   rv = fifo_segment_get_mem_status (fs0);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
@@ -329,7 +329,7 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (rx_fifo, fifo_size - 1, data);
   svm_fifo_enqueue (tx_fifo, fifo_size - 1, data);
 
-  fs = segment_manager_get_segment (sm, rx_fifo->segment_index);
+  fs = segment_manager_get_segment_w_id (sm, rx_fifo->segment_index);
 
   /* grow fifos */
   for (i = 0; i < 509; ++i)
@@ -407,7 +407,8 @@ static int
 segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
 					  unformat_input_t * input)
 {
-  int rv, i, fs_index;
+  segm_segment_id_t fs_id;
+  int rv, i;
   segment_manager_t *sm;
   fifo_segment_t *fs[4];
   svm_fifo_t *rx_fifo[4], *tx_fifo[4];
@@ -439,7 +440,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
-  fs[0] = segment_manager_get_segment (sm, 0);
+  fs[0] = segment_manager_get_segment_w_id (sm, 0);
   rv = fifo_segment_get_mem_status (fs[0]);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -462,8 +463,8 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
     }
 
   /* add another 2MB segment */
-  fs_index = segment_manager_add_segment (sm, size_2MB);
-  SEG_MGR_TEST ((fs_index == 1), "fs_index %d", fs_index);
+  fs_id = segment_manager_add_segment (sm, size_2MB);
+  SEG_MGR_TEST ((fs_id != SEGMENT_MANAGER_INVALID_ID), "fs_index %d", fs_id);
 
   /* allocate fifos : 4KB x2
    * expected to be allocated on the newer segment,
@@ -559,7 +560,7 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
-  fs = segment_manager_get_segment (sm, 0);
+  fs = segment_manager_get_segment_w_id (sm, 0);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);

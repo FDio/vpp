@@ -422,7 +422,7 @@ ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
   destroy_mspace (ssvm->sh->heap);
-  clib_mem_free (ssvm->sh);
+//  clib_mem_free (ssvm->sh);
 }
 
 int
