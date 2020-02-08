@@ -1328,21 +1328,19 @@ format_fifo_segment (u8 * s, va_list * args)
 	      format_white_space, indent + 2, format_memory_size,
 	      free_seg_bytes, free_seg_bytes, format_memory_size,
 	      est_free_seg_bytes, est_free_seg_bytes);
-  s =
-    format (s,
-	    "%Uchunk free bytes: %U (%lu) estimated: %U (%lu) tracked: %U (%lu)\n",
-	    format_white_space, indent + 2, format_memory_size, chunk_bytes,
-	    chunk_bytes, format_memory_size, est_chunk_bytes, est_chunk_bytes,
-	    format_memory_size, tracked_cached_bytes, tracked_cached_bytes);
-  s =
-    format (s, "%Ufifo hdr free bytes: %U (%u) reserved %U (%lu)\n",
-	    format_white_space, indent + 2, format_memory_size, fifo_hdr,
-	    fifo_hdr, format_memory_size, fsh->n_reserved_bytes,
-	    fsh->n_reserved_bytes);
-  s =
-    format (s, "%Usegment usage: %.2f%% (%U / %U) %s\n", format_white_space,
-	    indent + 2, usage, format_memory_size, in_use, format_memory_size,
-	    allocated, fifo_segment_mem_status_strings[mem_st]);
+  s = format (s, "%Uchunk free bytes: %U (%lu) estimated: %U (%lu) tracked:"
+	      " %U (%lu)\n", format_white_space, indent + 2,
+	      format_memory_size, chunk_bytes, chunk_bytes,
+	      format_memory_size, est_chunk_bytes, est_chunk_bytes,
+	      format_memory_size, tracked_cached_bytes, tracked_cached_bytes);
+  s = format (s, "%Ufifo hdr free bytes: %U (%u) reserved %U (%lu)\n",
+	      format_white_space, indent + 2, format_memory_size, fifo_hdr,
+	      fifo_hdr, format_memory_size, fsh->n_reserved_bytes,
+	      fsh->n_reserved_bytes);
+  s = format (s, "%Unuma %u segment usage: %.2f%% (%U / %U) %s\n",
+	      format_white_space, indent + 2, fifo_segment_numa (fs), usage,
+	      format_memory_size, in_use, format_memory_size, allocated,
+	      fifo_segment_mem_status_strings[mem_st]);
   s = format (s, "\n");
 
   return s;
