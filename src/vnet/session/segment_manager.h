@@ -41,8 +41,20 @@ typedef struct _segment_manager_props
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
 } segment_manager_props_t;
 
+typedef struct segment_manager_numa_pool_
+{
+  /** Pool of segments allocated by this manager */
+  fifo_segment_t *segments;
+
+  u8 numa;
+} segm_numa_pool_t;
+
+typedef u32 segm_segment_id_t;
+
 typedef struct _segment_manager
 {
+  segm_numa_pool_t *numas;
+
   /** Pool of segments allocated by this manager */
   fifo_segment_t *segments;
 
@@ -58,6 +70,8 @@ typedef struct _segment_manager
    * allocated for the app.
    */
   u8 first_is_protected;
+
+  segm_segment_id_t first_seg_id;
 
   /**
    * App event queue allocated in first segment
@@ -76,6 +90,7 @@ typedef struct segment_manager_main_init_args_
 } segment_manager_main_init_args_t;
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
+#define SEGMENT_MANAGER_INVALID_ID ((u32) ~0)
 
 segment_manager_t *segment_manager_alloc (void);
 int segment_manager_init (segment_manager_t * sm);
@@ -97,14 +112,17 @@ segment_manager_t *segment_manager_get (u32 index);
 segment_manager_t *segment_manager_get_if_valid (u32 index);
 u32 segment_manager_index (segment_manager_t * sm);
 
-int segment_manager_add_segment (segment_manager_t * sm, uword segment_size);
+segm_segment_id_t segment_manager_add_segment (segment_manager_t * sm,
+					       uword segment_size);
 void segment_manager_del_segment (segment_manager_t * sm,
 				  fifo_segment_t * fs);
 fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
 					     u32 segment_index);
+fifo_segment_t *segment_manager_get_segment_w_id (segment_manager_t * sm,
+						  segm_segment_id_t seg_id);
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
 fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
-						    u32 segment_index);
+						    segm_segment_id_t seg_id);
 int segment_manager_add_first_segment (segment_manager_t * sm,
 				       u32 segment_size);
 u64 segment_manager_make_segment_handle (u32 segment_manager_index,

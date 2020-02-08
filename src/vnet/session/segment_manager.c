@@ -36,13 +36,6 @@ typedef struct segment_manager_main_
 
 static segment_manager_main_t sm_main;
 
-#define segment_manager_foreach_segment_w_lock(VAR, SM, BODY)		\
-do {									\
-    clib_rwlock_reader_lock (&(SM)->segments_rwlock);			\
-    pool_foreach((VAR), ((SM)->segments), (BODY));			\
-    clib_rwlock_reader_unlock (&(SM)->segments_rwlock);			\
-} while (0)
-
 static segment_manager_props_t *
 segment_manager_properties_get (segment_manager_t * sm)
 {
@@ -76,10 +69,85 @@ segment_manager_app_detach (segment_manager_t * sm)
   sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
 }
 
-always_inline u32
-segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
+static inline segm_numa_pool_t *
+segm_numa_pool (segment_manager_t * sm, u8 numa)
 {
-  return (seg - sm->segments);
+  if (numa > CLIB_MAX_NUMAS)
+    return 0;
+  return &sm->numas[numa];
+}
+
+static fifo_segment_t *
+segm_numa_alloc_segment (segm_numa_pool_t * snp)
+{
+  fifo_segment_t *fs;
+  pool_get_zero (snp->segments, fs);
+  return fs;
+}
+
+static void
+segm_numa_free_segment (segm_numa_pool_t * snp, fifo_segment_t * fs)
+{
+  if (CLIB_DEBUG)
+    clib_memset (fs, 0xfb, sizeof (*fs));
+  pool_put (snp->segments, fs);
+}
+
+static inline fifo_segment_t *
+segm_numa_segment (segm_numa_pool_t * snp, u32 seg_index)
+{
+  return pool_elt_at_index (snp->segments, seg_index);
+}
+
+static inline fifo_segment_t *
+segm_numa_segment_safe (segm_numa_pool_t * snp, u32 seg_index)
+{
+  if (pool_is_free_index (snp->segments, seg_index))
+    return 0;
+  return pool_elt_at_index (snp->segments, seg_index);
+}
+
+static inline u32
+segm_numa_segment_index (segm_numa_pool_t * snp, fifo_segment_t * fs)
+{
+  return (fs - snp->segments);
+}
+
+static inline u32
+segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * fs)
+{
+  segm_numa_pool_t *snp = segm_numa_pool (sm, fifo_segment_numa (fs));
+  return segm_numa_segment_index (snp, fs);
+}
+
+static inline u8
+segm_segment_id_numa (u32 segment_id)
+{
+  return segment_id >> 29;
+}
+
+static inline u8
+segm_segment_id_index (u32 segment_id)
+{
+  return segment_id & 0x1fffffff;
+}
+
+static inline u32
+segm_numa_segment_id (segm_numa_pool_t * snp, fifo_segment_t * fs)
+{
+  return (snp->numa << 29 | segm_numa_segment_index (snp, fs));
+}
+
+static inline u32
+segment_manager_segment_id (segment_manager_t * sm, fifo_segment_t * fs)
+{
+  segm_numa_pool_t *snp;
+  u8 numa;
+
+  numa = fifo_segment_numa (fs);
+  snp = segm_numa_pool (sm, numa);
+
+  return (numa << 29 | segm_numa_segment_index (snp, fs));
 }
 
 /**
@@ -88,15 +156,17 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
  * If needed a writer's lock is acquired before allocating a new segment
  * to avoid affecting any of the segments pool readers.
  */
-int
+segm_segment_id_t
 segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 {
   uword baseva = (uword) ~ 0ULL, alloc_size, page_size;
-  u32 rnd_margin = 128 << 10, fs_index = ~0;
+  segm_segment_id_t fs_id = SEGMENT_MANAGER_INVALID_ID;
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
+  u32 rnd_margin = 128 << 10;
+  segm_numa_pool_t *snp;
   fifo_segment_t *fs;
-  u8 *seg_name;
+  u8 *seg_name, numa;
   int rv;
 
   props = segment_manager_properties_get (sm);
@@ -105,7 +175,7 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   if (!props->add_segment && !segment_size)
     {
       clib_warning ("cannot allocate new segment");
-      return VNET_API_ERROR_INVALID_VALUE;
+      return SEGMENT_MANAGER_INVALID_ID;
     }
 
   /*
@@ -114,7 +184,10 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   if (vlib_num_workers ())
     clib_rwlock_writer_lock (&sm->segments_rwlock);
 
-  pool_get_zero (sm->segments, fs);
+  numa = os_get_numa_index ();
+  snp = segm_numa_pool (sm, numa);
+  fs = segm_numa_alloc_segment (snp);
+//  pool_get_zero (sm->segments, fs);
 
   /*
    * Allocate ssvm segment
@@ -133,7 +206,8 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
       if (!baseva)
 	{
 	  clib_warning ("out of space for segments");
-	  pool_put (sm->segments, fs);
+	  segm_numa_free_segment (snp, fs);
+//        pool_put (sm->segments, fs);
 	  goto done;
 	}
     }
@@ -143,6 +217,7 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
   fs->ssvm.requested_va = baseva;
+  fs->ssvm.numa = numa;
 
   if ((rv = ssvm_master_init (&fs->ssvm, props->segment_type)))
     {
@@ -151,7 +226,8 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 
       if (props->segment_type != SSVM_SEGMENT_PRIVATE)
 	clib_valloc_free (&smm->va_allocator, baseva);
-      pool_put (sm->segments, fs);
+      segm_numa_free_segment (snp, fs);
+//      pool_put (sm->segments, fs);
       goto done;
     }
 
@@ -164,7 +240,8 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   /*
    * Save segment index before dropping lock, if any held
    */
-  fs_index = fs - sm->segments;
+//  fs_index = fs - sm->segments;
+  fs_id = segm_numa_segment_id (snp, fs);
 
   /*
    * Set watermarks in segment
@@ -179,7 +256,7 @@ done:
   if (vlib_num_workers ())
     clib_rwlock_writer_unlock (&sm->segments_rwlock);
 
-  return fs_index;
+  return fs_id;
 }
 
 /**
@@ -189,6 +266,7 @@ void
 segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 {
   segment_manager_main_t *smm = &sm_main;
+  segm_numa_pool_t *snp;
 
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
     {
@@ -206,22 +284,22 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 
   ssvm_delete (&fs->ssvm);
 
-  if (CLIB_DEBUG)
-    clib_memset (fs, 0xfb, sizeof (*fs));
-  pool_put (sm->segments, fs);
+  snp = segm_numa_pool (sm, fifo_segment_numa (fs));
+  segm_numa_free_segment (snp, fs);
 }
 
 /**
  * Removes segment after acquiring writer lock
  */
 static inline void
-segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
+segment_manager_lock_and_del_segment (segment_manager_t * sm,
+				      segm_segment_id_t fs_id)
 {
   fifo_segment_t *fs;
   u8 is_prealloc;
 
   clib_rwlock_writer_lock (&sm->segments_rwlock);
-  fs = segment_manager_get_segment (sm, fs_index);
+  fs = segment_manager_get_segment_w_id (sm, fs_id);
   is_prealloc = fifo_segment_flags (fs) & FIFO_SEGMENT_F_IS_PREALLOCATED;
   if (is_prealloc && !segment_manager_app_detached (sm))
     {
@@ -246,7 +324,7 @@ u64
 segment_manager_segment_handle (segment_manager_t * sm,
 				fifo_segment_t * segment)
 {
-  u32 segment_index = segment_manager_segment_index (sm, segment);
+  u32 segment_index = segment_manager_segment_id (sm, segment);
   return (((u64) segment_manager_index (sm) << 32) | segment_index);
 }
 
@@ -266,17 +344,30 @@ segment_manager_make_segment_handle (u32 segment_manager_index,
 }
 
 fifo_segment_t *
+segment_manager_get_segment_w_id (segment_manager_t * sm,
+				  segm_segment_id_t segment_id)
+{
+  u8 numa = segm_segment_id_numa (segment_id);
+  segm_numa_pool_t *snp;
+
+  if (!(snp = segm_numa_pool (sm, numa)))
+    return 0;
+
+  return segm_numa_segment_safe (snp, segm_segment_id_index (segment_id));
+}
+
+fifo_segment_t *
 segment_manager_get_segment_w_handle (u64 segment_handle)
 {
-  u32 sm_index, segment_index;
+  u32 sm_index, segment_id;
   segment_manager_t *sm;
 
   segment_manager_parse_segment_handle (segment_handle, &sm_index,
-					&segment_index);
-  sm = segment_manager_get (sm_index);
-  if (!sm || pool_is_free_index (sm->segments, segment_index))
+					&segment_id);
+  if (!(sm = segment_manager_get (sm_index)))
     return 0;
-  return pool_elt_at_index (sm->segments, segment_index);
+
+  return segment_manager_get_segment_w_id (sm, segment_id);
 }
 
 /**
@@ -287,10 +378,12 @@ segment_manager_get_segment_w_handle (u64 segment_handle)
  * the segment.
  */
 fifo_segment_t *
-segment_manager_get_segment_w_lock (segment_manager_t * sm, u32 segment_index)
+segment_manager_get_segment_w_lock (segment_manager_t * sm,
+				    segm_segment_id_t seg_id)
 {
   clib_rwlock_reader_lock (&sm->segments_rwlock);
-  return pool_elt_at_index (sm->segments, segment_index);
+  return segment_manager_get_segment_w_id (sm, seg_id);
+//  return pool_elt_at_index (sm->segments, segment_index);
 }
 
 void
@@ -310,9 +403,15 @@ segment_manager_alloc (void)
 {
   segment_manager_main_t *smm = &sm_main;
   segment_manager_t *sm;
+  int i;
 
   pool_get_zero (smm->segment_managers, sm);
   clib_rwlock_init (&sm->segments_rwlock);
+
+  vec_validate (sm->numas, CLIB_MAX_NUMAS - 1);
+  for (i = 0; i < vec_len (sm->numas); i++)
+    segm_numa_pool (sm, i)->numa = i;
+
   return sm;
 }
 
@@ -323,15 +422,16 @@ segment_manager_alloc (void)
 int
 segment_manager_init (segment_manager_t * sm)
 {
+  segm_segment_id_t seg_id = SEGMENT_MANAGER_INVALID_ID;
   u32 rx_fifo_size, tx_fifo_size, pair_size;
   u32 rx_rounded_data_size, tx_rounded_data_size;
   uword first_seg_size;
   u32 prealloc_fifo_pairs;
   u64 approx_total_size, max_seg_size = ((u64) 1 << 32) - (128 << 10);
   segment_manager_props_t *props;
-  fifo_segment_t *segment;
+  fifo_segment_t *fs;
   u32 approx_segment_count;
-  int seg_index, i;
+  u32 i;
 
   props = segment_manager_properties_get (sm);
   first_seg_size = clib_max (props->segment_size,
@@ -365,37 +465,39 @@ segment_manager_init (segment_manager_t * sm)
       /* Allocate the segments */
       for (i = 0; i < approx_segment_count + 1; i++)
 	{
-	  seg_index = segment_manager_add_segment (sm, max_seg_size);
-	  if (seg_index < 0)
+	  seg_id = segment_manager_add_segment (sm, max_seg_size);
+	  if (seg_id == SEGMENT_MANAGER_INVALID_ID)
 	    {
 	      clib_warning ("Failed to preallocate segment %d", i);
-	      return seg_index;
+	      return SESSION_ERROR_SEG_CREATE;
 	    }
 
-	  segment = segment_manager_get_segment (sm, seg_index);
+	  fs = segment_manager_get_segment_w_id (sm, seg_id);
 	  if (i == 0)
-	    sm->event_queue = segment_manager_alloc_queue (segment, props);
+	    sm->event_queue = segment_manager_alloc_queue (fs, props);
 
-	  fifo_segment_preallocate_fifo_pairs (segment,
+	  fifo_segment_preallocate_fifo_pairs (fs,
 					       props->rx_fifo_size,
 					       props->tx_fifo_size,
 					       &prealloc_fifo_pairs);
-	  fifo_segment_flags (segment) = FIFO_SEGMENT_F_IS_PREALLOCATED;
+	  fifo_segment_flags (fs) = FIFO_SEGMENT_F_IS_PREALLOCATED;
 	  if (prealloc_fifo_pairs == 0)
 	    break;
 	}
     }
   else
     {
-      seg_index = segment_manager_add_segment (sm, first_seg_size);
-      if (seg_index < 0)
+      seg_id = segment_manager_add_segment (sm, first_seg_size);
+      if (seg_id == SEGMENT_MANAGER_INVALID_ID)
 	{
 	  clib_warning ("Failed to allocate segment");
-	  return seg_index;
+	  return SESSION_ERROR_SEG_CREATE;
 	}
-      segment = segment_manager_get_segment (sm, seg_index);
-      sm->event_queue = segment_manager_alloc_queue (segment, props);
+      fs = segment_manager_get_segment_w_id (sm, seg_id);
+      sm->event_queue = segment_manager_alloc_queue (fs, props);
     }
+
+  sm->first_seg_id = seg_id;
 
   return 0;
 }
@@ -464,10 +566,17 @@ find_max_free_segment (segment_manager_t * sm, u32 thread_index)
 {
   fifo_segment_t *cur, *fs = 0;
   uword free_bytes, max_free_bytes = 0;
+  segm_numa_pool_t *snp;
+  u8 numa;
+
+  numa = os_get_numa_index ();
 
   clib_rwlock_reader_lock (&sm->segments_rwlock);
+
+  snp = segm_numa_pool (sm, numa);
+
   /* *INDENT-OFF* */
-  pool_foreach (cur, sm->segments, ({
+  pool_foreach (cur, snp->segments, ({
     if ((free_bytes = fifo_segment_free_bytes (cur)) > max_free_bytes)
       {
         max_free_bytes = free_bytes;
@@ -475,6 +584,7 @@ find_max_free_segment (segment_manager_t * sm, u32 thread_index)
       }
   }));
   /* *INDENT-ON* */
+
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
 
   return fs;
@@ -487,36 +597,41 @@ segment_manager_index (segment_manager_t * sm)
 }
 
 u8
-segment_manager_has_fifos (segment_manager_t * sm)
+segm_numa_pool_has_fifos (segm_numa_pool_t * snp)
 {
-  fifo_segment_t *seg;
-  u8 first = 1;
+  fifo_segment_t *fs;
 
   /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (seg, sm, ({
-    if (CLIB_DEBUG && !first && !fifo_segment_has_fifos (seg)
-	&& !(fifo_segment_flags (seg) & FIFO_SEGMENT_F_IS_PREALLOCATED))
-      {
-	clib_warning ("segment %d has no fifos!",
-	              segment_manager_segment_index (sm, seg));
-	first = 0;
-      }
-    if (fifo_segment_has_fifos (seg))
-      {
-	segment_manager_segment_reader_unlock (sm);
-	return 1;
-      }
-  }));
+  pool_foreach (fs, snp->segments, {
+    if (fifo_segment_has_fifos (fs))
+      return 1;
+  });
   /* *INDENT-ON* */
 
   return 0;
 }
 
-/**
- * Initiate disconnects for all sessions 'owned' by a segment manager
- */
+u8
+segment_manager_has_fifos (segment_manager_t * sm)
+{
+  segm_numa_pool_t *snp;
+  u8 has_fifos = 0;
+
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+
+  vec_foreach (snp, sm->numas) if (segm_numa_pool_has_fifos (snp))
+    {
+      has_fifos = 1;
+      break;
+    }
+
+  clib_rwlock_reader_unlock (&sm->segments_rwlock);
+
+  return has_fifos;
+}
+
 void
-segment_manager_del_sessions (segment_manager_t * sm)
+segm_numa_close_sessions (segm_numa_pool_t * snp)
 {
   session_handle_t *handles = 0, *handle;
   fifo_segment_t *fs;
@@ -524,19 +639,14 @@ segment_manager_del_sessions (segment_manager_t * sm)
   int slice_index;
   svm_fifo_t *f;
 
-  ASSERT (pool_elts (sm->segments) != 0);
-
-  /* Across all fifo segments used by the server */
   /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (fs, sm, ({
+  pool_foreach (fs, snp->segments, {
     for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
         f = fifo_segment_get_slice_fifo_list (fs, slice_index);
 
         /*
-         * Remove any residual sessions from the session lookup table
-         * Don't bother deleting the individual fifos, we're going to
-         * throw away the fifo segment in a minute.
+	 * Grab handles of all active fifos that should be closed
          */
         while (f)
           {
@@ -547,15 +657,26 @@ segment_manager_del_sessions (segment_manager_t * sm)
             f = f->next;
           }
       }
-
-    /* Instead of removing the segment, test when cleaning up disconnected
-     * sessions if the segment can be removed.
-     */
-  }));
+  });
   /* *INDENT-ON* */
 
   vec_foreach (handle, handles)
     session_close (session_get_from_handle (*handle));
+}
+
+/**
+ * Initiate disconnects for all sessions 'owned' by a segment manager
+ */
+void
+segment_manager_del_sessions (segment_manager_t * sm)
+{
+  segm_numa_pool_t *snp;
+
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+
+  vec_foreach (snp, sm->numas) segm_numa_close_sessions (snp);
+
+  clib_rwlock_reader_unlock (&sm->segments_rwlock);
 }
 
 int
@@ -603,12 +724,13 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo)
 {
-  int alloc_fail = 1, rv = 0, new_fs_index;
+  segm_segment_id_t fs_id, new_fs_id;
   segment_manager_props_t *props;
+  int alloc_fail = 1, rv = 0;
   fifo_segment_t *fs = 0;
-  u32 sm_index, fs_index;
   u8 added_a_segment = 0;
   u64 fs_handle;
+  u32 sm_index;
 
   props = segment_manager_properties_get (sm);
 
@@ -644,11 +766,11 @@ alloc_check:
 
       ASSERT (rx_fifo && tx_fifo);
       sm_index = segment_manager_index (sm);
-      fs_index = segment_manager_segment_index (sm, fs);
+      fs_id = segment_manager_segment_id (sm, fs);
       (*tx_fifo)->segment_manager = sm_index;
       (*rx_fifo)->segment_manager = sm_index;
-      (*tx_fifo)->segment_index = fs_index;
-      (*rx_fifo)->segment_index = fs_index;
+      (*tx_fifo)->segment_index = fs_id;
+      (*rx_fifo)->segment_index = fs_id;
 
       if (added_a_segment)
 	{
@@ -673,12 +795,13 @@ alloc_check:
 	  segment_manager_segment_reader_unlock (sm);
 	  return SESSION_ERROR_NEW_SEG_NO_SPACE;
 	}
-      if ((new_fs_index = segment_manager_add_segment (sm, 0)) < 0)
+      new_fs_id = segment_manager_add_segment (sm, 0);
+      if (new_fs_id == SEGMENT_MANAGER_INVALID_ID)
 	{
 	  clib_warning ("Failed to add new segment");
 	  return SESSION_ERROR_SEG_CREATE;
 	}
-      fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
+      fs = segment_manager_get_segment_w_lock (sm, new_fs_id);
       alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
 						    props->rx_fifo_size,
 						    props->tx_fifo_size,
@@ -698,7 +821,7 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 {
   segment_manager_t *sm;
   fifo_segment_t *fs;
-  u32 segment_index;
+  segm_segment_id_t seg_id;
 
   if (!rx_fifo || !tx_fifo)
     return;
@@ -708,8 +831,8 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
   if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
     return;
 
-  segment_index = rx_fifo->segment_index;
-  fs = segment_manager_get_segment_w_lock (sm, segment_index);
+  seg_id = rx_fifo->segment_index;
+  fs = segment_manager_get_segment_w_lock (sm, seg_id);
   fifo_segment_free_fifo (fs, rx_fifo);
   fifo_segment_free_fifo (fs, tx_fifo);
 
@@ -724,8 +847,8 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
       segment_manager_segment_reader_unlock (sm);
 
       /* Remove segment if it holds no fifos or first but not protected */
-      if (segment_index != 0 || !sm->first_is_protected)
-	segment_manager_lock_and_del_segment (sm, segment_index);
+      if (seg_id != sm->first_seg_id || !sm->first_is_protected)
+	segment_manager_lock_and_del_segment (sm, seg_id);
 
       /* Remove segment manager if no sessions and detached from app */
       if (segment_manager_app_detached (sm)
@@ -851,6 +974,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   segment_manager_main_t *smm = &sm_main;
   u8 show_segments = 0, verbose = 0;
   segment_manager_t *sm;
+  segm_numa_pool_t *snp;
   fifo_segment_t *seg;
   app_worker_t *app_wrk;
   application_t *app;
@@ -896,9 +1020,16 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
-	  segment_manager_foreach_segment_w_lock (seg, sm, ({
-	    vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
-	  }));
+        clib_rwlock_reader_lock (&sm->segments_rwlock);
+
+        vec_foreach (snp, sm->numas)
+          {
+            pool_foreach (seg, snp->segments, ({
+              vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
+            }));
+          }
+
+        clib_rwlock_reader_unlock (&sm->segments_rwlock);
       }));
       /* *INDENT-ON* */
 

@@ -275,6 +275,12 @@ void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 format_function_t format_fifo_segment;
 format_function_t format_fifo_segment_type;
 
+static inline u8
+fifo_segment_numa (fifo_segment_t * fs)
+{
+  return fs->ssvm.numa;
+}
+
 #endif /* __included_fifo_segment_h__ */
 
 /*

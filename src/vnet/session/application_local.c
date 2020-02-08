@@ -168,12 +168,13 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
 {
   u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index, seg_size;
   segment_manager_props_t *props;
+  segm_segment_id_t seg_id;
   application_t *server;
   segment_manager_t *sm;
   u32 margin = 16 << 10;
   fifo_segment_t *seg;
   u64 segment_handle;
-  int seg_index, rv;
+  int rv;
 
   server = application_get (server_wrk->app_index);
 
@@ -187,13 +188,13 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
   seg_size = 4 * (round_rx_fifo_sz + round_tx_fifo_sz + margin);
 
   sm = app_worker_get_listen_segment_manager (server_wrk, ll);
-  seg_index = segment_manager_add_segment (sm, seg_size);
-  if (seg_index < 0)
+  seg_id = segment_manager_add_segment (sm, seg_size);
+  if (seg_id == SEGMENT_MANAGER_INVALID_ID)
     {
       clib_warning ("failed to add new cut-through segment");
-      return seg_index;
+      return seg_id;
     }
-  seg = segment_manager_get_segment_w_lock (sm, seg_index);
+  seg = segment_manager_get_segment_w_lock (sm, seg_id);
 
   rv = segment_manager_try_alloc_fifos (seg, ls->thread_index,
 					props->rx_fifo_size,
@@ -211,8 +212,8 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
   ls->tx_fifo->master_session_index = ls->session_index;
   ls->rx_fifo->segment_manager = sm_index;
   ls->tx_fifo->segment_manager = sm_index;
-  ls->rx_fifo->segment_index = seg_index;
-  ls->tx_fifo->segment_index = seg_index;
+  ls->rx_fifo->segment_index = seg_id;
+  ls->tx_fifo->segment_index = seg_id;
 
   segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = app_worker_add_segment_notify (server_wrk, segment_handle)))
