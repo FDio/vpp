@@ -243,46 +243,25 @@ clib_mem_init_thread_safe (void *memory, uword memory_size)
 }
 
 void *
-clib_mem_init_thread_safe_numa (void *memory, uword memory_size)
+clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
 {
+  clib_mem_vm_alloc_t alloc = { 0 };
+  clib_error_t *err;
   void *heap;
-  unsigned long this_numa;
 
-  heap =
-    clib_mem_init_internal (memory, memory_size,
-			    0 /* do NOT clib_mem_set_heap */ );
+  alloc.size = memory_size;
+  alloc.flags = CLIB_MEM_VM_F_NUMA_FORCE;
+  alloc.numa_node = numa;
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+    {
+      clib_error_report (err);
+      return 0;
+    }
+
+  heap = clib_mem_init_internal (memory, memory_size,
+				 0 /* do NOT clib_mem_set_heap */ );
 
   ASSERT (heap);
-
-  this_numa = os_get_numa_index ();
-
-#if HAVE_NUMA_LIBRARY > 0
-  unsigned long nodemask = 1 << this_numa;
-  void *page_base;
-  unsigned long page_mask;
-  long rv;
-
-  /*
-   * Bind the heap to the current thread's NUMA node.
-   * heap is not naturally page-aligned, so fix it.
-   */
-
-  page_mask = ~(clib_mem_get_page_size () - 1);
-  page_base = (void *) (((unsigned long) heap) & page_mask);
-
-  clib_warning ("Bind heap at %llx size %llx to NUMA numa %d",
-		page_base, memory_size, this_numa);
-
-  rv = mbind (page_base, memory_size, MPOL_BIND /* mode */ ,
-	      &nodemask /* nodemask */ ,
-	      BITS (nodemask) /* max node number */ ,
-	      MPOL_MF_MOVE /* flags */ );
-
-  if (rv < 0)
-    clib_unix_warning ("mbind");
-#else
-  clib_warning ("mbind unavailable, can't bind to numa %d", this_numa);
-#endif
 
   return heap;
 }

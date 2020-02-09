@@ -24,13 +24,6 @@ else(VPP_USE_DLMALLOC)
   set(DLMALLOC 0)
 endif(VPP_USE_DLMALLOC)
 
-find_library(NUMA numa)
-if (NUMA)
-  set(NUMA_LIBRARY_FOUND 1)
-else(NUMA)
-  set(NUMA_LIBRARY_FOUND 0)
-endif()
-
 configure_file(
   ${CMAKE_SOURCE_DIR}/vppinfra/config.h.in
   ${CMAKE_BINARY_DIR}/vppinfra/config.h
@@ -217,7 +210,7 @@ endif(VPP_USE_DLMALLOC)
 
 add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
-  LINK_LIBRARIES m ${NUMA}
+  LINK_LIBRARIES m
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
   COMPONENT libvppinfra
 )

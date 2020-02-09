@@ -589,9 +589,8 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
   p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
   clib_sysfs_read ((char *) p, "%d", &core_id);
   vec_reset_length (p);
-  p =
-    format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path, cpu_id,
-	    0);
+  p = format (p, "%s%u/topology/physical_package_id%c", sys_cpu_path,
+	      cpu_id, 0);
   clib_sysfs_read ((char *) p, "%d", &numa_id);
   vec_free (p);
 
@@ -608,7 +607,6 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 
   w->cpu_id = cpu_id;
   vlib_get_thread_core_numa (w, cpu_id);
-  os_set_numa_index (w->numa_id);
 
   /* Set up NUMA-bound heap if indicated */
   if (clib_per_numa_mheaps[w->numa_id] == 0)
@@ -617,7 +615,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       if (tm->numa_heap_size)
 	{
 	  numa_heap = clib_mem_init_thread_safe_numa
-	    (0 /* DIY */ , tm->numa_heap_size);
+	    (0 /* DIY */ , tm->numa_heap_size, w->numa_id);
 	  clib_per_numa_mheaps[w->numa_id] = numa_heap;
 	}
       else

@@ -1717,6 +1717,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
   vm->cpu_id = clib_get_current_cpu_id ();
   vm->numa_node = clib_get_current_numa_node ();
+  os_set_numa_index (vm->numa_node);
 
   /* Start all processes. */
   if (is_main)
