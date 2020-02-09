@@ -109,6 +109,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(NO_CSUM_OFFLOAD, "No csum offload")    	\
   _(NO_TSO, "TSO off")				\
   _(TSO, "TSO")					\
+  _(NO_ENDPOINT,"No endpoint")			\
 
 typedef enum tcp_cfg_flag_bits_
 {
