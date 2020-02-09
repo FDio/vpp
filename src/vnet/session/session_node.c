@@ -1257,10 +1257,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index, n_to_dequeue;
   session_worker_t *wrk = &smm->wrk[thread_index];
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
+  clib_llist_index_t ei, next_ei, old_ti;
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  clib_llist_index_t old_ti;
   int i, n_tx_packets = 0;
   session_event_t *evt;
+  u8 n_skipped = 0;
   svm_msg_q_t *mq;
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
@@ -1314,24 +1315,26 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
-  /* *INDENT-OFF* */
-  clib_llist_foreach_safe (wrk->event_elts, evt_list, new_he, elt, ({
-    session_evt_type_t et;
+  ei = clib_llist_next_index (new_he, evt_list);
+  while (ei != wrk->new_head)
+    {
+      elt = pool_elt_at_index (wrk->event_elts, ei);
+      ei = clib_llist_next_index (elt, evt_list);
 
-    et = elt->evt.event_type;
-    clib_llist_remove (wrk->event_elts, evt_list, elt);
+      if (n_tx_packets >= VLIB_FRAME_SIZE &&
+	  session_evt_type_is_tx (elt->evt.event_type))
+	{
+	  n_skipped++;
+	  continue;
+	}
 
-    /* Postpone tx events if we can't handle them this dispatch cycle */
-    if (n_tx_packets >= VLIB_FRAME_SIZE
-	&& (et == SESSION_IO_EVT_TX || et == SESSION_IO_EVT_TX_FLUSH))
-      {
-	clib_llist_add (wrk->event_elts, evt_list, elt, new_he);
-	continue;
-      }
+      clib_llist_remove (wrk->event_elts, evt_list, elt);
+      session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
 
-    session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
-  }));
-  /* *INDENT-ON* */
+      /* Avoid scanning the whole new io evt list */
+      if (n_skipped >= 16)
+	break;
+    }
 
   /*
    * Handle the old io events, if we had any prior to processing the new ones
@@ -1339,8 +1342,6 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (old_ti != wrk->old_head)
     {
-      clib_llist_index_t ei, next_ei;
-
       old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
       ei = clib_llist_next_index (old_he, evt_list);
 
