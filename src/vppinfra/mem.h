@@ -308,7 +308,8 @@ clib_mem_set_heap (void *heap)
 
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
-void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size);
+void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
+				      u8 numa);
 
 void clib_mem_exit (void);
 
