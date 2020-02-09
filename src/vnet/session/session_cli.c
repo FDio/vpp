@@ -388,6 +388,39 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
 		     count);
 }
 
+void
+session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
+{
+  session_worker_t *wrk;
+
+  wrk = session_main_get_worker_if_valid (thread_index);
+  if (!wrk)
+    {
+      vlib_cli_output (vm, "invalid thread index %u", thread_index);
+      return;
+    }
+
+  vlib_cli_output (vm, "Thread %d:\n", thread_index);
+  vlib_cli_output (vm, " evt elements alloc: %u",
+		   pool_elts (wrk->event_elts));
+  vlib_cli_output (vm, " ctrl evt elt data alloc: %d",
+		   pool_elts (wrk->ctrl_evts_data));
+}
+
+static void
+session_cli_show_events (vlib_main_t * vm, u32 thread_index)
+{
+  session_main_t *smm = &session_main;
+  if (!thread_index)
+    {
+      session_cli_show_events_thread (vm, thread_index);
+      return;
+    }
+
+  for (thread_index = 0; thread_index < vec_len (smm->wrk); thread_index++)
+    session_cli_show_events_thread (vm, thread_index);
+}
+
 static void
 session_cli_print_transport_protos (vlib_main_t * vm)
 {
@@ -418,6 +451,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_worker_t *app_wrk;
   u32 transport_index;
   const u8 *app_name;
+  u8 do_events = 0;
   int verbose = 0;
   session_t *s;
 
@@ -508,6 +542,8 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  session_cli_print_session_states (vm);
 	  goto done;
 	}
+      else if (unformat (line_input, "events"))
+	do_events = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -553,6 +589,12 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 app_name);
       }));
       /* *INDENT-ON* */
+      goto done;
+    }
+
+  if (do_events)
+    {
+      session_cli_show_events (vm, thread_index);
       goto done;
     }
 
