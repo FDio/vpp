@@ -409,6 +409,12 @@ typedef struct
   };
 } __clib_packed session_event_t;
 
+always_inline u8
+session_evt_type_is_tx (session_evt_type_t et)
+{
+  return (et == SESSION_IO_EVT_TX || et == SESSION_IO_EVT_TX_FLUSH);
+}
+
 #define SESSION_MSG_NULL { }
 
 typedef struct session_dgram_pre_hdr_
