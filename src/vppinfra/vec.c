@@ -95,9 +95,13 @@ vec_resize_allocate_memory (void *v,
       return v;
     }
 
+#if CLIB_VECTOR_GROW_BY_ONE > 0
+  new_alloc_bytes = data_bytes;
+#else
   new_alloc_bytes = (old_alloc_bytes * 3) / 2;
   if (new_alloc_bytes < data_bytes)
     new_alloc_bytes = data_bytes;
+#endif
 
   new =
     clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align,
