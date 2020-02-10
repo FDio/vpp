@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7348c46e_49d46d64",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-10T14:48:27Z",
+      "side": 1,
+      "message": "this change doesn\u0027t look like it\u0027s related to chained buffers. has this block size always been wrong?",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24af9187_3f1f570a",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 1004,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-10T14:48:27Z",
+      "side": 1,
+      "message": "please update these tests rather than disabling them",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2004ef67_3a39ce53",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-10T14:48:27Z",
+      "side": 1,
+      "message": "why did you pick these values?",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
