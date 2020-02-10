@@ -20,7 +20,7 @@
 #define __included_bfd_debug_h__
 
 /* controls debug prints */
-#define BFD_DEBUG (0)
+#define BFD_DEBUG (1)
 
 #if BFD_DEBUG
 #define BFD_DEBUG_FILE_DEF            \
@@ -63,12 +63,9 @@
     }                                                                    \
   while (0);
 
-#define BFD_CLK_FMT "%luus/%lu clocks/%.2fs"
-#define BFD_CLK_PRN(clocks)                                                \
-  (u64) ((((f64)clocks) / vlib_get_main ()->clib_time.clocks_per_second) * \
-         USEC_PER_SECOND),                                                 \
-      (clocks),                                                            \
-      (((f64)clocks) / vlib_get_main ()->clib_time.clocks_per_second)
+#define BFD_CLK_FMT "%luus/%lu nsec/%.2fs"
+#define BFD_CLK_PRN(nsec) \
+  (nsec * NSEC_PER_SEC), (nsec), (((f64)nsec) / NSEC_PER_SEC)
 
 #else
 #define BFD_DBG(...)
