@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "95a73d85_06e46a60",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-02-10T16:23:47Z",
+      "side": 1,
+      "message": "Block size of 8 for gcm is more likely wrong as it turned out in my previous patches (when i was aligning the ipsec\u0027s payload to block size). This value has never been used anywhere in ipsec code (each crypto engine figures this on their own).",
+      "parentUuid": "7348c46e_49d46d64",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "24af9187_3f1f570a",
         "filename": "test/template_ipsec.py",
         "patchSetId": 15
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "c3e79e93_7a321cbf",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 1004,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-02-10T16:23:47Z",
+      "side": 1,
+      "message": "ok, i\u0027ll add a negative test case for: ETH+IP+ESP+PAYLOAD \u003e 9k",
+      "parentUuid": "24af9187_3f1f570a",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2004ef67_3a39ce53",
         "filename": "test/test_ipsec_esp.py",
         "patchSetId": 15
@@ -47,6 +83,24 @@
       "writtenOn": "2020-02-10T14:48:27Z",
       "side": 1,
       "message": "why did you pick these values?",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8c8ba08_66f1ffec",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-02-10T16:23:47Z",
+      "side": 1,
+      "message": "For checking cases where for example ICV is splitted across 2 buffers (and needs to be reassembled). I\u0027ll add a comment with explanation",
+      "parentUuid": "2004ef67_3a39ce53",
       "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
