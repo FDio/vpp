@@ -60,6 +60,24 @@
     },
     {
       "key": {
+        "uuid": "cd1e156e_263f541b",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-02-10T18:23:55Z",
+      "side": 1,
+      "message": "It is actually you, Neale :) AES block size is always 16 bytes.\nI submitted separate patch as this needs to be backported to stable: \nhttps://gerrit.fd.io/r/c/vpp/+/24915",
+      "parentUuid": "95a73d85_06e46a60",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "24af9187_3f1f570a",
         "filename": "test/template_ipsec.py",
         "patchSetId": 15
