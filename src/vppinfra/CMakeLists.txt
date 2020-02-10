@@ -18,6 +18,13 @@ enable_language(ASM)
 ##############################################################################
 set(LOG2_CACHE_LINE_BYTES ${VPP_LOG2_CACHE_LINE_SIZE})
 
+option(VPP_VECTOR_GROW_BY_ONE "Vectors grow by one, instead of 3/2" OFF)
+if(VPP_VECTOR_GROW_BY_ONE)
+  set(VECTOR_GROW_BY_ONE 1)
+else(VPP_VECTOR_GROW_BY_ONE)
+  set(VECTOR_GROW_BY_ONE 0)
+endif(VPP_VECTOR_GROW_BY_ONE)
+
 configure_file(
   ${CMAKE_SOURCE_DIR}/vppinfra/config.h.in
   ${CMAKE_BINARY_DIR}/vppinfra/config.h
