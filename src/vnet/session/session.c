@@ -1446,7 +1446,7 @@ session_register_transport (transport_proto_t transport_proto,
     {
       foreach_vlib_main (({
           next_index = vlib_node_add_next (this_vlib_main,
-                                           session_queue_node.index,
+                                           session_dispatch_node.index,
                                            output_node);
       }));
     }
@@ -1597,6 +1597,8 @@ session_node_enable_disable (u8 is_en)
 	continue;
       }
     vlib_node_set_state (this_vlib_main, session_queue_node.index,
+                         state);
+    vlib_node_set_state (this_vlib_main, session_dispatch_node.index,
                          state);
   }));
   /* *INDENT-ON* */
