@@ -25,6 +25,8 @@
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
 
+#include <vnet/session/tscmarks.h>
+
 #define app_check_thread_and_barrier(_fn, _arg)				\
   if (!vlib_thread_is_main_w_barrier ())				\
     {									\
@@ -1256,16 +1258,15 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_main_t *smm = vnet_get_session_main ();
   u32 thread_index = vm->thread_index, n_to_dequeue;
   session_worker_t *wrk = &smm->wrk[thread_index];
-  session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
-  clib_llist_index_t ei, next_ei, old_ti;
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  int i, n_tx_packets = 0;
   session_event_t *evt;
-  u8 n_skipped = 0;
   svm_msg_q_t *mq;
+  int i;
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
+//  tsc_clock = vm->clib_time.clocks_per_second;
+//  tsc_mark (0);
   wrk->last_vlib_time = vlib_time_now (vm);
   wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
 
@@ -1274,6 +1275,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    */
   transport_update_time (wrk->last_vlib_time, thread_index);
 
+//  tsc_mark (1);
   /*
    *  Dequeue and handle new events
    */
@@ -1293,6 +1295,41 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       svm_msg_q_unlock (mq);
     }
+//  tsc_mark (2);
+//  tsc_print (1, n_to_dequeue);
+
+  return n_to_dequeue;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (session_queue_node) =
+{
+  .function = session_queue_node_fn,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
+  .name = "session-queue",
+  .format_trace = format_session_queue_trace,
+  .type = VLIB_NODE_TYPE_PRE_INPUT,
+  .n_errors = ARRAY_LEN (session_queue_error_strings),
+  .error_strings = session_queue_error_strings,
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+/* *INDENT-ON* */
+
+static uword
+session_dispatch_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			  vlib_frame_t * frame)
+{
+  session_main_t *smm = vnet_get_session_main ();
+  u32 thread_index = vm->thread_index;
+  session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
+  session_worker_t *wrk = &smm->wrk[thread_index];
+  clib_llist_index_t ei, next_ei, old_ti;
+  int n_tx_packets = 0;
+  u8 n_skipped = 0;
+
+  SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
+  tsc_clock = vm->clib_time.clocks_per_second;
+  tsc_mark (0);
 
   /*
    * Handle control events
@@ -1306,6 +1343,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     session_event_dispatch_ctrl (wrk, elt);
   }));
   /* *INDENT-ON* */
+  tsc_mark (1);
 
   /*
    * Handle the new io events.
@@ -1336,6 +1374,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	break;
     }
 
+  tsc_mark (2);
   /*
    * Handle the old io events, if we had any prior to processing the new ones
    */
@@ -1360,7 +1399,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ei = next_ei;
 	};
     }
-
+  tsc_mark (3);
   if (vec_len (wrk->pending_tx_buffers))
     session_flush_pending_tx_buffers (wrk, node);
 
@@ -1369,15 +1408,18 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   SESSION_EVT (SESSION_EVT_DISPATCH_END, wrk, n_tx_packets);
 
+  tsc_mark (3);
+  tsc_print (1, n_tx_packets);
+
   return n_tx_packets;
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (session_queue_node) =
+VLIB_REGISTER_NODE (session_dispatch_node) =
 {
-  .function = session_queue_node_fn,
+  .function = session_dispatch_node_fn,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
-  .name = "session-queue",
+  .name = "session-dispatch",
   .format_trace = format_session_queue_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .n_errors = ARRAY_LEN (session_queue_error_strings),
