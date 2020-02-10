@@ -225,7 +225,8 @@ vl_api_bfd_udp_session_set_flags_t_handler (vl_api_bfd_udp_session_set_flags_t
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
-  rv = bfd_udp_session_set_flags (BFD_UDP_API_PARAM_FROM_MP (mp),
+  rv = bfd_udp_session_set_flags (vlib_get_main (),
+				  BFD_UDP_API_PARAM_FROM_MP (mp),
 				  clib_net_to_host_u32 (mp->flags) &
 				  IF_STATUS_API_FLAG_ADMIN_UP);
 
