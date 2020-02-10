@@ -30,7 +30,6 @@ static u8 *
 format_bfd_session_cli (u8 * s, va_list * args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
-  bfd_main_t *bm = va_arg (*args, bfd_main_t *);
   bfd_session_t *bs = va_arg (*args, bfd_session_t *);
   switch (bs->transport)
     {
@@ -58,23 +57,23 @@ format_bfd_session_cli (u8 * s, va_list * args)
 	      bs->config_required_min_rx_usec, bs->remote_min_rx_usec);
   s = format (s, "%10s %-32s %20u %20u\n", "",
 	      "Desired Min Tx Interval (usec)",
-	      bs->config_desired_min_tx_usec, bfd_clocks_to_usec (bm,
-								  bs->remote_desired_min_tx_clocks));
+	      bs->config_desired_min_tx_usec,
+	      bfd_nsec_to_usec (bs->remote_desired_min_tx_nsec));
   s =
     format (s, "%10s %-32s %20u\n", "", "Transmit interval",
-	    bfd_clocks_to_usec (bm, bs->transmit_interval_clocks));
+	    bfd_nsec_to_usec (bs->transmit_interval_nsec));
   u64 now = clib_cpu_time_now ();
   u8 *tmp = NULL;
-  if (bs->last_tx_clocks > 0)
+  if (bs->last_tx_nsec > 0)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_tx_clocks) *
+      tmp = format (tmp, "%.2fs ago", (now - bs->last_tx_nsec) *
 		    vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame tx", tmp);
       vec_reset_length (tmp);
     }
-  if (bs->last_rx_clocks)
+  if (bs->last_rx_nsec)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_rx_clocks) *
+      tmp = format (tmp, "%.2fs ago", (now - bs->last_rx_nsec) *
 		    vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame rx", tmp);
       vec_reset_length (tmp);
@@ -84,14 +83,17 @@ format_bfd_session_cli (u8 * s, va_list * args)
 	    1, bs->remote_min_echo_rx_usec);
   if (bs->echo)
     {
-      s = format (s, "%10s %-32s %20u\n", "", "Echo transmit interval",
-		  bfd_clocks_to_usec (bm, bs->echo_transmit_interval_clocks));
-      tmp = format (tmp, "%.2fs ago", (now - bs->echo_last_tx_clocks) *
-		    vm->clib_time.seconds_per_clock);
+      s =
+	format (s, "%10s %-32s %20u\n", "", "Echo transmit interval",
+		bfd_nsec_to_usec (bs->echo_transmit_interval_nsec));
+      tmp =
+	format (tmp, "%.2fs ago",
+		(now -
+		 bs->echo_last_tx_nsec) * vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last echo frame tx", tmp);
       vec_reset_length (tmp);
       tmp = format (tmp, "%.6fs",
-		    (bs->echo_last_rx_clocks - bs->echo_last_tx_clocks) *
+		    (bs->echo_last_rx_nsec - bs->echo_last_tx_nsec) *
 		    vm->clib_time.seconds_per_clock);
       s =
 	format (s, "%10s %-32s %20v\n", "", "Last echo frame roundtrip time",
@@ -149,7 +151,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
 		      "Local value", "Remote value");
       /* *INDENT-OFF* */
       pool_foreach (bs, bm->sessions, {
-        s = format (s, "%U", format_bfd_session_cli, vm, bm, bs);
+        s = format (s, "%U", format_bfd_session_cli, vm, bs);
       });
       /* *INDENT-ON* */
       vlib_cli_output (vm, "%v", s);
@@ -684,8 +686,9 @@ bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
 			   ADMIN_STR, admin_up_down_token);
       goto out;
     }
-  vnet_api_error_t rv = bfd_udp_session_set_flags (sw_if_index, &local_addr,
-						   &peer_addr, admin_up_down);
+  vnet_api_error_t rv =
+    bfd_udp_session_set_flags (vm, sw_if_index, &local_addr,
+			       &peer_addr, admin_up_down);
   if (rv)
     {
       ret =

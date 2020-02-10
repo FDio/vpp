@@ -1132,7 +1132,6 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
 
-    @unittest.skip("Test fails sporadically, BFD rework required to fix it")
     def test_echo(self):
         """ echo function """
         bfd_session_up(self)
@@ -1189,7 +1188,6 @@ class BFD4TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assertTrue(echo_seen, "No echo packets received")
 
-    @unittest.skip("Test fails sporadically, BFD rework required to fix it")
     def test_echo_fail(self):
         """ session goes down if echo function fails """
         bfd_session_up(self)

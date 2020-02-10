@@ -19,12 +19,12 @@
 #ifndef __included_bfd_main_h__
 #define __included_bfd_main_h__
 
-#include <vppinfra/timing_wheel.h>
 #include <vnet/vnet.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vlib/log.h>
 #include <vppinfra/os.h>
+#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 #define foreach_bfd_mode(F) \
   F (asynchronous)          \
@@ -111,35 +111,35 @@ typedef struct bfd_session_s
   /** configured desired min tx interval (microseconds) */
   u32 config_desired_min_tx_usec;
 
-  /** configured desired min tx interval (clocks) */
-  u64 config_desired_min_tx_clocks;
+  /** configured desired min tx interval (nsec) */
+  u64 config_desired_min_tx_nsec;
 
-  /** effective desired min tx interval (clocks) */
-  u64 effective_desired_min_tx_clocks;
+  /** effective desired min tx interval (nsec) */
+  u64 effective_desired_min_tx_nsec;
 
   /** configured required min rx interval (microseconds) */
   u32 config_required_min_rx_usec;
 
-  /** configured required min rx interval (clocks) */
-  u64 config_required_min_rx_clocks;
+  /** configured required min rx interval (nsec) */
+  u64 config_required_min_rx_nsec;
 
-  /** effective required min rx interval (clocks) */
-  u64 effective_required_min_rx_clocks;
+  /** effective required min rx interval (nsec) */
+  u64 effective_required_min_rx_nsec;
 
   /** remote min rx interval (microseconds) */
   u64 remote_min_rx_usec;
 
-  /** remote min rx interval (clocks) */
-  u64 remote_min_rx_clocks;
+  /** remote min rx interval (nsec) */
+  u64 remote_min_rx_nsec;
 
   /** remote min echo rx interval (microseconds) */
   u64 remote_min_echo_rx_usec;
 
-  /** remote min echo rx interval (clocks) */
-  u64 remote_min_echo_rx_clocks;
+  /** remote min echo rx interval (nsec) */
+  u64 remote_min_echo_rx_nsec;
 
-  /** remote desired min tx interval (clocks) */
-  u64 remote_desired_min_tx_clocks;
+  /** remote desired min tx interval (nsec) */
+  u64 remote_desired_min_tx_nsec;
 
   /** configured detect multiplier */
   u8 local_detect_mult;
@@ -153,38 +153,41 @@ typedef struct bfd_session_s
   /** 1 is echo function is active, 0 otherwise */
   u8 echo;
 
-  /** set to value of timer in timing wheel, 0 if never set */
-  u64 wheel_time_clocks;
+  /** next event time in nsec for this session (0 if no event) */
+  u64 event_time_nsec;
+
+  /** timing wheel internal id used to manipulate timer (if set) */
+  u32 tw_id;
 
   /** transmit interval */
-  u64 transmit_interval_clocks;
+  u64 transmit_interval_nsec;
 
   /** next time at which to transmit a packet */
-  u64 tx_timeout_clocks;
+  u64 tx_timeout_nsec;
 
   /** timestamp of last packet transmitted */
-  u64 last_tx_clocks;
+  u64 last_tx_nsec;
 
   /** timestamp of last packet received */
-  u64 last_rx_clocks;
+  u64 last_rx_nsec;
 
   /** transmit interval for echo packets */
-  u64 echo_transmit_interval_clocks;
+  u64 echo_transmit_interval_nsec;
 
   /** next time at which to transmit echo packet */
-  u64 echo_tx_timeout_clocks;
+  u64 echo_tx_timeout_nsec;
 
   /** timestamp of last echo packet transmitted */
-  u64 echo_last_tx_clocks;
+  u64 echo_last_tx_nsec;
 
   /** timestamp of last echo packet received */
-  u64 echo_last_rx_clocks;
+  u64 echo_last_rx_nsec;
 
   /** secret used for calculating/checking checksum of echo packets */
   u32 echo_secret;
 
   /** detection time */
-  u64 detection_time_clocks;
+  u64 detection_time_nsec;
 
   /** state info regarding poll sequence */
   bfd_poll_state_e poll_state;
@@ -193,7 +196,7 @@ typedef struct bfd_session_s
    * helper for delayed poll sequence - marks either start of running poll
    * sequence or timeout, after which we can start the next poll sequnce
    */
-  u64 poll_state_start_or_timeout_clocks;
+  u64 poll_state_start_or_timeout_nsec;
 
   /** authentication information */
   struct
@@ -270,22 +273,19 @@ typedef struct
   int bfd_process_wakeup_events_in_flight;
 
   /** The timestamp of last wakeup event being sent */
-  u64 bfd_process_wakeup_event_start_clocks;
+  u64 bfd_process_wakeup_event_start_nsec;
 
   /** The time it took the last wakeup event to make it to handling */
-  u64 bfd_process_wakeup_event_delay_clocks;
+  u64 bfd_process_wakeup_event_delay_nsec;
 
   /** When the bfd process is supposed to wake up next */
-  u64 bfd_process_next_wakeup_clocks;
+  u64 bfd_process_next_wakeup_nsec;
 
   /** pool of bfd sessions context data */
   bfd_session_t *sessions;
 
   /** timing wheel for scheduling timeouts */
-  timing_wheel_t wheel;
-
-  /** timing wheel inaccuracy, in clocks */
-  u64 wheel_inaccuracy;
+    TWT (tw_timer_wheel) wheel;
 
   /** hashmap - bfd session by discriminator */
   u32 *session_by_disc;
@@ -297,14 +297,14 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  /** cpu clocks per second */
-  f64 cpu_cps;
+  /** how many nanoseconds is one timing wheel tick */
+  u64 nsec_per_tw_tick;
 
-  /** default desired min tx in clocks */
-  u64 default_desired_min_tx_clocks;
+  /** default desired min tx in nsec */
+  u64 default_desired_min_tx_nsec;
 
-  /** minimum required min rx while echo function is active - clocks */
-  u64 min_required_min_rx_while_echo_clocks;
+  /** minimum required min rx while echo function is active - nsec */
+  u64 min_required_min_rx_while_echo_nsec;
 
   /** for generating random numbers */
   u32 random_seed;
@@ -357,8 +357,8 @@ typedef enum
 typedef CLIB_PACKED (struct {
   /** local discriminator */
   u32 discriminator;
-  /** expire time of this packet - clocks */
-  u64 expire_time_clocks;
+  /** expire time of this packet - nsec */
+  u64 expire_time_nsec;
   /** checksum - based on discriminator, local secret and expire time */
   u64 checksum;
 }) bfd_echo_pkt_t;
@@ -410,11 +410,13 @@ void bfd_put_session (bfd_main_t * bm, bfd_session_t * bs);
 bfd_session_t *bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx);
 bfd_session_t *bfd_find_session_by_disc (bfd_main_t * bm, u32 disc);
 void bfd_session_start (bfd_main_t * bm, bfd_session_t * bs);
-void bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * bfd, u32 bs_idx);
-int bfd_consume_echo_pkt (bfd_main_t * bm, vlib_buffer_t * b);
+void bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm,
+		      const bfd_pkt_t * bfd, u32 bs_idx);
+int bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm,
+			  vlib_buffer_t * b);
 int bfd_verify_pkt_common (const bfd_pkt_t * pkt);
-int bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size,
-			 bfd_session_t * bs);
+int bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt,
+			 u16 pkt_size, bfd_session_t * bs);
 void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
 void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
 				   bfd_main_t * bm, bfd_session_t * bs,
@@ -422,7 +424,8 @@ void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
 u8 *format_bfd_session (u8 * s, va_list * args);
 u8 *format_bfd_session_brief (u8 * s, va_list * args);
 u8 *format_bfd_auth_key (u8 * s, va_list * args);
-void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
+void bfd_session_set_flags (vlib_main_t * vm, bfd_session_t * bs,
+			    u8 admin_up_down);
 unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
 vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
 				    u8 bfd_key_id, u8 is_delayed);
@@ -432,20 +435,27 @@ vnet_api_error_t bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 					 u32 required_min_rx_usec,
 					 u8 detect_mult);
 
-u32 bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks);
+u32 bfd_nsec_to_usec (u64 nsec);
 const char *bfd_poll_state_string (bfd_poll_state_e state);
 
-#define USEC_PER_MS 1000LL
-#define USEC_PER_SECOND (1000 * USEC_PER_MS)
+#define USEC_PER_MS (1000LL)
+#define MSEC_PER_SEC (1000LL)
+#define NSEC_PER_USEC (1000LL)
+#define USEC_PER_SEC (MSEC_PER_SEC * USEC_PER_MS)
+#define NSEC_PER_SEC (NSEC_PER_USEC * USEC_PER_SEC)
+#define SEC_PER_NSEC ((f64)1/NSEC_PER_SEC)
+
+/** timing wheel tick-rate, 1ms should be good enough */
+#define BFD_TW_TPS (MSEC_PER_SEC)
 
 /** default, slow transmission interval for BFD packets, per spec at least 1s */
-#define BFD_DEFAULT_DESIRED_MIN_TX_USEC USEC_PER_SECOND
+#define BFD_DEFAULT_DESIRED_MIN_TX_USEC USEC_PER_SEC
 
 /**
  * minimum required min rx set locally when echo function is used, per spec
  * should be set to at least 1s
  */
-#define BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO USEC_PER_SECOND
+#define BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO USEC_PER_SEC
 
 /**
  * Register a callback function to receive session notifications.
