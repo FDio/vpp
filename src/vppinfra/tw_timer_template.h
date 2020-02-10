@@ -197,9 +197,6 @@ typedef struct
   /** current tick */
   u64 current_tick;
 
-  /** first expiration time */
-  u64 first_expires_tick;
-
   /** current wheel indices */
   u32 current_index[TW_TIMER_WHEELS];
 
