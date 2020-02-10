@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7770f64_9b37e81c",
+        "filename": "src/plugins/nat/test/test_dslite.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-02-10T16:55:18Z",
+      "side": 1,
+      "message": "This needs dslite configuration moved out of nat as well.",
+      "range": {
+        "startLine": 240,
+        "startChar": 8,
+        "endLine": 240,
+        "endChar": 62
+      },
+      "revId": "2c6639c695aebf0cd5ac74ad31fd331547fa0126",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
