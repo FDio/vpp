@@ -421,7 +421,6 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
     }
   tw->timer_interval = timer_interval_in_seconds;
   tw->ticks_per_second = 1.0 / timer_interval_in_seconds;
-  tw->first_expires_tick = ~0ULL;
 
   vec_validate (tw->expired_timer_handles, 0);
   _vec_len (tw->expired_timer_handles) = 0;
