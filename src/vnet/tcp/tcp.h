@@ -436,6 +436,8 @@ typedef struct _tcp_connection
   u16 mss;		/**< Our max seg size that includes options */
   u32 timestamp_delta;	/**< Offset for timestamp */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
+
+#define rst_state snd_wl1
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
@@ -503,11 +505,6 @@ typedef struct _tcp_lookup_dispatch
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /** worker time */
-  u32 time_now;
-
-  /** worker timer wheel */
-  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 
   /** tx buffer free list */
   u32 *tx_buffers;
@@ -521,13 +518,21 @@ typedef struct tcp_worker_ctx_
   /** vector of pending disconnect notifications */
   u32 *pending_disconnects;
 
+  u32 *pending_resets;
+
   /** convenience pointer to this thread's vlib main */
   vlib_main_t *vm;
+
+  /** worker time */
+  u32 time_now;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
+
+  /** worker timer wheel */
+  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 
 } tcp_worker_ctx_t;
 
@@ -753,7 +758,6 @@ tcp_connection_t *tcp_connection_alloc (u8 thread_index);
 tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
 					       tcp_connection_t * base);
 void tcp_connection_free (tcp_connection_t * tc);
-void tcp_connection_reset (tcp_connection_t * tc);
 int tcp_configure_v4_source_address_range (vlib_main_t * vm,
 					   ip4_address_t * start,
 					   ip4_address_t * end, u32 table_id);

@@ -335,56 +335,6 @@ tcp_connection_free (tcp_connection_t * tc)
   pool_put (tm->connections[tc->c_thread_index], tc);
 }
 
-/** Notify session that connection has been reset.
- *
- * Switch state to closed and wait for session to call cleanup.
- */
-void
-tcp_connection_reset (tcp_connection_t * tc)
-{
-  TCP_EVT (TCP_EVT_RST_RCVD, tc);
-  switch (tc->state)
-    {
-    case TCP_STATE_SYN_RCVD:
-      /* Cleanup everything. App wasn't notified yet */
-      session_transport_delete_notify (&tc->connection);
-      tcp_connection_cleanup (tc);
-      break;
-    case TCP_STATE_SYN_SENT:
-      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
-      tcp_connection_cleanup (tc);
-      break;
-    case TCP_STATE_ESTABLISHED:
-      tcp_connection_timers_reset (tc);
-      /* Set the cleanup timer, in case the session layer/app don't
-       * cleanly close the connection */
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.closewait_time);
-      session_transport_reset_notify (&tc->connection);
-      tcp_cong_recovery_off (tc);
-      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-      session_transport_closed_notify (&tc->connection);
-      break;
-    case TCP_STATE_CLOSE_WAIT:
-    case TCP_STATE_FIN_WAIT_1:
-    case TCP_STATE_FIN_WAIT_2:
-    case TCP_STATE_CLOSING:
-    case TCP_STATE_LAST_ACK:
-      tcp_connection_timers_reset (tc);
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.closewait_time);
-      tcp_cong_recovery_off (tc);
-      /* Make sure we mark the session as closed. In some states we may
-       * be still trying to send data */
-      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-      session_transport_closed_notify (&tc->connection);
-      break;
-    case TCP_STATE_CLOSED:
-    case TCP_STATE_TIME_WAIT:
-      break;
-    default:
-      TCP_DBG ("reset state: %u", tc->state);
-    }
-}
-
 /**
  * Begin connection closing procedure.
  *
