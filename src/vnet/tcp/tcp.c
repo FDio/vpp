@@ -655,6 +655,10 @@ tcp_init_rcv_mss (tcp_connection_t * tc)
 {
   u8 ip_hdr_len;
 
+  /* Already provided at connection init time */
+  if (tc->mss)
+    return;
+
   ip_hdr_len = tc->c_is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
   tc->mss = tcp_cfg.default_mtu - sizeof (tcp_header_t) - ip_hdr_len;
 }
@@ -699,6 +703,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tcp_set_time_now (tcp_get_worker (vlib_get_thread_index ()));
 
   tcp_init_rcv_mss (tc);
+
   tc->iss = tcp_generate_random_iss (tc);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
@@ -819,6 +824,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   tc->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
+  tc->mss = rmt->mss;
 
   TCP_EVT (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;

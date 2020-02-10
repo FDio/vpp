@@ -184,6 +184,7 @@ typedef struct transport_endpoint_
 #define foreach_transport_endpoint_cfg_fields				\
   foreach_transport_endpoint_fields					\
   _(transport_endpoint_t, peer)						\
+  _(u16, mss)								\
 
 typedef struct transport_endpoint_pair_
 {
