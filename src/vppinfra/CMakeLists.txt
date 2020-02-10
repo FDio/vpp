@@ -24,6 +24,13 @@ else(VPP_USE_DLMALLOC)
   set(DLMALLOC 0)
 endif(VPP_USE_DLMALLOC)
 
+option(VPP_VECTOR_GROW_BY_ONE "Vectors grow by one, instead of 3/2" OFF)
+if(VPP_VECTOR_GROW_BY_ONE)
+  set(VECTOR_GROW_BY_ONE 1)
+else(VPP_VECTOR_GROW_BY_ONE)
+  set(VECTOR_GROW_BY_ONE 0)
+endif(VPP_VECTOR_GROW_BY_ONE)
+
 find_library(NUMA numa)
 if (NUMA)
   set(NUMA_LIBRARY_FOUND 1)
