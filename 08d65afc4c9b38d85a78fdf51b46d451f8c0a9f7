@@ -127,6 +127,24 @@
       "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e299c5ae_412c7f69",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-10T18:19:41Z",
+      "side": 1,
+      "message": "thanks. please use the lcov output to ensure you have all those exception cases covered.",
+      "parentUuid": "d8c8ba08_66f1ffec",
+      "revId": "08d65afc4c9b38d85a78fdf51b46d451f8c0a9f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
