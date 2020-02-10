@@ -673,6 +673,8 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  errors++;
 	  continue;
 	}
+      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	continue;
 
       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;

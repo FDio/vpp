@@ -295,7 +295,13 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
     }
   else
     {
-      tls_notify_app_accept (ctx);
+      if (!ctx->is_passive_close)
+	tls_notify_app_accept (ctx);
+      else
+	{
+	  openssl_handle_handshake_failure (ctx);
+	  return -1;
+	}
     }
 
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %s",
@@ -401,6 +407,7 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   u32 deq_max, enq_max, deq_now, to_read;
   session_t *app_session;
   svm_fifo_t *f;
+  int fifo_empty = 0;
 
   if (PREDICT_FALSE (SSL_in_init (oc->ssl)))
     {
@@ -438,11 +445,21 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
     }
   if (svm_fifo_max_dequeue_cons (f))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
+  else
+    fifo_empty = 1;
 
 check_app_fifo:
 
   if (BIO_ctrl_pending (oc->wbio) <= 0)
-    return wrote;
+    {
+      if (ctx->is_passive_close && fifo_empty)
+	{
+	  session_transport_reset_notify (&ctx->connection);
+	  session_transport_closed_notify (&ctx->connection);
+	  tls_disconnect_transport (ctx);
+	}
+      return wrote;
+    }
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
