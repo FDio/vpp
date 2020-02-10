@@ -52,15 +52,24 @@ bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 }
 
 static u64
-bfd_usec_to_clocks (const bfd_main_t * bm, u64 us)
+bfd_usec_to_nsec (u64 us)
 {
-  return bm->cpu_cps * ((f64) us / USEC_PER_SECOND);
+  return us * NSEC_PER_USEC;
 }
 
 u32
-bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks)
+bfd_nsec_to_usec (u64 nsec)
 {
-  return ((f64) clocks / bm->cpu_cps) * USEC_PER_SECOND;
+  return nsec / NSEC_PER_USEC;
+}
+
+always_inline u64
+bfd_time_now_nsec (vlib_main_t * vm, f64 * vm_time)
+{
+  f64 _vm_time = vlib_time_now (vm);
+  if (vm_time)
+    *vm_time = _vm_time;
+  return _vm_time * NSEC_PER_SEC;
 }
 
 static vlib_node_registration_t bfd_process_node;
@@ -105,12 +114,12 @@ bfd_set_defaults (bfd_main_t * bm, bfd_session_t * bs)
   bs->remote_discr = 0;
   bs->hop_type = BFD_HOP_TYPE_SINGLE;
   bs->config_desired_min_tx_usec = BFD_DEFAULT_DESIRED_MIN_TX_USEC;
-  bs->config_desired_min_tx_clocks = bm->default_desired_min_tx_clocks;
-  bs->effective_desired_min_tx_clocks = bm->default_desired_min_tx_clocks;
+  bs->config_desired_min_tx_nsec = bm->default_desired_min_tx_nsec;
+  bs->effective_desired_min_tx_nsec = bm->default_desired_min_tx_nsec;
   bs->remote_min_rx_usec = 1;
-  bs->remote_min_rx_clocks = bfd_usec_to_clocks (bm, bs->remote_min_rx_usec);
+  bs->remote_min_rx_nsec = bfd_usec_to_nsec (bs->remote_min_rx_usec);
   bs->remote_min_echo_rx_usec = 0;
-  bs->remote_min_echo_rx_clocks = 0;
+  bs->remote_min_echo_rx_nsec = 0;
   bs->remote_demand = 0;
   bs->auth.remote_seq_number = 0;
   bs->auth.remote_seq_number_known = 0;
@@ -130,7 +139,7 @@ bfd_set_diag (bfd_session_t * bs, bfd_diag_code_e code)
 }
 
 static void
-bfd_set_state (bfd_main_t * bm, bfd_session_t * bs,
+bfd_set_state (vlib_main_t * vm, bfd_main_t * bm, bfd_session_t * bs,
 	       bfd_state_e new_state, int handling_wakeup)
 {
   if (bs->local_state != new_state)
@@ -139,7 +148,8 @@ bfd_set_state (bfd_main_t * bm, bfd_session_t * bs,
 	       bfd_state_string (bs->local_state),
 	       bfd_state_string (new_state));
       bs->local_state = new_state;
-      bfd_on_state_change (bm, bs, clib_cpu_time_now (), handling_wakeup);
+      bfd_on_state_change (bm, bs, bfd_time_now_nsec (vm, NULL),
+			   handling_wakeup);
     }
 }
 
@@ -171,20 +181,19 @@ bfd_set_poll_state (bfd_session_t * bs, bfd_poll_state_e state)
 static void
 bfd_recalc_tx_interval (bfd_main_t * bm, bfd_session_t * bs)
 {
-  bs->transmit_interval_clocks =
-    clib_max (bs->effective_desired_min_tx_clocks, bs->remote_min_rx_clocks);
+  bs->transmit_interval_nsec =
+    clib_max (bs->effective_desired_min_tx_nsec, bs->remote_min_rx_nsec);
   BFD_DBG ("Recalculated transmit interval " BFD_CLK_FMT,
-	   BFD_CLK_PRN (bs->transmit_interval_clocks));
+	   BFD_CLK_PRN (bs->transmit_interval_nsec));
 }
 
 static void
 bfd_recalc_echo_tx_interval (bfd_main_t * bm, bfd_session_t * bs)
 {
-  bs->echo_transmit_interval_clocks =
-    clib_max (bs->effective_desired_min_tx_clocks,
-	      bs->remote_min_echo_rx_clocks);
+  bs->echo_transmit_interval_nsec =
+    clib_max (bs->effective_desired_min_tx_nsec, bs->remote_min_echo_rx_nsec);
   BFD_DBG ("Recalculated echo transmit interval " BFD_CLK_FMT,
-	   BFD_CLK_PRN (bs->echo_transmit_interval_clocks));
+	   BFD_CLK_PRN (bs->echo_transmit_interval_nsec));
 }
 
 static void
@@ -193,10 +202,10 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
   if (bs->local_detect_mult > 1)
     {
       /* common case - 75-100% of transmit interval */
-      bs->tx_timeout_clocks = bs->last_tx_clocks +
+      bs->tx_timeout_nsec = bs->last_tx_nsec +
 	(1 - .25 * (random_f64 (&bm->random_seed))) *
-	bs->transmit_interval_clocks;
-      if (bs->tx_timeout_clocks < now)
+	bs->transmit_interval_nsec;
+      if (bs->tx_timeout_nsec < now)
 	{
 	  /*
 	   * the timeout is in the past, which means that either remote
@@ -204,18 +213,18 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 	   */
 	  BFD_DBG ("Missed %lu transmit events (now is %lu, calc "
 		   "tx_timeout is %lu)",
-		   (now - bs->tx_timeout_clocks) /
-		   bs->transmit_interval_clocks, now, bs->tx_timeout_clocks);
-	  bs->tx_timeout_clocks = now;
+		   (now - bs->tx_timeout_nsec) /
+		   bs->transmit_interval_nsec, now, bs->tx_timeout_nsec);
+	  bs->tx_timeout_nsec = now;
 	}
     }
   else
     {
       /* special case - 75-90% of transmit interval */
-      bs->tx_timeout_clocks = bs->last_tx_clocks +
+      bs->tx_timeout_nsec = bs->last_tx_nsec +
 	(.9 - .15 * (random_f64 (&bm->random_seed))) *
-	bs->transmit_interval_clocks;
-      if (bs->tx_timeout_clocks < now)
+	bs->transmit_interval_nsec;
+      if (bs->tx_timeout_nsec < now)
 	{
 	  /*
 	   * the timeout is in the past, which means that either remote
@@ -223,39 +232,39 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 	   */
 	  BFD_DBG ("Missed %lu transmit events (now is %lu, calc "
 		   "tx_timeout is %lu)",
-		   (now - bs->tx_timeout_clocks) /
-		   bs->transmit_interval_clocks, now, bs->tx_timeout_clocks);
-	  bs->tx_timeout_clocks = now;
+		   (now - bs->tx_timeout_nsec) /
+		   bs->transmit_interval_nsec, now, bs->tx_timeout_nsec);
+	  bs->tx_timeout_nsec = now;
 	}
     }
-  if (bs->tx_timeout_clocks)
+  if (bs->tx_timeout_nsec)
     {
-      BFD_DBG ("Next transmit in %lu clocks/%.02fs@%lu",
-	       bs->tx_timeout_clocks - now,
-	       (bs->tx_timeout_clocks - now) / bm->cpu_cps,
-	       bs->tx_timeout_clocks);
+      BFD_DBG ("Next transmit in %lu nsec/%.02fs@%lu",
+	       bs->tx_timeout_nsec - now,
+	       (bs->tx_timeout_nsec - now) * SEC_PER_NSEC,
+	       bs->tx_timeout_nsec);
     }
 }
 
 static void
 bfd_calc_next_echo_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 {
-  bs->echo_tx_timeout_clocks =
-    bs->echo_last_tx_clocks + bs->echo_transmit_interval_clocks;
-  if (bs->echo_tx_timeout_clocks < now)
+  bs->echo_tx_timeout_nsec =
+    bs->echo_last_tx_nsec + bs->echo_transmit_interval_nsec;
+  if (bs->echo_tx_timeout_nsec < now)
     {
       /* huh, we've missed it already, transmit now */
       BFD_DBG ("Missed %lu echo transmit events (now is %lu, calc tx_timeout "
 	       "is %lu)",
-	       (now - bs->echo_tx_timeout_clocks) /
-	       bs->echo_transmit_interval_clocks,
-	       now, bs->echo_tx_timeout_clocks);
-      bs->echo_tx_timeout_clocks = now;
+	       (now - bs->echo_tx_timeout_nsec) /
+	       bs->echo_transmit_interval_nsec,
+	       now, bs->echo_tx_timeout_nsec);
+      bs->echo_tx_timeout_nsec = now;
     }
-  BFD_DBG ("Next echo transmit in %lu clocks/%.02fs@%lu",
-	   bs->echo_tx_timeout_clocks - now,
-	   (bs->echo_tx_timeout_clocks - now) / bm->cpu_cps,
-	   bs->echo_tx_timeout_clocks);
+  BFD_DBG ("Next echo transmit in %lu nsec/%.02fs@%lu",
+	   bs->echo_tx_timeout_nsec - now,
+	   (bs->echo_tx_timeout_nsec - now) * SEC_PER_NSEC,
+	   bs->echo_tx_timeout_nsec);
 }
 
 static void
@@ -263,13 +272,13 @@ bfd_recalc_detection_time (bfd_main_t * bm, bfd_session_t * bs)
 {
   if (bs->local_state == BFD_STATE_init || bs->local_state == BFD_STATE_up)
     {
-      bs->detection_time_clocks =
+      bs->detection_time_nsec =
 	bs->remote_detect_mult *
-	clib_max (bs->effective_required_min_rx_clocks,
-		  bs->remote_desired_min_tx_clocks);
-      BFD_DBG ("Recalculated detection time %lu clocks/%.2fs",
-	       bs->detection_time_clocks,
-	       bs->detection_time_clocks / bm->cpu_cps);
+	clib_max (bs->effective_required_min_rx_nsec,
+		  bs->remote_desired_min_tx_nsec);
+      BFD_DBG ("Recalculated detection time %lu nsec/%.3fs",
+	       bs->detection_time_nsec,
+	       bs->detection_time_nsec * SEC_PER_NSEC);
     }
 }
 
@@ -282,13 +291,13 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   u64 tx_timeout = 0;
   if (BFD_STATE_up == bs->local_state)
     {
-      rx_timeout = bs->last_rx_clocks + bs->detection_time_clocks;
+      rx_timeout = bs->last_rx_nsec + bs->detection_time_nsec;
     }
   if (BFD_STATE_up != bs->local_state ||
       (!bs->remote_demand && bs->remote_min_rx_usec) ||
       BFD_POLL_NOT_NEEDED != bs->poll_state)
     {
-      tx_timeout = bs->tx_timeout_clocks;
+      tx_timeout = bs->tx_timeout_nsec;
     }
   if (tx_timeout && rx_timeout)
     {
@@ -302,45 +311,56 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
     {
       next = rx_timeout;
     }
-  if (bs->echo && next > bs->echo_tx_timeout_clocks)
+  if (bs->echo && next > bs->echo_tx_timeout_nsec)
     {
-      next = bs->echo_tx_timeout_clocks;
+      next = bs->echo_tx_timeout_nsec;
     }
   BFD_DBG ("bs_idx=%u, tx_timeout=%lu, echo_tx_timeout=%lu, rx_timeout=%lu, "
 	   "next=%s",
-	   bs->bs_idx, tx_timeout, bs->echo_tx_timeout_clocks, rx_timeout,
+	   bs->bs_idx, tx_timeout, bs->echo_tx_timeout_nsec, rx_timeout,
 	   next == tx_timeout
-	   ? "tx" : (next == bs->echo_tx_timeout_clocks ? "echo tx" : "rx"));
-  /* sometimes the wheel expires an event a bit sooner than requested, account
-     for that here */
-  if (next && (now + bm->wheel_inaccuracy > bs->wheel_time_clocks ||
-	       next < bs->wheel_time_clocks || !bs->wheel_time_clocks))
+	   ? "tx" : (next == bs->echo_tx_timeout_nsec ? "echo tx" : "rx"));
+  if (next)
     {
       int send_signal = 0;
-      bs->wheel_time_clocks = next;
-      BFD_DBG ("timing_wheel_insert(%p, %lu (%ld clocks/%.2fs in the "
-	       "future), %u);",
-	       &bm->wheel, bs->wheel_time_clocks,
-	       (i64) bs->wheel_time_clocks - clib_cpu_time_now (),
-	       (i64) (bs->wheel_time_clocks - clib_cpu_time_now ()) /
-	       bm->cpu_cps, bs->bs_idx);
+      bs->event_time_nsec = next;
+      /* add extra tick if it's not even */
+      u32 wheel_time_ticks =
+	(bs->event_time_nsec - now) / bm->nsec_per_tw_tick +
+	((bs->event_time_nsec - now) % bm->nsec_per_tw_tick != 0);
+      BFD_DBG ("event_time_nsec %lu (%lu nsec/%.3fs in future) -> "
+	       "wheel_time_ticks %u", bs->event_time_nsec,
+	       bs->event_time_nsec - now,
+	       (bs->event_time_nsec - now) * SEC_PER_NSEC, wheel_time_ticks);
       bfd_lock (bm);
-      timing_wheel_insert (&bm->wheel, bs->wheel_time_clocks, bs->bs_idx);
+      if (bs->tw_id)
+	{
+	  TW (tw_timer_update) (&bm->wheel, bs->tw_id, wheel_time_ticks);
+	  BFD_DBG ("tw_timer_update(%p, %u, %lu);", &bm->wheel, bs->tw_id,
+		   wheel_time_ticks);
+	}
+      else
+	{
+	  bs->tw_id =
+	    TW (tw_timer_start) (&bm->wheel, bs->bs_idx, 0, wheel_time_ticks);
+	  BFD_DBG ("tw_timer_start(%p, %u, 0, %lu) == %u;", &bm->wheel,
+		   bs->bs_idx, wheel_time_ticks);
+	}
 
       if (!handling_wakeup)
 	{
 
 	  /* Send only if it is earlier than current awaited wakeup time */
 	  send_signal =
-	    (bs->wheel_time_clocks < bm->bfd_process_next_wakeup_clocks) &&
+	    (bs->event_time_nsec < bm->bfd_process_next_wakeup_nsec) &&
 	    /*
 	     * If the wake-up time is within 2x the delay of the event propagation delay,
 	     * avoid the expense of sending the event. The 2x multiplier is to workaround the race whereby
 	     * simultaneous event + expired timer create one recurring bogus wakeup/suspend instance,
 	     * due to double scheduling of the node on the pending list.
 	     */
-	    (bm->bfd_process_next_wakeup_clocks - bs->wheel_time_clocks >
-	     2 * bm->bfd_process_wakeup_event_delay_clocks) &&
+	    (bm->bfd_process_next_wakeup_nsec - bs->event_time_nsec >
+	     2 * bm->bfd_process_wakeup_event_delay_nsec) &&
 	    /* Must be no events in flight to send an event */
 	    (!bm->bfd_process_wakeup_events_in_flight);
 
@@ -348,7 +368,7 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 	  if (send_signal)
 	    {
 	      bm->bfd_process_wakeup_events_in_flight++;
-	      bm->bfd_process_wakeup_event_start_clocks = now;
+	      bm->bfd_process_wakeup_event_start_nsec = now;
 	    }
 	}
       bfd_unlock (bm);
@@ -366,11 +386,11 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 static void
 bfd_set_effective_desired_min_tx (bfd_main_t * bm,
 				  bfd_session_t * bs, u64 now,
-				  u64 desired_min_tx_clocks)
+				  u64 desired_min_tx_nsec)
 {
-  bs->effective_desired_min_tx_clocks = desired_min_tx_clocks;
+  bs->effective_desired_min_tx_nsec = desired_min_tx_nsec;
   BFD_DBG ("Set effective desired min tx to " BFD_CLK_FMT,
-	   BFD_CLK_PRN (bs->effective_desired_min_tx_clocks));
+	   BFD_CLK_PRN (bs->effective_desired_min_tx_nsec));
   bfd_recalc_detection_time (bm, bs);
   bfd_recalc_tx_interval (bm, bs);
   bfd_recalc_echo_tx_interval (bm, bs);
@@ -380,11 +400,11 @@ bfd_set_effective_desired_min_tx (bfd_main_t * bm,
 static void
 bfd_set_effective_required_min_rx (bfd_main_t * bm,
 				   bfd_session_t * bs,
-				   u64 required_min_rx_clocks)
+				   u64 required_min_rx_nsec)
 {
-  bs->effective_required_min_rx_clocks = required_min_rx_clocks;
+  bs->effective_required_min_rx_nsec = required_min_rx_nsec;
   BFD_DBG ("Set effective required min rx to " BFD_CLK_FMT,
-	   BFD_CLK_PRN (bs->effective_required_min_rx_clocks));
+	   BFD_CLK_PRN (bs->effective_required_min_rx_nsec));
   bfd_recalc_detection_time (bm, bs);
 }
 
@@ -395,10 +415,9 @@ bfd_set_remote_required_min_rx (bfd_main_t * bm, bfd_session_t * bs,
   if (bs->remote_min_rx_usec != remote_required_min_rx_usec)
     {
       bs->remote_min_rx_usec = remote_required_min_rx_usec;
-      bs->remote_min_rx_clocks =
-	bfd_usec_to_clocks (bm, remote_required_min_rx_usec);
+      bs->remote_min_rx_nsec = bfd_usec_to_nsec (remote_required_min_rx_usec);
       BFD_DBG ("Set remote min rx to " BFD_CLK_FMT,
-	       BFD_CLK_PRN (bs->remote_min_rx_clocks));
+	       BFD_CLK_PRN (bs->remote_min_rx_nsec));
       bfd_recalc_detection_time (bm, bs);
       bfd_recalc_tx_interval (bm, bs);
     }
@@ -412,10 +431,10 @@ bfd_set_remote_required_min_echo_rx (bfd_main_t * bm, bfd_session_t * bs,
   if (bs->remote_min_echo_rx_usec != remote_required_min_echo_rx_usec)
     {
       bs->remote_min_echo_rx_usec = remote_required_min_echo_rx_usec;
-      bs->remote_min_echo_rx_clocks =
-	bfd_usec_to_clocks (bm, bs->remote_min_echo_rx_usec);
+      bs->remote_min_echo_rx_nsec =
+	bfd_usec_to_nsec (bs->remote_min_echo_rx_usec);
       BFD_DBG ("Set remote min echo rx to " BFD_CLK_FMT,
-	       BFD_CLK_PRN (bs->remote_min_echo_rx_clocks));
+	       BFD_CLK_PRN (bs->remote_min_echo_rx_nsec));
       bfd_recalc_echo_tx_interval (bm, bs);
     }
 }
@@ -437,8 +456,7 @@ bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
   BFD_DBG ("\nStarting session: %U", format_bfd_session, bs);
   vlib_log_info (bm->log_class, "start BFD session: %U",
 		 format_bfd_session_brief, bs);
-  bfd_set_effective_required_min_rx (bm, bs,
-				     bs->config_required_min_rx_clocks);
+  bfd_set_effective_required_min_rx (bm, bs, bs->config_required_min_rx_nsec);
   bfd_recalc_tx_interval (bm, bs);
   vlib_process_signal_event (bm->vlib_main, bm->bfd_process_node_index,
 			     BFD_EVENT_NEW_SESSION, bs->bs_idx);
@@ -446,16 +464,16 @@ bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
 }
 
 void
-bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
+bfd_session_set_flags (vlib_main_t * vm, bfd_session_t * bs, u8 admin_up_down)
 {
   bfd_main_t *bm = &bfd_main;
-  u64 now = clib_cpu_time_now ();
+  u64 now = bfd_time_now_nsec (vm, NULL);
   if (admin_up_down)
     {
       BFD_DBG ("Session set admin-up, bs-idx=%u", bs->bs_idx);
       vlib_log_info (bm->log_class, "set session admin-up: %U",
 		     format_bfd_session_brief, bs);
-      bfd_set_state (bm, bs, BFD_STATE_down, 0);
+      bfd_set_state (vm, bm, bs, BFD_STATE_down, 0);
       bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
       bfd_calc_next_tx (bm, bs, now);
       bfd_set_timer (bm, bs, now, 0);
@@ -466,7 +484,7 @@ bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
       vlib_log_info (bm->log_class, "set session admin-down: %U",
 		     format_bfd_session_brief, bs);
       bfd_set_diag (bs, BFD_DIAG_CODE_admin_down);
-      bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
+      bfd_set_state (vm, bm, bs, BFD_STATE_admin_down, 0);
       bfd_calc_next_tx (bm, bs, now);
       bfd_set_timer (bm, bs, now, 0);
     }
@@ -637,35 +655,35 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
       bs->echo = 0;
       bfd_set_effective_desired_min_tx (bm, bs, now,
 					clib_max
-					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks));
+					(bs->config_desired_min_tx_nsec,
+					 bm->default_desired_min_tx_nsec));
       bfd_set_effective_required_min_rx (bm, bs,
-					 bs->config_required_min_rx_clocks);
+					 bs->config_required_min_rx_nsec);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_down:
       bs->echo = 0;
       bfd_set_effective_desired_min_tx (bm, bs, now,
 					clib_max
-					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks));
+					(bs->config_desired_min_tx_nsec,
+					 bm->default_desired_min_tx_nsec));
       bfd_set_effective_required_min_rx (bm, bs,
-					 bs->config_required_min_rx_clocks);
+					 bs->config_required_min_rx_nsec);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_init:
       bs->echo = 0;
       bfd_set_effective_desired_min_tx (bm, bs, now,
-					bs->config_desired_min_tx_clocks);
+					bs->config_desired_min_tx_nsec);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_up:
       bfd_set_effective_desired_min_tx (bm, bs, now,
-					bs->config_desired_min_tx_clocks);
+					bs->config_desired_min_tx_nsec);
       if (BFD_POLL_NOT_NEEDED == bs->poll_state)
 	{
 	  bfd_set_effective_required_min_rx (bm, bs,
-					     bs->config_required_min_rx_clocks);
+					     bs->config_required_min_rx_nsec);
 	}
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
@@ -690,9 +708,9 @@ bfd_on_config_change (vlib_main_t * vm, vlib_node_runtime_t * rt,
    * timeout so that the session wakes up immediately
    */
   if (bs->remote_demand && BFD_POLL_NEEDED == bs->poll_state &&
-      bs->poll_state_start_or_timeout_clocks < now)
+      bs->poll_state_start_or_timeout_nsec < now)
     {
-      bs->tx_timeout_clocks = now;
+      bs->tx_timeout_nsec = now;
     }
   bfd_recalc_detection_time (bm, bs);
   bfd_set_timer (bm, bs, now, 0);
@@ -872,8 +890,8 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
   if (bs->echo)
     {
       pkt->req_min_rx =
-	clib_host_to_net_u32 (bfd_clocks_to_usec
-			      (bm, bs->effective_required_min_rx_clocks));
+	clib_host_to_net_u32 (bfd_nsec_to_usec
+			      (bs->effective_required_min_rx_nsec));
     }
   else
     {
@@ -894,10 +912,7 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
       bs->echo = 0;
       return;
     }
-  /* sometimes the wheel expires an event a bit sooner than requested,
-     account
-     for that here */
-  if (now + bm->wheel_inaccuracy >= bs->echo_tx_timeout_clocks)
+  if (now >= bs->echo_tx_timeout_nsec)
     {
       BFD_DBG ("\nSending echo packet: %U", format_bfd_session, bs);
       u32 bi;
@@ -912,10 +927,10 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
       bfd_echo_pkt_t *pkt = vlib_buffer_get_current (b);
       clib_memset (pkt, 0, sizeof (*pkt));
       pkt->discriminator = bs->local_discr;
-      pkt->expire_time_clocks =
-	now + bs->echo_transmit_interval_clocks * bs->local_detect_mult;
+      pkt->expire_time_nsec =
+	now + bs->echo_transmit_interval_nsec * bs->local_detect_mult;
       pkt->checksum =
-	bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_clocks,
+	bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_nsec,
 				bs->echo_secret);
       b->current_length = sizeof (*pkt);
       if (!bfd_echo_add_transport_layer (vm, bi, bs))
@@ -932,14 +947,14 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  vlib_buffer_free_one (vm, bi);
 	  return;
 	}
-      bs->echo_last_tx_clocks = now;
+      bs->echo_last_tx_nsec = now;
       bfd_calc_next_echo_tx (bm, bs, now);
     }
   else
     {
       BFD_DBG
 	("No need to send echo packet now, now is %lu, tx_timeout is %lu",
-	 now, bs->echo_tx_timeout_clocks);
+	 now, bs->echo_tx_timeout_nsec);
     }
 }
 
@@ -965,11 +980,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
       BFD_DBG ("Remote demand is set, not sending periodic control frame");
       return;
     }
-  /*
-   * sometimes the wheel expires an event a bit sooner than requested, account
-   * for that here
-   */
-  if (now + bm->wheel_inaccuracy >= bs->tx_timeout_clocks)
+  if (now >= bs->tx_timeout_nsec)
     {
       BFD_DBG ("\nSending periodic control frame: %U", format_bfd_session,
 	       bs);
@@ -986,15 +997,15 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
       switch (bs->poll_state)
 	{
 	case BFD_POLL_NEEDED:
-	  if (now < bs->poll_state_start_or_timeout_clocks)
+	  if (now < bs->poll_state_start_or_timeout_nsec)
 	    {
-	      BFD_DBG ("Cannot start a poll sequence yet, need to wait "
-		       "for " BFD_CLK_FMT,
-		       BFD_CLK_PRN (bs->poll_state_start_or_timeout_clocks -
+	      BFD_DBG ("Cannot start a poll sequence yet, need to wait for "
+		       BFD_CLK_FMT,
+		       BFD_CLK_PRN (bs->poll_state_start_or_timeout_nsec -
 				    now));
 	      break;
 	    }
-	  bs->poll_state_start_or_timeout_clocks = now;
+	  bs->poll_state_start_or_timeout_nsec = now;
 	  bfd_set_poll_state (bs, BFD_POLL_IN_PROGRESS);
 	  /* fallthrough */
 	case BFD_POLL_IN_PROGRESS:
@@ -1012,14 +1023,14 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	{
 	  vlib_buffer_free_one (vm, bi);
 	}
-      bs->last_tx_clocks = now;
+      bs->last_tx_nsec = now;
       bfd_calc_next_tx (bm, bs, now);
     }
   else
     {
       BFD_DBG
 	("No need to send control frame now, now is %lu, tx_timeout is %lu",
-	 now, bs->tx_timeout_clocks);
+	 now, bs->tx_timeout_nsec);
     }
 }
 
@@ -1034,7 +1045,7 @@ bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
   bfd_add_auth_section (b, bs);
   u32 bi = vlib_get_buffer_index (vm, b);
   bfd_add_transport_layer (vm, bi, bs);
-  bs->last_tx_clocks = clib_cpu_time_now ();
+  bs->last_tx_nsec = bfd_time_now_nsec (vm, NULL);
   /*
    * RFC allows to include changes in final frame, so if there were any
    * pending, we already did that, thus we can clear any pending poll needs
@@ -1043,15 +1054,10 @@ bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static void
-bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
-		      int handling_wakeup)
+bfd_check_rx_timeout (vlib_main_t * vm, bfd_main_t * bm, bfd_session_t * bs,
+		      u64 now, int handling_wakeup)
 {
-  /*
-   * sometimes the wheel expires an event a bit sooner than requested, account
-   * for that here
-   */
-  if (bs->last_rx_clocks + bs->detection_time_clocks <=
-      now + bm->wheel_inaccuracy)
+  if (bs->last_rx_nsec + bs->detection_time_nsec <= now)
     {
       BFD_DBG ("Rx timeout, session goes down");
       /*
@@ -1068,7 +1074,7 @@ bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
        */
       bs->remote_discr = 0;
       bfd_set_diag (bs, BFD_DIAG_CODE_det_time_exp);
-      bfd_set_state (bm, bs, BFD_STATE_down, handling_wakeup);
+      bfd_set_state (vm, bm, bs, BFD_STATE_down, handling_wakeup);
       /*
        * If the remote system does not receive any
        * BFD Control packets for a Detection Time, it SHOULD reset
@@ -1078,14 +1084,13 @@ bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
        */
       bfd_set_remote_required_min_rx (bm, bs, now, 1);
     }
-  else if (bs->echo &&
-	   bs->echo_last_rx_clocks +
-	   bs->echo_transmit_interval_clocks * bs->local_detect_mult <=
-	   now + bm->wheel_inaccuracy)
+  else if (bs->echo
+	   && bs->echo_last_rx_nsec +
+	   bs->echo_transmit_interval_nsec * bs->local_detect_mult <= now)
     {
       BFD_DBG ("Echo rx timeout, session goes down");
       bfd_set_diag (bs, BFD_DIAG_CODE_echo_failed);
-      bfd_set_state (bm, bs, BFD_STATE_down, handling_wakeup);
+      bfd_set_state (vm, bm, bs, BFD_STATE_down, handling_wakeup);
     }
 }
 
@@ -1103,23 +1108,23 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
       bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_init:
-      bfd_check_rx_timeout (bm, bs, now, 1);
+      bfd_check_rx_timeout (vm, bm, bs, now, 1);
       bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_up:
-      bfd_check_rx_timeout (bm, bs, now, 1);
+      bfd_check_rx_timeout (vm, bm, bs, now, 1);
       if (BFD_POLL_NOT_NEEDED == bs->poll_state && !bs->echo &&
 	  bfd_is_echo_possible (bs))
 	{
 	  /* switch on echo function as main detection method now */
 	  BFD_DBG ("Switching on echo function, bs_idx=%u", bs->bs_idx);
 	  bs->echo = 1;
-	  bs->echo_last_rx_clocks = now;
-	  bs->echo_tx_timeout_clocks = now;
+	  bs->echo_last_rx_nsec = now;
+	  bs->echo_tx_timeout_nsec = now;
 	  bfd_set_effective_required_min_rx (bm, bs,
 					     clib_max
-					     (bm->min_required_min_rx_while_echo_clocks,
-					      bs->config_required_min_rx_clocks));
+					     (bm->min_required_min_rx_while_echo_nsec,
+					      bs->config_required_min_rx_nsec));
 	  bfd_set_poll_state (bs, BFD_POLL_NEEDED);
 	}
       bfd_send_periodic (vm, rt, bm, bs, now);
@@ -1146,36 +1151,48 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   while (1)
     {
-      u64 now = clib_cpu_time_now ();
+      f64 vm_time;
+      u64 now = bfd_time_now_nsec (vm, &vm_time);
+      BFD_DBG ("wakeup, now is %llunsec, vlib_time_now() is %.9f", now,
+	       vm_time);
       bfd_lock (bm);
-      u64 next_expire = timing_wheel_next_expiring_elt_time (&bm->wheel);
-      BFD_DBG ("timing_wheel_next_expiring_elt_time(%p) returns %lu",
-	       &bm->wheel, next_expire);
-      bm->bfd_process_next_wakeup_clocks =
-	(i64) next_expire >= 0 ? next_expire : ~0;
-      bfd_unlock (bm);
-      if ((i64) next_expire < 0)
+      f64 timeout;
+      if (pool_elts (bm->sessions))
 	{
-	  BFD_DBG ("wait for event without timeout");
-	  (void) vlib_process_wait_for_event (vm);
-	  event_type = vlib_process_get_events (vm, &event_data);
-	}
-      else
-	{
-	  f64 timeout = ((i64) next_expire - (i64) now) / bm->cpu_cps;
-	  BFD_DBG ("wait for event with timeout %.02f", timeout);
-	  if (timeout < 0)
+	  u32 first_expires_in_ticks =
+	    TW (tw_timer_first_expires_in_ticks) (&bm->wheel);
+	  if (!first_expires_in_ticks)
 	    {
-	      BFD_DBG ("negative timeout, already expired, skipping wait");
-	      event_type = ~0;
+	      BFD_DBG
+		("tw_timer_first_expires_in_ticks(%p) returns 0ticks",
+		 &bm->wheel);
+	      timeout = bm->wheel.next_run_time - vm_time;
+	      BFD_DBG ("wheel.next_run_time is %.9f",
+		       bm->wheel.next_run_time);
+	      u64 next_expire_nsec = now + timeout * SEC_PER_NSEC;
+	      bm->bfd_process_next_wakeup_nsec = next_expire_nsec;
+	      bfd_unlock (bm);
 	    }
 	  else
 	    {
-	      (void) vlib_process_wait_for_event_or_clock (vm, timeout);
-	      event_type = vlib_process_get_events (vm, &event_data);
+	      BFD_DBG ("tw_timer_first_expires_in_ticks(%p) returns %luticks",
+		       &bm->wheel, first_expires_in_ticks);
+	      u64 next_expire_nsec =
+		now + first_expires_in_ticks * bm->nsec_per_tw_tick;
+	      bm->bfd_process_next_wakeup_nsec = next_expire_nsec;
+	      bfd_unlock (bm);
+	      timeout = (next_expire_nsec - now) * SEC_PER_NSEC;
 	    }
+	  BFD_DBG ("vlib_process_wait_for_event_or_clock(vm, %.09f)",
+		   timeout);
+	  (void) vlib_process_wait_for_event_or_clock (vm, timeout);
 	}
-      now = clib_cpu_time_now ();
+      else
+	{
+	  (void) vlib_process_wait_for_event (vm);
+	}
+      event_type = vlib_process_get_events (vm, &event_data);
+      now = bfd_time_now_nsec (vm, &vm_time);
       uword *session_index;
       switch (event_type)
 	{
@@ -1183,9 +1200,10 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  /* nothing to do here */
 	  break;
 	case BFD_EVENT_RESCHEDULE:
+	  BFD_DBG ("reschedule event");
 	  bfd_lock (bm);
-	  bm->bfd_process_wakeup_event_delay_clocks =
-	    now - bm->bfd_process_wakeup_event_start_clocks;
+	  bm->bfd_process_wakeup_event_delay_nsec =
+	    now - bm->bfd_process_wakeup_event_start_nsec;
 	  bm->bfd_process_wakeup_events_in_flight--;
 	  bfd_unlock (bm);
 	  /* nothing to do here - reschedule is done automatically after
@@ -1232,11 +1250,10 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  vlib_log_err (bm->log_class, "BUG: event type 0x%wx", event_type);
 	  break;
 	}
-      BFD_DBG ("advancing wheel, now is %lu", now);
-      BFD_DBG ("timing_wheel_advance (%p, %lu, %p, 0);", &bm->wheel, now,
-	       expired);
+      BFD_DBG ("tw_timer_expire_timers_vec(%p, %.04f);", &bm->wheel, vm_time);
       bfd_lock (bm);
-      expired = timing_wheel_advance (&bm->wheel, now, expired, 0);
+      expired =
+	TW (tw_timer_expire_timers_vec) (&bm->wheel, vm_time, expired);
       BFD_DBG ("Expired %d elements", vec_len (expired));
       u32 *p = NULL;
       vec_foreach (p, expired)
@@ -1245,6 +1262,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	if (!pool_is_free_index (bm->sessions, bs_idx))
 	  {
 	    bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
+	    bs->tw_id = 0;	/* timer is gone because it expired */
 	    bfd_on_timeout (vm, rt, bm, bs, now);
 	    bfd_set_timer (bm, bs, now, 1);
 	  }
@@ -1327,15 +1345,14 @@ bfd_main_init (vlib_main_t * vm)
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   clib_memset (&bm->wheel, 0, sizeof (bm->wheel));
-  bm->cpu_cps = (u64) vm->clib_time.clocks_per_second;
-  BFD_DBG ("cps is %.2f", bm->cpu_cps);
-  bm->default_desired_min_tx_clocks =
-    bfd_usec_to_clocks (bm, BFD_DEFAULT_DESIRED_MIN_TX_USEC);
-  bm->min_required_min_rx_while_echo_clocks =
-    bfd_usec_to_clocks (bm, BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO);
-  const u64 now = clib_cpu_time_now ();
-  timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
-  bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
+  bm->nsec_per_tw_tick = (f64) NSEC_PER_SEC / BFD_TW_TPS;
+  bm->default_desired_min_tx_nsec =
+    bfd_usec_to_nsec (BFD_DEFAULT_DESIRED_MIN_TX_USEC);
+  bm->min_required_min_rx_while_echo_nsec =
+    bfd_usec_to_nsec (BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO);
+  BFD_DBG ("tw_timer_wheel_init(%p, %p, %.04f, %u)", &bm->wheel, NULL,
+	   1.00 / BFD_TW_TPS, ~0);
+  TW (tw_timer_wheel_init) (&bm->wheel, NULL, 1.00 / BFD_TW_TPS, ~0);
   bm->log_class = vlib_log_register_class ("bfd", 0);
   vlib_log_debug (bm->log_class, "initialized");
   bm->owner_thread_index = ~0;
@@ -1508,7 +1525,7 @@ bfd_auth_type_is_meticulous (bfd_auth_type_e auth_type)
 }
 
 static int
-bfd_verify_pkt_auth_seq_num (bfd_session_t * bs,
+bfd_verify_pkt_auth_seq_num (vlib_main_t * vm, bfd_session_t * bs,
 			     u32 received_seq_num, int is_meticulous)
 {
   /*
@@ -1517,13 +1534,12 @@ bfd_verify_pkt_auth_seq_num (bfd_session_t * bs,
    * This variable MUST be set to zero after no packets have been
    * received on this session for at least twice the Detection Time.
    */
-  u64 now = clib_cpu_time_now ();
-  if (now - bs->last_rx_clocks > bs->detection_time_clocks * 2)
+  u64 now = bfd_time_now_nsec (vm, NULL);
+  if (now - bs->last_rx_nsec > bs->detection_time_nsec * 2)
     {
-      BFD_DBG ("BFD peer unresponsive for %lu clocks, which is > 2 * "
-	       "detection_time=%u clocks, resetting remote_seq_number_known "
-	       "flag",
-	       now - bs->last_rx_clocks, bs->detection_time_clocks * 2);
+      BFD_DBG ("BFD peer unresponsive for %lu nsec, which is > 2 * "
+	       "detection_time=%u nsec, resetting remote_seq_number_known "
+	       "flag", now - bs->last_rx_nsec, bs->detection_time_nsec * 2);
       bs->auth.remote_seq_number_known = 0;
     }
   if (bs->auth.remote_seq_number_known)
@@ -1652,8 +1668,8 @@ bfd_verify_pkt_auth_key_sha1 (const bfd_pkt_t * pkt, u32 pkt_size,
 }
 
 static int
-bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
-			 bfd_session_t * bs, u8 bfd_key_id,
+bfd_verify_pkt_auth_key (vlib_main_t * vm, const bfd_pkt_t * pkt,
+			 u32 pkt_size, bfd_session_t * bs, u8 bfd_key_id,
 			 bfd_auth_key_t * auth_key)
 {
   bfd_main_t *bm = &bfd_main;
@@ -1688,7 +1704,7 @@ bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
 	  const u32 seq_num = clib_net_to_host_u32 (((bfd_pkt_with_sha1_auth_t
 						      *) pkt)->
 						    sha1_auth.seq_num);
-	  return bfd_verify_pkt_auth_seq_num (bs, seq_num,
+	  return bfd_verify_pkt_auth_seq_num (vm, bs, seq_num,
 					      bfd_auth_type_is_meticulous
 					      (auth_key->auth_type))
 	    && bfd_verify_pkt_auth_key_sha1 (pkt, pkt_size, bs, bfd_key_id,
@@ -1713,7 +1729,8 @@ bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
  * @return 1 if bfd packet is valid
  */
 int
-bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
+bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt, u16 pkt_size,
+		     bfd_session_t * bs)
 {
   if (bfd_pkt_get_auth_present (pkt))
     {
@@ -1724,7 +1741,7 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 	  if (bs->auth.is_delayed && bs->auth.next_key)
 	    {
 	      /* yes, switch is scheduled - make sure the auth is valid */
-	      if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+	      if (bfd_verify_pkt_auth_key (vm, pkt, pkt_size, bs,
 					   bs->auth.next_bfd_key_id,
 					   bs->auth.next_key))
 		{
@@ -1737,7 +1754,7 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
       else
 	{
 	  /* yes, using authentication, verify the key */
-	  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+	  if (bfd_verify_pkt_auth_key (vm, pkt, pkt_size, bs,
 				       bs->auth.curr_bfd_key_id,
 				       bs->auth.curr_key))
 	    {
@@ -1750,7 +1767,7 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 	      if (bs->auth.is_delayed && bs->auth.next_key)
 		{
 		  /* delayed switch present, verify if that key works */
-		  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+		  if (bfd_verify_pkt_auth_key (vm, pkt, pkt_size, bs,
 					       bs->auth.next_bfd_key_id,
 					       bs->auth.next_key))
 		    {
@@ -1791,7 +1808,8 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 }
 
 void
-bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
+bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
+		 u32 bs_idx)
 {
   bfd_lock_check (bm);
 
@@ -1805,8 +1823,8 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   bs->remote_state = bfd_pkt_get_state (pkt);
   bs->remote_demand = bfd_pkt_get_demand (pkt);
   bs->remote_diag = bfd_pkt_get_diag_code (pkt);
-  u64 now = clib_cpu_time_now ();
-  bs->last_rx_clocks = now;
+  u64 now = bfd_time_now_nsec (vm, NULL);
+  bs->last_rx_nsec = now;
   if (bfd_pkt_get_auth_present (pkt))
     {
       bfd_auth_type_e auth_type =
@@ -1840,8 +1858,8 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	  while (0);
 	}
     }
-  bs->remote_desired_min_tx_clocks =
-    bfd_usec_to_clocks (bm, clib_net_to_host_u32 (pkt->des_min_tx));
+  bs->remote_desired_min_tx_nsec =
+    bfd_usec_to_nsec (clib_net_to_host_u32 (pkt->des_min_tx));
   bs->remote_detect_mult = pkt->head.detect_mult;
   bfd_set_remote_required_min_rx (bm, bs, now,
 				  clib_net_to_host_u32 (pkt->req_min_rx));
@@ -1858,8 +1876,8 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	    {
 	      bfd_set_effective_required_min_rx (bm, bs,
 						 clib_max (bs->echo *
-							   bm->min_required_min_rx_while_echo_clocks,
-							   bs->config_required_min_rx_clocks));
+							   bm->min_required_min_rx_while_echo_nsec,
+							   bs->config_required_min_rx_nsec));
 	    }
 	}
       else if (BFD_POLL_IN_PROGRESS_AND_QUEUED == bs->poll_state)
@@ -1869,10 +1887,9 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	   * time, so calculate that here
 	   */
 	  BFD_DBG ("Next poll sequence can commence in " BFD_CLK_FMT,
-		   BFD_CLK_PRN (now -
-				bs->poll_state_start_or_timeout_clocks));
-	  bs->poll_state_start_or_timeout_clocks =
-	    now + (now - bs->poll_state_start_or_timeout_clocks);
+		   BFD_CLK_PRN (now - bs->poll_state_start_or_timeout_nsec));
+	  bs->poll_state_start_or_timeout_nsec =
+	    now + (now - bs->poll_state_start_or_timeout_nsec);
 	  BFD_DBG
 	    ("Poll sequence terminated, but another is needed, bs_idx=%u",
 	     bs->bs_idx);
@@ -1890,19 +1907,19 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   if (BFD_STATE_admin_down == bs->remote_state)
     {
       bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
-      bfd_set_state (bm, bs, BFD_STATE_down, 0);
+      bfd_set_state (vm, bm, bs, BFD_STATE_down, 0);
     }
   else if (BFD_STATE_down == bs->local_state)
     {
       if (BFD_STATE_down == bs->remote_state)
 	{
 	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
-	  bfd_set_state (bm, bs, BFD_STATE_init, 0);
+	  bfd_set_state (vm, bm, bs, BFD_STATE_init, 0);
 	}
       else if (BFD_STATE_init == bs->remote_state)
 	{
 	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
-	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
+	  bfd_set_state (vm, bm, bs, BFD_STATE_up, 0);
 	}
     }
   else if (BFD_STATE_init == bs->local_state)
@@ -1911,7 +1928,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	  BFD_STATE_init == bs->remote_state)
 	{
 	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
-	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
+	  bfd_set_state (vm, bm, bs, BFD_STATE_up, 0);
 	}
     }
   else				/* BFD_STATE_up == bs->local_state */
@@ -1919,13 +1936,13 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
       if (BFD_STATE_down == bs->remote_state)
 	{
 	  bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
-	  bfd_set_state (bm, bs, BFD_STATE_down, 0);
+	  bfd_set_state (vm, bm, bs, BFD_STATE_down, 0);
 	}
     }
 }
 
 int
-bfd_consume_echo_pkt (bfd_main_t * bm, vlib_buffer_t * b)
+bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm, vlib_buffer_t * b)
 {
   bfd_echo_pkt_t *pkt = NULL;
   if (b->current_length != sizeof (*pkt))
@@ -1940,22 +1957,22 @@ bfd_consume_echo_pkt (bfd_main_t * bm, vlib_buffer_t * b)
     }
   BFD_DBG ("Scanning bfd echo packet, bs_idx=%d", bs->bs_idx);
   u64 checksum =
-    bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_clocks,
+    bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_nsec,
 			    bs->echo_secret);
   if (checksum != pkt->checksum)
     {
       BFD_DBG ("Invalid echo packet, checksum mismatch");
       return 1;
     }
-  u64 now = clib_cpu_time_now ();
-  if (pkt->expire_time_clocks < now)
+  u64 now = bfd_time_now_nsec (vm, NULL);
+  if (pkt->expire_time_nsec < now)
     {
       BFD_DBG ("Stale packet received, expire time %lu < now %lu",
-	       pkt->expire_time_clocks, now);
+	       pkt->expire_time_nsec, now);
     }
   else
     {
-      bs->echo_last_rx_clocks = now;
+      bs->echo_last_rx_nsec = now;
     }
   return 1;
 }
@@ -2153,11 +2170,10 @@ bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 
       bs->local_detect_mult = detect_mult;
       bs->config_desired_min_tx_usec = desired_min_tx_usec;
-      bs->config_desired_min_tx_clocks =
-	bfd_usec_to_clocks (bm, desired_min_tx_usec);
+      bs->config_desired_min_tx_nsec = bfd_usec_to_nsec (desired_min_tx_usec);
       bs->config_required_min_rx_usec = required_min_rx_usec;
-      bs->config_required_min_rx_clocks =
-	bfd_usec_to_clocks (bm, required_min_rx_usec);
+      bs->config_required_min_rx_nsec =
+	bfd_usec_to_nsec (required_min_rx_usec);
       BFD_DBG ("\nChanged session params: %U", format_bfd_session, bs);
 
       vlib_log_info (bm->log_class, "changed session params: %U",
