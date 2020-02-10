@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f14f45e7_474bc647",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-10T16:58:33Z",
+      "side": 1,
+      "message": "We may still need to send the last update on recently enqueued data. So this can\u0027t go here.",
+      "range": {
+        "startLine": 676,
+        "startChar": 6,
+        "endLine": 676,
+        "endChar": 62
+      },
+      "revId": "6c5be4e127d64f0881e3956e9ca1e6a8bb69f49a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
