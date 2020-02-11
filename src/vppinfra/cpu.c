@@ -71,6 +71,10 @@
  _(0x41, 0xd07, "ARM", "Cortex-A57", 0) \
  _(0x41, 0xd08, "ARM", "Cortex-A72", 0) \
  _(0x41, 0xd09, "ARM", "Cortex-A73", 0) \
+ _(0x41, 0xd0a, "ARM", "Cortex-A75", 0) \
+ _(0x41, 0xd0b, "ARM", "Cortex-A76", 0) \
+ _(0x41, 0xd0c, "ARM", "Neoverse-N1", 0) \
+ _(0x41, 0xd4a, "ARM", "Neoverse-E1", 0) \
  _(0x43, 0x0a1, "Marvell", "THUNDERX CN88XX", 0) \
  _(0x43, 0x0a2, "Marvell", "OCTEON TX CN81XX", 0) \
  _(0x43, 0x0a3, "Marvell", "OCTEON TX CN83XX", 0) \
