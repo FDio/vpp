@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aaab1ef2_450dfc98",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-02-11T14:08:58Z",
+      "side": 1,
+      "message": "that\u0027s very good to re-use space",
+      "revId": "0a6c6a2bcd0bed69d3120f5d0a15d05c8b14abb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "490e9ad2_8b6d08c7",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-02-11T14:08:58Z",
+      "side": 1,
+      "message": "merge them together?",
+      "revId": "0a6c6a2bcd0bed69d3120f5d0a15d05c8b14abb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
