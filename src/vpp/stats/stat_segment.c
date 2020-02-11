@@ -344,18 +344,10 @@ vlib_map_stat_segment_init (void)
     return clib_error_return (0, "stat segment mmap failure");
 
   void *heap;
-#if USE_DLMALLOC == 0
-  heap = mheap_alloc_with_flags (((u8 *) memaddr) + getpagesize (),
-				 memory_size - getpagesize (),
-				 MHEAP_FLAG_DISABLE_VM |
-				 MHEAP_FLAG_THREAD_SAFE);
-#else
   heap =
     create_mspace_with_base (((u8 *) memaddr) + getpagesize (),
 			     memory_size - getpagesize (), 1 /* locked */ );
   mspace_disable_expand (heap);
-#endif
-
   sm->heap = heap;
   sm->memfd = mfd;
 
