@@ -22,6 +22,30 @@
       "revId": "6c5be4e127d64f0881e3956e9ca1e6a8bb69f49a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b2eb3087_e7d010f4",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-02-11T01:25:08Z",
+      "side": 1,
+      "message": "In my patch, when reset is received, then tls_ctx_read will be called, so the enqueued data has been processed already. This code is to prevent double-processing.",
+      "parentUuid": "f14f45e7_474bc647",
+      "range": {
+        "startLine": 676,
+        "startChar": 6,
+        "endLine": 676,
+        "endChar": 62
+      },
+      "revId": "6c5be4e127d64f0881e3956e9ca1e6a8bb69f49a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
