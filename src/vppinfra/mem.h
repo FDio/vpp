@@ -45,11 +45,7 @@
 #include <vppinfra/clib.h>	/* uword, etc */
 #include <vppinfra/clib_error.h>
 
-#if USE_DLMALLOC == 0
-#include <vppinfra/mheap_bootstrap.h>
-#else
 #include <vppinfra/dlmalloc.h>
-#endif
 
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, clib_memset */
@@ -121,12 +117,7 @@ clib_mem_set_thread_index (void)
 always_inline uword
 clib_mem_size_nocheck (void *p)
 {
-#if USE_DLMALLOC == 0
-  mheap_elt_t *e = mheap_user_pointer_to_elt (p);
-  return mheap_elt_data_bytes (e);
-#else
   return mspace_usable_size_with_delta (p);
-#endif
 }
 
 /* Memory allocator which may call os_out_of_memory() if it fails */
@@ -148,15 +139,7 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
   cpu = os_get_thread_index ();
   heap = clib_per_cpu_mheaps[cpu];
 
-#if USE_DLMALLOC == 0
-  uword offset;
-  heap = mheap_get_aligned (heap, size, align, align_offset, &offset);
-  clib_per_cpu_mheaps[cpu] = heap;
-  if (PREDICT_TRUE (offset != ~0))
-    p = heap + offset;
-#else
   p = mspace_get_aligned (heap, size, align, align_offset);
-#endif /* USE_DLMALLOC */
 
   if (PREDICT_FALSE (0 == p))
     {
@@ -223,24 +206,9 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 always_inline uword
 clib_mem_is_heap_object (void *p)
 {
-#if USE_DLMALLOC == 0
-  void *heap = clib_mem_get_per_cpu_heap ();
-  uword offset = (uword) p - (uword) heap;
-  mheap_elt_t *e, *n;
-
-  if (offset >= vec_len (heap))
-    return 0;
-
-  e = mheap_elt_at_uoffset (heap, offset);
-  n = mheap_next_elt (e);
-
-  /* Check that heap forward and reverse pointers agree. */
-  return e->n_user_data == n->prev_n_user_data;
-#else
   void *heap = clib_mem_get_per_cpu_heap ();
 
   return mspace_is_heap_object (heap, p);
-#endif /* USE_DLMALLOC */
 }
 
 always_inline void
@@ -253,11 +221,7 @@ clib_mem_free (void *p)
 
   CLIB_MEM_POISON (p, clib_mem_size_nocheck (p));
 
-#if USE_DLMALLOC == 0
-  mheap_put (heap, (u8 *) p - heap);
-#else
   mspace_put (heap, p);
-#endif
 }
 
 always_inline void *

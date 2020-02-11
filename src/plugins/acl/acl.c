@@ -127,37 +127,12 @@ void
 acl_plugin_acl_set_validate_heap (acl_main_t * am, int on)
 {
   clib_mem_set_heap (acl_set_heap (am));
-#if USE_DLMALLOC == 0
-  mheap_t *h = mheap_header (am->acl_mheap);
-  if (on)
-    {
-      h->flags |= MHEAP_FLAG_VALIDATE;
-      h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
-      mheap_validate (h);
-    }
-  else
-    {
-      h->flags &= ~MHEAP_FLAG_VALIDATE;
-      h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
-    }
-#endif
 }
 
 void
 acl_plugin_acl_set_trace_heap (acl_main_t * am, int on)
 {
   clib_mem_set_heap (acl_set_heap (am));
-#if USE_DLMALLOC == 0
-  mheap_t *h = mheap_header (am->acl_mheap);
-  if (on)
-    {
-      h->flags |= MHEAP_FLAG_TRACE;
-    }
-  else
-    {
-      h->flags &= ~MHEAP_FLAG_TRACE;
-    }
-#endif
 }
 
 static void

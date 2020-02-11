@@ -447,7 +447,7 @@ remake_hash_applied_mask_info_vec (acl_main_t * am,
           if (minfo->mask_type_index == pae->mask_type_index)
             break;
         }
-       
+
       vec_validate ((new_hash_applied_mask_info_vec), search);
       minfo = vec_elt_at_index ((new_hash_applied_mask_info_vec), search);
       if (search == new_pointer)
@@ -590,14 +590,13 @@ static void *
 hash_acl_set_heap(acl_main_t *am)
 {
   if (0 == am->hash_lookup_mheap) {
-    am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ , 
+    am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ ,
                                                    am->hash_lookup_mheap_size,
                                                    1 /* locked */);
     if (0 == am->hash_lookup_mheap) {
-        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
+        clib_error("ACL plugin failed to allocate lookup heap of %U bytes",
                    format_memory_size, am->hash_lookup_mheap_size);
     }
-#if USE_DLMALLOC != 0
     /*
      * DLMALLOC is being "helpful" in that it ignores the heap size parameter
      * by default and tries to allocate the larger amount of memory.
@@ -607,7 +606,6 @@ hash_acl_set_heap(acl_main_t *am)
      * an obscure error sometime later.
      */
     mspace_disable_expand(am->hash_lookup_mheap);
-#endif
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
@@ -618,17 +616,6 @@ acl_plugin_hash_acl_set_validate_heap(int on)
 {
   acl_main_t *am = &acl_main;
   clib_mem_set_heap(hash_acl_set_heap(am));
-#if USE_DLMALLOC == 0
-  mheap_t *h = mheap_header (am->hash_lookup_mheap);
-  if (on) {
-    h->flags |= MHEAP_FLAG_VALIDATE;
-    h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
-    mheap_validate(h);
-  } else {
-    h->flags &= ~MHEAP_FLAG_VALIDATE;
-    h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
-  }
-#endif
 }
 
 void
@@ -636,14 +623,6 @@ acl_plugin_hash_acl_set_trace_heap(int on)
 {
   acl_main_t *am = &acl_main;
   clib_mem_set_heap(hash_acl_set_heap(am));
-#if USE_DLMALLOC == 0
-  mheap_t *h = mheap_header (am->hash_lookup_mheap);
-  if (on) {
-    h->flags |= MHEAP_FLAG_TRACE;
-  } else {
-    h->flags &= ~MHEAP_FLAG_TRACE;
-  }
-#endif
 }
 
 static void
@@ -1678,4 +1657,3 @@ split_partition(acl_main_t *am, u32 first_index,
 	DBG( "TM-split_partition - END");
 
 }
-

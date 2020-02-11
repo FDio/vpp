@@ -805,22 +805,6 @@ show_memory_usage (vlib_main_t * vm,
     }
 
 
-#if USE_DLMALLOC == 0
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
-      mheap_t *h = mheap_header (clib_per_cpu_mheaps[index]);
-      vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
-		       vlib_worker_threads[index].name);
-      vlib_cli_output (vm, "  %U\n", format_page_map, pointer_to_uword (h) -
-		       h->vm_alloc_offset_from_header,
-		       h->vm_alloc_size);
-      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index],
-                       verbose);
-      index++;
-  }));
-  /* *INDENT-ON* */
-#else
   {
     if (main_heap)
       {
@@ -880,7 +864,6 @@ show_memory_usage (vlib_main_t * vm,
 	  }
       }
   }
-#endif /* USE_DLMALLOC */
   return 0;
 }
 
@@ -1037,72 +1020,6 @@ VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
   "                   [numa-heap <numa-id>]\n",
   .function = enable_disable_memory_trace,
-};
-/* *INDENT-ON* */
-
-
-static clib_error_t *
-test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
-		    vlib_cli_command_t * cmd)
-{
-#if USE_DLMALLOC == 0
-  clib_error_t *error = 0;
-  void *heap;
-  mheap_t *mheap;
-
-  if (unformat (input, "on"))
-    {
-        /* *INDENT-OFF* */
-        foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
-          mheap = mheap_header(heap);
-          mheap->flags |= MHEAP_FLAG_VALIDATE;
-          // Turn off small object cache because it delays detection of errors
-          mheap->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
-        });
-        /* *INDENT-ON* */
-
-    }
-  else if (unformat (input, "off"))
-    {
-        /* *INDENT-OFF* */
-        foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
-          mheap = mheap_header(heap);
-          mheap->flags &= ~MHEAP_FLAG_VALIDATE;
-          mheap->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
-        });
-        /* *INDENT-ON* */
-    }
-  else if (unformat (input, "now"))
-    {
-        /* *INDENT-OFF* */
-        foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
-          mheap = mheap_header(heap);
-          mheap_validate(heap);
-        });
-        /* *INDENT-ON* */
-      vlib_cli_output (vm, "heap validation complete");
-
-    }
-  else
-    {
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
-    }
-
-  return error;
-#else
-  return clib_error_return (0, "unimplemented...");
-#endif /* USE_DLMALLOC */
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_test_heap_validate,static) = {
-    .path = "test heap-validate",
-    .short_help = "<on/off/now> validate heap on future allocs/frees or right now",
-    .function = test_heap_validate,
 };
 /* *INDENT-ON* */
 
