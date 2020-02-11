@@ -2945,7 +2945,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Make sure the segment is exactly right */
 	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
 	    {
-	      tcp_rcv_rst (wrk, tc0);
+	      tcp_send_reset_w_pkt (tc0, b0, thread_index, is_ip4);
 	      error0 = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
@@ -2958,7 +2958,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   */
 	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
 	    {
-	      tcp_rcv_rst (wrk, tc0);
+	      tcp_send_reset_w_pkt (tc0, b0, thread_index, is_ip4);
+	      error0 = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
 
@@ -2985,7 +2986,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (session_stream_accept_notify (&tc0->connection))
 	    {
 	      error0 = TCP_ERROR_MSG_QUEUE_FULL;
-	      tcp_rcv_rst (wrk, tc0);
+	      tcp_send_reset (tc0);
+	      session_transport_delete_notify (&tc0->connection);
+	      tcp_connection_cleanup (tc0);
 	      goto drop;
 	    }
 	  error0 = TCP_ERROR_ACK_OK;
