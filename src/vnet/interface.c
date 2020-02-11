@@ -200,8 +200,14 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
     pool_foreach (hif, im->hw_interfaces, ({
       unserialize_cstring (m, &class_name);
       p = hash_get_mem (im->hw_interface_class_by_name, class_name);
-      ASSERT (p != 0);
-      error = vnet_hw_interface_set_class_helper (vnm, hif->hw_if_index, p[0], /* redistribute */ 0);
+      if (p)
+        {
+          error = vnet_hw_interface_set_class_helper
+            (vnm, hif->hw_if_index, p[0], /* redistribute */ 0);
+        }
+      else
+        error = clib_error_return (0, "hw class %s AWOL?", class_name);
+
       if (error)
 	clib_error_report (error);
       vec_free (class_name);

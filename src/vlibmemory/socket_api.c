@@ -469,8 +469,10 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     rp->message_table[i].index = htons(hp->value[0]);
-    strncpy_s((char *)rp->message_table[i].name, 64 /* bytes of space at dst */,
-              (char *)hp->key, 64-1 /* chars to copy, without zero byte. */);
+    (void) strncpy_s((char *)rp->message_table[i].name,
+                     64 /* bytes of space at dst */,
+                     (char *)hp->key,
+                     64-1 /* chars to copy, without zero byte. */);
     i++;
   }));
   /* *INDENT-ON* */

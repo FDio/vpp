@@ -84,7 +84,7 @@ clib_mem_set_per_cpu_heap (u8 * new_heap)
 always_inline void *
 clib_mem_get_per_numa_heap (u32 numa_id)
 {
-  ASSERT (numa_id >= 0 && numa_id < ARRAY_LEN (clib_per_numa_mheaps));
+  ASSERT (numa_id < ARRAY_LEN (clib_per_numa_mheaps));
   return clib_per_numa_mheaps[numa_id];
 }
 
