@@ -1025,12 +1025,6 @@ format_fifo_segment (u8 * s, va_list * args)
   int i;
 
   indent = format_get_indent (s) + 2;
-#if USE_DLMALLOC == 0
-  s = format (s, "%U segment heap: %U\n", format_white_space, indent,
-	      format_mheap, fsh->ssvm_sh->heap, verbose);
-  s = format (s, "%U segment has %u active fifos\n",
-	      format_white_space, indent, fifo_segment_num_fifos (fsh));
-#endif
 
   if (fs == 0)
     {

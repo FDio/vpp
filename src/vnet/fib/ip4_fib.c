@@ -129,7 +129,7 @@ ip4_create_fib_with_table_id (u32 table_id,
 	v4_fib->table_id =
 	    table_id;
     fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
-    
+
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4, src);
 
     ip4_mtrie_init(&v4_fib->mtrie);
@@ -369,7 +369,7 @@ ip4_fib_table_entry_remove (ip4_fib_t *fib,
 	 * removing a non-existent entry. i'll allow it.
 	 */
     }
-    else 
+    else
     {
         uword *old_heap;
 
@@ -559,7 +559,7 @@ ip4_fib_table_show_one (ip4_fib_t *fib,
 			ip4_address_t *address,
 			u32 mask_len,
                         int detail)
-{    
+{
     vlib_cli_output(vm, "%U",
                     format_fib_entry,
                     ip4_fib_table_lookup(fib, address, mask_len),
@@ -571,19 +571,10 @@ ip4_fib_table_show_one (ip4_fib_t *fib,
 u8 *
 format_ip4_fib_table_memory (u8 * s, va_list * args)
 {
-#if USE_DLMALLOC == 0
-    s = format(s, "%=30s %=6d %=12ld\n",
-               "IPv4 unicast",
-               pool_elts(ip4_main.fibs),
-               mheap_bytes(ip4_main.mtrie_mheap));
-#else
     s = format(s, "%=30s %=6d %=12ld\n",
                "IPv4 unicast",
                pool_elts(ip4_main.fibs),
                mspace_footprint(ip4_main.mtrie_mheap));
-#endif
-    
-
     return (s);
 }
 
