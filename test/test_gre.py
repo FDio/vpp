@@ -47,7 +47,7 @@ class TestGREInputNodes(VppTestCase):
         self.pg_start()
         # no tunnel created, gre-input not registered
         err = self.statistics.get_counter(
-            '/err/ip4-input/unknown ip protocol')[0]
+            '/err/ip4-local/unknown ip protocol')[0]
         self.assertEqual(err, 1)
         err_count = err
 
@@ -59,7 +59,7 @@ class TestGREInputNodes(VppTestCase):
         self.pg_start()
         # tunnel created, gre-input registered
         err = self.statistics.get_counter(
-            '/err/ip4-input/unknown ip protocol')[0]
+            '/err/ip4-local/unknown ip protocol')[0]
         # expect no new errors
         self.assertEqual(err, err_count)
 

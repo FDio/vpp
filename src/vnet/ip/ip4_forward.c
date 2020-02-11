@@ -1693,7 +1693,7 @@ ip4_local_inline (vlib_main_t * vm,
 {
   u32 *from, n_left_from;
   vlib_node_runtime_t *error_node =
-    vlib_node_get_runtime (vm, ip4_input_node.index);
+    vlib_node_get_runtime (vm, ip4_local_node.index);
   u16 nexts[VLIB_FRAME_SIZE], *next;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   ip4_header_t *ip[2];
@@ -1822,6 +1822,8 @@ VLIB_REGISTER_NODE (ip4_local_node) =
   .name = "ip4-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
+  .n_errors = IP4_N_ERROR,
+  .error_strings = ip4_error_strings,
   .n_next_nodes = IP_LOCAL_N_NEXT,
   .next_nodes =
   {

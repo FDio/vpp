@@ -178,6 +178,7 @@ typedef struct ip4_main_t
 
 /** Global ip4 main structure. */
 extern ip4_main_t ip4_main;
+extern char *ip4_error_strings[];
 
 /** Global ip4 input node.  Errors get attached to ip4 input node. */
 extern vlib_node_registration_t ip4_input_node;

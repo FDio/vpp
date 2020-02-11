@@ -43,8 +43,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-extern char *ip4_error_strings[];
-
 typedef enum
 {
   IP4_INPUT_NEXT_DROP,
