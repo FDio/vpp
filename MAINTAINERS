@@ -530,8 +530,15 @@ Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
 
+Plugin - HLL
+I:	hll
+M:	Valerio Bruschi <valerio.bruschi@uniroma2.it>
+M:	Salvatore Pontarelli <salvatore.pontarelli@uniroma2.it>
+F:	src/plugins/hll/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
 F:	*
 F:	*/
+
