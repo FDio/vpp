@@ -25,7 +25,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  list(APPEND VARIANTS "armv8\;-march=native")
+  list(APPEND VARIANTS "armv8\;-march=armv8.1-a+crc+crypto")
   set (COMPILE_FILES aes_cbc.c)
   set (COMPILE_OPTS -Wall -fno-common)
 endif()
