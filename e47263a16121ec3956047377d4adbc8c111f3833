@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1031afc_fc63d12b",
+        "filename": "src/plugins/map/ip4_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-02-11T15:29:23Z",
+      "side": 1,
+      "message": "The introduction of these three symbols is conditional.\nHowever, the use of these three symbols is not conditional.\nIs there a reason not to simply always introduce the symbols\nin their respective enums?  If there is, then these else clauses\nneed to also be conditional.",
+      "range": {
+        "startLine": 188,
+        "startChar": 2,
+        "endLine": 188,
+        "endChar": 32
+      },
+      "revId": "e47263a16121ec3956047377d4adbc8c111f3833",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5bdca9b_e89433c6",
+        "filename": "src/plugins/map/ip6_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-02-11T15:29:23Z",
+      "side": 1,
+      "message": "As in ip4_map_t.c, these symbols are conditional, so either make\nthem unconditional, or make sure all their uses (the \u0027else\u0027 clauses\nbelow) are also conditional.",
+      "range": {
+        "startLine": 34,
+        "startChar": 2,
+        "endLine": 34,
+        "endChar": 32
+      },
+      "revId": "e47263a16121ec3956047377d4adbc8c111f3833",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
