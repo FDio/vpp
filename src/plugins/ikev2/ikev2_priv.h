@@ -358,6 +358,8 @@ typedef struct
   u64 lifetime_maxdata;
   u32 lifetime_jitter;
   u32 handover;
+
+  u32 tun_itf;
 } ikev2_profile_t;
 
 typedef struct
@@ -418,6 +420,8 @@ typedef struct
   u32 last_init_msg_id;
   u8 is_profile_index_set;
   u32 profile_index;
+  u8 is_tun_itf_set;
+  u32 tun_itf;
 
   ikev2_child_sa_t *childs;
 } ikev2_sa_t;

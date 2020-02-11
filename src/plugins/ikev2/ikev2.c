@@ -389,6 +389,8 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->i_id.type = sai->i_id.type;
   sa->profile_index = sai->profile_index;
   sa->is_profile_index_set = sai->is_profile_index_set;
+  sa->tun_itf = sai->tun_itf;
+  sa->is_tun_itf_set = sai->is_tun_itf_set;
   sa->i_id.data = _(sai->i_id.data);
   sa->i_auth.method = sai->i_auth.method;
   sa->i_auth.hex = sai->i_auth.hex;
@@ -1478,6 +1480,7 @@ ikev2_mk_remote_sa_id (u32 sai, u32 ci, u32 ti)
 
 typedef struct
 {
+  u32 sw_if_index;
   u32 salt_local;
   u32 salt_remote;
   u32 local_sa_id;
@@ -1497,21 +1500,26 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 {
   ikev2_main_t *km = &ikev2_main;
   u32 sw_if_index;
-  int rv;
-  uword *p = 0;
+  int rv = 0;
 
-  rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
-			&a->local_ip, &a->remote_ip, 0,
-			TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
-			TUNNEL_MODE_P2P, &sw_if_index);
-
-  if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
+  if (~0 == a->sw_if_index)
     {
-      p = hash_get (km->sw_if_indices, sw_if_index);
-      if (p)
-	/* interface is managed by IKE; proceed with updating SAs */
-	rv = 0;
+      /* no tunnel associated with the SA/profile - create a new one */
+      rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
+			    &a->local_ip, &a->remote_ip, 0,
+			    TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
+			    TUNNEL_MODE_P2P, &sw_if_index);
+
+      if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
+	{
+	  if (hash_get (km->sw_if_indices, sw_if_index))
+	    /* interface is managed by IKE; proceed with updating SAs */
+	    rv = 0;
+	}
+      hash_set1 (km->sw_if_indices, sw_if_index);
     }
+  else
+    sw_if_index = a->sw_if_index;
 
   if (rv)
     {
@@ -1537,7 +1545,6 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   u32 *sas_in = NULL;
   vec_add1 (sas_in, a->remote_sa_id);
   rv |= ipsec_tun_protect_update (sw_if_index, a->local_sa_id, sas_in);
-  hash_set1 (km->sw_if_indices, sw_if_index);
 }
 
 static int
@@ -1739,6 +1746,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
   child->remote_sa_id =
     a.remote_sa_id =
     ikev2_mk_remote_sa_id (sa_index, child_index, thread_index);
+  a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
 
   vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
 			       (u8 *) & a, sizeof (a));
@@ -1751,32 +1759,48 @@ typedef struct
   ip46_address_t remote_ip;
   u32 remote_sa_id;
   u32 local_sa_id;
+  u32 sw_if_index;
 } ikev2_del_ipsec_tunnel_args_t;
 
 static void
 ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 {
   ikev2_main_t *km = &ikev2_main;
-  /* *INDENT-OFF* */
-  ipip_tunnel_key_t key = {
-    .src = a->local_ip,
-    .dst = a->remote_ip,
-    .transport = IPIP_TRANSPORT_IP4,
-    .fib_index = 0,
-  };
-  ipip_tunnel_t *ipip;
-  /* *INDENT-ON* */
+  ipip_tunnel_t *ipip = NULL;
+  u32 sw_if_index;
 
-  ipip = ipip_tunnel_db_find (&key);
+  if (~0 == a->sw_if_index)
+    {
+    /* *INDENT-OFF* */
+    ipip_tunnel_key_t key = {
+      .src = a->local_ip,
+      .dst = a->remote_ip,
+      .transport = IPIP_TRANSPORT_IP4,
+      .fib_index = 0,
+    };
+    /* *INDENT-ON* */
+
+      ipip = ipip_tunnel_db_find (&key);
+
+      if (ipip)
+	{
+	  sw_if_index = ipip->sw_if_index;
+	  hash_unset (km->sw_if_indices, ipip->sw_if_index);
+	}
+      else
+	sw_if_index = ~0;
+    }
+  else
+    sw_if_index = a->sw_if_index;
+
+  if (~0 != sw_if_index)
+    ipsec_tun_protect_del (sw_if_index);
+
+  ipsec_sa_unlock_id (a->remote_sa_id);
+  ipsec_sa_unlock_id (a->local_sa_id);
 
   if (ipip)
-    {
-      hash_unset (km->sw_if_indices, ipip->sw_if_index);
-      ipsec_tun_protect_del (ipip->sw_if_index);
-      ipsec_sa_unlock_id (a->remote_sa_id);
-      ipsec_sa_unlock_id (a->local_sa_id);
-      ipip_del_tunnel (ipip->sw_if_index);
-    }
+    ipip_del_tunnel (ipip->sw_if_index);
 }
 
 static int
@@ -1800,6 +1824,7 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 
   a.remote_sa_id = child->remote_sa_id;
   a.local_sa_id = child->local_sa_id;
+  a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
 
   vl_api_rpc_call_main_thread (ikev2_del_tunnel_from_main, (u8 *) & a,
 			       sizeof (a));
@@ -3045,6 +3070,26 @@ ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
 }
 
 clib_error_t *
+ikev2_set_profile_tunnel_interface (vlib_main_t * vm,
+				    u8 * name, u32 sw_if_index)
+{
+  ikev2_profile_t *p;
+  clib_error_t *r;
+
+  p = ikev2_profile_index_by_name (name);
+
+  if (!p)
+    {
+      r = clib_error_return (0, "unknown profile %v", name);
+      return r;
+    }
+
+  p->tun_itf = sw_if_index;
+
+  return 0;
+}
+
+clib_error_t *
 ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
 			       u64 lifetime, u32 jitter, u32 handover,
 			       u64 maxdata)
@@ -3127,6 +3172,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.profile_index = km->profiles - p;
     sa.is_profile_index_set = 1;
     sa.state = IKEV2_STATE_SA_INIT;
+    sa.tun_itf = p->tun_itf;
+    sa.is_tun_itf_set = 1;
     ikev2_generate_sa_init_data (&sa);
     ikev2_payload_add_ke (chain, sa.dh_group, sa.i_dh_data);
     ikev2_payload_add_nonce (chain, sa.i_nonce);
