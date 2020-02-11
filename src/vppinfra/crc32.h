@@ -19,7 +19,7 @@
 #include <vppinfra/clib.h>
 
 #if __SSE4_2__
-#define clib_crc32c_uses_intrinsics
+//#define clib_crc32c_uses_intrinsics
 #include <x86intrin.h>
 
 #define crc32_u64 _mm_crc32_u64
@@ -54,7 +54,7 @@ clib_crc32c (u8 * s, int len)
 }
 
 #elif __ARM_FEATURE_CRC32
-#define clib_crc32c_uses_intrinsics
+//#define clib_crc32c_uses_intrinsics
 #include <arm_acle.h>
 
 
