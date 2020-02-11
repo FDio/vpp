@@ -673,6 +673,34 @@ map_mss_clamping (tcp_header_t * tcp, ip_csum_t * sum, u16 mss_clamping)
     }
 }
 
+static_always_inline bool
+ip4_map_ip6_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
+{
+#ifdef MAP_SKIP_IP6_LOOKUP
+  if (FIB_NODE_INDEX_INVALID != pre_resolved[FIB_PROTOCOL_IP6].fei)
+    {
+      vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+	pre_resolved[FIB_PROTOCOL_IP6].dpo.dpoi_index;
+      return (true);
+    }
+#endif
+  return (false);
+}
+
+static_always_inline bool
+ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
+{
+#ifdef MAP_SKIP_IP6_LOOKUP
+  if (FIB_NODE_INDEX_INVALID != pre_resolved[FIB_PROTOCOL_IP4].fei)
+    {
+      vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+	pre_resolved[FIB_PROTOCOL_IP4].dpo.dpoi_index;
+      return (true);
+    }
+#endif
+  return (false);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

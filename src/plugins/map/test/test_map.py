@@ -35,6 +35,8 @@ class TestMAP(VppTestCase):
         self.pg0.admin_up()
         self.pg0.config_ip4()
         self.pg0.resolve_arp()
+        self.pg0.generate_remote_hosts(2)
+        self.pg0.configure_ipv4_neighbors()
 
         # pg1 is 'outside' IPv6
         self.pg1.admin_up()
@@ -432,6 +434,87 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_translated)
 
+
+    def test_map_t_pre_resolve(self):
+        """ MAP-T pre-resolve"""
+
+        # Add a domain that maps from pg0 to pg1
+        map_dst = '2001:db8::/32'
+        map_src = '1234:5678:90ab:cdef::/64'
+        ip4_pfx = '192.168.0.0/24'
+        tag = 'MAP-T Test Domain.'
+
+        self.vapi.map_add_domain(ip6_prefix=map_dst,
+                                 ip4_prefix=ip4_pfx,
+                                 ip6_src=map_src,
+                                 ea_bits_len=16,
+                                 psid_offset=6,
+                                 psid_length=4,
+                                 mtu=1500,
+                                 tag=tag)
+
+        # Enable MAP-T on interfaces.
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg0.sw_if_index,
+                                        is_translation=1)
+        self.vapi.map_if_enable_disable(is_enable=1,
+                                        sw_if_index=self.pg1.sw_if_index,
+                                        is_translation=1)
+
+        # Enable pre-resolve option
+        self.vapi.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
+                                                ip6_nh_address="4001::1",
+                                                is_add=1)
+
+        # Add a route to 4001::1 and expect the translated traffic to be
+        # sent via that route next-hop.
+        pre_res_route6 = VppIpRoute(self, "4001::1", 128,
+                                    [VppRoutePath(self.pg1.remote_hosts[2].ip6,
+                                                  self.pg1.sw_if_index)])
+        pre_res_route6.add_vpp_config()
+
+        # Add a route to 10.1.2.3 and expect the "untranslated" traffic to be
+        # sent via that route next-hop.
+        pre_res_route4 = VppIpRoute(self, "10.1.2.3", 32,
+                                    [VppRoutePath(self.pg0.remote_hosts[1].ip4,
+                                                  self.pg0.sw_if_index)])
+        pre_res_route4.add_vpp_config()
+
+        # Send an IPv4 packet that will be translated
+        p_ether = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+        p_ip4 = IP(src=self.pg0.remote_ip4, dst='192.168.0.1')
+        payload = TCP(sport=0xabcd, dport=0xabcd)
+        p4 = (p_ether / p_ip4 / payload)
+
+        p6_translated = (IPv6(src="1234:5678:90ab:cdef:ac:1001:200:0",
+                              dst="2001:db8:1f0::c0a8:1:f") / payload)
+        p6_translated.hlim -= 1
+
+        rx = self.send_and_expect(self.pg0, p4*1, self.pg1)
+        for p in rx:
+            self.assertEqual(p[Ether].dst, self.pg1.remote_hosts[2].mac)
+            self.validate(p[1], p6_translated)
+
+        # Send back an IPv6 packet that will be "untranslated"
+        p_ether6 = Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+        p_ip6 = IPv6(src='2001:db8:1f0::c0a8:1:f',
+                     dst='1234:5678:90ab:cdef:ac:1001:200:0')
+        p6 = (p_ether6 / p_ip6 / payload)
+
+        p4_translated = (IP(src='192.168.0.1',
+                            dst=self.pg0.remote_ip4) / payload)
+        p4_translated.id = 0
+        p4_translated.ttl -= 1
+
+        rx = self.send_and_expect(self.pg1, p6*1, self.pg0)
+        for p in rx:
+            self.assertEqual(p[Ether].dst, self.pg0.remote_hosts[1].mac)
+            self.validate(p[1], p4_translated)
+
+        # Cleanup pre-resolve option
+        self.vapi.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
+                                                ip6_nh_address="4001::1",
+                                                is_add=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
