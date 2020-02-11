@@ -184,6 +184,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
   ip4_address_t ip4;
   ip4_address_t end_addr;
   u32 responder_sw_if_index = (u32) ~ 0;
+  u32 tun_sw_if_index = (u32) ~ 0;
   ip4_address_t responder_ip4;
   ikev2_transform_encr_type_t crypto_alg;
   ikev2_transform_integ_type_t integ_alg;
@@ -326,6 +327,13 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 					 responder_ip4);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U tunnel %U",
+			 unformat_token, valid_chars, &name,
+			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
+	{
+	  r = ikev2_set_profile_tunnel_interface (vm, name, tun_sw_if_index);
+	  goto done;
+	}
       else
 	if (unformat
 	    (line_input,
@@ -384,6 +392,7 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] [cert-file|string|hex]"
     " <data>\n"
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
+    "ikev2 profile set <id> tunnel <interface>\n"
     "ikev2 profile set <id> traffic-selector <local|remote> ip-range "
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
     "protocol <protocol-number>\n"

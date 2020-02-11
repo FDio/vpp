@@ -407,6 +407,12 @@ api_ikev2_set_local_key (vat_main_t * vam)
 }
 
 static int
+api_ikev2_set_tunnel_interface (vat_main_t * vam)
+{
+  return (0);
+}
+
+static int
 api_ikev2_set_responder (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;

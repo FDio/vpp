@@ -290,6 +290,33 @@ vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
 }
 
 static void
+  vl_api_ikev2_set_tunnel_interface_t_handler
+  (vl_api_ikev2_set_tunnel_interface_t * mp)
+{
+  vl_api_ikev2_set_tunnel_interface_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+#if WITH_LIBSSL > 0
+  u8 *tmp = format (0, "%s", mp->name);
+  clib_error_t *error;
+
+  error = ikev2_set_profile_tunnel_interface (vlib_get_main (), tmp,
+					      ntohl (mp->sw_if_index));
+
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+  vec_free (tmp);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_IKEV2_SET_TUNNEL_INTERFACE_REPLY);
+}
+
+static void
 vl_api_ikev2_initiate_sa_init_t_handler (vl_api_ikev2_initiate_sa_init_t * mp)
 {
   vl_api_ikev2_initiate_sa_init_reply_t *rmp;
