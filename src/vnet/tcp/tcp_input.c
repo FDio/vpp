@@ -3555,25 +3555,27 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 
 static inline void
 tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
-			   vlib_buffer_t * b, u16 * next, u32 * error)
+			   vlib_buffer_t * b, u16 * next,
+			   vlib_node_runtime_t * error_node)
 {
   tcp_header_t *tcp;
+  u32 error;
   u8 flags;
 
   tcp = tcp_buffer_hdr (b);
   flags = tcp->flags & filter_flags;
   *next = tm->dispatch_table[tc->state][flags].next;
-  *error = tm->dispatch_table[tc->state][flags].error;
+  error = tm->dispatch_table[tc->state][flags].error;
   tc->segs_in += 1;
 
-  if (PREDICT_FALSE (*error == TCP_ERROR_DISPATCH
-		     || *next == TCP_INPUT_NEXT_RESET))
+  if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
       /* Overload tcp flags to store state */
       tcp_state_t state = tc->state;
       vnet_buffer (b)->tcp.flags = tc->state;
 
-      if (*error == TCP_ERROR_DISPATCH)
+      b->error = error_node->errors[error];
+      if (error == TCP_ERROR_DISPATCH)
 	clib_warning ("tcp conn %u disp error state %U flags %U",
 		      tc->c_c_index, format_tcp_state, state,
 		      format_tcp_flags, (int) flags);
@@ -3588,9 +3590,11 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_node_runtime_t *error_node;
 
   tcp_set_time_now (tcp_get_worker (thread_index));
 
+  error_node = vlib_node_get_runtime (vm, tcp_node_index (input, is_ip4));
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
@@ -3626,8 +3630,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], &error1);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
+	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], error_node);
 	}
       else
 	{
@@ -3635,19 +3639,25 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
+	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
 	    }
 	  else
-	    tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+	    {
+	      tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+	      b[0]->error = error_node->errors[error0];
+	    }
 
 	  if (PREDICT_TRUE (tc1 != 0))
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], &error1);
+	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], error_node);
 	    }
 	  else
-	    tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
+	    {
+	      tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
+	      b[1]->error = error_node->errors[error1];
+	    }
 	}
 
       b += 2;
@@ -3672,10 +3682,13 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], &error0);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
 	}
       else
-	tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+	{
+	  tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
+	  b[0]->error = error_node->errors[error0];
+	}
 
       b += 1;
       next += 1;
@@ -3836,7 +3849,7 @@ do {                                                       	\
   _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_RST, TCP_INPUT_NEXT_DROP,
     TCP_ERROR_SEGMENT_INVALID);
   _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP,
-    TCP_ERROR_NONE);
+    TCP_ERROR_SEGMENT_INVALID);
   _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_SYN, TCP_INPUT_NEXT_DROP,
     TCP_ERROR_SEGMENT_INVALID);
   _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_SYN | TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP,
@@ -4023,10 +4036,10 @@ do {                                                       	\
   _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP,
     TCP_ERROR_CONNECTION_CLOSED);
-  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
-  _(CLOSED, TCP_FLAG_SYN, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
+  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
+  _(CLOSED, TCP_FLAG_SYN, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
-    TCP_ERROR_NONE);
+    TCP_ERROR_CONNECTION_CLOSED);
 #undef _
 }
 
