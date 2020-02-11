@@ -126,6 +126,7 @@ typedef struct
 } ip_main_t;
 
 extern ip_main_t ip_main;
+extern char *ip4_error_strings[];
 
 clib_error_t *ip_main_init (vlib_main_t * vm);
 
