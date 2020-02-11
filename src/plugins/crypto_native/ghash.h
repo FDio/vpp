@@ -107,34 +107,65 @@
 
 /* on AVX-512 systems we can save a clock cycle by using ternary logic
    instruction to calculate a XOR b XOR c */
-static_always_inline __m128i
-ghash_xor3 (__m128i a, __m128i b, __m128i c)
+static_always_inline u8x16
+ghash_xor3 (u8x16 a, u8x16 b, u8x16 c)
 {
 #if defined (__AVX512F__)
-  return _mm_ternarylogic_epi32 (a, b, c, 0x96);
+  return (u8x16) _mm_ternarylogic_epi32 ((__m128i) a, (__m128i) b,
+					 (__m128i) c, 0x96);
 #endif
   return a ^ b ^ c;
 }
 
+static_always_inline u8x16
+gmul_lo_lo (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x00);
+}
+
+static_always_inline u8x16
+gmul_lo_hi (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
+}
+
+static_always_inline u8x16
+gmul_hi_lo (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
+}
+
+static_always_inline u8x16
+gmul_hi_hi (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x11);
+}
+
 typedef struct
 {
-  __m128i mid, hi, lo, tmp_lo, tmp_hi;
+  u8x16 mid, hi, lo, tmp_lo, tmp_hi;
   int pending;
 } ghash_data_t;
 
-static const __m128i ghash_poly = { 1, 0xC200000000000000 };
-static const __m128i ghash_poly2 = { 0x1C2000000, 0xC200000000000000 };
+static const u8x16 ghash_poly = {
+  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2
+};
+
+static const u8x16 ghash_poly2 = {
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2
+};
 
 static_always_inline void
-ghash_mul_first (ghash_data_t * gd, __m128i a, __m128i b)
+ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
-  gd->hi = _mm_clmulepi64_si128 (a, b, 0x11);
+  gd->hi = gmul_hi_hi (a, b);
   /* a0 * b0 */
-  gd->lo = _mm_clmulepi64_si128 (a, b, 0x00);
+  gd->lo = gmul_lo_lo (a, b);
   /* a0 * b1 ^ a1 * b0 */
-  gd->mid = (_mm_clmulepi64_si128 (a, b, 0x01) ^
-	     _mm_clmulepi64_si128 (a, b, 0x10));
+  gd->mid = (gmul_lo_hi (a, b) ^ gmul_hi_lo (a, b));
 
   /* set gd->pending to 0 so next invocation of ghash_mul_next(...) knows that
      there is no pending data in tmp_lo and tmp_hi */
@@ -142,12 +173,12 @@ ghash_mul_first (ghash_data_t * gd, __m128i a, __m128i b)
 }
 
 static_always_inline void
-ghash_mul_next (ghash_data_t * gd, __m128i a, __m128i b)
+ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
-  __m128i hi = _mm_clmulepi64_si128 (a, b, 0x11);
+  u8x16 hi = gmul_hi_hi (a, b);
   /* a0 * b0 */
-  __m128i lo = _mm_clmulepi64_si128 (a, b, 0x00);
+  u8x16 lo = gmul_lo_lo (a, b);
 
   /* this branch will be optimized out by the compiler, and it allows us to
      reduce number of XOR operations by using ternary logic */
@@ -167,21 +198,19 @@ ghash_mul_next (ghash_data_t * gd, __m128i a, __m128i b)
     }
 
   /* gd->mid ^= a0 * b1 ^ a1 * b0  */
-  gd->mid = ghash_xor3 (gd->mid,
-			_mm_clmulepi64_si128 (a, b, 0x01),
-			_mm_clmulepi64_si128 (a, b, 0x10));
+  gd->mid = ghash_xor3 (gd->mid, gmul_lo_hi (a, b), gmul_hi_lo (a, b));
 }
 
 static_always_inline void
 ghash_reduce (ghash_data_t * gd)
 {
-  __m128i r;
+  u8x16 r;
 
   /* Final combination:
      gd->lo ^= gd->mid << 64
      gd->hi ^= gd->mid >> 64 */
-  __m128i midl = _mm_slli_si128 (gd->mid, 8);
-  __m128i midr = _mm_srli_si128 (gd->mid, 8);
+  u8x16 midl = u8x16_word_shift_left (gd->mid, 8);
+  u8x16 midr = u8x16_word_shift_right (gd->mid, 8);
 
   if (gd->pending)
     {
@@ -194,26 +223,26 @@ ghash_reduce (ghash_data_t * gd)
       gd->hi ^= midr;
     }
 
-  r = _mm_clmulepi64_si128 (ghash_poly2, gd->lo, 0x01);
-  gd->lo ^= _mm_slli_si128 (r, 8);
+  r = gmul_lo_hi (ghash_poly2, gd->lo);
+  gd->lo ^= u8x16_word_shift_left (r, 8);
 }
 
 static_always_inline void
 ghash_reduce2 (ghash_data_t * gd)
 {
-  gd->tmp_lo = _mm_clmulepi64_si128 (ghash_poly2, gd->lo, 0x00);
-  gd->tmp_hi = _mm_clmulepi64_si128 (ghash_poly2, gd->lo, 0x10);
+  gd->tmp_lo = gmul_lo_lo (ghash_poly2, gd->lo);
+  gd->tmp_hi = gmul_hi_lo (ghash_poly2, gd->lo);
 }
 
-static_always_inline __m128i
+static_always_inline u8x16
 ghash_final (ghash_data_t * gd)
 {
-  return ghash_xor3 (gd->hi, _mm_srli_si128 (gd->tmp_lo, 4),
-		     _mm_slli_si128 (gd->tmp_hi, 4));
+  return ghash_xor3 (gd->hi, u8x16_word_shift_right (gd->tmp_lo, 4),
+		     u8x16_word_shift_left (gd->tmp_hi, 4));
 }
 
-static_always_inline __m128i
-ghash_mul (__m128i a, __m128i b)
+static_always_inline u8x16
+ghash_mul (u8x16 a, u8x16 b)
 {
   ghash_data_t _gd, *gd = &_gd;
   ghash_mul_first (gd, a, b);
@@ -223,19 +252,20 @@ ghash_mul (__m128i a, __m128i b)
 }
 
 static_always_inline void
-ghash_precompute (__m128i H, __m128i * Hi, int count)
+ghash_precompute (u8x16 H, u8x16 * Hi, int count)
 {
-  __m128i r;
+  u8x16 r8;
+  u32x4 r32;
   /* calcullate H<<1 mod poly from the hash key */
-  r = _mm_srli_epi64 (H, 63);
-  H = _mm_slli_epi64 (H, 1);
-  H |= _mm_slli_si128 (r, 8);
-  r = _mm_srli_si128 (r, 8);
-  r = _mm_shuffle_epi32 (r, 0x24);
+  r8 = (u8x16) ((u64x2) H >> 63);
+  H = (u8x16) ((u64x2) H << 1);
+  H |= u8x16_word_shift_left (r8, 8);
+  r32 = (u32x4) u8x16_word_shift_right (r8, 8);
+  r32 = u32x4_shuffle (r32, 0, 1, 2, 0);
   /* *INDENT-OFF* */
-  r = _mm_cmpeq_epi32 (r, (__m128i) (u32x4) {1, 0, 0, 1});
+  r32 = r32 == (u32x4) {1, 0, 0, 1};
   /* *INDENT-ON* */
-  Hi[0] = H ^ (r & ghash_poly);
+  Hi[0] = H ^ ((u8x16) r32 & ghash_poly);
 
   /* calculate H^(i + 1) */
   for (int i = 1; i < count; i++)

@@ -30,6 +30,10 @@ typedef enum
 
 #ifdef __x86_64__
 
+static const u8x16 byte_mask_scale = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+};
+
 static_always_inline u8x16
 aes_block_load (u8 * p)
 {
@@ -67,40 +71,85 @@ aes_block_store (u8 * p, u8x16 r)
 }
 
 static_always_inline u8x16
+aes_byte_mask (u8x16 x, u8 n_bytes)
+{
+  u8x16 mask = u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
+  __m128i zero = { };
+
+  return (u8x16) _mm_blendv_epi8 (zero, (__m128i) x, (__m128i) mask);
+}
+
+static_always_inline u8x16
+aes_load_partial (u8x16u * p, int n_bytes)
+{
+  ASSERT (n_bytes <= 16);
+#ifdef __AVX512F__
+  __m128i zero = { };
+  return (u8x16) _mm_mask_loadu_epi8 (zero, (1 << n_bytes) - 1, p);
+#else
+  return aes_byte_mask (CLIB_MEM_OVERFLOW_LOAD (*, p), n_bytes);
+#endif
+}
+
+static_always_inline void
+aes_store_partial (void *p, u8x16 r, int n_bytes)
+{
+#ifdef __AVX512F__
+  _mm_mask_storeu_epi8 (p, (1 << n_bytes) - 1, (__m128i) r);
+#else
+  u8x16 mask = u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
+  _mm_maskmoveu_si128 ((__m128i) r, (__m128i) mask, p);
+#endif
+}
+
+
+static_always_inline u8x16
+aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
+{
+  int i;
+  block ^= round_keys[0];
+  for (i = 1; i < AES_KEY_ROUNDS (ks); i += 1)
+    block = aes_enc_round (block, round_keys[i]);
+  return aes_enc_last_round (block, round_keys[i]);
+}
+
+static_always_inline u8x16
 aes_inv_mix_column (u8x16 a)
 {
   return (u8x16) _mm_aesimc_si128 ((__m128i) a);
 }
+
+#define aes_keygen_assist(a, b) \
+  (u8x16) _mm_aeskeygenassist_si128((__m128i) a, b)
 
 /* AES-NI based AES key expansion based on code samples from
    Intel(r) Advanced Encryption Standard (AES) New Instructions White Paper
    (323641-001) */
 
 static_always_inline void
-aes128_key_assist (__m128i * k, __m128i r)
+aes128_key_assist (u8x16 * k, u8x16 r)
 {
-  __m128i t = k[-1];
-  t ^= _mm_slli_si128 (t, 4);
-  t ^= _mm_slli_si128 (t, 4);
-  t ^= _mm_slli_si128 (t, 4);
-  k[0] = t ^ _mm_shuffle_epi32 (r, 0xff);
+  u8x16 t = k[-1];
+  t ^= u8x16_word_shift_left (t, 4);
+  t ^= u8x16_word_shift_left (t, 4);
+  t ^= u8x16_word_shift_left (t, 4);
+  k[0] = t ^ (u8x16) u32x4_shuffle ((u32x4) r, 3, 3, 3, 3);
 }
 
 static_always_inline void
-aes128_key_expand (u8x16 * key_schedule, u8 * key)
+aes128_key_expand (u8x16 * k, u8 * key)
 {
-  __m128i *k = (__m128i *) key_schedule;
-  k[0] = _mm_loadu_si128 ((const __m128i *) key);
-  aes128_key_assist (k + 1, _mm_aeskeygenassist_si128 (k[0], 0x01));
-  aes128_key_assist (k + 2, _mm_aeskeygenassist_si128 (k[1], 0x02));
-  aes128_key_assist (k + 3, _mm_aeskeygenassist_si128 (k[2], 0x04));
-  aes128_key_assist (k + 4, _mm_aeskeygenassist_si128 (k[3], 0x08));
-  aes128_key_assist (k + 5, _mm_aeskeygenassist_si128 (k[4], 0x10));
-  aes128_key_assist (k + 6, _mm_aeskeygenassist_si128 (k[5], 0x20));
-  aes128_key_assist (k + 7, _mm_aeskeygenassist_si128 (k[6], 0x40));
-  aes128_key_assist (k + 8, _mm_aeskeygenassist_si128 (k[7], 0x80));
-  aes128_key_assist (k + 9, _mm_aeskeygenassist_si128 (k[8], 0x1b));
-  aes128_key_assist (k + 10, _mm_aeskeygenassist_si128 (k[9], 0x36));
+  k[0] = *(u8x16u *) key;
+  aes128_key_assist (k + 1, aes_keygen_assist (k[0], 0x01));
+  aes128_key_assist (k + 2, aes_keygen_assist (k[1], 0x02));
+  aes128_key_assist (k + 3, aes_keygen_assist (k[2], 0x04));
+  aes128_key_assist (k + 4, aes_keygen_assist (k[3], 0x08));
+  aes128_key_assist (k + 5, aes_keygen_assist (k[4], 0x10));
+  aes128_key_assist (k + 6, aes_keygen_assist (k[5], 0x20));
+  aes128_key_assist (k + 7, aes_keygen_assist (k[6], 0x40));
+  aes128_key_assist (k + 8, aes_keygen_assist (k[7], 0x80));
+  aes128_key_assist (k + 9, aes_keygen_assist (k[8], 0x1b));
+  aes128_key_assist (k + 10, aes_keygen_assist (k[9], 0x36));
 }
 
 static_always_inline void
@@ -121,8 +170,8 @@ aes192_key_expand (u8x16 * key_schedule, u8 * key)
   __m128i r1, r2, *k = (__m128i *) key_schedule;
 
   k[0] = r1 = _mm_loadu_si128 ((__m128i *) key);
-  /* load the 24-bytes key as 2 * 16-bytes (and ignore last 8-bytes) */
-  k[1] = r2 = CLIB_MEM_OVERFLOW_LOAD (_mm_loadu_si128, (__m128i *) key + 1);
+  r2[0] = *(u64 *) (key + 16);
+  k[1] = r2;
 
   aes192_key_assist (&r1, &r2, _mm_aeskeygenassist_si128 (r2, 0x1));
   k[1] = (__m128i) _mm_shuffle_pd ((__m128d) k[1], (__m128d) r1, 0);
@@ -157,41 +206,41 @@ aes192_key_expand (u8x16 * key_schedule, u8 * key)
 }
 
 static_always_inline void
-aes256_key_assist (__m128i * k, int i, __m128i key_assist)
+aes256_key_assist (u8x16 * k, int i, u8x16 key_assist)
 {
-  __m128i r, t;
+  u8x16 r, t;
   k += i;
   r = k[-2];
-  r ^= t = _mm_slli_si128 (r, 0x4);
-  r ^= t = _mm_slli_si128 (t, 0x4);
-  r ^= _mm_slli_si128 (t, 0x4);
-  r ^= _mm_shuffle_epi32 (key_assist, 0xff);
+  r ^= t = u8x16_word_shift_left (r, 0x4);
+  r ^= t = u8x16_word_shift_left (t, 0x4);
+  r ^= u8x16_word_shift_left (t, 0x4);
+  r ^= (u8x16) u32x4_shuffle ((u32x4) key_assist, 3, 3, 3, 3);
   k[0] = r;
 
   if (i >= 14)
     return;
 
+  key_assist = aes_keygen_assist (k[0], 0x0);
   r = k[-1];
-  r ^= t = _mm_slli_si128 (r, 0x4);
-  r ^= t = _mm_slli_si128 (t, 0x4);
-  r ^= _mm_slli_si128 (t, 0x4);
-  r ^= _mm_shuffle_epi32 (_mm_aeskeygenassist_si128 (k[0], 0x0), 0xaa);
+  r ^= t = u8x16_word_shift_left (r, 0x4);
+  r ^= t = u8x16_word_shift_left (t, 0x4);
+  r ^= u8x16_word_shift_left (t, 0x4);
+  r ^= (u8x16) u32x4_shuffle ((u32x4) key_assist, 2, 2, 2, 2);
   k[1] = r;
 }
 
 static_always_inline void
-aes256_key_expand (u8x16 * key_schedule, u8 * key)
+aes256_key_expand (u8x16 * k, u8 * key)
 {
-  __m128i *k = (__m128i *) key_schedule;
-  k[0] = _mm_loadu_si128 ((__m128i *) key);
-  k[1] = _mm_loadu_si128 ((__m128i *) (key + 16));
-  aes256_key_assist (k, 2, _mm_aeskeygenassist_si128 (k[1], 0x01));
-  aes256_key_assist (k, 4, _mm_aeskeygenassist_si128 (k[3], 0x02));
-  aes256_key_assist (k, 6, _mm_aeskeygenassist_si128 (k[5], 0x04));
-  aes256_key_assist (k, 8, _mm_aeskeygenassist_si128 (k[7], 0x08));
-  aes256_key_assist (k, 10, _mm_aeskeygenassist_si128 (k[9], 0x10));
-  aes256_key_assist (k, 12, _mm_aeskeygenassist_si128 (k[11], 0x20));
-  aes256_key_assist (k, 14, _mm_aeskeygenassist_si128 (k[13], 0x40));
+  k[0] = *(u8x16u *) key;
+  k[1] = *(u8x16u *) (key + 16);
+  aes256_key_assist (k, 2, aes_keygen_assist (k[1], 0x01));
+  aes256_key_assist (k, 4, aes_keygen_assist (k[3], 0x02));
+  aes256_key_assist (k, 6, aes_keygen_assist (k[5], 0x04));
+  aes256_key_assist (k, 8, aes_keygen_assist (k[7], 0x08));
+  aes256_key_assist (k, 10, aes_keygen_assist (k[9], 0x10));
+  aes256_key_assist (k, 12, aes_keygen_assist (k[11], 0x20));
+  aes256_key_assist (k, 14, aes_keygen_assist (k[13], 0x40));
 }
 #endif
 
