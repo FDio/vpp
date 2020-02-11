@@ -46,6 +46,30 @@
       "revId": "6c5be4e127d64f0881e3956e9ca1e6a8bb69f49a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1b772b67_bc518529",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-11T01:35:03Z",
+      "side": 1,
+      "message": "Although this might fix TLS, it can potentially break pure tcp consumers. Hopefully this [1] fixes all the issues as it ensures resets are raised only after the rx notifications. \n\n[1] https://gerrit.fd.io/r/c/vpp/+/24918",
+      "parentUuid": "b2eb3087_e7d010f4",
+      "range": {
+        "startLine": 676,
+        "startChar": 6,
+        "endLine": 676,
+        "endChar": 62
+      },
+      "revId": "6c5be4e127d64f0881e3956e9ca1e6a8bb69f49a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
