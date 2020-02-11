@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "895eb123_575d34d1",
+        "filename": "src/svm/ssvm.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 416,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-02-11T01:41:06Z",
+      "side": 0,
+      "message": "TBH I was thinking about finally getting rid of USE_DLMALLOC \u003d\u003d 0, aka the old memory allocator.",
+      "revId": "43818c1e02b33b5baf0d3e06caf9dec61301e921",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
