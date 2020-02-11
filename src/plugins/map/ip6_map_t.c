@@ -31,6 +31,7 @@ typedef enum
 typedef enum
 {
   IP6_MAPT_ICMP_NEXT_IP4_LOOKUP,
+  IP6_MAPT_ICMP_NEXT_IP4_REWRITE,
   IP6_MAPT_ICMP_NEXT_IP4_FRAG,
   IP6_MAPT_ICMP_NEXT_DROP,
   IP6_MAPT_ICMP_N_NEXT
@@ -39,6 +40,7 @@ typedef enum
 typedef enum
 {
   IP6_MAPT_TCP_UDP_NEXT_IP4_LOOKUP,
+  IP6_MAPT_TCP_UDP_NEXT_IP4_REWRITE,
   IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG,
   IP6_MAPT_TCP_UDP_NEXT_DROP,
   IP6_MAPT_TCP_UDP_N_NEXT
@@ -47,6 +49,7 @@ typedef enum
 typedef enum
 {
   IP6_MAPT_FRAGMENTED_NEXT_IP4_LOOKUP,
+  IP6_MAPT_FRAGMENTED_NEXT_IP4_REWRITE,
   IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG,
   IP6_MAPT_FRAGMENTED_NEXT_DROP,
   IP6_MAPT_FRAGMENTED_N_NEXT
@@ -174,6 +177,11 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	      vnet_buffer (p0)->ip_frag.next_index = IP_FRAG_NEXT_IP4_LOOKUP;
 	      next0 = IP6_MAPT_ICMP_NEXT_IP4_FRAG;
 	    }
+	  else
+	    {
+	      next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
+		IP6_MAPT_ICMP_NEXT_IP4_REWRITE : next0;
+	    }
 	err0:
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    {
@@ -274,8 +282,7 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  to_next += 1;
 	  n_left_to_next -= 1;
-
-	  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_LOOKUP;
+	  next0 = IP6_MAPT_FRAGMENTED_NEXT_IP4_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  if (map_ip6_to_ip4_fragmented (vm, p0))
@@ -292,6 +299,11 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG;
+		}
+	      else
+		{
+		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
+		    IP6_MAPT_FRAGMENTED_NEXT_IP4_REWRITE : next0;
 		}
 	    }
 
@@ -458,6 +470,11 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG;
+		}
+	      else
+		{
+		  next0 = ip6_map_ip4_lookup_bypass (p0, NULL) ?
+		    IP6_MAPT_TCP_UDP_NEXT_IP4_REWRITE : next0;
 		}
 	    }
 
@@ -679,6 +696,7 @@ VLIB_REGISTER_NODE(ip6_map_t_fragmented_node) = {
   .next_nodes =
   {
     [IP6_MAPT_FRAGMENTED_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [IP6_MAPT_FRAGMENTED_NEXT_IP4_REWRITE] = "ip4-load-balance",
     [IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG] = IP4_FRAG_NODE_NAME,
     [IP6_MAPT_FRAGMENTED_NEXT_DROP] = "error-drop",
   },
@@ -700,6 +718,7 @@ VLIB_REGISTER_NODE(ip6_map_t_icmp_node) = {
   .next_nodes =
   {
     [IP6_MAPT_ICMP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [IP6_MAPT_ICMP_NEXT_IP4_REWRITE] = "ip4-load-balance",
     [IP6_MAPT_ICMP_NEXT_IP4_FRAG] = IP4_FRAG_NODE_NAME,
     [IP6_MAPT_ICMP_NEXT_DROP] = "error-drop",
   },
@@ -721,6 +740,7 @@ VLIB_REGISTER_NODE(ip6_map_t_tcp_udp_node) = {
   .next_nodes =
   {
     [IP6_MAPT_TCP_UDP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [IP6_MAPT_TCP_UDP_NEXT_IP4_REWRITE] = "ip4-load-balance",
     [IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG] = IP4_FRAG_NODE_NAME,
     [IP6_MAPT_TCP_UDP_NEXT_DROP] = "error-drop",
   },
