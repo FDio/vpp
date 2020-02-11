@@ -3089,9 +3089,11 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	    clib_panic ("sigaction");
 
 	  /* Retrieve the current terminal size */
-	  ioctl (STDIN_FILENO, TIOCGWINSZ, &ws);
-	  cf->width = ws.ws_col;
-	  cf->height = ws.ws_row;
+	  if (ioctl (STDIN_FILENO, TIOCGWINSZ, &ws) == 0)
+	    {
+	      cf->width = ws.ws_col;
+	      cf->height = ws.ws_row;
+	    }
 
 	  if (cf->width == 0 || cf->height == 0)
 	    {
@@ -3328,7 +3330,7 @@ unix_cli_exec (vlib_main_t * vm,
   unformat_free (&sub_input);
 
 done:
-  if (fd > 0)
+  if (fd >= 0)
     close (fd);
   vec_free (file_name);
 
