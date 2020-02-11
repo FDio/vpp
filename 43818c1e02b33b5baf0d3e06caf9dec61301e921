@@ -16,6 +16,24 @@
       "revId": "43818c1e02b33b5baf0d3e06caf9dec61301e921",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "27dae96e_8861cf2d",
+        "filename": "src/svm/ssvm.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 416,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-11T01:58:05Z",
+      "side": 0,
+      "message": "I, for one, for sure wouldn\u0027t mind! dlmalloc seems to work \"as advertised\", so I decided to give up on maintaining private segments that used the old mheap allocator.",
+      "parentUuid": "895eb123_575d34d1",
+      "revId": "43818c1e02b33b5baf0d3e06caf9dec61301e921",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
