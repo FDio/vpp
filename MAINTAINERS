@@ -649,6 +649,11 @@ Awkward chained buffer geometry tool
 I:	oddbuf
 F:	src/plugins/oddbuf
 
+Plugin - VRRP
+I:	vrrp
+M:	Matthew Smith <mgsmith@netgate.com>
+F:	src/plugins/vrrp
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
