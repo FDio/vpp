@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "68b56ff0_f5ac0b61",
+        "filename": "src/plugins/http_static/http_static_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-02-11T13:46:51Z",
+      "side": 1,
+      "message": "These are C strings on the wire. Not vl_api_string_t (Pascal strings).\nOnly the variable length representation uses Pascal strings.",
+      "range": {
+        "startLine": 113,
+        "startChar": 1,
+        "endLine": 115,
+        "endChar": 64
+      },
+      "revId": "2dfed5ad560a43d63fc8fd7a1a4920c621bd519a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
