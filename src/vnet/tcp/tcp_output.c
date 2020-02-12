@@ -1452,6 +1452,7 @@ tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
+  tcp_workerp_stats_inc (wrk, tr_events, 1);
   tc = tcp_connection_get (tc_index, thread_index);
 
   /* Note: the connection may have been closed and pool_put */
@@ -1505,6 +1506,7 @@ tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
 	  session_transport_closed_notify (&tc->connection);
 	  tcp_connection_timers_reset (tc);
 	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.closewait_time);
+	  tcp_workerp_stats_inc (wrk, tr_close, 1);
 	  return;
 	}
 
@@ -1556,6 +1558,7 @@ tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  tcp_connection_timers_reset (tc);
 	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.cleanup_time);
+	  tcp_workerp_stats_inc (wrk, tr_close, 1);
 	  return;
 	}
 
