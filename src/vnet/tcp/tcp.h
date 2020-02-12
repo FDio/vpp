@@ -502,6 +502,24 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
+#define foreach_tcp_wrk_stat					\
+  _(timer_expirations, u64, "timer expirations")		\
+  _(rxt_segs, u64, "segments retransmitted")			\
+  _(tr_events, u32, "timer retransmit events")			\
+  _(to_closewait, u32, "timeout close-wait")			\
+  _(to_finwait1, u32, "timeout fin-wait-1")			\
+  _(to_lastack, u32, "timeout last-ack")			\
+  _(to_closing, u32, "timeout closing")				\
+  _(tr_abort, u32, "timer retransmit abort")			\
+  _(rst_unread, u32, "reset on close due to unread data")	\
+
+typedef struct tcp_wrk_stats_
+{
+#define _(name, type, str) type name;
+  foreach_tcp_wrk_stat
+#undef _
+} tcp_wrk_stats_t;
+
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -538,7 +556,16 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+
+  tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
+
+#define tcp_worker_stats_inc(_ti,_stat,_val) 		\
+  tcp_main.wrk_ctx[_ti].stats._stat += _val
+
+#define tcp_workerp_stats_inc(_wrk,_stat,_val) 		\
+  _wrk->stats._stat += _val
 
 typedef struct tcp_iss_seed_
 {
