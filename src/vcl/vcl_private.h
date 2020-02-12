@@ -70,7 +70,7 @@ typedef enum
   STATE_ACCEPT = 0x04,
   STATE_VPP_CLOSING = 0x08,
   STATE_DISCONNECT = 0x10,
-  STATE_FAILED = 0x20,
+  STATE_DETACHED = 0x20,
   STATE_UPDATED = 0x40,
   STATE_LISTEN_NO_MQ = 0x80,
 } vcl_session_state_t;
