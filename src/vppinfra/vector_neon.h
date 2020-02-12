@@ -182,6 +182,18 @@ u32x4_min_scalar (u32x4 v)
   return vminvq_u32 (v);
 }
 
+static_always_inline u8x16
+u8x16_word_shift_left (u8x16 x, const int n)
+{
+  return vextq_u8 (u8x16_splat (0), x, 16 - n);
+}
+
+static_always_inline u8x16
+u8x16_word_shift_right (u8x16 x, const int n)
+{
+  return vextq_u8 (x, u8x16_splat (0), n);
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
