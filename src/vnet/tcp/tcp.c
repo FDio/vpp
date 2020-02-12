@@ -237,8 +237,6 @@ tcp_half_open_connection_new (void)
 void
 tcp_connection_cleanup (tcp_connection_t * tc)
 {
-  tcp_main_t *tm = &tcp_main;
-
   TCP_EVT (TCP_EVT_DELETE, tc);
 
   /* Cleanup local endpoint if this was an active connect */
@@ -257,8 +255,6 @@ tcp_connection_cleanup (tcp_connection_t * tc)
     }
   else
     {
-      int thread_index = tc->c_thread_index;
-
       /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
 
@@ -274,10 +270,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
 
-      /* Poison the entry */
-      if (CLIB_DEBUG > 0)
-	clib_memset (tc, 0xFA, sizeof (*tc));
-      pool_put (tm->connections[thread_index], tc);
+      tcp_connection_free (tc);
     }
 }
 
@@ -298,12 +291,12 @@ tcp_connection_del (tcp_connection_t * tc)
 tcp_connection_t *
 tcp_connection_alloc (u8 thread_index)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   tcp_connection_t *tc;
 
-  pool_get (tm->connections[thread_index], tc);
+  pool_get (wrk->connections, tc);
   clib_memset (tc, 0, sizeof (*tc));
-  tc->c_c_index = tc - tm->connections[thread_index];
+  tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
   return tc;
 }
@@ -311,12 +304,12 @@ tcp_connection_alloc (u8 thread_index)
 tcp_connection_t *
 tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t * base)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   tcp_connection_t *tc;
 
-  pool_get (tm->connections[thread_index], tc);
+  pool_get (wrk->connections, tc);
   clib_memcpy_fast (tc, base, sizeof (*tc));
-  tc->c_c_index = tc - tm->connections[thread_index];
+  tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
   return tc;
 }
@@ -324,15 +317,14 @@ tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t * base)
 void
 tcp_connection_free (tcp_connection_t * tc)
 {
-  tcp_main_t *tm = &tcp_main;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   if (CLIB_DEBUG)
     {
-      u8 thread_index = tc->c_thread_index;
       clib_memset (tc, 0xFA, sizeof (*tc));
-      pool_put (tm->connections[thread_index], tc);
+      pool_put (wrk->connections, tc);
       return;
     }
-  pool_put (tm->connections[tc->c_thread_index], tc);
+  pool_put (wrk->connections, tc);
 }
 
 /**
@@ -1514,6 +1506,7 @@ tcp_main_enable (vlib_main_t * vm)
   u32 num_threads, n_workers, prealloc_conn_per_wrk;
   tcp_connection_t *tc __attribute__ ((unused));
   tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_worker_ctx_t *wrk;
   clib_error_t *error = 0;
   int thread;
 
@@ -1536,25 +1529,28 @@ tcp_main_enable (vlib_main_t * vm)
    */
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (tm->connections, num_threads - 1);
   vec_validate (tm->wrk_ctx, num_threads - 1);
   n_workers = num_threads == 1 ? 1 : vtm->n_threads;
   prealloc_conn_per_wrk = tcp_cfg.preallocated_connections / n_workers;
 
   for (thread = 0; thread < num_threads; thread++)
     {
-      vec_validate (tm->wrk_ctx[thread].pending_deq_acked, 255);
-      vec_validate (tm->wrk_ctx[thread].pending_disconnects, 255);
-      vec_reset_length (tm->wrk_ctx[thread].pending_deq_acked);
-      vec_reset_length (tm->wrk_ctx[thread].pending_disconnects);
-      tm->wrk_ctx[thread].vm = vlib_mains[thread];
+      wrk = &tm->wrk_ctx[thread];
+
+      vec_validate (wrk->pending_deq_acked, 255);
+      vec_validate (wrk->pending_disconnects, 255);
+      vec_validate (wrk->pending_resets, 255);
+      vec_reset_length (wrk->pending_deq_acked);
+      vec_reset_length (wrk->pending_disconnects);
+      vec_reset_length (wrk->pending_resets);
+      wrk->vm = vlib_mains[thread];
 
       /*
        * Preallocate connections. Assume that thread 0 won't
        * use preallocated threads when running multi-core
        */
       if ((thread > 0 || num_threads == 1) && prealloc_conn_per_wrk)
-	pool_init_fixed (tm->connections[thread], prealloc_conn_per_wrk);
+	pool_init_fixed (wrk->connections, prealloc_conn_per_wrk);
     }
 
   /*
