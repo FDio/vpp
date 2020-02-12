@@ -194,6 +194,15 @@ u8x16_word_shift_right (u8x16 x, const int n)
   return vextq_u8 (x, u8x16_splat (0), n);
 }
 
+static_always_inline u8x16
+u8x16_reflect (u8x16 v)
+{
+  u8x16 mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+  };
+  return (u8x16) vqtbl1q_u8 (v, mask);
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
