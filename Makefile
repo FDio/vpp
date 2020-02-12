@@ -75,8 +75,10 @@ DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
  
 ifeq ($(OS_VERSION_ID),16.04)
 	DEB_DEPENDS += python-dev
+	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_VERSION_ID),18.04)
 	DEB_DEPENDS += python-dev
+	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += libssl-dev
 	APT_ARGS = -t jessie-backports
