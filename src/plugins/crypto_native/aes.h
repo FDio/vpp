@@ -73,10 +73,7 @@ aes_block_store (u8 * p, u8x16 r)
 static_always_inline u8x16
 aes_byte_mask (u8x16 x, u8 n_bytes)
 {
-  u8x16 mask = u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
-  __m128i zero = { };
-
-  return (u8x16) _mm_blendv_epi8 (zero, (__m128i) x, (__m128i) mask);
+  return x & u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
 }
 
 static_always_inline u8x16
