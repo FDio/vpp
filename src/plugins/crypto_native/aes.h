@@ -258,7 +258,7 @@ static const u8x16 aese_prep_mask1 =
 static const u8x16 aese_prep_mask2 =
   { 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15 };
 
-static inline void
+static_always_inline void
 aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
 {
   u8x16 r, t, last_round = rk[-1], z = { };
@@ -272,7 +272,7 @@ aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
   rk[0] = r;
 }
 
-void
+static_always_inline void
 aes128_key_expand (u8x16 * rk, const u8x16 * k)
 {
   rk[0] = k[0];
@@ -288,7 +288,7 @@ aes128_key_expand (u8x16 * rk, const u8x16 * k)
   aes128_key_expand_round_neon (rk + 10, 0x36);
 }
 
-static inline void
+static_always_inline void
 aes192_key_expand_round_neon (u8x8 * rk, u32 rcon)
 {
   u8x8 r, last_round = rk[-1], z = { };
@@ -316,7 +316,7 @@ aes192_key_expand_round_neon (u8x8 * rk, u32 rcon)
   rk[2] = r;
 }
 
-void
+static_always_inline void
 aes192_key_expand (u8x16 * ek, const u8x16u * k)
 {
   u8x8 *rk = (u8x8 *) ek;
@@ -333,7 +333,7 @@ aes192_key_expand (u8x16 * ek, const u8x16u * k)
 }
 
 
-static inline void
+static_always_inline void
 aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
 {
   u8x16 r, t, z = { };
@@ -349,7 +349,7 @@ aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
   rk[0] = r;
 }
 
-void
+static_always_inline void
 aes256_key_expand (u8x16 * rk, u8x16 const *k)
 {
   rk[0] = k[0];
