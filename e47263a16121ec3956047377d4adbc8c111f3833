@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5ace4fd6_c0a5eaa9",
+        "filename": "src/plugins/map/ip4_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-02-12T11:08:59Z",
+      "side": 1,
+      "message": "The code that depends on the MAP_SKIP_IP6_LOOKUP flag is not always conditional in the map plugin. For example, in ip4_map.c _REWRITE symbols introduction is also conditional but the usage of these symbols is not conditional. I would prefer to have all dependent on MAP_SKIP_IP6_LOOKUP code conditional. But I\u0027m not sure whether that flag is still supported because you won\u0027t be able to build if MAP_SKIP_IP6_LOOKUP is not defined. Now MAP_SKIP_IP6_LOOKUP is always defined.\n\nI will define these three _REWRITE symbols without any conditions but I want to have clarity on MAP_SKIP_IP6_LOOKUP support because now it looks like all these conditions are not needed and the pre-resolve option will always be turned on.",
+      "parentUuid": "b1031afc_fc63d12b",
+      "range": {
+        "startLine": 188,
+        "startChar": 2,
+        "endLine": 188,
+        "endChar": 32
+      },
+      "revId": "e47263a16121ec3956047377d4adbc8c111f3833",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d5bdca9b_e89433c6",
         "filename": "src/plugins/map/ip6_map_t.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2020-02-11T15:29:23Z",
       "side": 1,
       "message": "As in ip4_map_t.c, these symbols are conditional, so either make\nthem unconditional, or make sure all their uses (the \u0027else\u0027 clauses\nbelow) are also conditional.",
+      "range": {
+        "startLine": 34,
+        "startChar": 2,
+        "endLine": 34,
+        "endChar": 32
+      },
+      "revId": "e47263a16121ec3956047377d4adbc8c111f3833",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b07fb81a_f92e348a",
+        "filename": "src/plugins/map/ip6_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-02-12T11:08:59Z",
+      "side": 1,
+      "message": "I will define these three _REWRITE symbols without any conditions.",
+      "parentUuid": "d5bdca9b_e89433c6",
       "range": {
         "startLine": 34,
         "startChar": 2,
