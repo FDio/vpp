@@ -124,13 +124,13 @@ gmul_lo_lo (u8x16 a, u8x16 b)
 }
 
 static_always_inline u8x16
-gmul_lo_hi (u8x16 a, u8x16 b)
+gmul_hi_lo (u8x16 a, u8x16 b)
 {
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
 }
 
 static_always_inline u8x16
-gmul_hi_lo (u8x16 a, u8x16 b)
+gmul_lo_hi (u8x16 a, u8x16 b)
 {
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
 }
@@ -165,7 +165,7 @@ ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
   /* a0 * b0 */
   gd->lo = gmul_lo_lo (a, b);
   /* a0 * b1 ^ a1 * b0 */
-  gd->mid = (gmul_lo_hi (a, b) ^ gmul_hi_lo (a, b));
+  gd->mid = (gmul_hi_lo (a, b) ^ gmul_lo_hi (a, b));
 
   /* set gd->pending to 0 so next invocation of ghash_mul_next(...) knows that
      there is no pending data in tmp_lo and tmp_hi */
@@ -198,7 +198,7 @@ ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
     }
 
   /* gd->mid ^= a0 * b1 ^ a1 * b0  */
-  gd->mid = ghash_xor3 (gd->mid, gmul_lo_hi (a, b), gmul_hi_lo (a, b));
+  gd->mid = ghash_xor3 (gd->mid, gmul_hi_lo (a, b), gmul_lo_hi (a, b));
 }
 
 static_always_inline void
@@ -223,7 +223,7 @@ ghash_reduce (ghash_data_t * gd)
       gd->hi ^= midr;
     }
 
-  r = gmul_lo_hi (ghash_poly2, gd->lo);
+  r = gmul_hi_lo (ghash_poly2, gd->lo);
   gd->lo ^= u8x16_word_shift_left (r, 8);
 }
 
@@ -231,7 +231,7 @@ static_always_inline void
 ghash_reduce2 (ghash_data_t * gd)
 {
   gd->tmp_lo = gmul_lo_lo (ghash_poly2, gd->lo);
-  gd->tmp_hi = gmul_hi_lo (ghash_poly2, gd->lo);
+  gd->tmp_hi = gmul_lo_hi (ghash_poly2, gd->lo);
 }
 
 static_always_inline u8x16
