@@ -2065,7 +2065,6 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 
       if (verbose)
 	{
-	  u8 *s = 0;
 	  u32 table_index;
 
 	  for (j = 0; j < vec_len (set->table_indices); j++)
@@ -2082,8 +2081,7 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  u8 *s = 0;
-	  table_index = set->table_indices[0];
+	  table_index = set->table_indices ? set->table_indices[0] : ~0;
 
 	  if (table_index != ~0)
 	    s = format (s, " %u", table_index);
