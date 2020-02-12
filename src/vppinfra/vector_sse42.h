@@ -635,6 +635,15 @@ u16x8_byte_swap (u16x8 v)
   return (u16x8) _mm_shuffle_epi8 ((__m128i) v, (__m128i) swap);
 }
 
+static_always_inline u8x16
+u8x16_reflect (u8x16 v)
+{
+  u8x16 mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+  };
+  return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) mask);
+}
+
 static_always_inline u32x4
 u32x4_hadd (u32x4 v1, u32x4 v2)
 {

@@ -18,7 +18,6 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <x86intrin.h>
 #include <crypto_native/crypto_native.h>
 #include <crypto_native/aes.h>
 #include <crypto_native/ghash.h>
@@ -34,18 +33,6 @@ typedef struct
   /* extracted AES key */
   const u8x16 Ke[15];
 } aes_gcm_key_data_t;
-
-static const u32x4 last_byte_one = { 0, 0, 0, 1 << 24 };
-
-static const u8x16 bswap_mask = {
-  15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-};
-
-static_always_inline u8x16
-aesni_gcm_bswap (u8x16 x)
-{
-  return (u8x16) _mm_shuffle_epi8 ((__m128i) x, (__m128i) bswap_mask);
-}
 
 static_always_inline void
 aesni_gcm_load (u8x16 * d, u8x16u * inv, int n, int n_bytes)
@@ -70,6 +57,8 @@ static_always_inline void
 aesni_gcm_enc_first_round (u8x16 * r, u32x4 * Y, u32 * ctr, u8x16 k,
 			   int n_blocks)
 {
+  static const u32x4 last_byte_one = { 0, 0, 0, 1 << 24 };
+
   if (PREDICT_TRUE ((u8) ctr[0] < (256 - n_blocks)))
     {
       for (int i = 0; i < n_blocks; i++)
@@ -115,9 +104,9 @@ aesni_gcm_ghash_blocks (u8x16 T, aes_gcm_key_data_t * kd,
 {
   ghash_data_t _gd, *gd = &_gd;
   const u8x16 *Hi = kd->Hi + n_blocks - 1;
-  ghash_mul_first (gd, aesni_gcm_bswap (in[0]) ^ T, Hi[0]);
+  ghash_mul_first (gd, u8x16_reflect (in[0]) ^ T, Hi[0]);
   for (int i = 1; i < n_blocks; i++)
-    ghash_mul_next (gd, aesni_gcm_bswap ((in[i])), Hi[-i]);
+    ghash_mul_next (gd, u8x16_reflect ((in[i])), Hi[-i]);
   ghash_reduce (gd);
   ghash_reduce2 (gd);
   return ghash_final (gd);
@@ -158,7 +147,7 @@ aesni_gcm_ghash (u8x16 T, aes_gcm_key_data_t * kd, u8x16u * in, u32 n_left)
   if (n_left)
     {
       u8x16 r = aes_load_partial (in, n_left);
-      T = ghash_mul (aesni_gcm_bswap (r) ^ T, kd->Hi[0]);
+      T = ghash_mul (u8x16_reflect (r) ^ T, kd->Hi[0]);
     }
   return T;
 }
@@ -174,7 +163,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   const u8x16 *rk = (u8x16 *) kd->Ke;
   int hidx = is_encrypt ? 4 : n, didx = 0;
 
-  _mm_prefetch (inv + 4, _MM_HINT_T0);
+  clib_prefetch_load (inv + 4);
 
   /* AES rounds 0 and 1 */
   aesni_gcm_enc_first_round (r, Y, ctr, rk[0], n);
@@ -186,7 +175,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
 
   /* GHASH multiply block 1 */
   if (with_ghash)
-    ghash_mul_first (gd, aesni_gcm_bswap (d[didx++]) ^ T, kd->Hi[--hidx]);
+    ghash_mul_first (gd, u8x16_reflect (d[didx++]) ^ T, kd->Hi[--hidx]);
 
   /* AES rounds 2 and 3 */
   aesni_gcm_enc_round (r, rk[2], n);
@@ -194,7 +183,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
 
   /* GHASH multiply block 2 */
   if (with_ghash && hidx)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[didx++]), kd->Hi[--hidx]);
+    ghash_mul_next (gd, u8x16_reflect (d[didx++]), kd->Hi[--hidx]);
 
   /* AES rounds 4 and 5 */
   aesni_gcm_enc_round (r, rk[4], n);
@@ -202,7 +191,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
 
   /* GHASH multiply block 3 */
   if (with_ghash && hidx)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[didx++]), kd->Hi[--hidx]);
+    ghash_mul_next (gd, u8x16_reflect (d[didx++]), kd->Hi[--hidx]);
 
   /* AES rounds 6 and 7 */
   aesni_gcm_enc_round (r, rk[6], n);
@@ -210,7 +199,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
 
   /* GHASH multiply block 4 */
   if (with_ghash && hidx)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[didx++]), kd->Hi[--hidx]);
+    ghash_mul_next (gd, u8x16_reflect (d[didx++]), kd->Hi[--hidx]);
 
   /* AES rounds 8 and 9 */
   aesni_gcm_enc_round (r, rk[8], n);
@@ -259,28 +248,28 @@ aesni_gcm_calc_double (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
     aesni_gcm_load (d, inv, 4, 0);
 
   /* GHASH multiply block 0 */
-  ghash_mul_first (gd, aesni_gcm_bswap (d[0]) ^ T, kd->Hi[7]);
+  ghash_mul_first (gd, u8x16_reflect (d[0]) ^ T, kd->Hi[7]);
 
   /* AES rounds 2 and 3 */
   aesni_gcm_enc_round (r, rk[2], 4);
   aesni_gcm_enc_round (r, rk[3], 4);
 
   /* GHASH multiply block 1 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[1]), kd->Hi[6]);
+  ghash_mul_next (gd, u8x16_reflect (d[1]), kd->Hi[6]);
 
   /* AES rounds 4 and 5 */
   aesni_gcm_enc_round (r, rk[4], 4);
   aesni_gcm_enc_round (r, rk[5], 4);
 
   /* GHASH multiply block 2 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[2]), kd->Hi[5]);
+  ghash_mul_next (gd, u8x16_reflect (d[2]), kd->Hi[5]);
 
   /* AES rounds 6 and 7 */
   aesni_gcm_enc_round (r, rk[6], 4);
   aesni_gcm_enc_round (r, rk[7], 4);
 
   /* GHASH multiply block 3 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[3]), kd->Hi[4]);
+  ghash_mul_next (gd, u8x16_reflect (d[3]), kd->Hi[4]);
 
   /* AES rounds 8 and 9 */
   aesni_gcm_enc_round (r, rk[8], 4);
@@ -301,7 +290,7 @@ aesni_gcm_calc_double (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
     aesni_gcm_load (d, inv + 4, 4, 0);
 
   /* GHASH multiply block 4 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[0]), kd->Hi[3]);
+  ghash_mul_next (gd, u8x16_reflect (d[0]), kd->Hi[3]);
 
   /* AES rounds 0, 1 and 2 */
   aesni_gcm_enc_first_round (r, Y, ctr, rk[0], 4);
@@ -309,21 +298,21 @@ aesni_gcm_calc_double (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   aesni_gcm_enc_round (r, rk[2], 4);
 
   /* GHASH multiply block 5 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[1]), kd->Hi[2]);
+  ghash_mul_next (gd, u8x16_reflect (d[1]), kd->Hi[2]);
 
   /* AES rounds 3 and 4 */
   aesni_gcm_enc_round (r, rk[3], 4);
   aesni_gcm_enc_round (r, rk[4], 4);
 
   /* GHASH multiply block 6 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[2]), kd->Hi[1]);
+  ghash_mul_next (gd, u8x16_reflect (d[2]), kd->Hi[1]);
 
   /* AES rounds 5 and 6 */
   aesni_gcm_enc_round (r, rk[5], 4);
   aesni_gcm_enc_round (r, rk[6], 4);
 
   /* GHASH multiply block 7 */
-  ghash_mul_next (gd, aesni_gcm_bswap (d[3]), kd->Hi[0]);
+  ghash_mul_next (gd, u8x16_reflect (d[3]), kd->Hi[0]);
 
   /* AES rounds 7 and 8 */
   aesni_gcm_enc_round (r, rk[7], 4);
@@ -361,13 +350,13 @@ aesni_gcm_ghash_last (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   if (n_bytes)
     d[n_blocks - 1] = aes_byte_mask (d[n_blocks - 1], n_bytes);
 
-  ghash_mul_first (gd, aesni_gcm_bswap (d[0]) ^ T, kd->Hi[n_blocks - 1]);
+  ghash_mul_first (gd, u8x16_reflect (d[0]) ^ T, kd->Hi[n_blocks - 1]);
   if (n_blocks > 1)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[1]), kd->Hi[n_blocks - 2]);
+    ghash_mul_next (gd, u8x16_reflect (d[1]), kd->Hi[n_blocks - 2]);
   if (n_blocks > 2)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[2]), kd->Hi[n_blocks - 3]);
+    ghash_mul_next (gd, u8x16_reflect (d[2]), kd->Hi[n_blocks - 3]);
   if (n_blocks > 3)
-    ghash_mul_next (gd, aesni_gcm_bswap (d[3]), kd->Hi[n_blocks - 4]);
+    ghash_mul_next (gd, u8x16_reflect (d[3]), kd->Hi[n_blocks - 4]);
   ghash_reduce (gd);
   ghash_reduce2 (gd);
   return ghash_final (gd);
@@ -539,9 +528,9 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
   u32x4 Y0;
   ghash_data_t _gd, *gd = &_gd;
 
-  _mm_prefetch (iv, _MM_HINT_T0);
-  _mm_prefetch (in, _MM_HINT_T0);
-  _mm_prefetch (in + CLIB_CACHE_LINE_BYTES, _MM_HINT_T0);
+  clib_prefetch_load (iv);
+  clib_prefetch_load (in);
+  clib_prefetch_load (in + 4);
 
   /* calculate ghash for AAD - optimized for ipsec common cases */
   if (aad_bytes == 8)
@@ -561,7 +550,7 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
   else
     T = aesni_gcm_dec (T, kd, Y0, in, out, data_bytes, aes_rounds);
 
-  _mm_prefetch (tag, _MM_HINT_T0);
+  clib_prefetch_load (tag);
 
   /* Finalize ghash  - data bytes and aad bytes converted to bits */
   /* *INDENT-OFF* */
@@ -581,7 +570,7 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
   for (; i < aes_rounds; i += 1)
     r = aes_enc_round (r, kd->Ke[i]);
   r = aes_enc_last_round (r, kd->Ke[aes_rounds]);
-  T = aesni_gcm_bswap (T) ^ r;
+  T = u8x16_reflect (T) ^ r;
 
   /* tag_len 16 -> 0 */
   tag_len &= 0xf;
@@ -679,7 +668,7 @@ aesni_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
 
   /* pre-calculate H */
   H = aes_encrypt_block (u8x16_splat (0), kd->Ke, ks);
-  H = aesni_gcm_bswap (H);
+  H = u8x16_reflect (H);
   ghash_precompute (H, (u8x16 *) kd->Hi, 8);
   return kd;
 }
@@ -706,6 +695,8 @@ crypto_native_aes_gcm_init_vaes (vlib_main_t * vm)
 crypto_native_aes_gcm_init_avx512 (vlib_main_t * vm)
 #elif __AVX2__
 crypto_native_aes_gcm_init_avx2 (vlib_main_t * vm)
+#elif __aarch64__
+crypto_native_aes_gcm_init_neon (vlib_main_t * vm)
 #else
 crypto_native_aes_gcm_init_sse42 (vlib_main_t * vm)
 #endif
