@@ -502,6 +502,13 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
+typedef struct tcp_wrk_stats_
+{
+  u64 timer_expirations;
+  u64 tr_events;
+  u64 rxt_segs;
+} tcp_wrk_stats_t;
+
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -538,6 +545,9 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+
+  tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
 
 typedef struct tcp_iss_seed_

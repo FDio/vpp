@@ -1452,6 +1452,7 @@ tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
+  wrk->stats.tr_events += 1;
   tc = tcp_connection_get (tc_index, thread_index);
 
   /* Note: the connection may have been closed and pool_put */
