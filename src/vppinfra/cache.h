@@ -90,6 +90,18 @@ do {						\
 
 #undef _
 
+static_always_inline void
+clib_prefetch_load (void *p)
+{
+  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+static_always_inline void
+clib_prefetch_store (void *p)
+{
+  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, STORE);
+}
+
 #endif /* included_clib_cache_h */
 
 
