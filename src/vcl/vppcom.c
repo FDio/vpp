@@ -727,6 +727,13 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
     }
 
   vcl_session_table_del_vpp_handle (wrk, msg->handle);
+  if (session->session_state != STATE_CLOSED)
+    {
+      /* App did not close the connection so don't free it */
+      session->session_state = STATE_CLOSED;
+      session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
+      return;
+    }
   vcl_session_free (wrk, session);
 }
 
@@ -1308,6 +1315,11 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
       vcl_send_session_reset_reply (mq, wrk->my_client_index,
 				    session->vpp_handle, 0);
     }
+  else if (state == STATE_CLOSED)
+    {
+      /* VPP cleaned up before app confirmed close */
+      goto free;
+    }
 
   session->session_state = STATE_CLOSED;
 
@@ -1316,6 +1328,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 
 cleanup:
   vcl_session_table_del_vpp_handle (wrk, vpp_handle);
+free:
   vcl_session_free (wrk, session);
   vcl_evt (VCL_EVT_CLOSE, session, rv);
 
