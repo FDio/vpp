@@ -1441,15 +1441,18 @@ static void
 tcp_expired_timers_dispatch (u32 * expired_timers)
 {
   u32 thread_index = vlib_get_thread_index ();
-  u32 connection_index, timer_id;
+  u32 connection_index, timer_id, n_expired;
   tcp_connection_t *tc;
   int i;
+
+  n_expired = vec_len (expired_timers);
+  tcp_get_worker (thread_index)->stats.timer_expirations += n_expired;
 
   /*
    * Invalidate all timer handles before dispatching. This avoids dangling
    * index references to timer wheel pool entries that have been freed.
    */
-  for (i = 0; i < vec_len (expired_timers); i++)
+  for (i = 0; i < n_expired; i++)
     {
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
@@ -1467,7 +1470,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
   /*
    * Dispatch expired timers
    */
-  for (i = 0; i < vec_len (expired_timers); i++)
+  for (i = 0; i < n_expired; i++)
     {
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
