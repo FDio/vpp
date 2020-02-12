@@ -84,8 +84,8 @@ vppcom_session_state_str (vcl_session_state_t state)
       st = "STATE_DISCONNECT";
       break;
 
-    case STATE_FAILED:
-      st = "STATE_FAILED";
+    case STATE_DETACHED:
+      st = "STATE_DETACHED";
       break;
 
     case STATE_UPDATED:
@@ -443,7 +443,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       VDBG (0, "ERROR: session index %u: connect failed! %U",
 	    session_index, format_api_error, ntohl (mp->retval));
-      session->session_state = STATE_FAILED | STATE_DISCONNECT;
+      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
       session->vpp_handle = mp->handle;
       return session_index;
     }
@@ -457,7 +457,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       VDBG (0, "segment for session %u is not mounted!",
 	    session->session_index);
-      session->session_state = STATE_FAILED | STATE_DISCONNECT;
+      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
       vcl_send_session_disconnect (wrk, session);
       return session_index;
     }
@@ -479,7 +479,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	{
 	  VDBG (0, "ct segment for session %u is not mounted!",
 		session->session_index);
-	  session->session_state = STATE_FAILED | STATE_DISCONNECT;
+	  session->session_state = STATE_DETACHED | STATE_DISCONNECT;
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
@@ -565,7 +565,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 	    format_api_error, mp->retval);
       if (session)
 	{
-	  session->session_state = STATE_FAILED;
+	  session->session_state = STATE_DETACHED;
 	  session->vpp_handle = mp->handle;
 	  return sid;
 	}
@@ -699,6 +699,10 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
       return 0;
     }
 
+  /* Late disconnect notification on a session that has been closed */
+  if (session->session_state == STATE_CLOSED)
+    return 0;
+
   /* Caught a disconnect before actually accepting the session */
   if (session->session_state == STATE_LISTEN)
     {
@@ -708,7 +712,10 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
       return 0;
     }
 
-  session->session_state = STATE_VPP_CLOSING;
+  /* If not already reset change state */
+  if (session->session_state != STATE_DISCONNECT)
+    session->session_state = STATE_VPP_CLOSING;
+
   return session;
 }
 
@@ -727,6 +734,14 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
     }
 
   vcl_session_table_del_vpp_handle (wrk, msg->handle);
+  /* Should not happen. App did not close the connection so don't free it. */
+  if (session->session_state != STATE_CLOSED)
+    {
+      VDBG (0, "app did not close session %d", session->session_index);
+      session->session_state = STATE_DETACHED;
+      session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
+      return;
+    }
   vcl_session_free (wrk, session);
 }
 
@@ -906,7 +921,7 @@ vppcom_wait_for_session_state_change (u32 session_index,
 	{
 	  return VPPCOM_OK;
 	}
-      if (session->session_state & STATE_FAILED)
+      if (session->session_state & STATE_DETACHED)
 	{
 	  return VPPCOM_ECONNREFUSED;
 	}
@@ -1308,6 +1323,12 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
       vcl_send_session_reset_reply (mq, wrk->my_client_index,
 				    session->vpp_handle, 0);
     }
+  else if (state == STATE_DETACHED)
+    {
+      /* Should not happen. VPP cleaned up before app confirmed close */
+      VDBG (0, "vpp freed session %d before close", session->session_index);
+      goto free_session;
+    }
 
   session->session_state = STATE_CLOSED;
 
@@ -1316,6 +1337,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 
 cleanup:
   vcl_session_table_del_vpp_handle (wrk, vpp_handle);
+free_session:
   vcl_session_free (wrk, session);
   vcl_evt (VCL_EVT_CLOSE, session, rv);
 
@@ -2772,7 +2794,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
       session_evt_data = session->vep.ev.data.u64;
-      if (session->session_state & STATE_FAILED)
+      if (session->session_state & STATE_DETACHED)
 	events[*num_ev].events |= EPOLLHUP;
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
