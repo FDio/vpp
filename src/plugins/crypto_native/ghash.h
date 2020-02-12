@@ -120,25 +120,44 @@ ghash_xor3 (u8x16 a, u8x16 b, u8x16 c)
 static_always_inline u8x16
 gmul_lo_lo (u8x16 a, u8x16 b)
 {
+#if defined (__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x00);
+#elif defined (__ARM_FEATURE_CRYPTO)
+  return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
+			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
+#endif
 }
 
 static_always_inline u8x16
 gmul_hi_lo (u8x16 a, u8x16 b)
 {
+#if defined (__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
+#elif defined (___ARM_FEATURE_CRYPTO)
+  return (u8x16) vmull_p64 ((poly64_t) vget_high_p64 ((poly64x2_t) a),
+			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
+#endif
 }
 
 static_always_inline u8x16
 gmul_lo_hi (u8x16 a, u8x16 b)
 {
+#if defined (__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
+#elif defined (__ARM_FEATURE_CRYPTO)
+  return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
+			    (poly64_t) vget_high_p64 ((poly64x2_t) b));
+#endif
 }
 
 static_always_inline u8x16
 gmul_hi_hi (u8x16 a, u8x16 b)
 {
+#if defined (__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x11);
+#elif defined (__ARM_FEATURE_CRYPTO)
+  return (u8x16) vmull_high_p64 ((poly64x2_t) a, (poly64x2_t) b);
+#endif
 }
 
 typedef struct
@@ -222,7 +241,6 @@ ghash_reduce (ghash_data_t * gd)
       gd->lo ^= midl;
       gd->hi ^= midr;
     }
-
   r = gmul_hi_lo (ghash_poly2, gd->lo);
   gd->lo ^= u8x16_word_shift_left (r, 8);
 }
@@ -261,7 +279,11 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int count)
   H = (u8x16) ((u64x2) H << 1);
   H |= u8x16_word_shift_left (r8, 8);
   r32 = (u32x4) u8x16_word_shift_right (r8, 8);
+#ifdef __SSE2__
   r32 = u32x4_shuffle (r32, 0, 1, 2, 0);
+#else
+  r32[3] = r32[0];
+#endif
   /* *INDENT-OFF* */
   r32 = r32 == (u32x4) {1, 0, 0, 1};
   /* *INDENT-ON* */
