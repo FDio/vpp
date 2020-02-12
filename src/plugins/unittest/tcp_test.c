@@ -815,7 +815,6 @@ static int
 tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 {
   session_main_t *smm = &session_main;
-  tcp_main_t *tm = &tcp_main;
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
   tcp_connection_t *tc;
   session_t *s, *s1;
@@ -829,9 +828,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = sidx = s - smm->wrk[0].sessions;
 
-  pool_get (tm->connections[0], tc);
-  clib_memset (tc, 0, sizeof (*tc));
-  tc->connection.c_index = tc - tm->connections[0];
+  tc = tcp_connection_alloc (0);
   tc->connection.s_index = s->session_index;
   s->connection_index = tc->connection.c_index;
 
@@ -850,9 +847,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - smm->wrk[0].sessions;
 
-  pool_get (tm->connections[0], tc);
-  clib_memset (tc, 0, sizeof (*tc));
-  tc->connection.c_index = tc - tm->connections[0];
+  tc = tcp_connection_alloc (0);
   tc->connection.s_index = s->session_index;
   s->connection_index = tc->connection.c_index;
 
@@ -926,7 +921,6 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
   tcp_connection_t *tc0;
   ip4_address_t local, remote;
   u16 local_port, remote_port;
-  tcp_main_t *tm = vnet_get_tcp_main ();
   int is_add = 1;
 
 
@@ -947,12 +941,10 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
       local_port = clib_host_to_net_u16 (1234);
       remote_port = clib_host_to_net_u16 (11234);
 
-      pool_get (tm->connections[0], tc0);
-      clib_memset (tc0, 0, sizeof (*tc0));
+      tc0 = tcp_connection_alloc (0);
 
       tc0->state = TCP_STATE_ESTABLISHED;
       tc0->rcv_las = 1;
-      tc0->c_c_index = tc0 - tm->connections[0];
       tc0->c_lcl_port = local_port;
       tc0->c_rmt_port = remote_port;
       tc0->c_is_ip4 = 1;
