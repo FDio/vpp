@@ -28,8 +28,6 @@ typedef enum
 #define AES_KEY_ROUNDS(x)		(10 + x * 2)
 #define AES_KEY_BYTES(x)		(16 + x * 8)
 
-#ifdef __x86_64__
-
 static const u8x16 byte_mask_scale = {
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 };
@@ -37,20 +35,30 @@ static const u8x16 byte_mask_scale = {
 static_always_inline u8x16
 aes_block_load (u8 * p)
 {
-  return (u8x16) _mm_loadu_si128 ((__m128i *) p);
+  return * (u8x16u *) p;
 }
 
 static_always_inline u8x16
 aes_enc_round (u8x16 a, u8x16 k)
 {
+#if defined (__AES__)
   return (u8x16) _mm_aesenc_si128 ((__m128i) a, (__m128i) k);
+#elif defined (__ARM_FEATURE_AES)
+  return vaesmcq_u8 (vaeseq_u8 (a, u8x16_splat (0))) ^ k;
+#endif
 }
 
 static_always_inline u8x16
 aes_enc_last_round (u8x16 a, u8x16 k)
 {
+#if defined (__AES__)
   return (u8x16) _mm_aesenclast_si128 ((__m128i) a, (__m128i) k);
+#elif defined (__ARM_FEATURE_AES)
+  return vaeseq_u8 (a, u8x16_splat (0)) ^ k;
+#endif
 }
+
+#ifdef __x86_64__
 
 static_always_inline u8x16
 aes_dec_round (u8x16 a, u8x16 k)
@@ -63,11 +71,12 @@ aes_dec_last_round (u8x16 a, u8x16 k)
 {
   return (u8x16) _mm_aesdeclast_si128 ((__m128i) a, (__m128i) k);
 }
+#endif
 
 static_always_inline void
 aes_block_store (u8 * p, u8x16 r)
 {
-  _mm_storeu_si128 ((__m128i *) p, (__m128i) r);
+  * (u8x16u *) p = r;
 }
 
 static_always_inline u8x16
@@ -91,11 +100,15 @@ aes_load_partial (u8x16u * p, int n_bytes)
 static_always_inline void
 aes_store_partial (void *p, u8x16 r, int n_bytes)
 {
+#if __aarch64__
+  clib_memcpy_fast (p, &r, n_bytes);
+#else
 #ifdef __AVX512F__
   _mm_mask_storeu_epi8 (p, (1 << n_bytes) - 1, (__m128i) r);
 #else
   u8x16 mask = u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
   _mm_maskmoveu_si128 ((__m128i) r, (__m128i) mask, p);
+#endif
 #endif
 }
 
@@ -103,19 +116,24 @@ aes_store_partial (void *p, u8x16 r, int n_bytes)
 static_always_inline u8x16
 aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
 {
-  int i;
+  int rounds = AES_KEY_ROUNDS (ks);
   block ^= round_keys[0];
-  for (i = 1; i < AES_KEY_ROUNDS (ks); i += 1)
+  for (int i = 1; i < rounds; i += 1)
     block = aes_enc_round (block, round_keys[i]);
-  return aes_enc_last_round (block, round_keys[i]);
+  return aes_enc_last_round (block, round_keys[rounds]);
 }
 
 static_always_inline u8x16
 aes_inv_mix_column (u8x16 a)
 {
+#if defined (__AES__)
   return (u8x16) _mm_aesimc_si128 ((__m128i) a);
+#elif defined (__ARM_FEATURE_AES)
+  return vaesimcq_u8 (a);
+#endif
 }
 
+#ifdef __x86_64__
 #define aes_keygen_assist(a, b) \
   (u8x16) _mm_aeskeygenassist_si128((__m128i) a, b)
 
@@ -243,12 +261,6 @@ aes256_key_expand (u8x16 * rk, u8x16u const *k)
 #endif
 
 #ifdef __aarch64__
-
-static_always_inline u8x16
-aes_inv_mix_column (u8x16 a)
-{
-  return vaesimcq_u8 (a);
-}
 
 static const u8x16 aese_prep_mask1 =
   { 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12 };

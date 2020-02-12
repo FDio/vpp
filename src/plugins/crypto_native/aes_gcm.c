@@ -18,7 +18,21 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <x86intrin.h>
+
+static_always_inline u8x16
+aesni_gcm_bswap (u8x16 x)
+{
+  static const u8x16 bswap_mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+  };
+
+#ifdef __x86_64__
+  return (u8x16) _mm_shuffle_epi8 ((__m128i) x, (__m128i) bswap_mask);
+#else
+  return (u8x16) vqtbl1q_u8 (x, bswap_mask);
+#endif
+}
+
 #include <crypto_native/crypto_native.h>
 #include <crypto_native/aes.h>
 #include <crypto_native/ghash.h>
@@ -36,16 +50,6 @@ typedef struct
 } aes_gcm_key_data_t;
 
 static const u32x4 last_byte_one = { 0, 0, 0, 1 << 24 };
-
-static const u8x16 bswap_mask = {
-  15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-};
-
-static_always_inline u8x16
-aesni_gcm_bswap (u8x16 x)
-{
-  return (u8x16) _mm_shuffle_epi8 ((__m128i) x, (__m128i) bswap_mask);
-}
 
 static_always_inline void
 aesni_gcm_load (u8x16 * d, u8x16u * inv, int n, int n_bytes)
@@ -174,7 +178,7 @@ aesni_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   const u8x16 *rk = (u8x16 *) kd->Ke;
   int hidx = is_encrypt ? 4 : n, didx = 0;
 
-  _mm_prefetch (inv + 4, _MM_HINT_T0);
+  clib_prefetch_load (inv + 4);
 
   /* AES rounds 0 and 1 */
   aesni_gcm_enc_first_round (r, Y, ctr, rk[0], n);
@@ -539,9 +543,9 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
   u32x4 Y0;
   ghash_data_t _gd, *gd = &_gd;
 
-  _mm_prefetch (iv, _MM_HINT_T0);
-  _mm_prefetch (in, _MM_HINT_T0);
-  _mm_prefetch (in + CLIB_CACHE_LINE_BYTES, _MM_HINT_T0);
+  clib_prefetch_load (iv);
+  clib_prefetch_load (in);
+  clib_prefetch_load (in + 4);
 
   /* calculate ghash for AAD - optimized for ipsec common cases */
   if (aad_bytes == 8)
@@ -561,7 +565,7 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
   else
     T = aesni_gcm_dec (T, kd, Y0, in, out, data_bytes, aes_rounds);
 
-  _mm_prefetch (tag, _MM_HINT_T0);
+  clib_prefetch_load (tag);
 
   /* Finalize ghash  - data bytes and aad bytes converted to bits */
   /* *INDENT-OFF* */
@@ -706,6 +710,8 @@ crypto_native_aes_gcm_init_vaes (vlib_main_t * vm)
 crypto_native_aes_gcm_init_avx512 (vlib_main_t * vm)
 #elif __AVX2__
 crypto_native_aes_gcm_init_avx2 (vlib_main_t * vm)
+#elif __aarch64__
+crypto_native_aes_gcm_init_neon (vlib_main_t * vm)
 #else
 crypto_native_aes_gcm_init_sse42 (vlib_main_t * vm)
 #endif
