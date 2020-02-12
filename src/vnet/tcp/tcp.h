@@ -506,11 +506,8 @@ typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  /** tx buffer free list */
-  u32 *tx_buffers;
-
-  /** tx frames for ip 4/6 lookup nodes */
-  vlib_frame_t *ip_lookup_tx_frames[2];
+  /** worker's pool of connections */
+  tcp_connection_t *connections;
 
   /** vector of pending ack dequeues */
   u32 *pending_deq_acked;
@@ -518,6 +515,7 @@ typedef struct tcp_worker_ctx_
   /** vector of pending disconnect notifications */
   u32 *pending_disconnects;
 
+  /** vector of pending reset notifications */
   u32 *pending_resets;
 
   /** convenience pointer to this thread's vlib main */
@@ -526,10 +524,16 @@ typedef struct tcp_worker_ctx_
   /** worker time */
   u32 time_now;
 
+  /** tx frames for ip 4/6 lookup nodes */
+  vlib_frame_t *ip_lookup_tx_frames[2];
+
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
+
+  /** tx buffer free list */
+  u32 *tx_buffers;
 
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
@@ -614,27 +618,24 @@ typedef struct tcp_configuration_
 
 typedef struct _tcp_main
 {
-  /* Per-worker thread tcp connection pools */
-  tcp_connection_t **connections;
+  /** per-worker context */
+  tcp_worker_ctx_t *wrk_ctx;
 
   /* Pool of listeners. */
   tcp_connection_t *listener_pool;
 
-  /** Dispatch table by state and flags */
-  tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
-
-  u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
-
-  /** per-worker context */
-  tcp_worker_ctx_t *wrk_ctx;
-
-  /** Pool of half-open connections on which we've sent a SYN */
-  tcp_connection_t *half_open_connections;
-  clib_spinlock_t half_open_lock;
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  /** Dispatch table by state and flags */
+  tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
+
+  clib_spinlock_t half_open_lock;
+
+  /** Pool of half-open connections on which we've sent a SYN */
+  tcp_connection_t *half_open_connections;
 
   /** Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;
@@ -694,6 +695,7 @@ vnet_get_tcp_main ()
 always_inline tcp_worker_ctx_t *
 tcp_get_worker (u32 thread_index)
 {
+  ASSERT (thread_index < vec_len (tcp_main.wrk_ctx));
   return &tcp_main.wrk_ctx[thread_index];
 }
 
@@ -721,20 +723,22 @@ void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
 {
-  if (PREDICT_FALSE
-      (pool_is_free_index (tcp_main.connections[thread_index], conn_index)))
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  if (PREDICT_FALSE (pool_is_free_index (wrk->connections, conn_index)))
     return 0;
-  return pool_elt_at_index (tcp_main.connections[thread_index], conn_index);
+  return pool_elt_at_index (wrk->connections, conn_index);
 }
 
 always_inline tcp_connection_t *
 tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
 {
-  if (tcp_main.connections[thread_index] == 0)
+  tcp_worker_ctx_t *wrk;
+  if (thread_index >= vec_len (tcp_main.wrk_ctx))
     return 0;
-  if (pool_is_free_index (tcp_main.connections[thread_index], conn_index))
+  wrk = tcp_get_worker (thread_index);
+  if (pool_is_free_index (wrk->connections, conn_index))
     return 0;
-  return pool_elt_at_index (tcp_main.connections[thread_index], conn_index);
+  return pool_elt_at_index (wrk->connections, conn_index);
 }
 
 always_inline tcp_connection_t *
