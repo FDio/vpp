@@ -47,7 +47,8 @@ _(huge-dir)                                     \
 _(proc-type)                                    \
 _(file-prefix)                                  \
 _(vdev)                                         \
-_(log-level)
+_(log-level)                                    \
+_(iova-mode)
 
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
