@@ -333,7 +333,8 @@ typedef struct
 } avf_input_trace_t;
 
 #define foreach_avf_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")
+  _(SEGMENT_SIZE_EXCEEDED, "segment size exceeded")	\
+  _(NO_FREE_SLOTS, "no free tx slots")
 
 typedef enum
 {
