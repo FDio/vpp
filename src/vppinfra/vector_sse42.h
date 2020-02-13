@@ -746,6 +746,15 @@ u8x16_blend (u8x16 v1, u8x16 v2, u8x16 mask)
   return (u8x16) _mm_blendv_epi8 ((__m128i) v1, (__m128i) v2, (__m128i) mask);
 }
 
+static_always_inline u8x16
+u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
+{
+#if __AVX512F__
+  return (u8x16) _mm_ternarylogic_epi32 ((__m128i) a, (__m128i) b,
+					 (__m128i) c, 0x96);
+#endif
+  return a ^ b ^ c;
+}
 
 #endif /* included_vector_sse2_h */
 

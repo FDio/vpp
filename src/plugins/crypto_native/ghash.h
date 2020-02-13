@@ -105,18 +105,6 @@
 #ifndef __ghash_h__
 #define __ghash_h__
 
-/* on AVX-512 systems we can save a clock cycle by using ternary logic
-   instruction to calculate a XOR b XOR c */
-static_always_inline u8x16
-ghash_xor3 (u8x16 a, u8x16 b, u8x16 c)
-{
-#if defined (__AVX512F__)
-  return (u8x16) _mm_ternarylogic_epi32 ((__m128i) a, (__m128i) b,
-					 (__m128i) c, 0x96);
-#endif
-  return a ^ b ^ c;
-}
-
 static_always_inline u8x16
 gmul_lo_lo (u8x16 a, u8x16 b)
 {
@@ -204,8 +192,8 @@ ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
   if (gd->pending)
     {
       /* there is peding data from previous invocation so we can XOR */
-      gd->hi = ghash_xor3 (gd->hi, gd->tmp_hi, hi);
-      gd->lo = ghash_xor3 (gd->lo, gd->tmp_lo, lo);
+      gd->hi = u8x16_xor3 (gd->hi, gd->tmp_hi, hi);
+      gd->lo = u8x16_xor3 (gd->lo, gd->tmp_lo, lo);
       gd->pending = 0;
     }
   else
@@ -217,7 +205,7 @@ ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
     }
 
   /* gd->mid ^= a0 * b1 ^ a1 * b0  */
-  gd->mid = ghash_xor3 (gd->mid, gmul_hi_lo (a, b), gmul_lo_hi (a, b));
+  gd->mid = u8x16_xor3 (gd->mid, gmul_hi_lo (a, b), gmul_lo_hi (a, b));
 }
 
 static_always_inline void
@@ -233,8 +221,8 @@ ghash_reduce (ghash_data_t * gd)
 
   if (gd->pending)
     {
-      gd->lo = ghash_xor3 (gd->lo, gd->tmp_lo, midl);
-      gd->hi = ghash_xor3 (gd->hi, gd->tmp_hi, midr);
+      gd->lo = u8x16_xor3 (gd->lo, gd->tmp_lo, midl);
+      gd->hi = u8x16_xor3 (gd->hi, gd->tmp_hi, midr);
     }
   else
     {
@@ -255,7 +243,7 @@ ghash_reduce2 (ghash_data_t * gd)
 static_always_inline u8x16
 ghash_final (ghash_data_t * gd)
 {
-  return ghash_xor3 (gd->hi, u8x16_word_shift_right (gd->tmp_lo, 4),
+  return u8x16_xor3 (gd->hi, u8x16_word_shift_right (gd->tmp_lo, 4),
 		     u8x16_word_shift_left (gd->tmp_hi, 4));
 }
 
