@@ -655,6 +655,7 @@ vcl_session_accepted (vcl_worker_t * wrk, session_accepted_msg_t * msg)
     }
 
   clib_fifo_add2 (session->accept_evts_fifo, vcl_msg);
+  vcl_msg->flags = 0;
   vcl_msg->accepted_msg = *msg;
   /* Session handle points to listener until fully accepted by app */
   vcl_session_table_add_vpp_handle (wrk, msg->handle, session->session_index);
