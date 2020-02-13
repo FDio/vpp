@@ -179,16 +179,15 @@ nsim_inline (vlib_main_t * vm,
 	  ep->buffer_index = from[0];
 	  buffered++;
 	}
-
       if (is_trace)
 	{
-	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
-	      nsim_trace_t *t = vlib_add_trace (vm, node, b[1], sizeof (*t));
+	      nsim_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->expires = expires;
-	      t->is_drop = is_drop[1];
-	      t->is_lost = b[1]->error == loss_error;
-	      t->tx_sw_if_index = (is_drop[1] == 0) ? ep->tx_sw_if_index : 0;
+	      t->is_drop = is_drop[0];
+	      t->is_lost = b[0]->error == loss_error;
+	      t->tx_sw_if_index = (is_drop[0] == 0) ? ep->tx_sw_if_index : 0;
 	    }
 	}
 
@@ -224,15 +223,16 @@ nsim_inline (vlib_main_t * vm,
 
       if (is_trace)
 	{
-	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
-	      nsim_trace_t *t = vlib_add_trace (vm, node, b[2], sizeof (*t));
+	      nsim_trace_t *t = vlib_add_trace (vm, node, b[1], sizeof (*t));
 	      t->expires = expires;
-	      t->is_drop = is_drop[2];
-	      t->is_lost = b[2]->error == loss_error;
-	      t->tx_sw_if_index = (is_drop[2] == 0) ? ep->tx_sw_if_index : 0;
+	      t->is_drop = is_drop[1];
+	      t->is_lost = b[1]->error == loss_error;
+	      t->tx_sw_if_index = (is_drop[1] == 0) ? ep->tx_sw_if_index : 0;
 	    }
 	}
+
       if (PREDICT_TRUE (is_drop[2] == 0))
 	{
 	  ep = wp->entries + wp->tail;
@@ -274,6 +274,7 @@ nsim_inline (vlib_main_t * vm,
 	      t->tx_sw_if_index = (is_drop[2] == 0) ? ep->tx_sw_if_index : 0;
 	    }
 	}
+
       if (PREDICT_TRUE (is_drop[3] == 0))
 	{
 	  ep = wp->entries + wp->tail;
