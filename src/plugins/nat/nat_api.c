@@ -741,6 +741,30 @@ vl_api_nat_ha_resync_t_print (vl_api_nat_ha_resync_t * mp, void *handle)
 /*** NAT44 ***/
 /*************/
 static void
+vl_api_nat44_del_user_t_handler (vl_api_nat44_del_user_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_del_user_reply_t *rmp;
+  ip4_address_t addr;
+  int rv;
+
+  memcpy (&addr.as_u8, mp->ip_address, 4);
+  rv = nat44_user_del (&addr, ntohl (mp->fib_index));
+
+  REPLY_MACRO (VL_API_NAT44_DEL_USER_REPLY);
+}
+
+static void *vl_api_nat44_del_user_t_print
+  (vl_api_nat44_del_user_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: nat44_del_user ");
+  s = format (s, "ip_address %U fib_index %U ",
+	      format_ip4_address, mp->ip_address, ntohl (mp->fib_index));
+  FINISH;
+}
+
+static void
   vl_api_nat44_add_del_address_range_t_handler
   (vl_api_nat44_add_del_address_range_t * mp)
 {
@@ -3119,6 +3143,7 @@ _(NAT_CONTROL_PING, nat_control_ping)                                   \
 _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
+_(NAT44_DEL_USER, nat44_del_user)                                       \
 _(NAT44_SESSION_CLEANUP, nat44_session_cleanup)                         \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \

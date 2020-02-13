@@ -456,6 +456,19 @@ service {
  * NAT44 APIs
  */
 
+/** \brief Del NAT44 user
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+    @param fib_index - FIB index
+*/
+autoreply define nat44_del_user {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+  u32 fib_index;
+};
+
 /** \brief Add/del NAT44 address range
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
