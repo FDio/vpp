@@ -199,6 +199,15 @@ check_l3cache ()
   return 0;
 }
 
+static void
+dpdk_enable_l4_csum_offload (dpdk_device_t * xd)
+{
+  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -496,6 +505,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
 	      xd->port_type = port_type_from_link_speed (l.link_speed);
+	      if (dm->conf->enable_tcp_udp_checksum)
+		dpdk_enable_l4_csum_offload (xd);
 	      break;
 
 	      /* Intel Red Rock Canyon */
