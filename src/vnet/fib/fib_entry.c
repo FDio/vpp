@@ -708,7 +708,7 @@ fib_entry_post_install_actions (fib_entry_t *fib_entry,
 {
     fib_entry = fib_entry_post_flag_update_actions(fib_entry,
                                                    old_flags);
-    fib_entry_src_action_installed(fib_entry, source);
+    fib_entry = fib_entry_src_action_installed(fib_entry, source);
 
     return (fib_entry);
 }

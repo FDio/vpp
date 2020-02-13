@@ -226,14 +226,16 @@ typedef struct fib_entry_src_vft_t_ {
     }								\
 }
 
-#define FIB_ENTRY_SRC_VFT_INVOKE(esrc, func, args)             \
+#define FIB_ENTRY_SRC_VFT_INVOKE(_fe, esrc, func, args)        \
 {                                                              \
     const fib_entry_src_vft_t *_vft;                           \
+    fib_node_index_t _fei = fib_entry_get_index(_fe);          \
     _vft = fib_entry_src_get_vft(esrc);                        \
     if (_vft->func) {                                          \
         (esrc)->fes_flags &= ~FIB_ENTRY_SRC_FLAG_STALE;        \
         _vft->func args;                                       \
     }                                                          \
+    _fe = fib_entry_get(_fei);                                 \
 }
 
 #define FIB_ENTRY_SRC_VFT_INVOKE_AND_RETURN(esrc, func, args)  \
@@ -313,8 +315,8 @@ extern fib_entry_src_flag_t fib_entry_src_action_path_remove(fib_entry_t *fib_en
 							     fib_source_t source,
 							     const fib_route_path_t *path);
 
-extern void fib_entry_src_action_installed(const fib_entry_t *fib_entry,
-					   fib_source_t source);
+extern fib_entry_t* fib_entry_src_action_installed(fib_entry_t *fib_entry,
+                                                   fib_source_t source);
 extern void fib_entry_src_inherit (const fib_entry_t *cover,
                                    fib_entry_t *covered);
 

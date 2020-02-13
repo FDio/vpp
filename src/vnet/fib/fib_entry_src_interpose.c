@@ -207,7 +207,7 @@ fib_entry_src_interpose_deactivate (fib_entry_src_t *src,
              * there is another source for this entry. activate it so it
              * can provide forwarding
              */
-            FIB_ENTRY_SRC_VFT_INVOKE(best_src, fesv_deactivate,
+            FIB_ENTRY_SRC_VFT_INVOKE(fib_entry, best_src, fesv_deactivate,
                                      (best_src, fib_entry));
         }
     }
