@@ -474,6 +474,9 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                       format_ip4_address, &p->rem_ts.end_addr,
                       p->rem_ts.start_port, p->rem_ts.end_port,
                       p->rem_ts.protocol_id);
+    if (~0 != p->tun_itf)
+      vlib_cli_output(vm, "  protected tunnel %U",
+                      format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
   }));
   /* *INDENT-ON* */
 

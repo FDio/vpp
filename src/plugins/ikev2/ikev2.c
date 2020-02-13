@@ -1409,6 +1409,12 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 	  sa->childs[0].r_proposals =
 	    ikev2_select_proposal (sa->childs[0].i_proposals,
 				   IKEV2_PROTOCOL_ESP);
+
+	  if (~0 != sel_p->tun_itf)
+	    {
+	      sa->is_tun_itf_set = 1;
+	      sa->tun_itf = sel_p->tun_itf;
+	    }
 	}
     }
   else
@@ -2872,6 +2878,7 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
       clib_memset (p, 0, sizeof (*p));
       p->name = vec_dup (name);
       p->responder.sw_if_index = ~0;
+      p->tun_itf = ~0;
       uword index = p - km->profiles;
       mhash_set_mem (&km->profile_index_by_name, name, &index, 0);
     }
