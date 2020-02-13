@@ -3705,14 +3705,10 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
-      /* Overload tcp flags to store state */
-      tcp_state_t state = tc->state;
-      vnet_buffer (b)->tcp.flags = tc->state;
-
       b->error = error_node->errors[error];
       if (error == TCP_ERROR_DISPATCH)
 	clib_warning ("tcp conn %u disp error state %U flags %U",
-		      tc->c_c_index, format_tcp_state, state,
+		      tc->c_c_index, format_tcp_state, tc->state,
 		      format_tcp_flags, (int) flags);
     }
 }
