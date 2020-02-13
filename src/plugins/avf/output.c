@@ -43,16 +43,17 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
   avf_tx_desc_t *d = txq->descs + next;
 
   /* avoid ring wrap */
-  n_desc_left = txq->size - clib_max (txq->next, txq->n_enqueued + 8);
+  n_desc_left = txq->size - clib_max (txq->next, txq->n_enqueued);
 
   if (n_desc_left == 0)
     return 0;
 
+  /* Fast path, no ring wrap */
   while (n_packets_left && n_desc_left)
     {
       u32 or_flags;
       if (n_packets_left < 8 || n_desc_left < 4)
-	goto one_by_one;
+	break;
 
       vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
       vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
@@ -67,7 +68,7 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
-	goto one_by_one;
+	break;
 
       vlib_buffer_copy_indices (txq->bufs + next, buffers, 4);
 
@@ -97,11 +98,55 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
       n_packets_left -= 4;
       n_desc_left -= 4;
       d += 4;
-      continue;
+    }
 
-    one_by_one:
-      txq->bufs[next] = buffers[0];
+  txq->n_enqueued += n_desc;
+
+  /* Slow path to support ring wrap */
+  n_desc = 0;
+
+  /* It may wrap */
+  n_desc_left = txq->size - txq->n_enqueued;
+
+  while (n_packets_left && n_desc_left)
+    {
+      txq->bufs[next & mask] = buffers[0];
       b[0] = vlib_get_buffer (vm, buffers[0]);
+
+      /* Deal with chain buffer if present */
+      if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  u32 n_desc_needed = 1;
+	  vlib_buffer_t *b0 = b[0];
+
+	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      b0 = vlib_get_buffer (vm, b0->next_buffer);
+	      n_desc_needed++;
+	    }
+
+	  if (PREDICT_FALSE (n_desc_left < n_desc_needed))
+	    break;
+
+	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      if (use_va_dma)
+		d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+	      else
+		d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+
+	      d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
+		AVF_TXD_CMD_RSV;
+
+	      next += 1;
+	      n_desc += 1;
+	      n_desc_left -= 1;
+	      d = txq->descs + (next & mask);
+
+	      txq->bufs[next & mask] = b[0]->next_buffer;
+	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
+	    }
+	}
 
       if (use_va_dma)
 	d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
@@ -115,7 +160,7 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
       buffers += 1;
       n_packets_left -= 1;
       n_desc_left -= 1;
-      d += 1;
+      d = txq->descs + (next & mask);
     }
 
   if ((slot = clib_ring_enq (txq->rs_slots)))
@@ -177,8 +222,8 @@ retry:
 	  n_free = (complete_slot + 1 - first) & mask;
 
 	  txq->n_enqueued -= n_free;
-	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
-				      n_free);
+	  vlib_buffer_free_from_ring_no_next (vm, txq->bufs, first, txq->size,
+					      n_free);
 	}
     }
 
