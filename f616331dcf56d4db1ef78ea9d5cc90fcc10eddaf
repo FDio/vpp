@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "461079e8_9be7fc90",
+        "filename": "src/plugins/http_static/http_static_test.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-02-13T15:16:13Z",
+      "side": 1,
+      "message": "Isn\u0027t just:\nstrncpy_s(mp-\u003ewww_root, 256, www_root, 256);\n\nsufficient?",
+      "range": {
+        "startLine": 114,
+        "startChar": 2,
+        "endLine": 117,
+        "endChar": 39
+      },
+      "revId": "f616331dcf56d4db1ef78ea9d5cc90fcc10eddaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
