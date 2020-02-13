@@ -143,6 +143,12 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 #define u32x16_ternary_logic(a, b, c, d) \
   (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
 
+#define u8x64_insert_u8x16(a, b, n) \
+  (u8x64) _mm512_inserti64x2 ((__m512i) (a), (__m128i) (b), n)
+
+#define u8x64_extract_u8x16(a, n) \
+  (u8x16) _mm512_extracti64x2_epi64 ((__m512i) (a), n)
+
 static_always_inline u8x64
 u8x64_xor3 (u8x64 a, u8x64 b, u8x64 c)
 {
