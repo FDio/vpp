@@ -108,7 +108,6 @@ typedef struct
 
 typedef struct vcl_session_msg
 {
-  u32 next;
   union
   {
     session_accepted_msg_t accepted_msg;
