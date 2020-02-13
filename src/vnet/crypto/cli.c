@@ -54,6 +54,33 @@ VLIB_CLI_COMMAND (show_crypto_engines_command, static) =
 };
 
 static u8 *
+format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
+{
+  vnet_crypto_engine_t *e;
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  vnet_crypto_op_id_t id = va_arg (*args, vnet_crypto_op_id_t);
+  u32 ei = va_arg (*args, u32);
+  int is_chained = va_arg (*args, int);
+
+  vec_foreach (e, cm->engines)
+    {
+      void * h = is_chained ? (void *) e->chained_ops_handlers[id]
+        : (void *) e->ops_handlers[id];
+
+      if (h)
+        {
+          s = format (s, "%U", format_vnet_crypto_engine, e - cm->engines);
+          if (ei == e - cm->engines)
+            s = format (s, "%c ", '*');
+          else
+            s = format (s, " ");
+        }
+    }
+  return s;
+}
+
+static u8 *
 format_vnet_crypto_handlers (u8 * s, va_list * args)
 {
   vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
@@ -65,7 +92,6 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
       vnet_crypto_op_data_t *od;
-      vnet_crypto_engine_t *e;
       vnet_crypto_op_id_t id = d->op_by_type[i];
 
       if (id == 0)
@@ -74,24 +100,12 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
       od = cm->opt_data + id;
       if (first == 0)
         s = format (s, "\n%U", format_white_space, indent);
-      s = format (s, "%-22U%-20U", format_vnet_crypto_op_type, od->type, 0,
-		  format_vnet_crypto_engine, od->active_engine_index_simple,s);
+      s = format (s, "%-16U", format_vnet_crypto_op_type, od->type);
 
-      vec_foreach (e, cm->engines)
-	{
-	  if (e->ops_handlers[id] != 0)
-	    s = format (s, "%U ", format_vnet_crypto_engine, e - cm->engines);
-	}
-
-      s = format (s, "\n%U", format_white_space, indent);
-      s = format (s, "%-22U%-20U", format_vnet_crypto_op_type, od->type, 1,
-                  format_vnet_crypto_engine,
-                  od->active_engine_index_chained);
-      vec_foreach (e, cm->engines)
-	{
-	  if (e->chained_ops_handlers[id] != 0)
-	    s = format (s, "%U ", format_vnet_crypto_engine, e - cm->engines);
-	}
+      s = format (s, "%-28U", format_vnet_crypto_engine_candidates, id,
+          od->active_engine_index_simple, 0);
+      s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
+          od->active_engine_index_chained, 1);
       first = 0;
     }
   return s;
@@ -108,11 +122,11 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
-  vlib_cli_output (vm, "%-20s%-22s%-20s%s", "Algo", "Type", "Active",
-		   "Candidates");
+  vlib_cli_output (vm, "%-16s%-16s%-28s%s", "Algo", "Type", "Simple",
+      "Chained");
 
   for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
-    vlib_cli_output (vm, "%-20U%U", format_vnet_crypto_alg, i,
+    vlib_cli_output (vm, "%-16U%U", format_vnet_crypto_alg, i,
 		     format_vnet_crypto_handlers, i);
 
   return 0;

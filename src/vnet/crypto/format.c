@@ -54,7 +54,7 @@ format_vnet_crypto_op (u8 * s, va_list * args)
   vnet_crypto_op_id_t op = va_arg (*args, int);	// vnet_crypto_op_id_t);
   vnet_crypto_op_data_t *otd = cm->opt_data + op;
 
-  return format (s, "%U-%U", format_vnet_crypto_op_type, otd->type, 0,
+  return format (s, "%U-%U", format_vnet_crypto_op_type, otd->type,
 		 format_vnet_crypto_alg, otd->alg);
 }
 
@@ -62,7 +62,6 @@ u8 *
 format_vnet_crypto_op_type (u8 * s, va_list * args)
 {
   vnet_crypto_op_type_t opt = va_arg (*args, vnet_crypto_op_type_t);
-  int is_chained = va_arg (*args, int);
   char *strings[] = {
 #define _(n, s) [VNET_CRYPTO_OP_TYPE_##n] = s,
     foreach_crypto_op_type
@@ -72,7 +71,7 @@ format_vnet_crypto_op_type (u8 * s, va_list * args)
   if (opt >= VNET_CRYPTO_OP_N_TYPES)
     return format (s, "unknown");
 
-  return format (s, "%s%s", strings[opt], is_chained ? "-chained" : "");
+  return format (s, "%s", strings[opt]);
 }
 
 u8 *
