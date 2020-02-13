@@ -214,7 +214,7 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
    return pointer to it */
 static_always_inline u8 *
 esp_move_icv (vlib_main_t * vm, vlib_buffer_t * first,
-	      esp_decrypt_packet_data_t * pd, u16 icv_sz)
+	      esp_decrypt_packet_data_t * pd, u16 icv_sz, u16 * dif)
 {
   vlib_buffer_t *before_last, *bp;
   u16 last_sz = pd->lb->current_length;
@@ -232,11 +232,83 @@ esp_move_icv (vlib_main_t * vm, vlib_buffer_t * first,
   clib_memcpy_fast (lb_curr, vlib_buffer_get_tail (before_last) - first_sz,
 		    first_sz);
   before_last->current_length -= first_sz;
+  if (dif)
+    dif[0] = first_sz;
   pd->lb = before_last;
   pd->icv_removed = 1;
   pd->free_buffer_index = before_last->next_buffer;
   before_last->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
   return lb_curr;
+}
+
+static_always_inline int
+esp_insert_esn (vlib_main_t * vm, ipsec_sa_t * sa,
+		esp_decrypt_packet_data_t * pd, vnet_crypto_op_t * op,
+		u16 * len, vlib_buffer_t * b, u8 * payload)
+{
+  if (!ipsec_sa_is_set_USE_ESN (sa))
+    return 1;
+
+  /* shift ICV by 4 bytes to insert ESN */
+  u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
+  u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa->seq_hi);
+
+  if (pd->icv_removed)
+    {
+      u16 space_left = vlib_buffer_space_left_at_end (vm, pd->lb);
+      if (space_left >= sz)
+	{
+	  clib_memcpy_fast (vlib_buffer_get_tail (pd->lb), &seq_hi, sz);
+	  op->len += sz;
+	}
+      else
+	return 0;
+
+      len[0] = b->current_length;
+    }
+  else
+    {
+      clib_memcpy_fast (tmp, payload + len[0], ESP_MAX_ICV_SIZE);
+      clib_memcpy_fast (payload + len[0], &seq_hi, sz);
+      clib_memcpy_fast (payload + len[0] + sz, tmp, ESP_MAX_ICV_SIZE);
+      op->len += sz;
+      op->digest += sz;
+    }
+  return 1;
+}
+
+static_always_inline u8 *
+esp_move_icv_esn (vlib_main_t * vm, vlib_buffer_t * first,
+		  esp_decrypt_packet_data_t * pd, u16 icv_sz, ipsec_sa_t * sa,
+		  u8 * extra_esn, vnet_crypto_op_t * op)
+{
+  u16 dif = 0;
+  u8 *digest = esp_move_icv (vm, first, pd, icv_sz, &dif);
+  if (dif)
+    op->len -= dif;
+
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    {
+      u8 sz = sizeof (sa->seq_hi);
+      u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
+      u16 space_left = vlib_buffer_space_left_at_end (vm, pd->lb);
+
+      if (space_left >= sz)
+	{
+	  clib_memcpy_fast (vlib_buffer_get_tail (pd->lb), &seq_hi, sz);
+	  op->len += sz;
+	}
+      else
+	{
+	  /* no space for ESN at the tail, use the next buffer
+	   * (with ICV data) */
+	  ASSERT (pd->icv_removed);
+	  vlib_buffer_t *tmp = vlib_get_buffer (vm, pd->free_buffer_index);
+	  clib_memcpy_fast (vlib_buffer_get_current (tmp) - sz, &seq_hi, sz);
+	  extra_esn[0] = 1;
+	}
+    }
+  return digest;
 }
 
 always_inline uword
@@ -246,7 +318,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
   u32 thread_index = vm->thread_index;
-  u16 buffer_data_size = vlib_buffer_get_default_data_size (vm);
   u16 len;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   u32 *from = vlib_frame_vector_args (from_frame);
@@ -258,6 +329,7 @@ esp_decrypt_inline (vlib_main_t * vm,
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
   const u8 esp_sz = sizeof (esp_header_t);
   ipsec_sa_t *sa0 = 0;
+  vnet_crypto_op_t _op, *op = &_op;
   vnet_crypto_op_chunk_t *ch;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
@@ -327,7 +399,6 @@ esp_decrypt_inline (vlib_main_t * vm,
       /* store packet data for next round for easier prefetch */
       pd->sa_data = cpd.sa_data;
       pd->current_data = b[0]->current_data;
-      pd->current_length = b[0]->current_length;
       pd->hdr_sz = pd->current_data - vnet_buffer (b[0])->l3_hdr_offset;
       payload = b[0]->data + pd->current_data;
       pd->seq = clib_host_to_net_u32 (((esp_header_t *) payload)->seq);
@@ -345,17 +416,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  integ_ops = &ptd->chained_integ_ops;
 	}
       pd->current_length = b[0]->current_length;
-
-      /* we need 4 extra bytes for HMAC calculation when ESN are used */
-      /* Chained buffers can process ESN as a separate chunk */
-      if (pd->lb == b[0] && ipsec_sa_is_set_USE_ESN (sa0) && cpd.icv_sz &&
-	  (pd->lb->current_data + pd->lb->current_length + 4
-	   > buffer_data_size))
-	{
-	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_NO_TAIL_SPACE];
-	  next[0] = ESP_DECRYPT_NEXT_DROP;
-	  goto next;
-	}
 
       /* anti-reply check */
       if (ipsec_sa_anti_replay_check (sa0, pd->seq))
@@ -378,9 +438,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
 	{
-	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-
 	  vnet_crypto_op_init (op, sa0->integ_op_id);
 	  op->key_index = sa0->integ_key_index;
 	  op->src = payload;
@@ -394,14 +451,42 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      /* buffer is chained */
 	      vlib_buffer_t *cb = b[0];
-	      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-	      op->chunk_index = vec_len (ptd->chunks);
+	      op->len = pd->current_length;
 
+	      /* special case when ICV is splitted and needs to be reassembled
+	       * first -> move it to the last buffer. Also take into account
+	       * that ESN needs to be added after encrypted data and may or
+	       * may not fit in the tail.*/
 	      if (pd->lb->current_length < cpd.icv_sz)
-		op->digest = esp_move_icv (vm, b[0], pd, cpd.icv_sz);
+		{
+		  u8 extra_esn = 0;
+		  op->digest =
+		    esp_move_icv_esn (vm, b[0], pd, cpd.icv_sz, sa0,
+				      &extra_esn, op);
+
+		  if (extra_esn)
+		    {
+		      /* esn is in the last buffer, that was unlinked from
+		       * the chain */
+		      op->len = b[0]->current_length;
+		    }
+		  else
+		    {
+		      if (pd->lb == b[0])
+			{
+			  /* we now have a single buffer of crypto data, adjust
+			   * the length (second buffer contains only ICV) */
+			  integ_ops = &ptd->integ_ops;
+			  crypto_ops = &ptd->crypto_ops;
+			  goto out;
+			}
+		    }
+		}
 	      else
 		op->digest = vlib_buffer_get_tail (pd->lb) - cpd.icv_sz;
 
+	      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+	      op->chunk_index = vec_len (ptd->chunks);
 	      vec_add2 (ptd->chunks, ch, 1);
 	      ch->len = pd->current_length;
 	      ch->src = payload;
@@ -472,6 +557,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 			      ch->len += sz;
 			    }
 			}
+		      break;
 		    }
 		  else
 		    ch->len = cb->current_length;
@@ -482,17 +568,10 @@ esp_decrypt_inline (vlib_main_t * vm,
 		  cb = vlib_get_buffer (vm, cb->next_buffer);
 		}
 	    }
-	  else if (ipsec_sa_is_set_USE_ESN (sa0))
-	    {
-	      /* shift ICV by 4 bytes to insert ESN */
-	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
-	      u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
-	      clib_memcpy_fast (tmp, payload + len, ESP_MAX_ICV_SIZE);
-	      clib_memcpy_fast (payload + len, &seq_hi, sz);
-	      clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
-	      op->len += sz;
-	      op->digest += sz;
-	    }
+	  else
+	    esp_insert_esn (vm, sa0, pd, op, &len, b[0], payload);
+	out:
+	  vec_add_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	}
 
       payload += esp_sz;
@@ -500,8 +579,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (sa0->crypto_dec_op_id != VNET_CRYPTO_OP_NONE)
 	{
-	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key_index = sa0->crypto_key_index;
 	  op->iv = payload;
@@ -562,8 +639,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 			{
 			  if (pd->lb->current_length < cpd.icv_sz)
 			    {
+			      u16 dif = 0;
 			      op->tag =
-				esp_move_icv (vm, b[0], pd, cpd.icv_sz);
+				esp_move_icv (vm, b[0], pd, cpd.icv_sz, &dif);
 
 			      /* this chunk does not contain crypto data */
 			      op->n_chunks -= 1;
@@ -571,7 +649,10 @@ esp_decrypt_inline (vlib_main_t * vm,
 			      /* and fix previous chunk's length as it might have
 			         been changed */
 			      ASSERT (op->n_chunks > 0);
-			      ch[-1].len = pd->lb->current_length;
+			      if (pd->lb == b[0])
+				ch[-1].len -= dif;
+			      else
+				ch[-1].len = pd->lb->current_length;
 			      break;
 			    }
 			  else
@@ -593,6 +674,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 		  cb = vlib_get_buffer (vm, cb->next_buffer);
 		}
 	    }
+
+	  vec_add_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
 	}
 
       /* next */
@@ -743,7 +826,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    clib_memcpy_le64 (ip, old_ip, ip_hdr_sz);
 
 	  b[0]->current_data = pd->current_data + adv - ip_hdr_sz;
-	  b[0]->current_length = pd->current_length + ip_hdr_sz - adv;
+	  b[0]->current_length += ip_hdr_sz - adv;
 	  esp_remove_tail (vm, b[0], pd->lb, tail);
 
 	  if (is_ip6)
