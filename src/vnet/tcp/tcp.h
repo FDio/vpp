@@ -508,6 +508,7 @@ typedef struct _tcp_lookup_dispatch
   _(tr_events, u32, "timer retransmit events")			\
   _(to_closewait, u32, "timeout close-wait")			\
   _(to_finwait1, u32, "timeout fin-wait-1")			\
+  _(to_finwait2, u32, "timeout fin-wait-2")			\
   _(to_lastack, u32, "timeout last-ack")			\
   _(to_closing, u32, "timeout closing")				\
   _(tr_abort, u32, "timer retransmit abort")			\
