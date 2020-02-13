@@ -1431,6 +1431,14 @@ tcp_timer_waitclose_handler (u32 conn_index, u32 thread_index)
       session_transport_closed_notify (&tc->connection);
       tcp_worker_stats_inc (thread_index, to_closing, 1);
       break;
+    case TCP_STATE_FIN_WAIT_2:
+      tcp_send_reset (tc);
+      tcp_connection_timers_reset (tc);
+      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+      session_transport_closed_notify (&tc->connection);
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.cleanup_time);
+      tcp_worker_stats_inc (thread_index, to_finwait2, 1);
+      break;
     default:
       tcp_connection_del (tc);
       break;
