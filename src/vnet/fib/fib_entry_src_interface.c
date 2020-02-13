@@ -56,8 +56,10 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
 				   fib_path_list_flags_t pl_flags,
 				   const fib_route_path_t *paths)
 {
+    fib_node_index_t fib_entry_index;
     ip_adjacency_t *adj;
 
+    fib_entry_index = fib_entry_get_index(entry);
     src->fes_pl = fib_path_list_create(pl_flags, paths);
 
     /*
@@ -70,7 +72,14 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
 			  src->fes_pl,
 			  fib_entry_get_default_chain_type(entry)));
 
+<<<<<<< HEAD   (99fa5f ipsec: DES/3DES fixing the iv_len for openssl crypto)
 	if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
+=======
+        ai = fib_path_list_get_adj(src->fes_pl,
+                                   fib_entry_get_default_chain_type(
+                                       fib_entry_get(fib_entry_index)));
+        if (INDEX_INVALID != ai)
+>>>>>>> CHANGE (6ede57 fib: Fix some more realloc errors)
         {
             /*
              * the connected prefix will link to a glean on a non-p2p

@@ -719,7 +719,13 @@ fib_entry_post_install_actions (fib_entry_t *fib_entry,
 {
     fib_entry = fib_entry_post_flag_update_actions(fib_entry,
                                                    old_flags);
+<<<<<<< HEAD   (99fa5f ipsec: DES/3DES fixing the iv_len for openssl crypto)
     fib_entry_src_action_installed(fib_entry, source);
+=======
+    fib_entry = fib_entry_src_action_installed(fib_entry, source);
+
+    return (fib_entry);
+>>>>>>> CHANGE (6ede57 fib: Fix some more realloc errors)
 }
 
 fib_node_index_t
