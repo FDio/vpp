@@ -699,8 +699,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
   ip4_address_t src_ip40, dst_ip40;
   ip6_address_t src_ip60, dst_ip60;
   u16 src_port, dst_port;
-  u32 tmp;
-  u32 seq, ack;
+  u32 tmp, n_bytes, seq, ack;
   u8 flags;
 
   /* Find IP and TCP headers */
@@ -724,25 +723,27 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
 
   src_port = th0->src_port;
   dst_port = th0->dst_port;
+  flags = TCP_FLAG_RST;
 
-  /* Try to determine what/why we're actually resetting */
-  if (state == TCP_STATE_CLOSED)
+  /*
+   * RFC 793. If the ACK bit is off, sequence number zero is used,
+   *   <SEQ=0><ACK=SEG.SEQ+SEG.LEN><CTL=RST,ACK>
+   * If the ACK bit is on,
+   *   <SEQ=SEG.ACK><CTL=RST>
+   */
+  if (tcp_ack (th0))
     {
-      if (!tcp_syn (th0))
-	return -1;
-
-      tmp = clib_net_to_host_u32 (th0->seq_number);
-
-      /* Got a SYN for no listener. */
-      flags = TCP_FLAG_RST | TCP_FLAG_ACK;
-      ack = clib_host_to_net_u32 (tmp + 1);
-      seq = 0;
+      seq = th0->ack_number;
+      ack = 0;
     }
   else
     {
-      flags = TCP_FLAG_RST;
-      seq = th0->ack_number;
-      ack = 0;
+      flags |= TCP_FLAG_ACK;
+      tmp = clib_net_to_host_u32 (th0->seq_number);
+      n_bytes = vnet_buffer (b0)->tcp.data_len;
+      n_bytes += tcp_syn (th0) + tcp_fin (th0);
+      ack = clib_host_to_net_u32 (tmp + n_bytes);
+      seq = 0;
     }
 
   tcp_reuse_buffer (vm, b0);
