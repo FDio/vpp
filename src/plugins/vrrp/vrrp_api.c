@@ -211,6 +211,8 @@ vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
   u32 sw_if_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   sw_if_index = htonl (mp->sw_if_index);
 
@@ -340,6 +342,8 @@ vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
   vrrp_vr_key_t vr_key;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   vr_key.sw_if_index = ntohl (mp->sw_if_index);
 
@@ -456,6 +460,8 @@ vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
   vrrp_vr_t *vr;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (!mp->dump_all)
     {
