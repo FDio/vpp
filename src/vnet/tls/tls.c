@@ -254,8 +254,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
 
   ctx->app_session_handle = session_handle (app_session);
   app_session->session_state = SESSION_STATE_READY;
-  session_lookup_add_connection (&ctx->connection,
-				 session_handle (app_session));
 
   return 0;
 
