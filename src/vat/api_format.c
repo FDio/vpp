@@ -7272,15 +7272,20 @@ api_tap_create_v2 (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_tap_create_v2_t *mp;
-#define TAP_FLAG_GSO (1 << 0)
   u8 mac_address[6];
   u8 random_mac = 1;
   u32 id = ~0;
+  u32 num_rx_queues = 0;
   u8 *host_if_name = 0;
+  u8 host_if_name_set = 0;
   u8 *host_ns = 0;
+  u8 host_ns_set = 0;
   u8 host_mac_addr[6];
   u8 host_mac_addr_set = 0;
   u8 *host_bridge = 0;
+  u8 host_bridge_set = 0;
+  u8 host_ip4_prefix_set = 0;
+  u8 host_ip6_prefix_set = 0;
   ip4_address_t host_ip4_addr;
   ip4_address_t host_ip4_gw;
   u8 host_ip4_gw_set = 0;
@@ -7289,8 +7294,8 @@ api_tap_create_v2 (vat_main_t * vam)
   ip6_address_t host_ip6_gw;
   u8 host_ip6_gw_set = 0;
   u32 host_ip6_prefix_len = 0;
-  u8 host_mtu_set = 0;
   u32 host_mtu_size = 0;
+  u8 host_mtu_set = 0;
   u32 tap_flags = 0;
   int ret;
   u32 rx_ring_sz = 0, tx_ring_sz = 0;
@@ -7300,38 +7305,40 @@ api_tap_create_v2 (vat_main_t * vam)
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "hw-addr %U", unformat_ethernet_address, mac_address))
-	{
-	  random_mac = 0;
-	}
-      else if (unformat (i, "id %u", &id))
+      if (unformat (i, "id %u", &id))
 	;
+      else
+	if (unformat
+	    (i, "hw-addr %U", unformat_ethernet_address, mac_address))
+	random_mac = 0;
       else if (unformat (i, "host-if-name %s", &host_if_name))
+	host_if_name_set = 1;
+      else if (unformat (i, "num-rx-queues %u", &num_rx_queues))
 	;
       else if (unformat (i, "host-ns %s", &host_ns))
-	;
+	host_ns_set = 1;
       else if (unformat (i, "host-mac-addr %U", unformat_ethernet_address,
 			 host_mac_addr))
 	host_mac_addr_set = 1;
       else if (unformat (i, "host-bridge %s", &host_bridge))
-	;
-      else if (unformat (i, "host-ip4-addr %U/%d", unformat_ip4_address,
+	host_bridge_set = 1;
+      else if (unformat (i, "host-ip4-addr %U/%u", unformat_ip4_address,
 			 &host_ip4_addr, &host_ip4_prefix_len))
-	;
-      else if (unformat (i, "host-ip6-addr %U/%d", unformat_ip6_address,
+	host_ip4_prefix_set = 1;
+      else if (unformat (i, "host-ip6-addr %U/%u", unformat_ip6_address,
 			 &host_ip6_addr, &host_ip6_prefix_len))
-	;
+	host_ip6_prefix_set = 1;
       else if (unformat (i, "host-ip4-gw %U", unformat_ip4_address,
 			 &host_ip4_gw))
 	host_ip4_gw_set = 1;
       else if (unformat (i, "host-ip6-gw %U", unformat_ip6_address,
 			 &host_ip6_gw))
 	host_ip6_gw_set = 1;
-      else if (unformat (i, "rx-ring-size %d", &rx_ring_sz))
+      else if (unformat (i, "rx-ring-size %u", &rx_ring_sz))
 	;
-      else if (unformat (i, "tx-ring-size %d", &tx_ring_sz))
+      else if (unformat (i, "tx-ring-size %u", &tx_ring_sz))
 	;
-      else if (unformat (i, "host-mtu-size %d", &host_mtu_size))
+      else if (unformat (i, "host-mtu-size %u", &host_mtu_size))
 	host_mtu_set = 1;
       else if (unformat (i, "no-gso"))
 	tap_flags &= ~TAP_FLAG_GSO;
@@ -7397,33 +7404,43 @@ api_tap_create_v2 (vat_main_t * vam)
   /* Construct the API message */
   M (TAP_CREATE_V2, mp);
 
-  mp->use_random_mac = random_mac;
-
   mp->id = ntohl (id);
-  mp->host_namespace_set = host_ns != 0;
-  mp->host_bridge_set = host_bridge != 0;
-  mp->host_ip4_prefix_set = host_ip4_prefix_len != 0;
-  mp->host_ip6_prefix_set = host_ip6_prefix_len != 0;
-  mp->rx_ring_sz = ntohs (rx_ring_sz);
+  mp->use_random_mac = random_mac;
+  mp->num_rx_queues = (u8) num_rx_queues;
   mp->tx_ring_sz = ntohs (tx_ring_sz);
+  mp->rx_ring_sz = ntohs (rx_ring_sz);
   mp->host_mtu_set = host_mtu_set;
   mp->host_mtu_size = ntohl (host_mtu_size);
+  mp->host_mac_addr_set = host_mac_addr_set;
+  mp->host_ip4_prefix_set = host_ip4_prefix_set;
+  mp->host_ip6_prefix_set = host_ip6_prefix_set;
+  mp->host_ip4_gw_set = host_ip4_gw_set;
+  mp->host_ip6_gw_set = host_ip6_gw_set;
   mp->tap_flags = ntohl (tap_flags);
+  mp->host_namespace_set = host_ns_set;
+  mp->host_if_name_set = host_if_name_set;
+  mp->host_bridge_set = host_bridge_set;
 
   if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);
   if (host_mac_addr_set)
     clib_memcpy (mp->host_mac_addr, host_mac_addr, 6);
-  if (host_if_name)
+  if (host_if_name_set)
     clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
-  if (host_ns)
+  if (host_ns_set)
     clib_memcpy (mp->host_namespace, host_ns, vec_len (host_ns));
-  if (host_bridge)
+  if (host_bridge_set)
     clib_memcpy (mp->host_bridge, host_bridge, vec_len (host_bridge));
-  if (host_ip4_prefix_len)
-    clib_memcpy (mp->host_ip4_prefix.address, &host_ip4_addr, 4);
-  if (host_ip6_prefix_len)
-    clib_memcpy (mp->host_ip6_prefix.address, &host_ip6_addr, 16);
+  if (host_ip4_prefix_set)
+    {
+      clib_memcpy (mp->host_ip4_prefix.address, &host_ip4_addr, 4);
+      mp->host_ip4_prefix.len = (u8) host_ip4_prefix_len;
+    }
+  if (host_ip6_prefix_set)
+    {
+      clib_memcpy (mp->host_ip6_prefix.address, &host_ip6_addr, 16);
+      mp->host_ip6_prefix.len = (u8) host_ip6_prefix_len;
+    }
   if (host_ip4_gw_set)
     clib_memcpy (mp->host_ip4_gw, &host_ip4_gw, 4);
   if (host_ip6_gw_set)
@@ -20625,7 +20642,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>] [host-mtu-size <mtu>] [gso | no-gso]") \
+  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
