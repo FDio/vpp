@@ -521,6 +521,12 @@ typedef struct tcp_wrk_stats_
 #undef _
 } tcp_wrk_stats_t;
 
+typedef struct tcp_free_req_
+{
+  clib_time_type_t free_time;
+  u32 connection_index;
+} tcp_cleanup_req_t;
+
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -550,6 +556,9 @@ typedef struct tcp_worker_ctx_
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
+
+  /* fifo of pending free requests */
+  tcp_cleanup_req_t *pending_cleanups;
 
   /** tx buffer free list */
   u32 *tx_buffers;
@@ -627,7 +636,7 @@ typedef struct tcp_configuration_
   /** Timer ticks to wait in closing for fin ack */
   u16 closing_time;
 
-  /** Timer ticks to wait before cleaning up the connection */
+  /** Time to wait (ms) before cleaning up the connection */
   u16 cleanup_time;
 
   /** Number of preallocated connections */
@@ -1084,6 +1093,9 @@ void tcp_connection_init_vars (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				    u32 start_bucket);
+void tcp_program_cleanup1 (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+			   const char *fn);
+#define tcp_program_cleanup(wrk,tc) tcp_program_cleanup1(wrk, tc, __FUNCTION__);
 
 always_inline void
 tcp_cc_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
