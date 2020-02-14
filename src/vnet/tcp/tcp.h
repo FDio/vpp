@@ -82,13 +82,6 @@ typedef enum _tcp_timers
   TCP_N_TIMERS
 } tcp_timers_e;
 
-typedef void (timer_expiration_handler) (u32 index, u32 thread_index);
-
-extern timer_expiration_handler tcp_timer_delack_handler;
-extern timer_expiration_handler tcp_timer_retransmit_handler;
-extern timer_expiration_handler tcp_timer_persist_handler;
-extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
-
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
 
 #define TCP_TIMER_TICK		0.1		/**< Timer tick in seconds */
@@ -478,6 +471,13 @@ struct _tcp_cc_algorithm
 
 #define tcp_csum_offload(tc) (!((tc)->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
 
+typedef void (timer_expiration_handler) (tcp_connection_t * tc);
+
+extern timer_expiration_handler tcp_timer_delack_handler;
+extern timer_expiration_handler tcp_timer_retransmit_handler;
+extern timer_expiration_handler tcp_timer_persist_handler;
+extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
+
 always_inline void
 tcp_cong_recovery_off (tcp_connection_t * tc)
 {
@@ -507,6 +507,7 @@ typedef struct _tcp_lookup_dispatch
   _(rxt_segs, u64, "segments retransmitted")			\
   _(tr_events, u32, "timer retransmit events")			\
   _(to_closewait, u32, "timeout close-wait")			\
+  _(to_closewait2, u32, "timeout close-wait w/data")		\
   _(to_finwait1, u32, "timeout fin-wait-1")			\
   _(to_finwait2, u32, "timeout fin-wait-2")			\
   _(to_lastack, u32, "timeout last-ack")			\
@@ -553,6 +554,9 @@ typedef struct tcp_worker_ctx_
 
   /** tx buffer free list */
   u32 *tx_buffers;
+
+  /* Fifo of pending timer expirations */
+  u32 *pending_timers;
 
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
@@ -831,7 +835,6 @@ void tcp_send_fin (tcp_connection_t * tc);
 void tcp_send_ack (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
-void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 void tcp_program_ack (tcp_connection_t * tc);
