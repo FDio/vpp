@@ -58,9 +58,9 @@ typedef struct
   u64 len;
 #else
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
-  u8 numa_id; /**< NUMA id */
-  u8 vpad[3]; /**< pad to 8 bytes */
+  u8 vpad[4]; /**< pad to 8 bytes */
 #endif
+  u8 numa_id; /**< NUMA id */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
