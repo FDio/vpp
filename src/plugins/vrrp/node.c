@@ -617,7 +617,8 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Mandatory - packet must be complete */
-      if (b0->current_length < sizeof (*vrrp0) + vrrp0->n_addrs * addr_len)
+      if (b0->current_length < sizeof (*vrrp0) +
+          ((u32) vrrp0->n_addrs) * addr_len)
 	{
 	  error0 = VRRP_ERROR_INCOMPLETE_PKT;
 	  goto trace;
