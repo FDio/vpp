@@ -973,32 +973,6 @@ tcp_send_synack (tcp_connection_t * tc)
 }
 
 /**
- * Flush ip lookup tx frames populated by timer pops
- */
-static void
-tcp_flush_frame_to_ip_lookup (tcp_worker_ctx_t * wrk, u8 is_ip4)
-{
-  if (wrk->ip_lookup_tx_frames[!is_ip4])
-    {
-      u32 next_index;
-      next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
-      vlib_put_frame_to_node (wrk->vm, next_index,
-			      wrk->ip_lookup_tx_frames[!is_ip4]);
-      wrk->ip_lookup_tx_frames[!is_ip4] = 0;
-    }
-}
-
-/**
- * Flush v4 and v6 tcp and ip-lookup tx frames for thread index
- */
-void
-tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk)
-{
-  tcp_flush_frame_to_ip_lookup (wrk, 1);
-  tcp_flush_frame_to_ip_lookup (wrk, 0);
-}
-
-/**
  *  Send FIN
  */
 void
@@ -1208,11 +1182,8 @@ tcp_program_retransmit (tcp_connection_t * tc)
  * Sends delayed ACK when timer expires
  */
 void
-tcp_timer_delack_handler (u32 index, u32 thread_index)
+tcp_timer_delack_handler (tcp_connection_t * tc)
 {
-  tcp_connection_t *tc;
-
-  tc = tcp_connection_get (index, thread_index);
   tcp_send_ack (tc);
 }
 
@@ -1443,19 +1414,17 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 }
 
 void
-tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
+tcp_timer_retransmit_handler (tcp_connection_t * tc)
 {
-  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   vlib_main_t *vm = wrk->vm;
-  tcp_connection_t *tc;
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
   tcp_workerp_stats_inc (wrk, tr_events, 1);
-  tc = tcp_connection_get (tc_index, thread_index);
 
-  /* Note: the connection may have been closed and pool_put */
-  if (PREDICT_FALSE (tc == 0 || tc->state == TCP_STATE_SYN_SENT))
+  /* Should be handled by a different handler */
+  if (PREDICT_FALSE (tc->state == TCP_STATE_SYN_SENT))
     return;
 
   /* Wait-close and retransmit could pop at the same time */
@@ -1592,18 +1561,15 @@ tcp_timer_retransmit_handler (u32 tc_index, u32 thread_index)
  * SYN retransmit timer handler. Active open only.
  */
 void
-tcp_timer_retransmit_syn_handler (u32 tc_index, u32 thread_index)
+tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 {
-  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   vlib_main_t *vm = wrk->vm;
-  tcp_connection_t *tc;
   vlib_buffer_t *b = 0;
   u32 bi;
 
-  tc = tcp_half_open_connection_get (tc_index);
-
   /* Note: the connection may have transitioned to ESTABLISHED... */
-  if (PREDICT_FALSE (tc == 0 || tc->state != TCP_STATE_SYN_SENT))
+  if (PREDICT_FALSE (tc->state != TCP_STATE_SYN_SENT))
     return;
 
   /* Half-open connection actually moved to established but we were
@@ -1658,20 +1624,15 @@ tcp_timer_retransmit_syn_handler (u32 tc_index, u32 thread_index)
  *
  */
 void
-tcp_timer_persist_handler (u32 index, u32 thread_index)
+tcp_timer_persist_handler (tcp_connection_t * tc)
 {
-  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   u32 bi, max_snd_bytes, available_bytes, offset;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = wrk->vm;
-  tcp_connection_t *tc;
   vlib_buffer_t *b;
   int n_bytes = 0;
   u8 *data;
-
-  tc = tcp_connection_get_if_valid (index, thread_index);
-  if (!tc)
-    return;
 
   /* Problem already solved or worse */
   if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
