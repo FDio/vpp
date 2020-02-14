@@ -1288,11 +1288,30 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 }
 
 static void
+tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
+{
+  u32 thread_index = wrk->vm->thread_index;
+  tcp_connection_t *tc;
+  tcp_cleanup_req_t *req;
+
+  while ((req = clib_fifo_head (wrk->pending_cleanups)))
+    {
+      if (req->free_time > now)
+	break;
+      clib_fifo_sub2 (wrk->pending_cleanups, req);
+      tc = tcp_connection_get (req->connection_index, thread_index);
+      session_transport_delete_notify (&tc->connection);
+      tcp_connection_cleanup (tc);
+    }
+}
+
+static void
 tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
 
   tcp_set_time_now (wrk);
+  tcp_handle_cleanups (wrk, now);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
   tcp_flush_frames_to_output (wrk);
 }

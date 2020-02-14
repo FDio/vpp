@@ -521,6 +521,12 @@ typedef struct tcp_wrk_stats_
 #undef _
 } tcp_wrk_stats_t;
 
+typedef struct tcp_free_req_
+{
+  clib_time_type_t free_time;
+  u32 connection_index;
+} tcp_cleanup_req_t;
+
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -550,6 +556,9 @@ typedef struct tcp_worker_ctx_
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
+
+  /* fifo of pending free requests */
+  tcp_cleanup_req_t *pending_cleanups;
 
   /** tx buffer free list */
   u32 *tx_buffers;
