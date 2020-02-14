@@ -77,15 +77,10 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
+  ap->num_rx_queues = 1;
 
-  if (mp->num_rx_queues < 1)
-    {
-      ap->rv = VNET_API_ERROR_INVALID_ARGUMENT;
-      ap->sw_if_index = ~0;
-      goto done;
-    }
-
-  ap->num_rx_queues = mp->num_rx_queues;
+  if (mp->num_rx_queues > 1)
+    ap->num_rx_queues = mp->num_rx_queues;
 
   if (mp->host_if_name_set)
     ap->host_if_name = mp->host_if_name;
@@ -143,7 +138,6 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
       vnet_set_sw_interface_tag (vnm, tag, ap->sw_if_index);
     }
 
-done:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_CREATE_V2_REPLY);
   rmp->context = mp->context;
