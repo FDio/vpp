@@ -123,6 +123,18 @@ applications from a process monitor. Set by default in the default
 
    nodaemon
 
+nosyslog
+^^^^^^^^
+
+Disable syslog and log errors to stderr instead. Typical when invoking
+VPP applications from a process monitor like runit or daemontools that
+pipe service's output to a dedicated log service, which will typically
+attach a timestamp and rotate the logs as necessary.
+
+.. code-block:: console
+
+   nosyslog
+
 interactive
 ^^^^^^^^^^^
 
