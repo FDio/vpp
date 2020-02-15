@@ -59,6 +59,8 @@ typedef struct
   /* Run interactively or as daemon (background process). */
 #define UNIX_FLAG_INTERACTIVE (1 << 0)
 #define UNIX_FLAG_NODAEMON (1 << 1)
+#define UNIX_FLAG_NOSYSLOG (1 << 2)
+
 
   /* CLI listen socket. */
   clib_socket_t cli_listen_socket;
