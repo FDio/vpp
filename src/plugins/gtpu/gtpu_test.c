@@ -107,6 +107,12 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+static uword
+api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
+{
+  return 0;
+}
+
 static int
 api_sw_interface_set_gtpu_bypass (vat_main_t * vam)
 {
@@ -171,6 +177,58 @@ static uword unformat_gtpu_decap_next
   else
     return 0;
   return 1;
+}
+
+static int
+api_gtpu_offload_rx (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_gtpu_offload_rx_t *mp;
+  u32 rx_sw_if_index = ~0;
+  u32 hw_if_index = ~0;
+  int is_add = 1;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+		  if (unformat (line_input, "hw %U", api_unformat_hw_if_index, vam, &hw_if_index))
+		    ;
+		  else
+		  if (unformat (line_input, "rx %U", api_unformat_sw_if_index, vam, &rx_sw_if_index))
+		    ;
+		  else
+      if (unformat (line_input, "del"))
+      {
+	is_add = 0;
+	continue;
+	    }
+      else
+      {
+	errmsg ("parse error '%U'", format_unformat_error, line_input);
+	return -99;
+      }
+    }
+
+  if (rx_sw_if_index == ~0)
+    {
+      errmsg ("missing rx interface");
+      return -99;
+    }
+
+  if (hw_if_index == ~0)
+    {
+      errmsg ("missing hw interface");
+      return -99;
+    }
+
+  M (GTPU_OFFLOAD_RX, mp);
+  mp->hw_if_index = ntohl (hw_if_index);
+  mp->sw_if_index = ntohl (rx_sw_if_index);
+  mp->enable = is_add;
+
+  S (mp);
+  W (ret);
+  return ret;
 }
 
 static int
