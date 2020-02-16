@@ -257,6 +257,132 @@ ghash_mul (u8x16 a, u8x16 b)
   return ghash_final (gd);
 }
 
+#ifdef __VPCLMULQDQ__
+
+static const u8x64 ghash4_poly2 = {
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+};
+
+typedef struct
+{
+  u8x64 hi, lo, mid, tmp_lo, tmp_hi;
+  int pending;
+} ghash4_data_t;
+
+static_always_inline u8x64
+gmul4_lo_lo (u8x64 a, u8x64 b)
+{
+  return (u8x64) _mm512_clmulepi64_epi128 ((__m512i) a, (__m512i) b, 0x00);
+}
+
+static_always_inline u8x64
+gmul4_hi_lo (u8x64 a, u8x64 b)
+{
+  return (u8x64) _mm512_clmulepi64_epi128 ((__m512i) a, (__m512i) b, 0x01);
+}
+
+static_always_inline u8x64
+gmul4_lo_hi (u8x64 a, u8x64 b)
+{
+  return (u8x64) _mm512_clmulepi64_epi128 ((__m512i) a, (__m512i) b, 0x10);
+}
+
+static_always_inline u8x64
+gmul4_hi_hi (u8x64 a, u8x64 b)
+{
+  return (u8x64) _mm512_clmulepi64_epi128 ((__m512i) a, (__m512i) b, 0x11);
+}
+
+
+static_always_inline void
+ghash4_mul_first (ghash4_data_t * gd, u8x64 a, u8x64 b)
+{
+  gd->hi = gmul4_hi_hi (a, b);
+  gd->lo = gmul4_lo_lo (a, b);
+  gd->mid = (gmul4_hi_lo (a, b) ^ gmul4_lo_hi (a, b));
+  gd->pending = 0;
+}
+
+static_always_inline void
+ghash4_mul_next (ghash4_data_t * gd, u8x64 a, u8x64 b)
+{
+  u8x64 hi = gmul4_hi_hi (a, b);
+  u8x64 lo = gmul4_lo_lo (a, b);
+
+  if (gd->pending)
+    {
+      /* there is peding data from previous invocation so we can XOR */
+      gd->hi = u8x64_xor3 (gd->hi, gd->tmp_hi, hi);
+      gd->lo = u8x64_xor3 (gd->lo, gd->tmp_lo, lo);
+      gd->pending = 0;
+    }
+  else
+    {
+      /* there is no peding data from previous invocation so we postpone XOR */
+      gd->tmp_hi = hi;
+      gd->tmp_lo = lo;
+      gd->pending = 1;
+    }
+  gd->mid = u8x64_xor3 (gd->mid, gmul4_hi_lo (a, b), gmul4_lo_hi (a, b));
+}
+
+static_always_inline void
+ghash4_reduce (ghash4_data_t * gd)
+{
+  u8x64 r;
+
+  /* Final combination:
+     gd->lo ^= gd->mid << 64
+     gd->hi ^= gd->mid >> 64 */
+
+  u8x64 midl = u8x64_word_shift_left (gd->mid, 8);
+  u8x64 midr = u8x64_word_shift_right (gd->mid, 8);
+
+  if (gd->pending)
+    {
+      gd->lo = u8x64_xor3 (gd->lo, gd->tmp_lo, midl);
+      gd->hi = u8x64_xor3 (gd->hi, gd->tmp_hi, midr);
+    }
+  else
+    {
+      gd->lo ^= midl;
+      gd->hi ^= midr;
+    }
+
+  r = gmul4_hi_lo (ghash4_poly2, gd->lo);
+  gd->lo ^= u8x64_word_shift_left (r, 8);
+
+}
+
+static_always_inline void
+ghash4_reduce2 (ghash4_data_t * gd)
+{
+  gd->tmp_lo = gmul4_lo_lo (ghash4_poly2, gd->lo);
+  gd->tmp_hi = gmul4_lo_hi (ghash4_poly2, gd->lo);
+}
+
+static_always_inline u8x16
+ghash4_final (ghash4_data_t * gd)
+{
+  u8x64 r;
+  u8x32 t;
+
+  r = u8x64_xor3 (gd->hi, u8x64_word_shift_right (gd->tmp_lo, 4),
+		  u8x64_word_shift_left (gd->tmp_hi, 4));
+
+  /* horizontal XOR of 4 128-bit lanes */
+  t = u8x64_extract_lo (r) ^ u8x64_extract_hi (r);
+  return u8x32_extract_hi (t) ^ u8x32_extract_lo (t);
+}
+#endif
+
 static_always_inline void
 ghash_precompute (u8x16 H, u8x16 * Hi, int count)
 {

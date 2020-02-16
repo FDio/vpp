@@ -113,6 +113,18 @@ u32x16_extract_hi (u32x16 v)
   return (u32x8) _mm512_extracti64x4_epi64 ((__m512i) v, 1);
 }
 
+static_always_inline u8x32
+u8x64_extract_lo (u8x64 v)
+{
+  return (u8x32) _mm512_extracti64x4_epi64 ((__m512i) v, 0);
+}
+
+static_always_inline u8x32
+u8x64_extract_hi (u8x64 v)
+{
+  return (u8x32) _mm512_extracti64x4_epi64 ((__m512i) v, 1);
+}
+
 static_always_inline u32
 u32x16_min_scalar (u32x16 v)
 {
@@ -148,6 +160,9 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 
 #define u8x64_extract_u8x16(a, n) \
   (u8x16) _mm512_extracti64x2_epi64 ((__m512i) (a), n)
+
+#define u8x64_word_shift_left(a,n)  (u8x64) _mm512_bslli_epi128((__m512i) a, n)
+#define u8x64_word_shift_right(a,n) (u8x64) _mm512_bsrli_epi128((__m512i) a, n)
 
 static_always_inline u8x64
 u8x64_xor3 (u8x64 a, u8x64 b, u8x64 c)
