@@ -1242,4 +1242,508 @@ clib_error_t * ip6_gtpu_bypass_init (vlib_main_t * vm)
 { return 0; }
 
 VLIB_INIT_FUNCTION (ip6_gtpu_bypass_init);
+
+#define foreach_gtpu_flow_error					\
+  _(NONE, "no error")							\
+  _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
+  _(IP_HEADER_ERROR, "Rx ip header errors")				\
+  _(UDP_CHECKSUM_ERROR, "Rx udp checksum errors")				\
+  _(UDP_LENGTH_ERROR, "Rx udp length errors")
+
+typedef enum
+{
+#define _(f,s) GTPU_FLOW_ERROR_##f,
+  foreach_gtpu_flow_error
+#undef _
+#define gtpu_error(n,s) GTPU_FLOW_ERROR_##n,
+#include <gtpu/gtpu_error.def>
+#undef gtpu_error
+    GTPU_FLOW_N_ERROR,
+} gtpu_flow_error_t;
+
+static char *gtpu_flow_error_strings[] = {
+#define _(n,s) s,
+  foreach_gtpu_flow_error
+#undef _
+#define gtpu_error(n,s) s,
+#include <gtpu/gtpu_error.def>
+#undef gtpu_error
+#undef _
+
+};
+
+#define gtpu_local_need_csum_check(_b) 			\
+    (!(_b->flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED 	\
+	|| _b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+
+#define gtpu_local_csum_is_valid(_b)  \
+    ((_b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT \
+	|| _b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) != 0)
+
+static_always_inline u8
+gtpu_validate_udp_csum (vlib_main_t * vm, vlib_buffer_t *b)
+{
+  u32 flags = b->flags;
+  enum { offset = sizeof(ip4_header_t) + sizeof(udp_header_t)};
+
+  /* Verify UDP checksum */
+  if ((flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
+  {
+    vlib_buffer_advance (b, -offset);
+    flags = ip4_tcp_udp_validate_checksum (vm, b);
+    vlib_buffer_advance (b, offset);
+  }
+
+  return (flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+}
+
+static_always_inline u8
+gtpu_check_ip (vlib_buffer_t *b, u16 payload_len)
+{
+  ip4_header_t * ip4_hdr = vlib_buffer_get_current(b) - 
+      sizeof(ip4_header_t) - sizeof(udp_header_t);
+  u16 ip_len = clib_net_to_host_u16 (ip4_hdr->length);
+  u16 expected = payload_len + sizeof(ip4_header_t) + sizeof(udp_header_t);
+  return ip_len > expected || ip4_hdr->ttl == 0 || ip4_hdr->ip_version_and_header_length != 0x45;
+}
+
+static_always_inline u8
+gtpu_check_ip_udp_len (vlib_buffer_t *b)
+{
+  ip4_header_t * ip4_hdr = vlib_buffer_get_current(b) - 
+      sizeof(ip4_header_t) - sizeof(udp_header_t);
+  udp_header_t * udp_hdr = vlib_buffer_get_current(b) - sizeof(udp_header_t);
+  u16 ip_len = clib_net_to_host_u16 (ip4_hdr->length);
+  u16 udp_len = clib_net_to_host_u16 (udp_hdr->length);
+  return udp_len > ip_len;
+}
+
+static_always_inline u8
+gtpu_err_code (u8 ip_err0, u8 udp_err0, u8 csum_err0)
+{
+  u8 error0 = GTPU_FLOW_ERROR_NONE;
+  if (ip_err0)
+    error0 =  GTPU_FLOW_ERROR_IP_HEADER_ERROR;
+  if (udp_err0)
+    error0 =  GTPU_FLOW_ERROR_UDP_LENGTH_ERROR;
+  if (csum_err0)
+    error0 =  GTPU_FLOW_ERROR_UDP_CHECKSUM_ERROR;
+  return error0;
+}
+
+
+always_inline uword
+gtpu_flow_input (vlib_main_t * vm,
+             vlib_node_runtime_t * node,
+             vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, * from, * to_next;
+  gtpu_main_t * gtm = &gtpu_main;
+  vnet_main_t * vnm = gtm->vnet_main;
+  vnet_interface_main_t * im = &vnm->interface_main;
+  u32 pkts_decapsulated = 0;
+  u32 thread_index = vlib_get_thread_index();
+  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u8 ip_err0, ip_err1, udp_err0, udp_err1, csum_err0, csum_err1;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+
+  next_index = node->cached_next_index;
+  stats_sw_if_index = node->runtime_data[0];
+  stats_n_packets = stats_n_bytes = 0;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+        {
+          u32 bi0, bi1;
+      	  vlib_buffer_t * b0, * b1;
+      	  u32 next0, next1;
+          gtpu_header_t * gtpu0, * gtpu1;
+          u32 gtpu_hdr_len0, gtpu_hdr_len1;
+          u32 tunnel_index0, tunnel_index1;
+          gtpu_tunnel_t * t0, * t1;
+          u32 error0, error1;
+	        u32 sw_if_index0, sw_if_index1, len0, len1;
+          u8 has_space0 = 0, has_space1 = 0;
+          u8 ver0, ver1;
+
+      	  /* Prefetch next iteration. */
+      	  {
+      	    vlib_buffer_t * p2, * p3;
+
+      	    p2 = vlib_get_buffer (vm, from[2]);
+      	    p3 = vlib_get_buffer (vm, from[3]);
+
+      	    vlib_prefetch_buffer_header (p2, LOAD);
+      	    vlib_prefetch_buffer_header (p3, LOAD);
+
+      	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+      	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+      	  }
+
+      	  bi0 = from[0];
+      	  bi1 = from[1];
+      	  to_next[0] = bi0;
+      	  to_next[1] = bi1;
+      	  from += 2;
+      	  to_next += 2;
+      	  n_left_to_next -= 2;
+      	  n_left_from -= 2;
+
+      	  b0 = vlib_get_buffer (vm, bi0);
+      	  b1 = vlib_get_buffer (vm, bi1);
+
+          /* udp leaves current_data pointing at the gtpu header */
+          gtpu0 = vlib_buffer_get_current (b0);
+          gtpu1 = vlib_buffer_get_current (b1);
+
+          len0 = vlib_buffer_length_in_chain (vm, b0);
+          len1 = vlib_buffer_length_in_chain (vm, b1);
+
+          tunnel_index0 = ~0;
+          error0 = 0;
+
+          tunnel_index1 = ~0;
+          error1 = 0;
+
+      	  ip_err0 = gtpu_check_ip (b0, len0);
+      	  udp_err0 = gtpu_check_ip_udp_len (b0);
+      	  ip_err1 = gtpu_check_ip (b1, len1);
+      	  udp_err1 = gtpu_check_ip_udp_len (b1);
+
+          if (PREDICT_FALSE (gtpu_local_need_csum_check (b0)))
+            csum_err0 = !gtpu_validate_udp_csum (vm, b0);
+          else
+            csum_err0 = !gtpu_local_csum_is_valid (b0);
+          if (PREDICT_FALSE (gtpu_local_need_csum_check (b1)))
+            csum_err1 = !gtpu_validate_udp_csum (vm, b1);
+          else
+            csum_err1 = !gtpu_local_csum_is_valid (b1);
+
+      	  if (ip_err0 || udp_err0 || csum_err0)
+      	    {
+      	      next0 = GTPU_INPUT_NEXT_DROP;
+      	      error0 = gtpu_err_code (ip_err0, udp_err0, csum_err0);
+      	      goto trace0;
+      	    }
+
+          /* speculatively load gtp header version field */
+          ver0 = gtpu0->ver_flags;
+
+	       /*
+           * Manipulate gtpu header
+           * TBD: Manipulate Sequence Number and N-PDU Number
+           * TBD: Manipulate Next Extension Header
+           */
+          gtpu_hdr_len0 = sizeof(gtpu_header_t) - (((ver0 & GTPU_E_S_PN_BIT) == 0) * 4);
+
+          has_space0 = vlib_buffer_has_space (b0, gtpu_hdr_len0);
+      	  if (PREDICT_FALSE (((ver0 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space0)))
+      	    {
+      	      error0 = has_space0 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
+      	      next0 = GTPU_INPUT_NEXT_DROP;
+      	      goto trace0;
+      	    }
+
+	        /* Manipulate packet 0 */
+          ASSERT (b0->flow_id != 0);
+          tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+          t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
+  	      b0->flow_id = 0;
+
+      	  /* Pop gtpu header */
+      	  vlib_buffer_advance (b0, gtpu_hdr_len0);
+
+          next0 = GTPU_INPUT_NEXT_IP4_INPUT;
+          sw_if_index0 = t0->sw_if_index;
+
+          /* Set packet input sw_if_index to unicast GTPU tunnel for learning */
+          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+
+          pkts_decapsulated ++;
+          stats_n_packets += 1;
+          stats_n_bytes += len0;
+
+          /* Batch stats increment on the same gtpu tunnel so counter
+              is not incremented per packet */
+          if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+            {
+              stats_n_packets -= 1;
+              stats_n_bytes -= len0;
+              if (stats_n_packets)
+        	    vlib_increment_combined_counter
+        	     (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+        	       thread_index, stats_sw_if_index,
+        	       stats_n_packets, stats_n_bytes);
+              stats_n_packets = 1;
+              stats_n_bytes = len0;
+              stats_sw_if_index = sw_if_index0;
+            }
+
+trace0:
+          b0->error = error0 ? node->errors[error0] : 0;
+
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              gtpu_rx_trace_t *tr
+                = vlib_add_trace (vm, node, b0, sizeof (*tr));
+              tr->next_index = next0;
+              tr->error = error0;
+              tr->tunnel_index = tunnel_index0;
+              tr->teid = has_space0 ? clib_net_to_host_u32(gtpu0->teid) : ~0;
+            }
+
+      	  if (ip_err1 || udp_err1 || csum_err1)
+      	    {
+      	      next1 = GTPU_INPUT_NEXT_DROP;
+      	      error1 = gtpu_err_code (ip_err1, udp_err1, csum_err1);
+      	      goto trace1;
+      	    }
+
+          /* speculatively load gtp header version field */
+      	  ver1 = gtpu1->ver_flags;
+
+          /*
+           * Manipulate gtpu header
+           * TBD: Manipulate Sequence Number and N-PDU Number
+           * TBD: Manipulate Next Extension Header
+           */
+          gtpu_hdr_len1 = sizeof(gtpu_header_t) - (((ver1 & GTPU_E_S_PN_BIT) == 0) * 4);
+          has_space1 = vlib_buffer_has_space (b1, gtpu_hdr_len1);
+	        if (PREDICT_FALSE (((ver1 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space1)))
+	          {
+  	          error1 = has_space1 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
+  	          next1 = GTPU_INPUT_NEXT_DROP;
+  	          goto trace1;
+            }
+
+          /* Manipulate packet 1 */
+          ASSERT (b1->flow_id != 0);
+          tunnel_index1 = b1->flow_id - gtm->flow_id_start;
+          t1 = pool_elt_at_index (gtm->tunnels, tunnel_index1);
+          b1->flow_id = 0;
+
+      	  /* Pop gtpu header */
+      	  vlib_buffer_advance (b1, gtpu_hdr_len1);
+
+          next1 = GTPU_INPUT_NEXT_IP4_INPUT;
+          sw_if_index1 = t1->sw_if_index;
+
+          /* Required to make the l2 tag push / pop code work on l2 subifs */
+          /* This won't happen in current implementation as only 
+              ipv4/udp/gtpu/IPV4 type packets can be matched */
+          if (PREDICT_FALSE(next1 == GTPU_INPUT_NEXT_L2_INPUT))
+            vnet_update_l2_len (b1);
+
+          /* Set packet input sw_if_index to unicast GTPU tunnel for learning */
+          vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
+
+          pkts_decapsulated ++;
+          stats_n_packets += 1;
+          stats_n_bytes += len1;
+
+      	  /* Batch stats increment on the same gtpu tunnel so counter
+      	     is not incremented per packet */
+    	    if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
+      	    {
+      	      stats_n_packets -= 1;
+      	      stats_n_bytes -= len1;
+      	      if (stats_n_packets)
+      		      vlib_increment_combined_counter
+      		       (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+      		        thread_index, stats_sw_if_index,
+      		        stats_n_packets, stats_n_bytes);
+      	      stats_n_packets = 1;
+      	      stats_n_bytes = len1;
+      	      stats_sw_if_index = sw_if_index1;
+      	    }
+
+trace1:
+          b1->error = error1 ? node->errors[error1] : 0;
+
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              gtpu_rx_trace_t *tr
+                = vlib_add_trace (vm, node, b1, sizeof (*tr));
+              tr->next_index = next1;
+              tr->error = error1;
+              tr->tunnel_index = tunnel_index1;
+              tr->teid = has_space1 ? clib_net_to_host_u32(gtpu1->teid) : ~0;
+            }
+
+    	    vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+    					   to_next, n_left_to_next,
+    					   bi0, bi1, next0, next1);
+        }
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+        {
+          u32 bi0;
+          vlib_buffer_t * b0;
+          u32 next0;
+          gtpu_header_t * gtpu0;
+          u32 gtpu_hdr_len0;
+          u32 error0;
+          u32 tunnel_index0;
+          gtpu_tunnel_t * t0;
+          u32 sw_if_index0, len0;
+          u8 has_space0 = 0;
+          u8 ver0;
+
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
+
+          b0 = vlib_get_buffer (vm, bi0);
+          len0 = vlib_buffer_length_in_chain (vm, b0);
+
+          tunnel_index0 = ~0;
+          error0 = 0;
+
+      	  ip_err0 = gtpu_check_ip (b0, len0);
+      	  udp_err0 = gtpu_check_ip_udp_len (b0);
+          if (PREDICT_FALSE (gtpu_local_need_csum_check (b0)))
+            csum_err0 = !gtpu_validate_udp_csum (vm, b0);
+          else
+            csum_err0 = !gtpu_local_csum_is_valid (b0);
+
+      	  if (ip_err0 || udp_err0 || csum_err0)
+      	    {
+      	      next0 = GTPU_INPUT_NEXT_DROP;
+      	      error0 = gtpu_err_code (ip_err0, udp_err0, csum_err0);
+      	      goto trace00;
+      	    }
+
+          /* udp leaves current_data pointing at the gtpu header */
+          gtpu0 = vlib_buffer_get_current (b0);
+
+          /* speculatively load gtp header version field */
+          ver0 = gtpu0->ver_flags;
+
+          /*
+           * Manipulate gtpu header
+           * TBD: Manipulate Sequence Number and N-PDU Number
+           * TBD: Manipulate Next Extension Header
+           */
+          gtpu_hdr_len0 = sizeof(gtpu_header_t) - (((ver0 & GTPU_E_S_PN_BIT) == 0) * 4);
+
+          has_space0 = vlib_buffer_has_space (b0, gtpu_hdr_len0);
+          if (PREDICT_FALSE (((ver0 & GTPU_VER_MASK) != GTPU_V1_VER) | (!has_space0)))
+            {
+               error0 = has_space0 ? GTPU_ERROR_BAD_VER : GTPU_ERROR_TOO_SMALL;
+               next0 = GTPU_INPUT_NEXT_DROP;
+               goto trace00;
+            }
+
+          ASSERT (b0->flow_id != 0);
+          tunnel_index0 = b0->flow_id - gtm->flow_id_start;
+          t0 = pool_elt_at_index (gtm->tunnels, tunnel_index0);
+  	      b0->flow_id = 0;
+
+      	  /* Pop gtpu header */
+      	  vlib_buffer_advance (b0, gtpu_hdr_len0);
+
+          next0 = GTPU_INPUT_NEXT_IP4_INPUT;
+          sw_if_index0 = t0->sw_if_index;
+
+          /* Set packet input sw_if_index to unicast GTPU tunnel for learning */
+          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+
+          pkts_decapsulated ++;
+          stats_n_packets += 1;
+          stats_n_bytes += len0;
+
+         /* Batch stats increment on the same gtpu tunnel so counter
+            is not incremented per packet */
+          if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+            {
+              stats_n_packets -= 1;
+              stats_n_bytes -= len0;
+              if (stats_n_packets)
+        	    vlib_increment_combined_counter
+            	  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+            	   thread_index, stats_sw_if_index,
+            	   stats_n_packets, stats_n_bytes);
+              stats_n_packets = 1;
+              stats_n_bytes = len0;
+              stats_sw_if_index = sw_if_index0;
+            }
+  trace00:
+            b0->error = error0 ? node->errors[error0] : 0;
+
+            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+              {
+                gtpu_rx_trace_t *tr
+                  = vlib_add_trace (vm, node, b0, sizeof (*tr));
+                tr->next_index = next0;
+                tr->error = error0;
+                tr->tunnel_index = tunnel_index0;
+                tr->teid = has_space0 ? clib_net_to_host_u32(gtpu0->teid) : ~0;
+              }
+      	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+      					   to_next, n_left_to_next,
+      					   bi0, next0);
+      	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+    /* Do we still need this now that tunnel tx stats is kept? */
+    vlib_node_increment_counter (vm, gtpu4_flow_input_node.index,
+                               GTPU_ERROR_DECAPSULATED,
+                               pkts_decapsulated);
+
+    /* Increment any remaining batch stats */
+    if (stats_n_packets)
+      {
+        vlib_increment_combined_counter
+    	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+    	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+        node->runtime_data[0] = stats_sw_if_index;
+      }
+
+    return from_frame->n_vectors;
+}
+
+VLIB_NODE_FN (gtpu4_flow_input_node) (vlib_main_t * vm,
+             vlib_node_runtime_t * node,
+             vlib_frame_t * from_frame)
+{
+	return gtpu_flow_input(vm, node, from_frame);
+}
+
+
+/* *INDENT-OFF* */
+#ifndef CLIB_MULTIARCH_VARIANT
+VLIB_REGISTER_NODE (gtpu4_flow_input_node) = {
+  .name = "gtpu4-flow-input",
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_gtpu_rx_trace,
+
+  .n_errors = GTPU_FLOW_N_ERROR,
+  .error_strings = gtpu_flow_error_strings,
+
+  .n_next_nodes = GTPU_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [GTPU_INPUT_NEXT_##s] = n,
+    foreach_gtpu_input_next
+#undef _
+
+  },
+};
+#endif
+/* *INDENT-ON* */
+
 #endif /* CLIB_MARCH_VARIANT */

@@ -106,6 +106,23 @@ autoreply define sw_interface_set_gtpu_bypass
   option vat_help = "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]";
 };
 
+/** \brief Offload gtpu rx request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param hw_if_index - rx hw interface
+    @param sw_if_index - gtpu interface to offload
+    @param enable - if non-zero enable, else disable
+*/
+autoreply define gtpu_offload_rx
+{
+  u32 client_index;
+  u32 context;
+  u32 hw_if_index;
+  u32 sw_if_index;
+  u8 enable;
+  option vat_help = "hw <intfc> rx <tunnel-name> [del]";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
