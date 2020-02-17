@@ -903,6 +903,8 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
       if (!lb_vip_port_find_diff_port(&(vip->prefix), vip->plen,
                                       vip->protocol, vip->port, &vip_idx))
         {
+          lb_vip_t *exists_vip = lb_vip_get_by_index(vip_idx);
+          *vip_prefix_index = exists_vip->vip_prefix_index;
           return;
         }
 
