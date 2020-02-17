@@ -1525,7 +1525,10 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       hash_set1 (km->sw_if_indices, sw_if_index);
     }
   else
-    sw_if_index = a->sw_if_index;
+    {
+      sw_if_index = a->sw_if_index;
+      vnet_sw_interface_admin_up (vnet_get_main (), sw_if_index);
+    }
 
   if (rv)
     {
@@ -1797,7 +1800,10 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 	sw_if_index = ~0;
     }
   else
-    sw_if_index = a->sw_if_index;
+    {
+      sw_if_index = a->sw_if_index;
+      vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
+    }
 
   if (~0 != sw_if_index)
     ipsec_tun_protect_del (sw_if_index);
