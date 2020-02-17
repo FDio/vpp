@@ -274,7 +274,7 @@ load_balance_map_db_remove (load_balance_map_t *lbm)
     {
         p = hash_get(lb_maps_by_path_index, lbmp->lbmp_index);
 
-        ASSERT(NULL != p);
+        ALWAYS_ASSERT(NULL != p);
 
         fib_node_list_remove(p[0], lbmp->lbmp_sibling);
     }
@@ -312,7 +312,7 @@ load_balance_map_fill (load_balance_map_t *lbm)
                 tmp_buckets[jj++] = bucket++;
             }
         }
-        else 
+        else
         {
             bucket += lbmp->lbmp_weight;
         }

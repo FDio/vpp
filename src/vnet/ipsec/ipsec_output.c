@@ -222,7 +222,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (last_sw_if_index != sw_if_index0))
 	{
 	  uword *p = hash_get (im->spd_index_by_sw_if_index, sw_if_index0);
-	  ASSERT (p);
+	  ALWAYS_ASSERT (p);
 	  spd_index0 = p[0];
 	  spd0 = pool_elt_at_index (im->spds, spd_index0);
 	  last_sw_if_index = sw_if_index0;
