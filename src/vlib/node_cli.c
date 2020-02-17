@@ -442,11 +442,12 @@ show_node_runtime (vlib_main_t * vm,
 	  dt = time_now - nm->time_last_runtime_stats_clear;
 	  vlib_cli_output
 	    (vm,
-	     "Time %.1f, %f sec internal node vector rate %.2f \n"
+	     "Time %.1f, %f sec internal node vector rate %.2f loops/sec %.2f\n"
 	     "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
 	     dt,
 	     vlib_get_stat_segment_update_rate (),
 	     internal_node_vector_rates[j],
+	     stat_vm->loops_per_second,
 	     (f64) n_input / dt,
 	     (f64) n_output / dt, (f64) n_drop / dt, (f64) n_punt / dt);
 
