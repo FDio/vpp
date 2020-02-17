@@ -364,7 +364,7 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 
             fed = fib_entry_delegate_find(export_entry,
                                           FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
-            ASSERT(NULL != fed);
+            ALWAYS_ASSERT(NULL != fed);
 
 	    export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
 
@@ -391,7 +391,7 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	pool_put(fib_ae_import_pool, import);
         fib_entry_delegate_remove(fib_entry,
                                   FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
-    }	
+    }
 }
 
 void
@@ -522,7 +522,7 @@ fib_ae_import_format (fib_node_index_t impi,
     s = format(s, "export-sibling:%d ", import->faei_export_sibling);
     s = format(s, "exporter:%d ", import->faei_exporter);
     s = format(s, "export-fib:%d ", import->faei_export_fib);
- 
+
     s = format(s, "import-entry:%d ", import->faei_import_entry);
     s = format(s, "import-fib:%d ", import->faei_import_fib);
 
@@ -544,7 +544,7 @@ fib_ae_export_format (fib_node_index_t expi,
     fib_ae_export_t *export;
 
     export = pool_elt_at_index(fib_ae_export_pool, expi);
-    
+
     s = format(s, "\n  Attached-Export:%d:[", (export - fib_ae_export_pool));
     s = format(s, "export-entry:%d ", export->faee_ei);
 
