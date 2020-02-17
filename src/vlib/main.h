@@ -251,6 +251,13 @@ typedef struct vlib_main_t
    */
   int need_vlib_worker_thread_node_runtime_update;
 
+  /* Dispatch loop time accounting */
+  u64 loops;
+  f64 loop_interval_end;
+  f64 loop_interval_start;
+  f64 loops_per_second;
+  f64 damping_constant;
+
   /*
    * Barrier epoch - Set to current time, each time barrier_sync or
    * barrier_release is called with zero recursion.
