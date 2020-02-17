@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "218bfef1_6821f89a",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-17T16:15:21Z",
+      "side": 1,
+      "message": "You probably want to change this to Intel :-)",
+      "range": {
+        "startLine": 2,
+        "startChar": 22,
+        "endLine": 2,
+        "endChar": 28
+      },
+      "revId": "1423522257b3136232f739625a61f55e82b53fc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5906823_d49b3a4e",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-17T16:15:21Z",
+      "side": 1,
+      "message": "Add a checkstyle footer",
+      "range": {
+        "startLine": 320,
+        "startChar": 0,
+        "endLine": 320,
+        "endChar": 2
+      },
+      "revId": "1423522257b3136232f739625a61f55e82b53fc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "71bda4ab_fdeda2f3",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-17T16:15:21Z",
+      "side": 1,
+      "message": "Add a copyright comment here as well",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 1
+      },
+      "revId": "1423522257b3136232f739625a61f55e82b53fc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9f20d5cb_40ae8920",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-17T16:15:21Z",
+      "side": 1,
+      "message": "And here add a checkstyle footer",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 2
+      },
+      "revId": "1423522257b3136232f739625a61f55e82b53fc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
