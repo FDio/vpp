@@ -3935,6 +3935,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
+	      tsm->min_session_timeout = 0;
               if (sm->endpoint_dependent)
                 {
                   clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
