@@ -516,6 +516,9 @@ typedef struct
 
   /* real thread index */
   u32 thread_index;
+
+  /* discovered minimum session timeout time */
+  u64 min_session_timeout;
 } snat_main_per_thread_data_t;
 
 struct snat_main_s;

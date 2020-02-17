@@ -65,7 +65,11 @@ nat44_user_try_cleanup (snat_user_t * u, u32 thread_index, f64 now)
 	(f64) nat44_session_get_timeout (sm, s);
 
       if (now < sess_timeout_time)
-	continue;
+	{
+	  tsm->min_session_timeout =
+	    clib_min (sess_timeout_time, tsm->min_session_timeout);
+	  continue;
+	}
 
       nat44_session_cleanup (s, thread_index);
     }
@@ -93,19 +97,33 @@ nat44_session_try_cleanup (ip4_address_t * addr,
       if (PREDICT_TRUE (pool_elts (tsm->sessions) < sm->max_translations))
 	return;
 
-      // there is no place so we try to cleanup all users in this thread
-      /* *INDENT-OFF* */
-      pool_foreach (u, tsm->users,
-      ({
-        nat44_user_try_cleanup (u, thread_index, now);
-      }));
-      /* *INDENT-ON* */
+      if (now >= tsm->min_session_timeout)
+	{
+	  tsm->min_session_timeout = ~0;
+	  // there is no place so we try to cleanup all users in this thread
+          /* *INDENT-OFF* */
+          pool_foreach (u, tsm->users,
+                        ({ nat44_user_try_cleanup (u, thread_index, now); }));
+          /* *INDENT-ON* */
+	  if (~0 == tsm->min_session_timeout)
+	    {
+	      tsm->min_session_timeout = 0;
+	    }
+	}
       return;
     }
 
-  // each time user creates a new session we try to cleanup expired sessions
-  nat44_user_try_cleanup (pool_elt_at_index (tsm->users, value.value),
-			  thread_index, now);
+  if (now >= tsm->min_session_timeout)
+    {
+      tsm->min_session_timeout = ~0;
+      // each time user creates a new session we try to cleanup expired sessions
+      nat44_user_try_cleanup (pool_elt_at_index (tsm->users, value.value),
+			      thread_index, now);
+      if (~0 == tsm->min_session_timeout)
+	{
+	  tsm->min_session_timeout = 0;
+	}
+    }
 }
 
 static_always_inline void
