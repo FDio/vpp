@@ -467,7 +467,7 @@ app_worker_get_listen_segment_manager (app_worker_t * app,
 {
   uword *smp;
   smp = hash_get (app->listeners_table, listen_session_get_handle (listener));
-  ASSERT (smp != 0);
+  ALWAYS_ASSERT (smp != 0);
   return segment_manager_get (*smp);
 }
 

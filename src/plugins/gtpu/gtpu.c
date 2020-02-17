@@ -318,7 +318,7 @@ vtep_addr_unref (ip46_address_t * ip)
   uword *vtep = ip46_address_is_ip4 (ip) ?
     hash_get (gtpu_main.vtep4, ip->ip4.as_u32) :
     hash_get_mem (gtpu_main.vtep6, &ip->ip6);
-  ASSERT (vtep);
+  ALWAYS_ASSERT (vtep);
   if (--(*vtep) != 0)
     return *vtep;
   ip46_address_is_ip4 (ip) ?

@@ -311,7 +311,7 @@ vtep_addr_unref (ip46_address_t * ip)
   uword *vtep = ip46_address_is_ip4 (ip) ?
     hash_get (vxlan_main.vtep4, ip->ip4.as_u32) :
     hash_get_mem (vxlan_main.vtep6, &ip->ip6);
-  ASSERT (vtep);
+  ALWAYS_ASSERT (vtep);
   if (--(*vtep) != 0)
     return *vtep;
   ip46_address_is_ip4 (ip) ?
@@ -337,7 +337,7 @@ mcast_shared_get (ip46_address_t * ip)
 {
   ASSERT (ip46_address_is_multicast (ip));
   uword *p = hash_get_mem (vxlan_main.mcast_shared, ip);
-  ASSERT (p);
+  ALWAYS_ASSERT (p);
   mcast_shared_t ret = {.as_u64 = *p };
   return ret;
 }

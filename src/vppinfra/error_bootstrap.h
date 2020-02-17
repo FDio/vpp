@@ -79,6 +79,35 @@ do {							\
     }							\
 } while (0)
 
+/*
+ * This version always generates code, and has a Coverity-specific
+ * version to stop Coverity complaining about
+ * ALWAYS_ASSERT(p != 0); p->member...
+ */
+
+#ifndef __COVERITY__
+#define ALWAYS_ASSERT(truth)				\
+do {							\
+  if (PREDICT_FALSE(!(truth)))                          \
+    {							\
+      _clib_error (CLIB_ERROR_ABORT, 0, 0,		\
+		   "%s:%d (%s) assertion `%s' fails",	\
+		   __FILE__,				\
+		   (uword) __LINE__,			\
+		   clib_error_function,			\
+		   # truth);				\
+    }							\
+} while (0)
+#else /* __COVERITY__ */
+#define ALWAYS_ASSERT(truth)                    \
+do {                                            \
+  if (PREDICT_FALSE(!(truth)))                  \
+    {                                           \
+      abort();                                  \
+    }                                           \
+} while (0)
+#endif /* __COVERITY */
+
 #if defined(__clang__)
 #define STATIC_ASSERT(truth,...)
 #else

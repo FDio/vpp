@@ -131,7 +131,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
 
-	  ASSERT (t0 != NULL);
+	  ALWAYS_ASSERT (t0 != NULL);
 
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
@@ -145,7 +145,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	      next1 = t1->next_dpo.dpoi_next_node;
 	    }
 
-	  ASSERT (t1 != NULL);
+	  ALWAYS_ASSERT (t1 != NULL);
 
 	  vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
 
@@ -378,6 +378,9 @@ geneve_encap_inline (vlib_main_t * vm,
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
+
+	  ALWAYS_ASSERT (t0 != NULL);
+
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
