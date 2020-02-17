@@ -1683,6 +1683,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword i;
   u64 cpu_time_now;
+  f64 now;
   vlib_frame_queue_main_t *fqm;
   u32 *last_node_runtime_indices = 0;
   u32 frame_queue_check_counter = 0;
@@ -1926,6 +1927,33 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       /* Record time stamp in case there are no enabled nodes and above
          calls do not update time stamp. */
       cpu_time_now = clib_cpu_time_now ();
+      vm->loops_this_reporting_interval++;
+      now = clib_time_now_internal (&vm->clib_time, cpu_time_now);
+      /* Time to update loops_per_second? */
+      if (PREDICT_FALSE (now >= vm->loop_interval_end))
+	{
+	  /* Next sample ends in 20ms */
+	  if (vm->loop_interval_start)
+	    {
+	      f64 this_loops_per_second;
+
+	      this_loops_per_second =
+		((f64) vm->loops_this_reporting_interval) / (now -
+							     vm->loop_interval_start);
+
+	      vm->loops_per_second =
+		vm->loops_per_second * vm->damping_constant +
+		(1.0 - vm->damping_constant) * this_loops_per_second;
+	      if (vm->loops_per_second != 0.0)
+		vm->seconds_per_loop = 1.0 / vm->loops_per_second;
+	      else
+		vm->seconds_per_loop = 0.0;
+	    }
+	  /* New interval starts now, and ends in 20ms */
+	  vm->loop_interval_start = now;
+	  vm->loop_interval_end = now + 2e-4;
+	  vm->loops_this_reporting_interval = 0;
+	}
     }
 }
 
@@ -2121,6 +2149,16 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
     goto done;
+
+  /*
+   * Use exponential smoothing, with a half-life of 1 second
+   * reported_rate(t) = reported_rate(t-1) * K + rate(t)*(1-K)
+   *
+   * Sample every 20ms, aka 50 samples per second
+   * K = exp (-1.0/20.0);
+   * K = 0.95
+   */
+  vm->damping_constant = exp (-1.0 / 20.0);
 
   /* Sort per-thread init functions before we start threads */
   vlib_sort_init_exit_functions (&vm->worker_init_function_registrations);
