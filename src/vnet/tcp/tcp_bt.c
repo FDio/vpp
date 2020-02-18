@@ -80,6 +80,7 @@ bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
   if (bts->next != TCP_BTS_INVALID_INDEX)
     {
       tcp_bt_sample_t *next = bt_next_sample (bt, bts);
+      ALWAYS_ASSERT (next);
       next->prev = bts->prev;
     }
   else

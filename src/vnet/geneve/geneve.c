@@ -335,7 +335,7 @@ mcast_shared_get (ip46_address_t * ip)
 {
   ASSERT (ip46_address_is_multicast (ip));
   uword *p = hash_get_mem (geneve_main.mcast_shared, ip);
-  ASSERT (p);
+  ALWAYS_ASSERT (p);
   return (mcast_shared_t)
   {
   .as_u64 = *p};
