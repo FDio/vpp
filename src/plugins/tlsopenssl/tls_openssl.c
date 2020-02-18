@@ -204,15 +204,22 @@ openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
 static void
 openssl_handle_handshake_failure (tls_ctx_t * ctx)
 {
+  session_t *app_session;
+
   if (SSL_is_server (((openssl_ctx_t *) ctx)->ssl))
     {
       /*
        * Cleanup pre-allocated app session and close transport
        */
-      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      ctx->no_app_session = 1;
-      ctx->c_s_index = SESSION_INVALID_INDEX;
-      tls_disconnect_transport (ctx);
+      app_session =
+	session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
+      if (app_session)
+	{
+	  session_free (app_session);
+	  ctx->no_app_session = 1;
+	  ctx->c_s_index = SESSION_INVALID_INDEX;
+	  tls_disconnect_transport (ctx);
+	}
     }
   else
     {
@@ -295,7 +302,11 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
     }
   else
     {
-      tls_notify_app_accept (ctx);
+      /* Need to check transport status */
+      if (ctx->is_passive_close)
+	openssl_handle_handshake_failure (ctx);
+      else
+	tls_notify_app_accept (ctx);
     }
 
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %s",
@@ -752,6 +763,11 @@ openssl_handshake_is_over (tls_ctx_t * ctx)
 static int
 openssl_transport_close (tls_ctx_t * ctx)
 {
+#ifdef HAVE_OPENSSL_ASYNC
+  if (vpp_openssl_is_inflight (ctx))
+    return 0;
+#endif
+
   if (!openssl_handshake_is_over (ctx))
     {
       openssl_handle_handshake_failure (ctx);

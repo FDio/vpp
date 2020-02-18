@@ -68,6 +68,7 @@ int openssl_engine_register (char *engine, char *alg, int async);
 void openssl_async_node_enable_disable (u8 is_en);
 clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
 int tls_openssl_set_ciphers (char *ciphers);
+int vpp_openssl_is_inflight (tls_ctx_t * ctx);
 
 /*
  * fd.io coding-style-patch-verification: ON
