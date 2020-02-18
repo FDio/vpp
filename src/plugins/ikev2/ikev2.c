@@ -1538,6 +1538,12 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       return;
     }
 
+  /* cleanup existing SAs on expiration */
+  if (~0 != sw_if_index)
+    ipsec_tun_protect_del (sw_if_index);
+  ipsec_sa_unlock_id (a->remote_sa_id);
+  ipsec_sa_unlock_id (a->local_sa_id);
+
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
