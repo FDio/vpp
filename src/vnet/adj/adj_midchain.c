@@ -30,6 +30,8 @@
 static u32 adj_midchain_tx_feature_node[VNET_LINK_NUM];
 static u32 adj_midchain_tx_no_count_feature_node[VNET_LINK_NUM];
 
+static u32 *adj_midchain_feat_count_per_sw_if_index[VNET_LINK_NUM];
+
 /**
  * @brief Trace data for packets traversing the midchain tx node
  */
@@ -451,6 +453,30 @@ adj_nbr_midchain_get_feature_node (ip_adjacency_t *adj)
  * Setup the adj as a mid-chain
  */
 void
+adj_midchain_teardown (ip_adjacency_t *adj)
+{
+    u32 feature_index;
+    u8 arc_index;
+
+    dpo_reset(&adj->sub_type.midchain.next_dpo);
+
+    arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
+    feature_index = adj_nbr_midchain_get_feature_node(adj);
+
+    if (0 == --adj_midchain_feat_count_per_sw_if_index[adj->ia_link][adj->rewrite_header.sw_if_index])
+    {
+        vnet_feature_enable_disable_with_index (arc_index, feature_index,
+                                                adj->rewrite_header.sw_if_index,
+                                                0, 0, 0);
+    }
+}
+
+/**
+ * adj_midchain_setup
+ *
+ * Setup the adj as a mid-chain
+ */
+void
 adj_midchain_setup (adj_index_t adj_index,
                     adj_midchain_fixup_t fixup,
                     const void *data,
@@ -473,9 +499,15 @@ adj_midchain_setup (adj_index_t adj_index,
     feature_index = adj_nbr_midchain_get_feature_node(adj);
     tx_node = adj_nbr_midchain_get_tx_node(adj);
 
-    vnet_feature_enable_disable_with_index (arc_index, feature_index,
-					    adj->rewrite_header.sw_if_index,
-					    1 /* enable */, 0, 0);
+    vec_validate (adj_midchain_feat_count_per_sw_if_index[adj->ia_link],
+                  adj->rewrite_header.sw_if_index);
+
+    if (0 == adj_midchain_feat_count_per_sw_if_index[adj->ia_link][adj->rewrite_header.sw_if_index]++)
+    {
+        vnet_feature_enable_disable_with_index (arc_index, feature_index,
+                                                adj->rewrite_header.sw_if_index,
+                                                1 /* enable */, 0, 0);
+    }
 
     /*
      * stack the midchain on the drop so it's ready to forward in the adj-midchain-tx.
