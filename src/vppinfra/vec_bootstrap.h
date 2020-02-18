@@ -178,9 +178,9 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 
 /** \brief Set vector length to a user-defined value */
 #ifndef __COVERITY__		/* Coverity gets confused by ASSERT() */
-#define vec_set_len(v, l) do {     \
-    ASSERT(v);                     \
-    ASSERT((l) <= vec_max_len(v)); \
+#define vec_set_len(v, l) do {     		\
+    ASSERT(v);                     		\
+    ASSERT((l) == 0 || (l) <= vec_max_len(v)); 	\
     CLIB_MEM_POISON_LEN((void *)(v), _vec_len(v) * sizeof((v)[0]), (l) * sizeof((v)[0])); \
     _vec_len(v) = (l);             \
 } while (0)
