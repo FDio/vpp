@@ -327,8 +327,8 @@ tcp_rcv_rst (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       break;
     case TCP_STATE_SYN_SENT:
-      tcp_program_reset_ntf (wrk, tc);
-      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+      /* Do not program ntf because the connection is half-open */
+      tcp_handle_rst (tc);
       break;
     case TCP_STATE_ESTABLISHED:
       tcp_connection_timers_reset (tc);
