@@ -423,6 +423,11 @@ typedef struct
   u8 is_tun_itf_set;
   u32 tun_itf;
 
+  f64 old_id_expiration;
+  u32 current_remote_id_mask;
+  u32 old_remote_id;
+  u8 old_remote_id_present;
+
   ikev2_child_sa_t *childs;
 } ikev2_sa_t;
 
