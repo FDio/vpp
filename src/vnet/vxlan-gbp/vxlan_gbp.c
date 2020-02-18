@@ -317,7 +317,7 @@ mcast_shared_get (ip46_address_t * ip)
 {
   ASSERT (ip46_address_is_multicast (ip));
   uword *p = hash_get_mem (vxlan_gbp_main.mcast_shared, ip);
-  ASSERT (p);
+  ALWAYS_ASSERT (p);
   mcast_shared_t ret = {.as_u64 = *p };
   return ret;
 }

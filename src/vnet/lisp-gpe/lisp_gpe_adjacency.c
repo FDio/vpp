@@ -264,7 +264,7 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm,
   key.tunnel_index = ladj->tunnel_index;
 
   uword *p = hash_get_mem (lgm->lisp_stats_index_by_key, &key);
-  ASSERT (p);
+  ALWAYS_ASSERT (p);
 
   /* compute payload length starting after GPE */
   u32 bytes = b->current_length - (lisp_data - b->data - b->current_data);
