@@ -832,9 +832,6 @@ ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
 
   vec_free (delete);
   sa->initial_contact = 0;
-
-  km->log_level = IKEV2_LOG_ERROR;
-  km->log_class = vlib_log_register_class ("ikev2", 0);
 }
 
 static void
@@ -3531,6 +3528,8 @@ ikev2_init (vlib_main_t * vm)
 
   ikev2_cli_reference ();
 
+  km->log_level = IKEV2_LOG_ERROR;
+  km->log_class = vlib_log_register_class ("ikev2", 0);
   return 0;
 }
 
