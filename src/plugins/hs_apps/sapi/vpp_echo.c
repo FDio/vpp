@@ -151,6 +151,10 @@ print_global_json_stats (echo_main_t * em)
 	   end_evt_missing ? "True" : "False");
   fformat (stdout, "  \"rx_data\": %lld,\n", em->stats.rx_total);
   fformat (stdout, "  \"tx_data\": %lld,\n", em->stats.tx_total);
+  fformat (stdout, "  \"rx_bits_per_second\": %.1f,\n",
+	   em->stats.rx_total * 8 / deltat);
+  fformat (stdout, "  \"tx_bits_per_second\": %.1f,\n",
+	   em->stats.tx_total * 8 / deltat);
   fformat (stdout, "  \"closing\": {\n");
   fformat (stdout, "    \"reset\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.reset_count.q, em->stats.reset_count.s);
@@ -158,15 +162,15 @@ print_global_json_stats (echo_main_t * em)
 	   em->stats.close_count.q, em->stats.close_count.s);
   fformat (stdout, "    \"send evt\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.active_count.q, em->stats.active_count.s);
-  fformat (stdout, "    \"clean\": { \"q\": %d, \"s\": %d }\n",
+  fformat (stdout, "    \"clean\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.clean_count.q, em->stats.clean_count.s);
-  fformat (stdout, "    \"accepted\": { \"q\": %d, \"s\": %d }\n",
+  fformat (stdout, "    \"accepted\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.accepted_count.q, em->stats.accepted_count.s);
   fformat (stdout, "    \"connected\": { \"q\": %d, \"s\": %d }\n",
 	   em->stats.connected_count.q, em->stats.connected_count.s);
-  fformat (stdout, "  }\n");
+  fformat (stdout, "  },\n");
   fformat (stdout, "  \"results\": {\n");
-  fformat (stdout, "    \"has_failed\": \"%d\"\n", em->has_failed);
+  fformat (stdout, "    \"has_failed\": \"%d\",\n", em->has_failed);
   fformat (stdout, "    \"fail_descr\": \"%v\"\n", em->fail_descr);
   fformat (stdout, "  }\n");
   fformat (stdout, "}\n");
