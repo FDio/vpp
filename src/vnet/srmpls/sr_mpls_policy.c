@@ -700,7 +700,7 @@ sr_mpls_policy_assign_endpoint_color (mpls_label_t bsid,
 
       /* CID 180995 This should never be NULL unless the two hash tables
        * get out of sync */
-      ASSERT (old_value != NULL);
+      ALWAYS_ASSERT (old_value != NULL);
 
       fib_prefix_t pfx = { 0 };
       pfx.fp_proto = FIB_PROTOCOL_MPLS;

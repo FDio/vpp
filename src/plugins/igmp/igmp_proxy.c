@@ -326,7 +326,7 @@ igmp_proxy_device_merge_group (igmp_proxy_device_t * proxy_device,
   igmp_src_t *src;
 
   proxy_config = igmp_config_lookup (proxy_device->upstream_if);
-  ASSERT (proxy_config);
+  ALWAYS_ASSERT (proxy_config);
 
   proxy_group = igmp_group_lookup (proxy_config, group->key);
   if (!proxy_group)

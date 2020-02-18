@@ -152,11 +152,11 @@ bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   *last_slave_sw_if_index = slave_sw_if_index;
 
   sif = bond_get_slave_by_sw_if_index (slave_sw_if_index);
-  ASSERT (sif);
+  ALWAYS_ASSERT (sif);
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
 
-  ASSERT (bif);
+  ALWAYS_ASSERT (bif);
   ASSERT (vec_len (bif->slaves));
 
   if (PREDICT_FALSE (bif->admin_up == 0))

@@ -78,8 +78,8 @@ bond_slave_sort (void *a1, void *a2)
   slave_if_t *sif2 = bond_get_slave_by_sw_if_index (*s2);
   bond_if_t *bif;
 
-  ASSERT (sif1);
-  ASSERT (sif2);
+  ALWAYS_ASSERT (sif1);
+  ALWAYS_ASSERT (sif2);
   /*
    * sort entries according to preference rules:
    * 1. biggest weight
