@@ -1402,22 +1402,24 @@ static ip_neighbor_age_state_t
 ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
 {
   ip_neighbor_t *ipn;
-  f64 ttl;
+  u32 ipndb_age;
+  u32 ttl;
 
   ipn = ip_neighbor_get (ipni);
+  ipndb_age = ip_neighbor_db[ipn->ipn_key->ipnk_type].ipndb_age;
   ttl = now - ipn->ipn_time_last_updated;
-  *wait = IP_NEIGHBOR_PROCESS_SLEEP_LONG;
+  *wait = ipndb_age;
 
-  if (ttl > ip_neighbor_db[ipn->ipn_key->ipnk_type].ipndb_age)
+  if (ttl > ipndb_age)
     {
       IP_NEIGHBOR_DBG ("aged: %U @%f - %f > %d",
 		       format_ip_neighbor, ipni, now,
-		       ipn->ipn_time_last_updated,
-		       ip_neighbor_db[ipn->ipn_key->ipnk_type].ipndb_age);
+		       ipn->ipn_time_last_updated, ipndb_age);
       if (ipn->ipn_n_probes > 2)
 	{
 	  /* 3 strikes and yea-re out */
 	  IP_NEIGHBOR_DBG ("dead: %U", format_ip_neighbor, ipni);
+	  *wait = 1;
 	  return (IP_NEIGHBOR_AGE_DEAD);
 	}
       else
@@ -1436,7 +1438,8 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
     }
   else
     {
-      *wait = ttl;
+      /* here we are sure that ttl <= ipndb_age */
+      *wait = ipndb_age - ttl + 1;
       return (IP_NEIGHBOR_AGE_ALIVE);
     }
 
@@ -1481,7 +1484,7 @@ ip_neighbor_age_loop (vlib_main_t * vm,
 	    ip_neighbor_elt_t *elt, *head;
 	    f64 wait;
 
-	    timeout = 1e5;
+	    timeout = ip_neighbor_db[type].ipndb_age;
 	    head = pool_elt_at_index (ip_neighbor_elt_pool,
 				      ip_neighbor_list_head[type]);
 
@@ -1498,6 +1501,7 @@ ip_neighbor_age_loop (vlib_main_t * vm,
 
             if (IP_NEIGHBOR_AGE_ALIVE == res) {
               /* the oldest neighbor has not yet expired, go back to sleep */
+              timeout = clib_min (wait, timeout);
               break;
             }
             else if (IP_NEIGHBOR_AGE_DEAD == res) {
@@ -1525,13 +1529,16 @@ ip_neighbor_age_loop (vlib_main_t * vm,
 
 	    head = pool_elt_at_index (ip_neighbor_elt_pool,
 				      ip_neighbor_list_head[type]);
-	    elt = clib_llist_prev (ip_neighbor_elt_pool, ipne_anchor, head);
+	    /* no neighbors yet */
+	    if (clib_llist_is_empty (ip_neighbor_elt_pool, ipne_anchor, head))
+	      {
+		timeout = ip_neighbor_db[type].ipndb_age;
+		break;
+	      }
 
 	    /* poke the oldset neighbour for aging, which returns how long we sleep for */
-	    if (IP_NEIGHBOR_AGE_PROBE ==
-		ip_neighbour_age_out (elt->ipne_index, now, &timeout))
-	      /* we probed for the oldest entry, sleep for a short time to get to the next */
-	      timeout = 0.01;
+	    elt = clib_llist_prev (ip_neighbor_elt_pool, ipne_anchor, head);
+	    ip_neighbour_age_out (elt->ipne_index, now, &timeout);
 	    break;
 	  }
 	}
