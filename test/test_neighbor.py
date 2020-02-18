@@ -1809,6 +1809,19 @@ class NeighborAgeTestCase(VppTestCase):
                                                     af=vaf.ADDRESS_IP4))
 
         #
+        # load up some neighbours again with already enabled 2s aging
+        # they should be removed after 10 seconds
+        #
+        for ii in range(10):
+            VppNeighbor(self,
+                        self.pg0.sw_if_index,
+                        self.pg0.remote_hosts[ii].mac,
+                        self.pg0.remote_hosts[ii].ip4).add_vpp_config()
+        self.sleep(10)
+        self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
+                                                    af=vaf.ADDRESS_IP4))
+
+        #
         # load up some neighbours again, then disable the aging
         # they should still be there in 10 seconds time
         #
