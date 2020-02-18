@@ -199,15 +199,21 @@ If you start VPP from systemd, you also need to edit
 line before restarting VPP.
 
 Vpp core files often appear enormous, but they are invariably
-sparse. Gzip compresses them to manageable sizes. A multi-GByte
-corefile often compresses to 10-20 Mbytes.
+sparse. Using a compression tool reduces them to a manageable sizes.
+A multi-GByte corefile often compresses to 10-20 Mbytes. Gzip will
+be available on most system, but is usually the worst option in
+terms of speed. zstd or lz4 are usually much faster and handle sparse
+files by default.
 
-When decompressing a vpp core file, we suggest using "dd" as shown to
-create a sparse, uncompressed core file:
+When decompressing a vpp core file with gzip, we suggest using "dd"
+as shown to create a sparse, uncompressed core file:
 
 .. code-block:: console
 
    $ zcat vpp_core.gz | dd conv=sparse of=vpp_core
+
+Other compression tools handle sparse files by default, checkout
+their man pages and documentation.
 
 Please remember to put compressed core files in accessible places.
 
@@ -265,6 +271,13 @@ executable:
 
   #!/bin/sh
   exec /bin/gzip -f - >"/tmp/dumps/core-$1.$2.gz"
+
+Alternate command with zstd:
+
+.. code-block:: console
+
+  #!/bin/sh
+  exec /usr/bin/zstd -f - >"/tmp/dumps/core-$1.$2.zst"
 
 Adjust the kernel core file pattern as shown:
 
