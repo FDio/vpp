@@ -1731,7 +1731,7 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # Set the neighbor configuration:
         #   limi = 200
-        #   age  = 2 seconds
+        #   age  = 0 seconds
         #   recycle = false
         #
         self.vapi.ip_neighbor_config(af=vaf.ADDRESS_IP4,
@@ -1807,6 +1807,27 @@ class NeighborAgeTestCase(VppTestCase):
 
         self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
                                                     af=vaf.ADDRESS_IP4))
+
+        #
+        # load up some neighbours again with 2s aging enabled
+        # they should be removed after 10s (2s age + 4s for probes + gap)
+        #
+        for ii in range(10):
+            VppNeighbor(self,
+                        self.pg0.sw_if_index,
+                        self.pg0.remote_hosts[ii].mac,
+                        self.pg0.remote_hosts[ii].ip4).add_vpp_config()
+        self.sleep(10)
+        self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
+                                                    af=vaf.ADDRESS_IP4))
+
+        #
+        # check if we can set age and recycle with empty neighbor list
+        #
+        self.vapi.ip_neighbor_config(af=vaf.ADDRESS_IP4,
+                                     max_number=200,
+                                     max_age=1000,
+                                     recycle=True)
 
         #
         # load up some neighbours again, then disable the aging
