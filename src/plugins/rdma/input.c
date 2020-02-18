@@ -318,8 +318,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    &bt);
   if (n_tail < n_rx_packets)
     n_rx_bytes +=
-      rdma_device_input_bufs (vm, rd, &to_next[n_tail], &rxq->bufs[0], wc,
-			      n_rx_packets - n_tail, &bt);
+      rdma_device_input_bufs (vm, rd, &to_next[n_tail], &rxq->bufs[0],
+			      &wc[n_tail], n_rx_packets - n_tail, &bt);
   rdma_device_input_ethernet (vm, node, rd, next_index);
 
   vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_rx_packets);
