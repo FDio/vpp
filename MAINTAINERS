@@ -614,10 +614,6 @@ I:	papi
 M:	Ole Troan <ot@cisco.com>
 F:	src/vpp-api/python
 
-Plugin - SCTP
-I:	sctp
-F:	src/plugins/sctp/
-
 Cisco Discovery Protocol
 I:	cdp
 F:	src/plugins/cdp/
