@@ -645,14 +645,16 @@ fib_path_last_lock_gone (fib_node_t *node)
     ASSERT(0);
 }
 
-static void
+static fib_path_t*
 fib_path_attached_next_hop_get_adj (fib_path_t *path,
 				    vnet_link_t link,
                                     dpo_id_t *dpo)
 {
+    fib_node_index_t fib_path_index;
     fib_protocol_t nh_proto;
     adj_index_t ai;
 
+    fib_path_index = fib_path_get_index(path);
     nh_proto = dpo_proto_to_fib(path->fp_nh_proto);
 
     if (vnet_sw_interface_is_p2p(vnet_get_main(),
@@ -676,6 +678,8 @@ fib_path_attached_next_hop_get_adj (fib_path_t *path,
 
     dpo_set(dpo, DPO_ADJACENCY, vnet_link_to_dpo_proto(link), ai);
     adj_unlock(ai);
+
+    return (fib_path_get(fib_path_index));
 }
 
 static void
@@ -685,9 +689,9 @@ fib_path_attached_next_hop_set (fib_path_t *path)
      * resolve directly via the adjacency discribed by the
      * interface and next-hop
      */
-    fib_path_attached_next_hop_get_adj(path,
-                                       dpo_proto_to_link(path->fp_nh_proto),
-                                       &path->fp_dpo);
+    path = fib_path_attached_next_hop_get_adj(path,
+                                              dpo_proto_to_link(path->fp_nh_proto),
+                                              &path->fp_dpo);
 
     ASSERT(dpo_is_adj(&path->fp_dpo));
 
@@ -1111,7 +1115,7 @@ FIXME comment
                            vnet_get_main(),
                            path->attached_next_hop.fp_interface);
 
-            fib_path_attached_next_hop_get_adj(
+            path = fib_path_attached_next_hop_get_adj(
                 path,
                 dpo_proto_to_link(path->fp_nh_proto),
                 &path->fp_dpo);
@@ -2447,10 +2451,10 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_NSH:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
-		fib_path_attached_next_hop_get_adj(
-		         path,
-			 fib_forw_chain_type_to_link_type(fct),
-                         dpo);
+		path = fib_path_attached_next_hop_get_adj(
+                    path,
+                    fib_forw_chain_type_to_link_type(fct),
+                    dpo);
 		break;
 	    case FIB_FORW_CHAIN_TYPE_BIER:
 		break;
