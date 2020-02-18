@@ -645,10 +645,24 @@ fib_path_last_lock_gone (fib_node_t *node)
     ASSERT(0);
 }
 
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
 static const adj_index_t
+=======
+static fib_path_t*
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
 fib_path_attached_next_hop_get_adj (fib_path_t *path,
 				    vnet_link_t link)
 {
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
+=======
+    fib_node_index_t fib_path_index;
+    fib_protocol_t nh_proto;
+    adj_index_t ai;
+
+    fib_path_index = fib_path_get_index(path);
+    nh_proto = dpo_proto_to_fib(path->fp_nh_proto);
+
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
     if (vnet_sw_interface_is_p2p(vnet_get_main(),
 				 path->attached_next_hop.fp_interface))
     {
@@ -670,6 +684,14 @@ fib_path_attached_next_hop_get_adj (fib_path_t *path,
 				    &path->attached_next_hop.fp_nh,
 				    path->attached_next_hop.fp_interface));
     }
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
+=======
+
+    dpo_set(dpo, DPO_ADJACENCY, vnet_link_to_dpo_proto(link), ai);
+    adj_unlock(ai);
+
+    return (fib_path_get(fib_path_index));
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
 }
 
 static void
@@ -679,12 +701,20 @@ fib_path_attached_next_hop_set (fib_path_t *path)
      * resolve directly via the adjacency discribed by the
      * interface and next-hop
      */
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
     dpo_set(&path->fp_dpo,
 	    DPO_ADJACENCY,
 	    path->fp_nh_proto,
 	    fib_path_attached_next_hop_get_adj(
 		 path,
 		 dpo_proto_to_link(path->fp_nh_proto)));
+=======
+    path = fib_path_attached_next_hop_get_adj(path,
+                                              dpo_proto_to_link(path->fp_nh_proto),
+                                              &path->fp_dpo);
+
+    ASSERT(dpo_is_adj(&path->fp_dpo));
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
 
     /*
      * become a child of the adjacency so we receive updates
@@ -1095,9 +1125,16 @@ FIXME comment
                            vnet_get_main(),
                            path->attached_next_hop.fp_interface);
 
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
             ai = fib_path_attached_next_hop_get_adj(
                      path,
                      dpo_proto_to_link(path->fp_nh_proto));
+=======
+            path = fib_path_attached_next_hop_get_adj(
+                path,
+                dpo_proto_to_link(path->fp_nh_proto),
+                &path->fp_dpo);
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
 
             path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
             if (if_is_up && adj_is_up(ai))
@@ -2432,6 +2469,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_NSH:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+<<<<<<< HEAD   (de1aa3 mactime: remove unnecessary function declaration)
 	    {
 		adj_index_t ai;
 
@@ -2445,6 +2483,12 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 			fib_forw_chain_type_to_dpo_proto(fct), ai);
 		adj_unlock(ai);
 
+=======
+		path = fib_path_attached_next_hop_get_adj(
+                    path,
+                    fib_forw_chain_type_to_link_type(fct),
+                    dpo);
+>>>>>>> CHANGE (02d5a6 fib: fib path realloc during midchain stack)
 		break;
 	    }
 	    case FIB_FORW_CHAIN_TYPE_BIER:
