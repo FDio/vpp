@@ -249,7 +249,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_MIDCHAIN:
-        dpo_reset(&adj->sub_type.midchain.next_dpo);
+        adj_midchain_teardown(adj);
         /* FALL THROUGH */
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_REWRITE:
@@ -267,8 +267,10 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	adj_glean_remove(adj->ia_nh_proto,
 			 adj->rewrite_header.sw_if_index);
 	break;
-    case IP_LOOKUP_NEXT_MCAST:
     case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+        adj_midchain_teardown(adj);
+        /* FALL THROUGH */
+    case IP_LOOKUP_NEXT_MCAST:
 	adj_mcast_remove(adj->ia_nh_proto,
 			 adj->rewrite_header.sw_if_index);
 	break;
