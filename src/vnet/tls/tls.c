@@ -358,15 +358,22 @@ tls_session_reset_callback (session_t * s)
   session_t *app_session;
 
   ctx = tls_ctx_get (s->opaque);
+  ctx->is_passive_close = 1;
   tc = &ctx->connection;
   if (tls_ctx_handshake_is_over (ctx))
     {
       session_transport_reset_notify (tc);
       session_transport_closed_notify (tc);
+      tls_disconnect_transport (ctx);
     }
-  else if ((app_session = session_get (tc->s_index, tc->thread_index)))
-    session_free (app_session);
-  tls_disconnect_transport (ctx);
+  else
+    if ((app_session =
+	 session_get_if_valid (ctx->c_s_index, ctx->c_thread_index)))
+    {
+      session_free (app_session);
+      ctx->c_s_index = SESSION_INVALID_INDEX;
+      tls_disconnect_transport (ctx);
+    }
 }
 
 int
