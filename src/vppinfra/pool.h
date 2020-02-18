@@ -79,13 +79,18 @@ pool_header (void *v)
   return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *));
 }
 
-extern void _pool_init_fixed (void **, u32, u32);
+extern void _pool_init_fixed (void **, u32, u32, u8);
 extern void fpool_free (void *);
 
 /** initialize a fixed-size, preallocated pool */
-#define pool_init_fixed(pool,max_elts)                  \
-{                                                       \
-  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts);  \
+#define pool_init_fixed(pool,max_elts)                  		\
+{                                                       		\
+  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts, 0);  	\
+}
+
+#define pool_init_fixed_numa(pool,max_elts,numa)			\
+{                                                       		\
+  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts, numa);	\
 }
 
 /** Validate a pool */
@@ -335,7 +340,7 @@ do {						\
 } while (0)
 
 /** Allocate N more free elements to pool (general version). */
-#define pool_alloc_aligned(P,N,A)					\
+#define pool_alloc_aligned_numa(P,N,A,S)				\
 do {									\
   pool_header_t * _p;							\
                                                                         \
@@ -349,16 +354,22 @@ do {									\
         }                                                               \
     }                                                                   \
                                                                         \
-  (P) = _vec_resize ((P), 0, (vec_len (P) + (N)) * sizeof (P[0]),	\
-		     pool_aligned_header_bytes,				\
-		     (A));						\
+  (P) = _vec_resize_numa ((P), (N), (vec_len (P) + (N)) * sizeof (P[0]),\
+                          pool_aligned_header_bytes,			\
+                          (A), /* numa */ (S));				\
   _p = pool_header (P);							\
-  vec_resize (_p->free_indices, (N));					\
+  vec_resize_has (_p->free_indices, (N), 0, 0, (S));			\
   _vec_len (_p->free_indices) -= (N);					\
 } while (0)
 
+/** Allocate N more free elements to pool (general version). */
+#define pool_alloc_aligned(P,N,A) 					\
+  pool_alloc_aligned_numa(P,N,A,VEC_NUMA_UNSPECIFIED)
+
 /** Allocate N more free elements to pool (unspecified alignment). */
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
+
+#define pool_alloc_numa(P,N,S) pool_alloc_aligned_numa(P,N,0,S)
 
 /**
  * Return copy of pool with alignment
