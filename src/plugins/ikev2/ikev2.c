@@ -1496,6 +1496,8 @@ typedef struct
   ip46_address_t local_ip;
   ip46_address_t remote_ip;
   ipsec_key_t loc_ckey, rem_ckey, loc_ikey, rem_ikey;
+  u8 is_rekey;
+  u32 old_remote_sa_id;
 } ikev2_add_ipsec_tunnel_args_t;
 
 static void
@@ -1535,6 +1537,17 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       return;
     }
 
+  u32 *sas_in = NULL;
+  vec_add1 (sas_in, a->remote_sa_id);
+  if (a->is_rekey)
+    {
+      /* replace local SA immediately */
+      ipsec_sa_unlock_id (a->local_sa_id);
+
+      /* keep the old sa */
+      vec_add1 (sas_in, a->old_remote_sa_id);
+    }
+
   rv |= ipsec_sa_add_and_lock (a->local_sa_id,
 			       a->local_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
@@ -1548,8 +1561,6 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       a->salt_remote, &a->remote_ip,
 			       &a->local_ip, NULL);
 
-  u32 *sas_in = NULL;
-  vec_add1 (sas_in, a->remote_sa_id);
   rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
 }
 
@@ -1558,7 +1569,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
 			       u32 thread_index,
 			       ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child, u32 sa_index,
-			       u32 child_index)
+			       u32 child_index, u8 is_rekey)
 {
   ikev2_main_t *km = &ikev2_main;
   ipsec_crypto_alg_t encr_type;
@@ -1595,6 +1606,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
     }
 
   a.flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+  a.is_rekey = is_rekey;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ESN);
   if (tr && tr->esn_type)
@@ -1749,9 +1761,34 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
   child->local_sa_id =
     a.local_sa_id =
     ikev2_mk_local_sa_id (sa_index, child_index, thread_index);
-  child->remote_sa_id =
-    a.remote_sa_id =
-    ikev2_mk_remote_sa_id (sa_index, child_index, thread_index);
+
+  u32 remote_sa_id = ikev2_mk_remote_sa_id (sa_index, child_index,
+					    thread_index);
+
+  if (is_rekey)
+    {
+      /* create a new remote SA ID to keep the old SA for a bit longer
+       * so the peer has some time to swap their SAs */
+
+      /* use most significat bit of child index part in id */
+      u32 mask = 0x800;
+      if (sa->current_remote_id_mask)
+	{
+	  sa->old_remote_id = a.old_remote_sa_id = remote_sa_id | mask;
+	  sa->current_remote_id_mask = 0;
+	}
+      else
+	{
+	  sa->old_remote_id = a.old_remote_sa_id = remote_sa_id;
+	  sa->current_remote_id_mask = mask;
+	  remote_sa_id |= mask;
+	}
+      sa->old_id_expiration = 3.0;
+      sa->old_remote_id_present = 1;
+    }
+
+  child->remote_sa_id = a.remote_sa_id = remote_sa_id;
+
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
 
   vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
@@ -1767,6 +1804,15 @@ typedef struct
   u32 local_sa_id;
   u32 sw_if_index;
 } ikev2_del_ipsec_tunnel_args_t;
+
+static_always_inline u32
+ikev2_flip_alternate_sa_bit (u32 id)
+{
+  u32 mask = 0x800;
+  if (mask & id)
+    return id & ~mask;
+  return id | mask;
+}
 
 static void
 ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
@@ -1807,6 +1853,7 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 
   ipsec_sa_unlock_id (a->remote_sa_id);
   ipsec_sa_unlock_id (a->local_sa_id);
+  ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (a->remote_sa_id));
 
   if (ipip)
     ipip_del_tunnel (ipip->sw_if_index);
@@ -2430,7 +2477,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			ikev2_create_tunnel_interface (km->vnet_main,
 						       thread_index, sa0,
 						       &sa0->childs[0],
-						       p[0], 0);
+						       p[0], 0, 0);
 		    }
 
 		  if (sa0->is_initiator)
@@ -2561,7 +2608,8 @@ ikev2_node_fn (vlib_main_t * vm,
 			  ikev2_create_tunnel_interface (km->vnet_main,
 							 thread_index, sa0,
 							 child, p[0],
-							 child - sa0->childs);
+							 child - sa0->childs,
+							 1);
 			}
 		      if (sa0->is_initiator)
 			{
@@ -3545,9 +3593,9 @@ VLIB_INIT_FUNCTION (ikev2_init) =
 };
 /* *INDENT-ON* */
 
-
 static u8
-ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
+ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
+			     u8 del_old_ids)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p = 0;
@@ -3588,6 +3636,48 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
 	  ikev2_delete_child_sa_internal (vm, sa, csa);
 	  res |= 1;
 	}
+    }
+
+  if (del_old_ids)
+    {
+      ipip_tunnel_t *ipip = NULL;
+      u32 sw_if_index = sa->is_tun_itf_set ? sa->tun_itf : ~0;
+      if (~0 == sw_if_index)
+	{
+	  ip46_address_t local_ip;
+	  ip46_address_t remote_ip;
+	  if (sa->is_initiator)
+	    {
+	      ip46_address_set_ip4 (&local_ip, &sa->iaddr);
+	      ip46_address_set_ip4 (&remote_ip, &sa->raddr);
+	    }
+	  else
+	    {
+	      ip46_address_set_ip4 (&local_ip, &sa->raddr);
+	      ip46_address_set_ip4 (&remote_ip, &sa->iaddr);
+	    }
+
+       /* *INDENT-OFF* */
+       ipip_tunnel_key_t key = {
+         .src = local_ip,
+         .dst = remote_ip,
+         .transport = IPIP_TRANSPORT_IP4,
+         .fib_index = 0,
+       };
+       /* *INDENT-ON* */
+
+	  ipip = ipip_tunnel_db_find (&key);
+
+	  if (ipip)
+	    sw_if_index = ipip->sw_if_index;
+	  else
+	    return res;
+	}
+
+      u32 *sas_in = NULL;
+      vec_add1 (sas_in, csa->remote_sa_id);
+      ipsec_tun_protect_update (sw_if_index, NULL, csa->local_sa_id, sas_in);
+      ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
     }
 
   return res;
@@ -3675,9 +3765,18 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
         /* *INDENT-OFF* */
         pool_foreach (sa, tkm->sas, ({
           ikev2_child_sa_t *c;
+          u8 del_old_ids = 0;
+          if (sa->old_remote_id_present && 0 > sa->old_id_expiration)
+            {
+              sa->old_remote_id_present = 0;
+              del_old_ids = 1;
+            }
+          else
+            sa->old_id_expiration -= 1;
+
           vec_foreach (c, sa->childs)
             {
-            req_sent |= ikev2_mngr_process_child_sa(sa, c);
+            req_sent |= ikev2_mngr_process_child_sa(sa, c, del_old_ids);
             }
         }));
         /* *INDENT-ON* */
