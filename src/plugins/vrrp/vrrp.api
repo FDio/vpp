@@ -5,7 +5,7 @@
  *
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -167,7 +167,7 @@ define vrrp_vr_peer_dump {
     @param n_peer_addrs - number of peer addresses
     @param peer_addrs - peer addresses 
 */
-autoreply define vrrp_vr_peer_details {
+define vrrp_vr_peer_details {
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -233,7 +233,7 @@ define vrrp_vr_track_if_dump {
     @param n_ifs - number of tracked interfaces
     @param ifs - array of tracked interface data
 */
-autoreply define vrrp_vr_track_if_details {
+define vrrp_vr_track_if_details {
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -242,4 +242,3 @@ autoreply define vrrp_vr_track_if_details {
   u8 n_ifs;
   vl_api_vrrp_vr_track_if_t ifs[n_ifs];
 };
-
