@@ -1506,11 +1506,11 @@ static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
   segment_manager_main_init_args_t _sm_args = { 0 }, *sm_args = &_sm_args;
-  session_main_t *smm = &session_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads, preallocated_sessions_per_worker;
+  session_main_t *smm = &session_main;
+  u32 num_threads, prealloc_per_wrk;
   session_worker_t *wrk;
-  int i;
+  int thread;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -1520,18 +1520,27 @@ session_manager_main_enable (vlib_main_t * vm)
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
-  for (i = 0; i < num_threads; i++)
+  if (smm->preallocated_sessions)
+    prealloc_per_wrk = (1.1 * (f64) smm->preallocated_sessions
+			/ (f64) (num_threads - 1));
+
+  for (thread = 0; thread < num_threads; thread++)
     {
-      wrk = &smm->wrk[i];
+      wrk = &smm->wrk[thread];
+      wrk->vm = vlib_mains[thread];
+
       wrk->ctrl_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
-      wrk->vm = vlib_mains[i];
-      wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
+      wrk->last_vlib_time = vlib_time_now (wrk->vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
 
+      if (prealloc_per_wrk && (thread > 0 || num_threads == 1))
+	pool_init_fixed_numa (wrk->sessions, prealloc_per_wrk,
+			      wrk->vm->numa_node);
+
       if (num_threads > 1)
-	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+	clib_rwlock_init (&wrk->peekers_rw_locks);
     }
 
   /* Allocate vpp event queues segment and queue */
@@ -1541,28 +1550,6 @@ session_manager_main_enable (vlib_main_t * vm)
   sm_args->baseva = smm->session_baseva + smm->evt_qs_segment_size;
   sm_args->size = smm->session_va_space_size;
   segment_manager_main_init (sm_args);
-
-  /* Preallocate sessions */
-  if (smm->preallocated_sessions)
-    {
-      if (num_threads == 1)
-	{
-	  pool_init_fixed (smm->wrk[0].sessions, smm->preallocated_sessions);
-	}
-      else
-	{
-	  int j;
-	  preallocated_sessions_per_worker =
-	    (1.1 * (f64) smm->preallocated_sessions /
-	     (f64) (num_threads - 1));
-
-	  for (j = 1; j < num_threads; j++)
-	    {
-	      pool_init_fixed (smm->wrk[j].sessions,
-			       preallocated_sessions_per_worker);
-	    }
-	}
-    }
 
   session_lookup_init ();
   app_namespaces_init ();

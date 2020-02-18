@@ -1544,20 +1544,6 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
 }
 
 static void
-tcp_initialize_timer_wheels (tcp_main_t * tm)
-{
-  tw_timer_wheel_16t_2w_512sl_t *tw;
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    tw = &tm->wrk_ctx[ii].timer_wheel;
-    tw_timer_wheel_init_16t_2w_512sl (tw, tcp_expired_timers_dispatch,
-                                      TCP_TIMER_TICK, ~0);
-    tw->last_run_time = vlib_time_now (this_vlib_main);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
 tcp_initialize_iss_seed (tcp_main_t * tm)
 {
   u32 default_seed = random_default_seed ();
@@ -1577,6 +1563,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_worker_ctx_t *wrk;
   clib_error_t *error = 0;
   int thread;
+  u8 numa;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1604,21 +1591,27 @@ tcp_main_enable (vlib_main_t * vm)
   for (thread = 0; thread < num_threads; thread++)
     {
       wrk = &tm->wrk_ctx[thread];
+      wrk->vm = vlib_mains[thread];
+      numa = wrk->vm->numa_node;
 
-      vec_validate (wrk->pending_deq_acked, 255);
-      vec_validate (wrk->pending_disconnects, 255);
-      vec_validate (wrk->pending_resets, 255);
+      vec_validate_numa (wrk->pending_deq_acked, 255, numa);
+      vec_validate_numa (wrk->pending_disconnects, 255, numa);
+      vec_validate_numa (wrk->pending_resets, 255, numa);
       vec_reset_length (wrk->pending_deq_acked);
       vec_reset_length (wrk->pending_disconnects);
       vec_reset_length (wrk->pending_resets);
-      wrk->vm = vlib_mains[thread];
+
+      tw_timer_wheel_init_16t_2w_512sl (&wrk->timer_wheel,
+					tcp_expired_timers_dispatch,
+					TCP_TIMER_TICK, ~0);
+      wrk->timer_wheel.last_run_time = vlib_time_now (wrk->vm);
 
       /*
        * Preallocate connections. Assume that thread 0 won't
        * use preallocated threads when running multi-core
        */
       if ((thread > 0 || num_threads == 1) && prealloc_conn_per_wrk)
-	pool_init_fixed (wrk->connections, prealloc_conn_per_wrk);
+	pool_init_fixed_numa (wrk->connections, prealloc_conn_per_wrk, numa);
     }
 
   /*
@@ -1638,7 +1631,6 @@ tcp_main_enable (vlib_main_t * vm)
       clib_spinlock_init (&tm->half_open_lock);
     }
 
-  tcp_initialize_timer_wheels (tm);
   tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
