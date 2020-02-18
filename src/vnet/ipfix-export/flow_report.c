@@ -569,7 +569,7 @@ VLIB_CLI_COMMAND (set_ipfix_exporter_command, static) = {
                   "collector <ip4-address> [port <port>] "
                   "src <ip4-address> [fib-id <fib-id>] "
                   "[path-mtu <path-mtu>] "
-                  "[template-interval <template-interval>]",
+                  "[template-interval <template-interval>] "
                   "[udp-checksum]",
     .function = set_ipfix_exporter_command_fn,
 };
