@@ -322,6 +322,8 @@ clib_cpu_part ()
 #define AARCH64_CPU_PART_QDF24XX            0xc00
 #define AARCH64_CPU_IMPLEMENTER_CORTEXA72   0x41
 #define AARCH64_CPU_PART_CORTEXA72          0xd08
+#define AARCH64_CPU_IMPLEMENTER_NEOVERSEN1  0x41
+#define AARCH64_CPU_PART_NEOVERSEN1         0xd0c
 
 static inline int
 clib_cpu_march_priority_thunderx2t99 ()
@@ -346,6 +348,15 @@ clib_cpu_march_priority_cortexa72 ()
 {
   if ((AARCH64_CPU_IMPLEMENTER_CORTEXA72 == clib_cpu_implementer ()) &&
       (AARCH64_CPU_PART_CORTEXA72 == clib_cpu_part ()))
+    return 10;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_neoversen1 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_NEOVERSEN1 == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_NEOVERSEN1 == clib_cpu_part ()))
     return 10;
   return -1;
 }
