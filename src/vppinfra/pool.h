@@ -79,13 +79,19 @@ pool_header (void *v)
   return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *));
 }
 
-extern void _pool_init_fixed (void **, u32, u32);
+extern void _pool_init_fixed (void **, u32, u32, u8);
 extern void fpool_free (void *);
 
 /** initialize a fixed-size, preallocated pool */
-#define pool_init_fixed(pool,max_elts)                  \
-{                                                       \
-  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts);  \
+#define pool_init_fixed(pool,max_elts)                  		\
+{                                                       		\
+  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts,		\
+                   VEC_NUMA_UNSPECIFIED);  				\
+}
+
+#define pool_init_fixed_numa(pool,max_elts,numa)			\
+{                                                       		\
+  _pool_init_fixed((void **)&(pool),sizeof(pool[0]),max_elts, numa);	\
 }
 
 /** Validate a pool */

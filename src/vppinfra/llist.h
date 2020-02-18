@@ -111,6 +111,20 @@ do {									\
   clib_llist_entry_index ((LP), _ll_var (head));			\
 })
 /**
+ * Initialize llist head and force numa
+ *
+ * @param LP	linked list pool
+ * @param name	list anchor name
+ * @param numa	numa node
+ */
+#define clib_llist_make_head_numa(LP,name,numa)				\
+({									\
+  typeof (LP) _ll_var (head);						\
+  pool_get_aligned_zero_numa ((LP), _ll_var (head), 0, 1, (numa));	\
+  clib_llist_anchor_init ((LP),name,_ll_var (head));			\
+  clib_llist_entry_index ((LP), _ll_var (head));			\
+})
+/**
  * Check is list is empty
  *
  * @param LP	linked list pool
