@@ -38,19 +38,15 @@
 #include <vppinfra/pool.h>
 
 void
-_pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
+_pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts, u8 numa)
 {
-  u8 *mmap_base;
-  u64 vector_size;
-  u64 free_index_size;
-  u64 total_size;
-  u64 page_size;
+  u64 vector_size, free_index_size, total_size, page_size;
+  clib_mem_vm_alloc_t alloc = { 0 };
+  u32 *fi, i, set_bits;
+  u8 *mmap_base, *v;
+  clib_error_t *err;
   pool_header_t *fh;
   vec_header_t *vh;
-  u8 *v;
-  u32 *fi;
-  u32 i;
-  u32 set_bits;
 
   ASSERT (elt_size);
   ASSERT (max_elts);
@@ -74,15 +70,28 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   total_size = (total_size + page_size - 1) & ~(page_size - 1);
 
   /* mmap demand zero memory */
-
-  mmap_base = mmap (0, total_size, PROT_READ | PROT_WRITE,
-		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  if (mmap_base == MAP_FAILED)
+  alloc.size = total_size;
+  if (numa)
     {
-      clib_unix_warning ("mmap");
-      *pool_ptr = 0;
+      alloc.numa_node = numa;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_FORCE;
     }
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+    {
+      clib_error_report (err);
+      *pool_ptr = 0;
+      return;
+    }
+  mmap_base = alloc.addr;
+
+//  mmap_base = mmap (0, total_size, PROT_READ | PROT_WRITE,
+//                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+//
+//  if (mmap_base == MAP_FAILED)
+//    {
+//      clib_unix_warning ("mmap");
+//      *pool_ptr = 0;
+//    }
 
   /* First comes the pool header */
   fh = (pool_header_t *) mmap_base;
