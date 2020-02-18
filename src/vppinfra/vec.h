@@ -503,6 +503,16 @@ do {                                                                    \
 #define vec_validate(V,I)           vec_validate_ha(V,I,0,0)
 
 /** \brief Make sure vector is long enough for given index
+    (no header, unspecified alignment)
+
+    @param V (possibly NULL) pointer to a vector.
+    @param I vector index which will be valid upon return
+    @param N numa on which memory to be allocated
+    @return V (value-result macro parameter)
+*/
+#define vec_validate_numa(V,I,N) vec_validate_han(V,I,0,0,N)
+
+/** \brief Make sure vector is long enough for given index
     (no header, specified alignment)
 
     @param V (possibly NULL) pointer to a vector.

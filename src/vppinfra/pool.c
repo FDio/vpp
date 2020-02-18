@@ -38,19 +38,15 @@
 #include <vppinfra/pool.h>
 
 void
-_pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
+_pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts, u8 numa)
 {
-  u8 *mmap_base;
-  u64 vector_size;
-  u64 free_index_size;
-  u64 total_size;
-  u64 page_size;
+  u64 vector_size, free_index_size, total_size, page_size;
+  clib_mem_vm_alloc_t alloc = { 0 };
+  u32 *fi, i, set_bits;
+  u8 *mmap_base, *v;
+  clib_error_t *err;
   pool_header_t *fh;
   vec_header_t *vh;
-  u8 *v;
-  u32 *fi;
-  u32 i;
-  u32 set_bits;
 
   ASSERT (elt_size);
   ASSERT (max_elts);
@@ -74,15 +70,19 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   total_size = (total_size + page_size - 1) & ~(page_size - 1);
 
   /* mmap demand zero memory */
-
-  mmap_base = mmap (0, total_size, PROT_READ | PROT_WRITE,
-		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  if (mmap_base == MAP_FAILED)
+  alloc.size = total_size;
+  if (PREDICT_FALSE (numa != VEC_NUMA_UNSPECIFIED))
     {
-      clib_unix_warning ("mmap");
-      *pool_ptr = 0;
+      alloc.numa_node = numa;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_FORCE;
     }
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+    {
+      clib_error_report (err);
+      *pool_ptr = 0;
+      return;
+    }
+  mmap_base = alloc.addr;
 
   /* First comes the pool header */
   fh = (pool_header_t *) mmap_base;
@@ -105,8 +105,19 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
 
   fh->free_indices = fi;
 
+  if (PREDICT_FALSE (numa != VEC_NUMA_UNSPECIFIED))
+    {
+      void *oldheap = clib_mem_get_per_cpu_heap ();
+      clib_mem_set_per_cpu_heap (clib_mem_get_per_numa_heap (numa));
+      clib_bitmap_alloc (fh->free_bitmap, max_elts);
+      clib_mem_set_per_cpu_heap (oldheap);
+    }
+  else
+    {
+      clib_bitmap_alloc (fh->free_bitmap, max_elts);
+    }
+
   /* Set the entire free bitmap */
-  clib_bitmap_alloc (fh->free_bitmap, max_elts);
   clib_memset (fh->free_bitmap, 0xff,
 	       vec_len (fh->free_bitmap) * sizeof (uword));
 
