@@ -349,6 +349,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->flags |= DPDK_DEVICE_FLAG_RX_IP4_CKSUM;
 	}
 
+      if (dm->conf->enable_tcp_udp_checksum)
+	{
+	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_UDP_CKSUM)
+	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_UDP_CKSUM;
+	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM)
+	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
+	}
+
       if (dm->conf->no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
