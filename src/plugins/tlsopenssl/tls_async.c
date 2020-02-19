@@ -251,8 +251,7 @@ tls_async_openssl_callback (SSL * s, void *cb_arg)
   int *evt_run_head = &om->queue[thread_index].evt_run_head;
 
   TLS_DBG (2, "Set event %d to run\n", event_index);
-
-  event = openssl_evt_get (event_index);
+  event = openssl_evt_get_w_thread (event_index, thread_index);
 
   /* Happend when a recursive case, especially in SW simulation */
   if (PREDICT_FALSE (event->status == SSL_ASYNC_READY))
