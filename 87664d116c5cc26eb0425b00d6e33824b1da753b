@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3d73ffb3_f78514e8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-02-19T02:03:13Z",
+      "side": 1,
+      "message": "yes, it will happen in the case that the crypto request has been sent to QAT, and this session is switched out, and then a TCP RESET coming. Then after the QAT competes the request, this code will be executed, but the app_session is freed in tls reset callback.",
+      "parentUuid": "7b705738_f0fabdcd",
+      "range": {
+        "startLine": 216,
+        "startChar": 6,
+        "endLine": 216,
+        "endChar": 22
+      },
+      "revId": "87664d116c5cc26eb0425b00d6e33824b1da753b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c541c843_b7b238db",
         "filename": "src/vnet/tls/tls.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2020-02-19T00:40:27Z",
       "side": 1,
       "message": "This should be pre-allocated on accept/connect. Did you hit any scenario when that was not the case? Just trying to understand if you hit any unexpected behavior",
+      "range": {
+        "startLine": 370,
+        "startChar": 9,
+        "endLine": 371,
+        "endChar": 60
+      },
+      "revId": "87664d116c5cc26eb0425b00d6e33824b1da753b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e95be571_d9a888dd",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-02-19T02:03:13Z",
+      "side": 1,
+      "message": "This is to align with the previous comments. If reset comes, this code may be executed before or after the handshake, thus I use this check to make sure only one \"free\" is called.",
+      "parentUuid": "c541c843_b7b238db",
       "range": {
         "startLine": 370,
         "startChar": 9,
