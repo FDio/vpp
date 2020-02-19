@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b705738_f0fabdcd",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-19T00:40:27Z",
+      "side": 1,
+      "message": "Does this really happen? Why would the app session be cleaned up before we report the handshake failure?",
+      "range": {
+        "startLine": 216,
+        "startChar": 6,
+        "endLine": 216,
+        "endChar": 22
+      },
+      "revId": "87664d116c5cc26eb0425b00d6e33824b1da753b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c541c843_b7b238db",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-02-19T00:40:27Z",
+      "side": 1,
+      "message": "This should be pre-allocated on accept/connect. Did you hit any scenario when that was not the case? Just trying to understand if you hit any unexpected behavior",
+      "range": {
+        "startLine": 370,
+        "startChar": 9,
+        "endLine": 371,
+        "endChar": 60
+      },
+      "revId": "87664d116c5cc26eb0425b00d6e33824b1da753b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
