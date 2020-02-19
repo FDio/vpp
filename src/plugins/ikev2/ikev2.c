@@ -3742,6 +3742,31 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
     }
 }
 
+static void
+ikev2_process_pending_sa_init (ikev2_main_t * km)
+{
+  u32 sai;
+  u64 ispi;
+  ikev2_sa_t *sa;
+
+  /* *INDENT-OFF* */
+  hash_foreach (ispi, sai, km->sa_by_ispi,
+  ({
+    sa = pool_elt_at_index (km->sais, sai);
+    u32 bi0;
+    if (vlib_buffer_alloc (km->vlib_main, &bi0, 1) != 1)
+      return;
+
+    vlib_buffer_t * b = vlib_get_buffer (km->vlib_main, bi0);
+    clib_memcpy_fast (vlib_buffer_get_current (b),
+        sa->last_sa_init_req_packet_data,
+        vec_len (sa->last_sa_init_req_packet_data));
+    ikev2_send_ike (km->vlib_main, &sa->iaddr, &sa->raddr, bi0,
+        vec_len (sa->last_sa_init_req_packet_data));
+  }));
+  /* *INDENT-ON* */
+}
+
 static vlib_node_registration_t ikev2_mngr_process_node;
 
 static uword
@@ -3789,6 +3814,8 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
         ikev2_mngr_process_ipsec_sa(sa);
       }));
       /* *INDENT-ON* */
+
+      ikev2_process_pending_sa_init (km);
 
       if (req_sent)
 	{
