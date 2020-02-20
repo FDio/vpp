@@ -142,6 +142,7 @@ ip_address_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * prefix)
       prefix->fp_proto = FIB_PROTOCOL_IP6;
       memcpy (&prefix->fp_addr.ip6, &addr->ip, sizeof (prefix->fp_addr.ip6));
     }
+  prefix->___fp___pad = 0;
 }
 
 /**
