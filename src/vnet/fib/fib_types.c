@@ -89,6 +89,7 @@ fib_prefix_from_ip46_addr (const ip46_address_t *addr,
     pfx->fp_len = ((ip46_address_is_ip4(addr) ?
 		    32 : 128));
     pfx->fp_addr = *addr;
+    pfx->___fp___pad = 0;
 }
 
 void
@@ -100,6 +101,7 @@ fib_prefix_from_mpls_label (mpls_label_t label,
     pfx->fp_len = 21;
     pfx->fp_label = label;
     pfx->fp_eos = eos;
+    pfx->___fp___pad = 0;
 }
 
 void
