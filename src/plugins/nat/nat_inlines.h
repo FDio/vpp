@@ -305,6 +305,15 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
 
+  ed_bihash_kv_t bihash_key;
+  bihash_key.k.dst_address = ses->ext_host_addr.as_u32;
+  bihash_key.k.dst_port = ses->ext_host_port;
+  bihash_key.k.src_address = ses->in2out.addr.as_u32;
+  bihash_key.k.src_port = ses->in2out.port;
+  bihash_key.k.protocol = ses->in2out.protocol;
+  clib_bihash_add_del_16_8 (&sm->ed_external_ports, &bihash_key.kv,
+			    0 /* is_add */ );
+
   kv.key = u_key.as_u64;
   if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
     {
