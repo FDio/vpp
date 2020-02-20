@@ -33,6 +33,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vppinfra/bihash_16_8.h>
 
 #include <vpp/app/version.h>
 
@@ -697,7 +698,7 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
-  clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535); \
+  clib_memset(ap->busy_##n##_port_refcounts, 0, sizeof(ap->busy_##n##_port_refcounts));\
   ap->busy_##n##_ports = 0; \
   ap->busy_##n##_ports_per_thread = 0;\
   vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
@@ -976,9 +977,9 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                      if (a->busy_##n##_port_refcounts[e_port]) \
                         return VNET_API_ERROR_INVALID_VALUE; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      ++a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
@@ -1160,7 +1161,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      --a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
@@ -1339,9 +1340,9 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                      if (a->busy_##n##_port_refcounts[e_port]) \
                         return VNET_API_ERROR_INVALID_VALUE; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      ++a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
@@ -1455,7 +1456,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      --a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
@@ -1822,7 +1823,6 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     }
 
 #define _(N, i, n, s) \
-  clib_bitmap_free (a->busy_##n##_port_bitmap); \
   vec_free (a->busy_##n##_ports_per_thread);
   foreach_snat_protocol
 #undef _
@@ -2647,10 +2647,8 @@ snat_free_outside_address_and_port (snat_address_t * addresses,
     {
 #define _(N, i, n, s) \
     case SNAT_PROTOCOL_##N: \
-      ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-        port_host_byte_order) == 1); \
-      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
-        port_host_byte_order, 0); \
+      ASSERT (a->busy_##n##_port_refcounts[port_host_byte_order] >= 1); \
+      --a->busy_##n##_port_refcounts[port_host_byte_order]; \
       a->busy_##n##_ports--; \
       a->busy_##n##_ports_per_thread[thread_index]--; \
       break;
@@ -2681,9 +2679,9 @@ nat_set_outside_address_and_port (snat_address_t * addresses,
 	{
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, port_host_byte_order)) \
+          if (a->busy_##n##_port_refcounts[port_host_byte_order]) \
             return VNET_API_ERROR_INSTANCE_IN_USE; \
-          clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port_host_byte_order, 1); \
+	  ++a->busy_##n##_port_refcounts[port_host_byte_order]; \
           a->busy_##n##_ports_per_thread[thread_index]++; \
           a->busy_##n##_ports++; \
           return 0;
@@ -2898,9 +2896,9 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
                       portnum = (port_per_thread * \
                         snat_thread_index) + \
                         snat_random_port(1, port_per_thread) + 1024; \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                      if (a->busy_##n##_port_refcounts[portnum]) \
                         continue; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+		      --a->busy_##n##_port_refcounts[portnum]; \
                       a->busy_##n##_ports_per_thread[thread_index]++; \
                       a->busy_##n##_ports++; \
                       k->addr = a->addr; \
@@ -2935,9 +2933,9 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
               portnum = (port_per_thread * \
                 snat_thread_index) + \
                 snat_random_port(1, port_per_thread) + 1024; \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports_per_thread[thread_index]++; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
@@ -2985,9 +2983,9 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
               A = snat_random_port(1, pow2_mask(sm->psid_offset)); \
               j = snat_random_port(0, pow2_mask(m)); \
               portnum = A | (sm->psid << sm->psid_offset) | (j << (16 - m)); \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
               k->port = clib_host_to_net_u16 (portnum); \
@@ -3033,9 +3031,9 @@ nat_alloc_addr_and_port_range (snat_address_t * addresses,
           while (1) \
             { \
               portnum = snat_random_port(sm->start_port, sm->end_port); \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
               k->port = clib_host_to_net_u16 (portnum); \
@@ -4064,6 +4062,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                                          translation_memory_size);
                   clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
                                                       format_ed_session_kvp);
+                  clib_bihash_init_16_8
+                  (&sm->ed_external_ports, "ed-ext-addr-port-int-addr-port",
+                   translation_buckets, translation_memory_size);
                 }
               else
                 {
