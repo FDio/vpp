@@ -245,6 +245,7 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
   u8 ip6, action;
 
   *rule = 0;
+  trace_bitmap = 0;
 
   if (key->gck_src == key->gck_dst)
     {
