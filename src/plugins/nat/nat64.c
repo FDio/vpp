@@ -311,7 +311,7 @@ nat64_add_del_pool_addr (u32 thread_index,
 	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
 					     nat_fib_src_hi);
 #define _(N, id, n, s) \
-      clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535); \
+      clib_memset (a->busy_##n##_port_refcounts, 0, sizeof(a->busy_##n##_port_refcounts)); \
       a->busy_##n##_ports = 0; \
       vec_validate_init_empty (a->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
       foreach_snat_protocol
@@ -334,10 +334,6 @@ nat64_add_del_pool_addr (u32 thread_index,
             vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
                                      db->st.st_entries_num);
           }
-#define _(N, id, n, s) \
-      clib_bitmap_free (a->busy_##n##_port_bitmap);
-      foreach_snat_protocol
-#undef _
         /* *INDENT-ON* */
       vec_del1 (nm->addr_pool, i);
     }
@@ -575,9 +571,8 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
 	{
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-                  port_host_byte_order) == 1); \
-          clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port_host_byte_order, 0); \
+          ASSERT (a->busy_##n##_port_refcounts[port_host_byte_order] >= 1); \
+          --a->busy_##n##_port_refcounts[port_host_byte_order]; \
           a->busy_##n##_ports--; \
           a->busy_##n##_ports_per_thread[thread_index]--; \
           break;
@@ -712,11 +707,9 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	    {
 #define _(N, j, n, s) \
             case SNAT_PROTOCOL_##N: \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-                                            out_port)) \
+              if (a->busy_##n##_port_refcounts[out_port]) \
                 return VNET_API_ERROR_INVALID_VALUE; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
-                                        out_port, 1); \
+	      ++a->busy_##n##_port_refcounts[out_port]; \
               if (out_port > 1024) \
                 { \
                   a->busy_##n##_ports++; \
