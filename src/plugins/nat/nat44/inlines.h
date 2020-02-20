@@ -36,6 +36,14 @@ nat44_session_cleanup (snat_session_t * s, u32 thread_index)
 {
   snat_main_t *sm = &snat_main;
 
+  ed_bihash_kv_t bihash_key;
+  bihash_key.k.dst_address = s->ext_host_addr.as_u32;
+  bihash_key.k.dst_port = s->ext_host_port;
+  bihash_key.k.src_address = s->in2out.addr.as_u32;
+  bihash_key.k.src_port = s->in2out.port;
+  bihash_key.k.protocol = s->in2out.protocol;
+  clib_bihash_add_del_16_8 (&sm->ed_external_ports, &bihash_key.kv,
+			    0 /* is_add */ );
   nat_free_session_data (sm, s, thread_index, 0);
   nat44_delete_session (sm, s, thread_index);
 }
