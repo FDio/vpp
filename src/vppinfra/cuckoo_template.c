@@ -21,7 +21,6 @@
  */
 
 #include <vppinfra/vec.h>
-#include <vppinfra/cuckoo_template.h>
 
 int CV (clib_cuckoo_search) (CVT (clib_cuckoo) * h,
 			     CVT (clib_cuckoo_kv) * search_v,
@@ -100,8 +99,7 @@ static void CV (clib_cuckoo_deep_self_check) (CVT (clib_cuckoo) * h)
   CVT (clib_cuckoo_bucket) * bucket;
   uword bucket_idx = 0;
   /* *INDENT-OFF* */
-  clib_cuckoo_foreach_bucket (bucket, h)
-  {
+  clib_cuckoo_foreach_bucket (bucket, h, {
     int i = 0;
     int used = 0;
     clib_cuckoo_bucket_foreach_idx (i)
@@ -110,8 +108,8 @@ static void CV (clib_cuckoo_deep_self_check) (CVT (clib_cuckoo) * h)
       if (!CV (clib_cuckoo_kv_is_free) (elt))
         {
           u64 hash = CV (clib_cuckoo_hash) (elt);
-          clib_cuckoo_lookup_info_t lookup = CV (clib_cuckoo_calc_lookup) (
-              CV (clib_cuckoo_get_snapshot) (h), hash);
+          clib_cuckoo_lookup_info_t lookup =
+              CV (clib_cuckoo_calc_lookup) (h->buckets, hash);
           CVT (clib_cuckoo_kv) kv = *elt;
           int rv = CV (clib_cuckoo_search) (h, &kv, &kv);
           if (CLIB_CUCKOO_ERROR_SUCCESS != rv)
@@ -121,7 +119,7 @@ static void CV (clib_cuckoo_deep_self_check) (CVT (clib_cuckoo) * h)
                                bucket->reduced_hashes[i]);
               CLIB_CUCKOO_DBG ("%U", CV (format_cuckoo), h, 1);
             }
-          ASSERT (aux.bucket1 == bucket_idx || aux.bucket2 == bucket_idx);
+          ASSERT (lookup.bucket1 == bucket_idx || lookup.bucket2 == bucket_idx);
           ASSERT (CLIB_CUCKOO_ERROR_SUCCESS == rv);
           ++used;
         }
@@ -129,7 +127,7 @@ static void CV (clib_cuckoo_deep_self_check) (CVT (clib_cuckoo) * h)
     clib_cuckoo_bucket_aux_t aux = bucket->aux;
     ASSERT (used == clib_cuckoo_bucket_aux_get_use_count (aux));
     ++bucket_idx;
-  }
+  });
   /* *INDENT-ON* */
   // CLIB_CUCKOO_DBG ("Deep self check passed: %U", CV (format_cuckoo), h);
 }
@@ -820,14 +818,15 @@ static int CV (clib_cuckoo_bucket_search_internal) (CVT (clib_cuckoo) * h,
 }
 
 int CV (clib_cuckoo_add_del) (CVT (clib_cuckoo) * h,
-			      CVT (clib_cuckoo_kv) * kvp, int is_add)
+			      CVT (clib_cuckoo_kv) * kvp, int is_add,
+			      int dont_overwrite)
 {
   CLIB_CUCKOO_DBG ("%s %U", is_add ? "Add" : "Del", CV (format_cuckoo_kvp),
 		   kvp);
   clib_cuckoo_lookup_info_t lookup;
   u64 hash = CV (clib_cuckoo_hash) (kvp);
-  clib_spinlock_lock (&h->writer_lock);
   u8 reduced_hash = clib_cuckoo_reduce_hash (hash);
+  clib_spinlock_lock (&h->writer_lock);
 restart:
   lookup = CV (clib_cuckoo_calc_lookup) (h->buckets, hash);
   CVT (clib_cuckoo_bucket) * b =
@@ -846,19 +845,30 @@ restart:
     {
       if (is_add)
 	{
-	  /* prevent readers reading this bucket while we switch the values */
-	  clib_cuckoo_bucket_aux_t aux =
-	    CV (clib_cuckoo_bucket_version_bump_and_lock) (b);
-	  clib_memcpy (&found->value, &kvp->value, sizeof (found->value));
-	  CLIB_CUCKOO_DBG ("Replaced existing %U", CV (format_cuckoo_elt),
-			   found, b->reduced_hashes[found - b->elts]);
-	  CV (clib_cuckoo_bucket_unlock) (b, aux);
+	  if (dont_overwrite)
+	    {
+	      CLIB_CUCKOO_DBG ("Refused replacing existing %U",
+			       CV (format_cuckoo_elt), found,
+			       b->reduced_hashes[found - b->elts]);
+	      rv = CLIB_CUCKOO_ERROR_AGAIN;
+	    }
+	  else
+	    {
+	      /* prevent readers reading this bucket while we switch the values */
+	      clib_cuckoo_bucket_aux_t aux =
+		CV (clib_cuckoo_bucket_version_bump_and_lock) (b);
+	      clib_memcpy (&found->value, &kvp->value, sizeof (found->value));
+	      CLIB_CUCKOO_DBG ("Replaced existing %U", CV (format_cuckoo_elt),
+			       found, b->reduced_hashes[found - b->elts]);
+	      CV (clib_cuckoo_bucket_unlock) (b, aux);
+	      rv = CLIB_CUCKOO_ERROR_SUCCESS;
+	    }
 	}
       else
 	{
 	  CV (clib_cuckoo_free_elt_in_bucket) (b, found);
+	  rv = CLIB_CUCKOO_ERROR_SUCCESS;
 	}
-      rv = CLIB_CUCKOO_ERROR_SUCCESS;
       CLIB_CUCKOO_DEEP_SELF_CHECK (h);
       goto unlock;
     }
@@ -876,9 +886,12 @@ restart:
   CLIB_CUCKOO_DEEP_SELF_CHECK (h);
   if (CLIB_CUCKOO_ERROR_SUCCESS != rv)
     {
-    CLIB_CUCKOO_DBG ("Fast insert failed, bucket 1: %wu, bucket 2: %wu\n%U%U", aux.bucket1, aux.bucket2, CV (format_cuckoo_bucket), CV (clib_cuckoo_bucindent: Standaindent: Standard input: 903: Error: Unmatched 'else' rd input: 865: Error:Unmatched 'else' ket_at_index) (h, aux.bucket1),
-		       CV (format_cuckoo_bucket),
-		       CV (clib_cuckoo_bucket_at_index) (h, aux.bucket2));
+      CLIB_CUCKOO_DBG
+	("Fast insert failed, bucket 1: %wu, bucket 2: %wu\n%U%U",
+	 lookup.bucket1, lookup.bucket2, CV (format_cuckoo_bucket),
+	 CV (clib_cuckoo_bucket_at_index) (h, lookup.bucket1),
+	 CV (format_cuckoo_bucket),
+	 CV (clib_cuckoo_bucket_at_index) (h, lookup.bucket2));
       /* slow path */
       rv = CV (clib_cuckoo_add_slow) (h, kvp, &lookup, reduced_hash);
       CLIB_CUCKOO_DEEP_SELF_CHECK (h);
