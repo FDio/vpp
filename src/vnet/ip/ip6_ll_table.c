@@ -99,6 +99,7 @@ ip6_ll_prefix_to_fib (const ip6_ll_prefix_t * ilp, fib_prefix_t * fp)
   fp->fp_proto = FIB_PROTOCOL_IP6;
   fp->fp_len = 128;
   fp->fp_addr.ip6 = ilp->ilp_addr;
+  fp->___fp___pad = 0;
 }
 
 fib_node_index_t
