@@ -31,6 +31,7 @@
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
 #include <vlib/log.h>
+#include <vppinfra/bihash_16_8.h>
 
 /* default session timeouts */
 #define SNAT_UDP_TIMEOUT 300
@@ -370,7 +371,7 @@ typedef struct
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
-  uword * busy_##n##_port_bitmap;
+  u32 busy_##n##_port_refcounts[65535];
   foreach_snat_protocol
 #undef _
 /* *INDENT-ON* */
@@ -570,6 +571,28 @@ typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
 						      u16 port_per_thread,
 						      u32 snat_thread_index);
 
+typedef struct ed_bihash_key_s
+{
+  u32 src_address;
+  u32 dst_address;
+  u16 src_port;
+  u16 dst_port;
+  u8 protocol;
+} ed_bihash_key_t;
+
+typedef struct ed_bihash_kv_s
+{
+  union
+  {
+    ed_bihash_key_t k;
+    clib_bihash_kv_16_8_t kv;
+  };
+} ed_bihash_kv_t;
+
+STATIC_ASSERT (STRUCT_SIZE_OF (ed_bihash_kv_t, k) <=
+	       STRUCT_SIZE_OF (ed_bihash_kv_t, kv.key),
+	       "ed key needs to fit in bihash key");
+
 typedef struct snat_main_s
 {
   /* ICMP session match functions */
@@ -726,6 +749,7 @@ typedef struct snat_main_s
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
 
+  clib_bihash_16_8_t ed_ext_ports;
 } snat_main_t;
 
 typedef struct
