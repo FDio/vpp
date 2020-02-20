@@ -1392,7 +1392,7 @@ tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
     return;
 
   thread_index = wrk->vm->thread_index;
-  for (i = 0; i < clib_min (n_timers, 32); i++)
+  for (i = 0; i < clib_min (n_timers, wrk->max_timers); i++)
     {
       clib_fifo_sub1 (wrk->pending_timers, timer_handle);
       connection_index = timer_handle & 0x0FFFFFFF;
@@ -1511,8 +1511,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 static void
 tcp_expired_timers_dispatch (u32 * expired_timers)
 {
-  u32 thread_index = vlib_get_thread_index ();
-  u32 connection_index, timer_id, n_expired;
+  u32 thread_index = vlib_get_thread_index (), n_left, max_per_loop;
+  u32 connection_index, timer_id, n_expired, max_loops;
   tcp_worker_ctx_t *wrk;
   tcp_connection_t *tc;
   int i;
@@ -1520,6 +1520,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
   wrk = tcp_get_worker (thread_index);
   n_expired = vec_len (expired_timers);
   tcp_workerp_stats_inc (wrk, timer_expirations, n_expired);
+  n_left = clib_fifo_elts (wrk->pending_timers);
 
   /*
    * Invalidate all timer handles before dispatching. This avoids dangling
@@ -1541,6 +1542,10 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
     }
 
   clib_fifo_add (wrk->pending_timers, expired_timers, n_expired);
+
+  max_loops = clib_max (1, 0.5 * TCP_TIMER_TICK * wrk->vm->loops_per_second);
+  max_per_loop = clib_max ((n_left + n_expired) / max_loops, 10);
+  wrk->max_timers = clib_max (n_left ? wrk->max_timers : 0, max_per_loop);
 }
 
 static void
@@ -1612,6 +1617,7 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (wrk->pending_disconnects);
       vec_reset_length (wrk->pending_resets);
       wrk->vm = vlib_mains[thread];
+      wrk->max_timers = 10;
 
       /*
        * Preallocate connections. Assume that thread 0 won't
