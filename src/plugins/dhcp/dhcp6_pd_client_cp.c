@@ -70,6 +70,8 @@ typedef struct
 {
   prefix_info_t *prefix_pool;
   const u8 **prefix_group_name_by_index;
+  /* vector of active prefix pool indicies, prep-H for pool_foreach(..) */
+  u32 *indices;
 } ip6_prefix_main_t;
 
 static ip6_prefix_main_t ip6_prefix_main;
@@ -277,6 +279,7 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
   f64 current_time;
   clib_error_t *error = 0;
   u32 i;
+  prefix_info_t *prefix_info;
 
   current_time = vlib_time_now (vm);
 
@@ -363,13 +366,26 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
   send_client_message_start_stop (sw_if_index, server_index,
 				  mp->msg_type, 0, 0);
 
+  vec_reset_length (pm->indices);
+  /*
+   * We're going to loop through the pool multiple times,
+   * so collect active indices.
+   */
+  /* *INDENT-OFF* */
+  pool_foreach (prefix_info, pm->prefix_pool,
+  ({
+    vec_add1 (pm->indices, prefix_info - pm->prefix_pool);
+  }));
+  /* *INDENT-ON* */
+
   for (i = 0; i < n_prefixes; i++)
     {
-      prefix_info_t *prefix_info = 0;
       u8 prefix_length;
       u32 valid_time;
       u32 preferred_time;
+      int j;
 
+      prefix_info = 0;
       api_prefix = &mp->prefixes[i];
 
       prefix = (ip6_address_t *) api_prefix->prefix.address;
@@ -386,32 +402,40 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 	continue;
 
       u8 address_prefix_present = 0;
-      /* *INDENT-OFF* */
-      pool_foreach (prefix_info, pm->prefix_pool,
-      ({
-        if (is_dhcpv6_pd_prefix (prefix_info) &&
-            prefix_info->opaque_data == sw_if_index &&
-            prefix_info->prefix_length == prefix_length &&
-            ip6_prefixes_equal (&prefix_info->prefix, prefix, prefix_length))
-          {
-            address_prefix_present = 1;
-            goto prefix_pool_foreach_out;
-          }
-      }));
-      /* *INDENT-ON* */
-    prefix_pool_foreach_out:
+
+      /* Look for a matching prefix_info */
+      for (j = 0; j < vec_len (pm->indices); j++)
+	{
+	  prefix_info = pool_elt_at_index (pm->prefix_pool, pm->indices[j]);
+
+	  if (is_dhcpv6_pd_prefix (prefix_info) &&
+	      prefix_info->opaque_data == sw_if_index &&
+	      prefix_info->prefix_length == prefix_length &&
+	      ip6_prefixes_equal (&prefix_info->prefix, prefix,
+				  prefix_length))
+	    {
+	      address_prefix_present = 1;
+	      break;
+	    }
+	}
 
       if (address_prefix_present)
 	{
+	  /* Found the (primary) prefix, update prefix timers */
+	  prefix_info->preferred_lt = preferred_time;
+	  prefix_info->valid_lt = valid_time;
+	  prefix_info->due_time = current_time + valid_time;
+	  if (prefix_info->due_time > rm->max_valid_due_time)
+	    rm->max_valid_due_time = prefix_info->due_time;
+
 	  /*
-	   * We found the prefix. Move along.
-	   * Don't touch the prefix timers!
-	   * If we happen to receive a renew reply just before we
-	   * would have sent a solicit to renew the prefix delegation,
-	   * we forget to renew the delegation. Worse luck, we start
-	   * sending router advertisements with a valid time of zero,
-	   * and the wheels fall off...
+	   * Tell the RA code to update any secondary per-interface
+	   * timers that it might be hoarding.
 	   */
+	  ip6_ra_update_secondary_radv_info
+	    (prefix, prefix_length,
+	     prefix_info->opaque_data /* sw_if_index */ ,
+	     valid_time, preferred_time);
 	  continue;
 	}
 
@@ -419,6 +443,7 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 	continue;
 
       pool_get (pm->prefix_pool, prefix_info);
+      vec_add1 (pm->indices, prefix_info - pm->prefix_pool);
       prefix_info->prefix_group_index = client_state->prefix_group_index;
       set_is_dhcpv6_pd_prefix (prefix_info, 1);
       prefix_info->opaque_data = sw_if_index;
