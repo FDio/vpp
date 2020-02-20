@@ -402,7 +402,7 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   bts_index = bt_sample_index (bt, bts);
   next = bt_next_sample (bt, bts);
   if (next)
-    next = bt_fix_overlapped (bt, next, end, is_end);
+    bt_fix_overlapped (bt, next, end, is_end);
 
   max_seq = bts->max_seq;
   ASSERT (seq_lt (start, max_seq));
