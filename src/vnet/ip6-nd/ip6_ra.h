@@ -77,6 +77,11 @@ typedef void (*ip6_ra_report_notify_t) (const ip6_ra_report_t * rap);
 
 extern void ip6_ra_report_register (ip6_ra_report_notify_t fn);
 extern void ip6_ra_report_unregister (ip6_ra_report_notify_t fn);
+extern void ip6_ra_update_secondary_radv_info (ip6_address_t * address,
+					       u8 prefix_len,
+					       u32 primary_sw_if_index,
+					       u32 valid_time,
+					       u32 preferred_time);
 
 #endif /* included_ip6_neighbor_h */
 
