@@ -317,9 +317,11 @@ punt_test (vlib_main_t * vm,
 	  punt_hdl = vlib_punt_client_register ("test");
 
 	  rc =
-	    vlib_punt_reason_alloc (punt_hdl, "reason-v4", &punt_reason_v4);
+	    vlib_punt_reason_alloc (punt_hdl, "reason-v4",
+				    NULL, NULL, &punt_reason_v4);
 	  rc |=
-	    vlib_punt_reason_alloc (punt_hdl, "reason-v6", &punt_reason_v6);
+	    vlib_punt_reason_alloc (punt_hdl, "reason-v6",
+				    NULL, NULL, &punt_reason_v6);
 	  ASSERT (!rc);
 
 	  vnet_feature_enable_disable ("ip4-unicast",

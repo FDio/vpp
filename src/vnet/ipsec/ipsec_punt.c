@@ -17,10 +17,26 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_punt.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 static vlib_punt_hdl_t punt_hdl;
 
 vlib_punt_reason_t ipsec_punt_reason[IPSEC_PUNT_N_REASONS];
+
+static void
+ipsec_punt_interested_listener (vlib_enable_or_disable_t action, void *data)
+{
+  if (action == VLIB_ENABLE)
+    {
+      ipsec_tun_register_nodes (AF_IP4);
+      ipsec_tun_register_nodes (AF_IP6);
+    }
+  else
+    {
+      ipsec_tun_unregister_nodes (AF_IP4);
+      ipsec_tun_unregister_nodes (AF_IP6);
+    }
+}
 
 static clib_error_t *
 ipsec_punt_init (vlib_main_t * vm)
@@ -33,6 +49,8 @@ ipsec_punt_init (vlib_main_t * vm)
   punt_hdl = vlib_punt_client_register ("ipsec");
 
 #define _(s,v)  vlib_punt_reason_alloc (punt_hdl, v,                    \
+                                        ipsec_punt_interested_listener, \
+                                        NULL,                           \
                                         &ipsec_punt_reason[IPSEC_PUNT_##s]);
   foreach_ipsec_punt_reason
 #undef _
