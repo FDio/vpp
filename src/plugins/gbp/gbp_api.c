@@ -140,6 +140,8 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
   mac_address_t mac;
   int rv = 0, ii;
 
+  handle = INDEX_INVALID;
+
   VALIDATE_SW_IF_INDEX (&(mp->endpoint));
 
   gef = gbp_endpoint_flags_decode (mp->endpoint.flags), ips = NULL;
