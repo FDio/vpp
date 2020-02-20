@@ -32,6 +32,8 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vppinfra/cuckoo_16_8.h>
+#include <vppinfra/cuckoo_template.c>
 
 #include <vpp/app/version.h>
 
@@ -2341,6 +2343,12 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
 				 snat_session_key_t * k,
 				 u16 port_per_thread, u32 snat_thread_index);
 
+static void
+nat_cuckoo_gc (struct CV (clib_cuckoo) * h, void *ctx)
+{
+  clib_warning ("NAT cuckoo GC ignored");
+}
+
 static clib_error_t *
 snat_init (vlib_main_t * vm)
 {
@@ -2511,6 +2519,9 @@ snat_init (vlib_main_t * vm)
 					 FIB_SOURCE_PRIORITY_LOW,
 					 FIB_SOURCE_BH_SIMPLE);
 
+  CV (clib_cuckoo_init) (&sm->ed_external_ports,
+			 "ed-ext-addr-port-int-addr-port", 1 << 22,
+			 nat_cuckoo_gc, NULL);
   return error;
 }
 
