@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d044c266_d079bb5e",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1545,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-20T08:48:57Z",
+      "side": 1,
+      "message": "the more efficient way to do this (i.e. less time with the workers held) is to only issue the \u0027update\u0027 the the new SAs rather than a delete/add cycle. Use the new SAs in the update, then unlock the old. that would require the IDs of the old and new to be different and for the old ones to be remembered.\n\nideally during the rekey process we replace the TX SA with the new one and add the new RX, so we have both the old and new RX SAs. this is so we give our peer some time to swap to the new TX. then n seconds later we remove the old RX SA.",
+      "revId": "566d69a9f80c168826e257d71966cb4af24804a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
