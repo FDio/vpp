@@ -251,9 +251,11 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "%U", format_bihash_8_8, &tsm->user_hash, verbose);
   }
 
-  if (sm->endpoint_dependent)
+  if (sm->endpoint_dependent) {
     vlib_cli_output (vm, "%U", format_bihash_16_8, &nam->affinity_hash,
 		     verbose);
+    vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->ed_ext_ports, 0);
+  }
   return 0;
 }
 
