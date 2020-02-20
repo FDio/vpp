@@ -558,6 +558,8 @@ typedef struct tcp_worker_ctx_
   /* Fifo of pending timer expirations */
   u32 *pending_timers;
 
+  u16 max_timers;
+
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 
