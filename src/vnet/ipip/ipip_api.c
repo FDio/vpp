@@ -170,6 +170,7 @@ vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
   u32 sixrd_tunnel_index, ip4_fib_index, ip6_fib_index;
   int rv;
 
+  sixrd_tunnel_index = ~0;
   ip4_fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->ip4_table_id));
   ip6_fib_index = fib_table_find (FIB_PROTOCOL_IP6, ntohl (mp->ip6_table_id));
 
