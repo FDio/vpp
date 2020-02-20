@@ -1165,9 +1165,11 @@ vxlan_gbp_init (vlib_main_t * vm)
 
   vlib_punt_reason_alloc (punt_hdl,
 			  "VXLAN-GBP-no-such-v4-tunnel",
+			  NULL, NULL,
 			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4]);
   vlib_punt_reason_alloc (punt_hdl,
 			  "VXLAN-GBP-no-such-v6-tunnel",
+			  NULL, NULL,
 			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
 
   return (0);
