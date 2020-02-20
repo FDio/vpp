@@ -43,7 +43,6 @@ set(VPPINFRA_SRCS
   backtrace.c
   bihash_all_vector.c
   cpu.c
-  cuckoo_template.c
   dlmalloc.c
   elf.c
   elog.c
@@ -109,6 +108,10 @@ set(VPPINFRA_HEADERS
   clib.h
   cpu.h
   crc32.h
+  cuckoo_8_8.h
+  cuckoo_16_8.h
+  cuckoo_template.h
+  cuckoo_template.c
   dlist.h
   dlmalloc.h
   elf_clib.h
