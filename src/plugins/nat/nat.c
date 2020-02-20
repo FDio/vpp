@@ -32,6 +32,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vppinfra/bihash_16_8.h>
 
 #include <vpp/app/version.h>
 
@@ -3949,6 +3950,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                                          translation_memory_size);
                   clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
                                                       format_ed_session_kvp);
+                  clib_bihash_init_16_8
+                  (&sm->ed_external_ports, "ed-ext-addr-port-int-addr-port",
+                   translation_buckets, translation_memory_size);
                 }
               else
                 {
