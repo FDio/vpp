@@ -35,7 +35,6 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
-#include <vppinfra/cuckoo_8_8.h>
 
 #ifndef CLIB_CUCKOO_TYPE
 #error CLIB_CUCKOO_TYPE not defined
@@ -301,7 +300,8 @@ void CV (clib_cuckoo_garbage_collect) (CVT (clib_cuckoo) * h);
 void CV (clib_cuckoo_free) (CVT (clib_cuckoo) * h);
 
 int CV (clib_cuckoo_add_del) (CVT (clib_cuckoo) * h,
-			      CVT (clib_cuckoo_kv) * add_v, int is_add);
+			      CVT (clib_cuckoo_kv) * add_v, int is_add,
+			      int dont_overwrite);
 int CV (clib_cuckoo_search) (CVT (clib_cuckoo) * h,
 			     CVT (clib_cuckoo_kv) * search_v,
 			     CVT (clib_cuckoo_kv) * return_v);
