@@ -271,7 +271,7 @@ static tcp_bt_sample_t *
 tcp_bt_alloc_tx_sample (tcp_connection_t * tc, u32 min_seq, u32 max_seq)
 {
   tcp_bt_sample_t *bts;
-  bts = bt_alloc_sample (tc->bt, min_seq, max_seq);
+  bts = bt_alloc_sample (&tc->bt, min_seq, max_seq);
   bts->delivered = tc->delivered;
   bts->delivered_time = tc->delivered_time;
   bts->tx_time = tcp_time_now_us (tc->c_thread_index);
@@ -300,7 +300,7 @@ tcp_bt_check_app_limited (tcp_connection_t * tc)
 void
 tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 {
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *bts, *tail;
   u32 bts_index;
 
@@ -336,7 +336,7 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 void
 tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 {
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *bts, *next, *cur, *prev, *nbts;
   u32 bts_index, cur_index, next_index, prev_index, max_seq;
   u8 is_end = end == tc->snd_nxt;
@@ -491,7 +491,7 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
 static void
 tcp_bt_walk_samples (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *next, *cur;
 
   cur = bt_get_sample (bt, bt->head);
@@ -511,7 +511,7 @@ static void
 tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   sack_block_t *blks = tc->rcv_opts.sacks, *blk;
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *cur, *prev, *next;
   int i;
 
@@ -599,7 +599,7 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   tc->lost += tc->sack_sb.last_lost_bytes;
 
   delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
-  if (!delivered || tc->bt->head == TCP_BTS_INVALID_INDEX)
+  if (!delivered || tc->bt.head == TCP_BTS_INVALID_INDEX)
     return;
 
   /* Do not count bytes that were previously sacked again */
@@ -626,7 +626,7 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 void
 tcp_bt_flush_samples (tcp_connection_t * tc)
 {
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *bts;
   u32 *samples = 0, *si;
 
@@ -651,25 +651,19 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
 void
 tcp_bt_cleanup (tcp_connection_t * tc)
 {
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
 
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
-  clib_mem_free (bt);
-  tc->bt = 0;
 }
 
 void
 tcp_bt_init (tcp_connection_t * tc)
 {
-  tcp_byte_tracker_t *bt;
-
-  bt = clib_mem_alloc (sizeof (tcp_byte_tracker_t));
-  clib_memset (bt, 0, sizeof (tcp_byte_tracker_t));
+  tcp_byte_tracker_t *bt = &tc->bt;
 
   rb_tree_init (&bt->sample_lookup);
   bt->head = bt->tail = TCP_BTS_INVALID_INDEX;
-  tc->bt = bt;
 }
 
 u8 *
@@ -689,7 +683,7 @@ u8 *
 format_tcp_bt (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_byte_tracker_t *bt = &tc->bt;
   tcp_bt_sample_t *bts;
 
   bts = bt_get_sample (bt, bt->head);

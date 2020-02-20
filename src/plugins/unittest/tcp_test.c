@@ -1011,7 +1011,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_tx_pacer_update (&tc->connection, rate, 1e6);
 
   tcp_bt_init (tc);
-  bt = tc->bt;
+  bt = &tc->bt;
 
   /*
    * Track simple bursts without rxt
