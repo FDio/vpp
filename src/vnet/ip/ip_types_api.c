@@ -238,6 +238,7 @@ ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
   out->fp_proto = (ADDRESS_IP6 == clib_net_to_host_u32 (in->af) ?
 		   FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   out->fp_len = clib_net_to_host_u16 (in->grp_address_length);
+  out->___fp___pad = 0;
 
   ip_address_union_decode (&in->grp_address, in->af, &out->fp_grp_addr);
   ip_address_union_decode (&in->src_address, in->af, &out->fp_src_addr);
