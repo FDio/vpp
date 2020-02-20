@@ -24,6 +24,8 @@ typedef enum ip_address_family_t_
   AF_IP6,
 } ip_address_family_t;
 
+#define N_AF (AF_IP6+1)
+
 extern uword unformat_ip_address_family (unformat_input_t * input,
 					 va_list * args);
 extern u8 *format_ip_address_family (u8 * s, va_list * args);
