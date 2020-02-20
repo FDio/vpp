@@ -794,30 +794,6 @@ class TestExceptionPuntSocket(TestPuntSocket):
         }
 
         #
-        # we need an IPSec tunnels for this to work otherwise ESP gets dropped
-        # due to unknown IP proto
-        #
-        VppIpsecTunInterface(self, self.pg0, 1000, 1000,
-                             (VppEnum.vl_api_ipsec_crypto_alg_t.
-                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             (VppEnum.vl_api_ipsec_integ_alg_t.
-                              IPSEC_API_INTEG_ALG_SHA1_96),
-                             b"0123456701234567",
-                             b"0123456701234567").add_vpp_config()
-        VppIpsecTunInterface(self, self.pg1, 1000, 1000,
-                             (VppEnum.vl_api_ipsec_crypto_alg_t.
-                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             (VppEnum.vl_api_ipsec_integ_alg_t.
-                              IPSEC_API_INTEG_ALG_SHA1_96),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             udp_encap=True).add_vpp_config()
-
-        #
         # we're dealing with IPSec tunnels punting for no-such-tunnel
         # adn SPI=0
         #
@@ -879,6 +855,42 @@ class TestExceptionPuntSocket(TestPuntSocket):
             self.verify_esp_pkts(rx, len(cfg['pkts']),
                                  cfg['spi'], cfg['udp'])
 
+        #
+        # add some tunnels, make sure it still punts
+        #
+        VppIpsecTunInterface(self, self.pg0, 1000, 1000,
+                             (VppEnum.vl_api_ipsec_crypto_alg_t.
+                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
+                             b"0123456701234567",
+                             b"0123456701234567",
+                             (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_SHA1_96),
+                             b"0123456701234567",
+                             b"0123456701234567").add_vpp_config()
+        VppIpsecTunInterface(self, self.pg1, 1000, 1000,
+                             (VppEnum.vl_api_ipsec_crypto_alg_t.
+                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
+                             b"0123456701234567",
+                             b"0123456701234567",
+                             (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_SHA1_96),
+                             b"0123456701234567",
+                             b"0123456701234567",
+                             udp_encap=True).add_vpp_config()
+
+        #
+        # send packets for each SPI we expect to be punted
+        #
+        for cfg in cfgs.values():
+            self.send_and_assert_no_replies(cfg['itf'], cfg['pkts'])
+
+        #
+        # verify the punted packets arrived on the associated socket
+        #
+        for cfg in cfgs.values():
+            rx = cfg['sock'].close()
+            self.verify_esp_pkts(rx, len(cfg['pkts']),
+                                 cfg['spi'], cfg['udp'])
         #
         # socket deregister
         #

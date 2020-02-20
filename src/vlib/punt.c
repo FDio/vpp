@@ -47,6 +47,21 @@ typedef struct punt_reason_data_t_
    * Clients/owners that have registered this reason
    */
   u32 *pd_owners;
+
+  /**
+   * clients interested/listening to this reason
+   */
+  u32 pd_users;
+
+  /**
+   * function to invoke if a client becomes interested in the code.
+   */
+  punt_interested_listener_t pd_fn;
+
+  /**
+   * Data to pass to the callback
+   */
+  void *pd_data;
 } punt_reason_data_t;
 
 /**
@@ -249,8 +264,8 @@ punt_reg_mk_dp (vlib_punt_reason_t reason)
 }
 
 int
-vlib_punt_register (vlib_punt_hdl_t client, vlib_punt_reason_t reason,
-		    const char *node_name)
+vlib_punt_register (vlib_punt_hdl_t client,
+		    vlib_punt_reason_t reason, const char *node_name)
 {
   vlib_node_t *punt_to, *punt_from;
   punt_client_t *pc;
@@ -297,6 +312,11 @@ vlib_punt_register (vlib_punt_hdl_t client, vlib_punt_reason_t reason,
 					punt_from->index, pr->pr_node_index);
 
       pri = pr - punt_reg_pool;
+
+      if (0 == punt_reason_data[reason].pd_users++ &&
+	  NULL != punt_reason_data[reason].pd_fn)
+	punt_reason_data[reason].pd_fn (VLIB_ENABLE,
+					punt_reason_data[reason].pd_data);
 
       punt_reg_add (pr);
     }
@@ -353,6 +373,10 @@ vlib_punt_unregister (vlib_punt_hdl_t client,
 
       if (0 == pr->pr_locks)
 	{
+	  if (0 == --punt_reason_data[reason].pd_users &&
+	      NULL != punt_reason_data[reason].pd_fn)
+	    punt_reason_data[reason].pd_fn (VLIB_DISABLE,
+					    punt_reason_data[reason].pd_data);
 	  punt_reg_remove (pr);
 	  pool_put (punt_reg_pool, pr);
 	}
@@ -377,7 +401,9 @@ vlib_punt_reason_validate (vlib_punt_reason_t reason)
 
 int
 vlib_punt_reason_alloc (vlib_punt_hdl_t client,
-			const char *reason_name, vlib_punt_reason_t * reason)
+			const char *reason_name,
+			punt_interested_listener_t fn,
+			void *data, vlib_punt_reason_t * reason)
 {
   vlib_punt_reason_t new;
 
@@ -388,6 +414,8 @@ vlib_punt_reason_alloc (vlib_punt_hdl_t client,
   vec_validate (punt_reason_data, new);
   punt_reason_data[new].pd_name = format (NULL, "%s", reason_name);
   punt_reason_data[new].pd_reason = new;
+  punt_reason_data[new].pd_fn = fn;
+  punt_reason_data[new].pd_data = data;
   vec_add1 (punt_reason_data[new].pd_owners, client);
 
   vlib_validate_combined_counter (&punt_counters, new);

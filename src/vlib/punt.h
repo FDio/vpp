@@ -56,12 +56,19 @@ typedef int vlib_punt_hdl_t;
  */
 vlib_punt_hdl_t vlib_punt_client_register (const char *who);
 
+typedef void (*punt_interested_listener_t) (vlib_enable_or_disable_t i,
+					    void *data);
+
 /**
  * Allocate a new punt reason
+ * @param fn     - A callback to invoke when an entity becomes [un]interested
+ *                 in the punt code.
+ * @param data   - To be passed in the callback function.
  */
 extern int vlib_punt_reason_alloc (vlib_punt_hdl_t client,
 				   const char *reason_name,
-				   vlib_punt_reason_t * reason);
+				   punt_interested_listener_t fn,
+				   void *data, vlib_punt_reason_t * reason);
 
 /**
  * Validate that a punt reason is assigned

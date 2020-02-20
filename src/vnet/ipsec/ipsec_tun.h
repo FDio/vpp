@@ -121,6 +121,9 @@ extern void ipsec_tun_protect_walk_itf (u32 sw_if_index,
 extern u8 *format_ipsec_tun_protect (u8 * s, va_list * args);
 extern u8 *format_ipsec_tun_protect_index (u8 * s, va_list * args);
 
+extern void ipsec_tun_register_nodes (ip_address_family_t af);
+extern void ipsec_tun_unregister_nodes (ip_address_family_t af);
+
 // FIXME
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
