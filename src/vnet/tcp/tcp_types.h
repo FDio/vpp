@@ -373,7 +373,7 @@ typedef struct _tcp_connection
   f64 delivered_time;		/**< Time last bytes were acked */
   f64 first_tx_time;		/**< Send time for recently delivered/sent */
   u64 lost;			/**< Total bytes lost */
-  tcp_byte_tracker_t *bt;	/**< Tx byte tracker */
+  tcp_byte_tracker_t bt;	/**< Tx byte tracker */
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
