@@ -16,6 +16,24 @@
       "revId": "566d69a9f80c168826e257d71966cb4af24804a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed9224c2_1481f4be",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1545,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-20T08:59:37Z",
+      "side": 1,
+      "message": "However, that said, i agree this fixes the immediate problem of leaking the SAs. if you think the better solution is significant work, we can commit this an an interim.",
+      "parentUuid": "d044c266_d079bb5e",
+      "revId": "566d69a9f80c168826e257d71966cb4af24804a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
