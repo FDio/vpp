@@ -801,6 +801,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		   transitory_closed);
   vlib_cli_output (vm, "total udp sessions: %u", udp_sessions);
   vlib_cli_output (vm, "total icmp sessions: %u", icmp_sessions);
+  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->ed_ext_ports, 0);
   return 0;
 }
 
