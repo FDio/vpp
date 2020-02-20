@@ -662,12 +662,13 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  vrrp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	  size_t addr_len = (is_ipv6 ? 16 : 4);
 
 	  t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 	  t->is_ipv6 = is_ipv6;
 	  clib_memcpy_fast (&t->vrrp, vrrp0, sizeof (*vrrp0));
 	  clib_memcpy_fast (t->addrs, (void *) (vrrp0 + 1),
-			    vrrp0->n_addrs * (is_ipv6 ? 16 : 4));
+			    (size_t) vrrp0->n_addrs * addr_len);
 	}
 
       /* always drop, never forward or reply here */

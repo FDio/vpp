@@ -282,6 +282,16 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
   if (is_unicast)
     n_buffers = vec_len (vr->config.peer_addrs);
 
+  if (n_buffers < 1)
+    {
+      /* A unicast VR will not start without peers added so this should
+       * not happen. Just avoiding a crash if it happened somehow.
+       */
+      clib_warning ("Unicast VR configuration corrupted for %U",
+		    format_vrrp_vr_key, vr);
+      return -1;
+    }
+
   vec_validate (bi, n_buffers - 1);
   if (vlib_buffer_alloc (vm, bi, n_buffers) != n_buffers)
     {
