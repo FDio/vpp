@@ -182,6 +182,103 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   return next0;
 }
 
+static_always_inline u16
+snat_random_port (u16 min, u16 max)
+{
+  snat_main_t *sm = &snat_main;
+  return min + random_u32 (&sm->random_seed) /
+    (random_u32_max () / (max - min + 1) + 1);
+}
+
+static int
+nat_alloc_addr_and_port_ed (snat_address_t * addresses, u32 fib_index,
+			    u32 thread_index, nat_ed_ses_key_t * key,
+			    snat_session_key_t * key1, u16 port_per_thread,
+			    u32 snat_thread_index)
+{
+  int i;
+  snat_address_t *a, *ga = 0;
+  u32 portnum;
+
+  const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
+  ed_cuckoo_kv_t cuckoo_key;
+  clib_memset (&cuckoo_key, sizeof (cuckoo_key), 0);
+  cuckoo_key.k.dst_address = key->r_addr.as_u32;
+  cuckoo_key.k.dst_port = key->r_port;
+  cuckoo_key.k.protocol = key1->protocol;
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (key1->protocol)
+	{
+#define _(N, j, n, s)                                                    \
+  case SNAT_PROTOCOL_##N:                                                \
+    if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread)  \
+      {                                                                  \
+        if (a->fib_index == fib_index)                                   \
+          {                                                              \
+            cuckoo_key.k.src_address = a->addr.as_u32;                   \
+            u16 port_rnd = snat_random_port (1, port_per_thread);        \
+            u16 attempts = port_per_thread;                              \
+            while (attempts > 0)                                         \
+              {                                                          \
+                --attempts;                                              \
+                portnum = port_thread_offset + port_rnd;                 \
+                cuckoo_key.k.src_port = clib_host_to_net_u16 (portnum);  \
+                int rv = CV (clib_cuckoo_add_del) (                      \
+                    &snat_main.ed_external_ports, &cuckoo_key.kv,        \
+                    1 /* is_add */, 1 /* dont_overwrite */);             \
+                if (CLIB_CUCKOO_ERROR_SUCCESS == rv)                     \
+                  {                                                      \
+                    clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
+                                              portnum, 1);               \
+                    a->busy_##n##_ports_per_thread[thread_index]++;      \
+                    a->busy_##n##_ports++;                               \
+                    key1->addr = a->addr;                                \
+                    key1->port = clib_host_to_net_u16 (portnum);         \
+                    return 0;                                            \
+                  }                                                      \
+                port_rnd = (port_rnd + 1) % port_per_thread;             \
+                if (!port_rnd)                                           \
+                  port_rnd = 1;                                          \
+              }                                                          \
+          }                                                              \
+        else if (a->fib_index == ~0)                                     \
+          {                                                              \
+            ga = a;                                                      \
+          }                                                              \
+      }                                                                  \
+    break;
+
+	  foreach_snat_protocol;
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+  if (ga)
+    {
+      /* fake fib_index to reuse macro */
+      fib_index = ~0;
+      a = ga;
+      switch (key1->protocol)
+	{
+	  foreach_snat_protocol;
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+#undef _
+
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
 static u32
 slow_path_ed (snat_main_t * sm,
 	      vlib_buffer_t * b,
@@ -229,10 +326,10 @@ slow_path_ed (snat_main_t * sm,
       (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
       /* Try to create dynamic translation */
-      if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index,
-					       thread_index, &key1,
-					       sm->port_per_thread,
-					       tsm->snat_thread_index))
+      if (nat_alloc_addr_and_port_ed (sm->addresses, rx_fib_index,
+				      thread_index, key, &key1,
+				      sm->port_per_thread,
+				      tsm->snat_thread_index))
 	{
 	  nat_elog_notice ("addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];

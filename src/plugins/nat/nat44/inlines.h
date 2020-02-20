@@ -36,6 +36,14 @@ nat44_session_cleanup (snat_session_t * s, u32 thread_index)
 {
   snat_main_t *sm = &snat_main;
 
+  ed_cuckoo_kv_t cuckoo_key;
+  cuckoo_key.k.dst_address = s->ext_host_addr.as_u32;
+  cuckoo_key.k.dst_port = s->ext_host_port;
+  cuckoo_key.k.src_address = s->in2out.addr.as_u32;
+  cuckoo_key.k.src_port = s->in2out.port;
+  cuckoo_key.k.protocol = s->in2out.protocol;
+  CV (clib_cuckoo_add_del) (&sm->ed_external_ports, &cuckoo_key.kv,
+			    0 /* is_add */ , 0 /* dont_overwrite */ );
   nat_free_session_data (sm, s, thread_index, 0);
   nat44_delete_session (sm, s, thread_index);
 }
