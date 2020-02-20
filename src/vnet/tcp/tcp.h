@@ -420,7 +420,7 @@ typedef struct _tcp_connection
   u64 app_limited;		/**< Delivered when app-limited detected */
   f64 delivered_time;		/**< Time last bytes were acked */
   f64 first_tx_time;		/**< Send time for recently delivered/sent */
-  tcp_byte_tracker_t *bt;	/**< Tx byte tracker */
+  tcp_byte_tracker_t bt;	/**< Tx byte tracker */
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
