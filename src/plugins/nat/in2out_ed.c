@@ -107,6 +107,16 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &ed_kv, 0))
 	nat_elog_warn ("out2in_ed key del failed");
 
+      ed_bihash_kv_t bihash_key;
+      clib_memset (&bihash_key, 0, sizeof (bihash_key));
+      bihash_key.k.dst_address = s->ext_host_addr.as_u32;
+      bihash_key.k.dst_port = s->ext_host_port;
+      bihash_key.k.src_address = s->out2in.addr.as_u32;
+      bihash_key.k.src_port = s->out2in.port;
+      bihash_key.k.protocol = s->out2in.protocol;
+      clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+				0 /* is_add */ );
+
       if (snat_is_unk_proto_session (s))
 	goto delete;
 
@@ -182,6 +192,96 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   return next0;
 }
 
+static_always_inline u16
+snat_random_port (u16 min, u16 max)
+{
+  snat_main_t *sm = &snat_main;
+  return min + random_u32 (&sm->random_seed) /
+    (random_u32_max () / (max - min + 1) + 1);
+}
+
+static int
+nat_alloc_addr_and_port_ed (snat_address_t * addresses, u32 fib_index,
+			    u32 thread_index, nat_ed_ses_key_t * key,
+			    snat_session_key_t * key1, u16 port_per_thread,
+			    u32 snat_thread_index)
+{
+  int i;
+  snat_address_t *a, *ga = 0;
+  u32 portnum;
+
+  const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
+  ed_bihash_kv_t bihash_key;
+  clib_memset (&bihash_key, 0, sizeof (bihash_key));
+  bihash_key.k.dst_address = key->r_addr.as_u32;
+  bihash_key.k.dst_port = key->r_port;
+  bihash_key.k.protocol = key1->protocol;
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (key1->protocol)
+	{
+#define _(N, j, n, s)                                                     \
+  case SNAT_PROTOCOL_##N:                                                 \
+    if (a->fib_index == fib_index)                                        \
+      {                                                                   \
+        bihash_key.k.src_address = a->addr.as_u32;                        \
+        u16 port = snat_random_port (1, port_per_thread);                 \
+        u16 attempts = port_per_thread;                                   \
+        while (attempts > 0)                                              \
+          {                                                               \
+            --attempts;                                                   \
+            portnum = port_thread_offset + port;                          \
+            bihash_key.k.src_port = clib_host_to_net_u16 (portnum);       \
+            int rv = clib_bihash_add_del_16_8 (                           \
+                &snat_main.ed_ext_ports, &bihash_key.kv, 2 /* is_add */); \
+            if (0 == rv)                                                  \
+              {                                                           \
+                ++a->busy_##n##_port_refcounts[portnum];                  \
+                a->busy_##n##_ports_per_thread[thread_index]++;           \
+                a->busy_##n##_ports++;                                    \
+                key1->addr = a->addr;                                     \
+                key1->port = clib_host_to_net_u16 (portnum);              \
+                return 0;                                                 \
+              }                                                           \
+            port = (port + 1) % port_per_thread;                          \
+          }                                                               \
+      }                                                                   \
+    else if (a->fib_index == ~0)                                          \
+      {                                                                   \
+        ga = a;                                                           \
+      }                                                                   \
+    break;
+
+	  foreach_snat_protocol;
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+  if (ga)
+    {
+      /* fake fib_index to reuse macro */
+      fib_index = ~0;
+      a = ga;
+      switch (key1->protocol)
+	{
+	  foreach_snat_protocol;
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+#undef _
+
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
 static u32
 slow_path_ed (snat_main_t * sm,
 	      vlib_buffer_t * b,
@@ -234,16 +334,16 @@ slow_path_ed (snat_main_t * sm,
       (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
       /* Try to create dynamic translation */
-      if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index,
-					       thread_index, &key1,
-					       sm->port_per_thread,
-					       tsm->snat_thread_index))
+      if (nat_alloc_addr_and_port_ed (sm->addresses, rx_fib_index,
+				      thread_index, key, &key1,
+				      sm->port_per_thread,
+				      tsm->snat_thread_index))
 	{
 	  if (cleared || !nat44_out_of_ports_cleanup (thread_index, now) ||
-	      snat_alloc_outside_address_and_port (sm->addresses,
-						   rx_fib_index, thread_index,
-						   &key1, sm->port_per_thread,
-						   tsm->snat_thread_index))
+	      nat_alloc_addr_and_port_ed (sm->addresses, rx_fib_index,
+					  thread_index, key, &key1,
+					  sm->port_per_thread,
+					  tsm->snat_thread_index))
 	    {
 	      nat_elog_notice ("addresses exhausted");
 	      b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];

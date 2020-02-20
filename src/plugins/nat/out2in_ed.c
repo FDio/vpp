@@ -131,6 +131,16 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0))
 	nat_elog_warn ("in2out_ed key del failed");
 
+      ed_bihash_kv_t bihash_key;
+      clib_memset (&bihash_key, 0, sizeof (bihash_key));
+      bihash_key.k.dst_address = s->ext_host_addr.as_u32;
+      bihash_key.k.dst_port = s->ext_host_port;
+      bihash_key.k.src_address = s->out2in.addr.as_u32;
+      bihash_key.k.src_port = s->out2in.port;
+      bihash_key.k.protocol = s->out2in.protocol;
+      clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+				0 /* is_add */ );
+
       if (snat_is_unk_proto_session (s))
 	goto delete;
 
