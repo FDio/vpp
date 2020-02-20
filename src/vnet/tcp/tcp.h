@@ -544,6 +544,9 @@ typedef struct tcp_worker_ctx_
   /** worker time */
   u32 time_now;
 
+  /* Max timers to be handled per dispatch loop */
+  u32 max_timers_per_loop;
+
   /** tx frames for ip 4/6 lookup nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];
 
