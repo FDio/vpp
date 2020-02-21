@@ -596,6 +596,154 @@ done:
   return err;
 }
 
+#define rx_offload_capabilities						\
+  _(DEV_RX_OFFLOAD_VLAN_STRIP, VNET_DEV_RX_OFFLOAD_F_VLAN_STRIP)	\
+  _(DEV_RX_OFFLOAD_IPV4_CKSUM, VNET_DEV_RX_OFFLOAD_F_IPV4_CKSUM)	\
+  _(DEV_RX_OFFLOAD_UDP_CKSUM, VNET_DEV_RX_OFFLOAD_F_UDP_CKSUM)		\
+  _(DEV_RX_OFFLOAD_TCP_CKSUM, VNET_DEV_RX_OFFLOAD_F_TCP_CKSUM)		\
+  _(DEV_RX_OFFLOAD_TCP_LRO, VNET_DEV_RX_OFFLOAD_F_TCP_LRO)		\
+  _(DEV_RX_OFFLOAD_QINQ_STRIP, VNET_DEV_RX_OFFLOAD_F_QINQ_STRIP)	\
+  _(DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, VNET_DEV_RX_OFFLOAD_F_OUTER_IPV4_CKSUM) \
+  _(DEV_RX_OFFLOAD_MACSEC_STRIP, VNET_DEV_RX_OFFLOAD_F_MACSEC_STRIP)   \
+  _(DEV_RX_OFFLOAD_HEADER_SPLIT, VNET_DEV_RX_OFFLOAD_F_HEADER_SPLIT)	\
+  _(DEV_RX_OFFLOAD_VLAN_FILTER, VNET_DEV_RX_OFFLOAD_F_VLAN_FILTER)	\
+  _(DEV_RX_OFFLOAD_VLAN_EXTEND, VNET_DEV_RX_OFFLOAD_F_VLAN_EXTEND)	\
+  _(DEV_RX_OFFLOAD_JUMBO_FRAME, VNET_DEV_RX_OFFLOAD_F_JUMBO_FRAME)	\
+  _(DEV_RX_OFFLOAD_SCATTER, VNET_DEV_RX_OFFLOAD_F_SCATTER)		\
+  _(DEV_RX_OFFLOAD_TIMESTAMP, VNET_DEV_RX_OFFLOAD_F_TIMESTAMP)		\
+  _(DEV_RX_OFFLOAD_SECURITY, VNET_DEV_RX_OFFLOAD_F_SECURITY)		\
+  _(DEV_RX_OFFLOAD_KEEP_CRC, VNET_DEV_RX_OFFLOAD_F_KEEP_CRC)		\
+  _(DEV_RX_OFFLOAD_SCTP_CKSUM, VNET_DEV_RX_OFFLOAD_F_SCTP_CKSUM)	\
+  _(DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, VNET_DEV_RX_OFFLOAD_F_OUTER_UDP_CKSUM)
+
+#define tx_offload_capabilities						\
+  _(DEV_TX_OFFLOAD_VLAN_INSERT, VNET_DEV_TX_OFFLOAD_F_VLAN_INSERT)	\
+  _(DEV_TX_OFFLOAD_IPV4_CKSUM, VNET_DEV_TX_OFFLOAD_F_IPV4_CKSUM)	\
+  _(DEV_TX_OFFLOAD_UDP_CKSUM, VNET_DEV_TX_OFFLOAD_F_UDP_CKSUM)		\
+  _(DEV_TX_OFFLOAD_TCP_CKSUM, VNET_DEV_TX_OFFLOAD_F_TCP_CKSUM)		\
+  _(DEV_TX_OFFLOAD_SCTP_CKSUM, VNET_DEV_TX_OFFLOAD_F_SCTP_CKSUM)	\
+  _(DEV_TX_OFFLOAD_TCP_TSO, VNET_DEV_TX_OFFLOAD_F_TCP_TSO)		\
+  _(DEV_TX_OFFLOAD_UDP_TSO, VNET_DEV_TX_OFFLOAD_F_UDP_TSO)		\
+  _(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, VNET_DEV_TX_OFFLOAD_F_OUTER_IPV4_CKSUM) \
+  _(DEV_TX_OFFLOAD_QINQ_INSERT, VNET_DEV_TX_OFFLOAD_F_QINQ_INSERT)	\
+  _(DEV_TX_OFFLOAD_VXLAN_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_VXLAN_TNL_TSO)	\
+  _(DEV_TX_OFFLOAD_GRE_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_GRE_TNL_TSO)	\
+  _(DEV_TX_OFFLOAD_IPIP_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_IPIP_TNL_TSO)	\
+  _(DEV_TX_OFFLOAD_GENEVE_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_GENEVE_TNL_TSO) \
+  _(DEV_TX_OFFLOAD_MACSEC_INSERT, VNET_DEV_TX_OFFLOAD_F_MACSEC_INSERT)	\
+  _(DEV_TX_OFFLOAD_MT_LOCKFREE, VNET_DEV_TX_OFFLOAD_F_MT_LOCKFREE)	\
+  _(DEV_TX_OFFLOAD_MULTI_SEGS, VNET_DEV_TX_OFFLOAD_F_MULTI_SEGS)	\
+  _(DEV_TX_OFFLOAD_MBUF_FAST_FREE, VNET_DEV_TX_OFFLOAD_F_MBUF_FAST_FREE) \
+  _(DEV_TX_OFFLOAD_SECURITY, VNET_DEV_TX_OFFLOAD_F_SECURITY)		\
+  _(DEV_TX_OFFLOAD_UDP_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_UDP_TNL_TSO)	\
+  _(DEV_TX_OFFLOAD_IP_TNL_TSO, VNET_DEV_TX_OFFLOAD_F_IP_TNL_TSO)	\
+  _(DEV_TX_OFFLOAD_OUTER_UDP_CKSUM, VNET_DEV_TX_OFFLOAD_F_OUTER_UDP_CKSUM)
+
+#define rss_hash_flags							\
+  _(ETH_RSS_IPV4, VNET_ETH_RSS_HASH_F_IPV4)				\
+  _(ETH_RSS_FRAG_IPV4, VNET_ETH_RSS_HASH_F_FRAG_IPV4)			\
+  _(ETH_RSS_NONFRAG_IPV4_TCP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV4_TCP)	\
+  _(ETH_RSS_NONFRAG_IPV4_UDP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV4_UDP)	\
+  _(ETH_RSS_NONFRAG_IPV4_SCTP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV4_SCTP)	\
+  _(ETH_RSS_NONFRAG_IPV4_OTHER, VNET_ETH_RSS_HASH_F_NONFRAG_IPV4_OTHER)	\
+  _(ETH_RSS_IPV6, VNET_ETH_RSS_HASH_F_IPV6)				\
+  _(ETH_RSS_FRAG_IPV6, VNET_ETH_RSS_HASH_F_FRAG_IPV6)			\
+  _(ETH_RSS_NONFRAG_IPV6_TCP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV6_TCP)	\
+  _(ETH_RSS_NONFRAG_IPV6_UDP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV6_UDP)	\
+  _(ETH_RSS_NONFRAG_IPV6_SCTP, VNET_ETH_RSS_HASH_F_NONFRAG_IPV6_SCTP)	\
+  _(ETH_RSS_NONFRAG_IPV6_OTHER, VNET_ETH_RSS_HASH_F_NONFRAG_IPV6_OTHER)	\
+  _(ETH_RSS_L2_PAYLOAD, VNET_ETH_RSS_HASH_F_L2_PAYLOAD)			\
+  _(ETH_RSS_IPV6_EX, VNET_ETH_RSS_HASH_F_IPV6_EX)			\
+  _(ETH_RSS_IPV6_TCP_EX, VNET_ETH_RSS_HASH_F_IPV6_TCP_EX)		\
+  _(ETH_RSS_IPV6_UDP_EX, VNET_ETH_RSS_HASH_F_IPV6_UDP_EX)		\
+  _(ETH_RSS_PORT, VNET_ETH_RSS_HASH_F_PORT)				\
+  _(ETH_RSS_VXLAN, VNET_ETH_RSS_HASH_F_VXLAN)				\
+  _(ETH_RSS_GENEVE, VNET_ETH_RSS_HASH_F_GENEVE)				\
+  _(ETH_RSS_NVGRE, VNET_ETH_RSS_HASH_F_NVGRE)
+
+
+static void
+dpdk_hw_interface_info (struct vnet_main_t *vnm, u32 hw_if_index,
+			vnet_hw_interface_info_t * hw_info)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  struct rte_eth_dev_info di;
+  struct rte_pci_device *pci_dev;
+  struct rte_eth_rss_conf rss_conf;
+  f64 now = vlib_time_now (xm->vlib_main);
+  int retval;
+
+  clib_memset (hw_info, 0, sizeof (*hw_info));
+
+  dpdk_update_counters (xd, now);
+  dpdk_update_link_state (xd, now);
+  rte_eth_dev_info_get (xd->port_id, &di);
+  pci_dev = dpdk_get_pci_device (&di);
+
+  hw_info->dev_class = hw->dev_class_index;
+  hw_info->dev_instance = hw->dev_instance;
+  hw_info->hw_class = hw->hw_class_index;
+  hw_info->hw_instance = hw->hw_instance;
+
+  hw_info->dev_flags = xd->flags;
+
+  /* rte_pci_addr -> vlib_pci_addr_t */
+  hw_info->pci_addr.domain = pci_dev->addr.domain;
+  hw_info->pci_addr.bus = pci_dev->addr.bus;
+  hw_info->pci_addr.slot = pci_dev->addr.devid;
+  hw_info->pci_addr.function = pci_dev->addr.function;
+
+  /* numa node / CPU socket */
+  hw_info->numa_node = xd->cpu_socket;
+
+  /* rx/tx queues & descriptors */
+  hw_info->max_rx_queues = di.max_rx_queues;
+  hw_info->num_rx_queues = xd->rx_q_used;
+
+  hw_info->max_tx_queues = di.max_tx_queues;
+  hw_info->num_tx_queues = xd->tx_q_used;
+
+  hw_info->max_tx_desc = di.rx_desc_lim.nb_max;
+  hw_info->min_tx_desc = di.rx_desc_lim.nb_min;
+  hw_info->num_tx_desc = xd->nb_tx_desc;
+
+  hw_info->max_rx_desc = di.tx_desc_lim.nb_max;
+  hw_info->min_rx_desc = di.tx_desc_lim.nb_min;
+  hw_info->num_rx_desc = xd->nb_rx_desc;
+
+  /* RX/TX mode of multiple queues */
+  hw_info->mq_rx_mode = (vnet_eth_mq_rx_mode_t) xd->port_conf.rxmode.mq_mode;
+  hw_info->mq_tx_mode = (vnet_eth_mq_tx_mode_t) xd->port_conf.txmode.mq_mode;
+
+#define _(H,I)					\
+  if (di.rx_offload_capa & H)		\
+    hw_info->rx_offloads |= I;			\
+  if (xd->port_conf.rxmode.offloads & H)	\
+    hw_info->rx_offloads_enabled |= I;
+  rx_offload_capabilities
+#undef _
+#define _(H,I)					\
+  if (di.tx_offload_capa & H)		\
+    hw_info->tx_offloads |= I;			\
+  if (xd->port_conf.txmode.offloads & H)	\
+    hw_info->tx_offloads_enabled |= I;
+    tx_offload_capabilities
+#undef _
+    retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
+  if (retval == 0)
+    {
+#define _(H,I)						\
+    if (di.flow_type_rss_offloads & H)		\
+      hw_info->rss_hf |= I;			\
+    if (rss_conf.rss_hf & H)				\
+      hw_info->rss_hf_enabled |= I;
+      rss_hash_flags
+#undef _
+    }
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -612,6 +760,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .mac_addr_add_del_function = dpdk_add_del_mac_address,
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
+  .hw_interface_info = dpdk_hw_interface_info,
 };
 /* *INDENT-ON* */
 
