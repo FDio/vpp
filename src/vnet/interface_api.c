@@ -59,6 +59,7 @@ _(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                   \
 _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                   \
 _(WANT_INTERFACE_EVENTS, want_interface_events)                 \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
+_(SW_INTERFACE_DEVICE_INFO_DUMP, sw_interface_device_info_dump) \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)   \
 _(SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)           \
 _(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump) \
@@ -348,7 +349,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
       if (!vnet_sw_if_index_is_api_valid (sw_if_index))
 	return;
 
-      swif = vec_elt_at_index (im->sw_interfaces, sw_if_index);
+      swif = vnet_get_sw_interface (am->vnet_main, sw_if_index);
 
       vec_reset_length (name);
       name =
@@ -384,6 +385,120 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 
   vec_free (name);
   vec_free (filter);
+}
+
+static void
+send_sw_interface_device_info_details (vpe_api_main_t * am,
+				       vl_api_registration_t * rp,
+				       vnet_sw_interface_t * swif,
+				       u32 context)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi =
+    vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (am->vnet_main, hi->dev_class_index);
+  vnet_hw_interface_info_t hwinfo;
+
+  vl_api_sw_interface_device_info_details_t *mp;
+
+
+  /* only if interface is visible */
+  if (!vnet_swif_is_api_visible (swif))
+    return;
+
+  /* only single/main instance of interface */
+  if (swif->sw_if_index != swif->sup_sw_if_index)
+    return;
+
+  /* handle only if device class has hw_interface_info callback */
+  if (!dev_class->hw_interface_info)
+    return;
+
+  dev_class->hw_interface_info (vnm, hi->hw_if_index, &hwinfo);
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  mp->sw_if_index = ntohl (swif->sw_if_index);
+
+  mp->dev_class = htonl ((u32) (hwinfo.dev_class));
+  mp->dev_instance = htonl ((u32) (hwinfo.dev_instance));
+  mp->hw_class = htonl ((u32) (hwinfo.hw_class));
+  mp->hw_instance = htonl ((u32) (hwinfo.hw_instance));
+
+  mp->hw_flags = htonl ((u32) (hwinfo.hw_flags));
+
+  mp->numa_node = hwinfo.numa_node;
+
+  mp->pci_addr.domain = htons ((u16) (hwinfo.pci_addr.domain));
+  mp->pci_addr.bus = ((u8) (hwinfo.pci_addr.bus));
+  mp->pci_addr.slot = ((u8) (hwinfo.pci_addr.slot));
+  mp->pci_addr.function = ((u8) (hwinfo.pci_addr.function));
+
+  mp->max_rx_queues = htonl ((u32) (hwinfo.max_rx_queues));
+  mp->num_rx_queues = htonl ((u32) (hwinfo.num_rx_queues));
+  mp->max_rx_desc = htonl ((u32) (hwinfo.max_rx_desc));
+  mp->num_rx_desc = htonl ((u32) (hwinfo.num_rx_desc));
+  mp->min_rx_desc = htonl ((u32) (hwinfo.min_rx_desc));
+
+  mp->max_tx_queues = htonl ((u32) (hwinfo.max_tx_queues));
+  mp->num_tx_queues = htonl ((u32) (hwinfo.num_tx_queues));
+  mp->max_tx_desc = htonl ((u32) (hwinfo.max_tx_desc));
+  mp->num_tx_desc = htonl ((u32) (hwinfo.num_tx_desc));
+  mp->min_tx_desc = htonl ((u32) (hwinfo.min_tx_desc));
+
+  mp->rx_offloads = htonl ((u32) (hwinfo.rx_offloads));
+  mp->rx_offloads_enabled = htonl ((u32) (hwinfo.rx_offloads_enabled));
+
+  mp->tx_offloads = htonl ((u32) (hwinfo.tx_offloads));
+  mp->tx_offloads_enabled = htonl ((u32) (hwinfo.tx_offloads_enabled));
+
+  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DEVICE_INFO_DETAILS);
+  mp->context = context;
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+static void
+  vl_api_sw_interface_device_info_dump_t_handler
+  (vl_api_sw_interface_device_info_dump_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vnet_sw_interface_t *swif;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+  vl_api_registration_t *rp;
+  u32 sw_if_index;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    {
+      clib_warning ("Client %d AWOL", mp->client_index);
+      return;
+    }
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  /* if sw_if_index for all devices */
+  if (sw_if_index != ~0 && sw_if_index != 0)
+    {
+      /* checking the sw_if_index is valid */
+      if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+	return;
+
+      /* get interface */
+      swif = vnet_get_sw_interface (am->vnet_main, sw_if_index);
+      send_sw_interface_device_info_details (am, rp, swif, mp->context);
+      return;
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (swif, im->sw_interfaces,
+  ({
+    send_sw_interface_device_info_details (am, rp, swif, mp->context);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -1435,10 +1550,13 @@ interface_api_hookup (vlib_main_t * vm)
   /* Mark these APIs as mp safe */
   am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
   am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_DEVICE_INFO_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_DEVICE_INFO_DETAILS] = 1;
   am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
 
   /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
   am->api_trace_cfg[VL_API_SW_INTERFACE_DUMP].replay_enable = 0;
+  am->api_trace_cfg[VL_API_SW_INTERFACE_DEVICE_INFO_DUMP].replay_enable = 0;
 
   /*
    * Set up the (msg_name, crc, message-id) table
