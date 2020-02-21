@@ -41,6 +41,7 @@
 #define included_vnet_interface_h
 
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
@@ -187,6 +188,128 @@ typedef int (*vnet_dev_class_ip_tunnel_desc_t) (u32 sw_if_index,
 						union ip46_address_t_ * dst,
 						u8 * is_l2);
 
+#define foreach_rx_offload_capabilities		\
+  _(0,  VLAN_STRIP)				\
+  _(1,  IPV4_CKSUM)				\
+  _(2,  UDP_CKSUM)				\
+  _(3,  TCP_CKSUM)				\
+  _(4,  VLAN_FILTER)				\
+  _(5,  VLAN_EXTEND)				\
+  _(6,  JUMBO_FRAME)				\
+  _(7,  SCATTER)				\
+  _(8,  KEEP_CRC)
+
+#define foreach_tx_offload_capabilities		\
+  _(0,  VLAN_INSERT)				\
+  _(1,  IPV4_CKSUM)				\
+  _(2,  UDP_CKSUM)				\
+  _(3,  TCP_CKSUM)				\
+  _(4,  TCP_TSO)				\
+  _(5,  UDP_TSO)				\
+  _(6,  MULTI_SEGS)
+
+#define foreach_rss_hash_flags			\
+  _(0,  IPV4)					\
+  _(1,  FRAG_IPV4)				\
+  _(2,  NONFRAG_IPV4_TCP)			\
+  _(3,  NONFRAG_IPV4_UDP)			\
+  _(4,  IPV6)					\
+  _(5,  FRAG_IPV6)				\
+  _(5,  NONFRAG_IPV6_TCP)			\
+  _(7,  NONFRAG_IPV6_UDP)			\
+  _(8,  IPV6_EX)				\
+  _(9,  IPV6_TCP_EX)				\
+  _(10, IPV6_UDP_EX)
+
+
+typedef enum
+{
+#define _(n, o)\
+  VNET_DEV_RX_OFFLOAD_F_##o = (1ULL << (n)),
+
+  foreach_rx_offload_capabilities
+#undef _
+} vnet_dev_rx_offload_flags_t;
+
+typedef enum
+{
+#define _(n, o)\
+  VNET_DEV_TX_OFFLOAD_F_##o = (1ULL << (n)),
+
+  foreach_tx_offload_capabilities
+#undef _
+} vnet_dev_tx_offload_flags_t;
+
+/* fields which is used in hash calculation */
+typedef enum
+{
+#define _(n, o)\
+  VNET_ETH_RSS_HASH_F_##o = (1ULL << (n)),
+
+  foreach_rss_hash_flags
+#undef _
+} vnet_eth_rss_hash_flags_t;
+
+typedef enum
+{
+  VNET_ETH_MQ_RX_NONE = 0,
+  VNET_ETH_MQ_RX_RSS,
+  VNET_ETH_MQ_RX_DCB,
+  VNET_ETH_MQ_RX_DCB_RSS,
+  VNET_ETH_MQ_RX_VMDQ_ONLY,
+  VNET_ETH_MQ_RX_VMDQ_RSS,
+  VNET_ETH_MQ_RX_VMDQ_DCB,
+  VNET_ETH_MQ_RX_VMDQ_DCB_RSS,
+} vnet_eth_mq_rx_mode_t;
+
+typedef enum
+{
+  VNET_ETH_MQ_TX_NONE = 0,
+  VNET_ETH_MQ_TX_DCB,
+  VNET_ETH_MQ_TX_VMDQ_DCB,
+  VNET_ETH_MQ_TX_VMDQ_ONLY,
+} vnet_eth_mq_tx_mode_t;
+
+typedef struct
+{
+  /* (dev_class, dev_instance) uniquely identifies hw interface. */
+  u32 dev_class;
+  u32 dev_instance;
+
+  /* (hw_class, hw_instance) uniquely identifies hw interface. */
+  u32 hw_class;
+  u32 hw_instance;
+
+  u32 dev_flags;
+
+  vlib_pci_addr_t pci_addr;
+
+  u32 max_rx_queues;
+  u32 num_rx_queues;
+  u32 max_rx_desc;
+  u32 min_rx_desc;
+  u32 num_rx_desc;
+
+  u32 max_tx_queues;
+  u32 num_tx_queues;
+  u32 max_tx_desc;
+  u32 min_tx_desc;
+  u32 num_tx_desc;
+
+  vnet_dev_rx_offload_flags_t rx_offloads;
+  vnet_dev_rx_offload_flags_t rx_offloads_enabled;
+  vnet_dev_tx_offload_flags_t tx_offloads;
+  vnet_dev_tx_offload_flags_t tx_offloads_enabled;
+
+  vnet_eth_rss_hash_flags_t rss_hf;
+  vnet_eth_rss_hash_flags_t rss_hf_enabled;
+
+  vnet_eth_mq_rx_mode_t mq_rx_mode;
+  vnet_eth_mq_tx_mode_t mq_tx_mode;
+
+  u8 numa_node;
+} vnet_hw_interface_info_t;
+
 /* A class of hardware interface devices. */
 typedef struct _vnet_device_class
 {
@@ -273,6 +396,11 @@ typedef struct _vnet_device_class
 
   /* Function to add/delete additional MAC addresses */
   vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
+
+  /* Function to retrieve device specific information */
+  void (*hw_interface_info) (struct vnet_main_t * vnm,
+			     u32 hw_if_index,
+			     vnet_hw_interface_info_t * hw_info);
 } vnet_device_class_t;
 
 #ifndef CLIB_MARCH_VARIANT
