@@ -31,11 +31,7 @@ typedef struct
   uword callers[12];
 
   /* Count of allocations with this traceback. */
-#if CLIB_VEC64 > 0
-  u64 n_allocations;
-#else
   u32 n_allocations;
-#endif
 
   /* Count of bytes allocated with this traceback. */
   u32 n_bytes;
