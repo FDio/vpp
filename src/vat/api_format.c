@@ -1090,6 +1090,153 @@ static void vl_api_sw_interface_details_t_handler_json
     }
 }
 
+static void
+vl_api_sw_interface_device_info_details_t_handler (
+  vl_api_sw_interface_device_info_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  vlib_pci_addr_t addr;
+
+  addr.domain = ntohs (mp->pci_addr.domain);
+  addr.bus = mp->pci_addr.bus;
+  addr.slot = mp->pci_addr.slot;
+  addr.function = mp->pci_addr.function;
+
+  u8 *pci_addr = format (0, "%04x:%02x:%02x.%x", addr.domain, addr.bus,
+			 addr.slot, addr.function);
+  u8 *s;
+
+  s = format (0, "Device class idx/inst: %d/%d; HW idx/inst: %d/%d\n",
+	      ntohl (mp->dev_class), ntohl (mp->dev_instance),
+	      ntohl (mp->hw_class), ntohl (mp->hw_instance));
+  u32 indent = format_get_indent (s);
+  s = format (s, "%Usw_if_index:      %8X\n", format_white_space, indent + 2,
+	      ntohl (mp->sw_if_index));
+  s = format (s, "%UDevice flags:     %8X\n", format_white_space, indent + 2,
+	      mp->hw_flags);
+  s = format (s, "%UPCI address:  %12s\n", format_white_space, indent + 2,
+	      pci_addr);
+  s = format (s, "%UNUMA node:        %8d\n", format_white_space, indent + 2,
+	      mp->numa_node);
+  s = format (s,
+	      "%URX: queues %d (max %d), desc %d "
+	      "(min %d max %d)\n",
+	      format_white_space, indent + 2, ntohl (mp->num_rx_queues),
+	      ntohl (mp->max_rx_queues), ntohl (mp->num_rx_desc),
+	      ntohl (mp->min_rx_desc), ntohl (mp->max_rx_desc));
+  s = format (s,
+	      "%UOffload flags:\n"
+	      "%UAvailable:  %8X\n"
+	      "%UEnabled:    %8X\n",
+	      format_white_space, indent + 4, format_white_space, indent + 8,
+	      ntohl (mp->rx_offloads), format_white_space, indent + 8,
+	      ntohl (mp->rx_offloads_enabled));
+  s = format (s,
+	      "%UTX: queues %d (max %d), desc %d "
+	      "(min %d max %d)\n",
+	      format_white_space, indent + 2, ntohl (mp->num_tx_queues),
+	      ntohl (mp->max_tx_queues), ntohl (mp->num_tx_desc),
+	      ntohl (mp->min_tx_desc), ntohl (mp->max_tx_desc));
+  s = format (s,
+	      "%UOffload flags:\n"
+	      "%UAvailable:  %8X\n"
+	      "%UEnabled:    %8X\n",
+	      format_white_space, indent + 4, format_white_space, indent + 8,
+	      ntohl (mp->tx_offloads), format_white_space, indent + 8,
+	      ntohl (mp->tx_offloads_enabled));
+
+  print (vam->ofp, "\n %s", s);
+
+  vec_free (pci_addr);
+  vec_free (s);
+}
+
+int
+api_sw_interface_device_info_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_device_info_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 sw_if_index;
+  int sw_if_index_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (!sw_if_index_set)
+    sw_if_index = ~0;
+
+  M (SW_INTERFACE_DEVICE_INFO_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_sw_interface_device_info_details_t_handler_json (
+  vl_api_sw_interface_device_info_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  vlib_pci_addr_t pci_addr;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  pci_addr.domain = ntohs (mp->pci_addr.domain);
+  pci_addr.bus = mp->pci_addr.bus;
+  pci_addr.slot = mp->pci_addr.slot;
+  pci_addr.function = mp->pci_addr.function;
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "dev_class", ntohl (mp->dev_class));
+  vat_json_object_add_uint (node, "hw_class", ntohl (mp->hw_class));
+  vat_json_object_add_uint (node, "dev_instance", ntohl (mp->dev_instance));
+  vat_json_object_add_uint (node, "hw_instance", ntohl (mp->hw_instance));
+  vat_json_object_add_uint (node, "pci_addr", pci_addr.as_u32);
+  vat_json_object_add_uint (node, "numa_node", mp->numa_node);
+  vat_json_object_add_uint (node, "hw_flags", ntohl (mp->hw_flags));
+
+  vat_json_object_add_uint (node, "max_rx_queues", ntohl (mp->max_rx_queues));
+  vat_json_object_add_uint (node, "num_rx_queues", ntohl (mp->num_rx_queues));
+  vat_json_object_add_uint (node, "max_rx_desc", ntohl (mp->max_rx_desc));
+  vat_json_object_add_uint (node, "num_rx_desc", ntohl (mp->num_rx_desc));
+  vat_json_object_add_uint (node, "min_rx_desc", ntohl (mp->min_rx_desc));
+
+  vat_json_object_add_uint (node, "max_tx_queues", ntohl (mp->max_tx_queues));
+  vat_json_object_add_uint (node, "num_tx_queues", ntohl (mp->num_tx_queues));
+  vat_json_object_add_uint (node, "max_tx_desc", ntohl (mp->max_tx_desc));
+  vat_json_object_add_uint (node, "num_tx_desc", ntohl (mp->num_tx_desc));
+  vat_json_object_add_uint (node, "min_tx_desc", ntohl (mp->min_tx_desc));
+
+  vat_json_object_add_uint (node, "rx_offloads", ntohl (mp->rx_offloads));
+  vat_json_object_add_uint (node, "rx_offloads_enabled",
+			    ntohl (mp->rx_offloads_enabled));
+  vat_json_object_add_uint (node, "tx_offloads", ntohl (mp->tx_offloads));
+  vat_json_object_add_uint (node, "tx_offloads_enabled",
+			    ntohl (mp->tx_offloads_enabled));
+}
+
 #if VPP_API_TEST_BUILTIN == 0
 static void vl_api_sw_interface_event_t_handler
   (vl_api_sw_interface_event_t * mp)
@@ -3362,180 +3509,185 @@ foreach_standard_reply_retval_handler;
  * we just generated
  */
 
-#define foreach_vpe_api_reply_msg                                       \
-_(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
-_(CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)       \
-_(SW_INTERFACE_DETAILS, sw_interface_details)                           \
-_(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
-_(CONTROL_PING_REPLY, control_ping_reply)                               \
-_(CLI_REPLY, cli_reply)                                                 \
-_(CLI_INBAND_REPLY, cli_inband_reply)                                   \
-_(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
-  sw_interface_add_del_address_reply)                                   \
-_(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
-_(SW_INTERFACE_SET_RX_PLACEMENT_REPLY, sw_interface_set_rx_placement_reply)	\
-_(SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)	\
-_(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
-_(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
-_(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
-_(SW_INTERFACE_SET_VXLAN_BYPASS_REPLY, sw_interface_set_vxlan_bypass_reply) \
-_(SW_INTERFACE_SET_VXLAN_GPE_BYPASS_REPLY, sw_interface_set_vxlan_gpe_bypass_reply) \
-_(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
-  sw_interface_set_l2_xconnect_reply)                                   \
-_(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
-  sw_interface_set_l2_bridge_reply)                                     \
-_(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
-_(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
-_(BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)     \
-_(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
-_(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
-_(L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                           \
-_(L2_FLAGS_REPLY, l2_flags_reply)                                       \
-_(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
-_(TAP_CREATE_V2_REPLY, tap_create_v2_reply)				\
-_(TAP_DELETE_V2_REPLY, tap_delete_v2_reply)				\
-_(SW_INTERFACE_TAP_V2_DETAILS, sw_interface_tap_v2_details)             \
-_(VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)			\
-_(VIRTIO_PCI_CREATE_V2_REPLY, virtio_pci_create_v2_reply)		\
-_(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
-_(SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)     \
-_(BOND_CREATE_REPLY, bond_create_reply)	   			        \
-_(BOND_CREATE2_REPLY, bond_create2_reply)				\
-_(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
-_(BOND_ADD_MEMBER_REPLY, bond_add_member_reply)				\
-_(BOND_DETACH_MEMBER_REPLY, bond_detach_member_reply)			\
-_(SW_INTERFACE_SET_BOND_WEIGHT_REPLY, sw_interface_set_bond_weight_reply) \
-_(SW_BOND_INTERFACE_DETAILS, sw_bond_interface_details)                 \
-_(SW_MEMBER_INTERFACE_DETAILS, sw_member_interface_details)               \
-_(IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)			\
-_(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
-_(IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)           \
-_(IP_TABLE_FLUSH_REPLY, ip_table_flush_reply)                           \
-_(IP_TABLE_REPLACE_END_REPLY, ip_table_replace_end_reply)               \
-_(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
-_(MPLS_TABLE_ADD_DEL_REPLY, mpls_table_add_del_reply)			\
-_(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)			\
-_(MPLS_IP_BIND_UNBIND_REPLY, mpls_ip_bind_unbind_reply)			\
-_(BIER_ROUTE_ADD_DEL_REPLY, bier_route_add_del_reply)			\
-_(BIER_TABLE_ADD_DEL_REPLY, bier_table_add_del_reply)			\
-_(MPLS_TUNNEL_ADD_DEL_REPLY, mpls_tunnel_add_del_reply)                 \
-_(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
-  sw_interface_set_unnumbered_reply)                                    \
-_(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
-_(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
-_(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
-_(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
-  sw_interface_ip6_enable_disable_reply)                                \
-_(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
-_(SR_MPLS_POLICY_ADD_REPLY, sr_mpls_policy_add_reply)                   \
-_(SR_MPLS_POLICY_MOD_REPLY, sr_mpls_policy_mod_reply)                   \
-_(SR_MPLS_POLICY_DEL_REPLY, sr_mpls_policy_del_reply)                   \
-_(SR_POLICY_ADD_REPLY, sr_policy_add_reply)                             \
-_(SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                             \
-_(SR_POLICY_DEL_REPLY, sr_policy_del_reply)                             \
-_(SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                 \
-_(SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                 \
-_(CLASSIFY_ADD_DEL_TABLE_REPLY, classify_add_del_table_reply)           \
-_(CLASSIFY_ADD_DEL_SESSION_REPLY, classify_add_del_session_reply)       \
-_(CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY,                                \
-classify_set_interface_ip_table_reply)                                  \
-_(CLASSIFY_SET_INTERFACE_L2_TABLES_REPLY,                               \
-  classify_set_interface_l2_tables_reply)                               \
-_(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
-_(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
-_(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
-_(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
-_(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
-_(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
-_(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
-_(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
-_(SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)     \
-_(CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)               \
-_(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
-_(CREATE_VHOST_USER_IF_V2_REPLY, create_vhost_user_if_v2_reply)         \
-_(MODIFY_VHOST_USER_IF_V2_REPLY, modify_vhost_user_if_v2_reply)		\
-_(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
-_(SHOW_VERSION_REPLY, show_version_reply)                               \
-_(SHOW_THREADS_REPLY, show_threads_reply)                               \
-_(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
-_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
-_(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
-_(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
-_(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
-_(L2_MACS_EVENT, l2_macs_event)						\
-_(INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)         \
-_(IP_ADDRESS_DETAILS, ip_address_details)                               \
-_(IP_DETAILS, ip_details)                                               \
-_(IPSEC_SPD_ADD_DEL_REPLY, ipsec_spd_add_del_reply)                     \
-_(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
-_(IPSEC_SPD_ENTRY_ADD_DEL_REPLY, ipsec_spd_entry_add_del_reply)         \
-_(IPSEC_SAD_ENTRY_ADD_DEL_REPLY, ipsec_sad_entry_add_del_reply)         \
-_(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
-_(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
-_(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
-_(BD_IP_MAC_FLUSH_REPLY, bd_ip_mac_flush_reply)                         \
-_(BD_IP_MAC_DETAILS, bd_ip_mac_details)                                 \
-_(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
-_(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
-_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
-_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
-_(IOAM_ENABLE_REPLY, ioam_enable_reply)                   \
-_(IOAM_DISABLE_REPLY, ioam_disable_reply)                     \
-_(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
-_(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
-_(AF_PACKET_DETAILS, af_packet_details)					\
-_(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
-_(POLICER_DETAILS, policer_details)                                     \
-_(POLICER_CLASSIFY_SET_INTERFACE_REPLY, policer_classify_set_interface_reply) \
-_(POLICER_CLASSIFY_DETAILS, policer_classify_details)                   \
-_(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
-_(MPLS_TABLE_DETAILS, mpls_table_details)                               \
-_(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
-_(CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                   \
-_(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
-_(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
-_(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
-_(SET_IPFIX_EXPORTER_REPLY, set_ipfix_exporter_reply)                   \
-_(IPFIX_EXPORTER_DETAILS, ipfix_exporter_details)                       \
-_(SET_IPFIX_CLASSIFY_STREAM_REPLY, set_ipfix_classify_stream_reply)     \
-_(IPFIX_CLASSIFY_STREAM_DETAILS, ipfix_classify_stream_details)         \
-_(IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply) \
-_(IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)           \
-_(FLOW_CLASSIFY_SET_INTERFACE_REPLY, flow_classify_set_interface_reply) \
-_(FLOW_CLASSIFY_DETAILS, flow_classify_details)                         \
-_(SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY, sw_interface_span_enable_disable_reply) \
-_(SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                 \
-_(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
-_(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
-_(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
-_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
-_(PG_INTERFACE_ENABLE_DISABLE_COALESCE_REPLY, pg_interface_enable_disable_coalesce_reply) \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
- ip_source_and_port_range_check_add_del_reply)                          \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
- ip_source_and_port_range_check_interface_add_del_reply)                \
-_(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
-_(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
-_(SET_PUNT_REPLY, set_punt_reply)                                       \
-_(IP_TABLE_DETAILS, ip_table_details)                                   \
-_(IP_ROUTE_DETAILS, ip_route_details)                                   \
-_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
-_(FEATURE_GSO_ENABLE_DISABLE_REPLY, feature_gso_enable_disable_reply)   \
-_(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
-_(SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY, sw_interface_add_del_mac_address_reply) \
-_(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
-_(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
-_(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
-_(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
-_(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
-_(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
-_(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
-_(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
-_(SESSION_RULES_DETAILS, session_rules_details)				\
-_(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
-_(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
-_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)		\
-_(FLOW_ADD_REPLY, flow_add_reply)   \
+#define foreach_vpe_api_reply_msg                                             \
+  _ (CREATE_LOOPBACK_REPLY, create_loopback_reply)                            \
+  _ (CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)          \
+  _ (SW_INTERFACE_DETAILS, sw_interface_details)                              \
+  _ (SW_INTERFACE_DEVICE_INFO_DETAILS, sw_interface_device_info_details)      \
+  _ (SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)              \
+  _ (CONTROL_PING_REPLY, control_ping_reply)                                  \
+  _ (CLI_REPLY, cli_reply)                                                    \
+  _ (CLI_INBAND_REPLY, cli_inband_reply)                                      \
+  _ (SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply)  \
+  _ (SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)          \
+  _ (SW_INTERFACE_SET_RX_PLACEMENT_REPLY,                                     \
+     sw_interface_set_rx_placement_reply)                                     \
+  _ (SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)    \
+  _ (SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)              \
+  _ (SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply)  \
+  _ (SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply)              \
+  _ (SW_INTERFACE_SET_VXLAN_BYPASS_REPLY,                                     \
+     sw_interface_set_vxlan_bypass_reply)                                     \
+  _ (SW_INTERFACE_SET_VXLAN_GPE_BYPASS_REPLY,                                 \
+     sw_interface_set_vxlan_gpe_bypass_reply)                                 \
+  _ (SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply)  \
+  _ (SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)      \
+  _ (BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)                \
+  _ (BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                            \
+  _ (BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)        \
+  _ (L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                                \
+  _ (L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                            \
+  _ (L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                              \
+  _ (L2_FLAGS_REPLY, l2_flags_reply)                                          \
+  _ (BRIDGE_FLAGS_REPLY, bridge_flags_reply)                                  \
+  _ (TAP_CREATE_V2_REPLY, tap_create_v2_reply)                                \
+  _ (TAP_DELETE_V2_REPLY, tap_delete_v2_reply)                                \
+  _ (SW_INTERFACE_TAP_V2_DETAILS, sw_interface_tap_v2_details)                \
+  _ (VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)                        \
+  _ (VIRTIO_PCI_CREATE_V2_REPLY, virtio_pci_create_v2_reply)                  \
+  _ (VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)                        \
+  _ (SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)        \
+  _ (BOND_CREATE_REPLY, bond_create_reply)                                    \
+  _ (BOND_CREATE2_REPLY, bond_create2_reply)                                  \
+  _ (BOND_DELETE_REPLY, bond_delete_reply)                                    \
+  _ (BOND_ADD_MEMBER_REPLY, bond_add_member_reply)                            \
+  _ (BOND_DETACH_MEMBER_REPLY, bond_detach_member_reply)                      \
+  _ (SW_INTERFACE_SET_BOND_WEIGHT_REPLY, sw_interface_set_bond_weight_reply)  \
+  _ (SW_BOND_INTERFACE_DETAILS, sw_bond_interface_details)                    \
+  _ (SW_MEMBER_INTERFACE_DETAILS, sw_member_interface_details)                \
+  _ (IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)                          \
+  _ (IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)                          \
+  _ (IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)              \
+  _ (IP_TABLE_FLUSH_REPLY, ip_table_flush_reply)                              \
+  _ (IP_TABLE_REPLACE_END_REPLY, ip_table_replace_end_reply)                  \
+  _ (IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)                        \
+  _ (MPLS_TABLE_ADD_DEL_REPLY, mpls_table_add_del_reply)                      \
+  _ (MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)                      \
+  _ (MPLS_IP_BIND_UNBIND_REPLY, mpls_ip_bind_unbind_reply)                    \
+  _ (BIER_ROUTE_ADD_DEL_REPLY, bier_route_add_del_reply)                      \
+  _ (BIER_TABLE_ADD_DEL_REPLY, bier_table_add_del_reply)                      \
+  _ (MPLS_TUNNEL_ADD_DEL_REPLY, mpls_tunnel_add_del_reply)                    \
+  _ (SW_INTERFACE_SET_UNNUMBERED_REPLY, sw_interface_set_unnumbered_reply)    \
+  _ (CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                        \
+  _ (CREATE_SUBIF_REPLY, create_subif_reply)                                  \
+  _ (SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                          \
+  _ (SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                   \
+     sw_interface_ip6_enable_disable_reply)                                   \
+  _ (L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                          \
+  _ (SR_MPLS_POLICY_ADD_REPLY, sr_mpls_policy_add_reply)                      \
+  _ (SR_MPLS_POLICY_MOD_REPLY, sr_mpls_policy_mod_reply)                      \
+  _ (SR_MPLS_POLICY_DEL_REPLY, sr_mpls_policy_del_reply)                      \
+  _ (SR_POLICY_ADD_REPLY, sr_policy_add_reply)                                \
+  _ (SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                                \
+  _ (SR_POLICY_DEL_REPLY, sr_policy_del_reply)                                \
+  _ (SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                    \
+  _ (SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                    \
+  _ (CLASSIFY_ADD_DEL_TABLE_REPLY, classify_add_del_table_reply)              \
+  _ (CLASSIFY_ADD_DEL_SESSION_REPLY, classify_add_del_session_reply)          \
+  _ (CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY,                                   \
+     classify_set_interface_ip_table_reply)                                   \
+  _ (CLASSIFY_SET_INTERFACE_L2_TABLES_REPLY,                                  \
+     classify_set_interface_l2_tables_reply)                                  \
+  _ (GET_NODE_INDEX_REPLY, get_node_index_reply)                              \
+  _ (ADD_NODE_NEXT_REPLY, add_node_next_reply)                                \
+  _ (VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)                  \
+  _ (VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)                          \
+  _ (VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                              \
+  _ (L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                      \
+  _ (L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)            \
+  _ (L2_INTERFACE_VLAN_TAG_REWRITE_REPLY,                                     \
+     l2_interface_vlan_tag_rewrite_reply)                                     \
+  _ (SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)        \
+  _ (CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)                  \
+  _ (MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)                  \
+  _ (CREATE_VHOST_USER_IF_V2_REPLY, create_vhost_user_if_v2_reply)            \
+  _ (MODIFY_VHOST_USER_IF_V2_REPLY, modify_vhost_user_if_v2_reply)            \
+  _ (DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)                  \
+  _ (SHOW_VERSION_REPLY, show_version_reply)                                  \
+  _ (SHOW_THREADS_REPLY, show_threads_reply)                                  \
+  _ (L2_FIB_TABLE_DETAILS, l2_fib_table_details)                              \
+  _ (VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)          \
+  _ (VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                      \
+  _ (INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)            \
+  _ (WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)                    \
+  _ (L2_MACS_EVENT, l2_macs_event)                                            \
+  _ (INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)            \
+  _ (IP_ADDRESS_DETAILS, ip_address_details)                                  \
+  _ (IP_DETAILS, ip_details)                                                  \
+  _ (IPSEC_SPD_ADD_DEL_REPLY, ipsec_spd_add_del_reply)                        \
+  _ (IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply)    \
+  _ (IPSEC_SPD_ENTRY_ADD_DEL_REPLY, ipsec_spd_entry_add_del_reply)            \
+  _ (IPSEC_SAD_ENTRY_ADD_DEL_REPLY, ipsec_sad_entry_add_del_reply)            \
+  _ (IPSEC_SA_DETAILS, ipsec_sa_details)                                      \
+  _ (DELETE_LOOPBACK_REPLY, delete_loopback_reply)                            \
+  _ (BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                        \
+  _ (BD_IP_MAC_FLUSH_REPLY, bd_ip_mac_flush_reply)                            \
+  _ (BD_IP_MAC_DETAILS, bd_ip_mac_details)                                    \
+  _ (WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)                \
+  _ (GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)                          \
+  _ (GET_NODE_GRAPH_REPLY, get_node_graph_reply)                              \
+  _ (SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)          \
+  _ (IOAM_ENABLE_REPLY, ioam_enable_reply)                                    \
+  _ (IOAM_DISABLE_REPLY, ioam_disable_reply)                                  \
+  _ (AF_PACKET_CREATE_REPLY, af_packet_create_reply)                          \
+  _ (AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                          \
+  _ (AF_PACKET_DETAILS, af_packet_details)                                    \
+  _ (POLICER_ADD_DEL_REPLY, policer_add_del_reply)                            \
+  _ (POLICER_DETAILS, policer_details)                                        \
+  _ (POLICER_CLASSIFY_SET_INTERFACE_REPLY,                                    \
+     policer_classify_set_interface_reply)                                    \
+  _ (POLICER_CLASSIFY_DETAILS, policer_classify_details)                      \
+  _ (MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                                \
+  _ (MPLS_TABLE_DETAILS, mpls_table_details)                                  \
+  _ (MPLS_ROUTE_DETAILS, mpls_route_details)                                  \
+  _ (CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                      \
+  _ (CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply)    \
+  _ (CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                    \
+  _ (CLASSIFY_SESSION_DETAILS, classify_session_details)                      \
+  _ (SET_IPFIX_EXPORTER_REPLY, set_ipfix_exporter_reply)                      \
+  _ (IPFIX_EXPORTER_DETAILS, ipfix_exporter_details)                          \
+  _ (SET_IPFIX_CLASSIFY_STREAM_REPLY, set_ipfix_classify_stream_reply)        \
+  _ (IPFIX_CLASSIFY_STREAM_DETAILS, ipfix_classify_stream_details)            \
+  _ (IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply)  \
+  _ (IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)              \
+  _ (FLOW_CLASSIFY_SET_INTERFACE_REPLY, flow_classify_set_interface_reply)    \
+  _ (FLOW_CLASSIFY_DETAILS, flow_classify_details)                            \
+  _ (SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY,                                  \
+     sw_interface_span_enable_disable_reply)                                  \
+  _ (SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                    \
+  _ (GET_NEXT_INDEX_REPLY, get_next_index_reply)                              \
+  _ (PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                    \
+  _ (PG_CAPTURE_REPLY, pg_capture_reply)                                      \
+  _ (PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                        \
+  _ (PG_INTERFACE_ENABLE_DISABLE_COALESCE_REPLY,                              \
+     pg_interface_enable_disable_coalesce_reply)                              \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                            \
+     ip_source_and_port_range_check_add_del_reply)                            \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,                  \
+     ip_source_and_port_range_check_interface_add_del_reply)                  \
+  _ (DELETE_SUBIF_REPLY, delete_subif_reply)                                  \
+  _ (L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply)  \
+  _ (SET_PUNT_REPLY, set_punt_reply)                                          \
+  _ (IP_TABLE_DETAILS, ip_table_details)                                      \
+  _ (IP_ROUTE_DETAILS, ip_route_details)                                      \
+  _ (FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)              \
+  _ (FEATURE_GSO_ENABLE_DISABLE_REPLY, feature_gso_enable_disable_reply)      \
+  _ (SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)          \
+  _ (SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY,                                  \
+     sw_interface_add_del_mac_address_reply)                                  \
+  _ (L2_XCONNECT_DETAILS, l2_xconnect_details)                                \
+  _ (HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)                  \
+  _ (SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)              \
+  _ (P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                          \
+  _ (P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                          \
+  _ (TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)    \
+  _ (APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)                \
+  _ (SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)                  \
+  _ (SESSION_RULES_DETAILS, session_rules_details)                            \
+  _ (IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)      \
+  _ (OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)          \
+  _ (QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)        \
+  _ (FLOW_ADD_REPLY, flow_add_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)
@@ -14722,287 +14874,296 @@ echo (vat_main_t * vam)
 }
 
 /* List of API message constructors, CLI names map to api_xxx */
-#define foreach_vpe_api_msg                                             \
-_(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
-_(sw_interface_dump,"")                                                 \
-_(sw_interface_set_flags,                                               \
-  "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
-_(sw_interface_add_del_address,                                         \
-  "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
-_(sw_interface_set_rx_mode,                                             \
-  "<intfc> | sw_if_index <id> [queue <id>] <polling | interrupt | adaptive>") \
-_(sw_interface_set_rx_placement,                                        \
-  "<intfc> | sw_if_index <id> [queue <id>] [worker <id> | main]")       \
-_(sw_interface_rx_placement_dump,                                       \
-  "[<intfc> | sw_if_index <id>]")                                         \
-_(sw_interface_set_table,                                               \
-  "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
-_(sw_interface_set_mpls_enable,                                         \
-  "<intfc> | sw_if_index [disable | dis]")                              \
-_(sw_interface_set_vpath,                                               \
-  "<intfc> | sw_if_index <id> enable | disable")                        \
-_(sw_interface_set_vxlan_bypass,                                        \
-  "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")          \
-_(sw_interface_set_l2_xconnect,                                         \
-  "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
-  "enable | disable")                                                   \
-_(sw_interface_set_l2_bridge,                                           \
-  "{<intfc> | sw_if_index <id>} bd_id <bridge-domain-id>\n"             \
-  "[shg <split-horizon-group>] [bvi]\n"                                 \
-  "enable | disable")                                                   \
-_(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255")  \
-_(bridge_domain_add_del,                                                \
-  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [bd-tag <text>] [del]\n") \
-_(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
-_(l2fib_add_del,                                                        \
-  "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
-_(l2fib_flush_bd, "bd_id <bridge-domain-id>")                           \
-_(l2fib_flush_int, "<intfc> | sw_if_index <id>")                        \
-_(l2_flags,                                                             \
-  "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
-_(bridge_flags,                                                         \
-  "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
-_(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload | gro-coalesce] [persist] [attach] [tun] [packed] [in-order]") \
-_(tap_delete_v2,                                                        \
-  "<vpp-if-name> | sw_if_index <id>")                                   \
-_(sw_interface_tap_v2_dump, "")                                         \
-_(virtio_pci_create_v2,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled [gro-coalesce] | csum-offload-enabled] [packed] [in-order] [buffering]") \
-_(virtio_pci_delete,                                                    \
-  "<vpp-if-name> | sw_if_index <id>")                                   \
-_(sw_interface_virtio_pci_dump, "")                                     \
-_(bond_create,                                                          \
-  "[hw-addr <mac-addr>] {round-robin | active-backup | "                \
-  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
-  "[id <if-id>]")							\
-_(bond_create2,                                                         \
-  "[hw-addr <mac-addr>] {mode round-robin | active-backup | "           \
-  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
-  "[id <if-id>] [gso]")							\
-_(bond_delete,                                                          \
-  "<vpp-if-name> | sw_if_index <id>")                                   \
-_(bond_add_member,                                                      \
-  "sw_if_index <n> bond <sw_if_index> [is_passive] [is_long_timeout]")  \
-_(bond_detach_member,                                                   \
-  "sw_if_index <n>")							\
- _(sw_interface_set_bond_weight, "<intfc> | sw_if_index <nn> weight <value>") \
- _(sw_bond_interface_dump, "<intfc> | sw_if_index <nn>")		\
- _(sw_member_interface_dump,						\
-  "<vpp-if-name> | sw_if_index <id>")                                   \
-_(ip_table_add_del,                                                     \
-  "table <n> [ipv6] [add | del]\n")                                     \
-_(ip_route_add_del,                                                     \
-  "<addr>/<mask> via <<addr>|<intfc>|sw_if_index <id>|via-label <n>>\n" \
-  "[table-id <n>] [<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"\
-  "[weight <n>] [drop] [local] [classify <n>]  [out-label <n>]\n"       \
-  "[multipath] [count <n>] [del]")                                      \
-_(ip_mroute_add_del,                                                    \
-  "<src> <grp>/<mask> [table-id <n>]\n"                                 \
-  "[<intfc> | sw_if_index <id>] [local] [del]")                         \
-_(mpls_table_add_del,                                                   \
-  "table <n> [add | del]\n")                                            \
-_(mpls_route_add_del,                                                   \
-  "<label> <eos> via <addr | next-hop-table <n> | via-label <n> |\n"    \
-  "lookup-ip4-table <n> | lookup-in-ip6-table <n> |\n"                  \
-  "l2-input-on <intfc> | l2-input-on sw_if_index <id>>\n"               \
-  "[<intfc> | sw_if_index <id>] [resolve-attempts <n>] [weight <n>]\n"  \
-  "[drop] [local] [classify <n>] [out-label <n>] [multipath]\n"         \
-  "[count <n>] [del]")                                                  \
-_(mpls_ip_bind_unbind,                                                  \
-  "<label> <addr/len>")                                                 \
-_(mpls_tunnel_add_del,                                                  \
-  "[add | del <intfc | sw_if_index <id>>] via <addr | via-label <n>>\n" \
-  "[<intfc> | sw_if_index <id> | next-hop-table <id>]\n"                \
-  "[l2-only]  [out-label <n>]")                                         \
-_(sr_mpls_policy_add,                                                   \
-  "bsid <id> [weight <n>] [spray] next <sid> [next <sid>]")             \
-_(sr_mpls_policy_del,                                                   \
-  "bsid <id>")                                                          \
-_(bier_table_add_del,                                                   \
-  "<label> <sub-domain> <set> <bsl> [del]")                             \
-_(bier_route_add_del,                                                   \
-  "<bit-position> <sub-domain> <set> <bsl> via <addr> [table-id <n>]\n" \
-  "[<intfc> | sw_if_index <id>]"                                        \
-  "[weight <n>] [del] [multipath]")                                     \
-_(sw_interface_set_unnumbered,                                          \
-  "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")               \
-_(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
-_(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
-  "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                            \
-  "[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub]\n"    \
-  "[outer_vlan_id_any][inner_vlan_id_any]")                             \
-_(ip_table_replace_begin, "table <n> [ipv6]")                           \
-_(ip_table_flush, "table <n> [ipv6]")                                   \
-_(ip_table_replace_end, "table <n> [ipv6]")                             \
-_(set_ip_flow_hash,                                                     \
-  "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")       \
-_(sw_interface_ip6_enable_disable,                                      \
-  "<intfc> | sw_if_index <id> enable | disable")                        \
-_(l2_patch_add_del,                                                     \
-  "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
-  "enable | disable")                                                   \
-_(sr_localsid_add_del,                                                  \
-  "(del) address <addr> next_hop <addr> behavior <beh>\n"               \
-  "fib-table <num> (end.psp) sw_if_index <num>")                        \
-_(classify_add_del_table,                                               \
-  "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
-  " [del] [del-chain] mask <mask-value>\n"                              \
-  " [l2-miss-next | miss-next | acl-miss-next] <name|nn>\n" 		\
-  " [current-data-flag <n>] [current-data-offset <nn>] [table <nn>]")   \
-_(classify_add_del_session,                                             \
-  "[hit-next|l2-hit-next|acl-hit-next|policer-hit-next] <name|nn>\n"    \
-  "  table-index <nn> skip_n <nn> match_n <nn> match [hex] [l2]\n"      \
-  "  [l3 [ip4|ip6]] [action set-ip4-fib-id <nn>]\n"                     \
-  "  [action set-ip6-fib-id <nn> | action <n> metadata <nn>] [del]")    \
-_(classify_set_interface_ip_table,                                      \
-  "<intfc> | sw_if_index <nn> table <nn>")				\
-_(classify_set_interface_l2_tables,                                     \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [other-table <nn>]")                                               \
-_(get_node_index, "node <node-name")                                    \
-_(add_node_next, "node <node-name> next <next-node-name>")              \
-_(vxlan_offload_rx,                                                     \
-  "hw { <interface name> | hw_if_index <nn>} "                          \
-  "rx { <vxlan tunnel name> | sw_if_index <nn> } [del]")                \
-_(vxlan_add_del_tunnel,                                                 \
-  "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
-  "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"		\
-  "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
-_(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
-_(l2_fib_clear_table, "")                                               \
-_(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
-_(l2_interface_vlan_tag_rewrite,                                        \
-  "<intfc> | sw_if_index <nn> \n"                                       \
-  "[disable][push-[1|2]][pop-[1|2]][translate-1-[1|2]] \n"              \
-  "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
-_(create_vhost_user_if,                                                 \
-        "socket <filename> [server] [renumber <dev_instance>] "         \
-        "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "            \
-        "[mac <mac_address>] [packed]")                                 \
-_(modify_vhost_user_if,                                                 \
-        "<intfc> | sw_if_index <nn> socket <filename>\n"                \
-        "[server] [renumber <dev_instance>] [gso] [packed]")            \
-_(create_vhost_user_if_v2,                                              \
-        "socket <filename> [server] [renumber <dev_instance>] "         \
-        "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "            \
-        "[mac <mac_address>] [packed] [event-idx]")                     \
-_(modify_vhost_user_if_v2,                                              \
-        "<intfc> | sw_if_index <nn> socket <filename>\n"                \
-        "[server] [renumber <dev_instance>] [gso] [packed] [event-idx]")\
-_(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
-_(sw_interface_vhost_user_dump, "<intfc> | sw_if_index <nn>")           \
-_(show_version, "")                                                     \
-_(show_threads, "")                                                     \
-_(vxlan_gpe_add_del_tunnel,                                             \
-  "local <addr> remote <addr>  | group <mcast-ip-addr>\n"               \
-  "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
-  "vni <nn> [encap-vrf-id <nn>] [decap-vrf-id <nn>]\n"                  \
-  "[next-ip4][next-ip6][next-ethernet] [next-nsh] [del]\n")             \
-_(vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                \
-_(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
-_(interface_name_renumber,                                              \
-  "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\
-_(input_acl_set_interface,                                              \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
-_(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \
-_(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
-_(ip_dump, "ipv4 | ipv6")                                               \
-_(ipsec_spd_add_del, "spd_id <n> [del]")                                \
-_(ipsec_interface_add_del_spd, "(<intfc> | sw_if_index <id>)\n"         \
-  "  spid_id <n> ")                                                     \
-_(ipsec_sad_entry_add_del, "sad_id <n> spi <n> crypto_alg <alg>\n"      \
-  "  crypto_key <hex> tunnel_src <ip4|ip6> tunnel_dst <ip4|ip6>\n"      \
-  "  integ_alg <alg> integ_key <hex>")                                  \
-_(ipsec_spd_entry_add_del, "spd_id <n> priority <n> action <action>\n"  \
-  "  (inbound|outbound) [sa_id <n>] laddr_start <ip4|ip6>\n"            \
-  "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
-  "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" ) \
-_(ipsec_sa_dump, "[sa_id <n>]")                                         \
-_(delete_loopback,"sw_if_index <nn>")                                   \
-_(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
-_(bd_ip_mac_flush, "bd_id <bridge-domain-id>")                          \
-_(bd_ip_mac_dump, "[bd_id] <bridge-domain-id>")                         \
-_(want_interface_events,  "enable|disable")                             \
-_(get_first_msg_id, "client <name>")					\
-_(get_node_graph, " ")                                                  \
-_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
-_(ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                     \
-_(ioam_disable, "")                                                     \
-_(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
-_(af_packet_delete, "name <host interface name>")                       \
-_(af_packet_dump, "")							\
-_(policer_add_del, "name <policer name> <params> [del]")                \
-_(policer_dump, "[name <policer name>]")                                \
-_(policer_classify_set_interface,                                       \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
-_(policer_classify_dump, "type [ip4|ip6|l2]")                           \
-_(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
-_(mpls_table_dump, "")                                                  \
-_(mpls_route_dump, "table-id <ID>")                                     \
-_(classify_table_ids, "")                                               \
-_(classify_table_by_interface, "sw_if_index <sw_if_index>")             \
-_(classify_table_info, "table_id <nn>")                                 \
-_(classify_session_dump, "table_id <nn>")                               \
-_(set_ipfix_exporter, "collector_address <ip4> [collector_port <nn>] "  \
-    "src_address <ip4> [vrf_id <nn>] [path_mtu <nn>] "                  \
-    "[template_interval <nn>] [udp_checksum]")                          \
-_(ipfix_exporter_dump, "")                                              \
-_(set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
-_(ipfix_classify_stream_dump, "")                                       \
-_(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]") \
-_(ipfix_classify_table_dump, "")                                        \
-_(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
-_(sw_interface_span_dump, "[l2]")                                           \
-_(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
-_(pg_create_interface, "if_id <nn> [gso-enabled gso-size <size>]")      \
-_(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
-_(pg_enable_disable, "[stream <id>] disable")                           \
-_(pg_interface_enable_disable_coalesce, "<intf> | sw_if_index <nn> enable | disable")  \
-_(ip_source_and_port_range_check_add_del,                               \
-  "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
-_(ip_source_and_port_range_check_interface_add_del,                     \
-  "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"      \
-  "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
-_(delete_subif,"<intfc> | sw_if_index <nn>")                            \
-_(l2_interface_pbb_tag_rewrite,                                         \
-  "<intfc> | sw_if_index <nn> \n"                                       \
-  "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
-  "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
-_(set_punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
-_(flow_classify_set_interface,                                          \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
-_(flow_classify_dump, "type [ip4|ip6]")                                 \
-_(ip_table_dump, "")                                                    \
-_(ip_route_dump, "table-id [ip4|ip6]")                                  \
-_(ip_mtable_dump, "")                                                   \
-_(ip_mroute_dump, "table-id [ip4|ip6]")                                 \
-_(feature_enable_disable, "arc_name <arc_name> "                        \
-  "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")	\
-_(feature_gso_enable_disable, "<intfc> | sw_if_index <nn> "             \
-  "[enable | disable] ")                                                \
-_(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
-"[disable]")                                                        	\
-_(sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "	\
-  "mac <mac-address> [del]")                                            \
-_(l2_xconnect_dump, "")                                             	\
-_(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
-_(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
-_(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
-_(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
-_(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
-_(sock_init_shm, "size <nnn>")						\
-_(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
-_(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
-  "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
-_(session_rules_dump, "")						\
-_(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
-_(output_acl_set_interface,                                             \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
-_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]")
+#define foreach_vpe_api_msg                                                   \
+  _ (create_loopback, "[mac <mac-addr>] [instance <instance>]")               \
+  _ (sw_interface_dump, "")                                                   \
+  _ (sw_interface_device_info_dump, "<intfc> | sw_if_index <id>")             \
+  _ (sw_interface_set_flags,                                                  \
+     "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down")  \
+  _ (sw_interface_add_del_address,                                            \
+     "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] "        \
+     "[del-all] ")                                                            \
+  _ (sw_interface_set_rx_mode, "<intfc> | sw_if_index <id> [queue <id>] "     \
+			       "<polling | interrupt | adaptive>")            \
+  _ (sw_interface_set_rx_placement,                                           \
+     "<intfc> | sw_if_index <id> [queue <id>] [worker <id> | main]")          \
+  _ (sw_interface_rx_placement_dump, "[<intfc> | sw_if_index <id>]")          \
+  _ (sw_interface_set_table,                                                  \
+     "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                      \
+  _ (sw_interface_set_mpls_enable, "<intfc> | sw_if_index [disable | dis]")   \
+  _ (sw_interface_set_vpath, "<intfc> | sw_if_index <id> enable | disable")   \
+  _ (sw_interface_set_vxlan_bypass,                                           \
+     "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")             \
+  _ (sw_interface_set_l2_xconnect,                                            \
+     "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n"    \
+     "enable | disable")                                                      \
+  _ (sw_interface_set_l2_bridge,                                              \
+     "{<intfc> | sw_if_index <id>} bd_id <bridge-domain-id>\n"                \
+     "[shg <split-horizon-group>] [bvi]\n"                                    \
+     "enable | disable")                                                      \
+  _ (bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255")     \
+  _ (bridge_domain_add_del,                                                   \
+     "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] "     \
+     "[learn 1|0] [arp-term 1|0] [mac-age 0-255] [bd-tag <text>] [del]\n")    \
+  _ (bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                      \
+  _ (l2fib_add_del,                                                           \
+     "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | "       \
+     "sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n")               \
+  _ (l2fib_flush_bd, "bd_id <bridge-domain-id>")                              \
+  _ (l2fib_flush_int, "<intfc> | sw_if_index <id>")                           \
+  _ (l2_flags, "sw_if <intfc> | sw_if_index <id> [learn] [forward] "          \
+	       "[uu-flood] [flood] [arp-term] [disable]\n")                   \
+  _ (bridge_flags, "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] "   \
+		   "[flood] [arp-term] [disable]\n")                          \
+  _ (tap_create_v2,                                                           \
+     "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] "  \
+     "[num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] "       \
+     "[host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr "        \
+     "<ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] "  \
+     "[gso | no-gso | csum-offload | gro-coalesce] [persist] [attach] [tun] " \
+     "[packed] [in-order]")                                                   \
+  _ (tap_delete_v2, "<vpp-if-name> | sw_if_index <id>")                       \
+  _ (sw_interface_tap_v2_dump, "")                                            \
+  _ (virtio_pci_create_v2,                                                    \
+     "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] "          \
+     "[features <hex-value>] [gso-enabled [gro-coalesce] | "                  \
+     "csum-offload-enabled] [packed] [in-order] [buffering]")                 \
+  _ (virtio_pci_delete, "<vpp-if-name> | sw_if_index <id>")                   \
+  _ (sw_interface_virtio_pci_dump, "")                                        \
+  _ (bond_create,                                                             \
+     "[hw-addr <mac-addr>] {round-robin | active-backup | "                   \
+     "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "           \
+     "[id <if-id>]")                                                          \
+  _ (bond_create2,                                                            \
+     "[hw-addr <mac-addr>] {mode round-robin | active-backup | "              \
+     "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "           \
+     "[id <if-id>] [gso]")                                                    \
+  _ (bond_delete, "<vpp-if-name> | sw_if_index <id>")                         \
+  _ (bond_add_member,                                                         \
+     "sw_if_index <n> bond <sw_if_index> [is_passive] [is_long_timeout]")     \
+  _ (bond_detach_member, "sw_if_index <n>")                                   \
+  _ (sw_interface_set_bond_weight,                                            \
+     "<intfc> | sw_if_index <nn> weight <value>")                             \
+  _ (sw_bond_interface_dump, "<intfc> | sw_if_index <nn>")                    \
+  _ (sw_member_interface_dump, "<vpp-if-name> | sw_if_index <id>")            \
+  _ (ip_table_add_del, "table <n> [ipv6] [add | del]\n")                      \
+  _ (ip_route_add_del,                                                        \
+     "<addr>/<mask> via <<addr>|<intfc>|sw_if_index <id>|via-label <n>>\n"    \
+     "[table-id <n>] [<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"   \
+     "[weight <n>] [drop] [local] [classify <n>]  [out-label <n>]\n"          \
+     "[multipath] [count <n>] [del]")                                         \
+  _ (ip_mroute_add_del, "<src> <grp>/<mask> [table-id <n>]\n"                 \
+			"[<intfc> | sw_if_index <id>] [local] [del]")         \
+  _ (mpls_table_add_del, "table <n> [add | del]\n")                           \
+  _ (mpls_route_add_del,                                                      \
+     "<label> <eos> via <addr | next-hop-table <n> | via-label <n> |\n"       \
+     "lookup-ip4-table <n> | lookup-in-ip6-table <n> |\n"                     \
+     "l2-input-on <intfc> | l2-input-on sw_if_index <id>>\n"                  \
+     "[<intfc> | sw_if_index <id>] [resolve-attempts <n>] [weight <n>]\n"     \
+     "[drop] [local] [classify <n>] [out-label <n>] [multipath]\n"            \
+     "[count <n>] [del]")                                                     \
+  _ (mpls_ip_bind_unbind, "<label> <addr/len>")                               \
+  _ (mpls_tunnel_add_del,                                                     \
+     "[add | del <intfc | sw_if_index <id>>] via <addr | via-label <n>>\n"    \
+     "[<intfc> | sw_if_index <id> | next-hop-table <id>]\n"                   \
+     "[l2-only]  [out-label <n>]")                                            \
+  _ (sr_mpls_policy_add,                                                      \
+     "bsid <id> [weight <n>] [spray] next <sid> [next <sid>]")                \
+  _ (sr_mpls_policy_del, "bsid <id>")                                         \
+  _ (bier_table_add_del, "<label> <sub-domain> <set> <bsl> [del]")            \
+  _ (bier_route_add_del,                                                      \
+     "<bit-position> <sub-domain> <set> <bsl> via <addr> [table-id <n>]\n"    \
+     "[<intfc> | sw_if_index <id>]"                                           \
+     "[weight <n>] [del] [multipath]")                                        \
+  _ (sw_interface_set_unnumbered,                                             \
+     "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")                  \
+  _ (create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")                \
+  _ (create_subif,                                                            \
+     "<intfc> | sw_if_index <id> sub_id <n>\n"                                \
+     "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                               \
+     "[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub]\n"       \
+     "[outer_vlan_id_any][inner_vlan_id_any]")                                \
+  _ (ip_table_replace_begin, "table <n> [ipv6]")                              \
+  _ (ip_table_flush, "table <n> [ipv6]")                                      \
+  _ (ip_table_replace_end, "table <n> [ipv6]")                                \
+  _ (set_ip_flow_hash,                                                        \
+     "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")          \
+  _ (sw_interface_ip6_enable_disable,                                         \
+     "<intfc> | sw_if_index <id> enable | disable")                           \
+  _ (l2_patch_add_del,                                                        \
+     "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n"    \
+     "enable | disable")                                                      \
+  _ (sr_localsid_add_del,                                                     \
+     "(del) address <addr> next_hop <addr> behavior <beh>\n"                  \
+     "fib-table <num> (end.psp) sw_if_index <num>")                           \
+  _ (classify_add_del_table,                                                  \
+     "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"         \
+     " [del] [del-chain] mask <mask-value>\n"                                 \
+     " [l2-miss-next | miss-next | acl-miss-next] <name|nn>\n"                \
+     " [current-data-flag <n>] [current-data-offset <nn>] [table <nn>]")      \
+  _ (classify_add_del_session,                                                \
+     "[hit-next|l2-hit-next|acl-hit-next|policer-hit-next] <name|nn>\n"       \
+     "  table-index <nn> skip_n <nn> match_n <nn> match [hex] [l2]\n"         \
+     "  [l3 [ip4|ip6]] [action set-ip4-fib-id <nn>]\n"                        \
+     "  [action set-ip6-fib-id <nn> | action <n> metadata <nn>] [del]")       \
+  _ (classify_set_interface_ip_table,                                         \
+     "<intfc> | sw_if_index <nn> table <nn>")                                 \
+  _ (classify_set_interface_l2_tables,                                        \
+     "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"         \
+     "  [other-table <nn>]")                                                  \
+  _ (get_node_index, "node <node-name")                                       \
+  _ (add_node_next, "node <node-name> next <next-node-name>")                 \
+  _ (vxlan_offload_rx, "hw { <interface name> | hw_if_index <nn>} "           \
+		       "rx { <vxlan tunnel name> | sw_if_index <nn> } [del]") \
+  _ (vxlan_add_del_tunnel,                                                    \
+     "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"                \
+     "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"                \
+     "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")              \
+  _ (vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                       \
+  _ (l2_fib_clear_table, "")                                                  \
+  _ (l2_interface_efp_filter, "sw_if_index <nn> enable | disable")            \
+  _ (l2_interface_vlan_tag_rewrite,                                           \
+     "<intfc> | sw_if_index <nn> \n"                                          \
+     "[disable][push-[1|2]][pop-[1|2]][translate-1-[1|2]] \n"                 \
+     "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")                \
+  _ (create_vhost_user_if,                                                    \
+     "socket <filename> [server] [renumber <dev_instance>] "                  \
+     "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "                     \
+     "[mac <mac_address>] [packed]")                                          \
+  _ (modify_vhost_user_if,                                                    \
+     "<intfc> | sw_if_index <nn> socket <filename>\n"                         \
+     "[server] [renumber <dev_instance>] [gso] [packed]")                     \
+  _ (create_vhost_user_if_v2,                                                 \
+     "socket <filename> [server] [renumber <dev_instance>] "                  \
+     "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "                     \
+     "[mac <mac_address>] [packed] [event-idx]")                              \
+  _ (modify_vhost_user_if_v2,                                                 \
+     "<intfc> | sw_if_index <nn> socket <filename>\n"                         \
+     "[server] [renumber <dev_instance>] [gso] [packed] [event-idx]")         \
+  _ (delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                      \
+  _ (sw_interface_vhost_user_dump, "<intfc> | sw_if_index <nn>")              \
+  _ (show_version, "")                                                        \
+  _ (show_threads, "")                                                        \
+  _ (vxlan_gpe_add_del_tunnel,                                                \
+     "local <addr> remote <addr>  | group <mcast-ip-addr>\n"                  \
+     "{ <intfc> | mcast_sw_if_index <nn> } }\n"                               \
+     "vni <nn> [encap-vrf-id <nn>] [decap-vrf-id <nn>]\n"                     \
+     "[next-ip4][next-ip6][next-ethernet] [next-nsh] [del]\n")                \
+  _ (vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                   \
+  _ (l2_fib_table_dump, "bd_id <bridge-domain-id>")                           \
+  _ (interface_name_renumber,                                                 \
+     "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")                 \
+  _ (input_acl_set_interface,                                                 \
+     "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"         \
+     "  [l2-table <nn>] [del]")                                               \
+  _ (want_l2_macs_events,                                                     \
+     "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]")        \
+  _ (ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")           \
+  _ (ip_dump, "ipv4 | ipv6")                                                  \
+  _ (ipsec_spd_add_del, "spd_id <n> [del]")                                   \
+  _ (ipsec_interface_add_del_spd, "(<intfc> | sw_if_index <id>)\n"            \
+				  "  spid_id <n> ")                           \
+  _ (ipsec_sad_entry_add_del,                                                 \
+     "sad_id <n> spi <n> crypto_alg <alg>\n"                                  \
+     "  crypto_key <hex> tunnel_src <ip4|ip6> tunnel_dst <ip4|ip6>\n"         \
+     "  integ_alg <alg> integ_key <hex>")                                     \
+  _ (ipsec_spd_entry_add_del,                                                 \
+     "spd_id <n> priority <n> action <action>\n"                              \
+     "  (inbound|outbound) [sa_id <n>] laddr_start <ip4|ip6>\n"               \
+     "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n"    \
+     "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]")   \
+  _ (ipsec_sa_dump, "[sa_id <n>]")                                            \
+  _ (delete_loopback, "sw_if_index <nn>")                                     \
+  _ (bd_ip_mac_add_del,                                                       \
+     "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]")                \
+  _ (bd_ip_mac_flush, "bd_id <bridge-domain-id>")                             \
+  _ (bd_ip_mac_dump, "[bd_id] <bridge-domain-id>")                            \
+  _ (want_interface_events, "enable|disable")                                 \
+  _ (get_first_msg_id, "client <name>")                                       \
+  _ (get_node_graph, " ")                                                     \
+  _ (sw_interface_clear_stats, "<intfc> | sw_if_index <nn>")                  \
+  _ (ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                        \
+  _ (ioam_disable, "")                                                        \
+  _ (af_packet_create, "name <host interface name> [hw_addr <mac>]")          \
+  _ (af_packet_delete, "name <host interface name>")                          \
+  _ (af_packet_dump, "")                                                      \
+  _ (policer_add_del, "name <policer name> <params> [del]")                   \
+  _ (policer_dump, "[name <policer name>]")                                   \
+  _ (policer_classify_set_interface,                                          \
+     "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"         \
+     "  [l2-table <nn>] [del]")                                               \
+  _ (policer_classify_dump, "type [ip4|ip6|l2]")                              \
+  _ (mpls_tunnel_dump, "tunnel_index <tunnel-id>")                            \
+  _ (mpls_table_dump, "")                                                     \
+  _ (mpls_route_dump, "table-id <ID>")                                        \
+  _ (classify_table_ids, "")                                                  \
+  _ (classify_table_by_interface, "sw_if_index <sw_if_index>")                \
+  _ (classify_table_info, "table_id <nn>")                                    \
+  _ (classify_session_dump, "table_id <nn>")                                  \
+  _ (set_ipfix_exporter, "collector_address <ip4> [collector_port <nn>] "     \
+			 "src_address <ip4> [vrf_id <nn>] [path_mtu <nn>] "   \
+			 "[template_interval <nn>] [udp_checksum]")           \
+  _ (ipfix_exporter_dump, "")                                                 \
+  _ (set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
+  _ (ipfix_classify_stream_dump, "")                                          \
+  _ (ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]")   \
+  _ (ipfix_classify_table_dump, "")                                           \
+  _ (sw_interface_span_enable_disable,                                        \
+     "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | "  \
+     "dst_sw_if_index <id>] [both|rx|tx]]]")                                  \
+  _ (sw_interface_span_dump, "[l2]")                                          \
+  _ (get_next_index, "node-name <node-name> next-node-name <node-name>")      \
+  _ (pg_create_interface, "if_id <nn> [gso-enabled gso-size <size>]")         \
+  _ (pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")        \
+  _ (pg_enable_disable, "[stream <id>] disable")                              \
+  _ (pg_interface_enable_disable_coalesce,                                    \
+     "<intf> | sw_if_index <nn> enable | disable")                            \
+  _ (ip_source_and_port_range_check_add_del,                                  \
+     "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                             \
+  _ (ip_source_and_port_range_check_interface_add_del,                        \
+     "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"         \
+     "[udp-in-vrf <id>] [udp-out-vrf <id>]")                                  \
+  _ (delete_subif, "<intfc> | sw_if_index <nn>")                              \
+  _ (l2_interface_pbb_tag_rewrite,                                            \
+     "<intfc> | sw_if_index <nn> \n"                                          \
+     "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"             \
+     "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                          \
+  _ (set_punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")    \
+  _ (flow_classify_set_interface,                                             \
+     "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]")    \
+  _ (flow_classify_dump, "type [ip4|ip6]")                                    \
+  _ (ip_table_dump, "")                                                       \
+  _ (ip_route_dump, "table-id [ip4|ip6]")                                     \
+  _ (ip_mtable_dump, "")                                                      \
+  _ (ip_mroute_dump, "table-id [ip4|ip6]")                                    \
+  _ (feature_enable_disable,                                                  \
+     "arc_name <arc_name> "                                                   \
+     "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")      \
+  _ (feature_gso_enable_disable, "<intfc> | sw_if_index <nn> "                \
+				 "[enable | disable] ")                       \
+  _ (sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"        \
+			       "[disable]")                                   \
+  _ (sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "          \
+				       "mac <mac-address> [del]")             \
+  _ (l2_xconnect_dump, "")                                                    \
+  _ (hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")             \
+  _ (sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")             \
+  _ (p2p_ethernet_add,                                                        \
+     "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>")       \
+  _ (p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
+  _ (tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")      \
+  _ (sock_init_shm, "size <nnn>")                                             \
+  _ (app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")  \
+  _ (session_rule_add_del,                                                    \
+     "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "                             \
+     "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")                     \
+  _ (session_rules_dump, "")                                                  \
+  _ (ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")         \
+  _ (output_acl_set_interface,                                                \
+     "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"         \
+     "  [l2-table <nn>] [del]")                                               \
+  _ (qos_record_enable_disable,                                               \
+     "<record-source> <intfc> | sw_if_index <id> [disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
