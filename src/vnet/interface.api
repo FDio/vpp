@@ -19,6 +19,7 @@ option version = "3.2.2";
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
+import "vlib/pci/pci_types.api";
 
 service {
   rpc want_interface_events returns want_interface_events_reply
@@ -207,6 +208,85 @@ define sw_interface_dump
   vl_api_interface_index_t sw_if_index [default=0xFFFFFFFF];
   bool name_filter_valid;
   string name_filter[];
+};
+
+
+/** \brief Interface device details
+    @param sw_if_index - index of the interface
+    @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index
+    @param dev_class - uniquely identifies hw interface
+    @param dev_instance - uniquely identifies hw interface
+    @param hw_class - uniquely identifies hw interface
+    @param hw_instance - uniquely identifies hw interface
+    @param numa_node - NUMA node on which resources is located
+    @param hw_flags - device specific flags
+    @param pci_address - PCI interface address of the HW device
+    @param max_rx_queues - maximum number of rx queues
+    @param num_rx_queues - current number of rx queues
+    @param max_tx_queues - maximum number of tx queues
+    @param num_tx_queues - current number of tx queues
+    @param max_tx_desc - maximum number of tx descriptors
+    @param min_tx_desc - minimum number of tx descriptors
+    @param num_tx_desc - current number of tx descriptors
+    @param max_rx_desc - maximum number of rx descriptors
+    @param min_rx_desc - minimum number of rx descriptors
+    @param num_rx_desc - current number of rx descriptors
+    @param rx_offloads - available flags of RX offloads
+    @param tx_offloads - available flags of TX offloads
+    @param rx_offloads_enabled - enabled flags of RX offloads
+    @param tx_offloads_enabled - enabled flags of TX offloads
+*/
+define sw_interface_device_info_details
+{
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+
+  /* (dev_class, dev_instance) uniquely identifies hw interface. */
+  u32 dev_class;
+  u32 dev_instance;
+
+  /* (hw_class, hw_instance) uniquely identifies hw interface. */
+  u32 hw_class;
+  u32 hw_instance;
+
+  u8 numa_node;
+
+  /* VPP's flags (HW specific)  */
+  u32 hw_flags;
+
+  vl_api_pci_address_t pci_addr;
+
+  /* common information about HW queues */
+  u32 max_rx_queues;
+  u32 num_rx_queues;
+  u32 max_rx_desc;
+  u32 num_rx_desc;
+  u32 min_rx_desc;
+
+  u32 max_tx_queues;
+  u32 num_tx_queues;
+  u32 max_tx_desc;
+  u32 num_tx_desc;
+  u32 min_tx_desc;
+
+  /* specific info about HW offloads */
+  vl_api_dev_rx_offload_flags_t rx_offloads;
+  vl_api_dev_rx_offload_flags_t rx_offloads_enabled;
+  vl_api_dev_tx_offload_flags_t tx_offloads;
+  vl_api_dev_tx_offload_flags_t tx_offloads_enabled;
+};
+
+/** \brief Request all or filtered subset of sw_interface_device_details
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to dump info on, 0 or ~0 if on all
+*/
+define sw_interface_device_info_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xFFFFFFFF];
 };
 
 /** \brief Set or delete one or all ip addresses on a specified interface
