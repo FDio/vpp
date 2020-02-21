@@ -694,6 +694,72 @@ done:
   return err;
 }
 
+static void
+dpdk_hw_interface_info (struct vnet_main_t *vnm, u32 hw_if_index,
+			vnet_hw_interface_info_t * hw_info)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  struct rte_eth_dev_info di;
+  struct rte_pci_device *pci_dev;
+  f64 now = vlib_time_now (xm->vlib_main);
+
+  clib_memset (hw_info, 0, sizeof (*hw_info));
+
+  dpdk_update_counters (xd, now);
+  dpdk_update_link_state (xd, now);
+  rte_eth_dev_info_get (xd->port_id, &di);
+  pci_dev = dpdk_get_pci_device (&di);
+
+  hw_info->dev_class = hw->dev_class_index;
+  hw_info->dev_instance = hw->dev_instance;
+  hw_info->hw_class = hw->hw_class_index;
+  hw_info->hw_instance = hw->hw_instance;
+
+  hw_info->hw_flags = hw->flags;
+
+  /* rte_pci_addr -> vlib_pci_addr_t */
+  hw_info->pci_addr.domain = pci_dev->addr.domain;
+  hw_info->pci_addr.bus = pci_dev->addr.bus;
+  hw_info->pci_addr.slot = pci_dev->addr.devid;
+  hw_info->pci_addr.function = pci_dev->addr.function;
+
+  /* numa node / CPU socket */
+  hw_info->numa_node = xd->cpu_socket;
+
+  /* rx/tx queues & descriptors */
+  hw_info->max_rx_queues = di.max_rx_queues;
+  hw_info->num_rx_queues = xd->rx_q_used;
+
+  hw_info->max_tx_queues = di.max_tx_queues;
+  hw_info->num_tx_queues = xd->tx_q_used;
+
+  hw_info->max_tx_desc = di.rx_desc_lim.nb_max;
+  hw_info->min_tx_desc = di.rx_desc_lim.nb_min;
+  hw_info->num_tx_desc = xd->nb_tx_desc;
+
+  hw_info->max_rx_desc = di.tx_desc_lim.nb_max;
+  hw_info->min_rx_desc = di.tx_desc_lim.nb_min;
+  hw_info->num_rx_desc = xd->nb_rx_desc;
+
+
+#define _(n,o)							\
+  if (di.rx_offload_capa & DEV_RX_OFFLOAD_##o)			\
+    hw_info->rx_offloads |= VNET_DEV_RX_OFFLOAD_F_##o;		\
+  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_##o)	\
+    hw_info->rx_offloads_enabled |= VNET_DEV_RX_OFFLOAD_F_##o;
+  foreach_rx_offload_capabilities
+#undef _
+#define _(n,o)							\
+  if (di.tx_offload_capa & DEV_TX_OFFLOAD_##o)			\
+    hw_info->tx_offloads |= VNET_DEV_TX_OFFLOAD_F_##o;		\
+  if (xd->port_conf.txmode.offloads & DEV_TX_OFFLOAD_##o)	\
+    hw_info->tx_offloads_enabled |= VNET_DEV_TX_OFFLOAD_F_##o;
+    foreach_tx_offload_capabilities
+#undef _
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -711,6 +777,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
+  .hw_interface_info = dpdk_hw_interface_info,
 };
 /* *INDENT-ON* */
 

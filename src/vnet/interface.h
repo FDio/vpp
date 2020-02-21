@@ -41,6 +41,7 @@
 #define included_vnet_interface_h
 
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
@@ -192,6 +193,98 @@ typedef int (*vnet_dev_class_ip_tunnel_desc_t) (u32 sw_if_index,
 						union ip46_address_t_ * dst,
 						u8 * is_l2);
 
+/**
+ * Rx specific offloads
+ */
+#define foreach_rx_offload_capabilities		\
+  _(0,  IPV4_CKSUM)				\
+  _(1,  UDP_CKSUM)				\
+  _(2,  TCP_CKSUM)				\
+  _(3,  VLAN_STRIP)				\
+  _(4,  KEEP_CRC)
+
+/**
+ * Tx specific offloads
+ */
+#define foreach_tx_offload_capabilities		\
+  _(0,  IPV4_CKSUM)				\
+  _(1,  UDP_CKSUM)				\
+  _(2,  TCP_CKSUM)				\
+  _(3,  TCP_TSO)				\
+  _(4,  UDP_TSO)				\
+  _(5,  MULTI_SEGS)
+
+
+typedef enum
+{
+#define _(n, o)\
+  VNET_DEV_RX_OFFLOAD_F_##o = (1ULL << (n)),
+
+  foreach_rx_offload_capabilities
+#undef _
+} vnet_dev_rx_offload_flags_t;
+
+typedef enum
+{
+#define _(n, o)\
+  VNET_DEV_TX_OFFLOAD_F_##o = (1ULL << (n)),
+
+  foreach_tx_offload_capabilities
+#undef _
+} vnet_dev_tx_offload_flags_t;
+
+/* fields which is used in hash calculation */
+typedef enum
+{
+#define _(n, o)\
+  VNET_ETH_RSS_HASH_F_##o = (1ULL << (n)),
+
+  foreach_rss_hash_flags
+#undef _
+} vnet_eth_rss_hash_flags_t;
+
+typedef struct _vnet_hw_interface_info
+{
+  /* (dev_class, dev_instance) uniquely identifies hw interface. */
+  u32 dev_class;
+  u32 dev_instance;
+
+  /* (hw_class, hw_instance) uniquely identifies hw interface. */
+  u32 hw_class;
+  u32 hw_instance;
+
+  /* NUMA node on which interface is located */
+  u8 numa_node;
+
+  /* HW specific VPP interface's flags
+   * type: vnet_hw_interface_flags_t
+   * from: vnet_hw_interface_t -> flags
+   */
+  u32 hw_flags;
+
+  vlib_pci_addr_t pci_addr;
+
+  /* common information about HW queues */
+  u32 max_rx_queues;
+  u32 num_rx_queues;
+  u32 max_rx_desc;
+  u32 min_rx_desc;
+  u32 num_rx_desc;
+
+  u32 max_tx_queues;
+  u32 num_tx_queues;
+  u32 max_tx_desc;
+  u32 min_tx_desc;
+  u32 num_tx_desc;
+
+  /* specific info about HW offloads */
+  vnet_dev_rx_offload_flags_t rx_offloads;
+  vnet_dev_rx_offload_flags_t rx_offloads_enabled;
+  vnet_dev_tx_offload_flags_t tx_offloads;
+  vnet_dev_tx_offload_flags_t tx_offloads_enabled;
+
+} vnet_hw_interface_info_t;
+
 /* A class of hardware interface devices. */
 typedef struct _vnet_device_class
 {
@@ -282,6 +375,10 @@ typedef struct _vnet_device_class
   /* Interface to set rss queues of the interface */
   vnet_interface_rss_queues_set_t *set_rss_queues_function;
 
+  /* Function to retrieve device specific information */
+  void (*hw_interface_info) (struct vnet_main_t * vnm,
+			     u32 hw_if_index,
+			     vnet_hw_interface_info_t * hw_info);
 } vnet_device_class_t;
 
 #ifndef CLIB_MARCH_VARIANT

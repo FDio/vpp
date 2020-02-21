@@ -1094,6 +1094,155 @@ static void vl_api_sw_interface_details_t_handler_json
     }
 }
 
+
+static void vl_api_sw_interface_device_info_details_t_handler
+  (vl_api_sw_interface_device_info_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vlib_pci_addr_t addr;
+
+  addr.domain = ntohs (mp->pci_addr.domain);
+  addr.bus = mp->pci_addr.bus;
+  addr.slot = mp->pci_addr.slot;
+  addr.function = mp->pci_addr.function;
+
+  u8 *pci_addr = format (0, "%04x:%02x:%02x.%x",
+			 addr.domain, addr.bus,
+			 addr.slot, addr.function);
+  u8 *s;
+
+  s = format (0, "Device class idx/inst: %d/%d; HW idx/inst: %d/%d\n",
+	      ntohl (mp->dev_class), ntohl (mp->dev_instance),
+	      ntohl (mp->hw_class), ntohl (mp->hw_instance));
+  u32 indent = format_get_indent (s);
+  s = format (s, "%Usw_if_index:      %8X\n",
+	      format_white_space, indent + 2, ntohl (mp->sw_if_index));
+  s = format (s, "%UDevice flags:     %8X\n",
+	      format_white_space, indent + 2, mp->hw_flags);
+  s = format (s, "%UPCI address:  %12s\n",
+	      format_white_space, indent + 2, pci_addr);
+  s = format (s, "%UNUMA node:        %8d\n",
+	      format_white_space, indent + 2, mp->numa_node);
+  s = format (s, "%URX: queues %d (max %d), desc %d "
+	      "(min %d max %d)\n",
+	      format_white_space, indent + 2,
+	      ntohl (mp->num_rx_queues), ntohl (mp->max_rx_queues),
+	      ntohl (mp->num_rx_desc),
+	      ntohl (mp->min_rx_desc), ntohl (mp->max_rx_desc));
+  s = format (s, "%UOffload flags:\n"
+	      "%UAvailable:  %8X\n"
+	      "%UEnabled:    %8X\n",
+	      format_white_space, indent + 4,
+	      format_white_space, indent + 8,
+	      ntohl (mp->rx_offloads),
+	      format_white_space, indent + 8,
+	      ntohl (mp->rx_offloads_enabled));
+  s = format (s, "%UTX: queues %d (max %d), desc %d "
+	      "(min %d max %d)\n",
+	      format_white_space, indent + 2,
+	      ntohl (mp->num_tx_queues), ntohl (mp->max_tx_queues),
+	      ntohl (mp->num_tx_desc),
+	      ntohl (mp->min_tx_desc), ntohl (mp->max_tx_desc));
+  s = format (s, "%UOffload flags:\n"
+	      "%UAvailable:  %8X\n"
+	      "%UEnabled:    %8X\n",
+	      format_white_space, indent + 4,
+	      format_white_space, indent + 8,
+	      ntohl (mp->tx_offloads),
+	      format_white_space, indent + 8,
+	      ntohl (mp->tx_offloads_enabled));
+
+  print (vam->ofp, "\n %s", s);
+
+  vec_free (pci_addr);
+  vec_free (s);
+}
+
+int
+api_sw_interface_device_info_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_device_info_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 sw_if_index;
+  int sw_if_index_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (!sw_if_index_set)
+    sw_if_index = ~0;
+
+  M (SW_INTERFACE_DEVICE_INFO_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void vl_api_sw_interface_device_info_details_t_handler_json
+  (vl_api_sw_interface_device_info_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  vlib_pci_addr_t pci_addr;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  pci_addr.domain = ntohs (mp->pci_addr.domain);
+  pci_addr.bus = mp->pci_addr.bus;
+  pci_addr.slot = mp->pci_addr.slot;
+  pci_addr.function = mp->pci_addr.function;
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "dev_class", ntohl (mp->dev_class));
+  vat_json_object_add_uint (node, "hw_class", ntohl (mp->hw_class));
+  vat_json_object_add_uint (node, "dev_instance", ntohl (mp->dev_instance));
+  vat_json_object_add_uint (node, "hw_instance", ntohl (mp->hw_instance));
+  vat_json_object_add_uint (node, "pci_addr", pci_addr.as_u32);
+  vat_json_object_add_uint (node, "numa_node", mp->numa_node);
+  vat_json_object_add_uint (node, "hw_flags", ntohl (mp->hw_flags));
+
+  vat_json_object_add_uint (node, "max_rx_queues", ntohl (mp->max_rx_queues));
+  vat_json_object_add_uint (node, "num_rx_queues", ntohl (mp->num_rx_queues));
+  vat_json_object_add_uint (node, "max_rx_desc", ntohl (mp->max_rx_desc));
+  vat_json_object_add_uint (node, "num_rx_desc", ntohl (mp->num_rx_desc));
+  vat_json_object_add_uint (node, "min_rx_desc", ntohl (mp->min_rx_desc));
+
+  vat_json_object_add_uint (node, "max_tx_queues", ntohl (mp->max_tx_queues));
+  vat_json_object_add_uint (node, "num_tx_queues", ntohl (mp->num_tx_queues));
+  vat_json_object_add_uint (node, "max_tx_desc", ntohl (mp->max_tx_desc));
+  vat_json_object_add_uint (node, "num_tx_desc", ntohl (mp->num_tx_desc));
+  vat_json_object_add_uint (node, "min_tx_desc", ntohl (mp->min_tx_desc));
+
+  vat_json_object_add_uint (node, "rx_offloads", ntohl (mp->rx_offloads));
+  vat_json_object_add_uint (node, "rx_offloads_enabled",
+			    ntohl (mp->rx_offloads_enabled));
+  vat_json_object_add_uint (node, "tx_offloads", ntohl (mp->tx_offloads));
+  vat_json_object_add_uint (node, "tx_offloads_enabled",
+			    ntohl (mp->tx_offloads_enabled));
+}
+
 #if VPP_API_TEST_BUILTIN == 0
 static void vl_api_sw_interface_event_t_handler
   (vl_api_sw_interface_event_t * mp)
@@ -5245,6 +5394,7 @@ foreach_standard_reply_retval_handler;
 _(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
 _(CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)       \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
+_(SW_INTERFACE_DEVICE_INFO_DETAILS, sw_interface_device_info_details)	\
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(CONTROL_PING_REPLY, control_ping_reply)                               \
 _(CLI_REPLY, cli_reply)                                                 \
@@ -20390,6 +20540,8 @@ echo (vat_main_t * vam)
 #define foreach_vpe_api_msg                                             \
 _(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
 _(sw_interface_dump,"")                                                 \
+_(sw_interface_device_info_dump,					\
+  "<intfc> | sw_if_index <id>")                                         \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \
