@@ -1054,9 +1054,7 @@ much of anything else.
 heapsize <n>M | <n>G
 ^^^^^^^^^^^^^^^^^^^^
 
-Specifies the size of the heap in MB or GB. The default is 1GB. Setting the
-main heap size to 4GB or more requires recompilation of the entire system
-with CLIB_VEC64 > 0. See .../clib/clib/vec_bootstrap.h.
+Specifies the size of the heap in MB or GB. The default is 1GB.
 
 .. code-block:: console
 
