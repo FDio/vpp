@@ -814,6 +814,19 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 				     TRANSPORT_MAX_HDRS_LEN);
 }
 
+always_inline void
+session_tx_maybe_reschedule (session_worker_t * wrk,
+			     session_tx_context_t * ctx,
+			     session_evt_elt_t * elt, u8 is_peek)
+{
+  session_t *s = ctx->s;
+
+  svm_fifo_unset_event (s->tx_fifo);
+  if (svm_fifo_max_dequeue_cons (s->tx_fifo) > is_peek ? ctx->tx_offset : 0)
+    if (svm_fifo_set_event (s->tx_fifo))
+      session_evt_add_head_old (wrk, elt);
+}
+
 always_inline int
 session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				vlib_node_runtime_t * node,
@@ -897,15 +910,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	snd_space - snd_space % ctx->snd_mss : snd_space;
     }
 
-  /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (ctx->s->tx_fifo);
-
   /* Check how much we can pull. */
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
       transport_connection_tx_pacer_reset_bucket (ctx->tc, 0);
+      session_tx_maybe_reschedule (wrk, ctx, elt, peek_data);
       return SESSION_TX_NO_DATA;
     }
 
@@ -917,8 +928,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
-      if (svm_fifo_set_event (ctx->s->tx_fifo))
-	session_evt_add_head_old (wrk, elt);
+      session_evt_add_head_old (wrk, elt);
       vlib_node_increment_counter (wrk->vm, node->node_index,
 				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
       return SESSION_TX_NO_BUFFERS;
@@ -1002,11 +1012,14 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
 
-  /* If we couldn't dequeue all bytes mark as partially read */
   ASSERT (ctx->left_to_snd == 0);
+
+  /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
+   * check if application enqueued more data and reschedule accordingly */
   if (ctx->max_len_to_snd < ctx->max_dequeue)
-    if (svm_fifo_set_event (ctx->s->tx_fifo))
-      session_evt_add_old (wrk, elt);
+    session_evt_add_old (wrk, elt);
+  else
+    session_tx_maybe_reschedule (wrk, ctx, elt, peek_data);
 
   if (!peek_data
       && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
