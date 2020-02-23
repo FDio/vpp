@@ -1272,7 +1272,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   clib_llist_index_t ei, next_ei, old_ti;
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  int i, n_tx_packets = 0;
+  int i, n_tx_packets;
   session_event_t *evt;
   svm_msg_q_t *mq;
 
@@ -1285,6 +1285,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    *  Update transport time
    */
   transport_update_time (wrk->last_vlib_time, thread_index);
+  n_tx_packets = vec_len (wrk->pending_tx_buffers);
 
   /*
    *  Dequeue and handle new events
