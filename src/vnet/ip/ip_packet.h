@@ -48,7 +48,7 @@ typedef enum ip_protocol
 #define ip_protocol(n,s) IP_PROTOCOL_##s = n,
 #include "protocols.def"
 #undef ip_protocol
-} ip_protocol_t;
+} __clib_packed ip_protocol_t;
 
 /* TCP/UDP ports. */
 typedef enum
