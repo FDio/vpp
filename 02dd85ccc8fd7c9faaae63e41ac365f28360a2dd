@@ -16,6 +16,24 @@
       "revId": "02dd85ccc8fd7c9faaae63e41ac365f28360a2dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29e84635_7b413a65",
+        "filename": "src/vnet/feature/feature.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-02-24T15:12:20Z",
+      "side": 1,
+      "message": "looking at some of those callers and generalising to all ... they do:\n   u32 next;\n   vlib_validate_buffer_enqueue_x1 (..., next_index, ...)\n     -\u003e vlib_put_next_frame(..., u32 next_index,  ...)\n     -\u003e vlib_get_next_frame(..., u32 next_index,  ...)\n\nso they\u0027re not really in the wrong.\n\ni suspect that vlib_buffer_enqueue_to_next chose to use u16 for next_index because it\u0027s both big enough to represent all arcs and saves on stack space. in the end it does an implicit cast to call vlib_XXX_next_frame.\n\ni\u0027m not sure that changing lots of existing nodes to account for a minor discrepancy is worth the churn.",
+      "parentUuid": "779591d0_2f5318b0",
+      "revId": "02dd85ccc8fd7c9faaae63e41ac365f28360a2dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
