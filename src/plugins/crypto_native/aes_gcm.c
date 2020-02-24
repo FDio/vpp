@@ -1179,7 +1179,80 @@ aes_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   return kd;
 }
 
-#define foreach_aes_gcm_handler_type _(128) _(192) _(256)
+static_always_inline void
+aesni_gcm_async (vlib_main_t * vm, vnet_crypto_op_t * job,
+		 aes_gcm_key_data_t * kd, aes_key_size_t ks, u32 is_enc)
+{
+  vlib_buffer_t *b_src;
+  u8x16u *src, *dst = 0;
+  int rv;
+
+  b_src = vlib_get_buffer (vm, job->async_src.bi);
+  if (PREDICT_FALSE (vlib_buffer_chain_linearize (vm, b_src) > 1))
+    {
+      job->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+      return;
+    }
+
+  src = (u8x16u *) (b_src->data + job->async_src.crypto_start_offset);
+  if (job->asrc != job->adst)
+    {
+      vlib_buffer_t *b_dst = vlib_get_buffer (vm, job->async_dst.bi);
+      dst = (u8x16u *) (b_dst->data + job->async_src.crypto_start_offset);
+    }
+  else
+    dst = src;
+
+  rv = aes_gcm (src, dst, (u8x16u *) job->aad, (u8x16u *) job->iv,
+		(u8x16u *) job->tag, job->len, job->aad_len, job->tag_len, kd,
+		AES_KEY_ROUNDS (ks), is_enc);
+
+  if (rv)
+    job->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+  else
+    job->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+}
+
+
+static_always_inline u32
+aesni_gcm_dequeue_hdl (vlib_main_t * vm, vnet_crypto_op_id_t opt,
+		       vnet_crypto_op_async_data_t post_jobs[], u32 n_jobs,
+		       aes_key_size_t ks, u32 is_enc)
+{
+  crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd =
+    cm->per_thread_data + vm->thread_index;
+  crypto_native_queue_t *q = ptd->queues[opt];
+  vnet_crypto_op_t **job = ptd->jobs;
+  aes_gcm_key_data_t *kd;
+  u32 n = 0;
+  u32 i;
+
+  /* *INDENT-OFF* */
+  vec_foreach_index (i, cm->per_thread_data)
+  {
+    crypto_native_per_thread_data_t *pt = cm->per_thread_data + i;
+    crypto_native_queue_t *pq = pt->queues[opt];
+    n += crypto_native_get_pending_jobs (pq, job + n, n_jobs - n);
+    if (n == n_jobs)
+      break;
+  }
+
+  n_jobs = n;
+  while (n)
+  {
+    kd = (aes_gcm_key_data_t *) cm->key_data[job[0]->key_index];
+    aesni_gcm_async (vm, job[0], kd, ks, is_enc);
+    job++;
+    n--;
+  }
+
+  q = ptd->queues[opt];
+
+  return crypto_native_dequeue_ops (ptd, q, post_jobs, n_jobs);
+}
+
+#define foreach_aesni_gcm_handler_type _(128) _(192) _(256)
 
 #define _(x) \
 static u32 aes_ops_dec_aes_gcm_##x                                         \
@@ -1189,9 +1262,25 @@ static u32 aes_ops_enc_aes_gcm_##x                                         \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
 { return aes_ops_enc_aes_gcm (vm, ops, n_ops, AES_KEY_##x); }              \
 static void * aes_gcm_key_exp_##x (vnet_crypto_key_t *key)                 \
-{ return aes_gcm_key_exp (key, AES_KEY_##x); }
+{ return aes_gcm_key_exp (key, AES_KEY_##x); }                             \
+static u32 aesni_ops_enc_enqueue_hdl_##x                                     \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
+{ return crypto_native_enqueue_ops (vm, VNET_CRYPTO_OP_AES_##x##_GCM_ENC,    \
+  ops, n_ops); }                                                             \
+static u32 aesni_ops_dec_enqueue_hdl_##x                                     \
+(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
+{ return crypto_native_enqueue_ops (vm, VNET_CRYPTO_OP_AES_##x##_GCM_DEC,    \
+  ops, n_ops); }                                                             \
+static u32 aesni_ops_enc_dequeue_hdl_##x                                     \
+(vlib_main_t *vm, vnet_crypto_op_async_data_t ops[], u32 n_ops)              \
+{ return aesni_gcm_dequeue_hdl (vm, VNET_CRYPTO_OP_AES_##x##_GCM_ENC, ops,   \
+  n_ops, AES_KEY_##x, 1); }                                                  \
+static u32 aesni_ops_dec_dequeue_hdl_##x                                     \
+(vlib_main_t *vm, vnet_crypto_op_async_data_t ops[], u32 n_ops)              \
+{ return aesni_gcm_dequeue_hdl (vm, VNET_CRYPTO_OP_AES_##x##_GCM_DEC, ops,   \
+  n_ops, AES_KEY_##x, 0); }
 
-foreach_aes_gcm_handler_type;
+foreach_aesni_gcm_handler_type;
 #undef _
 
 clib_error_t *
@@ -1216,8 +1305,17 @@ crypto_native_aes_gcm_init_sse42 (vlib_main_t * vm)
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
 				    VNET_CRYPTO_OP_AES_##x##_GCM_DEC, \
 				    aes_ops_dec_aes_gcm_##x); \
-  cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_GCM] = aes_gcm_key_exp_##x;
-  foreach_aes_gcm_handler_type;
+  cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_GCM] = aes_gcm_key_exp_##x; \
+  vnet_crypto_register_async_ops_handler (vm, cm->crypto_engine_index, \
+  				    VNET_CRYPTO_OP_AES_##x##_GCM_ENC, \
+				    aesni_ops_enc_enqueue_hdl_##x, \
+				    aesni_ops_enc_dequeue_hdl_##x); \
+  vnet_crypto_register_async_ops_handler (vm, cm->crypto_engine_index, \
+  				    VNET_CRYPTO_OP_AES_##x##_GCM_DEC, \
+				    aesni_ops_dec_enqueue_hdl_##x, \
+				    aesni_ops_dec_dequeue_hdl_##x);
+
+  foreach_aesni_gcm_handler_type;
 #undef _
   return 0;
 }
