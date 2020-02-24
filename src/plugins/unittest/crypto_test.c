@@ -207,7 +207,6 @@ generate_digest (vlib_main_t * vm,
 static int
 restore_engines (u32 * engs)
 {
-  return 0;
   vnet_crypto_main_t *cm = &crypto_main;
   u32 i;
   vnet_crypto_engine_t *ce;
@@ -230,7 +229,6 @@ restore_engines (u32 * engs)
 static int
 save_current_engines (u32 * engs)
 {
-  return 0;
   vnet_crypto_main_t *cm = &crypto_main;
   uword *p;
   u32 i;
@@ -536,6 +534,7 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
                   op->chunk_index = vec_len (chunks);
                   while (pt->data)
                     {
+                      clib_memset (&ch, 0, sizeof (ch));
                       ch.src = pt->data;
                       ch.len = pt->length;
                       ch.dst = computed_data + computed_data_total_len;
@@ -554,6 +553,7 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
                   op->chunk_index = vec_len (chunks);
                   while (ct->data)
                     {
+                      clib_memset (&ch, 0, sizeof (ch));
                       ch.src = ct->data;
                       ch.len = ct->length;
                       ch.dst = computed_data + computed_data_total_len;
@@ -608,6 +608,7 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               op->chunk_index = vec_len (chunks);
               while (pt->data)
                 {
+                  clib_memset (&ch, 0, sizeof (ch));
                   ch.src = pt->data;
                   ch.len = pt->length;
                   vec_add1 (chunks, ch);
