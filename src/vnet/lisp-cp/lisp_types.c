@@ -472,7 +472,7 @@ ip_address_put (u8 * b, ip_address_t * a)
   u32 len = ip_address_size (a);
   *(u16 *) b = clib_host_to_net_u16 (ip_address_iana_afi (a));
   u8 *p = b + sizeof (u16);
-  clib_memcpy (p, &ip_addr_addr (a), len);
+  clib_memcpy (p, ip_addr_bytes (a), len);
   return (len + sizeof (u16));
 }
 
@@ -481,7 +481,7 @@ ip_address_parse (void *offset, u16 iana_afi, ip_address_t * dst)
 {
   ip_addr_version (dst) = ip_iana_afi_to_version (iana_afi);
   u8 size = ip_version_to_size (ip_addr_version (dst));
-  clib_memcpy (&ip_addr_addr (dst), offset + sizeof (u16), size);
+  clib_memcpy (ip_addr_bytes (dst), offset + sizeof (u16), size);
   return (sizeof (u16) + size);
 }
 
