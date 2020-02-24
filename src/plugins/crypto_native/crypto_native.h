@@ -19,11 +19,25 @@
 #define __crypto_native_h__
 
 typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
+#define CRYPTO_NATIVE_RING_SIZE 512
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head;
+  u32 tail;
+  u32 size;
+  vnet_crypto_op_id_t op:8;
+  vnet_crypto_op_t jobs[0];
+} crypto_native_queue_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8x16 cbc_iv[4];
+  crypto_native_queue_t *queues[VNET_CRYPTO_N_OP_IDS];
+  clib_bitmap_t *act_queues;
+  vnet_crypto_op_t **jobs;
 } crypto_native_per_thread_data_t;
 
 typedef struct
@@ -47,6 +61,19 @@ clib_error_t *crypto_native_aes_gcm_init_avx2 (vlib_main_t * vm);
 clib_error_t *crypto_native_aes_gcm_init_avx512 (vlib_main_t * vm);
 clib_error_t *crypto_native_aes_gcm_init_vaes (vlib_main_t * vm);
 clib_error_t *crypto_native_aes_gcm_init_neon (vlib_main_t * vm);
+
+u32 crypto_native_enqueue_ops (vlib_main_t * vm, vnet_crypto_op_id_t opt,
+			       vnet_crypto_op_t * jobs[], u32 n_jobs);
+
+u32 crypto_native_get_pending_jobs (crypto_native_queue_t * q,
+				    vnet_crypto_op_t * jobs[], u32 n_jobs);
+
+
+u32 crypto_native_dequeue_ops (crypto_native_per_thread_data_t * ptd,
+			       crypto_native_queue_t * q,
+			       vnet_crypto_op_async_data_t post_jobs[],
+			       u32 n_jobs);
+
 #endif /* __crypto_native_h__ */
 
 /*

@@ -102,7 +102,7 @@ typedef enum ipsec_sad_flags_t_
 #undef _
 } __clib_packed ipsec_sa_flags_t;
 
-STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
+STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 2 byte");
 
 typedef struct
 {

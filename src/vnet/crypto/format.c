@@ -62,6 +62,7 @@ u8 *
 format_vnet_crypto_op_type (u8 * s, va_list * args)
 {
   vnet_crypto_op_type_t opt = va_arg (*args, vnet_crypto_op_type_t);
+
   char *strings[] = {
 #define _(n, s) [VNET_CRYPTO_OP_TYPE_##n] = s,
     foreach_crypto_op_type
@@ -70,14 +71,13 @@ format_vnet_crypto_op_type (u8 * s, va_list * args)
 
   if (opt >= VNET_CRYPTO_OP_N_TYPES)
     return format (s, "unknown");
-
   return format (s, "%s", strings[opt]);
 }
 
 u8 *
 format_vnet_crypto_op_status (u8 * s, va_list * args)
 {
-  vnet_crypto_op_status_t st = va_arg (*args, vnet_crypto_op_status_t);
+  vnet_crypto_op_status_t st = va_arg (*args, int);
   char *strings[] = {
 #define _(n, s) [VNET_CRYPTO_OP_STATUS_##n] = s,
     foreach_crypto_op_status
