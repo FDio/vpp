@@ -30,6 +30,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   json_format.c
   types.c
   ip_types_api.c
+  ip_types.c
   protocols.def
 
   DEPENDS api_headers
