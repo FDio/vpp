@@ -17,8 +17,8 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
-NUM_PKTS = 67
-engines_supporting_chain_bufs = ["openssl"]
+NUM_PKTS = 2
+engines_supporting_chain_bufs = ["ipsecmb"]
 
 
 class ConfigIpsecESP(TemplateIpsec):
@@ -292,6 +292,30 @@ class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
                     IpsecTun46Tests, IpsecTra6ExtTests):
     """ Ipsec ESP - TUN & TRA tests """
     pass
+
+
+class TestIpsecEspAsync(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec ESP Async - TUN & TRA tests """
+    worker_config = "workers 1"
+
+    def setUp(self):
+        self.ipv4_params = IPsecIPv4Params()
+
+        self.ipv4_params.crypt_algo_vpp_id = (VppEnum.
+                                              vl_api_ipsec_crypto_alg_t.
+                                              IPSEC_API_CRYPTO_ALG_AES_GCM_128)
+        self.ipv4_params.crypt_key = b"JPjyOWBeVEQiMe7h"
+        self.ipv4_params.crypt_algo = "AES-GCM"
+        self.ipv4_params.salt = 2020
+        self.ipv4_params.auth_algo_vpp_id = (VppEnum.
+                                             vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_NONE)
+        self.ipv4_params.auth_key = b''
+        self.ipv4_params.auth_algo = "NULL"
+
+        self.vapi.cli("set crypto handler aes-128-gcm native async")
+        self.vapi.cli("set crypto async mode aes-128-gcm on")
+        super(TestIpsecEspAsync, self).setUp()
 
 
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
