@@ -384,7 +384,7 @@ ghash4_final (ghash4_data_t * gd)
 #endif
 
 static_always_inline void
-ghash_precompute (u8x16 H, u8x16 * Hi, int count)
+ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 {
   u8x16 r8;
   u32x4 r32;
@@ -401,11 +401,11 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int count)
   /* *INDENT-OFF* */
   r32 = r32 == (u32x4) {1, 0, 0, 1};
   /* *INDENT-ON* */
-  Hi[0] = H ^ ((u8x16) r32 & ghash_poly);
+  Hi[n - 1] = H = H ^ ((u8x16) r32 & ghash_poly);
 
   /* calculate H^(i + 1) */
-  for (int i = 1; i < count; i++)
-    Hi[i] = ghash_mul (Hi[0], Hi[i - 1]);
+  for (int i = n - 2; i >= 0; i--)
+    Hi[i] = ghash_mul (H, Hi[i + 1]);
 }
 
 #endif /* __ghash_h__ */
