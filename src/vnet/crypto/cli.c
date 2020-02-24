@@ -61,12 +61,23 @@ format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
 
   vnet_crypto_op_id_t id = va_arg (*args, vnet_crypto_op_id_t);
   u32 ei = va_arg (*args, u32);
-  int is_chained = va_arg (*args, int);
+  int is_chain_async = va_arg (*args, int);
 
   vec_foreach (e, cm->engines)
     {
-      void * h = is_chained ? (void *) e->chained_ops_handlers[id]
-        : (void *) e->ops_handlers[id];
+      void *h = 0;
+      switch (is_chain_async)
+      {
+	case 0: /* simple */
+	  h = (void *) e->ops_handlers[id];
+	  break;
+	case 1:
+	  h = (void *) e->chained_ops_handlers[id];
+	  break;
+	case 2:
+	  h = (void *) e->enqueue_handlers[id];
+	  break;
+      }
 
       if (h)
         {
@@ -104,8 +115,10 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
 
       s = format (s, "%-28U", format_vnet_crypto_engine_candidates, id,
           od->active_engine_index_simple, 0);
-      s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
+      s = format (s, "%-28U", format_vnet_crypto_engine_candidates, id,
           od->active_engine_index_chained, 1);
+      s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
+          od->active_engine_index_async, 2);
       first = 0;
     }
   return s;
@@ -122,8 +135,8 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
-  vlib_cli_output (vm, "%-16s%-16s%-28s%s", "Algo", "Type", "Simple",
-      "Chained");
+  vlib_cli_output (vm, "%-16s%-16s%-28s%-28s%s", "Algo", "Type", "Simple",
+      "Chained", "Async");
 
   for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
     vlib_cli_output (vm, "%-16U%U", format_vnet_crypto_alg, i,
@@ -165,6 +178,8 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
 	oct = CRYPTO_OP_SIMPLE;
       else if (unformat (line_input, "chained"))
 	oct = CRYPTO_OP_CHAINED;
+      else if (unformat (line_input, "async"))
+	oct = CRYPTO_OP_ASYNC;
       else if (unformat (line_input, "both"))
 	oct = CRYPTO_OP_BOTH;
       else if (unformat (line_input, "%s", &s))
@@ -227,10 +242,86 @@ VLIB_CLI_COMMAND (set_crypto_handler_command, static) =
 {
   .path = "set crypto handler",
   .short_help = "set crypto handler cipher [cipher2 cipher3 ...] engine"
-    " [simple|chained]",
+    " [simple|chained|async]",
   .function = set_crypto_handler_command_fn,
 };
+
+static clib_error_t *
+set_crypto_async_mode_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_crypto_main_t *cm = &crypto_main;
+  char **args = 0, *s, **arg;
+  int all = 0, on = -1;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "all"))
+	all = 1;
+      else if (unformat (line_input, "on"))
+	on = 1;
+      else if (unformat (line_input, "off"))
+	on = 0;
+      else if (unformat (line_input, "%s", &s))
+	vec_add1 (args, s);
+      else
+	{
+	  error = clib_error_return (0, "invalid params");
+	  goto done;
+	}
+    }
+
+  if (vec_len (args) < 1 && !all)
+    {
+      error = clib_error_return (0, "missing cipher or on/off!");
+      goto done;
+    }
+
+  if (on == -1)
+    {
+      error = clib_error_return (0, "missing on/off");
+    }
+
+  if (all)
+    {
+      char *key;
+      u8 *value;
+
+      hash_foreach_mem (key, value, cm->alg_index_by_name,
+      ({
+        vnet_crypto_set_async_state (key, on);
+      }));
+    }
+  else
+    {
+      vec_foreach (arg, args)
+      {
+        vnet_crypto_set_async_state (arg[0], on);
+      }
+    }
+
+done:
+vec_foreach (arg, args) vec_free (arg[0]);
+vec_free (args);
+unformat_free (line_input);
+return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_crypto_async_mode_command, static) =
+{
+  .path = "set crypto async mode",
+  .short_help = "set crypto async mode cipher [cipher2 cipher3 ...] [on|off]",
+  .function = set_crypto_async_mode_command_fn,
+};
 /* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON
