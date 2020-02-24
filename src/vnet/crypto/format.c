@@ -62,6 +62,7 @@ u8 *
 format_vnet_crypto_op_type (u8 * s, va_list * args)
 {
   vnet_crypto_op_type_t opt = va_arg (*args, vnet_crypto_op_type_t);
+  int chain_or_async = va_arg (*args, int);
   char *strings[] = {
 #define _(n, s) [VNET_CRYPTO_OP_TYPE_##n] = s,
     foreach_crypto_op_type
@@ -71,7 +72,17 @@ format_vnet_crypto_op_type (u8 * s, va_list * args)
   if (opt >= VNET_CRYPTO_OP_N_TYPES)
     return format (s, "unknown");
 
-  return format (s, "%s", strings[opt]);
+  switch (chain_or_async)
+    {
+    case 0:			/* plain */
+      return format (s, "%s", strings[opt]);
+    case 1:
+      return format (s, "%s-chained", strings[opt]);
+    case 2:
+      return format (s, "%s-async", strings[opt]);
+    default:
+      return 0;
+    }
 }
 
 u8 *
