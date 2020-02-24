@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc0e2a70_9db1fdff",
+        "filename": "src/vnet/ip/ip.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-02-24T14:36:47Z",
+      "side": 1,
+      "message": "This looks like a brain fart. You\u0027ll get AF_IP4 for two ipv6-related input strings...",
+      "revId": "ec7ef77010387e2b32ac9d550738290afbd8e14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
