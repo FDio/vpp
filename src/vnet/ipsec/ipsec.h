@@ -28,6 +28,7 @@
 
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
+typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
@@ -36,6 +37,8 @@ typedef struct
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
   /* check support function */
   check_support_cb_t check_support_cb;
+  /* enable or disable function */
+  enable_disable_cb_t enable_disable_cb;
   u32 ah4_encrypt_node_index;
   u32 ah4_decrypt_node_index;
   u32 ah4_encrypt_next_index;
@@ -53,6 +56,8 @@ typedef struct
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
   /* check support function */
   check_support_cb_t check_support_cb;
+  /* enable or disable function */
+  enable_disable_cb_t enable_disable_cb;
   u32 esp4_encrypt_node_index;
   u32 esp4_decrypt_node_index;
   u32 esp4_encrypt_next_index;
@@ -95,6 +100,7 @@ typedef struct
   vnet_crypto_op_t *integ_ops;
   vnet_crypto_op_t *chained_crypto_ops;
   vnet_crypto_op_t *chained_integ_ops;
+  vnet_crypto_op_t *async_ops;
   vnet_crypto_op_chunk_t *chunks;
 } ipsec_per_thread_data_t;
 
@@ -253,7 +259,8 @@ u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 			       const char *ah6_encrypt_node_name,
 			       const char *ah6_decrypt_node_name,
 			       check_support_cb_t ah_check_support_cb,
-			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
+			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb,
+			       enable_disable_cb_t enable_disable_cb);
 
 u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 				const char *name,
@@ -266,7 +273,8 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 				const char *esp6_decrypt_node_name,
 				const char *esp6_decrypt_tun_node_name,
 				check_support_cb_t esp_check_support_cb,
-				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
+				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
+				enable_disable_cb_t enable_disable_cb);
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);

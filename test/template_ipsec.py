@@ -181,8 +181,10 @@ class TemplateIpsec(VppTestCase):
         super(TemplateIpsec, cls).tearDownClass()
 
     def setup_params(self):
-        self.ipv4_params = IPsecIPv4Params()
-        self.ipv6_params = IPsecIPv6Params()
+        if not hasattr(self, 'ipv4_params'):
+            self.ipv4_params = IPsecIPv4Params()
+        if not hasattr(self, 'ipv6_params'):
+            self.ipv6_params = IPsecIPv6Params()
         self.params = {self.ipv4_params.addr_type: self.ipv4_params,
                        self.ipv6_params.addr_type: self.ipv6_params}
 
@@ -282,14 +284,26 @@ class IpsecTra4(object):
                                self.tra4_encrypt_node_name)
         replay_node_name = ('/err/%s/SA replayed packet' %
                             self.tra4_decrypt_node_name)
+        replay_post_node_name = ('/err/%s-post/SA replayed packet' %
+                                 self.tra4_decrypt_node_name)
+
         if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
             hash_failed_node_name = ('/err/%s/ESP decryption failed' %
                                      self.tra4_decrypt_node_name)
         else:
             hash_failed_node_name = ('/err/%s/Integrity check failed' %
                                      self.tra4_decrypt_node_name)
+        hash_failed_dispatch_node = ('/err/crypto-dispatch/bad-hmac')
+
         replay_count = self.statistics.get_err_counter(replay_node_name)
+        # currently only esp has post nodes
+        # TODO: remove branch once AH support async mode
+        if p.scapy_tra_sa.proto == ESP:
+            replay_count += self.statistics.get_err_counter(
+                replay_post_node_name)
         hash_failed_count = self.statistics.get_err_counter(
+            hash_failed_node_name)
+        hash_failed_count += self.statistics.get_err_counter(
             hash_failed_node_name)
         seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
 
@@ -334,7 +348,14 @@ class IpsecTra4(object):
         recv_pkts = self.send_and_expect(self.tra_if, pkts * 8,
                                          self.tra_if, n_rx=1)
         replay_count += 7
-        self.assert_error_counter_equal(replay_node_name, replay_count)
+        # replay pkts can be dropped in esp-decrypt or esp-decrypt-post nodes
+        # error counters from both nodes have to be summed together
+        count = self.statistics.get_err_counter(replay_node_name)
+        # currently only esp has post nodes
+        # TODO: remove branch once AH support async mode
+        if p.scapy_tra_sa.proto == ESP:
+            count += self.statistics.get_err_counter(replay_post_node_name)
+        self.assert_equal(count, replay_count, "error counter `%s'" % count)
 
         #
         # now move the window over to 257 (more than one byte) and into Case A
@@ -350,7 +371,14 @@ class IpsecTra4(object):
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
         replay_count += 3
-        self.assert_error_counter_equal(replay_node_name, replay_count)
+        # replay pkts can be dropped in esp-decrypt or esp-decrypt-post nodes
+        # error counters from both nodes have to be summed together
+        count = self.statistics.get_err_counter(replay_node_name)
+        # currently only esp has post nodes
+        # TODO: remove branch once AH support async mode
+        if p.scapy_tra_sa.proto == ESP:
+            count += self.statistics.get_err_counter(replay_post_node_name)
+        self.assert_equal(count, replay_count, "error counter `%s'" % count)
 
         # the window size is 64 packets
         # in window are still accepted
@@ -378,8 +406,12 @@ class IpsecTra4(object):
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
         hash_failed_count += 17
-        self.assert_error_counter_equal(hash_failed_node_name,
-                                        hash_failed_count)
+        # couting for two nodes
+        count = self.statistics.get_err_counter(hash_failed_node_name)
+        count += self.statistics.get_err_counter(hash_failed_dispatch_node)
+        self.assert_equal(count, hash_failed_count,
+                          'incorrect hash fail counter %d != %d' %
+                          (hash_failed_count, count))
 
         # a malformed 'runt' packet
         #  created by a mis-constructed SA
@@ -424,13 +456,24 @@ class IpsecTra4(object):
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
             hash_failed_count += 17
-            self.assert_error_counter_equal(hash_failed_node_name,
-                                            hash_failed_count)
+            count = self.statistics.get_err_counter(hash_failed_node_name)
+            count += self.statistics.get_err_counter(
+                    hash_failed_dispatch_node)
+            self.assert_equal(count, hash_failed_count,
+                              "error counter `%s'" % count)
 
         else:
             replay_count += 17
-            self.assert_error_counter_equal(replay_node_name,
-                                            replay_count)
+            # replay pkts can be dropped in esp-decrypt or esp-decrypt-post
+            # nodes; error counters from both nodes have to be summed together
+            count = self.statistics.get_err_counter(replay_node_name)
+            # currently only esp has post nodes
+            # TODO: remove branch once AH support async mode
+            if p.scapy_tra_sa.proto == ESP:
+                count += self.statistics.get_err_counter(
+                    replay_post_node_name)
+            self.assert_equal(count, replay_count, "error counter `%s'" %
+                              count)
 
         # valid packet moves the window over to 258
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -514,8 +557,11 @@ class IpsecTra4(object):
             self.send_and_assert_no_replies(self.tra_if, [pkt], self.tra_if)
 
             hash_failed_count += 1
-            self.assert_error_counter_equal(hash_failed_node_name,
-                                            hash_failed_count)
+            count = self.statistics.get_err_counter(hash_failed_node_name)
+            count += self.statistics.get_err_counter(
+                    hash_failed_dispatch_node)
+            self.assert_equal(count, hash_failed_count,
+                              "error counter `%s'" % count)
 
             #
             # but if we move the wondow forward to case B, then we can wrap

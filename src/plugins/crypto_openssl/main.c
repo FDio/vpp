@@ -366,10 +366,10 @@ crypto_openssl_init (vlib_main_t * vm)
 #define _(m, a, b) \
   vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
 				    openssl_ops_enc_##a, \
-                                    openssl_ops_enc_chained_##a); \
+                                    openssl_ops_enc_chained_##a, 0, 0); \
   vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
 				    openssl_ops_dec_##a, \
-                                    openssl_ops_dec_chained_##a); \
+                                    openssl_ops_dec_chained_##a, 0, 0); \
 
   foreach_openssl_evp_op;
 #undef _
@@ -377,7 +377,7 @@ crypto_openssl_init (vlib_main_t * vm)
 #define _(a, b) \
   vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
 				    openssl_ops_hmac_##a, \
-                                    openssl_ops_hmac_chained_##a); \
+                                    openssl_ops_hmac_chained_##a, 0, 0); \
 
   foreach_openssl_hmac_op;
 #undef _
