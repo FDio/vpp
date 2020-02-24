@@ -282,7 +282,7 @@ ip6_mask_to_preflen (ip6_address_t * mask)
 u8 *
 format_ip_address_family (u8 * s, va_list * args)
 {
-  ip_address_family_t af = va_arg (*args, ip_address_family_t);
+  ip_address_family_t af = va_arg (*args, int);	// int promo ip_address_family_t);
 
   switch (af)
     {
@@ -293,6 +293,26 @@ format_ip_address_family (u8 * s, va_list * args)
     }
 
   return (format (s, "unknown"));
+}
+
+uword
+unformat_ip_address_family (unformat_input_t * input, va_list * args)
+{
+  ip_address_family_t *af = va_arg (*args, ip_address_family_t *);
+
+  if (unformat (input, "ip4") || unformat (input, "ipv6") ||
+      unformat (input, "IP4") || unformat (input, "IPv6"))
+    {
+      *af = AF_IP4;
+      return (1);
+    }
+  else if (unformat (input, "ip6") || unformat (input, "ipv6") ||
+	   unformat (input, "IP6") || unformat (input, "IPv6"))
+    {
+      *af = AF_IP6;
+      return (1);
+    }
+  return (0);
 }
 
 u8 *
