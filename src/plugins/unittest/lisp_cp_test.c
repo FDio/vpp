@@ -81,11 +81,11 @@ test_lisp_msg_push_ecm ()
     sizeof (ecm_hdr_t) + 1;
 
   la.type = GID_ADDR_IP_PREFIX;
-  la.ippref.addr.ip.v4.as_u32 = 0xa1b2c3d4;
+  la.ippref.addr.ip.ip4.as_u32 = 0xa1b2c3d4;
   la.ippref.addr.version = AF_IP4;
 
   ra.type = GID_ADDR_IP_PREFIX;
-  ra.ippref.addr.ip.v4.as_u32 = 0x90817263;
+  ra.ippref.addr.ip.ip4.as_u32 = 0x90817263;
   ra.ippref.addr.version = AF_IP4;
 
   ecm_hdr_t *lh = lisp_msg_push_ecm (vm, b, lp, rp, &la, &ra);
@@ -174,9 +174,9 @@ test_lisp_msg_parse_mapping_record ()
 
   lisp_msg_parse_mapping_record (b, &eid, &locs, &probed);
   _assert (vec_len (locs) == 1);
-  _assert (eid.ippref.addr.ip.v4.as_u32 == 0x66554433);
+  _assert (eid.ippref.addr.ip.ip4.as_u32 == 0x66554433);
   _assert (locs[0].local == 0);
-  _assert (locs[0].address.ippref.addr.ip.v4.as_u32 == 0xddccbbaa);
+  _assert (locs[0].address.ippref.addr.ip.ip4.as_u32 == 0xddccbbaa);
   _assert (locs[0].address.type == GID_ADDR_IP_PREFIX);
   _assert (locs[0].priority == 0xa);
   _assert (locs[0].weight == 0xb);
@@ -264,24 +264,24 @@ test_lisp_msg_parse ()
   u32 len = lisp_msg_parse_addr (b, &gid);
   _assert (len == 2 + 4
 	   /* Source-EID-AFI field lenght + IPv4 address length */ );
-  _assert (gid.ippref.addr.ip.v4.as_u32 == 0x12345678);
+  _assert (gid.ippref.addr.ip.ip4.as_u32 == 0x12345678);
   _assert (gid.ippref.addr.version == AF_IP4);
 
   u8 rloc_count = MREQ_ITR_RLOC_COUNT (h) + 1;
   lisp_msg_parse_itr_rlocs (b, &rlocs, rloc_count);
 
   _assert (vec_len (rlocs) == 2);
-  _assert (rlocs[0].ippref.addr.ip.v4.as_u32 == 0x10203040);
+  _assert (rlocs[0].ippref.addr.ip.ip4.as_u32 == 0x10203040);
   _assert (rlocs[0].ippref.addr.version == AF_IP4);
 
-  _assert (rlocs[1].ippref.addr.ip.v6.as_u32[0] == 0xffeeddcc);
-  _assert (rlocs[1].ippref.addr.ip.v6.as_u32[1] == 0xbbaa9988);
-  _assert (rlocs[1].ippref.addr.ip.v6.as_u32[2] == 0x77665544);
-  _assert (rlocs[1].ippref.addr.ip.v6.as_u32[3] == 0x33221100);
+  _assert (rlocs[1].ippref.addr.ip.ip6.as_u32[0] == 0xffeeddcc);
+  _assert (rlocs[1].ippref.addr.ip.ip6.as_u32[1] == 0xbbaa9988);
+  _assert (rlocs[1].ippref.addr.ip.ip6.as_u32[2] == 0x77665544);
+  _assert (rlocs[1].ippref.addr.ip.ip6.as_u32[3] == 0x33221100);
   _assert (rlocs[1].ippref.addr.version == AF_IP6);
 
   lisp_msg_parse_eid_rec (b, &eid);
-  _assert (eid.ippref.addr.ip.v4.as_u32 == 0x9abcdef0);
+  _assert (eid.ippref.addr.ip.ip4.as_u32 == 0x9abcdef0);
   _assert (eid.ippref.addr.version == AF_IP4);
   _assert (eid.ippref.len == 24);
 
@@ -433,7 +433,7 @@ build_test_map_records ()
       .type = GID_ADDR_IP_PREFIX,
       .ippref = {
         .addr = {
-          .ip.v4.as_u32 = 0x99887766,
+          .ip.ip4.as_u32 = 0x99887766,
           .version = AF_IP4
         }
       }
@@ -651,7 +651,7 @@ test_lisp_parse_lcaf ()
 
   lisp_msg_parse_mapping_record (b, &eid, &locs, &probed);
   _assert (vec_len (locs) == 3);
-  _assert (eid.ippref.addr.ip.v4.as_u32 == 0x66554433);
+  _assert (eid.ippref.addr.ip.ip4.as_u32 == 0x66554433);
 
   /* check 1st locator - an LCAF with ipv4 */
   _assert (locs[0].local == 0);
@@ -931,7 +931,7 @@ test_gid_parse_lcaf ()
   _assert (GID_ADDR_IP_PREFIX == gid_address_type (gid_addr));
   _assert (9 == gid_address_vni (gid_addr));
   _assert (0x18 == gid_address_vni_mask (gid_addr));
-  _assert (0xddccbb10 == gid_addr->ippref.addr.ip.v4.as_u32);
+  _assert (0xddccbb10 == gid_addr->ippref.addr.ip.ip4.as_u32);
 
 done:
   gid_address_free (gid_addr);
@@ -1128,7 +1128,7 @@ test_src_dst_with_vni_serdes (void)
           .addr =
             {
               .version = AF_IP4,
-              .ip.v4.data = { 0x1, 0x2, 0x3, 0x0 }
+              .ip.ip4.data = { 0x1, 0x2, 0x3, 0x0 }
             }
         }
     };
@@ -1142,7 +1142,7 @@ test_src_dst_with_vni_serdes (void)
           .addr =
             {
               .version = AF_IP4,
-              .ip.v4.data = { 0x9, 0x8, 0x0, 0x0 }
+              .ip.ip4.data = { 0x9, 0x8, 0x0, 0x0 }
             }
         }
     };

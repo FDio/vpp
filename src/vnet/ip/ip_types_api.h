@@ -42,12 +42,13 @@ extern u8 ip_dscp_encode (ip_dscp_t dscp);
  */
 extern ip46_type_t ip_address_decode (const vl_api_address_t * in,
 				      ip46_address_t * out);
-extern void ip_address_encode (const ip46_address_t * in,
-			       ip46_type_t type, vl_api_address_t * out);
 extern void ip_address_decode2 (const vl_api_address_t * in,
 				ip_address_t * out);
+extern void ip_address_encode (const ip46_address_t * in,
+			       ip46_type_t type, vl_api_address_t * out);
 extern void ip_address_encode2 (const ip_address_t * in,
 				vl_api_address_t * out);
+
 extern void ip6_address_encode (const ip6_address_t * in,
 				vl_api_ip6_address_t out);
 extern void ip6_address_decode (const vl_api_ip6_address_t in,
@@ -59,6 +60,8 @@ extern void ip4_address_decode (const vl_api_ip4_address_t in,
 
 extern void ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out);
 extern void ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out);
+extern int ip_prefix_decode2 (const vl_api_prefix_t * in, ip_prefix_t * out);
+extern void ip_prefix_encode2 (const ip_prefix_t * in, vl_api_prefix_t * out);
 
 extern void ip_mprefix_decode (const vl_api_mprefix_t * in,
 			       mfib_prefix_t * out);
