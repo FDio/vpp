@@ -128,6 +128,79 @@ esp_aad_fill (vnet_crypto_op_t * op,
       op->aad_len = 8;
     }
 }
+
+/**
+ * The post data structure to for esp_encrypt/decrypt_inline to write to
+ * vib_buffer_t opaque unused field, and for post nodes to pick up after
+ * dequeue.
+ **/
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      u8 icv_sz;
+      u8 iv_sz;
+      ipsec_sa_flags_t flags;
+      u32 sa_index;
+    };
+    u64 sa_data;
+  };
+
+  u32 seq;
+  i16 current_data;
+  i16 current_length;
+  u16 hdr_sz;
+  u16 is_chain;
+  u32 protect_index;
+} esp_decrypt_packet_data_t;
+
+STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
+
+/* we are forced to store the decrypt post data into 2 separate places -
+   vlib_opaque and opaque2. */
+typedef struct
+{
+  vlib_buffer_t *lb;
+  u32 free_buffer_index;
+  u8 icv_removed;
+} esp_decrypt_packet_data2_t;
+
+typedef union
+{
+  u16 next_index;
+  esp_decrypt_packet_data_t decrypt_data;
+} esp_post_data_t;
+
+STATIC_ASSERT (sizeof (esp_post_data_t) <=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+	       "Custom meta-data too large for vnet_buffer_opaque_t");
+
+STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
+	       "Custom meta-data too large for vnet_buffer_opaque2_t");
+
+#define esp_post_data(b) \
+    ((esp_post_data_t *)((u8 *)((b)->opaque) \
+        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+
+#define esp_post_data2(b) \
+    ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
+        + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
+
+typedef struct
+{
+  /* esp post node index for async crypto */
+  u32 esp4_post_next;
+  u32 esp6_post_next;
+  u32 esp4_tun_post_next;
+  u32 esp6_tun_post_next;
+} esp_async_post_next_t;
+
+extern esp_async_post_next_t esp_encrypt_async_next;
+extern esp_async_post_next_t esp_decrypt_async_next;
+
 #endif /* __ESP_H__ */
 
 /*
