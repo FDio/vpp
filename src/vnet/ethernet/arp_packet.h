@@ -146,6 +146,9 @@ typedef struct
   };
 } ethernet_arp_header_t;
 
+#define ARP_SENDER 0
+#define ARP_TARGET 1
+
 extern u8 *format_ethernet_arp_header (u8 * s, va_list * va);
 extern u8 *format_ethernet_arp_opcode (u8 * s, va_list * va);
 extern u8 *format_ethernet_arp_hardware_type (u8 * s, va_list * va);

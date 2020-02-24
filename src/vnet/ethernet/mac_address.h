@@ -149,6 +149,12 @@ mac_address_set_zero (mac_address_t * mac)
   mac->u.last_2 = 0;
 }
 
+static_always_inline int
+mac_address_n_bits_set (const mac_address_t * a)
+{
+  return (count_set_bits (mac_address_as_u64 (a)));
+}
+
 extern void mac_address_increment (mac_address_t * mac);
 extern uword unformat_mac_address_t (unformat_input_t * input,
 				     va_list * args);
