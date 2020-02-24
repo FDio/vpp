@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "779591d0_2f5318b0",
+        "filename": "src/vnet/feature/feature.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-02-24T13:06:39Z",
+      "side": 1,
+      "message": "Rather than doing this, would it make sense to s/u32/u16/ in all of the callers? From what I can tell, there are about 180 calls to vnet_feature_next.",
+      "revId": "02dd85ccc8fd7c9faaae63e41ac365f28360a2dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
