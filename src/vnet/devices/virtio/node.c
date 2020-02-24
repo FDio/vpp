@@ -145,9 +145,6 @@ static_always_inline void
 virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 		   u8 * l4_proto, u8 * l4_hdr_sz)
 {
-  *l4_proto = 0;
-  *l4_hdr_sz = 0;
-
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 
     {
@@ -272,7 +269,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left && n_left_to_next)
 	{
-	  u8 l4_proto, l4_hdr_sz;
+	  u8 l4_proto = 0, l4_hdr_sz = 0;
 	  u16 num_buffers = 1;
 	  struct vring_used_elem *e = &vring->used->ring[last & mask];
 	  struct virtio_net_hdr_v1 *hdr;
