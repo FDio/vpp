@@ -55,9 +55,7 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   ASSERT (elt_size);
   ASSERT (max_elts);
 
-  vector_size = pool_aligned_header_bytes + vec_header_bytes (0)
-    + (u64) elt_size *max_elts;
-
+  vector_size = pool_aligned_header_bytes + (u64) elt_size *max_elts;
   free_index_size = vec_header_bytes (0) + sizeof (u32) * max_elts;
 
   /* Round up to a cache line boundary */
