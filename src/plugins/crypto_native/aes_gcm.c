@@ -579,7 +579,7 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
     {
       /* store tag */
       if (tag_len)
-	aes_store_partial (tag, T, (1 << tag_len) - 1);
+	aes_store_partial (tag, T, tag_len);
       else
 	tag[0] = T;
     }
