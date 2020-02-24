@@ -778,11 +778,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 	    }
 
 	  {
-	    u32 next0;
 	    /* speculatively get the next0 */
-	    vnet_feature_next (&next0, b[0]);
+	    vnet_feature_next_u16 (&next[0], b[0]);
 	    /* if the action is not deny - then use that next */
-	    next[0] = action ? next0 : 0;
+	    next[0] = action ? next[0] : 0;
 	  }
 
 	  if (node_trace_on)	// PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
