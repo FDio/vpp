@@ -203,8 +203,6 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   snat_session_key_t eh_key;
   nat44_is_idle_session_ctx_t ctx;
 
-  nat44_session_try_cleanup (&l_key.addr, l_key.fib_index, thread_index, now);
-
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
@@ -763,6 +761,21 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 	  s0 = pool_elt_at_index (tsm->sessions, value0.value);
+
+	  // drop if session expired
+	  u64 sess_timeout_time;
+	  sess_timeout_time = s0->last_heard +
+	    (f64) nat44_session_get_timeout (sm, s0);
+	  if (now >= sess_timeout_time)
+	    {
+	      // delete session
+	      nat_free_session_data (sm, s0, thread_index, 0);
+	      nat44_delete_session (sm, s0, thread_index);
+
+	      next0 = NAT_NEXT_DROP;
+	      goto trace0;
+	    }
+	  //
 
 	  old_addr0 = ip0->dst_address.as_u32;
 	  new_addr0 = ip0->dst_address.as_u32 = s0->in2out.addr.as_u32;
