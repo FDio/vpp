@@ -436,6 +436,12 @@ I:	dns
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/dns/
 
+Plugin - Unit Tests
+I:      unittest
+M:      Dave Barach <dave@barachs.net>
+M:      Florin Coras <fcoras@cisco.com
+F:      src/plugins/unittest/
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
