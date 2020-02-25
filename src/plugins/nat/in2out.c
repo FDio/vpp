@@ -264,9 +264,6 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   };
   nat44_is_idle_session_ctx_t ctx0;
 
-  nat44_session_try_cleanup (&ip0->src_address, rx_fib_index0, thread_index,
-			     now);
-
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];

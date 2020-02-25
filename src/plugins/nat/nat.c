@@ -26,6 +26,7 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
@@ -325,6 +326,133 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 				      &s->out2in);
 }
 
+void
+nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
+			 u32 thread_index, u8 is_ha)
+{
+  snat_session_key_t key;
+  nat_ed_ses_key_t ed_key;
+  clib_bihash_kv_16_8_t ed_kv;
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
+
+  if (is_fwd_bypass_session (s))
+    {
+      if (snat_is_unk_proto_session (s))
+	{
+	  ed_key.proto = s->in2out.port;
+	  ed_key.r_port = 0;
+	  ed_key.l_port = 0;
+	}
+      else
+	{
+	  ed_key.proto = snat_proto_to_ip_proto (s->in2out.protocol);
+	  ed_key.l_port = s->in2out.port;
+	  ed_key.r_port = s->ext_host_port;
+	}
+
+      ed_key.l_addr = s->in2out.addr;
+      ed_key.r_addr = s->ext_host_addr;
+      ed_key.fib_index = 0;
+      ed_kv.key[0] = ed_key.as_u64[0];
+      ed_kv.key[1] = ed_key.as_u64[1];
+
+      if (PREDICT_FALSE
+	  (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0)))
+	nat_elog_warn ("in2out_ed key del failed");
+      return;
+    }
+
+  /* session lookup tables */
+  if (is_affinity_sessions (s))
+    nat_affinity_unlock (s->ext_host_addr, s->out2in.addr,
+			 s->in2out.protocol, s->out2in.port);
+  ed_key.l_addr = s->out2in.addr;
+  ed_key.r_addr = s->ext_host_addr;
+  ed_key.fib_index = s->out2in.fib_index;
+  if (snat_is_unk_proto_session (s))
+    {
+      ed_key.proto = s->in2out.port;
+      ed_key.r_port = 0;
+      ed_key.l_port = 0;
+    }
+  else
+    {
+      ed_key.proto = snat_proto_to_ip_proto (s->in2out.protocol);
+      ed_key.l_port = s->out2in.port;
+      ed_key.r_port = s->ext_host_port;
+    }
+  ed_kv.key[0] = ed_key.as_u64[0];
+  ed_kv.key[1] = ed_key.as_u64[1];
+
+  if (PREDICT_FALSE (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &ed_kv, 0)))
+    nat_elog_warn ("out2in_ed key del failed");
+
+  ed_key.l_addr = s->in2out.addr;
+  ed_key.fib_index = s->in2out.fib_index;
+
+  if (!snat_is_unk_proto_session (s))
+    ed_key.l_port = s->in2out.port;
+
+  if (is_twice_nat_session (s))
+    {
+      ed_key.r_addr = s->ext_host_nat_addr;
+      ed_key.r_port = s->ext_host_nat_port;
+    }
+
+  ed_kv.key[0] = ed_key.as_u64[0];
+  ed_kv.key[1] = ed_key.as_u64[1];
+
+  if (PREDICT_FALSE (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0)))
+    nat_elog_warn ("in2out_ed key del failed");
+
+  if (!is_ha)
+    {
+      nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+			     &s->in2out.addr, s->in2out.port,
+			     &s->ext_host_nat_addr, s->ext_host_nat_port,
+			     &s->out2in.addr, s->out2in.port,
+			     &s->ext_host_addr, s->ext_host_port,
+			     s->in2out.protocol, is_twice_nat_session (s));
+    }
+
+  if (snat_is_unk_proto_session (s))
+    return;
+
+  // is this correct ?
+  if (!is_ha)
+    {
+      snat_ipfix_logging_nat44_ses_delete (thread_index,
+					   s->in2out.addr.as_u32,
+					   s->out2in.addr.as_u32,
+					   s->in2out.protocol,
+					   s->in2out.port,
+					   s->out2in.port,
+					   s->in2out.fib_index);
+      nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
+		   s->ext_host_port, s->out2in.protocol, s->out2in.fib_index,
+		   thread_index);
+    }
+
+  /* Twice NAT address and port for external host */
+  if (is_twice_nat_session (s))
+    {
+      key.protocol = s->in2out.protocol;
+      key.port = s->ext_host_nat_port;
+      key.addr.as_u32 = s->ext_host_nat_addr.as_u32;
+      snat_free_outside_address_and_port (sm->twice_nat_addresses,
+					  thread_index, &key);
+    }
+
+  if (snat_is_session_static (s))
+    return;
+
+  // should be called for every dynamic session
+  snat_free_outside_address_and_port (sm->addresses, thread_index,
+				      &s->out2in);
+}
+
+
 snat_user_t *
 nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
 			u32 thread_index)
@@ -345,6 +473,9 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       /* no, make a new one */
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
+
+      u->min_session_timeout = 0;
+
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
 
@@ -453,12 +584,29 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 {
   snat_session_t *s;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  dlist_elt_t *per_user_translation_list_elt, *oldest_elt;
-  u32 oldest_index;
-  u64 sess_timeout_time;
 
+  dlist_elt_t *oldest_elt;
+  u64 sess_timeout_time;
+  u32 oldest_index;
+
+  // no sessions
   if (PREDICT_FALSE (!(u->nsessions) && !(u->nstaticsessions)))
     goto alloc_new;
+
+  // no free sessions
+  if (PREDICT_FALSE
+      ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user))
+    {
+      if (nat44_max_translations_per_user_cleanup (u, thread_index, now))
+	goto alloc_new;
+
+      nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
+		     clib_net_to_host_u32 (u->addr.as_u32));
+      snat_ipfix_logging_max_entries_per_user (thread_index,
+					       sm->max_translations_per_user,
+					       u->addr.as_u32);
+      return 0;
+    }
 
   oldest_index =
     clib_dlist_remove_head (tsm->list_pool,
@@ -469,61 +617,21 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   sess_timeout_time = s->last_heard + (f64) nat44_session_get_timeout (sm, s);
   if (now >= sess_timeout_time)
     {
+      // reuse old session
       clib_dlist_addtail (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
-      nat_free_session_data (sm, s, thread_index, 0);
-      if (snat_is_session_static (s))
-	u->nstaticsessions--;
-      else
-	u->nsessions--;
-      s->flags = 0;
-      s->total_bytes = 0;
-      s->total_pkts = 0;
-      s->state = 0;
-      s->ext_host_addr.as_u32 = 0;
-      s->ext_host_port = 0;
-      s->ext_host_nat_addr.as_u32 = 0;
-      s->ext_host_nat_port = 0;
+      s = nat44_session_reuse_old (sm, u, s, thread_index, now);
     }
   else
     {
+      // alloc new session
       clib_dlist_addhead (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
-      if ((u->nsessions + u->nstaticsessions) >=
-	  sm->max_translations_per_user)
-	{
-	  nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
-			 clib_net_to_host_u32 (u->addr.as_u32));
-	  snat_ipfix_logging_max_entries_per_user
-	    (thread_index, sm->max_translations_per_user, u->addr.as_u32);
-	  return 0;
-	}
-      else
-	{
-	alloc_new:
-	  pool_get (tsm->sessions, s);
-	  clib_memset (s, 0, sizeof (*s));
-
-	  /* Create list elts */
-	  pool_get (tsm->list_pool, per_user_translation_list_elt);
-	  clib_dlist_init (tsm->list_pool,
-			   per_user_translation_list_elt - tsm->list_pool);
-
-	  per_user_translation_list_elt->value = s - tsm->sessions;
-	  s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
-	  s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-
-	  clib_dlist_addtail (tsm->list_pool,
-			      s->per_user_list_head_index,
-			      per_user_translation_list_elt - tsm->list_pool);
-	}
-
+    alloc_new:
+      s = nat44_session_alloc_new (tsm, u, now);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
     }
-
-  s->ha_last_refreshed = now;
-
   return s;
 }
 
@@ -2370,7 +2478,6 @@ snat_init (vlib_main_t * vm)
   sm->fq_in2out_output_index = ~0;
   sm->fq_out2in_index = ~0;
 
-
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
@@ -3768,9 +3875,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
 
+  // configurable timeouts
   u32 udp_timeout = SNAT_UDP_TIMEOUT;
   u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
-
   u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   u32 tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
 
@@ -3851,9 +3958,11 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* optionally configurable timeouts for testing purposes */
   sm->udp_timeout = udp_timeout;
-  sm->icmp_timeout = icmp_timeout;
   sm->tcp_transitory_timeout = tcp_transitory_timeout;
   sm->tcp_established_timeout = tcp_established_timeout;
+  sm->icmp_timeout = icmp_timeout;
+
+  sm->min_timeout = nat44_minimal_timeout (sm);
 
   sm->user_buckets = user_buckets;
   sm->user_memory_size = user_memory_size;
@@ -3936,6 +4045,11 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           vec_foreach (tsm, sm->per_thread_data)
             {
 	      tsm->min_session_timeout = 0;
+
+              tsm->cleared = 0;
+              tsm->cleanup_runs = 0;
+              tsm->cleanup_timeout = 0;
+
               if (sm->endpoint_dependent)
                 {
                   clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
