@@ -370,6 +370,12 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	    ikev2_set_profile_sa_lifetime (vm, name, tmp4, tmp1, tmp2, tmp5);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U udp-encap",
+			 unformat_token, valid_chars, &name))
+	{
+	  r = ikev2_set_profile_udp_encap (vm, name);
+	  goto done;
+	}
       else
 	break;
     }
@@ -393,6 +399,7 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     " <data>\n"
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
     "ikev2 profile set <id> tunnel <interface>\n"
+    "ikev2 profile set <id> udp-encap\n"
     "ikev2 profile set <id> traffic-selector <local|remote> ip-range "
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
     "protocol <protocol-number>\n"
@@ -477,6 +484,8 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     if (~0 != p->tun_itf)
       vlib_cli_output(vm, "  protected tunnel %U",
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
+    if (p->udp_encap)
+      vlib_cli_output(vm, "  udp-encap");
   }));
   /* *INDENT-ON* */
 

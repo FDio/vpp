@@ -317,6 +317,19 @@ autoreply define ikev2_initiate_rekey_child_sa
   option vat_help = "<ispi>";
 };
 
+/** \brief IKEv2: Set UDP encapsulation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - IKEv2 profile name
+*/
+autoreply define ikev2_profile_set_udp_encap
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
