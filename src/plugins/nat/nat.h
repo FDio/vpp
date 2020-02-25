@@ -349,6 +349,9 @@ typedef struct
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
+  /* discovered minimum session timeout time */
+  u64 min_session_timeout;
+  u64 min_idle_timeout;
 } snat_user_t;
 
 typedef struct
@@ -519,6 +522,12 @@ typedef struct
 
   /* discovered minimum session timeout time */
   u64 min_session_timeout;
+
+  /* session scavenging */
+  u32 cleared;
+  u32 cleanup_runs;
+  f64 cleanup_timeout;
+
 } snat_main_per_thread_data_t;
 
 struct snat_main_s;
@@ -676,6 +685,7 @@ typedef struct snat_main_s
   u32 inside_fib_index;
 
   /* values of various timeouts */
+  u32 idle_timeout;
   u32 udp_timeout;
   u32 icmp_timeout;
   u32 tcp_transitory_timeout;
@@ -703,6 +713,7 @@ typedef struct snat_main_s
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
+
 } snat_main_t;
 
 typedef struct
@@ -750,6 +761,7 @@ extern fib_source_t nat_fib_src_low;
 
 /* format functions */
 format_function_t format_snat_user;
+format_function_t format_snat_user_v2;
 format_function_t format_snat_static_mapping;
 format_function_t format_snat_static_map_to_resolve;
 format_function_t format_snat_session;
