@@ -134,6 +134,28 @@ vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
 }
 
 static void
+  vl_api_ikev2_profile_set_udp_encap_t_handler
+  (vl_api_ikev2_profile_set_udp_encap_t * mp)
+{
+  vl_api_ikev2_profile_set_udp_encap_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  error = ikev2_set_profile_udp_encap (vm, tmp);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_UDP_ENCAP);
+}
+
+static void
 vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
 {
   vl_api_ikev2_profile_set_ts_reply_t *rmp;

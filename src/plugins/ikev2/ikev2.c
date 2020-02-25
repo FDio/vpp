@@ -398,6 +398,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->i_auth.key = _(sai->i_auth.key);
   sa->last_sa_init_req_packet_data = _(sai->last_sa_init_req_packet_data);
   sa->childs = _(sai->childs);
+  sa->udp_encap = sai->udp_encap;
 #undef _
 
 
@@ -1372,6 +1373,9 @@ ikev2_sa_auth (ikev2_sa_t * sa)
           }
       }
 
+    if (sel_p)
+      sa->udp_encap = sel_p->udp_encap;
+
     vec_free(auth);
     vec_free(psk);
   }));
@@ -1386,6 +1390,7 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 	  vec_free (sa->r_id.data);
 	  sa->r_id.data = vec_dup (sel_p->loc_id.data);
 	  sa->r_id.type = sel_p->loc_id.type;
+	  sa->udp_encap = p->udp_encap;
 
 	  /* generate our auth data */
 	  authmsg = ikev2_sa_generate_authmsg (sa, 1);
@@ -1608,6 +1613,9 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
     }
 
   a.flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+  a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
+  if (sa->udp_encap)
+    a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
   a.is_rekey = is_rekey;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ESN);
@@ -3152,6 +3160,22 @@ ikev2_set_profile_tunnel_interface (vlib_main_t * vm,
 }
 
 clib_error_t *
+ikev2_set_profile_udp_encap (vlib_main_t * vm, u8 * name)
+{
+  ikev2_profile_t *p = ikev2_profile_index_by_name (name);
+  clib_error_t *r;
+
+  if (!p)
+    {
+      r = clib_error_return (0, "unknown profile %v", name);
+      return r;
+    }
+
+  p->udp_encap = 1;
+  return 0;
+}
+
+clib_error_t *
 ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
 			       u64 lifetime, u32 jitter, u32 handover,
 			       u64 maxdata)
@@ -3235,6 +3259,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.is_profile_index_set = 1;
     sa.state = IKEV2_STATE_SA_INIT;
     sa.tun_itf = p->tun_itf;
+    sa.udp_encap = p->udp_encap;
     sa.is_tun_itf_set = 1;
     sa.initial_contact = 1;
     ikev2_generate_sa_init_data (&sa);
