@@ -26,6 +26,7 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
@@ -345,6 +346,10 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       /* no, make a new one */
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
+
+      u->min_session_timeout = 0;
+      u->min_idle_timeout = 0;
+
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
 
@@ -492,11 +497,45 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       if ((u->nsessions + u->nstaticsessions) >=
 	  sm->max_translations_per_user)
 	{
-	  nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
-			 clib_net_to_host_u32 (u->addr.as_u32));
-	  snat_ipfix_logging_max_entries_per_user
-	    (thread_index, sm->max_translations_per_user, u->addr.as_u32);
-	  return 0;
+	  u32 cleared;
+
+	  s = 0;
+	  if (sm->idle_timeout != ~0)
+	    cleared =
+	      nat44_user_session_cleanup_v2 (u, thread_index, now, &s);
+	  else
+	    cleared = nat44_user_session_cleanup (u, thread_index, now);
+
+	  if (!cleared)
+	    {
+	      if (s)
+		{
+		  nat_free_session_data (sm, s, thread_index, 0);
+		  if (snat_is_session_static (s))
+		    u->nstaticsessions--;
+		  else
+		    u->nsessions--;
+		  s->flags = 0;
+		  s->total_bytes = 0;
+		  s->total_pkts = 0;
+		  s->state = 0;
+		  s->ext_host_addr.as_u32 = 0;
+		  s->ext_host_port = 0;
+		  s->ext_host_nat_addr.as_u32 = 0;
+		  s->ext_host_nat_port = 0;
+
+		  s->ha_last_refreshed = now;
+		  return s;
+		}
+
+	      nat_elog_addr (SNAT_LOG_WARNING,
+			     "[warn] max translations per user",
+			     clib_net_to_host_u32 (u->addr.as_u32));
+	      snat_ipfix_logging_max_entries_per_user (thread_index,
+						       sm->max_translations_per_user,
+						       u->addr.as_u32);
+	      return 0;
+	    }
 	}
       else
 	{
@@ -521,9 +560,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
     }
-
   s->ha_last_refreshed = now;
-
   return s;
 }
 
@@ -2370,7 +2407,6 @@ snat_init (vlib_main_t * vm)
   sm->fq_in2out_output_index = ~0;
   sm->fq_out2in_index = ~0;
 
-
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
@@ -3768,9 +3804,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
 
+  // configurable timeouts
+  u32 idle_timeout = ~0;
   u32 udp_timeout = SNAT_UDP_TIMEOUT;
   u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
-
   u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   u32 tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
 
@@ -3782,6 +3819,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat
 	  (input, "translation hash buckets %d", &translation_buckets))
+	;
+      else if (unformat (input, "idle timeout %d", &idle_timeout))
 	;
       else if (unformat (input, "udp timeout %d", &udp_timeout))
 	;
@@ -3850,6 +3889,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 			      "out2in dpo mode available only for simple nat");
 
   /* optionally configurable timeouts for testing purposes */
+  sm->idle_timeout = idle_timeout;
   sm->udp_timeout = udp_timeout;
   sm->icmp_timeout = icmp_timeout;
   sm->tcp_transitory_timeout = tcp_transitory_timeout;
@@ -3936,6 +3976,11 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           vec_foreach (tsm, sm->per_thread_data)
             {
 	      tsm->min_session_timeout = 0;
+
+              tsm->cleared = 0;
+              tsm->cleanup_runs = 0;
+              tsm->cleanup_timeout = 0;
+
               if (sm->endpoint_dependent)
                 {
                   clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
