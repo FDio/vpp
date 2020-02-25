@@ -143,6 +143,149 @@ nat44_user_try_cleanup (snat_user_t * u, u32 thread_index, f64 now)
     }
 }
 
+static_always_inline u32
+nat44_user_session_cleanup (snat_user_t * u, u32 thread_index, f64 now)
+{
+  u32 cleared = 0;
+  dlist_elt_t *elt;
+  snat_session_t *s;
+  u64 sess_timeout_time;
+
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+
+  // get head
+  elt = pool_elt_at_index (tsm->list_pool,
+			   u->sessions_per_user_list_head_index);
+  // get first element
+  elt = pool_elt_at_index (tsm->list_pool, elt->next);
+
+  while (elt->value != ~0)
+    {
+      s = pool_elt_at_index (tsm->sessions, elt->value);
+      elt = pool_elt_at_index (tsm->list_pool, elt->next);
+
+      sess_timeout_time = s->last_heard +
+	(f64) nat44_session_get_timeout (sm, s);
+
+      if (now < sess_timeout_time)
+	{
+	  //u->min_session_timeout =
+          tsm->min_session_timeout =
+	    clib_min (sess_timeout_time, tsm->min_session_timeout);
+	  continue;
+	}
+
+      // TODO: do cleanup of this call (refactor for ED NAT44 only)
+      nat_free_session_data (sm, s, thread_index, 0);
+
+      // TODO: check if we don't break the while loop
+      clib_dlist_remove (tsm->list_pool, s->per_user_index);
+      pool_put_index (tsm->list_pool, s->per_user_index);
+      pool_put (tsm->sessions, s);
+      vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			       pool_elts (tsm->sessions));
+
+      if (snat_is_session_static (s))
+	u->nstaticsessions--;
+      else
+	u->nsessions--;
+
+      cleared++;
+    }
+
+  return cleared;
+}
+
+static_always_inline u32
+nat44_users_cleanup (u32 thread_index, f64 now)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  u32 cleared = 0;
+
+  snat_user_key_t u_key;
+  clib_bihash_kv_8_8_t kv;
+
+  snat_user_t *u = 0;
+  u32 pool_index = 0;
+
+  tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
+
+  if (now < tsm->min_session_timeout)
+    goto done;
+
+  sm->cleanup_runs++;
+
+  nat_log_err ("clearing");
+
+  tsm->min_session_timeout = ~0;
+
+  do
+    {
+      if (pool_index >= pool_elts (tsm->users))
+	break;
+
+      u = pool_elt_at_index (tsm->users, pool_index);
+
+      // skip user if smallest timeout for one of his sessions
+      // hasn't yet passed
+      //if (now >= u->min_session_timeout)
+	//{
+	  //u->min_session_timeout = ~0;
+          
+	  cleared += nat44_user_session_cleanup (u, thread_index, now);
+
+	  if (u->nstaticsessions == 0 && u->nsessions == 0)
+	    {
+	      u_key.addr.as_u32 = u->addr.as_u32;
+	      u_key.fib_index = u->fib_index;
+	      kv.key = u_key.as_u64;
+
+	      // delete user
+	      pool_put_index (tsm->list_pool,
+			      u->sessions_per_user_list_head_index);
+	      pool_put (tsm->users, u);
+	      clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
+
+	      // update total users counter
+	      vlib_set_simple_counter (&sm->total_users, thread_index, 0,
+				       pool_elts (tsm->users));
+
+	      // pool_put should move other element to this pool_index
+	      // TODO: this has to be tested
+	      continue;
+	    }
+
+	  //if (~0 == u->min_session_timeout)
+	    //u->min_session_timeout = 0;
+          	//}
+      pool_index++;
+    }
+  while (1);
+
+  // TODO:
+  // test range of the timeout
+  // < UDP
+  // > UDP & < TCP transitory
+  // > TCP transitory & < TCP established
+  // or just set the timeout to the lowest of all of these
+  // basically if lower than ICMP timeout than leave it
+  // if higher than set it to ICMP !!
+  // if a new icmp session is created it would stay extra time
+  // and eat up allocation
+
+  if (~0 == tsm->min_session_timeout)
+    tsm->min_session_timeout = 0;
+
+  sm->cleanup_timeout = tsm->min_session_timeout;
+  sm->cleared += cleared;
+
+done:
+  return cleared;
+}
+
 static_always_inline void
 nat44_session_try_cleanup (ip4_address_t * addr,
 			   u32 fib_index, u32 thread_index, f64 now)
@@ -161,17 +304,30 @@ nat44_session_try_cleanup (ip4_address_t * addr,
   // lookup user for this traffic
   if (PREDICT_FALSE (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value)))
     {
+      // TODO: this must check user of allocated ports, if allocated
+      // ports are lower than sm->max_translations, we will never cleanup
+      // sessions for old users
+      //
+      // pool_elts (tsm->sessions) < sm->max_translations) || !tsm->free_ports
+      // max translations reached or out of free allocation ports
+
       // there is still place and a new user can be created
+      // but do we have free ports
+      // do we kick this out or do we somehow get number of free ports ?
       if (PREDICT_TRUE (pool_elts (tsm->sessions) < sm->max_translations))
 	return;
 
       if (now >= tsm->min_session_timeout)
 	{
 	  tsm->min_session_timeout = ~0;
+	  // TODO: pool_foreach may cause seg fault because of removal of element
+	  // from the pool inside nat44_delete_session->
+	  // nat44_delete_user_with_no_session
 	  // there is no place so we try to cleanup all users in this thread
           /* *INDENT-OFF* */
-          pool_foreach (u, tsm->users,
-                        ({ nat44_user_try_cleanup (u, thread_index, now); }));
+          pool_foreach (u, tsm->users, ({
+            nat44_user_try_cleanup (u, thread_index, now);
+          }));
           /* *INDENT-ON* */
 	  if (~0 == tsm->min_session_timeout)
 	    {

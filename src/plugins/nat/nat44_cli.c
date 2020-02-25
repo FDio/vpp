@@ -648,12 +648,26 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   snat_address_t *a;
   snat_session_t *s;
   u32 free_ports, free_ports_addr;
+  u64 now = vlib_time_now (sm->vlib_main);
 
   if (sm->deterministic)
     return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   if (sm->endpoint_dependent)
     vlib_cli_output (vm, "mode: endpoint-depenent");
+
+  vlib_cli_output (vm, "nat44_users_cleanup cleared: %u", sm->cleared);
+  vlib_cli_output (vm, "nat44_users_cleanup runs: %u", sm->cleanup_runs);
+
+  if (now < sm->cleanup_timeout)
+    {
+      vlib_cli_output (vm, "nat44_users_cleanup next run in: %f",
+        sm->cleanup_timeout - now);
+    }
+  else
+    {
+      vlib_cli_output (vm, "nat44_users_cleanup next run in: 0");
+    }
 
   // print timeouts
   vlib_cli_output (vm, "icmp timeout: %u", sm->icmp_timeout);
@@ -673,10 +687,14 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (vec_len (sm->addresses))
     {
       free_ports = 0;
+
       /* *INDENT-OFF* */
       vec_foreach (a, sm->addresses)
         {
           free_ports_addr = sm->port_per_thread;
+
+          // TODO: spearate counters for each free protocols UDP/TCP/ICMP
+          // this overflows because and has bogus meaning
 
           #define _(N, i, n, s) \
             free_ports_addr -= a->busy_##n##_ports;

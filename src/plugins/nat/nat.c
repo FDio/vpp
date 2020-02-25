@@ -345,6 +345,9 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       /* no, make a new one */
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
+
+      u->min_session_timeout = 0;
+
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
 
@@ -2356,6 +2359,10 @@ snat_init (vlib_main_t * vm)
   ip4_add_del_interface_address_callback_t cb4;
   vlib_node_t *node;
 
+  sm->cleared = 0;
+  sm->cleanup_runs = 0;
+  sm->cleanup_timeout = 0;
+
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
   sm->ip4_main = im;
@@ -2773,6 +2780,96 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
   int i;
   snat_address_t *a, *ga = 0;
   u32 portnum;
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (k->protocol)
+	{
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
+            { \
+              if (a->fib_index == fib_index) \
+                { \
+                  while (1) \
+                    { \
+                      portnum = (port_per_thread * \
+                        snat_thread_index) + \
+                        snat_random_port(1, port_per_thread) + 1024; \
+                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                        continue; \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+                      a->busy_##n##_ports_per_thread[thread_index]++; \
+                      a->busy_##n##_ports++; \
+                      k->addr = a->addr; \
+                      k->port = clib_host_to_net_u16(portnum); \
+                      return 0; \
+                    } \
+                } \
+              else if (a->fib_index == ~0) \
+                { \
+                  ga = a; \
+                } \
+            } \
+          break;
+	  foreach_snat_protocol
+#undef _
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+
+    }
+
+  if (ga)
+    {
+      a = ga;
+      switch (k->protocol)
+	{
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          while (1) \
+            { \
+              portnum = (port_per_thread * \
+                snat_thread_index) + \
+                snat_random_port(1, port_per_thread) + 1024; \
+              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                continue; \
+              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+              a->busy_##n##_ports_per_thread[thread_index]++; \
+              a->busy_##n##_ports++; \
+              k->addr = a->addr; \
+              k->port = clib_host_to_net_u16(portnum); \
+              return 0; \
+            }
+	  break;
+	  foreach_snat_protocol
+#undef _
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
+static int
+nat_alloc_addr_and_port_default_ed (snat_address_t * addresses,
+				    u32 fib_index,
+				    u32 thread_index,
+				    snat_session_key_t * k,
+				    u16 port_per_thread,
+				    u32 snat_thread_index)
+{
+  int i;
+  snat_address_t *a, *ga = 0;
+  u32 portnum;
+
+  // TODO: try to consider just having
 
   for (i = 0; i < vec_len (addresses); i++)
     {
@@ -3896,6 +3993,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (sm->endpoint_dependent)
 	{
+	  sm->alloc_addr_and_port = nat_alloc_addr_and_port_default_ed;
+
 	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
 

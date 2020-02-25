@@ -349,6 +349,8 @@ typedef struct
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
+  /* discovered minimum session timeout time */
+  u64 min_session_timeout;
 } snat_user_t;
 
 typedef struct
@@ -703,6 +705,12 @@ typedef struct snat_main_s
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
+
+  // TODO: remove
+  u32 cleared;
+  u32 cleanup_runs;
+  f64 cleanup_timeout;
+
 } snat_main_t;
 
 typedef struct
