@@ -360,6 +360,7 @@ typedef struct
   u32 handover;
 
   u32 tun_itf;
+  u8 udp_encap;
 } ikev2_profile_t;
 
 typedef struct
@@ -422,6 +423,7 @@ typedef struct
   u32 profile_index;
   u8 is_tun_itf_set;
   u32 tun_itf;
+  u8 udp_encap;
 
   f64 old_id_expiration;
   u32 current_remote_id_mask;
