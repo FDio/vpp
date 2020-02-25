@@ -171,6 +171,54 @@ u8x64_xor3 (u8x64 a, u8x64 b, u8x64 c)
 					    (__m512i) c, 0x96);
 }
 
+static_always_inline u8x64
+u8x64_reflect_u8x16 (u8x64 x)
+{
+  static const u8x64 mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+  };
+  return (u8x64) _mm512_shuffle_epi8 ((__m512i) x, (__m512i) mask);
+}
+
+static_always_inline u8x64
+u8x64_mask_load (u8x64 a, void *p, u64 mask)
+{
+  return (u8x64) _mm512_mask_loadu_epi8 ((__m512i) a, mask, p);
+}
+
+static_always_inline void
+u8x64_mask_store (u8x64 a, void *p, u64 mask)
+{
+  _mm512_mask_storeu_epi8 (p, mask, (__m512i) a);
+}
+
+static_always_inline u8x64
+u8x64_splat_u8x16 (u8x16 a)
+{
+  return (u8x64) _mm512_broadcast_i64x2 ((__m128i) a);
+}
+
+static_always_inline u32x16
+u32x16_splat_u32x4 (u32x4 a)
+{
+  return (u32x16) _mm512_broadcast_i64x2 ((__m128i) a);
+}
+
+static_always_inline u32x16
+u32x16_mask_blend (u32x16 a, u32x16 b, u16 mask)
+{
+  return (u32x16) _mm512_mask_blend_epi32 (mask, (__m512i) a, (__m512i) b);
+}
+
+static_always_inline u8x64
+u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
+{
+  return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
+}
+
 static_always_inline void
 u32x16_transpose (u32x16 m[16])
 {
