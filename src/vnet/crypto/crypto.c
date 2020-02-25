@@ -172,7 +172,7 @@ vnet_crypto_set_handler2 (char *alg_name, char *engine,
   if (!p)
     return -1;
 
-  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i += 2)
+  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
       vnet_crypto_op_data_t *od;
       vnet_crypto_op_id_t id = ad->op_by_type[i];
