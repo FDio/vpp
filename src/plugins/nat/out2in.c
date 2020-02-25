@@ -188,9 +188,6 @@ create_session_for_static_mapping (snat_main_t * sm,
   udp_header_t *udp0;
   nat44_is_idle_session_ctx_t ctx0;
 
-  nat44_session_try_cleanup (&in2out.addr, in2out.fib_index, thread_index,
-			     now);
-
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
