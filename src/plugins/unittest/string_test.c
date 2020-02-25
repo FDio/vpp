@@ -85,11 +85,20 @@ test_memcpy_s (vlib_main_t * vm, unformat_input_t * input)
     if (src[i] != dst[i])
       return -1;
 
-  /* Size fail */
-  err = memcpy_s (dst + 1, sizeof (dst) - 1, src, sizeof (src));
+  /*
+   * Size test: sizeof (src) > sizeof (dst)
+   * Skip this test when __builtin_constant_p (sizeof (src)) is true.
+   * This is because memcpy_s_inline skips all the errors checking when the
+   * the above buildin function returns true which may cause overrun problem
+   * for dst buffer if this test is executed.
+   */
+  if (__builtin_constant_p (sizeof (src)) == 0)
+    {
+      err = memcpy_s (dst + 1, sizeof (dst) - 1, src, sizeof (src));
 
-  if (err == EOK)
-    return -1;
+      if (err == EOK)
+	return -1;
+    }
 
   /* overlap fail */
   err = memcpy_s (dst, sizeof (dst), dst + 1, sizeof (dst) - 1);
