@@ -981,8 +981,7 @@ void
 segment_manager_set_watermarks (segment_manager_t * sm,
 				u8 high_watermark, u8 low_watermark)
 {
-  ASSERT (high_watermark >= 0 && high_watermark <= 100 &&
-	  low_watermark >= 0 && low_watermark <= 100 &&
+  ASSERT (high_watermark <= 100 && low_watermark <= 100 &&
 	  low_watermark <= high_watermark);
 
   sm->high_watermark = high_watermark;
