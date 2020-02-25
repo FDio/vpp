@@ -75,7 +75,6 @@ static inline uword
 fsh_n_cached_bytes (fifo_segment_header_t * fsh)
 {
   uword n_cached = clib_atomic_load_relax_n (&fsh->n_cached_bytes);
-  ASSERT (n_cached >= 0);
   return n_cached;
 }
 
