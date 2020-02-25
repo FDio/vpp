@@ -209,14 +209,18 @@ slow_path_ed (snat_main_t * sm,
   };
   nat44_is_idle_session_ctx_t ctx;
 
-  nat44_session_try_cleanup (&key->l_addr, rx_fib_index, thread_index, now);
+  u32 cleared = 0;
 
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
-      b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-      nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
-      nat_elog_notice ("maximum sessions exceeded");
-      return NAT_NEXT_DROP;
+      if (PREDICT_FALSE
+	  (!(cleared = nat44_users_cleanup (thread_index, now))))
+	{
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
+	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
+	  nat_elog_notice ("maximum sessions exceeded");
+	  return NAT_NEXT_DROP;
+	}
     }
 
   key0.addr = key->l_addr;
@@ -234,9 +238,18 @@ slow_path_ed (snat_main_t * sm,
 					       sm->port_per_thread,
 					       tsm->snat_thread_index))
 	{
-	  nat_elog_notice ("addresses exhausted");
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
-	  return NAT_NEXT_DROP;
+	  if (cleared || !nat44_out_of_ports_cleanup (thread_index, now) ||
+	      snat_alloc_outside_address_and_port (sm->addresses,
+						   rx_fib_index, thread_index,
+						   &key1, sm->port_per_thread,
+						   tsm->snat_thread_index))
+	    {
+
+
+	      nat_elog_notice ("addresses exhausted");
+	      b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
+	      return NAT_NEXT_DROP;
+	    }
 	}
     }
   else
@@ -932,8 +945,22 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	      next0 = def_slow;
 	      goto trace0;
 	    }
-
 	  s0 = pool_elt_at_index (tsm->sessions, value0.value);
+
+	  // drop if session expired
+	  u64 sess_timeout_time;
+	  sess_timeout_time = s0->last_heard +
+	    (f64) nat44_session_get_timeout (sm, s0);
+	  if (now >= sess_timeout_time)
+	    {
+	      // delete session
+	      nat_free_session_data (sm, s0, thread_index, 0);
+	      nat44_delete_session (sm, s0, thread_index);
+
+	      next0 = NAT_NEXT_DROP;
+	      goto trace0;
+	    }
+	  //
 
 	  b0->flags |= VNET_BUFFER_F_IS_NATED;
 
