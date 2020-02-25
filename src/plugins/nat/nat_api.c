@@ -247,9 +247,7 @@ vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
   snat_main_t *sm = &snat_main;
   vl_api_nat44_session_cleanup_reply_t *rmp;
   int rv = 0;
-
-  nat44_force_session_cleanup ();
-
+  nat44_force_users_cleanup ();
   REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
 }
 
@@ -747,10 +745,8 @@ vl_api_nat44_del_user_t_handler (vl_api_nat44_del_user_t * mp)
   vl_api_nat44_del_user_reply_t *rmp;
   ip4_address_t addr;
   int rv;
-
   memcpy (&addr.as_u8, mp->ip_address, 4);
   rv = nat44_user_del (&addr, ntohl (mp->fib_index));
-
   REPLY_MACRO (VL_API_NAT44_DEL_USER_REPLY);
 }
 
