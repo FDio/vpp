@@ -359,8 +359,8 @@ ethernet_register_interface (vnet_main_t * vnm,
   hi->max_packet_bytes = hi->max_supported_packet_bytes =
     ETHERNET_MAX_PACKET_BYTES;
 
-  /* Standard default ethernet MTU. */
-  vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
+  /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
+  vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);
 
   clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_add (hi->hw_address, address, sizeof (ei->address));
@@ -1191,6 +1191,29 @@ VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
   .function = delete_sub_interface,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+ethernet_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  ethernet_main_t *em = &ethernet_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "default-mtu %u", &em->default_mtu))
+	{
+	  if (em->default_mtu < 64 || em->default_mtu > 9000)
+	    return clib_error_return (0, "default MTU must be >=64, <=9000");
+	}
+      else
+	{
+	  return clib_error_return (0, "unknown input '%U'",
+				    format_unformat_error, input);
+	}
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (ethernet_config, "ethernet");
 
 /*
  * fd.io coding-style-patch-verification: ON
