@@ -345,7 +345,7 @@ map_ip6_to_ip4_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p,
 
   if (l4_protocol == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = ip6_next_header (ip6);
+      tcp_header_t *tcp = (tcp_header_t *) u8_ptr_add (ip6, l4_offset);
       if (mm->tcp_mss > 0)
 	{
 	  csum = tcp->checksum;
@@ -356,7 +356,7 @@ map_ip6_to_ip4_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p,
     }
   else
     {
-      udp_header_t *udp = ip6_next_header (ip6);
+      udp_header_t *udp = (udp_header_t *) u8_ptr_add (ip6, l4_offset);
       checksum = &udp->checksum;
     }
 
