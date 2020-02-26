@@ -131,7 +131,7 @@ picotls_start_listen (tls_ctx_t * lctx)
   if (!ckpair || !ckpair->cert || !ckpair->key)
     {
       TLS_DBG (1, "tls cert and/or key not configured %d",
-	       ctx->parent_app_wrk_index);
+	       lctx->parent_app_wrk_index);
       return -1;
     }
 
