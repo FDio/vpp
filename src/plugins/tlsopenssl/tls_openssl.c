@@ -200,8 +200,6 @@ openssl_write_from_fifo_into_bio (svm_fifo_t * f, BIO * bio, u32 len)
   int wrote, rv;
   u32 deq_now;
 
-  svm_fifo_fill_chunk_list (f);
-
   deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
   wrote = BIO_write (bio, svm_fifo_head (f), deq_now);
   if (wrote <= 0)
@@ -233,8 +231,6 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 len)
   svm_fifo_chunk_t *c;
   int wrote = 0, rv;
   u32 deq_now;
-
-  svm_fifo_fill_chunk_list (f);
 
   deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
   wrote = SSL_write (ssl, svm_fifo_head (f), deq_now);
