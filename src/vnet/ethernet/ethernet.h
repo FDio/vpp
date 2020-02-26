@@ -315,6 +315,9 @@ typedef struct ethernet_main_t_
   /** Functions to call when interface hw address changes. */
   ethernet_address_change_ctx_t *address_change_callbacks;
 
+  /** Default interface MTU */
+  u32 default_mtu;
+
 } ethernet_main_t;
 
 extern ethernet_main_t ethernet_main;
