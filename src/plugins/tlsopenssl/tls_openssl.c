@@ -416,7 +416,7 @@ static inline int
 openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int wrote = 0, read, max_buf = 100 * TLS_CHUNK_SIZE, max_space;
+  int wrote = 0, read, max_buf = 4 * TLS_CHUNK_SIZE, max_space;
   u32 deq_max, to_write;
   session_t *tls_session;
   svm_fifo_t *f;
@@ -472,7 +472,7 @@ check_tls_fifo:
 static inline int
 openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
-  int read, wrote = 0, max_space, max_buf = 100 * TLS_CHUNK_SIZE;
+  int read, wrote = 0, max_space, max_buf = 4 * TLS_CHUNK_SIZE;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   u32 deq_max, to_write;
   session_t *app_session;
