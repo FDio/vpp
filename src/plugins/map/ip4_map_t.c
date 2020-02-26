@@ -524,11 +524,11 @@ ip4_map_t_classify (vlib_buffer_t * p0, map_domain_t * d0,
       *next0 = IP4_MAPT_NEXT_MAPT_ICMP;
       if (d0->ea_bits_len == 0 && d0->rules)
 	*dst_port0 = 0;
-      else if (((icmp46_header_t *) u8_ptr_add (ip40, sizeof (*ip40)))->code
+      else if (((icmp46_header_t *) u8_ptr_add (ip40, sizeof (*ip40)))->type
 	       == ICMP4_echo_reply
 	       || ((icmp46_header_t *)
 		   u8_ptr_add (ip40,
-			       sizeof (*ip40)))->code == ICMP4_echo_request)
+			       sizeof (*ip40)))->type == ICMP4_echo_request)
 	*dst_port0 = l4_dst_port;
     }
   else
