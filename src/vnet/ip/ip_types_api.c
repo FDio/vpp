@@ -217,8 +217,24 @@ void
 ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 {
   out->len = in->fp_len;
-  ip_address_encode (&in->fp_addr,
-		     fib_proto_to_ip46 (in->fp_proto), &out->address);
+  ip46_type_t ip46_type;
+
+  switch (in->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+      ip46_type = (IP46_TYPE_IP4);
+      break;
+    case FIB_PROTOCOL_IP6:
+      ip46_type = (IP46_TYPE_IP6);
+      break;
+    case FIB_PROTOCOL_MPLS:
+      ip46_type = (IP46_TYPE_ANY);
+      break;
+    default:
+      ip46_type = (IP46_TYPE_ANY);
+    }
+
+  ip_address_encode (&in->fp_addr, ip46_type, &out->address);
 }
 
 void
