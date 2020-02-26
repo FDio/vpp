@@ -80,6 +80,7 @@ int session_lookup_add_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep, u64 value);
 int session_lookup_del_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep);
+int session_lookup_del_session_endpoint2 (session_endpoint_t * sep);
 int session_lookup_del_session (session_t * s);
 int session_lookup_del_half_open (transport_connection_t * tc);
 int session_lookup_add_half_open (transport_connection_t * tc, u64 value);

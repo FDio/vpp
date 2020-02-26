@@ -663,11 +663,26 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 u32
 tls_stop_listen (u32 lctx_index)
 {
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
   crypto_engine_type_t engine_type;
+  transport_connection_t *lc;
   tls_ctx_t *lctx;
+  session_t *ls;
   int rv;
 
   lctx = tls_listener_ctx_get (lctx_index);
+
+  /* Cleanup listener from session lookup table */
+  ls = session_get_from_handle (lctx->tls_session_handle);
+  lc = session_get_transport (ls);
+
+  sep.fib_index = lc->fib_index;
+  sep.port = lc->lcl_port;
+  sep.is_ip4 = lc->is_ip4;
+  sep.transport_proto = TRANSPORT_PROTO_TLS;
+  clib_memcpy (&sep.ip, &lc->lcl_ip, sizeof (lc->lcl_ip));
+  session_lookup_del_session_endpoint2 (&sep);
+
   vnet_unlisten_args_t a = {
     .handle = lctx->tls_session_handle,
     .app_index = tls_main.app_index,
