@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d62f117a_1700d1c2",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 846,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-02-26T14:45:05Z",
+      "side": 1,
+      "message": "there is no need for new device class, i would just add new flag \"mlx5dv\" into foreach_rdma_device_flags and do one \"if\" per node function invocation. That can be even further optimized by just swapping node function pointer but i doubt tha will make any noticeable change....",
+      "range": {
+        "startLine": 836,
+        "startChar": 0,
+        "endLine": 846,
+        "endChar": 2
+      },
+      "revId": "17e6ff158383fc93a6f2e0444ecb3fb8fd8aa1f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52908a2c_4636fe70",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-02-26T14:45:05Z",
+      "side": 1,
+      "message": "What is the purpose of this compiler barrier?",
+      "range": {
+        "startLine": 218,
+        "startChar": 0,
+        "endLine": 218,
+        "endChar": 27
+      },
+      "revId": "17e6ff158383fc93a6f2e0444ecb3fb8fd8aa1f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
