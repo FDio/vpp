@@ -603,12 +603,12 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      next0 = IP6_MAPT_NEXT_MAPT_ICMP;
 	      if (((icmp46_header_t *)
 		   u8_ptr_add (ip60,
-			       vnet_buffer (p0)->map_t.v6.l4_offset))->code ==
+			       vnet_buffer (p0)->map_t.v6.l4_offset))->type ==
 		  ICMP6_echo_reply
 		  || ((icmp46_header_t *)
 		      u8_ptr_add (ip60,
 				  vnet_buffer (p0)->map_t.v6.l4_offset))->
-		  code == ICMP6_echo_request)
+		  type == ICMP6_echo_request)
 		map_port0 = l4_src_port;
 	    }
 	  else

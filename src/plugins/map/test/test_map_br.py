@@ -504,6 +504,29 @@ class TestMAPBR(VppTestCase):
         self.pg0.assert_nothing_captured("Should drop IPv6 spoof port PSID")
 
     #
+    # Spoofed IPv6 ICMP ID PSID v6 -> v4 direction
+    # Send a packet with a wrong IPv6 IMCP ID PSID
+    # The BR should drop the packet.
+    #
+
+    def test_map_t_spoof_icmp_id_psid_ip6_to_ip4(self):
+        """ MAP-T spoof ICMP id psid IPv6 -> IPv4 """
+
+        eth = Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac)
+        ip = IPv6(src=self.ipv6_cpe_address,
+                  dst=self.ipv6_map_address)
+        icmp = ICMPv6EchoRequest()
+        icmp.id = self.ipv6_udp_or_tcp_spoof_port
+        payload = "H" * 10
+        tx_pkt = eth / ip / icmp / payload
+
+        self.pg_send(self.pg1, tx_pkt * 1)
+
+        self.pg0.get_capture(0, timeout=1)
+        self.pg0.assert_nothing_captured("Should drop IPv6 spoof port PSID")
+
+    #
     # Map to Map - same rule, different address
     #
 
