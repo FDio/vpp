@@ -416,7 +416,7 @@ static inline int
 openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int wrote = 0, read, max_buf = 100 * TLS_CHUNK_SIZE, max_space;
+  int wrote = 0, read, max_buf = 16 * TLS_CHUNK_SIZE, max_space;
   u32 deq_max, to_write;
   session_t *tls_session;
   svm_fifo_t *f;
@@ -435,15 +435,15 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   wrote = openssl_write_from_fifo_into_ssl (f, oc->ssl, to_write);
   if (!wrote)
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+//      tls_add_vpp_q_builtin_tx_evt (app_session);
       goto check_tls_fifo;
     }
 
   if (svm_fifo_needs_deq_ntf (f, wrote))
     session_dequeue_notify (app_session);
 
-  if (svm_fifo_max_dequeue_cons (f))
-    tls_add_vpp_q_builtin_tx_evt (app_session);
+//  if (svm_fifo_max_dequeue_cons (f))
+//    tls_add_vpp_q_builtin_tx_evt (app_session);
 
 check_tls_fifo:
 
@@ -455,14 +455,17 @@ check_tls_fifo:
   read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio);
   if (!read)
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+//      tls_add_vpp_q_builtin_tx_evt (app_session);
       return wrote;
     }
 
   tls_add_vpp_q_tx_evt (tls_session);
 
-  if (BIO_ctrl_pending (oc->rbio) > 0)
-    tls_add_vpp_q_builtin_tx_evt (app_session);
+  if (BIO_ctrl_pending (oc->rbio) > 0 && !svm_fifo_max_dequeue_cons (f))
+    {
+      svm_fifo_unset_event (f);
+      tls_add_vpp_q_builtin_tx_evt (app_session);
+    }
   else if (ctx->app_closed)
     openssl_confirm_app_close (ctx);
 
@@ -472,7 +475,7 @@ check_tls_fifo:
 static inline int
 openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
-  int read, wrote = 0, max_space, max_buf = 100 * TLS_CHUNK_SIZE;
+  int read, wrote = 0, max_space, max_buf = 10 * TLS_CHUNK_SIZE;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   u32 deq_max, to_write;
   session_t *app_session;
