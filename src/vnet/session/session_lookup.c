@@ -300,6 +300,32 @@ session_lookup_del_session_endpoint (u32 table_index,
     }
 }
 
+int
+session_lookup_del_session_endpoint2 (session_endpoint_t * sep)
+{
+  fib_protocol_t fib_proto;
+  session_table_t *st;
+  session_kv4_t kv4;
+  session_kv6_t kv6;
+
+  fib_proto = sep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  st = session_table_get_for_fib_index (fib_proto, sep->fib_index);
+  if (!st)
+    return -1;
+  if (sep->is_ip4)
+    {
+      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
+			   sep->transport_proto);
+      return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4, 0);
+    }
+  else
+    {
+      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
+			   sep->transport_proto);
+      return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 0);
+    }
+}
+
 /**
  * Delete transport connection from session table
  *

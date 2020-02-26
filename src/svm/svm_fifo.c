@@ -801,7 +801,6 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
   u32 alloc_size, free_alloced;
 
   free_alloced = f_chunk_end (f->end_chunk) - tail;
-  ASSERT (free_alloced < len);
 
   alloc_size = clib_min (f->min_alloc, f->size - (tail - head));
   alloc_size = clib_max (alloc_size, len - free_alloced);
