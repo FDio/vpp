@@ -130,19 +130,15 @@ openssl_read_from_bio_into_fifo (svm_fifo_t * f, BIO * bio)
   if (read <= 0)
     return 0;
 
-  if (read == enq_now)
+  c = svm_fifo_tail_chunk (f);
+  while ((c = c->next) && read < enq_max)
     {
-      c = svm_fifo_tail_chunk (f);
-      while (read < enq_max)
-	{
-	  c = c->next;
-	  enq_now = clib_min (c->length, enq_max - read);
-	  rv = BIO_read (bio, c->data, enq_now);
-	  read += rv > 0 ? rv : 0;
+      enq_now = clib_min (c->length, enq_max - read);
+      rv = BIO_read (bio, c->data, enq_now);
+      read += rv > 0 ? rv : 0;
 
-	  if (rv < enq_now)
-	    break;
-	}
+      if (rv < enq_now)
+	break;
     }
 
   svm_fifo_enqueue_nocopy (f, read);
@@ -171,21 +167,15 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   if (read <= 0)
     return 0;
 
-  if (read == enq_now)
+  c = svm_fifo_tail_chunk (f);
+  while ((c = c->next) && read < enq_max)
     {
-      c = svm_fifo_tail_chunk (f);
-      while (read < enq_max)
-	{
-	  c = c->next;
-	  if (!c)
-	    break;
-	  enq_now = clib_min (c->length, enq_max - read);
-	  rv = SSL_read (ssl, c->data, enq_now);
-	  read += rv > 0 ? rv : 0;
+      enq_now = clib_min (c->length, enq_max - read);
+      rv = SSL_read (ssl, c->data, enq_now);
+      read += rv > 0 ? rv : 0;
 
-	  if (rv < enq_now)
-	    break;
-	}
+      if (rv < enq_now)
+	break;
     }
 
   svm_fifo_enqueue_nocopy (f, read);
@@ -205,19 +195,15 @@ openssl_write_from_fifo_into_bio (svm_fifo_t * f, BIO * bio, u32 len)
   if (wrote <= 0)
     return 0;
 
-  if (wrote == deq_now)
+  c = svm_fifo_head_chunk (f);
+  while ((c = c->next) && wrote < len)
     {
-      c = svm_fifo_head_chunk (f);
-      while (wrote < len)
-	{
-	  c = c->next;
-	  deq_now = clib_min (c->length, len - wrote);
-	  rv = BIO_write (bio, c->data, deq_now);
-	  wrote += rv > 0 ? rv : 0;
+      deq_now = clib_min (c->length, len - wrote);
+      rv = BIO_write (bio, c->data, deq_now);
+      wrote += rv > 0 ? rv : 0;
 
-	  if (rv < deq_now)
-	    break;
-	}
+      if (rv < deq_now)
+	break;
     }
 
   svm_fifo_dequeue_drop (f, wrote);
@@ -237,19 +223,15 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 len)
   if (wrote <= 0)
     return 0;
 
-  if (wrote == deq_now)
+  c = svm_fifo_head_chunk (f);
+  while ((c = c->next) && wrote < len)
     {
-      c = svm_fifo_head_chunk (f);
-      while (wrote < len)
-	{
-	  c = c->next;
-	  deq_now = clib_min (c->length, len - wrote);
-	  rv = SSL_write (ssl, c->data, deq_now);
-	  wrote += rv > 0 ? rv : 0;
+      deq_now = clib_min (c->length, len - wrote);
+      rv = SSL_write (ssl, c->data, deq_now);
+      wrote += rv > 0 ? rv : 0;
 
-	  if (rv < deq_now)
-	    break;
-	}
+      if (rv < deq_now)
+	break;
     }
 
   svm_fifo_dequeue_drop (f, wrote);
