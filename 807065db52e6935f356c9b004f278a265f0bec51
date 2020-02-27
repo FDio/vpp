@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "264b5e11_d13f4aa1",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-02-27T11:16:20Z",
+      "side": 1,
+      "message": "Single space.",
+      "range": {
+        "startLine": 415,
+        "startChar": 22,
+        "endLine": 415,
+        "endChar": 24
+      },
+      "revId": "807065db52e6935f356c9b004f278a265f0bec51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
