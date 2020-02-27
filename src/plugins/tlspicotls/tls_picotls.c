@@ -410,7 +410,7 @@ picotls_content_process (picotls_ctx_t * ptls_ctx, svm_fifo_t * src_fifo,
 }
 
 static inline int
-picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
+picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session, u32 max_write)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   u32 deq_max, deq_now;
@@ -457,13 +457,15 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   deq_max = svm_fifo_max_dequeue_cons (app_tx_fifo);
   if (!deq_max)
     return deq_max;
+
+  deq_max = clib_min (deq_max, max_write);
   deq_now = clib_min (deq_max, svm_fifo_max_read_chunk (app_tx_fifo));
 
   enq_max = svm_fifo_max_enqueue_prod (tls_tx_fifo);
     /** There is no engough enqueue space for one record **/
   if (enq_max <= record_overhead)
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+      app_session->flags |= SESSION_F_CUSTOM_TX;
       return 0;
     }
 
@@ -506,7 +508,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
     tls_add_vpp_q_tx_evt (tls_session);
 
   if (from_app_len < deq_max || TLS_WRITE_IS_LEFT (ptls_ctx))
-    tls_add_vpp_q_builtin_tx_evt (app_session);
+    app_session->flags |= SESSION_F_CUSTOM_TX;
 
   if (ctx->app_closed)
     picotls_app_close (ctx);
