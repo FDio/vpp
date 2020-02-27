@@ -1541,6 +1541,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   vec_add1 (sas_in, a->remote_sa_id);
   if (a->is_rekey)
     {
+      ipsec_tun_protect_del (sw_if_index, NULL);
+
       /* replace local SA immediately */
       ipsec_sa_unlock_id (a->local_sa_id);
 
