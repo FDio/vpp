@@ -112,6 +112,7 @@ typedef struct
   u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
+#define VRING_TX_OUT_OF_ORDER 1
   u16 flags;
   u32 call_file_index;
   u32 *buffers;
