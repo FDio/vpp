@@ -74,15 +74,6 @@ tls_add_vpp_q_tx_evt (session_t * s)
   return 0;
 }
 
-int
-tls_add_vpp_q_builtin_tx_evt (session_t * s)
-{
-  if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread_custom (s, s->thread_index,
-					  SESSION_IO_EVT_BUILTIN_TX);
-  return 0;
-}
-
 static inline int
 tls_add_app_q_evt (app_worker_t * app, session_t * app_session)
 {
@@ -315,9 +306,14 @@ tls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static inline int
-tls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
+tls_ctx_write (tls_ctx_t * ctx, session_t * app_session, u32 max_burst_size)
 {
-  return tls_vfts[ctx->tls_ctx_engine].ctx_write (ctx, app_session);
+  u32 max_write, n_wrote;
+
+  max_write = max_burst_size * TRANSPORT_PACER_MIN_MSS;
+  n_wrote = tls_vfts[ctx->tls_ctx_engine].ctx_write (ctx, app_session,
+						     max_write);
+  return n_wrote > 0 ? clib_max (n_wrote / TRANSPORT_PACER_MIN_MSS, 1) : 0;
 }
 
 static inline int
@@ -725,7 +721,7 @@ tls_custom_tx_callback (void *session, u32 max_burst_size)
     return 0;
 
   ctx = tls_ctx_get (app_session->connection_index);
-  tls_ctx_write (ctx, app_session);
+  tls_ctx_write (ctx, app_session, max_burst_size);
   return 0;
 }
 
@@ -887,7 +883,7 @@ tls_init (vlib_main_t * vm)
 {
   u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads, fifo_size = 128 << 10;
+  u32 num_threads, fifo_size = 128 << 12;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   tls_main_t *tm = &tls_main;
