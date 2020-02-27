@@ -1060,15 +1060,37 @@ session_tx_fifo_dequeue_and_snd (session_worker_t * wrk,
 int
 session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * e, int *n_tx_packets)
+				  session_evt_elt_t * elt, int *n_tx_packets)
 {
   session_t *s = wrk->ctx.s;
+  u32 n_packets, max_pkts;
 
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
-  svm_fifo_unset_event (s->tx_fifo);
-  return transport_custom_tx (session_get_transport_proto (s), s,
-			      VLIB_FRAME_SIZE - *n_tx_packets);
+
+  /* Clear custom-tx flag used to request reschedule for tx */
+  s->flags &= ~SESSION_F_CUSTOM_TX;
+
+  max_pkts = clib_min (VLIB_FRAME_SIZE - *n_tx_packets,
+		       TRANSPORT_PACER_MAX_BURST_PKTS);
+  n_packets = transport_custom_tx (session_get_transport_proto (s), s,
+				   max_pkts);
+  *n_tx_packets -= n_packets;
+
+  if (svm_fifo_max_dequeue_cons (s->tx_fifo)
+      || (s->flags & SESSION_F_CUSTOM_TX))
+    {
+      session_evt_add_old (wrk, elt);
+    }
+  else
+    {
+      svm_fifo_unset_event (s->tx_fifo);
+      if (svm_fifo_max_dequeue_cons (s->tx_fifo))
+	if (svm_fifo_set_event (s->tx_fifo))
+	  session_evt_add_head_old (wrk, elt);
+    }
+
+  return n_packets;
 }
 
 always_inline session_t *
