@@ -525,6 +525,14 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 						  next_thread_index,
 						  ptd->handoff_queue_elt_by_thread_index);
 
+	  if (!hf)
+	    {
+	      dbi[0] = buffer_indices[0];
+	      dbi++;
+	      n_drop++;
+	      goto next;
+	    }
+
 	  n_left_to_next_thread = VLIB_FRAME_SIZE - hf->n_vectors;
 	  to_next_thread = &hf->buffer_index[hf->n_vectors];
 	  current_thread_index = next_thread_index;
