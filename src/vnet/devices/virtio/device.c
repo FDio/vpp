@@ -33,7 +33,8 @@
 _(NO_FREE_SLOTS, "no free tx slots")           \
 _(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
 _(PENDING_MSGS, "pending msgs in tx ring") \
-_(NO_TX_QUEUES, "no tx queues")
+_(NO_TX_QUEUES, "no tx queues") \
+_(OUT_OF_ORDER, "out-of-order buffers in used ring")
 
 typedef enum
 {
@@ -73,13 +74,31 @@ format_virtio_tx_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
+virtio_memset_ring_u32 (u32 * ring, u32 start, u32 ring_size, u32 n_buffers)
+{
+  ASSERT (n_buffers <= ring_size);
+
+  if (PREDICT_TRUE (start + n_buffers <= ring_size))
+    {
+      clib_memset_u32 (ring + start, ~0, n_buffers);
+    }
+  else
+    {
+      clib_memset_u32 (ring + start, ~0, ring_size - start);
+      clib_memset_u32 (ring, ~0, n_buffers - (ring_size - start));
+    }
+}
+
+static_always_inline void
+virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
+			      uword node_index)
 {
   u16 used = vring->desc_in_use;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
+  u16 out_of_order_count = 0;
 
   if (n_left == 0)
     return;
@@ -90,7 +109,7 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
       u16 slot, n_buffers;
       slot = n_buffers = e->id;
 
-      while (e->id == n_buffers)
+      while (e->id == (n_buffers & mask))
 	{
 	  n_left--;
 	  last++;
@@ -101,18 +120,29 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
 	}
       vlib_buffer_free_from_ring (vm, vring->buffers, slot,
 				  sz, (n_buffers - slot));
+      virtio_memset_ring_u32 (vring->buffers, slot, sz, (n_buffers - slot));
       used -= (n_buffers - slot);
 
       if (n_left > 0)
 	{
-	  slot = e->id;
-
-	  vlib_buffer_free (vm, &vring->buffers[slot], 1);
+	  vlib_buffer_free (vm, &vring->buffers[e->id], 1);
+	  vring->buffers[e->id] = ~0;
 	  used--;
 	  last++;
 	  n_left--;
+	  out_of_order_count++;
+	  vring->flags |= VRING_TX_OUT_OF_ORDER;
 	}
     }
+
+  /*
+   * Some vhost-backends give buffers back in out-of-order fashion in used ring.
+   * It impacts the overall virtio-performance.
+   */
+  if (out_of_order_count)
+    vlib_error_count (vm, node_index, VIRTIO_TX_ERROR_OUT_OF_ORDER,
+		      out_of_order_count);
+
   vring->desc_in_use = used;
   vring->last_used_idx = last;
 }
@@ -302,6 +332,42 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
   return n_added;
 }
 
+static_always_inline void
+virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
+		       u16 req, u16 next, u32 * first_free_desc_index,
+		       u16 * free_desc_count)
+{
+  u16 start = 0;
+  /* next is used as hint: from where to start looking */
+  for (u16 i = 0; i < size; i++, next++)
+    {
+      if (vring->buffers[next & mask] == ~0)
+	{
+	  if (*first_free_desc_index == ~0)
+	    {
+	      *first_free_desc_index = (next & mask);
+	      start = i;
+	      (*free_desc_count)++;
+	      req--;
+	      if (req == 0)
+		break;
+	    }
+	  else
+	    {
+	      if (start + *free_desc_count == i)
+		{
+		  (*free_desc_count)++;
+		  req--;
+		  if (req == 0)
+		    break;
+		}
+	      else
+		break;
+	    }
+	}
+    }
+}
+
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif,
@@ -314,6 +380,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
+  u16 retry_count = 2;
   u32 *buffers = vlib_frame_vector_args (frame);
 
   clib_spinlock_lock_if_init (&vring->lockp);
@@ -322,14 +389,30 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       (vring->last_kick_avail_idx != vring->avail->idx))
     virtio_kick (vm, vring, vif);
 
+retry:
   /* free consumed buffers */
-  virtio_free_used_device_desc (vm, vring);
+  virtio_free_used_device_desc (vm, vring, node->node_index);
 
   used = vring->desc_in_use;
   next = vring->desc_next;
   avail = vring->avail->idx;
 
-  while (n_left && used < sz)
+  u16 free_desc_count = 0;
+
+  if (PREDICT_FALSE (vring->flags & VRING_TX_OUT_OF_ORDER))
+    {
+      u32 first_free_desc_index = ~0;
+
+      virtio_find_free_desc (vring, sz, mask, n_left, next,
+			     &first_free_desc_index, &free_desc_count);
+
+      if (free_desc_count)
+	next = first_free_desc_index;
+    }
+  else
+    free_desc_count = sz - used;
+
+  while (n_left && free_desc_count)
     {
       u16 n_added = 0;
       n_added =
@@ -342,6 +425,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       used += n_added;
       buffers++;
       n_left--;
+      free_desc_count--;
     }
 
   if (n_left != frame->n_vectors)
@@ -356,6 +440,9 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (n_left)
     {
+      if (retry_count--)
+	goto retry;
+
       vlib_error_count (vm, node->node_index, VIRTIO_TX_ERROR_NO_FREE_SLOTS,
 			n_left);
       vlib_buffer_free (vm, buffers, n_left);

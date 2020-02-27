@@ -113,6 +113,11 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
 
+  if (idx & 1)
+    {
+      clib_memset_u32 (vring->buffers, ~0, sz);
+    }
+
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
