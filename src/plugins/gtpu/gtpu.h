@@ -23,6 +23,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/vtep.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
@@ -210,8 +211,7 @@ typedef struct
 
   /* local VTEP IPs ref count used by gtpu-bypass node to check if
      received gtpu packet DIP matches any local VTEP address */
-  uword *vtep4;			/* local ip4 VTEPs keyed on their ip4 addr */
-  uword *vtep6;			/* local ip6 VTEPs keyed on their ip6 addr */
+  vtep_table_t vtep_table;
 
   /* mcast shared info */
   uword *mcast_shared;		/* keyed on mcast ip46 addr */

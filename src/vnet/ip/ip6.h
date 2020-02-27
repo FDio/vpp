@@ -608,6 +608,16 @@ vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
 				      0 /* flow label */ );
 
 }
+
+always_inline u32
+vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b)
+{
+  u32 fib_index, sw_if_index;
+  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  fib_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  return (fib_index == (u32) ~ 0) ?
+    vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) : fib_index;
+}
 #endif /* included_ip_ip6_h */
 
 /*

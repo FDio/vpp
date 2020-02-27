@@ -384,35 +384,6 @@ vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
   return (0);
 }
 
-static uword
-vtep_addr_ref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (vxlan_gpe_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (vxlan_gpe_main.vtep6, &ip->ip6);
-  if (vtep)
-    return ++(*vtep);
-  ip46_address_is_ip4 (ip) ?
-    hash_set (vxlan_gpe_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_mem_alloc (&vxlan_gpe_main.vtep6, &ip->ip6, 1);
-  return 1;
-}
-
-static uword
-vtep_addr_unref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (vxlan_gpe_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (vxlan_gpe_main.vtep6, &ip->ip6);
-  ALWAYS_ASSERT (vtep);
-  if (--(*vtep) != 0)
-    return *vtep;
-  ip46_address_is_ip4 (ip) ?
-    hash_unset (vxlan_gpe_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_mem_free (&vxlan_gpe_main.vtep6, &ip->ip6);
-  return 0;
-}
-
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(union {
   struct {
@@ -620,7 +591,7 @@ int vnet_vxlan_gpe_add_del_tunnel
 	   * when the forwarding for the entry updates, and the tunnel can
 	   * re-stack accordingly
 	   */
-	  vtep_addr_ref (&t->local);
+	  vtep_addr_ref (&ngm->vtep_table, t->encap_fib_index, &t->local);
 	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
 						&tun_remote_pfx,
 						FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
@@ -637,7 +608,8 @@ int vnet_vxlan_gpe_add_del_tunnel
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
 
-	  if (vtep_addr_ref (&t->remote) == 1)
+	  if (vtep_addr_ref (&ngm->vtep_table,
+			     t->encap_fib_index, &t->remote) == 1)
 	    {
 	      fib_node_index_t mfei;
 	      adj_index_t ai;
@@ -726,10 +698,11 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       if (!ip46_address_is_multicast (&t->remote))
 	{
-	  vtep_addr_unref (&t->local);
+	  vtep_addr_unref (&ngm->vtep_table, t->encap_fib_index, &t->local);
 	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
 	}
-      else if (vtep_addr_unref (&t->remote) == 0)
+      else if (vtep_addr_unref (&ngm->vtep_table,
+				t->encap_fib_index, &t->remote) == 0)
 	{
 	  mcast_shared_remove (&t->remote);
 	}
@@ -1261,7 +1234,7 @@ vxlan_gpe_init (vlib_main_t * vm)
   ngm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
-  ngm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+  ngm->vtep_table = vtep_table_create ();
 
   /* Register the list of standard decap protocols supported */
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP4,

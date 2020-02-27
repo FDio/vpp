@@ -865,8 +865,10 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
-  ip4_address_t addr4;		/* last IPv4 address matching a local VTEP address */
-  ip6_address_t addr6;		/* last IPv6 address matching a local VTEP address */
+  vtep4_key_t last_vtep4;	/* last IPv4 address / fib index
+				   matching a local VTEP address */
+  vtep6_key_t last_vtep6;	/* last IPv6 address / fib index
+				   matching a local VTEP address */
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -876,9 +878,9 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   if (is_ip4)
-    addr4.data_u32 = ~0;
+    vtep4_key_init (&last_vtep4);
   else
-    ip6_address_set_zero (&addr6);
+    vtep6_key_init (&last_vtep6);
 
   while (n_left_from > 0)
     {
@@ -962,21 +964,13 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip40->dst_address.as_u32)
-		{
-		  if (!hash_get (vxm->vtep4, ip40->dst_address.as_u32))
-		    goto exit0;	/* no local VTEP for GENEVE packet */
-		  addr4 = ip40->dst_address;
-		}
+	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
+		goto exit0;	/* no local VTEP for GENEVE packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip60->dst_address))
-		{
-		  if (!hash_get_mem (vxm->vtep6, &ip60->dst_address))
-		    goto exit0;	/* no local VTEP for GENEVE packet */
-		  addr6 = ip60->dst_address;
-		}
+	      if (!vtep6_check (&vxm->vtep_table, b0, ip60, &last_vtep6))
+		goto exit0;	/* no local VTEP for GENEVE packet */
 	    }
 
 	  flags0 = b0->flags;
@@ -1048,21 +1042,13 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip41->dst_address.as_u32)
-		{
-		  if (!hash_get (vxm->vtep4, ip41->dst_address.as_u32))
-		    goto exit1;	/* no local VTEP for GENEVE packet */
-		  addr4 = ip41->dst_address;
-		}
+	      if (!vtep4_check (&vxm->vtep_table, b1, ip41, &last_vtep4))
+		goto exit1;	/* no local VTEP for GENEVE packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip61->dst_address))
-		{
-		  if (!hash_get_mem (vxm->vtep6, &ip61->dst_address))
-		    goto exit1;	/* no local VTEP for GENEVE packet */
-		  addr6 = ip61->dst_address;
-		}
+	      if (!vtep6_check (&vxm->vtep_table, b1, ip61, &last_vtep6))
+		goto exit1;	/* no local VTEP for GENEVE packet */
 	    }
 
 	  flags1 = b1->flags;
@@ -1170,21 +1156,13 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip40->dst_address.as_u32)
-		{
-		  if (!hash_get (vxm->vtep4, ip40->dst_address.as_u32))
-		    goto exit;	/* no local VTEP for GENEVE packet */
-		  addr4 = ip40->dst_address;
-		}
+	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
+		goto exit;	/* no local VTEP for GENEVE packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip60->dst_address))
-		{
-		  if (!hash_get_mem (vxm->vtep6, &ip60->dst_address))
-		    goto exit;	/* no local VTEP for GENEVE packet */
-		  addr6 = ip60->dst_address;
-		}
+	      if (!vtep6_check (&vxm->vtep_table, b0, ip60, &last_vtep6))
+		goto exit;	/* no local VTEP for GENEVE packet */
 	    }
 
 	  flags0 = b0->flags;

@@ -460,6 +460,7 @@ list(APPEND VNET_SOURCES
   ip/punt_api.c
   ip/punt.c
   ip/punt_node.c
+  ip/vtep.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
