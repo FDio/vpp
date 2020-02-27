@@ -823,6 +823,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
     {
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
+      clib_memset_u32 (vring->buffers, ~0, queue_size);
     }
   else
     {
