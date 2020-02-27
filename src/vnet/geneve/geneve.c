@@ -292,35 +292,6 @@ geneve_decap_next_is_valid (geneve_main_t * vxm, u32 is_ip6,
   return decap_next_index < r->n_next_nodes;
 }
 
-static uword
-vtep_addr_ref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (geneve_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (geneve_main.vtep6, &ip->ip6);
-  if (vtep)
-    return ++(*vtep);
-  ip46_address_is_ip4 (ip) ?
-    hash_set (geneve_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_mem_alloc (&geneve_main.vtep6, &ip->ip6, 1);
-  return 1;
-}
-
-static uword
-vtep_addr_unref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (geneve_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (geneve_main.vtep6, &ip->ip6);
-  ALWAYS_ASSERT (vtep);
-  if (--(*vtep) != 0)
-    return *vtep;
-  ip46_address_is_ip4 (ip) ?
-    hash_unset (geneve_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_mem_free (&geneve_main.vtep6, &ip->ip6);
-  return 0;
-}
-
 typedef CLIB_PACKED (union
 		     {
 		     struct
@@ -498,7 +469,7 @@ int vnet_geneve_add_del_tunnel
 	   * when the forwarding for the entry updates, and the tunnel can
 	   * re-stack accordingly
 	   */
-	  vtep_addr_ref (&t->local);
+	  vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &t->local);
 	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
 						&tun_remote_pfx,
 						FIB_NODE_TYPE_GENEVE_TUNNEL,
@@ -515,7 +486,8 @@ int vnet_geneve_add_del_tunnel
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
 
-	  if (vtep_addr_ref (&t->remote) == 1)
+	  if (vtep_addr_ref (&vxm->vtep_table,
+			     t->encap_fib_index, &t->remote) == 1)
 	    {
 	      fib_node_index_t mfei;
 	      adj_index_t ai;
@@ -604,10 +576,11 @@ int vnet_geneve_add_del_tunnel
 
       if (!ip46_address_is_multicast (&t->remote))
 	{
-	  vtep_addr_unref (&t->local);
+	  vtep_addr_unref (&vxm->vtep_table, t->encap_fib_index, &t->local);
 	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
 	}
-      else if (vtep_addr_unref (&t->remote) == 0)
+      else if (vtep_addr_unref (&vxm->vtep_table,
+				t->encap_fib_index, &t->remote) == 0)
 	{
 	  mcast_shared_remove (&t->remote);
 	}
@@ -1118,7 +1091,7 @@ geneve_init (vlib_main_t * vm)
   vxm->geneve6_tunnel_by_key = hash_create_mem (0,
 						sizeof (geneve6_tunnel_key_t),
 						sizeof (uword));
-  vxm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+  vxm->vtep_table = vtep_table_create ();
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));

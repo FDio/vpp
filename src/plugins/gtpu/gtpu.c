@@ -298,35 +298,6 @@ gtpu_decap_next_is_valid (gtpu_main_t * gtm, u32 is_ip6, u32 decap_next_index)
   return decap_next_index < r->n_next_nodes;
 }
 
-static uword
-vtep_addr_ref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (gtpu_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (gtpu_main.vtep6, &ip->ip6);
-  if (vtep)
-    return ++(*vtep);
-  ip46_address_is_ip4 (ip) ?
-    hash_set (gtpu_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_mem_alloc (&gtpu_main.vtep6, &ip->ip6, 1);
-  return 1;
-}
-
-static uword
-vtep_addr_unref (ip46_address_t * ip)
-{
-  uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (gtpu_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (gtpu_main.vtep6, &ip->ip6);
-  ALWAYS_ASSERT (vtep);
-  if (--(*vtep) != 0)
-    return *vtep;
-  ip46_address_is_ip4 (ip) ?
-    hash_unset (gtpu_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_mem_free (&gtpu_main.vtep6, &ip->ip6);
-  return 0;
-}
-
 typedef CLIB_PACKED (union
 		     {
 		     struct
@@ -498,7 +469,7 @@ int vnet_gtpu_add_del_tunnel
 	   * when the forwarding for the entry updates, and the tunnel can
 	   * re-stack accordingly
 	   */
-	  vtep_addr_ref (&t->src);
+	  vtep_addr_ref (&gtm->vtep_table, t->encap_fib_index, &t->src);
 	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
 						&tun_dst_pfx,
 						gtm->fib_node_type,
@@ -515,7 +486,8 @@ int vnet_gtpu_add_del_tunnel
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
 
-	  if (vtep_addr_ref (&t->dst) == 1)
+	  if (vtep_addr_ref (&gtm->vtep_table,
+			     t->encap_fib_index, &t->dst) == 1)
 	    {
 	      fib_node_index_t mfei;
 	      adj_index_t ai;
@@ -608,10 +580,11 @@ int vnet_gtpu_add_del_tunnel
 	  if (t->flow_index != ~0)
 	    vnet_flow_del (vnm, t->flow_index);
 
-	  vtep_addr_unref (&t->src);
+	  vtep_addr_unref (&gtm->vtep_table, t->encap_fib_index, &t->src);
 	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
 	}
-      else if (vtep_addr_unref (&t->dst) == 0)
+      else if (vtep_addr_unref (&gtm->vtep_table,
+				t->encap_fib_index, &t->dst) == 0)
 	{
 	  mcast_shared_remove (&t->dst);
 	}
@@ -1243,7 +1216,7 @@ gtpu_init (vlib_main_t * vm)
   gtm->gtpu6_tunnel_by_key = hash_create_mem (0,
 					      sizeof (gtpu6_tunnel_key_t),
 					      sizeof (uword));
-  gtm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+  gtm->vtep_table = vtep_table_create ();
   gtm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));

@@ -51,20 +51,7 @@ static u8 * format_gtpu_rx_trace (u8 * s, va_list * args)
 always_inline u32
 validate_gtpu_fib (vlib_buffer_t *b, gtpu_tunnel_t *t, u32 is_ip4)
 {
-  u32 fib_index, sw_if_index;
-
-  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-
-  if (is_ip4)
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index) :
-	vnet_buffer (b)->sw_if_index[VLIB_TX];
-  else
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) :
-	vnet_buffer (b)->sw_if_index[VLIB_TX];
-
-  return (fib_index == t->encap_fib_index);
+  return t->encap_fib_index == vlib_buffer_get_ip_fib_index (b, is_ip4);
 }
 
 always_inline uword
@@ -813,8 +800,10 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
   gtpu_main_t * gtm = &gtpu_main;
   u32 * from, * to_next, n_left_from, n_left_to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
-  ip4_address_t addr4; /* last IPv4 address matching a local VTEP address */
-  ip6_address_t addr6; /* last IPv6 address matching a local VTEP address */
+  vtep4_key_t last_vtep4;	/* last IPv4 address / fib index
+				   matching a local VTEP address */
+  vtep6_key_t last_vtep6;	/* last IPv6 address / fib index
+				   matching a local VTEP address */
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -823,8 +812,10 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  if (is_ip4) addr4.data_u32 = ~0;
-  else ip6_address_set_zero (&addr6);
+  if (is_ip4)
+    vtep4_key_init (&last_vtep4);
+  else
+    vtep6_key_init (&last_vtep6);
 
   while (n_left_from > 0)
     {
@@ -908,21 +899,13 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs*/
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip40->dst_address.as_u32)
-	        {
-		  if (!hash_get (gtm->vtep4, ip40->dst_address.as_u32))
-		      goto exit0; /* no local VTEP for GTPU packet */
-		  addr4 = ip40->dst_address;
-	        }
+	      if (!vtep4_check (&gtm->vtep_table, b0, ip40, &last_vtep4))
+		goto exit0;	/* no local VTEP for GTPU packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip60->dst_address))
-	        {
-		  if (!hash_get_mem (gtm->vtep6, &ip60->dst_address))
-		      goto exit0; /* no local VTEP for GTPU packet */
-		  addr6 = ip60->dst_address;
-	        }
+	      if (!vtep6_check (&gtm->vtep_table, b0, ip60, &last_vtep6))
+		goto exit0;	/* no local VTEP for GTPU packet */
 	    }
 
 	  flags0 = b0->flags;
@@ -990,21 +973,13 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs*/
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip41->dst_address.as_u32)
-	        {
-		  if (!hash_get (gtm->vtep4, ip41->dst_address.as_u32))
-		      goto exit1; /* no local VTEP for GTPU packet */
-		  addr4 = ip41->dst_address;
-		}
+              if (!vtep4_check (&gtm->vtep_table, b1, ip41, &last_vtep4))
+                goto exit1;	/* no local VTEP for GTPU packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip61->dst_address))
-	        {
-		  if (!hash_get_mem (gtm->vtep6, &ip61->dst_address))
-		      goto exit1; /* no local VTEP for GTPU packet */
-		  addr6 = ip61->dst_address;
-		}
+              if (!vtep6_check (&gtm->vtep_table, b1, ip61, &last_vtep6))
+                goto exit1;	/* no local VTEP for GTPU packet */
 	    }
 
 	  flags1 = b1->flags;
@@ -1108,21 +1083,13 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs*/
 	  if (is_ip4)
 	    {
-	      if (addr4.as_u32 != ip40->dst_address.as_u32)
-	        {
-		  if (!hash_get (gtm->vtep4, ip40->dst_address.as_u32))
-		      goto exit; /* no local VTEP for GTPU packet */
-		  addr4 = ip40->dst_address;
-		}
+              if (!vtep4_check (&gtm->vtep_table, b0, ip40, &last_vtep4))
+                goto exit;	/* no local VTEP for GTPU packet */
 	    }
 	  else
 	    {
-	      if (!ip6_address_is_equal (&addr6, &ip60->dst_address))
-	        {
-		  if (!hash_get_mem (gtm->vtep6, &ip60->dst_address))
-		      goto exit; /* no local VTEP for GTPU packet */
-		  addr6 = ip60->dst_address;
-		}
+              if (!vtep6_check (&gtm->vtep_table, b0, ip60, &last_vtep6))
+                goto exit;	/* no local VTEP for GTPU packet */
 	    }
 
 	  flags0 = b0->flags;
