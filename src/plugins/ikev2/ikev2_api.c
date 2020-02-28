@@ -144,7 +144,7 @@ static void
 static void
 vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
 {
-  vl_api_ikev2_profile_add_del_reply_t *rmp;
+  vl_api_ikev2_profile_set_id_reply_t *rmp;
   int rv = 0;
 
 #if WITH_LIBSSL > 0
@@ -195,7 +195,7 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
 static void
 vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
 {
-  vl_api_ikev2_profile_set_ts_reply_t *rmp;
+  vl_api_ikev2_set_local_key_reply_t *rmp;
   int rv = 0;
 
 #if WITH_LIBSSL > 0
