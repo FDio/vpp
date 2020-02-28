@@ -44,12 +44,14 @@ enum ip_neighbor_flags: u8
     @param flags - flags for the nieghbor
     @param mac_address - l2 address of the neighbor
     @param ip_address - ip4 or ip6 address of the neighbor
+    @param ipn_age - age of neighbor
 */
 typedef ip_neighbor {
   vl_api_interface_index_t sw_if_index;
   vl_api_ip_neighbor_flags_t flags;
   vl_api_mac_address_t mac_address;
   vl_api_address_t ip_address;
+  u32 ipn_age;
 };
 
 /** \brief IP neighbor add / del request
