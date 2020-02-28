@@ -384,7 +384,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 					fifo_segment_slice_t * fss,
 					u32 data_bytes)
 {
-  svm_fifo_chunk_t *c, *first = 0, *last = 0;
+  svm_fifo_chunk_t *c, *first = 0, *last = 0, *next;
   u32 fl_index, fl_size, n_alloc = 0;
   svm_fifo_t *f;
 
@@ -421,7 +421,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 	  c->next = first;
 	  first = c;
 	  n_alloc += fl_size;
-	  data_bytes -= c->length;
+	  data_bytes -= clib_min (fl_size, data_bytes);
 	}
       else
 	{
@@ -434,11 +434,13 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 		{
 		  fl_index = fs_freelist_for_size (c->length);
 		  fl_size = fs_freelist_index_to_size (fl_index);
+		  next = c->next;
 		  c->next = fss->free_chunks[fl_index];
 		  fss->free_chunks[fl_index] = c;
 		  fss->n_fl_chunk_bytes += fl_size;
 		  n_alloc -= fl_size;
 		  data_bytes += fl_size;
+		  c = next;
 		}
 	      first = last = 0;
 	      fl_index = fs_freelist_for_size (data_bytes);
@@ -584,6 +586,8 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
   fifo_sz = sizeof (svm_fifo_t) + sizeof (svm_fifo_chunk_t);
   fifo_sz += 1 << max_log2 (min_size);
 
+  clib_spinlock_lock (&fss->chunk_lock);
+
   if (fss->free_fifos && fss->free_chunks[fl_index])
     {
       f = fs_try_alloc_fifo_freelist (fss, fl_index);
@@ -618,13 +622,19 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 	  goto done;
 	}
     }
-  if (data_bytes <= fss->n_fl_chunk_bytes)
-    f = fs_try_alloc_fifo_freelist_multi_chunk (fsh, fss, data_bytes);
+  /* All failed, try to allocate min of data bytes and fifo sz */
+  fifo_sz = clib_min (fifo_sz, data_bytes);
+  if (fifo_sz <= fss->n_fl_chunk_bytes)
+    f = fs_try_alloc_fifo_freelist_multi_chunk (fsh, fss, fifo_sz);
 
 done:
+  clib_spinlock_unlock (&fss->chunk_lock);
 
   if (f)
-    f->fs_hdr = fsh;
+    {
+      f->size = data_bytes;
+      f->fs_hdr = fsh;
+    }
   return f;
 }
 
