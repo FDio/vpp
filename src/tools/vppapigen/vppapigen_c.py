@@ -525,6 +525,15 @@ def generate_include_types(s, module, stream):
     write('#ifndef included_{module}_api_types_h\n'.format(module=module))
     write('#define included_{module}_api_types_h\n'.format(module=module))
 
+    if 'version' in s['Option']:
+        v = s['Option']['version']
+        (major, minor, patch) = v.split('.')
+        write('#define {module}_API_VERSION {major:03d}{minor:03d}{patch:03d}\n'
+              .format(module=module.upper(),
+                      major=int(major),
+                      minor=int(minor),
+                      patch=int(patch)))
+
     if len(s['Import']):
         write('/* Imported API files */\n')
         for i in s['Import']:
