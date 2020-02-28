@@ -246,15 +246,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  if (!ethernet_mac_address_is_zero (args->host_mac_addr))
+  if (ethernet_mac_address_is_zero (args->host_mac_addr))
+    ethernet_mac_address_generate (args->host_mac_addr);
+  args->error = vnet_netlink_set_link_addr (vif->ifindex,
+					    args->host_mac_addr);
+  if (args->error)
     {
-      args->error = vnet_netlink_set_link_addr (vif->ifindex,
-						args->host_mac_addr);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
-	}
+      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+      goto error;
     }
 
   if (args->host_bridge)
@@ -320,18 +319,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  /* switch back to old net namespace */
-  if (args->host_namespace)
-    {
-      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
-	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	  args->error = clib_error_return_unix (0, "setns '%s'",
-						args->host_namespace);
-	  goto error;
-	}
-    }
-
   if (args->host_mtu_set)
     {
       args->error =
@@ -353,6 +340,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
       args->host_mtu_set = 1;
       args->host_mtu_size = tm->host_mtu_size;
+    }
+
+  /* switch back to old net namespace */
+  if (args->host_namespace)
+    {
+      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "setns '%s'",
+						args->host_namespace);
+	  goto error;
+	}
     }
 
   /* Set vhost memory table */
