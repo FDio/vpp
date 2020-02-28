@@ -62,6 +62,7 @@ ip_neighbor_encode (vl_api_ip_neighbor_t * api, const ip_neighbor_t * ipn)
 {
   api->sw_if_index = htonl (ipn->ipn_key->ipnk_sw_if_index);
   api->flags = ip_neighbor_flags_encode (ipn->ipn_flags);
+  api->ipn_age = htonl (ipn->ipn_age);
 
   ip_address_encode (&ipn->ipn_key->ipnk_ip,
 		     ipn->ipn_key->ipnk_type, &api->ip_address);
@@ -129,10 +130,15 @@ send_ip_neighbor_details (index_t ipni, void *arg)
   ip_neighbor_t *ipn;
 
   ipn = ip_neighbor_get (ipni);
+  ipn->ipn_age =
+    (u32) (vlib_time_now (vlib_get_main ()) - ipn->ipn_time_last_updated);
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
+  mp->age =
+    htonl ((u32)
+	   (vlib_time_now (vlib_get_main ()) - ipn->ipn_time_last_updated));
   ip_neighbor_encode (&mp->neighbor, ipn);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);

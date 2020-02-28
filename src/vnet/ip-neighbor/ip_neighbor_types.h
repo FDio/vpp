@@ -87,6 +87,7 @@ typedef struct ip_neighbor_t_
    *  - number of probes - 3 and it's dead
    */
   f64 ipn_time_last_updated;
+  u32 ipn_age;
   u8 ipn_n_probes;
   index_t ipn_elt;
 
