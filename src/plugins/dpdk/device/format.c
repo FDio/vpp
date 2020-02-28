@@ -44,28 +44,6 @@
   _ (tx_bytes_ok, q_obytes)                     \
   _ (rx_errors, q_errors)
 
-#define foreach_dpdk_rss_hf                    \
-  _(ETH_RSS_FRAG_IPV4,          "ipv4-frag")   \
-  _(ETH_RSS_NONFRAG_IPV4_TCP,   "ipv4-tcp")    \
-  _(ETH_RSS_NONFRAG_IPV4_UDP,   "ipv4-udp")    \
-  _(ETH_RSS_NONFRAG_IPV4_SCTP,  "ipv4-sctp")   \
-  _(ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")  \
-  _(ETH_RSS_IPV4,               "ipv4")        \
-  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
-  _(ETH_RSS_FRAG_IPV6,          "ipv6-frag")   \
-  _(ETH_RSS_NONFRAG_IPV6_TCP,   "ipv6-tcp")    \
-  _(ETH_RSS_NONFRAG_IPV6_UDP,   "ipv6-udp")    \
-  _(ETH_RSS_NONFRAG_IPV6_SCTP,  "ipv6-sctp")   \
-  _(ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")  \
-  _(ETH_RSS_IPV6_EX,            "ipv6-ex")     \
-  _(ETH_RSS_IPV6,               "ipv6")        \
-  _(ETH_RSS_L2_PAYLOAD,         "l2-payload")  \
-  _(ETH_RSS_PORT,               "port")        \
-  _(ETH_RSS_VXLAN,              "vxlan")       \
-  _(ETH_RSS_GENEVE,             "geneve")      \
-  _(ETH_RSS_NVGRE,              "nvgre")
-
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                  \
   _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
@@ -402,7 +380,7 @@ format_dpdk_link_status (u8 * s, va_list * args)
   return s;
 }
 
-#define _(v, str)                                            \
+#define _(n, v, str)                                            \
 if (bitmap & v) {                                            \
   if (format_get_indent (s) > 72)                            \
     s = format(s,"\n%U", format_white_space, indent);        \
@@ -947,7 +925,7 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
       if (0)
 	;
 #undef _
-#define _(f, s)                                 \
+#define _(n, f, s)                                 \
       else if (unformat (input, s))             \
         *rss_fn |= f;
 

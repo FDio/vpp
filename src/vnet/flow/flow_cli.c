@@ -296,6 +296,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   ip_port_and_mask_t dport = { };
   u16 eth_type;
   bool ethernet_set = false;
+  u8 *rss_type[3] = { };
+  u8 *type_str = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -370,6 +372,65 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	flow.actions |= VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
       else if (unformat (line_input, "drop"))
 	flow.actions |= VNET_FLOW_ACTION_DROP;
+      else if (unformat (line_input, "rss function"))
+	{
+	  if (0)
+	    ;
+#undef _
+#define _(f, s)                                 \
+        else if (unformat (line_input, s)) \
+          flow.rss_fun = VNET_RSS_FUNC_##f;
+
+	  foreach_rss_function
+#undef _
+	    else
+	    {
+	      return clib_error_return (0, "unknown input `%U'",
+					format_unformat_error, line_input);
+	    }
+
+	  flow.actions |= VNET_FLOW_ACTION_RSS;
+	}
+      else if (unformat (line_input, "rss types"))
+	{
+	  rss_type[0] = NULL;
+	  rss_type[1] = NULL;
+	  rss_type[2] = NULL;
+	  type_str = NULL;
+
+	  if (unformat (line_input, "%s use %s and %s",
+			&rss_type[0], &rss_type[1], &rss_type[2]))
+	    ;
+	  else
+	    if (unformat
+		(line_input, "%s use %s", &rss_type[0], &rss_type[1]))
+	    ;
+	  else if (unformat (line_input, "%s", &rss_type[0]))
+	    ;
+
+#undef _
+#define _(a,b,c)     \
+        else if (!clib_strcmp(c, (const char *)type_str)) \
+          flow.rss_types |= (1ULL<<a);
+
+#define check_rss_types(_str)     \
+        if (_str != NULL) {\
+          type_str = _str;\
+          if (0) \
+	          ; \
+          foreach_flow_rss_types \
+          else \
+          { \
+            return clib_error_return (0, "parse error: '%U'", \
+              format_unformat_error, line_input); \
+          } \
+        }
+
+	  check_rss_types (rss_type[0])
+	    check_rss_types (rss_type[1]) check_rss_types (rss_type[2])
+#undef _
+	    flow.actions |= VNET_FLOW_ACTION_RSS;
+	}
       else if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
 			 &hw_if_index))
 	;
@@ -545,7 +606,7 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
 	  if (flow.ip6_n_tuple.protocol == (ip_protocol_t) ~ 0)
 	    return clib_error_return (0, "Please specify ip protocol");
-	  if ((type != VNET_FLOW_TYPE_IP4_N_TUPLE) &&
+	  if ((type != VNET_FLOW_TYPE_IP6_N_TUPLE) &&
 	      (flow.ip6_n_tuple.protocol != IP_PROTOCOL_UDP))
 	    return clib_error_return (0,
 				      "For GTP related flow, ip protocol must be UDP");

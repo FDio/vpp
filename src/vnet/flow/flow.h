@@ -129,7 +129,8 @@
   _(2, BUFFER_ADVANCE, "buffer-advance") \
   _(3, REDIRECT_TO_NODE, "redirect-to-node") \
   _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
-  _(5, DROP, "drop")
+  _(5, RSS, "rss") \
+  _(6, DROP, "drop")
 
 typedef enum
 {
@@ -146,6 +147,39 @@ typedef enum
   _( -4, NO_SUCH_ENTRY, "no such entry")			\
   _( -5, NO_SUCH_INTERFACE, "no such interface")		\
   _( -6, INTERNAL, "internal error")
+
+#define foreach_flow_rss_types                    \
+  _(0, FRAG_IPV4,          "ipv4-frag")   \
+  _(1, IPV4_TCP,           "ipv4-tcp")    \
+  _(2, IPV4_UDP,           "ipv4-udp")    \
+  _(3, IPV4_SCTP,          "ipv4-sctp")   \
+  _(4, IPV4_OTHER,         "ipv4-other")  \
+  _(5, IPV4,               "ipv4")        \
+  _(6, IPV6_TCP_EX,        "ipv6-tcp-ex") \
+  _(7, IPV6_UDP_EX,        "ipv6-udp-ex") \
+  _(8, FRAG_IPV6,          "ipv6-frag")   \
+  _(9, IPV6_TCP,           "ipv6-tcp")    \
+  _(10, IPV6_UDP,          "ipv6-udp")    \
+  _(11, IPV6_SCTP,         "ipv6-sctp")   \
+  _(12, IPV6_OTHER,        "ipv6-other")  \
+  _(13, IPV6_EX,           "ipv6-ex")     \
+  _(14, IPV6,              "ipv6")        \
+  _(15, L2_PAYLOAD,        "l2-payload")  \
+  _(16, PORT,              "port")        \
+  _(17, VXLAN,             "vxlan")       \
+  _(18, GENEVE,            "geneve")      \
+  _(19, NVGRE,             "nvgre")       \
+  _(20, GTPU,              "gtpu")        \
+  _(60, L4_DST_ONLY,       "l4-dst-only") \
+  _(61, L4_SRC_ONLY,       "l4-src-only") \
+  _(62, L3_DST_ONLY,       "l3-dst-only") \
+  _(63, L3_SRC_ONLY,       "l3-src-only")
+
+#define foreach_rss_function           \
+  _(DEFAULT, "default")                \
+  _(TOEPLITZ, "toeplitz")              \
+  _(SIMPLE_XOR, "simple_xor")          \
+  _(SYMMETRIC_TOEPLITZ, "symmetric_toeplitz")
 
 typedef enum
 {
@@ -169,6 +203,13 @@ typedef enum
     VNET_FLOW_N_TYPES,
 } vnet_flow_type_t;
 
+typedef enum
+{
+#define _(a,b) VNET_RSS_FUNC_##a,
+  foreach_rss_function
+#undef _
+    VNET_RSS_N_TYPES,
+} vnet_rss_function_t;
 
 /*
  * Create typedef struct vnet_flow_XXX_t
@@ -207,6 +248,12 @@ typedef struct
 
   /* buffer offset for VNET_FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;
+
+  /* RSS types, including IPv4/IPv6/TCP/UDP... */
+  u64 rss_types;
+
+  /* RSS functions, including IPv4/IPv6/TCP/UDP... */
+  vnet_rss_function_t rss_fun;
 
   union
   {

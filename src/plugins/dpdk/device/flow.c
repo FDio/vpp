@@ -61,6 +61,24 @@ mac_address_is_all_zero (const u8 addr[6])
   return true;
 }
 
+static inline void
+dpdk_flow_convert_rss_types (u64 type, u64 * dpdk_rss_type)
+{
+#define BIT_IS_SET(v, b) \
+  ((v) & (u64)1<<(b))
+
+  *dpdk_rss_type = 0;
+
+#undef _
+#define _(n, f, s) \
+      if (n != -1 && BIT_IS_SET(type, n)) \
+        *dpdk_rss_type |= f;
+
+  foreach_dpdk_rss_hf
+#undef _
+    return;
+}
+
 static int
 dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
@@ -74,6 +92,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_item_gtp gtp[2] = { };
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
+  struct rte_flow_action_rss rss = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
   bool fate = false;
@@ -265,13 +284,15 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	  item->spec = NULL;
 	  item->mask = NULL;
 	}
-
-      tcp[0].hdr.src_port = clib_host_to_net_u16 (src_port);
-      tcp[1].hdr.src_port = clib_host_to_net_u16 (src_port_mask);
-      tcp[0].hdr.dst_port = clib_host_to_net_u16 (dst_port);
-      tcp[1].hdr.dst_port = clib_host_to_net_u16 (dst_port_mask);
-      item->spec = tcp;
-      item->mask = tcp + 1;
+      else
+	{
+	  tcp[0].hdr.src_port = clib_host_to_net_u16 (src_port);
+	  tcp[1].hdr.src_port = clib_host_to_net_u16 (src_port_mask);
+	  tcp[0].hdr.dst_port = clib_host_to_net_u16 (dst_port);
+	  tcp[1].hdr.dst_port = clib_host_to_net_u16 (dst_port_mask);
+	  item->spec = tcp;
+	  item->mask = tcp + 1;
+	}
     }
   else
     {
@@ -504,6 +525,27 @@ pattern_end:
     {
       vec_add2 (actions, action, 1);
       action->type = RTE_FLOW_ACTION_TYPE_DROP;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	fate = true;
+    }
+  if (f->actions & VNET_FLOW_ACTION_RSS)
+    {
+      u64 rss_type = 0;
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_RSS;
+      action->conf = &rss;
+
+      /* convert types to DPDK rss bitmask */
+      dpdk_flow_convert_rss_types (f->rss_types, &rss_type);
+
+      rss.types = rss_type;
+      rss.func = f->rss_fun;
+
       if (fate == true)
 	{
 	  rv = VNET_FLOW_ERROR_INTERNAL;
