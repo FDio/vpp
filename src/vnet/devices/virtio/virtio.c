@@ -317,6 +317,8 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
 	  if (vif->net_ns)
 	    vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
+	  vlib_cli_output (vm, "  host-mac-addr %U", format_ethernet_address,
+			   vif->host_mac_addr);
 	  if (vif->host_mtu_size)
 	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
 			     vif->host_mtu_size);

@@ -551,10 +551,14 @@ static void *vl_api_tap_create_v2_t_print
 
   s = format (0, "SCRIPT: tap_create_v2 ");
   s = format (s, "id %u ", ntohl (mp->id));
-  if (memcmp (mp->mac_address, null_mac, 6))
+  if (mp->use_random_mac == 0)
     s = format (s, "mac-address %U ",
 		format_ethernet_address, mp->mac_address);
-  if (memcmp (mp->host_mac_addr, null_mac, 6))
+  if (mp->tx_ring_sz)
+    s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
+  if (mp->rx_ring_sz)
+    s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
+  if (mp->host_mac_addr_set)
     s = format (s, "host-mac-addr %U ",
 		format_ethernet_address, mp->host_mac_addr);
   if (mp->host_if_name_set)
@@ -573,10 +577,6 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "host-ip4-gw %U ", format_ip4_address, mp->host_ip4_addr);
   if (mp->host_ip6_gw_set)
     s = format (s, "host-ip6-gw %U ", format_ip6_address, mp->host_ip6_addr);
-  if (mp->tx_ring_sz)
-    s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
-  if (mp->rx_ring_sz)
-    s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
   if (mp->host_mtu_set)
     s = format (s, "host-mtu-size %u ", ntohl (mp->host_mtu_size));
   if (ntohl (mp->tap_flags) & 0x1)
