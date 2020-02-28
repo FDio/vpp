@@ -190,7 +190,7 @@ ARCH_TARGET_tmp = $(call ifdef_fn,$(ARCH)_target,$(ARCH)-$(OS))
 TARGET = $(call ifdef_fn,$(PLATFORM)_target,$(ARCH_TARGET_tmp))
 TARGET_PREFIX = $(if $(not_native),$(TARGET)-,)
 
-# CPU microarchitecture detection. 
+# CPU microarchitecture detection.
 # Either set <platform>_march in build-data/platforms/<platform>.mk,
 # or detect and use the build-host instruction set
 
@@ -236,7 +236,7 @@ PACKAGE = $*
 # Build/install tags.  This lets you have different CFLAGS/CPPFLAGS/LDFLAGS
 # for e.g. debug versus optimized compiles.  Each tag has its own set of build/install
 # areas.
-TAG = 
+TAG =
 TAG_PREFIX = $(if $(TAG),$(TAG)-)
 
 # yes you need the space
@@ -309,8 +309,8 @@ endif
 
 # Always prefer our own tools to those installed on system.
 # Note: ccache-bin must be before tool bin.
-# 
-# Removed LD_LIBRARY_PATH from BUILD_ENV (drb, 10/31/17):  
+#
+# Removed LD_LIBRARY_PATH from BUILD_ENV (drb, 10/31/17):
 # export LD_LIBRARY_PATH=$(TOOL_INSTALL_DIR)/lib64:$(TOOL_INSTALL_DIR)/lib
 #   Reported to cause trouble. Only of historical interest, since we no longer
 #   build a full tool chain from source.
@@ -617,7 +617,7 @@ check_platform =								\
 	     try make PLATFORM=$(PLATFORM) install-tools) ;			\
     exit 1 ;									\
   fi
-    
+
 configure_check_timestamp =						\
   @$(BUILD_ENV) ;							\
   $(check_platform) ;							\
@@ -803,7 +803,7 @@ pull-all:
 	make PLATFORM=$(PLATFORM) $(patsubst %,%-pull-all,$(ROOT_PACKAGES))
 
 .PHONY: %-diff
-%-diff:									
+%-diff:
 	@$(BUILD_ENV) ;							\
 	d=$(call find_source_fn,$(PACKAGE_SOURCE)) ;			\
 	$(call build_msg_fn,Git diff $(PACKAGE)) ;			\
@@ -812,12 +812,12 @@ pull-all:
         else								\
 	 $(call build_msg_fn, $(PACKAGE) not a git directory) ;		\
 	fi
-            
+
 
 
 # generate diffs for everything in source path
 .PHONY: diff-all
-diff-all:								
+diff-all:
 	@$(BUILD_ENV) ;							\
 	$(call build_msg_fn,Generate diffs) ;				\
 	for r in $(ABSOLUTE_SOURCE_PATH); do				\
@@ -915,7 +915,7 @@ basic_system_image_install =				\
   mkdir -p bin lib mnt proc root sbin sys tmp etc ;	\
   mkdir -p usr usr/{bin,sbin} usr/lib ;			\
   mkdir -p var var/{lib,lock,log,run,tmp} ;		\
-  mkdir -p var/lock/subsys var/lib/urandom 
+  mkdir -p var/lock/subsys var/lib/urandom
 
 .PHONY: basic_system-image_install
 basic_system-image_install: # linuxrc-install
@@ -925,7 +925,7 @@ basic_system-image_install: # linuxrc-install
 ROOT_PACKAGES = $(if $($(PLATFORM)_root_packages),$($(PLATFORM)_root_packages),$(default_root_packages))
 
 .PHONY: install-packages
-install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))	
+install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	@$(BUILD_ENV) ;							        \
 	set -eu$(BUILD_DEBUG) ;							\
 	d=$(MU_BUILD_ROOT_DIR)/packages-$(PLATFORM) ;				\
@@ -947,7 +947,7 @@ install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 		    >& /dev/null ;						\
 	else									\
 	    $(call build_msg_fn, NOT stripping symbols) ;			\
-	fi 
+	fi
 
 # readonly root squashfs image
 # Note: $(call build_msg_fn) does not seem to work inside of fakeroot so we use echo
@@ -1087,7 +1087,7 @@ ccache-install:
 	$(MAKE) -C $(MU_BUILD_ROOT_DIR)	ccache-build
 	mkdir -p $(TOOL_INSTALL_DIR)/ccache-bin
 	ln -sf $(MU_BUILD_ROOT_DIR)/build-tool-native/ccache/ccache \
-		$(TOOL_INSTALL_DIR)/ccache-bin/$(TARGET_PREFIX)gcc 
+		$(TOOL_INSTALL_DIR)/ccache-bin/$(TARGET_PREFIX)gcc
 
 TOOL_MAKE = $(MAKE) is_build_tool=yes
 
@@ -1151,7 +1151,4 @@ distclean:
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.deb
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.rpm
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.changes
-	rm -rf $(MU_BUILD_ROOT_DIR)/python
-	if [ -e /usr/bin/dh ];then (cd $(MU_BUILD_ROOT_DIR)/deb/;debian/rules clean); fi
-	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.install
-	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/changelog
+	rm -rf $(MU_BUILD_ROOT_DIR)/*.buildinfo
