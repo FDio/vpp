@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53733de5_de389fb3",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-02-28T14:28:50Z",
+      "side": 1,
+      "message": "I think this macro and the two above it should be defined with a name that begins with \u0027foreach_\u0027. That is a pretty consistent pattern within the project that makes it easy to identify.\nAll 3 macros could probably be simplified also. Each line has a pattern like _(ETH_RSS_\u003cid\u003e, VNET_ETH_RSS_HASH_F_\u003cid\u003e). Since the ETH_RSS_ and VNET_ETH_RSS_HASH_F_ are the same in each line, I think the macro could just contain the part which is unique (the \u003cid\u003e part, like VLAN_INSERT, IPV4_CKSUM, etc) and the definition of _() could contain the common pieces. Like:\n\n#define foreach_rss_hash_flags \\\n_(VLAN_INSERT) \\\n_(IPV4_CKSUM) \\\n\u003call the other flags\u003e\n\n#define _(o) \\\n  if (di.flow_type_rss_offloads \u0026 ETH_RSS_##o)  \\\n    hw_info-\u003erss_hf |\u003d VNET_ETH_RSS_HASH_F_##o; \\\n  if (rss_conf.rss_hf \u0026 ETH_RSS_##o)            \\\n    hw_info-\u003erss_hf_enabled |\u003d VNET_ETH_RSS_HASH_F_##o;\n\n  foreach_rss_hash_flags",
+      "range": {
+        "startLine": 642,
+        "startChar": 0,
+        "endLine": 642,
+        "endChar": 30
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "58405190_6a524dda",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-02-28T14:28:50Z",
+      "side": 1,
+      "message": "The sup_sw_if_index for an sw_if_index is already available in the sw_interface_details messages that are sent in reply to an sw_interface_dump request. I don\u0027t think it needs to be included in the device info details.",
+      "range": {
+        "startLine": 247,
+        "startChar": 6,
+        "endLine": 247,
+        "endChar": 21
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
