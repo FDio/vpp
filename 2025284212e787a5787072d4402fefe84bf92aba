@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9e48c438_e4752a09",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-02-28T17:27:31Z",
+      "side": 1,
+      "message": "It should not send anything unless sw_if_index \u003d\u003d sup_sw_if_index. If all interfaces are dumped and there is a hardware interface which has many subinterfaces, the same device info data for the hardware interface will be built and sent for each subinterface.",
+      "revId": "2025284212e787a5787072d4402fefe84bf92aba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
