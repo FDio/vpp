@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "35ff5c62_1fe0dd62",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-02-28T21:06:41Z",
+      "side": 1,
+      "message": "Cool. Sure, thanks.",
+      "parentUuid": "53733de5_de389fb3",
+      "range": {
+        "startLine": 642,
+        "startChar": 0,
+        "endLine": 642,
+        "endChar": 30
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "58405190_6a524dda",
         "filename": "src/vnet/interface.api",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2020-02-28T14:28:50Z",
       "side": 1,
       "message": "The sup_sw_if_index for an sw_if_index is already available in the sw_interface_details messages that are sent in reply to an sw_interface_dump request. I don\u0027t think it needs to be included in the device info details.",
+      "range": {
+        "startLine": 247,
+        "startChar": 6,
+        "endLine": 247,
+        "endChar": 21
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa32f44b_0d251259",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-02-28T21:06:41Z",
+      "side": 1,
+      "message": "Sure, thank you.",
+      "parentUuid": "58405190_6a524dda",
       "range": {
         "startLine": 247,
         "startChar": 6,
