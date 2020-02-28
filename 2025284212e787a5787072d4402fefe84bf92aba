@@ -16,6 +16,24 @@
       "revId": "2025284212e787a5787072d4402fefe84bf92aba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d9ea170c_79c5ca9c",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-02-28T21:06:41Z",
+      "side": 1,
+      "message": "Ok. Thanks.",
+      "parentUuid": "9e48c438_e4752a09",
+      "revId": "2025284212e787a5787072d4402fefe84bf92aba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
