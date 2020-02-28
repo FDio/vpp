@@ -34,6 +34,8 @@ vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
   ip46_address_t *addrs = 0;
   int rv;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   api_flags = htonl (mp->flags);
 
   clib_memset (&vr_conf, 0, sizeof (vr_conf));
@@ -106,6 +108,7 @@ vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
 
   vec_free (addrs);
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_VRRP_VR_ADD_DEL_REPLY);
 }
 

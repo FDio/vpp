@@ -227,11 +227,18 @@ vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t * mp)
   vat_main_t *vam = vrrp_test_main.vat_main;
   u32 api_flags = ntohl (mp->config.flags);
   int i;
+  u32 state;
   char *states[] = {
     "VRRP_API_VR_STATE_INIT",
     "VRRP_API_VR_STATE_BACKUP",
     "VRRP_API_VR_STATE_MASTER",
+    "BAD STATE!",
   };
+
+  state = ntohl (mp->runtime.state);
+
+  if (state > ARRAY_LEN (states) - 2)
+    state = ARRAY_LEN (states) - 1;
 
   fformat (vam->ofp, "sw_if_index %u vr_id %u IPv%d: "
 	   "priority %u interval %u preempt %s accept %s unicast %s "
@@ -243,7 +250,7 @@ vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t * mp)
 	   (api_flags & VRRP_API_VR_PREEMPT) ? "yes" : "no",
 	   (api_flags & VRRP_API_VR_ACCEPT) ? "yes" : "no",
 	   (api_flags & VRRP_API_VR_UNICAST) ? "yes" : "no",
-	   states[ntohl (mp->runtime.state)],
+	   states[state],
 	   ntohs (mp->runtime.master_adv_int), ntohs (mp->runtime.skew),
 	   ntohs (mp->runtime.master_down_int),
 	   format_ethernet_address, &mp->runtime.mac);
