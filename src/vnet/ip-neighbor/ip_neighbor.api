@@ -99,6 +99,7 @@ define ip_neighbor_dump
 */
 define ip_neighbor_details {
   u32 context;
+  f64 age;
   vl_api_ip_neighbor_t neighbor;
 };
 
