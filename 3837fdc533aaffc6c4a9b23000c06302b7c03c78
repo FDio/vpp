@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1ef8ab44_96c422f2",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2020-02-29T01:44:36Z",
+      "side": 1,
+      "message": "In C a leading 0 means octal. So how about\n\n        write(\u0027#define {module}_API_VERSION {version}\\n\u0027\n              .format(module\u003dmodule.upper(),\n                      version\u003dint(major) * 1000000 + int(minor) * 1000, + int(patch))",
+      "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
