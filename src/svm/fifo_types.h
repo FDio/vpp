@@ -19,6 +19,7 @@
 #include <svm/ssvm.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/rbtree.h>
+#include <vppinfra/lock.h>
 
 #define SVM_FIFO_TRACE 			(0)
 #define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
