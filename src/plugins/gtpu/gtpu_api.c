@@ -64,7 +64,8 @@ vl_api_gtpu_offload_rx_t_handler (vl_api_gtpu_offload_rx_t * mp)
       goto err;
     }
 
-  if (t->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT)
+  if ((t->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+      (t->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
     {
       rv = VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
       goto err;
