@@ -10,7 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cgi, pyparsing as pp
+import html
+import pyparsing as pp
 
 # Some useful primitives
 ident = pp.Word(pp.alphas + "_", pp.alphas + pp.nums + "_")
@@ -102,7 +103,7 @@ class ParseFunctionMacroStmt(ParserFunctionMacro):
 
 """
 Parser for our struct initializers which are composed from a
-function-like macro, equals sign, and then a normal C struct initalizer
+function-like macro, equals sign, and then a normal C struct initializer
 block.
 """
 class MacroInitializer(ParserFunctionMacro):
@@ -144,6 +145,6 @@ class MacroInitializer(ParserFunctionMacro):
         }
 
         for param in item[2]:
-            r["value"][param[0]] = cgi.escape(param[1])
+            r["value"][param[0]] = html.escape(param[1])
 
         return r
