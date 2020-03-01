@@ -2553,7 +2553,7 @@ more:
     {
       static u8 *lv;
       vec_reset_length (lv);
-      lv = format (lv, "%U[%d]: %v",
+      lv = format (lv, "%U[%d]: %v\n",
 		   format_timeval, 0 /* current bat-time */ ,
 		   0 /* current bat-format */ ,
 		   cli_file_index, cf->current_command);
