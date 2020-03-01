@@ -1212,6 +1212,7 @@ VLIB_INIT_FUNCTION (ip6_gtpu_bypass_init);
 
 #define foreach_gtpu_flow_error					\
   _(NONE, "no error")							\
+  _(PAYLOAD_ERROR, "Payload type errors")							\
   _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
   _(IP_HEADER_ERROR, "Rx ip header errors")				\
   _(UDP_CHECKSUM_ERROR, "Rx udp checksum errors")				\
@@ -1428,7 +1429,16 @@ gtpu_flow_input (vlib_main_t * vm,
       	  /* Pop gtpu header */
       	  vlib_buffer_advance (b0, gtpu_hdr_len0);
 
-          next0 = GTPU_INPUT_NEXT_IP4_INPUT;
+          /* assign the next node */
+          if (PREDICT_FALSE (t0->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+              (t0->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
+          {
+            error0 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
+            next0 = GTPU_INPUT_NEXT_DROP;
+            goto trace0;
+          }
+          next0 = t0->decap_next_index;
+
           sw_if_index0 = t0->sw_if_index;
 
           /* Set packet input sw_if_index to unicast GTPU tunnel for learning */
@@ -1500,7 +1510,16 @@ trace0:
       	  /* Pop gtpu header */
       	  vlib_buffer_advance (b1, gtpu_hdr_len1);
 
-          next1 = GTPU_INPUT_NEXT_IP4_INPUT;
+          /* assign the next node */
+          if (PREDICT_FALSE (t1->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+            (t1->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
+          {
+            next1 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
+            next1 = GTPU_INPUT_NEXT_DROP;
+            goto trace1;
+          }
+          next1 = t1->decap_next_index;
+
           sw_if_index1 = t1->sw_if_index;
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
@@ -1620,7 +1639,16 @@ trace1:
       	  /* Pop gtpu header */
       	  vlib_buffer_advance (b0, gtpu_hdr_len0);
 
-          next0 = GTPU_INPUT_NEXT_IP4_INPUT;
+          /* assign the next node */
+          if (PREDICT_FALSE (t0->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+              (t0->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
+          {
+            next0 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
+            next0 = GTPU_INPUT_NEXT_DROP;
+            goto trace00;
+          }
+          next0 = t0->decap_next_index;
+
           sw_if_index0 = t0->sw_if_index;
 
           /* Set packet input sw_if_index to unicast GTPU tunnel for learning */

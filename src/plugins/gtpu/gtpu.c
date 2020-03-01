@@ -1097,7 +1097,7 @@ vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .redirect_node_index = gtpu4_flow_input_node.index,
 	    .buffer_advance = sizeof (ethernet_header_t)
 	      + sizeof (ip4_header_t) + sizeof (udp_header_t),
-	    .type = VNET_FLOW_TYPE_IP4_GTPU_IP4,
+	    .type = VNET_FLOW_TYPE_IP4_GTPU,
 	    .ip4_gtpu = {
 			 .protocol = IP_PROTOCOL_UDP,
 			 .src_addr.addr = t->dst.ip4,
@@ -1178,10 +1178,11 @@ gtpu_offload_command_fn (vlib_main_t * vm,
   if (!ip46_address_is_ip4 (&t->dst))
     return clib_error_return (0, "currently only IPV4 tunnels are supported");
 
-  /* inner protocol should be IPv4 */
-  if (t->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT)
+  /* inner protocol should be IPv4/IPv6 */
+  if ((t->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+      (t->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
     return clib_error_return (0,
-			      "currently only inner IPV4 protocol is supported");
+			      "currently only inner IPv4/IPv6 protocol is supported");
 
   vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, hw_if_index);
   ip4_main_t *im = &ip4_main;
