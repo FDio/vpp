@@ -618,7 +618,7 @@ string of the form "DDDD:BB:SS.F" where:
 * SS = Slot number
 * F = Function
 
-If the keywork **default** is used the values will apply to all the devices.
+If the keyword **default** is used the values will apply to all the devices.
 
 This is the same format used in the linux sysfs tree (i.e./sys/bus/pci/devices)
 for PCI device directory names.
@@ -672,7 +672,7 @@ Number of receive queues. Also enables RSS. Default value is 1.
 .. code-block:: console
 
    dev 0000:02:00.1 {
-      num-tx-queues <n>
+      num-rx-queues <n>
    }
 
 num-tx-queues <n>
