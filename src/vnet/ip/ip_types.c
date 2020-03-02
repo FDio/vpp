@@ -185,9 +185,17 @@ ip_address_to_46 (const ip_address_t * addr, ip46_address_t * a)
     case FIB_PROTOCOL_IP6:
       a->ip6 = addr->ip.v6;
       break;
+#ifndef __COVERITY__
+      /*
+       * Coverity notices that proto can be either FIB_PROTOCOL_IP4
+       * or FIB_PROTOCOL_IP6, and complains that the default
+       * case is unreachable. Clang doesn't figure that out,
+       * and issues a (fatal) warning. Hence the #ifndef __COVERITY__
+       */
     default:
       ASSERT (0);
       break;
+#endif
     }
 
   return (proto);
