@@ -16,6 +16,29 @@
       "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "122b7115_6ed7a634",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-02T03:51:28Z",
+      "side": 1,
+      "message": "Does it make sense to encode this info so that anyone who uses it has to has to decode it?\nIs it better to put it in a struct as .major, .minor, .patch?  \nThere is already a semver typedef in vpe_types.api",
+      "range": {
+        "startLine": 527,
+        "startChar": 7,
+        "endLine": 532,
+        "endChar": 0
+      },
+      "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
