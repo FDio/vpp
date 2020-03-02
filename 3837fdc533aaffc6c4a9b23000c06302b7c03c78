@@ -39,6 +39,30 @@
       "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2f3e6de_2ab1c5ad",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2020-03-02T14:57:00Z",
+      "side": 1,
+      "message": "The point of the commit is to add a #define that the C preprocessor can use, so putting the information in a struct would defeat the point. :)",
+      "parentUuid": "122b7115_6ed7a634",
+      "range": {
+        "startLine": 527,
+        "startChar": 7,
+        "endLine": 532,
+        "endChar": 0
+      },
+      "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
