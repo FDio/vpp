@@ -40,15 +40,31 @@ static __clib_unused char *rdma_input_error_strings[] = {
 #undef _
 };
 
+
+static_always_inline void
+ibv_set_recv_wr_and_sge (struct ibv_recv_wr *w, struct ibv_sge *s, u64 va,
+			 u32 data_size, u32 lkey)
+{
+  s[0].addr = va;
+  s[0].length = data_size;
+  s[0].lkey = lkey;
+  w[0].next = w + 1;
+  w[0].sg_list = s;
+  w[0].num_sge = 1;
+}
+
 static_always_inline void
 rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 			  rdma_rxq_t * rxq)
 {
   u32 n_alloc, n;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   struct ibv_recv_wr wr[VLIB_FRAME_SIZE], *w = wr;
   struct ibv_sge sge[VLIB_FRAME_SIZE], *s = sge;
-  u32 slot = rxq->tail & (rxq->size - 1);
+  u32 mask = rxq->size - 1;
+  u32 slot = rxq->tail & mask;
+  u32 *bufs = rxq->bufs + slot;
+  u32 data_size = vlib_buffer_get_default_data_size (vm);
+  u32 lkey = rd->lkey;
 
   /* do not enqueue more packet than ring space */
   n_alloc = clib_min (VLIB_FRAME_SIZE, rxq->size - (rxq->tail - rxq->head));
@@ -60,76 +76,54 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
   /* avoid wrap-around logic in core loop */
   n_alloc = clib_min (n_alloc, rxq->size - slot);
 
-  n = n_alloc =
-    vlib_buffer_alloc_to_ring_from_pool (vm, rxq->bufs, slot, rxq->size,
-					 n_alloc, rd->pool);
+  n_alloc &= ~7;		/* round to 8 */
 
-  /* if ring is full or allocation error, do nothing */
-  if (PREDICT_FALSE (0 == n_alloc))
-    return;
+  n = vlib_buffer_alloc_to_ring_from_pool (vm, rxq->bufs, slot, rxq->size,
+					   n_alloc, rd->pool);
 
-  vlib_get_buffers (vm, &rxq->bufs[slot], bufs, n_alloc);
-
-  while (n >= 4)
+  if (PREDICT_FALSE (n != n_alloc))
     {
-      if (PREDICT_TRUE (n >= 8))
+      u32 n_free;
+      if (n < 8)
 	{
-	  CLIB_PREFETCH (&s[4 + 0], 4 * sizeof (s[0]), STORE);
-	  CLIB_PREFETCH (&w[4 + 0], 4 * sizeof (w[0]), STORE);
+	  if (n)
+	    vlib_buffer_free_from_ring (vm, rxq->bufs, slot, rxq->size, n);
+	  return;
 	}
 
-      s[0].addr = vlib_buffer_get_va (b[0]);
-      s[0].length = vlib_buffer_get_default_data_size (vm);
-      s[0].lkey = rd->lkey;
-
-      s[1].addr = vlib_buffer_get_va (b[1]);
-      s[1].length = vlib_buffer_get_default_data_size (vm);
-      s[1].lkey = rd->lkey;
-
-      s[2].addr = vlib_buffer_get_va (b[2]);
-      s[2].length = vlib_buffer_get_default_data_size (vm);
-      s[2].lkey = rd->lkey;
-
-      s[3].addr = vlib_buffer_get_va (b[3]);
-      s[3].length = vlib_buffer_get_default_data_size (vm);
-      s[3].lkey = rd->lkey;
-
-      w[0].next = &w[0] + 1;
-      w[0].sg_list = &s[0];
-      w[0].num_sge = 1;
-
-      w[1].next = &w[1] + 1;
-      w[1].sg_list = &s[1];
-      w[1].num_sge = 1;
-
-      w[2].next = &w[2] + 1;
-      w[2].sg_list = &s[2];
-      w[2].num_sge = 1;
-
-      w[3].next = &w[3] + 1;
-      w[3].sg_list = &s[3];
-      w[3].num_sge = 1;
-
-      s += 4;
-      w += 4;
-      b += 4;
-      n -= 4;
+      /* partial allocation, round and return rest */
+      n_free = n - (n & 7);
+      n -= n_free;
+      if (n_free)
+	vlib_buffer_free_from_ring (vm, rxq->bufs, (slot + n) & mask,
+				    rxq->size, n_free);
     }
 
-  while (n >= 1)
+  n_alloc = n;
+
+  while (n >= 8)
     {
-      s[0].addr = vlib_buffer_get_va (b[0]);
-      s[0].length = vlib_buffer_get_default_data_size (vm);
-      s[0].lkey = rd->lkey;
+      u64 va[8];
+      if (PREDICT_TRUE (n >= 16))
+	{
+	  clib_prefetch_store (s + 16);
+	  clib_prefetch_store (w + 16);
+	}
 
-      w[0].next = &w[0] + 1;
-      w[0].sg_list = &s[0];
-      w[0].num_sge = 1;
+      vlib_get_buffers_with_offset (vm, bufs, (void **) va, 8,
+				    sizeof (vlib_buffer_t));
 
-      s += 1;
-      w += 1;
-      b += 1;
-      n -= 1;
+      ibv_set_recv_wr_and_sge (w++, s++, va[0], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[1], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[2], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[3], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[4], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[5], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[6], data_size, lkey);
+      ibv_set_recv_wr_and_sge (w++, s++, va[7], data_size, lkey);
+
+      bufs += 8;
+      n -= 8;
     }
 
   w[-1].next = 0;		/* fix next pointer in WR linked-list last item */
@@ -287,10 +281,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ASSERT (n_rx_packets <= rxq->tail - rxq->head);
 
   if (PREDICT_FALSE (n_rx_packets <= 0))
-    {
-      rdma_device_input_refill (vm, rd, rxq);
-      return 0;
-    }
+    goto refill;
 
   /* init buffer template */
   vlib_buffer_copy_template (&bt, &ptd->buffer_template);
@@ -332,6 +323,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
      VNET_INTERFACE_COUNTER_RX, vm->thread_index,
      rd->hw_if_index, n_rx_packets, n_rx_bytes);
 
+refill:
   rdma_device_input_refill (vm, rd, rxq);
 
   return n_rx_packets;
