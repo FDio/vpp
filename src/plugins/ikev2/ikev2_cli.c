@@ -376,6 +376,12 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  r = ikev2_set_profile_udp_encap (vm, name);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U ipsec-over-udp port %d",
+			 unformat_token, valid_chars, &name, &tmp1))
+	{
+	  r = ikev2_set_profile_ipsec_udp_port (vm, name, tmp1, 1);
+	  goto done;
+	}
       else
 	break;
     }
@@ -486,6 +492,9 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
+
+    if (p->dst_port != 0)
+      vlib_cli_output(vm, "  ipsec-over-udp port %d", p->dst_port);
   }));
   /* *INDENT-ON* */
 

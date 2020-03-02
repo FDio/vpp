@@ -312,6 +312,33 @@ vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
 }
 
 static void
+  vl_api_ikev2_profile_set_ipsec_udp_port_t_handler
+  (vl_api_ikev2_profile_set_ipsec_udp_port_t * mp)
+{
+  vl_api_ikev2_profile_set_ipsec_udp_port_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+
+  u8 *tmp = format (0, "%s", mp->name);
+
+  error =
+    ikev2_set_profile_ipsec_udp_port (vm, tmp,
+				      clib_net_to_host_u16 (mp->port),
+				      mp->is_set);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_IPSEC_UDP_PORT_REPLY);
+}
+
+static void
   vl_api_ikev2_set_tunnel_interface_t_handler
   (vl_api_ikev2_set_tunnel_interface_t * mp)
 {
