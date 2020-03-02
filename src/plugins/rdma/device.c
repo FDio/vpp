@@ -64,7 +64,7 @@ rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
   {
     struct ibv_flow_attr attr;
     struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
+  } __clib_packed fa;
 
   memset (&fa, 0, sizeof (fa));
   fa.attr.num_of_specs = 1;
@@ -424,6 +424,37 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   if (ibv_modify_wq (rxq->wq, &wqa) != 0)
     return clib_error_return_unix (0, "Modify WQ (RDY) Failed");
 
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      struct mlx5dv_obj obj = { };
+      struct mlx5dv_cq dv_cq;
+      struct mlx5dv_rwq dv_rwq;
+      u64 qw0;
+
+      obj.cq.in = rxq->cq;
+      obj.cq.out = &dv_cq;
+      obj.rwq.in = rxq->wq;
+      obj.rwq.out = &dv_rwq;
+
+      if ((mlx5dv_init_obj (&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_RWQ)))
+	return clib_error_return_unix (0, "mlx5dv: failed to init rx obj");
+
+      if (dv_cq.cqe_size != sizeof (mlx5dv_rcq_t))
+	return clib_error_return_unix (0, "mlx5dv: incompatible rx CQE size");
+
+      rxq->cq_size = dv_cq.cqe_cnt;
+      rxq->rcq = (mlx5dv_rcq_t *) dv_cq.buf;
+
+      rxq->rwq = (mlx5dv_rwq_t *) dv_rwq.buf;
+      rxq->rwq_db = (volatile u32 *) dv_rwq.dbrec;
+
+      qw0 = clib_host_to_net_u32 (vlib_buffer_get_default_data_size (vm));
+      qw0 |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
+
+      for (int i = 0; i < rxq->size; i++)
+	rxq->rwq[i].dsz_and_lkey = qw0;
+    }
+
   return 0;
 }
 
@@ -534,6 +565,12 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
+  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
+			    bm->buffer_mem_size,
+			    IBV_ACCESS_LOCAL_WRITE)) == 0)
+    return clib_error_return_unix (0, "Register MR Failed");
+  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
+
   /*
    * /!\ WARNING /!\ creation order is important
    * We *must* create TX queues *before* RX queues, otherwise we will receive
@@ -548,12 +585,6 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
-
-  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
-			    bm->buffer_mem_size,
-			    IBV_ACCESS_LOCAL_WRITE)) == 0)
-    return clib_error_return_unix (0, "Register MR Failed");
-  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
   return 0;
 }
@@ -584,6 +615,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rdma_device_t *rd;
   vlib_pci_addr_t pci_addr;
   struct ibv_device **dev_list;
+  struct mlx5dv_context mlx5dv_attrs = { };
   int n_devs;
   u8 *s;
   u16 qid;
@@ -685,6 +717,15 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
 	break;
+    }
+
+  mlx5dv_attrs.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+  mlx5dv_attrs.comp_mask |= MLX5DV_CONTEXT_MASK_CQE_COMPRESION;
+
+  if (mlx5dv_query_device (rd->ctx, &mlx5dv_attrs) == 0)
+    {
+      if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
+	rd->flags |= RDMA_DEVICE_F_MLX5DV;
     }
 
   if ((args->error =
@@ -796,8 +837,22 @@ clib_error_t *
 rdma_init (vlib_main_t * vm)
 {
   rdma_main_t *rm = &rdma_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   rm->log_class = vlib_log_register_class ("rdma", 0);
+
+  /* vlib_buffer_t template */
+  vec_validate_aligned (rm->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  for (int i = 0; i < tm->n_vlib_mains; i++)
+    {
+      rdma_per_thread_data_t *ptd = vec_elt_at_index (rm->per_thread_data, i);
+      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
+      ptd->buffer_template.flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      ptd->buffer_template.ref_count = 1;
+      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+    }
 
   return 0;
 }

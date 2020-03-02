@@ -24,11 +24,16 @@
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
 
+#undef always_inline
+#include <infiniband/mlx5dv.h>
+#define always_inline static_always_inline
+
 #define foreach_rdma_device_flags \
   _(0, ERROR, "error") \
   _(1, ADMIN_UP, "admin-up") \
   _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous")
+  _(3, PROMISC, "promiscuous") \
+  _(4, MLX5DV, "mlx5dv")
 
 enum
 {
@@ -37,15 +42,36 @@ enum
 #undef _
 };
 
+
+typedef struct
+{
+  union
+  {
+    u8 as_u8[64];
+    u32 as_u32[16];
+  };
+} mlx5dv_rcq_t;
+
+typedef struct
+{
+  u64 dsz_and_lkey;
+  u64 addr;
+} mlx5dv_rwq_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct ibv_cq *cq;
   struct ibv_wq *wq;
   u32 *bufs;
-  u32 size;
-  u32 head;
-  u32 tail;
+  u16 size;
+  u16 head;
+  u16 tail;
+  u16 cq_size;
+  u16 next_cqe;
+  mlx5dv_rcq_t *rcq;
+  mlx5dv_rwq_t *rwq;
+  volatile u32 *rwq_db;
 } rdma_rxq_t;
 
 typedef struct
@@ -95,6 +121,13 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vlib_buffer_t buffer_template;
+} rdma_per_thread_data_t;
+
+typedef struct
+{
+  rdma_per_thread_data_t *per_thread_data;
   rdma_device_t *devices;
   vlib_log_class_t log_class;
   u16 msg_id_base;
@@ -133,6 +166,7 @@ extern vnet_device_class_t rdma_device_class;
 format_function_t format_rdma_device;
 format_function_t format_rdma_device_name;
 format_function_t format_rdma_input_trace;
+format_function_t format_mlx5_cqe_rx;
 unformat_function_t unformat_rdma_create_if_args;
 
 typedef struct
