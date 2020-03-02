@@ -125,10 +125,13 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
           vlib_cli_output(vm, "    SK_e  i:%U\n          r:%U",
                           format_hex_bytes, child->sk_ei, vec_len(child->sk_ei),
                           format_hex_bytes, child->sk_er, vec_len(child->sk_er));
-          vlib_cli_output(vm, "    SK_a  i:%U\n          r:%U",
-                          format_hex_bytes, child->sk_ai, vec_len(child->sk_ai),
-                          format_hex_bytes, child->sk_ar, vec_len(child->sk_ar));
-          vlib_cli_output(vm, "    traffic selectors (i):");
+          if (child->sk_ai)
+            {
+              vlib_cli_output(vm, "    SK_a  i:%U\n          r:%U",
+                              format_hex_bytes, child->sk_ai, vec_len(child->sk_ai),
+                              format_hex_bytes, child->sk_ar, vec_len(child->sk_ar));
+              vlib_cli_output(vm, "    traffic selectors (i):");
+            }
           vec_foreach(ts, child->tsi)
             {
               vlib_cli_output(vm, "      %u type %u protocol_id %u addr "
@@ -362,6 +365,18 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 					      dh_type, tmp1);
 	  goto done;
 	}
+      else if (unformat
+	       (line_input,
+		"set %U esp-crypto-alg %U %u esp-dh %U",
+		unformat_token, valid_chars, &name,
+		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+		unformat_ikev2_transform_dh_type, &dh_type))
+	{
+	  r =
+	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0,
+					      dh_type, tmp1);
+	  goto done;
+	}
       else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",
 			 unformat_token, valid_chars, &name,
 			 &tmp4, &tmp1, &tmp2, &tmp5))
@@ -405,7 +420,8 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "protocol <protocol-number>\n"
     "ikev2 profile set <id> responder <interface> <addr>\n"
     "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
-    "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> esp-integ-alg <integ alg> esp-dh <dh type>\n"
+    "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> "
+      "[esp-integ-alg <integ alg>] esp-dh <dh type>\n"
     "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>",
     .function = ikev2_profile_add_del_command_fn,
 };

@@ -2754,24 +2754,27 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
       return r;
     }
 
-  /* Integrity */
-  error = 1;
-  vec_foreach (td, km->supported_transforms)
-  {
-    if (td->type == IKEV2_TRANSFORM_TYPE_INTEG
-	&& td->integ_type == ts->integ_alg)
-      {
-	vec_add1 (proposal->transforms, *td);
-	error = 0;
-	break;
-      }
-  }
-  if (error)
+  if (IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 != ts->crypto_alg)
     {
-      ikev2_elog_error
-	("Didn't find any supported algorithm for IKEV2_TRANSFORM_TYPE_INTEG");
-      r = clib_error_return (0, "Unsupported algorithm");
-      return r;
+      /* Integrity */
+      error = 1;
+      vec_foreach (td, km->supported_transforms)
+      {
+	if (td->type == IKEV2_TRANSFORM_TYPE_INTEG
+	    && td->integ_type == ts->integ_alg)
+	  {
+	    vec_add1 (proposal->transforms, *td);
+	    error = 0;
+	    break;
+	  }
+      }
+      if (error)
+	{
+	  ikev2_elog_error
+	    ("Didn't find any supported algorithm for IKEV2_TRANSFORM_TYPE_INTEG");
+	  r = clib_error_return (0, "Unsupported algorithm");
+	  return r;
+	}
     }
 
   /* PRF */
