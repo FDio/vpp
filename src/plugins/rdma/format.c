@@ -82,6 +82,113 @@ format_rdma_input_trace (u8 * s, va_list * args)
   return s;
 }
 
+
+/* mlx5dv specific format functions */
+
+
+#define foreach_cqe_rx_field \
+  _(0x1c, 26, 26, l4_ok)	\
+  _(0x1c, 25, 25, l3_ok)	\
+  _(0x1c, 24, 24, l2_ok)	\
+  _(0x1c, 23, 23, ip_frag)	\
+  _(0x1c, 22, 20, l4_hdr_type)	\
+  _(0x1c, 19, 18, l3_hdr_type)	\
+  _(0x1c, 17, 17, ip_ext_opts)	\
+  _(0x1c, 16, 16, cv)	\
+  _(0x2c, 31,  0, byte_cnt)	\
+  _(0x30, 63,  0, timestamp)	\
+  _(0x34, 7,  0, syndrome)	\
+  _(0x38, 31, 24, rx_drop_counter)	\
+  _(0x38, 23,  0, flow_tag)	\
+  _(0x3c, 31, 16, wqe_counter)	\
+  _(0x3c, 15,  8, signature)	\
+  _(0x3c,  7,  4, opcode)	\
+  _(0x3c,  3,  2, cqe_format)	\
+  _(0x3c,  1,  1, sc)	\
+  _(0x3c,  0,  0, owner)
+
+static inline u32
+mlx5_get_u32 (void *start, int offset)
+{
+  return clib_net_to_host_u32 (*(u32 *) (((u8 *) start) + offset));
+}
+
+static inline u32
+mlx5_get_bits (void *start, int offset, int first, int last)
+{
+  u32 value = mlx5_get_u32 (start, offset);
+  if ((last == 0) && (first == 31))
+    return value;
+  value >>= last;
+  value &= (1 << (first - last + 1)) - 1;
+  return value;
+}
+
+static inline u64
+mlx5_get_u64 (void *start, int offset)
+{
+  return clib_net_to_host_u64 (*(u64 *) (((u8 *) start) + offset));
+}
+
+static u8 *
+format_mlx5_bits (u8 * s, va_list * args)
+{
+  void *ptr = va_arg (*args, void *);
+  u32 offset = va_arg (*args, u32);
+  u32 sb = va_arg (*args, u32);
+  u32 eb = va_arg (*args, u32);
+
+  if (sb == 63 && eb == 0)
+    {
+      u64 x = mlx5_get_u64 (ptr, offset);
+      return format (s, "0x%lx", x);
+    }
+
+  u32 x = mlx5_get_bits (ptr, offset, sb, eb);
+  s = format (s, "%d", x);
+  if (x > 9)
+    s = format (s, " (0x%x)", x);
+  return s;
+}
+
+static u8 *
+format_mlx5_field (u8 * s, va_list * args)
+{
+  void *ptr = va_arg (*args, void *);
+  u32 offset = va_arg (*args, u32);
+  u32 sb = va_arg (*args, u32);
+  u32 eb = va_arg (*args, u32);
+  char *name = va_arg (*args, char *);
+
+  u8 *tmp = 0;
+
+  tmp = format (0, "0x%02x %s ", offset, name);
+  if (sb == eb)
+    tmp = format (tmp, "[%u]", sb);
+  else
+    tmp = format (tmp, "[%u:%u]", sb, eb);
+  s = format (s, "%-45v = %U", tmp, format_mlx5_bits, ptr, offset, sb, eb);
+  vec_free (tmp);
+
+  return s;
+}
+
+u8 *
+format_mlx5_cqe_rx (u8 * s, va_list * args)
+{
+  void *cqe = va_arg (*args, void *);
+  uword indent = format_get_indent (s);
+  int line = 0;
+
+#define _(a, b, c, d) if (mlx5_get_bits (cqe, a, b, c)) s = format (s, "%U%U\n",	\
+				    format_white_space, line++ ? indent : 0,	\
+				    format_mlx5_field, cqe, a, b, c, #d);
+  foreach_cqe_rx_field;
+#undef _
+  return s;
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
