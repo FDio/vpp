@@ -399,6 +399,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->last_sa_init_req_packet_data = _(sai->last_sa_init_req_packet_data);
   sa->childs = _(sai->childs);
   sa->udp_encap = sai->udp_encap;
+  sa->dst_port = sai->dst_port;
 #undef _
 
 
@@ -1379,8 +1380,10 @@ ikev2_sa_auth (ikev2_sa_t * sa)
   /* *INDENT-ON* */
 
   if (sel_p)
-    sa->udp_encap = sel_p->udp_encap;
-
+    {
+      sa->udp_encap = sel_p->udp_encap;
+      sa->dst_port = sel_p->dst_port;
+    }
   vec_free (authmsg);
 
   if (sa->state == IKEV2_STATE_AUTHENTICATED)
@@ -1502,6 +1505,7 @@ typedef struct
   ipsec_key_t loc_ckey, rem_ckey, loc_ikey, rem_ikey;
   u8 is_rekey;
   u32 old_remote_sa_id;
+  u16 dst_port;
 } ikev2_add_ipsec_tunnel_args_t;
 
 static void
@@ -1559,13 +1563,13 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
 			       &a->loc_ckey, a->integ_type, &a->loc_ikey,
 			       a->flags, 0, a->salt_local, &a->local_ip,
-			       &a->remote_ip, NULL);
+			       &a->remote_ip, NULL, a->dst_port);
   rv |= ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
 			       a->integ_type, &a->rem_ikey,
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
 			       a->salt_remote, &a->remote_ip,
-			       &a->local_ip, NULL);
+			       &a->local_ip, NULL, a->dst_port);
 
   rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
 }
@@ -1799,6 +1803,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
   child->remote_sa_id = a.remote_sa_id = remote_sa_id;
 
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
+  a.dst_port = sa->dst_port;
 
   vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
 			       (u8 *) & a, sizeof (a));
@@ -2928,6 +2933,58 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
   return 0;
 }
 
+static_always_inline vnet_api_error_t
+ikev2_register_udp_port (ikev2_profile_t * p, u16 port)
+{
+  ikev2_main_t *km = &ikev2_main;
+  udp_dst_port_info_t *pi;
+
+  uword *v = hash_get (km->udp_ports, port);
+  pi = udp_get_dst_port_info (&udp_main, port, UDP_IP4);
+
+  if (v)
+    {
+      /* IKE already uses this port, only increment reference counter */
+      ASSERT (pi);
+      v[0]++;
+    }
+  else
+    {
+      if (pi)
+	return VNET_API_ERROR_UDP_PORT_TAKEN;
+
+      udp_register_dst_port (km->vlib_main, port,
+			     ipsec4_tun_input_node.index, 1);
+      hash_set (km->udp_ports, port, 1);
+    }
+  p->dst_port = port;
+  return 0;
+}
+
+static_always_inline void
+ikev2_unregister_udp_port (ikev2_profile_t * p)
+{
+  ikev2_main_t *km = &ikev2_main;
+  uword *v;
+
+  if (p->dst_port == IPSEC_UDP_PORT_NONE)
+    return;
+
+  v = hash_get (km->udp_ports, p->dst_port);
+  if (!v)
+    return;
+
+  v[0]--;
+
+  if (v[0] == 0)
+    {
+      udp_unregister_dst_port (km->vlib_main, p->dst_port, 1);
+      hash_unset (km->udp_ports, p->dst_port);
+    }
+
+  p->dst_port = IPSEC_UDP_PORT_NONE;
+}
+
 clib_error_t *
 ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 {
@@ -2942,6 +2999,7 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
       pool_get (km->profiles, p);
       clib_memset (p, 0, sizeof (*p));
       p->name = vec_dup (name);
+      p->dst_port = IPSEC_UDP_PORT_NONE;
       p->responder.sw_if_index = ~0;
       p->tun_itf = ~0;
       uword index = p - km->profiles;
@@ -2952,6 +3010,8 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
       p = ikev2_profile_index_by_name (name);
       if (!p)
 	return clib_error_return (0, "policy %v does not exists", name);
+
+      ikev2_unregister_udp_port (p);
 
       vec_free (p->name);
       pool_put (km->profiles, p);
@@ -3161,6 +3221,39 @@ ikev2_set_profile_tunnel_interface (vlib_main_t * vm,
   return 0;
 }
 
+vnet_api_error_t
+ikev2_set_profile_ipsec_udp_port (vlib_main_t * vm, u8 * name, u16 port,
+				  u8 is_set)
+{
+  ikev2_profile_t *p = ikev2_profile_index_by_name (name);
+  ikev2_main_t *km = &ikev2_main;
+  vnet_api_error_t rv = 0;
+  uword *v;
+
+  if (!p)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (is_set)
+    {
+      if (p->dst_port != IPSEC_UDP_PORT_NONE)
+	return VNET_API_ERROR_VALUE_EXIST;
+
+      rv = ikev2_register_udp_port (p, port);
+    }
+  else
+    {
+      v = hash_get (km->udp_ports, port);
+      if (!v)
+	return VNET_API_ERROR_IKE_NO_PORT;
+
+      if (p->dst_port == IPSEC_UDP_PORT_NONE)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      ikev2_unregister_udp_port (p);
+    }
+  return rv;
+}
+
 clib_error_t *
 ikev2_set_profile_udp_encap (vlib_main_t * vm, u8 * name)
 {
@@ -3262,6 +3355,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.state = IKEV2_STATE_SA_INIT;
     sa.tun_itf = p->tun_itf;
     sa.udp_encap = p->udp_encap;
+    sa.dst_port = p->dst_port;
     sa.is_tun_itf_set = 1;
     sa.initial_contact = 1;
     ikev2_generate_sa_init_data (&sa);
@@ -3606,6 +3700,7 @@ ikev2_init (vlib_main_t * vm)
 
   km->sa_by_ispi = hash_create (0, sizeof (uword));
   km->sw_if_indices = hash_create (0, 0);
+  km->udp_ports = hash_create (0, sizeof (uword));
 
   udp_register_dst_port (vm, 500, ikev2_node.index, 1);
 
