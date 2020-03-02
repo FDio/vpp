@@ -83,6 +83,11 @@ I:	classify
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/classify
 
+VNET Policer
+I:	policer
+M:	N/A
+F:	src/vnet/policer/
+
 VNET Device Drivers
 I:	devices
 Y:	src/vnet/devices/af_packet/FEATURE.yaml
