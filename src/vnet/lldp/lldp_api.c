@@ -76,7 +76,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   int rv = 0;
   u8 *mgmt_oid = 0, *mgmt_ip4 = 0, *mgmt_ip6 = 0;
   char *port_desc = 0;
-  u8 no_data[128];
+  u8 no_data[128] = { 0 };
   ip4_address_t ip4;
   ip6_address_t ip6;
 
