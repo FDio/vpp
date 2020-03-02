@@ -185,9 +185,6 @@ ip_address_to_46 (const ip_address_t * addr, ip46_address_t * a)
     case FIB_PROTOCOL_IP6:
       a->ip6 = addr->ip.v6;
       break;
-    default:
-      ASSERT (0);
-      break;
     }
 
   return (proto);
