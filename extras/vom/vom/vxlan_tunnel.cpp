@@ -33,8 +33,7 @@ const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GPE(3, "GPE");
 
 vxlan_tunnel::mode_t::mode_t(int v, const std::string s)
   : enum_base<vxlan_tunnel::mode_t>(v, s)
-{
-}
+{}
 
 vxlan_tunnel::endpoint_t::endpoint_t(const boost::asio::ip::address& src,
                                      const boost::asio::ip::address& dst,
@@ -42,15 +41,13 @@ vxlan_tunnel::endpoint_t::endpoint_t(const boost::asio::ip::address& src,
   : src(src)
   , dst(dst)
   , vni(vni)
-{
-}
+{}
 
 vxlan_tunnel::endpoint_t::endpoint_t()
   : src()
   , dst()
   , vni(0)
-{
-}
+{}
 
 bool
 vxlan_tunnel::endpoint_t::operator==(const endpoint_t& other) const
@@ -96,8 +93,7 @@ vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
   , m_mcast_itf()
   , m_rd()
   , m_table_id(route::DEFAULT_TABLE)
-{
-}
+{}
 
 vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
                            const boost::asio::ip::address& dst,
@@ -112,8 +108,7 @@ vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
   , m_mcast_itf(mcast_itf.singular())
   , m_rd()
   , m_table_id(route::DEFAULT_TABLE)
-{
-}
+{}
 
 vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
                            const boost::asio::ip::address& dst,
@@ -128,8 +123,7 @@ vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
   , m_mcast_itf()
   , m_rd(rd.singular())
   , m_table_id(m_rd->table_id())
-{
-}
+{}
 
 vxlan_tunnel::vxlan_tunnel(const vxlan_tunnel& o)
   : interface(o)
@@ -138,8 +132,7 @@ vxlan_tunnel::vxlan_tunnel(const vxlan_tunnel& o)
   , m_mcast_itf(o.m_mcast_itf)
   , m_rd(o.m_rd)
   , m_table_id(o.m_table_id)
-{
-}
+{}
 
 bool
 vxlan_tunnel::operator==(const vxlan_tunnel& other) const
@@ -178,15 +171,23 @@ vxlan_tunnel::replay()
   if (m_hdl) {
     if (mode_t::STANDARD == m_mode)
       HW::enqueue(new vxlan_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep,
+        m_hdl,
+        name(),
+        m_tep,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP_L2 == m_mode)
       HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep, true,
+        m_hdl,
+        name(),
+        m_tep,
+        true,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP_L3 == m_mode)
       HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep, false,
+        m_hdl,
+        name(),
+        m_tep,
+        false,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
   }
   if (m_rd && (m_rd->table_id() != route::DEFAULT_TABLE)) {
@@ -224,15 +225,23 @@ vxlan_tunnel::update(const vxlan_tunnel& desired)
   if (rc_t::OK != m_hdl.rc()) {
     if (mode_t::STANDARD == m_mode)
       HW::enqueue(new vxlan_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep,
+        m_hdl,
+        name(),
+        m_tep,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP_L2 == m_mode)
       HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep, true,
+        m_hdl,
+        name(),
+        m_tep,
+        true,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP_L3 == m_mode)
       HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
-        m_hdl, name(), m_tep, false,
+        m_hdl,
+        name(),
+        m_tep,
+        false,
         (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
   }
   if (!m_table_id && m_rd) {
@@ -272,9 +281,9 @@ vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
       auto& payload = record.get_payload();
       handle_t hdl(payload.sw_if_index);
       boost::asio::ip::address src =
-        from_bytes(payload.is_ipv6, payload.src_address);
+        from_bytes(payload.src_address.af, (uint8_t*)&payload.src_address.un);
       boost::asio::ip::address dst =
-        from_bytes(payload.is_ipv6, payload.dst_address);
+        from_bytes(payload.dst_address.af, (uint8_t*)&payload.dst_address.un);
 
       std::shared_ptr<vxlan_tunnel> vt =
         vxlan_tunnel(src, dst, payload.vni).singular();
@@ -299,7 +308,9 @@ vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
       boost::asio::ip::address dst = from_api(payload.tunnel.dst);
 
       std::shared_ptr<vxlan_tunnel> vt =
-        vxlan_tunnel(src, dst, payload.tunnel.vni,
+        vxlan_tunnel(src,
+                     dst,
+                     payload.tunnel.vni,
                      (payload.tunnel.mode == VXLAN_GBP_API_TUNNEL_MODE_L2
                         ? mode_t::GBP_L2
                         : mode_t::GBP_L3))
