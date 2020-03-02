@@ -95,6 +95,13 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vlib_buffer_t buffer_template;
+} rdma_per_thread_data_t;
+
+typedef struct
+{
+  rdma_per_thread_data_t *per_thread_data;
   rdma_device_t *devices;
   vlib_log_class_t log_class;
   u16 msg_id_base;

@@ -269,7 +269,10 @@ static_always_inline uword
 rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, rdma_device_t * rd, u16 qid)
 {
+  rdma_main_t *rm = &rdma_main;
   vnet_main_t *vnm = vnet_get_main ();
+  rdma_per_thread_data_t *ptd = vec_elt_at_index (rm->per_thread_data,
+						  vm->thread_index);
   rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   struct ibv_wc wc[VLIB_FRAME_SIZE];
   vlib_buffer_t bt;
@@ -290,13 +293,9 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* init buffer template */
-  clib_memset_u64 (&bt, 0,
-		   STRUCT_OFFSET_OF (vlib_buffer_t,
-				     template_end) / sizeof (u64));
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
   vnet_buffer (&bt)->sw_if_index[VLIB_RX] = rd->sw_if_index;
-  vnet_buffer (&bt)->sw_if_index[VLIB_TX] = ~0;
   bt.buffer_pool_index = rd->pool;
-  bt.ref_count = 1;
 
   /* update buffer template for input feature arcs if any */
   next_index = rd->per_interface_next_index;
