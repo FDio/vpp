@@ -16,14 +16,14 @@
 /** \file
 
     This file defines vpe control-plane API messages which are generally
-    called through a shared memory interface. 
+    called through a shared memory interface.
 */
 
-option version = "1.6.0";
+option version = "1.6.1";
 
 import "vpp/api/vpe_types.api";
 
-/* 
+/*
  * Note: API placement cleanup in progress
  * If you're looking for interface APIs, please
  * see .../src/vnet/{interface.api,interface_api.c}
@@ -121,7 +121,7 @@ define get_node_index
 {
   u32 client_index;
   u32 context;
-  u8 node_name[64];
+  string node_name[64];
 };
 
 /** \brief Get node index using name request
@@ -146,8 +146,8 @@ define add_node_next
 {
   u32 client_index;
   u32 context;
-  u8 node_name[64];
-  u8 next_name[64];
+  string node_name[64];
+  string next_name[64];
 };
 
 /** \brief IP Set the next node for a given node response
@@ -215,8 +215,8 @@ define show_threads
 typedef thread_data
 {
   u32 id;
-  u8 name[64];
-  u8 type[64];
+  string name[64];
+  string type[64];
   u32 pid;
   u32 cpu_id;
   u32 core;
@@ -268,8 +268,8 @@ define get_next_index
 {
   u32 client_index;
   u32 context;
-  u8 node_name[64];
-  u8 next_name[64];
+  string node_name[64];
+  string next_name[64];
 };
 
 /** \brief Reply for get next node index
