@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ef6b7178_609473c2",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2020-03-02T17:08:31Z",
+      "side": 1,
+      "message": "FWIW the failure of the X \u003c 1000 assumption when concating is a bit uglier than the addition method.",
+      "parentUuid": "01f3096b_3febaeb4",
+      "range": {
+        "startLine": 527,
+        "startChar": 51,
+        "endLine": 527,
+        "endChar": 52
+      },
+      "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1ef8ab44_96c422f2",
         "filename": "src/tools/vppapigen/vppapigen_c.py",
         "patchSetId": 2
