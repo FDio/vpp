@@ -28,6 +28,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
+from vpp_policer import VppPolicer
 from ipaddress import IPv6Network, IPv6Address
 
 AF_INET6 = socket.AF_INET6
@@ -2118,8 +2119,8 @@ class TestIP6Punt(VppTestCase):
         #
         # add a policer
         #
-        policer = self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
-                                            rate_type=1)
+        policer = VppPolicer(self, "ip6-punt", 400, 0, 10, 0, rate_type=1)
+        policer.add_vpp_config()
         self.vapi.ip_punt_police(policer.policer_index, is_ip6=1)
 
         self.vapi.cli("clear trace")
@@ -2139,8 +2140,7 @@ class TestIP6Punt(VppTestCase):
         # remove the policer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0, is_ip6=1)
-        self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
-                                  rate_type=1, is_add=0)
+        policer.remove_vpp_config()
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
         #

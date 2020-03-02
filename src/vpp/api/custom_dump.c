@@ -2189,11 +2189,11 @@ static void *vl_api_policer_add_del_t_print
     }
 
   s = format (s, "conform_action %U ", format_policer_action,
-	      mp->conform_action_type, mp->conform_dscp);
+	      mp->conform_action.type, mp->conform_action.dscp);
   s = format (s, "exceed_action %U ", format_policer_action,
-	      mp->exceed_action_type, mp->exceed_dscp);
+	      mp->exceed_action.type, mp->exceed_action.dscp);
   s = format (s, "violate_action %U ", format_policer_action,
-	      mp->violate_action_type, mp->violate_dscp);
+	      mp->violate_action.type, mp->violate_action.dscp);
 
   if (mp->color_aware)
     s = format (s, "color-aware ");
