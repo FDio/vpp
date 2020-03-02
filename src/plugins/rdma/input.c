@@ -194,12 +194,12 @@ rdma_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
-			u32 * next, u32 * bi, struct ibv_wc * wc,
-			u32 n_left_from, vlib_buffer_t * bt)
+rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd, u32 * bi,
+			struct ibv_wc * wc, u32 n_left_from,
+			vlib_buffer_t * bt)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
-  u32 n_rx_bytes[4] = { 0 };
+  u32 n_rx_bytes = 0;
 
   vlib_get_buffers (vm, bi, bufs, n_left_from);
   ASSERT (bt->buffer_pool_index == bufs[0]->buffer_pool_index);
@@ -218,25 +218,16 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 	  vlib_prefetch_buffer_header (b[4 + 3], STORE);
 	}
 
-      vlib_buffer_copy_indices (next, bi, 4);
-
       vlib_buffer_copy_template (b[0], bt);
       vlib_buffer_copy_template (b[1], bt);
       vlib_buffer_copy_template (b[2], bt);
       vlib_buffer_copy_template (b[3], bt);
 
-      b[0]->current_length = wc[0].byte_len;
-      b[1]->current_length = wc[1].byte_len;
-      b[2]->current_length = wc[2].byte_len;
-      b[3]->current_length = wc[3].byte_len;
+      n_rx_bytes += b[0]->current_length = wc[0].byte_len;
+      n_rx_bytes += b[1]->current_length = wc[1].byte_len;
+      n_rx_bytes += b[2]->current_length = wc[2].byte_len;
+      n_rx_bytes += b[3]->current_length = wc[3].byte_len;
 
-      n_rx_bytes[0] += wc[0].byte_len;
-      n_rx_bytes[1] += wc[1].byte_len;
-      n_rx_bytes[2] += wc[2].byte_len;
-      n_rx_bytes[3] += wc[3].byte_len;
-
-      next += 4;
-      bi += 4;
       b += 4;
       wc += 4;
       n_left_from -= 4;
@@ -244,19 +235,15 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 
   while (n_left_from >= 1)
     {
-      vlib_buffer_copy_indices (next, bi, 1);
       vlib_buffer_copy_template (b[0], bt);
-      b[0]->current_length = wc[0].byte_len;
-      n_rx_bytes[0] += wc[0].byte_len;
+      n_rx_bytes += b[0]->current_length = wc[0].byte_len;
 
-      next += 1;
-      bi += 1;
       b += 1;
       wc += 1;
       n_left_from -= 1;
     }
 
-  return n_rx_bytes[0] + n_rx_bytes[1] + n_rx_bytes[2] + n_rx_bytes[3];
+  return n_rx_bytes;
 }
 
 static_always_inline uword
@@ -272,7 +259,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next;
   u32 n_rx_packets, n_rx_bytes;
-  u32 slot, n_tail;
+  u32 mask = rxq->size - 1;
 
   ASSERT (rxq->size >= VLIB_FRAME_SIZE && is_pow2 (rxq->size));
   ASSERT (rxq->tail - rxq->head <= rxq->size);
@@ -296,20 +283,11 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
   ASSERT (n_rx_packets <= n_left_to_next);
 
-  /*
-   * avoid wrap-around logic in core loop
-   * we requested VLIB_FRAME_SIZE packets and rxq->size >= VLIB_FRAME_SIZE
-   *    => we can process all packets in 2 iterations max
-   */
-  slot = rxq->head & (rxq->size - 1);
-  n_tail = clib_min (n_rx_packets, rxq->size - slot);
-  n_rx_bytes =
-    rdma_device_input_bufs (vm, rd, &to_next[0], &rxq->bufs[slot], wc, n_tail,
-			    &bt);
-  if (n_tail < n_rx_packets)
-    n_rx_bytes +=
-      rdma_device_input_bufs (vm, rd, &to_next[n_tail], &rxq->bufs[0],
-			      &wc[n_tail], n_rx_packets - n_tail, &bt);
+  vlib_buffer_copy_indices_from_ring (to_next, rxq->bufs, rxq->head &
+				      mask, rxq->size, n_rx_packets);
+  n_rx_bytes = rdma_device_input_bufs (vm, rd, to_next, wc, n_rx_packets,
+				       &bt);
+
   rdma_device_input_ethernet (vm, node, rd, next_index);
 
   vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_rx_packets);
