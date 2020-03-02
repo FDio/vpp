@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "accd3618_3099f471",
+        "filename": "src/vnet/ip/ip_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-02T18:31:29Z",
+      "side": 1,
+      "message": "maybe change the switch to be on ip_addr_version, case AF_IP4. no confusion there.",
+      "revId": "cde0f855bcd6524371a3eb14c42b75953ec23e63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
