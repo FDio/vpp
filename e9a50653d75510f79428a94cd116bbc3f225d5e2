@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "292278d0_2f1f3da1",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 503,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-03-02T23:24:34Z",
+      "side": 1,
+      "message": "We might have to iterate many interfaces when trying to retrieve only one. Maybe it would be better for the validation to go in send_sw_interface_device_info_details(). Then the code in this function can look something like:\n\n  if (sw_if_index !\u003d ~0 \u0026\u0026 sw_if_index !\u003d 0)\n    {\n      swif \u003d \u003cretrieve sw interface pointer\u003e;\n      send_sw_interface_device_info_details(am, rp, swif, mp-\u003econtext);\n      return;\n    }\n\n  pool_foreach (swif, im-\u003esw_interfaces,\n  ({\n    send_sw_interface_device_info_details(am, rp, swif, mp-\u003econtext);\n  }));\n\nAnd at the beginning of send_sw_interface_device_info_details() you can check !vnet_swif_is_api_visible(swif) and (swif-\u003esw_if_index !\u003d swif-\u003esup_sw_if_index)  and return early if either is true.",
+      "revId": "e9a50653d75510f79428a94cd116bbc3f225d5e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
