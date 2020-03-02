@@ -68,12 +68,16 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   cfg.rb.kbps.eir_kbps = ntohl (mp->eir);
   cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
   cfg.rb.kbps.eb_bytes = clib_net_to_host_u64 (mp->eb);
-  cfg.conform_action.action_type = mp->conform_action_type;
-  cfg.conform_action.dscp = mp->conform_dscp;
-  cfg.exceed_action.action_type = mp->exceed_action_type;
-  cfg.exceed_action.dscp = mp->exceed_dscp;
-  cfg.violate_action.action_type = mp->violate_action_type;
-  cfg.violate_action.dscp = mp->violate_dscp;
+  cfg.conform_action.action_type =
+    (sse2_qos_action_type_en) mp->conform_action.type;
+  cfg.conform_action.dscp = mp->conform_action.dscp;
+  cfg.exceed_action.action_type =
+    (sse2_qos_action_type_en) mp->exceed_action.type;
+  cfg.exceed_action.dscp = mp->exceed_action.dscp;
+  cfg.violate_action.action_type =
+    (sse2_qos_action_type_en) mp->violate_action.type;
+  cfg.violate_action.dscp = mp->violate_action.dscp;
+
   cfg.color_aware = mp->color_aware;
 
   error = policer_add_del (vm, name, &cfg, &policer_index, mp->is_add);
@@ -111,12 +115,15 @@ send_policer_details (u8 * name,
   mp->rate_type = config->rate_type;
   mp->round_type = config->rnd_type;
   mp->type = config->rfc;
-  mp->conform_action_type = config->conform_action.action_type;
-  mp->conform_dscp = config->conform_action.dscp;
-  mp->exceed_action_type = config->exceed_action.action_type;
-  mp->exceed_dscp = config->exceed_action.dscp;
-  mp->violate_action_type = config->violate_action.action_type;
-  mp->violate_dscp = config->violate_action.dscp;
+  mp->conform_action.type =
+    (vl_api_sse2_qos_action_type_t) config->conform_action.action_type;
+  mp->conform_action.dscp = config->conform_action.dscp;
+  mp->exceed_action.type =
+    (vl_api_sse2_qos_action_type_t) config->exceed_action.action_type;
+  mp->exceed_action.dscp = config->exceed_action.dscp;
+  mp->violate_action.type =
+    (vl_api_sse2_qos_action_type_t) config->violate_action.action_type;
+  mp->violate_action.dscp = config->violate_action.dscp;
   mp->single_rate = templ->single_rate ? 1 : 0;
   mp->color_aware = templ->color_aware ? 1 : 0;
   mp->scale = htonl (templ->scale);
