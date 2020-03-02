@@ -21,6 +21,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
+from vpp_policer import VppPolicer
 
 NUM_PKTS = 67
 
@@ -1390,8 +1391,8 @@ class TestIPPunt(VppTestCase):
         #
         # add a policer
         #
-        policer = self.vapi.policer_add_del(b"ip4-punt", 400, 0, 10, 0,
-                                            rate_type=1)
+        policer = VppPolicer(self, "ip4-punt", 400, 0, 10, 0, rate_type=1)
+        policer.add_vpp_config()
         self.vapi.ip_punt_police(policer.policer_index)
 
         self.vapi.cli("clear trace")
@@ -1411,8 +1412,7 @@ class TestIPPunt(VppTestCase):
         # remove the policer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0)
-        self.vapi.policer_add_del(b"ip4-punt", 400, 0, 10, 0,
-                                  rate_type=1, is_add=0)
+        policer.remove_vpp_config()
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
         #
