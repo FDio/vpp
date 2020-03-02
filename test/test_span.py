@@ -11,6 +11,7 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface
+from vpp_vxlan_tunnel import VppVxlanTunnel
 from collections import namedtuple
 from vpp_papi import VppEnum
 
@@ -53,12 +54,11 @@ class TestSpan(VppTestCase):
             i.config_ip4()
             i.resolve_arp()
 
-        cls.vxlan = cls.vapi.vxlan_add_del_tunnel(
-            src_address=cls.pg2.local_ip4n, dst_address=cls.pg2.remote_ip4n,
-            is_add=1, vni=1111)
-
     def setUp(self):
         super(TestSpan, self).setUp()
+        self.vxlan = VppVxlanTunnel(self, src=self.pg2.local_ip4,
+                                    dst=self.pg2.remote_ip4, vni=1111)
+        self.vxlan.add_vpp_config()
         self.reset_packet_infos()
 
     def tearDown(self):

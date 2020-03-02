@@ -26,6 +26,8 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/fib/fib_table.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -124,9 +126,22 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
 {
   vl_api_vxlan_add_del_tunnel_reply_t *rmp;
   int rv = 0;
+  bool is_ipv6;
   u32 fib_index;
+  ip46_address_t src, dst;
 
-  fib_index = fib_table_find (fib_ip_proto (mp->is_ipv6),
+  ip_address_decode (&mp->src_address, &src);
+  ip_address_decode (&mp->dst_address, &dst);
+
+  if (ip46_address_is_ip4 (&src) != ip46_address_is_ip4 (&dst))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  is_ipv6 = !ip46_address_is_ip4 (&src);
+
+  fib_index = fib_table_find (fib_ip_proto (is_ipv6),
 			      ntohl (mp->encap_vrf_id));
   if (fib_index == ~0)
     {
@@ -136,14 +151,14 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
 
   vnet_vxlan_add_del_tunnel_args_t a = {
     .is_add = mp->is_add,
-    .is_ip6 = mp->is_ipv6,
+    .is_ip6 = is_ipv6,
     .instance = ntohl (mp->instance),
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
     .vni = ntohl (mp->vni),
-    .dst = to_ip46 (mp->is_ipv6, mp->dst_address),
-    .src = to_ip46 (mp->is_ipv6, mp->src_address),
+    .dst = dst,
+    .src = src,
   };
 
   /* Check src & dst are different */
@@ -177,30 +192,24 @@ static void send_vxlan_tunnel_details
   vl_api_vxlan_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_TUNNEL_DETAILS);
-  if (is_ipv6)
-    {
-      memcpy (rmp->src_address, t->src.ip6.as_u8, 16);
-      memcpy (rmp->dst_address, t->dst.ip6.as_u8, 16);
-      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
-    }
+
+  ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
+  ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+
+  if (ip46_address_is_ip4 (&t->dst))
+    rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   else
-    {
-      memcpy (rmp->src_address, t->src.ip4.as_u8, 4);
-      memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
-      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
-    }
+    rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
 
   rmp->instance = htonl (t->user_instance);
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   rmp->decap_next_index = htonl (t->decap_next_index);
   rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);

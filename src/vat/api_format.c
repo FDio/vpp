@@ -11733,14 +11733,16 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
 
   if (ipv6_set)
     {
-      clib_memcpy (mp->src_address, &src.ip6, sizeof (src.ip6));
-      clib_memcpy (mp->dst_address, &dst.ip6, sizeof (dst.ip6));
+      clib_memcpy (mp->src_address.un.ip6, &src.ip6, sizeof (src.ip6));
+      clib_memcpy (mp->dst_address.un.ip6, &dst.ip6, sizeof (dst.ip6));
     }
   else
     {
-      clib_memcpy (mp->src_address, &src.ip4, sizeof (src.ip4));
-      clib_memcpy (mp->dst_address, &dst.ip4, sizeof (dst.ip4));
+      clib_memcpy (mp->src_address.un.ip4, &src.ip4, sizeof (src.ip4));
+      clib_memcpy (mp->dst_address.un.ip4, &dst.ip4, sizeof (dst.ip4));
     }
+  mp->src_address.af = ipv6_set;
+  mp->dst_address.af = ipv6_set;
 
   mp->instance = htonl (instance);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
@@ -11748,7 +11750,6 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->vni = ntohl (vni);
   mp->is_add = is_add;
-  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -11759,8 +11760,10 @@ static void vl_api_vxlan_tunnel_details_t_handler
   (vl_api_vxlan_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
-  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
+  ip46_address_t src =
+    to_ip46 (mp->dst_address.af, (u8 *) & mp->dst_address.un);
+  ip46_address_t dst =
+    to_ip46 (mp->dst_address.af, (u8 *) & mp->src_address.un);
 
   print (vam->ofp, "%11d%11d%24U%24U%14d%18d%13d%19d",
 	 ntohl (mp->sw_if_index),
@@ -11790,29 +11793,28 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
 
   vat_json_object_add_uint (node, "instance", ntohl (mp->instance));
 
-  if (mp->is_ipv6)
+  if (mp->src_address.af)
     {
       struct in6_addr ip6;
 
-      clib_memcpy (&ip6, mp->src_address, sizeof (ip6));
+      clib_memcpy (&ip6, mp->src_address.un.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "src_address", ip6);
-      clib_memcpy (&ip6, mp->dst_address, sizeof (ip6));
+      clib_memcpy (&ip6, mp->dst_address.un.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "dst_address", ip6);
     }
   else
     {
       struct in_addr ip4;
 
-      clib_memcpy (&ip4, mp->src_address, sizeof (ip4));
+      clib_memcpy (&ip4, mp->src_address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "src_address", ip4);
-      clib_memcpy (&ip4, mp->dst_address, sizeof (ip4));
+      clib_memcpy (&ip4, mp->dst_address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "dst_address", ip4);
     }
   vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
   vat_json_object_add_uint (node, "decap_next_index",
 			    ntohl (mp->decap_next_index));
   vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
-  vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
   vat_json_object_add_uint (node, "mcast_sw_if_index",
 			    ntohl (mp->mcast_sw_if_index));
 }

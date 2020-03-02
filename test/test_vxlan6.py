@@ -10,6 +10,7 @@ from scapy.layers.inet6 import IPv6, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
 
 
@@ -88,15 +89,14 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         start = 10
         end = start + n_ucast_tunnels
         for dest_ip6 in cls.ip_range(start, end):
-            dest_ip6n = socket.inet_pton(socket.AF_INET6, dest_ip6)
             # add host route so dest ip will not be resolved
             rip = VppIpRoute(cls, dest_ip6, 128,
                              [VppRoutePath(cls.pg0.remote_ip6, INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip6n,
-                                              dst_address=dest_ip6n, is_ipv6=1,
-                                              vni=vni)
+            r = VppVxlanTunnel(cls, src=cls.pg0.local_ip6,
+                               dst=dest_ip6, vni=vni)
+            r.add_vpp_config()
             cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
 
     @classmethod
@@ -135,38 +135,6 @@ class TestVxlan6(BridgeDomain, VppTestCase):
             cls.mcast_ip6n = socket.inet_pton(socket.AF_INET6, cls.mcast_ip6)
             cls.mcast_mac = "33:33:00:00:00:%02x" % (1)
 
-            # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
-            #  into BD.
-            cls.single_tunnel_bd = 1
-            r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip6n,
-                                              dst_address=cls.pg0.remote_ip6n,
-                                              is_ipv6=1,
-                                              vni=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
-
-            # Setup vni 2 to test multicast flooding
-            cls.n_ucast_tunnels = 10
-            cls.mcast_flood_bd = 2
-            cls.create_vxlan_flood_test_bd(cls.mcast_flood_bd,
-                                           cls.n_ucast_tunnels)
-            r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip6n,
-                                              dst_address=cls.mcast_ip6n,
-                                              mcast_sw_if_index=1, is_ipv6=1,
-                                              vni=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd)
-
-            # Setup vni 3 to test unicast flooding
-            cls.ucast_flood_bd = 3
-            cls.create_vxlan_flood_test_bd(cls.ucast_flood_bd,
-                                           cls.n_ucast_tunnels)
-            cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestVxlan6, cls).tearDownClass()
             raise
@@ -174,6 +142,39 @@ class TestVxlan6(BridgeDomain, VppTestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestVxlan6, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestVxlan6, self).setUp()
+        # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
+        #  into BD.
+        self.single_tunnel_bd = 1
+        r = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+                           dst=self.pg0.remote_ip6, vni=self.single_tunnel_bd)
+        r.add_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=self.single_tunnel_bd)
+
+        # Setup vni 2 to test multicast flooding
+        self.n_ucast_tunnels = 10
+        self.mcast_flood_bd = 2
+        self.create_vxlan_flood_test_bd(self.mcast_flood_bd,
+                                        self.n_ucast_tunnels)
+        r = VppVxlanTunnel(self, src=self.pg0.local_ip6, dst=self.mcast_ip6,
+                           mcast_sw_if_index=1, vni=self.mcast_flood_bd)
+        r.add_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.mcast_flood_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.mcast_flood_bd)
+
+        # Setup vni 3 to test unicast flooding
+        self.ucast_flood_bd = 3
+        self.create_vxlan_flood_test_bd(self.ucast_flood_bd,
+                                        self.n_ucast_tunnels)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg3.sw_if_index, bd_id=self.ucast_flood_bd)
 
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.

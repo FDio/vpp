@@ -27,8 +27,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   : interface::create_cmd<vapi::Vxlan_add_del_tunnel>(item, name)
   , m_ep(ep)
   , m_mcast_itf(mcast_itf)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -43,9 +42,12 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.is_ipv6 = 0;
-  to_bytes(m_ep.src, &payload.is_ipv6, payload.src_address);
-  to_bytes(m_ep.dst, &payload.is_ipv6, payload.dst_address);
+  to_bytes(m_ep.src,
+           (uint8_t*)&payload.src_address.af,
+           (uint8_t*)&payload.src_address.un);
+  to_bytes(m_ep.dst,
+           (uint8_t*)&payload.dst_address.af,
+           (uint8_t*)&payload.dst_address.un);
   payload.mcast_sw_if_index = m_mcast_itf.value();
   payload.encap_vrf_id = 0;
   payload.decap_next_index = ~0;
@@ -76,8 +78,7 @@ delete_cmd::delete_cmd(HW::item<handle_t>& item,
                        const vxlan_tunnel::endpoint_t& ep)
   : interface::delete_cmd<vapi::Vxlan_add_del_tunnel>(item)
   , m_ep(ep)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -92,9 +93,12 @@ delete_cmd::issue(connection& con)
 
   auto payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.is_ipv6 = 0;
-  to_bytes(m_ep.src, &payload.is_ipv6, payload.src_address);
-  to_bytes(m_ep.dst, &payload.is_ipv6, payload.dst_address);
+  to_bytes(m_ep.src,
+           (uint8_t*)&payload.src_address.af,
+           (uint8_t*)&payload.src_address.un);
+  to_bytes(m_ep.dst,
+           (uint8_t*)&payload.dst_address.af,
+           (uint8_t*)&payload.dst_address.un);
   payload.mcast_sw_if_index = ~0;
   payload.encap_vrf_id = 0;
   payload.decap_next_index = ~0;
@@ -118,9 +122,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
