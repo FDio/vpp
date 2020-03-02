@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "01f3096b_3febaeb4",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-02T16:02:48Z",
+      "side": 1,
+      "message": "Just remove the leading 0 in the first format specifier if you don\u0027t want octal.",
+      "range": {
+        "startLine": 527,
+        "startChar": 51,
+        "endLine": 527,
+        "endChar": 52
+      },
+      "revId": "3837fdc533aaffc6c4a9b23000c06302b7c03c78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1ef8ab44_96c422f2",
         "filename": "src/tools/vppapigen/vppapigen_c.py",
         "patchSetId": 2
