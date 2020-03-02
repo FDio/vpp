@@ -173,20 +173,16 @@ ip_address_set (ip_address_t * dst, const void *src, u8 version)
 fib_protocol_t
 ip_address_to_46 (const ip_address_t * addr, ip46_address_t * a)
 {
-  fib_protocol_t proto;
+  fib_protocol_t proto = FIB_PROTOCOL_IP4;
 
-  proto = (AF_IP4 == ip_addr_version (addr) ?
-	   FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-  switch (proto)
+  switch (ip_addr_version (addr))
     {
-    case FIB_PROTOCOL_IP4:
+    case AF_IP4:
       ip46_address_set_ip4 (a, &addr->ip.v4);
       break;
-    case FIB_PROTOCOL_IP6:
+    case AF_IP6:
+      proto = FIB_PROTOCOL_IP6;
       a->ip6 = addr->ip.v6;
-      break;
-    default:
-      ASSERT (0);
       break;
     }
 
