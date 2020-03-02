@@ -100,6 +100,12 @@ static void vl_api_ikev2_plugin_get_version_reply_t_handler
 }
 
 static int
+api_ikev2_profile_set_ipsec_udp_port (vat_main_t * vam)
+{
+  return 0;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;

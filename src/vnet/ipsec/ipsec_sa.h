@@ -16,6 +16,7 @@
 #define __IPSEC_SPD_SA_H__
 
 #include <vlib/vlib.h>
+#include <vnet/crypto/crypto.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_node.h>
 
@@ -209,7 +210,7 @@ extern int ipsec_sa_add_and_lock (u32 id,
 				  u32 salt,
 				  const ip46_address_t * tunnel_src_addr,
 				  const ip46_address_t * tunnel_dst_addr,
-				  u32 * sa_index);
+				  u32 * sa_index, u16 dst_port);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
@@ -232,6 +233,8 @@ extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
 extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
 				       va_list * args);
 extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
+
+#define IPSEC_UDP_PORT_NONE ((u16)~0)
 
 /*
  * Anti Replay definitions

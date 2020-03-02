@@ -17,6 +17,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vnet/udp/udp.h>
+#include <vnet/ipsec/ipsec_sa.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 
@@ -391,6 +392,14 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  r = ikev2_set_profile_udp_encap (vm, name);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U ipsec-over-udp port %u",
+			 unformat_token, valid_chars, &name, &tmp1))
+	{
+	  int rv = ikev2_set_profile_ipsec_udp_port (vm, name, tmp1, 1);
+	  if (rv)
+	    r = clib_error_return (0, "Error: %U", format_vnet_api_errno, rv);
+	  goto done;
+	}
       else
 	break;
     }
@@ -502,6 +511,9 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
+
+    if (p->dst_port != IPSEC_UDP_PORT_NONE)
+      vlib_cli_output(vm, "  ipsec-over-udp port %d", p->dst_port);
   }));
   /* *INDENT-ON* */
 
