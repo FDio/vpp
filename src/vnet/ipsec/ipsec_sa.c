@@ -135,7 +135,8 @@ ipsec_sa_add_and_lock (u32 id,
 		       u32 tx_table_id,
 		       u32 salt,
 		       const ip46_address_t * tun_src,
-		       const ip46_address_t * tun_dst, u32 * sa_out_index)
+		       const ip46_address_t * tun_dst, u32 * sa_out_index,
+		       u16 dst_port)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -269,8 +270,16 @@ ipsec_sa_add_and_lock (u32 id,
 
   if (ipsec_sa_is_set_UDP_ENCAP (sa))
     {
-      sa->udp_hdr.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
-      sa->udp_hdr.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+      if (dst_port == IPSEC_UDP_PORT_NONE)
+	{
+	  sa->udp_hdr.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	  sa->udp_hdr.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	}
+      else
+	{
+	  sa->udp_hdr.src_port = clib_host_to_net_u16 (dst_port);
+	  sa->udp_hdr.dst_port = clib_host_to_net_u16 (dst_port);
+	}
     }
 
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
