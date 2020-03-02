@@ -1044,6 +1044,20 @@ a random, non-static entry is deleted. Defaults to 65535 entries.
 
    max-cache-size 65535
 
+
+ethernet Section
+-----------------
+
+default-mtu <n>
+^^^^^^^^^^^^^^^
+
+Specifies the default MTU size for Ethernet interfaces.  Must be in
+the range of 64-9000.  The default is 9000.
+
+.. code-block:: console
+
+   default-mtu 1500
+
 heapsize Section
 -----------------
 
