@@ -1192,6 +1192,13 @@ VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
 };
 /* *INDENT-ON* */
 
+/* ethernet { ... } configuration. */
+/*?
+ *
+ * @cfgcmd{default-mtu &lt;n&gt;}
+ * Specify the default mtu in the range of 64-9000. The default is 9000 bytes.
+ *
+ */
 static clib_error_t *
 ethernet_config (vlib_main_t * vm, unformat_input_t * input)
 {
