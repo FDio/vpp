@@ -98,7 +98,10 @@ list(APPEND VNET_HEADERS
   policer/xlate.h
 )
 
-list(APPEND VNET_API_FILES policer/policer.api)
+list(APPEND VNET_API_FILES
+  policer/policer.api
+  policer/policer_types.api
+)
 
 ##############################################################################
 # Cop - junk filter
