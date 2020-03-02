@@ -72,7 +72,7 @@ set_mpls_fragmentation(vlib_buffer_t * p0, ip_adjacency_t * adj0)
   vlib_buffer_advance (p0, vnet_buffer (p0)->mpls.mpls_hdr_length);
 
   /* IP fragmentation */
-  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
+  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes - vnet_buffer (p0)->mpls.mpls_hdr_length,
                            IP4_FRAG_NEXT_MPLS_OUTPUT,
                            ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
 
