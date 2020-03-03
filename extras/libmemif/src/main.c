@@ -2506,14 +2506,18 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
   *rx = 0;
 
   uint64_t b;
-  ssize_t r = read (mq->int_fd, &b, sizeof (b));
-  if (EXPECT_FALSE ((r == -1) && (errno != EAGAIN)))
-    return memif_syscall_error_handler (errno);
+  ssize_t r;
 
   cur_slot = (c->args.is_master) ? mq->last_head : mq->last_tail;
   last_slot = (c->args.is_master) ? ring->head : ring->tail;
   if (cur_slot == last_slot)
-    return MEMIF_ERR_SUCCESS;
+    {
+      r = read (mq->int_fd, &b, sizeof (b));
+      if (EXPECT_FALSE ((r == -1) && (errno != EAGAIN)))
+			return memif_syscall_error_handler (errno);
+
+      return MEMIF_ERR_SUCCESS;
+    }
 
   ns = last_slot - cur_slot;
 
@@ -2561,6 +2565,10 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
       DBG ("not enough buffers!");
       return MEMIF_ERR_NOBUF;
     }
+
+  r = read (mq->int_fd, &b, sizeof (b));
+  if (EXPECT_FALSE ((r == -1) && (errno != EAGAIN)))
+    return memif_syscall_error_handler (errno);
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
