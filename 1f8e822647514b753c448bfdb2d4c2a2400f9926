@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "268aeb2a_0ecdfd0a",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 854,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-03T07:14:33Z",
+      "side": 1,
+      "message": "It\u0027s fine for the tail to become 0. It will be re-initialized when more chunks are allocated.",
+      "range": {
+        "startLine": 854,
+        "startChar": 6,
+        "endLine": 854,
+        "endChar": 15
+      },
+      "revId": "1f8e822647514b753c448bfdb2d4c2a2400f9926",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
