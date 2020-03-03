@@ -669,6 +669,9 @@ int memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
     @param count - number of memif buffers to receive
     @param rx - returns number of received buffers
 
+    Consume interrupt event for receive queue.
+    The event is not consumed, if memif_rx_burst fails.
+
     \return memif_err_t
 */
 int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,

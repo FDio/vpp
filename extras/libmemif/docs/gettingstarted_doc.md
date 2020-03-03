@@ -114,7 +114,7 @@ typedef struct
 ```
 
 5. Packet receive
-    - Api call memif\_rx\_burst will set all required fields in memif buffers provided by user application and dequeue received buffers.
+    - Api call memif\_rx\_burst will set all required fields in memif buffers provided by user application, dequeue received buffers and consume interrupt event on receive queue. The event is not consumed, if memif_rx_burst fails.
 ```C
 err = memif_rx_burst (c->conn, qid, c->bufs, MAX_MEMIF_BUFS, &rx);
 ```
