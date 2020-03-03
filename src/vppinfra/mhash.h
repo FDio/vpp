@@ -153,6 +153,12 @@ mhash_free (mhash_t * h)
   else
     vec_free (h->key_vector_or_heap);
   vec_free (h->key_vector_free_indices);
+  {
+    int i;
+    for (i = 0; i < vec_len (h->key_tmps); i++)
+      vec_free (h->key_tmps[i]);
+  }
+  vec_free (h->key_tmps);
   hash_free (h->hash);
 }
 
