@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd8fa947_3a0884e9",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3182,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-03T14:46:12Z",
+      "side": 1,
+      "message": "what to do if this requested port is already taken?",
+      "revId": "8060b8dd438014cb2f0f6227d9a250bb0696e210",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c57fe761_57012186",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-03T14:46:12Z",
+      "side": 1,
+      "message": "~0, is usually used to mean \u0027not set\u0027. or better still, IPSEC_UDP_PORT_NONE.",
+      "revId": "8060b8dd438014cb2f0f6227d9a250bb0696e210",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
