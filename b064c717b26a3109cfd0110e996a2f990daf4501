@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63359d3d_b223bedf",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-03-03T14:42:59Z",
+      "side": 1,
+      "message": "Since send_sw_interface_device_info_details() calls vnet_sw_if_index_is_api_valid() now, I don\u0027t think the call is necessary here anymore.",
+      "revId": "b064c717b26a3109cfd0110e996a2f990daf4501",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be706a7d_fd77b11a",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-03-03T14:42:59Z",
+      "side": 1,
+      "message": "There should be a return here after the call to send_sw_interface_device_info_details() or we might iterate through all sw interfaces after sending device info for the one that was requested.",
+      "revId": "b064c717b26a3109cfd0110e996a2f990daf4501",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
