@@ -851,7 +851,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   /* number of bytes we're going to copy */
   len = clib_min (free_count, len);
 
-  if (f_pos_gt (tail + len, f_chunk_end (f->end_chunk)))
+  if (f_pos_geq (tail + len, f_chunk_end (f->end_chunk)))
     {
       if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
 	{
