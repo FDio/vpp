@@ -331,8 +331,8 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 	{
 	  if (key_alloc_from_free_list)
 	    {
-	      h->key_vector_free_indices[l] = i;
-	      _vec_len (h->key_vector_free_indices) = l + 1;
+	      h->key_vector_free_indices[l - 1] = i;
+	      _vec_len (h->key_vector_free_indices) = l;
 	    }
 	  else
 	    _vec_len (h->key_vector_or_heap) -= h->n_key_bytes;
