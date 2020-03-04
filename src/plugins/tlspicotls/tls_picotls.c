@@ -255,9 +255,9 @@ static inline int
 picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
-  int from_tls_len = 0, to_app_len = 0, off, crypto_len, ret;
+  int from_tls_len = 0, off, crypto_len, ret;
   u32 deq_max, deq_now;
-  u32 enq_max, enq_now;
+  u32 enq_max;
   ptls_buffer_t _buf, *buf = &_buf;
   svm_fifo_t *tls_rx_fifo, *app_rx_fifo;
   session_t *app_session;
@@ -354,23 +354,12 @@ app_fifo:
   while (ret == 0 && off < crypto_len);
 
   if (ret == 0)
-    {
-      enq_now = clib_min (buf->off, svm_fifo_max_write_chunk (app_rx_fifo));
-      to_app_len = svm_fifo_enqueue (app_rx_fifo, enq_now, buf->base);
-      if (to_app_len < buf->off)
-	{
-	  enq_now =
-	    clib_min (svm_fifo_max_write_chunk (app_rx_fifo),
-		      buf->off - to_app_len);
-	  to_app_len +=
-	    svm_fifo_enqueue (app_rx_fifo, enq_now, buf->base + to_app_len);
-	}
-      if (ptls_ctx->rx_len != 0 && !TLS_RX_IS_LEFT (ptls_ctx))
-	{
-	  ptls_ctx->rx_len = 0;
-	  ptls_ctx->rx_offset = 0;
-	}
+    svm_fifo_enqueue (app_rx_fifo, buf->off, buf->base);
 
+  if (ptls_ctx->rx_len != 0 && !TLS_RX_IS_LEFT (ptls_ctx))
+    {
+      ptls_ctx->rx_len = 0;
+      ptls_ctx->rx_offset = 0;
     }
 
 final:
@@ -414,10 +403,6 @@ picotls_content_process (ptls_t * tls, svm_fifo_t * src_fifo,
       svm_fifo_dequeue_drop (src_fifo, content_len);
 
       to_dst_len = svm_fifo_enqueue (dst_fifo, buf->off, buf->base);
-      if (to_dst_len < buf->off)
-	to_dst_len +=
-	  svm_fifo_enqueue (dst_fifo, buf->off - to_dst_len,
-			    buf->base + to_dst_len);
       ptls_buffer_dispose (buf);
     }
   return to_dst_len;
