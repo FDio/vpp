@@ -1051,6 +1051,24 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
    * read device features and negotiate (user) requested features
    */
   virtio_pci_read_device_feature (vm, vif);
+
+  if ((vif->remote_features & VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC)) ==
+      0)
+    {
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      virtio_log_error (vif, "error encountered: vhost-net backend doesn't "
+			"support VIRTIO_RING_F_INDIRECT_DESC features");
+      clib_error_return (0, "vhost-net backend doesn't support "
+			 "VIRTIO_RING_F_INDIRECT_DESC feature");
+    }
+  if ((vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)) == 0)
+    {
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      virtio_log_error (vif, "error encountered: vhost-net backend doesn't "
+			"support VIRTIO_NET_F_MRG_RXBUF features");
+      clib_error_return (0, "vhost-net backend doesn't support "
+			 "VIRTIO_NET_F_MRG_RXBUF feature");
+    }
   virtio_negotiate_features (vm, vif, args->features);
 
   /*
