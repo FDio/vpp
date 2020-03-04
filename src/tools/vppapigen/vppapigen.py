@@ -693,7 +693,7 @@ class VPPAPI(object):
         for o in objs:
             tname = o.__class__.__name__
             try:
-                crc = binascii.crc32(o.crc, crc)
+                crc = binascii.crc32(o.crc, crc) & 0xffffffff
             except AttributeError:
                 pass
             if isinstance(o, Define):
@@ -838,7 +838,7 @@ def foldup_blocks(block, crc):
 def foldup_crcs(s):
     for f in s:
         f.crc = foldup_blocks(f.block,
-                              binascii.crc32(f.crc))
+                              binascii.crc32(f.crc) & 0xffffffff)
 
 
 #
