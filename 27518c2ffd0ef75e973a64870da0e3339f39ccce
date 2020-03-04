@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "77688f45_48147f5f",
+        "filename": "src/plugins/tlspicotls/tls_picotls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2020-03-04T06:47:28Z",
+      "side": 0,
+      "message": "I expect most of the traffic should goto no_copy branch and only if the current chunk left space is not enough to contain 1 HTTPS packet. But, anyway, this part also could be optimized by pre-allocate.",
+      "parentUuid": "53f4e19a_22feed24",
+      "range": {
+        "startLine": 410,
+        "startChar": 6,
+        "endLine": 410,
+        "endChar": 51
+      },
+      "revId": "27518c2ffd0ef75e973a64870da0e3339f39ccce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7600b02a_82933d10",
         "filename": "src/plugins/tlspicotls/tls_picotls.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2020-03-04T06:03:08Z",
       "side": 0,
       "message": "Should this happen if there\u0027s not enough space in the fifo to write all the data? Or do we know for sure that all the data can be written?",
+      "range": {
+        "startLine": 421,
+        "startChar": 6,
+        "endLine": 421,
+        "endChar": 32
+      },
+      "revId": "27518c2ffd0ef75e973a64870da0e3339f39ccce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4104f62f_b9307477",
+        "filename": "src/plugins/tlspicotls/tls_picotls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2020-03-04T06:47:28Z",
+      "side": 0,
+      "message": "Yes, the total_length is calculated according to enq_max and the overhead included by TLS header. But there should be a error handling mechanism to handle the case that add chunk failed.",
+      "parentUuid": "7600b02a_82933d10",
       "range": {
         "startLine": 421,
         "startChar": 6,
