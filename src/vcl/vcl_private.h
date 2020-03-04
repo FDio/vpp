@@ -374,7 +374,8 @@ vcl_session_alloc (vcl_worker_t * wrk)
 static inline void
 vcl_session_free (vcl_worker_t * wrk, vcl_session_t * s)
 {
-  VDBG (0, "session %u [0x%llx] removed", s->session_index, s->vpp_handle);
+  /* Debug level set to 1 to avoid debug messages while ldp is cleaning up */
+  VDBG (1, "session %u [0x%llx] removed", s->session_index, s->vpp_handle);
   pool_put (wrk->sessions, s);
 }
 
