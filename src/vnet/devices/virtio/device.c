@@ -156,7 +156,7 @@ set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
-		    u16 mask, int do_gso, int csum_offload)
+		    u16 mask, int do_gso, int csum_offload, uword node_index)
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
@@ -216,7 +216,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
-  else
+  else if (vif->features & VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC))
     {
       /*
        * We are using single vlib_buffer_t for indirect descriptor(s)
@@ -296,6 +296,12 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       d->len = count * sizeof (struct vring_desc);
       d->flags = VRING_DESC_F_INDIRECT;
     }
+  else
+    {
+      vlib_error_count (vm, node_index, VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
+      vlib_buffer_free (vm, &bi, 1);
+      return 2;
+    }
   vring->buffers[next] = bi;
   vring->avail->ring[avail & mask] = next;
   n_added++;
@@ -334,9 +340,16 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u16 n_added = 0;
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
-			    do_gso, csum_offload);
-      if (!n_added)
-	break;
+			    do_gso, csum_offload, node->node_index);
+      if (PREDICT_FALSE (n_added != 1))
+	{
+	  if (!n_added)
+	    break;
+	  buffers++;
+	  n_left--;
+	  continue;
+	}
+
       avail += n_added;
       next = (next + n_added) & mask;
       used += n_added;
