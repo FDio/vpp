@@ -145,6 +145,8 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
     flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
   if (in & IPSEC_API_SAD_FLAG_UDP_ENCAP)
     flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+  if (in & IPSEC_API_SAD_FLAG_IS_INBOUND)
+    flags |= IPSEC_SA_FLAG_IS_INBOUND;
 
   return (flags);
 }
@@ -164,6 +166,8 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
   if (ipsec_sa_is_set_UDP_ENCAP (sa))
     flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
+  if (ipsec_sa_is_set_IS_INBOUND (sa))
+    flags |= IPSEC_API_SAD_FLAG_IS_INBOUND;
 
   return clib_host_to_net_u32 (flags);
 }
