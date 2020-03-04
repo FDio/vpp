@@ -165,7 +165,7 @@ os_cpu_clock_frequency (void)
 
       clib_get_cpuid (0x15, &eax, &ebx, &ecx, &edx);
       if (ebx && ecx)
-	return ecx * ebx / eax;
+	return (u64) ecx * ebx / eax;
 
       if (max_leaf >= 0x16)
 	{
