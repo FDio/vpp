@@ -946,7 +946,10 @@ list(APPEND VNET_HEADERS
   srv6/sr.h
 )
 
-list(APPEND VNET_API_FILES srv6/sr.api)
+list(APPEND VNET_API_FILES
+  srv6/sr.api
+  srv6/sr_types.api
+)
 
 ##############################################################################
 # mpls segment routing
@@ -962,7 +965,10 @@ list(APPEND VNET_HEADERS
   srmpls/sr_mpls.h
 )
 
-list(APPEND VNET_API_FILES srmpls/sr_mpls.api)
+list(APPEND VNET_API_FILES
+  srmpls/sr_mpls.api
+  srv6/sr_types.api
+)
 
 ##############################################################################
 # IPFIX / netflow v10

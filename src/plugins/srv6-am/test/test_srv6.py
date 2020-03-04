@@ -507,10 +507,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End without PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::0'},
+                        self, localsid='A3::0',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6='::',
+                        nh_addr=0,
                         end_psp=0,
                         sw_if_index=0,
                         vlan_index=0,
@@ -586,10 +585,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End with PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::0'},
+                        self, localsid='A3::0',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6='::',
+                        nh_addr=0,
                         end_psp=1,
                         sw_if_index=0,
                         vlan_index=0,
@@ -659,10 +657,9 @@ class TestSRv6(VppTestCase):
         # configure SRv6 localSID End.X without PSP behavior
         # End.X points to interface pg1
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6=self.pg1.remote_ip6,
+                        nh_addr=self.pg1.remote_ip6,
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -735,10 +732,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End with PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6=self.pg1.remote_ip6,
+                        nh_addr=self.pg1.remote_ip6,
                         end_psp=1,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -801,10 +797,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX6 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX6,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6=self.pg1.remote_ip6,
+                        nh_addr=self.pg1.remote_ip6,
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -886,10 +881,9 @@ class TestSRv6(VppTestCase):
         # fib_table: where the localsid is installed
         # sw_if_index: in T-variants of localsid this is the vrf table_id
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT6,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6='::',
+                        nh_addr=0,
                         end_psp=0,
                         sw_if_index=vrf_1,
                         vlan_index=0,
@@ -952,10 +946,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX4 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX4,
-                        nh_addr4=self.pg1.remote_ip4,
-                        nh_addr6='::',
+                        nh_addr=self.pg1.remote_ip4,
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,
@@ -1039,10 +1032,9 @@ class TestSRv6(VppTestCase):
         # fib_table: where the localsid is installed
         # sw_if_index: in T-variants of localsid: vrf table_id
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT4,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6='::',
+                        nh_addr=0,
                         end_psp=0,
                         sw_if_index=vrf_1,
                         vlan_index=0,
@@ -1104,10 +1096,9 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX2 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid={'addr': 'A3::C4'},
+                        self, localsid='A3::C4',
                         behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX2,
-                        nh_addr4='0.0.0.0',
-                        nh_addr6='::',
+                        nh_addr=0,
                         end_psp=0,
                         sw_if_index=self.pg1.sw_if_index,
                         vlan_index=0,

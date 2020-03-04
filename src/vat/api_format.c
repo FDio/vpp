@@ -9325,10 +9325,8 @@ api_sr_localsid_add_del (vat_main_t * vam)
   u8 behavior = ~0;
   u32 sw_if_index;
   u32 fib_table = ~(u32) 0;
-  ip6_address_t nh_addr6;
-  ip4_address_t nh_addr4;
-  clib_memset (&nh_addr6, 0, sizeof (ip6_address_t));
-  clib_memset (&nh_addr4, 0, sizeof (ip4_address_t));
+  ip46_address_t nh_addr;
+  clib_memset (&nh_addr, 0, sizeof (ip46_address_t));
 
   bool nexthop_set = 0;
 
@@ -9339,9 +9337,7 @@ api_sr_localsid_add_del (vat_main_t * vam)
       if (unformat (i, "del"))
 	is_del = 1;
       else if (unformat (i, "address %U", unformat_ip6_address, &localsid));
-      else if (unformat (i, "next-hop %U", unformat_ip4_address, &nh_addr4))
-	nexthop_set = 1;
-      else if (unformat (i, "next-hop %U", unformat_ip6_address, &nh_addr6))
+      else if (unformat (i, "next-hop %U", unformat_ip46_address, &nh_addr))
 	nexthop_set = 1;
       else if (unformat (i, "behavior %u", &behavior));
       else if (unformat (i, "sw_if_index %u", &sw_if_index));
@@ -9353,12 +9349,11 @@ api_sr_localsid_add_del (vat_main_t * vam)
 
   M (SR_LOCALSID_ADD_DEL, mp);
 
-  clib_memcpy (mp->localsid.addr, &localsid, sizeof (mp->localsid));
+  clib_memcpy (mp->localsid, &localsid, sizeof (mp->localsid));
 
   if (nexthop_set)
     {
-      clib_memcpy (mp->nh_addr6, &nh_addr6, sizeof (mp->nh_addr6));
-      clib_memcpy (mp->nh_addr4, &nh_addr4, sizeof (mp->nh_addr4));
+      clib_memcpy (&mp->nh_addr.un, &nh_addr, sizeof (mp->nh_addr.un));
     }
   mp->behavior = behavior;
   mp->sw_if_index = ntohl (sw_if_index);
