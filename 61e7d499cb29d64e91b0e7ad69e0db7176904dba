@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6d7938b_1ed72d52",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_bapi.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-04T17:28:51Z",
+      "side": 1,
+      "message": "Reformat and line break after segment name.",
+      "range": {
+        "startLine": 321,
+        "startChar": 1,
+        "endLine": 322,
+        "endChar": 44
+      },
+      "revId": "61e7d499cb29d64e91b0e7ad69e0db7176904dba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8fda109f_f987c954",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-04T17:28:51Z",
+      "side": 1,
+      "message": "Unfortunately, this is not okay because transport protocols can include QUIC and TLS (see transport_proto_t). Those are not ip protocols.",
+      "range": {
+        "startLine": 553,
+        "startChar": 2,
+        "endLine": 553,
+        "endChar": 19
+      },
+      "revId": "61e7d499cb29d64e91b0e7ad69e0db7176904dba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
