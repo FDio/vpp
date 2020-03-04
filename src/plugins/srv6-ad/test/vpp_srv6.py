@@ -40,15 +40,12 @@ class VppSRv6LocalSID(VppObject):
     SRv6 LocalSID
     """
 
-    def __init__(self, test, localsid, behavior, nh_addr4, nh_addr6,
+    def __init__(self, test, localsid, behavior, nh_addr,
                  end_psp, sw_if_index, vlan_index, fib_table):
         self._test = test
         self.localsid = localsid
-        # keep binary format in _localsid
-        self.localsid["addr"] = inet_pton(AF_INET6, self.localsid["addr"])
         self.behavior = behavior
-        self.nh_addr4 = inet_pton(AF_INET, nh_addr4)
-        self.nh_addr6 = inet_pton(AF_INET6, nh_addr6)
+        self.nh_addr = nh_addr
         self.end_psp = end_psp
         self.sw_if_index = sw_if_index
         self.vlan_index = vlan_index
@@ -57,10 +54,9 @@ class VppSRv6LocalSID(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
-            self.localsid,
-            self.behavior,
-            self.nh_addr4,
-            self.nh_addr6,
+            localsid=self.localsid,
+            behavior=self.behavior,
+            nh_addr=self.nh_addr,
             is_del=0,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
@@ -70,10 +66,9 @@ class VppSRv6LocalSID(VppObject):
 
     def remove_vpp_config(self):
         self._test.vapi.sr_localsid_add_del(
-            self.localsid,
-            self.behavior,
-            self.nh_addr4,
-            self.nh_addr6,
+            localsid=self.localsid,
+            behavior=self.behavior,
+            nh_addr=self.nh_addr,
             is_del=1,
             end_psp=self.end_psp,
             sw_if_index=self.sw_if_index,
@@ -103,17 +98,11 @@ class VppSRv6Policy(VppObject):
                  segments, source):
         self._test = test
         self.bsid = bsid
-        # keep binary format in _bsid
-        self._bsid = inet_pton(AF_INET6, bsid)
         self.is_encap = is_encap
         self.sr_type = sr_type
         self.weight = weight
         self.fib_table = fib_table
         self.segments = segments
-        # keep binary format in _segments
-        self._segments = []
-        for seg in segments:
-            self._segments.extend(inet_pton(AF_INET6, seg))
         self.n_segments = len(segments)
         # source not passed to API
         # self.source = inet_pton(AF_INET6, source)
@@ -122,18 +111,17 @@ class VppSRv6Policy(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sr_policy_add(
-                     self._bsid,
-                     self.weight,
-                     self.is_encap,
-                     self.sr_type,
-                     self.fib_table,
-                     self.n_segments,
-                     self._segments)
+                     bsid=self.bsid,
+                     weight=self.weight,
+                     is_encap=self.is_encap,
+                     is_spray=self.sr_type,
+                     fib_table=self.fib_table,
+                     sids={'num_sids': self.n_segments, 'sids': self.segments})
         self._configured = True
 
     def remove_vpp_config(self):
         self._test.vapi.sr_policy_del(
-                     self._bsid)
+                     self.bsid)
         self._configured = False
 
     def query_vpp_config(self):
@@ -164,19 +152,7 @@ class VppSRv6Steering(VppObject):
                  sw_if_index):
         self._test = test
         self.bsid = bsid
-        # keep binary format in _bsid
-        self._bsid = inet_pton(AF_INET6, bsid)
         self.prefix = prefix
-        # keep binary format in _prefix
-        if ':' in prefix:
-            # IPv6
-            self._prefix = inet_pton(AF_INET6, prefix)
-        else:
-            # IPv4
-            # API expects 16 octets (128 bits)
-            # last 4 octets are used for IPv4
-            # --> prepend 12 octets
-            self._prefix = ('\x00' * 12) + inet_pton(AF_INET, prefix)
         self.mask_width = mask_width
         self.traffic_type = traffic_type
         self.sr_policy_index = sr_policy_index
@@ -186,26 +162,24 @@ class VppSRv6Steering(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
-                     0,
-                     self._bsid,
-                     self.sr_policy_index,
-                     self.table_id,
-                     self._prefix,
-                     self.mask_width,
-                     self.sw_if_index,
-                     self.traffic_type)
+                     is_del=0,
+                     bsid=self.bsid,
+                     sr_policy_index=self.sr_policy_index,
+                     table_id=self.table_id,
+                     prefix={'address': self.prefix, 'len':  self.mask_width},
+                     sw_if_index=self.sw_if_index,
+                     traffic_type=self.traffic_type)
         self._configured = True
 
     def remove_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
-                     1,
-                     self._bsid,
-                     self.sr_policy_index,
-                     self.table_id,
-                     self._prefix,
-                     self.mask_width,
-                     self.sw_if_index,
-                     self.traffic_type)
+                     is_del=1,
+                     bsid=self.bsid,
+                     sr_policy_index=self.sr_policy_index,
+                     table_id=self.table_id,
+                     prefix={'address': self.prefix, 'len':  self.mask_width},
+                     sw_if_index=self.sw_if_index,
+                     traffic_type=self.traffic_type)
         self._configured = False
 
     def query_vpp_config(self):

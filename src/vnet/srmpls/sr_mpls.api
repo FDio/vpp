@@ -13,10 +13,11 @@
  * under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/srv6/sr_types.api";
 
 /** \brief MPLS SR policy add
     @param client_index - opaque cookie to identify the sender
@@ -37,15 +38,6 @@ autoreply define sr_mpls_policy_add
   u32 segments[n_segments];
 };
 
-enum sr_mpls_policy_op
-{
-  SR_MPLS_POLICY_OP_API_NONE = 0,
-  SR_MPLS_POLICY_OP_API_ADD = 1,
-  SR_MPLS_POLICY_OP_API_DEL = 2,
-  SR_MPLS_POLICY_OP_API_MOD = 3,
-
-};
-
 /** \brief MPLS SR policy modification
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -63,7 +55,7 @@ autoreply define sr_mpls_policy_mod
   u32 client_index;
   u32 context;
   u32 bsid;
-  vl_api_sr_mpls_policy_op_t operation;
+  vl_api_sr_policy_op_t operation;
   u32 sl_index;
   u32 weight;
   u8 n_segments;
