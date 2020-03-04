@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "81ea8b99_c1605267",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 31
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-03-04T16:39:27Z",
+      "side": 1,
+      "message": "why only 2?",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 12
+      },
+      "revId": "6c66a915db1ed45b9aa912e486bd96cb16222d1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2cbe41c8_861dc98b",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 31
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-03-04T16:39:27Z",
+      "side": 1,
+      "message": "why did you remove openssl?",
+      "range": {
+        "startLine": 21,
+        "startChar": 34,
+        "endLine": 21,
+        "endChar": 41
+      },
+      "revId": "6c66a915db1ed45b9aa912e486bd96cb16222d1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
