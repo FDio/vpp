@@ -26,6 +26,8 @@
 #include <vnet/feature/feature.h>
 #include <vnet/fib/fib_table.h>
 
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -61,6 +63,8 @@ static void vl_api_sr_localsid_add_del_t_handler
 {
   vl_api_sr_localsid_add_del_reply_t *rmp;
   int rv = 0;
+  ip46_address_t prefix;
+  ip6_address_t localsid;
 /*
  * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
  *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
@@ -71,17 +75,11 @@ static void vl_api_sr_localsid_add_del_t_handler
       mp->behavior == SR_BEHAVIOR_DX4 || mp->behavior == SR_BEHAVIOR_DX2)
     VALIDATE_SW_IF_INDEX (mp);
 
-  ip46_address_t prefix;
-
-  clib_memset (&prefix, 0, sizeof (ip46_address_t));
-  if ((mp->nh_addr4[0] | mp->nh_addr4[1] | mp->
-       nh_addr4[2] | mp->nh_addr4[3]) != 0)
-    memcpy (&prefix.ip4, mp->nh_addr4, sizeof (prefix.ip4));
-  else
-    memcpy (&prefix.ip6, mp->nh_addr6, sizeof (prefix.ip6));
+  ip6_address_decode (mp->localsid, &localsid);
+  ip_address_decode (&mp->nh_addr, &prefix);
 
   rv = sr_cli_localsid (mp->is_del,
-			(ip6_address_t *) & mp->localsid, 128,
+			&localsid, 128,
 			mp->end_psp,
 			mp->behavior,
 			ntohl (mp->sw_if_index),
@@ -97,15 +95,16 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 {
   vl_api_sr_policy_add_reply_t *rmp;
   ip6_address_t *segments = 0, *seg;
-  ip6_address_t *this_address = (ip6_address_t *) mp->sids.sids;
+  ip6_address_t bsid_addr;
 
   int i;
   for (i = 0; i < mp->sids.num_sids; i++)
     {
       vec_add2 (segments, seg, 1);
-      clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
-      this_address++;
+      ip6_address_decode (mp->sids.sids[i], seg);
     }
+
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
 
 /*
  * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
@@ -113,10 +112,11 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
  *                u16 behavior, void *plugin_mem)
  */
   int rv = 0;
-  rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
+  rv = sr_policy_add (&bsid_addr,
 		      segments,
 		      ntohl (mp->sids.weight),
-		      mp->type, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
+		      mp->is_spray, ntohl (mp->fib_table), mp->is_encap, 0,
+		      NULL);
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
@@ -126,17 +126,17 @@ static void
 vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
 {
   vl_api_sr_policy_mod_reply_t *rmp;
-
   ip6_address_t *segments = 0, *seg;
-  ip6_address_t *this_address = (ip6_address_t *) mp->sids.sids;
+  ip6_address_t bsid_addr;
 
   int i;
   for (i = 0; i < mp->sids.num_sids; i++)
     {
       vec_add2 (segments, seg, 1);
-      clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
-      this_address++;
+      ip6_address_decode (mp->sids.sids[i], seg);
     }
+
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
 
   int rv = 0;
 /*
@@ -145,7 +145,7 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
  *               u8 operation, ip6_address_t *segments, u32 sl_index,
  *               u32 weight, u8 is_encap)
  */
-  rv = sr_policy_mod ((ip6_address_t *) & mp->bsid_addr,
+  rv = sr_policy_mod (&bsid_addr,
 		      ntohl (mp->sr_policy_index),
 		      ntohl (mp->fib_table),
 		      mp->operation,
@@ -161,12 +161,13 @@ vl_api_sr_policy_del_t_handler (vl_api_sr_policy_del_t * mp)
 {
   vl_api_sr_policy_del_reply_t *rmp;
   int rv = 0;
+  ip6_address_t bsid_addr;
 /*
  * int
  * sr_policy_del (ip6_address_t *bsid, u32 index)
  */
-  rv = sr_policy_del ((ip6_address_t *) & mp->bsid_addr,
-		      ntohl (mp->sr_policy_index));
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  rv = sr_policy_del (&bsid_addr, ntohl (mp->sr_policy_index));
 
   REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
 }
@@ -176,7 +177,10 @@ vl_api_sr_set_encap_source_t_handler (vl_api_sr_set_encap_source_t * mp)
 {
   vl_api_sr_set_encap_source_reply_t *rmp;
   int rv = 0;
-  sr_set_source ((ip6_address_t *) & mp->encaps_source);
+  ip6_address_t encaps_source;
+
+  ip6_address_decode (mp->encaps_source, &encaps_source);
+  sr_set_source (&encaps_source);
 
   REPLY_MACRO (VL_API_SR_SET_ENCAP_SOURCE_REPLY);
 }
@@ -200,21 +204,27 @@ static void vl_api_sr_steering_add_del_t_handler
 {
   vl_api_sr_steering_add_del_reply_t *rmp;
   int rv = 0;
+  ip6_address_t bsid_addr;
+  ip46_address_t prefix_addr;
 /*
  * int
  * sr_steering_policy(int is_del, ip6_address_t *bsid, u32 sr_policy_index,
  *  u32 table_id, ip46_address_t *prefix, u32 mask_width, u32 sw_if_index,
  *  u8 traffic_type)
  */
+
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  ip_address_decode (&mp->prefix.address, &prefix_addr);
+
   if (mp->traffic_type == SR_STEER_L2)
     VALIDATE_SW_IF_INDEX (mp);
 
   rv = sr_steering_policy (mp->is_del,
-			   (ip6_address_t *) & mp->bsid_addr,
+			   &bsid_addr,
 			   ntohl (mp->sr_policy_index),
 			   ntohl (mp->table_id),
-			   (ip46_address_t *) & mp->prefix_addr,
-			   ntohl (mp->mask_width),
+			   &prefix_addr,
+			   ntohl (mp->prefix.len),
 			   ntohl (mp->sw_if_index), mp->traffic_type);
 
   BAD_SW_IF_INDEX_LABEL;
@@ -229,17 +239,12 @@ static void send_sr_localsid_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SR_LOCALSIDS_DETAILS);
-  clib_memcpy (rmp->addr.addr, &t->localsid, sizeof (ip6_address_t));
+  ip6_address_encode (&t->localsid, rmp->addr);
   rmp->end_psp = t->end_psp;
   rmp->behavior = htons (t->behavior);
   rmp->fib_table = htonl (t->fib_table);
   rmp->vlan_index = htonl (t->vlan_index);
-  if (ip46_address_is_ip4 (&t->next_hop))
-    clib_memcpy (rmp->xconnect_nh_addr4, &t->next_hop.ip4,
-		 sizeof (ip4_address_t));
-  else
-    clib_memcpy (rmp->xconnect_nh_addr6, &t->next_hop.ip6,
-		 sizeof (ip6_address_t));
+  ip_address_encode (&t->next_hop, IP46_TYPE_ANY, &rmp->xconnect_nh_addr);
 
   if (t->behavior == SR_BEHAVIOR_T || t->behavior == SR_BEHAVIOR_DT6)
     rmp->xconnect_iface_or_vrf_table =
@@ -280,9 +285,10 @@ static void send_sr_policies_details
   vl_api_sr_policies_details_t *rmp;
   ip6_sr_main_t *sm = &sr_main;
 
-  u32 *sl_index;
+  u32 *sl_index, slidx = 0;
   ip6_sr_sl_t *segment_list = 0;
-  vl_api_srv6_sid_list_t *write_sid_list;
+  ip6_address_t *segment;
+  vl_api_srv6_sid_list_t *api_sid_list;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp) +
 			  vec_len (t->segments_lists) *
@@ -293,9 +299,9 @@ static void send_sr_policies_details
 		sizeof (vl_api_srv6_sid_list_t)));
 
   rmp->_vl_msg_id = ntohs (VL_API_SR_POLICIES_DETAILS);
-  clib_memcpy (rmp->bsid.addr, &t->bsid, sizeof (ip6_address_t));
+  ip6_address_encode (&t->bsid, rmp->bsid);
   rmp->is_encap = t->is_encap;
-  rmp->type = t->type;
+  rmp->is_spray = t->type;
   rmp->fib_table = htonl (t->fib_table);
   rmp->num_sid_lists = vec_len (t->segments_lists);
 
@@ -303,11 +309,16 @@ static void send_sr_policies_details
   vec_foreach (sl_index, t->segments_lists)
   {
     segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
-    write_sid_list = &rmp->sid_lists[sl_index - t->segments_lists];
-    write_sid_list->num_sids = vec_len (segment_list->segments);
-    write_sid_list->weight = htonl (segment_list->weight);
-    clib_memcpy (write_sid_list->sids, segment_list->segments,
-		 vec_len (segment_list->segments) * sizeof (ip6_address_t));
+
+    api_sid_list = &rmp->sid_lists[sl_index - t->segments_lists];
+
+    api_sid_list->num_sids = vec_len (segment_list->segments);
+    api_sid_list->weight = htonl (segment_list->weight);
+
+    vec_foreach (segment, segment_list->segments)
+    {
+      ip6_address_encode (segment, api_sid_list->sids[slidx++]);
+    }
   }
 
   rmp->context = context;
@@ -346,18 +357,14 @@ static void send_sr_steering_pol_details
   //Get the SR policy BSID
   ip6_sr_policy_t *p;
   p = pool_elt_at_index (sm->sr_policies, t->sr_policy);
-  clib_memcpy (rmp->bsid.addr, &p->bsid, sizeof (ip6_address_t));
+  ip6_address_encode (&p->bsid, rmp->bsid);
 
   //Get the steering
   rmp->traffic_type = t->classify.traffic_type;
   rmp->fib_table = htonl (t->classify.l3.fib_table);
-  rmp->mask_width = htonl (t->classify.l3.mask_width);
-  if (ip46_address_is_ip4 (&t->classify.l3.prefix))
-    clib_memcpy (rmp->prefix_addr, &t->classify.l3.prefix.ip4,
-		 sizeof (ip4_address_t));
-  else
-    clib_memcpy (rmp->prefix_addr, &t->classify.l3.prefix.ip6,
-		 sizeof (ip6_address_t));
+  ip_address_encode (&t->classify.l3.prefix, IP46_TYPE_ANY,
+		     &rmp->prefix.address);
+  rmp->prefix.len = htonl (t->classify.l3.mask_width);
 
   rmp->sw_if_index = htonl (t->classify.l2.sw_if_index);
 
