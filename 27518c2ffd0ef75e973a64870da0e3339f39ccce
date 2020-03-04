@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53f4e19a_22feed24",
+        "filename": "src/plugins/tlspicotls/tls_picotls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-04T06:03:08Z",
+      "side": 0,
+      "message": "You might want to optimize this in the future by allocating the buffer only once per connection (maybe as a vector) and growing it only if/when needed.",
+      "range": {
+        "startLine": 410,
+        "startChar": 6,
+        "endLine": 410,
+        "endChar": 51
+      },
+      "revId": "27518c2ffd0ef75e973a64870da0e3339f39ccce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7600b02a_82933d10",
+        "filename": "src/plugins/tlspicotls/tls_picotls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-04T06:03:08Z",
+      "side": 0,
+      "message": "Should this happen if there\u0027s not enough space in the fifo to write all the data? Or do we know for sure that all the data can be written?",
+      "range": {
+        "startLine": 421,
+        "startChar": 6,
+        "endLine": 421,
+        "endChar": 32
+      },
+      "revId": "27518c2ffd0ef75e973a64870da0e3339f39ccce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
