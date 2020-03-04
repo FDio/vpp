@@ -31,14 +31,18 @@ static app_main_t app_main;
 static app_listener_t *
 app_listener_alloc (application_t * app)
 {
+  u32 n_workers = vlib_num_workers ();
   app_listener_t *app_listener;
-  pool_get (app->listeners, app_listener);
-  clib_memset (app_listener, 0, sizeof (*app_listener));
+
+  pool_get_zero (app->listeners, app_listener);
   app_listener->al_index = app_listener - app->listeners;
   app_listener->app_index = app->app_index;
   app_listener->session_index = SESSION_INVALID_INDEX;
   app_listener->local_index = SESSION_INVALID_INDEX;
   app_listener->ls_handle = SESSION_INVALID_HANDLE;
+  app_listener->n_vpp_workers = n_workers;
+  vec_validate (app_listener->thread_maps, n_workers);
+
   return app_listener;
 }
 
@@ -261,19 +265,81 @@ app_listener_cleanup (app_listener_t * al)
   app_listener_free (app, al);
 }
 
+static app_wrk_thread_map_t *
+app_listener_get_thread_map (app_listener_t * al, u32 thread_index)
+{
+  return vec_elt_at_index (al->thread_maps, thread_index);
+}
+
+void
+app_listener_thread_map_update (app_listener_t * al)
+{
+  u32 thread, app_wrk, first, last;
+  app_wrk_thread_map_t *atm;
+
+  first = al->n_vpp_workers ? 1 : 0;
+
+  clib_warning ("workers app %u vpp %u", al->n_app_workers,
+		al->n_vpp_workers);
+  if (al->n_vpp_workers > al->n_app_workers)
+    {
+      for (thread = first; thread <= al->n_vpp_workers; thread++)
+	{
+	  atm = app_listener_get_thread_map (al, thread);
+	  clib_bitmap_zero (atm->workers);
+	}
+
+      for (app_wrk = 0; app_wrk < al->n_app_workers; app_wrk++)
+	{
+	  if (!clib_bitmap_get (al->workers, app_wrk))
+	    continue;
+
+	  thread = app_wrk % al->n_vpp_workers;
+	  atm = app_listener_get_thread_map (al, thread);
+	  app_wrk = thread % al->n_app_workers;
+	  atm->workers = clib_bitmap_set (atm->workers, app_wrk, 1);
+	}
+    }
+  else
+    {
+      for (thread = first; thread <= al->n_vpp_workers; thread++)
+	{
+	  atm = app_listener_get_thread_map (al, thread);
+	  clib_bitmap_zero (atm->workers);
+	  app_wrk = thread - first;
+	  last = clib_bitmap_last_set (al->workers);
+	  while (app_wrk <= last)
+	    {
+	      if (clib_bitmap_get (al->workers, app_wrk))
+		{
+		  clib_warning ("app %u mapped to thread %u", app_wrk,
+				thread);
+		  atm->workers = clib_bitmap_set (atm->workers, app_wrk, 1);
+		}
+	      app_wrk += al->n_vpp_workers;
+	      // WHAT IF NONE MATCH
+	    }
+	}
+    }
+}
+
 static app_worker_t *
 app_listener_select_worker (application_t * app, app_listener_t * al)
 {
-  u32 wrk_index;
+  u32 thread_index = vlib_get_thread_index ();
+  app_wrk_thread_map_t *atm;
+  u32 wrk_map_index;
 
   app = application_get (al->app_index);
-  wrk_index = clib_bitmap_next_set (al->workers, al->accept_rotor + 1);
-  if (wrk_index == ~0)
-    wrk_index = clib_bitmap_first_set (al->workers);
+  atm = app_listener_get_thread_map (al, thread_index);
 
-  ASSERT (wrk_index != ~0);
-  al->accept_rotor = wrk_index;
-  return application_get_worker (app, wrk_index);
+  wrk_map_index = clib_bitmap_next_set (atm->workers, atm->accept_rotor + 1);
+  if (wrk_map_index == ~0)
+    wrk_map_index = clib_bitmap_first_set (atm->workers);
+
+  ASSERT (wrk_map_index != ~0);
+  atm->accept_rotor = wrk_map_index;
+  return application_get_worker (app, wrk_map_index);
 }
 
 session_t *

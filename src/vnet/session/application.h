@@ -70,10 +70,19 @@ typedef struct app_worker_map_
   u32 wrk_index;
 } app_worker_map_t;
 
+typedef struct app_thread_map_
+{
+  clib_bitmap_t *workers;
+  u16 accept_rotor;
+} app_wrk_thread_map_t;
+
 typedef struct app_listener_
 {
   clib_bitmap_t *workers;	/**< workers accepting connections */
-  u32 accept_rotor;		/**< last worker to accept a connection */
+  app_wrk_thread_map_t *thread_maps;
+  u8 n_vpp_workers;
+  u8 n_app_workers;
+//  u32 accept_rotor;           /**< last worker to accept a connection */
   u32 al_index;			/**< app listener index in app pool */
   u32 app_index;		/**< owning app index */
   u32 local_index;		/**< local listening session index */
@@ -175,6 +184,7 @@ int app_listener_alloc_and_init (application_t * app,
 				 session_endpoint_cfg_t * sep,
 				 app_listener_t ** listener);
 void app_listener_cleanup (app_listener_t * app_listener);
+void app_listener_thread_map_update (app_listener_t * al);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);

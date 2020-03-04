@@ -198,6 +198,8 @@ app_worker_start_listen (app_worker_t * app_wrk,
 
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   app_wrk->wrk_map_index, 1);
+  app_listener->n_app_workers += 1;
+  app_listener_thread_map_update (app_listener);
 
   if (app_listener->session_index != SESSION_INVALID_INDEX)
     {
@@ -265,6 +267,11 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
   clib_bitmap_set_no_check (al->workers, app_wrk->wrk_map_index, 0);
   if (clib_bitmap_is_zero (al->workers))
     app_listener_cleanup (al);
+  else
+    {
+      al->n_app_workers -= 1;
+      app_listener_thread_map_update (al);
+    }
 
   return 0;
 }
