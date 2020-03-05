@@ -127,6 +127,8 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
     }
 
   ap->tap_flags = ntohl (mp->tap_flags);
+  ap->num_rx_queues = 1;
+  ap->rv = -1;
 
   tap_create_if (vm, ap);
 
@@ -143,7 +145,10 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   rmp->context = mp->context;
   rmp->retval = ntohl (ap->rv);
   rmp->sw_if_index = ntohl (ap->sw_if_index);
-
+  clib_memcpy(rmp->dev_name, ap->dev_name,
+              MIN (ARRAY_LEN (rmp->dev_name) - 1,
+                   strlen ((const char *) ap->dev_name)));
+  
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
