@@ -606,7 +606,8 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
 
 u32
 vnet_mpls_tunnel_create (u8 l2_only,
-                         u8 is_multicast)
+                         u8 is_multicast,
+                         u8 *tag)
 {
     vnet_hw_interface_t * hi;
     mpls_tunnel_t *mt;
@@ -625,6 +626,10 @@ vnet_mpls_tunnel_create (u8 l2_only,
         mt->mt_flags |= MPLS_TUNNEL_FLAG_MCAST;
     if (l2_only)
         mt->mt_flags |= MPLS_TUNNEL_FLAG_L2;
+    if (tag)
+        memcpy(mt->mt_tag, tag, sizeof(mt->mt_tag));
+    else
+        mt->mt_tag[0] = '\0';
 
     /*
      * Create a new tunnel HW interface
@@ -858,7 +863,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 
         if (~0 == sw_if_index)
         {
-            sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast);
+            sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast, NULL);
         }
         vnet_mpls_tunnel_path_add(sw_if_index, rpaths);
     }

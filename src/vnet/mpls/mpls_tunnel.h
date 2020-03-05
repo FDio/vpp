@@ -65,6 +65,11 @@ typedef struct mpls_tunnel_t_
     mpls_tunnel_flags_t mt_flags;
 
     /**
+     * @brief User defined name tag for this MPLS Tunnel.
+     */
+    u8 mt_tag[64];
+
+    /**
      * @brief If the tunnel is an L2 tunnel, this is the link type ETHERNET
      * load-balance
      */
@@ -101,7 +106,8 @@ typedef struct mpls_tunnel_t_
  * @return the SW Interface index of the newly created tuneel
  */
 extern u32 vnet_mpls_tunnel_create (u8 l2_only,
-                                    u8 is_multicast);
+                                    u8 is_multicast,
+                                    u8 *description);
 
 /**
  * @brief Add a path to an MPLS tunnel

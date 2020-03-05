@@ -283,7 +283,8 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
       if (~0 == tunnel_sw_if_index)
 	tunnel_sw_if_index =
 	  vnet_mpls_tunnel_create (mp->mt_tunnel.mt_l2_only,
-				   mp->mt_tunnel.mt_is_multicast);
+				   mp->mt_tunnel.mt_is_multicast,
+				   mp->mt_tunnel.mt_tag);
       vnet_mpls_tunnel_path_add (tunnel_sw_if_index, rpaths);
 
       tunnel_index = vnet_mpls_tunnel_get_index (tunnel_sw_if_index);
@@ -365,6 +366,7 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   mp->mt_tunnel.mt_tunnel_index = ntohl (mti);
   mp->mt_tunnel.mt_l2_only = ! !(MPLS_TUNNEL_FLAG_L2 & mt->mt_flags);
   mp->mt_tunnel.mt_is_multicast = ! !(MPLS_TUNNEL_FLAG_MCAST & mt->mt_flags);
+  memcpy (mp->mt_tunnel.mt_tag, mt->mt_tag, sizeof (mp->mt_tunnel.mt_tag));
 
   fib_path_list_walk_w_ext (mt->mt_path_list,
 			    &mt->mt_path_exts, fib_path_encode, &path_ctx);
