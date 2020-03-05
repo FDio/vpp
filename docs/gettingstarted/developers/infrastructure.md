@@ -278,6 +278,20 @@ The phrase "bitzero %|" means "set the specified bit in the supplied
 bitmask" if unformat parses "bitzero". Although it looks like it could
 be fairly handy, it's very lightly used in the code base.
 
+`%_` toggles whether or not to skip input white space.
+
+For transition from skip to no-skip in middle of format string, skip input white space.  For example, the following:
+
+```c	  
+fmt = "%_%d.%d%_->%_%d.%d%_"
+unformat (input, fmt, &one, &two, &three, &four);
+```
+matches input "1.2 -> 3.4".
+Without this, the space after -> does not get skipped.
+
+
+```
+
 ### How to parse a single input line
 
 Debug CLI command functions MUST NOT accidentally consume input
