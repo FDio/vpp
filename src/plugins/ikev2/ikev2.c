@@ -3596,7 +3596,8 @@ ikev2_init (vlib_main_t * vm)
 
   mhash_init_vec_string (&km->profile_index_by_name, sizeof (uword));
 
-  vec_validate (km->per_thread_data, tm->n_vlib_mains - 1);
+  vec_validate_aligned (km->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
   for (thread_id = 0; thread_id < tm->n_vlib_mains - 1; thread_id++)
     {
       km->per_thread_data[thread_id].sa_by_rspi =
