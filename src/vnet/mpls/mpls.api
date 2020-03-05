@@ -46,9 +46,11 @@ typedef mpls_tunnel
   u32 mt_tunnel_index;
   bool mt_l2_only;
   bool mt_is_multicast;
+  string tag[64];
   u8 mt_n_paths;
   vl_api_fib_path_t mt_paths[mt_n_paths];
 };
+
 define mpls_tunnel_add_del
 {
   u32 client_index;
