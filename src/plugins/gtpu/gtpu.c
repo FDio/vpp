@@ -87,12 +87,19 @@ format_gtpu_tunnel (u8 * s, va_list * args)
 {
   gtpu_tunnel_t *t = va_arg (*args, gtpu_tunnel_t *);
   gtpu_main_t *ngm = &gtpu_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
+  u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
 
-  s = format (s, "[%d] src %U dst %U teid %d fib-idx %d sw-if-idx %d ",
+  u32 encap_vrf_id =
+    is_ipv6 ? im6->fibs[t->encap_fib_index].ft_table_id :
+    im4->fibs[t->encap_fib_index].ft_table_id;
+
+  s = format (s, "[%d] src %U dst %U teid %d encap-vrf-id %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->src, IP46_TYPE_ANY,
 	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->teid,  t->encap_fib_index, t->sw_if_index);
+	      t->teid,  encap_vrf_id, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
   s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
