@@ -67,6 +67,9 @@ list(APPEND VNET_HEADERS
   vnet_msg_enum.h
   util/radix.h
   util/refcount.h
+  format_fns.h
+  ip/ip_format_fns.h
+  ethernet/ethernet_format_fns.h
 )
 
 list(APPEND VNET_API_FILES
