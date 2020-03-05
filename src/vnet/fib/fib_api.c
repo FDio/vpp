@@ -417,6 +417,10 @@ fib_api_path_encode (const fib_route_path_t * rpath,
         out->type = FIB_API_PATH_TYPE_BIER_IMP;
         out->nh.obj_id = rpath->frp_bier_imp;
     }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_INTF_RX)
+    {
+        out->type = FIB_API_PATH_TYPE_INTERFACE_RX;
+    }
     else
     {
         out->type = FIB_API_PATH_TYPE_NORMAL;
