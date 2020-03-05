@@ -30,6 +30,7 @@
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   MB_MGR *mgr;
   __m128i cbc_iv;
 } ipsecmb_per_thread_data_t;
@@ -522,7 +523,8 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 		 IMB_VERSION_STR, 0);
   eidx = vnet_crypto_register_engine (vm, "ipsecmb", 80, (char *) name);
 
-  vec_validate (imbm->per_thread_data, tm->n_vlib_mains - 1);
+  vec_validate_aligned (imbm->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   /* *INDENT-OFF* */
   vec_foreach (ptd, imbm->per_thread_data)

@@ -22,6 +22,7 @@ typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8x16 cbc_iv[4];
 } crypto_native_per_thread_data_t;
 
