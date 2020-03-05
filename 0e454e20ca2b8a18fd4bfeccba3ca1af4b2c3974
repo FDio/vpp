@@ -22,6 +22,30 @@
       "revId": "0e454e20ca2b8a18fd4bfeccba3ca1af4b2c3974",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edce9db2_4b9c6d76",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2020-03-05T09:44:30Z",
+      "side": 1,
+      "message": "\u003e Why the cast instead of clib_host_to_net_f64?  (ex. see src/plugins/gbp/gbp_api.c:210)\n\nReplaced with f64, thanks.",
+      "parentUuid": "382874ed_528d0aa3",
+      "range": {
+        "startLine": 137,
+        "startChar": 4,
+        "endLine": 137,
+        "endChar": 9
+      },
+      "revId": "0e454e20ca2b8a18fd4bfeccba3ca1af4b2c3974",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
