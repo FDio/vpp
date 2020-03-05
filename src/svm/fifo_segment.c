@@ -116,7 +116,7 @@ fifo_segment_init (fifo_segment_t * fs)
   fifo_segment_header_t *fsh;
   fifo_segment_slice_t *fss;
   ssvm_shared_header_t *sh;
-  u32 max_chunk_sz, max_chunks;
+  u32 max_chunk_sz;
   uword max_fifo;
   void *oldheap;
   int i;
@@ -159,8 +159,7 @@ fifo_segment_init (fifo_segment_t * fs)
 
   fsh->n_free_bytes = fsh_free_space (fsh);
   fsh->n_cached_bytes = 0;
-  max_chunks = fsh->n_free_bytes / FIFO_SEGMENT_MIN_FIFO_SIZE;
-  fsh->n_reserved_bytes = (max_chunks / 4) * sizeof (rb_node_t);
+  fsh->n_reserved_bytes = clib_min (0.1 * fsh->n_free_bytes, 256 << 10);
   sh->ready = 1;
   return (0);
 }
