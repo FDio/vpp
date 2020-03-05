@@ -436,6 +436,8 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /* pool of IKEv2 Security Associations */
   ikev2_sa_t *sas;
 
