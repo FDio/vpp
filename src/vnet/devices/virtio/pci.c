@@ -272,7 +272,9 @@ virtio_pci_get_max_virtqueue_pairs (vlib_main_t * vm, virtio_if_t * vif)
 
   virtio_log_debug (vif, "max queue pair is %x", max_queue_pairs);
   if (max_queue_pairs < 1 || max_queue_pairs > 0x8000)
-    return clib_error_return (error, "max queue pair is %x", max_queue_pairs);
+    return clib_error_return (error, "max queue pair is %x,"
+			      " should be in range [1, 0x8000]",
+			      max_queue_pairs);
 
   vif->max_queue_pairs = max_queue_pairs;
   return error;
@@ -1034,10 +1036,15 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   u8 status = 0;
 
   if ((error = virtio_pci_read_caps (vm, vif)))
-    clib_error_return (error, "Device is not supported");
+    {
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      virtio_log_error (vif, "Device is not supported");
+      clib_error_return (error, "Device is not supported");
+    }
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
+      args->rv = VNET_API_ERROR_INIT_FAILED;
       virtio_log_error (vif, "Failed to reset the device");
       clib_error_return (error, "Failed to reset the device");
     }
@@ -1054,6 +1061,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   status = virtio_pci_legacy_get_status (vm, vif);
   if (!(status & VIRTIO_CONFIG_STATUS_FEATURES_OK))
     {
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
       virtio_log_error (vif,
 			"error encountered: Device doesn't support requested features");
       clib_error_return (error, "Device doesn't support requested features");
@@ -1082,14 +1090,20 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
    * Initialize the virtqueues
    */
   if ((error = virtio_pci_get_max_virtqueue_pairs (vm, vif)))
-    goto err;
+    {
+      args->rv = VNET_API_ERROR_EXCEEDED_NUMBER_OF_RANGES_CAPACITY;
+      goto err;
+    }
 
   for (int i = 0; i < vif->max_queue_pairs; i++)
     {
       if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
 	{
-	  virtio_log_warning (vif, "%s (%u) %s", "error in rxq-queue",
-			      RX_QUEUE (i), "initialization");
+	  args->rv = VNET_API_ERROR_INIT_FAILED;
+	  virtio_log_error (vif, "%s (%u) %s", "error in rxq-queue",
+			    RX_QUEUE (i), "initialization");
+	  clib_error_return (error, "%s (%u) %s", "error in rxq-queue",
+			     RX_QUEUE (i), "initialization");
 	}
       else
 	{
@@ -1114,8 +1128,11 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
 	{
-	  virtio_log_warning (vif, "%s (%u) %s", "error in txq-queue",
-			      TX_QUEUE (i), "initialization");
+	  args->rv = VNET_API_ERROR_INIT_FAILED;
+	  virtio_log_error (vif, "%s (%u) %s", "error in txq-queue",
+			    TX_QUEUE (i), "initialization");
+	  clib_error_return (error, "%s (%u) %s", "error in txq-queue",
+			     TX_QUEUE (i), "initialization");
 	}
       else
 	{
@@ -1175,7 +1192,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   pool_foreach (vif, vim->interfaces, ({
     if (vif->pci_addr.as_u32 == args->addr)
       {
-	args->rv = VNET_API_ERROR_INVALID_VALUE;
+	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
 	args->error =
 	  clib_error_return (error, "PCI address in use");
 	  vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
@@ -1227,6 +1244,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
 						   &virtio_pci_irq_0_handler)))
 	{
+	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  virtio_log_error (vif,
 			    "error encountered on pci register msix handler 0");
 	  goto error;
@@ -1234,6 +1252,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
 						   &virtio_pci_irq_1_handler)))
 	{
+	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  virtio_log_error (vif,
 			    "error encountered on pci register msix handler 1");
 	  goto error;
@@ -1292,6 +1311,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   if (error)
     {
+      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
       virtio_log_error (vif,
 			"error encountered on ethernet register interface");
       goto error;
@@ -1336,7 +1356,8 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
 error:
   virtio_pci_delete_if (vm, vif);
-  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+  if (args->rv == 0)
+    args->rv = VNET_API_ERROR_INVALID_INTERFACE;
   args->error = error;
 }
 
