@@ -114,26 +114,27 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
   (vl_api_gtpu_add_del_tunnel_t * mp)
 {
   vl_api_gtpu_add_del_tunnel_reply_t *rmp;
+  u8 is_ipv6;
   int rv = 0;
-  ip4_main_t *im = &ip4_main;
   gtpu_main_t *gtm = &gtpu_main;
-
-  uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
-  if (!p)
-    {
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-      goto out;
-    }
 
   vnet_gtpu_add_del_tunnel_args_t a = {
     .is_add = mp->is_add,
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
-    .encap_fib_index = p[0],
     .decap_next_index = ntohl (mp->decap_next_index),
     .teid = ntohl (mp->teid),
   };
-  ip_address_decode (&mp->dst_address, &a.dst);
+  is_ipv6 = (ip_address_decode (&mp->dst_address, &a.dst) == IP46_TYPE_IP6);
   ip_address_decode (&mp->src_address, &a.src);
+
+  /* Translate VRF id into FIB index */
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
+  if (a.encap_fib_index == ~0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
 
   /* Check src & dst are different */
   if (ip46_address_cmp (&a.dst, &a.src) == 0)

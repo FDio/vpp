@@ -15,6 +15,9 @@ from scapy.utils import atol
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
+from vpp_ip_route import VppIpTable
+from ipaddress import ip_address
+
 
 class TestGtpuUDP(VppTestCase):
     """ GTPU UDP ports Test Case """
@@ -407,6 +410,74 @@ class TestGtpu(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show gtpu tunnel"))
         self.logger.info(self.vapi.cli("show trace"))
 
+
+class TestCreateGtpuTunnelWithVrfId(VppTestCase):
+    """ Create GTPU tunnel with VRF ID Test Case
+    VPP used to misinterpret VRF ID in gtpu_add_del_tunnel. IP4 and IP6
+    ID namespaces are separate, so when resolving VRF ID it is important
+    to take the protocol into account.
+    """
+
+    IP4_VRF_ID = 100
+    IP6_VRF_ID = 200
+
+    def setUp(self):
+        super(TestCreateGtpuTunnelWithVrfId, self).setUp()
+        VppIpTable(self, self.IP4_VRF_ID).add_vpp_config()
+        VppIpTable(self, self.IP6_VRF_ID, is_ip6=1).add_vpp_config()
+    # IP tables are reset in between tests, hence no tearDown
+
+    def test_create_gtpu4_tunnel_with_non_default_ip4_table(self):
+        """ Create GTPU4 tunnel with non-default IP4 table
+        Can create GTPU4 tunnel with non-default IP4 table.
+        """
+        t = self.add_del_tunnel_with_vrf_id(is_add=True, is_ip6=False,
+                                            vrf_id=self.IP4_VRF_ID)
+
+        details = self.vapi.gtpu_tunnel_dump(sw_if_index=t.sw_if_index)[0]
+        self.assertEqual(details.encap_vrf_id, self.IP4_VRF_ID)
+
+        self.add_del_tunnel_with_vrf_id(is_add=False, is_ip6=False,
+                                        vrf_id=self.IP4_VRF_ID)
+
+    def test_create_gtpu6_tunnel_with_non_default_ip6_table(self):
+        """ Create GTPU6 tunnel with non-default IP6 table
+        Can create GTPU6 tunnel with non-default IP6 table.
+        """
+        t = self.add_del_tunnel_with_vrf_id(is_add=True, is_ip6=True,
+                                            vrf_id=self.IP6_VRF_ID)
+
+        details = self.vapi.gtpu_tunnel_dump(sw_if_index=t.sw_if_index)[0]
+        self.assertEqual(details.encap_vrf_id, self.IP6_VRF_ID)
+
+        self.add_del_tunnel_with_vrf_id(is_add=False, is_ip6=True,
+                                        vrf_id=self.IP6_VRF_ID)
+
+    def test_create_gtpu4_tunnel_with_ip6_table(self):
+        """ Create GTPU4 tunnel with IP6 table
+        Can't create GTPU4 tunnel with IP6 table.
+        """
+        with self.assertRaises(Exception):
+            self.add_del_tunnel_with_vrf_id(is_add=True, is_ip6=False,
+                                            vrf_id=self.IP6_VRF_ID)
+
+    def test_create_gtpu6_tunnel_with_ip4_table(self):
+        """ Create GTPU6 tunnel with IP4 table
+        Can't create GTPU6 tunnel with IP4 table.
+        """
+        with self.assertRaises(Exception):
+            self.add_del_tunnel_with_vrf_id(is_add=True, is_ip6=True,
+                                            vrf_id=self.IP4_VRF_ID)
+
+    def add_del_tunnel_with_vrf_id(self, is_add, is_ip6, vrf_id):
+        src = ip_address('2001:db8::2:1') if is_ip6 else ip_address("10.0.2.1")
+        dst = ip_address('2001:db8::2:2') if is_ip6 else ip_address("10.0.2.2")
+        return self.vapi.gtpu_add_del_tunnel(is_add=is_add,
+                                             mcast_sw_if_index=0xFFFFFFFF,
+                                             decap_next_index=0xFFFFFFFF,
+                                             src_address=src,
+                                             dst_address=dst,
+                                             encap_vrf_id=vrf_id)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
