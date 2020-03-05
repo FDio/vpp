@@ -294,6 +294,12 @@ segment_manager_get_segment_w_lock (segment_manager_t * sm, u32 segment_index)
 }
 
 void
+segment_manager_segment_reader_lock (segment_manager_t * sm)
+{
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+}
+
+void
 segment_manager_segment_reader_unlock (segment_manager_t * sm)
 {
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
@@ -459,27 +465,6 @@ segment_manager_get_if_valid (u32 index)
   return pool_elt_at_index (sm_main.segment_managers, index);
 }
 
-static fifo_segment_t *
-find_max_free_segment (segment_manager_t * sm, u32 thread_index)
-{
-  fifo_segment_t *cur, *fs = 0;
-  uword free_bytes, max_free_bytes = 0;
-
-  clib_rwlock_reader_lock (&sm->segments_rwlock);
-  /* *INDENT-OFF* */
-  pool_foreach (cur, sm->segments, ({
-    if ((free_bytes = fifo_segment_free_bytes (cur)) > max_free_bytes)
-      {
-        max_free_bytes = free_bytes;
-        fs = cur;
-      }
-  }));
-  /* *INDENT-ON* */
-  clib_rwlock_reader_unlock (&sm->segments_rwlock);
-
-  return fs;
-}
-
 u32
 segment_manager_index (segment_manager_t * sm)
 {
@@ -604,8 +589,9 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** tx_fifo)
 {
   int alloc_fail = 1, rv = 0, new_fs_index;
+  uword free_bytes, max_free_bytes = 0;
   segment_manager_props_t *props;
-  fifo_segment_t *fs = 0;
+  fifo_segment_t *fs = 0, *cur;
   u32 sm_index, fs_index;
   u8 added_a_segment = 0;
   u64 fs_handle;
@@ -615,11 +601,22 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   /*
    * Find the first free segment to allocate the fifos in
    */
-  fs = find_max_free_segment (sm, thread_index);
+
+  segment_manager_segment_reader_lock (sm);
+
+  /* *INDENT-OFF* */
+  pool_foreach (cur, sm->segments, ({
+    free_bytes = fifo_segment_available_bytes (cur);
+    if (free_bytes > max_free_bytes)
+      {
+        max_free_bytes = free_bytes;
+        fs = cur;
+      }
+  }));
+  /* *INDENT-ON* */
 
   if (fs)
     {
-      clib_rwlock_reader_lock (&sm->segments_rwlock);
       alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
 						    props->rx_fifo_size,
 						    props->tx_fifo_size,
@@ -628,12 +625,13 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
       if (!alloc_fail)
 	goto alloc_success;
 
-      segment_manager_segment_reader_unlock (sm);
     }
   else
     {
       alloc_fail = 1;
     }
+
+  segment_manager_segment_reader_unlock (sm);
 
 alloc_check:
 

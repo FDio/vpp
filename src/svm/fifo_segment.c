@@ -1134,6 +1134,12 @@ fifo_segment_cached_bytes (fifo_segment_t * fs)
 }
 
 uword
+fifo_segment_available_bytes (fifo_segment_t * fs)
+{
+  return fsh_n_free_bytes (fs->h) + fsh_n_cached_bytes (fs->h);
+}
+
+uword
 fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 {
   fifo_segment_header_t *fsh = fs->h;
