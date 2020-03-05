@@ -243,6 +243,8 @@ void fifo_segment_update_free_bytes (fifo_segment_t * fs);
  */
 uword fifo_segment_cached_bytes (fifo_segment_t * fs);
 
+uword fifo_segment_available_bytes (fifo_segment_t * fs);
+
 /**
  * Number of bytes on chunk free lists
  *
