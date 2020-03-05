@@ -104,6 +104,7 @@ define tap_create_v2_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+  string dev_name[64];
 };
 
 /** \brief Delete tap interface

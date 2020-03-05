@@ -53,6 +53,7 @@ typedef struct
   u32 sw_if_index;
   int rv;
   clib_error_t *error;
+  u8 dev_name[64];
 } tap_create_if_args_t;
 
 /** TAP interface details struct */
