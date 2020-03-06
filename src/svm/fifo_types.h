@@ -105,6 +105,7 @@ typedef struct fifo_segment_slice_
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
+  uword virtual_mem;			/**< Slice sum of all fifo sizes */
   clib_spinlock_t chunk_lock;
 } fifo_segment_slice_t;
 
@@ -123,6 +124,9 @@ struct fifo_segment_header_
   u8 low_watermark;			/**< Memory pressure watermark low */
   u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
 };
+
+void fsh_virtual_mem_update (fifo_segment_header_t * fsh, u32 slice_index,
+			     int n_bytes);
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
 
