@@ -669,6 +669,7 @@ svm_fifo_size (svm_fifo_t * f)
 static inline void
 svm_fifo_set_size (svm_fifo_t * f, u32 size)
 {
+  fsh_virtual_mem_update (f->fs_hdr, f->slice_index, (int) f->size - size);
   f->size = size;
 }
 
