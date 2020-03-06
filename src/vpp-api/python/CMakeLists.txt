@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(PythonInterp 2.7)
+find_package(PythonInterp 3)
 
 if(PYTHONINTERP_FOUND)
   install(
@@ -23,7 +23,7 @@ if(PYTHONINTERP_FOUND)
 	  --root /
 	  --prefix=${CMAKE_INSTALL_PREFIX}
 	  --single-version-externally-managed
-	  bdist_egg
+	  bdist_wheel
 	  --dist-dir=${CMAKE_INSTALL_PREFIX}
       OUTPUT_QUIET
     )"
