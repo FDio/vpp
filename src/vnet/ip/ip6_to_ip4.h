@@ -170,6 +170,57 @@ ip6_get_port (vlib_main_t * vm, vlib_buffer_t * b, ip6_header_t * ip6,
 	  if (dst_port)
 	    *dst_port = ((u16 *) (icmp))[2];
 	}
+      else if (clib_net_to_host_u16 (ip6->payload_length) >= 64)
+	{
+	  u16 ip6_pay_len;
+	  ip6_header_t *inner_ip6;
+	  u8 inner_l4_protocol;
+	  u16 inner_l4_offset;
+	  u16 inner_frag_offset;
+	  u8 *inner_l4;
+
+	  ip6_pay_len = clib_net_to_host_u16 (ip6->payload_length);
+	  inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
+
+	  if (ip6_parse (vm, b, inner_ip6, ip6_pay_len - 8,
+			 &inner_l4_protocol, &inner_l4_offset,
+			 &inner_frag_offset))
+	    return 0;
+
+	  if (inner_frag_offset &&
+	      ip6_frag_hdr_offset (((ip6_frag_hdr_t *)
+				    u8_ptr_add (inner_ip6,
+						inner_frag_offset))))
+	    return 0;
+
+	  inner_l4 = u8_ptr_add (inner_ip6, inner_l4_offset);
+	  if (inner_l4_protocol == IP_PROTOCOL_TCP ||
+	      inner_l4_protocol == IP_PROTOCOL_UDP)
+	    {
+	      if (src_port)
+		*src_port = ((udp_header_t *) (inner_l4))->dst_port;
+	      if (dst_port)
+		*dst_port = ((udp_header_t *) (inner_l4))->src_port;
+	    }
+	  else if (inner_l4_protocol == IP_PROTOCOL_ICMP6)
+	    {
+	      icmp46_header_t *inner_icmp = (icmp46_header_t *) (inner_l4);
+	      if (inner_icmp->type == ICMP6_echo_request)
+		{
+		  if (src_port)
+		    *src_port = ((u16 *) (inner_icmp))[2];
+		  if (dst_port)
+		    *dst_port = ((u16 *) (inner_icmp))[2];
+		}
+	      else if (inner_icmp->type == ICMP6_echo_reply)
+		{
+		  if (src_port)
+		    *src_port = ((u16 *) (inner_icmp))[2];
+		  if (dst_port)
+		    *dst_port = ((u16 *) (inner_icmp))[2];
+		}
+	    }
+	}
     }
   return 1;
 }
