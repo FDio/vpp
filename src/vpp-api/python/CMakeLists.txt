@@ -27,7 +27,7 @@ if(PYTHONINTERP_FOUND)
 	  --root /
 	  --prefix=${CMAKE_INSTALL_PREFIX}
 	  --single-version-externally-managed
-	  bdist_egg
+	  bdist_wheel
 	  --dist-dir=${CMAKE_INSTALL_PREFIX}
       OUTPUT_QUIET
     )"
