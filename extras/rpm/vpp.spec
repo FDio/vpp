@@ -152,7 +152,12 @@ This package contains the python3 bindings for the vpp api
 %package selinux-policy
 Summary: VPP Security-Enhanced Linux (SELinux) policy
 Group: System Environment/Base
-Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targeted >= %{selinux_policyver}, policycoreutils, policycoreutils-python libselinux-utils
+Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targeted >= %{selinux_policyver}, policycoreutils, libselinux-utils
+%if 0%{rhel} < 8
+Requires(post): policycoreutils-python
+%else
+Requires(post): python3-policycoreutils
+%endif
 
 %description selinux-policy
 This package contains a tailored VPP SELinux policy
