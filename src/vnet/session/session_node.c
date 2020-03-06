@@ -822,7 +822,7 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
   session_t *s = ctx->s;
 
   svm_fifo_unset_event (s->tx_fifo);
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo) > is_peek ? ctx->tx_offset : 0)
+  if (svm_fifo_max_dequeue_cons (s->tx_fifo) > (is_peek ? ctx->tx_offset : 0))
     if (svm_fifo_set_event (s->tx_fifo))
       session_evt_add_head_old (wrk, elt);
 }
