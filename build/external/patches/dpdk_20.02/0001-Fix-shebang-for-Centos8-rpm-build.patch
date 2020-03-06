@@ -1,0 +1,56 @@
+From e2666e5893e1539198bcd8ab75bbc4baf8cf18a8 Mon Sep 17 00:00:00 2001
+From: Paul Vinciguerra <pvinci@vinciconsulting.com>
+Date: Fri, 6 Mar 2020 13:47:47 -0500
+Subject: [PATCH] Fix shebang for Centos8 rpm build
+
+Signed-off-by: Paul Vinciguerra <pvinci@vinciconsulting.com>
+---
+ usertools/cpu_layout.py            | 2 +-
+ usertools/dpdk-devbind.py          | 2 +-
+ usertools/dpdk-pmdinfo.py          | 2 +-
+ usertools/dpdk-telemetry-client.py | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/usertools/cpu_layout.py b/usertools/cpu_layout.py
+index 6f129b1db..e86bf6b92 100755
+--- a/usertools/cpu_layout.py
++++ b/usertools/cpu_layout.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ # Copyright(c) 2017 Cavium, Inc. All rights reserved.
+diff --git a/usertools/dpdk-devbind.py b/usertools/dpdk-devbind.py
+index b1d149876..2dbe18d6d 100755
+--- a/usertools/dpdk-devbind.py
++++ b/usertools/dpdk-devbind.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ #
+diff --git a/usertools/dpdk-pmdinfo.py b/usertools/dpdk-pmdinfo.py
+index 9d5c6369a..438baff44 100755
+--- a/usertools/dpdk-pmdinfo.py
++++ b/usertools/dpdk-pmdinfo.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2016  Neil Horman <nhorman@tuxdriver.com>
+ 
+diff --git a/usertools/dpdk-telemetry-client.py b/usertools/dpdk-telemetry-client.py
+index 35edb7cd2..2adf6b324 100755
+--- a/usertools/dpdk-telemetry-client.py
++++ b/usertools/dpdk-telemetry-client.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2018 Intel Corporation
+ 
+-- 
+2.21.1 (Apple Git-122.3)
+
