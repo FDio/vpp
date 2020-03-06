@@ -114,6 +114,7 @@ struct fifo_segment_header_
   ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
   uword n_free_bytes;			/**< Segment free bytes */
   uword n_cached_bytes;			/**< Cached bytes */
+  uword virtual_mem;			/**< Sum of all fifo sizes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
   u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
@@ -123,6 +124,18 @@ struct fifo_segment_header_
   u8 low_watermark;			/**< Memory pressure watermark low */
   u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
 };
+
+static inline void
+fsh_virtual_mem_add (fifo_segment_header_t * fsh, int n_bytes)
+{
+  clib_atomic_fetch_add_rel (&fsh->virtual_mem, n_bytes);
+}
+
+static inline void
+fsh_virtual_mem_sub (fifo_segment_header_t * fsh, int n_bytes)
+{
+  clib_atomic_fetch_sub_rel (&fsh->virtual_mem, n_bytes);
+}
 
 #endif /* SRC_SVM_FIFO_TYPES_H_ */
 
