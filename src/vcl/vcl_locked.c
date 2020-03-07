@@ -533,8 +533,8 @@ int
 vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
 {
   vls_shared_data_t *vls_shd;
-  int do_disconnect;
-  u32 n_subscribers, pos;
+  int do_disconnect, pos;
+  u32 n_subscribers;
   vcl_session_t *s;
 
   ASSERT (vls->shared_data_index != ~0);
