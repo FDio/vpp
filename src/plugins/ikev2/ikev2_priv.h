@@ -433,6 +433,9 @@ typedef struct
   u8 old_remote_id_present;
 
   ikev2_child_sa_t *childs;
+
+  u8 liveness_retries;
+  f64 liveness_period_check;
 } ikev2_sa_t;
 
 
