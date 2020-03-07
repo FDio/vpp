@@ -29,6 +29,9 @@
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
 
+#define IKEV2_LIVENESS_RETRIES 2
+#define IKEV2_LIVENESS_PERIOD_CHECK 30
+
 ikev2_main_t ikev2_main;
 
 static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,
@@ -985,6 +988,7 @@ ikev2_process_informational_req (vlib_main_t * vm, ikev2_sa_t * sa,
   ike_payload_header_t *ikep;
   u32 plen;
 
+  sa->liveness_retries = 0;
   ikev2_elog_exchange ("ispi %lx rspi %lx INFORMATIONAL received "
 		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
 		       clib_host_to_net_u64 (ike->rspi), sa->iaddr.as_u32);
@@ -2299,6 +2303,13 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
   return -1;
 }
 
+static void
+ikev2_init_sa (ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  sa->liveness_period_check =
+    vlib_time_now (km->vlib_main) + IKEV2_LIVENESS_PERIOD_CHECK;
+}
 
 static uword
 ikev2_node_fn (vlib_main_t * vm,
@@ -2408,6 +2419,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			  pool_get (km->per_thread_data[thread_index].sas,
 				    sa0);
 			  clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
+			  ikev2_init_sa (sa0);
 			  hash_set (km->
 				    per_thread_data[thread_index].sa_by_rspi,
 				    sa0->rspi,
@@ -2574,10 +2586,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			    }
 			}
 		    }
-		  if (!sa0->is_initiator)
-		    {
-		      len = ikev2_generate_message (sa0, ike0, 0);
-		    }
+		  len = ikev2_generate_message (sa0, ike0, 0);
 		}
 	    }
 	  else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
@@ -3896,12 +3905,68 @@ ikev2_process_pending_sa_init (ikev2_main_t * km)
 
 static vlib_node_registration_t ikev2_mngr_process_node;
 
+static void
+ikev2_send_informational_request (ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  ip4_address_t *src, *dst;
+  ike_header_t *ike0;
+  u32 bi0 = 0;
+  int len;
+
+  bi0 = ikev2_get_new_ike_header_buff (km->vlib_main, &ike0);
+
+  ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
+  ike0->ispi = clib_host_to_net_u64 (sa->ispi);
+  ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
+  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+  len = ikev2_generate_message (sa, ike0, 0);
+
+  if (sa->is_initiator)
+    {
+      src = &sa->iaddr;
+      dst = &sa->raddr;
+    }
+  else
+    {
+
+      dst = &sa->iaddr;
+      src = &sa->raddr;
+    }
+
+  ikev2_send_ike (km->vlib_main, src, dst, bi0, len);
+}
+
+static_always_inline int
+ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  vlib_main_t *vm = km->vlib_main;
+
+  if (sa->liveness_retries > IKEV2_LIVENESS_RETRIES)
+    return 1;
+
+  f64 now = vlib_time_now (vm);
+
+  if (sa->liveness_period_check < now)
+    {
+      sa->liveness_retries++;
+      sa->liveness_period_check = now + IKEV2_LIVENESS_PERIOD_CHECK;
+      ikev2_send_informational_request (sa);
+    }
+  return 0;
+}
+
 static uword
 ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		       vlib_frame_t * f)
 {
   ikev2_main_t *km = &ikev2_main;
   ipsec_main_t *im = &ipsec_main;
+  ikev2_profile_t *p;
+  ikev2_child_sa_t *c;
+  u32 *sai;
 
   while (1)
     {
@@ -3914,6 +3979,8 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       vec_foreach (tkm, km->per_thread_data)
       {
 	ikev2_sa_t *sa;
+	u32 *to_be_deleted = 0;
+
         /* *INDENT-OFF* */
         pool_foreach (sa, tkm->sas, ({
           ikev2_child_sa_t *c;
@@ -3930,8 +3997,29 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
             {
             req_sent |= ikev2_mngr_process_child_sa(sa, c, del_old_ids);
             }
+
+          if (ikev2_mngr_process_responder_sas (sa))
+            vec_add1 (to_be_deleted, sa - tkm->sas);
         }));
         /* *INDENT-ON* */
+
+	vec_foreach (sai, to_be_deleted)
+	{
+	  sa = pool_elt_at_index (tkm->sas, sai[0]);
+	  if (sa->is_initiator && sa->is_profile_index_set)
+	    {
+	      p = pool_elt_at_index (km->profiles, sa->profile_index);
+	      if (p)
+		{
+		  ikev2_initiate_sa_init (vm, p->name);
+		  continue;
+		}
+	    }
+	  vec_foreach (c, sa->childs)
+	    ikev2_delete_tunnel_interface (km->vnet_main, sa, c);
+	  hash_unset (tkm->sa_by_rspi, sa->rspi);
+	  pool_put (tkm->sas, sa);
+	}
       }
 
       /* process ipsec sas */
