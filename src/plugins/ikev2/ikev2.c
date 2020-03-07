@@ -1373,13 +1373,13 @@ ikev2_sa_auth (ikev2_sa_t * sa)
           }
       }
 
-    if (sel_p)
-      sa->udp_encap = sel_p->udp_encap;
-
     vec_free(auth);
     vec_free(psk);
   }));
   /* *INDENT-ON* */
+
+  if (sel_p)
+    sa->udp_encap = sel_p->udp_encap;
 
   vec_free (authmsg);
 
