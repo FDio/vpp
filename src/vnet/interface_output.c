@@ -45,6 +45,7 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/classify/trace_classify.h>
+#include <vnet/interface.h>
 
 typedef struct
 {
@@ -181,6 +182,21 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 
       ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+
+      /* Check if the IP total length is less than IP header length.
+       * This would cause the payload length computation to have a very large
+       * 32-bit unsigned number  which could cause a crash. Instead, skip the
+       * checksum computation and increment a interface level counter.
+       */
+      if (PREDICT_FALSE (clib_net_to_host_u16 (ip4->length) < 28))
+	{
+	  u32 cur_len0 = vlib_buffer_length_in_chain (vm, b);
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+	     vnet_buffer (b)->sw_if_index[VLIB_RX], 1, cur_len0);
+	  goto done;
+	}
+
       if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
 	ip4->checksum = ip4_header_checksum (ip4);
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -214,6 +230,7 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
 	}
     }
+done:
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;

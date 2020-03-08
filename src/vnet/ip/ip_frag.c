@@ -312,6 +312,15 @@ frag_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      frag_sent += vec_len (buffer);
 	      small_packets += (vec_len (buffer) == 1);
 	      vlib_buffer_free_one (vm, pi0);	/* Free original packet */
+
+	      vlib_simple_counter_increment_sub_n_sup (is_ip6 ?
+						       VNET_INTERFACE_COUNTER_IP6_FRAGS
+						       :
+						       VNET_INTERFACE_COUNTER_IP4_FRAGS,
+						       vnet_buffer
+						       (p0)->sw_if_index
+						       [VLIB_RX],
+						       vec_len (buffer));
 	    }
 	  else
 	    {

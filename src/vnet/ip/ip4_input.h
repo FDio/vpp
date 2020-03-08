@@ -149,10 +149,29 @@ ip4_input_check_x4 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  next[0] = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p[0])->sw_if_index[VLIB_RX], 1, cur_len0);
 	}
       else
-	next[0] = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  next[0] = error0 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error0 == IP4_ERROR_BAD_LENGTH ||
+	      error0 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error0 == IP4_ERROR_BAD_CHECKSUM || error0 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p[0])->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	  else if (error0 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p[0])->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	}
       p[0]->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
@@ -163,10 +182,29 @@ ip4_input_check_x4 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  next[1] = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p[1])->sw_if_index[VLIB_RX], 1, cur_len1);
 	}
       else
-	next[1] = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  next[1] = error1 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error1 == IP4_ERROR_BAD_LENGTH ||
+	      error1 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error1 == IP4_ERROR_BAD_CHECKSUM || error1 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p[1])->sw_if_index[VLIB_RX], 1, cur_len1);
+	    }
+	  else if (error1 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p[1])->sw_if_index[VLIB_RX], 1, cur_len1);
+	    }
+	}
       p[1]->error = error_node->errors[error1];
     }
   if (PREDICT_FALSE (error2 != IP4_ERROR_NONE))
@@ -177,10 +215,29 @@ ip4_input_check_x4 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  next[2] = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p[2])->sw_if_index[VLIB_RX], 1, cur_len2);
 	}
       else
-	next[2] = error2 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  next[2] = error2 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error2 == IP4_ERROR_BAD_LENGTH ||
+	      error2 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error2 == IP4_ERROR_BAD_CHECKSUM || error2 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p[2])->sw_if_index[VLIB_RX], 1, cur_len2);
+	    }
+	  else if (error2 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p[2])->sw_if_index[VLIB_RX], 1, cur_len2);
+	    }
+	}
       p[2]->error = error_node->errors[error2];
     }
   if (PREDICT_FALSE (error3 != IP4_ERROR_NONE))
@@ -191,10 +248,29 @@ ip4_input_check_x4 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  next[3] = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p[3])->sw_if_index[VLIB_RX], 1, cur_len3);
 	}
       else
-	next[3] = error3 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  next[3] = error3 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error3 == IP4_ERROR_BAD_LENGTH ||
+	      error3 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error3 == IP4_ERROR_BAD_CHECKSUM || error3 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p[3])->sw_if_index[VLIB_RX], 1, cur_len3);
+	    }
+	  else if (error3 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p[3])->sw_if_index[VLIB_RX], 1, cur_len3);
+	    }
+	}
       p[3]->error = error_node->errors[error3];
     }
 }
@@ -252,10 +328,29 @@ ip4_input_check_x2 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next0 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
 	}
       else
-	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  *next0 = error0 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error0 == IP4_ERROR_BAD_LENGTH ||
+	      error0 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error0 == IP4_ERROR_BAD_CHECKSUM || error0 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	  else if (error0 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	}
       p0->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
@@ -266,10 +361,29 @@ ip4_input_check_x2 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next1 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p1)->sw_if_index[VLIB_RX], 1, cur_len1);
 	}
       else
-	*next1 = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  *next1 = error1 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	  if (error1 == IP4_ERROR_BAD_LENGTH ||
+	      error1 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error1 == IP4_ERROR_BAD_CHECKSUM || error1 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p1)->sw_if_index[VLIB_RX], 1, cur_len1);
+	    }
+	  else if (error1 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p1)->sw_if_index[VLIB_RX], 1, cur_len1);
+	    }
+	}
       p1->error = error_node->errors[error1];
     }
 }
@@ -315,20 +429,41 @@ ip4_input_check_x1 (vlib_main_t * vm,
 				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next0 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED,
+	     vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
 	}
       else
-	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	{
+	  *next0 = error0 != IP4_ERROR_OPTIONS ?
+	    IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+
+	  if (error0 == IP4_ERROR_BAD_LENGTH ||
+	      error0 == IP4_ERROR_FRAGMENT_OFFSET_ONE ||
+	      error0 == IP4_ERROR_BAD_CHECKSUM || error0 == IP4_ERROR_VERSION)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_BAD_HEADER,
+		 vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	  else if (error0 == IP4_ERROR_TOO_SHORT)
+	    {
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP4_TOO_SHORT,
+		 vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, cur_len0);
+	    }
+	}
+
       p0->error = error_node->errors[error0];
     }
 }
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  /*
+   * fd.io coding-style-patch-verification: ON
+   *
+   * Local Variables:
+   * eval: (c-set-style "gnu")
+   * End:
+   */
 
 #endif
