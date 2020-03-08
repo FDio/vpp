@@ -757,7 +757,11 @@ typedef enum
   VNET_INTERFACE_COUNTER_RX_ERROR = 6,
   VNET_INTERFACE_COUNTER_TX_ERROR = 7,
   VNET_INTERFACE_COUNTER_MPLS = 8,
-  VNET_N_SIMPLE_INTERFACE_COUNTER = 9,
+  VNET_INTERFACE_COUNTER_IP4_REASM = 9,
+  VNET_INTERFACE_COUNTER_IP6_REASM = 10,
+  VNET_INTERFACE_COUNTER_IP4_FRAGS = 11,
+  VNET_INTERFACE_COUNTER_IP6_FRAGS = 12,
+  VNET_N_SIMPLE_INTERFACE_COUNTER = 13,
   /* Combined counters. */
   VNET_INTERFACE_COUNTER_RX = 0,
   VNET_INTERFACE_COUNTER_RX_UNICAST = 1,
@@ -767,7 +771,14 @@ typedef enum
   VNET_INTERFACE_COUNTER_TX_UNICAST = 5,
   VNET_INTERFACE_COUNTER_TX_MULTICAST = 6,
   VNET_INTERFACE_COUNTER_TX_BROADCAST = 7,
-  VNET_N_COMBINED_INTERFACE_COUNTER = 8,
+  VNET_INTERFACE_COUNTER_IP6_TTL_EXPIRED = 8,
+  VNET_INTERFACE_COUNTER_IP4_TTL_EXPIRED = 9,
+  VNET_INTERFACE_COUNTER_IP4_BAD_HEADER = 10,
+  VNET_INTERFACE_COUNTER_IP4_TOO_SHORT = 11,
+  VNET_INTERFACE_COUNTER_IP6_TOO_SHORT = 12,
+  VNET_INTERFACE_COUNTER_UDP_TOO_SHORT = 13,
+  VNET_INTERFACE_COUNTER_UNKNOWN_VLAN = 14,
+  VNET_N_COMBINED_INTERFACE_COUNTER = 15,
 } vnet_interface_counter_type_t;
 
 #define foreach_rx_combined_interface_counter(_x)               \
@@ -788,8 +799,12 @@ typedef enum
   _(RX_NO_BUF, rx-no-buf, if)			\
   _(RX_MISS, rx-miss, if)			\
   _(RX_ERROR, rx-error, if)			\
-  _(TX_ERROR, tx-error, if)         \
-  _(MPLS, mpls, if)
+  _(TX_ERROR, tx-error, if)                     \
+  _(MPLS, mpls, if)                             \
+  _(IP4_REASM, ip4-reasm, if)                   \
+  _(IP6_REASM, ip6-reasm, if)                   \
+  _(IP4_FRAGS, ip4-frags, if)                   \
+  _(IP6_FRAGS, ip6-frags, if)
 
 #define foreach_combined_interface_counter_name	\
   _(RX, rx, if)					\
@@ -799,7 +814,54 @@ typedef enum
   _(TX, tx, if)					\
   _(TX_UNICAST, tx-unicast, if)			\
   _(TX_MULTICAST, tx-multicast, if)		\
-  _(TX_BROADCAST, tx-broadcast, if)
+  _(TX_BROADCAST, tx-broadcast, if)             \
+  _(IP6_TTL_EXPIRED, ip6-ttl-expired, if)       \
+  _(IP4_TTL_EXPIRED, ip4-ttl-expired, if)       \
+  _(IP4_BAD_HEADER, ip4-bad-hdr, if)            \
+  _(IP4_TOO_SHORT, ip4-too-short, if)           \
+  _(IP6_TOO_SHORT, ip6-too-short, if)           \
+  _(UDP_TOO_SHORT, udp-too-short, if)           \
+  _(UNKNOWN_VLAN, unknown-vlan, if)             \
+
+
+/** Increment simple counter for given sw_if_index.
+ *  If the interface is a sub-interface increment super interface too.
+ */
+
+#define vlib_simple_counter_increment_sub_n_sup(ct, sw_if_index, count)       \
+do {                                                                          \
+  vnet_main_t *vnm = vnet_get_main ();                                        \
+  u32 thread_index = vlib_get_thread_index ();                                \
+  vlib_increment_simple_counter (                                             \
+      vnm->interface_main.sw_if_counters + (ct),                              \
+      thread_index, sw_if_index, count);                                      \
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);         \
+  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||                               \
+      sw->type == VNET_SW_INTERFACE_TYPE_P2P)                                 \
+    {                                                                         \
+      vlib_increment_simple_counter (                                         \
+          vnm->interface_main.sw_if_counters + (ct), thread_index,            \
+          sw->sup_sw_if_index, count);                                        \
+    }                                                                         \
+} while(0)
+
+#define vlib_combined_counter_increment_sub_n_sup(ct, sw_if_index,            \
+    n_packets, n_bytes)                                                       \
+do {                                                                          \
+  vnet_main_t *vnm = vnet_get_main ();                                        \
+  u32 thread_index = vlib_get_thread_index ();                                \
+  vlib_increment_combined_counter (                                           \
+      vnm->interface_main.combined_sw_if_counters + (ct),                     \
+      thread_index, sw_if_index, n_packets, n_bytes);                         \
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);         \
+  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||                               \
+      sw->type == VNET_SW_INTERFACE_TYPE_P2P)                                 \
+    {                                                                         \
+      vlib_increment_combined_counter (                                       \
+          vnm->interface_main.combined_sw_if_counters + (ct), thread_index,   \
+          sw->sup_sw_if_index, n_packets, n_bytes);                           \
+    }                                                                         \
+}while(0)
 
 typedef enum
 {

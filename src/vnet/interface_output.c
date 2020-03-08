@@ -45,6 +45,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/classify/trace_classify.h>
 #include <vnet/interface_output.h>
+#include <vnet/interface.h>
 
 typedef struct
 {
