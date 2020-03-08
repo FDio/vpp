@@ -513,9 +513,16 @@ static inline
   u32 slow_wheel_index __attribute__ ((unused));
   u32 glacier_wheel_index __attribute__ ((unused));
 
-  /* Shouldn't happen */
+  /* Called too soon to process new timer expirations? */
   if (PREDICT_FALSE (now < tw->next_run_time))
     return callback_vector_arg;
+
+  /* Retrograde time reference ? */
+  if (PREDICT_FALSE (now <= tw->last_run_time))
+    {
+      tw->last_run_time = now;
+      return callback_vector_arg;
+    }
 
   /* Number of ticks which have occurred */
   nticks = tw->ticks_per_second * (now - tw->last_run_time);
