@@ -513,7 +513,7 @@ static inline
   u32 slow_wheel_index __attribute__ ((unused));
   u32 glacier_wheel_index __attribute__ ((unused));
 
-  /* Shouldn't happen */
+  /* Called too soon to process new timer expirations? */
   if (PREDICT_FALSE (now < tw->next_run_time))
     return callback_vector_arg;
 
@@ -524,6 +524,27 @@ static inline
 
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
+
+  /* First call, or time jumped backwards? */
+  if (PREDICT_FALSE
+      ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
+    {
+      tw->last_run_time = now;
+      return callback_vector_arg;
+    }
+
+  /*
+   * Refuse to do anything if we're about to process way too many slots.
+   * Should never come anywhere close to happening, with the possible exception
+   * of cases involving a large forward jump in the timebase.
+   */
+  if (nticks > (1 << (TW_RING_SHIFT + 1)))
+    {
+      clib_warning ("Excessive nticks %u at %.6f last run %.6f",
+		    nticks, now, tw->last_run_time);
+      tw->last_run_time = now;
+      return callback_vector_arg;
+    }
 
   if (callback_vector_arg == 0)
     {
