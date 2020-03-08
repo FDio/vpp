@@ -1248,6 +1248,10 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else if (is_feature && IP4_ERROR_NONE == error0)
 		{
 		  vnet_feature_next (&next0, b0);
+		  if (!is_custom_app)
+		    vlib_simple_counter_increment_sub_n_sup
+		      (VNET_INTERFACE_COUNTER_IP4_REASM,
+		       vnet_buffer (b0)->sw_if_index[VLIB_RX], 1);
 		}
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					       to_next, n_left_to_next,

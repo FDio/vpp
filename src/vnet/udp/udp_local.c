@@ -161,6 +161,18 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	    }
 
+	  if (PREDICT_FALSE (error0 == UDP_ERROR_LENGTH_ERROR))
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_UDP_TOO_SHORT,
+	       vnet_buffer (b0)->sw_if_index[VLIB_RX],
+	       vlib_buffer_length_in_chain (vm, b0), 1);
+
+	  if (PREDICT_FALSE (error1 == UDP_ERROR_LENGTH_ERROR))
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_UDP_TOO_SHORT,
+	       vnet_buffer (b1)->sw_if_index[VLIB_RX],
+	       vlib_buffer_length_in_chain (vm, b1), 1);
+
 	  /* Index sparse array with network byte order. */
 	  dst_port0 = (error0 == 0) ? h0->dst_port : 0;
 	  dst_port1 = (error1 == 0) ? h1->dst_port : 0;
@@ -356,6 +368,12 @@ udp46_local_inline (vlib_main_t * vm,
 	      b0->error = node->errors[UDP_ERROR_LENGTH_ERROR];
 	      next0 = UDP_LOCAL_NEXT_DROP;
 	    }
+
+	  if (PREDICT_FALSE (b0->error == UDP_ERROR_LENGTH_ERROR))
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_UDP_TOO_SHORT,
+	       vnet_buffer (b0)->sw_if_index[VLIB_RX],
+	       vlib_buffer_length_in_chain (vm, b0), 1);
 
 	trace_x1:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

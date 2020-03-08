@@ -96,9 +96,16 @@ ip6_input_check_x2 (vlib_main_t * vm,
 				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next0 = IP6_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP6_TTL_EXPIRED,
+	     vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, p0->current_length);
 	}
       else
 	{
+	  if (error0 == IP6_ERROR_TOO_SHORT)
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_IP6_TOO_SHORT,
+	       vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, p0->current_length);
 	  *next0 = IP6_INPUT_NEXT_DROP;
 	}
     }
@@ -110,9 +117,16 @@ ip6_input_check_x2 (vlib_main_t * vm,
 				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next1 = IP6_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP6_TTL_EXPIRED,
+	     vnet_buffer (p1)->sw_if_index[VLIB_RX], 1, p1->current_length);
 	}
       else
 	{
+	  if (error1 == IP6_ERROR_TOO_SHORT)
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_IP6_TOO_SHORT,
+	       vnet_buffer (p1)->sw_if_index[VLIB_RX], 1, p1->current_length);
 	  *next1 = IP6_INPUT_NEXT_DROP;
 	}
     }
@@ -151,9 +165,16 @@ ip6_input_check_x1 (vlib_main_t * vm,
 				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
 				       0);
 	  *next0 = IP6_INPUT_NEXT_ICMP_ERROR;
+	  vlib_combined_counter_increment_sub_n_sup
+	    (VNET_INTERFACE_COUNTER_IP6_TTL_EXPIRED,
+	     vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, p0->current_length);
 	}
       else
 	{
+	  if (error0 == IP6_ERROR_TOO_SHORT)
+	    vlib_combined_counter_increment_sub_n_sup
+	      (VNET_INTERFACE_COUNTER_IP6_TOO_SHORT,
+	       vnet_buffer (p0)->sw_if_index[VLIB_RX], 1, p0->current_length);
 	  *next0 = IP6_INPUT_NEXT_DROP;
 	}
     }

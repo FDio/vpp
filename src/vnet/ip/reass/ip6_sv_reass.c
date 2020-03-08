@@ -741,6 +741,9 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	    {
 	      b0 = vlib_get_buffer (vm, bi0);
 	      vnet_feature_next (&next0, b0);
+	      vlib_simple_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_IP6_REASM,
+		 vnet_buffer (b0)->sw_if_index[VLIB_RX], 1);
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);

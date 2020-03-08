@@ -1416,6 +1416,24 @@ ethernet_input_inline (vlib_main_t * vm,
 	    error1 !=
 	    ETHERNET_ERROR_NONE ? old_sw_if_index1 : new_sw_if_index1;
 
+	  if (PREDICT_FALSE (ETHERNET_ERROR_UNKNOWN_VLAN == error0))
+	    {
+	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
+		- vnet_buffer (b0)->l2_hdr_offset;
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_UNKNOWN_VLAN, old_sw_if_index0, 1,
+		 len0);
+	    }
+
+	  if (PREDICT_FALSE (ETHERNET_ERROR_UNKNOWN_VLAN == error1))
+	    {
+	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data
+		- vnet_buffer (b1)->l2_hdr_offset;
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_UNKNOWN_VLAN, old_sw_if_index1, 1,
+		 len1);
+	    }
+
 	  // Check if there is a stat to take (valid and non-main sw_if_index for pkt 0 or pkt 1)
 	  if (((new_sw_if_index0 != ~0)
 	       && (new_sw_if_index0 != old_sw_if_index0))
@@ -1621,6 +1639,15 @@ ethernet_input_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    error0 !=
 	    ETHERNET_ERROR_NONE ? old_sw_if_index0 : new_sw_if_index0;
+
+	  if (PREDICT_FALSE (ETHERNET_ERROR_UNKNOWN_VLAN == error0))
+	    {
+	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
+		- vnet_buffer (b0)->l2_hdr_offset;
+	      vlib_combined_counter_increment_sub_n_sup
+		(VNET_INTERFACE_COUNTER_UNKNOWN_VLAN, old_sw_if_index0, 1,
+		 len0);
+	    }
 
 	  // Increment subinterface stats
 	  // Note that interface-level counters have already been incremented
