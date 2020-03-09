@@ -95,6 +95,7 @@ define ip_neighbor_dump
 
 /** \brief IP neighboors dump response
     @param context - sender context which was passed in the request
+    @param age - time between last update and sending this message, in seconds
     @param neighbour - the neighbor
 */
 define ip_neighbor_details {
