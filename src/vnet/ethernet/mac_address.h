@@ -115,7 +115,7 @@ mac_address_as_u64 (const mac_address_t * mac)
 
   as_u64 = (u64 *) mac->bytes;
 
-  return (*as_u64);
+  return *as_u64 & 0x0000ffffffffffffUL;
 }
 
 static_always_inline void
