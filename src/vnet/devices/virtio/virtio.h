@@ -112,7 +112,7 @@ typedef struct
   u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
-  u16 flags;
+  u16 desc_last;
   u32 call_file_index;
   u32 *buffers;
   u16 last_used_idx;
@@ -220,8 +220,8 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
       int __clib_unused r;
 
       r = write (vring->kick_fd, &x, sizeof (x));
-      vring->last_kick_avail_idx = vring->avail->idx;
     }
+  vring->last_kick_avail_idx = vring->avail->idx;
 }
 
 

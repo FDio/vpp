@@ -77,42 +77,34 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
 {
   u16 used = vring->desc_in_use;
   u16 sz = vring->size;
+  struct vring_used_elem *e;
   u16 mask = sz - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
+  u16 last_desc_idx = vring->desc_last;
+  struct vring_desc *d = &vring->desc[last_desc_idx];
+  u32 buffers[n_left];
+  u16 n_buffers = 0;
 
   if (n_left == 0)
     return;
 
   while (n_left)
     {
-      struct vring_used_elem *e = &vring->used->ring[last & mask];
-      u16 slot, n_buffers;
-      slot = n_buffers = e->id;
-
-      while (e->id == n_buffers)
-	{
-	  n_left--;
-	  last++;
-	  n_buffers++;
-	  if (n_left == 0)
-	    break;
-	  e = &vring->used->ring[last & mask];
-	}
-      vlib_buffer_free_from_ring (vm, vring->buffers, slot,
-				  sz, (n_buffers - slot));
-      used -= (n_buffers - slot);
-
-      if (n_left > 0)
-	{
-	  slot = e->id;
-
-	  vlib_buffer_free (vm, &vring->buffers[slot], 1);
-	  used--;
-	  last++;
-	  n_left--;
-	}
+      e = &vring->used->ring[last & mask];
+      last_desc_idx = e->id;
+      d->next = last_desc_idx;
+      buffers[n_buffers] = vring->buffers[last_desc_idx];
+      vring->buffers[last_desc_idx] = ~0;
+      d = &vring->desc[last_desc_idx];
+      n_buffers++;
+      used--;
+      last++;
+      n_left--;
     }
+  vlib_buffer_free_from_ring (vm, buffers, 0, sz, n_buffers);
+
+  vring->desc_last = last_desc_idx;
   vring->desc_in_use = used;
   vring->last_used_idx = last;
 }
@@ -155,13 +147,12 @@ set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
 
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
-		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
-		    u16 mask, int do_gso, int csum_offload)
+		    virtio_vring_t * vring, struct vring_desc *d, u32 bi,
+		    u16 avail, u16 next, u16 mask, int do_gso,
+		    int csum_offload)
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
-  struct vring_desc *d;
-  d = &vring->desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
 
@@ -215,6 +206,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 	 pointer_to_uword (vlib_buffer_get_current (b))) - hdr_sz;
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
+      d->next = 0;
     }
   else
     {
@@ -309,9 +301,10 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u16 n_left = frame->n_vectors;
   virtio_vring_t *vring;
+  struct vring_desc *d = 0;
   u16 qid = vm->thread_index % vif->num_txqs;
   vring = vec_elt_at_index (vif->txq_vrings, qid);
-  u16 used, next, avail;
+  u16 used, curr, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -331,14 +324,16 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left && used < sz)
     {
+      curr = next;
+      d = &vring->desc[curr];
+      next = d->next;
       u16 n_added = 0;
       n_added =
-	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
+	add_buffer_to_slot (vm, vif, vring, d, buffers[0], avail, curr, mask,
 			    do_gso, csum_offload);
       if (!n_added)
 	break;
       avail += n_added;
-      next = (next + n_added) & mask;
       used += n_added;
       buffers++;
       n_left--;

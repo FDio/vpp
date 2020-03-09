@@ -113,6 +113,17 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
 
+  if (idx & 1)
+    {
+      for (u16 i = 1; i < sz; i++)
+	vring->desc[i - 1].next = i;
+
+      vring->desc[sz - 1].next = 0;
+      vring->desc_last = sz - 1;
+
+      clib_memset_u32 (vring->buffers, ~0, sz);
+    }
+
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -354,9 +365,9 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	vring = vec_elt_at_index (vif->rxq_vrings, i);
 	vlib_cli_output (vm, "  Virtqueue (RX) %d", vring->queue_id);
 	vlib_cli_output (vm,
-			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx, vring->desc_next,
-			 vring->desc_in_use);
+			 "    qsz %d, desc_last %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+			 vring->size, vring->desc_last, vring->last_used_idx,
+			 vring->desc_next, vring->desc_in_use);
 	vlib_cli_output (vm,
 			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
 			 vring->avail->flags, vring->avail->idx,
@@ -389,9 +400,9 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	vring = vec_elt_at_index (vif->txq_vrings, i);
 	vlib_cli_output (vm, "  Virtqueue (TX) %d", vring->queue_id);
 	vlib_cli_output (vm,
-			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx, vring->desc_next,
-			 vring->desc_in_use);
+			 "    qsz %d, desc_last %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+			 vring->size, vring->desc_last, vring->last_used_idx,
+			 vring->desc_next, vring->desc_in_use);
 	vlib_cli_output (vm,
 			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
 			 vring->avail->flags, vring->avail->idx,
