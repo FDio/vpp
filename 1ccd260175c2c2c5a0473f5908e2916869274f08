@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6322019_6b423da1",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-03-09T19:39:31Z",
+      "side": 1,
+      "message": "This is almost certainly not endian-clean...",
+      "revId": "1ccd260175c2c2c5a0473f5908e2916869274f08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
