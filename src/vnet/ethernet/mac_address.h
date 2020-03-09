@@ -111,11 +111,11 @@ mac_address_is_zero (const mac_address_t * mac)
 static_always_inline u64
 mac_address_as_u64 (const mac_address_t * mac)
 {
-  u64 *as_u64;
+  volatile u64 as_u64 = 0;
 
-  as_u64 = (u64 *) mac->bytes;
+  clib_memcpy ((void *) &as_u64, mac->bytes, 6);
 
-  return (*as_u64);
+  return as_u64;
 }
 
 static_always_inline void
