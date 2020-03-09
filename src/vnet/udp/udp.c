@@ -86,7 +86,8 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   void *iface_ip;
   udp_dst_port_info_t *pi;
 
-  pi = udp_get_dst_port_info (um, lcl->port, lcl->is_ip4);
+  pi =
+    udp_get_dst_port_info (um, clib_net_to_host_u16 (lcl->port), lcl->is_ip4);
   if (pi)
     return -1;
 
