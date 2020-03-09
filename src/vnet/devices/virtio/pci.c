@@ -821,6 +821,12 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
   if (queue_num % 2)
     {
+      for (u16 i = 1; i < queue_size; i++)
+	vring->desc[i - 1].next = i;
+      vring->desc[queue_size - 1].next = 0;
+
+      vring->desc_last = queue_size - 1;
+      clib_memset_u32 (vring->buffers, ~0, queue_size);
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
