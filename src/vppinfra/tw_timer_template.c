@@ -540,8 +540,9 @@ static inline
    */
   if (nticks > (1 << (TW_RING_SHIFT + 1)))
     {
-      clib_warning ("Excessive nticks %u at %.6f last run %.6f",
-		    nticks, now, tw->last_run_time);
+      if (nticks / tw->ticks_per_second > 100e-3)
+	clib_warning ("Excessive nticks %u at %.6f last run %.6f",
+		      nticks, now, tw->last_run_time);
       tw->last_run_time = now;
       return callback_vector_arg;
     }
