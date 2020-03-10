@@ -161,14 +161,16 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 #endif
 
 static inline u32
-icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
-			  ip4_header_t * ip0, icmp46_header_t * icmp0,
-			  u32 sw_if_index0, u32 rx_fib_index0,
-			  vlib_node_runtime_t * node, u32 next0, f64 now,
-			  u32 thread_index, snat_session_t ** p_s0)
+icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_main_t * vm,
+			  vlib_buffer_t * b0, ip4_header_t * ip0,
+			  icmp46_header_t * icmp0, u32 sw_if_index0,
+			  u32 rx_fib_index0, vlib_node_runtime_t * node,
+			  u32 next0, f64 now, u32 thread_index,
+			  snat_session_t ** p_s0)
 {
-  next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-		       next0, thread_index, p_s0, 0);
+  next0 =
+    icmp_in2out (sm, vm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+		 next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
   if (PREDICT_TRUE (next0 != NAT_NEXT_DROP && s0))
     {
@@ -531,7 +533,8 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	{
 	  if (ip->protocol == IP_PROTOCOL_TCP)
 	    {
-	      if (nat44_set_tcp_session_state_i2o (sm, s, b, thread_index))
+	      if (nat44_set_tcp_session_state_i2o
+		  (sm, vm, s, b, thread_index))
 		return 1;
 	    }
 	  /* Accounting */
@@ -603,10 +606,11 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
 
 #ifndef CLIB_MARCH_VARIANT
 u32
-icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
-		      u32 thread_index, vlib_buffer_t * b, ip4_header_t * ip,
-		      u8 * p_proto, snat_session_key_t * p_value,
-		      u8 * p_dont_translate, void *d, void *e)
+icmp_match_in2out_ed (snat_main_t * sm, vlib_main_t * vm,
+		      vlib_node_runtime_t * node, u32 thread_index,
+		      vlib_buffer_t * b, ip4_header_t * ip, u8 * p_proto,
+		      snat_session_key_t * p_value, u8 * p_dont_translate,
+		      void *d, void *e)
 {
   u32 sw_if_index;
   u32 rx_fib_index;
@@ -1028,6 +1032,21 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  s0 = pool_elt_at_index (tsm->sessions, value0.value);
 
+	  if (s0->tcp_close_timestamp)
+	    {
+	      if (s0->tcp_close_timestamp > vlib_time_now (vm))
+		{
+		  // session is closed, go slow path
+		  next0 = def_slow;
+		}
+	      else
+		{
+		  // session in transitory timeout, drop
+		  next0 = NAT_NEXT_DROP;
+		}
+	      goto trace0;
+	    }
+
 	  b0->flags |= VNET_BUFFER_F_IS_NATED;
 
 	  if (!is_output_feature)
@@ -1076,7 +1095,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;
-	      if (nat44_set_tcp_session_state_i2o (sm, s0, b0, thread_index))
+	      if (nat44_set_tcp_session_state_i2o
+		  (sm, vm, s0, b0, thread_index))
 		goto trace0;
 	    }
 	  else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
@@ -1263,7 +1283,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_in2out_ed_slow_path
-		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
+		(sm, vm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
 		 node, next0, now, thread_index, &s0);
 	      icmp_packets++;
 	      goto trace0;
@@ -1373,7 +1393,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;
-	      if (nat44_set_tcp_session_state_i2o (sm, s0, b0, thread_index))
+	      if (nat44_set_tcp_session_state_i2o
+		  (sm, vm, s0, b0, thread_index))
 		goto trace0;
 	    }
 	  else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
