@@ -322,8 +322,9 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
     @return 1 if session was closed, otherwise 0
 */
 always_inline int
-nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
-				 vlib_buffer_t * b, u32 thread_index)
+nat44_set_tcp_session_state_i2o (snat_main_t * sm, vlib_main_t * vm,
+				 snat_session_t * ses, vlib_buffer_t * b,
+				 u32 thread_index)
 {
   u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
   u32 tcp_ack_number = vnet_buffer (b)->ip.reass.tcp_ack_number;
@@ -345,22 +346,23 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
   if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_O2I_FIN))
     {
       if (clib_net_to_host_u32 (tcp_ack_number) > ses->o2i_fin_seq)
-	ses->state |= NAT44_SES_O2I_FIN_ACK;
-    }
-  if (nat44_is_ses_closed (ses)
-      && !(ses->flags & SNAT_SESSION_FLAG_OUTPUT_FEATURE))
-    {
-      nat_free_session_data (sm, ses, thread_index, 0);
-      nat44_delete_session (sm, ses, thread_index);
-      return 1;
+	{
+	  ses->state |= NAT44_SES_O2I_FIN_ACK;
+	  if (nat44_is_ses_closed (ses))
+	    {			// if session is now closed, save the timestamp
+	      ses->tcp_close_timestamp =
+		vlib_time_now (vm) + sm->tcp_transitory_timeout;
+	    }
+	}
     }
   return 0;
 }
 
 always_inline int
-nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
-				 u8 tcp_flags, u32 tcp_ack_number,
-				 u32 tcp_seq_number, u32 thread_index)
+nat44_set_tcp_session_state_o2i (snat_main_t * sm, vlib_main_t * vm,
+				 snat_session_t * ses, u8 tcp_flags,
+				 u32 tcp_ack_number, u32 tcp_seq_number,
+				 u32 thread_index)
 {
   if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
     ses->state = NAT44_SES_RST;
@@ -380,12 +382,11 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
     {
       if (clib_net_to_host_u32 (tcp_ack_number) > ses->i2o_fin_seq)
 	ses->state |= NAT44_SES_I2O_FIN_ACK;
-    }
-  if (nat44_is_ses_closed (ses))
-    {
-      nat_free_session_data (sm, ses, thread_index, 0);
-      nat44_delete_session (sm, ses, thread_index);
-      return 1;
+      if (nat44_is_ses_closed (ses))
+	{			// if session is now closed, save the timestamp
+	  ses->tcp_close_timestamp =
+	    vlib_time_now (vm) + sm->tcp_transitory_timeout;
+	}
     }
   return 0;
 }

@@ -92,11 +92,11 @@ format_nat_det_in2out_trace (u8 * s, va_list * args)
  * @param e                      optional parameter
  */
 u32
-icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
-		       u32 thread_index, vlib_buffer_t * b0,
-		       ip4_header_t * ip0, u8 * p_proto,
-		       snat_session_key_t * p_value,
-		       u8 * p_dont_translate, void *d, void *e)
+icmp_match_in2out_det (snat_main_t * sm, vlib_main_t * vm,
+		       vlib_node_runtime_t * node, u32 thread_index,
+		       vlib_buffer_t * b0, ip4_header_t * ip0, u8 * p_proto,
+		       snat_session_key_t * p_value, u8 * p_dont_translate,
+		       void *d, void *e)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
@@ -340,7 +340,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	      icmp0 = (icmp46_header_t *) udp0;
 
-	      next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0,
+	      next0 = icmp_in2out (sm, vm, b0, ip0, icmp0, sw_if_index0,
 				   rx_fib_index0, node, next0, thread_index,
 				   &ses0, &dm0);
 	      goto trace0;
@@ -513,7 +513,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 		ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
 	      icmp1 = (icmp46_header_t *) udp1;
 
-	      next1 = icmp_in2out (sm, b1, ip1, icmp1, sw_if_index1,
+	      next1 = icmp_in2out (sm, vm, b1, ip1, icmp1, sw_if_index1,
 				   rx_fib_index1, node, next1, thread_index,
 				   &ses1, &dm1);
 	      goto trace1;
@@ -722,7 +722,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	      icmp0 = (icmp46_header_t *) udp0;
 
-	      next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0,
+	      next0 = icmp_in2out (sm, vm, b0, ip0, icmp0, sw_if_index0,
 				   rx_fib_index0, node, next0, thread_index,
 				   &ses0, &dm0);
 	      goto trace00;
