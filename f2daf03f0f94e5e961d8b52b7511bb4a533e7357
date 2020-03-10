@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "06452fe3_e64fa841",
+        "filename": "src/plugins/tlspicotls/tls_picotls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-10T01:48:19Z",
+      "side": 1,
+      "message": "Could return an error so it should be validated. Same comment for other calls to the function",
+      "range": {
+        "startLine": 351,
+        "startChar": 19,
+        "endLine": 351,
+        "endChar": 35
+      },
+      "revId": "f2daf03f0f94e5e961d8b52b7511bb4a533e7357",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
