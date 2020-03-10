@@ -322,11 +322,11 @@ static_always_inline
  * @param e                      optional parameter
  */
 u32
-icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
-			u32 thread_index, vlib_buffer_t * b0,
-			ip4_header_t * ip0, u8 * p_proto,
-			snat_session_key_t * p_value,
-			u8 * p_dont_translate, void *d, void *e)
+icmp_match_out2in_slow (snat_main_t * sm, vlib_main_t * vm,
+			vlib_node_runtime_t * node, u32 thread_index,
+			vlib_buffer_t * b0, ip4_header_t * ip0, u8 * p_proto,
+			snat_session_key_t * p_value, u8 * p_dont_translate,
+			void *d, void *e)
 {
   u32 sw_if_index0;
   u32 rx_fib_index0;
@@ -456,11 +456,11 @@ out:
  * @param e                      optional parameter
  */
 u32
-icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			u32 thread_index, vlib_buffer_t * b0,
-			ip4_header_t * ip0, u8 * p_proto,
-			snat_session_key_t * p_value,
-			u8 * p_dont_translate, void *d, void *e)
+icmp_match_out2in_fast (snat_main_t * sm, vlib_main_t * vm,
+			vlib_node_runtime_t * node, u32 thread_index,
+			vlib_buffer_t * b0, ip4_header_t * ip0, u8 * p_proto,
+			snat_session_key_t * p_value, u8 * p_dont_translate,
+			void *d, void *e)
 {
   u32 sw_if_index0;
   u32 rx_fib_index0;
@@ -521,6 +521,7 @@ out2:
 #ifndef CLIB_MARCH_VARIANT
 u32
 icmp_out2in (snat_main_t * sm,
+	     vlib_main_t * vm,
 	     vlib_buffer_t * b0,
 	     ip4_header_t * ip0,
 	     icmp46_header_t * icmp0,
@@ -544,7 +545,7 @@ icmp_out2in (snat_main_t * sm,
 
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 
-  next0_tmp = sm->icmp_match_out2in_cb (sm, node, thread_index, b0, ip0,
+  next0_tmp = sm->icmp_match_out2in_cb (sm, vm, node, thread_index, b0, ip0,
 					&protocol, &sm0, &dont_translate, d,
 					e);
   if (next0_tmp != ~0)
@@ -658,6 +659,7 @@ out:
 
 static inline u32
 icmp_out2in_slow_path (snat_main_t * sm,
+		       vlib_main_t * vm,
 		       vlib_buffer_t * b0,
 		       ip4_header_t * ip0,
 		       icmp46_header_t * icmp0,
@@ -667,8 +669,9 @@ icmp_out2in_slow_path (snat_main_t * sm,
 		       u32 next0, f64 now,
 		       u32 thread_index, snat_session_t ** p_s0)
 {
-  next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-		       next0, thread_index, p_s0, 0);
+  next0 =
+    icmp_out2in (sm, vm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+		 next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
   if (PREDICT_TRUE (next0 != SNAT_OUT2IN_NEXT_DROP && s0))
     {
@@ -826,7 +829,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_out2in_slow_path
-		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+		(sm, vm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		 next0, now, thread_index, &s0);
 	      icmp_packets++;
 	      goto trace0;
@@ -1000,7 +1003,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	  if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next1 = icmp_out2in_slow_path
-		(sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
+		(sm, vm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
 		 next1, now, thread_index, &s1);
 	      icmp_packets++;
 	      goto trace1;
@@ -1215,7 +1218,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_out2in_slow_path
-		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+		(sm, vm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		 next0, now, thread_index, &s0);
 	      icmp_packets++;
 	      goto trace00;
@@ -1474,7 +1477,7 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
-	      next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0,
+	      next0 = icmp_out2in (sm, vm, b0, ip0, icmp0, sw_if_index0,
 				   rx_fib_index0, node, next0, ~0, 0, 0);
 	      goto trace00;
 	    }
