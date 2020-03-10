@@ -381,6 +381,12 @@ class VppTestCase(unittest.TestCase):
         if not hasattr(cls, "worker_config"):
             cls.worker_config = ""
 
+        default_variant = os.getenv("VARIANT")
+        if default_variant is not None:
+            default_variant = "defaults { %s 100 }" % default_variant
+        else:
+            default_variant = ""
+
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
                            coredump_size, "runtime-dir", cls.tempdir, "}",
@@ -391,11 +397,13 @@ class VppTestCase(unittest.TestCase):
                            "physmem", "{", "max-size", "32m", "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
+                           "node-variants { ", default_variant, "}",
                            "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "rdma_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}"] + cls.extra_vpp_plugin_config + ["}", ]
+
         if cls.extra_vpp_punt_config is not None:
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
         if plugin_path is not None:
