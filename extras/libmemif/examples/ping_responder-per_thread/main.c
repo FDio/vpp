@@ -72,7 +72,7 @@ struct per_thread_data
   uint16_t if_num;		/* number of interfaces on this thread */
   struct memif_connection *conns;	/* memif connections pool */
   memif_per_thread_main_handle_t pt_main;	/* memif per thread main handle */
-  memif_socket_handle_t socket_handle;		/* memif socket handle */
+  memif_socket_handle_t socket_handle;	/* memif socket handle */
 };
 
 struct icmpr_main
@@ -228,10 +228,10 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   /* receive data from shared memory buffers */
   err = memif_rx_burst (conn, qid, mbufs, ICMPR_MEMIF_BUFFER_NUM, &rx);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   /* resolve packet in place (zer-copy slave) */
   for (i = 0; i < rx; i++)
@@ -240,25 +240,25 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   /* enqueue received buffers */
   err = memif_buffer_enq_tx (conn, qid, mbufs, i, &tx);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   /* mark shared memory buffers as free */
   err = memif_refill_queue (conn, qid, rx, 0);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   err = memif_tx_burst (conn, qid, mbufs, tx, &ret);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   return 0;
 
@@ -353,9 +353,9 @@ icmpr_thread_fn (void *data)
   for (i = 0; i < ptd->if_num; i++)
     {
       ptd->conns[i].ip_addr[0] = 192;
-      ptd->conns[i].ip_addr[1] = 168;
-      ptd->conns[i].ip_addr[2] = ptd->index + 1;
-      ptd->conns[i].ip_addr[3] = i * 2 + 2;
+      ptd->conns[i].ip_addr[1] = 168 + ptd->index;
+      ptd->conns[i].ip_addr[2] = i + 1;
+      ptd->conns[i].ip_addr[3] = 2;
 
       memset (&args, 0, sizeof (args));
 

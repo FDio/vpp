@@ -41,6 +41,27 @@
 
 #include <icmp_proto.h>
 
+
+#define GET_HEADER(out,hdr,src,off) do {	\
+					out = (hdr*)(src + off); \
+					off += sizeof (hdr); \
+				} while (0)
+
+#define SIZE_MAC_DICT 5
+
+static struct timespec start;
+
+static struct _arp_table
+{
+  uint8_t mac[SIZE_MAC_DICT][6];
+  uint8_t ip[SIZE_MAC_DICT][4];
+  uint8_t cnt_items;
+  uint8_t pos_new_items;
+}
+arp_table =
+{
+0};
+
 static uint16_t
 cksum (void *addr, ssize_t len)
 {
@@ -300,19 +321,332 @@ generate_ip (struct iphdr *ip, uint8_t saddr[4], uint8_t daddr[4])
 }
 
 static ssize_t
-generate_icmp (struct icmphdr *icmp, uint32_t seq)
+generate_icmp (struct icmphdr *icmp, uint32_t seq, uint16_t id)
 {
   icmp->type = ICMP_ECHO;
   icmp->code = 0;
-  icmp->un.echo.id = 0;
+  icmp->un.echo.id = id;
   icmp->un.echo.sequence = seq;
 
   return sizeof (struct icmphdr);
 }
 
 int
+arp_ident (void *pck, uint32_t * size)
+{
+  if (*size < sizeof (struct ether_header) + sizeof (struct ether_arp))
+    return 0;
+
+  struct ether_header *eh;
+  uint32_t offset = 0;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  if (eh->ether_type == 0x0608)
+    {
+      struct ether_arp *eah;
+      GET_HEADER (eah, struct ether_arp, pck, offset);
+      struct arphdr *arp = &eah->ea_hdr;
+
+      if (arp->ar_op != __bswap_16 (ARPOP_REPLY))
+	return 0;
+
+      uint8_t hw_daddr[6];
+      uint8_t ip_rcv[4];
+
+      memcpy (hw_daddr, eah->arp_sha, 6);
+      memcpy (ip_rcv, eah->arp_spa, 4);
+
+#ifdef ICMP_DBG
+      printf ("mac: %02x:%02x:%02x:%02x:%02x:%02x\n", hw_daddr[0],
+	      hw_daddr[1], hw_daddr[2], hw_daddr[3], hw_daddr[4],
+	      hw_daddr[5]);
+
+      printf ("ip: %d.%d.%d.%d\n", ip_rcv[0], ip_rcv[1], ip_rcv[2],
+	      ip_rcv[3]);
+#endif
+      uint16_t pos_item;
+      uint8_t ip_hit = 0;
+
+      for (pos_item = 0; pos_item < arp_table.cnt_items; pos_item++)
+	{
+	  if (memcmp (arp_table.ip[pos_item], ip_rcv, 4) == 0)
+	    {
+	      memcpy (arp_table.mac[pos_item], hw_daddr, 6);
+	      memcpy (arp_table.ip[pos_item], ip_rcv, 4);
+	      ip_hit = 1;
+	      break;
+	    }
+	}
+
+      if (!ip_hit)
+	{
+	  memcpy (arp_table.mac[arp_table.pos_new_items], hw_daddr, 6);
+	  memcpy (arp_table.ip[arp_table.pos_new_items], ip_rcv, 4);
+
+	  if (arp_table.cnt_items < SIZE_MAC_DICT)
+	    arp_table.cnt_items++;
+
+	  arp_table.pos_new_items++;
+	  arp_table.pos_new_items %= SIZE_MAC_DICT;
+	}
+#ifdef ICMP_DBG
+      printf ("count items of macs: %u\n", arp_table.cnt_items);
+#endif
+      return 1;
+    }
+
+  return 0;
+}
+
+static uint8_t cnt_ret_pck = 0;
+static uint8_t cnt_ping_send = 0;
+static uint8_t last_pck_resp = 0;
+long echo_ms;
+int max_ping;
+int cnt_ping = 0;
+
+int (*f_ping1) (uint32_t) = NULL;
+
+int
+echo_ident (void *pck, uint32_t * size, uint16_t id)
+{
+  uint16_t sequence;
+  uint16_t id_packet;
+  uint8_t ttl;
+  uint8_t ip_rcv[4];
+
+  struct ether_header *eh;
+  struct icmphdr *icmp;
+  struct iphdr *ip;
+  uint32_t offset = 0;
+
+  if (*size < (sizeof (struct ether_header) + sizeof (struct iphdr)
+	       + sizeof (struct icmphdr)))
+    return 0;
+
+  eh = (struct ether_header *) pck;
+
+  if (eh->ether_type == 0x0008)
+    {
+      offset = sizeof (struct ether_header);
+
+      ip = (struct iphdr *) (pck + offset);
+      offset += sizeof (struct iphdr);
+      memcpy (ip_rcv, &ip->saddr, 4);
+      ttl = ip->ttl;
+
+      icmp = (struct icmphdr *) (pck + offset);
+      id_packet = icmp->un.echo.id;
+      sequence = icmp->un.echo.sequence;
+
+      if (icmp->type == ICMP_ECHOREPLY)
+	{
+	  char ip_str[17];
+
+	  if (id == id_packet && inet_ntop (AF_INET, &ip_rcv, ip_str, 16))
+	    {
+	      cnt_ret_pck++;
+	      struct timespec current;
+	      clock_gettime (CLOCK_REALTIME, &current);
+	      double echo_time = 1000 * (current.tv_sec - start.tv_sec);
+	      echo_time += (current.tv_nsec - start.tv_nsec) / 1000000.0;
+	      printf ("%u bytes from %s: icmp_seq=%d ttl=%d time=%4.4f ms\n",
+		      *size, ip_str, sequence, ttl, echo_time);
+	    }
+	  return 1;
+	}
+    }
+
+  return 0;
+}
+
+int
+ping_init (int wait_echo_ms, int max_cnt_ping, int (*f_ping) (uint32_t))
+{
+  f_ping1 = f_ping;
+  echo_ms = wait_echo_ms;
+  max_ping = max_cnt_ping;
+}
+
+void
+start_ping ()
+{
+  cnt_ping = max_ping;
+}
+
+int
+poll_ping (int *timeout, char rqst_stop)
+{
+  if (cnt_ping > 0 || last_pck_resp)
+    {
+      struct timespec current;
+      clock_gettime (CLOCK_REALTIME, &current);
+
+      long rem_time_ms = echo_ms;
+      rem_time_ms -= 1000 * (current.tv_sec - start.tv_sec);
+      rem_time_ms -= (current.tv_nsec - start.tv_nsec) / 1000000;
+
+      if (!rqst_stop && rem_time_ms > 0 && cnt_ping != max_ping)
+	{
+	  *timeout = rem_time_ms;
+	}
+      else
+	{
+	  if (last_pck_resp || rqst_stop)
+	    {
+	      printf ("\n");
+	      printf ("Statistics: %d sent, %d received, %d%c packet loss\n",
+		      cnt_ping_send, cnt_ret_pck,
+		      (100 * (cnt_ping_send - cnt_ret_pck)) / cnt_ping_send,
+		      '%');
+
+	      cnt_ret_pck = 0;
+	      last_pck_resp = 0;
+	      cnt_ping = 0;
+	      cnt_ping_send = 0;
+
+	      return 1;
+	    }
+	  else
+	    {
+	      if (f_ping1 == NULL)
+		{
+		  cnt_ping = 0;
+#ifdef ICMP_DBG
+		  printf ("not valid pointer to ping function\n");
+#endif
+		  return -1;
+		}
+	      if (f_ping1 (max_ping - cnt_ping) < 0)
+		{
+		  cnt_ping = 0;
+		}
+	      else
+		{
+		  cnt_ping_send++;
+		  if (cnt_ping == 1)
+		    last_pck_resp = 1;
+		  cnt_ping--;
+		  *timeout = 0;
+		}
+	    }
+	}
+    }
+
+  return 0;
+}
+
+void
+generate_ping (void *pck, uint32_t * size, uint8_t saddr[4], uint8_t daddr[4],
+	       uint32_t seq, uint16_t id)
+{
+  uint8_t *hw_daddr = NULL;
+  uint16_t pos_item;
+  uint8_t mac_hit = 0;
+
+  for (pos_item = 0; pos_item < arp_table.cnt_items; pos_item++)
+    {
+      if (memcmp (arp_table.ip[pos_item], daddr, 4) == 0)
+	{
+	  hw_daddr = arp_table.mac[pos_item];
+	  mac_hit = 1;
+	  break;
+	}
+    }
+
+  if (mac_hit)
+    generate_packet (pck, size, saddr, daddr, hw_daddr, seq, id);
+  else
+    make_arp_rqst (pck, size, saddr, daddr);
+
+  clock_gettime (CLOCK_REALTIME, &start);
+}
+
+int
+ip_dst_match (void *pck, uint32_t * size, uint8_t ip_addr[4])
+{
+  uint32_t offset = 0;
+  struct ether_header *eh;
+  struct ether_arp *eah;
+  struct iphdr *ip;
+
+  if (*size < sizeof (struct ether_header))
+    return 0;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  if (eh->ether_type == 0x0608)
+    {
+      if (*size < offset + sizeof (struct ether_arp))
+	return 0;
+
+      GET_HEADER (eah, struct ether_arp, pck, offset);
+
+      if (memcmp (eah->arp_tpa, ip_addr, 4) == 0)
+	return 1;
+
+    }
+  else if (eh->ether_type == 0x0008)
+    {
+      if (*size < offset + sizeof (struct iphdr))
+	return 0;
+
+      GET_HEADER (ip, struct iphdr, pck, offset);
+
+      if (memcmp ((char *) &ip->daddr, ip_addr, 4) == 0)
+	return 1;
+    }
+
+  offset += sizeof (struct ether_header);
+
+  return 0;
+}
+
+int
+ip_src_match (void *pck, uint32_t * size, uint8_t ip_addr[4])
+{
+  uint32_t offset = 0;
+  struct ether_header *eh;
+  struct ether_arp *eah;
+  struct iphdr *ip;
+
+  if (*size < sizeof (struct ether_header))
+    return 0;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  if (eh->ether_type == 0x0608)
+    {
+      if (*size < offset + sizeof (struct ether_arp))
+	return 0;
+
+      GET_HEADER (eah, struct ether_arp, pck, offset);
+
+      if (memcmp (eah->arp_spa, ip_addr, 4) == 0)
+	return 1;
+
+    }
+  else if (eh->ether_type == 0x0008)
+    {
+      if (*size < offset + sizeof (struct iphdr))
+	return 0;
+
+      GET_HEADER (ip, struct iphdr, pck, offset);
+
+      if (memcmp ((char *) &ip->saddr, ip_addr, 4) == 0)
+	return 1;
+    }
+
+  offset += sizeof (struct ether_header);
+
+  return 0;
+}
+
+int
 generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
-		 uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq)
+		 uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq,
+		 uint16_t id)
 {
   struct ether_header *eh;
   struct iphdr *ip;
@@ -327,7 +661,7 @@ generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
   *size += generate_ip (ip, saddr, daddr);
 
   icmp = (struct icmphdr *) (pck + *size);
-  *size += generate_icmp (icmp, seq);
+  *size += generate_icmp (icmp, seq, id);
 
   ((struct icmphdr *) (pck + *size - sizeof (struct icmphdr)))->checksum =
     cksum (pck + *size - sizeof (struct icmphdr), sizeof (struct icmphdr));
@@ -342,7 +676,7 @@ generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
 int
 generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
 		  uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq,
-		  icmpr_flow_mode_t mode)
+		  uint16_t id, icmpr_flow_mode_t mode)
 {
   struct ether_header *eh;
   struct iphdr *ip;
@@ -360,7 +694,7 @@ generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
   *size += generate_ip (ip, saddr, daddr);
 
   icmp = (struct icmphdr *) (pck + *size);
-  *size += generate_icmp (icmp, seq);
+  *size += generate_icmp (icmp, seq, id);
 
   ((struct icmphdr *) (pck + *size - sizeof (struct icmphdr)))->checksum =
     cksum (pck + *size - sizeof (struct icmphdr), sizeof (struct icmphdr));
@@ -372,10 +706,7 @@ generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
   return 0;
 }
 
-#define GET_HEADER(out,hdr,src,off) do {	\
-					out = (hdr*)(src + off); \
-					off += sizeof (hdr); \
-				} while (0)
+
 
 int
 resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
@@ -387,7 +718,7 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
   uint32_t offset = 0;
 
   if (pck == NULL)
-    return 0;
+    return -3;
 
   GET_HEADER (eh, struct ether_header, pck, offset);
 
@@ -397,6 +728,10 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
   if (eh->ether_type == 0x0608)
     {
       GET_HEADER (eah, struct ether_arp, pck, offset);
+
+      if (memcmp (eah->arp_tpa, ip_addr, 4) != 0)
+	return -1;
+
       struct arphdr *arp = &eah->ea_hdr;
 
       arp->ar_hrd = __bswap_16 (ARPHRD_ETHER);
@@ -518,6 +853,48 @@ resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
 	  "new packet length must be increased by encap size");
 
   /* overwrite packet size */
+  *size = offset;
+
+  return 0;
+}
+
+int
+make_arp_rqst (void *pck, uint32_t * size, uint8_t saddr[4], uint8_t daddr[4])
+{
+  struct ether_header *eh;
+  struct ether_arp *eah;
+  struct iphdr *ip;
+  struct icmphdr *icmp;
+  uint32_t offset = 0;
+
+  if (pck == NULL)
+    return -3;
+
+  GET_HEADER (eh, struct ether_header, pck, offset);
+
+  memset (eh->ether_dhost, 0xff, 6);
+  memcpy (eh->ether_shost, "aaaaaa", 6);
+  eh->ether_type = 0x0608;
+
+
+  GET_HEADER (eah, struct ether_arp, pck, offset);
+
+  struct arphdr *arp = &eah->ea_hdr;
+
+  arp->ar_hrd = __bswap_16 (ARPHRD_ETHER);
+  arp->ar_pro = __bswap_16 (0x0800);
+
+  arp->ar_hln = 6;
+  arp->ar_pln = 4;
+
+  arp->ar_op = __bswap_16 (ARPOP_REQUEST);
+
+  memset (eah->arp_tha, 0x00, 6);
+  memcpy (eah->arp_tpa, daddr, 4);
+
+  memcpy (eah->arp_sha, "aaaaaa", 6);
+  memcpy (eah->arp_spa, saddr, 4);
+
   *size = offset;
 
   return 0;
