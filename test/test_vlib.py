@@ -3,6 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import running_gcov_tests
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -24,7 +25,7 @@ class TestVlib(VppTestCase):
     def tearDown(self):
         super(TestVlib, self).tearDown()
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
     def test_vlib_main_unittest(self):
         """ Vlib main.c Code Coverage Test """
 
@@ -66,6 +67,7 @@ class TestVlib(VppTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
+    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
     def test_vlib_node_cli_unittest(self):
         """ Vlib node_cli.c Code Coverage Test """
 
@@ -110,6 +112,7 @@ class TestVlib(VppTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
+    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
     def test_vlib_buffer_c_unittest(self):
         """ Vlib buffer.c Code Coverage Test """
 
@@ -165,6 +168,7 @@ class TestVlib(VppTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
+    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
     def test_vlib_format_unittest(self):
         """ Vlib format.c Code Coverage Test """
 
