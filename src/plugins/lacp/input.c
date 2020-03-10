@@ -16,6 +16,7 @@
 #define _GNU_SOURCE
 #include <vnet/bonding/node.h>
 #include <lacp/node.h>
+#include <vpp/stats/stat_segment.h>
 
 static int
 lacp_packet_scan (vlib_main_t * vm, slave_if_t * sif)
@@ -136,12 +137,14 @@ handle_marker_protocol (vlib_main_t * vm, slave_if_t * sif)
 lacp_error_t
 lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 {
+  bond_main_t *bm = &bond_main;
   lacp_main_t *lm = &lacp_main;
   slave_if_t *sif;
   uword nbytes;
   lacp_error_t e;
   marker_pdu_t *marker;
   uword last_packet_signature;
+  bond_if_t *bif;
 
   sif =
     bond_get_slave_by_sw_if_index (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
@@ -214,6 +217,13 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     {
       /* Actually scan the packet */
       e = lacp_packet_scan (vm, sif);
+      bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].actor_state,
+				      sif->actor.state);
+      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				      [sif->sw_if_index].partner_state,
+				      sif->partner.state);
       sif->last_packet_signature_valid = 1;
       sif->last_packet_signature = last_packet_signature;
     }
