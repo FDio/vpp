@@ -619,7 +619,8 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
 
   sess_timeout_time = s->last_heard + (f64) nat44_session_get_timeout (sm, s);
-  if (now >= sess_timeout_time)
+  if (now >= sess_timeout_time ||
+      (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
     {
       // reuse old session
       clib_dlist_addtail (tsm->list_pool,

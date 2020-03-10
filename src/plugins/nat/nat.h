@@ -228,6 +228,7 @@ _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
+_(TCP_CLOSED, "drops due to TCP in transitory timeout") \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
@@ -258,6 +259,7 @@ _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
+_(TCP_CLOSED, "drops due to TCP in transitory timeout") \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
@@ -341,6 +343,7 @@ typedef CLIB_PACKED(struct
   u8 state;
   u32 i2o_fin_seq;
   u32 o2i_fin_seq;
+  u32 tcp_close_timestamp;
 
   /* user index */
   u32 user_index;
@@ -746,23 +749,14 @@ extern vlib_node_registration_t nat_pre_out2in_node;
 extern vlib_node_registration_t snat_in2out_node;
 extern vlib_node_registration_t snat_in2out_output_node;
 extern vlib_node_registration_t snat_out2in_node;
-extern vlib_node_registration_t snat_in2out_fast_node;
-extern vlib_node_registration_t snat_out2in_fast_node;
 extern vlib_node_registration_t snat_in2out_worker_handoff_node;
 extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 extern vlib_node_registration_t snat_det_in2out_node;
 extern vlib_node_registration_t snat_det_out2in_node;
-extern vlib_node_registration_t snat_hairpin_dst_node;
-extern vlib_node_registration_t snat_hairpin_src_node;
 extern vlib_node_registration_t nat44_ed_in2out_node;
 extern vlib_node_registration_t nat44_ed_in2out_output_node;
 extern vlib_node_registration_t nat44_ed_out2in_node;
-extern vlib_node_registration_t nat44_ed_hairpin_dst_node;
-extern vlib_node_registration_t nat44_ed_hairpin_src_node;
-extern vlib_node_registration_t nat44_ed_in2out_worker_handoff_node;
-extern vlib_node_registration_t nat44_ed_in2out_output_worker_handoff_node;
-extern vlib_node_registration_t nat44_ed_out2in_worker_handoff_node;
 
 extern fib_source_t nat_fib_src_hi;
 extern fib_source_t nat_fib_src_low;
