@@ -20,51 +20,40 @@ Shared memory packet interface (memif) provides high performance packet transmit
 - [x] Multiple queues
   - [x] Multi-thread support
 - [x] Master mode
-	- [ ] Multiple regions (TODO)
+	- [ ] Multiple regions (Obsolete)
 - [ ] Performance testing (TODO)
 
 ## Quickstart
 
-This setup will run libmemif ICMP responder example app in container. Install [docker](https://docs.docker.com/engine/installation) engine.
-Useful link: [Docker documentation](https://docs.docker.com/get-started).
+When application is started without any parameters, output should look like this:
 
-Pull image:
 ```
-# docker pull ligato/libmemif-sample-service
-```
-
-Now you should be able to see ligato/libmemif-sample-service image on your local machine (IMAGE ID in this README may be outdated):
-```
-# docker images
-REPOSITORY                       TAG                 IMAGE ID            CREATED              SIZE
-ligato/libmemif-sample-service   latest              32ecc2f9d013        About a minute ago   468MB
-...
-```
-
-Run container:
-```
-# docker run -it --rm --name icmp-responder --hostname icmp-responder --privileged -v "/run/vpp/:/run/vpp/" ligato/libmemif-sample-service
-```
-Example application will start in debug mode. Output should look like this:
-```
-ICMP_Responder:add_epoll_fd:233: fd 0 added to epoll
-ICMP_Responder:add_epoll_fd:233: fd 5 added to epoll
+sudo ./build/examples/ping
 LIBMEMIF EXAMPLE APP: ICMP_Responder (debug)
 ==============================
-libmemif version: 2.0 (debug)
+libmemif version: 3.1 (debug)
 memif version: 512
-commands:
-	help - prints this help
-	exit - exit app
-	conn <index> <mode> [<interrupt-desc>] - create memif. index is also used as interface id, mode 0 = slave 1 = master, interrupt-desc none = default 0 = if ring is full wait 1 = handle only ARP requests
-	del  <index> - delete memif
-	show - show connection details
-	ip-set <index> <ip-addr> - set interface ip address
-	rx-mode <index> <qid> <polling|interrupt> - set queue rx mode
-	sh-count - print counters
-	cl-count - clear counters
-	send <index> <tx> <ip> <mac> - send icmp
+starting arguments:
+	./ping --aff={cpu0,cpu1,..,cpun}
+	--vdev=<id0_name>,[i=id],[ip=address],[r=master|slave],[s=socket_name],
+	[domain=id],[q0=poll|interrupt],[qn=qn_count],[rs=ring_size],
+	[bs=buffer_size],[aff={cpu0,cpu1,..,cpun}] --vdev=<id1_name>...
+	where --aff - setting affinity of cpu on specific id numbers of cpu for
+		main thread of program
+	in --vdev:
+		id for domain - numeric id. interface with same domain id will be bridged
+		id for i - index of connetion
+		address - address of this example
+		socket_name - name of socket for communication
+		qn_count - number of queues
+		ring_size - size of ring
+		buffer_size - size of buffer
+		q0 - setting of mode for qid 0
+		aff - setting affinity of cpu on specific id numbers of cpu for qid0
+			(in interrupt mode will be this parameter ignored).
 ```
+			
+
 
 Continue with @ref libmemif_example_setup which contains instructions on how to set up conenction between icmpr-epoll example app and VPP-memif.
 
@@ -72,6 +61,4 @@ Continue with @ref libmemif_example_setup which contains instructions on how to 
 
 - @subpage libmemif_build_doc
 - @subpage libmemif_examples_doc
-- @subpage libmemif_example_setup_doc
 - @subpage libmemif_gettingstarted_doc
-- @subpage libmemif_devperftest_doc
