@@ -120,4 +120,14 @@ dpdk {{
 # Alternate syntax to choose plugin path
 #plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
 
+#node-variants {{
+#	defaults {{
+#		avx512 100
+#	}}
+#	ip4-inacl {{
+#	avx2 100
+#		avx512 50
+#	}}
+#}}
+
 {tcp}

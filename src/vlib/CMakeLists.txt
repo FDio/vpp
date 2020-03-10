@@ -62,6 +62,7 @@ add_vpp_library(vlib
   node.c
   node_cli.c
   node_format.c
+  node_init.c
   pci/pci.c
   physmem.c
   punt.c
@@ -81,6 +82,7 @@ add_vpp_library(vlib
   MULTIARCH_SOURCES
   drop.c
   punt_node.c
+  node_init.c
 
   INSTALL_HEADERS
   buffer_funcs.h

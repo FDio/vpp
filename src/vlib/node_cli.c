@@ -702,7 +702,7 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
       goto done;
     }
 
-  if (!unformat (line_input, "%s", &variant))
+  if (!unformat (line_input, "%U", unformat_vlib_node_variant, &variant))
     {
       err = clib_error_return (0, "please specify node functional variant");
       goto done;
