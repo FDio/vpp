@@ -251,15 +251,32 @@ void
 clib_time_verify_frequency (clib_time_t * c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
-  u64 delta_clock;
+  f64 delta_clock_in_seconds;
+  u64 now_clock, delta_clock;
   f64 new_clocks_per_second, delta;
 
   /* Ask the kernel and the CPU what time it is... */
   now_reference = unix_time_now ();
-  c->last_cpu_time = clib_cpu_time_now ();
+  now_clock = clib_cpu_time_now ();
+
+  /* Compute change in the reference clock */
+  delta_reference = now_reference - c->last_verify_reference_time;
+
+  /* And change in the CPU clock */
+  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
+    c->seconds_per_clock;
+
+  /*
+   * Recompute vpp start time reference, and total clocks
+   * using the current clock rate
+   */
+  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
+  c->total_cpu_time = (now_reference - c->init_reference_time)
+    * c->clocks_per_second;
+
+  c->last_cpu_time = now_clock;
 
   /* Calculate a new clock rate sample */
-  delta_reference = now_reference - c->last_verify_reference_time;
   delta_clock = c->last_cpu_time - c->last_verify_cpu_time;
 
   c->last_verify_cpu_time = c->last_cpu_time;
