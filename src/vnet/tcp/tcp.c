@@ -1467,6 +1467,8 @@ tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
 	break;
       clib_fifo_sub2 (wrk->pending_cleanups, req);
       tc = tcp_connection_get (req->connection_index, thread_index);
+      if (PREDICT_FALSE (!tc))
+	continue;
       session_transport_delete_notify (&tc->connection);
       tcp_connection_cleanup (tc);
     }
