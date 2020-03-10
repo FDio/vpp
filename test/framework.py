@@ -217,6 +217,13 @@ def _running_extended_tests():
 running_extended_tests = _running_extended_tests()
 
 
+def _running_gcov_tests():
+    return BoolEnvironmentVariable("GCOV_TESTS")
+
+
+running_gcov_tests = _running_gcov_tests()
+
+
 def _running_on_centos():
     os_id = os.getenv("OS_ID", "")
     return True if "centos" in os_id.lower() else False
