@@ -605,8 +605,6 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 
   min_size = clib_max ((fsh->pct_first_alloc * data_bytes) / 100, 4096);
   fl_index = fs_freelist_for_size (min_size);
-  fifo_sz = sizeof (svm_fifo_t) + sizeof (svm_fifo_chunk_t);
-  fifo_sz += 1 << max_log2 (min_size);
 
   clib_spinlock_lock (&fss->chunk_lock);
 
@@ -620,18 +618,28 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 	}
     }
 
-  fsh_check_mem (fsh);
+  fifo_sz = sizeof (svm_fifo_t) + sizeof (svm_fifo_chunk_t);
+  fifo_sz += 1 << max_log2 (min_size);
   n_free_bytes = fsh_n_free_bytes (fsh);
+
   if (fifo_sz * FIFO_SEGMENT_ALLOC_BATCH_SIZE < n_free_bytes)
     {
-      if (fs_try_alloc_fifo_batch (fsh, fss, fl_index,
-				   FIFO_SEGMENT_ALLOC_BATCH_SIZE))
-	goto done;
-
-      f = fs_try_alloc_fifo_freelist (fss, fl_index);
-      if (f)
-	fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
-      goto done;
+      if (!fs_try_alloc_fifo_batch (fsh, fss, fl_index,
+				    FIFO_SEGMENT_ALLOC_BATCH_SIZE))
+	{
+	  f = fs_try_alloc_fifo_freelist (fss, fl_index);
+	  if (f)
+	    {
+	      fsh_cached_bytes_sub (fsh,
+				    fs_freelist_index_to_size (fl_index));
+	      goto done;
+	    }
+	}
+      else
+	{
+	  fsh_check_mem (fsh);
+	  n_free_bytes = fsh_n_free_bytes (fsh);
+	}
     }
   if (fifo_sz <= n_free_bytes)
     {
@@ -643,6 +651,7 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 	  fsh_free_bytes_sub (fsh, fifo_sz);
 	  goto done;
 	}
+      fsh_check_mem (fsh);
     }
   /* All failed, try to allocate min of data bytes and fifo sz */
   fifo_sz = clib_min (fifo_sz, data_bytes);
@@ -665,9 +674,7 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
 {
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
-  void *oldheap;
   int fl_index;
-  uword n_free;
 
   fl_index = fs_freelist_for_size (chunk_size);
   fss = fsh_slice_get (fsh, slice_index);
@@ -683,37 +690,55 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
       fss->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
       fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
     }
-  else if (chunk_size <= (n_free = fsh_n_free_bytes (fsh)))
+  else
     {
-      fsh_check_mem (fsh);
-
-      chunk_size = fs_freelist_index_to_size (fl_index);
-      if (n_free < chunk_size)
-	goto done;
-
-      oldheap = ssvm_push_heap (fsh->ssvm_sh);
-      c = svm_fifo_chunk_alloc (chunk_size);
-      ssvm_pop_heap (oldheap);
-
-      if (!c)
-	goto done;
-
-      fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
-    }
-  else if (chunk_size <= fss->n_fl_chunk_bytes)
-    {
-      c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
-    }
-  else if (chunk_size <= fss->n_fl_chunk_bytes + n_free)
-    {
-      u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
+      void *oldheap;
+      uword n_free;
       u32 batch;
 
-      fsh_check_mem (fsh);
-      batch = (chunk_size - fss->n_fl_chunk_bytes) / min_size;
-      batch = clib_min (batch + 1, n_free / min_size);
-      if (!fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
-	c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+      chunk_size = fs_freelist_index_to_size (fl_index);
+      n_free = fsh_n_free_bytes (fsh);
+
+      if (chunk_size <= n_free)
+	{
+	  oldheap = ssvm_push_heap (fsh->ssvm_sh);
+	  c = svm_fifo_chunk_alloc (chunk_size);
+	  ssvm_pop_heap (oldheap);
+
+	  if (c)
+	    {
+	      fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
+	      goto done;
+	    }
+
+	  fsh_check_mem (fsh);
+	  n_free = fsh_n_free_bytes (fsh);
+	}
+      if (chunk_size <= fss->n_fl_chunk_bytes)
+	{
+	  c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+	  if (c)
+	    goto done;
+	  batch = n_free / FIFO_SEGMENT_MIN_FIFO_SIZE;
+	  if (!batch || fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
+	    {
+	      fsh_check_mem (fsh);
+	      goto done;
+	    }
+	}
+      if (chunk_size <= fss->n_fl_chunk_bytes + n_free)
+	{
+	  u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
+
+	  batch = (chunk_size - fss->n_fl_chunk_bytes) / min_size;
+	  batch = clib_min (batch + 1, n_free / min_size);
+	  if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
+	    {
+	      fsh_check_mem (fsh);
+	      goto done;
+	    }
+	  c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+	}
     }
 
 done:
