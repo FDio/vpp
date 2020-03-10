@@ -1,5 +1,6 @@
 %define _install_dir	/opt/vpp/external/%(uname -m)
 %define _make_args	-C ../.. BUILD_DIR=%{_topdir}/tmp INSTALL_DIR=%{buildroot}%{_install_dir}
+%undefine __brp_mangle_shebangs
 
 Name:		vpp-ext-deps
 Version:	%{_version}
