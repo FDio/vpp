@@ -664,6 +664,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   u32 timed_out = 0;
   u32 transitory = 0;
+  u32 transitory_wait_closed = 0;
+  u32 transitory_closed = 0;
   u32 established = 0;
 
   if (sm->num_workers > 1)
@@ -686,7 +688,23 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
               case SNAT_PROTOCOL_TCP:
                 tcp_sessions++;
                 if (s->state)
-                  transitory++;
+                  {
+                    if (s->tcp_close_timestamp)
+                      {
+                        if (now >= s->tcp_close_timestamp)
+                          {
+                            ++transitory_closed;
+                          }
+                        else
+                          {
+                            ++transitory_wait_closed;
+                          }
+                      }
+                    else
+                      {
+                        transitory++;
+                      }
+                  }
                 else
                   established++;
                 break;
@@ -731,7 +749,23 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
           case SNAT_PROTOCOL_TCP:
             tcp_sessions++;
             if (s->state)
-              transitory++;
+              {
+                if (s->tcp_close_timestamp)
+                  {
+                    if (now >= s->tcp_close_timestamp)
+                      {
+                        ++transitory_closed;
+                      }
+                    else
+                      {
+                        ++transitory_wait_closed;
+                      }
+                  }
+                else
+                  {
+                    transitory++;
+                  }
+              }
             else
               established++;
             break;
@@ -761,6 +795,10 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "total tcp sessions: %u", tcp_sessions);
   vlib_cli_output (vm, "total tcp established sessions: %u", established);
   vlib_cli_output (vm, "total tcp transitory sessions: %u", transitory);
+  vlib_cli_output (vm, "total tcp transitory (WAIT-CLOSED) sessions: %u",
+		   transitory_wait_closed);
+  vlib_cli_output (vm, "total tcp transitory (CLOSED) sessions: %u",
+		   transitory_closed);
   vlib_cli_output (vm, "total udp sessions: %u", udp_sessions);
   vlib_cli_output (vm, "total icmp sessions: %u", icmp_sessions);
   return 0;
