@@ -904,7 +904,7 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
                                       vip->protocol, vip->port, &vip_idx))
         {
           lb_vip_t *exists_vip = lb_vip_get_by_index(vip_idx);
-          *vip_prefix_index = exists_vip->vip_prefix_index;
+          *vip_prefix_index = exists_vip ? exists_vip->vip_prefix_index : ~0;
           return;
         }
 
