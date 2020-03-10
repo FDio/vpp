@@ -683,37 +683,44 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
       fss->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
       fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
     }
-  else if (chunk_size <= (n_free = fsh_n_free_bytes (fsh)))
+  else
     {
-      fsh_check_mem (fsh);
+      n_free = fsh_n_free_bytes (fsh);
+      if (chunk_size <= n_free)
+	{
+	  oldheap = ssvm_push_heap (fsh->ssvm_sh);
+	  c = svm_fifo_chunk_alloc (chunk_size);
+	  ssvm_pop_heap (oldheap);
 
-      chunk_size = fs_freelist_index_to_size (fl_index);
-      if (n_free < chunk_size)
-	goto done;
+	  if (c)
+	    {
+	      fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
+	      goto done;
+	    }
 
-      oldheap = ssvm_push_heap (fsh->ssvm_sh);
-      c = svm_fifo_chunk_alloc (chunk_size);
-      ssvm_pop_heap (oldheap);
+	  fsh_check_mem (fsh);
+	  n_free = fsh_n_free_bytes (fsh);
+	}
+      if (chunk_size <= fss->n_fl_chunk_bytes)
+	{
+	  c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+	  if (c)
+	    goto done;
+	}
+      if (chunk_size <= fss->n_fl_chunk_bytes + n_free)
+	{
+	  u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
+	  u32 batch;
 
-      if (!c)
-	goto done;
-
-      fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
-    }
-  else if (chunk_size <= fss->n_fl_chunk_bytes)
-    {
-      c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
-    }
-  else if (chunk_size <= fss->n_fl_chunk_bytes + n_free)
-    {
-      u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
-      u32 batch;
-
-      fsh_check_mem (fsh);
-      batch = (chunk_size - fss->n_fl_chunk_bytes) / min_size;
-      batch = clib_min (batch + 1, n_free / min_size);
-      if (!fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
-	c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+	  batch = (chunk_size - fss->n_fl_chunk_bytes) / min_size;
+	  batch = clib_min (batch + 1, n_free / min_size);
+	  if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
+	    {
+	      fsh_check_mem (fsh);
+	      goto done;
+	    }
+	  c = fs_try_alloc_multi_chunk (fsh, fss, chunk_size);
+	}
     }
 
 done:
