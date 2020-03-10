@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "beab3850_51fa0a76",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-10T05:11:54Z",
+      "side": 1,
+      "message": "maybe:\n\nstatic_always_inline u64\nmac_address_as_u64 (const mac_address_t * mac)\n{\n  return (ethernet_mac_address_u64 (mac-\u003ebytes));\n}",
+      "revId": "e83b16be4aa11236688bbbdd0664becfc0ab73fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
