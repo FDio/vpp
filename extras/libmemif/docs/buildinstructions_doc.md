@@ -16,32 +16,51 @@ Libmemif is located under extras/libmemif. From extras/libmemif:
 # make install
 ```
 
-#### Verify installation:
+#### Verify installation and build information:
 ```
-build# ./examples/icmpr-epoll
-```
-Use _help_ command to display build information and commands:
-```
-LIBMEMIF EXAMPLE APP: ICMP_Responder
+build# ./examples/ping
+LIBMEMIF EXAMPLE APP: Ping
 ==============================
-libmemif version: 3.0
+libmemif version: 3.1
 memif version: 512
-	use CTRL+C to exit
-MEMIF DETAILS
-==============================
-	interface name: memif_connection
-	app name: ICMP_Responder
-	remote interface name:
-	remote app name:
-	id: 0
-	secret: (null)
-	role: slave
-	mode: ethernet
-	socket filename: /run/vpp/memif.sock
-	socket filename: /run/vpp/memif.sock
-	rx queues:
-	tx queues:
-	link: down
+
+Example usage: ping --vdev=memif0 --master-lcore=0
+	Creates one memif interface named memif0 and sets the affinity of main thread to cpu 0.
+
+Arguments:
+	--vdev=<name>,[opt1=<val>,opt2=<val>,...] - Create memif interface with specific options.
+	--master-lcore=<id_cpu> - Set affinity of main thread to specific cpu.
+
+Options for --vdev:
+	id=<num>                   : Unique interface id.
+	ip=<ip4>                   : Ipv4 address.
+	role=<master|slave>        : Role in which interface operates.
+	socket=<filename>          : Controll channel socket filename.
+	domain=<num>               : Bridge domain, packets are replicated to all interfaces
+	                             assigned to the same bridge domain. Interfaces in
+	                             bridge domain won't respond to ICMP requests.
+	qpairs=<num>               : Number of queue pairs.
+	q0-rxmode=<interrupt|poll> : Mode in which qid0 operates.
+	rsize=<num>                : Log2 of ring size. If rsize is 10, actual ring size is 1024.
+	bsize=<num>                : Size of single packet buffer.
+	lcores=[0,1,...]           : Core list. Polling queues are assigned cores from this list.
+```
+
+
+Ping is an interractive application, use `help` command to print available commands:
+```
+build# ./examples/ping --vdev=memif0
+> help
+
+commands:
+	help - prints this help
+	show - show connection details
+	show log <info|debug> - show runtime logs
+	sh-count - print counters
+	cl-count - clear counters
+	exit - exit app
+	ping <ip4> [-q idx] [-i idx] - ping ip4 address. ping specific queue and
+		                         interface by setting -q and -i respectively
 ```
 
 #### Examples

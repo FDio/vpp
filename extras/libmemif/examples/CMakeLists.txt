@@ -13,24 +13,27 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/icmp_responder)
+set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/icmp_proto)
 
 set(COMMON_SOURCE_FILES
-    icmp_responder/icmp_proto.c)
+    icmp_proto/icmp_proto.c)
 
 list(APPEND EXAMPLES_LIST
-  icmp_responder/main.c
-  icmp_responder-epoll/main.c
-  icmp_responder-mt/main.c
-  icmp_responder-mt_3-1/main.c
-  icmp_responder-eb/main.c
-  icmp_responder-zero-copy-slave/main.c
+  ping_responder/main.c
+  ping_responder-per_thread/main.c
+  ping/main.c
 )
 
 foreach (EXAMPLE_SRC ${EXAMPLES_LIST})
   string(FIND ${EXAMPLE_SRC} "/" INDEX)
   string(SUBSTRING ${EXAMPLE_SRC} 0 ${INDEX} EXECUTABLE)
-  add_executable(${EXECUTABLE} ${COMMON_SOURCE_FILES} ${EXAMPLE_SRC})
+
+  if(${EXECUTABLE} STREQUAL  ping)
+    add_executable(${EXECUTABLE} ping/parser.c ping/set_events.c ${COMMON_SOURCE_FILES} ${EXAMPLE_SRC})
+  else()
+    add_executable(${EXECUTABLE} ${COMMON_SOURCE_FILES} ${EXAMPLE_SRC})
+  endif()
+
   target_include_directories(${EXECUTABLE} PRIVATE $<BUILD_INTERFACE:${HEADERS_DIR}>)
   target_link_libraries(${EXECUTABLE} memif ${CMAKE_THREAD_LIBS_INIT})
 endforeach()

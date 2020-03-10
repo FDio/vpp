@@ -68,6 +68,7 @@
 
 /* maximum tx/rx memif buffers */
 #define MAX_MEMIF_BUFS 256
+#define HEADROOM 0x80		/* 128b */
 
 typedef struct
 {
@@ -88,10 +89,14 @@ typedef struct
   uint16_t rx_buf_num;
   /* interface ip address */
   uint8_t ip_addr[4];
+  /* count of queue*/
+  uint8_t q_cnt;
 } memif_connection_t;
 
 memif_connection_t memif_connection;
 int epfd;
+
+
 
 static void
 print_memif_details ()
@@ -177,6 +182,7 @@ int
 on_connect (memif_conn_handle_t conn, void *private_ctx)
 {
   INFO ("memif connected!");
+  memif_refill_queue (conn, 0, -1, HEADROOM);
   return 0;
 }
 
@@ -345,8 +351,8 @@ icmpr_memif_create (int is_master)
   args.is_master = is_master;
   args.log2_ring_size = 10;
   args.buffer_size = 2048;
-  args.num_s2m_rings = 2;
-  args.num_m2s_rings = 2;
+  args.num_s2m_rings = memif_connection.q_cnt;
+  args.num_m2s_rings = memif_connection.q_cnt;
   strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
   args.mode = 0;
   /* socket filename is not specified, because this app is supposed to
@@ -373,12 +379,35 @@ main (int argc, char *argv[])
 
   /* initialize global memif connection handle */
   c->conn = NULL;
-  if (argc == 1)
-    c->tx_qid = 0;
-  else
+
+  c->tx_qid = 0;
+  c->q_cnt = 2;
+  
+  char *end;
+  if (argc == 3)
     {
-      char *end;
-      c->tx_qid = strtol (argv[1], &end, 10);
+	  uint16_t q_cnt = strtol (argv[2], &end, 10);
+	  if( q_cnt < 1 )
+	  {
+		  INFO("count of queues muss be greater than 0");
+		  INFO("count of queues be set to default value 2");  
+	  }
+	  else
+	    c->q_cnt = q_cnt;
+	  argc--;
+    }
+	  
+  if (argc == 2)
+    {
+	  uint16_t tx_qid = strtol (argv[1], &end, 10);
+      
+	  if(tx_qid >= c->q_cnt)
+	  {
+		  INFO("qid muss in range <0;%d>", c->q_cnt -1);
+		  INFO("qid be set to default value 0");
+	  }
+	  else
+	    c->tx_qid = tx_qid;
     }
   INFO ("tx qid: %u", c->tx_qid);
   /* alloc memif buffers */
