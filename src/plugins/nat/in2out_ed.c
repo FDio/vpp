@@ -256,6 +256,9 @@ slow_path_ed (snat_main_t * sm,
 	  (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+	  if (!is_sm)
+	    snat_free_outside_address_and_port (sm->addresses,
+						thread_index, &key1);
 	  return NAT_NEXT_DROP;
 	}
     }
