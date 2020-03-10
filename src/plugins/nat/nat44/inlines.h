@@ -132,6 +132,12 @@ nat44_user_try_cleanup (snat_user_t * u, u32 thread_index, f64 now)
       sess_timeout_time = s->last_heard +
 	(f64) nat44_session_get_timeout (sm, s);
 
+      if (s->tcp_close_timestamp)
+	{
+	  sess_timeout_time =
+	    clib_min (sess_timeout_time, s->tcp_close_timestamp);
+	}
+
       if (now < sess_timeout_time)
 	{
 	  tsm->min_session_timeout =
