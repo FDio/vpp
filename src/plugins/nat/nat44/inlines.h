@@ -61,7 +61,7 @@ nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
   s->ext_host_port = 0;
   s->ext_host_nat_addr.as_u32 = 0;
   s->ext_host_nat_port = 0;
-  //
+  s->tcp_close_timestamp = 0;
   s->ha_last_refreshed = now;
   return s;
 }
@@ -192,6 +192,12 @@ nat44_user_session_cleanup (snat_user_t * u, u32 thread_index, f64 now)
 
       sess_timeout_time = s->last_heard +
 	(f64) nat44_session_get_timeout (sm, s);
+
+      if (s->tcp_close_timestamp)
+	{
+	  sess_timeout_time =
+	    clib_min (sess_timeout_time, s->tcp_close_timestamp);
+	}
 
       if (now < sess_timeout_time)
 	continue;

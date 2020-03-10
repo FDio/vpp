@@ -225,6 +225,7 @@ _(MAX_REASS, "maximum reassemblies exceeded")           \
 _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
+_(TCP_CLOSED, "drops due to TCP in transitory timeout") \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
@@ -252,6 +253,7 @@ _(MAX_REASS, "maximum reassemblies exceeded")           \
 _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
+_(TCP_CLOSED, "drops due to TCP session closed")        \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
@@ -335,6 +337,7 @@ typedef CLIB_PACKED(struct
   u8 state;
   u32 i2o_fin_seq;
   u32 o2i_fin_seq;
+  u32 tcp_close_timestamp;
 
   /* user index */
   u32 user_index;
@@ -533,6 +536,7 @@ struct snat_main_s;
 
 /* ICMP session match function */
 typedef u32 (snat_icmp_match_function_t) (struct snat_main_s * sm,
+					  vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
 					  u32 thread_index,
 					  vlib_buffer_t * b0,
@@ -740,23 +744,14 @@ extern vlib_node_registration_t nat_pre_out2in_node;
 extern vlib_node_registration_t snat_in2out_node;
 extern vlib_node_registration_t snat_in2out_output_node;
 extern vlib_node_registration_t snat_out2in_node;
-extern vlib_node_registration_t snat_in2out_fast_node;
-extern vlib_node_registration_t snat_out2in_fast_node;
 extern vlib_node_registration_t snat_in2out_worker_handoff_node;
 extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 extern vlib_node_registration_t snat_det_in2out_node;
 extern vlib_node_registration_t snat_det_out2in_node;
-extern vlib_node_registration_t snat_hairpin_dst_node;
-extern vlib_node_registration_t snat_hairpin_src_node;
 extern vlib_node_registration_t nat44_ed_in2out_node;
 extern vlib_node_registration_t nat44_ed_in2out_output_node;
 extern vlib_node_registration_t nat44_ed_out2in_node;
-extern vlib_node_registration_t nat44_ed_hairpin_dst_node;
-extern vlib_node_registration_t nat44_ed_hairpin_src_node;
-extern vlib_node_registration_t nat44_ed_in2out_worker_handoff_node;
-extern vlib_node_registration_t nat44_ed_in2out_output_worker_handoff_node;
-extern vlib_node_registration_t nat44_ed_out2in_worker_handoff_node;
 
 extern fib_source_t nat_fib_src_hi;
 extern fib_source_t nat_fib_src_low;
@@ -1060,58 +1055,60 @@ do                                                     \
   nat_elog_X1(SNAT_LOG_INFO, "[info] " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
 
 /* ICMP session match functions */
-u32 icmp_match_in2out_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, u8 * p_proto,
-			    snat_session_key_t * p_value,
+u32 icmp_match_in2out_fast (snat_main_t * sm, vlib_main_t * vm,
+			    vlib_node_runtime_t * node, u32 thread_index,
+			    vlib_buffer_t * b0, ip4_header_t * ip0,
+			    u8 * p_proto, snat_session_key_t * p_value,
 			    u8 * p_dont_translate, void *d, void *e);
-u32 icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, u8 * p_proto,
-			    snat_session_key_t * p_value,
+u32 icmp_match_in2out_slow (snat_main_t * sm, vlib_main_t * vm,
+			    vlib_node_runtime_t * node, u32 thread_index,
+			    vlib_buffer_t * b0, ip4_header_t * ip0,
+			    u8 * p_proto, snat_session_key_t * p_value,
 			    u8 * p_dont_translate, void *d, void *e);
-u32 icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, u8 * p_proto,
-			    snat_session_key_t * p_value,
+u32 icmp_match_out2in_fast (snat_main_t * sm, vlib_main_t * vm,
+			    vlib_node_runtime_t * node, u32 thread_index,
+			    vlib_buffer_t * b0, ip4_header_t * ip0,
+			    u8 * p_proto, snat_session_key_t * p_value,
 			    u8 * p_dont_translate, void *d, void *e);
-u32 icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, u8 * p_proto,
-			    snat_session_key_t * p_value,
+u32 icmp_match_out2in_slow (snat_main_t * sm, vlib_main_t * vm,
+			    vlib_node_runtime_t * node, u32 thread_index,
+			    vlib_buffer_t * b0, ip4_header_t * ip0,
+			    u8 * p_proto, snat_session_key_t * p_value,
 			    u8 * p_dont_translate, void *d, void *e);
 
 /* ICMP deterministic NAT session match functions */
-u32 icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, u8 * p_proto,
-			   snat_session_key_t * p_value,
+u32 icmp_match_out2in_det (snat_main_t * sm, vlib_main_t * vm,
+			   vlib_node_runtime_t * node, u32 thread_index,
+			   vlib_buffer_t * b0, ip4_header_t * ip0,
+			   u8 * p_proto, snat_session_key_t * p_value,
 			   u8 * p_dont_translate, void *d, void *e);
-u32 icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, u8 * p_proto,
-			   snat_session_key_t * p_value,
+u32 icmp_match_in2out_det (snat_main_t * sm, vlib_main_t * vm,
+			   vlib_node_runtime_t * node, u32 thread_index,
+			   vlib_buffer_t * b0, ip4_header_t * ip0,
+			   u8 * p_proto, snat_session_key_t * p_value,
 			   u8 * p_dont_translate, void *d, void *e);
 
 /* ICMP endpoint-dependent session match functions */
-u32 icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
-			  u32 thread_index, vlib_buffer_t * b0,
-			  ip4_header_t * ip0, u8 * p_proto,
-			  snat_session_key_t * p_value,
+u32 icmp_match_out2in_ed (snat_main_t * sm, vlib_main_t * vm,
+			  vlib_node_runtime_t * node, u32 thread_index,
+			  vlib_buffer_t * b0, ip4_header_t * ip0,
+			  u8 * p_proto, snat_session_key_t * p_value,
 			  u8 * p_dont_translate, void *d, void *e);
-u32 icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
-			  u32 thread_index, vlib_buffer_t * b0,
-			  ip4_header_t * ip0, u8 * p_proto,
-			  snat_session_key_t * p_value,
+u32 icmp_match_in2out_ed (snat_main_t * sm, vlib_main_t * vm,
+			  vlib_node_runtime_t * node, u32 thread_index,
+			  vlib_buffer_t * b0, ip4_header_t * ip0,
+			  u8 * p_proto, snat_session_key_t * p_value,
 			  u8 * p_dont_translate, void *d, void *e);
 
-u32 icmp_in2out (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
-		 icmp46_header_t * icmp0, u32 sw_if_index0, u32 rx_fib_index0,
+u32 icmp_in2out (snat_main_t * sm, vlib_main_t * vm, vlib_buffer_t * b0,
+		 ip4_header_t * ip0, icmp46_header_t * icmp0,
+		 u32 sw_if_index0, u32 rx_fib_index0,
 		 vlib_node_runtime_t * node, u32 next0, u32 thread_index,
 		 void *d, void *e);
 
-u32 icmp_out2in (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
-		 icmp46_header_t * icmp0, u32 sw_if_index0, u32 rx_fib_index0,
+u32 icmp_out2in (snat_main_t * sm, vlib_main_t * vm, vlib_buffer_t * b0,
+		 ip4_header_t * ip0, icmp46_header_t * icmp0,
+		 u32 sw_if_index0, u32 rx_fib_index0,
 		 vlib_node_runtime_t * node, u32 next0, u32 thread_index,
 		 void *d, void *e);
 
