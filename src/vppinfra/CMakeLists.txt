@@ -211,6 +211,7 @@ option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." OFF)
 if(VPP_BUILD_VPPINFRA_TESTS)
   foreach(test
     bihash_vec88
+    bitmap
     cuckoo_template
     dlist
     elf
