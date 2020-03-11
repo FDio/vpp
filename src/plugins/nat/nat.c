@@ -590,6 +590,8 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 #define _(N, i, n, s) \
   clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535); \
   ap->busy_##n##_ports = 0; \
+  ap->next_##n##_port_try = 1; \
+  ap->under_heavy_##n##_load = 0; \
   ap->busy_##n##_ports_per_thread = 0;\
   vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
   foreach_snat_protocol
@@ -2850,6 +2852,117 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
   return 1;
 }
 
+/* Optimized version of default algorithm without port overloading. */
+static int
+nat_alloc_addr_and_port_default_v2 (snat_address_t * addresses,
+				    u32 fib_index,
+				    u32 thread_index,
+				    snat_session_key_t * k,
+				    u16 port_per_thread,
+				    u32 snat_thread_index)
+{
+  int i;
+  snat_address_t *a, *ga = 0;
+  u32 portnum, portnum_max;
+
+  const u32 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
+
+/* If there is less free ports then MIN_PORTS, don't even bother.
+ * System is under heavy load, in such case pakets are dropped anyway and
+ * port allocation overhead is slightly higher when there are only few
+ * free ports. Sacrifice them for the greater good.
+ */
+#define MIN_PORTS 100
+/* Maximum amount of ports to try per one allocation. Reason is the same as
+ * above. Rather fail fastly and let next allocation start from the first port
+ * to save overal performance.
+ */
+#define MAX_ATTEMPS 128
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (k->protocol)
+	{
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread - MIN_PORTS) \
+            { \
+              if (a->fib_index == fib_index) \
+                { \
+                  if (a->under_heavy_##n##_load) \
+                    { \
+                      portnum = port_thread_offset + a->next_##n##_port_try; \
+                    } \
+                  else /* in the ordinary case, pick a random port */ \
+                    { \
+                      u16 port_rnd = snat_random_port (1, port_per_thread - 1); \
+                      portnum = port_thread_offset + port_rnd; \
+                    } \
+                  portnum_max = clib_min(portnum + MAX_ATTEMPS, port_thread_offset + port_per_thread); \
+                  portnum = clib_bitmap_next_clear_on_interval (a->busy_##n##_port_bitmap, portnum, portnum_max); \
+                  if (portnum != ~0) \
+                    { \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+                      a->busy_##n##_ports_per_thread[thread_index]++; \
+                      a->busy_##n##_ports++; \
+                      k->addr = a->addr; \
+                      ASSERT (1024 < portnum && portnum <= 65535); \
+                      k->port = clib_host_to_net_u16(portnum); \
+                      if (a->under_heavy_##n##_load) \
+                        { \
+                          if (portnum + 1 < port_thread_offset + port_per_thread) \
+                            a->next_##n##_port_try = portnum + 1 - port_thread_offset; \
+                          else \
+                            a->next_##n##_port_try = 1; \
+                          a->under_heavy_##n##_load--; \
+                        } \
+                      return 0; \
+                    } \
+                  else \
+                    { \
+                      if (portnum_max < port_thread_offset + port_per_thread) \
+                        a->next_##n##_port_try = portnum_max - port_thread_offset; \
+                      else \
+                        a->next_##n##_port_try = 1; \
+                      a->under_heavy_##n##_load = 3; \
+                    } \
+                } \
+              else if (a->fib_index == ~0) \
+                { \
+                  ga = a; \
+                } \
+            } \
+          break;
+	  foreach_snat_protocol
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+  if (ga)
+    {
+      /* fake fib_index to reuse the macro */
+      fib_index = ~0;
+      a = ga;
+      switch (k->protocol)
+	{
+	  foreach_snat_protocol
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+#undef MIN_PORTS
+#undef MAX_ATTEMPS
+#undef _
+
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
 static int
 nat_alloc_addr_and_port_mape (snat_address_t * addresses,
 			      u32 fib_index,
@@ -4332,6 +4445,15 @@ nat_set_alloc_addr_and_port_default (void)
 
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
+}
+
+void
+nat_set_alloc_addr_and_port_default_v2 (void)
+{
+  snat_main_t *sm = &snat_main;
+
+  sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT_V2;
+  sm->alloc_addr_and_port = nat_alloc_addr_and_port_default_v2;
 }
 
 VLIB_NODE_FN (nat_default_node) (vlib_main_t * vm,

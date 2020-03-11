@@ -170,7 +170,8 @@ typedef enum nat_config_flags_t_
 #define foreach_nat_addr_and_port_alloc_alg \
   _(0, DEFAULT, "default")         \
   _(1, MAPE, "map-e")              \
-  _(2, RANGE, "port-range")
+  _(2, RANGE, "port-range")        \
+  _(3, DEFAULT_V2, "default-v2")
 
 typedef enum
 {
@@ -359,7 +360,9 @@ typedef struct
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
-  uword * busy_##n##_port_bitmap;
+  uword * busy_##n##_port_bitmap; \
+  u16 next_##n##_port_try; \
+  u8 under_heavy_##n##_load;
   foreach_snat_protocol
 #undef _
 /* *INDENT-ON* */
@@ -1350,6 +1353,12 @@ void nat_set_alloc_addr_and_port_range (u16 start_port, u16 end_port);
  * @brief Set address and port assignment algorithm to default/standard
  */
 void nat_set_alloc_addr_and_port_default (void);
+
+/**
+ * @brief Set address and port assignment algorithm to default/standard v2
+ */
+void
+nat_set_alloc_addr_and_port_default_v2 (void);
 
 /**
  * @brief Free outside address and port pair
