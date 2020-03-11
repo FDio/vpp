@@ -170,6 +170,74 @@ the rate adjustment algorithm. The code rejects frequency samples
 corresponding to the sort of adjustment which might occur if someone
 changes the gold standard kernel clock by several seconds.
 
+### Monotonic timebase support
+
+Particularly during system initialization, the "gold standard" system
+reference clock can change by a large amount, in an instant. It's not
+a best practice to yank the reference clock - in either direction - by
+hours or days. In fact, some poorly-constructed use-cases do so.
+
+To deal with this reality, clib_time_now(...) returns the number of
+seconds since vpp started, *guaranteed to be monotonically
+increasing, no matter what happens to the system reference clock*.
+
+This is first-order important, to avoid breaking every active timer in
+the system. The vpp host stack alone may account for tens of millions
+of active timers. It's utterly impractical to track down and fix
+timers, so we must deal with the issue at the timebase level.
+
+Here's how it works. Prior to adjusting the clock rate, we collect the
+kernel reference clock and the cpu clock:
+
+```
+  /* Ask the kernel and the CPU what time it is... */
+  now_reference = unix_time_now ();
+  now_clock = clib_cpu_time_now ();
+```
+
+Compute changes for both clocks since the last rate adjustment,
+roughly 15 seconds ago:
+
+```
+  /* Compute change in the reference clock */
+  delta_reference = now_reference - c->last_verify_reference_time;
+
+  /* And change in the CPU clock */
+  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
+    c->seconds_per_clock;
+```
+
+Delta_reference is key. Almost 100% of the time, delta_reference and
+delta_clock_in_seconds are identical modulo one system-call
+time. However, NTP or a privileged user can yank the system reference
+time - in either direction - by an hour, a day, or a decade.
+
+As described above, clib_time_now(...) must return monotonically
+increasing answers to the question "how long has it been since vpp
+started, in seconds." To do that, the clock rate adjustment algorithm
+begins by recomputing the initial reference time:
+
+```
+  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
+```
+
+It's easy to convince yourself that if the reference clock changes by
+15.000000 seconds and the cpu clock tick time changes by 15.000000
+seconds, the initial reference time won't change.
+
+If, on the other hand, delta_reference is -86400.0 and delta clock is
+15.0 - reference time jumped backwards by exactly one day in a
+15-second rate update interval - we add -86415.0 to the initial
+reference time.
+
+Given the corrected initial reference time, we recompute the total
+number of cpu ticks which have occurred since the corrected initial
+reference time, at the current clock tick rate:
+
+```
+  c->total_cpu_time = (now_reference - c->init_reference_time)
+    * c->clocks_per_second;
+```
 
 Format
 ------
@@ -282,7 +350,7 @@ be fairly handy, it's very lightly used in the code base.
 
 For transition from skip to no-skip in middle of format string, skip input white space.  For example, the following:
 
-```c	  
+```c
 fmt = "%_%d.%d%_->%_%d.%d%_"
 unformat (input, fmt, &one, &two, &three, &four);
 ```
