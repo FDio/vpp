@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <math.h>
 #include <vppinfra/format.h>
+#include <vppinfra/time_range.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 
@@ -1890,10 +1891,16 @@ show_clock_command_fn (vlib_main_t * vm,
 {
   int i;
   int verbose = 0;
+  clib_timebase_t _tb, *tb = &_tb;
 
   (void) unformat (input, "verbose %=", &verbose, 1);
 
-  vlib_cli_output (vm, "%U", format_clib_time, &vm->clib_time, verbose);
+  clib_timebase_init (tb, 0 /* GMT */ , CLIB_TIMEBASE_DAYLIGHT_NONE,
+		      &vm->clib_time);
+
+  vlib_cli_output (vm, "%U, %U GMT", format_clib_time, &vm->clib_time,
+		   verbose, format_clib_timebase_time,
+		   clib_timebase_now (tb));
 
   if (vec_len (vlib_mains) == 1)
     return 0;
