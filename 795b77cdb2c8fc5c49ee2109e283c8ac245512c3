@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aab8dd6_eac72c11",
+        "filename": "docs/gettingstarted/developers/infrastructure.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-11T14:17:47Z",
+      "side": 1,
+      "message": "*guaranteed* ?",
+      "revId": "795b77cdb2c8fc5c49ee2109e283c8ac245512c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "577b7072_928ad20b",
+        "filename": "docs/gettingstarted/developers/infrastructure.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-11T14:17:47Z",
+      "side": 1,
+      "message": "_deus ex machina_ will confuse non-english speakers. \nPerhaps say \"very rare events (SMIs?) are perfectly ...\" instead.",
+      "range": {
+        "startLine": 212,
+        "startChar": 18,
+        "endLine": 212,
+        "endChar": 36
+      },
+      "revId": "795b77cdb2c8fc5c49ee2109e283c8ac245512c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
