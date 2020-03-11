@@ -428,6 +428,9 @@ static void
 	}
       nat_set_alloc_addr_and_port_range (port_start, port_end);
       break;
+    case NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT_V2:
+      nat_set_alloc_addr_and_port_default_v2 ();
+      break;
     default:
       rv = VNET_API_ERROR_INVALID_VALUE;
       break;

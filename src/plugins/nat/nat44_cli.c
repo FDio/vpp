@@ -278,8 +278,11 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "default"))
-	nat_set_alloc_addr_and_port_default ();
+      if (unformat (line_input, "default-v2"))
+	nat_set_alloc_addr_and_port_default_v2 ();
+      else
+	if (unformat (line_input, "default"))
+	  nat_set_alloc_addr_and_port_default ();
       else
 	if (unformat
 	    (line_input, "map-e psid %d psid-offset %d psid-len %d", &psid,
@@ -2180,6 +2183,8 @@ VLIB_CLI_COMMAND (snat_ipfix_logging_enable_disable_command, static) = {
  *  vpp# nat addr-port-assignment-alg port-range <start-port> - <end-port>
  * To set standard (default) address and port assignment algorithm use:
  *  vpp# nat addr-port-assignment-alg default
+ * To set version 2 of default address and port assignment algorithm use:
+ *  vpp# nat addr-port-assignment-alg default-v2
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat44_set_alloc_addr_and_port_alg_command, static) = {
