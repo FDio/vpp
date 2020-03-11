@@ -25,7 +25,7 @@ const vl_api_address_t VL_API_ZERO_ADDRESS;
 u8 *
 format_vl_api_address_family (u8 * s, va_list * args)
 {
-  vl_api_address_family_t af = va_arg (*args, vl_api_address_family_t);
+  vl_api_address_family_t af = va_arg (*args, int);
 
   if (ADDRESS_IP6 == clib_net_to_host_u32 (af))
       s = format (s, "ip4");
@@ -53,7 +53,7 @@ format_vl_api_address_union (u8 * s, va_list * args)
 {
   const vl_api_address_union_t *addr =
     va_arg (*args, vl_api_address_union_t *);
-  vl_api_address_family_t af = va_arg (*args, vl_api_address_family_t);
+  vl_api_address_family_t af = va_arg (*args, int);
 
   if (ADDRESS_IP6 == af)
     s = format (s, "%U", format_ip6_address, addr->ip6);
