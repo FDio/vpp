@@ -1,0 +1,77 @@
+module unat {
+  yang-version 1.1;
+  namespace "urn:fd.io:unat";
+  prefix "unat";
+
+  import ietf-inet-types {
+    prefix inet;
+    reference
+      "Section 4 of RFC 6991";
+  }
+  import ietf-yang-types {
+    prefix yang;
+    reference
+      "Section 3 of RFC 6991";
+  }
+  import ietf-interfaces {
+    prefix if;
+    reference
+      "RFC 8343: A YANG Data Model for Interface Management";
+  }
+  organization "FD.io";
+  contact "otroan@employees.org";
+  description
+    "The module for entities implementing VPP UNAT.";
+
+  revision 2020-01-20 {
+    description "Initial revision.";
+  }
+
+  container external-realm {
+    description
+      "Identifies the external realm of the NAT instance.";
+    choice realm-type {
+      description
+	"Can be an interface, VRF instance, etc.";
+      case interface {
+	description
+	  "External interface.";
+	leaf external-interface {
+	  type if:interface-ref;
+	  description
+	    "Name of the external interface.";
+	}
+      }
+    }
+  }
+
+  container pool {
+    list external-ip-address-pool {
+      /*if-feature "basic-nat44 or napt44 or nat64";*/
+      key "pool-id";
+      description
+	"Pool of external IP addresses used to service internal
+               hosts.
+
+               A pool is a set of IP prefixes.";
+      leaf pool-id {
+	type uint32;
+	must '. >= 1';
+	description
+	  "An identifier that uniquely identifies the address pool
+                 within a NAT instance.
+
+                 The identifier must be greater than zero.";
+	reference
+	  "RFC 7659: Definitions of Managed Objects for
+                           Network Address Translators (NATs)";
+      }
+      leaf external-ip-pool {
+	type inet:ipv4-prefix;
+	mandatory true;
+	description
+	  "An IPv4 prefix used for NAT purposes.";
+      }
+    }
+  }
+}

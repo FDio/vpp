@@ -380,6 +380,12 @@ typedef struct
       u32 flags;
     } snat;
 
+    /* UNAT */
+    struct
+    {
+      u32 pool_index;
+    } unat;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;

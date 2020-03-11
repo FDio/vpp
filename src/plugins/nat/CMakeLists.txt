@@ -101,3 +101,34 @@ add_vpp_plugin(dslite
 
   LINK_LIBRARIES nat
 )
+
+add_vpp_plugin(unat
+  SOURCES
+  unat/unat.c
+  unat/cli.c
+  unat/pool.c
+  unat/sp_node.c
+  unat/fp_node.c
+  unat/handoff_node.c
+  unat/lpm.c
+  unat/cdb.c
+  unat/cdb_cli.c
+)
+
+add_vpp_executable(test_cdb
+  SOURCES
+  unat/test_cdb.c
+  unat/cdb.c
+  LINK_LIBRARIES
+  vppinfra
+)
+
+#add_vpp_executable(test_unat_pool
+#  SOURCES
+#  unat/test_unat_pool.c
+#  unat/pool.c
+#  unat/lpm.c
+#  LINK_LIBRARIES
+#  vppinfra
+#  vlib
+#)

@@ -129,6 +129,15 @@ vlib_get_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
   return v;
 }
 
+always_inline counter_t
+vlib_get_simple_counter_thread (vlib_simple_counter_main_t * cm, u32 thread_index, u32 index)
+{
+  counter_t *my_counters;
+
+  my_counters = cm->counters[thread_index];
+  return my_counters[index];
+}
+
 /** Clear a simple counter
     Clears the set of per-thread u16 counters, and the u64 counter
 
