@@ -7,11 +7,13 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
     VppIpTable, FibPathProto
+from vpp_acl import AclRule, VppAcl
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+from ipaddress import IPv4Network, IPv6Network
 
 from vpp_object import VppObject
 
@@ -161,18 +163,11 @@ class TestAbf(VppTestCase):
         #
         # Rule 1
         #
-        rule_1 = ({'is_permit': 1,
-                   'is_ipv6': 0,
-                   'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1234,
-                   'src_ip_prefix_len': 32,
-                   'src_ip_addr': inet_pton(AF_INET, "1.1.1.1"),
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_prefix_len': 32,
-                   'dst_ip_addr': inet_pton(AF_INET, "1.1.1.2")})
-        acl_1 = self.vapi.acl_add_replace(acl_index=4294967295, r=[rule_1])
+        rule_1 = AclRule(is_permit=1, proto=17, ports=1234,
+                         src_prefix=IPv4Network("1.1.1.1/32"),
+                         dst_prefix=IPv4Network("1.1.1.2/32"))
+        acl_1 = VppAcl(self, rules=[rule_1])
+        acl_1.add_vpp_config()
 
         #
         # ABF policy for ACL 1 - path via interface 1
@@ -284,19 +279,11 @@ class TestAbf(VppTestCase):
         #
         # Rule 1
         #
-        rule_1 = ({'is_permit': 1,
-                   'is_ipv6': 1,
-                   'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1234,
-                   'src_ip_prefix_len': 128,
-                   'src_ip_addr': inet_pton(AF_INET6, "2001::2"),
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_prefix_len': 128,
-                   'dst_ip_addr': inet_pton(AF_INET6, "2001::1")})
-        acl_1 = self.vapi.acl_add_replace(acl_index=4294967295,
-                                          r=[rule_1])
+        rule_1 = AclRule(is_permit=1, proto=17, ports=1234,
+                         src_prefix=IPv6Network("2001::2/128"),
+                         dst_prefix=IPv6Network("2001::1/128"))
+        acl_1 = VppAcl(self, rules=[rule_1])
+        acl_1.add_vpp_config()
 
         #
         # ABF policy for ACL 1 - path via interface 1

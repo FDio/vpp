@@ -17554,7 +17554,7 @@ format_fib_api_path_nh_proto (u8 * s, va_list * args)
 static u8 *
 format_vl_api_ip_address_union (u8 * s, va_list * args)
 {
-  vl_api_address_family_t af = va_arg (*args, vl_api_address_family_t);
+  vl_api_address_family_t af = va_arg (*args, int);
   const vl_api_address_union_t *u = va_arg (*args, vl_api_address_union_t *);
 
   switch (af)
