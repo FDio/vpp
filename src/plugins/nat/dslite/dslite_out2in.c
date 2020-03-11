@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include <nat/dslite/dslite.h>
-#include <nat/nat_inlines.h>
 
 typedef enum
 {
@@ -37,14 +36,14 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
   dslite_session_t *s = 0;
   icmp46_header_t *icmp = ip4_next_header (ip4);
   clib_bihash_kv_8_8_t kv, value;
-  snat_session_key_t key;
+  nat_session_key_t key;
   u32 n = next;
-  icmp_echo_header_t *echo;
+  echo_header_t *echo;
   u32 new_addr, old_addr;
   u16 old_id, new_id;
   ip_csum_t sum;
 
-  echo = (icmp_echo_header_t *) (icmp + 1);
+  echo = (echo_header_t *) (icmp + 1);
 
   if (icmp_type_is_error_message (icmp->type)
       || (icmp->type != ICMP4_echo_reply))
@@ -56,7 +55,7 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
 
   key.addr = ip4->dst_address;
   key.port = echo->identifier;
-  key.protocol = SNAT_PROTOCOL_ICMP;
+  key.protocol = NAT_PROTOCOL_ICMP;
   key.fib_index = 0;
   kv.key = key.as_u64;
 
@@ -77,7 +76,7 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
   old_id = echo->identifier;
   echo->identifier = new_id = s->in2out.port;
   sum = icmp->checksum;
-  sum = ip_csum_update (sum, old_id, new_id, icmp_echo_header_t, identifier);
+  sum = ip_csum_update (sum, old_id, new_id, echo_header_t, identifier);
   icmp->checksum = ip_csum_fold (sum);
 
   old_addr = ip4->dst_address.as_u32;
@@ -129,7 +128,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	  udp_header_t *udp0;
 	  tcp_header_t *tcp0;
 	  clib_bihash_kv_8_8_t kv0, value0;
-	  snat_session_key_t key0;
+	  nat_session_key_t key0;
 	  dslite_session_t *s0 = 0;
 	  ip_csum_t sum0;
 	  u32 new_addr0, old_addr0;
@@ -145,7 +144,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip40 = vlib_buffer_get_current (b0);
-	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -154,7 +153,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	    {
 	      next0 =
 		dslite_icmp_out2in (dm, ip40, &s0, next0, &error0,
@@ -198,7 +197,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 			    dst_address);
 	  ip40->checksum = ip_csum_fold (sum0);
 
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      old_port0 = tcp0->dst_port;
 	      tcp0->dst_port = s0->in2out.port;

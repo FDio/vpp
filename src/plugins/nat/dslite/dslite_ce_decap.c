@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include <nat/dslite/dslite.h>
-#include <nat/nat_inlines.h>
 
 typedef enum
 {
@@ -80,7 +79,7 @@ VLIB_NODE_FN (dslite_ce_decap_node) (vlib_main_t * vm,
 	    }
 
 	  ip40 = vlib_buffer_get_current (b0) + sizeof (ip6_header_t);
-	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {

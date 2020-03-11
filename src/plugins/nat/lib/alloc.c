@@ -17,6 +17,7 @@
  * @brief NAT port/address allocation lib
  */
 
+#include <nat/lib/lib.h>
 #include <nat/lib/alloc.h>
 
 static_always_inline void

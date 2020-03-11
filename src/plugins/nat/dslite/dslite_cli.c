@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <nat/dslite/dslite.h>
 
 static clib_error_t *
@@ -205,6 +204,25 @@ dslite_show_b4_ip6_addr_command_fn (vlib_main_t * vm,
 }
 
 static u8 *
+format_nat_protocol (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(N, j, n, str) case NAT_PROTOCOL_##N: t = (u8 *) str; break;
+      foreach_nat_protocol
+#undef _
+    default:
+      s = format (s, "unknown");
+      return s;
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
+static u8 *
 format_dslite_session (u8 * s, va_list * args)
 {
   dslite_session_t *session = va_arg (*args, dslite_session_t *);
@@ -216,7 +234,7 @@ format_dslite_session (u8 * s, va_list * args)
 	      clib_net_to_host_u16 (session->in2out.port),
 	      format_ip4_address, &session->out2in.addr,
 	      clib_net_to_host_u16 (session->out2in.port),
-	      format_snat_protocol, session->in2out.proto);
+	      format_nat_protocol, session->in2out.proto);
   s = format (s, "%Utotal pkts %d, total bytes %lld\n",
 	      format_white_space, indent + 4,
 	      session->total_pkts, session->total_bytes);

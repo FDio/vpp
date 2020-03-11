@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include <nat/dslite/dslite.h>
-#include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
 
 typedef enum
@@ -42,7 +41,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   dlist_elt_t *head_elt, *oldest_elt, *elt;
   u32 oldest_index;
   dslite_session_t *s;
-  snat_session_key_t out2in_key;
+  nat_session_key_t out2in_key;
   nat_ip4_addr_port_t addr_port;
   u32 b4_index;
 
@@ -189,7 +188,7 @@ dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
   clib_bihash_kv_24_8_t kv, value;
   dslite_session_key_t key;
   u32 n = next;
-  icmp_echo_header_t *echo;
+  echo_header_t *echo;
   u32 new_addr, old_addr;
   u16 old_id, new_id;
   ip_csum_t sum;
@@ -201,11 +200,11 @@ dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
       goto done;
     }
 
-  echo = (icmp_echo_header_t *) (icmp + 1);
+  echo = (echo_header_t *) (icmp + 1);
 
   key.addr = ip4->src_address;
   key.port = echo->identifier;
-  key.proto = SNAT_PROTOCOL_ICMP;
+  key.proto = NAT_PROTOCOL_ICMP;
   key.softwire_id.as_u64[0] = ip6->src_address.as_u64[0];
   key.softwire_id.as_u64[1] = ip6->src_address.as_u64[1];
   key.pad = 0;
@@ -237,7 +236,7 @@ dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
   old_id = echo->identifier;
   echo->identifier = new_id = s->out2in.port;
   sum = icmp->checksum;
-  sum = ip_csum_update (sum, old_id, new_id, icmp_echo_header_t, identifier);
+  sum = ip_csum_update (sum, old_id, new_id, echo_header_t, identifier);
   icmp->checksum = ip_csum_fold (sum);
 
 done:
@@ -315,7 +314,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  ip40 = vlib_buffer_get_current (b0) + sizeof (ip6_header_t);
-	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -329,7 +328,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 =
 		    dslite_icmp_in2out (dm, ip60, ip40, &s0, next0, &error0,
@@ -342,7 +341,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 = DSLITE_IN2OUT_NEXT_SLOWPATH;
 		  goto trace0;
@@ -390,7 +389,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
 			    src_address);
 	  ip40->checksum = ip_csum_fold (sum0);
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      old_port0 = tcp0->src_port;
 	      tcp0->src_port = s0->out2in.port;
