@@ -61,8 +61,8 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 		   &ue->ue_hdrs.ip4.ue_ip4.src_address, 4);
       clib_memcpy (&mp->udp_encap.dst_ip.un.ip4,
 		   &ue->ue_hdrs.ip4.ue_ip4.dst_address, 4);
-      mp->udp_encap.dst_ip.af = clib_host_to_net_u32 (ADDRESS_IP4);
-      mp->udp_encap.src_ip.af = clib_host_to_net_u32 (ADDRESS_IP4);
+      mp->udp_encap.dst_ip.af = ADDRESS_IP4;
+      mp->udp_encap.src_ip.af = ADDRESS_IP4;
 
       /* ports aren't byte swapped because they are stored in network
        * byte order */
@@ -75,8 +75,8 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 		   &ue->ue_hdrs.ip6.ue_ip6.src_address, 16);
       clib_memcpy (&mp->udp_encap.dst_ip.un.ip6,
 		   &ue->ue_hdrs.ip6.ue_ip6.dst_address, 16);
-      mp->udp_encap.dst_ip.af = clib_host_to_net_u32 (ADDRESS_IP6);
-      mp->udp_encap.src_ip.af = clib_host_to_net_u32 (ADDRESS_IP6);
+      mp->udp_encap.dst_ip.af = ADDRESS_IP6;
+      mp->udp_encap.src_ip.af = ADDRESS_IP6;
 
       /* ports aren't byte swapped because they are stored in network
        * byte order */
