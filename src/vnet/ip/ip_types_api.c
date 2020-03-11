@@ -31,9 +31,9 @@
 #undef vl_printfun
 
 int
-ip_address_family_decode (int _af, ip_address_family_t * out)
+ip_address_family_decode (u8 _af, ip_address_family_t * out)
 {
-  vl_api_address_family_t af = clib_host_to_net_u32 (_af);
+  vl_api_address_family_t af = _af;
 
   switch (af)
     {
@@ -53,19 +53,19 @@ ip_address_family_encode (ip_address_family_t af)
   switch (af)
     {
     case AF_IP4:
-      return (clib_host_to_net_u32 (ADDRESS_IP4));
+      return (ADDRESS_IP4);
     case AF_IP6:
-      return (clib_host_to_net_u32 (ADDRESS_IP6));
+      return (ADDRESS_IP6);
     }
 
   ASSERT (0);
-  return (clib_host_to_net_u32 (ADDRESS_IP4));
+  return (ADDRESS_IP4);
 }
 
 int
-ip_proto_decode (int _ipp, ip_protocol_t * out)
+ip_proto_decode (u8 _ipp, ip_protocol_t * out)
 {
-  ip_protocol_t ipp = clib_host_to_net_u32 (_ipp);
+  ip_protocol_t ipp = _ipp;
 
   switch (ipp)
     {
@@ -86,13 +86,13 @@ ip_proto_encode (ip_protocol_t ipp)
     {
 #define ip_protocol(n,s)                                \
       case IP_PROTOCOL_##s:                             \
-        return (clib_host_to_net_u32 (IP_PROTOCOL_##s));
+        return (IP_PROTOCOL_##s);
 #include "protocols.def"
 #undef ip_protocol
     }
 
   ASSERT (0);
-  return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
+  return (IP_API_PROTO_TCP);
 }
 
 ip_dscp_t
@@ -137,7 +137,7 @@ ip_address_union_decode (const vl_api_address_union_t * in,
 {
   ip46_type_t type;
 
-  switch (clib_net_to_host_u32 (af))
+  switch (af)
     {
     case ADDRESS_IP4:
       clib_memset (out, 0, sizeof (*out));
@@ -149,7 +149,6 @@ ip_address_union_decode (const vl_api_address_union_t * in,
       type = IP46_TYPE_IP6;
       break;
     default:
-      ASSERT (!"Unknown address family in API address type");
       type = IP46_TYPE_ANY;
       break;
     }
@@ -166,7 +165,7 @@ ip_address_decode (const vl_api_address_t * in, ip46_address_t * out)
 void
 ip_address_decode2 (const vl_api_address_t * in, ip_address_t * out)
 {
-  switch (clib_net_to_host_u32 (in->af))
+  switch (in->af)
     {
     case ADDRESS_IP4:
       clib_memset (out, 0, sizeof (*out));
@@ -178,7 +177,7 @@ ip_address_decode2 (const vl_api_address_t * in, ip_address_t * out)
       out->version = AF_IP6;
       break;
     default:
-      ASSERT (!"Unknown address family in API address type");
+      ;
       break;
     }
 }
@@ -188,7 +187,7 @@ ip_address_union_encode (const ip46_address_t * in,
 			 vl_api_address_family_t af,
 			 vl_api_address_union_t * out)
 {
-  if (ADDRESS_IP6 == clib_net_to_host_u32 (af))
+  if (ADDRESS_IP6 == af)
     ip6_address_encode (&in->ip6, out->ip6);
   else
     ip4_address_encode (&in->ip4, out->ip4);
@@ -201,16 +200,16 @@ ip_address_encode (const ip46_address_t * in,
   switch (type)
     {
     case IP46_TYPE_IP4:
-      out->af = clib_net_to_host_u32 (ADDRESS_IP4);
+      out->af = ADDRESS_IP4;
       break;
     case IP46_TYPE_IP6:
-      out->af = clib_net_to_host_u32 (ADDRESS_IP6);
+      out->af = ADDRESS_IP6;
       break;
     case IP46_TYPE_ANY:
       if (ip46_address_is_ip4 (in))
-	out->af = clib_net_to_host_u32 (ADDRESS_IP4);
+	out->af = ADDRESS_IP4;
       else
-	out->af = clib_net_to_host_u32 (ADDRESS_IP6);
+	out->af = ADDRESS_IP6;
       break;
     }
   ip_address_union_encode (in, out->af, &out->un);
@@ -222,11 +221,11 @@ ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
   switch (in->version)
     {
     case AF_IP4:
-      out->af = clib_net_to_host_u32 (ADDRESS_IP4);
+      out->af = ADDRESS_IP4;
       ip4_address_encode (&in->ip.v4, out->un.ip4);
       break;
     case AF_IP6:
-      out->af = clib_net_to_host_u32 (ADDRESS_IP6);
+      out->af = ADDRESS_IP6;
       ip6_address_encode (&in->ip.v6, out->un.ip6);
       break;
     }
@@ -235,7 +234,7 @@ ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
 void
 ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 {
-  switch (clib_net_to_host_u32 (in->address.af))
+  switch (in->address.af)
     {
     case ADDRESS_IP4:
       out->fp_proto = FIB_PROTOCOL_IP4;
@@ -277,7 +276,7 @@ void
 ip_mprefix_encode (const mfib_prefix_t * in, vl_api_mprefix_t * out)
 {
   out->af = (FIB_PROTOCOL_IP6 == in->fp_proto ? ADDRESS_IP6 : ADDRESS_IP4);
-  out->af = clib_host_to_net_u32 (out->af);
+  out->af = out->af;
   out->grp_address_length = clib_host_to_net_u16 (in->fp_len);
 
   ip_address_union_encode (&in->fp_grp_addr, out->af, &out->grp_address);
@@ -287,7 +286,7 @@ ip_mprefix_encode (const mfib_prefix_t * in, vl_api_mprefix_t * out)
 void
 ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
 {
-  out->fp_proto = (ADDRESS_IP6 == clib_net_to_host_u32 (in->af) ?
+  out->fp_proto = (ADDRESS_IP6 == in->af ?
 		   FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   out->fp_len = clib_net_to_host_u16 (in->grp_address_length);
   out->___fp___pad = 0;
