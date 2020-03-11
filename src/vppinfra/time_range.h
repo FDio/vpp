@@ -28,12 +28,7 @@ typedef enum
 typedef struct
 {
   /* provides f64 seconds since clib_time_init was called */
-  clib_time_t clib_time;
-  /*
-   * time in f64 seconds since Thursday 1 Jan 1970 00:00:00 UTC
-   * when clib_time_init was called
-   */
-  f64 time_zero;
+  clib_time_t *clib_time;
   f64 timezone_offset;
   f64 summer_offset;
   clib_timebase_daylight_time_t daylight_time_type;
@@ -57,7 +52,8 @@ typedef struct
 } clib_timebase_range_t;
 
 void clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
-			 clib_timebase_daylight_time_t daylight_type);
+			 clib_timebase_daylight_time_t daylight_type,
+			 clib_time_t * clib_time);
 
 void clib_timebase_time_to_components (f64 now,
 				       clib_timebase_component_t * cp);
@@ -93,7 +89,7 @@ clib_timebase_now (clib_timebase_t * tb)
 {
   f64 now;
 
-  now = tb->time_zero + clib_time_now (&tb->clib_time);
+  now = tb->clib_time->init_reference_time + clib_time_now (tb->clib_time);
   now += tb->timezone_offset;
   now += clib_timebase_summer_offset_fastpath (tb, now);
 

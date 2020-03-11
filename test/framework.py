@@ -758,7 +758,12 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def get_vpp_time(cls):
-        return float(cls.vapi.cli('show clock').replace("Time now ", ""))
+        # processes e.g. "Time now 2.190522, Wed, 11 Mar 2020 17:29:54 GMT"
+        # returns float("2.190522")
+        timestr = cls.vapi.cli('show clock')
+        head, sep, tail = timestr.partition(',')
+        head, sep, tail = head.partition('Time now')
+        return float(tail)
 
     @classmethod
     def sleep_on_vpp_time(cls, sec):

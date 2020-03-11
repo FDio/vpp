@@ -1743,7 +1743,8 @@ http_static_server_main_init (vlib_main_t * vm)
   hsm->first_index = hsm->last_index = ~0;
 
   clib_timebase_init (&hsm->timebase, 0 /* GMT */ ,
-		      CLIB_TIMEBASE_DAYLIGHT_NONE);
+		      CLIB_TIMEBASE_DAYLIGHT_NONE,
+		      &vm->clib_time /* share the system clock */ );
 
   return 0;
 }

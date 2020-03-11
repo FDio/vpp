@@ -17,12 +17,20 @@
 
 void
 clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
-		    clib_timebase_daylight_time_t daylight_type)
+		    clib_timebase_daylight_time_t daylight_type,
+		    clib_time_t * clib_time)
 {
   clib_memset (tb, 0, sizeof (*tb));
 
-  clib_time_init (&tb->clib_time);
-  tb->time_zero = unix_time_now ();
+  if (clib_time == 0)
+    {
+      tb->clib_time = clib_mem_alloc_aligned
+	(sizeof (*clib_time), CLIB_CACHE_LINE_BYTES);
+      memset (tb->clib_time, 0, sizeof (*clib_time));
+      clib_time_init (tb->clib_time);
+    }
+  else
+    tb->clib_time = clib_time;
 
   tb->timezone_offset = ((f64) (timezone_offset_in_hours)) * 3600.0;
   tb->daylight_time_type = daylight_type;

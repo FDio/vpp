@@ -18,6 +18,7 @@
 static int
 test_time_range_main (unformat_input_t * input)
 {
+  vlib_main_t *vm = vlib_get_main ();
   clib_timebase_t _tb, *tb = &_tb;
   clib_timebase_component_t _c, *cp = &_c;
   clib_timebase_range_t *rp = 0;
@@ -30,7 +31,8 @@ test_time_range_main (unformat_input_t * input)
   f64 timezone_offset;
 
   /* Init time base */
-  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA);
+  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA,
+		      &vm->clib_time);
 
   /* Set up summer time cache */
   now = clib_timebase_now (tb);

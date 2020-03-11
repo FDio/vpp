@@ -50,7 +50,8 @@ feature_init (mactime_main_t * mm)
 			    mm->lookup_table_num_buckets,
 			    mm->lookup_table_memory_size);
       clib_timebase_init (&mm->timebase, mm->timezone_offset,
-			  CLIB_TIMEBASE_DAYLIGHT_USA);
+			  CLIB_TIMEBASE_DAYLIGHT_USA,
+			  &(mm->vlib_main->clib_time));
       mm->allow_counters.name = "allow";
       mm->allow_counters.stat_segment_name = "/mactime/allow";
       mm->drop_counters.name = "drop";
