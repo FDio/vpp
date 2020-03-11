@@ -603,5 +603,6 @@ class TestClassifyAcl(TestClassifier):
         self.acl_active_table = key
         self.run_verify_test(self.IP, self.IPV4, -1)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
