@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "b008bba0_3b450871",
+        "filename": "docs/gettingstarted/developers/infrastructure.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-11T16:17:06Z",
+      "side": 1,
+      "message": "Dave - you are missing the second \"*\".",
+      "parentUuid": "91d54245_9bbb0c71",
+      "revId": "795b77cdb2c8fc5c49ee2109e283c8ac245512c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "577b7072_928ad20b",
         "filename": "docs/gettingstarted/developers/infrastructure.md",
         "patchSetId": 1
@@ -72,6 +90,30 @@
       "side": 1,
       "message": "And Google will un-confuse them, if they care enough to look. \n\nThis seems like a really neat way to express the concept of an invisible hand: NTP, or a privileged user typing \u0027date \u003cblah\u003e\u0027\n\nI\u0027ll do something about it, but it pains me to dumb down the documentation when so few people even bother to contribute to it.",
       "parentUuid": "577b7072_928ad20b",
+      "range": {
+        "startLine": 212,
+        "startChar": 18,
+        "endLine": 212,
+        "endChar": 36
+      },
+      "revId": "795b77cdb2c8fc5c49ee2109e283c8ac245512c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3afef13_91c7a259",
+        "filename": "docs/gettingstarted/developers/infrastructure.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-11T16:17:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1d04ead4_b650e537",
       "range": {
         "startLine": 212,
         "startChar": 18,
