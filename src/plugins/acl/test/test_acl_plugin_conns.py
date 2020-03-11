@@ -36,21 +36,22 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
         rule_l4_sport_last = rule_l4_sport
 
     new_rule = {
-          'is_permit': is_permit,
-          'is_ipv6': p.haslayer(IPv6),
-          'src_ip_addr': inet_pton(rule_family,
-                                   p[rule_l3_layer].src),
-          'src_ip_prefix_len': rule_prefix_len,
-          'dst_ip_addr': inet_pton(rule_family,
-                                   p[rule_l3_layer].dst),
-          'dst_ip_prefix_len': rule_prefix_len,
-          'srcport_or_icmptype_first': rule_l4_sport_first,
-          'srcport_or_icmptype_last': rule_l4_sport_last,
-          'dstport_or_icmpcode_first': rule_l4_dport,
-          'dstport_or_icmpcode_last': rule_l4_dport,
-          'proto': rule_l4_proto,
-         }
+        'is_permit': is_permit,
+        'is_ipv6': p.haslayer(IPv6),
+        'src_ip_addr': inet_pton(rule_family,
+                                 p[rule_l3_layer].src),
+        'src_ip_prefix_len': rule_prefix_len,
+        'dst_ip_addr': inet_pton(rule_family,
+                                 p[rule_l3_layer].dst),
+        'dst_ip_prefix_len': rule_prefix_len,
+        'srcport_or_icmptype_first': rule_l4_sport_first,
+        'srcport_or_icmptype_last': rule_l4_sport_last,
+        'dstport_or_icmpcode_first': rule_l4_dport,
+        'dstport_or_icmpcode_last': rule_l4_dport,
+        'proto': rule_l4_proto,
+    }
     return new_rule
+
 
 Packet.to_acl_rule = to_acl_rule
 
@@ -91,36 +92,36 @@ class Conn(L4_Conn):
 
         if reflect_side == acl_side:
             self.testcase.vapi.acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 1,
-                   [reflect_acl_index,
+                self.ifs[acl_side].sw_if_index, 1,
+                [reflect_acl_index,
                     deny_acl_index])
             self.testcase.vapi.acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, [])
+                self.ifs[1-acl_side].sw_if_index, 0, [])
         else:
             self.testcase.vapi.acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 1,
-                   [deny_acl_index,
+                self.ifs[acl_side].sw_if_index, 1,
+                [deny_acl_index,
                     reflect_acl_index])
             self.testcase.vapi.acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, [])
+                self.ifs[1-acl_side].sw_if_index, 0, [])
 
     def wildcard_rule(self, is_permit):
         any_addr = ["0.0.0.0", "::"]
         rule_family = self.address_family
         is_ip6 = 1 if rule_family == AF_INET6 else 0
         new_rule = {
-              'is_permit': is_permit,
-              'is_ipv6': is_ip6,
-              'src_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
-              'src_ip_prefix_len': 0,
-              'dst_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
-              'dst_ip_prefix_len': 0,
-              'srcport_or_icmptype_first': 0,
-              'srcport_or_icmptype_last': 65535,
-              'dstport_or_icmpcode_first': 0,
-              'dstport_or_icmpcode_last': 65535,
-              'proto': 0,
-             }
+            'is_permit': is_permit,
+            'is_ipv6': is_ip6,
+            'src_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
+            'src_ip_prefix_len': 0,
+            'dst_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
+            'dst_ip_prefix_len': 0,
+            'srcport_or_icmptype_first': 0,
+            'srcport_or_icmptype_last': 65535,
+            'dstport_or_icmpcode_first': 0,
+            'dstport_or_icmpcode_last': 65535,
+            'proto': 0,
+        }
         return new_rule
 
 

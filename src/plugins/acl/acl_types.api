@@ -15,14 +15,20 @@
  * limitations under the License.
  */
 
- 
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+
+enum acl_action : u8
+{
+  ACL_ACTION_API_DENY = 0,
+  ACL_ACTION_API_PERMIT = 1,
+  ACL_ACTION_API_PERMIT_REFLECT = 2,
+};
+
 /** \brief Access List Rule entry
     @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
-    @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
-    @param src_ip_addr - Source prefix value
-    @param src_ip_prefix_len - Source prefix length
-    @param dst_ip_addr - Destination prefix value
-    @param dst_ip_prefix_len - Destination prefix length
+    @param src_prefix - Source prefix
+    @param dst_prefix - Destination prefix
     @param proto - L4 protocol (http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml)
     @param srcport_or_icmptype_first - beginning of source port or ICMP4/6 type range
     @param srcport_or_icmptype_last - end of source port or ICMP4/6 type range
@@ -34,17 +40,14 @@
 
 typedef acl_rule
 {
-  u8 is_permit;
-  u8 is_ipv6;
-  u8 src_ip_addr[16];
-  u8 src_ip_prefix_len;
-  u8 dst_ip_addr[16];
-  u8 dst_ip_prefix_len;
+  vl_api_acl_action_t is_permit;
+  vl_api_prefix_t src_prefix;
+  vl_api_prefix_t dst_prefix;
 /*
  * L4 protocol. IANA number. 1 = ICMP, 58 = ICMPv6, 6 = TCP, 17 = UDP.
  * 0 => ignore L4 and ignore the ports/tcpflags when matching.
  */
-  u8 proto;
+  vl_api_ip_proto_t proto;
 /*
  * If the L4 protocol is TCP or UDP, the below
  * hold ranges of ports, else if the L4 is ICMP/ICMPv6
@@ -70,30 +73,24 @@ typedef acl_rule
 
 /** \brief MACIP Access List Rule entry
     @param is_permit - deny (0), permit (1) action on this rule.
-    @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
     @param src_mac - match masked source MAC address against this value
     @param src_mac_mask - AND source MAC address with this value before matching
-    @param src_ip_addr - Source prefix value
-    @param src_ip_prefix_len - Source prefix length
+    @param src_prefix - Source prefix value
 */
 
 typedef macip_acl_rule
 {
-  u8 is_permit;
-  u8 is_ipv6;
+  vl_api_acl_action_t is_permit;
 /*
  * The source mac of the packet ANDed with src_mac_mask.
  * The source ip[46] address in the packet is matched
- * against src_ip_addr, with src_ip_prefix_len set to 0.
+ * against src_prefix set to 0.
  *
  * For better performance, minimize the number of
- * (src_mac_mask, src_ip_prefix_len) combinations
+ * (src_mac_mask, src_prefix.len) combinations
  * in a MACIP ACL.
  */
-  u8 src_mac[6];
-  u8 src_mac_mask[6];
-  u8 src_ip_addr[16];
-  u8 src_ip_prefix_len;
+  vl_api_mac_address_t src_mac;
+  vl_api_mac_address_t src_mac_mask;
+  vl_api_prefix_t src_prefix;
 };
-
-
