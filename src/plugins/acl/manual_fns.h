@@ -18,6 +18,7 @@
 
 #include <vnet/ip/format.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define vl_endianfun            /* define message structures */
 #include <acl/acl_types.api.h>
@@ -128,19 +129,18 @@ static inline void *
 vl_api_acl_rule_t_print (vl_api_acl_rule_t * a, void *handle)
 {
   u8 *s;
+  fib_prefix_t src, dst;
 
-  s = format (0, "  %s ", a->is_ipv6 ? "ipv6" : "ipv4");
+  ip_prefix_decode (&a->src_prefix, &src);
+  ip_prefix_decode (&a->dst_prefix, &dst);
+
+  s = format (0, "  %s ", a->src_prefix.address.af ? "ipv6" : "ipv4");
   s = format_acl_action (s, a->is_permit);
   s = format (s, " \\\n");
 
-  if (a->is_ipv6)
-    s = format (s, "    src %U/%d dst %U/%d \\\n",
-		format_ip6_address, a->src_ip_addr, a->src_ip_prefix_len,
-		format_ip6_address, a->dst_ip_addr, a->dst_ip_prefix_len);
-  else
-    s = format (s, "    src %U/%d dst %U/%d \\\n",
-		format_ip4_address, a->src_ip_addr, a->src_ip_prefix_len,
-		format_ip4_address, a->dst_ip_addr, a->dst_ip_prefix_len);
+  s = format (s, "    src %U dst %U \\\n",
+              format_fib_prefix, &src,
+              format_fib_prefix, &dst);
   s = format (s, "    proto %d \\\n", a->proto);
   s = format (s, "    sport %d-%d dport %d-%d \\\n",
 	      clib_net_to_host_u16 (a->srcport_or_icmptype_first),
@@ -158,20 +158,19 @@ static inline void *
 vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
 {
   u8 *s;
+  fib_prefix_t src;
 
-  s = format (0, "  %s %s \\\n", a->is_ipv6 ? "ipv6" : "ipv4",
+  ip_prefix_decode (&a->src_prefix, &src);
+
+  s = format (0, "  %s %s \\\n", a->src_prefix.address.af ? "ipv6" : "ipv4",
               a->is_permit ? "permit" : "deny");
 
   s = format (s, "    src mac %U mask %U \\\n",
 	      format_ethernet_address, a->src_mac,
 	      format_ethernet_address, a->src_mac_mask);
 
-  if (a->is_ipv6)
-    s = format (s, "    src ip %U/%d, \\",
-		format_ip6_address, a->src_ip_addr, a->src_ip_prefix_len);
-  else
-    s = format (s, "    src ip %U/%d, \\",
-		format_ip4_address, a->src_ip_addr, a->src_ip_prefix_len);
+  s = format (s, "    src ip %U, \\",
+		format_fib_prefix, &src);
 
   PRINT_S;
   return handle;
