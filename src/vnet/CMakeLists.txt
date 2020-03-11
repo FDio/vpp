@@ -982,12 +982,15 @@ list(APPEND VNET_API_FILES ipfix-export/ipfix_export.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   gso/cli.c
+  gso/gro.c
   gso/gso.c
   gso/gso_api.c
   gso/node.c
+  gso/gro_node.c
 )
 
 list(APPEND VNET_HEADERS
+  gso/gro.h
   gso/gso.h
 )
 
