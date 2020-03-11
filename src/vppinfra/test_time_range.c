@@ -30,7 +30,8 @@ test_time_range_main (unformat_input_t * input)
   f64 timezone_offset;
 
   /* Init time base */
-  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA);
+  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA,
+		      0 /* allocate a clib_time_t */ );
 
   /* Set up summer time cache */
   now = clib_timebase_now (tb);
@@ -142,6 +143,7 @@ test_time_range_main (unformat_input_t * input)
     }
 
   unformat_free (input2);
+  clib_mem_free (tb->clib_time);
 
   return 0;
 }

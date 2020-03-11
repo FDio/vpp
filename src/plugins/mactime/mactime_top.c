@@ -480,7 +480,8 @@ main (int argc, char **argv)
   clib_time_init (&mm->clib_time);
   mm->timezone_offset = -5.0;
   clib_timebase_init (&mm->timebase, mm->timezone_offset,
-		      CLIB_TIMEBASE_DAYLIGHT_USA);
+		      CLIB_TIMEBASE_DAYLIGHT_USA,
+		      0 /* allocate a clib_time_t */ );
 
   vec_add1 (mm->pattern1, (u8 *) "^/mactime/allow");
   vec_add1 (mm->pattern2, (u8 *) "^/mactime/drop");
