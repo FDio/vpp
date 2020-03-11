@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gso.h>
+#include <vnet/gso/gro.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
@@ -331,7 +332,11 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left && used < sz)
     {
-      u16 n_added = 0;
+      u16 n_added = 0, n_coalesce = 1;
+
+      if (do_gso)
+	n_coalesce = vnet_gro_inline (vm, buffers, n_left);
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
 			    do_gso, csum_offload);
@@ -340,8 +345,8 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       avail += n_added;
       next = (next + n_added) & mask;
       used += n_added;
-      buffers++;
-      n_left--;
+      buffers += n_coalesce;
+      n_left -= n_coalesce;
     }
 
   if (n_left != frame->n_vectors)

@@ -116,10 +116,7 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0, int is_ip6)
       udp->checksum = 0;
     }
 
-  if (b0->flags & (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6))
-    {
-      gho.l4_hdr_sz = l4_hdr_sz;
-    }
+  gho.l4_hdr_sz = l4_hdr_sz;
 
   return gho;
 }
