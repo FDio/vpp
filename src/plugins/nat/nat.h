@@ -359,7 +359,9 @@ typedef struct
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
-  uword * busy_##n##_port_bitmap;
+  uword * busy_##n##_port_bitmap; \
+  u16 next_##n##_port_try; \
+  u8 under_heavy_##n##_load;
   foreach_snat_protocol
 #undef _
 /* *INDENT-ON* */
