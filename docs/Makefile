@@ -9,7 +9,7 @@ endif
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 DOC_DEB_DEPENDS = enchant libenchant-dev
-DOC_RPM_DEPENDS = enchant libenchant-dev
+DOC_RPM_DEPENDS = enchant enchant-devel
 
 
 # You can set these variables from the command line.
