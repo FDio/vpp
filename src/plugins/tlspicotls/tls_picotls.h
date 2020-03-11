@@ -13,7 +13,7 @@
 #define TLS_RX_LEFT_LEN(x) ((x)->rx_len - (x)->rx_offset)
 
 #define TLS_WRITE_OFFSET(x) ((x)->write_buffer.base + (x)->write_buffer_offset)
-#define TLS_WRITE_IS_LEFT(x) ((x)->write_buffer.off == (x)->write_buffer_offset)
+#define TLS_WRITE_IS_LEFT(x) ((x)->write_buffer.off != 0 && (x)->write_buffer.off != (x)->write_buffer_offset)
 
 
 typedef struct tls_ctx_picotls_
@@ -27,7 +27,6 @@ typedef struct tls_ctx_picotls_
   ptls_buffer_t write_buffer;
   uint8_t *write_content;
   int write_buffer_offset;
-  int is_write_buffer_finished;
 } picotls_ctx_t;
 
 typedef struct tls_listen_ctx_picotls_
