@@ -735,6 +735,116 @@ clib_bitmap_next_clear (uword * ai, uword i)
   return i;
 }
 
+/** Return the next set bit in a bitmap on interval [i, l),
+    i.e. including i and not including l.
+    @param ai - pointer to the bitmap
+    @param i - first bit position to test
+    @param l - first not tested bit
+    @returns first set bit position at or after i,
+    ~0 if no further set bits are found
+*/
+always_inline uword
+clib_bitmap_next_set_on_interval (uword * ai, uword i, uword l)
+{
+  ASSERT (i < l);
+
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  uword t;
+  uword l0 = l / BITS (ai[0]);
+  uword l1 = l % BITS (ai[0]);
+
+  ASSERT (i0 < vec_len (ai));
+  ASSERT (l0 < vec_len (ai));
+
+  if (i0 < vec_len (ai))
+    {
+      t = (ai[i0] >> i1) << i1;
+      if (t)
+	return log2_first_set (t) + i0 * BITS (ai[0]);
+
+      if (l0 < vec_len (ai))
+        {
+	  for (i0++; i0 < l0; i0++)
+	    {
+	      t = ai[i0];
+	      if (t)
+		return log2_first_set (t) + i0 * BITS (ai[0]);
+	    }
+
+	  t = (ai[l0] >> l1) << l1;
+	  if (t)
+	    return log2_first_set (t) + l0 * BITS (ai[0]);
+        }
+      else
+        {
+	  for (i0++; i0 < vec_len (ai); i0++)
+	    {
+	      t = ai[i0];
+	      if (t)
+		return log2_first_set (t) + i0 * BITS (ai[0]);
+	    }
+	}
+    }
+
+  return ~0;
+}
+
+/** Return the next clear bit in a bitmap on interval [i, l),
+    i.e. including i and not including l.
+    @param ai - pointer to the bitmap
+    @param i - first bit position to test
+    @param l - first not tested bit
+    @returns first clear bit position at or after i,
+    ~0 if no further clear bits are found
+*/
+always_inline uword
+clib_bitmap_next_clear_on_interval (uword * ai, uword i, uword l)
+{
+  ASSERT (i < l);
+
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  uword t;
+  uword l0 = l / BITS (ai[0]);
+  uword l1 = l % BITS (ai[0]);
+
+  ASSERT (i0 < vec_len (ai));
+  ASSERT (l0 < vec_len (ai));
+
+  if (i0 < vec_len (ai))
+    {
+      t = (~ai[i0] >> i1) << i1;
+      if (t)
+	return log2_first_set (t) + i0 * BITS (ai[0]);
+
+      if (l0 < vec_len (ai))
+        {
+	  for (i0++; i0 < l0; i0++)
+	    {
+	      t = ~ai[i0];
+	      if (t)
+		return log2_first_set (t) + i0 * BITS (ai[0]);
+	    }
+
+	  t = (~ai[l0] >> l1) << l1;
+	  if (t)
+	    return log2_first_set (t) + l0 * BITS (ai[0]);
+        }
+      else
+        {
+	  for (i0++; i0 < vec_len (ai); i0++)
+	    {
+	      t = ~ai[i0];
+	      if (t)
+		return log2_first_set (t) + i0 * BITS (ai[0]);
+	    }
+	}
+    }
+
+  return ~0;
+}
+
 /** unformat an any sized hexadecimal bitmask into a bitmap
 
     uword * bitmap;
