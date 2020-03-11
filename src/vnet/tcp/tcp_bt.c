@@ -275,6 +275,8 @@ tcp_bt_alloc_tx_sample (tcp_connection_t * tc, u32 min_seq, u32 max_seq)
   bts->tx_time = tcp_time_now_us (tc->c_thread_index);
   bts->first_tx_time = tc->first_tx_time;
   bts->flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
+  bts->tx_in_flight = tcp_flight_size (tc);
+  bts->tx_lost = tc->lost;
   return bts;
 }
 
@@ -475,6 +477,8 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
   rs->interval_time = bts->tx_time - bts->first_tx_time;
   rs->rtt_time = tc->delivered_time - bts->tx_time;
   rs->flags = bts->flags;
+  rs->tx_in_flight = bts->tx_in_flight;
+  rs->tx_lost = bts->tx_lost;
   tc->first_tx_time = bts->tx_time;
 }
 
@@ -586,6 +590,8 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (PREDICT_FALSE (tc->flags & TCP_CONN_FINSNT))
     return;
 
+  tc->lost += tc->sack_sb.last_lost_bytes;
+
   delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
   if (!delivered || tc->bt->head == TCP_BTS_INVALID_INDEX)
     return;
@@ -607,7 +613,8 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 				rs->interval_time);
   rs->delivered = tc->delivered - rs->prior_delivered;
   rs->acked_and_sacked = delivered;
-  rs->lost = tc->sack_sb.last_lost_bytes;
+  rs->last_lost = tc->sack_sb.last_lost_bytes;
+  rs->lost = tc->lost - rs->tx_lost;
 }
 
 void
