@@ -24,6 +24,7 @@
 #include <vnet/udp/udp.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 
@@ -217,11 +218,10 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (is_tun)
 	    {
-	      u32 tmp;
 	      /* we are on a ipsec tunnel's feature arc */
-	      sa_index0 = *(u32 *) vnet_feature_next_with_data (&tmp, b0,
-								sizeof
-								(sa_index0));
+	      vnet_buffer (b0)->ipsec.sad_index =
+		sa_index0 = ipsec_tun_protect_get_sa_out
+		(vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	    }
 	  else
 	    sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
