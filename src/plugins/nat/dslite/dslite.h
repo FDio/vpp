@@ -15,12 +15,35 @@
 #ifndef __included_dslite_h__
 #define __included_dslite_h__
 
+#include <vppinfra/dlist.h>
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_24_8.h>
+
+#include <nat/lib/lib.h>
 #include <nat/lib/alloc.h>
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
+#include <nat/lib/inlines.h>
+
+typedef struct
+{
+  u16 identifier;
+  u16 sequence;
+} echo_header_t;
+
+/* session key (4-tuple) */
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u16 port;
+      u16 protocol:3, fib_index:13;
+    };
+    u64 as_u64;
+  };
+} nat_session_key_t;
 
 typedef struct
 {
@@ -41,7 +64,7 @@ typedef struct
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
-  snat_session_key_t out2in;
+  nat_session_key_t out2in;
   dslite_session_key_t in2out;
   u32 per_b4_index;
   u32 per_b4_list_head_index;

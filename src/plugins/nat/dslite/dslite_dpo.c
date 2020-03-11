@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <vnet/ip/ip.h>
 #include <nat/dslite/dslite_dpo.h>
 

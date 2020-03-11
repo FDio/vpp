@@ -22,31 +22,6 @@
 
 #include <vnet/ip/ip.h>
 
-#define foreach_nat_error \
-  _(VALUE_EXIST, -1, "Value already exists") \
-  _(NO_SUCH_ENTRY, -2, "No such entry") \
-  _(UNKNOWN_PROTOCOL, -3, "Unknown protocol") \
-  _(OUT_OF_TRANSLATIONS, -4, "Out of translations")
-
-#define foreach_nat_protocol \
-  _(UDP, 0, udp, "udp")       \
-  _(TCP, 1, tcp, "tcp")       \
-  _(ICMP, 2, icmp, "icmp")
-
-typedef enum
-{
-#define _(N, i, s) NAT_ERROR_##N = i,
-  foreach_nat_error
-#undef _
-} nat_error_t;
-
-typedef enum
-{
-#define _(N, i, n, s) NAT_PROTOCOL_##N = i,
-  foreach_nat_protocol
-#undef _
-} nat_protocol_t;
-
 typedef struct nat_ip4_pool_addr_s nat_ip4_pool_addr_t;
 typedef struct nat_ip4_addr_port_s nat_ip4_addr_port_t;
 typedef struct nat_ip4_pool_s nat_ip4_pool_t;

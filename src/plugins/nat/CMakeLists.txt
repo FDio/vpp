@@ -80,7 +80,6 @@ add_vpp_plugin(nat
 
 add_vpp_plugin(dslite
   SOURCES
-  nat_format.c
   nat_syslog.c
   dslite/dslite_api.c
   dslite/dslite_dpo.c

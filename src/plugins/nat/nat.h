@@ -1438,7 +1438,6 @@ typedef struct
 } tcp_udp_header_t;
 
 #endif /* __included_nat_h__ */
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
