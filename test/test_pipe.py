@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from socket import AF_INET, AF_INET6, inet_pton
 import unittest
+from ipaddress import IPv4Network
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -9,6 +10,7 @@ from scapy.layers.inet import IP, UDP
 from framework import VppTestCase, VppTestRunner
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_acl import AclRule, VppAcl, VppAclInterface
 
 NUM_PKTS = 67
 
@@ -122,39 +124,30 @@ class TestPipe(VppTestCase):
         #
         # Attach ACL to ensure features are run on the pipe
         #
-        rule_1 = ({'is_permit': 0,
-                   'is_ipv6': 0,
-                   'proto': 17,
-                   'srcport_or_icmptype_first': 1234,
-                   'srcport_or_icmptype_last': 1234,
-                   'src_ip_prefix_len': 32,
-                   'src_ip_addr': inet_pton(AF_INET, "1.1.1.1"),
-                   'dstport_or_icmpcode_first': 1234,
-                   'dstport_or_icmpcode_last': 1234,
-                   'dst_ip_prefix_len': 32,
-                   'dst_ip_addr': inet_pton(AF_INET, "1.1.1.2")})
-        acl = self.vapi.acl_add_replace(acl_index=4294967295,
-                                        r=[rule_1])
+        rule_1 = AclRule(is_permit=0, proto=17,
+                         src_prefix=IPv4Network("1.1.1.1/32"),
+                         dst_prefix=IPv4Network("1.1.1.2/32"), ports=1234)
+        acl = VppAcl(self, rules=[rule_1])
+        acl.add_vpp_config()
 
         # Apply the ACL on the pipe on output
-        self.vapi.acl_interface_set_acl_list(pipes[0].east,
-                                             0,
-                                             [acl.acl_index])
+        acl_if_e = VppAclInterface(self, sw_if_index=pipes[0].east, n_input=0,
+                                   acls=[acl])
+        acl_if_e.add_vpp_config()
+
         self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS)
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
 
         # remove from output and apply on input
-        self.vapi.acl_interface_set_acl_list(pipes[0].east,
-                                             0,
-                                             [])
-        self.vapi.acl_interface_set_acl_list(pipes[0].west,
-                                             1,
-                                             [acl.acl_index])
+        acl_if_e.remove_vpp_config()
+        acl_if_w = VppAclInterface(self, sw_if_index=pipes[0].west, n_input=1,
+                                   acls=[acl])
+        acl_if_w.add_vpp_config()
+
         self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS)
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
-        self.vapi.acl_interface_set_acl_list(pipes[0].west,
-                                             0,
-                                             [])
+
+        acl_if_w.remove_vpp_config()
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
 
@@ -227,24 +220,21 @@ class TestPipe(VppTestCase):
         #
         # Use ACLs to test features run on the Pipes
         #
-        self.vapi.acl_interface_set_acl_list(pipes[1].east,
-                                             0,
-                                             [acl.acl_index])
+        acl_if_e1 = VppAclInterface(self, sw_if_index=pipes[1].east, n_input=0,
+                                    acls=[acl])
+        acl_if_e1.add_vpp_config()
         self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
         self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
         # remove from output and apply on input
-        self.vapi.acl_interface_set_acl_list(pipes[1].east,
-                                             0,
-                                             [])
-        self.vapi.acl_interface_set_acl_list(pipes[1].west,
-                                             1,
-                                             [acl.acl_index])
+        acl_if_e1.remove_vpp_config()
+        acl_if_w1 = VppAclInterface(self, sw_if_index=pipes[1].west, n_input=1,
+                                    acls=[acl])
+        acl_if_w1.add_vpp_config()
         self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
         self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
-        self.vapi.acl_interface_set_acl_list(pipes[1].west,
-                                             0,
-                                             [])
+        acl_if_w1.remove_vpp_config()
+
         self.send_and_expect(self.pg2, p_east * NUM_PKTS, self.pg3)
         self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
