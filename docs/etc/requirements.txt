@@ -13,6 +13,7 @@ jsonschema==3.2.0
 MarkupSafe==1.1.1
 packaging==20.3
 pyaml==20.3.1
+pyenchant==3.0.1
 Pygments==2.6.1
 pyparsing==2.4.6
 pyrsistent==0.15.7
@@ -30,5 +31,6 @@ sphinxcontrib-htmlhelp==1.0.3
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
+sphinxcontrib-spelling==4.3.0
 urllib3==1.25.8
 zipp==3.1.0

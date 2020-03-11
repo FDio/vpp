@@ -32,7 +32,7 @@ Continuous System Integration and Testing (CSIT)
 ------------------------------------------------
 
 The Continuous System Integration and Testing (CSIT) project provides functional and performance
-testing for FD.io VPP. This testing is focused on functional and performance regresssions. The results
+testing for FD.io VPP. This testing is focused on functional and performance regressions. The results
 are posted to `CSIT Test Report <https://docs.fd.io/csit/master/report/>`_.
 
 For more about CSIT checkout the following links:
