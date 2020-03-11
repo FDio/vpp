@@ -35,6 +35,7 @@ make docs
 
 # Clone the site repo
 rm -fr site
+rm -fr sphinx_env
 git clone ssh://git@github.com/$SITE_USERNAME/site
 cd site
 git submodule update --init --recursive
@@ -68,9 +69,16 @@ git branch
 # Copy the docs
 cp -r $SRC_DIR $TARGET_DIR
 
+# Create the feature list
+pushd ..
+source ./sphinx_venv/bin/activate
+find . -name FEATURE.yaml | ./src/scripts/fts.py --markdown > site/content/vppProject/vppfeatures/features.md
+deactivate
+popd
+
 # Push the new docs
-#git add "*"
-#git commit -s -m "Publish docs from VPP $VERSION"
-#git push origin "$VERSION"
+git add "*"
+git commit -s -m "Publish docs from VPP $VERSION"
+git push origin "$VERSION"
 
 exit 0
