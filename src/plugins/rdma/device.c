@@ -399,15 +399,32 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_rxq_t *rxq;
   struct ibv_wq_init_attr wqia;
+  struct ibv_cq_init_attr_ex cqa = { };
   struct ibv_wq_attr wqa;
+  struct ibv_cq_ex *cqex;
 
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
   vec_validate_aligned (rxq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
-  if ((rxq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
-    return clib_error_return_unix (0, "Create CQ Failed");
+  cqa.cqe = n_desc;
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      struct mlx5dv_cq_init_attr dvcq = { };
+      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+      dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+
+      if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
+	return clib_error_return_unix (0, "Create mlx5dv rx CQ Failed");
+    }
+  else
+    {
+      if ((cqex = ibv_create_cq_ex (rd->ctx, &cqa)) == 0)
+	return clib_error_return_unix (0, "Create CQ Failed");
+    }
+
+  rxq->cq = ibv_cq_ex_to_cq (cqex);
 
   memset (&wqia, 0, sizeof (wqia));
   wqia.wq_type = IBV_WQT_RQ;
@@ -423,6 +440,44 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   wqa.wq_state = IBV_WQS_RDY;
   if (ibv_modify_wq (rxq->wq, &wqa) != 0)
     return clib_error_return_unix (0, "Modify WQ (RDY) Failed");
+
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      struct mlx5dv_obj obj = { };
+      struct mlx5dv_cq dv_cq;
+      struct mlx5dv_rwq dv_rwq;
+      u64 qw0;
+
+      obj.cq.in = rxq->cq;
+      obj.cq.out = &dv_cq;
+      obj.rwq.in = rxq->wq;
+      obj.rwq.out = &dv_rwq;
+
+      if ((mlx5dv_init_obj (&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_RWQ)))
+	return clib_error_return_unix (0, "mlx5dv: failed to init rx obj");
+
+      if (dv_cq.cqe_size != sizeof (mlx5dv_cqe_t))
+	return clib_error_return_unix (0, "mlx5dv: incompatible rx CQE size");
+
+      rxq->log2_cq_size = max_log2 (dv_cq.cqe_cnt);
+      rxq->cqes = (mlx5dv_cqe_t *) dv_cq.buf;
+      rxq->cq_db = (volatile u32 *) dv_cq.dbrec;
+      rxq->cqn = dv_cq.cqn;
+
+      rxq->wqes = (mlx5dv_rwq_t *) dv_rwq.buf;
+      rxq->wq_db = (volatile u32 *) dv_rwq.dbrec;
+      rxq->wq_stride = dv_rwq.stride;
+      rxq->wqe_cnt = dv_rwq.wqe_cnt;
+
+      qw0 = clib_host_to_net_u32 (vlib_buffer_get_default_data_size (vm));
+      qw0 |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
+
+      for (int i = 0; i < rxq->size; i++)
+	rxq->wqes[i].dsz_and_lkey = qw0;
+
+      for (int i = 0; i < (1 << rxq->log2_cq_size); i++)
+	rxq->cqes[i].opcode_cqefmt_se_owner = 0xff;
+    }
 
   return 0;
 }
@@ -534,6 +589,12 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
+  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
+			    bm->buffer_mem_size,
+			    IBV_ACCESS_LOCAL_WRITE)) == 0)
+    return clib_error_return_unix (0, "Register MR Failed");
+  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
+
   /*
    * /!\ WARNING /!\ creation order is important
    * We *must* create TX queues *before* RX queues, otherwise we will receive
@@ -548,12 +609,6 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
-
-  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
-			    bm->buffer_mem_size,
-			    IBV_ACCESS_LOCAL_WRITE)) == 0)
-    return clib_error_return_unix (0, "Register MR Failed");
-  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
   return 0;
 }
@@ -685,6 +740,26 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
 	break;
+    }
+
+  if (args->mode != RDMA_MODE_IBV)
+    {
+      struct mlx5dv_context mlx5dv_attrs = { };
+      mlx5dv_attrs.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+      mlx5dv_attrs.comp_mask |= MLX5DV_CONTEXT_MASK_CQE_COMPRESION;
+
+      if (mlx5dv_query_device (rd->ctx, &mlx5dv_attrs) == 0)
+	{
+	  if (args->mode == RDMA_MODE_DV)
+	    {
+	      args->error = clib_error_return (0, "Direct Verbs mode not "
+					       "supported on this interface");
+	      goto err2;
+	    }
+
+	  if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
+	    rd->flags |= RDMA_DEVICE_F_MLX5DV;
+	}
     }
 
   if ((args->error =
