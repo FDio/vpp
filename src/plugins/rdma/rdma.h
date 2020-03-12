@@ -23,12 +23,14 @@
 #include <vlib/pci/pci.h>
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
+#include <rdma/rdma_mlx5dv.h>
 
 #define foreach_rdma_device_flags \
   _(0, ERROR, "error") \
   _(1, ADMIN_UP, "admin-up") \
   _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous")
+  _(3, PROMISC, "promiscuous") \
+  _(4, MLX5DV, "mlx5dv")
 
 enum
 {
@@ -46,6 +48,18 @@ typedef struct
   u32 size;
   u32 head;
   u32 tail;
+  u32 cq_ci;
+  u16 log2_cq_size;
+  u16 n_mini_cqes;
+  u16 n_mini_cqes_left;
+  u16 last_cqe_flags;
+  mlx5dv_cqe_t *cqes;
+  mlx5dv_rwq_t *wqes;
+  volatile u32 *wq_db;
+  volatile u32 *cq_db;
+  u32 cqn;
+  u32 wqe_cnt;
+  u32 wq_stride;
 } rdma_rxq_t;
 
 typedef struct
@@ -96,6 +110,12 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  union
+  {
+    u16 cqe_flags[VLIB_FRAME_SIZE];
+    u16x8 cqe_flags8[VLIB_FRAME_SIZE / 8];
+    u16x16 cqe_flags16[VLIB_FRAME_SIZE / 16];
+  };
   vlib_buffer_t buffer_template;
 } rdma_per_thread_data_t;
 
@@ -140,12 +160,14 @@ extern vnet_device_class_t rdma_device_class;
 format_function_t format_rdma_device;
 format_function_t format_rdma_device_name;
 format_function_t format_rdma_input_trace;
+format_function_t format_rdma_rxq;
 unformat_function_t unformat_rdma_create_if_args;
 
 typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
+  u16 cqe_flags;
 } rdma_input_trace_t;
 
 #define foreach_rdma_tx_func_error	       \

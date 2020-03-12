@@ -103,6 +103,12 @@ u16x8_byte_swap (u16x8 v)
   return (u16x8) vrev16q_u8 ((u8x16) v);
 }
 
+static_always_inline u32x4
+u32x4_byte_swap (u32x4 v)
+{
+  return (u32x4) vrev64q_u32 ((u8x16) v);
+}
+
 static_always_inline u8x16
 u8x16_shuffle (u8x16 v, u8x16 m)
 {
