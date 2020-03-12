@@ -533,20 +533,6 @@ static inline
       return callback_vector_arg;
     }
 
-  /*
-   * Refuse to do anything if we're about to process way too many slots.
-   * Should never come anywhere close to happening, with the possible exception
-   * of cases involving a large forward jump in the timebase.
-   */
-  if (nticks > (1 << (TW_RING_SHIFT + 1)))
-    {
-      if (nticks / tw->ticks_per_second > 100e-3)
-	clib_warning ("Excessive nticks %u at %.6f last run %.6f",
-		      nticks, now, tw->last_run_time);
-      tw->last_run_time = now;
-      return callback_vector_arg;
-    }
-
   if (callback_vector_arg == 0)
     {
       _vec_len (tw->expired_timer_handles) = 0;
