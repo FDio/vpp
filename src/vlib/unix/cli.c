@@ -2557,7 +2557,8 @@ more:
 		   format_timeval, 0 /* current bat-time */ ,
 		   0 /* current bat-format */ ,
 		   cli_file_index, cf->current_command);
-      if (cf->current_command[vec_len (cf->current_command) - 1] != '\n')
+      if ((vec_len (cf->current_command) > 0) &&
+	  (cf->current_command[vec_len (cf->current_command) - 1] != '\n'))
 	lv = format (lv, "\n");
       int rv __attribute__ ((unused)) = write (um->log_fd, lv, vec_len (lv));
     }
