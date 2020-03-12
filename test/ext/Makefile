@@ -27,7 +27,7 @@ $(VAPI_BINDIR)/fake.api.vapi.h: fake.api.json $(WS_ROOT)/src/vpp-api/vapi/vapi_c
 $(VAPI_BINDIR)/fake.api.vapi.hpp: fake.api.json $(WS_ROOT)/src/vpp-api/vapi/vapi_cpp_gen.py | $(VAPI_BINDIR)
 	$(WS_ROOT)/src/vpp-api/vapi/vapi_cpp_gen.py --prefix $(VAPI_BINDIR) $<
 
-$(VAPI_CBIN): $(VAPI_BINDIR) $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
+$(VAPI_CBIN): $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h | $(VAPI_BINDIR)
 	$(CC) -o $@ $(CFLAGS) $(CSRC) $(VAPI_LIBS)
 
 $(VAPI_CBIN).d: $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
@@ -39,7 +39,7 @@ VAPI_CPPBIN=
 else
 CPPSRC = $(TEST_EXT_DIR)/vapi_cpp_test.cpp
 
-$(VAPI_CPPBIN): $(VAPI_BINDIR) $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
+$(VAPI_CPPBIN): $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp | $(VAPI_BINDIR)
 	$(CXX) -o $@ $(CPPFLAGS) $(CPPSRC) $(VAPI_LIBS)
 
 $(VAPI_CPPBIN).d: $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
