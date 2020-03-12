@@ -2054,6 +2054,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 	  || tc->state != TCP_STATE_ESTABLISHED)
 	{
 	  tcp_send_ack (tc);
+	  tc->dupacks_out += 1;
 	  return 1;
 	}
       return 0;
