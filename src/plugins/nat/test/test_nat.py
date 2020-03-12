@@ -1457,69 +1457,64 @@ class TestNAT44(MethodHolder):
         super(TestNAT44, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
 
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_port_out = 6303
-            cls.udp_port_in = 6304
-            cls.udp_port_out = 6304
-            cls.icmp_id_in = 6305
-            cls.icmp_id_out = 6305
-            cls.nat_addr = '10.0.0.3'
-            cls.ipfix_src_port = 4739
-            cls.ipfix_domain_id = 1
-            cls.tcp_external_port = 80
-            cls.udp_external_port = 69
+        cls.tcp_port_in = 6303
+        cls.tcp_port_out = 6303
+        cls.udp_port_in = 6304
+        cls.udp_port_out = 6304
+        cls.icmp_id_in = 6305
+        cls.icmp_id_out = 6305
+        cls.nat_addr = '10.0.0.3'
+        cls.ipfix_src_port = 4739
+        cls.ipfix_domain_id = 1
+        cls.tcp_external_port = 80
+        cls.udp_external_port = 69
 
-            cls.create_pg_interfaces(range(10))
-            cls.interfaces = list(cls.pg_interfaces[0:4])
+        cls.create_pg_interfaces(range(10))
+        cls.interfaces = list(cls.pg_interfaces[0:4])
 
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
 
-            cls.pg0.generate_remote_hosts(3)
-            cls.pg0.configure_ipv4_neighbors()
+        cls.pg0.generate_remote_hosts(3)
+        cls.pg0.configure_ipv4_neighbors()
 
-            cls.pg1.generate_remote_hosts(1)
-            cls.pg1.configure_ipv4_neighbors()
+        cls.pg1.generate_remote_hosts(1)
+        cls.pg1.configure_ipv4_neighbors()
 
-            cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 10})
-            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 20})
+        cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 10})
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 20})
 
-            cls.pg4._local_ip4 = "172.16.255.1"
-            cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
-            cls.pg4.set_table_ip4(10)
-            cls.pg5._local_ip4 = "172.17.255.3"
-            cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
-            cls.pg5.set_table_ip4(10)
-            cls.pg6._local_ip4 = "172.16.255.1"
-            cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
-            cls.pg6.set_table_ip4(20)
-            for i in cls.overlapping_interfaces:
-                i.config_ip4()
-                i.admin_up()
-                i.resolve_arp()
+        cls.pg4._local_ip4 = "172.16.255.1"
+        cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
+        cls.pg4.set_table_ip4(10)
+        cls.pg5._local_ip4 = "172.17.255.3"
+        cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
+        cls.pg5.set_table_ip4(10)
+        cls.pg6._local_ip4 = "172.16.255.1"
+        cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
+        cls.pg6.set_table_ip4(20)
+        for i in cls.overlapping_interfaces:
+            i.config_ip4()
+            i.admin_up()
+            i.resolve_arp()
 
-            cls.pg7.admin_up()
-            cls.pg8.admin_up()
+        cls.pg7.admin_up()
+        cls.pg8.admin_up()
 
-            cls.pg9.generate_remote_hosts(2)
-            cls.pg9.config_ip4()
-            cls.vapi.sw_interface_add_del_address(
-                sw_if_index=cls.pg9.sw_if_index,
-                prefix="10.0.0.1/24")
+        cls.pg9.generate_remote_hosts(2)
+        cls.pg9.config_ip4()
+        cls.vapi.sw_interface_add_del_address(
+            sw_if_index=cls.pg9.sw_if_index,
+            prefix="10.0.0.1/24")
 
-            cls.pg9.admin_up()
-            cls.pg9.resolve_arp()
-            cls.pg9._remote_hosts[1]._ip4 = cls.pg9._remote_hosts[0]._ip4
-            cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
-            cls.pg9.resolve_arp()
-
-        except Exception:
-            super(TestNAT44, cls).tearDownClass()
-            raise
+        cls.pg9.admin_up()
+        cls.pg9.resolve_arp()
+        cls.pg9._remote_hosts[1]._ip4 = cls.pg9._remote_hosts[0]._ip4
+        cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
+        cls.pg9.resolve_arp()
 
     @classmethod
     def tearDownClass(cls):
@@ -4244,27 +4239,26 @@ class TestNAT44EndpointDependent2(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44EndpointDependent2, cls).setUpClass()
-        try:
-            translation_buckets = 1
-            cls.max_translations = 10 * translation_buckets
+        translation_buckets = 1
+        cls.max_translations = 10 * translation_buckets
 
-            cls.create_pg_interfaces(range(2))
-            cls.interfaces = list(cls.pg_interfaces[0:2])
+        cls.create_pg_interfaces(range(2))
+        cls.interfaces = list(cls.pg_interfaces[0:2])
 
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
 
-            cls.pg0.generate_remote_hosts(1)
-            cls.pg0.configure_ipv4_neighbors()
+        cls.pg0.generate_remote_hosts(1)
+        cls.pg0.configure_ipv4_neighbors()
 
-            cls.pg1.generate_remote_hosts(1)
-            cls.pg1.configure_ipv4_neighbors()
+        cls.pg1.generate_remote_hosts(1)
+        cls.pg1.configure_ipv4_neighbors()
 
-        except Exception:
-            super(TestNAT44EndpointDependent2, cls).tearDownClass()
-            raise
+    @classmethod
+    def tearDownClass(cls):
+        super(TestNAT44EndpointDependent2, cls).tearDownClass()
 
     def create_icmp_stream(self, in_if, out_if, count):
         """
@@ -4291,7 +4285,7 @@ class TestNAT44EndpointDependent2(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         return self.pg1.get_capture(
-                len(pkts) if expected is None else expected)
+            len(pkts) if expected is None else expected)
 
     def test_session_cleanup(self):
         """ NAT44 session cleanup test """
@@ -4336,104 +4330,100 @@ class TestNAT44EndpointDependent(MethodHolder):
     def setUpClass(cls):
         super(TestNAT44EndpointDependent, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_port_out = 6303
-            cls.udp_port_in = 6304
-            cls.udp_port_out = 6304
-            cls.icmp_id_in = 6305
-            cls.icmp_id_out = 6305
-            cls.nat_addr = '10.0.0.3'
-            cls.ipfix_src_port = 4739
-            cls.ipfix_domain_id = 1
-            cls.tcp_external_port = 80
 
-            cls.create_pg_interfaces(range(9))
-            cls.interfaces = list(cls.pg_interfaces[0:3])
+        cls.tcp_port_in = 6303
+        cls.tcp_port_out = 6303
+        cls.udp_port_in = 6304
+        cls.udp_port_out = 6304
+        cls.icmp_id_in = 6305
+        cls.icmp_id_out = 6305
+        cls.nat_addr = '10.0.0.3'
+        cls.ipfix_src_port = 4739
+        cls.ipfix_domain_id = 1
+        cls.tcp_external_port = 80
 
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
+        cls.create_pg_interfaces(range(9))
+        cls.interfaces = list(cls.pg_interfaces[0:3])
 
-            cls.pg0.generate_remote_hosts(3)
-            cls.pg0.configure_ipv4_neighbors()
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
 
-            cls.pg3.admin_up()
+        cls.pg0.generate_remote_hosts(3)
+        cls.pg0.configure_ipv4_neighbors()
 
-            cls.pg4.generate_remote_hosts(2)
-            cls.pg4.config_ip4()
-            cls.vapi.sw_interface_add_del_address(
-                sw_if_index=cls.pg4.sw_if_index,
-                prefix="10.0.0.1/24")
+        cls.pg3.admin_up()
 
-            cls.pg4.admin_up()
-            cls.pg4.resolve_arp()
-            cls.pg4._remote_hosts[1]._ip4 = cls.pg4._remote_hosts[0]._ip4
-            cls.pg4.resolve_arp()
+        cls.pg4.generate_remote_hosts(2)
+        cls.pg4.config_ip4()
+        cls.vapi.sw_interface_add_del_address(
+            sw_if_index=cls.pg4.sw_if_index,
+            prefix="10.0.0.1/24")
 
-            zero_ip4 = socket.inet_pton(socket.AF_INET, "0.0.0.0")
-            cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 1})
+        cls.pg4.admin_up()
+        cls.pg4.resolve_arp()
+        cls.pg4._remote_hosts[1]._ip4 = cls.pg4._remote_hosts[0]._ip4
+        cls.pg4.resolve_arp()
 
-            cls.pg5._local_ip4 = "10.1.1.1"
-            cls.pg5._remote_hosts[0]._ip4 = "10.1.1.2"
-            cls.pg5.set_table_ip4(1)
-            cls.pg5.config_ip4()
-            cls.pg5.admin_up()
-            r1 = VppIpRoute(cls, cls.pg5.remote_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          cls.pg5.sw_if_index)],
-                            table_id=1,
-                            register=False)
-            r1.add_vpp_config()
+        zero_ip4 = socket.inet_pton(socket.AF_INET, "0.0.0.0")
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 1})
 
-            cls.pg6._local_ip4 = "10.1.2.1"
-            cls.pg6._remote_hosts[0]._ip4 = "10.1.2.2"
-            cls.pg6.set_table_ip4(1)
-            cls.pg6.config_ip4()
-            cls.pg6.admin_up()
+        cls.pg5._local_ip4 = "10.1.1.1"
+        cls.pg5._remote_hosts[0]._ip4 = "10.1.1.2"
+        cls.pg5.set_table_ip4(1)
+        cls.pg5.config_ip4()
+        cls.pg5.admin_up()
+        r1 = VppIpRoute(cls, cls.pg5.remote_ip4, 32,
+                        [VppRoutePath("0.0.0.0",
+                                      cls.pg5.sw_if_index)],
+                        table_id=1,
+                        register=False)
+        r1.add_vpp_config()
 
-            r2 = VppIpRoute(cls, cls.pg6.remote_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          cls.pg6.sw_if_index)],
-                            table_id=1,
-                            register=False)
-            r3 = VppIpRoute(cls, cls.pg6.remote_ip4, 16,
-                            [VppRoutePath("0.0.0.0",
-                                          0xffffffff,
-                                          nh_table_id=1)],
-                            table_id=0,
-                            register=False)
-            r4 = VppIpRoute(cls, "0.0.0.0", 0,
-                            [VppRoutePath("0.0.0.0", 0xffffffff,
-                                          nh_table_id=0)],
-                            table_id=1,
-                            register=False)
-            r5 = VppIpRoute(cls, "0.0.0.0", 0,
-                            [VppRoutePath(cls.pg1.local_ip4,
-                                          cls.pg1.sw_if_index)],
-                            register=False)
-            r2.add_vpp_config()
-            r3.add_vpp_config()
-            r4.add_vpp_config()
-            r5.add_vpp_config()
+        cls.pg6._local_ip4 = "10.1.2.1"
+        cls.pg6._remote_hosts[0]._ip4 = "10.1.2.2"
+        cls.pg6.set_table_ip4(1)
+        cls.pg6.config_ip4()
+        cls.pg6.admin_up()
 
-            cls.pg5.resolve_arp()
-            cls.pg6.resolve_arp()
+        r2 = VppIpRoute(cls, cls.pg6.remote_ip4, 32,
+                        [VppRoutePath("0.0.0.0",
+                                      cls.pg6.sw_if_index)],
+                        table_id=1,
+                        register=False)
+        r3 = VppIpRoute(cls, cls.pg6.remote_ip4, 16,
+                        [VppRoutePath("0.0.0.0",
+                                      0xffffffff,
+                                      nh_table_id=1)],
+                        table_id=0,
+                        register=False)
+        r4 = VppIpRoute(cls, "0.0.0.0", 0,
+                        [VppRoutePath("0.0.0.0", 0xffffffff,
+                                      nh_table_id=0)],
+                        table_id=1,
+                        register=False)
+        r5 = VppIpRoute(cls, "0.0.0.0", 0,
+                        [VppRoutePath(cls.pg1.local_ip4,
+                                      cls.pg1.sw_if_index)],
+                        register=False)
+        r2.add_vpp_config()
+        r3.add_vpp_config()
+        r4.add_vpp_config()
+        r5.add_vpp_config()
 
-            cls.pg7.admin_up()
-            cls.pg7.config_ip4()
-            cls.pg7.resolve_arp()
-            cls.pg7.generate_remote_hosts(3)
-            cls.pg7.configure_ipv4_neighbors()
+        cls.pg5.resolve_arp()
+        cls.pg6.resolve_arp()
 
-            cls.pg8.admin_up()
-            cls.pg8.config_ip4()
-            cls.pg8.resolve_arp()
+        cls.pg7.admin_up()
+        cls.pg7.config_ip4()
+        cls.pg7.resolve_arp()
+        cls.pg7.generate_remote_hosts(3)
+        cls.pg7.configure_ipv4_neighbors()
 
-        except Exception:
-            super(TestNAT44EndpointDependent, cls).tearDownClass()
-            raise
+        cls.pg8.admin_up()
+        cls.pg8.config_ip4()
+        cls.pg8.resolve_arp()
 
     @classmethod
     def tearDownClass(cls):
@@ -6946,35 +6936,30 @@ class TestNAT44Out2InDPO(MethodHolder):
         super(TestNAT44Out2InDPO, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
 
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_port_out = 6303
-            cls.udp_port_in = 6304
-            cls.udp_port_out = 6304
-            cls.icmp_id_in = 6305
-            cls.icmp_id_out = 6305
-            cls.nat_addr = '10.0.0.3'
-            cls.dst_ip4 = '192.168.70.1'
+        cls.tcp_port_in = 6303
+        cls.tcp_port_out = 6303
+        cls.udp_port_in = 6304
+        cls.udp_port_out = 6304
+        cls.icmp_id_in = 6305
+        cls.icmp_id_out = 6305
+        cls.nat_addr = '10.0.0.3'
+        cls.dst_ip4 = '192.168.70.1'
 
-            cls.create_pg_interfaces(range(2))
+        cls.create_pg_interfaces(range(2))
 
-            cls.pg0.admin_up()
-            cls.pg0.config_ip4()
-            cls.pg0.resolve_arp()
+        cls.pg0.admin_up()
+        cls.pg0.config_ip4()
+        cls.pg0.resolve_arp()
 
-            cls.pg1.admin_up()
-            cls.pg1.config_ip6()
-            cls.pg1.resolve_ndp()
+        cls.pg1.admin_up()
+        cls.pg1.config_ip6()
+        cls.pg1.resolve_ndp()
 
-            r1 = VppIpRoute(cls, "::", 0,
-                            [VppRoutePath(cls.pg1.remote_ip6,
-                                          cls.pg1.sw_if_index)],
-                            register=False)
-            r1.add_vpp_config()
-
-        except Exception:
-            super(TestNAT44Out2InDPO, cls).tearDownClass()
-            raise
+        r1 = VppIpRoute(cls, "::", 0,
+                        [VppRoutePath(cls.pg1.remote_ip6,
+                                      cls.pg1.sw_if_index)],
+                        register=False)
+        r1.add_vpp_config()
 
     @classmethod
     def tearDownClass(cls):
@@ -7080,28 +7065,23 @@ class TestDeterministicNAT(MethodHolder):
         super(TestDeterministicNAT, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
 
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_external_port = 6303
-            cls.udp_port_in = 6304
-            cls.udp_external_port = 6304
-            cls.icmp_id_in = 6305
-            cls.nat_addr = '10.0.0.3'
+        cls.tcp_port_in = 6303
+        cls.tcp_external_port = 6303
+        cls.udp_port_in = 6304
+        cls.udp_external_port = 6304
+        cls.icmp_id_in = 6305
+        cls.nat_addr = '10.0.0.3'
 
-            cls.create_pg_interfaces(range(3))
-            cls.interfaces = list(cls.pg_interfaces)
+        cls.create_pg_interfaces(range(3))
+        cls.interfaces = list(cls.pg_interfaces)
 
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
 
-            cls.pg0.generate_remote_hosts(2)
-            cls.pg0.configure_ipv4_neighbors()
-
-        except Exception:
-            super(TestDeterministicNAT, cls).tearDownClass()
-            raise
+        cls.pg0.generate_remote_hosts(2)
+        cls.pg0.configure_ipv4_neighbors()
 
     @classmethod
     def tearDownClass(cls):
@@ -7704,56 +7684,51 @@ class TestNAT64(MethodHolder):
     def setUpClass(cls):
         super(TestNAT64, cls).setUpClass()
 
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_port_out = 6303
-            cls.udp_port_in = 6304
-            cls.udp_port_out = 6304
-            cls.icmp_id_in = 6305
-            cls.icmp_id_out = 6305
-            cls.tcp_external_port = 80
-            cls.nat_addr = '10.0.0.3'
-            cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
-            cls.vrf1_id = 10
-            cls.vrf1_nat_addr = '10.0.10.3'
-            cls.ipfix_src_port = 4739
-            cls.ipfix_domain_id = 1
+        cls.tcp_port_in = 6303
+        cls.tcp_port_out = 6303
+        cls.udp_port_in = 6304
+        cls.udp_port_out = 6304
+        cls.icmp_id_in = 6305
+        cls.icmp_id_out = 6305
+        cls.tcp_external_port = 80
+        cls.nat_addr = '10.0.0.3'
+        cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
+        cls.vrf1_id = 10
+        cls.vrf1_nat_addr = '10.0.10.3'
+        cls.ipfix_src_port = 4739
+        cls.ipfix_domain_id = 1
 
-            cls.create_pg_interfaces(range(6))
-            cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
-            cls.ip6_interfaces.append(cls.pg_interfaces[2])
-            cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
+        cls.create_pg_interfaces(range(6))
+        cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
+        cls.ip6_interfaces.append(cls.pg_interfaces[2])
+        cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
 
-            cls.vapi.ip_table_add_del(is_add=1,
-                                      table={'table_id': cls.vrf1_id,
-                                             'is_ip6': 1})
+        cls.vapi.ip_table_add_del(is_add=1,
+                                  table={'table_id': cls.vrf1_id,
+                                         'is_ip6': 1})
 
-            cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
+        cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
 
-            cls.pg0.generate_remote_hosts(2)
+        cls.pg0.generate_remote_hosts(2)
 
-            for i in cls.ip6_interfaces:
-                i.admin_up()
-                i.config_ip6()
-                i.configure_ipv6_neighbors()
+        for i in cls.ip6_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.configure_ipv6_neighbors()
 
-            for i in cls.ip4_interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
+        for i in cls.ip4_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
 
-            cls.pg3.admin_up()
-            cls.pg3.config_ip4()
-            cls.pg3.resolve_arp()
-            cls.pg3.config_ip6()
-            cls.pg3.configure_ipv6_neighbors()
+        cls.pg3.admin_up()
+        cls.pg3.config_ip4()
+        cls.pg3.resolve_arp()
+        cls.pg3.config_ip6()
+        cls.pg3.configure_ipv6_neighbors()
 
-            cls.pg5.admin_up()
-            cls.pg5.config_ip6()
-
-        except Exception:
-            super(TestNAT64, cls).tearDownClass()
-            raise
+        cls.pg5.admin_up()
+        cls.pg5.config_ip6()
 
     @classmethod
     def tearDownClass(cls):
@@ -9120,20 +9095,15 @@ class TestNAT66(MethodHolder):
     def setUpClass(cls):
         super(TestNAT66, cls).setUpClass()
 
-        try:
-            cls.nat_addr = 'fd01:ff::2'
+        cls.nat_addr = 'fd01:ff::2'
 
-            cls.create_pg_interfaces(range(2))
-            cls.interfaces = list(cls.pg_interfaces)
+        cls.create_pg_interfaces(range(2))
+        cls.interfaces = list(cls.pg_interfaces)
 
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip6()
-                i.configure_ipv6_neighbors()
-
-        except Exception:
-            super(TestNAT66, cls).tearDownClass()
-            raise
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.configure_ipv6_neighbors()
 
     @classmethod
     def tearDownClass(cls):
