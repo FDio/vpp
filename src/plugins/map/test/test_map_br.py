@@ -11,9 +11,9 @@ from util import fragment_rfc791, fragment_rfc8200
 import scapy.compat
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
-from scapy.layers.inet import IP, UDP, ICMP, TCP
+from scapy.layers.inet import IP, UDP, ICMP, TCP, IPerror, UDPerror
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment
-from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply
+from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply, IPerror6
 
 
 class TestMAPBR(VppTestCase):
@@ -331,6 +331,47 @@ class TestMAPBR(VppTestCase):
         self.assertEqual(rx_pkt[ICMPv6EchoReply].code, 0)
         self.assertEqual(rx_pkt[ICMPv6EchoReply].id,
                          self.ipv6_udp_or_tcp_map_port)
+
+    #
+    # Translation of ICMP Time Exceeded v4 -> v6 direction
+    # Received packet should be translated into an IPv6 Time Exceeded.
+    #
+
+    def test_map_t_time_exceeded_ip4_to_ip6(self):
+        """ MAP-T time exceeded IPv4 -> IPv6 """
+
+        eth = Ether(src=self.pg0.remote_mac,
+                    dst=self.pg0.local_mac)
+        ip = IP(src=self.pg0.remote_ip4,
+                dst=self.ipv4_map_address)
+        icmp = ICMP(type="time-exceeded", code="ttl-zero-during-transit")
+        ip_inner = IP(dst=self.pg0.remote_ip4,
+                      src=self.ipv4_map_address, ttl=1)
+        udp_inner = UDP(sport=self.ipv4_udp_or_tcp_map_port,
+                        dport=self.ipv4_udp_or_tcp_internet_port)
+        payload = "H" * 10
+        tx_pkt = eth / ip / icmp / ip_inner / udp_inner / payload
+
+        self.pg_send(self.pg0, tx_pkt * 1)
+
+        rx_pkts = self.pg1.get_capture(1)
+        rx_pkt = rx_pkts[0]
+
+        self.v6_address_check(rx_pkt)
+        self.assertEqual(rx_pkt[IPv6].nh, IPv6(nh="ICMPv6").nh)
+        self.assertEqual(rx_pkt[ICMPv6TimeExceeded].type,
+                         ICMPv6TimeExceeded().type)
+        self.assertEqual(rx_pkt[ICMPv6TimeExceeded].code,
+                         ICMPv6TimeExceeded(
+                            code="hop limit exceeded in transit").code)
+        self.assertEqual(rx_pkt[ICMPv6TimeExceeded].hlim, tx_pkt[IP][1].ttl)
+        self.assertTrue(rx_pkt.haslayer(IPerror6))
+        self.assertTrue(rx_pkt.haslayer(UDPerror))
+        self.assertEqual(rx_pkt[IPv6].src, rx_pkt[IPerror6].dst)
+        self.assertEqual(rx_pkt[IPv6].dst, rx_pkt[IPerror6].src)
+        self.assertEqual(rx_pkt[UDPerror].sport, self.ipv6_udp_or_tcp_map_port)
+        self.assertEqual(rx_pkt[UDPerror].dport,
+                         self.ipv6_udp_or_tcp_internet_port)
 
     #
     # Translation of ICMP Echo Request v6 -> v4 direction

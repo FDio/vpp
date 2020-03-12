@@ -92,14 +92,18 @@ ip4_to_ip6_set_inner_icmp_cb (vlib_buffer_t * b, ip4_header_t * ip4,
 			      ip6_header_t * ip6, void *arg)
 {
   icmp_to_icmp6_ctx_t *ctx = arg;
+  ip4_address_t old_src, old_dst;
+
+  old_src.as_u32 = ip4->src_address.as_u32;
+  old_dst.as_u32 = ip4->dst_address.as_u32;
 
   //Note that the source address is within the domain
   //while the destination address is the one outside the domain
-  ip4_map_t_embedded_address (ctx->d, &ip6->dst_address, &ip4->dst_address);
+  ip4_map_t_embedded_address (ctx->d, &ip6->dst_address, &old_dst);
   ip6->src_address.as_u64[0] =
-    map_get_pfx_net (ctx->d, ip4->src_address.as_u32, ctx->recv_port);
+    map_get_pfx_net (ctx->d, old_src.as_u32, ctx->recv_port);
   ip6->src_address.as_u64[1] =
-    map_get_sfx_net (ctx->d, ip4->src_address.as_u32, ctx->recv_port);
+    map_get_sfx_net (ctx->d, old_src.as_u32, ctx->recv_port);
 
   return 0;
 }
@@ -150,7 +154,7 @@ ip4_map_t_icmp (vlib_main_t * vm,
 			       vnet_buffer (p0)->map_t.map_domain_index);
 
 	  ip40 = vlib_buffer_get_current (p0);
-	  ctx0.recv_port = ip4_get_port (ip40, 1);
+	  ctx0.recv_port = ip4_get_port (ip40, 0);
 	  ctx0.d = d0;
 	  if (ctx0.recv_port == 0)
 	    {
