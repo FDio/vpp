@@ -74,10 +74,46 @@ format_rdma_input_trace (u8 * s, va_list * args)
   rdma_input_trace_t *t = va_arg (*args, rdma_input_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+  char *l4_hdr_types[8] =
+    { 0, "tcp", "udp", "tcp-empty-ack", "tcp-with-acl" };
+  char *l3_hdr_types[4] = { 0, "ip6", "ip4" };
+  u8 l3_hdr_type = CQE_FLAG_L3_HDR_TYPE (t->cqe_flags);
+  u8 l4_hdr_type = CQE_FLAG_L4_HDR_TYPE (t->cqe_flags);
 
   s = format (s, "rdma: %v (%d) next-node %U",
 	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
 	      node->index, t->next_index);
+
+  s = format (s, " flags 0x%04x", t->cqe_flags);
+
+  if (t->cqe_flags & CQE_FLAG_L2_OK)
+    s = format (s, " l2-ok");
+
+  if (t->cqe_flags & CQE_FLAG_L3_OK)
+    s = format (s, " l3-ok");
+
+  if (t->cqe_flags & CQE_FLAG_L4_OK)
+    s = format (s, " l4-ok");
+
+  if (t->cqe_flags & CQE_FLAG_IP_FRAG)
+    s = format (s, " ip-frag");
+
+  if (l3_hdr_type)
+    s = format (s, " %s", l3_hdr_types[l3_hdr_type]);
+
+  if (l4_hdr_type)
+    s = format (s, " %s", l4_hdr_types[l4_hdr_type]);
+
+  if ((t->cqe_flags & CQE_FLAG_IP_EXT_OPTS))
+    {
+      if (l3_hdr_type == CQE_FLAG_L4_HDR_TYPE_IP6)
+	s = format (s, " ip4-ext-hdr");
+      if (l3_hdr_type == CQE_FLAG_L4_HDR_TYPE_IP4)
+	s = format (s, " ip4-opt");
+    }
+
+  if (t->cqe_flags & CQE_FLAG_IP_FRAG)
+    s = format (s, " ip-frag");
 
   return s;
 }
