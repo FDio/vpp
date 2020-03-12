@@ -16,6 +16,23 @@
       "revId": "e83b16be4aa11236688bbbdd0664becfc0ab73fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3a35b881_daac38ba",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-03-12T13:02:06Z",
+      "side": 1,
+      "message": "Will this work on a big endian platform? If the goal is to get the bytes of a MAC address loaded into a u64 in memory in the order that you would see them on a wire, it seems like this function will only work on little endian systems. ethernet_mac_address_u64() probably has the same issue. I may be misunderstanding though.\n\nMaybe this would be more portable?\n\n  as_u64 \u003d 0;\n  clib_memcpy (\u0026as_u64, \u0026mac-\u003ebytes, sizeof (mac));",
+      "revId": "e83b16be4aa11236688bbbdd0664becfc0ab73fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
