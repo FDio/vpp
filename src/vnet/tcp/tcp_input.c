@@ -1991,7 +1991,8 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	   * retransmissions since we may not have any data to send */
 	  if (seq_leq (vnet_buffer (b)->tcp.seq_end, tc->rcv_nxt))
 	    {
-	      tcp_program_ack (tc);
+	      tcp_program_dupack (tc);
+	      tc->errors.below_data_wnd++;
 	      error = TCP_ERROR_SEGMENT_OLD;
 	      goto done;
 	    }

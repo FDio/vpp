@@ -2124,6 +2124,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
   if (!vec_len (tc->snd_sacks))
     {
       tcp_send_ack (tc);
+      tc->dupacks_out += 1;
       tc->pending_dupacks = 0;
       return 1;
     }
