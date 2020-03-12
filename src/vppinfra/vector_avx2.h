@@ -132,6 +132,16 @@ _(i8x16, i64x4, epi8_epi64)
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u64x4
+u64x4_byte_swap (u64x4 v)
+{
+  u8x32 swap = {
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+  };
+  return (u64x4) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) swap);
+}
+
 static_always_inline u32x8
 u32x8_byte_swap (u32x8 v)
 {

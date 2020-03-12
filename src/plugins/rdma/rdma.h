@@ -24,11 +24,16 @@
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
 
+#undef always_inline
+#include <infiniband/mlx5dv.h>
+#define always_inline static_always_inline
+
 #define foreach_rdma_device_flags \
   _(0, ERROR, "error") \
   _(1, ADMIN_UP, "admin-up") \
   _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous")
+  _(3, PROMISC, "promiscuous") \
+  _(4, MLX5DV, "mlx5dv")
 
 enum
 {
@@ -36,6 +41,55 @@ enum
   foreach_rdma_device_flags
 #undef _
 };
+
+
+/* CQE flags - bits 16-31 of qword at offset 0x1c */
+#define CQE_FLAG_L4_OK			10
+#define CQE_FLAG_L3_OK			9
+#define CQE_FLAG_L2_OK			8
+#define CQE_FLAG_IP_FRAG		7
+#define CQE_FLAG_L4_HDR_TYPE(f)		(((f) >> 4) & 7)
+#define CQE_FLAG_L3_HDR_TYPE_SHIFT	(2)
+#define CQE_FLAG_L3_HDR_TYPE_MASK	(3 << CQE_FLAG_L3_HDR_TYPE_SHIFT)
+#define CQE_FLAG_L3_HDR_TYPE(f)		(((f) & CQE_FLAG_L3_HDR_TYPE_MASK)  >> CQE_FLAG_L3_HDR_TYPE_SHIFT)
+#define CQE_FLAG_L3_HDR_TYPE_IP4	1
+#define CQE_FLAG_L3_HDR_TYPE_IP6	2
+#define CQE_FLAG_IP_EXT_OPTS		1
+
+typedef struct
+{
+  struct
+  {
+    u8 pad1[28];
+    u16 flags;
+    u8 pad2[14];
+    union
+    {
+      u32 byte_cnt;
+      u32 mini_cqe_num;
+    };
+    u8 pad3[15];
+    u8 opcode_cqefmt_se_owner;
+  };
+} mlx5dv_cqe_t;
+
+STATIC_ASSERT_SIZEOF (mlx5dv_cqe_t, 64);
+
+typedef struct
+{
+  union
+  {
+    u32 checksum;
+    u32 rx_hash_result;
+  };
+  u32 byte_count;
+} mlx5dv_mini_cqe_t;
+
+typedef struct
+{
+  u64 dsz_and_lkey;
+  u64 addr;
+} mlx5dv_rwq_t;
 
 typedef struct
 {
@@ -46,6 +100,15 @@ typedef struct
   u32 size;
   u32 head;
   u32 tail;
+  u32 cq_ci;
+  u16 log2_cq_size;
+  u16 n_mini_cqes;
+  u16 n_mini_cqes_left;
+  u16 last_cqe_flags;
+  mlx5dv_cqe_t *cqes;
+  mlx5dv_rwq_t *wqes;
+  volatile u32 *wq_db;
+  volatile u32 *cq_db;
 } rdma_rxq_t;
 
 typedef struct
@@ -96,6 +159,12 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  union
+  {
+    u16 cqe_flags[VLIB_FRAME_SIZE];
+    u16x8 cqe_flags8[VLIB_FRAME_SIZE / 8];
+    u16x16 cqe_flags16[VLIB_FRAME_SIZE / 16];
+  };
   vlib_buffer_t buffer_template;
 } rdma_per_thread_data_t;
 
@@ -146,6 +215,7 @@ typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
+  u16 cqe_flags;
 } rdma_input_trace_t;
 
 #define foreach_rdma_tx_func_error	       \
