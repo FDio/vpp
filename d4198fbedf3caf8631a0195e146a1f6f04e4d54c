@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b502b1a_bee41f6e",
+        "filename": "src/vlib/node_init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-12T15:13:43Z",
+      "side": 1,
+      "message": "Should the variant names be validated? Similar to unformat_sched_policy (src/vlib/threads.c:1235)",
+      "range": {
+        "startLine": 77,
+        "startChar": 2,
+        "endLine": 77,
+        "endChar": 39
+      },
+      "revId": "d4198fbedf3caf8631a0195e146a1f6f04e4d54c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3bf29839_ee8a5264",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-12T15:13:43Z",
+      "side": 1,
+      "message": "Do you want to limit the tests to a single variant/run like this, or do you want to be able to provide a list of variants that the test runner launches for each test case?\n\nSomething like:\n\n@variants([\u0027avx2\u0027,\u0027avx512\u0027])\nclass MyTest(VppTestCase):\n    ...",
+      "range": {
+        "startLine": 385,
+        "startChar": 0,
+        "endLine": 388,
+        "endChar": 9
+      },
+      "revId": "d4198fbedf3caf8631a0195e146a1f6f04e4d54c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
