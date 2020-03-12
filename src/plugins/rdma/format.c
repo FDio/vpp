@@ -74,10 +74,128 @@ format_rdma_input_trace (u8 * s, va_list * args)
   rdma_input_trace_t *t = va_arg (*args, rdma_input_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+  char *l4_hdr_types[8] =
+    { 0, "tcp", "udp", "tcp-empty-ack", "tcp-with-acl" };
+  char *l3_hdr_types[4] = { 0, "ip6", "ip4" };
+  u8 l3_hdr_type = CQE_FLAG_L3_HDR_TYPE (t->cqe_flags);
+  u8 l4_hdr_type = CQE_FLAG_L4_HDR_TYPE (t->cqe_flags);
 
   s = format (s, "rdma: %v (%d) next-node %U",
 	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
 	      node->index, t->next_index);
+
+  if (t->cqe_flags & CQE_FLAG_L2_OK)
+    s = format (s, " l2-ok");
+
+  if (t->cqe_flags & CQE_FLAG_L3_OK)
+    s = format (s, " l3-ok");
+
+  if (t->cqe_flags & CQE_FLAG_L4_OK)
+    s = format (s, " l4-ok");
+
+  if (t->cqe_flags & CQE_FLAG_IP_FRAG)
+    s = format (s, " ip-frag");
+
+  if (l3_hdr_type)
+    s = format (s, " %s", l3_hdr_types[l3_hdr_type]);
+
+  if (l4_hdr_type)
+    s = format (s, " %s", l4_hdr_types[l4_hdr_type]);
+
+  if ((t->cqe_flags & CQE_FLAG_IP_EXT_OPTS))
+    {
+      if (l3_hdr_type == CQE_FLAG_L3_HDR_TYPE_IP6)
+	s = format (s, " ip4-ext-hdr");
+      if (l3_hdr_type == CQE_FLAG_L3_HDR_TYPE_IP4)
+	s = format (s, " ip4-opt");
+    }
+
+  return s;
+}
+
+static u8 *
+format_mlx5_bits (u8 * s, va_list * args)
+{
+  void *ptr = va_arg (*args, void *);
+  u32 offset = va_arg (*args, u32);
+  u32 sb = va_arg (*args, u32);
+  u32 eb = va_arg (*args, u32);
+
+  if (sb == 63 && eb == 0)
+    {
+      u64 x = mlx5_get_u64 (ptr, offset);
+      return format (s, "0x%lx", x);
+    }
+
+  u32 x = mlx5_get_bits (ptr, offset, sb, eb);
+  s = format (s, "%d", x);
+  if (x > 9)
+    s = format (s, " (0x%x)", x);
+  return s;
+}
+
+static u8 *
+format_mlx5_field (u8 * s, va_list * args)
+{
+  void *ptr = va_arg (*args, void *);
+  u32 offset = va_arg (*args, u32);
+  u32 sb = va_arg (*args, u32);
+  u32 eb = va_arg (*args, u32);
+  char *name = va_arg (*args, char *);
+
+  u8 *tmp = 0;
+
+  tmp = format (0, "0x%02x %s ", offset, name);
+  if (sb == eb)
+    tmp = format (tmp, "[%u]", sb);
+  else
+    tmp = format (tmp, "[%u:%u]", sb, eb);
+  s = format (s, "%-45v = %U", tmp, format_mlx5_bits, ptr, offset, sb, eb);
+  vec_free (tmp);
+
+  return s;
+}
+
+u8 *
+format_mlx5_cqe_rx (u8 * s, va_list * args)
+{
+  void *cqe = va_arg (*args, void *);
+  uword indent = format_get_indent (s);
+  int line = 0;
+
+#define _(a, b, c, d) \
+  if (mlx5_get_bits (cqe, a, b, c)) \
+    s = format (s, "%U%U\n", \
+		format_white_space, line++ ? indent : 0, \
+		format_mlx5_field, cqe, a, b, c, #d);
+  foreach_cqe_rx_field;
+#undef _
+  return s;
+}
+
+u8 *
+format_rdma_rxq (u8 * s, va_list * args)
+{
+  rdma_device_t *rd = va_arg (*args, rdma_device_t *);
+  u32 queue_index = va_arg (*args, u32);
+  rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, queue_index);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "size %u head %u tail %u", rxq->size, rxq->head, rxq->tail);
+
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      u32 next_cqe_index = rxq->cq_ci & (rxq->size - 1);
+      s = format (s, "\n%Uconsumer_index %u",
+		  format_white_space, indent + 2, rxq->cq_ci);
+      s = format (s, "\n%Unext-cqe(%u):", format_white_space, indent + 2,
+		  next_cqe_index);
+      s = format (s, "\n%U%U", format_white_space, indent + 4,
+		  format_mlx5_cqe_rx, rxq->cqes + next_cqe_index);
+      s = format (s, "\n%U%U", format_white_space, indent + 4,
+		  format_hexdump, rxq->cqes + next_cqe_index,
+		  sizeof (mlx5dv_cqe_t));
+    }
 
   return s;
 }
