@@ -309,10 +309,6 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_UDP;
   else if (unformat (input, "UDP"))
     *proto = TRANSPORT_PROTO_UDP;
-  else if (unformat (input, "sctp"))
-    *proto = TRANSPORT_PROTO_SCTP;
-  else if (unformat (input, "SCTP"))
-    *proto = TRANSPORT_PROTO_SCTP;
   else if (unformat (input, "tls"))
     *proto = TRANSPORT_PROTO_TLS;
   else if (unformat (input, "TLS"))
@@ -337,9 +333,6 @@ format_transport_proto (u8 * s, va_list * args)
       break;
     case TRANSPORT_PROTO_UDP:
       s = format (s, "UDP");
-      break;
-    case TRANSPORT_PROTO_SCTP:
-      s = format (s, "SCTP");
       break;
     case TRANSPORT_PROTO_NONE:
       s = format (s, "NONE");

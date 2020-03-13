@@ -869,6 +869,8 @@ static const transport_proto_vft_t tls_proto = {
   .get_transport_endpoint = tls_transport_endpoint_get,
   .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
   .transport_options = {
+    .name = "tls",
+    .short_name = "J",
     .tx_type = TRANSPORT_TX_INTERNAL,
     .service_type = TRANSPORT_SERVICE_APP,
   },
