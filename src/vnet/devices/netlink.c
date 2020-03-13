@@ -243,7 +243,7 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
   ifa.ifa_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_NEWADDR,
-			 NLM_F_REQUEST | NLM_F_REPLACE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
 			 &ifa, sizeof (struct ifaddrmsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
@@ -266,7 +266,7 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
   ifa.ifa_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_NEWADDR,
-			 NLM_F_REQUEST | NLM_F_REPLACE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
 			 &ifa, sizeof (struct ifaddrmsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
@@ -291,7 +291,7 @@ vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
   rtm.rtm_dst_len = dst_len;
 
   vnet_netlink_msg_init (&m, RTM_NEWROUTE,
-			 NLM_F_REQUEST | NLM_F_REPLACE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
 			 &rtm, sizeof (struct rtmsg));
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 4);
@@ -316,7 +316,7 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
   rtm.rtm_dst_len = dst_len;
 
   vnet_netlink_msg_init (&m, RTM_NEWROUTE,
-			 NLM_F_REQUEST | NLM_F_REPLACE,
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
 			 &rtm, sizeof (struct rtmsg));
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 16);
