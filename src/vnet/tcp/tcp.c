@@ -1281,14 +1281,7 @@ tcp_session_send_params (transport_connection_t * trans_conn,
   /* This still works if fast retransmit is on */
   sp->tx_offset = tc->snd_nxt - tc->snd_una;
 
-  sp->flags = 0;
-  if (!tc->snd_wnd)
-    {
-      if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
-	sp->flags = TRANSPORT_SND_F_DESCHED;
-      else
-	sp->flags = TRANSPORT_SND_F_POSTPONE;
-    }
+  sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
 
   return 0;
 }
@@ -1538,6 +1531,21 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				       tcp_cc_get_pacing_rate (tc),
 				       start_bucket,
 				       srtt * CLIB_US_TIME_FREQ);
+}
+
+void
+tcp_reschedule (tcp_connection_t * tc)
+{
+//  clib_warning ("%u: attempt to reschedule flags %U transport flags 0x%x",
+//                tc->c_c_index, format_tcp_connection_flags, tc, tc->connection.flags);
+  if (tcp_in_cong_recovery (tc) || tcp_snd_space_inline (tc))
+    {
+//      clib_warning ("%u: rescheduled", tc->c_c_index);
+      if (session_get (tc->c_s_index, tc->c_thread_index)->flags &
+	  SESSION_F_CUSTOM_TX)
+	os_panic ();
+      transport_connection_reschedule (&tc->connection);
+    }
 }
 
 static void

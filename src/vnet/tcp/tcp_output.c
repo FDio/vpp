@@ -1171,7 +1171,9 @@ tcp_program_retransmit (tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_RXT_PENDING))
     {
+//      clib_warning ("rxt program 0x%x", tc->flags);
       session_add_self_custom_tx_evt (&tc->connection, 0);
+
       tc->flags |= TCP_CONN_RXT_PENDING;
     }
 }
@@ -1695,9 +1697,11 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   /* Just sent new data, enable retransmit */
   tcp_retransmit_timer_update (tc);
 
+  return;
+
 update_scheduler:
 
-  if (transport_connection_is_descheduled (&tc->connection))
+  if (tcp_is_descheduled (tc))
     transport_connection_reschedule (&tc->connection);
 }
 

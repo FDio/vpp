@@ -725,6 +725,7 @@ void
 transport_connection_reschedule (transport_connection_t * tc)
 {
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+  transport_connection_tx_pacer_reset_bucket (tc, TRANSPORT_PACER_MIN_BURST);
   if (transport_max_tx_dequeue (tc))
     sesssion_reschedule_tx (tc);
   else
