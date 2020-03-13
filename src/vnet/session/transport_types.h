@@ -151,7 +151,6 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
 #define foreach_transport_proto				\
   _(TCP, "tcp", "T")					\
   _(UDP, "udp", "U")					\
-  _(SCTP, "sctp", "S")					\
   _(NONE, "ct", "C")					\
   _(TLS, "tls", "J")					\
   _(UDPC, "udpc", "U")					\
@@ -162,7 +161,6 @@ typedef enum _transport_proto
 #define _(sym, str, sstr) TRANSPORT_PROTO_ ## sym,
   foreach_transport_proto
 #undef _
-  TRANSPORT_N_PROTO
 } transport_proto_t;
 
 u8 *format_transport_proto (u8 * s, va_list * args);
@@ -172,6 +170,7 @@ u8 *format_transport_listen_connection (u8 * s, va_list * args);
 u8 *format_transport_half_open_connection (u8 * s, va_list * args);
 
 uword unformat_transport_proto (unformat_input_t * input, va_list * args);
+u8 *format_transport_protos (u8 * s, va_list * args);
 
 #define foreach_transport_endpoint_fields				\
   _(ip46_address_t, ip) /**< ip address in net order */			\

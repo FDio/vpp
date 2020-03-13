@@ -558,6 +558,8 @@ static const transport_proto_vft_t cut_thru_proto = {
   .format_listener = format_ct_listener,
   .format_connection = format_ct_session,
   .transport_options = {
+    .name = "ct",
+    .short_name = "C",
     .tx_type = TRANSPORT_TX_INTERNAL,
     .service_type = TRANSPORT_SERVICE_APP,
   },
