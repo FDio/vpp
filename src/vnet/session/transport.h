@@ -34,8 +34,8 @@ typedef struct _transport_options_t
 
 typedef enum transport_snd_flags_
 {
-  TRANSPORT_SND_F_DESCHED,
-  TRANSPORT_SND_F_POSTPONE,
+  TRANSPORT_SND_F_DESCHED = 1 << 0,
+  TRANSPORT_SND_F_POSTPONE = 1 << 1,
   TRANSPORT_SND_N_FLAGS
 } __clib_packed transport_snd_flags_t;
 
@@ -184,9 +184,7 @@ transport_connection_snd_params (transport_connection_t * tc,
 static inline u8
 transport_connection_is_descheduled (transport_connection_t * tc)
 {
-  if (tc->flags & TRANSPORT_CONNECTION_F_DESCHED)
-    return 1;
-  return 0;
+  return ((tc->flags & TRANSPORT_CONNECTION_F_DESCHED) ? 1 : 0);
 }
 
 static inline void
