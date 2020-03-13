@@ -361,6 +361,8 @@ static const transport_proto_vft_t udp_proto = {
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
   .transport_options = {
+    .name = "udp",
+    .short_name = "U",
     .tx_type = TRANSPORT_TX_DGRAM,
     .service_type = TRANSPORT_SERVICE_CL,
   },
@@ -415,6 +417,8 @@ static const transport_proto_vft_t udpc_proto = {
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
   .transport_options = {
+    .name = "udpc",
+    .short_name = "U",
     .tx_type = TRANSPORT_TX_DGRAM,
     .service_type = TRANSPORT_SERVICE_VC,
     .half_open_has_fifos = 1

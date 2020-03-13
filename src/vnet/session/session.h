@@ -91,7 +91,7 @@ typedef struct session_worker_
   vlib_main_t *vm;
 
   /** Per-proto vector of sessions to enqueue */
-  u32 *session_to_enqueue[TRANSPORT_N_PROTO];
+  u32 **session_to_enqueue;
 
   /** Context for session tx */
   session_tx_context_t ctx;
@@ -158,6 +158,8 @@ typedef struct session_main_
    * Trade memory for speed, for now */
   u32 *session_type_to_next;
 
+  transport_proto_t last_transport_proto_type;
+
   /*
    * Config parameters
    */
@@ -202,6 +204,9 @@ extern vlib_node_registration_t session_queue_pre_input_node;
 
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
+
+#define TRANSPORT_PROTO_INVALID (session_main.last_transport_proto_type + 1)
+#define TRANSPORT_N_PROTOS (session_main.last_transport_proto_type + 1)
 
 static inline session_evt_elt_t *
 session_evt_elt_alloc (session_worker_t * wrk)
@@ -459,9 +464,22 @@ void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,
 			   u32 thread_index, u8 notify);
+/**
+ * Initialize session layer for given transport proto and ip version
+ *
+ * Allocates per session type (transport proto + ip version) data structures
+ * and adds arc from session queue node to session type output node.
+ *
+ * @param transport_proto 	transport proto to be registered
+ * @param vft			virtual function table for transport
+ * @param is_ip4		flag that indicates if transports uses ipv4
+ * 				as underlying network layer
+ * @param output_node		output node for transport
+ */
 void session_register_transport (transport_proto_t transport_proto,
 				 const transport_proto_vft_t * vft, u8 is_ip4,
 				 u32 output_node);
+transport_proto_t session_add_transport_proto (void);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);

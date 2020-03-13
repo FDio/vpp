@@ -142,7 +142,6 @@ echo_proto_cb_vft_t echo_tls_proto_cb_vft = {
 
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TCP, echo_tcp_proto_cb_vft);
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TLS, echo_tls_proto_cb_vft);
-ECHO_REGISTER_PROTO (TRANSPORT_PROTO_SCTP, echo_tcp_proto_cb_vft);
 
 /*
  * fd.io coding-style-patch-verification: ON
