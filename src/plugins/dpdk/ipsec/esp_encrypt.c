@@ -66,6 +66,8 @@ static char *esp_encrypt_error_strings[] = {
 
 extern vlib_node_registration_t dpdk_esp4_encrypt_node;
 extern vlib_node_registration_t dpdk_esp6_encrypt_node;
+extern vlib_node_registration_t dpdk_esp4_encrypt_tun_node;
+extern vlib_node_registration_t dpdk_esp6_encrypt_tun_node;
 
 typedef struct
 {
@@ -411,8 +413,16 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	    }
 	  else			/* transport mode */
 	    {
-	      priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
-	      rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
+	      if (is_tun)
+		{
+		  rewrite_len = 0;
+		  priv->next = DPDK_CRYPTO_INPUT_NEXT_MIDCHAIN;
+		}
+	      else
+		{
+		  priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
+		  rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
+		}
 	      u16 adv = sizeof (esp_header_t) + iv_size + udp_encap_adv;
 	      vlib_buffer_advance (b0, -adv - rewrite_len);
 	      u8 *src = ((u8 *) ih0) - rewrite_len;
@@ -576,7 +586,10 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
     }
   if (is_ip6)
     {
-      vlib_node_increment_counter (vm, dpdk_esp6_encrypt_node.index,
+      vlib_node_increment_counter (vm,
+				   (is_tun ?
+				    dpdk_esp6_encrypt_tun_node.index :
+				    dpdk_esp6_encrypt_node.index),
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 
@@ -585,7 +598,10 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
     }
   else
     {
-      vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
+      vlib_node_increment_counter (vm,
+				   (is_tun ?
+				    dpdk_esp4_encrypt_tun_node.index :
+				    dpdk_esp4_encrypt_node.index),
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 

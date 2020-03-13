@@ -304,6 +304,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
             p.scapy_tra_spi = p.scapy_tra_spi + ii
             p.vpp_tra_sa_id = p.vpp_tra_sa_id + ii
             p.vpp_tra_spi = p.vpp_tra_spi + ii
+            p.tun_dst = self.pg0.remote_hosts[ii].ip4
 
             p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
                                             p.scapy_tun_spi,
@@ -311,7 +312,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
                                             p.crypt_key, p.crypt_key,
                                             p.auth_algo_vpp_id, p.auth_key,
                                             p.auth_key,
-                                            dst=self.pg0.remote_hosts[ii].ip4)
+                                            dst=p.tun_dst)
             p.tun_if.add_vpp_config()
             p.tun_if.admin_up()
             p.tun_if.config_ip4()
@@ -333,6 +334,27 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
             self.assertEqual(c['packets'], 127)
             c = p.tun_if.get_tx_stats()
             self.assertEqual(c['packets'], 127)
+
+    def test_tun_rr_44(self):
+        """ Round-robin packets acrros multiple interface """
+        tx = []
+        for p in self.multi_params:
+            tx = tx + self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
+                                            src=p.remote_tun_if_host,
+                                            dst=self.pg1.remote_ip4)
+        rxs = self.send_and_expect(self.tun_if, tx, self.pg1)
+
+        for rx, p in zip(rxs, self.multi_params):
+            self.verify_decrypted(p, [rx])
+
+        tx = []
+        for p in self.multi_params:
+            tx = tx + self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
+                                    dst=p.remote_tun_if_host)
+        rxs = self.send_and_expect(self.pg1, tx, self.tun_if)
+
+        for rx, p in zip(rxs, self.multi_params):
+            self.verify_encrypted(p, p.vpp_tun_sa, [rx])
 
 
 class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
@@ -519,6 +541,69 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                 self.unconfig_network(p)
                 p.tun_sa_out.remove_vpp_config()
                 p.tun_sa_in.remove_vpp_config()
+
+
+class TestIpsec4TunIfEspNoAlgo(TemplateIpsec, IpsecTun4):
+    """ IPsec IPv4 Tunnel interface all Algos """
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+
+    def config_network(self, p):
+
+        p.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_NONE)
+        p.auth_algo = 'NULL'
+        p.auth_key = []
+
+        p.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                               IPSEC_API_CRYPTO_ALG_NONE)
+        p.crypt_algo = 'NULL'
+        p.crypt_key = []
+
+        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                        p.scapy_tun_spi,
+                                        p.crypt_algo_vpp_id,
+                                        p.crypt_key, p.crypt_key,
+                                        p.auth_algo_vpp_id, p.auth_key,
+                                        p.auth_key,
+                                        salt=p.salt)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        config_tun_params(p, self.encryption_type, p.tun_if)
+        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
+        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+
+        p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
+                             [VppRoutePath(p.tun_if.remote_ip4,
+                                           0xffffffff)])
+        p.route.add_vpp_config()
+
+    def unconfig_network(self, p):
+        p.tun_if.unconfig_ip4()
+        p.tun_if.remove_vpp_config()
+        p.route.remove_vpp_config()
+
+    def setUp(self):
+        super(TestIpsec4TunIfEspNoAlgo, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsec4TunIfEspNoAlgo, self).tearDown()
+
+    def test_tun_44(self):
+        p = self.ipv4_params
+
+        self.config_network(p)
+
+        tx = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
+                           dst=p.remote_tun_if_host)
+        self.send_and_assert_no_replies(self.pg1, tx)
+
+        self.unconfig_network(p)
 
 
 class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
@@ -919,6 +1004,16 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
                            Raw(b'X' * payload_size))
                 for i in range(count)]
 
+    def gen_encrypt_non_ip_pkts(self, sa, sw_intf, src, dst, count=1,
+                                payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=self.pg0.remote_ip4,
+                              dst=self.pg0.local_ip4) /
+                           GRE() /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
     def gen_pkts(self, sw_intf, src, dst, count=1,
                  payload_size=100):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
@@ -995,6 +1090,115 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
         p = self.ipv4_params
         p.tun_if.unconfig_ip4()
         super(TestIpsecGreIfEspTra, self).tearDown()
+
+    def test_gre_non_ip(self):
+        p = self.ipv4_params
+        tx = self.gen_encrypt_non_ip_pkts(p.scapy_tun_sa, self.tun_if,
+                                          src=p.remote_tun_if_host,
+                                          dst=self.pg1.remote_ip6)
+        self.send_and_assert_no_replies(self.tun_if, tx)
+        node_name = ('/err/%s/unsupported payload' %
+                     self.tun4_decrypt_node_name)
+        self.assertEqual(1, self.statistics.get_err_counter(node_name))
+
+
+class TestIpsecGre6IfEspTra(TemplateIpsec,
+                            IpsecTun6Tests):
+    """ Ipsec GRE ESP - TRA tests """
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
+    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    encryption_type = ESP
+
+    def gen_encrypt_pkts6(self, sa, sw_intf, src, dst, count=1,
+                          payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IPv6(src=self.pg0.remote_ip6,
+                                dst=self.pg0.local_ip6) /
+                           GRE() /
+                           IPv6(src=self.pg1.local_ip6,
+                                dst=self.pg1.remote_ip6) /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def gen_pkts6(self, sw_intf, src, dst, count=1,
+                  payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IPv6(src="1::1", dst="1::2") /
+                UDP(sport=1144, dport=2233) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_decrypted6(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[Ether].dst, self.pg1.remote_mac)
+            self.assert_equal(rx[IPv6].dst, self.pg1.remote_ip6)
+
+    def verify_encrypted6(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                pkt = sa.decrypt(rx[IPv6])
+                if not pkt.haslayer(IPv6):
+                    pkt = IPv6(pkt[Raw].load)
+                self.assert_packet_checksums_valid(pkt)
+                self.assertTrue(pkt.haslayer(GRE))
+                e = pkt[GRE]
+                self.assertEqual(e[IPv6].dst, "1::2")
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def setUp(self):
+        super(TestIpsecGre6IfEspTra, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv6_params
+
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_if = VppGreInterface(self,
+                                   self.pg0.local_ip6,
+                                   self.pg0.remote_ip6)
+        p.tun_if.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_out,
+                                           [p.tun_sa_in])
+        p.tun_protect.add_vpp_config()
+
+        p.tun_if.admin_up()
+        p.tun_if.config_ip6()
+        config_tra_params(p, self.encryption_type, p.tun_if)
+
+        r = VppIpRoute(self, "1::2", 128,
+                       [VppRoutePath(p.tun_if.remote_ip6,
+                                     0xffffffff,
+                                     proto=DpoProto.DPO_PROTO_IP6)])
+        r.add_vpp_config()
+
+    def tearDown(self):
+        p = self.ipv6_params
+        p.tun_if.unconfig_ip6()
+        super(TestIpsecGre6IfEspTra, self).tearDown()
 
 
 class TemplateIpsec4TunProtect(object):
@@ -1286,6 +1490,54 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
         self.unconfig_network(p)
 
 
+class TestIpsec4TunProtectTunDrop(TemplateIpsec,
+                                  TemplateIpsec4TunProtect,
+                                  IpsecTun4):
+    """ IPsec IPv4 Tunnel protect - tunnel mode - drop"""
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+
+    def setUp(self):
+        super(TestIpsec4TunProtectTunDrop, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsec4TunProtectTunDrop, self).tearDown()
+
+    def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
+                         payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=sw_intf.remote_ip4,
+                              dst="5.5.5.5") /
+                           IP(src=src, dst=dst) /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def test_tun_drop_44(self):
+        """IPSEC tunnel protect bogus tunnel header """
+
+        p = self.ipv4_params
+
+        self.config_network(p)
+        self.config_sa_tun(p)
+        self.config_protect(p)
+
+        tx = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
+                                   src=p.remote_tun_if_host,
+                                   dst=self.pg1.remote_ip4,
+                                   count=63)
+        self.send_and_assert_no_replies(self.tun_if, tx)
+
+        # teardown
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
+
+
 class TemplateIpsec6TunProtect(object):
     """ IPsec IPv6 Tunnel protect """
 
@@ -1379,7 +1631,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         super(TestIpsec6TunProtect, self).tearDown()
 
     def test_tun_66(self):
-        """IPSEC tunnel protect"""
+        """IPSEC tunnel protect 6o6"""
 
         p = self.ipv6_params
 
@@ -1412,6 +1664,15 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.assertEqual(c['packets'], 254)
         c = p.tun_if.get_tx_stats()
         self.assertEqual(c['packets'], 254)
+
+        # bounce the interface state
+        p.tun_if.admin_down()
+        self.verify_drop_tun_66(np, count=127)
+        node = ('/err/ipsec6-tun-input/%s' %
+                'ipsec packets received on disabled interface')
+        self.assertEqual(127, self.statistics.get_err_counter(node))
+        p.tun_if.admin_up()
+        self.verify_tun_66(np, count=127)
 
         # 3 phase rekey
         #  1) add two input SAs [old, new]
@@ -1447,9 +1708,9 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.verify_drop_tun_66(np, count=127)
 
         c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127*7)
+        self.assertEqual(c['packets'], 127*9)
         c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127*7)
+        self.assertEqual(c['packets'], 127*8)
         self.unconfig_sa(np)
 
         # teardown
@@ -1458,7 +1719,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.unconfig_network(p)
 
     def test_tun_46(self):
-        """IPSEC tunnel protect"""
+        """IPSEC tunnel protect 4o6"""
 
         p = self.ipv6_params
 
@@ -1578,6 +1839,55 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
         # teardown
         self.unconfig_protect(np)
         self.unconfig_sa(np)
+        self.unconfig_network(p)
+
+
+class TestIpsec6TunProtectTunDrop(TemplateIpsec,
+                                  TemplateIpsec6TunProtect,
+                                  IpsecTun6):
+    """ IPsec IPv6 Tunnel protect - tunnel mode - drop"""
+
+    encryption_type = ESP
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
+    tun6_decrypt_node_name = "esp6-decrypt-tun"
+
+    def setUp(self):
+        super(TestIpsec6TunProtectTunDrop, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsec6TunProtectTunDrop, self).tearDown()
+
+    def gen_encrypt_pkts5(self, sa, sw_intf, src, dst, count=1,
+                          payload_size=100):
+        # the IP destination of the revelaed packet does not match
+        # that assigned to the tunnel
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IPv6(src=sw_intf.remote_ip6,
+                                dst="5::5") /
+                           IPv6(src=src, dst=dst) /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def test_tun_drop_66(self):
+        """IPSEC 6 tunnel protect bogus tunnel header """
+
+        p = self.ipv6_params
+
+        self.config_network(p)
+        self.config_sa_tun(p)
+        self.config_protect(p)
+
+        tx = self.gen_encrypt_pkts6(p.scapy_tun_sa, self.tun_if,
+                                    src=p.remote_tun_if_host,
+                                    dst=self.pg1.remote_ip6,
+                                    count=63)
+        self.send_and_assert_no_replies(self.tun_if, tx)
+
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
         self.unconfig_network(p)
 
 

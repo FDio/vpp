@@ -167,9 +167,11 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 			    const char *esp4_encrypt_node_name,
 			    const char *esp4_encrypt_node_tun_name,
 			    const char *esp4_decrypt_node_name,
+			    const char *esp4_decrypt_tun_node_name,
 			    const char *esp6_encrypt_node_name,
 			    const char *esp6_encrypt_node_tun_name,
 			    const char *esp6_decrypt_node_name,
+			    const char *esp6_decrypt_tun_node_name,
 			    check_support_cb_t esp_check_support_cb,
 			    add_del_sa_sess_cb_t esp_add_del_sa_sess_cb)
 {
@@ -186,11 +188,21 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 		  &b->esp6_encrypt_node_index, &b->esp6_encrypt_next_index);
   ipsec_add_node (vm, esp6_decrypt_node_name, "ipsec6-input-feature",
 		  &b->esp6_decrypt_node_index, &b->esp6_decrypt_next_index);
+  ipsec_add_node (vm, esp4_decrypt_tun_node_name, "ipsec4-tun-input",
+		  &b->esp4_decrypt_tun_node_index,
+		  &b->esp4_decrypt_tun_next_index);
+  ipsec_add_node (vm, esp6_decrypt_tun_node_name, "ipsec6-tun-input",
+		  &b->esp6_decrypt_tun_node_index,
+		  &b->esp6_decrypt_tun_next_index);
 
   ipsec_add_feature ("ip4-output", esp4_encrypt_node_tun_name,
-		     &b->esp4_encrypt_tun_feature_index);
+		     &b->esp44_encrypt_tun_feature_index);
+  ipsec_add_feature ("ip4-output", esp6_encrypt_node_tun_name,
+		     &b->esp46_encrypt_tun_feature_index);
   ipsec_add_feature ("ip6-output", esp6_encrypt_node_tun_name,
-		     &b->esp6_encrypt_tun_feature_index);
+		     &b->esp66_encrypt_tun_feature_index);
+  ipsec_add_feature ("ip6-output", esp4_encrypt_node_tun_name,
+		     &b->esp64_encrypt_tun_feature_index);
 
   b->check_support_cb = esp_check_support_cb;
   b->add_del_sa_sess_cb = esp_add_del_sa_sess_cb;
@@ -251,9 +263,15 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp6_decrypt_node_index = b->esp6_decrypt_node_index;
   im->esp6_encrypt_next_index = b->esp6_encrypt_next_index;
   im->esp6_decrypt_next_index = b->esp6_decrypt_next_index;
+  im->esp4_decrypt_tun_node_index = b->esp4_decrypt_tun_node_index;
+  im->esp4_decrypt_tun_next_index = b->esp4_decrypt_tun_next_index;
+  im->esp6_decrypt_tun_node_index = b->esp6_decrypt_tun_node_index;
+  im->esp6_decrypt_tun_next_index = b->esp6_decrypt_tun_next_index;
 
-  im->esp4_encrypt_tun_feature_index = b->esp4_encrypt_tun_feature_index;
-  im->esp6_encrypt_tun_feature_index = b->esp6_encrypt_tun_feature_index;
+  im->esp44_encrypt_tun_feature_index = b->esp44_encrypt_tun_feature_index;
+  im->esp64_encrypt_tun_feature_index = b->esp64_encrypt_tun_feature_index;
+  im->esp46_encrypt_tun_feature_index = b->esp46_encrypt_tun_feature_index;
+  im->esp66_encrypt_tun_feature_index = b->esp66_encrypt_tun_feature_index;
 
   return 0;
 }
@@ -297,9 +315,11 @@ ipsec_init (vlib_main_t * vm)
 				    "esp4-encrypt",
 				    "esp4-encrypt-tun",
 				    "esp4-decrypt",
+				    "esp4-decrypt-tun",
 				    "esp6-encrypt",
 				    "esp6-encrypt-tun",
 				    "esp6-decrypt",
+				    "esp6-decrypt-tun",
 				    ipsec_check_esp_support, NULL);
   im->esp_default_backend = idx;
 
