@@ -1695,9 +1695,11 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   /* Just sent new data, enable retransmit */
   tcp_retransmit_timer_update (tc);
 
+  return;
+
 update_scheduler:
 
-  if (transport_connection_is_descheduled (&tc->connection))
+  if (tcp_is_descheduled (tc))
     transport_connection_reschedule (&tc->connection);
 }
 

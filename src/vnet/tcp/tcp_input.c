@@ -700,6 +700,9 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 	    tc->flags &= ~TCP_CONN_PSH_PENDING;
 	}
 
+      if (tcp_is_descheduled (tc))
+	tcp_reschedule (tc);
+
       /* If everything has been acked, stop retransmit timer
        * otherwise update. */
       tcp_retransmit_timer_update (tc);
@@ -1315,6 +1318,9 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 	  if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)))
 	    tcp_persist_timer_reset (tc);
 
+	  if (PREDICT_FALSE (tcp_is_descheduled (tc)))
+	    tcp_reschedule (tc);
+
 	  if (PREDICT_FALSE (!tcp_in_recovery (tc) && tc->rto_boff > 0))
 	    {
 	      tc->rto_boff = 0;
@@ -1465,6 +1471,7 @@ tcp_cc_recover (tcp_connection_t * tc)
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
+
   return is_spurious;
 }
 
