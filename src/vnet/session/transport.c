@@ -720,6 +720,12 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 }
 
 void
+transport_connection_reschedule (transport_connection_t * tc)
+{
+  session_add_self_custom_tx_evt (tc, 1);
+}
+
+void
 transport_update_time (clib_time_type_t time_now, u8 thread_index)
 {
   transport_proto_vft_t *vft;

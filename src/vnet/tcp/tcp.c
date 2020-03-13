@@ -1195,29 +1195,6 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
   return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
 }
 
-/**
- * Compute maximum segment size for session layer.
- *
- * Since the result needs to be the actual data length, it first computes
- * the tcp options to be used in the next burst and subtracts their
- * length from the connection's snd_mss.
- */
-static u16
-tcp_session_send_mss (transport_connection_t * trans_conn)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-
-  /* Ensure snd_mss does accurately reflect the amount of data we can push
-   * in a segment. This also makes sure that options are updated according to
-   * the current state of the connection. */
-  tcp_update_burst_snd_vars (tc);
-
-  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
-    return tcp_session_cal_goal_size (tc);
-
-  return tc->snd_mss;
-}
-
 always_inline u32
 tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
@@ -1281,23 +1258,39 @@ tcp_snd_space (tcp_connection_t * tc)
   return tcp_snd_space_inline (tc);
 }
 
-static u32
-tcp_session_send_space (transport_connection_t * trans_conn)
+static int
+tcp_session_send_params (transport_connection_t * trans_conn,
+			 transport_send_params_t * sp)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return clib_min (tcp_snd_space_inline (tc),
-		   tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
-}
 
-static u32
-tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
+  /* Ensure snd_mss does accurately reflect the amount of data we can push
+   * in a segment. This also makes sure that options are updated according to
+   * the current state of the connection. */
+  tcp_update_burst_snd_vars (tc);
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
+    sp->snd_mss = tcp_session_cal_goal_size (tc);
+  else
+    sp->snd_mss = tc->snd_mss;
+
+  sp->snd_space = clib_min (tcp_snd_space_inline (tc),
+			    tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
 
   ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
-
   /* This still works if fast retransmit is on */
-  return (tc->snd_nxt - tc->snd_una);
+  sp->tx_offset = tc->snd_nxt - tc->snd_una;
+
+  sp->flags = 0;
+  if (!tc->snd_wnd)
+    {
+      if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	sp->flags = TRANSPORT_SND_F_DESCHED;
+      else
+	sp->flags = TRANSPORT_SND_F_POSTPONE;
+    }
+
+  return 0;
 }
 
 static void
@@ -1509,10 +1502,11 @@ const static transport_proto_vft_t tcp_proto = {
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
   .reset = tcp_session_reset,
-  .send_mss = tcp_session_send_mss,
-  .send_space = tcp_session_send_space,
+  .send_params = tcp_session_send_params,
+//  .send_mss = tcp_session_send_mss,
+//  .send_space = tcp_session_send_space,
   .update_time = tcp_update_time,
-  .tx_fifo_offset = tcp_session_tx_fifo_offset,
+//  .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .flush_data = tcp_session_flush_data,
   .custom_tx = tcp_session_custom_tx,
   .format_connection = format_tcp_session,
