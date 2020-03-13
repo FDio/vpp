@@ -43,9 +43,15 @@ typedef enum transport_service_type_
 typedef enum transport_connection_flags_
 {
   TRANSPORT_CONNECTION_F_IS_TX_PACED = 1 << 0,
-  TRANSPORT_CONNECTION_F_NO_LOOKUP = 1 << 1, /**< Don't register connection in lookup
-						  Does not apply to local apps and
-						  transports using the network layer (udp/tcp) */
+  /**
+   * Don't register connection in lookup. Does not apply to local apps
+   * and transports using the network layer (udp/tcp)
+   */
+  TRANSPORT_CONNECTION_F_NO_LOOKUP = 1 << 1,
+  /**
+   * Connection descheduled by the session layer.
+   */
+  TRANSPORT_CONNECTION_F_DESCHED = 1 << 2,
 } transport_connection_flags_t;
 
 typedef struct _spacer

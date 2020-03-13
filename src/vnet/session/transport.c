@@ -103,6 +103,8 @@ format_transport_connection (u8 * s, va_list * args)
       indent = format_get_indent (s) + 1;
       s = format (s, "%Upacer: %U\n", format_white_space, indent,
 		  format_transport_pacer, &tc->pacer, tc->thread_index);
+      s = format (s, "%Utransport: flags 0x%x\n", format_white_space, indent,
+		  tc->flags);
     }
   return s;
 }
@@ -717,6 +719,22 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 					    u32 bytes)
 {
   spacer_update_bucket (&tc->pacer, bytes);
+}
+
+void
+transport_connection_reschedule (transport_connection_t * tc)
+{
+  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+  if (transport_max_tx_dequeue (tc))
+    sesssion_reschedule_tx (tc);
+  else
+    {
+      session_t *s = session_get (tc->s_index, tc->thread_index);
+      svm_fifo_unset_event (s->tx_fifo);
+      if (svm_fifo_max_dequeue_cons (s->tx_fifo))
+	if (svm_fifo_set_event (s->tx_fifo))
+	  sesssion_reschedule_tx (tc);
+    }
 }
 
 void
