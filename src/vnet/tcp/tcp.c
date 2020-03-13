@@ -1282,12 +1282,19 @@ tcp_session_send_params (transport_connection_t * trans_conn,
   sp->tx_offset = tc->snd_nxt - tc->snd_una;
 
   sp->flags = 0;
-  if (!tc->snd_wnd)
+  if (!sp->snd_space)
     {
-      if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
-	sp->flags = TRANSPORT_SND_F_DESCHED;
+      if (tc->snd_wnd)
+	{
+	  sp->flags = TRANSPORT_SND_F_DESCHED;
+	}
       else
-	sp->flags = TRANSPORT_SND_F_POSTPONE;
+	{
+	  if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    sp->flags = TRANSPORT_SND_F_DESCHED;
+	  else
+	    sp->flags = TRANSPORT_SND_F_POSTPONE;
+	}
     }
 
   return 0;
