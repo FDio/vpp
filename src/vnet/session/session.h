@@ -93,7 +93,8 @@ typedef struct session_worker_
   vlib_main_t *vm;
 
   /** Per-proto vector of sessions to enqueue */
-  u32 *session_to_enqueue[TRANSPORT_N_PROTO];
+//  u32 *session_to_enqueue[TRANSPORT_N_PROTO];
+  u32 **session_to_enqueue;
 
   /** Context for session tx */
   session_tx_context_t ctx;
@@ -159,6 +160,8 @@ typedef struct session_main_
    * fib but lookup would then require session type parsing in session node.
    * Trade memory for speed, for now */
   u32 *session_type_to_next;
+
+  transport_proto_t last_transport_type;
 
   /*
    * Config parameters
