@@ -146,12 +146,13 @@ do {                                                                    \
          clib_warning (_fmt, ##_args);  \
   }
 
-#define ECHO_REGISTER_PROTO(proto, vft)         \
-  static void __clib_constructor                \
-  vpp_echo_init_##proto ()                      \
-  {                                             \
-    echo_main_t *em = &echo_main;               \
-    em->available_proto_cb_vft[proto] = &vft;   \
+#define ECHO_REGISTER_PROTO(proto, vft)         	\
+  static void __clib_constructor                	\
+  vpp_echo_init_##proto ()                      	\
+  {                                             	\
+    echo_main_t *em = &echo_main;               	\
+    vec_validate (em->available_proto_cb_vft, proto);	\
+    em->available_proto_cb_vft[proto] = &vft;   	\
   }
 
 typedef struct
@@ -356,7 +357,7 @@ typedef struct
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
-  echo_proto_cb_vft_t *available_proto_cb_vft[TRANSPORT_N_PROTO];
+  echo_proto_cb_vft_t **available_proto_cb_vft;
 
   echo_stats_t stats;
   echo_stats_t last_stat_sampling;	/* copy of stats at last sampling */

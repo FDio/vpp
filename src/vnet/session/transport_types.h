@@ -156,7 +156,6 @@ typedef enum _transport_proto
 #define _(sym, str, sstr) TRANSPORT_PROTO_ ## sym,
   foreach_transport_proto
 #undef _
-  TRANSPORT_N_PROTO
 } transport_proto_t;
 
 u8 *format_transport_proto (u8 * s, va_list * args);
