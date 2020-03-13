@@ -1490,6 +1490,24 @@ session_register_transport (transport_proto_t transport_proto,
     session_tx_fns[vft->transport_options.tx_type];
 }
 
+transport_proto_t
+session_add_transport_type (void)
+{
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+  u32 thread;
+
+  smm->last_transport_type += 1;
+
+  for (thread = 0; thread < vec_len (smm->wrk); thread++)
+    {
+      wrk = session_main_get_worker (thread);
+      vec_validate (wrk->session_to_enqueue, smm->last_transport_type);
+    }
+
+  return smm->last_transport_type;
+}
+
 transport_connection_t *
 session_get_transport (session_t * s)
 {
