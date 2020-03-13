@@ -872,7 +872,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
 	return SESSION_TX_OK;
       max_burst -= n_custom_tx;
-      if (!max_burst)
+      if (!max_burst || (ctx->s->flags & SESSION_F_CUSTOM_TX))
 	{
 	  session_evt_add_old (wrk, elt);
 	  return SESSION_TX_OK;
@@ -883,18 +883,18 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (!ctx->sp.snd_space)
     {
-      /* This flow queue is "empty" so it should be re-evaluated before
-       * the ones that have data to send. */
-      if (PREDICT_TRUE (!ctx->sp.flags))
-	session_evt_add_head_old (wrk, elt);
+      /* If the deschedule flag was set, remove session from scheduler.
+       * Transport is responsible for rescheduling this session. */
+      if (ctx->sp.flags & TRANSPORT_SND_F_DESCHED)
+	transport_connection_deschedule (ctx->tc);
       /* Request to postpone the session, e.g., zero-wnd and transport
        * is not currently probing */
       else if (ctx->sp.flags & TRANSPORT_SND_F_POSTPONE)
 	session_evt_add_old (wrk, elt);
-      /* If the deschedule flag was set, remove session from scheduler.
-       * Transport is responsible for rescheduling this session. */
+      /* This flow queue is "empty" so it should be re-evaluated before
+       * the ones that have data to send. */
       else
-	transport_connection_deschedule (ctx->tc);
+	session_evt_add_head_old (wrk, elt);
 
       return SESSION_TX_NO_DATA;
     }
