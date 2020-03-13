@@ -372,7 +372,7 @@ session_cli_filter_check (session_t * s, session_state_t * states,
 
 check_transport:
 
-  if (tp != TRANSPORT_N_PROTO && session_get_transport_proto (s) != tp)
+  if (tp != TRANSPORT_PROTO_INVALID && session_get_transport_proto (s) != tp)
     return 0;
 
   return 1;
@@ -398,7 +398,7 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
 
   pool = wrk->sessions;
 
-  if (tp == TRANSPORT_N_PROTO && states == 0 && !verbose
+  if (tp == TRANSPORT_PROTO_INVALID && states == 0 && !verbose
       && (start == 0 && end == ~0))
     {
       vlib_cli_output (vm, "Thread %d: %u sessions", thread_index,
@@ -495,7 +495,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 one_session = 0, do_listeners = 0, sst, do_elog = 0, do_filter = 0;
   u32 track_index, thread_index = 0, start = 0, end = ~0, session_index;
   unformat_input_t _line_input, *line_input = &_line_input;
-  transport_proto_t transport_proto = TRANSPORT_N_PROTO;
+  transport_proto_t transport_proto = TRANSPORT_PROTO_INVALID;
   session_state_t state = SESSION_N_STATES, *states = 0;
   session_main_t *smm = &session_main;
   clib_error_t *error = 0;

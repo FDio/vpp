@@ -1454,12 +1454,6 @@ static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
 };
 /* *INDENT-ON* */
 
-/**
- * Initialize session layer for given transport proto and ip version
- *
- * Allocates per session type (transport proto + ip version) data structures
- * and adds arc from session queue node to session type output node.
- */
 void
 session_register_transport (transport_proto_t transport_proto,
 			    const transport_proto_vft_t * vft, u8 is_ip4,
@@ -1488,6 +1482,24 @@ session_register_transport (transport_proto_t transport_proto,
   smm->session_type_to_next[session_type] = next_index;
   smm->session_tx_fns[session_type] =
     session_tx_fns[vft->transport_options.tx_type];
+}
+
+transport_proto_t
+session_add_transport_proto (void)
+{
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+  u32 thread;
+
+  smm->last_transport_proto_type += 1;
+
+  for (thread = 0; thread < vec_len (smm->wrk); thread++)
+    {
+      wrk = session_main_get_worker (thread);
+      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
+    }
+
+  return smm->last_transport_proto_type;
 }
 
 transport_connection_t *
@@ -1543,6 +1555,7 @@ session_manager_main_enable (vlib_main_t * vm)
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
 
+  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -1555,6 +1568,7 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);

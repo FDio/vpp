@@ -1052,7 +1052,7 @@ print_usage_and_exit (void)
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
 	   "  TX=1337[K|M|G]|RX   Send 1337 [K|M|G]bytes, use TX=RX to reflect the data\n"
 	   "  RX=1337[K|M|G]      Expect 1337 [K|M|G]bytes\n" "\n");
-  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+  for (i = 0; i < vec_len (em->available_proto_cb_vft); i++)
     {
       echo_proto_cb_vft_t *vft = em->available_proto_cb_vft[i];
       if (vft && vft->print_usage_cb)
@@ -1069,7 +1069,7 @@ echo_process_each_proto_opts (unformat_input_t * a)
 {
   echo_main_t *em = &echo_main;
   int i, rv;
-  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+  for (i = 0; i < vec_len (em->available_proto_cb_vft); i++)
     {
       echo_proto_cb_vft_t *vft = em->available_proto_cb_vft[i];
       if (vft && vft->process_opts_cb)
@@ -1083,7 +1083,7 @@ static void
 echo_set_each_proto_defaults_before_opts (echo_main_t * em)
 {
   int i;
-  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+  for (i = 0; i < vec_len (em->available_proto_cb_vft); i++)
     {
       echo_proto_cb_vft_t *vft = em->available_proto_cb_vft[i];
       if (vft && vft->set_defaults_before_opts_cb)
@@ -1445,6 +1445,7 @@ exit_on_error:
   else
     print_global_stats (em);
   vec_free (em->fail_descr);
+  vec_free (em->available_proto_cb_vft);
   exit (em->has_failed);
 }
 

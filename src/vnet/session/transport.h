@@ -161,6 +161,15 @@ transport_connection_snd_space (transport_connection_t * tc)
   return tp_vfts[tc->proto].send_space (tc);
 }
 
+/**
+ * Register transport virtual function table.
+ *
+ * @param transport_proto - transport protocol type (i.e., TCP, UDP ..)
+ * @param vft - virtual function table for transport proto
+ * @param fib_proto - network layer protocol
+ * @param output_node - output node index that session layer will hand off
+ * 			buffers to, for requested fib proto
+ */
 void transport_register_protocol (transport_proto_t transport_proto,
 				  const transport_proto_vft_t * vft,
 				  fib_protocol_t fib_proto, u32 output_node);
