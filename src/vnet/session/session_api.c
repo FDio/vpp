@@ -74,8 +74,6 @@ api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
       return TRANSPORT_PROTO_TCP;
     case TRANSPORT_PROTO_API_UDP:
       return TRANSPORT_PROTO_UDP;
-    case TRANSPORT_PROTO_API_SCTP:
-      return TRANSPORT_PROTO_SCTP;
     case TRANSPORT_PROTO_API_TLS:
       return TRANSPORT_PROTO_TLS;
     case TRANSPORT_PROTO_API_UDPC:
@@ -96,8 +94,6 @@ api_session_transport_proto_encode (const transport_proto_t tp)
       return TRANSPORT_PROTO_API_TCP;
     case TRANSPORT_PROTO_UDP:
       return TRANSPORT_PROTO_API_UDP;
-    case TRANSPORT_PROTO_SCTP:
-      return TRANSPORT_PROTO_API_SCTP;
     case TRANSPORT_PROTO_TLS:
       return TRANSPORT_PROTO_API_TLS;
     case TRANSPORT_PROTO_UDPC:
@@ -1517,7 +1513,7 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 
   /* *INDENT-OFF* */
   session_table_foreach (st, ({
-    for (tp = 0; tp < TRANSPORT_N_PROTO; tp++)
+    for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
       {
         send_session_rules_table_details (&st->session_rules[tp],
                                           st->active_fib_proto, tp,
