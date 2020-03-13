@@ -720,6 +720,22 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 }
 
 void
+transport_connection_reschedule (transport_connection_t * tc)
+{
+  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+  if (transport_max_tx_dequeue (tc))
+    session_add_self_custom_tx_evt (tc, 1);
+  else
+    {
+      session_t *s = session_get (tc->s_index, tc->thread_index);
+      svm_fifo_unset_event (s->tx_fifo);
+      if (svm_fifo_max_dequeue_cons (s->tx_fifo))
+	if (svm_fifo_set_event (s->tx_fifo))
+	  session_add_self_custom_tx_evt (tc, 1);
+    }
+}
+
+void
 transport_update_time (clib_time_type_t time_now, u8 thread_index)
 {
   transport_proto_vft_t *vft;
