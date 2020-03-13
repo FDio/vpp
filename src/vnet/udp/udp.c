@@ -273,18 +273,17 @@ format_udp_listener_session (u8 * s, va_list * args)
   return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
-u16
-udp_send_mss (transport_connection_t * t)
-{
-  /* TODO figure out MTU of output interface */
-  return 1460;
-}
-
-u32
-udp_send_space (transport_connection_t * t)
+static int
+udp_session_send_params (transport_connection_t * tconn,
+			 transport_send_params_t * sp)
 {
   /* No constraint on TX window */
-  return ~0;
+  sp->snd_space = ~0;
+  /* TODO figure out MTU of output interface */
+  sp->snd_mss = 1460;
+  sp->tx_offset = 0;
+  sp->flags = 0;
+  return 0;
 }
 
 int
@@ -357,8 +356,7 @@ static const transport_proto_vft_t udp_proto = {
   .get_half_open = udp_session_get_half_open,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
-  .send_mss = udp_send_mss,
-  .send_space = udp_send_space,
+  .send_params = udp_session_send_params,
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
@@ -412,8 +410,7 @@ static const transport_proto_vft_t udpc_proto = {
   .get_half_open = udp_session_get_half_open,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
-  .send_mss = udp_send_mss,
-  .send_space = udp_send_space,
+  .send_params = udp_session_send_params,
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,

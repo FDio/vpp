@@ -48,14 +48,12 @@ typedef struct session_tx_context_
   session_t *s;
   transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
+  transport_send_params_t sp;
   u32 max_dequeue;
-  u32 snd_space;
   u32 left_to_snd;
-  u32 tx_offset;
   u32 max_len_to_snd;
   u16 deq_per_first_buf;
   u16 deq_per_buf;
-  u16 snd_mss;
   u16 n_segs_per_evt;
   u8 n_bufs_per_seg;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -429,6 +427,7 @@ void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
 void session_add_self_custom_tx_evt (transport_connection_t * tc,
 				     u8 has_prio);
+void sesssion_reschedule_tx (transport_connection_t * tc);
 transport_connection_t *session_get_transport (session_t * s);
 void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
 			   u8 is_lcl);
