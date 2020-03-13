@@ -3928,8 +3928,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = snat_get_worker_out2in_cb;
 
-	  sm->handoff_out2in_index = snat_in2out_node.index;
-	  sm->handoff_in2out_index = snat_out2in_node.index;
+	  sm->handoff_out2in_index = snat_out2in_node.index;
+	  sm->handoff_in2out_index = snat_in2out_node.index;
 	  sm->handoff_in2out_output_index = snat_in2out_output_node.index;
 
 	  sm->in2out_node_index = snat_in2out_node.index;
