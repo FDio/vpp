@@ -46,18 +46,12 @@ u8 *
 format_transport_proto (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  switch (transport_proto)
-    {
-#define _(sym, str, sstr) 			\
-    case TRANSPORT_PROTO_ ## sym:		\
-      s = format (s, str);			\
-      break;
-      foreach_transport_proto
-#undef _
-    default:
-      s = format (s, "UNKNOWN");
-      break;
-    }
+
+  if (tp_vfts[transport_proto].transport_options.name)
+    s = format (s, "%s", tp_vfts[transport_proto].transport_options.name);
+  else
+    s = format (s, "n/a");
+
   return s;
 }
 
@@ -65,18 +59,14 @@ u8 *
 format_transport_proto_short (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  switch (transport_proto)
-    {
-#define _(sym, str, sstr) 			\
-    case TRANSPORT_PROTO_ ## sym:		\
-      s = format (s, sstr);			\
-      break;
-      foreach_transport_proto
-#undef _
-    default:
-      s = format (s, "?");
-      break;
-    }
+  char *short_name;
+
+  short_name = tp_vfts[transport_proto].transport_options.short_name;
+  if (short_name)
+    s = format (s, "%s", short_name);
+  else
+    s = format (s, "NA");
+
   return s;
 }
 
@@ -158,29 +148,46 @@ uword
 unformat_transport_proto (unformat_input_t * input, va_list * args)
 {
   u32 *proto = va_arg (*args, u32 *);
+  transport_proto_vft_t *tp_vft;
   u8 longest_match = 0, match;
-  char *str_match = 0;
+  char *str, *str_match = 0;
+  transport_proto_t tp;
 
-#define _(sym, str, sstr)						\
-  if (unformat_transport_str_match (input, str))			\
-    {									\
-      match = strlen (str);						\
-      if (match > longest_match)					\
-	{								\
-	  *proto = TRANSPORT_PROTO_ ## sym;				\
-	  longest_match = match;					\
-	  str_match = str;						\
-	}								\
+  for (tp = 0; tp < vec_len (tp_vfts); tp++)
+    {
+      tp_vft = &tp_vfts[tp];
+      str = tp_vft->transport_options.name;
+      if (!str)
+	continue;
+      if (unformat_transport_str_match (input, str))
+	{
+	  match = strlen (str);
+	  if (match > longest_match)
+	    {
+	      *proto = tp;
+	      longest_match = match;
+	      str_match = str;
+	    }
+	}
     }
-  foreach_transport_proto
-#undef _
-    if (longest_match)
+  if (longest_match)
     {
       unformat (input, str_match);
       return 1;
     }
 
   return 0;
+}
+
+u8 *
+format_transport_protos (u8 * s, va_list * args)
+{
+  transport_proto_vft_t *tp_vft;
+
+  vec_foreach (tp_vft, tp_vfts)
+    s = format (s, "%s\n", tp_vft->transport_options.name);
+
+  return s;
 }
 
 u32
@@ -228,15 +235,6 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
   clib_bihash_add_del_24_8 (ht, &kv, 0);
 }
 
-/**
- * Register transport virtual function table.
- *
- * @param transport_proto - transport protocol type (i.e., TCP, UDP ..)
- * @param vft - virtual function table for transport proto
- * @param fib_proto - network layer protocol
- * @param output_node - output node index that session layer will hand off
- * 			buffers to, for requested fib proto
- */
 void
 transport_register_protocol (transport_proto_t transport_proto,
 			     const transport_proto_vft_t * vft,
@@ -248,6 +246,24 @@ transport_register_protocol (transport_proto_t transport_proto,
   tp_vfts[transport_proto] = *vft;
 
   session_register_transport (transport_proto, vft, is_ip4, output_node);
+}
+
+transport_proto_t
+transport_register_new_protocol (const transport_proto_vft_t * vft,
+				 fib_protocol_t fib_proto, u32 output_node)
+{
+  transport_proto_t transport_proto;
+  u8 is_ip4;
+
+  transport_proto = session_add_transport_proto ();
+  is_ip4 = fib_proto == FIB_PROTOCOL_IP4;
+
+  vec_validate (tp_vfts, transport_proto);
+  tp_vfts[transport_proto] = *vft;
+
+  session_register_transport (transport_proto, vft, is_ip4, output_node);
+
+  return transport_proto;
 }
 
 /**

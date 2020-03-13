@@ -2398,6 +2398,8 @@ static const transport_proto_vft_t quic_proto = {
   .get_transport_endpoint = quic_get_transport_endpoint,
   .get_transport_listener_endpoint = quic_get_transport_listener_endpoint,
   .transport_options = {
+    .name = "quic",
+    .short_name = "Q",
     .tx_type = TRANSPORT_TX_INTERNAL,
     .service_type = TRANSPORT_SERVICE_APP,
   },
