@@ -1036,6 +1036,12 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
   return available_wnd - flight_size;
 }
 
+static inline u8
+tcp_is_descheduled (tcp_connection_t * tc)
+{
+  return (transport_connection_is_descheduled (&tc->connection) ? 1 : 0);
+}
+
 always_inline u8
 tcp_is_lost_fin (tcp_connection_t * tc)
 {
@@ -1046,6 +1052,7 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 
 u32 tcp_snd_space (tcp_connection_t * tc);
 int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
+void tcp_reschedule (tcp_connection_t * tc);
 
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
@@ -1244,8 +1251,6 @@ tcp_persist_timer_update (tcp_connection_t * tc)
 always_inline void
 tcp_persist_timer_reset (tcp_connection_t * tc)
 {
-  if (transport_connection_is_descheduled (&tc->connection))
-    transport_connection_reschedule (&tc->connection);
   tcp_timer_reset (tc, TCP_TIMER_PERSIST);
 }
 
