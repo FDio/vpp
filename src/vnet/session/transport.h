@@ -184,9 +184,7 @@ transport_connection_snd_params (transport_connection_t * tc,
 static inline u8
 transport_connection_is_descheduled (transport_connection_t * tc)
 {
-  if (tc->flags & TRANSPORT_CONNECTION_F_DESCHED)
-    return 1;
-  return 0;
+  return ((tc->flags & TRANSPORT_CONNECTION_F_DESCHED) ? 1 : 0);
 }
 
 static inline void
