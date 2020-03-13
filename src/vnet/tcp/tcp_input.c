@@ -700,6 +700,9 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 	    tc->flags &= ~TCP_CONN_PSH_PENDING;
 	}
 
+      if (transport_connection_is_descheduled (&tc->connection))
+	transport_connection_reschedule (&tc->connection);
+
       /* If everything has been acked, stop retransmit timer
        * otherwise update. */
       tcp_retransmit_timer_update (tc);
