@@ -1634,6 +1634,9 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   int n_bytes = 0;
   u8 *data;
 
+  if (transport_connection_is_descheduled (&tc->connection))
+    transport_connection_reschedule (&tc->connection);
+
   /* Problem already solved or worse */
   if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
       || (tc->flags & TCP_CONN_FINSNT))

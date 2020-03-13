@@ -1244,6 +1244,8 @@ tcp_persist_timer_update (tcp_connection_t * tc)
 always_inline void
 tcp_persist_timer_reset (tcp_connection_t * tc)
 {
+  if (transport_connection_is_descheduled (&tc->connection))
+    transport_connection_reschedule (&tc->connection);
   tcp_timer_reset (tc, TCP_TIMER_PERSIST);
 }
 
