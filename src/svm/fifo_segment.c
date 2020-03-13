@@ -175,6 +175,7 @@ fifo_segment_init (fifo_segment_t * fs)
     {
       fss = fsh_slice_get (fsh, i);
       vec_validate_init_empty (fss->free_chunks, max_chunk_sz, 0);
+      vec_validate_init_empty (fss->num_chunks, max_chunk_sz, 0);
       clib_spinlock_init (&fss->chunk_lock);
     }
 
@@ -527,6 +528,7 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
       cmem += sizeof (*c) + rounded_data_size;
     }
 
+  fss->num_chunks[fl_index] += batch_size;
   fss->n_fl_chunk_bytes += batch_size * rounded_data_size;
   fsh_cached_bytes_add (fsh, batch_size * rounded_data_size);
   fsh_free_bytes_sub (fsh, size);
@@ -578,6 +580,7 @@ fs_try_alloc_fifo_batch (fifo_segment_header_t * fsh,
       fmem += hdrs + rounded_data_size;
     }
 
+  fss->num_chunks[fl_index] += batch_size;
   fss->n_fl_chunk_bytes += batch_size * rounded_data_size;
   fsh_cached_bytes_add (fsh, batch_size * rounded_data_size);
   fsh_free_bytes_sub (fsh, size);
@@ -648,6 +651,7 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
       ssvm_pop_heap (oldheap);
       if (f)
 	{
+	  fss->num_chunks[fl_index] += 1;
 	  fsh_free_bytes_sub (fsh, fifo_sz);
 	  goto done;
 	}
@@ -707,6 +711,7 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
 
 	  if (c)
 	    {
+	      fss->num_chunks[fl_index] += 1;
 	      fsh_free_bytes_sub (fsh, chunk_size + sizeof (*c));
 	      goto done;
 	    }
@@ -976,6 +981,7 @@ fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 slice_index,
       fsh_cached_bytes_add (fsh, rounded_data_size);
     }
 
+  fss->num_chunks[fl_index] += batch_size;
   fss->n_fl_chunk_bytes += batch_size * rounded_data_size;
   fsh_free_bytes_sub (fsh, size);
 
@@ -1343,8 +1349,9 @@ format_fifo_segment (u8 * s, va_list * args)
 
   free_chunks = fifo_segment_num_free_chunks (fs, ~0);
   if (free_chunks)
-    s = format (s, "\n\n%UFree chunks by size:\n", format_white_space,
-		indent + 2);
+    s =
+      format (s, "\n\n%UFree/Allocated chunks by size:\n", format_white_space,
+	      indent + 2);
   else
     s = format (s, "\n");
 
@@ -1354,7 +1361,7 @@ format_fifo_segment (u8 * s, va_list * args)
       for (i = 0; i < vec_len (fss->free_chunks); i++)
 	{
 	  c = fss->free_chunks[i];
-	  if (c == 0)
+	  if (c == 0 && fss->num_chunks[i] == 0)
 	    continue;
 	  count = 0;
 	  while (c)
@@ -1364,8 +1371,8 @@ format_fifo_segment (u8 * s, va_list * args)
 	    }
 
 	  chunk_size = fs_freelist_index_to_size (i);
-	  s = format (s, "%U%-5u kB: %u\n", format_white_space, indent + 2,
-		      chunk_size >> 10, count);
+	  s = format (s, "%U%-5u kB: %u/%u\n", format_white_space, indent + 2,
+		      chunk_size >> 10, count, fss->num_chunks[i]);
 
 	  chunk_bytes += count * chunk_size;
 	}
