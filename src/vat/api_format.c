@@ -7371,10 +7371,6 @@ api_tap_create_v2 (vat_main_t * vam)
 	tap_flags |= TAP_FLAG_GSO;
       else if (unformat (i, "csum-offload"))
 	tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
-      else if (unformat (i, "persist"))
-	tap_flags |= TAP_FLAG_PERSIST;
-      else if (unformat (i, "attach"))
-	tap_flags |= TAP_FLAG_ATTACH;
       else
 	break;
     }
@@ -20630,7 +20626,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload] [persist] [attach]") \
+  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \

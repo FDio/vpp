@@ -582,11 +582,7 @@ static void *vl_api_tap_create_v2_t_print
   if ((mp->tap_flags) & 0x1)
     s = format (s, "gso-enabled ");
   if ((mp->tap_flags) & 0x2)
-    s = format (s, "csum-offload-enabled ");
-  if ((mp->tap_flags) & 0x4)
-    s = format (s, "persist ");
-  if ((mp->tap_flags) & 0x8)
-    s = format (s, "attach ");
+    s = format (s, "csum-offload-enabled");
   FINISH;
 }
 

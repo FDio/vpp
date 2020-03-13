@@ -91,7 +91,6 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
 {
   virtio_main_t *mm = &virtio_main;
   tap_main_t *tm = &tap_main;
-  clib_error_t *err = 0;
   int i;
 
   /* *INDENT-OFF* */
@@ -103,9 +102,6 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
     virtio_vring_free_tx (vm, vif, TX_QUEUE (i));
   /* *INDENT-ON* */
 
-  _IOCTL (vif->tap_fd, TUNSETPERSIST, (void *) (uintptr_t) 0);
-  tap_log_dbg (vif, "TUNSETPERSIST: unset");
-error:
   if (vif->tap_fd != -1)
     close (vif->tap_fd);
 
@@ -135,7 +131,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   int i;
   int old_netns_fd = -1;
   struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
-  struct ifreq get_ifr = {.ifr_flags = 0 };
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
@@ -175,39 +170,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->num_rxqs = args->num_rx_queues;
   num_q_pairs = clib_max (vif->num_rxqs, vif->num_txqs);
 
-  if (args->tap_flags & TAP_FLAG_ATTACH)
-    {
-      if (args->host_if_name != NULL)
-	{
-	  host_if_name = (char *) args->host_if_name;
-	  clib_memcpy (ifr.ifr_name, host_if_name,
-		       clib_min (IFNAMSIZ, strlen (host_if_name)));
-	}
-      else
-	{
-	  args->rv = VNET_API_ERROR_NO_MATCHING_INTERFACE;
-	  err = clib_error_return (0, "host_if_name is not provided");
-	  goto error;
-	}
-      if (args->host_namespace)
-	{
-	  old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-	  if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  if (setns (nfd, CLONE_NEWNET) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "setns '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	}
-    }
   if ((vif->tap_fd = tfd = open ("/dev/net/tun", O_RDWR | O_NONBLOCK)) < 0)
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
@@ -267,33 +229,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       err = clib_error_return_unix (0, "fcntl(tfd, F_SETFL, O_NONBLOCK)");
       tap_log_err (vif, "set nonblocking: %U", format_clib_error, err);
       goto error;
-    }
-
-  /*
-   * unset the persistence when attaching to existing
-   * interface
-   */
-  if (args->tap_flags & TAP_FLAG_ATTACH)
-    {
-      _IOCTL (tfd, TUNSETPERSIST, (void *) (uintptr_t) 0);
-      tap_log_dbg (vif, "TUNSETPERSIST: unset");
-    }
-
-  /* set the persistence */
-  if (args->tap_flags & TAP_FLAG_PERSIST)
-    {
-      _IOCTL (tfd, TUNSETPERSIST, (void *) (uintptr_t) 1);
-      tap_log_dbg (vif, "TUNSETPERSIST: set");
-
-      /* verify persistence is set, read the flags */
-      _IOCTL (tfd, TUNGETIFF, (void *) &get_ifr);
-      tap_log_dbg (vif, "TUNGETIFF: flags 0x%lx", get_ifr.ifr_flags);
-      if ((get_ifr.ifr_flags & IFF_PERSIST) == 0)
-	{
-	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	  args->error = clib_error_return (0, "persistence not supported");
-	  goto error;
-	}
     }
 
   tap_log_dbg (vif, "TUNSETVNETHDRSZ: fd %d vnet_hdr_sz %u", tfd, hdrsz);
@@ -356,46 +291,46 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   virtio_set_net_hdr_size (vif);
 
-  if (!(args->tap_flags & TAP_FLAG_ATTACH))
+  /* if namespace is specified, all further netlink messages should be executed
+     after we change our net namespace */
+  if (args->host_namespace)
     {
-      /* if namespace is specified, all further netlink messages should be executed
-         after we change our net namespace */
-      if (args->host_namespace)
+      old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
+      if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
 	{
-	  old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-	  if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  args->error = vnet_netlink_set_link_netns (vif->ifindex, nfd,
-						     host_if_name);
-	  if (args->error)
-	    {
-	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	      goto error;
-	    }
-	  if (setns (nfd, CLONE_NEWNET) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "setns '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
-						    host_if_name);
-	      goto error;
-	    }
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
+						args->host_namespace);
+	  goto error;
 	}
-      else if (host_if_name)
+      args->error = vnet_netlink_set_link_netns (vif->ifindex, nfd,
+						 host_if_name);
+      if (args->error)
 	{
-	  args->error =
-	    vnet_netlink_set_link_name (vif->ifindex, host_if_name);
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+      if (setns (nfd, CLONE_NEWNET) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return_unix (0, "setns '%s'",
+						args->host_namespace);
+	  goto error;
+	}
+      if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
+						host_if_name);
+	  goto error;
+	}
+    }
+  else
+    {
+      if (host_if_name)
+	{
+	  args->error = vnet_netlink_set_link_name (vif->ifindex,
+						    host_if_name);
 	  if (args->error)
 	    {
 	      args->rv = VNET_API_ERROR_NETLINK_ERROR;

@@ -164,6 +164,8 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 
   rv = tap_delete_if (vm, sw_if_index);
 
+
+
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_DELETE_V2_REPLY);
   rmp->context = mp->context;
