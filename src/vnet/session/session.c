@@ -1490,6 +1490,24 @@ session_register_transport (transport_proto_t transport_proto,
     session_tx_fns[vft->transport_options.tx_type];
 }
 
+transport_proto_t
+session_add_transport_type (void)
+{
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+  u32 thread;
+
+  smm->last_transport_type += 1;
+
+  for (thread = 0; thread < vec_len (smm->wrk); thread++)
+    {
+      wrk = session_main_get_worker (thread);
+      vec_validate (wrk->session_to_enqueue, smm->last_transport_type);
+    }
+
+  return smm->last_transport_type;
+}
+
 transport_connection_t *
 session_get_transport (session_t * s)
 {
@@ -1543,6 +1561,7 @@ session_manager_main_enable (vlib_main_t * vm)
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
 
+  smm->last_transport_type = TRANSPORT_PROTO_QUIC;
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -1555,6 +1574,7 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+      vec_validate (wrk->session_to_enqueue, smm->last_transport_type);
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
