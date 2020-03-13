@@ -145,6 +145,19 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
     }
 }
 
+void
+sesssion_reschedule_tx (transport_connection_t * tc)
+{
+  session_worker_t *wrk = session_main_get_worker (tc->thread_index);
+  session_evt_elt_t *elt;
+
+  ASSERT (tc->thread_index == vlib_get_thread_index ());
+
+  elt = session_evt_alloc_new (wrk);
+  elt->evt.session_index = tc->s_index;
+  elt->evt.event_type = SESSION_IO_EVT_TX;
+}
+
 static void
 session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
 {

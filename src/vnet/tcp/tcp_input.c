@@ -1312,7 +1312,9 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 	}
       else
 	{
-	  tcp_persist_timer_reset (tc);
+	  if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)))
+	    tcp_persist_timer_reset (tc);
+
 	  if (PREDICT_FALSE (!tcp_in_recovery (tc) && tc->rto_boff > 0))
 	    {
 	      tc->rto_boff = 0;
