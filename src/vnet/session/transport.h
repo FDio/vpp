@@ -32,6 +32,21 @@ typedef struct _transport_options_t
   u8 half_open_has_fifos;
 } transport_options_t;
 
+typedef enum transport_snd_flags_
+{
+  TRANSPORT_SND_F_DESCHED,
+  TRANSPORT_SND_F_POSTPONE,
+  TRANSPORT_SND_N_FLAGS
+} transport_snd_flags_t;
+
+typedef struct transport_send_params_
+{
+  u32 snd_space;
+  u32 tx_offset;
+  u16 snd_mss;
+  transport_snd_flags_t flags;
+} transport_send_params_t;
+
 /*
  * Transport protocol virtual function table
  */
@@ -54,6 +69,8 @@ typedef struct _transport_proto_vft
    */
 
   u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
+  int (*send_params) (transport_connection_t * tconn,
+		      transport_send_params_t *sp);
   u16 (*send_mss) (transport_connection_t * tc);
   u32 (*send_space) (transport_connection_t * tc);
   u32 (*tx_fifo_offset) (transport_connection_t * tc);
@@ -151,15 +168,37 @@ transport_app_rx_evt (transport_proto_t tp, u32 conn_index, u32 thread_index)
 }
 
 /**
- * Get maximum tx burst allowed for transport connection
+ * Get send parameters for transport connection
+ *
+ * These include maximum tx burst, mss, tx offset and other flags
+ * transport might want to provide to sessin layer
  *
  * @param tc		transport connection
+ * @param sp		send paramaters
+ *
  */
 static inline u32
-transport_connection_snd_space (transport_connection_t * tc)
+transport_connection_snd_params (transport_connection_t * tc,
+				 transport_send_params_t * sp)
 {
-  return tp_vfts[tc->proto].send_space (tc);
+  return tp_vfts[tc->proto].send_params (tc, sp);
 }
+
+static inline u8
+transport_connection_is_descheduled (transport_connection_t * tc)
+{
+  if (tc->flags & TRANSPORT_CONNECTION_F_DESCHED)
+    return 1;
+  return 0;
+}
+
+static inline void
+transport_connection_deschedule (transport_connection_t * tc)
+{
+  tc->flags |= TRANSPORT_CONNECTION_F_DESCHED;
+}
+
+void transport_connection_reschedule (transport_connection_t * tc);
 
 void transport_register_protocol (transport_proto_t transport_proto,
 				  const transport_proto_vft_t * vft,
