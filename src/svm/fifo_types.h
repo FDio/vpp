@@ -104,6 +104,7 @@ typedef struct fifo_segment_slice_
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
+  u32 *num_chunks;			/**< Allocated chunks by chunk size */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
   clib_spinlock_t chunk_lock;
