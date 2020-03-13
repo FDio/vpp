@@ -226,15 +226,6 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
   clib_bihash_add_del_24_8 (ht, &kv, 0);
 }
 
-/**
- * Register transport virtual function table.
- *
- * @param transport_proto - transport protocol type (i.e., TCP, UDP ..)
- * @param vft - virtual function table for transport proto
- * @param fib_proto - network layer protocol
- * @param output_node - output node index that session layer will hand off
- * 			buffers to, for requested fib proto
- */
 void
 transport_register_protocol (transport_proto_t transport_proto,
 			     const transport_proto_vft_t * vft,
@@ -246,6 +237,24 @@ transport_register_protocol (transport_proto_t transport_proto,
   tp_vfts[transport_proto] = *vft;
 
   session_register_transport (transport_proto, vft, is_ip4, output_node);
+}
+
+transport_proto_t
+transport_register_new_protocol (const transport_proto_vft_t * vft,
+				 fib_protocol_t fib_proto, u32 output_node)
+{
+  transport_proto_t transport_proto;
+  u8 is_ip4;
+
+  transport_proto = session_add_transport_proto ();
+  is_ip4 = fib_proto == FIB_PROTOCOL_IP4;
+
+  vec_validate (tp_vfts, transport_proto);
+  tp_vfts[transport_proto] = *vft;
+
+  session_register_transport (transport_proto, vft, is_ip4, output_node);
+
+  return transport_proto;
 }
 
 /**

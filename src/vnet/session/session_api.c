@@ -1517,7 +1517,7 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 
   /* *INDENT-OFF* */
   session_table_foreach (st, ({
-    for (tp = 0; tp < TRANSPORT_N_PROTO; tp++)
+    for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
       {
         send_session_rules_table_details (&st->session_rules[tp],
                                           st->active_fib_proto, tp,
