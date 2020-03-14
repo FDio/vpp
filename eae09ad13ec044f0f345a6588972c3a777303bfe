@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a719d7ab_5dd30217",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 654,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-14T19:29:30Z",
+      "side": 1,
+      "message": "Nit: fss-\u003enum_chunks[fl_index] +\u003d 1 just to follow the same style across the file",
+      "range": {
+        "startLine": 654,
+        "startChar": 0,
+        "endLine": 654,
+        "endChar": 31
+      },
+      "revId": "eae09ad13ec044f0f345a6588972c3a777303bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33b69d3d_14b20930",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-14T19:29:30Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 714,
+        "startChar": 12,
+        "endLine": 714,
+        "endChar": 13
+      },
+      "revId": "eae09ad13ec044f0f345a6588972c3a777303bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a7047cc_55c9c20c",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1353,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-14T19:29:30Z",
+      "side": 1,
+      "message": "Move this to first line and line break before format_white_space",
+      "range": {
+        "startLine": 1353,
+        "startChar": 0,
+        "endLine": 1353,
+        "endChar": 78
+      },
+      "revId": "eae09ad13ec044f0f345a6588972c3a777303bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
