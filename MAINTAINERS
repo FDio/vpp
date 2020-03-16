@@ -415,6 +415,11 @@ I:	gtpu
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/gtpu/
 
+Plugin - UPF
+I:	upf
+M:	Andreas Schultz <andreas.schultz@travelping.com>
+F:	src/plugins/upf/
+
 Plugin - Internet Key Exchange (IKEv2) Protocol
 I:	ikev2
 M:	Damjan Marion <damarion@cisco.com>
