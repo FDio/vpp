@@ -149,7 +149,7 @@ typedef struct
   };
   u32 per_interface_next_index;
   int *vhost_fds;
-  int tap_fd;
+  int *tap_fds;
   u32 msix_enabled;
   u32 pci_dev_handle;
   virtio_vring_t *rxq_vrings;
