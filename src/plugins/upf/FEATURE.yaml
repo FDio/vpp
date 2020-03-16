@@ -1,0 +1,12 @@
+---
+name: 3GPP UPF (User Plane Function)
+maintainer: Andreas Schultz <andreas.schultz@travelping.com>
+features:
+  - PFCP protocol
+  - Uplink and Downlink Packet Detection Rules (PDR)
+  - Forward Action Rules (FAR)
+  - Usage Reporting Rules (URR)
+
+description: "An implementation of the a 3GPP User Plane Function"
+state: production
+properties: [API, CLI, MULTITHREAD]
