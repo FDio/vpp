@@ -7300,7 +7300,7 @@ api_tap_create_v2 (vat_main_t * vam)
   u8 mac_address[6];
   u8 random_mac = 1;
   u32 id = ~0;
-  u32 num_rx_queues = 0;
+  u16 num_queue_pairs = 1;
   u8 *host_if_name = 0;
   u8 host_if_name_set = 0;
   u8 *host_ns = 0;
@@ -7338,7 +7338,7 @@ api_tap_create_v2 (vat_main_t * vam)
 	random_mac = 0;
       else if (unformat (i, "host-if-name %s", &host_if_name))
 	host_if_name_set = 1;
-      else if (unformat (i, "num-rx-queues %u", &num_rx_queues))
+      else if (unformat (i, "num-queue-pairs %u", &num_queue_pairs))
 	;
       else if (unformat (i, "host-ns %s", &host_ns))
 	host_ns_set = 1;
@@ -7435,7 +7435,7 @@ api_tap_create_v2 (vat_main_t * vam)
 
   mp->id = ntohl (id);
   mp->use_random_mac = random_mac;
-  mp->num_rx_queues = (u8) num_rx_queues;
+  mp->num_queue_pairs = num_queue_pairs;
   mp->tx_ring_sz = ntohs (tx_ring_sz);
   mp->rx_ring_sz = ntohs (rx_ring_sz);
   mp->host_mtu_set = host_mtu_set;

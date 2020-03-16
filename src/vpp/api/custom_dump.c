@@ -571,8 +571,8 @@ static void *vl_api_tap_create_v2_t_print
     s =
       format (s, "host-ip6-gw %U ", format_ip6_address,
 	      mp->host_ip6_prefix.address);
-  if (mp->num_rx_queues)
-    s = format (s, "num_rx_queues %u ", mp->num_rx_queues);
+  if (mp->num_queue_pairs)
+    s = format (s, "num_queue_pairs %u ", mp->num_queue_pairs);
   if (mp->tx_ring_sz)
     s = format (s, "tx-ring-size %u ", (mp->tx_ring_sz));
   if (mp->rx_ring_sz)
