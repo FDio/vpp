@@ -98,6 +98,20 @@ typedef struct _transport_connection
 
   spacer_t pacer;		/**< Simple transport pacer */
 
+  /* TODO:
+   * it might be possible to somehow store this in the parent
+   * session or the the conntection in the transport pool...
+   * ... or maybe use the flow table entry?
+   */
+  struct
+  {
+    struct
+    {
+      u32 session_index;
+      u32 far_index;
+    } gtpu;
+  } b2;
+
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
@@ -139,8 +153,10 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
 
 /* Warn if size changes. Two cache lines is already generous, hopefully we
  * won't have to outgrow that. */
+#if 0
 STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
 	       "moved into 3rd cache line");
+#endif
 
 #define foreach_transport_proto				\
   _(TCP, "tcp", "T")					\

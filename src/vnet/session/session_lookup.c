@@ -948,6 +948,16 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
       return 0;
     }
 
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener4)
+    {
+      s =
+	st->session_lookup_listener4 (fib_index, lcl, rmt, lcl_port, rmt_port,
+				      proto);
+      if (s)
+	return transport_get_listener (proto, s->connection_index);
+    }
+
   /*
    * If nothing is found, check if any listener is available
    */
@@ -1022,6 +1032,16 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
       return 0;
     }
 
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener4)
+    {
+      s =
+	st->session_lookup_listener4 (fib_index, lcl, rmt, lcl_port, rmt_port,
+				      proto);
+      if (s)
+	return transport_get_listener (proto, s->connection_index);
+    }
+
   /*
    * If nothing is found, check if any listener is available
    */
@@ -1078,6 +1098,15 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
 	return 0;
       return session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
 					       proto);
+    }
+
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener4)
+    {
+      if ((s =
+	   st->session_lookup_listener4 (fib_index, lcl, rmt, lcl_port,
+					 rmt_port, proto)))
+	return s;
     }
 
   /*
@@ -1166,6 +1195,16 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
       return 0;
     }
 
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener6)
+    {
+      s =
+	st->session_lookup_listener6 (fib_index, lcl, rmt, lcl_port, rmt_port,
+				      proto);
+      if (s)
+	return transport_get_listener (proto, s->connection_index);
+    }
+
   /* If nothing is found, check if any listener is available */
   s = session_lookup_listener6_i (st, lcl, lcl_port, proto, 1);
   if (s)
@@ -1232,6 +1271,16 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
       return 0;
     }
 
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener6)
+    {
+      s =
+	st->session_lookup_listener6 (fib_index, lcl, rmt, lcl_port, rmt_port,
+				      proto);
+      if (s)
+	return transport_get_listener (proto, s->connection_index);
+    }
+
   /* If nothing is found, check if any listener is available */
   s = session_lookup_listener6_i (st, lcl, lcl_port, proto, 1);
   if (s)
@@ -1281,6 +1330,15 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
 	return 0;
       return session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP6,
 					       proto);
+    }
+
+  /* Check the session lookup hook */
+  if (st->session_lookup_listener6)
+    {
+      if ((s =
+	   st->session_lookup_listener6 (fib_index, lcl, rmt, lcl_port,
+					 rmt_port, proto)))
+	return s;
     }
 
   /* If nothing is found, check if any listener is available */

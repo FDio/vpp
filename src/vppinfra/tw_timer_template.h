@@ -142,6 +142,7 @@ typedef struct
 #if (TW_OVERFLOW_VECTOR > 0)
     u64 expiration_time;
 #endif
+    u64 expected_tick;
   };
 
   /** user timer handle */

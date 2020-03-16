@@ -463,6 +463,8 @@ typedef struct
       /* buffer trajectory tracing */
       u16 *trajectory_trace;
 #endif
+
+      u32 connection_index;
     };
     struct
     {

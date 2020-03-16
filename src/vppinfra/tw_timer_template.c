@@ -173,6 +173,8 @@ timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
   u16 fast_ring_offset;
   tw_timer_wheel_slot_t *ts;
 
+  t->expected_tick = tw->current_tick + interval;
+
   /* Factor interval into 1..3 wheel offsets */
 #if TW_TIMER_WHEELS > 2
 #if TW_OVERFLOW_VECTOR > 0
