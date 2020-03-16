@@ -308,50 +308,59 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    int do_gso, int csum_offload)
 {
   u16 n_left = frame->n_vectors;
-  virtio_vring_t *vring;
-  u16 qid = vm->thread_index % vif->num_txqs;
-  vring = vec_elt_at_index (vif->txq_vrings, qid);
-  u16 used, next, avail;
-  u16 sz = vring->size;
-  u16 mask = sz - 1;
   u32 *buffers = vlib_frame_vector_args (frame);
+  u16 qid = vm->thread_index % vif->num_txqs;
+  virtio_vring_t *vring;
 
-  clib_spinlock_lock_if_init (&vring->lockp);
-
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
-      (vring->last_kick_avail_idx != vring->avail->idx))
-    virtio_kick (vm, vring, vif);
-
-  /* free consumed buffers */
-  virtio_free_used_device_desc (vm, vring);
-
-  used = vring->desc_in_use;
-  next = vring->desc_next;
-  avail = vring->avail->idx;
-
-  while (n_left && used < sz)
+  for (u16 q = 0; q < vif->num_txqs; q++)
     {
-      u16 n_added = 0;
-      n_added =
-	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
-			    do_gso, csum_offload);
-      if (!n_added)
-	break;
-      avail += n_added;
-      next = (next + n_added) & mask;
-      used += n_added;
-      buffers++;
-      n_left--;
-    }
+      vring = vec_elt_at_index (vif->txq_vrings, (qid % vif->num_txqs));
+      u16 used, next, avail;
+      u16 sz = vring->size;
+      u16 mask = sz - 1;
 
-  if (n_left != frame->n_vectors)
-    {
-      CLIB_MEMORY_STORE_BARRIER ();
-      vring->avail->idx = avail;
-      vring->desc_next = next;
-      vring->desc_in_use = used;
-      if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
+      clib_spinlock_lock_if_init (&vring->lockp);
+
+      if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+	  (vring->last_kick_avail_idx != vring->avail->idx))
 	virtio_kick (vm, vring, vif);
+
+      /* free consumed buffers */
+      virtio_free_used_device_desc (vm, vring);
+
+      used = vring->desc_in_use;
+      next = vring->desc_next;
+      avail = vring->avail->idx;
+
+      while (n_left && used < sz)
+	{
+	  u16 n_added = 0;
+	  n_added =
+	    add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
+				do_gso, csum_offload);
+	  if (!n_added)
+	    break;
+	  avail += n_added;
+	  next = (next + n_added) & mask;
+	  used += n_added;
+	  buffers++;
+	  n_left--;
+	}
+
+      if (n_left != frame->n_vectors)
+	{
+	  CLIB_MEMORY_STORE_BARRIER ();
+	  vring->avail->idx = avail;
+	  vring->desc_next = next;
+	  vring->desc_in_use = used;
+	  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
+	    virtio_kick (vm, vring, vif);
+	}
+
+      clib_spinlock_unlock_if_init (&vring->lockp);
+      if (!n_left)
+	break;
+      qid++;
     }
 
   if (n_left)
@@ -360,8 +369,6 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			n_left);
       vlib_buffer_free (vm, buffers, n_left);
     }
-
-  clib_spinlock_unlock_if_init (&vring->lockp);
 
   return frame->n_vectors - n_left;
 }
