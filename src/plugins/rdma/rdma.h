@@ -39,10 +39,24 @@ enum
 #undef _
 };
 
+#ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
+#define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
+#endif
+
 typedef struct
 {
   CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
-  struct mlx5_wqe_ctrl_seg ctrl;
+  union
+  {
+    struct mlx5_wqe_ctrl_seg ctrl;
+    struct
+    {
+      u8 opc_mod;
+      u8 wqe_index_hi;
+      u8 wqe_index_lo;
+      u8 opcode;
+    };
+  };
   struct mlx5_wqe_eth_seg eseg;
   struct mlx5_wqe_data_seg dseg;
 } rdma_mlx5_wqe_t;
