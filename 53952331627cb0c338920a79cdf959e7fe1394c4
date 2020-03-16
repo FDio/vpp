@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2c9588be_fd0e2b20",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-03-16T17:25:48Z",
+      "side": 1,
+      "message": "could this be done only if vring-\u003eflags \u0026 VRING_TX_OUT_OF_ORDER is true?",
+      "revId": "53952331627cb0c338920a79cdf959e7fe1394c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "764e98dc_2a7a0bce",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-03-16T17:25:48Z",
+      "side": 1,
+      "message": "No need to set the flag only if unset, we can always et it here (and remove the useless branch)",
+      "revId": "53952331627cb0c338920a79cdf959e7fe1394c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c51c4ef0_6ad33648",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-03-16T17:25:48Z",
+      "side": 1,
+      "message": "maybe add PREDICT_FALSE() ?",
+      "revId": "53952331627cb0c338920a79cdf959e7fe1394c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
