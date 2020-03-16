@@ -42,7 +42,6 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.id = ~0;
   args.tap_flags = 0;
   args.rv = -1;
-  args.num_rx_queues = 1;
 
   /* Get a line of input. */
   if (unformat_user (input, unformat_line_input, line_input))
@@ -76,8 +75,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  else if (unformat (line_input, "host-ip6-gw %U",
 			     unformat_ip6_address, &args.host_ip6_gw))
 	    args.host_ip6_gw_set = 1;
-	  else if (unformat (line_input, "num-rx-queues %d", &tmp))
-	    args.num_rx_queues = tmp;
+	  else if (unformat (line_input, "num-queue-pairs %d", &tmp))
+	    args.num_queue_pairs = tmp;
 	  else if (unformat (line_input, "rx-ring-size %d", &tmp))
 	    args.rx_ring_sz = tmp;
 	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
@@ -113,6 +112,9 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "Please specify either host ip address or "
 			      "host bridge");
 
+  if (args.num_queue_pairs < 1)
+    args.num_queue_pairs = 1;
+
   tap_create_if (vm, &args);
 
   if (!args.rv)
@@ -136,7 +138,7 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
     "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
     "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload] "
-    "[persist] [attach]",
+    "[num-queue-pairs <n>] [persist] [attach]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

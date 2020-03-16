@@ -77,10 +77,10 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
-  ap->num_rx_queues = 1;
+  ap->num_queue_pairs = 1;
 
-  if (mp->num_rx_queues > 1)
-    ap->num_rx_queues = mp->num_rx_queues;
+  if (mp->num_queue_pairs > 1)
+    ap->num_queue_pairs = mp->num_queue_pairs;
 
   if (mp->host_if_name_set)
     ap->host_if_name = mp->host_if_name;
