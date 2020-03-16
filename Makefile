@@ -76,6 +76,7 @@ DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
+DEB_DEPENDS += libhyperscan-dev
 # python3.6 on 16.04 requires python36-dev
 
 LIBFFI=libffi6 # works on all but 20.04
@@ -139,6 +140,7 @@ endif
 
 # +ganglia-devel if building the ganglia plugin
 
+RPM_DEPENDS += hyperscan-devel
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 # lowercase- replace spaces with dashes.
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/ /-/' | awk '{print tolower($$0)}')
@@ -148,6 +150,7 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+RPM_SUSE_DEVEL_DEPS += hyperscan-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
