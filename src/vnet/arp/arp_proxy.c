@@ -152,8 +152,8 @@ proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data)
 
 static clib_error_t *
 set_int_proxy_arp_command_fn (vlib_main_t * vm,
-			      unformat_input_t *
-			      input, vlib_cli_command_t * cmd)
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
@@ -186,6 +186,43 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+set_arp_proxy (vlib_main_t * vm,
+	       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ip4_address_t start = {.as_u32 = ~0 }, end =
+  {
+  .as_u32 = ~0};
+  u32 fib_index, table_id = 0;
+  int add = 1;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "table-id %d", &table_id))
+	;
+      else if (unformat (input, "start %U", unformat_ip4_address, &start))
+	;
+      else if (unformat (input, "end %U", unformat_ip4_address, &end))
+	;
+      else if (unformat (input, "del") || unformat (input, "delete"))
+	add = 0;
+      else
+	break;
+    }
+
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
+
+  if (~0 == fib_index)
+    return (clib_error_return (0, "no such table: %d", table_id));
+
+  if (add)
+    arp_proxy_add (fib_index, &start, &end);
+  else
+    arp_proxy_del (fib_index, &start, &end);
+
+  return (NULL);
+}
+
 /* *INDENT-OFF* */
 /*?
  * Enable proxy-arp on an interface. The vpp stack will answer ARP
@@ -211,6 +248,14 @@ VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   .short_help =
   "set interface proxy-arp <intfc> [enable|disable]",
   .function = set_int_proxy_arp_command_fn,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_arp_proxy_command, static) = {
+  .path = "set arp proxy",
+  .short_help = "set arp proxy [del] table-ID <table-ID> start <start-address> end <end-addres>",
+  .function = set_arp_proxy,
 };
 /* *INDENT-ON* */
 
