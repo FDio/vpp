@@ -312,7 +312,10 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    str = format (str, " %d", vif->vhost_fds[i]);
 	  vlib_cli_output (vm, "  vhost-fds%v", str);
 	  vec_free (str);
-	  vlib_cli_output (vm, "  tap-fd %d", vif->tap_fd);
+	  vec_foreach_index (i, vif->tap_fds)
+	    str = format (str, " %d", vif->tap_fds[i]);
+	  vlib_cli_output (vm, "  tap-fds%v", str);
+	  vec_free (str);
 	}
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
