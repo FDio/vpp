@@ -39,6 +39,10 @@ enum
 #undef _
 };
 
+#ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
+#define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
+#endif
+
 typedef struct
 {
   CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);

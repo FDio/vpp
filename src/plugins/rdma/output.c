@@ -23,10 +23,6 @@
 #include <vnet/devices/devices.h>
 #include <rdma/rdma.h>
 
-#ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
-#define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
-#endif
-
 #define RDMA_TX_RETRIES 5
 
 #define RDMA_TXQ_DV_DSEG_SZ(txq)        (RDMA_MLX5_WQE_DS * RDMA_TXQ_DV_SQ_SZ(txq))
@@ -113,18 +109,27 @@ rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
 		    vlib_buffer_t * b, const u16 tail)
 {
   u16 sz = b->current_length;
-  u16 inline_sz = clib_min (sz, MLX5_ETH_L2_INLINE_HEADER_SIZE);
+  const void *cur = vlib_buffer_get_current (b);
+  uword addr = pointer_to_uword (cur);
 
   clib_memcpy_fast (wqe, tmpl, RDMA_MLX5_WQE_SZ);
-
-  wqe->ctrl.opmod_idx_opcode |= ((u32) htobe16 (tail)) << 8;
   /* speculatively copy at least MLX5_ETH_L2_INLINE_HEADER_SIZE (18-bytes) */
-  const void *cur = vlib_buffer_get_current (b);
   clib_memcpy_fast (wqe->eseg.inline_hdr_start,
 		    cur, MLX5_ETH_L2_INLINE_HEADER_SIZE);
-  wqe->eseg.inline_hdr_sz = htobe16 (inline_sz);
-  wqe->dseg.byte_count = htobe32 (sz - inline_sz);
-  wqe->dseg.addr = htobe64 (pointer_to_uword (cur) + inline_sz);
+
+  wqe->ctrl.opmod_idx_opcode |= ((u32) htobe16 (tail)) << 8;
+  if (PREDICT_TRUE (sz >= MLX5_ETH_L2_INLINE_HEADER_SIZE))
+    {
+      /* inline_hdr_sz is set to MLX5_ETH_L2_INLINE_HEADER_SIZE
+         in the template */
+      wqe->dseg.byte_count = htobe32 (sz - MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      wqe->dseg.addr = htobe64 (addr + MLX5_ETH_L2_INLINE_HEADER_SIZE);
+    }
+  else
+    {
+      /* dseg.byte_count and desg.addr are set to 0 in the template */
+      wqe->eseg.inline_hdr_sz = htobe16 (sz);
+    }
 }
 
 /*
