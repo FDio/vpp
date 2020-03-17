@@ -1272,6 +1272,10 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	    return clib_error_return (0,
 				      "corelist cannot be set for '%s' threads",
 				      name);
+	  if (tr->count)
+	    return clib_error_return
+	      (0, "core placement of '%s' threads is already configured",
+	       name);
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
@@ -1290,9 +1294,14 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	    return clib_error_return (0, "no such thread type 3 '%s'", name);
 
 	  tr = (vlib_thread_registration_t *) p[0];
+
 	  if (tr->fixed_count)
 	    return clib_error_return
-	      (0, "number of %s threads not configurable", tr->name);
+	      (0, "number of '%s' threads not configurable", name);
+	  if (tr->count)
+	    return clib_error_return
+	      (0, "number of '%s' threads is already configured", name);
+
 	  tr->count = count;
 	}
       else
