@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "045ef064_84ee6384",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-17T09:37:32Z",
+      "side": 1,
+      "message": "Yes, e-\u003eid is \"Index of start of used descriptor chain\". But we don\u0027t care of chain buffers as vlib_buffer_free will take care of it.\nWe want to use single call vlib_buffer_free to free maximum used buffers at once. So we are checking for consecutive used descriptors, each representing a different packet (either contain a buffer and/or buffers chain).",
+      "parentUuid": "06906960_ea7729ea",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
