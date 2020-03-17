@@ -1616,9 +1616,11 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
     }
 
   a.flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
-  a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
   if (sa->udp_encap)
-    a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+    {
+      a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
+      a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+    }
   a.is_rekey = is_rekey;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ESN);
