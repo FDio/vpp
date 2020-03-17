@@ -96,8 +96,10 @@ typedef struct
   int is_ether;
 
   /** 1 if a "normal" routed intfc, 0 if a punt/inject interface */
-
   int have_normal_interface;
+
+  /** Place tuntap-rx graph node to worker thread (if exists) */
+  int on_worker_thread;
 
   /** tap device destination MAC address. Required, or Linux drops pkts */
   u8 ether_dst_mac[6];
@@ -419,8 +421,11 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
 static clib_error_t *
 tuntap_read_ready (clib_file_t * uf)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_node_set_interrupt_pending (vm, tuntap_rx_node.index);
+  vnet_main_t *vnm = vnet_get_main ();
+  tuntap_main_t *tm = &tuntap_main;
+
+  /* Schedule the rx node */
+  vnet_device_input_set_interrupt_pending (vnm, tm->hw_if_index, 0);
   return 0;
 }
 
@@ -490,7 +495,8 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   struct ifreq ifr;
   u8 *name;
   int flags = IFF_TUN | IFF_NO_PI;
-  int is_enabled = 0, is_ether = 0, have_normal_interface = 0;
+  int is_enabled = 0, is_ether = 0, have_normal_interface =
+    0, on_worker_thread = 0;
   const uword buffer_size = vlib_buffer_get_default_data_size (vm);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -503,6 +509,9 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 	is_enabled = 0;
       else if (unformat (input, "ethernet") || unformat (input, "ether"))
 	is_ether = 1;
+      else if (unformat (input, "on-worker-thread")
+	       || unformat (input, "on-worker"))
+	on_worker_thread = 1;
       else if (unformat (input, "have-normal-interface") ||
 	       unformat (input, "have-normal"))
 	have_normal_interface = 1;
@@ -527,6 +536,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 
   tm->is_ether = is_ether;
   tm->have_normal_interface = have_normal_interface;
+  tm->on_worker_thread = on_worker_thread;
 
   if (is_ether)
     flags = IFF_TAP | IFF_NO_PI;
@@ -631,22 +641,24 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 	clib_memcpy_fast (tm->ether_dst_mac, ifr.ifr_hwaddr.sa_data, 6);
     }
 
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+
   if (have_normal_interface)
     {
-      vnet_main_t *vnm = vnet_get_main ();
       error = ethernet_register_interface
 	(vnm, tuntap_dev_class.index, 0 /* device instance */ ,
 	 tm->ether_dst_mac /* ethernet address */ ,
 	 &tm->hw_if_index, 0 /* flag change */ );
       if (error)
 	clib_error_report (error);
+
+      hi = vnet_get_hw_interface (vnm, tm->hw_if_index);
       tm->sw_if_index = tm->hw_if_index;
       vm->os_punt_frame = tuntap_nopunt_frame;
     }
   else
     {
-      vnet_main_t *vnm = vnet_get_main ();
-      vnet_hw_interface_t *hi;
 
       vm->os_punt_frame = tuntap_punt_frame;
 
@@ -655,13 +667,11 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 	 tuntap_interface_class.index, 0);
       hi = vnet_get_hw_interface (vnm, tm->hw_if_index);
       tm->sw_if_index = hi->sw_if_index;
-
-      /* Interface is always up. */
-      vnet_hw_interface_set_flags (vnm, tm->hw_if_index,
-				   VNET_HW_INTERFACE_FLAG_LINK_UP);
-      vnet_sw_interface_set_flags (vnm, tm->sw_if_index,
-				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
     }
+
+  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  vnet_hw_interface_set_input_node (vnm, tm->hw_if_index,
+				    tuntap_rx_node.index);
 
   {
     clib_file_t template = { 0 };
@@ -1038,6 +1048,47 @@ tuntap_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (tuntap_init) =
 {
   .runs_after = VLIB_INITS("ip4_init"),
+};
+/* *INDENT-ON* */
+
+/**
+ * @brief tun/tap main_loop_enter
+ *
+ * @param *vm - vlib_main_t
+ *
+ * @return error - clib_error_t
+ *
+ */
+static clib_error_t *
+tuntap_main_loop_enter (vlib_main_t * vm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  tuntap_main_t *tm = &tuntap_main;
+  if (tm->on_worker_thread)
+    vnet_hw_interface_assign_rx_thread (vnm, tm->hw_if_index, 0,	/* queue */
+					~0 /* any thread */ );
+  else
+    vnet_hw_interface_assign_rx_thread (vnm, tm->hw_if_index, 0,	/* queue */
+					0 /* main thread */ );
+  vnet_hw_interface_set_rx_mode (vnm, tm->hw_if_index, 0,
+				 VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
+  if (!tm->have_normal_interface)
+    {
+      /* Interface is always up */
+      vnet_hw_interface_set_flags (vnm, tm->hw_if_index,
+				   VNET_HW_INTERFACE_FLAG_LINK_UP);
+      vnet_sw_interface_set_flags (vnm, tm->sw_if_index,
+				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+    }
+
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_MAIN_LOOP_ENTER_FUNCTION (tuntap_main_loop_enter) =
+{
+  .runs_after = VLIB_INITS("start_workers"),
 };
 /* *INDENT-ON* */
 
