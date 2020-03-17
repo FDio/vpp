@@ -1294,6 +1294,14 @@ tcp_cc_data (tcp_connection_t * tc)
 
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);
+/**
+ * Initialize connection by gleaning network and rcv params from buffer
+ *
+ * @param tc		connection to initialize
+ * @param b		buffer whose current data is pointing at ip
+ * @param is_ip4	flag set to 1 if using ip4
+ */
+void tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4);
 
 /**
  * Push TCP header to buffer
