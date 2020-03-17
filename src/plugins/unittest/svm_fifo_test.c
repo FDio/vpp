@@ -2009,6 +2009,67 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+sfifo_test_fifo_make_rcv_wnd_zero (vlib_main_t * vm, unformat_input_t * input)
+{
+  int __clib_unused verbose = 0, fifo_size = 4096, deq_chunk;
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  u8 *test_data = 0, *data_buf = 0;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  /*
+   * Init fifo and enqueue data such that multiple 4096 chunks are allocated
+   */
+  fs = fifo_segment_prepare (fsm, "fifo-rcv-wnd-zero", 0);
+  f = fifo_prepare (fs, fifo_size);
+
+  /* Enqueue 3000 into 4KB chunk, so there'll be 1096 free space */
+  svm_fifo_set_size (f, 4096);
+  validate_test_and_buf_vecs (&test_data, &data_buf, fifo_size);
+  rv = svm_fifo_enqueue (f, 3000, test_data);
+  SFIFO_TEST (rv == 3000, "enqueued %u", rv);
+  rv = svm_fifo_max_enqueue (f);
+  SFIFO_TEST (rv == 1096, "svm_fifo_max_enqueue %u", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /* Shrink fifo size to the in-use size */
+  svm_fifo_set_size (f, 3000);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /* In TCP, this should result in rcv-wnd = 0 */
+  rv = svm_fifo_max_enqueue (f);
+  SFIFO_TEST (rv == 0, "svm_fifo_max_enqueue %u", rv);
+  rv = svm_fifo_max_enqueue_prod (f);
+  SFIFO_TEST (rv == 0, "svm_fifo_max_enqueue_prod %u", rv);
+
+  /* Dequeue and ... */
+  rv = svm_fifo_dequeue (f, 3000, data_buf);
+  SFIFO_TEST (rv == 3000, "dequeued %u", rv);
+
+  /* Clean up */
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+  vec_free (test_data);
+  vec_free (data_buf);
+
+  return 0;
+}
+
+
 static fifo_segment_main_t segment_main;
 
 static int
@@ -2660,6 +2721,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_shrink (vm, input);
       else if (unformat (input, "indirect"))
 	res = sfifo_test_fifo_indirect (vm, input);
+      else if (unformat (input, "zero"))
+	res = sfifo_test_fifo_make_rcv_wnd_zero (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
@@ -2722,6 +2785,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_indirect (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_make_rcv_wnd_zero (vm, input)))
 	    goto done;
 
 	  str = "all";
