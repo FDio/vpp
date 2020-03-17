@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "17c97448_85f32029",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-17T15:33:03Z",
+      "side": 1,
+      "message": "e-\u003eid and (last \u0026 mask) are two different values. In out of order case, last value is different than e-\u003eid. We can\u0027t use the above mentioned simplified technique.",
+      "parentUuid": "d3416394_022c0a6c",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
