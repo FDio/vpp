@@ -544,13 +544,11 @@ vhost_user_if_input (vlib_main_t * vm,
       /* This depends on the setup but is very consistent
        * So I think the CPU branch predictor will make a pretty good job
        * at optimizing the decision. */
-      u8 indirect = 0;
       if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
 	{
 	  desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
 				      &map_hint);
 	  desc_current = 0;
-	  indirect = 1;
 	  if (PREDICT_FALSE (desc_table == 0))
 	    {
 	      vlib_error_count (vm, node->node_index,
@@ -565,35 +563,36 @@ vhost_user_if_input (vlib_main_t * vm,
 	{
 	  virtio_net_hdr_mrg_rxbuf_t *hdr;
 	  u8 *b_data;
-	  u16 current = desc_current;
-	  u32 data_offset = desc_data_offset;
+	  u16 current;
 
-	  if ((data_offset == desc_table[current].len) &&
-	      (desc_table[current].flags & VIRTQ_DESC_F_NEXT))
-	    {
-	      current = desc_table[current].next;
-	      data_offset = 0;
-	    }
-	  hdr = map_guest_mem (vui, desc_table[current].addr, &map_hint);
+	  hdr = map_guest_mem (vui, desc_table[desc_current].addr, &map_hint);
 	  if (PREDICT_FALSE (hdr == 0))
 	    {
 	      vlib_error_count (vm, node->node_index,
 				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
 	      goto out;
 	    }
-	  b_data = (u8 *) hdr + data_offset;
-	  if (indirect)
+	  if (hdr->hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 	    {
-	      hdr = map_guest_mem (vui, desc_table[desc_current].addr,
-				   &map_hint);
-	      if (PREDICT_FALSE (hdr == 0))
+	      if ((desc_data_offset == desc_table[desc_current].len) &&
+		  (desc_table[desc_current].flags & VIRTQ_DESC_F_NEXT))
 		{
-		  vlib_error_count (vm, node->node_index,
-				    VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
-		  goto out;
+		  current = desc_table[desc_current].next;
+		  b_data = map_guest_mem (vui, desc_table[current].addr,
+					  &map_hint);
+		  if (PREDICT_FALSE (b_data == 0))
+		    {
+		      vlib_error_count (vm, node->node_index,
+					VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL,
+					1);
+		      goto out;
+		    }
 		}
+	      else
+		b_data = (u8 *) hdr + desc_data_offset;
+
+	      vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
 	    }
-	  vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
 	}
 
       while (1)
