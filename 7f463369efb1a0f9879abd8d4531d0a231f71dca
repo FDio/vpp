@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "d3416394_022c0a6c",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-03-17T14:43:02Z",
+      "side": 1,
+      "message": "My question is not on using a single call to free maximum used buffers. Instead, can we simply free the used buffers without check e-\u003eid? What would break if we simplify the entire function down to this?\n\n  u16 slot \u003d last \u0026 mask;\n  u16 n_buffers \u003d (n_left + slot);\n  vlib_buffer_free_from_ring (vm, vring-\u003ebuffers, slot,\n\t\t\t      sz, (n_buffers - slot));\n  used -\u003d n_left;\n  last +\u003d n_left;\n\n  vring-\u003edesc_in_use \u003d used;\n  vring-\u003elast_used_idx \u003d last;",
+      "parentUuid": "045ef064_84ee6384",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
