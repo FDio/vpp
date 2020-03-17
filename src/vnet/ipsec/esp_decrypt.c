@@ -109,17 +109,18 @@ typedef struct
     };
     u64 sa_data;
   };
+  vlib_buffer_t *lb;
 
   u32 seq;
+  u32 free_buffer_index;
   i16 current_data;
   i16 current_length;
   u16 hdr_sz;
-  vlib_buffer_t *lb;
-  u32 free_buffer_index;
   u8 icv_removed;
+  u8 __unused;
 } esp_decrypt_packet_data_t;
 
-STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 5 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, CLIB_CACHE_LINE_BYTES/2);
 
 #define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
