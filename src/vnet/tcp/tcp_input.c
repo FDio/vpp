@@ -3296,6 +3296,82 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
+tcp_connection_t *
+tcp_accept_and_init (tcp_connection_t * lc, vlib_buffer_t * b,
+		     u32 thread_index, u32 * error, u8 is_ip4)
+{
+  tcp_connection_t *tc;
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  tcp_header_t *th;
+
+  if (is_ip4)
+    {
+      ip4 = vlib_buffer_get_current (b);
+      th = tcp_buffer_hdr (b);
+    }
+  else
+    {
+      ip6 = vlib_buffer_get_current (b);
+      th = tcp_buffer_hdr (b);
+    }
+
+  tc = tcp_connection_alloc (thread_index);
+  tc->c_lcl_port = th->dst_port;
+  tc->c_rmt_port = th->src_port;
+  tc->c_is_ip4 = is_ip4;
+  tc->state = TCP_STATE_SYN_RCVD;
+  tc->c_fib_index = lc->c_fib_index;
+  tc->cc_algo = lc->cc_algo;
+
+  if (is_ip4)
+    {
+      tc->c_lcl_ip4.as_u32 = ip4->dst_address.as_u32;
+      tc->c_rmt_ip4.as_u32 = ip4->src_address.as_u32;
+    }
+  else
+    {
+      clib_memcpy_fast (&tc->c_lcl_ip6, &ip6->dst_address,
+			sizeof (ip6_address_t));
+      clib_memcpy_fast (&tc->c_rmt_ip6, &ip6->src_address,
+			sizeof (ip6_address_t));
+    }
+
+  if (tcp_options_parse (th, &tc->rcv_opts, 1))
+    {
+      *error = TCP_ERROR_OPTIONS;
+      tcp_connection_free (tc);
+      return 0;
+    }
+
+  tc->irs = vnet_buffer (b)->tcp.seq_number;
+  tc->rcv_nxt = vnet_buffer (b)->tcp.seq_number + 1;
+  tc->rcv_las = tc->rcv_nxt;
+  tc->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+
+  /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
+   * segments are used to initialize PAWS. */
+  if (tcp_opts_tstamp (&tc->rcv_opts))
+    {
+      tc->tsval_recent = tc->rcv_opts.tsval;
+      tc->tsval_recent_age = tcp_time_now ();
+    }
+
+  if (tcp_opts_wscale (&tc->rcv_opts))
+    tc->snd_wscale = tc->rcv_opts.wscale;
+
+  tc->snd_wnd = clib_net_to_host_u16 (th->window) << tc->snd_wscale;
+  tc->snd_wl1 = vnet_buffer (b)->tcp.seq_number;
+  tc->snd_wl2 = vnet_buffer (b)->tcp.ack_number;
+
+  tcp_connection_init_vars (tc);
+  tc->rto = TCP_RTO_MIN;
+
+  return tc;
+}
+#endif /* CLIB_MARCH_VARIANT */
+
 /**
  * LISTEN state processing as per RFC 793 p. 65
  */
@@ -3304,54 +3380,46 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, *from, n_syns = 0, *first_buffer;
-  u32 my_thread_index = vm->thread_index;
-  tcp_connection_t *tc0;
+  u32 thread_index = vm->thread_index;
 
   from = first_buffer = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
   while (n_left_from > 0)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      tcp_rx_trace_t *t0;
-      tcp_header_t *th0 = 0;
-      tcp_connection_t *lc0;
-      ip4_header_t *ip40;
-      ip6_header_t *ip60;
-      tcp_connection_t *child0;
-      u32 error0 = TCP_ERROR_NONE;
+      u32 bi, error = TCP_ERROR_NONE;
+      tcp_connection_t *lc, *child;
+      vlib_buffer_t *b;
 
-      bi0 = from[0];
+      bi = from[0];
       from += 1;
       n_left_from -= 1;
 
-      b0 = vlib_get_buffer (vm, bi0);
+      b = vlib_get_buffer (vm, bi);
 
-      if (is_ip4)
+      lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
+      if (PREDICT_FALSE (lc == 0))
 	{
-	  ip40 = vlib_buffer_get_current (b0);
-	  th0 = tcp_buffer_hdr (b0);
-	}
-      else
-	{
-	  ip60 = vlib_buffer_get_current (b0);
-	  th0 = tcp_buffer_hdr (b0);
-	}
-
-      lc0 = tcp_listener_get (vnet_buffer (b0)->tcp.connection_index);
-      if (PREDICT_FALSE (lc0 == 0))
-	{
-	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				    my_thread_index);
-	  if (tc0->state != TCP_STATE_TIME_WAIT)
+	  tcp_connection_t *tc;
+	  tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
+				   thread_index);
+	  if (tc->state != TCP_STATE_TIME_WAIT)
 	    {
-	      error0 = TCP_ERROR_CREATE_EXISTS;
-	      goto drop;
+	      error = TCP_ERROR_CREATE_EXISTS;
+	      goto done;
 	    }
-	  lc0 = tcp_lookup_listener (b0, tc0->c_fib_index, is_ip4);
+	  lc = tcp_lookup_listener (b, tc->c_fib_index, is_ip4);
 	  /* clean up the old session */
-	  tcp_connection_del (tc0);
+	  tcp_connection_del (tc);
+	}
+
+      /* Make sure connection wasn't just created */
+      child = tcp_lookup_connection (lc->c_fib_index, b, thread_index,
+				     is_ip4);
+      if (PREDICT_FALSE (child->state != TCP_STATE_LISTEN))
+	{
+	  error = TCP_ERROR_CREATE_EXISTS;
+	  goto done;
 	}
 
       /* Create child session. For syn-flood protection use filter */
@@ -3371,91 +3439,37 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* 3. check for a SYN (did that already) */
 
-      /* Make sure connection wasn't just created */
-      child0 = tcp_lookup_connection (lc0->c_fib_index, b0, my_thread_index,
-				      is_ip4);
-      if (PREDICT_FALSE (child0->state != TCP_STATE_LISTEN))
-	{
-	  error0 = TCP_ERROR_CREATE_EXISTS;
-	  goto drop;
-	}
-
       /* Create child session and send SYN-ACK */
-      child0 = tcp_connection_alloc (my_thread_index);
-      child0->c_lcl_port = th0->dst_port;
-      child0->c_rmt_port = th0->src_port;
-      child0->c_is_ip4 = is_ip4;
-      child0->state = TCP_STATE_SYN_RCVD;
-      child0->c_fib_index = lc0->c_fib_index;
-      child0->cc_algo = lc0->cc_algo;
+      child = tcp_accept_and_init (lc, b, thread_index, &error, is_ip4);
+      if (PREDICT_FALSE (!child))
+	goto done;
 
-      if (is_ip4)
+      if (session_stream_accept (&child->connection, lc->c_s_index,
+				 lc->c_thread_index, 0 /* notify */ ))
 	{
-	  child0->c_lcl_ip4.as_u32 = ip40->dst_address.as_u32;
-	  child0->c_rmt_ip4.as_u32 = ip40->src_address.as_u32;
-	}
-      else
-	{
-	  clib_memcpy_fast (&child0->c_lcl_ip6, &ip60->dst_address,
-			    sizeof (ip6_address_t));
-	  clib_memcpy_fast (&child0->c_rmt_ip6, &ip60->src_address,
-			    sizeof (ip6_address_t));
+	  tcp_connection_cleanup (child);
+	  error = TCP_ERROR_CREATE_SESSION_FAIL;
+	  goto done;
 	}
 
-      if (tcp_options_parse (th0, &child0->rcv_opts, 1))
+      child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
+      tcp_send_synack (child);
+
+      TCP_EVT (TCP_EVT_SYN_RCVD, child, 1);
+
+    done:
+
+      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  error0 = TCP_ERROR_OPTIONS;
-	  tcp_connection_free (child0);
-	  goto drop;
+	  tcp_rx_trace_t *t;
+	  t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  clib_memcpy_fast (&t->tcp_header, tcp_buffer_hdr (b),
+			    sizeof (t->tcp_header));
+	  clib_memcpy_fast (&t->tcp_connection, lc,
+			    sizeof (t->tcp_connection));
 	}
 
-      child0->irs = vnet_buffer (b0)->tcp.seq_number;
-      child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
-      child0->rcv_las = child0->rcv_nxt;
-      child0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-      /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
-       * segments are used to initialize PAWS. */
-      if (tcp_opts_tstamp (&child0->rcv_opts))
-	{
-	  child0->tsval_recent = child0->rcv_opts.tsval;
-	  child0->tsval_recent_age = tcp_time_now ();
-	}
-
-      if (tcp_opts_wscale (&child0->rcv_opts))
-	child0->snd_wscale = child0->rcv_opts.wscale;
-
-      child0->snd_wnd = clib_net_to_host_u16 (th0->window)
-	<< child0->snd_wscale;
-      child0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
-      child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
-
-      tcp_connection_init_vars (child0);
-      child0->rto = TCP_RTO_MIN;
-
-      if (session_stream_accept (&child0->connection, lc0->c_s_index,
-				 lc0->c_thread_index, 0 /* notify */ ))
-	{
-	  tcp_connection_cleanup (child0);
-	  error0 = TCP_ERROR_CREATE_SESSION_FAIL;
-	  goto drop;
-	}
-
-      TCP_EVT (TCP_EVT_SYN_RCVD, child0, 1);
-      child0->tx_fifo_size = transport_tx_fifo_size (&child0->connection);
-      tcp_send_synack (child0);
-
-    drop:
-
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  clib_memcpy_fast (&t0->tcp_header, th0, sizeof (t0->tcp_header));
-	  clib_memcpy_fast (&t0->tcp_connection, lc0,
-			    sizeof (t0->tcp_connection));
-	}
-
-      n_syns += (error0 == TCP_ERROR_NONE);
+      n_syns += (error == TCP_ERROR_NONE);
     }
 
   tcp_inc_counter (listen, TCP_ERROR_SYNS_RCVD, n_syns);
