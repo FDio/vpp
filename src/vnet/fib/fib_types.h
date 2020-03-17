@@ -397,6 +397,11 @@ typedef enum fib_route_path_flags_t_
 } fib_route_path_flags_t;
 
 /**
+ * Format route path flags
+ */
+extern u8 * format_fib_route_path_flags(u8 *s, va_list *ap);
+
+/**
  * An RPF-ID is numerical value that is used RPF validate. An entry
  * has-a RPF-ID, when a packet egress from (e.g. an LSP) it gains an
  * RPF-ID, these two are compared for the RPF check.
@@ -599,6 +604,11 @@ typedef struct fib_route_path_t_ {
  * Unformat a fib_route_path_t from CLI input
  */
 extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
+
+/**
+ * Format route path flags
+ */
+extern u8 * format_fib_route_path(u8 *s, va_list *ap);
 
 /**
  * A help string to list the FIB path options
