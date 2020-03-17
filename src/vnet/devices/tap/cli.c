@@ -131,12 +131,12 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
   .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
-    "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
-    "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
-    "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
-    "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
-    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload] "
-    "[persist] [attach]",
+    "[num-rx-queues <n>] [rx-ring-size <size>] [tx-ring-size <size>] "
+    "[host-ns <netns>] [host-bridge <bridge-name>] "
+    "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
+    "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
+    "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
+    "[host-mtu-size <size>] [no-gso|gso|csum-offload] [persist] [attach]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

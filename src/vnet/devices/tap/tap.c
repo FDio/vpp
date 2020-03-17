@@ -134,7 +134,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_t *hw;
   int i;
   int old_netns_fd = -1;
-  struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
+  struct ifreq ifr = {.ifr_flags =
+      IFF_TAP | IFF_NO_PI | IFF_NAPI | IFF_NAPI_FRAGS | IFF_VNET_HDR
+  };
   struct ifreq get_ifr = {.ifr_flags = 0 };
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
