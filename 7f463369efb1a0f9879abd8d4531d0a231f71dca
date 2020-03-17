@@ -109,6 +109,24 @@
     },
     {
       "key": {
+        "uuid": "e578edb7_c466215e",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-03-17T17:12:55Z",
+      "side": 1,
+      "message": "This is expensive stuff. Perhaps one day we should consider to support VIRTIO_F_IN_ORDER feature and only do this out of order business when the IN_ORDER feature is not negotiated.",
+      "parentUuid": "c4c823fd_bc7a7a50",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
