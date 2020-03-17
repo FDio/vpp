@@ -91,6 +91,24 @@
     },
     {
       "key": {
+        "uuid": "c4c823fd_bc7a7a50",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-17T17:01:58Z",
+      "side": 1,
+      "message": "There is no way other than empty the used ring, avail ring and no desc/buffer in use i.e. something similar to when device initialize.",
+      "parentUuid": "d696c90c_04d459be",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
