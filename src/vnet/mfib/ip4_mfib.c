@@ -18,16 +18,27 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/mfib_entry.h>
 
-static const mfib_prefix_t ip4_specials[] = {
+static const mfib_prefix_t all_zeros =
+{
+    .fp_proto = FIB_PROTOCOL_IP4,
+};
+static const mfib_prefix_t ip4_specials[] =
+{
+    /* ALL prefixes are in network order */
     {
-        /* (*,*)/0 */
-        .fp_src_addr = {
-            .ip4.data_u32 = 0,
-        },
+        /* (*,224.0.0.1)/32 - all hosts */
         .fp_grp_addr = {
-            .ip4.data_u32 = 0,
+            .ip4.data_u32 = 0x010000e0,
         },
-        .fp_len  = 0,
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+    },
+    {
+        /* (*,224.0.0.2)/32 - all routers */
+        .fp_grp_addr = {
+            .ip4.data_u32 = 0x020000e0,
+        },
+        .fp_len = 32,
         .fp_proto = FIB_PROTOCOL_IP4,
     },
 };
@@ -57,24 +68,31 @@ ip4_create_mfib_with_table_id (u32 table_id,
     mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP4, src);
 
     /*
-     * add the special entries into the new FIB
+     * add the default route into the new FIB
      */
+    mfib_table_entry_update(mfib_table->mft_index,
+                            &all_zeros,
+                            MFIB_SOURCE_DEFAULT_ROUTE,
+                            MFIB_RPF_ID_NONE,
+                            MFIB_ENTRY_FLAG_DROP);
+
+    const fib_route_path_t path = {
+        .frp_proto = DPO_PROTO_IP4,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = ~0,
+        .frp_fib_index = ~0,
+        .frp_weight = 1,
+        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+    };
     int ii;
 
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
     {
-        mfib_prefix_t prefix = ip4_specials[ii];
-
-        prefix.fp_src_addr.ip4.data_u32 =
-            clib_host_to_net_u32(prefix.fp_src_addr.ip4.data_u32);
-        prefix.fp_grp_addr.ip4.data_u32 =
-            clib_host_to_net_u32(prefix.fp_grp_addr.ip4.data_u32);
-
-        mfib_table_entry_update(mfib_table->mft_index,
-                                &prefix,
-                                MFIB_SOURCE_DEFAULT_ROUTE,
-                                MFIB_RPF_ID_NONE,
-                                MFIB_ENTRY_FLAG_DROP);
+        mfib_table_entry_path_update(mfib_table->mft_index,
+                                     &ip4_specials[ii],
+                                     MFIB_SOURCE_SPECIAL,
+                                     &path);
     }
 
     return (mfib_table->mft_index);
@@ -89,18 +107,15 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
     /*
      * remove all the specials we added when the table was created.
      */
+    mfib_table_entry_delete(mfib_table->mft_index,
+                            &all_zeros,
+                            MFIB_SOURCE_DEFAULT_ROUTE);
+
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
     {
-        fib_node_index_t mfei;
-        mfib_prefix_t prefix = ip4_specials[ii];
-
-        prefix.fp_src_addr.ip4.data_u32 =
-            clib_host_to_net_u32(prefix.fp_src_addr.ip4.data_u32);
-        prefix.fp_grp_addr.ip4.data_u32 =
-            clib_host_to_net_u32(prefix.fp_grp_addr.ip4.data_u32);
-
-        mfei = mfib_table_lookup(mfib_table->mft_index, &prefix);
-        mfib_table_entry_delete_index(mfei, MFIB_SOURCE_DEFAULT_ROUTE);
+        mfib_table_entry_delete(mfib_table->mft_index,
+                                &ip4_specials[ii],
+                                MFIB_SOURCE_SPECIAL);
     }
 
     /*
@@ -111,6 +126,42 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
 
     hash_unset (ip4_main.mfib_index_by_table_id, mfib_table->mft_table_id);
     pool_put(ip4_main.mfibs, mfib_table);
+}
+
+void
+ip4_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
+{
+    const fib_route_path_t path = {
+        .frp_proto = DPO_PROTO_IP4,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 1,
+        .frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT,
+    };
+    u32 mfib_index;
+    int ii;
+
+    vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
+    mfib_index = ip4_mfib_table_get_index_for_sw_if_index(sw_if_index);
+
+    for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
+    {
+        if (is_enable)
+        {
+            mfib_table_entry_path_update(mfib_index,
+                                         &ip4_specials[ii],
+                                         MFIB_SOURCE_SPECIAL,
+                                         &path);
+        }
+        else
+        {
+            mfib_table_entry_path_remove(mfib_index,
+                                         &ip4_specials[ii],
+                                         MFIB_SOURCE_SPECIAL,
+                                         &path);
+        }
+    }
 }
 
 u32
