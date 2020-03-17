@@ -73,6 +73,24 @@
     },
     {
       "key": {
+        "uuid": "d696c90c_04d459be",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-03-17T16:57:22Z",
+      "side": 1,
+      "message": "Once OUT_OF_ORDER flag is set in the vring, it appears to be stuck in that state forever, like COVID-19. How do we get back to normal life, life without COVID-19?",
+      "parentUuid": "17c97448_85f32029",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
