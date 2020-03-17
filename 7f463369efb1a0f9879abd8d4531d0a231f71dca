@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "06906960_ea7729ea",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-03-17T02:26:12Z",
+      "side": 1,
+      "message": "Sorry to ask. Do you know why we have to do the e-\u003eid checking? It is making the code complicated. According to the spec, id is used for indicating the index of the start of used descriptor chain.\n\n/* le32 is used here for ids for padding reasons. */ \nstruct virtq_used_elem { \n        /* Index of start of used descriptor chain. */ \n        le32 id; \n        /* Total length of the descriptor chain which was used (written to) */ \n        le32 len; \n};",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
