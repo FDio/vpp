@@ -1295,6 +1295,10 @@ tcp_cc_data (tcp_connection_t * tc)
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);
 
+tcp_connection_t *tcp_accept_and_init (tcp_connection_t * l,
+				       vlib_buffer_t * b, u32 thread_index,
+				       u32 * error, u8 is_ip4);
+
 /**
  * Push TCP header to buffer
  *
