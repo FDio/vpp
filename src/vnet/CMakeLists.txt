@@ -672,9 +672,10 @@ list(APPEND VNET_MULTIARCH_SOURCES
 )
 
 list(APPEND VNET_HEADERS
+  tcp/tcp_debug.h
   tcp/tcp_packet.h
   tcp/tcp_timer.h
-  tcp/tcp_debug.h
+  tcp/tcp_types.h
   tcp/tcp.h
   tcp/tcp_error.def
 )
