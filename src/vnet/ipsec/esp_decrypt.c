@@ -98,6 +98,7 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (pad, 8); /* align up to 8 bytes for 32bit builds */
   union
   {
     struct
