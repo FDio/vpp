@@ -1279,7 +1279,7 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * Unlock the table - it's the last lock so should be gone thereafter
      */
-    MFIB_TEST(((PROTO == FIB_PROTOCOL_IP4 ? 1 : 5) ==
+    MFIB_TEST(((PROTO == FIB_PROTOCOL_IP4 ? 3 : 5) ==
                mfib_table_get_n_routes(fib_index, PROTO)),
               "1 = %d route left in the FIB",
               mfib_table_get_n_routes(fib_index, PROTO));
