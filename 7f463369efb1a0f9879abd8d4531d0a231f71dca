@@ -127,6 +127,24 @@
     },
     {
       "key": {
+        "uuid": "9e507dc6_b8b9f877",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-17T17:47:19Z",
+      "side": 1,
+      "message": "IN_ORDER is part of virtio v1.1. Certainly, it is the path, we will follow.",
+      "parentUuid": "e578edb7_c466215e",
+      "revId": "7f463369efb1a0f9879abd8d4531d0a231f71dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dd84379f_800e7fbf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 2
