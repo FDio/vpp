@@ -1,6 +1,7 @@
 #
 # VPP Unix Domain Socket Transport.
 #
+import binascii
 import socket
 import struct
 import threading
@@ -189,6 +190,7 @@ class VppTransport(object):
         # Send header
         header = self.header.pack(0, len(buf), 0)
         try:
+            logging.info("Sending: " + (header + buf).hex())
             self.socket.sendall(header)
             self.socket.sendall(buf)
         except socket.error as err:
@@ -221,6 +223,7 @@ class VppTransport(object):
 
         # Read rest of message
         msg = self._read_fixed(hdrlen)
+        logging.info("Read: " + msg.hex())
         if hdrlen == len(msg):
             return msg
         raise VppTransportSocketIOError(1, 'Unknown socket read error')
@@ -231,6 +234,9 @@ class VppTransport(object):
         if timeout is None:
             timeout = self.read_timeout
         try:
-            return self.q.get(True, timeout)
+            msg = self.q.get(True, timeout)
+            # Frequently, _read is run from non-main thread which is not logged.
+            logging.info("Read (echo): " + msg.hex())
+            return msg
         except queue.Empty:
             return None
