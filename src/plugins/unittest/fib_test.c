@@ -845,11 +845,11 @@ fib_test_v4 (void)
      * at this stage there are 5 entries in the test FIB (plus 5 in the default),
      * all of which are special sourced and so none of which share path-lists.
      * There are also 2 entries, and 2 non-shared path-lists, in the v6 default
-     * table, and 4 path-lists in the v6 MFIB table
+     * table, and 4 path-lists in the v6 MFIB table and 2 in v4.
      */
 #define ENBR (5+5+2)
 
-    u32 PNBR = 5+5+2+4;
+    u32 PNBR = 5+5+2+4+2;
 
     /*
      * if the IGMP plugin is loaded this adds two more entries to the v4 MFIB
@@ -4441,11 +4441,11 @@ fib_test_v6 (void)
 
     /*
      * At this stage there is one v4 FIB with 5 routes and two v6 FIBs
-     * each with 2 entries and a v6 mfib with 4 path-lists.
+     * each with 2 entries and a v6 mfib with 4 path-lists and v4 mfib with 2.
      * All entries are special so no path-list sharing.
      */
 #define ENPS (5+4)
-    u32 PNPS = (5+4+4);
+    u32 PNPS = (5+4+4+2);
     /*
      * if the IGMP plugin is loaded this adds two more entries to the v4 MFIB
      */

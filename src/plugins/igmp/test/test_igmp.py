@@ -90,10 +90,10 @@ class TestIgmp(VppTestCase):
         self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0, IGMP_MODE.HOST)
         self.vapi.igmp_enable_disable(self.pg3.sw_if_index, 0, IGMP_MODE.HOST)
 
-        self.assertFalse(find_mroute(self, "224.0.0.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32))
         self.assertFalse(find_mroute(self, "224.0.0.22", "0.0.0.0", 32))
-        self.assertFalse(find_mroute(self, "224.0.0.1", "0.0.0.0", 32,
-                                     table_id=1))
+        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32,
+                                    table_id=1))
         self.assertFalse(find_mroute(self, "224.0.0.22", "0.0.0.0", 32,
                                      table_id=1))
 

@@ -960,7 +960,7 @@ class TestIPv6(TestIPv6ND):
         subitf.admin_up()
         subitf.config_ip6()
 
-        rxs = self.pg1._get_capture(timeout=2, filter_out_fn=None)
+        rxs = self.pg1._get_capture(timeout=4, filter_out_fn=None)
 
         #
         # hunt for the MLD on vlan 99

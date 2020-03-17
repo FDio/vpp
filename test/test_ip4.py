@@ -2089,7 +2089,7 @@ class TestIPReplace(VppTestCase):
         for t in self.tables:
             t.flush()
             self.assertEqual(len(t.dump()), 5)
-            self.assertEqual(len(t.mdump()), 1)
+            self.assertEqual(len(t.mdump()), 3)
 
 
 class TestIPCover(VppTestCase):
