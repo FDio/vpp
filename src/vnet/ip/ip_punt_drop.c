@@ -29,7 +29,7 @@ format_ip_punt_redirect_trace (u8 * s, va_list * args)
   ip_punt_redirect_trace_t *t = va_arg (*args, ip_punt_redirect_trace_t *);
 
   if (INDEX_INVALID == t->rrxi)
-    s = format (s, "drop");
+    s = format (s, "ignore");
   else
     s = format (s, "via redirect:%d", t->rrxi);
 
