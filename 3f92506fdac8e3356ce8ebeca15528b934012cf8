@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5de428ce_59085b88",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-03-18T09:30:38Z",
+      "side": 1,
+      "message": "This is a backward incompatible change, so API version should be bumped.",
+      "range": {
+        "startLine": 22,
+        "startChar": 18,
+        "endLine": 22,
+        "endChar": 23
+      },
+      "revId": "3f92506fdac8e3356ce8ebeca15528b934012cf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
