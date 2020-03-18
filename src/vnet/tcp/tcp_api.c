@@ -115,11 +115,6 @@ tcp_api_hookup (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (tcp_api_hookup);
 
-void
-tcp_api_reference (void)
-{
-}
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
