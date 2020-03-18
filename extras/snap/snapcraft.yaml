@@ -1,0 +1,55 @@
+name: vpp
+base: core18
+version: '20.05'
+summary: Vector Packet Processor
+description: |
+         High performance user-mode network stack
+
+grade: devel
+confinement: classic
+
+parts:
+  vpp:
+    source-type: tar
+    source: vpp.tgz
+    plugin: nil
+    build-packages:
+      - gcc-8
+      - make
+      - libnuma-dev
+    stage-packages:
+      # For the dpdk plugin
+      - libnuma1
+    override-build: |
+      UNATTENDED=y make install-dep build-release
+    override-prime: |
+      # Copy the build results into SNAPCRAFT_PRIME
+      cd $SNAPCRAFT_PART_BUILD/build-root/install-vpp-native
+      tar cf - . | (cd $SNAPCRAFT_PRIME ; tar xf -)
+      # Copy staged libraries into SNAPCRAFT_PRIME
+      cp $SNAPCRAFT_STAGE/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/lib* $SNAPCRAFT_PRIME/vpp/lib
+      # Strip (unneeded) symbols
+      cd $SNAPCRAFT_PRIME
+      find . -type f -exec strip --strip-unneeded '{}' ';' 2> /dev/null || true
+
+apps:
+  vpp:
+    command: vpp/bin/vpp -c $SNAP/vpp/etc/vpp/startup.conf
+    daemon: simple
+    environment:
+        "LD_LIBRARY_PATH": "$SNAP/vpp/lib:$SNAP/vpp/lib/vpp_plugins:$SNAP/vpp/lib/vpp_api_test_plugins"
+
+  vppctl:
+    command: vpp/bin/vppctl
+    environment:
+        "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
+
+  vpp-api-test:
+    command: vpp/bin/vpp_api_test
+    environment:
+        "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
+
+  svmtool:
+    command: vpp/bin/svmtool
+    environment:
+        "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
