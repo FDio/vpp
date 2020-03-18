@@ -842,12 +842,12 @@ tcp_send_syn (tcp_connection_t * tc)
    * Setup retransmit and establish timers before requesting buffer
    * such that we can return if we've ran out.
    */
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
       return;
     }
 
@@ -873,11 +873,11 @@ tcp_send_synack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
-  tcp_retransmit_timer_force_update (tc);
+  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       return;
     }
 
@@ -908,7 +908,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       if (fin_snt)
 	tc->snd_nxt += 1;
       else
@@ -921,7 +921,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if ((tc->flags & TCP_CONN_SNDACK) && !tc->pending_dupacks)
     tc->flags &= ~TCP_CONN_SNDACK;
 
-  tcp_retransmit_timer_force_update (tc);
+  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_fin (tc, b);
@@ -1035,7 +1035,8 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
     }
   if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
     {
-      tcp_retransmit_timer_set (tc);
+      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+      tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
       tc->rto_boff = 0;
     }
   tcp_trajectory_add_start (b, 3);
@@ -1407,7 +1408,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
-	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 
@@ -1415,7 +1416,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
-      tcp_retransmit_timer_force_update (tc);
+      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
       tc->rto_boff += 1;
       if (tc->rto_boff == 1)
@@ -1449,7 +1450,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 
@@ -1457,7 +1458,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      tcp_retransmit_timer_force_update (tc);
+      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
@@ -1512,7 +1513,7 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
       return;
     }
 
@@ -1532,7 +1533,7 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   tcp_push_ip_hdr (wrk, tc, b);
   tcp_enqueue_to_ip_lookup (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
 
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 }
 
@@ -1563,7 +1564,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
    * next time */
   if (!available_bytes)
     {
-      tcp_persist_timer_set (tc);
+      tcp_persist_timer_set (&wrk->timer_wheel, tc);
       return;
     }
 
@@ -1579,7 +1580,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
    */
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_persist_timer_set (tc);
+      tcp_persist_timer_set (&wrk->timer_wheel, tc);
       return;
     }
   b = vlib_get_buffer (vm, bi);
@@ -1609,7 +1610,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
   /* Just sent new data, enable retransmit */
-  tcp_retransmit_timer_update (tc);
+  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 }
 
 /**
@@ -2195,9 +2196,6 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
 	  return;
 	}
     }
-
-  if (!TCP_ALWAYS_ACK)
-    tcp_timer_reset (tc0, TCP_TIMER_DELACK);
 
   tc0->segs_out += 1;
 }
