@@ -614,10 +614,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
       vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
 				     VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+      virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
     }
 
   vif->per_interface_next_index = ~0;
-  virtio_vring_set_numa_node (vm, vif, RX_QUEUE (0));
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
