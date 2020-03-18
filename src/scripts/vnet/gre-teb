@@ -1,7 +1,7 @@
 create packet-generator interface pg0
 create packet-generator interface pg1
 set int ip address pg1 192.168.2.1/24
-set ip arp pg1 192.168.2.2 6:5:4:3:2:1 static
+set ip neighbor pg1 192.168.2.2 6:5:4:3:2:1 static
 create gre tunnel dst 192.168.2.2 src 192.168.2.1 teb
 
 set int state pg0 up

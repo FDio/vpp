@@ -30,9 +30,9 @@ set int ip table ipsec1 1
 set int unnum ipsec1 use pg1
 
 ip route add 192.168.1.0/24 via ipsec0
-set ip arp pg1 192.168.1.2 00:11:22:33:44:55
+set ip neighbor pg1 192.168.1.2 00:11:22:33:44:55
 ip route add table 1 192.168.0.0/24 via ipsec1
-set ip arp pg0 192.168.0.2 00:11:22:33:44:66
+set ip neighbor pg0 192.168.0.2 00:11:22:33:44:66
 
 trace add pg-input 100
 
