@@ -484,6 +484,15 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 						hi->flags &
 						~VNET_HW_INTERFACE_FLAG_LINK_UP,
 						helper_flags);
+
+	  /* Only for TAP i/fs with ADMIN_UP set the LINK_UP */
+	  if ((hi->name) && (strcasestr ((char *) hi->name, "tap")) &&
+	      (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+	      !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+	    vnet_hw_interface_set_flags_helper (vnm, si->hw_if_index,
+						hi->flags |
+						VNET_HW_INTERFACE_FLAG_LINK_UP,
+						helper_flags);
 	}
     }
 
