@@ -172,6 +172,219 @@ typedef struct
 #define TCP_MAX_WND_SCALE               14	/* See RFC 1323 */
 #define TCP_OPTS_ALIGN                  4
 #define TCP_OPTS_MAX_SACK_BLOCKS        3
+
+/* Modulo arithmetic for TCP sequence numbers */
+#define seq_lt(_s1, _s2) ((i32)((_s1)-(_s2)) < 0)
+#define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
+#define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
+#define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
+#define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
+
+/* Modulo arithmetic for timestamps */
+#define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
+#define timestamp_leq(_t1, _t2) ((i32)((_t1)-(_t2)) <= 0)
+
+/**
+ * Parse TCP header options.
+ *
+ * @param th TCP header
+ * @param to TCP options data structure to be populated
+ * @param is_syn set if packet is syn
+ * @return -1 if parsing failed
+ */
+always_inline int
+tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
+{
+  const u8 *data;
+  u8 opt_len, opts_len, kind;
+  int j;
+  sack_block_t b;
+
+  opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+  data = (const u8 *) (th + 1);
+
+  /* Zero out all flags but those set in SYN */
+  to->flags &= (TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_WSCALE
+		| TCP_OPTS_FLAG_TSTAMP | TCP_OPTS_FLAG_MSS);
+
+  for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
+    {
+      kind = data[0];
+
+      /* Get options length */
+      if (kind == TCP_OPTION_EOL)
+	break;
+      else if (kind == TCP_OPTION_NOOP)
+	{
+	  opt_len = 1;
+	  continue;
+	}
+      else
+	{
+	  /* broken options */
+	  if (opts_len < 2)
+	    return -1;
+	  opt_len = data[1];
+
+	  /* weird option length */
+	  if (opt_len < 2 || opt_len > opts_len)
+	    return -1;
+	}
+
+      /* Parse options */
+      switch (kind)
+	{
+	case TCP_OPTION_MSS:
+	  if (!is_syn)
+	    break;
+	  if ((opt_len == TCP_OPTION_LEN_MSS) && tcp_syn (th))
+	    {
+	      to->flags |= TCP_OPTS_FLAG_MSS;
+	      to->mss = clib_net_to_host_u16 (*(u16 *) (data + 2));
+	    }
+	  break;
+	case TCP_OPTION_WINDOW_SCALE:
+	  if (!is_syn)
+	    break;
+	  if ((opt_len == TCP_OPTION_LEN_WINDOW_SCALE) && tcp_syn (th))
+	    {
+	      to->flags |= TCP_OPTS_FLAG_WSCALE;
+	      to->wscale = data[2];
+	      if (to->wscale > TCP_MAX_WND_SCALE)
+		to->wscale = TCP_MAX_WND_SCALE;
+	    }
+	  break;
+	case TCP_OPTION_TIMESTAMP:
+	  if (is_syn)
+	    to->flags |= TCP_OPTS_FLAG_TSTAMP;
+	  if ((to->flags & TCP_OPTS_FLAG_TSTAMP)
+	      && opt_len == TCP_OPTION_LEN_TIMESTAMP)
+	    {
+	      to->tsval = clib_net_to_host_u32 (*(u32 *) (data + 2));
+	      to->tsecr = clib_net_to_host_u32 (*(u32 *) (data + 6));
+	    }
+	  break;
+	case TCP_OPTION_SACK_PERMITTED:
+	  if (!is_syn)
+	    break;
+	  if (opt_len == TCP_OPTION_LEN_SACK_PERMITTED && tcp_syn (th))
+	    to->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+	  break;
+	case TCP_OPTION_SACK_BLOCK:
+	  /* If SACK permitted was not advertised or a SYN, break */
+	  if ((to->flags & TCP_OPTS_FLAG_SACK_PERMITTED) == 0 || tcp_syn (th))
+	    break;
+
+	  /* If too short or not correctly formatted, break */
+	  if (opt_len < 10 || ((opt_len - 2) % TCP_OPTION_LEN_SACK_BLOCK))
+	    break;
+
+	  to->flags |= TCP_OPTS_FLAG_SACK;
+	  to->n_sack_blocks = (opt_len - 2) / TCP_OPTION_LEN_SACK_BLOCK;
+	  vec_reset_length (to->sacks);
+	  for (j = 0; j < to->n_sack_blocks; j++)
+	    {
+	      b.start = clib_net_to_host_u32 (*(u32 *) (data + 2 + 8 * j));
+	      b.end = clib_net_to_host_u32 (*(u32 *) (data + 6 + 8 * j));
+	      vec_add1 (to->sacks, b);
+	    }
+	  break;
+	default:
+	  /* Nothing to see here */
+	  continue;
+	}
+    }
+  return 0;
+}
+
+/**
+ * Write TCP options to segment.
+ *
+ * @param data	buffer where to write the options
+ * @param opts	options to write
+ * @return	length of options written
+ */
+always_inline u32
+tcp_options_write (u8 * data, tcp_options_t * opts)
+{
+  u32 opts_len = 0;
+  u32 buf, seq_len = 4;
+
+  if (tcp_opts_mss (opts))
+    {
+      *data++ = TCP_OPTION_MSS;
+      *data++ = TCP_OPTION_LEN_MSS;
+      buf = clib_host_to_net_u16 (opts->mss);
+      clib_memcpy_fast (data, &buf, sizeof (opts->mss));
+      data += sizeof (opts->mss);
+      opts_len += TCP_OPTION_LEN_MSS;
+    }
+
+  if (tcp_opts_wscale (opts))
+    {
+      *data++ = TCP_OPTION_WINDOW_SCALE;
+      *data++ = TCP_OPTION_LEN_WINDOW_SCALE;
+      *data++ = opts->wscale;
+      opts_len += TCP_OPTION_LEN_WINDOW_SCALE;
+    }
+
+  if (tcp_opts_sack_permitted (opts))
+    {
+      *data++ = TCP_OPTION_SACK_PERMITTED;
+      *data++ = TCP_OPTION_LEN_SACK_PERMITTED;
+      opts_len += TCP_OPTION_LEN_SACK_PERMITTED;
+    }
+
+  if (tcp_opts_tstamp (opts))
+    {
+      *data++ = TCP_OPTION_TIMESTAMP;
+      *data++ = TCP_OPTION_LEN_TIMESTAMP;
+      buf = clib_host_to_net_u32 (opts->tsval);
+      clib_memcpy_fast (data, &buf, sizeof (opts->tsval));
+      data += sizeof (opts->tsval);
+      buf = clib_host_to_net_u32 (opts->tsecr);
+      clib_memcpy_fast (data, &buf, sizeof (opts->tsecr));
+      data += sizeof (opts->tsecr);
+      opts_len += TCP_OPTION_LEN_TIMESTAMP;
+    }
+
+  if (tcp_opts_sack (opts))
+    {
+      int i;
+
+      if (opts->n_sack_blocks != 0)
+	{
+	  *data++ = TCP_OPTION_SACK_BLOCK;
+	  *data++ = 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
+	  for (i = 0; i < opts->n_sack_blocks; i++)
+	    {
+	      buf = clib_host_to_net_u32 (opts->sacks[i].start);
+	      clib_memcpy_fast (data, &buf, seq_len);
+	      data += seq_len;
+	      buf = clib_host_to_net_u32 (opts->sacks[i].end);
+	      clib_memcpy_fast (data, &buf, seq_len);
+	      data += seq_len;
+	    }
+	  opts_len += 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
+	}
+    }
+
+  /* Terminate TCP options */
+  if (opts_len % 4)
+    {
+      *data++ = TCP_OPTION_EOL;
+      opts_len += TCP_OPTION_LEN_EOL;
+    }
+
+  /* Pad with zeroes to a u32 boundary */
+  while (opts_len % 4)
+    {
+      *data++ = TCP_OPTION_NOOP;
+      opts_len += TCP_OPTION_LEN_NOOP;
+    }
+  return opts_len;
+}
+
 #endif /* included_tcp_packet_h */
 
 /*

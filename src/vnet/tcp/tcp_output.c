@@ -14,6 +14,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <math.h>
 
 typedef enum _tcp_output_next
@@ -166,90 +167,6 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
 
   tcp_update_rcv_wnd (tc);
   return tc->rcv_wnd >> tc->rcv_wscale;
-}
-
-/**
- * Write TCP options to segment.
- */
-static u32
-tcp_options_write (u8 * data, tcp_options_t * opts)
-{
-  u32 opts_len = 0;
-  u32 buf, seq_len = 4;
-
-  if (tcp_opts_mss (opts))
-    {
-      *data++ = TCP_OPTION_MSS;
-      *data++ = TCP_OPTION_LEN_MSS;
-      buf = clib_host_to_net_u16 (opts->mss);
-      clib_memcpy_fast (data, &buf, sizeof (opts->mss));
-      data += sizeof (opts->mss);
-      opts_len += TCP_OPTION_LEN_MSS;
-    }
-
-  if (tcp_opts_wscale (opts))
-    {
-      *data++ = TCP_OPTION_WINDOW_SCALE;
-      *data++ = TCP_OPTION_LEN_WINDOW_SCALE;
-      *data++ = opts->wscale;
-      opts_len += TCP_OPTION_LEN_WINDOW_SCALE;
-    }
-
-  if (tcp_opts_sack_permitted (opts))
-    {
-      *data++ = TCP_OPTION_SACK_PERMITTED;
-      *data++ = TCP_OPTION_LEN_SACK_PERMITTED;
-      opts_len += TCP_OPTION_LEN_SACK_PERMITTED;
-    }
-
-  if (tcp_opts_tstamp (opts))
-    {
-      *data++ = TCP_OPTION_TIMESTAMP;
-      *data++ = TCP_OPTION_LEN_TIMESTAMP;
-      buf = clib_host_to_net_u32 (opts->tsval);
-      clib_memcpy_fast (data, &buf, sizeof (opts->tsval));
-      data += sizeof (opts->tsval);
-      buf = clib_host_to_net_u32 (opts->tsecr);
-      clib_memcpy_fast (data, &buf, sizeof (opts->tsecr));
-      data += sizeof (opts->tsecr);
-      opts_len += TCP_OPTION_LEN_TIMESTAMP;
-    }
-
-  if (tcp_opts_sack (opts))
-    {
-      int i;
-
-      if (opts->n_sack_blocks != 0)
-	{
-	  *data++ = TCP_OPTION_SACK_BLOCK;
-	  *data++ = 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
-	  for (i = 0; i < opts->n_sack_blocks; i++)
-	    {
-	      buf = clib_host_to_net_u32 (opts->sacks[i].start);
-	      clib_memcpy_fast (data, &buf, seq_len);
-	      data += seq_len;
-	      buf = clib_host_to_net_u32 (opts->sacks[i].end);
-	      clib_memcpy_fast (data, &buf, seq_len);
-	      data += seq_len;
-	    }
-	  opts_len += 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
-	}
-    }
-
-  /* Terminate TCP options */
-  if (opts_len % 4)
-    {
-      *data++ = TCP_OPTION_EOL;
-      opts_len += TCP_OPTION_LEN_EOL;
-    }
-
-  /* Pad with zeroes to a u32 boundary */
-  while (opts_len % 4)
-    {
-      *data++ = TCP_OPTION_NOOP;
-      opts_len += TCP_OPTION_LEN_NOOP;
-    }
-  return opts_len;
 }
 
 static int
@@ -565,7 +482,7 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 /**
  * Convert buffer to FIN-ACK
  */
-void
+static void
 tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK);
@@ -600,7 +517,7 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 /**
  * Convert buffer to SYN-ACK
  */
-void
+static void
 tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
