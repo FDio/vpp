@@ -23,6 +23,7 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 #include <vnet/tcp/tcp_debug.h>
+#include <vppinfra/tw_timer_16t_2w_512sl.h>
 
 #define TCP_TICK 0.001			/**< TCP tick period (s) */
 #define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
@@ -522,6 +523,8 @@ typedef struct tcp_wrk_stats_
 #undef _
 } tcp_wrk_stats_t;
 
+typedef tw_timer_wheel_16t_2w_512sl_t tcp_timer_wheel_t;
+
 typedef struct tcp_free_req_
 {
   clib_time_type_t free_time;
@@ -571,15 +574,12 @@ typedef struct tcp_worker_ctx_
   tcp_cleanup_req_t *pending_cleanups;
 
   /** worker timer wheel */
-  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
+  tcp_timer_wheel_t timer_wheel;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
-
-#define tcp_worker_stats_inc(_ti,_stat,_val) 		\
-  tcp_main.wrk_ctx[_ti].stats._stat += _val
 
 #define tcp_workerp_stats_inc(_wrk,_stat,_val) 		\
   _wrk->stats._stat += _val
@@ -934,14 +934,13 @@ tcp_cc_get_pacing_rate (tcp_connection_t * tc)
 }
 
 always_inline void
-tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
+tcp_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id,
+	       u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   ASSERT (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID);
-  tc->timers[timer_id] =
-    tw_timer_start_16t_2w_512sl (&tcp_main.
-				 wrk_ctx[tc->c_thread_index].timer_wheel,
-				 tc->c_c_index, timer_id, interval);
+  tc->timers[timer_id] = tw_timer_start_16t_2w_512sl (tw, tc->c_c_index,
+						      timer_id, interval);
 }
 
 always_inline void
@@ -958,51 +957,49 @@ tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
 }
 
 always_inline void
-tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
+tcp_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id,
+		  u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
-    tw_timer_update_16t_2w_512sl (&tcp_main.
-				  wrk_ctx[tc->c_thread_index].timer_wheel,
-				  tc->timers[timer_id], interval);
+    tw_timer_update_16t_2w_512sl (tw, tc->timers[timer_id], interval);
   else
-    tc->timers[timer_id] =
-      tw_timer_start_16t_2w_512sl (&tcp_main.
-				   wrk_ctx[tc->c_thread_index].timer_wheel,
-				   tc->c_c_index, timer_id, interval);
+    tc->timers[timer_id] = tw_timer_start_16t_2w_512sl (tw, tc->c_c_index,
+							timer_id, interval);
 }
 
 always_inline void
-tcp_retransmit_timer_set (tcp_connection_t * tc)
+tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   ASSERT (tc->snd_una != tc->snd_una_max);
-  tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
+  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
 		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
-tcp_retransmit_timer_reset (tcp_connection_t * tc)
+tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
 }
 
 always_inline void
-tcp_retransmit_timer_force_update (tcp_connection_t * tc)
+tcp_retransmit_timer_force_update (tcp_timer_wheel_t * tw,
+				   tcp_connection_t * tc)
 {
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
+  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
 		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
-tcp_persist_timer_set (tcp_connection_t * tc)
+tcp_persist_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
-  tcp_timer_set (tc, TCP_TIMER_PERSIST,
+  tcp_timer_set (tw, tc, TCP_TIMER_PERSIST,
 		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
-tcp_persist_timer_update (tcp_connection_t * tc)
+tcp_persist_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   u32 interval;
 
@@ -1011,7 +1008,7 @@ tcp_persist_timer_update (tcp_connection_t * tc)
   else
     interval = clib_max (tc->rto * TCP_TO_TIMER_TICK, 1);
 
-  tcp_timer_update (tc, TCP_TIMER_PERSIST, interval);
+  tcp_timer_update (tw, tc, TCP_TIMER_PERSIST, interval);
 }
 
 always_inline void
@@ -1021,16 +1018,16 @@ tcp_persist_timer_reset (tcp_connection_t * tc)
 }
 
 always_inline void
-tcp_retransmit_timer_update (tcp_connection_t * tc)
+tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   if (tc->snd_una == tc->snd_nxt)
     {
-      tcp_retransmit_timer_reset (tc);
+      tcp_retransmit_timer_reset (tw, tc);
       if (tc->snd_wnd < tc->snd_mss)
-	tcp_persist_timer_update (tc);
+	tcp_persist_timer_update (tw, tc);
     }
   else
-    tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
+    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
 		      clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
@@ -1038,6 +1035,12 @@ always_inline u8
 tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 {
   return tc->timers[timer] != TCP_TIMER_HANDLE_INVALID;
+}
+
+always_inline tcp_timer_wheel_t *
+tcp_worker_tw (tcp_worker_ctx_t * wrk)
+{
+  return &wrk->timer_wheel;
 }
 
 #define tcp_validate_txf_size(_tc, _a) 					\
