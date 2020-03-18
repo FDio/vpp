@@ -743,14 +743,6 @@ tcp_get_worker (u32 thread_index)
   return &tcp_main.wrk_ctx[thread_index];
 }
 
-always_inline tcp_header_t *
-tcp_buffer_hdr (vlib_buffer_t * b)
-{
-  ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
-  return (tcp_header_t *) (b->data + b->current_data
-			   + vnet_buffer (b)->tcp.hdr_offset);
-}
-
 #if (VLIB_BUFFER_TRACE_TRAJECTORY)
 #define tcp_trajectory_add_start(b, start)			\
 {								\
@@ -763,41 +755,6 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 
 void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
-
-always_inline tcp_connection_t *
-tcp_connection_get (u32 conn_index, u32 thread_index)
-{
-  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
-  if (PREDICT_FALSE (pool_is_free_index (wrk->connections, conn_index)))
-    return 0;
-  return pool_elt_at_index (wrk->connections, conn_index);
-}
-
-always_inline tcp_connection_t *
-tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
-{
-  tcp_worker_ctx_t *wrk;
-  if (thread_index >= vec_len (tcp_main.wrk_ctx))
-    return 0;
-  wrk = tcp_get_worker (thread_index);
-  if (pool_is_free_index (wrk->connections, conn_index))
-    return 0;
-  return pool_elt_at_index (wrk->connections, conn_index);
-}
-
-always_inline tcp_connection_t *
-tcp_get_connection_from_transport (transport_connection_t * tconn)
-{
-  return (tcp_connection_t *) tconn;
-}
-
-always_inline void
-tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
-{
-  tc->state = state;
-  TCP_EVT (TCP_EVT_STATE_CHANGE, tc);
-}
-
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
@@ -816,25 +773,6 @@ void tcp_api_reference (void);
 u8 *format_tcp_connection (u8 * s, va_list * args);
 u8 *format_tcp_connection_id (u8 * s, va_list * args);
 
-always_inline tcp_connection_t *
-tcp_listener_get (u32 tli)
-{
-  tcp_connection_t *tc = 0;
-  if (!pool_is_free_index (tcp_main.listener_pool, tli))
-    tc = pool_elt_at_index (tcp_main.listener_pool, tli);
-  return tc;
-}
-
-always_inline tcp_connection_t *
-tcp_half_open_connection_get (u32 conn_index)
-{
-  tcp_connection_t *tc = 0;
-  clib_spinlock_lock_if_init (&tcp_main.half_open_lock);
-  if (!pool_is_free_index (tcp_main.half_open_connections, conn_index))
-    tc = pool_elt_at_index (tcp_main.half_open_connections, conn_index);
-  clib_spinlock_unlock_if_init (&tcp_main.half_open_lock);
-  return tc;
-}
 
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
@@ -914,136 +852,6 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
 u8 *format_tcp_bt (u8 * s, va_list * args);
 
-always_inline u32
-tcp_end_seq (tcp_header_t * th, u32 len)
-{
-  return th->seq_number + tcp_is_syn (th) + tcp_is_fin (th) + len;
-}
-
-/* Modulo arithmetic for TCP sequence numbers */
-#define seq_lt(_s1, _s2) ((i32)((_s1)-(_s2)) < 0)
-#define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
-#define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
-#define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
-#define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
-
-/* Modulo arithmetic for timestamps */
-#define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
-#define timestamp_leq(_t1, _t2) ((i32)((_t1)-(_t2)) <= 0)
-
-/**
- * Our estimate of the number of bytes that have left the network
- */
-always_inline u32
-tcp_bytes_out (const tcp_connection_t * tc)
-{
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    return tc->sack_sb.sacked_bytes + tc->sack_sb.lost_bytes;
-  else
-    return clib_min (tc->rcv_dupacks * tc->snd_mss,
-		     tc->snd_nxt - tc->snd_una);
-}
-
-/**
- * Our estimate of the number of bytes in flight (pipe size)
- */
-always_inline u32
-tcp_flight_size (const tcp_connection_t * tc)
-{
-  int flight_size;
-
-  flight_size = (int) (tc->snd_nxt - tc->snd_una) - tcp_bytes_out (tc)
-    + tc->snd_rxt_bytes - tc->rxt_delivered;
-
-  ASSERT (flight_size >= 0);
-
-  return flight_size;
-}
-
-/**
- * Initial cwnd as per RFC5681
- */
-always_inline u32
-tcp_initial_cwnd (const tcp_connection_t * tc)
-{
-  if (tcp_cfg.initial_cwnd_multiplier > 0)
-    return tcp_cfg.initial_cwnd_multiplier * tc->snd_mss;
-
-  if (tc->snd_mss > 2190)
-    return 2 * tc->snd_mss;
-  else if (tc->snd_mss > 1095)
-    return 3 * tc->snd_mss;
-  else
-    return 4 * tc->snd_mss;
-}
-
-/*
- * Accumulate acked bytes for cwnd increase
- *
- * Once threshold bytes are accumulated, snd_mss bytes are added
- * to the cwnd.
- */
-always_inline void
-tcp_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes)
-{
-  tc->cwnd_acc_bytes += bytes;
-  if (tc->cwnd_acc_bytes >= thresh)
-    {
-      u32 inc = tc->cwnd_acc_bytes / thresh;
-      tc->cwnd_acc_bytes -= inc * thresh;
-      tc->cwnd += inc * tc->snd_mss;
-      tc->cwnd = clib_min (tc->cwnd, tc->tx_fifo_size);
-    }
-}
-
-always_inline u32
-tcp_loss_wnd (const tcp_connection_t * tc)
-{
-  /* Whatever we have in flight + the packet we're about to send */
-  return tcp_flight_size (tc) + tc->snd_mss;
-}
-
-always_inline u32
-tcp_available_snd_wnd (const tcp_connection_t * tc)
-{
-  return clib_min (tc->cwnd, tc->snd_wnd);
-}
-
-always_inline u32
-tcp_available_output_snd_space (const tcp_connection_t * tc)
-{
-  u32 available_wnd = tcp_available_snd_wnd (tc);
-  int flight_size = (int) (tc->snd_nxt - tc->snd_una);
-
-  if (available_wnd <= flight_size)
-    return 0;
-
-  return available_wnd - flight_size;
-}
-
-/**
- * Estimate of how many bytes we can still push into the network
- */
-always_inline u32
-tcp_available_cc_snd_space (const tcp_connection_t * tc)
-{
-  u32 available_wnd = tcp_available_snd_wnd (tc);
-  u32 flight_size = tcp_flight_size (tc);
-
-  if (available_wnd <= flight_size)
-    return 0;
-
-  return available_wnd - flight_size;
-}
-
-always_inline u8
-tcp_is_lost_fin (tcp_connection_t * tc)
-{
-  if ((tc->flags & TCP_CONN_FINSNT) && (tc->snd_una_max - tc->snd_una == 1))
-    return 1;
-  return 0;
-}
-
 u32 tcp_snd_space (tcp_connection_t * tc);
 int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
 
@@ -1052,41 +860,6 @@ fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
-
-always_inline u32
-tcp_time_now (void)
-{
-  return tcp_main.wrk_ctx[vlib_get_thread_index ()].time_now;
-}
-
-always_inline u32
-tcp_time_now_w_thread (u32 thread_index)
-{
-  return tcp_main.wrk_ctx[thread_index].time_now;
-}
-
-/**
- * Generate timestamp for tcp connection
- */
-always_inline u32
-tcp_tstamp (tcp_connection_t * tc)
-{
-  return (tcp_main.wrk_ctx[tc->c_thread_index].time_now -
-	  tc->timestamp_delta);
-}
-
-always_inline f64
-tcp_time_now_us (u32 thread_index)
-{
-  return transport_time_now (thread_index);
-}
-
-always_inline u32
-tcp_set_time_now (tcp_worker_ctx_t * wrk)
-{
-  wrk->time_now = clib_cpu_time_now () * tcp_main.tstamp_ticks_per_clock;
-  return wrk->time_now;
-}
 
 u32 tcp_session_push_header (transport_connection_t * tconn,
 			     vlib_buffer_t * b);
@@ -1294,14 +1067,6 @@ tcp_cc_data (tcp_connection_t * tc)
 
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);
-/**
- * Initialize connection by gleaning network and rcv params from buffer
- *
- * @param tc		connection to initialize
- * @param b		buffer whose current data is pointing at ip
- * @param is_ip4	flag set to 1 if using ip4
- */
-void tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4);
 
 /**
  * Push TCP header to buffer

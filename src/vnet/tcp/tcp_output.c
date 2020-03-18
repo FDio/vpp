@@ -14,6 +14,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <math.h>
 
 typedef enum _tcp_output_next
