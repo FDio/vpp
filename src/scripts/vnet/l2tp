@@ -19,7 +19,7 @@ l2tp session add client 11::1 our 22::2 l2-interface GigabitEthernet2/1/0.1
 l2tp session add client 11::1 our 22::3 l2-interface GigabitEthernet2/1/0.2 local-session-id 2 l2-sublayer-present
 
 ip route 11::1/128 via GigabitEthernet2/2/0
-set ip6 neighbor GigabitEthernet2/2/0 11::1 00:02:04:06:08:0a
+set ip neighbor GigabitEthernet2/2/0 11::1 00:02:04:06:08:0a
 
 enable ip6 interface GigabitEthernet2/2/0 
 
