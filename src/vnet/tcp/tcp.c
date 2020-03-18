@@ -210,10 +210,14 @@ tcp_half_open_connection_del (tcp_connection_t * tc)
 int
 tcp_half_open_connection_cleanup (tcp_connection_t * tc)
 {
+  tcp_worker_ctx_t *wrk;
+
   /* Make sure this is the owning thread */
   if (tc->c_thread_index != vlib_get_thread_index ())
     return 1;
-  tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT_SYN);
+
+  wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_del (tc);
   return 0;
 }
@@ -356,6 +360,8 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 void
 tcp_connection_close (tcp_connection_t * tc)
 {
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+
   TCP_EVT (TCP_EVT_CLOSE, tc);
 
   /* Send/Program FIN if needed and switch state */
@@ -370,7 +376,8 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+			tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_ESTABLISHED:
       /* If closing with unread data, reset the connection */
@@ -381,7 +388,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  session_transport_closed_notify (&tc->connection);
 	  tcp_program_cleanup (tcp_get_worker (tc->c_thread_index), tc);
-	  tcp_worker_stats_inc (tc->c_thread_index, rst_unread, 1);
+	  tcp_workerp_stats_inc (wrk, rst_unread, 1);
 	  break;
 	}
       if (!transport_max_tx_dequeue (&tc->connection))
@@ -392,7 +399,8 @@ tcp_connection_close (tcp_connection_t * tc)
       /* Set a timer in case the peer stops responding. Otherwise the
        * connection will be stuck here forever. */
       ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
+      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+		     tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSE_WAIT:
       if (!transport_max_tx_dequeue (&tc->connection))
@@ -400,13 +408,15 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
-	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.lastack_time);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+			    tcp_cfg.lastack_time);
 	}
       else
 	tc->flags |= TCP_CONN_FINPNDG;
       break;
     case TCP_STATE_FIN_WAIT_1:
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+			tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSED:
       /* Cleanup should've been programmed already */
@@ -471,11 +481,11 @@ tcp_connection_timers_init (tcp_connection_t * tc)
 void
 tcp_connection_timers_reset (tcp_connection_t * tc)
 {
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   int i;
+
   for (i = 0; i < TCP_N_TIMERS; i++)
-    {
-      tcp_timer_reset (tc, i);
-    }
+    tcp_timer_reset (&wrk->timer_wheel, tc, i);
 }
 
 #if 0
@@ -1329,7 +1339,8 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
       session_transport_closed_notify (&tc->connection);
 
       /* Make sure we don't wait in LAST ACK forever */
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.lastack_time);
+      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+		     tcp_cfg.lastack_time);
       tcp_workerp_stats_inc (wrk, to_closewait2, 1);
 
       /* Don't delete the connection yet */
