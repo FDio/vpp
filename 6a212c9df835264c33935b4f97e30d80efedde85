@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4caf9bca_a63a01b3",
+        "filename": "src/vnet/fib/fib_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-03-18T20:11:37Z",
+      "side": 1,
+      "message": "Maybe:\n\n#define foreach_fib_route_path_flag \\\n_(0 /* shift-cnt*/, FIB_ROUTE_PATH_RESOLVE_VIA_HOST, \"via-host\") \\\n_(1 /* shift-cnt*/, FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED, \"via-attached\") \\\n\u003cetc\u003e\n\nUse once in typedef enum fib_route_path_flags_t_, once here. \n\nHandle FIB_ROUTE_PATH_FLAG_NONE directly in the enum. You don\u0027t need it here.",
+      "revId": "6a212c9df835264c33935b4f97e30d80efedde85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
