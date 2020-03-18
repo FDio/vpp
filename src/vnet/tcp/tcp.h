@@ -1301,6 +1301,17 @@ tcp_cc_data (tcp_connection_t * tc)
 
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);
+
+/**
+ * Parse TCP header options.
+ *
+ * @param th TCP header
+ * @param to TCP options data structure to be populated
+ * @param is_syn set if packet is syn
+ * @return -1 if parsing failed
+ */
+int tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn);
+
 /**
  * Initialize connection by gleaning network and rcv params from buffer
  *
