@@ -16,8 +16,8 @@
 #include <vppinfra/sparse_vec.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
-#include <vnet/tcp/tcp_packet.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -3537,102 +3537,6 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
       *next = TCP_INPUT_NEXT_RESET;
       *error = TCP_ERROR_NO_LISTENER;
     }
-}
-
-always_inline tcp_connection_t *
-tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
-			 u8 is_ip4, u8 is_nolookup)
-{
-  u32 fib_index = vnet_buffer (b)->ip.fib_index;
-  int n_advance_bytes, n_data_bytes;
-  transport_connection_t *tc;
-  tcp_header_t *tcp;
-  u8 result = 0;
-
-  if (is_ip4)
-    {
-      ip4_header_t *ip4 = vlib_buffer_get_current (b);
-      int ip_hdr_bytes = ip4_header_bytes (ip4);
-      if (PREDICT_FALSE (b->current_length < ip_hdr_bytes + sizeof (*tcp)))
-	{
-	  *error = TCP_ERROR_LENGTH;
-	  return 0;
-	}
-      tcp = ip4_next_header (ip4);
-      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip4;
-      n_advance_bytes = (ip_hdr_bytes + tcp_header_bytes (tcp));
-      n_data_bytes = clib_net_to_host_u16 (ip4->length) - n_advance_bytes;
-
-      /* Length check. Checksum computed by ipx_local no need to compute again */
-      if (PREDICT_FALSE (n_data_bytes < 0))
-	{
-	  *error = TCP_ERROR_LENGTH;
-	  return 0;
-	}
-
-      if (!is_nolookup)
-	tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
-					    &ip4->src_address, tcp->dst_port,
-					    tcp->src_port,
-					    TRANSPORT_PROTO_TCP, thread_index,
-					    &result);
-    }
-  else
-    {
-      ip6_header_t *ip6 = vlib_buffer_get_current (b);
-      if (PREDICT_FALSE (b->current_length < sizeof (*ip6) + sizeof (*tcp)))
-	{
-	  *error = TCP_ERROR_LENGTH;
-	  return 0;
-	}
-      tcp = ip6_next_header (ip6);
-      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip6;
-      n_advance_bytes = tcp_header_bytes (tcp);
-      n_data_bytes = clib_net_to_host_u16 (ip6->payload_length)
-	- n_advance_bytes;
-      n_advance_bytes += sizeof (ip6[0]);
-
-      if (PREDICT_FALSE (n_data_bytes < 0))
-	{
-	  *error = TCP_ERROR_LENGTH;
-	  return 0;
-	}
-
-      if (!is_nolookup)
-	{
-	  if (PREDICT_FALSE
-	      (ip6_address_is_link_local_unicast (&ip6->dst_address)))
-	    {
-	      ip4_main_t *im = &ip4_main;
-	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
-				   vnet_buffer (b)->sw_if_index[VLIB_RX]);
-	    }
-
-	  tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
-					      &ip6->src_address,
-					      tcp->dst_port, tcp->src_port,
-					      TRANSPORT_PROTO_TCP,
-					      thread_index, &result);
-	}
-    }
-
-  if (is_nolookup)
-    tc =
-      (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
-						     tcp.connection_index,
-						     thread_index);
-
-  vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
-  vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
-  vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
-  vnet_buffer (b)->tcp.data_len = n_data_bytes;
-  vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
-    + n_data_bytes;
-  vnet_buffer (b)->tcp.flags = 0;
-
-  *error = result ? TCP_ERROR_NONE + result : *error;
-
-  return tcp_get_connection_from_transport (tc);
 }
 
 static inline void
