@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0873496d_26d9bdb0",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2020-03-18T11:56:51Z",
+      "side": 1,
+      "message": "It might be useful to use tempfile.gettempdir() to learn what \"/tmp\" should be so that people can influence the location with common environment variables ($TMP etc).",
+      "revId": "4c9bfc95d5517c0a0e26803cb05b688052acb5ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
