@@ -174,6 +174,17 @@ typedef struct
 #define TCP_OPTS_MAX_SACK_BLOCKS        3
 #endif /* included_tcp_packet_h */
 
+/* Modulo arithmetic for TCP sequence numbers */
+#define seq_lt(_s1, _s2) ((i32)((_s1)-(_s2)) < 0)
+#define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
+#define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
+#define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
+#define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
+
+/* Modulo arithmetic for timestamps */
+#define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
+#define timestamp_leq(_t1, _t2) ((i32)((_t1)-(_t2)) <= 0)
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
