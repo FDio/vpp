@@ -121,6 +121,38 @@ error:
   pool_put (mm->interfaces, vif);
 }
 
+
+/*
+ * To prevent linux from switching flows from queue to queue, we need to
+ * receive packets on one of the threads that sends on the matching txq,
+ * i.e. threads that verify thread_num % num_q_pairs == 0 (see
+ * virtio_interface_tx_inline). Note that the main thread is thread 0,
+ * and workers are threads 1..n.
+ * This function picks a thread ID for an rx queue that verifies:
+ * thread_id = q_id + k * num_q, k in Z (so that the thread sends on the
+ *                                       matching txqueue)
+ * 1 <= thread_id < num_threads (so we don't schedule on the main thread)
+ * and that spreads the load as equally as possible on all workers when multiple
+ * taps are created.
+ */
+static int
+tap_pick_rx_queue_thread (int tap_id, int q_id, int num_q, int num_threads)
+{
+  int min_k, max_k, k;
+
+  min_k = (1 - q_id) / num_q;
+  if ((1 - q_id) % num_q > 0)
+    min_k++;			// int division ceiling
+
+  max_k = (num_threads - q_id) / num_q;
+  if ((num_threads - q_id) % num_q == 0)
+    max_k--;			// max_k need to be strictly less than the div
+
+  k = min_k + (tap_id % (max_k - min_k + 1));
+
+  return q_id + k * num_q;
+}
+
 void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
@@ -131,6 +163,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
+  u32 num_workers = clib_max (thm->n_vlib_mains - 1, 1);
   int i, j;
   int old_netns_fd = -1;
   struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
@@ -170,8 +203,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->type = VIRTIO_IF_TYPE_TAP;
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
-  num_q_pairs = clib_max (thm->n_vlib_mains - 1, 1);
-  num_q_pairs = clib_min (num_q_pairs, args->num_queue_pairs);
+  num_q_pairs = clib_min (num_workers, args->num_queue_pairs);
   vif->num_txqs = vif->num_rxqs = num_q_pairs;
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
@@ -685,7 +717,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   for (i = 0; i < vif->num_rxqs; i++)
     {
-      vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
+      if (thm->n_vlib_mains == 1)
+	j = 0;
+      else
+	j = tap_pick_rx_queue_thread (args->id, i, num_q_pairs,
+				      thm->n_vlib_mains);
+      vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, j);
       vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
 				     VNET_HW_INTERFACE_RX_MODE_DEFAULT);
     }
