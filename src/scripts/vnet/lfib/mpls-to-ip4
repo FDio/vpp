@@ -16,7 +16,7 @@ set int state loop1 up
 set int ip address loop0 1.0.0.1/24
 set int ip address loop1 2.0.0.1/24
 
-set ip arp static loop1 2.0.0.2 dead.beef.babe
+set ip neighbor static loop1 2.0.0.2 dead.beef.babe
 set int mpls loop1 enable
 
 ip route add 2.2.2.2/32 via 2.0.0.2 loop1 out-label 33
