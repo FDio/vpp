@@ -15,8 +15,8 @@
 #ifndef __included_tcp_timer_h__
 #define __included_tcp_timer_h__
 
-#include <vppinfra/tw_timer_16t_2w_512sl.h>
-#include <vppinfra/tw_timer_16t_1w_2048sl.h>
+//#include <vppinfra/tw_timer_16t_2w_512sl.h>
+//#include <vppinfra/tw_timer_16t_1w_2048sl.h>
 
 #endif /* __included_tcp_timer_h__ */
 
