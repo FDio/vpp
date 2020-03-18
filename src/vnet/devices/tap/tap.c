@@ -131,6 +131,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
+  u32 num_workers = clib_max (thm->n_vlib_mains - 1, 1);
   int i, j;
   int old_netns_fd = -1;
   struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
@@ -170,8 +171,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->type = VIRTIO_IF_TYPE_TAP;
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
-  num_q_pairs = clib_max (thm->n_vlib_mains - 1, 1);
-  num_q_pairs = clib_min (num_q_pairs, args->num_queue_pairs);
+  num_q_pairs = clib_min (num_workers, args->num_queue_pairs);
   vif->num_txqs = vif->num_rxqs = num_q_pairs;
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
@@ -685,7 +685,21 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   for (i = 0; i < vif->num_rxqs; i++)
     {
-      vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
+      /*
+       * To prevent linux from switching flows from queue to queue, we need to
+       * receive packets on one of the threads that sends on the matching txq,
+       * i.e. threads that verify thread_num % num_q_pairs == 0 (see
+       * virtio_interface_tx_inline). Note that the main thread is thread 0,
+       * and workers are threads 1..n.
+       * This algorithm should choose assign rx threads that verify this
+       * property, while balancing the tap rx across all workers.
+       */
+      j = (num_q_pairs * args->id + i - 1) % num_workers;
+      if (j < 0)
+	j += num_workers;
+      if (thm->n_vlib_mains > 1)
+	j++;
+      vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, j);
       vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
 				     VNET_HW_INTERFACE_RX_MODE_DEFAULT);
     }
