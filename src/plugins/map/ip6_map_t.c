@@ -544,6 +544,18 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    ip6_map_t_embedded_address (d0, &ip60->dst_address);
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
+	  map_port0 = -1;
+
+	  if (PREDICT_FALSE (ip60->hop_limit == 1))
+	    {
+	      icmp6_error_set_vnet_buffer (p0, ICMP6_time_exceeded,
+					   ICMP6_time_exceeded_ttl_exceeded_in_transit,
+					   0);
+	      p0->error = error_node->errors[MAP_ERROR_TIME_EXCEEDED];
+	      next0 = IP6_MAPT_NEXT_ICMP;
+	      goto trace;
+	    }
+
 	  if (PREDICT_FALSE
 	      (ip6_parse (vm, p0, ip60, p0->current_length,
 			  &(vnet_buffer (p0)->map_t.v6.l4_protocol),
@@ -554,7 +566,6 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		error0 == MAP_ERROR_NONE ? MAP_ERROR_MALFORMED : error0;
 	    }
 
-	  map_port0 = -1;
 	  l4_len0 =
 	    (u32) clib_net_to_host_u16 (ip60->payload_length) +
 	    sizeof (*ip60) - vnet_buffer (p0)->map_t.v6.l4_offset;
@@ -659,6 +670,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    }
 
 	  p0->error = error_node->errors[error0];
+	trace:
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      map_add_trace (vm, node, p0,
