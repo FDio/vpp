@@ -20,6 +20,7 @@
 #include <vppinfra/rbtree.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/session/transport.h>
+#include <vppinfra/tw_timer_16t_2w_512sl.h>
 
 #define TCP_TICK 0.001			/**< TCP tick period (s) */
 #define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
@@ -439,6 +440,8 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 {
   return (tcp_connection_t *) tconn;
 }
+
+typedef tw_timer_wheel_16t_2w_512sl_t tcp_timer_wheel_t;
 
 #endif /* SRC_VNET_TCP_TCP_TYPES_H_ */
 
