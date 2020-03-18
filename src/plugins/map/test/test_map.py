@@ -591,7 +591,22 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], icmp4_reply)
 
-        # IPv6 Hop limit
+        # IPv6 Hop limit at BR
+        ip6_hlim_expired = IPv6(hlim=1, src='2001:db8:1ab::c0a8:1:ab',
+                                dst='1234:5678:90ab:cdef:ac:1001:200:0')
+        p6 = (p_ether6 / ip6_hlim_expired / payload)
+
+        icmp6_reply = (IPv6(hlim=255, src=self.pg1.local_ip6,
+                            dst="2001:db8:1ab::c0a8:1:ab") /
+                       ICMPv6TimeExceeded(code=0) /
+                       IPv6(src="2001:db8:1ab::c0a8:1:ab",
+                            dst='1234:5678:90ab:cdef:ac:1001:200:0',
+                            hlim=1) / payload)
+        rx = self.send_and_expect(self.pg1, p6*1, self.pg1)
+        for p in rx:
+            self.validate(p[1], icmp6_reply)
+
+        # IPv6 Hop limit beyond BR
         ip6_hlim_expired = IPv6(hlim=0, src='2001:db8:1ab::c0a8:1:ab',
                                 dst='1234:5678:90ab:cdef:ac:1001:200:0')
         p6 = (p_ether6 / ip6_hlim_expired / payload)
