@@ -675,6 +675,9 @@ list(APPEND VNET_HEADERS
   tcp/tcp_packet.h
   tcp/tcp_timer.h
   tcp/tcp_debug.h
+  tcp/tcp_inlines.h
+  tcp/tcp_sack.h
+  tcp/tcp_types.h
   tcp/tcp.h
   tcp/tcp_error.def
 )
