@@ -14,6 +14,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 
 typedef struct nwreno_cfg_
 {
