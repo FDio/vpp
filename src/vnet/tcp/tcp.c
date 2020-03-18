@@ -19,6 +19,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -705,51 +706,6 @@ tcp_connection_init_vars (tcp_connection_t * tc)
     tc->cfg_flags |= TCP_CFG_F_NO_TSO;
 
   tc->start_ts = tcp_time_now_us (tc->c_thread_index);
-}
-
-void
-tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
-{
-  tcp_header_t *th = tcp_buffer_hdr (b);
-
-  tc->c_lcl_port = th->dst_port;
-  tc->c_rmt_port = th->src_port;
-  tc->c_is_ip4 = is_ip4;
-
-  if (is_ip4)
-    {
-      ip4_header_t *ip4 = vlib_buffer_get_current (b);
-      tc->c_lcl_ip4.as_u32 = ip4->dst_address.as_u32;
-      tc->c_rmt_ip4.as_u32 = ip4->src_address.as_u32;
-    }
-  else
-    {
-      ip6_header_t *ip6 = vlib_buffer_get_current (b);
-      clib_memcpy_fast (&tc->c_lcl_ip6, &ip6->dst_address,
-			sizeof (ip6_address_t));
-      clib_memcpy_fast (&tc->c_rmt_ip6, &ip6->src_address,
-			sizeof (ip6_address_t));
-    }
-
-  tc->irs = vnet_buffer (b)->tcp.seq_number;
-  tc->rcv_nxt = vnet_buffer (b)->tcp.seq_number + 1;
-  tc->rcv_las = tc->rcv_nxt;
-  tc->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-  tc->snd_wl1 = vnet_buffer (b)->tcp.seq_number;
-  tc->snd_wl2 = vnet_buffer (b)->tcp.ack_number;
-
-  /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
-   * segments are used to initialize PAWS. */
-  if (tcp_opts_tstamp (&tc->rcv_opts))
-    {
-      tc->tsval_recent = tc->rcv_opts.tsval;
-      tc->tsval_recent_age = tcp_time_now ();
-    }
-
-  if (tcp_opts_wscale (&tc->rcv_opts))
-    tc->snd_wscale = tc->rcv_opts.wscale;
-
-  tc->snd_wnd = clib_net_to_host_u16 (th->window) << tc->snd_wscale;
 }
 
 static int
@@ -1826,7 +1782,6 @@ tcp_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_TCP, &tcp_proto,
 			       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
-  tcp_api_reference ();
   tcp_configuration_init ();
 
   tm->cc_algo_by_name = hash_create_string (0, sizeof (uword));
