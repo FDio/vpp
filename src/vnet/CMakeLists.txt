@@ -659,9 +659,11 @@ list(APPEND VNET_SOURCES
   tcp/tcp_output.c
   tcp/tcp_input.c
   tcp/tcp_newreno.c
-  tcp/tcp_cubic.c
   tcp/tcp_bt.c
+  tcp/tcp_cli.c
+  tcp/tcp_cubic.c
   tcp/tcp_debug.c
+  tcp/tcp_sack.c
   tcp/tcp.c
 )
 
@@ -674,7 +676,12 @@ list(APPEND VNET_MULTIARCH_SOURCES
 list(APPEND VNET_HEADERS
   tcp/tcp_packet.h
   tcp/tcp_timer.h
+  tcp/tcp_bt.h
+  tcp/tcp_cc.h
   tcp/tcp_debug.h
+  tcp/tcp_inlines.h
+  tcp/tcp_sack.h
+  tcp/tcp_types.h
   tcp/tcp.h
   tcp/tcp_error.def
 )

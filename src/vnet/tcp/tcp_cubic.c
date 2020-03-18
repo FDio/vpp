@@ -14,6 +14,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <math.h>
 
 #define beta_cubic 	0.7
