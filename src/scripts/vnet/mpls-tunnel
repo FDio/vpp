@@ -51,7 +51,7 @@ loop create
 set int state loop0 up
 
 set int ip address loop0 10.0.0.1/24
-set ip arp loop0 10.0.0.2 00:00:11:aa:bb:cc
+set ip neighbor loop0 10.0.0.2 00:00:11:aa:bb:cc
 
 mpls tunnel add via 10.0.0.2 loop0 out-label 33 out-label 34 out-label 35 out-label 36
 set int state mpls-tunnel0 up

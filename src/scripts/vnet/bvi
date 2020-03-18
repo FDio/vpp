@@ -29,7 +29,7 @@ l2fib add 00:02:04:06:08:0a    0  GigabitEthernet2/2/0.1 static
 
 
 ip route table 0 8.0.0.1/32 via loop0
-set ip arp loop0 8.0.0.1 00:02:04:06:08:0a
+set ip neighbor loop0 8.0.0.1 00:02:04:06:08:0a
 
 
 ip route add 1.2.3.3/32 via GigabitEthernet2/1/0 IP4: 00:15:17:61:73:47 -> 00:15:17:61:73:46

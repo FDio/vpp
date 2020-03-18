@@ -20,8 +20,8 @@ set int state loop1 up
 set int ip address loop0 2001:1::1/64
 set int ip address loop1 2001:2::1/64
 
-set ip6 neighbor loop0 2001:1::2 00:00:DD:EE:AA:DD
-set ip6 neighbor loop1 2001:2::2 00:00:DD:EE:AA:EE
+set ip neighbor loop0 2001:1::2 00:00:DD:EE:AA:DD
+set ip neighbor loop1 2001:2::2 00:00:DD:EE:AA:EE
 
 ip route add 3001::/64 via 2001:2::2 loop1
 
