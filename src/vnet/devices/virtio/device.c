@@ -400,10 +400,16 @@ virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
+    {
+      vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
+      vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
+				   VNET_HW_INTERFACE_FLAG_LINK_UP);
+    }
   else
-    vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
-
+    {
+      vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
+      vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
+    }
   return 0;
 }
 
