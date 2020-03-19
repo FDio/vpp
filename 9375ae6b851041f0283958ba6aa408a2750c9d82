@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d06f3305_10e565fe",
+        "filename": "src/vnet/ip/ip_types_api.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-19T08:06:14Z",
+      "side": 1,
+      "message": "while you\u0027re making changes here ...\ncan you change all the u8 and ints to the correct vl_api_blabla_t type. we can do this now with the new generator.",
+      "revId": "9375ae6b851041f0283958ba6aa408a2750c9d82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
