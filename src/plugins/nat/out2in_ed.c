@@ -1006,13 +1006,13 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      s0 =
 		nat44_ed_out2in_unknown_proto (sm, b0, ip0, rx_fib_index0,
 					       thread_index, now, vm, node);
-	      other_packets++;
 	      if (!sm->forwarding_enabled)
 		{
 		  if (!s0)
 		    next0 = NAT_NEXT_DROP;
-		  goto trace0;
 		}
+	      other_packets++;
+	      goto trace0;
 	    }
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
