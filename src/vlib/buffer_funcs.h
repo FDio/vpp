@@ -158,6 +158,24 @@ vlib_buffer_copy_indices_from_ring (u32 * dst, u32 * ring, u32 start,
     }
 }
 
+always_inline void
+vlib_buffer_copy_indices_to_ring (u32 * ring, u32 * src, u32 start,
+				  u32 ring_size, u32 n_buffers)
+{
+  ASSERT (n_buffers <= ring_size);
+
+  if (PREDICT_TRUE (start + n_buffers <= ring_size))
+    {
+      vlib_buffer_copy_indices (ring + start, src, n_buffers);
+    }
+  else
+    {
+      u32 n = ring_size - start;
+      vlib_buffer_copy_indices (ring + start, src, n);
+      vlib_buffer_copy_indices (ring, src + n, n_buffers - n);
+    }
+}
+
 STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 static_always_inline void
 vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
