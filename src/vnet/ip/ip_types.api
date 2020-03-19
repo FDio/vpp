@@ -18,7 +18,7 @@ option version = "3.0.0";
 manual_print typedef u8 ip4_address[4];
 manual_print typedef u8 ip6_address[16];
 
-enum address_family {
+enum address_family : u8 {
   ADDRESS_IP4 = 0,
   ADDRESS_IP6,
 };
@@ -61,7 +61,7 @@ enum ip_dscp : u8 {
   IP_API_DSCP_CS7 =  50,
 };
 
-enum ip_proto {
+enum ip_proto : u8 {
   IP_API_PROTO_HOPOPT = 0,
   IP_API_PROTO_ICMP = 1,
   IP_API_PROTO_IGMP = 2,
