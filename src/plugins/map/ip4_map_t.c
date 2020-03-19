@@ -598,6 +598,9 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto exit;
 	    }
 
+	  //Remove Ethernet padding if any
+	  p0->current_length = ip4_len0;
+
 	  dst_port0 = -1;
 
 	  if (PREDICT_FALSE (ip40->ttl == 1))

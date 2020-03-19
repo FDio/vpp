@@ -10,7 +10,7 @@ from util import fragment_rfc791, fragment_rfc8200
 
 import scapy.compat
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
+from scapy.compat import raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP, IPerror, UDPerror
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment
 from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply, IPerror6
@@ -372,6 +372,45 @@ class TestMAPBR(VppTestCase):
         self.assertEqual(rx_pkt[UDPerror].sport, self.ipv6_udp_or_tcp_map_port)
         self.assertEqual(rx_pkt[UDPerror].dport,
                          self.ipv6_udp_or_tcp_internet_port)
+
+    #
+    # Translation of ICMP Echo Request v4 with eth padding -> v6 direction
+    # Received packet should trim ethernet padding.
+    #
+
+    def test_map_t_ethernet_padding_ip4_to_ip6(self):
+        """ MAP-T echo request with eth padding IPv4 -> IPv6 """
+
+        eth = Ether(src=self.pg0.remote_mac,
+                    dst=self.pg0.local_mac)
+        ip = IP(src=self.pg0.remote_ip4,
+                dst=self.ipv4_map_address)
+        icmp = ICMP(type="echo-request",
+                    id=self.ipv6_udp_or_tcp_map_port)
+        tx_pkt = eth / ip / icmp
+
+        # 60 = 64 (min. eth length) - 4 (FCS)
+        pad_len = 60 - len(tx_pkt)
+        if pad_len > 0:
+            pad = Padding(load='\x00'*pad_len)
+            tx_pkt = tx_pkt / pad
+
+        exp_eth = Ether(src=self.pg1.local_mac,
+                        dst=self.pg1.remote_mac)
+        exp_ip = IPv6(src=self.ipv6_map_address,
+                      dst=self.ipv6_cpe_address,
+                      hlim=63)
+        exp_icmp = ICMPv6EchoRequest(type="Echo Request",
+                                     id=self.ipv6_udp_or_tcp_map_port)
+        # len(exp_rx_pkt) == 62, so no padding needed
+        exp_rx_pkt = Ether(raw(exp_eth / exp_ip / exp_icmp))
+
+        self.pg_send(self.pg0, tx_pkt * 1)
+
+        rx_pkts = self.pg1.get_capture(1)
+        rx_pkt = rx_pkts[0]
+
+        self.assertEqual(rx_pkt, exp_rx_pkt)
 
     #
     # Translation of ICMP Echo Request v6 -> v4 direction
