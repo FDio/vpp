@@ -89,7 +89,11 @@ vl_api_punt_l4_decode (const vl_api_punt_l4_t * in, punt_l4_t * out)
   int rv;
 
   rv = ip_address_family_decode (in->af, &out->af);
-  rv += ip_proto_decode (in->protocol, &out->protocol);
+  if (rv < 0)
+    return (rv);
+  rv = ip_proto_decode (in->protocol, &out->protocol);
+  if (rv < 0)
+    return (rv);
   out->port = clib_net_to_host_u16 (in->port);
 
   return (rv);
@@ -102,7 +106,9 @@ vl_api_punt_ip_proto_decode (const vl_api_punt_ip_proto_t * in,
   int rv;
 
   rv = ip_address_family_decode (in->af, &out->af);
-  rv += ip_proto_decode (in->protocol, &out->protocol);
+  if (rv < 0)
+    return (rv);
+  rv = ip_proto_decode (in->protocol, &out->protocol);
 
   return (rv);
 }
