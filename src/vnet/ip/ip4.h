@@ -190,6 +190,7 @@ extern vlib_node_registration_t ip4_rewrite_local_node;
 extern vlib_node_registration_t ip4_arp_node;
 extern vlib_node_registration_t ip4_glean_node;
 extern vlib_node_registration_t ip4_midchain_node;
+extern vlib_node_registration_t ip4_punt_node;
 
 always_inline uword
 ip4_destination_matches_route (const ip4_main_t * im,
