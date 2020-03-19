@@ -255,6 +255,7 @@ extern vlib_node_registration_t ip6_rewrite_local_node;
 extern vlib_node_registration_t ip6_discover_neighbor_node;
 extern vlib_node_registration_t ip6_glean_node;
 extern vlib_node_registration_t ip6_midchain_node;
+extern vlib_node_registration_t ip6_punt_node;
 
 extern void ip6_forward_next_trace (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
