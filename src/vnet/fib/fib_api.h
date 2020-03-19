@@ -50,7 +50,7 @@ extern int fib_api_route_add_del (u8 is_add,
 extern u8* format_vl_api_fib_path(u8 * s, va_list * args);
 
 
-extern fib_protocol_t fib_proto_from_api_address_family (int af);
-extern int fib_proto_to_api_address_family (fib_protocol_t fproto);
+extern fib_protocol_t fib_proto_from_api_address_family (u8 af);
+extern u8 fib_proto_to_api_address_family (fib_protocol_t fproto);
 
 #endif /* __FIB_API_H__ */
