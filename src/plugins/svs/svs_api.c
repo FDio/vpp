@@ -66,7 +66,9 @@ vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t * mp)
   fib_protocol_t fproto;
   int rv = 0;
 
-  fproto = fib_proto_from_api_address_family (mp->af);
+  rv = fib_proto_from_api_address_family (mp->af, &fproto);
+  if (rv < 0)
+    goto error;
 
   if (mp->is_add)
     {
@@ -77,6 +79,7 @@ vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t * mp)
       rv = svs_table_delete (fproto, ntohl (mp->table_id));
     }
 
+error:
   REPLY_MACRO (VL_API_SVS_TABLE_ADD_DEL_REPLY + svs_base_msg_id);
 }
 
@@ -111,7 +114,9 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  fproto = fib_proto_from_api_address_family (mp->af);
+  rv = fib_proto_from_api_address_family (mp->af, &fproto);
+  if (rv < 0)
+    goto error;
 
   if (mp->is_enable)
     {
@@ -124,6 +129,7 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
     }
 
   BAD_SW_IF_INDEX_LABEL;
+error:
   REPLY_MACRO (VL_API_SVS_ENABLE_DISABLE_REPLY + svs_base_msg_id);
 }
 
