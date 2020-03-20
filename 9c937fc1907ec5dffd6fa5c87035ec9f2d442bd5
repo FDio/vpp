@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0a50552_aaf11f3d",
+        "filename": "docs/scripts/sphinx-make.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-20T17:43:33Z",
+      "side": 1,
+      "message": "Doesn\u0027t this need to be yum or dnf (centos8)?",
+      "range": {
+        "startLine": 12,
+        "startChar": 6,
+        "endLine": 12,
+        "endChar": 14
+      },
+      "revId": "9c937fc1907ec5dffd6fa5c87035ec9f2d442bd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06be5d7c_c5877e53",
+        "filename": "docs/scripts/sphinx-make.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-20T17:43:33Z",
+      "side": 1,
+      "message": "This is not the way to do this under python3.\nSee my change @ https://gerrit.fd.io/r/c/vpp/+/25809/1/docs/scripts/sphinx-make.sh that implements:\nhttps://docs.python.org/3/library/venv.html",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 35
+      },
+      "revId": "9c937fc1907ec5dffd6fa5c87035ec9f2d442bd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
