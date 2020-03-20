@@ -182,6 +182,30 @@ typedef struct
 
 typedef struct
 {
+  union
+  {
+    u64 va[8];
+    u64x4 va4[2];
+  };
+  union
+  {
+    u16 sz[8];
+    u16x8 sz8;
+  };
+  union
+  {
+    u32 fl[8];
+    u32x8 fl8;
+  };
+  union
+  {
+    u16 tl[8];
+    u16x8 tl8;
+  };
+} rdma_buf8_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   union
   {
@@ -189,6 +213,7 @@ typedef struct
     u16x8 cqe_flags8[VLIB_FRAME_SIZE / 8];
     u16x16 cqe_flags16[VLIB_FRAME_SIZE / 16];
   };
+  rdma_buf8_t buf8[VLIB_FRAME_SIZE / 8];
   vlib_buffer_t buffer_template;
 } rdma_per_thread_data_t;
 
