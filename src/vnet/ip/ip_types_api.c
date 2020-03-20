@@ -292,7 +292,6 @@ void
 ip_mprefix_encode (const mfib_prefix_t * in, vl_api_mprefix_t * out)
 {
   out->af = (FIB_PROTOCOL_IP6 == in->fp_proto ? ADDRESS_IP6 : ADDRESS_IP4);
-  out->af = out->af;
   out->grp_address_length = clib_host_to_net_u16 (in->fp_len);
 
   ip_address_union_encode (&in->fp_grp_addr, out->af, &out->grp_address);
