@@ -636,6 +636,8 @@ ssvm_private_t *session_main_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
+session_t *session_alloc_for_connection (transport_connection_t * tc);
+
 #endif /* __included_session_h__ */
 
 /*

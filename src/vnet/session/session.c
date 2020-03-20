@@ -283,7 +283,7 @@ session_delete (session_t * s)
   session_free_w_fifos (s);
 }
 
-static session_t *
+session_t *
 session_alloc_for_connection (transport_connection_t * tc)
 {
   session_t *s;
