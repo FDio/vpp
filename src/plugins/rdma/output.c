@@ -104,14 +104,15 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 }
 
 static_always_inline void
-rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
-		    vlib_buffer_t * b, const u16 tail)
+rdma_mlx5_wqe_init_x1 (rdma_mlx5_wqe_t * wqe, const void *tmpl,
+		       vlib_buffer_t * b, const u16 tail)
 {
   u16 sz = b->current_length;
   const void *cur = vlib_buffer_get_current (b);
   uword addr = pointer_to_uword (cur);
 
   clib_memcpy_fast (wqe, tmpl, RDMA_MLX5_WQE_SZ);
+
   /* speculatively copy at least MLX5_ETH_L2_INLINE_HEADER_SIZE (18-bytes) */
   STATIC_ASSERT (STRUCT_SIZE_OF (struct mlx5_wqe_eth_seg, inline_hdr_start) +
 		 STRUCT_SIZE_OF (struct mlx5_wqe_eth_seg,
@@ -166,7 +167,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
       rdma_mlx5_wqe_t *wqe = txq->dv_sq_wqes + (tail & sq_mask);
 
       /* setup the head WQE */
-      rdma_mlx5_wqe_init (wqe, txq->dv_wqe_tmpl, b[0], tail);
+      rdma_mlx5_wqe_init_x1 (wqe, txq->dv_wqe_tmpl, b[0], tail);
 
       bufs[0] = bi[0];
 
@@ -278,14 +279,73 @@ rdma_device_output_tx_mlx5 (vlib_main_t * vm,
 			    const u32 n_left_from, u32 * bi,
 			    vlib_buffer_t ** b)
 {
-
   u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
   u32 mask = pow2_mask (txq->bufs_log2sz);
   rdma_mlx5_wqe_t *wqe;
   u32 n, n_wrap;
   u16 tail = txq->tail;
+  const void *tmpl = txq->dv_wqe_tmpl;
 
   ASSERT (RDMA_TXQ_BUF_SZ (txq) <= RDMA_TXQ_DV_SQ_SZ (txq));
+
+#ifdef CLIB_HAVE_VEC256
+  u32 flags = 0;
+  u16x8 sz8[VLIB_FRAME_SIZE / 8], *s8 = sz8;
+  u64x4 va4[VLIB_FRAME_SIZE / 4], *v4 = va4;
+  i16x8 off8[VLIB_FRAME_SIZE / 8], *o8 = off8;
+  const u16x8 overflow_sz_mask = u16x8_splat (0x8000);
+
+  {
+    u32 n_ = n_left_from;
+    vlib_buffer_t **b_ = b;
+    u16x8 *s8_ = s8;
+    u64x4 *v4_ = v4;
+    i16x8 *o8_ = o8;
+    while (n_ >= 16)
+      {
+	vlib_prefetch_buffer_header (b[8 + 0], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 1], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 2], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 3], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 4], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 5], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 6], LOAD);
+	vlib_prefetch_buffer_header (b[8 + 7], LOAD);
+
+	flags = b_[0]->flags | b_[1]->flags | b_[2]->flags | b_[3]->flags
+	  | b_[4]->flags | b_[5]->flags | b_[6]->flags | b_[7]->flags;
+	if (PREDICT_FALSE (flags & VLIB_BUFFER_NEXT_PRESENT))
+	  return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq,
+						     n_left_from, 0, bi, b,
+						     txq->dv_sq_wqes +
+						     (tail & sq_mask), 0);
+
+	*s8_ = (u16x8)
+	{
+	b_[0]->current_length, b_[1]->current_length,
+	    b_[2]->current_length, b_[3]->current_length,
+	    b_[4]->current_length, b_[5]->current_length,
+	    b_[6]->current_length, b_[7]->current_length};
+
+	v4_[0] = u64x4_gather (b_ + 0, b_ + 1, b_ + 2, b_ + 3);
+	v4_[1] = u64x4_gather (b_ + 4, b_ + 5, b_ + 6, b_ + 7);
+
+	*o8_ = (i16x8)
+	{
+	b_[0]->current_data, b_[1]->current_data,
+	    b_[2]->current_data, b_[3]->current_data,
+	    b_[4]->current_data, b_[5]->current_data,
+	    b_[6]->current_data, b_[7]->current_data};
+
+	s8_ += 1;
+	v4_ += 2;
+	o8_ += 1;
+
+	b_ += 8;
+	n_ -= 8;
+      }
+  }
+#endif /* CLIB_HAVE_VEC256 */
 
   /* avoid wrap-around logic in core loop */
   n = clib_min (n_left_from, RDMA_TXQ_BUF_SZ (txq) - (tail & mask));
@@ -294,33 +354,126 @@ rdma_device_output_tx_mlx5 (vlib_main_t * vm,
 wrap_around:
   wqe = txq->dv_sq_wqes + (tail & sq_mask);
 
-  while (n >= 4)
+#ifdef CLIB_HAVE_VEC256
+  s8[0] -= MLX5_ETH_L2_INLINE_HEADER_SIZE;
+  u32x8 be_s8 = u32x8_byte_swap (u16x8_extend_to_u32x8 (s8[0]));
+
+  i64x4 off4[2] = {
+    {o8[0][0], o8[0][1], o8[0][2], o8[0][3]}
+    ,
+    {o8[0][4], o8[0][5], o8[0][6], o8[0][7]}
+  };
+  v4[0] += off4[0] + sizeof (vlib_buffer_t);
+  v4[1] += off4[1] + sizeof (vlib_buffer_t);
+  u64x4 be_v4[2] = {
+    u64x4_byte_swap (v4[0] + MLX5_ETH_L2_INLINE_HEADER_SIZE),
+    u64x4_byte_swap (v4[1] + MLX5_ETH_L2_INLINE_HEADER_SIZE)
+  };
+
+  while (n >= 16)
     {
-      u32 flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
-      if (PREDICT_FALSE (flags & VLIB_BUFFER_NEXT_PRESENT))
-	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq,
-						   n_left_from, n, bi, b, wqe,
-						   tail);
-
-      if (PREDICT_TRUE (n >= 8))
+      if (PREDICT_FALSE (!u16x8_is_all_zero (s8[0] & overflow_sz_mask)))
 	{
-	  vlib_prefetch_buffer_header (b[4], LOAD);
-	  vlib_prefetch_buffer_header (b[5], LOAD);
-	  vlib_prefetch_buffer_header (b[6], LOAD);
-	  vlib_prefetch_buffer_header (b[7], LOAD);
-	  CLIB_PREFETCH (wqe + 4, 4 * sizeof (wqe[0]), STORE);
+	  /*
+	   * some packets are smaller than MLX5_ETH_L2_INLINE_HEADER_SIZE
+	   * just process them one by one
+	   */
+	  rdma_mlx5_wqe_init_x1 (wqe + 0, tmpl, b[0], tail + 0);
+	  rdma_mlx5_wqe_init_x1 (wqe + 1, tmpl, b[1], tail + 1);
+	  rdma_mlx5_wqe_init_x1 (wqe + 2, tmpl, b[2], tail + 2);
+	  rdma_mlx5_wqe_init_x1 (wqe + 3, tmpl, b[3], tail + 3);
+	  rdma_mlx5_wqe_init_x1 (wqe + 4, tmpl, b[4], tail + 4);
+	  rdma_mlx5_wqe_init_x1 (wqe + 5, tmpl, b[5], tail + 5);
+	  rdma_mlx5_wqe_init_x1 (wqe + 6, tmpl, b[6], tail + 6);
+	  rdma_mlx5_wqe_init_x1 (wqe + 7, tmpl, b[7], tail + 7);
+	  continue;
 	}
+      s8[1] -= MLX5_ETH_L2_INLINE_HEADER_SIZE;
 
-      rdma_mlx5_wqe_init (wqe + 0, txq->dv_wqe_tmpl, b[0], tail + 0);
-      rdma_mlx5_wqe_init (wqe + 1, txq->dv_wqe_tmpl, b[1], tail + 1);
-      rdma_mlx5_wqe_init (wqe + 2, txq->dv_wqe_tmpl, b[2], tail + 2);
-      rdma_mlx5_wqe_init (wqe + 3, txq->dv_wqe_tmpl, b[3], tail + 3);
+      off4[0] = (i64x4)
+      {
+      o8[1][0], o8[1][1], o8[1][2], o8[1][3]};
+      off4[1] = (i64x4)
+      {
+      o8[1][4], o8[1][5], o8[1][6], o8[1][7]};
+      v4[2] += off4[0] + sizeof (vlib_buffer_t);
+      v4[3] += off4[1] + sizeof (vlib_buffer_t);
 
-      b += 4;
-      tail += 4;
-      wqe += 4;
-      n -= 4;
+      clib_prefetch_store (wqe + 8);
+      clib_memcpy_fast (wqe + 0, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 9);
+      clib_memcpy_fast (wqe + 1, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 10);
+      clib_memcpy_fast (wqe + 2, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 11);
+      clib_memcpy_fast (wqe + 3, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 12);
+      clib_memcpy_fast (wqe + 4, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 13);
+      clib_memcpy_fast (wqe + 5, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 14);
+      clib_memcpy_fast (wqe + 6, tmpl, RDMA_MLX5_WQE_SZ);
+      clib_prefetch_store (wqe + 15);
+      clib_memcpy_fast (wqe + 7, tmpl, RDMA_MLX5_WQE_SZ);
+
+      clib_memcpy_fast (wqe[0].eseg.inline_hdr_start,
+			uword_to_pointer (v4[0][0], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[1].eseg.inline_hdr_start,
+			uword_to_pointer (v4[0][1], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[2].eseg.inline_hdr_start,
+			uword_to_pointer (v4[0][2], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[3].eseg.inline_hdr_start,
+			uword_to_pointer (v4[0][3], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[4].eseg.inline_hdr_start,
+			uword_to_pointer (v4[1][0], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[5].eseg.inline_hdr_start,
+			uword_to_pointer (v4[1][1], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[6].eseg.inline_hdr_start,
+			uword_to_pointer (v4[1][2], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      clib_memcpy_fast (wqe[7].eseg.inline_hdr_start,
+			uword_to_pointer (v4[1][3], void *),
+			MLX5_ETH_L2_INLINE_HEADER_SIZE);
+
+      *(u16 *) & wqe[0].wqe_index_hi = htons (tail + 0);
+      *(u16 *) & wqe[1].wqe_index_hi = htons (tail + 1);
+      *(u16 *) & wqe[2].wqe_index_hi = htons (tail + 2);
+      *(u16 *) & wqe[3].wqe_index_hi = htons (tail + 3);
+      *(u16 *) & wqe[4].wqe_index_hi = htons (tail + 4);
+      *(u16 *) & wqe[5].wqe_index_hi = htons (tail + 5);
+      *(u16 *) & wqe[6].wqe_index_hi = htons (tail + 6);
+      *(u16 *) & wqe[7].wqe_index_hi = htons (tail + 7);
+
+      u64x4_scatter (be_v4[0], &wqe[0].dseg.addr, &wqe[1].dseg.addr,
+		     &wqe[2].dseg.addr, &wqe[3].dseg.addr);
+      u64x4_scatter (be_v4[1], &wqe[4].dseg.addr, &wqe[5].dseg.addr,
+		     &wqe[6].dseg.addr, &wqe[7].dseg.addr);
+      be_v4[2] = u64x4_byte_swap (v4[2] + MLX5_ETH_L2_INLINE_HEADER_SIZE);
+      be_v4[3] = u64x4_byte_swap (v4[3] + MLX5_ETH_L2_INLINE_HEADER_SIZE);
+
+      u32x8_scatter (be_s8,
+		     &wqe[0].dseg.byte_count, &wqe[1].dseg.byte_count,
+		     &wqe[2].dseg.byte_count, &wqe[3].dseg.byte_count,
+		     &wqe[4].dseg.byte_count, &wqe[5].dseg.byte_count,
+		     &wqe[6].dseg.byte_count, &wqe[7].dseg.byte_count);
+      be_s8 = u32x8_byte_swap (u16x8_extend_to_u32x8 (s8[1]));
+
+      s8 += 1;
+      v4 += 2;
+      o8 += 1;
+
+      b += 8;
+      tail += 8;
+      wqe += 8;
+      n -= 8;
     }
+#endif /* CLIB_HAVE_VEC256 */
 
   while (n >= 1)
     {
@@ -329,7 +482,7 @@ wrap_around:
 						   n_left_from, n, bi, b, wqe,
 						   tail);
 
-      rdma_mlx5_wqe_init (wqe, txq->dv_wqe_tmpl, b[0], tail);
+      rdma_mlx5_wqe_init_x1 (wqe, tmpl, b[0], tail);
 
       b += 1;
       tail += 1;
