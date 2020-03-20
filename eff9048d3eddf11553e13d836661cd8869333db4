@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0521d8e5_9f4a26fb",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2020-03-20T15:47:35Z",
+      "side": 1,
+      "message": "is_spray parameter",
+      "range": {
+        "startLine": 64,
+        "startChar": 11,
+        "endLine": 64,
+        "endChar": 1
+      },
+      "revId": "eff9048d3eddf11553e13d836661cd8869333db4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
