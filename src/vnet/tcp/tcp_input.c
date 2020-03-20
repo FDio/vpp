@@ -1550,8 +1550,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
       tc->prr_delivered += tc->bytes_acked + tc->sack_sb.last_sacked_bytes
 	- tc->sack_sb.last_bytes_delivered;
-
-      tcp_program_retransmit (tc);
     }
   else
     {
@@ -1573,8 +1571,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       /* If partial ack, assume that the first un-acked segment was lost */
       if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
 	tcp_fastrecovery_first_on (tc);
-
-      tcp_program_retransmit (tc);
     }
 
   /*
@@ -1593,6 +1589,8 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tcp_cc_rcv_ack (tc, rs);
       return;
     }
+
+  tcp_program_retransmit (tc);
 
   /*
    * Notify cc of the event
