@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e594a755_46f5142f",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "You can get away with the non safe (without _if_valid) here, since you\u0027re the owner of the app.",
+      "range": {
+        "startLine": 99,
+        "startChar": 8,
+        "endLine": 99,
+        "endChar": 32
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dde48f0a_b6808991",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "You can make sure of this when you initialize your app, after attachment.",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 107,
+        "endChar": 0
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62a7b7a7_37693146",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "Noticed you\u0027re getting the transport connection index from state you maintain per gtpu flows. Do you still need to use the lookup tables? That is, are you using these in some other place?",
+      "range": {
+        "startLine": 119,
+        "startChar": 2,
+        "endLine": 119,
+        "endChar": 31
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "676fca40_494b08cc",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "I guess that after [1] you could use tcp_input_lookup_buffer from tcp_inline.h with is_nolookup set to 1 for this. Maybe it should be renamed to tcp_parse_and_lookup_buffer ().\n\nNote that when is_nolookup is set, vnet_buffer (b)-\u003etcp.connection_index is used to retrieve the connection and if none is found you get 0 in return.",
+      "range": {
+        "startLine": 156,
+        "startChar": 2,
+        "endLine": 212,
+        "endChar": 33
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8debd83e_3e7fcb68",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "This is now available from tcp_packet.h",
+      "range": {
+        "startLine": 228,
+        "startChar": 6,
+        "endLine": 228,
+        "endChar": 23
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e6cfcebd_4f2d9e94",
+        "filename": "src/plugins/upf/upf_process.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-20T21:00:41Z",
+      "side": 1,
+      "message": "I guess that for testing this is fine. Going forward, you might want to switch to cubic.",
+      "range": {
+        "startLine": 239,
+        "startChar": 36,
+        "endLine": 239,
+        "endChar": 50
+      },
+      "revId": "d558dc6a44f92cd65aa37ddc964c314839f65b22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
