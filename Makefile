@@ -229,6 +229,7 @@ help:
 	@echo " json-api-files-debug - (re)-generate json api files for debug target"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
+	@echo " docs-dep             - Install a small list of dependencies for the sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
 	@echo ""
 	@echo "Make Arguments:"
@@ -716,6 +717,10 @@ export SPHINX_SCRIPTS_DIR = $(WS_ROOT)/docs/scripts
 .PHONY: docs-venv
 docs-venv:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
+
+.PHONY: docs-dep
+docs-dep:
+	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh dep)
 
 .PHONY: docs
 docs: $(DOCS_DIR)
