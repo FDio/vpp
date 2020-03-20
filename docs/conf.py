@@ -19,7 +19,7 @@
 # -- Project information -----------------------------------------------------
 
 project = u'The Vector Packet Processor'
-copyright = u'2018, Linux Foundation'
+copyright = u'2018-2020, Linux Foundation'
 author = u'John DeNisco'
 
 # The short X.Y version
