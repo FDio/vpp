@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d3524975_4213b579",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-20T15:31:04Z",
+      "side": 1,
+      "message": "18.04 or 20.04?",
+      "range": {
+        "startLine": 194,
+        "startChar": 24,
+        "endLine": 194,
+        "endChar": 29
+      },
+      "revId": "5cdd01fa476a1d20bd5eb3460857301fbb0ddcd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
