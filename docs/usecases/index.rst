@@ -19,3 +19,4 @@ extensive list, but should give a sampling of the many features contained in FD.
    contiv/index.rst
    networksim
    webapp
+   container_test
