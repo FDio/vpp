@@ -347,6 +347,12 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       IPSEC_TUN_PROTECT_INPUT_ERROR_RX,
 			       from_frame->n_vectors - (n_disabled +
 							n_no_tunnel));
+  vlib_node_increment_counter (vm, node->node_index,
+			       IPSEC_TUN_PROTECT_INPUT_ERROR_DISABLED,
+			       n_disabled);
+  vlib_node_increment_counter (vm, node->node_index,
+			       IPSEC_TUN_PROTECT_INPUT_ERROR_NO_TUNNEL,
+			       n_no_tunnel);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, from_frame->n_vectors);
 
