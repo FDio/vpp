@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3204b48_c89d398f",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-03-21T11:45:50Z",
+      "side": 1,
+      "message": "should we just have here what we really use?\nexposing flag which VPP just ignores will just make confusion.\n\nAlso consider using #define forach_rx_offload_flags ... so you can autogenerate format functions.",
+      "range": {
+        "startLine": 193,
+        "startChar": 0,
+        "endLine": 211,
+        "endChar": 48
+      },
+      "revId": "c02d3081eccf6150fc90a0b9837965f0d2cb7085",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
