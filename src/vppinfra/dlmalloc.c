@@ -1249,7 +1249,7 @@ static struct malloc_state _gm_;
 #define disable_expand(M) ((M)->mflags |= USE_NOEXPAND_BIT)
 #define use_trace(M) ((M)->mflags & USE_TRACE_BIT)
 #define enable_trace(M) ((M)->mflags |= USE_TRACE_BIT)
-#define disable_trace(M) ((M)->mflags |= USE_TRACE_BIT)
+#define disable_trace(M) ((M)->mflags &= ~USE_TRACE_BIT)
 
 #define set_lock(M,L)\
  ((M)->mflags = (L)?\
