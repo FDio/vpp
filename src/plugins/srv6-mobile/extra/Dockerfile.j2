@@ -15,6 +15,7 @@ RUN set -eux; \
     python3-cffi \
     asciidoc \
     xmlto \
+    libssl-dev \
     netcat; \
     rm -rf /var/lib/apt/lists/*; \
     mv /usr/sbin/tcpdump /usr/bin/tcpdump

@@ -144,6 +144,11 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       pref_length = plugin->prefix_length;
     }
 
+  if (localsid_prefix_len != 0)
+    {
+      pref_length = localsid_prefix_len;
+    }
+
   /* Check whether there exists a FIB entry with such address */
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP6,
@@ -152,11 +157,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
   pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
   pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
-
-  if (pref_length != 0)
-    {
-      pfx.fp_len = pref_length;
-    }
+  pfx.fp_len = pref_length;
 
   /* Lookup the FIB index associated to the table id provided */
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, fib_table);
