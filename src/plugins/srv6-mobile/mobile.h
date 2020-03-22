@@ -42,11 +42,6 @@
 #define SRV6_GTP6_DT6		2
 #define SRV6_GTP6_DT46		3
 
-#define SRV6_GTP4_UNKNOW	0
-#define SRV6_GTP4_DT4		1
-#define SRV6_GTP4_DT6		2
-#define SRV6_GTP4_DT46		3
-
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define BITALIGN2(A,B)          A; B
 #define BITALIGN3(A,B,C)        A; B; C
@@ -63,19 +58,6 @@
 #define SRH_TAG_ECHO_REQUEST            0x0004
 #define SRH_TAG_ERROR_INDICATION        0x0002
 #define SRH_TAG_END_MARKER              0x0001
-
-#define GTPU_RECOVERY_IE_TYPE		0x0e
-
-#define GTPU_IE_MAX_SIZ			256
-#define SRH_TLV_USER_PLANE_CONTAINER	0x0a	/* tentative */
-
-/* *INDENT-OFF* */
-typedef struct
-{
-  u8 type;
-  u8 restart_counter;
-} __attribute__ ((packed)) gtpu_recovery_ie;
-/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 typedef struct
@@ -163,17 +145,6 @@ typedef struct
 
 #define GTPU_PT_GTP   (1<<4)
 
-/* *INDENT-OFF* */
-typedef struct
-{
-  u8 type;
-  u8 length;
-  u8 value[0];
-} __attribute__ ((packed)) user_plane_sub_tlv_t;
-/* *INDENT-ON* */
-
-#define USER_PLANE_SUB_TLV_IE	0x01
-
 typedef struct srv6_end_gtp6_param_s
 {
   u8 nhtype;
@@ -181,24 +152,6 @@ typedef struct srv6_end_gtp6_param_s
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
 } srv6_end_gtp6_param_t;
-
-typedef struct srv6_end_gtp6_dt_param_s
-{
-  u8 type;
-
-  u32 fib4_index;
-  u32 fib6_index;
-  u32 local_fib_index;
-} srv6_end_gtp6_dt_param_t;
-
-typedef struct srv6_t_gtp4_dt_param_s
-{
-  u8 type;
-
-  u32 fib4_index;
-  u32 fib6_index;
-  u32 local_fib_index;
-} srv6_t_gtp4_dt_param_t;
 
 typedef struct srv6_end_gtp4_param_s
 {
@@ -284,30 +237,6 @@ typedef struct srv6_end_main_v6_decap_di_s
 
 extern srv6_end_main_v6_decap_di_t srv6_end_main_v6_decap_di;
 extern vlib_node_registration_t srv6_end_m_gtp6_d_di;
-
-typedef struct srv6_end_main_v6_dt_s
-{
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-
-  u32 end_m_gtp6_dt_node_index;
-  u32 error_node_index;
-} srv6_end_main_v6_dt_t;
-
-extern srv6_end_main_v6_dt_t srv6_end_main_v6_dt;
-extern vlib_node_registration_t srv6_end_m_gtp6_dt;
-
-typedef struct srv6_t_main_v4_dt_s
-{
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-
-  u32 t_m_gtp4_dt_node_index;
-  u32 error_node_index;
-} srv6_t_main_v4_dt_t;
-
-extern srv6_t_main_v4_dt_t srv6_t_main_v4_dt;
-extern vlib_node_registration_t srv6_t_m_gtp4_dt;
 
 #endif /* __included_srv6_end_h__ */
 
