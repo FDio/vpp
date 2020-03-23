@@ -571,7 +571,7 @@ dpdk_lib_init (dpdk_main_t * dm)
                 {
                   struct rte_eth_link l;
                   rte_eth_link_get_nowait (i, &l);
-                  xd->port_type = port_type_from_link_speed (l.link_speed);
+		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
                 }
 	      break;
 
