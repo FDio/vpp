@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gso.h>
+#include <vnet/gso/gro.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
@@ -402,6 +403,15 @@ virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
     }
 }
 
+static_always_inline void
+virtio_interface_drop_inline (vlib_main_t * vm, uword node_index,
+			      u32 * buffers, u16 n)
+{
+
+  vlib_error_count (vm, node_index, VIRTIO_TX_ERROR_NO_FREE_SLOTS, n);
+  vlib_buffer_free (vm, buffers, n);
+}
+
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif,
@@ -448,17 +458,29 @@ retry:
 
   while (n_left && free_desc_count)
     {
-      u16 n_added = 0;
+      u16 n_added = 0, n_coalesce = 1;
+
+      if (do_gso)
+	n_coalesce = vnet_gro_inline (vm, buffers, n_left);
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
 			    do_gso, csum_offload);
       if (!n_added)
-	break;
+	{
+	  if (do_gso && n_coalesce >= 2)
+	    {
+	      virtio_interface_drop_inline (vm, node->node_index, buffers, 1);
+	      buffers += n_coalesce;
+	      n_left -= n_coalesce;
+	    }
+	  break;
+	}
       avail += n_added;
       next = (next + n_added) & mask;
       used += n_added;
-      buffers++;
-      n_left--;
+      buffers += n_coalesce;
+      n_left -= n_coalesce;
       free_desc_count--;
     }
 
@@ -477,9 +499,7 @@ retry:
       if (retry_count--)
 	goto retry;
 
-      vlib_error_count (vm, node->node_index, VIRTIO_TX_ERROR_NO_FREE_SLOTS,
-			n_left);
-      vlib_buffer_free (vm, buffers, n_left);
+      virtio_interface_drop_inline (vm, node->node_index, buffers, n_left);
     }
 
   clib_spinlock_unlock_if_init (&vring->lockp);
