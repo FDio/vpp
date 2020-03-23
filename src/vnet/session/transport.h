@@ -42,9 +42,19 @@ typedef enum transport_snd_flags_
 
 typedef struct transport_send_params_
 {
-  u32 snd_space;
-  u32 tx_offset;
-  u16 snd_mss;
+  union
+  {
+    struct
+    {
+      u32 snd_space;
+      u32 tx_offset;
+      u16 snd_mss;
+    };
+    struct
+    {
+      u32 max_burst_size;
+    };
+  };
   transport_snd_flags_t flags;
 } transport_send_params_t;
 
@@ -74,7 +84,7 @@ typedef struct _transport_proto_vft
 		      transport_send_params_t *sp);
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
-  int (*custom_tx) (void *session, u32 max_burst_size);
+  int (*custom_tx) (void *session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*
@@ -150,9 +160,10 @@ transport_get_half_open (transport_proto_t tp, u32 conn_index)
 }
 
 static inline int
-transport_custom_tx (transport_proto_t tp, void *s, u32 max_burst_size)
+transport_custom_tx (transport_proto_t tp, void *s,
+		     transport_send_params_t * sp)
 {
-  return tp_vfts[tp].custom_tx (s, max_burst_size);
+  return tp_vfts[tp].custom_tx (s, sp);
 }
 
 static inline int

@@ -472,7 +472,7 @@ format_ct_connection_id (u8 * s, va_list * args)
 }
 
 static int
-ct_custom_tx (void *session, u32 max_burst_size)
+ct_custom_tx (void *session, transport_send_params_t * sp)
 {
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
