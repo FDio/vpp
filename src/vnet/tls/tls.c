@@ -307,13 +307,13 @@ tls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static inline int
-tls_ctx_write (tls_ctx_t * ctx, session_t * app_session, u32 max_burst_size)
+tls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
+	       transport_send_params_t * sp)
 {
-  u32 max_write, n_wrote;
+  u32 n_wrote;
 
-  max_write = max_burst_size * TRANSPORT_PACER_MIN_MSS;
-  n_wrote = tls_vfts[ctx->tls_ctx_engine].ctx_write (ctx, app_session,
-						     max_write);
+  sp->max_burst_size = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
+  n_wrote = tls_vfts[ctx->tls_ctx_engine].ctx_write (ctx, app_session, sp);
   return n_wrote > 0 ? clib_max (n_wrote / TRANSPORT_PACER_MIN_MSS, 1) : 0;
 }
 
@@ -448,6 +448,17 @@ tls_app_rx_callback (session_t * tls_session)
 }
 
 int
+tls_app_tx_callback (session_t * tls_session)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get (tls_session->opaque);
+  transport_connection_reschedule (&ctx->connection);
+
+  return 0;
+}
+
+int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 				session_t * tls_session, session_error_t err)
 {
@@ -524,6 +535,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
+  .builtin_app_tx_callback = tls_app_tx_callback,
   .session_cleanup_callback = tls_app_session_cleanup,
 };
 /* *INDENT-ON* */
@@ -712,7 +724,7 @@ tls_listener_get (u32 listener_index)
 }
 
 int
-tls_custom_tx_callback (void *session, u32 max_burst_size)
+tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 {
   session_t *app_session = (session_t *) session;
   tls_ctx_t *ctx;
@@ -722,8 +734,7 @@ tls_custom_tx_callback (void *session, u32 max_burst_size)
     return 0;
 
   ctx = tls_ctx_get (app_session->connection_index);
-  tls_ctx_write (ctx, app_session, max_burst_size);
-  return 0;
+  return tls_ctx_write (ctx, app_session, sp);
 }
 
 u8 *
