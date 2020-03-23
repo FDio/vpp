@@ -334,7 +334,7 @@ autoreply define ikev2_profile_set_udp_encap
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_set - whether set or unset custom port
-    @port - port number
+    @param port - port number
     @param name - IKEv2 profile name
 */
 autoreply define ikev2_profile_set_ipsec_udp_port
@@ -351,4 +351,3 @@ autoreply define ikev2_profile_set_ipsec_udp_port
  * eval: (c-set-style "gnu")
  * End:
  */
- 
