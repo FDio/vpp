@@ -249,64 +249,60 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
 			      virtio_net_hdr_t * hdr)
 {
   u8 l4_hdr_sz = 0;
+  u8 l4_proto = 0;
+  ethernet_header_t *eh = (ethernet_header_t *) b0_data;
+  u16 ethertype = clib_net_to_host_u16 (eh->type);
+  u16 l2hdr_sz = sizeof (ethernet_header_t);
 
-  if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
+  if (ethernet_frame_is_tagged (ethertype))
     {
-      u8 l4_proto = 0;
-      ethernet_header_t *eh = (ethernet_header_t *) b0_data;
-      u16 ethertype = clib_net_to_host_u16 (eh->type);
-      u16 l2hdr_sz = sizeof (ethernet_header_t);
+      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
 
-      if (ethernet_frame_is_tagged (ethertype))
+      ethertype = clib_net_to_host_u16 (vlan->type);
+      l2hdr_sz += sizeof (*vlan);
+      if (ethertype == ETHERNET_TYPE_VLAN)
 	{
-	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
-
+	  vlan++;
 	  ethertype = clib_net_to_host_u16 (vlan->type);
 	  l2hdr_sz += sizeof (*vlan);
-	  if (ethertype == ETHERNET_TYPE_VLAN)
-	    {
-	      vlan++;
-	      ethertype = clib_net_to_host_u16 (vlan->type);
-	      l2hdr_sz += sizeof (*vlan);
-	    }
 	}
-      vnet_buffer (b0)->l2_hdr_offset = 0;
-      vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
-      vnet_buffer (b0)->l4_hdr_offset = hdr->csum_start;
-      b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID |
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+    }
+  vnet_buffer (b0)->l2_hdr_offset = 0;
+  vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
+  vnet_buffer (b0)->l4_hdr_offset = hdr->csum_start;
+  b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_L4_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
 
-      if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
-	{
-	  ip4_header_t *ip4 = (ip4_header_t *) (b0_data + l2hdr_sz);
-	  l4_proto = ip4->protocol;
-	  b0->flags |= VNET_BUFFER_F_IS_IP4;
-	}
-      else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
-	{
-	  ip6_header_t *ip6 = (ip6_header_t *) (b0_data + l2hdr_sz);
-	  l4_proto = ip6->protocol;
-	  b0->flags |= VNET_BUFFER_F_IS_IP6;
-	}
+  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) (b0_data + l2hdr_sz);
+      l4_proto = ip4->protocol;
+      b0->flags |= VNET_BUFFER_F_IS_IP4;
+    }
+  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) (b0_data + l2hdr_sz);
+      l4_proto = ip6->protocol;
+      b0->flags |= VNET_BUFFER_F_IS_IP6;
+    }
 
-      if (l4_proto == IP_PROTOCOL_TCP)
-	{
-	  tcp_header_t *tcp = (tcp_header_t *)
-	    (b0_data + vnet_buffer (b0)->l4_hdr_offset);
-	  l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-	}
-      else if (l4_proto == IP_PROTOCOL_UDP)
-	{
-	  udp_header_t *udp =
-	    (udp_header_t *) (b0_data + vnet_buffer (b0)->l4_hdr_offset);
-	  l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-	}
+  if (l4_proto == IP_PROTOCOL_TCP)
+    {
+      tcp_header_t *tcp = (tcp_header_t *)
+	(b0_data + vnet_buffer (b0)->l4_hdr_offset);
+      l4_hdr_sz = tcp_header_bytes (tcp);
+      tcp->checksum = 0;
+      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+    }
+  else if (l4_proto == IP_PROTOCOL_UDP)
+    {
+      udp_header_t *udp =
+	(udp_header_t *) (b0_data + vnet_buffer (b0)->l4_hdr_offset);
+      l4_hdr_sz = sizeof (*udp);
+      udp->checksum = 0;
+      b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
     }
 
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_UDP)
@@ -747,6 +743,691 @@ done:
   return n_rx_packets;
 }
 
+static_always_inline void
+vhost_user_mark_desc_consumed (vhost_user_intf_t * vui,
+			       vhost_user_vring_t * txvq, u16 desc_head,
+			       u16 n_descs_processed)
+{
+  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  u16 desc_idx;
+  u16 mask = txvq->qsz_mask;
+
+  for (desc_idx = 0; desc_idx < n_descs_processed; desc_idx++)
+    {
+      if (txvq->used_wrap_counter)
+	desc_table[(desc_head + desc_idx) & mask].flags |=
+	  (VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED);
+      else
+	desc_table[(desc_head + desc_idx) & mask].flags &=
+	  ~(VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED);
+      vhost_user_advance_last_used_idx (txvq);
+    }
+}
+
+static_always_inline void
+vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
+			    u16 qid, vhost_user_vring_t * txvq,
+			    u16 desc_current)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  vring_packed_desc_t *hdr_desc;
+  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  u32 hint = 0;
+
+  clib_memset (t, 0, sizeof (*t));
+  t->device_index = vui - vum->vhost_user_interfaces;
+  t->qid = qid;
+
+  hdr_desc = &txvq->packed_desc[desc_current];
+  if (txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
+      /* Header is the first here */
+      hdr_desc = map_guest_mem (vui, txvq->packed_desc[desc_current].addr,
+				&hint);
+    }
+  if (txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
+    t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
+
+  if (!(txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_NEXT) &&
+      !(txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT))
+    t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SINGLE_DESC;
+
+  t->first_desc_len = hdr_desc ? hdr_desc->len : 0;
+
+  if (!hdr_desc || !(hdr = map_guest_mem (vui, hdr_desc->addr, &hint)))
+    t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_MAP_ERROR;
+  else
+    {
+      u32 len = vui->virtio_net_hdr_sz;
+      memcpy (&t->hdr, hdr, len > hdr_desc->len ? hdr_desc->len : len);
+    }
+}
+
+static_always_inline void
+vhost_user_rx_discard_packet_packed (vlib_main_t * vm,
+				     vhost_user_intf_t * vui,
+				     vhost_user_vring_t * txvq)
+{
+  u32 discarded_packets = 0;
+  u16 mask = txvq->qsz_mask;
+  u16 desc_current, desc_head;
+
+  desc_head = desc_current = txvq->last_used_idx & mask;
+
+  /*
+   * On the RX side, each packet corresponds to one descriptor
+   * (it is the same whether it is a shallow descriptor, chained, or indirect).
+   * Therefore, discarding a packet is like discarding a descriptor.
+   */
+  while (vhost_user_packed_desc_available (txvq, desc_current))
+    {
+      vhost_user_advance_last_avail_idx (txvq);
+      discarded_packets++;
+      desc_current = (desc_current + 1) & mask;
+    }
+
+  if (PREDICT_TRUE (discarded_packets))
+    vhost_user_mark_desc_consumed (vui, txvq, desc_head, discarded_packets);
+}
+
+static_always_inline u32
+vhost_user_input_copy_packed (vhost_user_intf_t * vui, vhost_copy_t * cpy,
+			      u16 copy_len, u32 * map_hint)
+{
+  void *src0, *src1, *src2, *src3, *src4, *src5, *src6, *src7;
+  u8 bad;
+  u32 rc = VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR;
+
+  if (PREDICT_TRUE (copy_len >= 8))
+    {
+      src4 = map_guest_mem (vui, cpy[0].src, map_hint);
+      src5 = map_guest_mem (vui, cpy[1].src, map_hint);
+      src6 = map_guest_mem (vui, cpy[2].src, map_hint);
+      src7 = map_guest_mem (vui, cpy[3].src, map_hint);
+      bad = (src4 == 0) + (src5 == 0) + (src6 == 0) + (src7 == 0);
+      if (PREDICT_FALSE (bad))
+	goto one_by_one;
+      CLIB_PREFETCH (src4, 64, LOAD);
+      CLIB_PREFETCH (src5, 64, LOAD);
+      CLIB_PREFETCH (src6, 64, LOAD);
+      CLIB_PREFETCH (src7, 64, LOAD);
+
+      while (PREDICT_TRUE (copy_len >= 8))
+	{
+	  src0 = src4;
+	  src1 = src5;
+	  src2 = src6;
+	  src3 = src7;
+
+	  src4 = map_guest_mem (vui, cpy[4].src, map_hint);
+	  src5 = map_guest_mem (vui, cpy[5].src, map_hint);
+	  src6 = map_guest_mem (vui, cpy[6].src, map_hint);
+	  src7 = map_guest_mem (vui, cpy[7].src, map_hint);
+	  bad = (src4 == 0) + (src5 == 0) + (src6 == 0) + (src7 == 0);
+	  if (PREDICT_FALSE (bad))
+	    break;
+
+	  CLIB_PREFETCH (src4, 64, LOAD);
+	  CLIB_PREFETCH (src5, 64, LOAD);
+	  CLIB_PREFETCH (src6, 64, LOAD);
+	  CLIB_PREFETCH (src7, 64, LOAD);
+
+	  clib_memcpy_fast ((void *) cpy[0].dst, src0, cpy[0].len);
+	  clib_memcpy_fast ((void *) cpy[1].dst, src1, cpy[1].len);
+	  clib_memcpy_fast ((void *) cpy[2].dst, src2, cpy[2].len);
+	  clib_memcpy_fast ((void *) cpy[3].dst, src3, cpy[3].len);
+	  copy_len -= 4;
+	  cpy += 4;
+	}
+    }
+
+one_by_one:
+  while (copy_len)
+    {
+      if (PREDICT_FALSE (!(src0 = map_guest_mem (vui, cpy->src, map_hint))))
+	{
+	  rc = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
+	  break;
+	}
+      clib_memcpy_fast ((void *) cpy->dst, src0, cpy->len);
+      copy_len -= 1;
+      cpy += 1;
+    }
+  return rc;
+}
+
+static_always_inline u32
+vhost_user_do_offload (vhost_user_intf_t * vui,
+		       vring_packed_desc_t * desc_table, u16 desc_current,
+		       u16 mask, vlib_buffer_t * b_head, u32 * map_hint)
+{
+  u32 rc = VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR;
+  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  u8 *b_data;
+  u32 desc_data_offset = vui->virtio_net_hdr_sz;
+
+  hdr = map_guest_mem (vui, desc_table[desc_current].addr, map_hint);
+  if (PREDICT_FALSE (hdr == 0))
+    rc = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
+  else if (hdr->hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
+    {
+      if (desc_data_offset == desc_table[desc_current].len)
+	{
+	  desc_current = (desc_current + 1) & mask;
+	  b_data =
+	    map_guest_mem (vui, desc_table[desc_current].addr, map_hint);
+	  if (PREDICT_FALSE (b_data == 0))
+	    rc = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
+	  else
+	    vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
+	}
+      else
+	{
+	  b_data = (u8 *) hdr + desc_data_offset;
+	  vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
+	}
+    }
+
+  return rc;
+}
+
+static_always_inline u32
+vhost_user_compute_buffers_required (u32 desc_len, u32 buffer_data_size)
+{
+  div_t result;
+  u32 buffers_required;
+
+  if (PREDICT_TRUE (buffer_data_size == 2048))
+    {
+      buffers_required = desc_len >> 11;
+      if ((desc_len & 2047) != 0)
+	buffers_required++;
+      return (buffers_required);
+    }
+
+  if (desc_len < buffer_data_size)
+    return 1;
+
+  result = div (desc_len, buffer_data_size);
+  if (result.rem)
+    buffers_required = result.quot + 1;
+  else
+    buffers_required = result.quot;
+
+  return (buffers_required);
+}
+
+static_always_inline u32
+vhost_user_compute_indirect_desc_len (vhost_user_intf_t * vui,
+				      vhost_user_vring_t * txvq,
+				      u32 buffer_data_size, u16 desc_current,
+				      u32 * map_hint)
+{
+  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  u32 desc_len = 0;
+  u16 desc_data_offset = vui->virtio_net_hdr_sz;
+  u16 desc_idx = desc_current;
+  u32 n_descs;
+
+  n_descs = desc_table[desc_idx].len >> 4;
+  desc_table = map_guest_mem (vui, desc_table[desc_idx].addr, map_hint);
+  if (PREDICT_FALSE (desc_table == 0))
+    return 0;
+
+  for (desc_idx = 0; desc_idx < n_descs; desc_idx++)
+    desc_len += desc_table[desc_idx].len;
+
+  if (PREDICT_TRUE (desc_len > desc_data_offset))
+    desc_len -= desc_data_offset;
+
+  return vhost_user_compute_buffers_required (desc_len, buffer_data_size);
+}
+
+static_always_inline u32
+vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
+				     vhost_user_vring_t * txvq,
+				     u32 buffer_data_size, u16 * current,
+				     u16 * n_left)
+{
+  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  u32 desc_len = 0;
+  u16 mask = txvq->qsz_mask;
+
+  while (desc_table[*current].flags & VIRTQ_DESC_F_NEXT)
+    {
+      desc_len += desc_table[*current].len;
+      (*n_left)++;
+      *current = (*current + 1) & mask;
+      vhost_user_advance_last_avail_idx (txvq);
+    }
+  desc_len += desc_table[*current].len;
+  (*n_left)++;
+  *current = (*current + 1) & mask;
+  vhost_user_advance_last_avail_idx (txvq);
+
+  if (PREDICT_TRUE (desc_len > vui->virtio_net_hdr_sz))
+    desc_len -= vui->virtio_net_hdr_sz;
+
+  return vhost_user_compute_buffers_required (desc_len, buffer_data_size);
+}
+
+static_always_inline void
+vhost_user_assemble_packet (vring_packed_desc_t * desc_table,
+			    u16 * desc_idx, vlib_buffer_t * b_head,
+			    vlib_buffer_t ** b_current, u32 ** next,
+			    vlib_buffer_t *** b, u32 * bi_current,
+			    vhost_cpu_t * cpu, u16 * copy_len,
+			    u32 * buffers_used, u32 buffers_required,
+			    u32 * desc_data_offset, u32 buffer_data_size,
+			    u16 mask)
+{
+  u32 desc_data_l;
+
+  while (*desc_data_offset < desc_table[*desc_idx].len)
+    {
+      /* Get more output if necessary. Or end of packet. */
+      if (PREDICT_FALSE ((*b_current)->current_length == buffer_data_size))
+	{
+	  /* Get next output */
+	  u32 bi_next = **next;
+	  (*next)++;
+	  (*b_current)->next_buffer = bi_next;
+	  (*b_current)->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  *bi_current = bi_next;
+	  *b_current = **b;
+	  (*b)++;
+	  (*buffers_used)++;
+	  ASSERT (*buffers_used <= buffers_required);
+	}
+
+      /* Prepare a copy order executed later for the data */
+      ASSERT (*copy_len < VHOST_USER_COPY_ARRAY_N);
+      vhost_copy_t *cpy = &cpu->copy[*copy_len];
+      (*copy_len)++;
+      desc_data_l = desc_table[*desc_idx].len - *desc_data_offset;
+      cpy->len = buffer_data_size - (*b_current)->current_length;
+      cpy->len = (cpy->len > desc_data_l) ? desc_data_l : cpy->len;
+      cpy->dst = (uword) (vlib_buffer_get_current (*b_current) +
+			  (*b_current)->current_length);
+      cpy->src = desc_table[*desc_idx].addr + *desc_data_offset;
+
+      *desc_data_offset += cpy->len;
+
+      (*b_current)->current_length += cpy->len;
+      b_head->total_length_not_including_first_buffer += cpy->len;
+    }
+  *desc_idx = (*desc_idx + 1) & mask;;
+  *desc_data_offset = 0;
+}
+
+static_always_inline u32
+vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
+			    vhost_user_intf_t * vui, u16 qid,
+			    vlib_node_runtime_t * node,
+			    vnet_hw_interface_rx_mode mode, u8 enable_csum)
+{
+  vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
+  vnet_feature_main_t *fm = &feature_main;
+  u16 n_rx_packets = 0;
+  u32 n_rx_bytes = 0;
+  u16 n_left = 0;
+  u32 buffers_required = 0;
+  u32 n_left_to_next, *to_next;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 n_trace = vlib_get_trace_count (vm, node);
+  u32 buffer_data_size = vlib_buffer_get_default_data_size (vm);
+  u32 map_hint = 0;
+  vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
+  u16 copy_len = 0;
+  u8 feature_arc_idx = fm->device_input_feature_arc_index;
+  u32 current_config_index = ~0;
+  u16 mask = txvq->qsz_mask;
+  u16 desc_current, desc_head, last_used_idx;
+  vring_packed_desc_t *desc_table = 0;
+  u32 n_descs_processed = 0;
+  u32 rv;
+  f64 now;
+  vlib_buffer_t **b;
+  u32 *next;
+  u32 buffers_used = 0;
+  u16 current, n_descs_to_process;
+
+  /* The descriptor table is not ready yet */
+  if (PREDICT_FALSE (txvq->packed_desc == 0))
+    goto done;
+
+  /* do we have pending interrupts ? */
+  vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
+  now = vlib_time_now (vm);
+
+  if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
+    vhost_user_send_call (vm, txvq);
+
+  if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
+    vhost_user_send_call (vm, rxvq);
+
+  /*
+   * For adaptive mode, it is optimized to reduce interrupts.
+   * If the scheduler switches the input node to polling due
+   * to burst of traffic, we tell the driver no interrupt.
+   * When the traffic subsides, the scheduler switches the node back to
+   * interrupt mode. We must tell the driver we want interrupt.
+   */
+  if (PREDICT_FALSE (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE))
+    {
+      if ((node->flags &
+	   VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE) ||
+	  !(node->flags &
+	    VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
+	/* Tell driver we want notification */
+	txvq->used_event->flags = 0;
+      else
+	/* Tell driver we don't want notification */
+	txvq->used_event->flags = VRING_EVENT_F_DISABLE;
+    }
+
+  last_used_idx = txvq->last_used_idx & mask;
+  desc_head = desc_current = last_used_idx;
+
+  if (vhost_user_packed_desc_available (txvq, desc_current) == 0)
+    goto done;
+
+  if (PREDICT_FALSE (!vui->admin_up || !vui->is_ready || !(txvq->enabled)))
+    {
+      /*
+       * Discard input packet if interface is admin down or vring is not
+       * enabled.
+       * "For example, for a networking device, in the disabled state
+       * client must not supply any new RX packets, but must process
+       * and discard any TX packets."
+       */
+      vhost_user_rx_discard_packet_packed (vm, vui, txvq);
+      goto done;
+    }
+
+  if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
+    {
+      vnet_feature_config_main_t *cm;
+      cm = &fm->feature_config_mains[feature_arc_idx];
+      current_config_index = vec_elt (cm->config_index_by_sw_if_index,
+				      vui->sw_if_index);
+      vnet_get_config_data (&cm->config_main, &current_config_index,
+			    &next_index, 0);
+    }
+
+  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+  if (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT)
+    {
+      /* give some hints to ethernet-input */
+      vlib_next_frame_t *nf;
+      vlib_frame_t *f;
+      ethernet_input_frame_t *ef;
+      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+      f = vlib_get_frame (vm, nf->frame);
+      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+      ef = vlib_frame_scalar_args (f);
+      ef->sw_if_index = vui->sw_if_index;
+      ef->hw_if_index = vui->hw_if_index;
+      vlib_frame_no_append (f);
+    }
+
+  /*
+   * Compute n_left and total buffers needed
+   */
+  desc_table = txvq->packed_desc;
+  current = desc_current;
+  while (vhost_user_packed_desc_available (txvq, current) &&
+	 (n_left < VLIB_FRAME_SIZE))
+    {
+      if (desc_table[current].flags & VIRTQ_DESC_F_INDIRECT)
+	{
+	  buffers_required +=
+	    vhost_user_compute_indirect_desc_len (vui, txvq, buffer_data_size,
+						  current, &map_hint);
+	  n_left++;
+	  current = (current + 1) & mask;
+	  vhost_user_advance_last_avail_idx (txvq);
+	}
+      else
+	{
+	  buffers_required +=
+	    vhost_user_compute_chained_desc_len (vui, txvq, buffer_data_size,
+						 &current, &n_left);
+	}
+    }
+
+  /* Something is broken if we need more than 10000 buffers */
+  if (PREDICT_FALSE ((buffers_required == 0) || (buffers_required > 10000)))
+    {
+      vlib_error_count (vm, vhost_user_input_node.index,
+			VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, n_left);
+      vhost_user_rx_discard_packet_packed (vm, vui, txvq);
+      goto done;
+    }
+
+  vec_validate (cpu->to_next_list, buffers_required);
+  rv = vlib_buffer_alloc (vm, cpu->to_next_list, buffers_required);
+  if (PREDICT_FALSE (rv != buffers_required))
+    {
+      vlib_error_count (vm, vhost_user_input_node.index,
+			VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, n_left);
+      vlib_buffer_free (vm, cpu->to_next_list, rv);
+      vhost_user_rx_discard_packet_packed (vm, vui, txvq);
+      goto done;
+    }
+
+  next = cpu->to_next_list;
+  vec_validate (cpu->rx_buffers_pdesc, buffers_required);
+  vlib_get_buffers (vm, next, cpu->rx_buffers_pdesc, buffers_required);
+  b = cpu->rx_buffers_pdesc;
+  n_descs_processed = n_left;
+
+  while (n_left)
+    {
+      vlib_buffer_t *b_head, *b_current;
+      u32 bi_current;
+      u32 desc_data_offset;
+      u16 desc_idx = desc_current;
+      u32 n_descs;
+
+      desc_table = txvq->packed_desc;
+      to_next[0] = bi_current = next[0];
+      b_head = b_current = b[0];
+      b++;
+      buffers_used++;
+      ASSERT (buffers_used <= buffers_required);
+      to_next++;
+      next++;
+      n_left_to_next--;
+
+      /* The buffer should already be initialized */
+      b_head->total_length_not_including_first_buffer = 0;
+      b_head->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      desc_data_offset = vui->virtio_net_hdr_sz;
+      n_descs_to_process = 1;
+
+      if (desc_table[desc_idx].flags & VIRTQ_DESC_F_INDIRECT)
+	{
+	  n_descs = desc_table[desc_idx].len >> 4;
+	  desc_table = map_guest_mem (vui, desc_table[desc_idx].addr,
+				      &map_hint);
+	  desc_idx = 0;
+	  if (PREDICT_FALSE (desc_table == 0))
+	    {
+	      vlib_error_count (vm, node->node_index,
+				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
+	      to_next--;
+	      next--;
+	      n_left_to_next++;
+	      buffers_used--;
+	      b--;
+	      goto out;
+	    }
+	  if (enable_csum)
+	    {
+	      rv = vhost_user_do_offload (vui, desc_table, desc_idx, mask,
+					  b_head, &map_hint);
+	      if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
+		{
+		  vlib_error_count (vm, node->node_index, rv, 1);
+		  to_next--;
+		  next--;
+		  n_left_to_next++;
+		  buffers_used--;
+		  b--;
+		  goto out;
+		}
+	    }
+	  while (n_descs)
+	    {
+	      vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
+					  &b_current, &next, &b, &bi_current,
+					  cpu, &copy_len, &buffers_used,
+					  buffers_required, &desc_data_offset,
+					  buffer_data_size, mask);
+	      n_descs--;
+	    }
+	}
+      else
+	{
+	  if (enable_csum)
+	    {
+	      rv = vhost_user_do_offload (vui, desc_table, desc_idx, mask,
+					  b_head, &map_hint);
+	      if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
+		{
+		  vlib_error_count (vm, node->node_index, rv, 1);
+		  to_next--;
+		  next--;
+		  n_left_to_next++;
+		  buffers_used--;
+		  b--;
+		  goto out;
+		}
+	    }
+	  /*
+	   * For chained descriptor, we process all chains in a single while
+	   * loop. So count how many descriptors in the chain.
+	   */
+	  current = desc_idx;
+	  n_descs_to_process = n_descs = 1;
+	  while (desc_table[current].flags & VIRTQ_DESC_F_NEXT)
+	    {
+	      vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
+					  &b_current, &next, &b, &bi_current,
+					  cpu, &copy_len, &buffers_used,
+					  buffers_required, &desc_data_offset,
+					  buffer_data_size, mask);
+	      n_descs_to_process++;
+	      current = (current + 1) & mask;
+	    }
+	  vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
+				      &b_current, &next, &b, &bi_current,
+				      cpu, &copy_len, &buffers_used,
+				      buffers_required, &desc_data_offset,
+				      buffer_data_size, mask);
+	}
+
+      n_rx_bytes += b_head->total_length_not_including_first_buffer;
+      n_rx_packets++;
+
+      b_head->total_length_not_including_first_buffer -=
+	b_head->current_length;
+
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b_head);
+
+      vnet_buffer (b_head)->sw_if_index[VLIB_RX] = vui->sw_if_index;
+      vnet_buffer (b_head)->sw_if_index[VLIB_TX] = ~0;
+      b_head->error = 0;
+
+      if (current_config_index != ~0)
+	{
+	  b_head->current_config_index = current_config_index;
+	  vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
+	}
+
+    out:
+      ASSERT (n_left >= n_descs_to_process);
+      n_left -= n_descs_to_process;
+
+      /* advance to next descrptor */
+      desc_current = (desc_current + n_descs_to_process) & mask;
+
+      /*
+       * Although separating memory copies from virtio ring parsing
+       * is beneficial, we can offer to perform the copies from time
+       * to time in order to free some space in the ring.
+       */
+      if (PREDICT_FALSE (copy_len >= VHOST_USER_RX_COPY_THRESHOLD))
+	{
+	  rv = vhost_user_input_copy_packed (vui, cpu->copy, copy_len,
+					     &map_hint);
+	  if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
+	    vlib_error_count (vm, node->node_index, rv, 1);
+	  copy_len = 0;
+	}
+    }
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  /* Do the memory copies */
+  rv = vhost_user_input_copy_packed (vui, cpu->copy, copy_len, &map_hint);
+  if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
+    vlib_error_count (vm, node->node_index, rv, 1);
+
+  /* Must do the tracing before giving buffers back to driver */
+  if (PREDICT_FALSE (n_trace))
+    {
+      u32 left = n_rx_packets;
+
+      b = cpu->rx_buffers_pdesc;
+      while (n_trace && left)
+	{
+	  vhost_trace_t *t0;
+
+	  vlib_trace_buffer (vm, node, next_index, b[0],
+			     /* follow_chain */ 0);
+	  t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
+	  b++;
+	  vhost_user_rx_trace_packed (t0, vui, qid, txvq, last_used_idx);
+	  last_used_idx = (last_used_idx + 1) & mask;
+	  n_trace--;
+	  left--;
+	  vlib_set_trace_count (vm, node, n_trace);
+	}
+    }
+
+  /*
+   * Give buffers back to driver.
+   */
+  vhost_user_mark_desc_consumed (vui, txvq, desc_head, n_descs_processed);
+
+  /* interrupt (call) handling */
+  if ((txvq->callfd_idx != ~0) &&
+      (txvq->avail_event->flags != VRING_EVENT_F_DISABLE))
+    {
+      txvq->n_since_last_int += n_rx_packets;
+      if (txvq->n_since_last_int > vum->coalesce_frames)
+	vhost_user_send_call (vm, txvq);
+    }
+
+  /* increase rx counters */
+  vlib_increment_combined_counter
+    (vnet_main.interface_main.combined_sw_if_counters
+     + VNET_INTERFACE_COUNTER_RX, vm->thread_index, vui->sw_if_index,
+     n_rx_packets, n_rx_bytes);
+
+  vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
+
+  if (PREDICT_FALSE (buffers_used < buffers_required))
+    vlib_buffer_free (vm, next, buffers_required - buffers_used);
+
+done:
+  return n_rx_packets;
+}
+
 VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * frame)
@@ -765,14 +1446,26 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
       {
 	vui =
 	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
-	if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
-	  n_rx_packets +=
-	    vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
-				 1);
+	if (vhost_user_is_packed_ring_supported (vui))
+	  {
+	    if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
+	      n_rx_packets += vhost_user_if_input_packed (vm, vum, vui,
+							  dq->queue_id, node,
+							  dq->mode, 1);
+	    else
+	      n_rx_packets += vhost_user_if_input_packed (vm, vum, vui,
+							  dq->queue_id, node,
+							  dq->mode, 0);
+	  }
 	else
-	  n_rx_packets +=
-	    vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
-				 0);
+	  {
+	    if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
+	      n_rx_packets += vhost_user_if_input (vm, vum, vui, dq->queue_id,
+						   node, dq->mode, 1);
+	    else
+	      n_rx_packets += vhost_user_if_input (vm, vum, vui, dq->queue_id,
+						   node, dq->mode, 0);
+	  }
       }
   }
 
