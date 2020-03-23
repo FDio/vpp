@@ -562,7 +562,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	    case VNET_DPDK_PMD_NETVSC:
-	      xd->port_type = port_type_from_link_speed (l.link_speed);
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      break;
 
 	    default:
