@@ -25,8 +25,15 @@
 
 #define VHOST_USER_VRING_NOFD_MASK      0x100
 #define VIRTQ_DESC_F_NEXT               1
+#define VIRTQ_DESC_F_WRITE              2
 #define VIRTQ_DESC_F_INDIRECT           4
-#define VHOST_USER_REPLY_MASK       (0x1 << 2)
+
+#define VIRTQ_DESC_F_AVAIL	        (1 << 7)
+#define VIRTQ_DESC_F_USED	        (1 << 15)
+
+#define VRING_EVENT_F_ENABLE            0x0
+#define VRING_EVENT_F_DISABLE           0x1
+#define VRING_EVENT_F_DESC              0x2
 
 #define VHOST_USER_PROTOCOL_F_MQ   0
 #define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
@@ -100,8 +107,11 @@ typedef enum
  _ (VHOST_F_LOG_ALL, 26)                \
  _ (VIRTIO_F_ANY_LAYOUT, 27)            \
  _ (VIRTIO_F_INDIRECT_DESC, 28)         \
+ _ (VIRTIO_F_EVENT_IDX, 29)		\
  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
- _ (VIRTIO_F_VERSION_1, 32)
+ _ (VIRTIO_F_VERSION_1, 32)             \
+ _ (VIRTIO_F_RING_PACKED, 34)           \
+ _ (VIRTIO_F_IN_ORDER, 35)
 
 typedef enum
 {
@@ -130,12 +140,12 @@ int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 * sw_if_index, u64 feature_mask,
 			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
-			  u8 enable_gso);
+			  u8 enable_gso, u8 enable_packed);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 sw_if_index, u64 feature_mask,
 			  u8 renumber, u32 custom_dev_instance,
-			  u8 enable_gso);
+			  u8 enable_gso, u8 enable_packed);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
@@ -223,6 +233,22 @@ typedef struct
     } ring[VHOST_VRING_MAX_SIZE];
 } __attribute ((packed)) vring_used_t;
 
+typedef CLIB_PACKED (struct
+{
+  u64 addr;			// packet data buffer address
+  u32 len;			// packet data buffer size
+  u16 id;			// buffer id
+  u16 flags;			// flags
+}) vring_packed_desc_t;
+
+STATIC_ASSERT_SIZEOF (vring_packed_desc_t, 16);
+
+typedef CLIB_PACKED (struct
+{
+  u16 off_wrap;
+  u16 flags;
+}) vring_desc_event_t;
+
 typedef struct
 {
   u8 flags;
@@ -260,9 +286,21 @@ typedef struct
   u16 last_avail_idx;
   u16 last_used_idx;
   u16 n_since_last_int;
-  vring_desc_t *desc;
-  vring_avail_t *avail;
-  vring_used_t *used;
+  union
+  {
+    vring_desc_t *desc;
+    vring_packed_desc_t *packed_desc;
+  };
+  union
+  {
+    vring_avail_t *avail;
+    vring_desc_event_t *avail_event;
+  };
+  union
+  {
+    vring_used_t *used;
+    vring_desc_event_t *used_event;
+  };
   uword desc_user_addr;
   uword used_user_addr;
   uword avail_user_addr;
@@ -287,6 +325,9 @@ typedef struct
    * the interface even if it is disconnected and reconnected.
    */
   i16 qid;
+
+  u16 used_wrap_counter;
+  u16 avail_wrap_counter;
 } vhost_user_vring_t;
 
 #define VHOST_USER_EVENT_START_TIMER 1
@@ -332,6 +373,10 @@ typedef struct
   u16 *per_cpu_tx_qid;
 
   u8 enable_gso;
+
+  /* Packed ring configured */
+  u8 enable_packed;
+
 } vhost_user_intf_t;
 
 typedef struct
@@ -350,7 +395,6 @@ typedef struct
   virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
 } vhost_trace_t;
 
-
 #define VHOST_USER_RX_BUFFERS_N (2 * VLIB_FRAME_SIZE + 2)
 #define VHOST_USER_COPY_ARRAY_N (4 * VLIB_FRAME_SIZE)
 
@@ -365,6 +409,9 @@ typedef struct
   /* This is here so it doesn't end-up
    * using stack or registers. */
   vhost_trace_t *current_trace;
+
+  u32 *to_next_list;
+  vlib_buffer_t **rx_buffers_pdesc;
 } vhost_cpu_t;
 
 typedef struct

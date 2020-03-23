@@ -292,6 +292,85 @@ vhost_user_update_gso_interface_count (vhost_user_intf_t * vui, u8 add)
 	}
     }
 }
+
+static_always_inline u8
+vhost_user_packed_desc_available (vhost_user_vring_t * vring, u16 idx)
+{
+  return (((vring->packed_desc[idx].flags & VIRTQ_DESC_F_AVAIL) ==
+	   vring->avail_wrap_counter));
+}
+
+static_always_inline void
+vhost_user_advance_last_avail_idx (vhost_user_vring_t * vring)
+{
+  vring->last_avail_idx++;
+  if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
+    vring->avail_wrap_counter ^= VIRTQ_DESC_F_AVAIL;
+}
+
+static_always_inline void
+vhost_user_advance_last_avail_table_idx (vhost_user_intf_t * vui,
+					 vhost_user_vring_t * vring,
+					 u8 chained)
+{
+  if (chained)
+    {
+      vring_packed_desc_t *desc_table = vring->packed_desc;
+
+      /* pick up the slot of the next avail idx */
+      while (desc_table[vring->last_avail_idx & vring->qsz_mask].flags &
+	     VIRTQ_DESC_F_NEXT)
+	vhost_user_advance_last_avail_idx (vring);
+    }
+
+  vhost_user_advance_last_avail_idx (vring);
+}
+
+static_always_inline void
+vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
+{
+  if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
+    vring->avail_wrap_counter ^= VIRTQ_DESC_F_AVAIL;
+  vring->last_avail_idx--;
+}
+
+static_always_inline void
+vhost_user_dequeue_descs (vhost_user_vring_t * rxvq,
+			  virtio_net_hdr_mrg_rxbuf_t * hdr,
+			  u16 * n_descs_processed)
+{
+  u16 i;
+
+  *n_descs_processed -= (hdr->num_buffers - 1);
+  for (i = 0; i < hdr->num_buffers - 1; i++)
+    vhost_user_undo_advanced_last_avail_idx (rxvq);
+}
+
+static_always_inline void
+vhost_user_dequeue_chained_descs (vhost_user_vring_t * rxvq,
+				  u16 * n_descs_processed)
+{
+  while (*n_descs_processed)
+    {
+      vhost_user_undo_advanced_last_avail_idx (rxvq);
+      (*n_descs_processed)--;
+    }
+}
+
+static_always_inline void
+vhost_user_advance_last_used_idx (vhost_user_vring_t * vring)
+{
+  vring->last_used_idx++;
+  if (PREDICT_FALSE ((vring->last_used_idx & vring->qsz_mask) == 0))
+    vring->used_wrap_counter ^= 1;
+}
+
+static_always_inline u64
+vhost_user_is_packed_ring_supported (vhost_user_intf_t * vui)
+{
+  return (vui->features & (1ULL << FEAT_VIRTIO_F_RING_PACKED));
+}
+
 #endif
 
 /*
