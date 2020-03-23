@@ -1928,7 +1928,7 @@ quic_custom_app_rx_callback (transport_connection_t * tc)
 }
 
 static int
-quic_custom_tx_callback (void *s, u32 max_burst_size)
+quic_custom_tx_callback (void *s, transport_send_params_t *sp)
 {
   session_t *stream_session = (session_t *) s;
   quic_stream_data_t *stream_data;

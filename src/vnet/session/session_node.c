@@ -865,8 +865,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   if (ctx->s->flags & SESSION_F_CUSTOM_TX)
     {
       u32 n_custom_tx;
+      transport_send_params_t sp = {.max_burst_size = max_burst };
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
-      n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
+      n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, &sp);
       *n_tx_packets += n_custom_tx;
       if (PREDICT_FALSE
 	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
@@ -1063,7 +1064,8 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 				  session_evt_elt_t * elt, int *n_tx_packets)
 {
   session_t *s = wrk->ctx.s;
-  u32 n_packets, max_pkts;
+  u32 n_packets;
+  transport_send_params_t sp = {0};
 
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
@@ -1071,23 +1073,23 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   /* Clear custom-tx flag used to request reschedule for tx */
   s->flags &= ~SESSION_F_CUSTOM_TX;
 
-  max_pkts = clib_min (VLIB_FRAME_SIZE - *n_tx_packets,
-		       TRANSPORT_PACER_MAX_BURST_PKTS);
-  n_packets = transport_custom_tx (session_get_transport_proto (s), s,
-				   max_pkts);
-  *n_tx_packets -= n_packets;
+  sp.max_burst_size = clib_min (VLIB_FRAME_SIZE - *n_tx_packets,
+                                TRANSPORT_PACER_MAX_BURST_PKTS);
 
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo)
-      || (s->flags & SESSION_F_CUSTOM_TX))
+  n_packets = transport_custom_tx (session_get_transport_proto (s), s,
+				   &sp);
+  *n_tx_packets += n_packets;
+
+  if (s->flags & SESSION_F_CUSTOM_TX)
     {
       session_evt_add_old (wrk, elt);
     }
-  else
+  else if (!(sp.flags & TRANSPORT_SND_F_DESCHED))
     {
       svm_fifo_unset_event (s->tx_fifo);
       if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-	if (svm_fifo_set_event (s->tx_fifo))
-	  session_evt_add_head_old (wrk, elt);
+	  if (svm_fifo_set_event (s->tx_fifo))
+	    session_evt_add_head_old (wrk, elt);
     }
 
   return n_packets;

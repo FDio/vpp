@@ -2126,7 +2126,7 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 }
 
 int
-tcp_session_custom_tx (void *conn, u32 max_burst_size)
+tcp_session_custom_tx (void *conn, transport_send_params_t *sp)
 {
   tcp_connection_t *tc = (tcp_connection_t *) conn;
   u32 n_segs = 0;
@@ -2134,8 +2134,8 @@ tcp_session_custom_tx (void *conn, u32 max_burst_size)
   if (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING))
     {
       tc->flags &= ~TCP_CONN_RXT_PENDING;
-      n_segs = tcp_do_retransmit (tc, max_burst_size);
-      max_burst_size -= n_segs;
+      n_segs = tcp_do_retransmit (tc, sp->max_burst_size);
+      sp->max_burst_size -= n_segs;
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))
@@ -2147,13 +2147,13 @@ tcp_session_custom_tx (void *conn, u32 max_burst_size)
   if (n_segs && !tc->pending_dupacks)
     return n_segs;
 
-  if (!max_burst_size)
+  if (!sp->max_burst_size)
     {
       tcp_program_ack (tc);
-      return max_burst_size;
+      return sp->max_burst_size;
     }
 
-  n_segs += tcp_send_acks (tc, max_burst_size);
+  n_segs += tcp_send_acks (tc, sp->max_burst_size);
 
   return n_segs;
 }

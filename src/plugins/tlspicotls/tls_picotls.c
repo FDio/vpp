@@ -410,7 +410,8 @@ picotls_content_process (picotls_ctx_t * ptls_ctx, svm_fifo_t * src_fifo,
 }
 
 static inline int
-picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session, u32 max_write)
+picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
+                   transport_send_params_t *sp)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   u32 deq_max, deq_now;
@@ -458,7 +459,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session, u32 max_write)
   if (!deq_max)
     return deq_max;
 
-  deq_max = clib_min (deq_max, max_write);
+  deq_max = clib_min (deq_max, sp->max_burst_size);
   deq_now = clib_min (deq_max, svm_fifo_max_read_chunk (app_tx_fifo));
 
   enq_max = svm_fifo_max_enqueue_prod (tls_tx_fifo);
