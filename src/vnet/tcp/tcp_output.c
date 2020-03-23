@@ -875,7 +875,7 @@ tcp_send_reset (tcp_connection_t * tc)
 
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
   tcp_hdr_opts_len = tc->snd_opts_len + sizeof (tcp_header_t);
-  advertise_wnd = tcp_window_to_advertise (tc, TCP_STATE_ESTABLISHED);
+  advertise_wnd = tc->rcv_wnd >> tc->rcv_wscale;
   flags = TCP_FLAG_RST;
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
