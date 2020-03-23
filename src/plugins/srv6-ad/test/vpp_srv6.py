@@ -19,7 +19,9 @@ class SRv6LocalSIDBehaviors():
     SR_BEHAVIOR_DX4 = 7
     SR_BEHAVIOR_DT6 = 8
     SR_BEHAVIOR_DT4 = 9
-    SR_BEHAVIOR_LAST = 10      # Must always be the last one
+    SR_BEHAVIOR_END_UN_PERF = 10
+    SR_BEHAVIOR_END_UN = 11
+    SR_BEHAVIOR_LAST = 12      # Must always be the last one
 
 
 class SRv6PolicyType():
