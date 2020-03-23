@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2871d50_5d19370b",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-03-23T12:04:27Z",
+      "side": 1,
+      "message": "@param port\n\nFix: https://gerrit.fd.io/r/c/vpp/+/26076",
+      "range": {
+        "startLine": 337,
+        "startChar": 4,
+        "endLine": 337,
+        "endChar": 9
+      },
+      "revId": "e5d34919b4561a5ee11e41dec6b0184537b39696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
