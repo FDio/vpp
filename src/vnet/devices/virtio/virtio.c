@@ -116,6 +116,8 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   if (idx & 1)
     {
       clib_memset_u32 (vring->buffers, ~0, sz);
+      vring->total_gro_vectors = 0;
+      vring->n_gro_vectors = 0;
     }
 
   vring->size = sz;
@@ -406,6 +408,18 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
 			     vring->call_fd);
 	  }
+	if (vring->n_gro_vectors)
+	  {
+	    vlib_cli_output (vm, "    total-gro-vectors %lu, n-gro %u",
+			     vring->total_gro_vectors, vring->n_gro_vectors);
+	    double average_gro_rate =
+	      (double) vring->total_gro_vectors /
+	      (double) vring->n_gro_vectors;
+	    vlib_cli_output (vm, "    gro-average-rate %16.2f",
+			     average_gro_rate);
+	  }
+	else
+	  vlib_cli_output (vm, "    gro-average-rate nil");
 	if (show_descr)
 	  {
 	    vlib_cli_output (vm, "\n  descriptor table:\n");
