@@ -44,6 +44,7 @@ typedef enum
  _(SEQ_CYCLED, "sequence number cycled (packet dropped)")       \
  _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
  _(NO_BUFFERS, "no buffers (packet dropped)")                   \
+ _(NO_TRAILER_SPACE, "no trailer space (packet dropped)")
 
 typedef enum
 {
@@ -90,8 +91,7 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 
 /* pad packet in input buffer */
 static_always_inline u8 *
-esp_add_footer_and_icv (vlib_main_t * vm, vlib_buffer_t ** last,
-			u8 block_size, u8 icv_sz,
+esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz,
 			u16 * next, vlib_node_runtime_t * node,
 			u16 buffer_data_size, uword total_len)
 {
@@ -103,27 +103,18 @@ esp_add_footer_and_icv (vlib_main_t * vm, vlib_buffer_t ** last,
   u16 min_length = total_len + sizeof (esp_footer_t);
   u16 new_length = round_pow2 (min_length, block_size);
   u8 pad_bytes = new_length - min_length;
-  esp_footer_t *f = (esp_footer_t *) (vlib_buffer_get_current (last[0]) +
-				      last[0]->current_length + pad_bytes);
+  esp_footer_t *f = (esp_footer_t *) (vlib_buffer_get_current (b) +
+				      b->current_length + pad_bytes);
   u16 tail_sz = sizeof (esp_footer_t) + pad_bytes + icv_sz;
 
-  if (last[0]->current_length + tail_sz > buffer_data_size)
+  if (b->current_data + tail_sz > buffer_data_size)
     {
-      u32 tmp_bi = 0;
-      if (vlib_buffer_alloc (vm, &tmp_bi, 1) != 1)
-	return 0;
-
-      vlib_buffer_t *tmp = vlib_get_buffer (vm, tmp_bi);
-      last[0]->next_buffer = tmp_bi;
-      last[0]->flags |= VLIB_BUFFER_NEXT_PRESENT;
-      f = (esp_footer_t *) (vlib_buffer_get_current (tmp) + pad_bytes);
-      tmp->current_length += tail_sz;
-      last[0] = tmp;
+      // TODO alloc new buffer
+      b->error = node->errors[ESP_ENCRYPT_ERROR_NO_TRAILER_SPACE];
+      next[0] = ESP_ENCRYPT_NEXT_DROP;
+      return 0;
     }
-  else
-    last[0]->current_length += tail_sz;
 
-  f->pad_length = pad_bytes;
   if (pad_bytes)
     {
       ASSERT (pad_bytes <= ESP_MAX_BLOCK_SIZE);
@@ -131,6 +122,8 @@ esp_add_footer_and_icv (vlib_main_t * vm, vlib_buffer_t ** last,
       clib_memcpy_fast ((u8 *) f - pad_bytes, pad_data, pad_bytes);
     }
 
+  f->pad_length = pad_bytes;
+  b->current_length += tail_sz;
   return &f->next_header;
 }
 
@@ -409,17 +402,13 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	{
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, block_sz, icv_sz,
+	  next_hdr_ptr = esp_add_footer_and_icv (lb, block_sz, icv_sz,
 						 next, node,
 						 buffer_data_size,
 						 vlib_buffer_length_in_chain
 						 (vm, b[0]));
 	  if (!next_hdr_ptr)
-	    {
-	      b[0]->error = node->errors[ESP_ENCRYPT_ERROR_NO_BUFFERS];
-	      next[0] = ESP_ENCRYPT_NEXT_DROP;
-	      goto trace;
-	    }
+	    goto trace;
 	  b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  payload_len = b[0]->current_length;
 	  payload_len_total = vlib_buffer_length_in_chain (vm, b[0]);
@@ -482,7 +471,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  vlib_buffer_advance (b[0], ip_len);
 	  payload = vlib_buffer_get_current (b[0]);
-	  next_hdr_ptr = esp_add_footer_and_icv (vm, &lb, block_sz, icv_sz,
+	  next_hdr_ptr = esp_add_footer_and_icv (lb, block_sz, icv_sz,
 						 next, node,
 						 buffer_data_size,
 						 vlib_buffer_length_in_chain
