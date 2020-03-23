@@ -45,6 +45,16 @@
  */
 static dpo_type_t sr_localsid_dpo_type;
 static dpo_type_t sr_localsid_d_dpo_type;
+static dpo_type_t sr_localsid_un_dpo_type;
+static dpo_type_t sr_localsid_un_perf_dpo_type;
+
+static void
+sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
+			u16 pref_len)
+{
+  clib_memcpy (&key->address, addr, sizeof (ip6_address_t));
+  key->pref_len = pref_len;
+}
 
 /**
  * @brief SR localsid add/del
@@ -66,20 +76,22 @@ int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 		 u16 localsid_prefix_len, char end_psp, u8 behavior,
 		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, void *ls_plugin_mem)
+		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
   int rv;
   u8 pref_length = 128;
   sr_localsid_fn_registration_t *plugin = 0;
+  sr_localsid_key_t key;
 
   ip6_sr_localsid_t *ls = 0;
 
   dpo_id_t dpo = DPO_INVALID;
 
   /* Search for the item */
-  p = mhash_get (&sm->sr_localsids_index_hash, localsid_addr);
+  sr_localsid_key_create (&key, localsid_addr, localsid_prefix_len);
+  p = mhash_get (&sm->sr_localsids_index_hash, &key);
 
   if (p)
     {
@@ -125,7 +137,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
 	  /* Delete localsid registry */
 	  pool_put (sm->localsids, ls);
-	  mhash_unset (&sm->sr_localsids_index_hash, localsid_addr, NULL);
+	  mhash_unset (&sm->sr_localsids_index_hash, &key, NULL);
 	  return 0;
 	}
       else			/* create with function already existing; complain */
@@ -183,6 +195,23 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     {
     case SR_BEHAVIOR_END:
       break;
+    case SR_BEHAVIOR_END_UN:
+    case SR_BEHAVIOR_END_UN_PERF:
+      if (usid_len)
+	{
+	  int usid_width;
+	  clib_memcpy (&ls->usid_block, localsid_addr,
+		       sizeof (ip6_address_t));
+
+	  usid_width = pref_length - usid_len;
+	  ip6_address_mask_from_width (&ls->usid_block_mask, usid_width);
+
+	  ls->usid_index = usid_width / 8;
+	  ls->usid_len = usid_len / 8;
+	  ls->usid_next_index = ls->usid_index + ls->usid_len;
+	  ls->usid_next_len = 16 - ls->usid_next_index;
+	}
+      break;
     case SR_BEHAVIOR_X:
       ls->sw_if_index = sw_if_index;
       clib_memcpy (&ls->next_hop.ip6, &nh_addr->ip6, sizeof (ip6_address_t));
@@ -239,6 +268,12 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   if (ls->behavior == SR_BEHAVIOR_END || ls->behavior == SR_BEHAVIOR_X
       || ls->behavior == SR_BEHAVIOR_T)
     dpo_set (&dpo, sr_localsid_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
+  else if (ls->behavior == SR_BEHAVIOR_END_UN)
+    dpo_set (&dpo, sr_localsid_un_dpo_type, DPO_PROTO_IP6,
+	     ls - sm->localsids);
+  else if (ls->behavior == SR_BEHAVIOR_END_UN_PERF)
+    dpo_set (&dpo, sr_localsid_un_perf_dpo_type, DPO_PROTO_IP6,
+	     ls - sm->localsids);
   else if (ls->behavior > SR_BEHAVIOR_D_FIRST
 	   && ls->behavior < SR_BEHAVIOR_LAST)
     dpo_set (&dpo, sr_localsid_d_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
@@ -260,8 +295,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     }
 
   /* Set hash key for searching localsid by address */
-  mhash_set (&sm->sr_localsids_index_hash, localsid_addr, ls - sm->localsids,
-	     NULL);
+  mhash_set (&sm->sr_localsids_index_hash, &key, ls - sm->localsids, NULL);
 
   fib_table_entry_special_dpo_add (fib_index, &pfx, FIB_SOURCE_SR,
 				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
@@ -301,6 +335,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char address_set = 0;
   char behavior = 0;
   void *ls_plugin_mem = 0;
+  int usid_size = 0;
 
   int rv;
 
@@ -349,6 +384,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    behavior = SR_BEHAVIOR_DT6;
 	  else if (unformat (input, "end.dt4 %u", &sw_if_index))
 	    behavior = SR_BEHAVIOR_DT4;
+	  else if (unformat (input, "end.un %u", &usid_size))
+	    behavior = SR_BEHAVIOR_END_UN_PERF;
+	  else if (unformat (input, "end.un.flex %u", &usid_size))
+	    behavior = SR_BEHAVIOR_END_UN;
 	  else
 	    {
 	      /* Loop over all the plugin behavior format functions */
@@ -391,6 +430,22 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!behavior && end_psp)
     behavior = SR_BEHAVIOR_END;
 
+  if (usid_size)
+    {
+      if (prefix_len < usid_size)
+	return clib_error_return (0,
+				  "Error: Prefix length must be greater"
+				  " than uSID length.");
+
+      if (usid_size != 16 && usid_size != 32)
+	return clib_error_return (0,
+				  "Error: Invalid uSID length (16 or 32).");
+
+      if ((prefix_len - usid_size) & 0x7)
+	return clib_error_return (0,
+				  "Error: Prefix Length must be multiple of 8.");
+    }
+
   if (!address_set)
     return clib_error_return (0,
 			      "Error: SRv6 LocalSID address is mandatory.");
@@ -407,7 +462,19 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   rv =
     sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
 		     behavior, sw_if_index, vlan_index, fib_index, &next_hop,
-		     ls_plugin_mem);
+		     usid_size, ls_plugin_mem);
+
+  if (behavior == SR_BEHAVIOR_END_UN_PERF)
+    {
+      if (rv == 0)
+	{
+	  u16 perf_len;
+	  perf_len = prefix_len + usid_size;
+	  rv = sr_cli_localsid (is_del, &resulting_address, perf_len, end_psp,
+				SR_BEHAVIOR_END, sw_if_index, vlan_index,
+				fib_index, &next_hop, 0, ls_plugin_mem);
+	}
+    }
 
   switch (rv)
     {
@@ -451,6 +518,7 @@ VLIB_CLI_COMMAND (sr_localsid_command, static) = {
     "\tbehavior STRING            Specifies the behavior\n"
     "\n\tBehaviors:\n"
     "\tEnd\t-> Endpoint.\n"
+    "\tEnd.uN\t-> Endpoint with uSID.\n"
     "\tEnd.X\t-> Endpoint with decapsulation and Layer-3 cross-connect.\n"
     "\t\tParameters: '<iface> <ip6_next_hop>'\n"
     "\tEnd.DX2\t-> Endpoint with decapsulation and Layer-2 cross-connect.\n"
@@ -491,9 +559,22 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
       switch (ls->behavior)
 	{
 	case SR_BEHAVIOR_END:
-	  vlib_cli_output (vm, "\tAddress: \t%U/%u\n\tBehavior: \tEnd",
+	  vlib_cli_output (vm, "\tAddress: \t%U\n\tBehavior: \tEnd",
+			   format_ip6_address, &ls->localsid);
+	  break;
+	case SR_BEHAVIOR_END_UN:
+	  vlib_cli_output (vm,
+			   "\tAddress: \t%U\n\tBehavior: \tEnd (flex) [uSID:\t%U/%d, length: %d]",
 			   format_ip6_address, &ls->localsid,
-			   ls->localsid_prefix_len);
+			   format_ip6_address, &ls->usid_block,
+			   ls->usid_index * 8, ls->usid_len * 8);
+	  break;
+	case SR_BEHAVIOR_END_UN_PERF:
+	  vlib_cli_output (vm,
+			   "\tAddress: \t%U\n\tBehavior: \tEnd [uSID:\t%U/%d, length: %d]",
+			   format_ip6_address, &ls->localsid,
+			   format_ip6_address, &ls->usid_block,
+			   ls->usid_index * 8, ls->usid_len * 8);
 	  break;
 	case SR_BEHAVIOR_X:
 	  vlib_cli_output (vm,
@@ -697,6 +778,12 @@ format_sr_localsid_trace (u8 * s, va_list * args)
     case SR_BEHAVIOR_END:
       s = format (s, "\tBehavior: End\n");
       break;
+    case SR_BEHAVIOR_END_UN:
+      s = format (s, "\tBehavior: End.uN (flex)\n");
+      break;
+    case SR_BEHAVIOR_END_UN_PERF:
+      s = format (s, "\tBehavior: End.uN\n");
+      break;
     case SR_BEHAVIOR_DX6:
       s = format (s, "\tBehavior: Decapsulation with IPv6 L3 xconnect\n");
       break;
@@ -835,6 +922,147 @@ end_srh_processing (vlib_node_runtime_t * node,
       *next0 = SR_LOCALSID_NEXT_ERROR;
       b0->error = node->errors[SR_LOCALSID_ERROR_NO_SRH];
     }
+}
+
+/**
+ * @brief Function doing End uN processing.
+ */
+static_always_inline void
+end_un_srh_processing (vlib_node_runtime_t * node,
+		       vlib_buffer_t * b0,
+		       ip6_header_t * ip0,
+		       ip6_sr_header_t * sr0,
+		       ip6_sr_localsid_t * ls0,
+		       u32 * next0, u8 psp, ip6_ext_header_t * prev0)
+{
+  ip6_address_t *new_dst0;
+  bool next_usid = false;
+  u8 next_usid_index;
+  u8 usid_len;
+  u8 index;
+
+  usid_len = ls0->usid_len;
+  next_usid_index = ls0->usid_next_index;
+
+  /* uSID */
+  for (index = 0; index < usid_len; index++)
+    {
+      if (ip0->dst_address.as_u8[next_usid_index + index] != 0)
+	{
+	  next_usid = true;
+	  break;
+	}
+    }
+
+  if (PREDICT_TRUE (next_usid))
+    {
+      u8 offset;
+
+      index = ls0->usid_index;
+
+      /* advance next usid */
+      for (offset = 0; offset < ls0->usid_next_len; offset++)
+	{
+	  ip0->dst_address.as_u8[index + offset] =
+	    ip0->dst_address.as_u8[next_usid_index + offset];
+	}
+
+      for (index = 16 - usid_len; index < 16; index++)
+	{
+	  ip0->dst_address.as_u8[index] = 0;
+	}
+
+      return;
+    }
+
+  if (PREDICT_TRUE (sr0 && sr0->type == ROUTING_HEADER_TYPE_SR))
+    {
+      if (sr0->segments_left == 1 && psp)
+	{
+	  u32 new_l0, sr_len;
+	  u64 *copy_dst0, *copy_src0;
+	  u32 copy_len_u64s0 = 0;
+
+	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
+	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
+
+	  /* Remove the SRH taking care of the rest of IPv6 ext header */
+	  if (prev0)
+	    prev0->next_hdr = sr0->protocol;
+	  else
+	    ip0->protocol = sr0->protocol;
+
+	  sr_len = ip6_ext_header_len (sr0);
+	  vlib_buffer_advance (b0, sr_len);
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
+	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	  copy_src0 = (u64 *) ip0;
+	  copy_dst0 = copy_src0 + (sr0->length + 1);
+	  /* number of 8 octet units to copy
+	   * By default in absence of extension headers it is equal to length of ip6 header
+	   * With extension headers it number of 8 octet units of ext headers preceding
+	   * SR header
+	   */
+	  copy_len_u64s0 =
+	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
+	  copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+	  copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+	  copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+	  copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+	  copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
+
+	  int i;
+	  for (i = copy_len_u64s0 - 1; i >= 0; i--)
+	    {
+	      copy_dst0[i] = copy_src0[i];
+	    }
+	}
+      else if (PREDICT_TRUE (sr0->segments_left > 0))
+	{
+	  sr0->segments_left -= 1;
+	  new_dst0 = (ip6_address_t *) (sr0->segments);
+	  new_dst0 += sr0->segments_left;
+	  ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
+	  ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
+	}
+      else
+	{
+	  *next0 = SR_LOCALSID_NEXT_ERROR;
+	  b0->error = node->errors[SR_LOCALSID_ERROR_NO_MORE_SEGMENTS];
+	}
+    }
+  else
+    {
+      /* Error. Routing header of type != SR */
+      *next0 = SR_LOCALSID_NEXT_ERROR;
+      b0->error = node->errors[SR_LOCALSID_ERROR_NO_SRH];
+    }
+}
+
+static_always_inline void
+end_un_processing (ip6_header_t * ip0, ip6_sr_localsid_t * ls0)
+{
+  u8 next_usid_index;
+  u8 index;
+  u8 offset;
+
+  /* uSID */
+  index = ls0->usid_index;
+  next_usid_index = ls0->usid_next_index;
+
+  /* advance next usid */
+  for (offset = 0; offset < ls0->usid_next_len; offset++)
+    {
+      ip0->dst_address.as_u8[index + offset] =
+	ip0->dst_address.as_u8[next_usid_index + offset];
+    }
+
+  for (index = 16 - ls0->usid_len; index < 16; index++)
+    {
+      ip0->dst_address.as_u8[index] = 0;
+    }
+
+  return;
 }
 
 /*
@@ -1537,6 +1765,538 @@ VLIB_REGISTER_NODE (sr_localsid_node) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief SR LocalSID uN graph node. Supports all default SR Endpoint without decaps
+ */
+static uword
+sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		   vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, *from, *to_next;
+  ip6_sr_main_t *sm = &sr_main;
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  next_index = node->cached_next_index;
+  u32 thread_index = vm->thread_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      /* Quad - Loop */
+      while (n_left_from >= 8 && n_left_to_next >= 4)
+	{
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
+	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
+	  ip6_ext_header_t *prev0, *prev1, *prev2, *prev3;
+	  u32 next0, next1, next2, next3;
+	  next0 = next1 = next2 = next3 = SR_LOCALSID_NEXT_IP6_LOOKUP;
+	  ip6_sr_localsid_t *ls0, *ls1, *ls2, *ls3;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p4, *p5, *p6, *p7;
+
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
+
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
+
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  }
+
+	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
+
+	  ip0 = vlib_buffer_get_current (b0);
+	  ip1 = vlib_buffer_get_current (b1);
+	  ip2 = vlib_buffer_get_current (b2);
+	  ip3 = vlib_buffer_get_current (b3);
+
+	  sr0 =
+	    ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
+	  sr1 =
+	    ip6_ext_header_find (vm, b1, ip1, IP_PROTOCOL_IPV6_ROUTE, &prev1);
+	  sr2 =
+	    ip6_ext_header_find (vm, b2, ip2, IP_PROTOCOL_IPV6_ROUTE, &prev2);
+	  sr3 =
+	    ip6_ext_header_find (vm, b3, ip3, IP_PROTOCOL_IPV6_ROUTE, &prev3);
+
+	  ls0 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+
+	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
+				 ls0->end_psp, prev0);
+	  end_un_srh_processing (node, b1, ip1, sr1, ls1, &next1,
+				 ls1->end_psp, prev1);
+	  end_un_srh_processing (node, b2, ip2, sr2, ls2, &next2,
+				 ls2->end_psp, prev2);
+	  end_un_srh_processing (node, b3, ip3, sr3, ls3, &next3,
+				 ls3->end_psp, prev3);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls0->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls0->behavior;
+	      if (ip0 == vlib_buffer_get_current (b0))
+		{
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
+		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		    {
+		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		      tr->num_segments =
+			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->segments_left = sr0->segments_left;
+		    }
+		}
+	      else
+		tr->num_segments = 0xFF;
+	    }
+
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls1->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls1->behavior;
+	      if (ip1 == vlib_buffer_get_current (b1))
+		{
+		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
+		      && sr1->type == ROUTING_HEADER_TYPE_SR)
+		    {
+		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
+		      tr->num_segments =
+			sr1->length * 8 / sizeof (ip6_address_t);
+		      tr->segments_left = sr1->segments_left;
+		    }
+		}
+	      else
+		tr->num_segments = 0xFF;
+	    }
+
+	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b2, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls2->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls2->behavior;
+	      if (ip2 == vlib_buffer_get_current (b2))
+		{
+		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
+		      && sr2->type == ROUTING_HEADER_TYPE_SR)
+		    {
+		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
+		      tr->num_segments =
+			sr2->length * 8 / sizeof (ip6_address_t);
+		      tr->segments_left = sr2->segments_left;
+		    }
+		}
+	      else
+		tr->num_segments = 0xFF;
+	    }
+
+	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b3, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls3->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls3->behavior;
+	      if (ip3 == vlib_buffer_get_current (b3))
+		{
+		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
+		      && sr3->type == ROUTING_HEADER_TYPE_SR)
+		    {
+		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
+		      tr->num_segments =
+			sr3->length * 8 / sizeof (ip6_address_t);
+		      tr->segments_left = sr3->segments_left;
+		    }
+		}
+	      else
+		tr->num_segments = 0xFF;
+	    }
+
+	  vlib_increment_combined_counter
+	    (((next0 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b0));
+
+	  vlib_increment_combined_counter
+	    (((next1 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b1));
+
+	  vlib_increment_combined_counter
+	    (((next2 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b2));
+
+	  vlib_increment_combined_counter
+	    (((next3 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b3));
+
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
+	}
+
+      /* Single loop for potentially the last three packets */
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  ip6_header_t *ip0 = 0;
+	  ip6_ext_header_t *prev0;
+	  ip6_sr_header_t *sr0;
+	  u32 next0 = SR_LOCALSID_NEXT_IP6_LOOKUP;
+	  ip6_sr_localsid_t *ls0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+	  sr0 =
+	    ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
+
+	  /* Lookup the SR End behavior based on IP DA (adj) */
+	  ls0 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+
+	  /* SRH processing */
+	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
+				 ls0->end_psp, prev0);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls0->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls0->behavior;
+	      if (ip0 == vlib_buffer_get_current (b0))
+		{
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
+		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		    {
+		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
+		      tr->num_segments =
+			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->segments_left = sr0->segments_left;
+		    }
+		}
+	      else
+		tr->num_segments = 0xFF;
+	    }
+
+	  vlib_increment_combined_counter
+	    (((next0 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b0));
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return from_frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (sr_localsid_un_node) = {
+  .function = sr_localsid_un_fn,
+  .name = "sr-localsid-un",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sr_localsid_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = SR_LOCALSID_N_ERROR,
+  .error_strings = sr_localsid_error_strings,
+  .n_next_nodes = SR_LOCALSID_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+    foreach_sr_localsid_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+static uword
+sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, *from, *to_next;
+  ip6_sr_main_t *sm = &sr_main;
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  next_index = node->cached_next_index;
+  u32 thread_index = vm->thread_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      /* Quad - Loop */
+      while (n_left_from >= 8 && n_left_to_next >= 4)
+	{
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
+	  u32 next0, next1, next2, next3;
+	  next0 = next1 = next2 = next3 = SR_LOCALSID_NEXT_IP6_LOOKUP;
+	  ip6_sr_localsid_t *ls0, *ls1, *ls2, *ls3;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p4, *p5, *p6, *p7;
+
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
+
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
+
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  }
+
+	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
+
+	  ip0 = vlib_buffer_get_current (b0);
+	  ip1 = vlib_buffer_get_current (b1);
+	  ip2 = vlib_buffer_get_current (b2);
+	  ip3 = vlib_buffer_get_current (b3);
+
+	  ls0 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+
+	  end_un_processing (ip0, ls0);
+	  end_un_processing (ip1, ls1);
+	  end_un_processing (ip2, ls2);
+	  end_un_processing (ip3, ls3);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls0->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls0->behavior;
+	    }
+
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls1->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls1->behavior;
+	    }
+
+	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b2, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls2->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls2->behavior;
+	    }
+
+	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b3, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls3->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls3->behavior;
+	    }
+
+	  vlib_increment_combined_counter
+	    (((next0 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b0));
+
+	  vlib_increment_combined_counter
+	    (((next1 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b1));
+
+	  vlib_increment_combined_counter
+	    (((next2 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b2));
+
+	  vlib_increment_combined_counter
+	    (((next3 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b3));
+
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
+	}
+
+      /* Single loop for potentially the last three packets */
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  ip6_header_t *ip0 = 0;
+	  u32 next0 = SR_LOCALSID_NEXT_IP6_LOOKUP;
+	  ip6_sr_localsid_t *ls0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+
+	  /* Lookup the SR End behavior based on IP DA (adj) */
+	  ls0 =
+	    pool_elt_at_index (sm->localsids,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+
+	  /* SRH processing */
+	  end_un_processing (ip0, ls0);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sr_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->num_segments = 0;
+	      clib_memcpy (tr->localsid.as_u8, ls0->localsid.as_u8,
+			   sizeof (tr->localsid.as_u8));
+	      tr->behavior = ls0->behavior;
+	    }
+
+	  vlib_increment_combined_counter
+	    (((next0 ==
+	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
+	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	     1, vlib_buffer_length_in_chain (vm, b0));
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return from_frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (sr_localsid_un_perf_node) = {
+  .function = sr_localsid_un_perf_fn,
+  .name = "sr-localsid-un-perf",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sr_localsid_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = SR_LOCALSID_N_ERROR,
+  .error_strings = sr_localsid_error_strings,
+  .n_next_nodes = SR_LOCALSID_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+    foreach_sr_localsid_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
 static u8 *
 format_sr_dpo (u8 * s, va_list * args)
 {
@@ -1570,6 +2330,23 @@ const static char *const *const sr_loc_d_nodes[DPO_PROTO_NUM] = {
   [DPO_PROTO_IP6] = sr_loc_d_ip6_nodes,
 };
 
+const static char *const sr_loc_un_ip6_nodes[] = {
+  "sr-localsid-un",
+  NULL,
+};
+
+const static char *const *const sr_loc_un_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = sr_loc_un_ip6_nodes,
+};
+
+const static char *const sr_loc_un_perf_ip6_nodes[] = {
+  "sr-localsid-un-perf",
+  NULL,
+};
+
+const static char *const *const sr_loc_un_perf_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = sr_loc_un_perf_ip6_nodes,
+};
 
 /*************************** SR LocalSID plugins ******************************/
 /**
@@ -1688,12 +2465,17 @@ sr_localsids_init (vlib_main_t * vm)
   /* Init memory for function keys */
   ip6_sr_main_t *sm = &sr_main;
   mhash_init (&sm->sr_localsids_index_hash, sizeof (uword),
-	      sizeof (ip6_address_t));
+	      sizeof (sr_localsid_key_t));
   /* Init SR behaviors DPO type */
   sr_localsid_dpo_type = dpo_register_new_type (&sr_loc_vft, sr_loc_nodes);
   /* Init SR behaviors DPO type */
   sr_localsid_d_dpo_type =
     dpo_register_new_type (&sr_loc_vft, sr_loc_d_nodes);
+  /* Init SR bhaviors DPO type */
+  sr_localsid_un_dpo_type =
+    dpo_register_new_type (&sr_loc_vft, sr_loc_un_nodes);
+  sr_localsid_un_perf_dpo_type =
+    dpo_register_new_type (&sr_loc_vft, sr_loc_un_perf_nodes);
   /* Init memory for localsid plugins */
   sm->plugin_functions_by_key = hash_create_string (0, sizeof (uword));
   return 0;
