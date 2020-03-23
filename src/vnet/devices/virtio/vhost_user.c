@@ -466,6 +466,8 @@ vhost_user_socket_read (clib_file_t * uf)
 
       if (vui->enable_gso)
 	msg.u64 |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+      if (vui->enable_packed)
+	msg.u64 |= (1ULL << FEAT_VIRTIO_F_RING_PACKED);
 
       msg.size = sizeof (msg.u64);
       vu_log_debug (vui, "if %d msg VHOST_USER_GET_FEATURES - reply "
@@ -655,7 +657,11 @@ vhost_user_socket_read (clib_file_t * uf)
 	vui->vrings[msg.state.index].used->idx;
 
       /* tell driver that we don't want interrupts */
-      vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+      if (vhost_user_is_packed_ring_supported (vui))
+	vui->vrings[msg.state.index].used_event->flags =
+	  VRING_EVENT_F_DISABLE;
+      else
+	vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
       vlib_worker_thread_barrier_release (vm);
       vhost_user_update_iface_state (vui);
       break;
@@ -762,10 +768,53 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_BASE:
-      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_BASE idx %d num %d",
+      vu_log_debug (vui,
+		    "if %d msg VHOST_USER_SET_VRING_BASE idx %d num 0x%x",
 		    vui->hw_if_index, msg.state.index, msg.state.num);
       vlib_worker_thread_barrier_sync (vm);
       vui->vrings[msg.state.index].last_avail_idx = msg.state.num;
+      if (vhost_user_is_packed_ring_supported (vui))
+	{
+	  /*
+	   *  0                   1                   2                   3
+	   *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	   * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   * |    last avail idx           | |     last used idx           | |
+	   * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   *                                ^                               ^
+	   *                                |                               |
+	   *                         avail wrap counter       used wrap counter
+	   */
+	  /* last avail idx at bit 0-14. */
+	  vui->vrings[msg.state.index].last_avail_idx =
+	    msg.state.num & 0x7fff;
+	  /* avail wrap counter at bit 15 */
+	  vui->vrings[msg.state.index].avail_wrap_counter =
+	    ! !(msg.state.num & (1 << 15));
+#define COMPAT_WITH_DPDK_PACKED 1
+	  /*
+	   * There is a bug in dpdk that it does not set the upper 16 bits
+	   * for the last_used_idx and used_wrap_counter. To workaround,
+	   * We just copy it from last_avail_idx and avail_wrap_counter. They
+	   * are expected to be the same under most circumstances anyway.
+	   */
+#ifdef COMPAT_WITH_DPDK_PACKED
+	  vui->vrings[msg.state.index].last_used_idx =
+	    vui->vrings[msg.state.index].last_avail_idx;
+	  vui->vrings[msg.state.index].used_wrap_counter =
+	    vui->vrings[msg.state.index].avail_wrap_counter;
+#else
+	  /* last used idx at bit 16-30. */
+	  vui->vrings[msg.state.index].last_used_idx =
+	    (msg.state.num >> 16) & 0x7fff;
+	  /* used wrap counter at bit 31 */
+	  vui->vrings[msg.state.index].used_wrap_counter =
+	    ! !((msg.state.num >> 16) & (1 << 15));
+#endif
+	  if (vui->vrings[msg.state.index].avail_wrap_counter == 1)
+	    vui->vrings[msg.state.index].avail_wrap_counter =
+	      VIRTQ_DESC_F_AVAIL;
+	}
       vlib_worker_thread_barrier_release (vm);
       break;
 
@@ -784,6 +833,15 @@ vhost_user_socket_read (clib_file_t * uf)
        * closing the vring also initializes the vring last_avail_idx
        */
       msg.state.num = vui->vrings[msg.state.index].last_avail_idx;
+      if (vhost_user_is_packed_ring_supported (vui))
+	{
+	  msg.state.num =
+	    (vui->vrings[msg.state.index].last_avail_idx & 0x7fff) |
+	    (! !vui->vrings[msg.state.index].avail_wrap_counter << 15);
+	  msg.state.num |=
+	    ((vui->vrings[msg.state.index].last_used_idx & 0x7fff) |
+	     (! !vui->vrings[msg.state.index].used_wrap_counter << 15)) << 16;
+	}
       msg.flags |= 4;
       msg.size = sizeof (msg.state);
 
@@ -793,7 +851,8 @@ vhost_user_socket_read (clib_file_t * uf)
        */
       vhost_user_vring_close (vui, msg.state.index);
       vlib_worker_thread_barrier_release (vm);
-      vu_log_debug (vui, "if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
+      vu_log_debug (vui,
+		    "if %d msg VHOST_USER_GET_VRING_BASE idx %d num 0x%x",
 		    vui->hw_if_index, msg.state.index, msg.state.num);
       n =
 	send (uf->file_descriptor, &msg, VHOST_USER_MSG_HDR_SZ + msg.size, 0);
@@ -1440,7 +1499,8 @@ vhost_user_vui_init (vnet_main_t * vnm,
 		     vhost_user_intf_t * vui,
 		     int server_sock_fd,
 		     const char *sock_filename,
-		     u64 feature_mask, u32 * sw_if_index, u8 enable_gso)
+		     u64 feature_mask, u32 * sw_if_index, u8 enable_gso,
+		     u8 enable_packed)
 {
   vnet_sw_interface_t *sw;
   int q;
@@ -1472,6 +1532,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vui->log_base_addr = 0;
   vui->if_index = vui - vum->vhost_user_interfaces;
   vui->enable_gso = enable_gso;
+  vui->enable_packed = enable_packed;
   /*
    * enable_gso takes precedence over configurable feature mask if there
    * is a clash.
@@ -1519,7 +1580,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      u32 * sw_if_index,
 		      u64 feature_mask,
 		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
-		      u8 enable_gso)
+		      u8 enable_gso, u8 enable_packed)
 {
   vhost_user_intf_t *vui = NULL;
   u32 sw_if_idx = ~0;
@@ -1560,7 +1621,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, sock_filename,
-		       feature_mask, &sw_if_idx, enable_gso);
+		       feature_mask, &sw_if_idx, enable_gso, enable_packed);
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
   vhost_user_rx_thread_placement (vui, 1);
 
@@ -1582,7 +1643,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      u8 is_server,
 		      u32 sw_if_index,
 		      u64 feature_mask, u8 renumber, u32 custom_dev_instance,
-		      u8 enable_gso)
+		      u8 enable_gso, u8 enable_packed)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui = NULL;
@@ -1619,7 +1680,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   vhost_user_term_if (vui);
   vhost_user_vui_init (vnm, vui, server_sock_fd,
-		       sock_filename, feature_mask, &sw_if_idx, enable_gso);
+		       sock_filename, feature_mask, &sw_if_idx, enable_gso,
+		       enable_packed);
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
@@ -1645,7 +1707,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   u8 hwaddr[6];
   u8 *hw = NULL;
   clib_error_t *error = NULL;
-  u8 enable_gso = 0;
+  u8 enable_gso = 0, enable_packed = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1653,6 +1715,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 
   /* GSO feature is disable by default */
   feature_mask &= ~FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+  /* packed-ring feature is disable by default */
+  feature_mask &= ~(1ULL << FEAT_VIRTIO_F_RING_PACKED);
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "socket %s", &sock_filename))
@@ -1661,6 +1725,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	is_server = 1;
       else if (unformat (line_input, "gso"))
 	enable_gso = 1;
+      else if (unformat (line_input, "packed"))
+	enable_packed = 1;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	;
       else
@@ -1685,7 +1751,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   if ((rv = vhost_user_create_if (vnm, vm, (char *) sock_filename,
 				  is_server, &sw_if_index, feature_mask,
 				  renumber, custom_dev_instance, hw,
-				  enable_gso)))
+				  enable_gso, enable_packed)))
     {
       error = clib_error_return (0, "vhost_user_create_if returned %d", rv);
       goto done;
@@ -1799,6 +1865,160 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
   return rv;
 }
 
+static void
+vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
+		      int show_descr, int show_verbose)
+{
+  int j;
+  u32 mem_hint = 0;
+  int kickfd;
+  int callfd;
+  u32 idx;
+  u32 n_entries;
+  vring_desc_t *desc_table;
+
+  if (vui->vrings[q].avail && vui->vrings[q].used)
+    vlib_cli_output (vm,
+		     "  avail.flags %x avail.idx %d used.flags %x used.idx %d\n",
+		     vui->vrings[q].avail->flags, vui->vrings[q].avail->idx,
+		     vui->vrings[q].used->flags, vui->vrings[q].used->idx);
+
+  kickfd = UNIX_GET_FD (vui->vrings[q].kickfd_idx);
+  callfd = UNIX_GET_FD (vui->vrings[q].callfd_idx);
+  vlib_cli_output (vm, "  kickfd %d callfd %d errfd %d\n", kickfd, callfd,
+		   vui->vrings[q].errfd);
+
+  if (show_descr)
+    {
+      vlib_cli_output (vm, "\n  descriptor table:\n");
+      vlib_cli_output (vm,
+		       "  slot         addr         len  flags  next      "
+		       "user_addr\n");
+      vlib_cli_output (vm,
+		       "  ===== ================== ===== ====== ===== "
+		       "==================\n");
+      for (j = 0; j < vui->vrings[q].qsz_mask + 1; j++)
+	{
+	  vlib_cli_output (vm,
+			   "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
+			   j, vui->vrings[q].desc[j].addr,
+			   vui->vrings[q].desc[j].len,
+			   vui->vrings[q].desc[j].flags,
+			   vui->vrings[q].desc[j].next,
+			   pointer_to_uword (map_guest_mem
+					     (vui,
+					      vui->vrings[q].desc[j].addr,
+					      &mem_hint)));
+	  if (show_verbose &&
+	      (vui->vrings[q].desc[j].flags & VIRTQ_DESC_F_INDIRECT))
+	    {
+	      n_entries = vui->vrings[q].desc[j].len / sizeof (vring_desc_t);
+	      desc_table = map_guest_mem (vui, vui->vrings[q].desc[j].addr,
+					  &mem_hint);
+	      if (desc_table)
+		{
+		  for (idx = 0; idx < clib_min (20, n_entries); idx++)
+		    {
+		      vlib_cli_output (vm,
+				       ">  %-4u 0x%016lx %-5u 0x%04x %-5u "
+				       "0x%016lx\n",
+				       idx, desc_table[idx].addr,
+				       desc_table[idx].len,
+				       desc_table[idx].flags,
+				       desc_table[idx].next,
+				       pointer_to_uword (map_guest_mem
+							 (vui,
+							  desc_table
+							  [idx].addr,
+							  &mem_hint)));
+		    }
+		  if (n_entries >= 20)
+		    vlib_cli_output (vm, "Skip displaying entries 20...%u\n",
+				     n_entries);
+		}
+	    }
+	}
+    }
+}
+
+static void
+vhost_user_show_desc_packed (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
+			     int show_descr, int show_verbose)
+{
+  int j;
+  u32 mem_hint = 0;
+  int kickfd;
+  int callfd;
+  u32 idx;
+  u32 n_entries;
+  vring_packed_desc_t *desc_table;
+
+  if (vui->vrings[q].avail_event && vui->vrings[q].used_event)
+    vlib_cli_output (vm,
+		     "  avail_event.flags %x avail_event.off_wrap %u "
+		     "used_event.flags %x used_event.off_wrap %u\n",
+		     vui->vrings[q].avail_event->flags,
+		     vui->vrings[q].avail_event->off_wrap,
+		     vui->vrings[q].used_event->flags,
+		     vui->vrings[q].used_event->off_wrap);
+
+  vlib_cli_output (vm, "  avail wrap counter %u, used wrap counter %u\n",
+		   vui->vrings[q].avail_wrap_counter,
+		   vui->vrings[q].used_wrap_counter);
+  kickfd = UNIX_GET_FD (vui->vrings[q].kickfd_idx);
+  callfd = UNIX_GET_FD (vui->vrings[q].callfd_idx);
+  vlib_cli_output (vm, "  kickfd %d callfd %d errfd %d\n", kickfd, callfd,
+		   vui->vrings[q].errfd);
+
+  if (show_descr)
+    {
+      vlib_cli_output (vm, "\n  descriptor table:\n");
+      vlib_cli_output (vm,
+		       "  slot         addr         len  flags  id    "
+		       "user_addr\n");
+      vlib_cli_output (vm,
+		       "  ===== ================== ===== ====== ===== "
+		       "==================\n");
+      for (j = 0; j < vui->vrings[q].qsz_mask + 1; j++)
+	{
+	  desc_table = vui->vrings[q].packed_desc;
+	  vlib_cli_output (vm,
+			   "  %-5u 0x%016lx %-5u 0x%04x %-5u 0x%016lx\n",
+			   j, desc_table[j].addr, desc_table[j].len,
+			   desc_table[j].flags, desc_table[j].id,
+			   pointer_to_uword (map_guest_mem
+					     (vui, desc_table[j].addr,
+					      &mem_hint)));
+	  if (show_verbose && (desc_table[j].flags & VIRTQ_DESC_F_INDIRECT))
+	    {
+	      n_entries = desc_table[j].len >> 4;
+	      desc_table = map_guest_mem (vui, desc_table[j].addr, &mem_hint);
+	      if (desc_table)
+		{
+		  for (idx = 0; idx < clib_min (20, n_entries); idx++)
+		    {
+		      vlib_cli_output (vm,
+				       ">  %-4u 0x%016lx %-5u 0x%04x %-5u "
+				       "0x%016lx\n",
+				       idx, desc_table[idx].addr,
+				       desc_table[idx].len,
+				       desc_table[idx].flags,
+				       desc_table[idx].id,
+				       pointer_to_uword (map_guest_mem
+							 (vui,
+							  desc_table
+							  [idx].addr,
+							  &mem_hint)));
+		    }
+		  if (n_entries >= 20)
+		    vlib_cli_output (vm, "Skip displaying entries 20...%u\n",
+				     n_entries);
+		}
+	    }
+	}
+    }
+}
+
 clib_error_t *
 show_vhost_user_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
@@ -1814,6 +2034,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
   u32 ci;
   int i, j, q;
   int show_descr = 0;
+  int show_verbose = 0;
   struct feat_struct
   {
     u8 bit;
@@ -1855,6 +2076,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "descriptors") || unformat (input, "desc"))
 	show_descr = 1;
+      else if (unformat (input, "verbose"))
+	show_verbose = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1884,6 +2107,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 		       hw_if_indices[i]);
       if (vui->enable_gso)
 	vlib_cli_output (vm, "  GSO enable");
+      if (vui->enable_packed)
+	vlib_cli_output (vm, "  Packed ring enable");
 
       vlib_cli_output (vm, "virtio_net_hdr_sz %d\n"
 		       " features mask (0x%llx): \n"
@@ -1985,41 +2210,11 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			   vui->vrings[q].last_avail_idx,
 			   vui->vrings[q].last_used_idx);
 
-	  if (vui->vrings[q].avail && vui->vrings[q].used)
-	    vlib_cli_output (vm,
-			     "  avail.flags %x avail.idx %d used.flags %x used.idx %d\n",
-			     vui->vrings[q].avail->flags,
-			     vui->vrings[q].avail->idx,
-			     vui->vrings[q].used->flags,
-			     vui->vrings[q].used->idx);
-
-	  int kickfd = UNIX_GET_FD (vui->vrings[q].kickfd_idx);
-	  int callfd = UNIX_GET_FD (vui->vrings[q].callfd_idx);
-	  vlib_cli_output (vm, "  kickfd %d callfd %d errfd %d\n",
-			   kickfd, callfd, vui->vrings[q].errfd);
-
-	  if (show_descr)
-	    {
-	      vlib_cli_output (vm, "\n  descriptor table:\n");
-	      vlib_cli_output (vm,
-			       "   id          addr         len  flags  next      user_addr\n");
-	      vlib_cli_output (vm,
-			       "  ===== ================== ===== ====== ===== ==================\n");
-	      for (j = 0; j < vui->vrings[q].qsz_mask + 1; j++)
-		{
-		  u32 mem_hint = 0;
-		  vlib_cli_output (vm,
-				   "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
-				   j, vui->vrings[q].desc[j].addr,
-				   vui->vrings[q].desc[j].len,
-				   vui->vrings[q].desc[j].flags,
-				   vui->vrings[q].desc[j].next,
-				   pointer_to_uword (map_guest_mem
-						     (vui,
-						      vui->vrings[q].desc[j].
-						      addr, &mem_hint)));
-		}
-	    }
+	  if (vhost_user_is_packed_ring_supported (vui))
+	    vhost_user_show_desc_packed (vm, vui, q, show_descr,
+					 show_verbose);
+	  else
+	    vhost_user_show_desc (vm, vui, q, show_descr, show_verbose);
 	}
       vlib_cli_output (vm, "\n");
     }
@@ -2090,7 +2285,8 @@ done:
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
-    "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso]",
+    "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso] "
+    "[packed]",
     .function = vhost_user_connect_command_fn,
     .is_mp_safe = 1,
 };
@@ -2251,7 +2447,8 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .path = "show vhost-user",
-    .short_help = "show vhost-user [<interface> [<interface> [..]]] [descriptors]",
+    .short_help = "show vhost-user [<interface> [<interface> [..]]] "
+    "[[descriptors] [verbose]]",
     .function = show_vhost_user_command_fn,
 };
 /* *INDENT-ON* */
