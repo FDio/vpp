@@ -1734,9 +1734,11 @@ static void *vl_api_create_vhost_user_if_t_print
   if (mp->disable_indirect_desc)
     s = format (s, "disable_indirect_desc ");
   if (mp->tag[0])
-    s = format (s, "tag %s", mp->tag);
+    s = format (s, "tag %s ", mp->tag);
   if (mp->enable_gso)
-    s = format (s, "gso");
+    s = format (s, "gso ");
+  if (mp->enable_packed)
+    s = format (s, "packed");
 
   FINISH;
 }
@@ -1755,7 +1757,9 @@ static void *vl_api_modify_vhost_user_if_t_print
   if (mp->renumber)
     s = format (s, "renumber %d ", (mp->custom_dev_instance));
   if (mp->enable_gso)
-    s = format (s, "gso");
+    s = format (s, "gso ");
+  if (mp->enable_packed)
+    s = format (s, "packed");
 
   FINISH;
 }
