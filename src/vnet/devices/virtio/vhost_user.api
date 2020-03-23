@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.0";
+option version = "4.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -27,6 +27,7 @@ import "vnet/devices/virtio/virtio_types.api";
     @param disable_mrg_rxbuf - disable the use of merge receive buffers
     @param disable_indirect_desc - disable the use of indirect descriptors which driver can use
     @param enable_gso - enable gso support (default 0)
+    @param enable_packed - enable packed ring support (default 0)
     @param mac_address - hardware address to use if 'use_custom_mac' is set
 */
 define create_vhost_user_if
@@ -39,6 +40,7 @@ define create_vhost_user_if
   bool disable_mrg_rxbuf;
   bool disable_indirect_desc;
   bool enable_gso;
+  bool enable_packed;
   u32 custom_dev_instance;
   bool use_custom_mac;
   vl_api_mac_address_t mac_address;
@@ -62,6 +64,7 @@ define create_vhost_user_if_reply
     @param is_server - our side is socket server
     @param sock_filename - unix socket filename, used to speak with frontend
     @param enable_gso - enable gso support (default 0)
+    @param enable_packed - enable packed ring support (default 0)
 */
 autoreply define modify_vhost_user_if
 {
@@ -72,6 +75,7 @@ autoreply define modify_vhost_user_if
   string sock_filename[256];
   bool renumber;
   bool enable_gso;
+  bool enable_packed;
   u32 custom_dev_instance;
 };
 
