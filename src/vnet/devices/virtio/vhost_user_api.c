@@ -71,10 +71,12 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
     disabled_features |= (1ULL << FEAT_VIRTIO_F_INDIRECT_DESC);
 
   /*
-   * feature mask is not supported via binary API. We disable GSO feature in the
-   * feature mask. It may be enabled via enable_gso argument.
+   * GSO and PACKED are not supported by feature mask via binary API. We
+   * disable GSO and PACKED feature in the feature mask. They may be enabled
+   * explicitly via enable_gso and enable_packed argument
    */
-  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
+    (1ULL << FEAT_VIRTIO_F_RING_PACKED);
   features &= ~disabled_features;
 
   if (mp->use_custom_mac)
@@ -86,7 +88,7 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, features,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     mac_p, mp->enable_gso);
+			     mac_p, mp->enable_gso, mp->enable_packed);
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -122,16 +124,18 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
   vlib_main_t *vm = vlib_get_main ();
 
   /*
-   * feature mask is not supported via binary API. We disable GSO feature in the
-   * feature mask. It may be enabled via enable_gso argument.
+   * GSO and PACKED are not supported by feature mask via binary API. We
+   * disable GSO and PACKED feature in the feature mask. They may be enabled
+   * explicitly via enable_gso and enable_packed argument
    */
-  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
+    (1ULL << FEAT_VIRTIO_F_RING_PACKED);
   features &= ~disabled_features;
 
   rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, sw_if_index, features,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     mp->enable_gso);
+			     mp->enable_gso, mp->enable_packed);
 
   REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
 }

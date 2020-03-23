@@ -7,7 +7,7 @@ features:
   - device mode to emulate vhost-user interface presented to VPP from the
     guest VM.
   - support multi-queue, GSO, checksum offload, indirect descriptor,
-    and jumbo frame.
+    jumbo frame, and packed ring.
 description: "Virtio v1.0 implementation"
 missing:
   - API dump filtering by sw_if_index

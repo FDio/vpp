@@ -12447,6 +12447,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u8 disable_indirect_desc = 0;
   u8 *tag = 0;
   u8 enable_gso = 0;
+  u8 enable_packed = 0;
   int ret;
 
   /* Shut up coverity */
@@ -12470,6 +12471,8 @@ api_create_vhost_user_if (vat_main_t * vam)
 	disable_indirect_desc = 1;
       else if (unformat (i, "gso"))
 	enable_gso = 1;
+      else if (unformat (i, "packed"))
+	enable_packed = 1;
       else if (unformat (i, "tag %s", &tag))
 	;
       else
@@ -12495,6 +12498,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   mp->disable_mrg_rxbuf = disable_mrg_rxbuf;
   mp->disable_indirect_desc = disable_indirect_desc;
   mp->enable_gso = enable_gso;
+  mp->enable_packed = enable_packed;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
@@ -12526,6 +12530,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 sw_if_index = (u32) ~ 0;
   u8 enable_gso = 0;
+  u8 enable_packed = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -12544,6 +12549,8 @@ api_modify_vhost_user_if (vat_main_t * vam)
 	is_server = 1;
       else if (unformat (i, "gso"))
 	enable_gso = 1;
+      else if (unformat (i, "packed"))
+	enable_packed = 1;
       else
 	break;
     }
@@ -12572,6 +12579,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_server = is_server;
   mp->enable_gso = enable_gso;
+  mp->enable_packed = enable_packed;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
@@ -20782,10 +20790,10 @@ _(l2_interface_vlan_tag_rewrite,                                        \
 _(create_vhost_user_if,                                                 \
         "socket <filename> [server] [renumber <dev_instance>] "         \
         "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "            \
-        "[mac <mac_address>]")                                          \
+        "[mac <mac_address>] [packed]")                                 \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
-        "[server] [renumber <dev_instance>] [gso]")                     \
+        "[server] [renumber <dev_instance>] [gso] [packed]")            \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
