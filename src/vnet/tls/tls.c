@@ -447,6 +447,17 @@ tls_app_rx_callback (session_t * tls_session)
 }
 
 int
+tls_app_tx_callback (session_t * tls_session)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get (tls_session->opaque);
+  transport_connection_reschedule (&ctx->connection);
+
+  return 0;
+}
+
+int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 				session_t * tls_session, u8 is_fail)
 {
@@ -523,6 +534,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
+  .builtin_app_tx_callback = tls_app_tx_callback,
   .session_cleanup_callback = tls_app_session_cleanup,
 };
 /* *INDENT-ON* */
