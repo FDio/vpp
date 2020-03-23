@@ -43,7 +43,8 @@
 #define SR_BEHAVIOR_DX4 7
 #define SR_BEHAVIOR_DT6 8
 #define SR_BEHAVIOR_DT4 9
-#define SR_BEHAVIOR_LAST 10	/* Must always be the last one */
+#define SR_BEHAVIOR_END_UN 10
+#define SR_BEHAVIOR_LAST 11	/* Must always be the last one */
 
 #define SR_STEER_L2 2
 #define SR_STEER_IPV4 4
@@ -138,6 +139,15 @@ typedef struct
   ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
 
   u32 nh_adj;						/**< Next_adj for xconnect usage only */
+
+  ip6_address_t usid_block;
+  ip6_address_t usid_block_mask;
+
+  u8 usid_index;
+  u8 usid_len;
+
+  u8 usid_next_index;
+  u8 usid_next_len;
 
   void *plugin_mem;				/**< Memory to be used by the plugin callback functions */
 } ip6_sr_localsid_t;
@@ -334,7 +344,7 @@ extern int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 		 u16 localsid_prefix_len, char end_psp, u8 behavior,
 		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, void *ls_plugin_mem);
+		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem);
 
 extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
