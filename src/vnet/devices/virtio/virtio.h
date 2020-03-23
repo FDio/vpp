@@ -118,6 +118,8 @@ typedef struct
   u32 *buffers;
   u16 last_used_idx;
   u16 last_kick_avail_idx;
+  u64 total_gro_vectors;
+  u32 n_gro_vectors;
 } virtio_vring_t;
 
 typedef union

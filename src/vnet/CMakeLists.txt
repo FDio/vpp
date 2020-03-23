@@ -997,6 +997,7 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_HEADERS
+  gso/gro.h
   gso/gso.h
 )
 
