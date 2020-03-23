@@ -84,7 +84,7 @@ static void vl_api_sr_localsid_add_del_t_handler
 			mp->behavior,
 			ntohl (mp->sw_if_index),
 			ntohl (mp->vlan_index),
-			ntohl (mp->fib_table), &prefix, NULL);
+			ntohl (mp->fib_table), &prefix, 0, NULL);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
