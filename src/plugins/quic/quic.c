@@ -2180,8 +2180,11 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
-      quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
-      quic_crypto_decrypt_packet (qctx, pctx);
+      if (quic_main.vnet_crypto_enabled)
+	{
+	  quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
+	  quic_crypto_decrypt_packet (qctx, pctx);
+	}
       return 0;
     }
   else if (rv == QUIC_PACKET_TYPE_MIGRATE)
@@ -2506,6 +2509,13 @@ quic_init (vlib_main_t * vm)
   qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
   clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
+
+  vnet_crypto_main_t *cm = &crypto_main;
+  if (vec_len (cm->engines) == 0)
+    qm->vnet_crypto_enabled = 0;
+  else
+    qm->vnet_crypto_enabled = 1;
+
   vec_free (a->name);
   return 0;
 }

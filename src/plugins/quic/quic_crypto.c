@@ -623,17 +623,27 @@ quic_crypto_aead_setup_crypto (ptls_aead_context_t * _ctx, int is_enc,
       assert (0);
     }
 
-  ctx->super.do_decrypt = quic_crypto_aead_decrypt;
+  if (quic_main.vnet_crypto_enabled)
+    {
+      ctx->super.do_decrypt = quic_crypto_aead_decrypt;
 
-  ctx->super.do_encrypt_init = quic_crypto_aead_encrypt_init;
-  ctx->super.do_encrypt_update = quic_crypto_aead_encrypt_update;
-  ctx->super.do_encrypt_final = quic_crypto_aead_encrypt_final;
-  ctx->super.dispose_crypto = quic_crypto_aead_dispose_crypto;
+      ctx->super.do_encrypt_init = quic_crypto_aead_encrypt_init;
+      ctx->super.do_encrypt_update = quic_crypto_aead_encrypt_update;
+      ctx->super.do_encrypt_final = quic_crypto_aead_encrypt_final;
+      ctx->super.dispose_crypto = quic_crypto_aead_dispose_crypto;
 
-  clib_rwlock_writer_lock (&quic_main.crypto_keys_quic_rw_lock);
-  ctx->key_index = vnet_crypto_key_add (vm, algo,
-					(u8 *) key, _ctx->algo->key_size);
-  clib_rwlock_writer_unlock (&quic_main.crypto_keys_quic_rw_lock);
+      clib_rwlock_writer_lock (&quic_main.crypto_keys_quic_rw_lock);
+      ctx->key_index = vnet_crypto_key_add (vm, algo,
+					    (u8 *) key, _ctx->algo->key_size);
+      clib_rwlock_writer_unlock (&quic_main.crypto_keys_quic_rw_lock);
+    }
+  else
+    {
+      if (!strcmp (ctx->super.algo->name, "AES128-GCM"))
+	ptls_openssl_aes128gcm.setup_crypto (_ctx, is_enc, key);
+      else if (!strcmp (ctx->super.algo->name, "AES256-GCM"))
+	ptls_openssl_aes256gcm.setup_crypto (_ctx, is_enc, key);
+    }
 
   return 0;
 }

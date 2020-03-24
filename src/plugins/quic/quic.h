@@ -275,6 +275,8 @@ typedef struct quic_main_
   u32 udp_fifo_prealloc;
   u32 connection_timeout;
 
+  u8 vnet_crypto_enabled;
+
   clib_rwlock_t crypto_keys_quic_rw_lock;
 } quic_main_t;
 
