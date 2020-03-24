@@ -1501,7 +1501,10 @@ recv (int fd, void *buf, size_t n, int flags)
     {
       size = vls_recvfrom (vlsh, buf, n, flags, NULL);
       if (size < 0)
-	errno = -size;
+	{
+	  errno = -size;
+	  size = -1;
+	}
     }
   else
     {
