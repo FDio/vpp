@@ -16,6 +16,24 @@
       "revId": "d1dc629b80239c95ba41822c95a825387aed7d16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43a93769_3a4e888e",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-03-24T14:43:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "debf8d9b_ac51f82f",
+      "revId": "d1dc629b80239c95ba41822c95a825387aed7d16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
