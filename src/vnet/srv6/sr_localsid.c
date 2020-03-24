@@ -312,7 +312,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (input, "del"))
 	is_del = 1;
       else if (!address_set
-	       && unformat (input, "address %U/%u", unformat_ip6_address,
+	       && unformat (input, "prefix %U/%u", unformat_ip6_address,
 			    &resulting_address, &prefix_len))
 	address_set = 1;
       else if (!address_set

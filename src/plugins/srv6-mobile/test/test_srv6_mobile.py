@@ -236,7 +236,7 @@ class TestSRv6EndMGTP6E(VppTestCase):
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
         self.vapi.cli(
-            "sr localsid address {}/64 behavior end.m.gtp6.e"
+            "sr localsid prefix {}/64 behavior end.m.gtp6.e"
             .format(pkts[0]['IPv6'].dst))
         self.vapi.cli(
             "ip route add a1::/64 via {}".format(self.ip6_nhop))
@@ -316,7 +316,7 @@ class TestSRv6EndMGTP6D(VppTestCase):
         self.vapi.cli("set sr encaps source addr A1::1")
         self.vapi.cli("sr policy add bsid D4:: next D2:: next D3::")
         self.vapi.cli(
-            "sr localsid address 2001::/64 behavior end.m.gtp6.d D4::/64")
+            "sr localsid prefix 2001::/64 behavior end.m.gtp6.d D4::/64")
         self.vapi.cli("ip route add D2::/64 via {}".format(self.ip6_nhop))
 
         self.logger.info(self.vapi.cli("show sr policies"))
