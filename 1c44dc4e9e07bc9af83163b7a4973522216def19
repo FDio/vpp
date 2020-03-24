@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46838265_76df8c03",
+        "filename": "docs/scripts/sphinx-make.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-03-24T17:20:47Z",
+      "side": 1,
+      "message": "Missing \u0027-y\u0027 option required for ci-management scripts",
+      "range": {
+        "startLine": 20,
+        "startChar": 13,
+        "endLine": 20,
+        "endChar": 14
+      },
+      "revId": "1c44dc4e9e07bc9af83163b7a4973522216def19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3f820983_c8ca76e8",
+        "filename": "docs/scripts/sphinx-make.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-03-24T17:20:47Z",
+      "side": 1,
+      "message": "Missing \u0027-y\u0027 option required for ci-management scripts",
+      "range": {
+        "startLine": 24,
+        "startChar": 17,
+        "endLine": 24,
+        "endChar": 18
+      },
+      "revId": "1c44dc4e9e07bc9af83163b7a4973522216def19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
