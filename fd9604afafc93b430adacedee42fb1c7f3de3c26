@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "69b4701c_5e37cf51",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-24T17:35:10Z",
+      "side": 1,
+      "message": "fix the length, include the header size",
+      "revId": "fd9604afafc93b430adacedee42fb1c7f3de3c26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
