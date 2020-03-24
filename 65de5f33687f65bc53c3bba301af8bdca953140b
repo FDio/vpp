@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2091e90c_051164c9",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-03-24T19:40:05Z",
+      "side": 1,
+      "message": "The idea is to explain how construct a container which matches the host so that vpp built on the host will run in a container, or vice versa. We had someone in the community start squawking because they tried a variation: nginx in an 18.04 container running on a 20.04 host. \n\nShared-memory interop, buh-bye because the pthread_mutex object is laid out differently in the two incompatible versions of glibc.\n\nI could move the section, but I have the feeling that people had better understand why I wrote it from the get-go.",
+      "parentUuid": "19256bf1_47dede20",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "04f10d4a_11e0b4c3",
         "filename": "docs/usecases/container_test.md",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "87561c24_e6510088",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-03-24T19:40:05Z",
+      "side": 1,
+      "message": "Ack, I\u0027ll make it clearer, thanks for the comment.",
+      "parentUuid": "04f10d4a_11e0b4c3",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa6a7ab6_98a8c1d6",
         "filename": "docs/usecases/container_test.md",
         "patchSetId": 1
@@ -50,6 +86,24 @@
       "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ee037ab_1fc8d4ac",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-03-24T19:40:05Z",
+      "side": 1,
+      "message": "Could be, but anyhow gitk \u003d\u003e git-core. Depends if you\u0027ll eventually want gitk or not. I\u0027ll change it.",
+      "parentUuid": "fa6a7ab6_98a8c1d6",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
