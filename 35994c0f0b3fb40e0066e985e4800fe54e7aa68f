@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2f9de60e_eda7e9a2",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-24T14:34:28Z",
+      "side": 1,
+      "message": "It\u0027s just a rough estimate of how many bytes tls should dequeue from the app fifo. Because of the high cost of tls, it might still be a bit too much.",
+      "parentUuid": "8ed76da3_fbe28e85",
+      "revId": "35994c0f0b3fb40e0066e985e4800fe54e7aa68f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "45cec795_eeaa3192",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2020-03-24T07:54:49Z",
       "side": 1,
       "message": "could we base on this value to allocate chunk in case memory is out enough?",
+      "revId": "35994c0f0b3fb40e0066e985e4800fe54e7aa68f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3f94c18c_e2d9ee3b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-24T14:34:28Z",
+      "side": 1,
+      "message": "Ah, we could use this together with enq_max to figure out how many chunks to allocate. But we\u0027ll also need to add a fifo function that\u0027s a bit smarter about the allocation. Should be doable, I guess.",
+      "parentUuid": "45cec795_eeaa3192",
       "revId": "35994c0f0b3fb40e0066e985e4800fe54e7aa68f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
