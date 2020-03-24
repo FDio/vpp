@@ -298,6 +298,12 @@ do {                                                                    \
 /** Use free bitmap to query whether given index is free */
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
 
+#define pool_is_valid_index(P,E)                                        \
+({                                                                      \
+  uword _pool_var (i) = (E) - (P);                                      \
+  (_pool_var (i) < vec_len (P)) ? 1 : 0;                                \
+})
+
 /** Free an object E in pool P. */
 #define pool_put(P,E)							\
 do {									\
