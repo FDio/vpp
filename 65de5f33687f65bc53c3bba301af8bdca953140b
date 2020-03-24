@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "19256bf1_47dede20",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-24T14:49:21Z",
+      "side": 1,
+      "message": "I would move the discussion on library compatibility to a note at the end. \nCould we simplify this section by simply calling it \"Building VPP in a Container\"?",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04f10d4a_11e0b4c3",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-24T14:49:21Z",
+      "side": 1,
+      "message": "Does this step happen in the container, pls clarify.",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa6a7ab6_98a8c1d6",
+        "filename": "docs/usecases/container_test.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-24T14:49:21Z",
+      "side": 1,
+      "message": "Should gitk be git?",
+      "revId": "65de5f33687f65bc53c3bba301af8bdca953140b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
