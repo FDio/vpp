@@ -2925,6 +2925,223 @@ macip_acl_print (acl_main_t * am, u32 macip_acl_index)
 }
 
 static clib_error_t *
+acl_set_aclplugin_interface_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index, is_add, is_input, acl_index;
+
+  is_add = is_input = 1;
+  acl_index = sw_if_index = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U",
+		    unformat_vnet_sw_interface, vnet_get_main (),
+		    &sw_if_index))
+	;
+      else if (unformat (line_input, "add"))
+	is_add = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "acl %d", &acl_index))
+	;
+      else if (unformat (line_input, "input"))
+	is_input = 1;
+      else if (unformat (line_input, "output"))
+	is_input = 0;
+      else
+	break;
+    }
+
+  if (~0 == sw_if_index)
+    return (clib_error_return (0, "invalid interface"));
+  if (~0 == acl_index)
+    return (clib_error_return (0, "invalid acl"));
+
+  acl_interface_add_del_inout_acl (sw_if_index, is_add, is_input, acl_index);
+
+  unformat_free (line_input);
+  return (NULL);
+}
+
+#define vec_validate_acl_rules(v, idx) \
+  do {                                 \
+    if (vec_len(v) < idx+1) {  \
+      vec_validate(v, idx); \
+      v[idx].is_permit = 0x1; \
+      v[idx].srcport_or_icmptype_last = 0xffff; \
+      v[idx].dstport_or_icmpcode_last = 0xffff; \
+    } \
+  } while (0)
+
+static clib_error_t *
+acl_set_aclplugin_acl_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vl_api_acl_rule_t *rules = 0;
+  int rv;
+  int rule_idx = 0;
+  int n_rules_override = -1;
+  u32 proto = 0;
+  u32 port1 = 0;
+  u32 port2 = 0;
+  u32 action = 0;
+  u32 tcpflags, tcpmask;
+  u32 src_prefix_length = 0, dst_prefix_length = 0;
+  ip4_address_t src_v4address, dst_v4address;
+  ip6_address_t src_v6address, dst_v6address;
+  u8 *tag = (u8 *) "cli";
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "ipv6"))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_ipv6 = 1;
+	}
+      else if (unformat (line_input, "ipv4"))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_ipv6 = 0;
+	}
+      else if (unformat (line_input, "permit+reflect"))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_permit = 2;
+	}
+      else if (unformat (line_input, "permit"))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_permit = 1;
+	}
+      else if (unformat (line_input, "deny"))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_permit = 0;
+	}
+      else if (unformat (line_input, "count %d", &n_rules_override))
+	{
+	  /* we will use this later */
+	}
+      else if (unformat (line_input, "action %d", &action))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].is_permit = action;
+	}
+      else if (unformat (line_input, "src %U/%d",
+			 unformat_ip4_address, &src_v4address,
+			 &src_prefix_length))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
+	  rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+	  rules[rule_idx].is_ipv6 = 0;
+	}
+      else if (unformat (line_input, "src %U/%d",
+			 unformat_ip6_address, &src_v6address,
+			 &src_prefix_length))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
+	  rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+	  rules[rule_idx].is_ipv6 = 1;
+	}
+      else if (unformat (line_input, "dst %U/%d",
+			 unformat_ip4_address, &dst_v4address,
+			 &dst_prefix_length))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  memcpy (rules[rule_idx].dst_ip_addr, &dst_v4address, 4);
+	  rules[rule_idx].dst_ip_prefix_len = dst_prefix_length;
+	  rules[rule_idx].is_ipv6 = 0;
+	}
+      else if (unformat (line_input, "dst %U/%d",
+			 unformat_ip6_address, &dst_v6address,
+			 &dst_prefix_length))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  memcpy (rules[rule_idx].dst_ip_addr, &dst_v6address, 16);
+	  rules[rule_idx].dst_ip_prefix_len = dst_prefix_length;
+	  rules[rule_idx].is_ipv6 = 1;
+	}
+      else if (unformat (line_input, "sport %d-%d", &port1, &port2))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].srcport_or_icmptype_first = htons (port1);
+	  rules[rule_idx].srcport_or_icmptype_last = htons (port2);
+	}
+      else if (unformat (line_input, "sport %d", &port1))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].srcport_or_icmptype_first = htons (port1);
+	  rules[rule_idx].srcport_or_icmptype_last = htons (port1);
+	}
+      else if (unformat (line_input, "dport %d-%d", &port1, &port2))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].dstport_or_icmpcode_first = htons (port1);
+	  rules[rule_idx].dstport_or_icmpcode_last = htons (port2);
+	}
+      else if (unformat (line_input, "dport %d", &port1))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].dstport_or_icmpcode_first = htons (port1);
+	  rules[rule_idx].dstport_or_icmpcode_last = htons (port1);
+	}
+      else if (unformat (line_input, "tcpflags %d %d", &tcpflags, &tcpmask))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].tcp_flags_value = tcpflags;
+	  rules[rule_idx].tcp_flags_mask = tcpmask;
+	}
+      else
+	if (unformat (line_input, "tcpflags %d mask %d", &tcpflags, &tcpmask))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].tcp_flags_value = tcpflags;
+	  rules[rule_idx].tcp_flags_mask = tcpmask;
+	}
+      else if (unformat (line_input, "proto %d", &proto))
+	{
+	  vec_validate_acl_rules (rules, rule_idx);
+	  rules[rule_idx].proto = proto;
+	}
+      else if (unformat (line_input, "tag %s", &tag))
+	{
+	}
+      else if (unformat (line_input, ","))
+	{
+	  rule_idx++;
+	  vec_validate_acl_rules (rules, rule_idx);
+	}
+      else
+	break;
+    }
+
+  u32 acl_index = ~0;
+
+  rv = acl_add_list (vec_len (rules), rules, &acl_index, tag);
+
+  vec_free (rules);
+
+  if (rv)
+    return (clib_error_return (0, "failed"));
+
+  vlib_cli_output (vm, "ACL index:%d", acl_index);
+
+  return (NULL);
+}
+
+static clib_error_t *
 acl_show_aclplugin_macip_acl_fn (vlib_main_t * vm,
 				 unformat_input_t *
 				 input, vlib_cli_command_t * cmd)
@@ -3519,6 +3736,18 @@ VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
     .path = "clear acl-plugin sessions",
     .short_help = "clear acl-plugin sessions",
     .function = acl_clear_aclplugin_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_set_interface_command, static) = {
+    .path = "set acl-plugin interface",
+    .short_help = "set acl-plugin interface <interface> <input|output> <acl INDEX> [del] ",
+    .function = acl_set_aclplugin_interface_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_set_acl_command, static) = {
+    .path = "set acl-plugin acl",
+    .short_help = "set acl-plugin acl <permit|deny> src <PREFIX> dst <PREFIX> proto X sport X-Y dport X-Y [tag FOO] {use comma separated list for multiple rules}",
+    .function = acl_set_aclplugin_acl_fn,
 };
 /* *INDENT-ON* */
 
