@@ -784,7 +784,7 @@ quic_on_stream_destroy (quicly_stream_t * stream, int err)
   clib_mem_free (stream->data);
 }
 
-static int
+static void
 quic_on_stop_sending (quicly_stream_t * stream, int err)
 {
 #if QUIC_DEBUG >= 2
@@ -797,10 +797,9 @@ quic_on_stop_sending (quicly_stream_t * stream, int err)
 		session_handle (stream_session), quic_format_err, err);
 #endif
   /* TODO : handle STOP_SENDING */
-  return 0;
 }
 
-static int
+static void
 quic_on_receive_reset (quicly_stream_t * stream, int err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
@@ -813,10 +812,9 @@ quic_on_receive_reset (quicly_stream_t * stream, int err)
 		session_handle (stream_session), quic_format_err, err);
 #endif
   session_transport_closing_notify (&sctx->connection);
-  return 0;
 }
 
-static int
+static void
 quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 		 size_t len)
 {
@@ -846,7 +844,7 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 		stream_session->thread_index, f,
 		max_enq, len, stream_data->app_rx_data_len, off,
 		off - stream_data->app_rx_data_len + len);
-      return 0;
+      return;
     }
   if (PREDICT_FALSE ((off - stream_data->app_rx_data_len + len) > max_enq))
     {
@@ -858,7 +856,7 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 		stream_session->thread_index, f,
 		max_enq, len, stream_data->app_rx_data_len, off,
 		off - stream_data->app_rx_data_len + len);
-      return 1;
+      return;
     }
   if (off == stream_data->app_rx_data_len)
     {
@@ -888,7 +886,6 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 					   len, (u8 *) src);
       QUIC_ASSERT (rlen == 0);
     }
-  return 0;
 }
 
 void
@@ -912,7 +909,7 @@ quic_fifo_egress_shift (quicly_stream_t * stream, size_t delta)
   QUIC_ASSERT (!rv);
 }
 
-int
+void
 quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
 		       size_t * len, int *wrote_all)
 {
@@ -944,8 +941,6 @@ quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
     stream_data->app_tx_data_len = off + *len;
 
   svm_fifo_peek (f, off, *len, dst);
-
-  return 0;
 }
 
 static const quicly_stream_callbacks_t quic_stream_callbacks = {
@@ -2180,8 +2175,11 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
-      quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
-      quic_crypto_decrypt_packet (qctx, pctx);
+      if (quic_main.vnet_crypto_enabled)
+	{
+	  quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
+	  quic_crypto_decrypt_packet (qctx, pctx);
+	}
       return 0;
     }
   else if (rv == QUIC_PACKET_TYPE_MIGRATE)
@@ -2506,6 +2504,13 @@ quic_init (vlib_main_t * vm)
   qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
   clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
+
+  vnet_crypto_main_t *cm = &crypto_main;
+  if (vec_len (cm->engines) == 0)
+    qm->vnet_crypto_enabled = 0;
+  else
+    qm->vnet_crypto_enabled = 1;
+
   vec_free (a->name);
   return 0;
 }
