@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45d5bf7c_cbbf3087",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "Please use uN as in the IETF draft.",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3caefc76_1c980c9f",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "Please use two different behavior ids for End and uN. This helps the control-plane identify the required behavior.",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d41b892c_470bde02",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "This implies you only execute uN upon presence of SRH. This is incorrect AFAIK.",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1795f90d_0e51b6fb",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 799,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "This check in the dataplane seems expensive. Should we not use the FIB to do this for us? Then we would get it for free..",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e89e355_80e14d91",
+        "filename": "test/test_srv6_usid.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "Please remove reference to TestSRv6EndMGTP6D",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "479735cd_c6f9c80c",
+        "filename": "test/test_srv6_usid.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2020-03-24T09:07:34Z",
+      "side": 1,
+      "message": "Please include test case for shift with no SRH\nPlease include case of last uSID and End function",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
