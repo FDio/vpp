@@ -402,6 +402,70 @@ format_memif_descriptor (u8 * s, va_list * args)
   return s;
 }
 
+static u8 *
+format_memif_descriptor_detail (u8 * s, va_list * args)
+{
+  memif_if_t *mif = va_arg (*args, memif_if_t *);
+  memif_queue_t *mq = va_arg (*args, memif_queue_t *);
+  u32 indent = format_get_indent (s);
+  memif_ring_t *ring;
+  u16 ring_size;
+  u16 slot;
+  u32 *buf = NULL;
+
+
+  ring_size = 1 << mq->log2_ring_size;
+  ring = mq->ring;
+  if (ring)
+    {
+      s = format (s, "%Udescriptor table:\n", format_white_space, indent);
+      s =
+	format (s,
+		"%Uid    flags   len         address       offset    user address      buffer content\n",
+		format_white_space, indent);
+      s =
+	format (s,
+		"%U===== ===== ======== ================== ====== ==================  =======================================================================\n",
+		format_white_space, indent);
+      for (slot = 0; slot < ring_size; slot++)
+	{
+	  buf = memif_get_buffer (mif, ring, slot);
+	  s =
+	    format (s,
+		    "%U%-5d %-5d %-7d  0x%016lx %-8d 0x%016lx  %08x %08x %08x %08x %08x %08x %08x %08x\n",
+		    format_white_space, indent, slot, ring->desc[slot].flags,
+		    ring->desc[slot].length,
+		    mif->regions[ring->desc[slot].region].shm,
+		    ring->desc[slot].offset, buf, clib_host_to_net_u32 (*buf),
+		    clib_host_to_net_u32 (*(buf + 1)),
+		    clib_host_to_net_u32 (*(buf + 2)),
+		    clib_host_to_net_u32 (*(buf + 3)),
+		    clib_host_to_net_u32 (*(buf + 4)),
+		    clib_host_to_net_u32 (*(buf + 5)),
+		    clib_host_to_net_u32 (*(buf + 6)),
+		    clib_host_to_net_u32 (*(buf + 7)));
+	  for (int iter = 1; iter < 4; iter++)
+	    {
+	      buf += 8;
+	      s =
+		format (s,
+			"%U                                                                   %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			format_white_space, indent,
+			clib_host_to_net_u32 (*buf),
+			clib_host_to_net_u32 (*(buf + 1)),
+			clib_host_to_net_u32 (*(buf + 2)),
+			clib_host_to_net_u32 (*(buf + 3)),
+			clib_host_to_net_u32 (*(buf + 4)),
+			clib_host_to_net_u32 (*(buf + 5)),
+			clib_host_to_net_u32 (*(buf + 6)),
+			clib_host_to_net_u32 (*(buf + 7)));
+	    }
+	}
+      s = format (s, "\n");
+    }
+  return s;
+}
+
 static clib_error_t *
 memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
@@ -413,6 +477,7 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   memif_queue_t *mq;
   uword i;
   int show_descr = 0;
+  int show_descr_detail = 0;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
   u32 sock_id;
@@ -425,7 +490,15 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
       else if (unformat (input, "descriptors"))
-	show_descr = 1;
+	{
+	  show_descr = 1;
+	  if (unformat (input, "detail"))
+	    {
+	      show_descr = 0;
+	      show_descr_detail = 1;
+	    }
+
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -512,6 +585,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
+          if (show_descr_detail)
+            vlib_cli_output (vm, "  %U", format_memif_descriptor_detail, mif, mq);
 	}
       vec_foreach_index (i, mif->rx_queues)
 	{
@@ -519,6 +594,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
+          if (show_descr_detail)
+            vlib_cli_output (vm, "  %U", format_memif_descriptor_detail, mif, mq);
 	}
       /* *INDENT-ON* */
     }
