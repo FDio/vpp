@@ -508,3 +508,133 @@ dhcp traffic spew:
 
 The "|| true" bit keeps going if eth1 already has the indicated ipv6
 address.
+
+Container / Host Interoperation
+===============================
+
+Host / container interoperation is highly desirable. If the host and a
+set of containers don't run the same distro _and distro version_, it's
+reasonably likely that the glibc versions won't match. That, in turn,
+makes vpp binaries built in one environment fail in the other.
+
+Trying to install multiple versions of glibc - especially at the host
+level - often ends very badly and is _not recommended_. It's not just
+glibc, either. The dynamic loader ld-linux-xxx-so.2 is glibc version
+specific.
+
+Fortunately, it's reasonable easy to build lxd container images based on
+specific Ubuntu or Debian versions.
+
+### Create a custom root filesystem image
+
+First, install the "debootstrap" tool:
+
+```
+    sudo apt-get install debootstrap
+```
+
+Make a temp directory, and use debootstrap to populate it. In this
+example, we create an Ubuntu 20.04 (focal fossa) base image:
+
+```
+    # mkdir /tmp/myroot
+    # debootstrap focal /tmp/myroot http://archive.ubuntu.com/ubuntu
+```
+
+To tinker with the base image (if desired):
+
+```
+    # chroot /tmp/myroot
+    <add packages, etc.>
+    # exit
+```
+
+Make a compressed tarball of the base image:
+
+```
+    # tar zcf /tmp/rootfs.tar.gz -C /tmp/myroot .
+```
+
+Create a "metadata.yaml" file which describes the base image:
+
+```
+    architecture: "x86_64"
+    # To get current date in Unix time, use `date +%s` command
+    creation_date: 1458040200
+    properties:
+    architecture: "x86_64"
+    description: "My custom Focal Fossa image"
+    os: "Ubuntu"
+    release: "focal"
+```
+
+Make a compressed tarball of metadata.yaml:
+
+```
+    # tar zcf metadata.tar.gz metadata.yaml
+```
+
+Import the image into lxc / lxd:
+
+```
+    $ lxc image import metadata.tar.gz rootfd.tar.gz --alias focal-base
+```
+
+### Create a container which uses the customized base image:
+
+```
+    $ lxc launch focal-base focaltest
+    $ lxc exec focaltest bash
+```
+
+The next several steps should be executed in the container, in the
+bash shell spun up by "lxc exec..."
+
+### Configure container networking
+
+In the container, create /etc/netplan/50-cloud-init.yaml:
+
+```
+    network:
+        version: 2
+        ethernets:
+            eth0:
+                dhcp4: true
+```
+
+Use "cat > /etc/netplan/50-cloud-init.yaml", and cut-'n-paste if your
+favorite text editor is AWOL.
+
+Apply the configuration:
+
+```
+    # netplan apply
+```
+
+At this point, eth0 should have an ip address, and you should see
+a default route with "route -n".
+
+### Configure apt
+
+Again, in the container, set up /etc/apt/sources.list via cut-'n-paste
+from a recently update "focal fossa" host. Something like so:
+
+```
+    deb http://us.archive.ubuntu.com/ubuntu/ focal main restricted
+    deb http://us.archive.ubuntu.com/ubuntu/ focal-updates main restricted
+    deb http://us.archive.ubuntu.com/ubuntu/ focal universe
+    deb http://us.archive.ubuntu.com/ubuntu/ focal-updates universe
+    deb http://us.archive.ubuntu.com/ubuntu/ focal multiverse
+    deb http://us.archive.ubuntu.com/ubuntu/ focal-updates multiverse
+    deb http://us.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
+    deb http://security.ubuntu.com/ubuntu focal-security main restricted
+    deb http://security.ubuntu.com/ubuntu focal-security universe
+    deb http://security.ubuntu.com/ubuntu focal-security multiverse
+```
+
+"apt-get update" and "apt-install" should produce reasonable results.
+Suggest "apt-get install make git".
+
+At this point, you can use the "/scratch" sharepoint (or similar) to
+execute "make install-dep install-ext-deps" to set up the container
+with the vpp toolchain; proceed as desired.
