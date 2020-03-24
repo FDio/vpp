@@ -614,12 +614,14 @@ avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad)
+avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad, int is_enable)
 {
   virtchnl_promisc_info_t pi = { 0 };
 
   pi.vsi_id = ad->vsi_id;
-  pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
+
+  if (is_enable)
+    pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
 
   avf_log_debug (ad, "config_promisc_mode: unicast %s multicast %s",
 		 pi.flags & FLAG_VF_UNICAST_PROMISC ? "on" : "off",
@@ -927,9 +929,6 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   if ((error = avf_op_disable_vlan_stripping (vm, ad)))
     return error;
 
-  if ((error = avf_config_promisc_mode (vm, ad)))
-    return error;
-
   /*
    * Init Queues
    */
@@ -1123,8 +1122,28 @@ error:
 static u32
 avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
+  vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
-  vlib_log_warn (am->log_class, "TODO");
+  avf_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
+  if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
+    {
+      clib_error_t *error;
+      int promisc_enabled = (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
+      u32 new_flags = promisc_enabled ?
+	ad->flags | AVF_DEVICE_F_PROMISC : ad->flags & ~AVF_DEVICE_F_PROMISC;
+
+      if (new_flags == ad->flags)
+	return flags;
+
+      if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
+	{
+	  avf_log_err (ad, "%s: %U", format_clib_error, error);
+	  clib_error_free (error);
+	  return 0;
+	}
+
+      ad->flags = new_flags;
+    }
   return 0;
 }
 

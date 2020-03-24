@@ -69,7 +69,8 @@
   _(3, VA_DMA, "vaddr-dma") \
   _(4, LINK_UP, "link-up") \
   _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
-  _(6, ELOG, "elog")
+  _(6, ELOG, "elog") \
+  _(7, PROMISC, "promisc")
 
 enum
 {
