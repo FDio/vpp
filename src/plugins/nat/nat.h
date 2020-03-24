@@ -219,10 +219,13 @@ _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
 _(IN2OUT_PACKETS, "good in2out packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
+_(SESS_EXPIRED, "session expired")                      \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
+_(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
 _(MAX_REASS, "maximum reassemblies exceeded")           \
 _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
+_(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
 _(UDP_PACKETS, "UDP packets")                           \
@@ -246,10 +249,13 @@ _(OUT2IN_PACKETS, "good out2in packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(NO_TRANSLATION, "no translation")                     \
+_(SESS_EXPIRED, "session expired")                      \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
+_(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
 _(MAX_REASS, "maximum reassemblies exceeded")           \
 _(MAX_FRAG, "maximum fragments per reassembly exceeded")\
+_(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
 _(UDP_PACKETS, "UDP packets")                           \
