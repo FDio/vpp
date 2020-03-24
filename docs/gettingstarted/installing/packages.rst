@@ -35,19 +35,7 @@ vpp-plugins
 
 Vector Packet Processing plugin modules.
 
-* acl
-* dpdk
-* flowprobe
-* gtpu
-* ixge
-* kubeproxy
-* l2e
-* lb
-* memif
-* nat
-* pppoe
-* sixrd
-* stn
+.. include:: ../../dynamic_includes/plugin_list.inc
 
 vpp-dbg
 -------
