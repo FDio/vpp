@@ -486,13 +486,13 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->dh_private_key = vec_new (u8, t->key_len);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	  DH_get0_key (dh, &pub_key, &priv_key);
-	  r = BN_bn2bin (pub_key, sa->i_dh_data);
+	  r = BN_bn2binpad (pub_key, sa->i_dh_data, t->key_len);
 	  ASSERT (r == t->key_len);
-	  r = BN_bn2bin (priv_key, sa->dh_private_key);
+	  r = BN_bn2binpad (priv_key, sa->dh_private_key, t->key_len);
 #else
-	  r = BN_bn2bin (dh->pub_key, sa->i_dh_data);
+	  r = BN_bn2binpad (dh->pub_key, sa->i_dh_data, t->key_len);
 	  ASSERT (r == t->key_len);
-	  r = BN_bn2bin (dh->priv_key, sa->dh_private_key);
+	  r = BN_bn2binpad (dh->priv_key, sa->dh_private_key, t->key_len);
 #endif
 	  ASSERT (r == t->key_len);
 	}
@@ -501,9 +501,9 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->r_dh_data = vec_new (u8, t->key_len);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	  DH_get0_key (dh, &pub_key, &priv_key);
-	  r = BN_bn2bin (pub_key, sa->r_dh_data);
+	  r = BN_bn2binpad (pub_key, sa->r_dh_data, t->key_len);
 #else
-	  r = BN_bn2bin (dh->pub_key, sa->r_dh_data);
+	  r = BN_bn2binpad (dh->pub_key, sa->r_dh_data, t->key_len);
 #endif
 	  ASSERT (r == t->key_len);
 
@@ -511,7 +511,14 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
 	  r = DH_compute_key (sa->dh_shared_key, ex, dh);
-	  ASSERT (r == t->key_len);
+	  ASSERT (t->key_len >= r);
+	  int pad = t->key_len - r;
+	  if (pad)
+	    {
+	      vec_insert (sa->dh_shared_key, pad, 0);
+	      clib_memset (sa->dh_shared_key, 0, pad);
+	      _vec_len (sa->dh_shared_key) -= pad;
+	    }
 	  BN_clear_free (ex);
 	}
       DH_free (dh);
@@ -630,7 +637,14 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       sa->dh_shared_key = vec_new (u8, t->key_len);
       ex = BN_bin2bn (sa->r_dh_data, vec_len (sa->r_dh_data), NULL);
       r = DH_compute_key (sa->dh_shared_key, ex, dh);
-      ASSERT (r == t->key_len);
+      ASSERT (t->key_len >= r);
+      int pad = t->key_len - r;
+      if (pad)
+	{
+	  vec_insert (sa->dh_shared_key, pad, 0);
+	  clib_memset (sa->dh_shared_key, 0, pad);
+	  _vec_len (sa->dh_shared_key) -= pad;
+	}
       BN_clear_free (ex);
       DH_free (dh);
     }
