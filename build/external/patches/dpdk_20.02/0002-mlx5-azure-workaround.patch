@@ -1,0 +1,22 @@
+ drivers/net/mlx5/mlx5_ethdev.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/net/mlx5/mlx5_ethdev.c b/drivers/net/mlx5/mlx5_ethdev.c
+index d7d3bc73c..c21c38485 100644
+--- a/drivers/net/mlx5/mlx5_ethdev.c
++++ b/drivers/net/mlx5/mlx5_ethdev.c
+@@ -1032,11 +1032,14 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
+ 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+ 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+ 				  ETH_LINK_SPEED_FIXED);
++#if 0
++    /* FIXME: this does not work on Azure w/ CX4-LX */
+ 	if (((dev_link.link_speed && !dev_link.link_status) ||
+ 	     (!dev_link.link_speed && dev_link.link_status))) {
+ 		rte_errno = EAGAIN;
+ 		return -rte_errno;
+ 	}
++#endif
+ 	*link = dev_link;
+ 	return 0;
+ }
