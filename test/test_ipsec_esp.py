@@ -545,6 +545,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
 # GEN     AES-GCM-192/NONE AES-GCM-256/NONE AES-CBC-128/MD5-96 \
 # GEN     AES-CBC-192/SHA1-96 AES-CBC-256/SHA1-96 \
 # GEN     3DES-CBC/SHA1-96 NONE/SHA1-96; do \
+# GEN      [[ ${FLG} == "ESN" &&  ${ALG} == *"NONE" ]] && continue
 # GEN      echo -e "\n\nclass Test_${ENG}_${FLG}_${ALG}(RunTestIpsecEspAll):" |
 # GEN             sed -e 's/-/_/g' -e 's#/#_#g' ; \
 # GEN      echo '    """'$ENG $FLG $ALG IPSec test'"""' ;
@@ -597,24 +598,6 @@ class Test_ia32_noESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_ia32_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """ia32 noESN NONE/SHA1-96 IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_ia32_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
-    """ia32 ESN AES-GCM-128/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_ia32_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
-    """ia32 ESN AES-GCM-192/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_ia32_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
-    """ia32 ESN AES-GCM-256/NONE IPSec test"""
     def test_ipsec(self):
         self.run_test()
 
@@ -697,24 +680,6 @@ class Test_ipsecmb_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
-class Test_ipsecmb_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
-    """ipsecmb ESN AES-GCM-128/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_ipsecmb_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
-    """ipsecmb ESN AES-GCM-192/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_ipsecmb_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
-    """ipsecmb ESN AES-GCM-256/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
 class Test_ipsecmb_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESN AES-CBC-128/MD5-96 IPSec test"""
     def test_ipsec(self):
@@ -789,24 +754,6 @@ class Test_openssl_noESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_openssl_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl noESN NONE/SHA1-96 IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_openssl_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
-    """openssl ESN AES-GCM-128/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_openssl_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
-    """openssl ESN AES-GCM-192/NONE IPSec test"""
-    def test_ipsec(self):
-        self.run_test()
-
-
-class Test_openssl_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
-    """openssl ESN AES-GCM-256/NONE IPSec test"""
     def test_ipsec(self):
         self.run_test()
 
