@@ -659,7 +659,6 @@ VLIB_CLI_COMMAND (ip4_table_command, static) = {
   .path = "ip table",
   .short_help = "ip table [add|del] <table-id>",
   .function = vnet_ip4_table_cmd,
-  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
@@ -675,7 +674,6 @@ VLIB_CLI_COMMAND (ip6_table_command, static) = {
   .path = "ip6 table",
   .short_help = "ip6 table [add|del] <table-id>",
   .function = vnet_ip6_table_cmd,
-  .is_mp_safe = 1,
 };
 
 static clib_error_t *
