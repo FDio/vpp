@@ -431,6 +431,7 @@ typedef struct
   u32 current_remote_id_mask;
   u32 old_remote_id;
   u8 old_remote_id_present;
+  u8 init_response_received;
 
   ikev2_child_sa_t *childs;
 } ikev2_sa_t;

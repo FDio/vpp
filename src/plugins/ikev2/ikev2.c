@@ -377,6 +377,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   ikev2_sa_transform_t *t = 0, *t2;
   ikev2_main_t *km = &ikev2_main;
 
+  sai->init_response_received = 1;
 
   /*move some data to the new SA */
 #define _(A) ({void* __tmp__ = (A); (A) = 0; __tmp__;})
@@ -2433,10 +2434,18 @@ ikev2_node_fn (vlib_main_t * vm,
 			  ikev2_sa_t *sai =
 			    pool_elt_at_index (km->sais, p[0]);
 
-			  ikev2_complete_sa_data (sa0, sai);
-			  ikev2_calc_keys (sa0);
-			  ikev2_sa_auth_init (sa0);
-			  len = ikev2_generate_message (sa0, ike0, 0);
+                          if (sai->init_response_received)
+                            {
+                              /* we've already processed sa-init response */
+                              sa0->state = IKEV2_STATE_UNKNOWN;
+                            }
+                          else
+                            {
+                              ikev2_complete_sa_data (sa0, sai);
+                              ikev2_calc_keys (sa0);
+                              ikev2_sa_auth_init (sa0);
+                              len = ikev2_generate_message (sa0, ike0, 0);
+                            }
 			}
 		    }
 
@@ -3880,6 +3889,9 @@ ikev2_process_pending_sa_init (ikev2_main_t * km)
   hash_foreach (ispi, sai, km->sa_by_ispi,
   ({
     sa = pool_elt_at_index (km->sais, sai);
+    if (sa->init_response_received)
+      continue;
+
     u32 bi0;
     if (vlib_buffer_alloc (km->vlib_main, &bi0, 1) != 1)
       return;
