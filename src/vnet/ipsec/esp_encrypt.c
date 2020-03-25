@@ -463,6 +463,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 *l2_hdr, l2_len, *ip_hdr, ip_len;
 	  ip6_ext_header_t *ext_hdr;
 	  udp_header_t *udp = 0;
+	  u16 udp_len = 0;
 	  u8 *old_ip_hdr = vlib_buffer_get_current (b[0]);
 
 	  ip_len = is_ip6 ?
@@ -537,13 +538,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (udp)
 		{
 		  esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 1);
-		  esp_fill_udp_hdr (sa0, udp, len - ip_len);
+		  udp_len = len - ip_len;
 		}
 	      else
 		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
 	    }
 
 	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
+
+	  if (udp)
+	    {
+	      esp_fill_udp_hdr (sa0, udp, udp_len);
+	    }
 
 	  if (!is_tun)
 	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
