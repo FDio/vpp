@@ -2761,7 +2761,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
       return r;
     }
 
-  if (IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 != ts->crypto_alg)
+  if (is_ike || IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 != ts->crypto_alg)
     {
       /* Integrity */
       error = 1;
