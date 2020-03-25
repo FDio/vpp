@@ -282,6 +282,11 @@ install-dep:
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
+# Ubuntu 18.04 (Bionic Beaver) the shipped default does not catch invocations of
+# cc and c++. To fully install ccache there, you need:
+ifeq ($(OS_VERSION_ID),18.04)
+	@sudo -E /usr/sbin/update-ccache-symlinks
+endif
 else ifneq ("$(wildcard /etc/redhat-release)","")
 ifeq ($(OS_ID),rhel)
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
