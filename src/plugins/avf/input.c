@@ -364,12 +364,6 @@ no_more_desc:
   or_qw1 |= or_q1x4[0] | or_q1x4[1] | or_q1x4[2] | or_q1x4[3];
 #endif
 
-  /* refill rx ring */
-  if (ad->flags & AVF_DEVICE_F_VA_DMA)
-    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */ );
-  else
-    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
-
   vlib_get_buffers (vm, to_next, ptd->bufs, n_rx_packets);
 
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = ad->sw_if_index;
@@ -437,6 +431,12 @@ no_more_desc:
 				   ad->hw_if_index, n_rx_packets, n_rx_bytes);
 
 done:
+  /* refill rx ring */
+  if (ad->flags & AVF_DEVICE_F_VA_DMA)
+    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */ );
+  else
+    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
+
   return n_rx_packets;
 }
 
