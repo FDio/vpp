@@ -106,14 +106,12 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0, int is_ip6)
       tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
 					    gho.l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
-      tcp->checksum = 0;
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
       udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
 					    gho.l4_hdr_offset);
       l4_hdr_sz = sizeof (*udp);
-      udp->checksum = 0;
     }
 
   if (b0->flags & (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6))
