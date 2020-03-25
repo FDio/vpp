@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6b66f2b4_a373e9ad",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 1920
+      },
+      "writtenOn": "2020-03-25T19:02:39Z",
+      "side": 1,
+      "message": "Disagree to use capital letter only on this function. If we have to follow IETF draft, all other function names must follow the draft.",
+      "revId": "eb0314b89de5c2b8a18e03508b260761d45b3e0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
