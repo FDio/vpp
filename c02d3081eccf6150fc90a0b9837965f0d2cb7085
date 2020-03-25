@@ -22,6 +22,30 @@
       "revId": "c02d3081eccf6150fc90a0b9837965f0d2cb7085",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb3306f3_70916fbf",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-03-25T16:14:27Z",
+      "side": 1,
+      "message": "\u003e\u003e should we just have here what we really use?\n\u003e\u003e exposing flag which VPP just ignores will just make confusion.\nOk, will check only currently used flags and remove unused. Can be added later if it will be needed.\n\u003e\u003e Also consider using #define forach_rx_offload_flags ... so you can autogenerate format functions.\nOk. I missed it.",
+      "parentUuid": "a3204b48_c89d398f",
+      "range": {
+        "startLine": 193,
+        "startChar": 0,
+        "endLine": 211,
+        "endChar": 48
+      },
+      "revId": "c02d3081eccf6150fc90a0b9837965f0d2cb7085",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
