@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8347fca0_000870f3",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-25T15:56:35Z",
+      "side": 1,
+      "message": "Yup, but in 457 we write to the fifo and we might fill it",
+      "parentUuid": "cca3ba34_df93e452",
+      "revId": "dce0867713f334aea60da48cd84cd79dfec480a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "36cd7448_5edb1109",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2020-03-25T07:16:06Z",
       "side": 1,
       "message": "like above function, it may introduce a inline function to do this set.",
+      "revId": "dce0867713f334aea60da48cd84cd79dfec480a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80b63cb7_6c1d3de0",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-03-25T15:56:35Z",
+      "side": 1,
+      "message": "Yup, we might want to do this in tls.h to allow picotls to reuse it. Actually we could make the whole if/else an inline function. But I wanted first to settle on a solution an afterwards we can generalize it.",
+      "parentUuid": "36cd7448_5edb1109",
       "revId": "dce0867713f334aea60da48cd84cd79dfec480a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
