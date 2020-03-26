@@ -172,7 +172,7 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     }
   if (longest_match)
     {
-      unformat (input, str_match);
+      (void) unformat (input, str_match);
       return 1;
     }
 
