@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0e4358e_c9ad472e",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 609,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-26T10:53:54Z",
+      "side": 1,
+      "message": "This is a legitimate bug-fix separate from the feature.",
+      "range": {
+        "startLine": 609,
+        "startChar": 3,
+        "endLine": 609,
+        "endChar": 46
+      },
+      "revId": "7bc3c8456353853901bb9432c1f1ea6e988077f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
