@@ -1308,12 +1308,13 @@ format_fifo_segment_type (u8 * s, va_list * args)
 u8 *
 format_fifo_segment (u8 * s, va_list * args)
 {
-  u32 count, indent, active_fifos, free_fifos, fifo_hdr = 0;
+  u32 count, indent, active_fifos, free_fifos;
   fifo_segment_t *fs = va_arg (*args, fifo_segment_t *);
   int verbose __attribute__ ((unused)) = va_arg (*args, int);
   uword est_chunk_bytes, est_free_seg_bytes, free_chunks;
   uword chunk_bytes = 0, free_seg_bytes, chunk_size;
   uword tracked_cached_bytes;
+  uword fifo_hdr = 0, reserved;
   fifo_segment_header_t *fsh;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
@@ -1389,13 +1390,13 @@ format_fifo_segment (u8 * s, va_list * args)
   usage = (100.0 * in_use) / allocated;
   mem_st = fifo_segment_get_mem_status (fs);
   virt = fsh_virtual_mem (fsh);
+  reserved = fsh->n_reserved_bytes;
 
   s = format (s, "\n%Useg free bytes: %U (%lu) estimated: %U (%lu) reserved:"
 	      " %U (%lu)\n", format_white_space, indent + 2,
 	      format_memory_size, free_seg_bytes, free_seg_bytes,
 	      format_memory_size, est_free_seg_bytes, est_free_seg_bytes,
-	      format_memory_size, fsh->n_reserved_bytes,
-	      fsh->n_reserved_bytes);
+	      format_memory_size, reserved, reserved);
   s = format (s, "%Uchunk free bytes: %U (%lu) estimated: %U (%lu) tracked:"
 	      " %U (%lu)\n", format_white_space, indent + 2,
 	      format_memory_size, chunk_bytes, chunk_bytes,

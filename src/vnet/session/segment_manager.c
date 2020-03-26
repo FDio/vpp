@@ -843,6 +843,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   segment_manager_main_t *smm = &sm_main;
   u8 show_segments = 0, verbose = 0;
+  uword max_fifo_size;
   segment_manager_t *sm;
   fifo_segment_t *seg;
   app_worker_t *app_wrk;
@@ -872,11 +873,12 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
         app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
         app = app_wrk ? application_get (app_wrk->app_index) : 0;
         custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
+        max_fifo_size = sm->max_fifo_size;
 
 	vlib_cli_output (vm, "%-6d%=10d%=10d%=13U%=11d%=11d%=12s",
                          segment_manager_index (sm),
 			 sm->app_wrk_index, pool_elts (sm->segments),
-                         format_memory_size, sm->max_fifo_size,
+                         format_memory_size, max_fifo_size,
                          sm->high_watermark, sm->low_watermark,
                          custom_logic ? "custom" : "none");
       }));
