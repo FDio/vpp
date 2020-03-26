@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42fa9748_29b3d706",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-26T11:24:47Z",
+      "side": 1,
+      "message": "Isn\u0027t this valid only for the first packet? Subsequent packets are (4500,Y) https://tools.ietf.org/html/rfc3947#section-4",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 54
+      },
+      "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
