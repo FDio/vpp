@@ -22,6 +22,30 @@
       "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95054bb3_a4226996",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-26T13:04:59Z",
+      "side": 1,
+      "message": "IIUC that RFC refers to IKE signalling not IPSec packets.",
+      "parentUuid": "42fa9748_29b3d706",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 54
+      },
+      "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
