@@ -46,6 +46,30 @@
       "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "05df7015_c80804ed",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-03-26T13:46:39Z",
+      "side": 1,
+      "message": "I think ports would be rewritten if there was a working NAT device in the middle but in this test, there\u0027s no one.",
+      "parentUuid": "95054bb3_a4226996",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 54
+      },
+      "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
