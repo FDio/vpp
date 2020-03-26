@@ -535,6 +535,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	  esp0 = vlib_buffer_get_current (b0);
 
 	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
+	  ASSERT (!pool_is_free_index (im->sad, sa_index0));
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	  to_next[0] = bi0;

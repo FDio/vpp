@@ -228,6 +228,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
+	      ASSERT (!pool_is_free_index (im->sad, sa_index0));
 	      sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	      cipher_alg =
