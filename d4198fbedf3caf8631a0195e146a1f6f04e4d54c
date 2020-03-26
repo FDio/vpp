@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "921efc7d_ee9dbe49",
+        "filename": "src/vlib/node_init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-26T08:35:24Z",
+      "side": 1,
+      "message": "That is precisely what this function (unformat_vlib_node_variant) does.\nSee below where it compares the unformatted value against the linked list of variant names.",
+      "parentUuid": "7b502b1a_bee41f6e",
+      "range": {
+        "startLine": 77,
+        "startChar": 2,
+        "endLine": 77,
+        "endChar": 39
+      },
+      "revId": "d4198fbedf3caf8631a0195e146a1f6f04e4d54c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3bf29839_ee8a5264",
         "filename": "test/Makefile",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2020-03-12T15:13:43Z",
       "side": 1,
       "message": "Do you want to limit the tests to a single variant/run like this, or do you want to be able to provide a list of variants that the test runner launches for each test case?\n\nSomething like:\n\n@variants([\u0027avx2\u0027,\u0027avx512\u0027])\nclass MyTest(VppTestCase):\n    ...",
+      "range": {
+        "startLine": 385,
+        "startChar": 0,
+        "endLine": 388,
+        "endChar": 9
+      },
+      "revId": "d4198fbedf3caf8631a0195e146a1f6f04e4d54c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b5d8b19b_566a8bbf",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-26T08:35:24Z",
+      "side": 1,
+      "message": "This was an excellent question, thinking through this one took a while.\n\nSo the straight answer is that in order to test all code paths we should probably run all test cases for all variants. However we have no way of knowing in advance which test cases touch which node variants so we would end up running them all to ensure coverage. \n\nThat unfortunately would have the effect of 3x\u0027ing the execution time of the unit test suite to cover all the variants, which might get us murdered. \n\nGiving the VARIANT option is probably the better option for the moment, to enable developers to test variant specific code paths, when they know they have touched them. \n\nPossibly the lesser of two evils ...",
+      "parentUuid": "3bf29839_ee8a5264",
       "range": {
         "startLine": 385,
         "startChar": 0,
