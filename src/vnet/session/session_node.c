@@ -839,14 +839,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   vlib_main_t *vm = wrk->vm;
   transport_proto_t tp;
   vlib_buffer_t *pb;
-  u16 n_bufs, rv;
-
-  if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
-    {
-      if (rv < 2)
-	session_evt_add_old (wrk, elt);
-      return SESSION_TX_NO_DATA;
-    }
+  u16 n_bufs;
 
   next_index = smm->session_type_to_next[ctx->s->session_type];
   max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
@@ -1023,21 +1016,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);
 
-  if (!peek_data
-      && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
-    {
-      /* Fix dgram pre header */
-      if (ctx->max_len_to_snd < ctx->max_dequeue)
-	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
-				 sizeof (session_dgram_pre_hdr_t));
-      /* More data needs to be read */
-      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
-	if (svm_fifo_set_event (ctx->s->tx_fifo))
-	  session_evt_add_old (wrk, elt);
-
-      if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
-	session_dequeue_notify (ctx->s);
-    }
   return SESSION_TX_OK;
 }
 
@@ -1046,6 +1024,15 @@ session_tx_fifo_peek_and_snd (session_worker_t * wrk,
 			      vlib_node_runtime_t * node,
 			      session_evt_elt_t * e, int *n_tx_packets)
 {
+  int rv;
+
+  if (PREDICT_FALSE ((rv = session_tx_not_ready (wrk->ctx.s, 1))))
+    {
+      if (rv < 2)
+	session_evt_add_old (wrk, e);
+      return SESSION_TX_NO_DATA;
+    }
+
   return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1);
 }
 
@@ -1054,7 +1041,24 @@ session_tx_fifo_dequeue_and_snd (session_worker_t * wrk,
 				 vlib_node_runtime_t * node,
 				 session_evt_elt_t * e, int *n_tx_packets)
 {
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 0);
+  session_tx_context_t *ctx = &wrk->ctx;
+  int rv;
+
+  rv = session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 0);
+
+  if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
+    {
+      /* Fix dgram pre header */
+      if (ctx->max_len_to_snd < ctx->max_dequeue)
+	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
+				 sizeof (session_dgram_pre_hdr_t));
+
+    }
+
+  if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
+    session_dequeue_notify (ctx->s);
+
+  return rv;
 }
 
 int
