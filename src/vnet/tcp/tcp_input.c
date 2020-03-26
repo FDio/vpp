@@ -1940,9 +1940,13 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       tc->rcv_nxt += written;
       error = TCP_ERROR_PARTIALLY_ENQUEUED;
     }
-  else
+  else if (tc->rcv_wnd > tc->snd_mss)
     {
       return TCP_ERROR_FIFO_FULL;
+    }
+  else
+    {
+      return TCP_ERROR_ZERO_RWND;
     }
 
   /* Update SACK list if need be */
