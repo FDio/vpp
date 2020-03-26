@@ -116,8 +116,12 @@ void *vec_resize_allocate_memory (void *v,
     @return v_prime pointer to resized vector, may or may not equal v
 */
 
-#define _vec_resize_numa(V,L,DB,HB,A,S) \
-  _vec_resize_inline(V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)),(S))
+#define _vec_resize_numa(V,L,DB,HB,A,S)					\
+({									\
+  __typeof__ ((V)) _V;							\
+  _V = _vec_resize_inline(V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)),(S)); \
+  _V;									\
+})
 
 #define _vec_resize(V,L,DB,HB,A)  \
   _vec_resize_numa(V,L,DB,HB,A,VEC_NUMA_UNSPECIFIED)
@@ -330,10 +334,10 @@ do {						\
     @param A alignment (may be zero)
     @return V new vector
 */
-#define vec_new_ha(T,N,H,A)					\
-({								\
-  word _v(n) = (N);						\
-  _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
+#define vec_new_ha(T,N,H,A)						\
+({									\
+  word _v(n) = (N);							\
+  (T *)_vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
 })
 
 /** \brief Create new vector of given type and length
