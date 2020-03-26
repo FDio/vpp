@@ -1942,6 +1942,10 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
     }
   else
     {
+      /* Packet made it through for ack processing */
+      if (tc->rcv_wnd < tc->snd_mss)
+	return TCP_ERROR_ZERO_RWND;
+
       return TCP_ERROR_FIFO_FULL;
     }
 
