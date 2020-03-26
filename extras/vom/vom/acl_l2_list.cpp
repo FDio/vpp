@@ -195,9 +195,9 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
     l2_list acl(hdl, std::string(reinterpret_cast<const char*>(payload.tag)));
 
     for (unsigned int ii = 0; ii < payload.count; ii++) {
-      const route::prefix_t pfx(payload.r[ii].src_prefix.address.af,
-                                (uint8_t*)&payload.r[ii].src_prefix.address.un,
-                                payload.r[ii].src_prefix.len);
+      const route::prefix_t pfx(payload.r[ii].is_ipv6,
+                                payload.r[ii].src_ip_addr,
+                                payload.r[ii].src_ip_prefix_len);
       l2_rule rule(ii,
                    action_t::from_int(payload.r[ii].is_permit),
                    pfx,
