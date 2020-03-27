@@ -591,7 +591,10 @@ listen_session_get (u32 ls_index)
 always_inline void
 listen_session_free (session_t * s)
 {
-  session_free (s);
+  if (!s->rx_fifo)
+    session_free (s);
+  else
+    session_free_w_fifos (s);
 }
 
 transport_connection_t *listen_session_get_transport (session_t * s);

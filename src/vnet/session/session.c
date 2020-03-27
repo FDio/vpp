@@ -1090,6 +1090,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
   session_handle_t sh;
+  u32 new_si, new_ti;
   session_t *s;
   int rv;
 
@@ -1108,12 +1109,17 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
+
+  new_si = s->session_index;
+  new_ti = s->thread_index;
+
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
       return -1;
     }
 
+  s = session_get (new_si, new_ti);
   sh = session_handle (s);
   session_lookup_add_connection (tc, sh);
   return app_worker_connect_notify (app_wrk, s, opaque);
