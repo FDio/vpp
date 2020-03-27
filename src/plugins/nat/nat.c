@@ -3849,6 +3849,9 @@ nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
   s->total_bytes = total_bytes;
 }
 
+#define SNAT_DEFAULT_TRANSLATION_MEMORY_SIZE (128 << 20)
+#define SNAT_TRANSLATION_MEMORY_SCALE_FACTOR (768)
+
 static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -3869,7 +3872,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 user_buckets = 128;
   u32 user_memory_size = 64 << 20;
   u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128 << 20;
+  u32 translation_memory_size = 0;
 
   u32 max_translations_per_user = ~0;
 
@@ -3972,6 +3975,20 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->user_memory_size = user_memory_size;
 
   sm->translation_buckets = translation_buckets;
+  if (0 == translation_memory_size)
+    {
+      translation_memory_size = SNAT_DEFAULT_TRANSLATION_MEMORY_SIZE;
+      if (translation_memory_size <
+	  SNAT_TRANSLATION_MEMORY_SCALE_FACTOR * translation_buckets)
+	{
+	  u32 adj_translation_memory_size =
+	    SNAT_TRANSLATION_MEMORY_SCALE_FACTOR * translation_buckets;
+	  clib_warning ("adjusted translation mem size %U->%U",
+			format_memory_size, translation_memory_size,
+			format_memory_size, adj_translation_memory_size);
+	  translation_memory_size = adj_translation_memory_size;
+	}
+    }
   sm->translation_memory_size = translation_memory_size;
 
   /* do not exceed load factor 10 */
