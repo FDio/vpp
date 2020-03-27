@@ -559,8 +559,13 @@ typedef struct tcp_worker_ctx_
   /* Max timers to be handled per dispatch loop */
   u32 max_timers_per_loop;
 
+  /* Fifo of pending timer expirations */
+  u32 *pending_timers;
+
+  /* fifo of pending free requests */
+  tcp_cleanup_req_t *pending_cleanups;
   /** tx frames for ip 4/6 lookup nodes */
-  vlib_frame_t *ip_lookup_tx_frames[2];
+//  vlib_frame_t *ip_lookup_tx_frames[2];
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
@@ -569,12 +574,6 @@ typedef struct tcp_worker_ctx_
 
   /** tx buffer free list */
   u32 *tx_buffers;
-
-  /* Fifo of pending timer expirations */
-  u32 *pending_timers;
-
-  /* fifo of pending free requests */
-  tcp_cleanup_req_t *pending_cleanups;
 
   /** worker timer wheel */
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
@@ -698,6 +697,10 @@ typedef struct _tcp_main
 
   /** Last cc algo registered */
   tcp_cc_algorithm_type_e cc_last_type;
+
+  /** Session layer edge index to ip lookup for syns */
+  u32 ipl4_next_node;
+  u32 ipl6_next_node;
 
   /** Flag that indicates if stack is on or off */
   u8 is_enabled;
