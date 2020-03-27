@@ -1,0 +1,113 @@
+From 43686c045d136ecefdbe300e8b690029a3fa01bf Mon Sep 17 00:00:00 2001
+From: Leyi Rong <leyi.rong@intel.com>
+Date: Mon, 16 Mar 2020 11:23:42 +0800
+Subject: [DPDK 11/15] net/iavf: support flow mark in normal data path
+
+Support Flow Director mark ID parsing in normal path.
+
+Signed-off-by: Leyi Rong <leyi.rong@intel.com>
+---
+ drivers/net/iavf/iavf.h      |  3 +++
+ drivers/net/iavf/iavf_rxtx.c | 37 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+
+diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
+index 1918a67f1..533856f21 100644
+--- a/drivers/net/iavf/iavf.h
++++ b/drivers/net/iavf/iavf.h
+@@ -74,6 +74,9 @@
+ #define IAVF_COMMS_PROTO_L2TPV3         0x0000000000000008
+ #define IAVF_COMMS_PROTO_ESP            0x0000000000000010
+ 
++#define IAVF_RX_DESC_EXT_STATUS_FLEXBH_MASK  0x03
++#define IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID 0x01
++
+ struct iavf_adapter;
+ struct iavf_rx_queue;
+ struct iavf_tx_queue;
+diff --git a/drivers/net/iavf/iavf_rxtx.c b/drivers/net/iavf/iavf_rxtx.c
+index 57fffece9..e37c1bdeb 100644
+--- a/drivers/net/iavf/iavf_rxtx.c
++++ b/drivers/net/iavf/iavf_rxtx.c
+@@ -746,6 +746,10 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
+ 					IAVF_RX_DESC_FLTSTAT_RSS_HASH) ==
+ 			IAVF_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
+ 
++	/* Check if FDIR Match */
++	flags |= (qword & (1 << IAVF_RX_DESC_STATUS_FLM_SHIFT) ?
++				PKT_RX_FDIR : 0);
++
+ 	if (likely((error_bits & IAVF_RX_ERR_BITS) == 0)) {
+ 		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+ 		return flags;
+@@ -766,6 +770,25 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
+ 	return flags;
+ }
+ 
++static inline uint64_t
++iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
++{
++	uint64_t flags = 0;
++	uint16_t flexbh;
++
++	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
++		IAVF_RX_DESC_EXT_STATUS_FLEXBH_SHIFT) &
++		IAVF_RX_DESC_EXT_STATUS_FLEXBH_MASK;
++
++	if (flexbh == IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID) {
++		mb->hash.fdir.hi =
++			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
++		flags |= PKT_RX_FDIR_ID;
++	}
++
++	return flags;
++}
++
+ /* Translate the rx flex descriptor status to pkt flags */
+ static inline void
+ iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
+@@ -782,6 +805,11 @@ iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
+ 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+ 	}
+ #endif
++
++	if (desc->flow_id != 0xFFFFFFFF) {
++		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
++		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
++	}
+ }
+ 
+ #define IAVF_RX_FLEX_ERR0_BITS	\
+@@ -917,6 +945,9 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 			rxm->hash.rss =
+ 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+ 
++		if (pkt_flags & PKT_RX_FDIR)
++			pkt_flags |= iavf_rxd_build_fdir(&rxd, rxm);
++
+ 		rxm->ol_flags |= pkt_flags;
+ 
+ 		rx_pkts[nb_rx++] = rxm;
+@@ -1365,6 +1396,9 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 			first_seg->hash.rss =
+ 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+ 
++		if (pkt_flags & PKT_RX_FDIR)
++			pkt_flags |= iavf_rxd_build_fdir(&rxd, first_seg);
++
+ 		first_seg->ol_flags |= pkt_flags;
+ 
+ 		/* Prefetch data of first segment, if configured to do so. */
+@@ -1549,6 +1583,9 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
+ 				mb->hash.rss = rte_le_to_cpu_32(
+ 					rxdp[j].wb.qword0.hi_dword.rss);
+ 
++			if (pkt_flags & PKT_RX_FDIR)
++				pkt_flags |= iavf_rxd_build_fdir(&rxdp[j], mb);
++
+ 			mb->ol_flags |= pkt_flags;
+ 		}
+ 
+-- 
+2.17.1
+

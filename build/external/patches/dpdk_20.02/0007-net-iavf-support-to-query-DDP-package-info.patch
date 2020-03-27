@@ -1,0 +1,137 @@
+From 0247601f0f3954cc41baf08150c940ce2f0bc2ef Mon Sep 17 00:00:00 2001
+From: Leyi Rong <leyi.rong@intel.com>
+Date: Sat, 14 Mar 2020 22:21:12 +0800
+Subject: [DPDK 07/15] net/iavf: support to query DDP package info
+
+Advanced iAVF supports to query DDP package info, includes
+package version, track id, package name, device serial number
+and the list of protocols that the PF supports.
+
+Signed-off-by: Leyi Rong <leyi.rong@intel.com>
+---
+ drivers/net/iavf/iavf.h        |  9 ++++++++
+ drivers/net/iavf/iavf_ethdev.c |  7 ++++++
+ drivers/net/iavf/iavf_vchnl.c  | 41 +++++++++++++++++++++++++++++++++-
+ 3 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
+index 526040c6e..39c6eeec9 100644
+--- a/drivers/net/iavf/iavf.h
++++ b/drivers/net/iavf/iavf.h
+@@ -67,6 +67,13 @@
+ #define IAVF_48_BIT_WIDTH (CHAR_BIT * 6)
+ #define IAVF_48_BIT_MASK  RTE_LEN2MASK(IAVF_48_BIT_WIDTH, uint64_t)
+ 
++/* VF supported comms protocols 64-bits bitmap */
++#define IAVF_COMMS_PROTO_GTP            0x0000000000000001
++#define IAVF_COMMS_PROTO_PPPOE          0x0000000000000002
++#define IAVF_COMMS_PROTO_PFCP           0x0000000000000004
++#define IAVF_COMMS_PROTO_L2TPV3         0x0000000000000008
++#define IAVF_COMMS_PROTO_ESP            0x0000000000000010
++
+ struct iavf_adapter;
+ struct iavf_rx_queue;
+ struct iavf_tx_queue;
+@@ -97,6 +104,7 @@ struct iavf_info {
+ 	struct virtchnl_version_info virtchnl_version;
+ 	struct virtchnl_vf_resource *vf_res; /* VF resource */
+ 	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
++	struct virtchnl_pkg_info pkg_info; /* package info */
+ 
+ 	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
+ 	uint32_t cmd_retval; /* return value of the cmd response from PF */
+@@ -225,6 +233,7 @@ int iavf_disable_queues(struct iavf_adapter *adapter);
+ int iavf_configure_rss_lut(struct iavf_adapter *adapter);
+ int iavf_configure_rss_key(struct iavf_adapter *adapter);
+ int iavf_configure_queues(struct iavf_adapter *adapter);
++int iavf_query_package_info(struct iavf_adapter *adapter);
+ int iavf_config_irq_map(struct iavf_adapter *adapter);
+ void iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add);
+ int iavf_dev_link_update(struct rte_eth_dev *dev,
+diff --git a/drivers/net/iavf/iavf_ethdev.c b/drivers/net/iavf/iavf_ethdev.c
+index ee9f82249..9c8f789da 100644
+--- a/drivers/net/iavf/iavf_ethdev.c
++++ b/drivers/net/iavf/iavf_ethdev.c
+@@ -1236,6 +1236,13 @@ iavf_init_vf(struct rte_eth_dev *dev)
+ 			goto err_rss;
+ 		}
+ 	}
++
++	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QUERY_DDP) {
++		if (iavf_query_package_info(adapter) != 0) {
++			PMD_INIT_LOG(ERR, "iavf_query_package_info failed");
++			goto err_rss;
++		}
++	}
+ 	return 0;
+ err_rss:
+ 	rte_free(vf->rss_key);
+diff --git a/drivers/net/iavf/iavf_vchnl.c b/drivers/net/iavf/iavf_vchnl.c
+index b7fb05d32..cadf658a6 100644
+--- a/drivers/net/iavf/iavf_vchnl.c
++++ b/drivers/net/iavf/iavf_vchnl.c
+@@ -88,6 +88,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
+ 		break;
+ 	case VIRTCHNL_OP_VERSION:
+ 	case VIRTCHNL_OP_GET_VF_RESOURCES:
++	case VIRTCHNL_OP_GET_PACKAGE_INFO:
+ 		/* for init virtchnl ops, need to poll the response */
+ 		do {
+ 			ret = iavf_read_msg_from_pf(adapter, args->out_size,
+@@ -338,7 +339,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
+ 	 * add advanced/optional offload capabilities
+ 	 */
+ 
+-	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED;
++	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
++		VIRTCHNL_VF_OFFLOAD_QUERY_DDP;
+ 
+ 	args.in_args = (uint8_t *)&caps;
+ 	args.in_args_size = sizeof(caps);
+@@ -586,6 +588,43 @@ iavf_configure_queues(struct iavf_adapter *adapter)
+ 	return err;
+ }
+ 
++int
++iavf_query_package_info(struct iavf_adapter *adapter)
++{
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
++	struct iavf_cmd_info args;
++	int ret;
++
++	args.ops = VIRTCHNL_OP_GET_PACKAGE_INFO;
++	args.in_args = NULL;
++	args.in_args_size = 0;
++	args.out_buffer = vf->aq_resp;
++	args.out_size = IAVF_AQ_BUF_SZ;
++
++	ret = iavf_execute_vf_cmd(adapter, &args);
++	if (ret) {
++		PMD_DRV_LOG(ERR,
++			    "Failed to execute command of OP_GET_PACKAGE_INFO");
++		return ret;
++	}
++
++	rte_memcpy(&vf->pkg_info, args.out_buffer,
++		   sizeof(struct virtchnl_pkg_info));
++	PMD_DRV_LOG(NOTICE, "pkg version is %d.%d.%d.%d, pkg name is %s,"
++		    " track id is %x, serial number is %02x%02x%02x%02x"
++		    "%02x%02x%02x%02x, proto_metadata is 0x%016lx\n",
++		    vf->pkg_info.pkg_ver.major, vf->pkg_info.pkg_ver.minor,
++		    vf->pkg_info.pkg_ver.update, vf->pkg_info.pkg_ver.draft,
++		    vf->pkg_info.pkg_name, vf->pkg_info.track_id,
++		    vf->pkg_info.dsn[7], vf->pkg_info.dsn[6],
++		    vf->pkg_info.dsn[5], vf->pkg_info.dsn[4],
++		    vf->pkg_info.dsn[3], vf->pkg_info.dsn[2],
++		    vf->pkg_info.dsn[1], vf->pkg_info.dsn[0],
++		    vf->pkg_info.proto_metadata);
++
++	return 0;
++}
++
+ int
+ iavf_config_irq_map(struct iavf_adapter *adapter)
+ {
+-- 
+2.17.1
+
