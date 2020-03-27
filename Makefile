@@ -465,7 +465,7 @@ papi-wipe: test-wipe-papi
 
 .PHONY: test-wipe-papi
 test-wipe-papi:
-	@make -C test papi-wipe
+	@make -C test wipe-papi
 
 .PHONY: test-help
 test-help:
