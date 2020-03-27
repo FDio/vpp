@@ -179,9 +179,14 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
 
-  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+  if (transport_connection_is_cless (session_get_transport (ls)))
     {
-      if (!ls->rx_fifo && app_worker_alloc_session_fifos (sm, ls))
+      if (ls->rx_fifo)
+	{
+	  clib_warning ("sharing of connectionless listeners not supported");
+	  return -1;
+	}
+      if (app_worker_alloc_session_fifos (sm, ls))
 	return -1;
     }
   return 0;
@@ -227,6 +232,13 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   sm_indexp = hash_get (app_wrk->listeners_table, handle);
   if (PREDICT_FALSE (!sm_indexp))
     return;
+
+  /* Dealloc fifos first, if any, to avoid cleanup attempt lower */
+  if (ls->rx_fifo)
+    {
+      segment_manager_dealloc_fifos (ls->rx_fifo, ls->tx_fifo);
+      ls->tx_fifo = ls->rx_fifo = 0;
+    }
 
   sm = segment_manager_get (*sm_indexp);
   if (app_wrk->first_segment_manager == *sm_indexp)

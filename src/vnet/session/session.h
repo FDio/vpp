@@ -591,6 +591,7 @@ listen_session_get (u32 ls_index)
 always_inline void
 listen_session_free (session_t * s)
 {
+  ASSERT (!s->rx_fifo);
   session_free (s);
 }
 

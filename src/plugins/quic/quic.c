@@ -1312,7 +1312,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   vec_terminate_c_string (ctx->srv_hostname);
 
   clib_memcpy (&cargs->sep, sep, sizeof (session_endpoint_cfg_t));
-  cargs->sep.transport_proto = TRANSPORT_PROTO_UDPC;
+  cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
   cargs->app_index = qm->app_index;
   cargs->api_context = ctx_index;
 
@@ -1320,6 +1320,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   app = application_get (app_wrk->app_index);
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
+  cargs->sep_ext.flags = TRANSPORT_CFG_F_CONNECTED;
 
   ctx->crypto_engine = sep->crypto_engine;
   ctx->ckpair_index = sep->ckpair_index;
@@ -1427,7 +1428,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   args->app_index = qm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  args->sep_ext.transport_proto = TRANSPORT_PROTO_UDPC;
+  args->sep_ext.transport_proto = TRANSPORT_PROTO_UDP;
+  args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
   if ((rv = vnet_listen (args)))
     return rv;
 

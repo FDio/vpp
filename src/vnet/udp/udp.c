@@ -81,13 +81,14 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_main_t *um = vnet_get_udp_main ();
   vlib_main_t *vm = vlib_get_main ();
+  transport_endpoint_cfg_t *lcl_ext;
   udp_connection_t *listener;
+  udp_dst_port_info_t *pi;
   u32 node_index;
   void *iface_ip;
-  udp_dst_port_info_t *pi;
 
-  pi =
-    udp_get_dst_port_info (um, clib_net_to_host_u16 (lcl->port), lcl->is_ip4);
+  pi = udp_get_dst_port_info (um, clib_net_to_host_u16 (lcl->port),
+			      lcl->is_ip4);
   if (pi)
     return -1;
 
@@ -110,6 +111,11 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
   listener->flags |= UDP_CONN_F_OWNS_PORT;
+  lcl_ext = (transport_endpoint_cfg_t *) lcl;
+  if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
+    listener->flags |= UDP_CONN_F_CONNECTED;
+  else
+    listener->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
   clib_spinlock_init (&listener->rx_lock);
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
@@ -327,6 +333,10 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
   uc->flags |= UDP_CONN_F_OWNS_PORT;
+  if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
+    uc->flags |= UDP_CONN_F_CONNECTED;
+  else
+    uc->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
 
   return uc->c_c_index;
 }
