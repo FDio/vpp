@@ -782,8 +782,10 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 	  ed = ELOG_DATA (am->elog_main, e);
 	  ed->hi = (uword) q >> 32;
 	  ed->low = (uword) q & 0xFFFFFFFF;
-	  clib_warning ("WARNING: client input queue at %llx is stuffed...",
-			q);
+	  u16 msg_id = clib_net_to_host_u16 (*((u16 *) msg));
+	  clib_warning ("WARNING: client input queue at %llx is stuffed while "
+			"processing msg_id %d...",
+			q, msg_id);
 	}
     }
   VL_MSG_API_POISON (msg);
