@@ -620,13 +620,12 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   th->checksum = tcp_compute_checksum (tc, b);
 }
 
-always_inline void
-tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			    u8 is_ip4, u32 fib_index, u8 flush)
+static void
+tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
+			  u8 is_ip4, u32 fib_index)
 {
+  tcp_main_t *tm = &tcp_main;
   vlib_main_t *vm = wrk->vm;
-  u32 *to_next, next_index;
-  vlib_frame_t *f;
 
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
@@ -634,55 +633,24 @@ tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
   vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
-  /* Send to IP lookup */
-  next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
   tcp_trajectory_add_start (b, 1);
 
-  f = wrk->ip_lookup_tx_frames[!is_ip4];
-  if (!f)
-    {
-      f = vlib_get_frame_to_node (vm, next_index);
-      ASSERT (f);
-      wrk->ip_lookup_tx_frames[!is_ip4] = f;
-    }
+  session_add_pending_tx_buffer (vm->thread_index, bi,
+				 tm->ipl_next_node[!is_ip4]);
 
-  to_next = vlib_frame_vector_args (f);
-  to_next[f->n_vectors] = bi;
-  f->n_vectors += 1;
-  if (flush || f->n_vectors == VLIB_FRAME_SIZE)
-    {
-      vlib_put_frame_to_node (vm, next_index, f);
-      wrk->ip_lookup_tx_frames[!is_ip4] = 0;
-    }
-}
-
-static void
-tcp_enqueue_to_ip_lookup_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b,
-			      u32 bi, u8 is_ip4, u32 fib_index)
-{
-  tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 1);
-}
-
-static void
-tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4, u32 fib_index)
-{
-  tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 0);
-  if (wrk->vm->thread_index == 0 && vlib_num_workers ())
-    session_flush_frames_main_thread (wrk->vm);
+  if (vm->thread_index == 0 && vlib_num_workers ())
+    session_queue_run_on_main_thread (wrk->vm);
 }
 
 static void
 tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 		       u8 is_ip4)
 {
-  session_type_t st;
-
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  st = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, is_ip4);
-  session_add_pending_tx_buffer (st, wrk->vm->thread_index, bi);
+  session_add_pending_tx_buffer (wrk->vm->thread_index, bi,
+				 wrk->tco_next_node[!is_ip4]);
 }
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -846,7 +814,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
       ASSERT (!bogus);
     }
 
-  tcp_enqueue_to_ip_lookup_now (wrk, b, bi, is_ip4, fib_index);
+  tcp_enqueue_to_ip_lookup (wrk, b, bi, is_ip4, fib_index);
   TCP_EVT (TCP_EVT_RST_SENT, tc);
   vlib_node_increment_counter (vm, tcp_node_index (output, tc->c_is_ip4),
 			       TCP_ERROR_RST_SENT, 1);

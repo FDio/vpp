@@ -1460,28 +1460,7 @@ tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
     }
 
   if (thread_index == 0 && clib_fifo_elts (wrk->pending_timers))
-    vlib_process_signal_event_mt (wrk->vm, session_queue_process_node.index,
-				  SESSION_Q_PROCESS_FLUSH_FRAMES, 0);
-}
-
-/**
- * Flush ip lookup tx frames populated by timer pops
- */
-static void
-tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk)
-{
-  if (wrk->ip_lookup_tx_frames[0])
-    {
-      vlib_put_frame_to_node (wrk->vm, ip4_lookup_node.index,
-			      wrk->ip_lookup_tx_frames[0]);
-      wrk->ip_lookup_tx_frames[0] = 0;
-    }
-  if (wrk->ip_lookup_tx_frames[1])
-    {
-      vlib_put_frame_to_node (wrk->vm, ip6_lookup_node.index,
-			      wrk->ip_lookup_tx_frames[1]);
-      wrk->ip_lookup_tx_frames[1] = 0;
-    }
+    session_queue_run_on_main_thread (wrk->vm);
 }
 
 static void
@@ -1514,7 +1493,6 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_handle_cleanups (wrk, now);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
   tcp_dispatch_pending_timers (wrk);
-  tcp_flush_frames_to_output (wrk);
 }
 
 static void
@@ -1629,8 +1607,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
 				       max_per_loop);
 
   if (thread_index == 0)
-    vlib_process_signal_event_mt (wrk->vm, session_queue_process_node.index,
-				  SESSION_Q_PROCESS_FLUSH_FRAMES, 0);
+    session_queue_run_on_main_thread (wrk->vm);
 }
 
 static void
@@ -1691,6 +1668,12 @@ tcp_main_enable (vlib_main_t * vm)
   n_workers = num_threads == 1 ? 1 : vtm->n_threads;
   prealloc_conn_per_wrk = tcp_cfg.preallocated_connections / n_workers;
 
+  wrk = &tm->wrk_ctx[0];
+  wrk->tco_next_node[0] = vlib_node_get_next (vm, session_queue_node.index,
+					      tcp4_output_node.index);
+  wrk->tco_next_node[1] = vlib_node_get_next (vm, session_queue_node.index,
+					      tcp6_output_node.index);
+
   for (thread = 0; thread < num_threads; thread++)
     {
       wrk = &tm->wrk_ctx[thread];
@@ -1703,6 +1686,12 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (wrk->pending_resets);
       wrk->vm = vlib_mains[thread];
       wrk->max_timers_per_loop = 10;
+
+      if (thread > 0)
+	{
+	  wrk->tco_next_node[0] = tm->wrk_ctx[0].tco_next_node[0];
+	  wrk->tco_next_node[1] = tm->wrk_ctx[0].tco_next_node[1];
+	}
 
       /*
        * Preallocate connections. Assume that thread 0 won't
@@ -1734,6 +1723,11 @@ tcp_main_enable (vlib_main_t * vm)
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
+
+  tm->ipl_next_node[0] = vlib_node_get_next (vm, session_queue_node.index,
+					     ip4_lookup_node.index);
+  tm->ipl_next_node[1] = vlib_node_get_next (vm, session_queue_node.index,
+					     ip6_lookup_node.index);
   return error;
 }
 

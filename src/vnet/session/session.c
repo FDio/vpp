@@ -1548,11 +1548,11 @@ listen_session_get_transport (session_t * s)
 }
 
 void
-session_flush_frames_main_thread (vlib_main_t * vm)
+session_queue_run_on_main_thread (vlib_main_t * vm)
 {
   ASSERT (vlib_get_thread_index () == 0);
   vlib_process_signal_event_mt (vm, session_queue_process_node.index,
-				SESSION_Q_PROCESS_FLUSH_FRAMES, 0);
+				SESSION_Q_PROCESS_RUN_ON_MAIN, 0);
 }
 
 static clib_error_t *

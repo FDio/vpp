@@ -202,8 +202,11 @@ extern vlib_node_registration_t session_queue_node;
 extern vlib_node_registration_t session_queue_process_node;
 extern vlib_node_registration_t session_queue_pre_input_node;
 
-#define SESSION_Q_PROCESS_FLUSH_FRAMES	1
-#define SESSION_Q_PROCESS_STOP		2
+typedef enum session_q_process_evt_
+{
+  SESSION_Q_PROCESS_RUN_ON_MAIN = 1,
+  SESSION_Q_PROCESS_STOP
+} session_q_process_evt_t;
 
 #define TRANSPORT_PROTO_INVALID (session_main.last_transport_proto_type + 1)
 #define TRANSPORT_N_PROTOS (session_main.last_transport_proto_type + 1)
@@ -641,14 +644,22 @@ do {									\
 
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
 int session_main_flush_all_enqueue_events (u8 transport_proto);
-void session_flush_frames_main_thread (vlib_main_t * vm);
+void session_queue_run_on_main_thread (vlib_main_t * vm);
 
+/**
+ * Add session node pending buffer with custom node
+ *
+ * @param thread_index 	worker thread expected to send the buffer
+ * @param bi		buffer index
+ * @param next_node	next node edge index for buffer. Edge to next node
+ * 			must exist
+ */
 always_inline void
-session_add_pending_tx_buffer (session_type_t st, u32 thread_index, u32 bi)
+session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   vec_add1 (wrk->pending_tx_buffers, bi);
-  vec_add1 (wrk->pending_tx_nexts, session_main.session_type_to_next[st]);
+  vec_add1 (wrk->pending_tx_nexts, next_node);
 }
 
 ssvm_private_t *session_main_get_evt_q_segment (void);
