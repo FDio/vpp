@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a65d408_b0c1aabd",
+        "filename": "src/plugins/acl/acl_types.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1162
+      },
+      "writtenOn": "2020-03-27T12:45:05Z",
+      "side": 1,
+      "message": "This comment is not relevant anymore.",
+      "revId": "4d0242b11b16b03bac7ec39c47acfa45367e59c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
