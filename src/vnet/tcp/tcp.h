@@ -559,8 +559,11 @@ typedef struct tcp_worker_ctx_
   /* Max timers to be handled per dispatch loop */
   u32 max_timers_per_loop;
 
-  /** tx frames for ip 4/6 lookup nodes */
-  vlib_frame_t *ip_lookup_tx_frames[2];
+  /** Session layer edge indices to tcp output */
+  u32 tco_next_node[2];
+
+  /* Fifo of pending timer expirations */
+  u32 *pending_timers;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
@@ -569,9 +572,6 @@ typedef struct tcp_worker_ctx_
 
   /** tx buffer free list */
   u32 *tx_buffers;
-
-  /* Fifo of pending timer expirations */
-  u32 *pending_timers;
 
   /* fifo of pending free requests */
   tcp_cleanup_req_t *pending_cleanups;
@@ -678,6 +678,9 @@ typedef struct _tcp_main
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  /** Session layer edge indices to ip lookup (syns, rst) */
+  u32 ipl_next_node[2];
 
   /** Dispatch table by state and flags */
   tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
