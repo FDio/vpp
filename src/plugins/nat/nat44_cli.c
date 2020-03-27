@@ -643,7 +643,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (sm->deterministic || !sm->endpoint_dependent)
     return clib_error_return (0, UNSUPPORTED_IN_DET_OR_NON_ED_MODE_STR);
 
-  vlib_cli_output (vm, "max translations: %u", sm->max_translations);
+  vlib_cli_output (vm, "max translations per thread: %u",
+		   sm->max_translations_per_thread);
   vlib_cli_output (vm, "max translations per user: %u",
 		   sm->max_translations_per_user);
 
