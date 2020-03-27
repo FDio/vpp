@@ -472,7 +472,6 @@ static inline int BV (clib_bihash_add_del_inline)
   (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add,
    int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
 {
-  u32 bucket_index;
   BVT (clib_bihash_bucket) * b, tmp_b;
   BVT (clib_bihash_value) * v, *new_v, *save_new_v, *working_copy;
   int i, limit;
@@ -499,8 +498,7 @@ static inline int BV (clib_bihash_add_del_inline)
 
   hash = BV (clib_bihash_hash) (add_v);
 
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
+  b = BV (clib_bihash_get_bucket) (h, hash);
 
   hash >>= h->log2_nbuckets;
 
@@ -758,7 +756,6 @@ int BV (clib_bihash_search)
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
   u64 hash;
-  u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
@@ -770,8 +767,7 @@ int BV (clib_bihash_search)
 
   hash = BV (clib_bihash_hash) (search_key);
 
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
+  b = BV (clib_bihash_get_bucket) (h, hash);
 
   if (BV (clib_bihash_bucket_is_empty) (b))
     return -1;

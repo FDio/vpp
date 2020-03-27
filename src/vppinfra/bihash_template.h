@@ -400,30 +400,29 @@ static inline int BV (clib_bihash_search_inline)
   return BV (clib_bihash_search_inline_with_hash) (h, hash, key_result);
 }
 
+static inline
+BVT (clib_bihash_bucket) *
+BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
+{
+  return h->buckets + (hash & (h->nbuckets - 1));
+}
+
 static inline void BV (clib_bihash_prefetch_bucket)
   (BVT (clib_bihash) * h, u64 hash)
 {
-  u32 bucket_index;
-  BVT (clib_bihash_bucket) * b;
-
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
-
-  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, READ);
+  clib_prefetch_load (BV (clib_bihash_get_bucket) (h, hash));
 }
 
 static inline void BV (clib_bihash_prefetch_data)
   (BVT (clib_bihash) * h, u64 hash)
 {
-  u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
 
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return;
 
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
+  b = BV (clib_bihash_get_bucket) (h, hash);
 
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return;
@@ -433,14 +432,13 @@ static inline void BV (clib_bihash_prefetch_data)
 
   v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
 
-  CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, READ);
+  clib_prefetch_load (v);
 }
 
 static inline int BV (clib_bihash_search_inline_2_with_hash)
   (BVT (clib_bihash) * h,
    u64 hash, BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
-  u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
@@ -450,8 +448,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return -1;
 
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
+  b = BV (clib_bihash_get_bucket) (h, hash);
 
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
