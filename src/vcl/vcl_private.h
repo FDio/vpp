@@ -189,8 +189,8 @@ typedef struct vppcom_cfg_t_
   u32 max_workers;
   u32 vpp_api_q_length;
   uword segment_baseva;
-  u32 segment_size;
-  u32 add_segment_size;
+  uword segment_size;
+  uword add_segment_size;
   u32 preallocated_fifo_pairs;
   u32 rx_fifo_size;
   u32 tx_fifo_size;

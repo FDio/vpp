@@ -312,7 +312,7 @@ fs_chunk_size_is_valid (fifo_segment_header_t * fsh, u32 size)
    * with a smaller FIFO.
    */
   return size >= FIFO_SEGMENT_MIN_FIFO_SIZE
-    && size <= (1 << fsh->max_log2_chunk_size);
+    && size <= (1ULL << fsh->max_log2_chunk_size);
 }
 
 static svm_fifo_t *

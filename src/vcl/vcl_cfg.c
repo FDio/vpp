@@ -323,37 +323,37 @@ vppcom_cfg_read_file (char *conf_fname)
 	      vl_set_memory_gid (gid);
 	      VCFG_DBG (0, "VCL<%d>: configured gid %d", getpid (), gid);
 	    }
-	  else if (unformat (line_input, "segment-baseva 0x%x",
+	  else if (unformat (line_input, "segment-baseva 0x%lx",
 			     &vcl_cfg->segment_baseva))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured segment_baseva 0x%lx",
 			getpid (), (unsigned long) vcl_cfg->segment_baseva);
 	    }
-	  else if (unformat (line_input, "segment-size 0x%x",
+	  else if (unformat (line_input, "segment-size 0x%lx",
 			     &vcl_cfg->segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured segment_size 0x%x (%d)",
+	      VCFG_DBG (0, "VCL<%d>: configured segment_size 0x%lx (%lu)",
 			getpid (), vcl_cfg->segment_size,
 			vcl_cfg->segment_size);
 	    }
-	  else if (unformat (line_input, "segment-size %u",
+	  else if (unformat (line_input, "segment-size %lu",
 			     &vcl_cfg->segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured segment_size %u (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured segment_size %lu (0x%lx)",
 			getpid (), vcl_cfg->segment_size,
 			vcl_cfg->segment_size);
 	    }
-	  else if (unformat (line_input, "add-segment-size 0x%x",
+	  else if (unformat (line_input, "add-segment-size 0x%lx",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size 0x%x (%u)",
+	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size 0x%lx (%lu)",
 			getpid (), vcl_cfg->add_segment_size,
 			vcl_cfg->add_segment_size);
 	    }
-	  else if (unformat (line_input, "add-segment-size %u",
+	  else if (unformat (line_input, "add-segment-size %lu",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size %u (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size %lu (0x%lx)",
 			getpid (), vcl_cfg->add_segment_size,
 			vcl_cfg->add_segment_size);
 	    }
