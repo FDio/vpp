@@ -1,0 +1,343 @@
+From 2a097a479f4bd1b6ac3e631191d974a1737ab866 Mon Sep 17 00:00:00 2001
+From: Chenmin Sun <chenmin.sun@intel.com>
+Date: Fri, 27 Mar 2020 23:22:43 +0800
+Subject: [DPDK 14/15] iavf: fdir iavf virtual channel definition
+
+Signed-off-by: Chenmin Sun <chenmin.sun@intel.com>
+---
+ drivers/common/iavf/virtchnl.h | 305 +++++++++++++++++++++++++++++++++
+ 1 file changed, 305 insertions(+)
+
+diff --git a/drivers/common/iavf/virtchnl.h b/drivers/common/iavf/virtchnl.h
+index 5a8cd87d8..96bfc49f7 100644
+--- a/drivers/common/iavf/virtchnl.h
++++ b/drivers/common/iavf/virtchnl.h
+@@ -133,6 +133,9 @@ enum virtchnl_ops {
+ 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
+ 	VIRTCHNL_OP_GET_PACKAGE_INFO = 43,
+ 	VIRTCHNL_OP_GET_SUPPORTED_RXDIDS = 44,
++	VIRTCHNL_OP_ADD_FDIR_FILTER = 47,
++	VIRTCHNL_OP_DEL_FDIR_FILTER = 48,
++	VIRTCHNL_OP_QUERY_FDIR_FILTER = 49,
+ };
+ 
+ /* These macros are used to generate compilation errors if a structure/union
+@@ -249,6 +252,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
+ #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
+ #define VIRTCHNL_VF_OFFLOAD_QUERY_DDP		0X04000000
+ #define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X08000000
++#define VIRTCHNL_VF_OFFLOAD_FDIR_PF		0X20000000
+ 	/* 0X80000000 is reserved */
+ 
+ /* Define below the capability flags that are not offloads */
+@@ -654,6 +658,307 @@ struct virtchnl_filter {
+ 
+ VIRTCHNL_CHECK_STRUCT_LEN(272, virtchnl_filter);
+ 
++#define VIRTCHNL_MAX_PROTO_STACK_SIZE	32
++#define PROTO_HDR_SHIFT			5
++#define PROTO_HDR_FIELD_START(proto_hdr_type) \
++					(proto_hdr_type << PROTO_HDR_SHIFT)
++#define PROTO_HDR_FIELD_MASK ((1UL << PROTO_HDR_SHIFT) - 1)
++
++/* VF use these macros to configure each protocol stack.
++ * Specify which protocol headers and protocol header fields base on
++ * virtchnl_proto_hdr_type and virtchnl_proto_hdr_field.
++ * @param hdr: a struct of virtchnl_proto_hdr
++ * @param hdr_type: ETH/IPV4/TCP, etc
++ * @param field: SRC/DST/TEID/SPI, etc
++ */
++#define VIRTCHNL_ADD_PROTO_HDR_FIELD(hdr, field) \
++	((hdr)->field_selector |= BIT((field) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr, field) \
++	((hdr)->field_selector &= ~BIT((field) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_TEST_PROTO_HDR_FIELD(hdr, val) \
++	((hdr)->field_selector & BIT((val) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_GET_PROTO_HDR_FIELD(hdr)	((hdr)->field_selector)
++
++#define VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, hdr_type, field) \
++	(VIRTCHNL_ADD_PROTO_HDR_FIELD(hdr, \
++		VIRTCHNL_PROTO_HDR_ ## hdr_type ## _ ## field))
++#define VIRTCHNL_DEL_PROTO_HDR_FIELD_BIT(hdr, hdr_type, field) \
++	(VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr, \
++		VIRTCHNL_PROTO_HDR_ ## hdr_type ## _ ## field))
++
++#define VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, hdr_type) \
++	((hdr)->type = VIRTCHNL_PROTO_HDR_ ## hdr_type)
++#define VIRTCHNL_GET_PROTO_HDR_TYPE(hdr) \
++	(((hdr)->type) >> PROTO_HDR_SHIFT)
++#define VIRTCHNL_TEST_PROTO_HDR_TYPE(hdr, val) \
++	((hdr)->type == ((val) >> PROTO_HDR_SHIFT))
++#define VIRTCHNL_TEST_PROTO_HDR(hdr, val) \
++	(VIRTCHNL_TEST_PROTO_HDR_TYPE(hdr, val) && \
++	 VIRTCHNL_TEST_PROTO_HDR_FIELD(hdr, val))
++
++/* Protocol header type within a packet segment. A segment consists of one or
++ * more protocol headers that make up a logical group of protocol headers. Each
++ * logical group of protocol headers encapsulates or is encapsulated using/by
++ * tunneling or encapsulation protocols for network virtualization.
++ */
++enum virtchnl_proto_hdr_type {
++	VIRTCHNL_PROTO_HDR_NONE,
++	VIRTCHNL_PROTO_HDR_ETH,
++	VIRTCHNL_PROTO_HDR_S_VLAN,
++	VIRTCHNL_PROTO_HDR_C_VLAN,
++	VIRTCHNL_PROTO_HDR_IPV4,
++	VIRTCHNL_PROTO_HDR_IPV6,
++	VIRTCHNL_PROTO_HDR_TCP,
++	VIRTCHNL_PROTO_HDR_UDP,
++	VIRTCHNL_PROTO_HDR_SCTP,
++	VIRTCHNL_PROTO_HDR_GTPU_IP,
++	VIRTCHNL_PROTO_HDR_GTPU_EH,
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_DWN,
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_UP,
++	VIRTCHNL_PROTO_HDR_PPPOE,
++	VIRTCHNL_PROTO_HDR_L2TPV3,
++	VIRTCHNL_PROTO_HDR_ESP,
++	VIRTCHNL_PROTO_HDR_NAT_T_ESP,
++	VIRTCHNL_PROTO_HDR_AH,
++	VIRTCHNL_PROTO_HDR_PFCP,
++};
++
++/* Protocol header field within a protocol header. */
++enum virtchnl_proto_hdr_field {
++	/* ETHER */
++	VIRTCHNL_PROTO_HDR_ETH_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_ETH),
++	VIRTCHNL_PROTO_HDR_ETH_DST,
++	VIRTCHNL_PROTO_HDR_ETH_ETHERTYPE,
++	/* S-VLAN */
++	VIRTCHNL_PROTO_HDR_S_VLAN_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_S_VLAN),
++	/* C-VLAN */
++	VIRTCHNL_PROTO_HDR_C_VLAN_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_C_VLAN),
++	/* IPV4 */
++	VIRTCHNL_PROTO_HDR_IPV4_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_IPV4),
++	VIRTCHNL_PROTO_HDR_IPV4_DST,
++	VIRTCHNL_PROTO_HDR_IPV4_DSCP,
++	VIRTCHNL_PROTO_HDR_IPV4_TTL,
++	VIRTCHNL_PROTO_HDR_IPV4_PROT,
++	/* IPV6 */
++	VIRTCHNL_PROTO_HDR_IPV6_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_IPV6),
++	VIRTCHNL_PROTO_HDR_IPV6_DST,
++	VIRTCHNL_PROTO_HDR_IPV6_TC,
++	VIRTCHNL_PROTO_HDR_IPV6_HOP_LIMIT,
++	VIRTCHNL_PROTO_HDR_IPV6_PROT,
++	/* TCP */
++	VIRTCHNL_PROTO_HDR_TCP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_TCP),
++	VIRTCHNL_PROTO_HDR_TCP_DST_PORT,
++	/* UDP */
++	VIRTCHNL_PROTO_HDR_UDP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_UDP),
++	VIRTCHNL_PROTO_HDR_UDP_DST_PORT,
++	/* SCTP */
++	VIRTCHNL_PROTO_HDR_SCTP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_SCTP),
++	VIRTCHNL_PROTO_HDR_SCTP_DST_PORT,
++	/* GTPU_IP */
++	VIRTCHNL_PROTO_HDR_GTPU_IP_TEID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_GTPU_IP),
++	/* GTPU_EH */
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_GTPU_EH),
++	VIRTCHNL_PROTO_HDR_GTPU_EH_QFI,
++	/* PPPOE */
++	VIRTCHNL_PROTO_HDR_PPPOE_SESS_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_PPPOE),
++	/* L2TPV3 */
++	VIRTCHNL_PROTO_HDR_L2TPV3_SESS_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_L2TPV3),
++	/* ESP */
++	VIRTCHNL_PROTO_HDR_ESP_SPI =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_ESP),
++	/* NAT-T-ESP */
++	VIRTCHNL_PROTO_HDR_NAT_T_ESP_SPI =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_NAT_T_ESP),
++	/* AH */
++	VIRTCHNL_PROTO_HDR_AH_SPI =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_AH),
++	/* PFCP */
++	VIRTCHNL_PROTO_HDR_PFCP_S_FIELD =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_PFCP),
++	VIRTCHNL_PROTO_HDR_PFCP_SEID,
++};
++
++struct virtchnl_proto_hdr {
++	enum virtchnl_proto_hdr_type type;
++	u32 field_selector; /* a bit mask to select field for header type */
++	u8 buffer[64];
++	/**
++	 * binary buffer in network order for specific header type.
++	 * For example, if type = VIRTCHNL_PROTO_HDR_IPV4, a IPv4
++	 * header is expected to be copied into the buffer.
++	 */
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_proto_hdr);
++
++struct virtchnl_proto_stack {
++	u8 tunnel_level;
++	/**
++	 * specify where proto stack start from.
++	 * 0 - from the outer layer
++	 * 1 - from the first inner layer
++	 * 2 - from the second inner layer
++	 * ....
++	 **/
++	int count; /* the proto layers must < VIRTCHNL_MAX_PROTO_STACK_SIZE */
++	struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_PROTO_STACK_SIZE];
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(2312, virtchnl_proto_stack);
++
++/* action type for FDIR */
++enum virtchnl_action_type {
++	VIRTCHNL_FDIR_ACT_PASSTHRU,
++	VIRTCHNL_FDIR_ACT_DROP,
++	VIRTCHNL_FDIR_ACT_QUEUE,
++	VIRTCHNL_FDIR_ACT_Q_REGION,
++	VIRTCHNL_FDIR_ACT_MARK,
++	VIRTCHNL_FDIR_ACT_COUNT,
++};
++
++/* action configuration for FDIR */
++struct virtchnl_filter_action {
++	enum virtchnl_action_type type;
++	union {
++		/* used for queue and qgroup action */
++		struct {
++			u16 q_index;
++			u8 q_region;
++		};
++		/* used for count action */
++		struct {
++			/* share counter ID with other flow rules */
++			u32 shared:1;
++			u32 id; /* counter ID */
++		};
++		/* used for mark action */
++		u32 mark_id;
++		u8 reserve[32];
++	};
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(36, virtchnl_filter_action);
++
++#define VIRTCHNL_MAX_ACTION_NUMBER  8
++
++struct virtchnl_filter_action_set {
++	/* action number must be less then VIRTCHNL_MAX_ACTION_NUMBER */
++	int count;
++	struct virtchnl_filter_action actions[VIRTCHNL_MAX_ACTION_NUMBER];
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(292, virtchnl_filter_action_set);
++
++/* pattern and action for FDIR rule */
++struct virtchnl_fdir_rule {
++	struct virtchnl_proto_stack proto_stack;
++	struct virtchnl_filter_action_set action_set;
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(2604, virtchnl_fdir_rule);
++
++/* query information to retrieve fdir rule counters */
++struct virtchnl_fdir_query_info {
++	u32 hits_set:1;   /* hits field is set [out]. */
++	u32 bytes_set:1;  /* bytes field is set [out]. */
++	u32 reserved:30;  /* Reserved, must be zero [in, out]. */
++	u32 pad;
++	u64 matched_packets; /* Number of hits for this rule [out]. */
++	u64 matched_bytes;   /* Number of bytes through this rule [out]. */
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_fdir_query_info);
++
++/* Status returned to VF after VF requests FDIR commands
++ * VIRTCHNL_FDIR_SUCCESS
++ * VF FDIR related request is successfully done by PF
++ * The request can be OP_ADD/DEL/QUERY_FDIR_FILTER.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_NORESOURCE
++ * OP_ADD_FDIR_FILTER request is failed due to no Hardware resource.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_EXIST
++ * OP_ADD_FDIR_FILTER request is failed due to the rule is already existed.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_CONFLICT
++ * OP_ADD_FDIR_FILTER request is failed due to conflict with existing rule.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_NONEXIST
++ * OP_DEL_FDIR_FILTER request is failed due to this rule doesn't exist.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_INVALID
++ * OP_ADD_FDIR_FILTER request is failed due to parameters validation
++ * or HW doesn't support.
++ *
++ * VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT
++ * OP_ADD/DEL_FDIR_FILTER request is failed due to timing out
++ * for programming.
++ *
++ * VIRTCHNL_FDIR_FAILURE_QUERY_INVALID
++ * OP_QUERY_FDIR_FILTER request is failed due to parameters validation,
++ * for example, VF query counter of a rule who has no counter action.
++ */
++enum virtchnl_fdir_prgm_status {
++	VIRTCHNL_FDIR_SUCCESS = 0,
++	VIRTCHNL_FDIR_FAILURE_RULE_NORESOURCE,
++	VIRTCHNL_FDIR_FAILURE_RULE_EXIST,
++	VIRTCHNL_FDIR_FAILURE_RULE_CONFLICT,
++	VIRTCHNL_FDIR_FAILURE_RULE_NONEXIST,
++	VIRTCHNL_FDIR_FAILURE_RULE_INVALID,
++	VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT,
++	VIRTCHNL_FDIR_FAILURE_QUERY_INVALID,
++};
++
++/* VIRTCHNL_OP_ADD_FDIR_FILTER
++ * VIRTCHNL_OP_DEL_FDIR_FILTER
++ * VF sends this request to PF with struct virtchnl_fdir_fltr to add
++ * or delete a Flow Director rule.
++ *
++ * VIRTCHNL_OP_QUERY_FDIR_FILTER
++ * VF sends this request to PF to query information, such as counter.
++ */
++struct virtchnl_fdir_fltr {
++	u16 vsi_id;
++	/*
++	 * 1 for validating a fdir rule, 0 for creating a fdir rule.
++	 * Validate and create share one ops: VIRTCHNL_OP_ADD_FDIR_FILTER.
++	 */
++	u16 validate_only;
++	u32 flow_id;
++	union {
++		struct virtchnl_fdir_rule rule_cfg;
++		/* only used for query */
++		u32 reset_counter:1;
++	};
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(2612, virtchnl_fdir_fltr);
++
++/* return buffer for status from pf */
++struct virtchnl_fdir_status {
++	u32 flow_id;
++	enum virtchnl_fdir_prgm_status status;
++	union {
++		/* only used for query */
++		struct virtchnl_fdir_query_info query_cfg;
++		u8 reserve[128];
++	};
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(136, virtchnl_fdir_status);
++
+ /* VIRTCHNL_OP_EVENT
+  * PF sends this message to inform the VF driver of events that may affect it.
+  * No direct response is expected from the VF, though it may generate other
+-- 
+2.17.1
+
