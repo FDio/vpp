@@ -169,7 +169,6 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
   for (i = 0; i < VNET_N_MTU; i++)
     {
       per_protocol_mtu[i] = ntohl (mp->mtu[i]);
-      clib_warning ("MTU %u", per_protocol_mtu[i]);
     }
   vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, per_protocol_mtu);
 
