@@ -19,9 +19,10 @@
     used to control the ACL plugin
 */
 
-option version = "1.0.1";
+option version = "2.0.0";
 
 import "plugins/acl/acl_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Get the plugin version
     @param client_index - opaque cookie to identify the sender
@@ -106,7 +107,7 @@ manual_print manual_endian define acl_add_replace
   u32 client_index;
   u32 context;
   u32 acl_index; /* ~0 to add, existing ACL# to replace */
-  u8 tag[64]; /* What gets in here gets out in the corresponding tag field when dumping the ACLs. */
+  string tag[64]; /* What gets in here gets out in the corresponding tag field when dumping the ACLs. */
   u32 count;
   vl_api_acl_rule_t r[count];
   option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...";
@@ -154,13 +155,13 @@ autoreply manual_print define acl_interface_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
 /*
  * is_input = 0 => ACL applied on interface egress
  * is_input = 1 => ACL applied on interface ingress
  */
-  u8 is_input;
-  u32 sw_if_index;
+  bool is_input;
+  vl_api_interface_index_t sw_if_index;
   u32 acl_index;
   option vat_help = "<intfc> | sw_if_index <if-idx> [add|del] [input|output] acl <acl-idx>";
 };
@@ -178,7 +179,7 @@ autoreply manual_print define acl_interface_set_acl_list
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 count;
   u8 n_input; /* First n_input ACLs are set as a list of input ACLs, the rest are applied as output */
   u32 acls[count];
@@ -216,7 +217,7 @@ manual_endian manual_print define acl_details
 {
   u32 context;
   u32 acl_index;
-  u8 tag[64]; /* Same blob that was supplied to us when creating the ACL, one hopes. */
+  string tag[64]; /* Same blob that was supplied to us when creating the ACL, one hopes. */
   u32 count;
   vl_api_acl_rule_t r[count];
 };
@@ -231,7 +232,7 @@ define acl_interface_list_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index; /* ~0 for all interfaces */
+  vl_api_interface_index_t sw_if_index; /* ~0 for all interfaces */
   option vat_help = "[<intfc> | sw_if_index <if-idx>]";
 };
 
@@ -246,7 +247,7 @@ define acl_interface_list_dump
 define acl_interface_list_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 count;
   u8 n_input;
   u32 acls[count];
@@ -264,7 +265,7 @@ manual_endian manual_print define macip_acl_add
 {
   u32 client_index;
   u32 context;
-  u8 tag[64];
+  string tag[64];
   u32 count;
   vl_api_macip_acl_rule_t r[count];
   option vat_help = "...";
@@ -297,7 +298,7 @@ manual_endian manual_print define macip_acl_add_replace
   u32 client_index;
   u32 context;
   u32 acl_index; /* ~0 to add, existing MACIP ACL# to replace */
-  u8 tag[64];
+  string tag[64];
   u32 count;
   vl_api_macip_acl_rule_t r[count];
   option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...";
@@ -342,9 +343,9 @@ autoreply manual_print define macip_acl_interface_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add [default=true];
   /* MACIP ACLs are always input */
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 acl_index;
   option vat_help = "<intfc> | sw_if_index <if-idx> [add|del] acl <acl-idx>";
 };
@@ -375,7 +376,7 @@ manual_endian manual_print define macip_acl_details
 {
   u32 context;
   u32 acl_index;
-  u8 tag[64];
+  string tag[64];
   u32 count;
   vl_api_macip_acl_rule_t r[count];
 };
@@ -414,7 +415,7 @@ define macip_acl_interface_list_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index; /* ~0 for all interfaces */
+  vl_api_interface_index_t sw_if_index; /* ~0 for all interfaces */
 };
 
 /** \brief Details about a single MACIP ACL contents
@@ -427,7 +428,7 @@ define macip_acl_interface_list_dump
 define macip_acl_interface_list_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 count;
   u32 acls[count];
 };
@@ -445,7 +446,7 @@ autoreply manual_print define acl_interface_set_etype_whitelist
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 count; /* Total number of ethertypes in the whitelist */
   u8 n_input; /* first n_input ethertypes are input, the rest - output */
   u16 whitelist[count];
@@ -462,7 +463,7 @@ define acl_interface_etype_whitelist_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index; /* ~0 for all interfaces */
+  vl_api_interface_index_t sw_if_index; /* ~0 for all interfaces */
   option vat_help = "[<intfc> | sw_if_index <if-idx>]";
 };
 
@@ -477,7 +478,7 @@ define acl_interface_etype_whitelist_dump
 define acl_interface_etype_whitelist_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 count;
   u8 n_input; /* first n_input ethertypes are input, the rest - output */
   u16 whitelist[count];

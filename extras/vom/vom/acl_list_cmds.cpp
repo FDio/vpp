@@ -14,6 +14,7 @@
  */
 
 #include "vom/acl_list_cmds.hpp"
+#include "vom/api_types.hpp"
 
 namespace VOM {
 namespace ACL {
@@ -24,9 +25,10 @@ namespace list_cmds {
 static void
 to_vpp(const l2_rule& rule, vapi_type_macip_acl_rule& payload)
 {
-  payload.is_permit = rule.action().value();
-  rule.src_ip().to_vpp(
-    &payload.is_ipv6, payload.src_ip_addr, &payload.src_ip_prefix_len);
+  payload.is_permit = (vapi_enum_acl_action)rule.action().value();
+  rule.src_ip().to_vpp((uint8_t*)&payload.src_prefix.address.af,
+                       (uint8_t*)&payload.src_prefix.address.un,
+                       &payload.src_prefix.len);
   rule.mac().to_bytes(payload.src_mac, 6);
   rule.mac_mask().to_bytes(payload.src_mac_mask, 6);
 }
@@ -34,13 +36,11 @@ to_vpp(const l2_rule& rule, vapi_type_macip_acl_rule& payload)
 static void
 to_vpp(const l3_rule& rule, vapi_type_acl_rule& payload)
 {
-  payload.is_permit = rule.action().value();
-  rule.src().to_vpp(
-    &payload.is_ipv6, payload.src_ip_addr, &payload.src_ip_prefix_len);
-  rule.dst().to_vpp(
-    &payload.is_ipv6, payload.dst_ip_addr, &payload.dst_ip_prefix_len);
+  payload.is_permit = (vapi_enum_acl_action)rule.action().value();
+  payload.src_prefix = to_api(rule.src());
+  payload.dst_prefix = to_api(rule.dst());
 
-  payload.proto = rule.proto();
+  payload.proto = (vapi_enum_ip_proto)rule.proto();
   payload.srcport_or_icmptype_first = rule.srcport_or_icmptype_first();
   payload.srcport_or_icmptype_last = rule.srcport_or_icmptype_last();
   payload.dstport_or_icmpcode_first = rule.dstport_or_icmpcode_first();
