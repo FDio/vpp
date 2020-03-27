@@ -15,6 +15,7 @@
 
 #include "vom/acl_l2_list.hpp"
 #include "vom/acl_list_cmds.hpp"
+#include "vom/api_types.hpp"
 #include "vom/logger.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -195,9 +196,7 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
     l2_list acl(hdl, std::string(reinterpret_cast<const char*>(payload.tag)));
 
     for (unsigned int ii = 0; ii < payload.count; ii++) {
-      const route::prefix_t pfx(payload.r[ii].is_ipv6,
-                                payload.r[ii].src_ip_addr,
-                                payload.r[ii].src_ip_prefix_len);
+      const route::prefix_t pfx = from_api(payload.r[ii].src_prefix);
       l2_rule rule(ii,
                    action_t::from_int(payload.r[ii].is_permit),
                    pfx,
