@@ -7214,14 +7214,14 @@ class TestNAT44EndpointDependent(MethodHolder):
 class TestNAT44EndpointDependent3(MethodHolder):
     """ Endpoint-Dependent mapping and filtering extra test cases """
 
-    translation_buckets = 5
+    max_translations = 50
 
     @classmethod
     def setUpConstants(cls):
         super(TestNAT44EndpointDependent3, cls).setUpConstants()
         cls.vpp_cmdline.extend([
             "nat", "{", "endpoint-dependent",
-            "translation hash buckets %d" % cls.translation_buckets,
+            "max translations %d" % cls.max_translations,
             "}"
         ])
 
@@ -7289,9 +7289,8 @@ class TestNAT44EndpointDependent3(MethodHolder):
     def test_lru_cleanup(self):
         """ LRU cleanup algorithm """
         tcp_port_out = self.init_tcp_session(self.pg0, self.pg1, 2000, 80)
-        max_translations = 10 * self.translation_buckets
         pkts = []
-        for i in range(0, max_translations - 1):
+        for i in range(0, self.max_translations - 1):
             p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, ttl=64) /
                  UDP(sport=7000+i, dport=80))
@@ -7304,7 +7303,7 @@ class TestNAT44EndpointDependent3(MethodHolder):
         self.sleep(1.5, "wait for timeouts")
 
         pkts = []
-        for i in range(0, max_translations - 1):
+        for i in range(0, self.max_translations - 1):
             p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                  IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, ttl=64) /
                  ICMP(id=8000+i, type='echo-request'))
