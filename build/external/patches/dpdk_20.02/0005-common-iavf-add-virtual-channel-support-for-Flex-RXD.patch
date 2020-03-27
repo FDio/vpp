@@ -1,0 +1,74 @@
+From 296799a9a9006e4c99e428c52818d1e34b26aec2 Mon Sep 17 00:00:00 2001
+From: Chenmin Sun <chenmin.sun@intel.com>
+Date: Fri, 17 Apr 2020 01:49:08 +0800
+Subject: [DPDK 05/17] common/iavf: add virtual channel support for Flex RXD
+
+Add new VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC flag, opcode
+VIRTCHNL_OP_GET_SUPPORTED_RXDIDS and add member rxdid
+in struct virtchnl_rxq_info to support AVF Flex RXD
+extension.
+
+Signed-off-by: Leyi Rong <leyi.rong@intel.com>
+Signed-off-by: Paul M Stillwell Jr <paul.m.stillwell.jr@intel.com>
+Signed-off-by: Qi Zhang <qi.z.zhang@intel.com>
+Signed-off-by: Chenmin Sun <chenmin.sun@intel.com>
+---
+ drivers/common/iavf/virtchnl.h | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/common/iavf/virtchnl.h b/drivers/common/iavf/virtchnl.h
+index 6f9cf18cb..e8d936843 100644
+--- a/drivers/common/iavf/virtchnl.h
++++ b/drivers/common/iavf/virtchnl.h
+@@ -133,6 +133,7 @@ enum virtchnl_ops {
+ 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
+ 	VIRTCHNL_OP_DCF_GET_VSI_MAP = 42,
+ 	VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
++	VIRTCHNL_OP_GET_SUPPORTED_RXDIDS = 44,
+ };
+ 
+ /* These macros are used to generate compilation errors if a structure/union
+@@ -247,6 +248,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
+ #define VIRTCHNL_VF_OFFLOAD_ADQ			0X00800000
+ #define VIRTCHNL_VF_OFFLOAD_ADQ_V2		0X01000000
+ #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
++#define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X04000000
+ 	/* 0X80000000 is reserved */
+ 
+ /* Define below the capability flags that are not offloads */
+@@ -332,7 +334,9 @@ struct virtchnl_rxq_info {
+ 	u32 databuffer_size;
+ 	u32 max_pkt_size;
+ 	u8 crc_disable;
+-	u8 pad1[3];
++	/* only used when VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC is supported */
++	u8 rxdid;
++	u8 pad1[2];
+ 	u64 dma_ring_addr;
+ 	enum virtchnl_rx_hsplit rx_split_pos; /* deprecated with AVF 1.0 */
+ 	u32 pad2;
+@@ -665,6 +669,12 @@ struct virtchnl_dcf_vsi_map {
+ 
+ VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_dcf_vsi_map);
+ 
++struct virtchnl_supported_rxdids {
++	u64 supported_rxdids;
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(8, virtchnl_supported_rxdids);
++
+ /* VIRTCHNL_OP_EVENT
+  * PF sends this message to inform the VF driver of events that may affect it.
+  * No direct response is expected from the VF, though it may generate other
+@@ -937,6 +947,8 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
+ 		 return 0;
+ 	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
+ 		break;
++	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
++		break;
+ 	case VIRTCHNL_OP_DCF_GET_VSI_MAP:
+ 		/* The two opcodes are required by DCF without message buffer,
+ 		 * so the valid length keeps the default value 0.
+-- 
+2.17.1
+

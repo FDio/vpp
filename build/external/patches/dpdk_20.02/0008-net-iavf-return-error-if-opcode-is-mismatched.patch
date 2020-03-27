@@ -1,0 +1,33 @@
+From 91d510242b7aae1aff4468059840feff4075f99c Mon Sep 17 00:00:00 2001
+From: Leyi Rong <leyi.rong@intel.com>
+Date: Wed, 8 Apr 2020 14:22:01 +0800
+Subject: [DPDK 08/17] net/iavf: return error if opcode is mismatched
+
+Adds error return when the opcode of read message is
+mismatched which is received from adminQ.
+
+Signed-off-by: Leyi Rong <leyi.rong@intel.com>
+---
+ drivers/net/iavf/iavf_vchnl.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/iavf/iavf_vchnl.c b/drivers/net/iavf/iavf_vchnl.c
+index fa4da3a6d..b7fb05d32 100644
+--- a/drivers/net/iavf/iavf_vchnl.c
++++ b/drivers/net/iavf/iavf_vchnl.c
+@@ -52,9 +52,11 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
+ 	PMD_DRV_LOG(DEBUG, "AQ from pf carries opcode %u, retval %d",
+ 		    opcode, vf->cmd_retval);
+ 
+-	if (opcode != vf->pend_cmd)
++	if (opcode != vf->pend_cmd) {
+ 		PMD_DRV_LOG(WARNING, "command mismatch, expect %u, get %u",
+ 			    vf->pend_cmd, opcode);
++		return IAVF_ERR_OPCODE_MISMATCH;
++	}
+ 
+ 	return IAVF_SUCCESS;
+ }
+-- 
+2.17.1
+
