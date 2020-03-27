@@ -52,6 +52,12 @@ typedef enum transport_connection_flags_
    * Connection descheduled by the session layer.
    */
   TRANSPORT_CONNECTION_F_DESCHED = 1 << 2,
+  /**
+   * Connection is "connection less". Some important implications of that
+   * are that connections are not pinned to workers and listeners will
+   * have fifos associated to them
+   */
+  TRANSPORT_CONNECTION_F_CLESS = 1 << 3,
 } transport_connection_flags_t;
 
 typedef struct _spacer
@@ -186,10 +192,16 @@ typedef struct transport_endpoint_
 #undef _
 } transport_endpoint_t;
 
+typedef enum transport_endpt_cfg_flags_
+{
+  TRANSPORT_CFG_F_CONNECTED = 1 << 0,
+} transport_endpt_cfg_flags_t;
+
 #define foreach_transport_endpoint_cfg_fields				\
   foreach_transport_endpoint_fields					\
   _(transport_endpoint_t, peer)						\
   _(u16, mss)								\
+  _(u8, transport_flags)						\
 
 typedef struct transport_endpoint_pair_
 {
