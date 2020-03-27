@@ -195,6 +195,12 @@ transport_connection_deschedule (transport_connection_t * tc)
   tc->flags |= TRANSPORT_CONNECTION_F_DESCHED;
 }
 
+static inline u8
+transport_connection_is_cless (transport_connection_t * tc)
+{
+  return ((tc->flags & TRANSPORT_CONNECTION_F_CLESS) ? 1 : 0);
+}
+
 void transport_connection_reschedule (transport_connection_t * tc);
 
 /**
