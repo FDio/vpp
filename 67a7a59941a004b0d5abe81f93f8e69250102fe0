@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3e467e2_c712b377",
+        "filename": "extras/vom/vom/acl_l2_list.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "use this overload:\n  route::prefix_t from_api(const vapi_type_prefix\u0026);",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2649994_890f838e",
+        "filename": "extras/vom/vom/acl_list_cmds.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "use this overload:\n  vapi_type_prefix to_api(const route::prefix_t\u0026);",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd2273c1_552ba289",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 399,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "decode then use:\n  extern bool ip_prefix_validate (const ip_prefix_t * ip);",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f349eac_be525d0b",
+        "filename": "src/plugins/acl/test/test_acl_plugin_l2l3.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "i\u0027d make these conditional constructor paramters.",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24223045_0c7f1d9b",
+        "filename": "src/plugins/acl/test/vpp_acl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "this API is *_and_replace, so one can modify and existing ACL. perhaps a modify_vpp_config method too. i assume there is a test for modification somewhere.",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2e44c996_c125de14",
+        "filename": "src/plugins/acl/test/vpp_acl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-27T08:30:31Z",
+      "side": 1,
+      "message": "same here. it\u0027s possible to modify the list.",
+      "revId": "67a7a59941a004b0d5abe81f93f8e69250102fe0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
