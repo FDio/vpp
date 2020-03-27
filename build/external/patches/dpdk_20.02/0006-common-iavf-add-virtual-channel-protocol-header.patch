@@ -1,0 +1,264 @@
+From e9e33a31aa58293c0442ddbfb96f3b8badfad250 Mon Sep 17 00:00:00 2001
+From: Qi Zhang <qi.z.zhang@intel.com>
+Date: Thu, 9 Apr 2020 13:10:12 +0800
+Subject: [DPDK 06/17] common/iavf: add virtual channel protocol header
+
+To support advanced AVF's FDIR and RSS feature, we need to figure out
+what kind of data structure should be passed from VF to PF to describe
+an FDIR rule or RSS config rule. The common part of the requirement is
+we need a data structure to represent the input set selection of a rule's
+hash key.
+
+An input set selection is a group of fields be selected from one or more
+network protocol layers that could be identified as a specific flow.
+For example, select dst IP address from an IPv4 header combined with
+dst port from the TCP header as the input set for an IPv4/TCP flow.
+
+The patch adds a new data structure virtchnl_proto_hdrs to abstract
+a network protocol headers group which is composed of layers of network
+protocol header(virtchnl_proto_hdr).
+
+A protocol header contains a 32 bits mask (field_selector) to describe
+which fields are selected as input sets, as well as a header type
+(enum virtchnl_proto_hdr_type). Each bit is mapped to a field in
+enum virtchnl_proto_hdr_field guided by its header type.
+
++------------+-----------+------------------------------+
+|            | Proto Hdr | Header Type A                |
+|            |           +------------------------------+
+|            |           | BIT 31 | ... | BIT 1 | BIT 0 |
+|            |-----------+------------------------------+
+|Proto Hdrs  | Proto Hdr | Header Type B                |
+|            |           +------------------------------+
+|            |           | BIT 31 | ... | BIT 1 | BIT 0 |
+|            |-----------+------------------------------+
+|            | Proto Hdr | Header Type C                |
+|            |           +------------------------------+
+|            |           | BIT 31 | ... | BIT 1 | BIT 0 |
+|            |-----------+------------------------------+
+|            |    ....                                  |
++-------------------------------------------------------+
+
+All fields in enum virtchnl_proto_hdr_fields are grouped with header type
+and the value of the first field of a header type is always 32 aligned.
+
+enum proto_hdr_type {
+	header_type_A = 0;
+	header_type_B = 1;
+	....
+}
+
+enum proto_hdr_field {
+	/* header type A */
+	header_A_field_0 = 0,
+	header_A_field_1 = 1,
+	header_A_field_2 = 2,
+	header_A_field_3 = 3,
+
+	/* header type B */
+	header_B_field_0 = 32, // = header_type_B << 5
+	header_B_field_0 = 33,
+	header_B_field_0 = 34
+	header_B_field_0 = 35,
+	....
+};
+
+So we have:
+proto_hdr_type = proto_hdr_field / 32
+bit offset = proto_hdr_field % 32
+
+To simply the protocol header's operations, couple help macros are added.
+For example, to select src IP and dst port as input set for an IPv4/UDP
+flow.
+
+we have:
+struct virtchnl_proto_hdr hdr[2];
+
+VIRTCHNL_SET_PROTO_HDR_TYPE(&hdr[0], IPV4)
+VIRTCHNL_ADD_PROTO_HDR_FIELD(&hdr[0], IPV4, SRC)
+
+VIRTCHNL_SET_PROTO_HDR_TYPE(&hdr[1], UDP)
+VIRTCHNL_ADD_PROTO_HDR_FIELD(&hdr[1], UDP, DST)
+
+A protocol header also contains a byte array, this field should only
+be used by an FDIR rule and should be ignored by RSS. For an FDIR rule,
+the byte array is used to store the protocol header of a training
+package. The byte array must be network order.
+
+Signed-off-by: Jeff Guo <jia.guo@intel.com>
+Signed-off-by: Paul M Stillwell Jr <paul.m.stillwell.jr@intel.com>
+Signed-off-by: Qi Zhang <qi.z.zhang@intel.com>
+---
+ drivers/common/iavf/virtchnl.h | 156 +++++++++++++++++++++++++++++++++
+ 1 file changed, 156 insertions(+)
+
+diff --git a/drivers/common/iavf/virtchnl.h b/drivers/common/iavf/virtchnl.h
+index e8d936843..667762643 100644
+--- a/drivers/common/iavf/virtchnl.h
++++ b/drivers/common/iavf/virtchnl.h
+@@ -769,6 +769,162 @@ enum virtchnl_vfr_states {
+ 	VIRTCHNL_VFR_VFACTIVE,
+ };
+ 
++#define VIRTCHNL_MAX_NUM_PROTO_HDRS	32
++#define PROTO_HDR_SHIFT			5
++#define PROTO_HDR_FIELD_START(proto_hdr_type) \
++					(proto_hdr_type << PROTO_HDR_SHIFT)
++#define PROTO_HDR_FIELD_MASK ((1UL << PROTO_HDR_SHIFT) - 1)
++
++/* VF use these macros to configure each protocol header.
++ * Specify which protocol headers and protocol header fields base on
++ * virtchnl_proto_hdr_type and virtchnl_proto_hdr_field.
++ * @param hdr: a struct of virtchnl_proto_hdr
++ * @param hdr_type: ETH/IPV4/TCP, etc
++ * @param field: SRC/DST/TEID/SPI, etc
++ */
++#define VIRTCHNL_ADD_PROTO_HDR_FIELD(hdr, field) \
++	((hdr)->field_selector |= BIT((field) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr, field) \
++	((hdr)->field_selector &= ~BIT((field) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_TEST_PROTO_HDR_FIELD(hdr, val) \
++	((hdr)->field_selector & BIT((val) & PROTO_HDR_FIELD_MASK))
++#define VIRTCHNL_GET_PROTO_HDR_FIELD(hdr)	((hdr)->field_selector)
++
++#define VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, hdr_type, field) \
++	(VIRTCHNL_ADD_PROTO_HDR_FIELD(hdr, \
++		VIRTCHNL_PROTO_HDR_ ## hdr_type ## _ ## field))
++#define VIRTCHNL_DEL_PROTO_HDR_FIELD_BIT(hdr, hdr_type, field) \
++	(VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr, \
++		VIRTCHNL_PROTO_HDR_ ## hdr_type ## _ ## field))
++
++#define VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, hdr_type) \
++	((hdr)->type = VIRTCHNL_PROTO_HDR_ ## hdr_type)
++#define VIRTCHNL_GET_PROTO_HDR_TYPE(hdr) \
++	(((hdr)->type) >> PROTO_HDR_SHIFT)
++#define VIRTCHNL_TEST_PROTO_HDR_TYPE(hdr, val) \
++	((hdr)->type == ((val) >> PROTO_HDR_SHIFT))
++#define VIRTCHNL_TEST_PROTO_HDR(hdr, val) \
++	(VIRTCHNL_TEST_PROTO_HDR_TYPE(hdr, val) && \
++	 VIRTCHNL_TEST_PROTO_HDR_FIELD(hdr, val))
++
++/* Protocol header type within a packet segment. A segment consists of one or
++ * more protocol headers that make up a logical group of protocol headers. Each
++ * logical group of protocol headers encapsulates or is encapsulated using/by
++ * tunneling or encapsulation protocols for network virtualization.
++ */
++enum virtchnl_proto_hdr_type {
++	VIRTCHNL_PROTO_HDR_NONE,
++	VIRTCHNL_PROTO_HDR_ETH,
++	VIRTCHNL_PROTO_HDR_S_VLAN,
++	VIRTCHNL_PROTO_HDR_C_VLAN,
++	VIRTCHNL_PROTO_HDR_IPV4,
++	VIRTCHNL_PROTO_HDR_IPV6,
++	VIRTCHNL_PROTO_HDR_TCP,
++	VIRTCHNL_PROTO_HDR_UDP,
++	VIRTCHNL_PROTO_HDR_SCTP,
++	VIRTCHNL_PROTO_HDR_GTPU_IP,
++	VIRTCHNL_PROTO_HDR_GTPU_EH,
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_DWN,
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_UP,
++	VIRTCHNL_PROTO_HDR_PPPOE,
++	VIRTCHNL_PROTO_HDR_L2TPV3,
++	VIRTCHNL_PROTO_HDR_ESP,
++	VIRTCHNL_PROTO_HDR_AH,
++	VIRTCHNL_PROTO_HDR_PFCP,
++};
++
++/* Protocol header field within a protocol header. */
++enum virtchnl_proto_hdr_field {
++	/* ETHER */
++	VIRTCHNL_PROTO_HDR_ETH_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_ETH),
++	VIRTCHNL_PROTO_HDR_ETH_DST,
++	VIRTCHNL_PROTO_HDR_ETH_ETHERTYPE,
++	/* S-VLAN */
++	VIRTCHNL_PROTO_HDR_S_VLAN_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_S_VLAN),
++	/* C-VLAN */
++	VIRTCHNL_PROTO_HDR_C_VLAN_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_C_VLAN),
++	/* IPV4 */
++	VIRTCHNL_PROTO_HDR_IPV4_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_IPV4),
++	VIRTCHNL_PROTO_HDR_IPV4_DST,
++	VIRTCHNL_PROTO_HDR_IPV4_DSCP,
++	VIRTCHNL_PROTO_HDR_IPV4_TTL,
++	VIRTCHNL_PROTO_HDR_IPV4_PROT,
++	/* IPV6 */
++	VIRTCHNL_PROTO_HDR_IPV6_SRC =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_IPV6),
++	VIRTCHNL_PROTO_HDR_IPV6_DST,
++	VIRTCHNL_PROTO_HDR_IPV6_TC,
++	VIRTCHNL_PROTO_HDR_IPV6_HOP_LIMIT,
++	VIRTCHNL_PROTO_HDR_IPV6_PROT,
++	/* TCP */
++	VIRTCHNL_PROTO_HDR_TCP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_TCP),
++	VIRTCHNL_PROTO_HDR_TCP_DST_PORT,
++	/* UDP */
++	VIRTCHNL_PROTO_HDR_UDP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_UDP),
++	VIRTCHNL_PROTO_HDR_UDP_DST_PORT,
++	/* SCTP */
++	VIRTCHNL_PROTO_HDR_SCTP_SRC_PORT =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_SCTP),
++	VIRTCHNL_PROTO_HDR_SCTP_DST_PORT,
++	/* GTPU_IP */
++	VIRTCHNL_PROTO_HDR_GTPU_IP_TEID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_GTPU_IP),
++	/* GTPU_EH */
++	VIRTCHNL_PROTO_HDR_GTPU_EH_PDU =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_GTPU_EH),
++	VIRTCHNL_PROTO_HDR_GTPU_EH_QFI,
++	/* PPPOE */
++	VIRTCHNL_PROTO_HDR_PPPOE_SESS_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_PPPOE),
++	/* L2TPV3 */
++	VIRTCHNL_PROTO_HDR_L2TPV3_SESS_ID =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_L2TPV3),
++	/* ESP */
++	VIRTCHNL_PROTO_HDR_ESP_SPI =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_ESP),
++	/* AH */
++	VIRTCHNL_PROTO_HDR_AH_SPI =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_AH),
++	/* PFCP */
++	VIRTCHNL_PROTO_HDR_PFCP_S_FIELD =
++		PROTO_HDR_FIELD_START(VIRTCHNL_PROTO_HDR_PFCP),
++	VIRTCHNL_PROTO_HDR_PFCP_SEID,
++};
++
++struct virtchnl_proto_hdr {
++	enum virtchnl_proto_hdr_type type;
++	u32 field_selector; /* a bit mask to select field for header type */
++	u8 buffer[64];
++	/**
++	 * binary buffer in network order for specific header type.
++	 * For example, if type = VIRTCHNL_PROTO_HDR_IPV4, a IPv4
++	 * header is expected to be copied into the buffer.
++	 */
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_proto_hdr);
++
++struct virtchnl_proto_hdrs {
++	u8 tunnel_level;
++	/**
++	 * specify where protocol header start from.
++	 * 0 - from the outer layer
++	 * 1 - from the first inner layer
++	 * 2 - from the second inner layer
++	 * ....
++	 **/
++	int count; /* the proto layers must < VIRTCHNL_MAX_NUM_PROTO_HDRS */
++	struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(2312, virtchnl_proto_hdrs);
++
+ /**
+  * virtchnl_vc_validate_vf_msg
+  * @ver: Virtchnl version info
+-- 
+2.17.1
+

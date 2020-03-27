@@ -1,0 +1,78 @@
+From e69d36c549609c02b6814cd06232e340fe0b873b Mon Sep 17 00:00:00 2001
+From: Leyi Rong <leyi.rong@intel.com>
+Date: Wed, 8 Apr 2020 14:22:05 +0800
+Subject: [DPDK 11/17] net/iavf: add flow director enabled switch value
+
+The commit adds fdir_enabled flag into iavf_rx_queue structure
+to identify if fdir id is active. Rx data path can be benefit if
+fdir id parsing is not needed, especially in vector path.
+
+Signed-off-by: Leyi Rong <leyi.rong@intel.com>
+---
+ drivers/net/iavf/iavf.h      |  1 +
+ drivers/net/iavf/iavf_rxtx.h | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
+
+diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
+index 67d625053..0cd0117c2 100644
+--- a/drivers/net/iavf/iavf.h
++++ b/drivers/net/iavf/iavf.h
+@@ -134,6 +134,7 @@ struct iavf_adapter {
+ 	bool tx_vec_allowed;
+ 	const uint32_t *ptype_tbl;
+ 	bool stopped;
++	uint16_t fdir_ref_cnt;
+ };
+ 
+ /* IAVF_DEV_PRIVATE_TO */
+diff --git a/drivers/net/iavf/iavf_rxtx.h b/drivers/net/iavf/iavf_rxtx.h
+index 8e1db2588..f37438953 100644
+--- a/drivers/net/iavf/iavf_rxtx.h
++++ b/drivers/net/iavf/iavf_rxtx.h
+@@ -103,6 +103,7 @@ struct iavf_rx_queue {
+ 
+ 	uint16_t port_id;        /* device port ID */
+ 	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
++	uint8_t fdir_enabled;   /* 0 if FDIR disabled, 1 when enabled */
+ 	uint16_t queue_id;      /* Rx queue index */
+ 	uint16_t rx_buf_len;    /* The packet buffer size */
+ 	uint16_t rx_hdr_len;    /* The header buffer size */
+@@ -485,6 +486,35 @@ void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
+ 	       tx_desc->cmd_type_offset_bsz);
+ }
+ 
++#define FDIR_PROC_ENABLE_PER_QUEUE(ad, on) do { \
++	int i; \
++	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
++		struct iavf_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
++		if (!rxq) \
++			continue; \
++		rxq->fdir_enabled = on; \
++	} \
++	PMD_DRV_LOG(DEBUG, "FDIR processing on RX set to %d", on); \
++} while (0)
++
++/* Enable/disable flow director Rx processing in data path. */
++static inline
++void iavf_fdir_rx_proc_enable(struct iavf_adapter *ad, bool on)
++{
++	if (on) {
++		/* enable flow director processing */
++		if (ad->fdir_ref_cnt++ == 0)
++			FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
++	} else {
++		if (ad->fdir_ref_cnt >= 1) {
++			ad->fdir_ref_cnt--;
++
++			if (ad->fdir_ref_cnt == 0)
++				FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
++		}
++	}
++}
++
+ #ifdef RTE_LIBRTE_IAVF_DEBUG_DUMP_DESC
+ #define IAVF_DUMP_RX_DESC(rxq, desc, rx_id) \
+ 	iavf_dump_rx_descriptor(rxq, desc, rx_id)
+-- 
+2.17.1
+

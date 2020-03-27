@@ -1,0 +1,75 @@
+From e2a382090a344152a79d079bb0af32bc7f03fb16 Mon Sep 17 00:00:00 2001
+From: Chenmin Sun <chenmin.sun@intel.com>
+Date: Fri, 27 Mar 2020 08:26:17 +0800
+Subject: [DPDK 02/17] common/iavf: add virtual channel opcodes 39,40,43
+
+VIRTCHNL_OP_DCF_CMD_DESC = 39,
+VIRTCHNL_OP_DCF_CMD_BUFF = 40,
+VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
+
+Signed-off-by: Chenmin Sun <chenmin.sun@intel.com>
+---
+ drivers/common/iavf/virtchnl.h | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/drivers/common/iavf/virtchnl.h b/drivers/common/iavf/virtchnl.h
+index 2fbbb9e28..83a7a7174 100644
+--- a/drivers/common/iavf/virtchnl.h
++++ b/drivers/common/iavf/virtchnl.h
+@@ -129,6 +129,9 @@ enum virtchnl_ops {
+ 	VIRTCHNL_OP_ADD_CLOUD_FILTER = 32,
+ 	VIRTCHNL_OP_DEL_CLOUD_FILTER = 33,
+ 	/* opcodes 34, 35, 36, 37 and 38 are reserved */
++	VIRTCHNL_OP_DCF_CMD_DESC = 39,
++	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
++	VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
+ };
+ 
+ /* These macros are used to generate compilation errors if a structure/union
+@@ -266,6 +269,28 @@ struct virtchnl_vf_resource {
+ 
+ VIRTCHNL_CHECK_STRUCT_LEN(36, virtchnl_vf_resource);
+ 
++#define PKG_NAME_SIZE	32
++#define DSN_SIZE	8
++
++struct pkg_version {
++	u8 major;
++	u8 minor;
++	u8 update;
++	u8 draft;
++};
++
++VIRTCHNL_CHECK_STRUCT_LEN(4, pkg_version);
++
++struct virtchnl_pkg_info {
++	struct pkg_version pkg_ver;
++	u32 track_id;
++	char pkg_name[PKG_NAME_SIZE];
++	u8 dsn[DSN_SIZE];
++};
++
++
++VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_pkg_info);
++
+ /* VIRTCHNL_OP_CONFIG_TX_QUEUE
+  * VF sends this message to set up parameters for one TX queue.
+  * External data buffer contains one instance of virtchnl_txq_info.
+@@ -879,6 +904,14 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
+ 	case VIRTCHNL_OP_DEL_CLOUD_FILTER:
+ 		valid_len = sizeof(struct virtchnl_filter);
+ 		break;
++	case VIRTCHNL_OP_DCF_CMD_DESC:
++	case VIRTCHNL_OP_DCF_CMD_BUFF:
++		/* These two opcodes are specific to handle the AdminQ command,
++		 * so the validation needs to be done in PF's context.
++		 */
++		 return 0;
++	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
++		break;
+ 	/* These are always errors coming from the VF. */
+ 	case VIRTCHNL_OP_EVENT:
+ 	case VIRTCHNL_OP_UNKNOWN:
+-- 
+2.17.1
+

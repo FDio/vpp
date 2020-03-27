@@ -1,0 +1,1531 @@
+From 0692e4be875c64c5d26f2e6df80bbb1a24df36a6 Mon Sep 17 00:00:00 2001
+From: Chenmin Sun <chenmin.sun@intel.com>
+Date: Fri, 17 Apr 2020 05:02:22 +0800
+Subject: [DPDK 15/17] net/iavf: support generic flow
+
+This patch added iavf_flow_create, iavf_flow_destroy,
+iavf_flow_flush and iavf_flow_validate support,
+these are used to handle all the generic filters.
+
+This patch supported basic L2, L3, L4 and GTPU patterns.
+
+Signed-off-by: Qiming Yang <qiming.yang@intel.com>
+Acked-by: Qi Zhang <qi.z.zhang@intel.com>
+Signed-off-by: Chenmin Sun <chenmin.sun@intel.com>
+---
+ doc/guides/nics/features/iavf.ini    |    1 +
+ drivers/net/iavf/Makefile            |    1 +
+ drivers/net/iavf/iavf.h              |   10 +
+ drivers/net/iavf/iavf_ethdev.c       |   45 ++
+ drivers/net/iavf/iavf_generic_flow.c | 1008 ++++++++++++++++++++++++++
+ drivers/net/iavf/iavf_generic_flow.h |  313 ++++++++
+ drivers/net/iavf/meson.build         |    1 +
+ 7 files changed, 1379 insertions(+)
+ create mode 100644 drivers/net/iavf/iavf_generic_flow.c
+ create mode 100644 drivers/net/iavf/iavf_generic_flow.h
+
+diff --git a/doc/guides/nics/features/iavf.ini b/doc/guides/nics/features/iavf.ini
+index 80143059e..3bf368785 100644
+--- a/doc/guides/nics/features/iavf.ini
++++ b/doc/guides/nics/features/iavf.ini
+@@ -19,6 +19,7 @@ Multicast MAC filter = Y
+ RSS hash             = Y
+ RSS key update       = Y
+ RSS reta update      = Y
++Flow API             = Y
+ VLAN filter          = Y
+ CRC offload          = Y
+ VLAN offload         = Y
+diff --git a/drivers/net/iavf/Makefile b/drivers/net/iavf/Makefile
+index 514073d76..1bf0f26b5 100644
+--- a/drivers/net/iavf/Makefile
++++ b/drivers/net/iavf/Makefile
+@@ -23,6 +23,7 @@ EXPORT_MAP := rte_pmd_iavf_version.map
+ SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_ethdev.c
+ SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_vchnl.c
+ SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_rxtx.c
++SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_generic_flow.c
+ ifeq ($(CONFIG_RTE_ARCH_X86), y)
+ SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_rxtx_vec_sse.c
+ endif
+diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
+index b63efd4e8..78bdaff20 100644
+--- a/drivers/net/iavf/iavf.h
++++ b/drivers/net/iavf/iavf.h
+@@ -86,6 +86,12 @@ struct iavf_vsi {
+ 	struct virtchnl_eth_stats eth_stats_offset;
+ };
+ 
++struct rte_flow;
++TAILQ_HEAD(iavf_flow_list, rte_flow);
++
++struct iavf_flow_parser_node;
++TAILQ_HEAD(iavf_parser_list, iavf_flow_parser_node);
++
+ /* TODO: is that correct to assume the max number to be 16 ?*/
+ #define IAVF_MAX_MSIX_VECTORS   16
+ 
+@@ -121,6 +127,10 @@ struct iavf_info {
+ 	uint16_t msix_base; /* msix vector base from */
+ 	/* queue bitmask for each vector */
+ 	uint16_t rxq_map[IAVF_MAX_MSIX_VECTORS];
++	struct iavf_flow_list flow_list;
++	rte_spinlock_t flow_ops_lock;
++	struct iavf_parser_list rss_parser_list;
++	struct iavf_parser_list dist_parser_list;
+ };
+ 
+ #define IAVF_MAX_PKT_TYPE 1024
+diff --git a/drivers/net/iavf/iavf_ethdev.c b/drivers/net/iavf/iavf_ethdev.c
+index d3a121eac..95ab6e246 100644
+--- a/drivers/net/iavf/iavf_ethdev.c
++++ b/drivers/net/iavf/iavf_ethdev.c
+@@ -27,6 +27,7 @@
+ 
+ #include "iavf.h"
+ #include "iavf_rxtx.h"
++#include "iavf_generic_flow.h"
+ 
+ static int iavf_dev_configure(struct rte_eth_dev *dev);
+ static int iavf_dev_start(struct rte_eth_dev *dev);
+@@ -67,6 +68,11 @@ static int iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
+ 					uint16_t queue_id);
+ static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+ 					 uint16_t queue_id);
++static int iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
++		     enum rte_filter_type filter_type,
++		     enum rte_filter_op filter_op,
++		     void *arg);
++
+ 
+ int iavf_logtype_init;
+ int iavf_logtype_driver;
+@@ -125,6 +131,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
+ 	.mtu_set                    = iavf_dev_mtu_set,
+ 	.rx_queue_intr_enable       = iavf_dev_rx_queue_intr_enable,
+ 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
++	.filter_ctrl                = iavf_dev_filter_ctrl,
+ };
+ 
+ static int
+@@ -1298,6 +1305,33 @@ iavf_dev_interrupt_handler(void *param)
+ 	iavf_enable_irq0(hw);
+ }
+ 
++static int
++iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
++		     enum rte_filter_type filter_type,
++		     enum rte_filter_op filter_op,
++		     void *arg)
++{
++	int ret = 0;
++
++	if (!dev)
++		return -EINVAL;
++
++	switch (filter_type) {
++	case RTE_ETH_FILTER_GENERIC:
++		if (filter_op != RTE_ETH_FILTER_GET)
++			return -EINVAL;
++		*(const void **)arg = &iavf_flow_ops;
++		break;
++	default:
++		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
++			    filter_type);
++		ret = -EINVAL;
++		break;
++	}
++
++	return ret;
++}
++
+ static int
+ iavf_dev_init(struct rte_eth_dev *eth_dev)
+ {
+@@ -1305,6 +1339,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
+ 		IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
+ 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+ 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
++	int ret = 0;
+ 
+ 	PMD_INIT_FUNC_TRACE();
+ 
+@@ -1374,6 +1409,12 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
+ 	/* configure and enable device interrupt */
+ 	iavf_enable_irq0(hw);
+ 
++	ret = iavf_flow_init(adapter);
++	if (ret) {
++		PMD_INIT_LOG(ERR, "Failed to initialize flow");
++		return ret;
++	}
++
+ 	return 0;
+ }
+ 
+@@ -1383,6 +1424,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
+ 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+ 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+ 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
++	struct iavf_adapter *adapter =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+ 
+ 	iavf_dev_stop(dev);
+ 	iavf_shutdown_adminq(hw);
+@@ -1393,6 +1436,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
+ 	rte_intr_callback_unregister(intr_handle,
+ 				     iavf_dev_interrupt_handler, dev);
+ 	iavf_disable_irq0(hw);
++
++	iavf_flow_uninit(adapter);
+ }
+ 
+ static int
+diff --git a/drivers/net/iavf/iavf_generic_flow.c b/drivers/net/iavf/iavf_generic_flow.c
+new file mode 100644
+index 000000000..98f1626d6
+--- /dev/null
++++ b/drivers/net/iavf/iavf_generic_flow.c
+@@ -0,0 +1,1008 @@
++/* SPDX-License-Identifier: BSD-3-Clause
++ * Copyright(c) 2019 Intel Corporation
++ */
++
++#include <sys/queue.h>
++#include <stdio.h>
++#include <errno.h>
++#include <stdint.h>
++#include <string.h>
++#include <unistd.h>
++#include <stdarg.h>
++
++#include <rte_ether.h>
++#include <rte_ethdev_driver.h>
++#include <rte_malloc.h>
++#include <rte_tailq.h>
++
++#include "iavf.h"
++#include "iavf_generic_flow.h"
++
++static struct iavf_engine_list engine_list =
++		TAILQ_HEAD_INITIALIZER(engine_list);
++
++static int iavf_flow_validate(struct rte_eth_dev *dev,
++		const struct rte_flow_attr *attr,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error);
++static struct rte_flow *iavf_flow_create(struct rte_eth_dev *dev,
++		const struct rte_flow_attr *attr,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error);
++static int iavf_flow_destroy(struct rte_eth_dev *dev,
++		struct rte_flow *flow,
++		struct rte_flow_error *error);
++static int iavf_flow_flush(struct rte_eth_dev *dev,
++		struct rte_flow_error *error);
++static int iavf_flow_query(struct rte_eth_dev *dev,
++		struct rte_flow *flow,
++		const struct rte_flow_action *actions,
++		void *data,
++		struct rte_flow_error *error);
++
++const struct rte_flow_ops iavf_flow_ops = {
++	.validate = iavf_flow_validate,
++	.create = iavf_flow_create,
++	.destroy = iavf_flow_destroy,
++	.flush = iavf_flow_flush,
++	.query = iavf_flow_query,
++};
++
++/* empty */
++enum rte_flow_item_type iavf_pattern_empty[] = {
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* L2 */
++enum rte_flow_item_type iavf_pattern_ethertype[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_ethertype_vlan[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_ethertype_qinq[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* ARP */
++enum rte_flow_item_type iavf_pattern_eth_arp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* non-tunnel IPv4 */
++enum rte_flow_item_type iavf_pattern_eth_ipv4[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_icmp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_ICMP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_icmp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_ICMP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_icmp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_ICMP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* non-tunnel IPv6 */
++enum rte_flow_item_type iavf_pattern_eth_ipv6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_sctp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_SCTP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_icmp6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_ICMP6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_icmp6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_ICMP6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_icmp6[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_VLAN,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_ICMP6,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* GTPU */
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_GTP_PSC,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_GTP_PSC,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_GTP_PSC,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_GTP_PSC,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_TCP,
++	RTE_FLOW_ITEM_TYPE_END,
++
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_icmp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_GTPU,
++	RTE_FLOW_ITEM_TYPE_GTP_PSC,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_ICMP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* ESP */
++enum rte_flow_item_type iavf_pattern_eth_ipv4_esp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_ESP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_esp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_ESP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_esp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_ESP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_esp[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_UDP,
++	RTE_FLOW_ITEM_TYPE_ESP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* AH */
++enum rte_flow_item_type iavf_pattern_eth_ipv4_ah[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_AH,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_ah[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_AH,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++/* L2TPV3 */
++enum rte_flow_item_type iavf_pattern_eth_ipv4_l2tpv3[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV4,
++	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++enum rte_flow_item_type iavf_pattern_eth_ipv6_l2tpv3[] = {
++	RTE_FLOW_ITEM_TYPE_ETH,
++	RTE_FLOW_ITEM_TYPE_IPV6,
++	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
++	RTE_FLOW_ITEM_TYPE_END,
++};
++
++typedef struct iavf_flow_engine * (*parse_engine_t)(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		struct iavf_parser_list *parser_list,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error);
++
++void
++iavf_register_flow_engine(struct iavf_flow_engine *engine)
++{
++	TAILQ_INSERT_TAIL(&engine_list, engine, node);
++}
++
++int
++iavf_flow_init(struct iavf_adapter *ad)
++{
++	int ret;
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	void *temp;
++	struct iavf_flow_engine *engine;
++
++	TAILQ_INIT(&vf->flow_list);
++	TAILQ_INIT(&vf->rss_parser_list);
++	TAILQ_INIT(&vf->dist_parser_list);
++	rte_spinlock_init(&vf->flow_ops_lock);
++
++	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
++		if (engine->init == NULL) {
++			PMD_INIT_LOG(ERR, "Invalid engine type (%d)",
++				     engine->type);
++			return -ENOTSUP;
++		}
++
++		ret = engine->init(ad);
++		if (ret && ret != -ENOTSUP) {
++			PMD_INIT_LOG(ERR, "Failed to initialize engine %d",
++				     engine->type);
++			return ret;
++		}
++	}
++	return 0;
++}
++
++void
++iavf_flow_uninit(struct iavf_adapter *ad)
++{
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	struct iavf_flow_engine *engine;
++	struct rte_flow *p_flow;
++	struct iavf_flow_parser_node *p_parser;
++	void *temp;
++
++	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
++		if (engine->uninit)
++			engine->uninit(ad);
++	}
++
++	/* Remove all flows */
++	while ((p_flow = TAILQ_FIRST(&vf->flow_list))) {
++		TAILQ_REMOVE(&vf->flow_list, p_flow, node);
++		if (p_flow->engine->free)
++			p_flow->engine->free(p_flow);
++		rte_free(p_flow);
++	}
++
++	/* Cleanup parser list */
++	while ((p_parser = TAILQ_FIRST(&vf->rss_parser_list))) {
++		TAILQ_REMOVE(&vf->rss_parser_list, p_parser, node);
++		rte_free(p_parser);
++	}
++
++	while ((p_parser = TAILQ_FIRST(&vf->dist_parser_list))) {
++		TAILQ_REMOVE(&vf->dist_parser_list, p_parser, node);
++		rte_free(p_parser);
++	}
++}
++
++int
++iavf_register_parser(struct iavf_flow_parser *parser,
++		     struct iavf_adapter *ad)
++{
++	struct iavf_parser_list *list = NULL;
++	struct iavf_flow_parser_node *parser_node;
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++
++	parser_node = rte_zmalloc("iavf_parser", sizeof(*parser_node), 0);
++	if (parser_node == NULL) {
++		PMD_DRV_LOG(ERR, "Failed to allocate memory.");
++		return -ENOMEM;
++	}
++	parser_node->parser = parser;
++
++	if (parser->engine->type == IAVF_FLOW_ENGINE_HASH) {
++		list = &vf->rss_parser_list;
++		TAILQ_INSERT_TAIL(list, parser_node, node);
++	} else if (parser->engine->type == IAVF_FLOW_ENGINE_FDIR) {
++		list = &vf->dist_parser_list;
++		TAILQ_INSERT_HEAD(list, parser_node, node);
++	} else {
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++void
++iavf_unregister_parser(struct iavf_flow_parser *parser,
++		       struct iavf_adapter *ad)
++{
++	struct iavf_parser_list *list = NULL;
++	struct iavf_flow_parser_node *p_parser;
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	void *temp;
++
++	if (parser->engine->type == IAVF_FLOW_ENGINE_HASH)
++		list = &vf->rss_parser_list;
++	else if (parser->engine->type == IAVF_FLOW_ENGINE_FDIR)
++		list = &vf->dist_parser_list;
++
++	if (list == NULL)
++		return;
++
++	TAILQ_FOREACH_SAFE(p_parser, list, node, temp) {
++		if (p_parser->parser->engine->type == parser->engine->type) {
++			TAILQ_REMOVE(list, p_parser, node);
++			rte_free(p_parser);
++		}
++	}
++}
++
++static int
++iavf_flow_valid_attr(const struct rte_flow_attr *attr,
++		     struct rte_flow_error *error)
++{
++	/* Must be input direction */
++	if (!attr->ingress) {
++		rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
++				attr, "Only support ingress.");
++		return -rte_errno;
++	}
++
++	/* Not supported */
++	if (attr->egress) {
++		rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
++				attr, "Not support egress.");
++		return -rte_errno;
++	}
++
++	/* Not supported */
++	if (attr->priority) {
++		rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
++				attr, "Not support priority.");
++		return -rte_errno;
++	}
++
++	/* Not supported */
++	if (attr->group) {
++		rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
++				attr, "Not support group.");
++		return -rte_errno;
++	}
++
++	return 0;
++}
++
++/* Find the first VOID or non-VOID item pointer */
++static const struct rte_flow_item *
++iavf_find_first_item(const struct rte_flow_item *item, bool is_void)
++{
++	bool is_find;
++
++	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
++		if (is_void)
++			is_find = item->type == RTE_FLOW_ITEM_TYPE_VOID;
++		else
++			is_find = item->type != RTE_FLOW_ITEM_TYPE_VOID;
++		if (is_find)
++			break;
++		item++;
++	}
++	return item;
++}
++
++/* Skip all VOID items of the pattern */
++static void
++iavf_pattern_skip_void_item(struct rte_flow_item *items,
++			const struct rte_flow_item *pattern)
++{
++	uint32_t cpy_count = 0;
++	const struct rte_flow_item *pb = pattern, *pe = pattern;
++
++	for (;;) {
++		/* Find a non-void item first */
++		pb = iavf_find_first_item(pb, false);
++		if (pb->type == RTE_FLOW_ITEM_TYPE_END) {
++			pe = pb;
++			break;
++		}
++
++		/* Find a void item */
++		pe = iavf_find_first_item(pb + 1, true);
++
++		cpy_count = pe - pb;
++		rte_memcpy(items, pb, sizeof(struct rte_flow_item) * cpy_count);
++
++		items += cpy_count;
++
++		if (pe->type == RTE_FLOW_ITEM_TYPE_END)
++			break;
++
++		pb = pe + 1;
++	}
++	/* Copy the END item. */
++	rte_memcpy(items, pe, sizeof(struct rte_flow_item));
++}
++
++/* Check if the pattern matches a supported item type array */
++static bool
++iavf_match_pattern(enum rte_flow_item_type *item_array,
++		   const struct rte_flow_item *pattern)
++{
++	const struct rte_flow_item *item = pattern;
++
++	while ((*item_array == item->type) &&
++	       (*item_array != RTE_FLOW_ITEM_TYPE_END)) {
++		item_array++;
++		item++;
++	}
++
++	return (*item_array == RTE_FLOW_ITEM_TYPE_END &&
++		item->type == RTE_FLOW_ITEM_TYPE_END);
++}
++
++struct iavf_pattern_match_item *
++iavf_search_pattern_match_item(const struct rte_flow_item pattern[],
++		struct iavf_pattern_match_item *array,
++		uint32_t array_len,
++		struct rte_flow_error *error)
++{
++	uint16_t i = 0;
++	struct iavf_pattern_match_item *pattern_match_item;
++	/* need free by each filter */
++	struct rte_flow_item *items; /* used for pattern without VOID items */
++	uint32_t item_num = 0; /* non-void item number */
++
++	/* Get the non-void item number of pattern */
++	while ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_END) {
++		if ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_VOID)
++			item_num++;
++		i++;
++	}
++	item_num++;
++
++	items = rte_zmalloc("iavf_pattern",
++			    item_num * sizeof(struct rte_flow_item), 0);
++	if (!items) {
++		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
++				   NULL, "No memory for PMD internal items.");
++		return NULL;
++	}
++	pattern_match_item = rte_zmalloc("iavf_pattern_match_item",
++				sizeof(struct iavf_pattern_match_item), 0);
++	if (!pattern_match_item) {
++		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
++				   NULL, "Failed to allocate memory.");
++		return NULL;
++	}
++
++	iavf_pattern_skip_void_item(items, pattern);
++
++	for (i = 0; i < array_len; i++)
++		if (iavf_match_pattern(array[i].pattern_list,
++				       items)) {
++			pattern_match_item->input_set_mask =
++				array[i].input_set_mask;
++			pattern_match_item->pattern_list =
++				array[i].pattern_list;
++			pattern_match_item->meta = array[i].meta;
++			rte_free(items);
++			return pattern_match_item;
++		}
++	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
++			   pattern, "Unsupported pattern");
++
++	rte_free(items);
++	rte_free(pattern_match_item);
++	return NULL;
++}
++
++static struct iavf_flow_engine *
++iavf_parse_engine_create(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		struct iavf_parser_list *parser_list,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error)
++{
++	struct iavf_flow_engine *engine = NULL;
++	struct iavf_flow_parser_node *parser_node;
++	void *temp;
++	void *meta = NULL;
++
++	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
++		if (parser_node->parser->parse_pattern_action(ad,
++				parser_node->parser->array,
++				parser_node->parser->array_len,
++				pattern, actions, &meta, error) < 0)
++			continue;
++
++		engine = parser_node->parser->engine;
++
++		RTE_ASSERT(engine->create != NULL);
++		if (!(engine->create(ad, flow, meta, error)))
++			return engine;
++	}
++	return NULL;
++}
++
++static struct iavf_flow_engine *
++iavf_parse_engine_validate(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		struct iavf_parser_list *parser_list,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error)
++{
++	struct iavf_flow_engine *engine = NULL;
++	struct iavf_flow_parser_node *parser_node;
++	void *temp;
++	void *meta = NULL;
++
++	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
++		if (parser_node->parser->parse_pattern_action(ad,
++				parser_node->parser->array,
++				parser_node->parser->array_len,
++				pattern, actions, &meta,  error) < 0)
++			continue;
++
++		engine = parser_node->parser->engine;
++		if (engine->validation == NULL) {
++			rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_HANDLE,
++				NULL, "Validation not support");
++			continue;
++		}
++
++		if (engine->validation(ad, flow, meta, error)) {
++			rte_flow_error_set(error, EINVAL,
++				RTE_FLOW_ERROR_TYPE_HANDLE,
++				NULL, "Validation failed");
++			break;
++		}
++	}
++	return engine;
++}
++
++
++static int
++iavf_flow_process_filter(struct rte_eth_dev *dev,
++		struct rte_flow *flow,
++		const struct rte_flow_attr *attr,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct iavf_flow_engine **engine,
++		parse_engine_t iavf_parse_engine,
++		struct rte_flow_error *error)
++{
++	int ret = IAVF_ERR_CONFIG;
++	struct iavf_adapter *ad =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++
++	if (!pattern) {
++		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
++				   NULL, "NULL pattern.");
++		return -rte_errno;
++	}
++
++	if (!actions) {
++		rte_flow_error_set(error, EINVAL,
++				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
++				   NULL, "NULL action.");
++		return -rte_errno;
++	}
++
++	if (!attr) {
++		rte_flow_error_set(error, EINVAL,
++				   RTE_FLOW_ERROR_TYPE_ATTR,
++				   NULL, "NULL attribute.");
++		return -rte_errno;
++	}
++
++	ret = iavf_flow_valid_attr(attr, error);
++	if (ret)
++		return ret;
++
++	*engine = iavf_parse_engine(ad, flow, &vf->rss_parser_list, pattern,
++				    actions, error);
++	if (*engine != NULL)
++		return 0;
++
++	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list, pattern,
++				    actions, error);
++
++	if (*engine == NULL)
++		return -EINVAL;
++
++	return 0;
++}
++
++static int
++iavf_flow_validate(struct rte_eth_dev *dev,
++		const struct rte_flow_attr *attr,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		struct rte_flow_error *error)
++{
++	struct iavf_flow_engine *engine;
++
++	return iavf_flow_process_filter(dev, NULL, attr, pattern, actions,
++			&engine, iavf_parse_engine_validate, error);
++}
++
++static struct rte_flow *
++iavf_flow_create(struct rte_eth_dev *dev,
++		 const struct rte_flow_attr *attr,
++		 const struct rte_flow_item pattern[],
++		 const struct rte_flow_action actions[],
++		 struct rte_flow_error *error)
++{
++	struct iavf_adapter *ad =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	struct iavf_flow_engine *engine = NULL;
++	struct rte_flow *flow = NULL;
++	int ret;
++
++	flow = rte_zmalloc("iavf_flow", sizeof(struct rte_flow), 0);
++	if (!flow) {
++		rte_flow_error_set(error, ENOMEM,
++				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
++				   "Failed to allocate memory");
++		return flow;
++	}
++
++	ret = iavf_flow_process_filter(dev, flow, attr, pattern, actions,
++			&engine, iavf_parse_engine_create, error);
++	if (ret < 0) {
++		PMD_DRV_LOG(ERR, "Failed to create flow");
++		rte_free(flow);
++		flow = NULL;
++		goto free_flow;
++	}
++
++	flow->engine = engine;
++	TAILQ_INSERT_TAIL(&vf->flow_list, flow, node);
++	PMD_DRV_LOG(INFO, "Succeeded to create (%d) flow", engine->type);
++
++free_flow:
++	rte_spinlock_unlock(&vf->flow_ops_lock);
++	return flow;
++}
++
++static int
++iavf_flow_destroy(struct rte_eth_dev *dev,
++		  struct rte_flow *flow,
++		  struct rte_flow_error *error)
++{
++	struct iavf_adapter *ad =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	int ret = 0;
++
++	if (!flow || !flow->engine || !flow->engine->destroy) {
++		rte_flow_error_set(error, EINVAL,
++				   RTE_FLOW_ERROR_TYPE_HANDLE,
++				   NULL, "Invalid flow");
++		return -rte_errno;
++	}
++
++	rte_spinlock_lock(&vf->flow_ops_lock);
++
++	ret = flow->engine->destroy(ad, flow, error);
++
++	if (!ret) {
++		TAILQ_REMOVE(&vf->flow_list, flow, node);
++		rte_free(flow);
++	} else {
++		PMD_DRV_LOG(ERR, "Failed to destroy flow");
++	}
++
++	rte_spinlock_unlock(&vf->flow_ops_lock);
++
++	return ret;
++}
++
++static int
++iavf_flow_flush(struct rte_eth_dev *dev,
++		struct rte_flow_error *error)
++{
++	struct iavf_adapter *ad =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
++	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
++	struct rte_flow *p_flow;
++	void *temp;
++	int ret = 0;
++
++	TAILQ_FOREACH_SAFE(p_flow, &vf->flow_list, node, temp) {
++		ret = iavf_flow_destroy(dev, p_flow, error);
++		if (ret) {
++			PMD_DRV_LOG(ERR, "Failed to flush flows");
++			return -EINVAL;
++		}
++	}
++
++	return ret;
++}
++
++static int
++iavf_flow_query(struct rte_eth_dev *dev,
++		struct rte_flow *flow,
++		const struct rte_flow_action *actions,
++		void *data,
++		struct rte_flow_error *error)
++{
++	int ret = -EINVAL;
++	struct iavf_adapter *ad =
++		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
++	struct rte_flow_query_count *count = data;
++
++	if (!flow || !flow->engine || !flow->engine->query_count) {
++		rte_flow_error_set(error, EINVAL,
++				   RTE_FLOW_ERROR_TYPE_HANDLE,
++				   NULL, "Invalid flow");
++		return -rte_errno;
++	}
++
++	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
++		switch (actions->type) {
++		case RTE_FLOW_ACTION_TYPE_VOID:
++			break;
++		case RTE_FLOW_ACTION_TYPE_COUNT:
++			ret = flow->engine->query_count(ad, flow, count, error);
++			break;
++		default:
++			return rte_flow_error_set(error, ENOTSUP,
++					RTE_FLOW_ERROR_TYPE_ACTION,
++					actions,
++					"action not supported");
++		}
++	}
++	return ret;
++}
+diff --git a/drivers/net/iavf/iavf_generic_flow.h b/drivers/net/iavf/iavf_generic_flow.h
+new file mode 100644
+index 000000000..f4906b43a
+--- /dev/null
++++ b/drivers/net/iavf/iavf_generic_flow.h
+@@ -0,0 +1,313 @@
++/* SPDX-License-Identifier: BSD-3-Clause
++ * Copyright(c) 2019 Intel Corporation
++ */
++
++#ifndef _IAVF_GENERIC_FLOW_H_
++#define _IAVF_GENERIC_FLOW_H_
++
++#include <rte_flow_driver.h>
++
++/* protocol */
++
++#define IAVF_PROT_MAC_INNER         (1ULL << 1)
++#define IAVF_PROT_MAC_OUTER         (1ULL << 2)
++#define IAVF_PROT_VLAN_INNER        (1ULL << 3)
++#define IAVF_PROT_VLAN_OUTER        (1ULL << 4)
++#define IAVF_PROT_IPV4_INNER        (1ULL << 5)
++#define IAVF_PROT_IPV4_OUTER        (1ULL << 6)
++#define IAVF_PROT_IPV6_INNER        (1ULL << 7)
++#define IAVF_PROT_IPV6_OUTER        (1ULL << 8)
++#define IAVF_PROT_TCP_INNER         (1ULL << 9)
++#define IAVF_PROT_TCP_OUTER         (1ULL << 10)
++#define IAVF_PROT_UDP_INNER         (1ULL << 11)
++#define IAVF_PROT_UDP_OUTER         (1ULL << 12)
++#define IAVF_PROT_SCTP_INNER        (1ULL << 13)
++#define IAVF_PROT_SCTP_OUTER        (1ULL << 14)
++#define IAVF_PROT_ICMP4_INNER       (1ULL << 15)
++#define IAVF_PROT_ICMP4_OUTER       (1ULL << 16)
++#define IAVF_PROT_ICMP6_INNER       (1ULL << 17)
++#define IAVF_PROT_ICMP6_OUTER       (1ULL << 18)
++#define IAVF_PROT_VXLAN             (1ULL << 19)
++#define IAVF_PROT_NVGRE             (1ULL << 20)
++#define IAVF_PROT_GTPU              (1ULL << 21)
++#define IAVF_PROT_ESP		    (1ULL << 22)
++#define IAVF_PROT_AH		    (1ULL << 23)
++#define IAVF_PROT_L2TPV3OIP	    (1ULL << 24)
++#define IAVF_PROT_PFCP		    (1ULL << 25)
++
++
++/* field */
++
++#define IAVF_SMAC                   (1ULL << 63)
++#define IAVF_DMAC                   (1ULL << 62)
++#define IAVF_ETHERTYPE              (1ULL << 61)
++#define IAVF_IP_SRC                 (1ULL << 60)
++#define IAVF_IP_DST                 (1ULL << 59)
++#define IAVF_IP_PROTO               (1ULL << 58)
++#define IAVF_IP_TTL                 (1ULL << 57)
++#define IAVF_IP_TOS                 (1ULL << 56)
++#define IAVF_SPORT                  (1ULL << 55)
++#define IAVF_DPORT                  (1ULL << 54)
++#define IAVF_ICMP_TYPE              (1ULL << 53)
++#define IAVF_ICMP_CODE              (1ULL << 52)
++#define IAVF_VXLAN_VNI              (1ULL << 51)
++#define IAVF_NVGRE_TNI              (1ULL << 50)
++#define IAVF_GTPU_TEID              (1ULL << 49)
++#define IAVF_GTPU_QFI               (1ULL << 48)
++#define IAVF_ESP_SPI		    (1ULL << 47)
++#define IAVF_AH_SPI		    (1ULL << 46)
++#define IAVF_L2TPV3OIP_SESSION_ID   (1ULL << 45)
++#define IAVF_PFCP_S_FIELD	    (1ULL << 44)
++#define IAVF_PFCP_SEID		    (1ULL << 43)
++
++/* input set */
++
++#define IAVF_INSET_NONE             0ULL
++
++/* non-tunnel */
++
++#define IAVF_INSET_SMAC         (IAVF_PROT_MAC_OUTER | IAVF_SMAC)
++#define IAVF_INSET_DMAC         (IAVF_PROT_MAC_OUTER | IAVF_DMAC)
++#define IAVF_INSET_VLAN_INNER   (IAVF_PROT_VLAN_INNER)
++#define IAVF_INSET_VLAN_OUTER   (IAVF_PROT_VLAN_OUTER)
++#define IAVF_INSET_ETHERTYPE    (IAVF_ETHERTYPE)
++
++#define IAVF_INSET_IPV4_SRC \
++	(IAVF_PROT_IPV4_OUTER | IAVF_IP_SRC)
++#define IAVF_INSET_IPV4_DST \
++	(IAVF_PROT_IPV4_OUTER | IAVF_IP_DST)
++#define IAVF_INSET_IPV4_TOS \
++	(IAVF_PROT_IPV4_OUTER | IAVF_IP_TOS)
++#define IAVF_INSET_IPV4_PROTO \
++	(IAVF_PROT_IPV4_OUTER | IAVF_IP_PROTO)
++#define IAVF_INSET_IPV4_TTL \
++	(IAVF_PROT_IPV4_OUTER | IAVF_IP_TTL)
++#define IAVF_INSET_IPV6_SRC \
++	(IAVF_PROT_IPV6_OUTER | IAVF_IP_SRC)
++#define IAVF_INSET_IPV6_DST \
++	(IAVF_PROT_IPV6_OUTER | IAVF_IP_DST)
++#define IAVF_INSET_IPV6_NEXT_HDR \
++	(IAVF_PROT_IPV6_OUTER | IAVF_IP_PROTO)
++#define IAVF_INSET_IPV6_HOP_LIMIT \
++	(IAVF_PROT_IPV6_OUTER | IAVF_IP_TTL)
++#define IAVF_INSET_IPV6_TC \
++	(IAVF_PROT_IPV6_OUTER | IAVF_IP_TOS)
++
++#define IAVF_INSET_TCP_SRC_PORT \
++	(IAVF_PROT_TCP_OUTER | IAVF_SPORT)
++#define IAVF_INSET_TCP_DST_PORT \
++	(IAVF_PROT_TCP_OUTER | IAVF_DPORT)
++#define IAVF_INSET_UDP_SRC_PORT \
++	(IAVF_PROT_UDP_OUTER | IAVF_SPORT)
++#define IAVF_INSET_UDP_DST_PORT \
++	(IAVF_PROT_UDP_OUTER | IAVF_DPORT)
++#define IAVF_INSET_SCTP_SRC_PORT \
++	(IAVF_PROT_SCTP_OUTER | IAVF_SPORT)
++#define IAVF_INSET_SCTP_DST_PORT \
++	(IAVF_PROT_SCTP_OUTER | IAVF_DPORT)
++#define IAVF_INSET_ICMP4_SRC_PORT \
++	(IAVF_PROT_ICMP4_OUTER | IAVF_SPORT)
++#define IAVF_INSET_ICMP4_DST_PORT \
++	(IAVF_PROT_ICMP4_OUTER | IAVF_DPORT)
++#define IAVF_INSET_ICMP6_SRC_PORT \
++	(IAVF_PROT_ICMP6_OUTER | IAVF_SPORT)
++#define IAVF_INSET_ICMP6_DST_PORT \
++	(IAVF_PROT_ICMP6_OUTER | IAVF_DPORT)
++#define IAVF_INSET_ICMP4_TYPE \
++	(IAVF_PROT_ICMP4_OUTER | IAVF_ICMP_TYPE)
++#define IAVF_INSET_ICMP4_CODE \
++	(IAVF_PROT_ICMP4_OUTER | IAVF_ICMP_CODE)
++#define IAVF_INSET_ICMP6_TYPE \
++	(IAVF_PROT_ICMP6_OUTER | IAVF_ICMP_TYPE)
++#define IAVF_INSET_ICMP6_CODE \
++	(IAVF_PROT_ICMP6_OUTER | IAVF_ICMP_CODE)
++#define IAVF_INSET_GTPU_TEID \
++	(IAVF_PROT_GTPU | IAVF_GTPU_TEID)
++#define IAVF_INSET_GTPU_QFI \
++	(IAVF_PROT_GTPU | IAVF_GTPU_QFI)
++#define IAVF_INSET_ESP_SPI \
++	(IAVF_PROT_ESP | IAVF_ESP_SPI)
++#define IAVF_INSET_AH_SPI \
++	(IAVF_PROT_AH | IAVF_AH_SPI)
++#define IAVF_INSET_L2TPV3OIP_SESSION_ID \
++	(IAVF_PROT_L2TPV3OIP | IAVF_L2TPV3OIP_SESSION_ID)
++#define IAVF_INSET_PFCP_S_FIELD \
++	(IAVF_PROT_PFCP | IAVF_PFCP_S_FIELD)
++#define IAVF_INSET_PFCP_SEID \
++	(IAVF_PROT_PFCP | IAVF_PFCP_S_FIELD | IAVF_PFCP_SEID)
++
++
++/* empty pattern */
++extern enum rte_flow_item_type iavf_pattern_empty[];
++
++/* L2 */
++extern enum rte_flow_item_type iavf_pattern_ethertype[];
++extern enum rte_flow_item_type iavf_pattern_ethertype_vlan[];
++extern enum rte_flow_item_type iavf_pattern_ethertype_qinq[];
++
++/* ARP */
++extern enum rte_flow_item_type iavf_pattern_eth_arp[];
++
++/* non-tunnel IPv4 */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_icmp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv4_icmp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv4_icmp[];
++
++/* non-tunnel IPv6 */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_sctp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_icmp6[];
++extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_icmp6[];
++extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_icmp6[];
++
++/* GTPU */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_icmp[];
++
++/* ESP */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_esp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_esp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_esp[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_esp[];
++
++/* AH */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_ah[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_ah[];
++
++/* L2TPV3 */
++extern enum rte_flow_item_type iavf_pattern_eth_ipv4_l2tpv3[];
++extern enum rte_flow_item_type iavf_pattern_eth_ipv6_l2tpv3[];
++
++extern const struct rte_flow_ops iavf_flow_ops;
++
++/* pattern structure */
++struct iavf_pattern_match_item {
++	enum rte_flow_item_type *pattern_list;
++	/* pattern_list must end with RTE_FLOW_ITEM_TYPE_END */
++	uint64_t input_set_mask;
++	void *meta;
++};
++
++typedef int (*engine_init_t)(struct iavf_adapter *ad);
++typedef void (*engine_uninit_t)(struct iavf_adapter *ad);
++typedef int (*engine_validation_t)(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		void *meta,
++		struct rte_flow_error *error);
++typedef int (*engine_create_t)(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		void *meta,
++		struct rte_flow_error *error);
++typedef int (*engine_destroy_t)(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		struct rte_flow_error *error);
++typedef int (*engine_query_t)(struct iavf_adapter *ad,
++		struct rte_flow *flow,
++		struct rte_flow_query_count *count,
++		struct rte_flow_error *error);
++typedef void (*engine_free_t) (struct rte_flow *flow);
++typedef int (*parse_pattern_action_t)(struct iavf_adapter *ad,
++		struct iavf_pattern_match_item *array,
++		uint32_t array_len,
++		const struct rte_flow_item pattern[],
++		const struct rte_flow_action actions[],
++		void **meta,
++		struct rte_flow_error *error);
++
++/* engine types. */
++enum iavf_flow_engine_type {
++	IAVF_FLOW_ENGINE_NONE = 0,
++	IAVF_FLOW_ENGINE_FDIR,
++	IAVF_FLOW_ENGINE_HASH,
++	IAVF_FLOW_ENGINE_MAX,
++};
++
++/**
++ * classification stages.
++ * for non-pipeline mode, we have two classification stages: Distributor/RSS
++ * for pipeline-mode we have three classification stages:
++ * Permission/Distributor/RSS
++ */
++enum iavf_flow_classification_stage {
++	IAVF_FLOW_STAGE_NONE = 0,
++	IAVF_FLOW_STAGE_RSS,
++	IAVF_FLOW_STAGE_DISTRIBUTOR,
++	IAVF_FLOW_STAGE_MAX,
++};
++
++/* Struct to store engine created. */
++struct iavf_flow_engine {
++	TAILQ_ENTRY(iavf_flow_engine) node;
++	engine_init_t init;
++	engine_uninit_t uninit;
++	engine_validation_t validation;
++	engine_create_t create;
++	engine_destroy_t destroy;
++	engine_query_t query_count;
++	engine_free_t free;
++	enum iavf_flow_engine_type type;
++};
++
++TAILQ_HEAD(iavf_engine_list, iavf_flow_engine);
++
++/* Struct to store flow created. */
++struct rte_flow {
++	TAILQ_ENTRY(rte_flow) node;
++	struct iavf_flow_engine *engine;
++	void *rule;
++};
++
++struct iavf_flow_parser {
++	struct iavf_flow_engine *engine;
++	struct iavf_pattern_match_item *array;
++	uint32_t array_len;
++	parse_pattern_action_t parse_pattern_action;
++	enum iavf_flow_classification_stage stage;
++};
++
++/* Struct to store parser created. */
++struct iavf_flow_parser_node {
++	TAILQ_ENTRY(iavf_flow_parser_node) node;
++	struct iavf_flow_parser *parser;
++};
++
++void iavf_register_flow_engine(struct iavf_flow_engine *engine);
++int iavf_flow_init(struct iavf_adapter *ad);
++void iavf_flow_uninit(struct iavf_adapter *ad);
++int iavf_register_parser(struct iavf_flow_parser *parser,
++			 struct iavf_adapter *ad);
++void iavf_unregister_parser(struct iavf_flow_parser *parser,
++			    struct iavf_adapter *ad);
++struct iavf_pattern_match_item *
++iavf_search_pattern_match_item(const struct rte_flow_item pattern[],
++		struct iavf_pattern_match_item *array,
++		uint32_t array_len,
++		struct rte_flow_error *error);
++#endif
+diff --git a/drivers/net/iavf/meson.build b/drivers/net/iavf/meson.build
+index dbd0b01db..32eabca4b 100644
+--- a/drivers/net/iavf/meson.build
++++ b/drivers/net/iavf/meson.build
+@@ -12,6 +12,7 @@ sources = files(
+ 	'iavf_ethdev.c',
+ 	'iavf_rxtx.c',
+ 	'iavf_vchnl.c',
++	'iavf_generic_flow.c',
+ )
+ 
+ if arch_subdir == 'x86'
+-- 
+2.17.1
+

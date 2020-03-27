@@ -1,0 +1,33 @@
+From 585d75cec67cc3f4ee2eb32dc33fb7e2174b3125 Mon Sep 17 00:00:00 2001
+From: Qi Zhang <qi.z.zhang@intel.com>
+Date: Thu, 9 Apr 2020 12:50:56 +0800
+Subject: [DPDK 04/17] common/iavf: add PTYPE definition
+
+Add IAVF_RX_PTYPE_PARSER_ABORTED definition, so iavf driver will know
+opcode for parser aborted packets.
+Without this definition driver would have to rely on magic numbers.
+
+Signed-off-by: Przemyslaw Patynowski <przemyslawx.patynowski@intel.com>
+Signed-off-by: Paul M Stillwell Jr <paul.m.stillwell.jr@intel.com>
+Signed-off-by: Qi Zhang <qi.z.zhang@intel.com>
+---
+ drivers/common/iavf/iavf_type.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/common/iavf/iavf_type.h b/drivers/common/iavf/iavf_type.h
+index 6f85f8c04..97a25b2d1 100644
+--- a/drivers/common/iavf/iavf_type.h
++++ b/drivers/common/iavf/iavf_type.h
+@@ -552,7 +552,8 @@ enum iavf_rx_l2_ptype {
+ 	IAVF_RX_PTYPE_GRENAT4_MAC_PAY3			= 58,
+ 	IAVF_RX_PTYPE_GRENAT4_MACVLAN_IPV6_ICMP_PAY4	= 87,
+ 	IAVF_RX_PTYPE_GRENAT6_MAC_PAY3			= 124,
+-	IAVF_RX_PTYPE_GRENAT6_MACVLAN_IPV6_ICMP_PAY4	= 153
++	IAVF_RX_PTYPE_GRENAT6_MACVLAN_IPV6_ICMP_PAY4	= 153,
++	IAVF_RX_PTYPE_PARSER_ABORTED			= 255
+ };
+ 
+ struct iavf_rx_ptype_decoded {
+-- 
+2.17.1
+
