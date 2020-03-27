@@ -26,7 +26,7 @@ static_always_inline u8
 nat44_maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
 {
   if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
-      sm->max_translations)
+      sm->max_translations_per_thread)
     return 1;
   return 0;
 }

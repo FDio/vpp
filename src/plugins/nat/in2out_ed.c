@@ -351,7 +351,8 @@ slow_path_ed (snat_main_t * sm,
       if (!nat_lru_free_one (sm, thread_index, now))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
+	  nat_ipfix_logging_max_sessions (thread_index,
+					  sm->max_translations_per_thread);
 	  nat_elog_notice ("maximum sessions exceeded");
 	  return NAT_NEXT_DROP;
 	}
@@ -809,7 +810,8 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	   (sm, rx_fib_index, thread_index)))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
+	  nat_ipfix_logging_max_sessions (thread_index,
+					  sm->max_translations_per_thread);
 	  nat_elog_notice ("maximum sessions exceeded");
 	  return 0;
 	}

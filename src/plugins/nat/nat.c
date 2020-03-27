@@ -338,7 +338,7 @@ nat44_set_session_limit (u32 session_limit, u32 vrf_id)
       vec_validate (sm->max_translations_per_fib, fib_index + 1);
 
       for (; len < vec_len (sm->max_translations_per_fib); len++)
-	sm->max_translations_per_fib[len] = sm->max_translations;
+	sm->max_translations_per_fib[len] = sm->max_translations_per_thread;
     }
 
   sm->max_translations_per_fib[fib_index] = session_limit;
@@ -485,6 +485,13 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
   /* Ever heard of the "user" = src ip4 address before? */
   if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
     {
+      if (pool_elts (tsm->users) >= sm->max_users_per_thread)
+	{
+	  vlib_increment_simple_counter (&sm->user_limit_reached,
+					 thread_index, 0, 1);
+	  nat_elog_warn ("maximum user limit reached");
+	  return NULL;
+	}
       /* no, make a new one */
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
@@ -2578,6 +2585,10 @@ snat_init (vlib_main_t * vm)
   sm->total_sessions.stat_segment_name = "/nat44/total-sessions";
   vlib_validate_simple_counter (&sm->total_sessions, 0);
   vlib_zero_simple_counter (&sm->total_sessions, 0);
+  sm->user_limit_reached.name = "user-limit-reached";
+  sm->user_limit_reached.stat_segment_name = "/nat44/user-limit-reached";
+  vlib_validate_simple_counter (&sm->user_limit_reached, 0);
+  vlib_zero_simple_counter (&sm->user_limit_reached, 0);
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init (vm);
@@ -3780,13 +3791,25 @@ nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
   s->total_bytes = total_bytes;
 }
 
+static u32
+nat_calc_bihash_buckets (u32 n_elts)
+{
+  return 1 << (max_log2 (n_elts >> 1) + 1);
+}
+
+static u32
+nat_calc_bihash_memory (u32 n_buckets, uword kv_size)
+{
+  return n_buckets * (8 + kv_size * 4);
+}
+
 void
 nat44_db_init (snat_main_per_thread_data_t * tsm)
 {
   snat_main_t *sm = &snat_main;
 
-  pool_alloc (tsm->sessions, sm->max_translations);
-  pool_alloc (tsm->lru_pool, sm->max_translations);
+  pool_alloc (tsm->sessions, sm->max_translations_per_thread);
+  pool_alloc (tsm->lru_pool, sm->max_translations_per_thread);
 
   dlist_elt_t *head;
 
@@ -3831,7 +3854,7 @@ nat44_db_init (snat_main_per_thread_data_t * tsm)
     }
 
   // TODO: resolve static mappings (put only to !ED)
-  pool_alloc (tsm->list_pool, sm->max_translations);
+  pool_alloc (tsm->list_pool, sm->max_translations_per_thread);
   clib_bihash_init_8_8 (&tsm->user_hash, "users", sm->user_buckets,
 			sm->user_memory_size);
   clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
@@ -3910,10 +3933,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 nat64_st_buckets = 2048;
   uword nat64_st_memory_size = 256 << 20;
 
-  u32 user_buckets = 128;
-  uword user_memory_size = 64 << 20;
-  u32 translation_buckets = 1024;
-  uword translation_memory_size = 128 << 20;
+  u32 max_users_per_thread = 0;
+  u32 user_memory_size = 0;
+  u32 max_translations_per_thread = 0;
+  u32 translation_memory_size = 0;
 
   u32 max_translations_per_user = ~0;
 
@@ -3935,7 +3958,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (input, "translation hash buckets %d", &translation_buckets))
+	  (input, "max translations per thread %d",
+	   &max_translations_per_thread))
 	;
       else if (unformat (input, "udp timeout %d", &udp_timeout))
 	;
@@ -3947,7 +3971,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 			 &tcp_established_timeout));
       else if (unformat (input, "translation hash memory %d",
 			 &translation_memory_size));
-      else if (unformat (input, "user hash buckets %d", &user_buckets))
+      else
+	if (unformat
+	    (input, "max users per thread %d", &max_users_per_thread))
 	;
       else if (unformat (input, "user hash memory %d", &user_memory_size))
 	;
@@ -4000,6 +4026,17 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   if (sm->out2in_dpo && (sm->deterministic || sm->endpoint_dependent))
     return clib_error_return (0,
 			      "out2in dpo mode available only for simple nat");
+  if (sm->endpoint_dependent && max_users_per_thread > 0)
+    {
+      return clib_error_return (0,
+				"setting 'max users' in endpoint-dependent mode is not supported");
+    }
+
+  if (sm->endpoint_dependent && max_translations_per_user != ~0)
+    {
+      return clib_error_return (0,
+				"setting 'max translations per user' in endpoint-dependent mode is not supported");
+    }
 
   /* optionally configurable timeouts for testing purposes */
   sm->udp_timeout = udp_timeout;
@@ -4007,17 +4044,40 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->tcp_established_timeout = tcp_established_timeout;
   sm->icmp_timeout = icmp_timeout;
 
-  sm->user_buckets = user_buckets;
-  sm->user_memory_size = user_memory_size;
+  if (0 == max_users_per_thread)
+    {
+      max_users_per_thread = 1024;
+    }
+  sm->max_users_per_thread = max_users_per_thread;
+  sm->user_buckets = nat_calc_bihash_buckets (sm->max_users_per_thread);
 
-  sm->translation_buckets = translation_buckets;
+  if (0 == max_translations_per_thread)
+    {
+      // default value based on legacy setting of load factor 10 * default
+      // translation buckets 1024
+      max_translations_per_thread = 10 * 1024;
+    }
+  sm->max_translations_per_thread = max_translations_per_thread;
+  sm->translation_buckets =
+    nat_calc_bihash_buckets (sm->max_translations_per_thread);
+  if (0 == translation_memory_size)
+    {
+      translation_memory_size =
+	nat_calc_bihash_memory (sm->translation_buckets,
+				sizeof (clib_bihash_16_8_t));
+    }
   sm->translation_memory_size = translation_memory_size;
-  /* do not exceed load factor 10 */
-  sm->max_translations = 10 * translation_buckets;
-  vec_add1 (sm->max_translations_per_fib, sm->max_translations);
+  if (0 == user_memory_size)
+    {
+      user_memory_size =
+	nat_calc_bihash_memory (sm->max_users_per_thread,
+				sizeof (clib_bihash_8_8_t));
+    }
+  sm->user_memory_size = user_memory_size;
+  vec_add1 (sm->max_translations_per_fib, sm->max_translations_per_thread);
 
   sm->max_translations_per_user = max_translations_per_user == ~0 ?
-    sm->max_translations : max_translations_per_user;
+    sm->max_translations_per_thread : max_translations_per_user;
 
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
@@ -4062,7 +4122,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	  nat_ha_init (vm, nat_ha_sadd_ed_cb, nat_ha_sdel_ed_cb,
 		       nat_ha_sref_ed_cb);
 	  clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
-				 translation_buckets,
+				 sm->translation_buckets,
 				 translation_memory_size);
 	  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
 					      format_ed_session_kvp);

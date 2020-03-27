@@ -273,7 +273,8 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
-      nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
+      nat_ipfix_logging_max_sessions (thread_index,
+				      sm->max_translations_per_thread);
       nat_elog_notice ("maximum sessions exceeded");
       return SNAT_IN2OUT_NEXT_DROP;
     }

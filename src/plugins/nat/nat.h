@@ -635,9 +635,9 @@ typedef struct snat_main_s
 
   u32 translation_buckets;
   uword translation_memory_size;
-  u32 max_translations;
+  u32 max_translations_per_thread;
   u32 *max_translations_per_fib;
-
+  u32 max_users_per_thread;
   u32 user_buckets;
   uword user_memory_size;
   u32 max_translations_per_user;
@@ -660,6 +660,7 @@ typedef struct snat_main_s
   /* counters/gauges */
   vlib_simple_counter_main_t total_users;
   vlib_simple_counter_main_t total_sessions;
+  vlib_simple_counter_main_t user_limit_reached;;
 
   /* API message ID base */
   u16 msg_id_base;
