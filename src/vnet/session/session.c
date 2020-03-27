@@ -1108,6 +1108,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
+
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);

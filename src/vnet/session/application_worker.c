@@ -228,6 +228,13 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   if (PREDICT_FALSE (!sm_indexp))
     return;
 
+  /* Dealloc fifos first, if any, to avoid cleanup attempt lower */
+  if (ls->rx_fifo)
+    {
+      segment_manager_dealloc_fifos (ls->rx_fifo, ls->tx_fifo);
+      ls->tx_fifo = ls->rx_fifo = 0;
+    }
+
   sm = segment_manager_get (*sm_indexp);
   if (app_wrk->first_segment_manager == *sm_indexp)
     {
