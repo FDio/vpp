@@ -231,7 +231,10 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->ip, &s->transport.rmt_ip, sizeof (mp->ip));
   clib_memcpy_fast (&mp->lcl_ip, &s->transport.lcl_ip, sizeof (mp->lcl_ip));
   mp->port = s->transport.rmt_port;
+  mp->lcl_port = s->transport.lcl_port;
   mp->proto = s->session_type;
+  if (s->flags & VCL_SESSION_F_CONNECTED)
+    mp->flags |= TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -497,7 +500,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   /* Add it to lookup table */
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
 
-  VDBG (1, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
+  VDBG (0, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
 	" refcnt %d", session_index, mp->handle, session->rx_fifo,
 	session->rx_fifo->refcnt, session->tx_fifo, session->tx_fifo->refcnt);
 
@@ -612,9 +615,19 @@ vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
   vcl_session_t *s;
 
   s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
-  if (!s || s->session_state != STATE_DISCONNECT)
+  if (!s)
     {
       VDBG (0, "Unlisten reply with wrong handle %llx", mp->handle);
+      return;
+    }
+  if (s->session_state != STATE_DISCONNECT)
+    {
+      /* Connected udp listener */
+      if (s->session_type == VPPCOM_PROTO_UDP
+	  && s->session_state == STATE_CLOSED)
+	return;
+
+      VDBG (0, "Unlisten session in wrong state %llx", mp->handle);
       return;
     }
 
@@ -1652,25 +1665,6 @@ handle:
   return vcl_session_handle (client_session);
 }
 
-static void
-vcl_ip_copy_from_ep (ip46_address_t * ip, vppcom_endpt_t * ep)
-{
-  if (ep->is_ip4)
-    clib_memcpy_fast (&ip->ip4, ep->ip, sizeof (ip4_address_t));
-  else
-    clib_memcpy_fast (&ip->ip6, ep->ip, sizeof (ip6_address_t));
-}
-
-void
-vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
-{
-  ep->is_ip4 = is_ip4;
-  if (is_ip4)
-    clib_memcpy_fast (ep->ip, &ip->ip4, sizeof (ip4_address_t));
-  else
-    clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
-}
-
 int
 vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 {
@@ -1705,13 +1699,24 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
       return VPPCOM_OK;
     }
 
+  /* Attempt to connect a connectionless listener */
+  if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
+    {
+      if (session->session_type != VPPCOM_PROTO_UDP)
+	return VPPCOM_EINVAL;
+      vcl_send_session_unlisten (wrk, session);
+      session->session_state = STATE_CLOSED;
+    }
+
   session->transport.is_ip4 = server_ep->is_ip4;
   vcl_ip_copy_from_ep (&session->transport.rmt_ip, server_ep);
   session->transport.rmt_port = server_ep->port;
   session->parent_handle = VCL_INVALID_SESSION_HANDLE;
+  session->flags |= VCL_SESSION_F_CONNECTED;
 
-  VDBG (0, "session handle %u: connecting to server %s %U "
+  VDBG (0, "session handle %u (%s): connecting to peer %s %U "
 	"port %d proto %s", session_handle,
+	vppcom_session_state_str (session->session_state),
 	session->transport.is_ip4 ? "IPv4" : "IPv6",
 	format_ip46_address,
 	&session->transport.rmt_ip, session->transport.is_ip4 ?
@@ -3571,16 +3576,11 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
   int rv = VPPCOM_OK;
   vcl_session_t *session = 0;
 
-  if (ep)
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!session))
     {
-      session = vcl_session_get_w_handle (wrk, session_handle);
-      if (PREDICT_FALSE (!session))
-	{
-	  VDBG (0, "sh 0x%llx is closed!", session_handle);
-	  return VPPCOM_EBADFD;
-	}
-      ep->is_ip4 = session->transport.is_ip4;
-      ep->port = session->transport.rmt_port;
+      VDBG (0, "sh 0x%llx is invalid!", session_handle);
+      return VPPCOM_EBADFD;
     }
 
   if (flags == 0)
@@ -3601,6 +3601,8 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
       else
 	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
 			  sizeof (ip6_address_t));
+      ep->is_ip4 = session->transport.is_ip4;
+      ep->port = session->transport.rmt_port;
     }
 
   return rv;
@@ -3615,8 +3617,28 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
 
   if (ep)
     {
-      // TBD
-      return VPPCOM_EINVAL;
+      vcl_worker_t *wrk = vcl_worker_get_current ();
+      vcl_session_t *s;
+
+      s = vcl_session_get_w_handle (wrk, session_handle);
+      if (!s)
+	return VPPCOM_EBADFD;
+
+      if (s->session_type != VPPCOM_PROTO_UDP
+	  || (s->flags & VCL_SESSION_F_CONNECTED))
+	return VPPCOM_EINVAL;
+
+      /* Session not connected/bound in vpp. Create it by 'connecting' it */
+      if (PREDICT_FALSE (s->session_state == STATE_CLOSED))
+	{
+	  vcl_send_session_connect (wrk, s);
+	}
+      else
+	{
+	  s->transport.is_ip4 = ep->is_ip4;
+	  s->transport.rmt_port = ep->port;
+	  vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
+	}
     }
 
   if (flags)
