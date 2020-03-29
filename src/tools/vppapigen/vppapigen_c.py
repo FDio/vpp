@@ -648,6 +648,8 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
 #include "{module}.api.h"
 #undef vl_printfun
 
+#include <vpp/api/plugin_logger.h>
+
 '''
 
     write(hdr.format(module=module))
@@ -712,14 +714,21 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
 
     write('}\n')
 
+    write('\n')
+    write('#define PLUGIN_LOG_NOTICE(...) \\\n')
+    write('do {vlib_log_notice(vat_builtin_logger, __VA_ARGS__);} while (0)\n')
+    write('\n')
+
     write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
     write('{\n')
     write('   {n}_test_main_t * mainp = &{n}_test_main;\n'.format(n=module))
     write('   mainp->vat_main = vam;\n')
     write('   mainp->msg_id_base = vl_client_get_first_plugin_msg_id ("{n}_{crc:08x}");\n'
           .format(n=module, crc=file_crc))
-    write('   if (mainp->msg_id_base == (u16) ~0)\n')
-    write('      return clib_error_return (0, "{} plugin not loaded...");\n'.format(module))
+    write('   if (mainp->msg_id_base == (u16) ~0) {\n')
+    write('      PLUGIN_LOG_NOTICE ("{} plugin not loaded...");\n'.format(module))
+    write('      return 0;\n')
+    write('}\n')
     write('   setup_message_id_table (vam, mainp->msg_id_base);\n')
     write('#ifdef VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE\n')
     write('    VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE(vam);\n')
