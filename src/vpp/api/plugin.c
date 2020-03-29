@@ -23,7 +23,7 @@
 
 plugin_main_t vat_plugin_main;
 
-static vlib_log_class_t vat_builtin_logger;
+vlib_log_class_t vat_builtin_logger;
 
 #define PLUGIN_LOG_DBG(...) \
   do {vlib_log_debug (vat_builtin_logger, __VA_ARGS__);} while(0)
