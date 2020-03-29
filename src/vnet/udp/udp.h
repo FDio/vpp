@@ -55,6 +55,17 @@ typedef enum udp_conn_flags_
 #undef _
 } udp_conn_flags_t;
 
+#define foreach_udp_state 		\
+  _(LISTEN, "LISTEN")			\
+  _(OPENED, "OPENED")
+
+typedef enum udp_state_
+{
+#define _(sym, str) UDP_STATE_##sym,
+  foreach_udp_state
+#undef _
+} __clib_packed udp_state_t;
+
 typedef struct
 {
   /** Required for pool_get_aligned */

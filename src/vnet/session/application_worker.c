@@ -587,9 +587,9 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s)
 
   /* Make sure the session is in established state within external apps.
    * Should be removed once we confirm closes to apps */
-  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY
-		     && s->session_state != SESSION_STATE_LISTENING))
-    return 0;
+//  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY
+//		     && s->session_state != SESSION_STATE_LISTENING))
+//    return 0;
 
   if (svm_fifo_has_event (s->rx_fifo))
     return 0;
