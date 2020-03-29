@@ -238,6 +238,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  error0 = UDP_ERROR_FIFO_FULL;
 	  goto trace0;
 	}
+
       hdr0.data_length = b0->current_length = data_len;
       hdr0.data_offset = 0;
       ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);

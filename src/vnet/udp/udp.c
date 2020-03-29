@@ -406,6 +406,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   ip46_address_t lcl_addr;
   u16 lcl_port;
 
+  clib_warning ("connect with local port %u", clib_net_to_host_u16 (rmt->peer.port));
   if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				      &lcl_port))
     return -1;
