@@ -387,6 +387,7 @@ typedef struct session_connect_msg_
   u32 wrk_index;
   u32 vrf;
   u16 port;
+  u16 lcl_port;
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
@@ -681,7 +682,7 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   int rv;
 
   max_deq = svm_fifo_max_dequeue_cons (f);
-  if (max_deq < sizeof (session_dgram_hdr_t))
+  if (max_deq <= sizeof (session_dgram_hdr_t))
     {
       if (clear_evt)
 	svm_fifo_unset_event (f);
@@ -699,6 +700,7 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
     return rv;
+  ASSERT (rv > 0);
   ph.data_offset += rv;
   if (ph.data_offset == ph.data_length)
     svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
