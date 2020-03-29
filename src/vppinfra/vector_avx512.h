@@ -151,6 +151,23 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 					    (__m512i) b);
 }
 
+static_always_inline u32x16
+u32x16_permute (u32x16 a, u32x16 idx)
+{
+  return (u32x16) _mm512_permutexvar_epi32 ((__m512i) idx, (__m512i) a);
+}
+
+static_always_inline void
+u32x16_mask_compressstoreu (void *base_addr, unsigned short k, u32x16 a)
+{
+  return _mm512_mask_compressstoreu_epi32 (base_addr, k, (__m512i) a);
+}
+
+static_always_inline u64x8
+u32x16_mask_expandloadu (u32x16 src, unsigned short k, void const *mem_addr)
+{
+  return (u64x8) _mm512_mask_expandloadu_epi32 ((__m512i) src, k, mem_addr);
+}
 
 #define u32x16_ternary_logic(a, b, c, d) \
   (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
@@ -189,10 +206,28 @@ u8x64_mask_load (u8x64 a, void *p, u64 mask)
   return (u8x64) _mm512_mask_loadu_epi8 ((__m512i) a, mask, p);
 }
 
+static_always_inline u64x8
+u64x8_mask_load_unaligned (u64x8 a, void *p, u8 mask)
+{
+  return (u64x8) _mm512_mask_loadu_epi64 ((__m512i) a, mask, p);
+}
+
 static_always_inline void
 u8x64_mask_store (u8x64 a, void *p, u64 mask)
 {
   _mm512_mask_storeu_epi8 (p, mask, (__m512i) a);
+}
+
+static_always_inline void
+u32x16_mask_storeu (u32x16 a, void *p, u16 k)
+{
+  _mm512_mask_storeu_epi32 (p, k, (__m512i) a);
+}
+
+static_always_inline void
+u64x8_mask_storeu (u64x8 a, void *p, u8 k)
+{
+  _mm512_mask_storeu_epi64 (p, k, (__m512i) a);
 }
 
 static_always_inline u8x64
