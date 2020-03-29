@@ -1710,14 +1710,18 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   session->transport.rmt_port = server_ep->port;
   session->parent_handle = VCL_INVALID_SESSION_HANDLE;
 
-  VDBG (0, "session handle %u: connecting to server %s %U "
+  VDBG (0, "session handle %u (%s): connecting to peer %s %U "
 	"port %d proto %s", session_handle,
+	vppcom_session_state_str (session->session_state),
 	session->transport.is_ip4 ? "IPv4" : "IPv6",
 	format_ip46_address,
 	&session->transport.rmt_ip, session->transport.is_ip4 ?
 	IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.rmt_port),
 	vppcom_proto_str (session->session_type));
+
+  if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
+    return 0;
 
   vcl_send_session_connect (wrk, session);
 
@@ -3579,8 +3583,6 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
 	  VDBG (0, "sh 0x%llx is closed!", session_handle);
 	  return VPPCOM_EBADFD;
 	}
-      ep->is_ip4 = session->transport.is_ip4;
-      ep->port = session->transport.rmt_port;
     }
 
   if (flags == 0)
@@ -3601,6 +3603,8 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
       else
 	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
 			  sizeof (ip6_address_t));
+      ep->is_ip4 = session->transport.is_ip4;
+      ep->port = session->transport.rmt_port;
     }
 
   return rv;

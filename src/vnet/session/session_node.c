@@ -59,6 +59,8 @@ session_mq_listen_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
+  clib_warning ("listen %U:%u", format_ip46_address, &a->sep.ip,
+		a->sep.is_ip4, a->sep.port);
   if ((rv = vnet_listen (a)))
     clib_warning ("listen returned: %d", rv);
 
