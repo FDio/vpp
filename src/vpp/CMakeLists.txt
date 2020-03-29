@@ -86,6 +86,13 @@ add_vpp_headers(vpp
   stats/stat_segment_shared.h
 )
 
+if(VPP_API_TEST_BUILTIN)
+  add_vpp_headers(vpp
+    api/plugin.h
+    api/plugin_logger.h
+  )
+endif()
+
 ##############################################################################
 # vppctl binary
 ##############################################################################
