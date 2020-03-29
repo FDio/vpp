@@ -59,6 +59,8 @@ session_mq_listen_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
+  clib_warning ("listen %U:%u", format_ip46_address, &a->sep.ip,
+		a->sep.is_ip4, a->sep.port);
   if ((rv = vnet_listen (a)))
     clib_warning ("listen returned: %d", rv);
 
@@ -113,6 +115,7 @@ session_mq_connect_handler (void *data)
   a->sep.transport_proto = mp->proto;
   a->sep.peer.fib_index = mp->vrf;
   clib_memcpy_fast (&a->sep.peer.ip, &mp->lcl_ip, sizeof (mp->lcl_ip));
+  a->sep.peer.port = mp->lcl_port;
   a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep_ext.parent_handle = mp->parent_handle;
   a->sep_ext.ckpair_index = mp->ckpair_index;
