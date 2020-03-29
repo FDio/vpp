@@ -149,6 +149,11 @@ do {                                            \
 #define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
+typedef enum vcl_session_flags_
+{
+  VCL_SESSION_F_CONNECTED,
+} __clib_packed vcl_session_flags_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -167,6 +172,7 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  vcl_session_flags_t flags;
   /* VCL session index of the listening session (if any) */
   u32 listener_index;
   /* Accepted sessions on this listener */
