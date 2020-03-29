@@ -1320,7 +1320,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   app = application_get (app_wrk->app_index);
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
-  cargs->sep_ext.flags = TRANSPORT_CFG_F_CONNECTED;
+  cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
 
   ctx->crypto_engine = sep->crypto_engine;
   ctx->ckpair_index = sep->ckpair_index;

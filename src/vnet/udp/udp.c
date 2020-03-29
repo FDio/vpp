@@ -179,6 +179,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
   listener->flags |= UDP_CONN_F_OWNS_PORT;
+  listener->state = UDP_STATE_LISTEN;
   lcl_ext = (transport_endpoint_cfg_t *) lcl;
   if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     listener->flags |= UDP_CONN_F_CONNECTED;
@@ -279,6 +280,20 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
     udp_connection_free (uc);
 }
 
+static const char *udp_states[] = {
+#define _(sym, str) str,
+  foreach_udp_state
+#undef _
+};
+
+u8 *
+format_udp_state (u8 * s, va_list * args)
+{
+  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+  s = format (s, udp_states[uc->state]);
+  return s;
+}
+
 u8 *
 format_udp_connection_id (u8 * s, va_list * args)
 {
@@ -286,13 +301,13 @@ format_udp_connection_id (u8 * s, va_list * args)
   if (!uc)
     return s;
   if (uc->c_is_ip4)
-    s = format (s, "[#%d][%s] %U:%d->%U:%d", uc->c_thread_index, "U",
-		format_ip4_address, &uc->c_lcl_ip4,
+    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
+		uc->c_s_index, "U", format_ip4_address, &uc->c_lcl_ip4,
 		clib_net_to_host_u16 (uc->c_lcl_port), format_ip4_address,
 		&uc->c_rmt_ip4, clib_net_to_host_u16 (uc->c_rmt_port));
   else
-    s = format (s, "[#%d][%s] %U:%d->%U:%d", uc->c_thread_index, "U",
-		format_ip6_address, &uc->c_lcl_ip6,
+    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
+		uc->c_s_index, "U", format_ip6_address, &uc->c_lcl_ip6,
 		clib_net_to_host_u16 (uc->c_lcl_port), format_ip6_address,
 		&uc->c_rmt_ip6, clib_net_to_host_u16 (uc->c_rmt_port));
   return s;
@@ -308,9 +323,8 @@ format_udp_connection (u8 * s, va_list * args)
   s = format (s, "%-50U", format_udp_connection_id, uc);
   if (verbose)
     {
-      if (verbose == 1)
-	s = format (s, "%-15s", "-");
-      else
+      s = format (s, "%-15U", format_udp_state, uc);
+      if (verbose > 1)
 	s = format (s, "\n");
     }
   return s;
@@ -369,6 +383,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   ip46_address_t lcl_addr;
   u16 lcl_port;
 
+  clib_warning ("connect with local port %u", clib_net_to_host_u16 (rmt->peer.port));
   if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				      &lcl_port))
     return -1;
@@ -407,6 +422,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
   uc->flags |= UDP_CONN_F_OWNS_PORT;
+  uc->state = UDP_STATE_OPENED;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     uc->flags |= UDP_CONN_F_CONNECTED;
   else
