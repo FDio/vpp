@@ -387,6 +387,7 @@ typedef struct session_connect_msg_
   u32 wrk_index;
   u32 vrf;
   u16 port;
+  u16 lcl_port;
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;

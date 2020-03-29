@@ -292,6 +292,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   ASSERT (thread_index == vlib_get_thread_index ()
 	  || transport_protocol_is_cl (tc->proto));
 
+  clib_warning ("THREAD IS %u", thread_index);
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CLOSED;
@@ -527,6 +528,7 @@ session_enqueue_dgram_connection (session_t * s,
       wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
 	{
+	  clib_warning ("adding event for %u thread %u proto %u",s->session_index, s->thread_index, proto);
 	  s->flags |= SESSION_F_RX_EVT;
 	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
 	}
