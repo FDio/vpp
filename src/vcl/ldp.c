@@ -1598,6 +1598,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 
 	  if (size > 0)
 	    {
+	      clib_warning ("peer port %u", ep.port);
 	      rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
 	      if (rv < 0)
 		size = rv;

@@ -59,6 +59,8 @@ session_mq_listen_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
+  clib_warning ("listen %U:%u", format_ip46_address, &a->sep.ip,
+		a->sep.is_ip4, a->sep.port);
   if ((rv = vnet_listen (a)))
     clib_warning ("listen returned: %d", rv);
 
@@ -126,6 +128,26 @@ session_mq_connect_handler (void *data)
   a->api_context = mp->context;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
+
+  /*
+   * Check if attempt to connect a listener
+   */
+//  if (mp->parent_handle != SESSION_INVALID_HANDLE)
+//    {
+//      s = session_get_from_handle_if_valid (rmt->parent_handle);
+//      if (!s)
+//	{
+//	  clib_warning ("invalid parent handle");
+//	  return -1;
+//	}
+//      if (s->session_state != SESSION_STATE_LISTEN)
+//	{
+//	  clib_warning ("attempt to connect session in state %u",
+//	                s->session_state);
+//	  return -1;
+//	}
+//      session_stop_listen ();
+//    }
 
   if ((rv = vnet_connect (a)))
     {
