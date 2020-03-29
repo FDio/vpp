@@ -335,6 +335,8 @@ vcl_session_read_ready (vcl_session_t * session)
   if (vcl_session_is_ct (session))
     return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
 
+  if (session->session_index == 1 && svm_fifo_max_dequeue_cons (session->rx_fifo))
+    clib_warning ("has data %u", svm_fifo_max_dequeue_cons (session->rx_fifo));
   return svm_fifo_max_dequeue_cons (session->rx_fifo);
 }
 

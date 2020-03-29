@@ -86,17 +86,18 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   from = first_buffer = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
+  session_t *s0;
 
   while (n_left_from > 0)
     {
-      u32 bi0, fib_index0;
+      u32 bi0, fib_index0, data_len;
       vlib_buffer_t *b0;
       u32 error0 = UDP_ERROR_ENQUEUED;
       udp_header_t *udp0;
       ip4_header_t *ip40;
       ip6_header_t *ip60;
       u8 *data0;
-      session_t *s0;
+//      session_t *s0;
       udp_connection_t *uc0, *child0, *new_uc0;
       transport_connection_t *tc0;
       int wrote0;
@@ -125,7 +126,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     udp0->src_port, TRANSPORT_PROTO_UDP);
 	  lcl_addr = &ip40->dst_address;
 	  rmt_addr = &ip40->src_address;
-
+	  data_len = clib_net_to_host_u16 (ip40->length);
+	  data_len -= sizeof (ip4_header_t) + sizeof (udp_header_t);
 	}
       else
 	{
@@ -135,6 +137,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     udp0->src_port, TRANSPORT_PROTO_UDP);
 	  lcl_addr = &ip60->dst_address;
 	  rmt_addr = &ip60->src_address;
+	  data_len = clib_net_to_host_u16 (ip60->payload_length);
 	}
 
       if (PREDICT_FALSE (!s0))
@@ -228,12 +231,13 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 
       if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
-	  < b0->current_length + sizeof (session_dgram_hdr_t))
+	  < data_len + sizeof (session_dgram_hdr_t))
 	{
 	  error0 = UDP_ERROR_FIFO_FULL;
 	  goto trace0;
 	}
-      hdr0.data_length = b0->current_length;
+
+      hdr0.data_length = b0->current_length = data_len;
       hdr0.data_offset = 0;
       ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);
       ip_set (&hdr0.rmt_ip, rmt_addr, is_ip4);
@@ -246,6 +250,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
        * enqueue event now while we still have the peeker lock */
       if (s0->thread_index != my_thread_index)
 	{
+	  clib_warning ("called?");
 	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
 						     TRANSPORT_PROTO_UDP,
 						     /* queue event */ 0);
@@ -257,6 +262,9 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
 						     TRANSPORT_PROTO_UDP,
 						     queue_event);
+	  clib_warning ("wrote %u queue %ulen %u ip len %u", wrote0, queue_event,
+	                b0->current_length,
+	                clib_net_to_host_u16 (ip40->length));
 	}
       clib_spinlock_unlock (&uc0->rx_lock);
       ASSERT (wrote0 > 0);
@@ -283,6 +291,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
 					      my_thread_index);
+  clib_warning ("fifo has event %u", s0->rx_fifo->has_event);
   udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
   return frame->n_vectors;
 }
