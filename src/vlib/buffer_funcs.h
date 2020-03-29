@@ -215,7 +215,48 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 			      i32 offset)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
-#ifdef CLIB_HAVE_VEC256
+#ifdef CLIB_HAVE_VEC512
+  u64x8 off_512 = u64x8_splat (buffer_mem_start + offset);
+  u32x16 zero = u32x16_setzero ();
+  u64x4 off = u64x4_splat (buffer_mem_start + offset);
+  u16 k = 0x5555;
+  u16 rmask[8] = { 0x0, 0x1, 0x5, 0x15, 0x55, 0x155, 0x555, 0x1555 };
+  u8 wmask[8] = { 0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f };
+
+  while (count >= 16)
+    {
+      u64x8 b0 = u32x16_mask_expandload_unaligned (zero, bi, k);
+      u64x8 b1 = u32x16_mask_expandload_unaligned (zero, bi + 8, k);
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off_512, b);
+      u64x8_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off_512,
+			     b + 8);
+
+      b += 16;
+      bi += 16;
+      count -= 16;
+    }
+
+  while (count >= 8)
+    {
+      u64x8 b0 = u32x16_mask_expandload_unaligned (zero, bi, k);
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off_512, b);
+      b += 8;
+      bi += 8;
+      count -= 8;
+    }
+
+  if (count > 0)
+    {
+      u64x8 b0 = u32x16_mask_expandload_unaligned (zero, bi, rmask[count]);
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x8_mask_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) +
+				  off_512, b, wmask[count]);
+    }
+
+  return;
+#elif defined (CLIB_HAVE_VEC256)
   u64x4 off = u64x4_splat (buffer_mem_start + offset);
   /* if count is not const, compiler will not unroll while loop
      se we maintain two-in-parallel variant */
@@ -312,7 +353,63 @@ static_always_inline void
 vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
 				     uword count, i32 offset)
 {
-#ifdef CLIB_HAVE_VEC256
+#if defined (CLIB_HAVE_VEC512)
+  u16 mask = 0x5555;
+  u64x8 zero = u64x8_setzero ();
+  u64x8 off8 = u64x8_splat (vm->buffer_main->buffer_mem_start - offset);
+  u8 rmask[8] = { 0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f };
+  u16 wmask[8] = { 0x0, 0x1, 0x5, 0x15, 0x55, 0x155, 0x555, 0x1555 };
+  u32x16 mask_permutex2var =
+    { 0x0, 0x2, 0x4, 0x6, 0x8, 0xa, 0xc, 0xe, 0x10, 0x12, 0x14, 0x16, 0x18,
+    0x1a, 0x1c, 0x1e
+  };
+
+  while (count >= 16)
+    {
+      /* load 8 pointers into 512-bit register */
+      u64x8 v0 = u64x8_load_unaligned (b);
+      u64x8 v1 = u64x8_load_unaligned (b + 8);
+      u32x16 v2;
+
+      v0 -= off8;
+      v1 -= off8;
+
+      v0 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      v1 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+
+      v2 = u32x16_permutex2var ((u32x16) v0, (u32x16) v1, mask_permutex2var);
+      u32x16_store_unaligned (v2, bi);
+
+      bi += 16;
+      b += 16;
+      count -= 16;
+    }
+
+  while (count >= 8)
+    {
+      /* load 8 pointers into 512-bit register */
+      u64x8 v0 = u64x8_load_unaligned (b);
+
+      v0 -= off8;
+      v0 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      u32x16_mask_compressstore_unaligned ((u32x16) v0, bi, mask);
+      bi += 8;
+      b += 8;
+      count -= 8;
+    }
+
+  if (count > 0)
+    {
+      /* load 8 pointers into 512-bit register */
+      u64x8 v0 = u64x8_mask_load_unaligned (zero, b, rmask[count]);
+
+      v0 -= off8;
+      v0 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      u32x16_mask_compressstore_unaligned ((u32x16) v0, bi, wmask[count]);
+    }
+
+  return;
+#elif defined (CLIB_HAVE_VEC256)
   u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
   u64x4 off4 = u64x4_splat (vm->buffer_main->buffer_mem_start - offset);
 
