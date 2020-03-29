@@ -308,6 +308,8 @@ vcl_cleanup_bapi (void)
 int
 vcl_session_read_ready (vcl_session_t * session)
 {
+  u32 max_deq;
+
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
@@ -335,7 +337,9 @@ vcl_session_read_ready (vcl_session_t * session)
   if (vcl_session_is_ct (session))
     return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
 
-  return svm_fifo_max_dequeue_cons (session->rx_fifo);
+  max_deq = svm_fifo_max_dequeue_cons (session->rx_fifo);
+
+  return (max_deq > (session->is_dgram ? SESSION_CONN_HDR_LEN : 0));
 }
 
 int
