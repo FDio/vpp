@@ -31,6 +31,10 @@
    is_all_equal, is_zero_mask */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
+t##s##x##c##_setzero (void)						\
+{ return (t##s##x##c) _mm512_setzero_si512 (); }			\
+\
+static_always_inline t##s##x##c						\
 t##s##x##c##_splat (t##s x)						\
 { return (t##s##x##c) _mm512_set1_##i (x); }				\
 \
@@ -49,6 +53,14 @@ t##s##x##c##_load_unaligned (void *p)					\
 static_always_inline void						\
 t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
 { _mm512_storeu_si512 ((__m512i *) p, (__m512i) v); }			\
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_mask_load_unaligned (t##s##x##c v, void *p, t##c mask)	\
+{ return (t##s##x##c) _mm512_mask_loadu_##i ((__m512i) v, mask, p); }	\
+\
+static_always_inline void						\
+t##s##x##c##_mask_store_unaligned (t##s##x##c v, void *p, t##c mask)	\
+{ _mm512_mask_storeu_##i ((__m512i *) p, mask, (__m512i) v); }		\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_zero (t##s##x##c v)					\
@@ -73,7 +85,14 @@ t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
 static_always_inline t##s##x##c                                         \
 t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
 { return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b); } \
-
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_permutexvar (t##s##x##c a, t##s##x##c idx)                 \
+{ return (t##s##x##c) _mm512_permutexvar_##i ((__m512i) idx, (__m512i) a); } \
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_permutex2var (t##s##x##c a, t##s##x##c b, t##s##x##c idx)  \
+{ return (t##s##x##c) _mm512_permutex2var_##i ((__m512i) a, (__m512i) idx, (__m512i) b); } \
 
 foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
@@ -152,13 +171,17 @@ u32x16_insert_hi (u32x16 r, u32x8 v)
   return (u32x16) _mm512_inserti64x4 ((__m512i) r, (__m256i) v, 1);
 }
 
-static_always_inline u64x8
-u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
+static_always_inline void
+u32x16_mask_compressstore_unaligned (u32x16 a, void *base_addr, u16 k)
 {
-  return (u64x8) _mm512_permutex2var_epi64 ((__m512i) a, (__m512i) mask,
-					    (__m512i) b);
+  _mm512_mask_compressstoreu_epi32 (base_addr, k, (__m512i) a);
 }
 
+static_always_inline u64x8
+u32x16_mask_expandload_unaligned (u32x16 src, void const *mem_addr, u16 k)
+{
+  return (u64x8) _mm512_mask_expandloadu_epi32 ((__m512i) src, k, mem_addr);
+}
 
 #define u32x16_ternary_logic(a, b, c, d) \
   (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
