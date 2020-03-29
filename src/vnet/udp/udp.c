@@ -279,6 +279,20 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
     udp_connection_free (uc);
 }
 
+static const char *udp_states[] = {
+#define _(sym, str) str,
+  foreach_udp_state
+#undef _
+};
+
+u8 *
+format_udp_state (u8 * s, va_list * args)
+{
+  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+  s = format (s, udp_states[uc->state]);
+  return s;
+}
+
 u8 *
 format_udp_connection_id (u8 * s, va_list * args)
 {
@@ -406,6 +420,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   ip46_address_t lcl_addr;
   u16 lcl_port;
 
+  clib_warning ("connect with local port %u", clib_net_to_host_u16 (rmt->peer.port));
   if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				      &lcl_port))
     return -1;
@@ -444,6 +459,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
   uc->flags |= UDP_CONN_F_OWNS_PORT;
+  uc->state = UDP_STATE_OPENED;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     uc->flags |= UDP_CONN_F_CONNECTED;
   else
