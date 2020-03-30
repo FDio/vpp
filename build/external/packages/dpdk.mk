@@ -16,10 +16,6 @@ DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
 DPDK_AARCH64_GENERIC         ?= y
-DPDK_MLX4_PMD                ?= n
-DPDK_MLX5_PMD                ?= n
-DPDK_TAP_PMD                 ?= n
-DPDK_FAILSAFE_PMD            ?= n
 
 DPDK_VERSION                 ?= 20.05
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
@@ -37,9 +33,11 @@ else
 DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
 endif
 
+DPDK_BUILD_DEPS := rdma-core-install
+
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
   AESNI ?= y
-  DPDK_BUILD_DEPS := ipsec-mb-install
+  DPDK_BUILD_DEPS += ipsec-mb-install
 else
   AESNI ?= n
 endif
@@ -193,14 +191,15 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)
 	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(AESNI))
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
-	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
-	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
+	$(call set,RTE_IBVERBS_LINK_DLOPEN,n)
+	$(call set,RTE_IBVERBS_LINK_STATIC,y)
+	$(call set,RTE_LIBRTE_MLX4_PMD,y)
+	$(call set,RTE_LIBRTE_MLX5_PMD,y)
 	$(call set,RTE_LIBRTE_BNXT_PMD,y)
 	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
-	$(call set,RTE_IBVERBS_LINK_DLOPEN,y)
-	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
-	$(call set,RTE_LIBRTE_GSO,$(DPDK_TAP_PMD))
-	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
+	$(call set,RTE_LIBRTE_PMD_TAP,y)
+	$(call set,RTE_LIBRTE_GSO,y)
+	$(call set,RTE_LIBRTE_PMD_FAILSAFE,y)
 	@# not needed
 	$(call set,RTE_ETHDEV_RXTX_CALLBACKS,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)

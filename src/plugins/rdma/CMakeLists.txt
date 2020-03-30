@@ -11,39 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h)
-
-if (NOT IBVERBS_INCLUDE_DIR)
-  message(WARNING "-- rdma headers not found - rdma plugin disabled")
-  return()
-endif()
-
-vpp_plugin_find_library(rdma IBVERBS_LIB libibverbs.a)
-vpp_plugin_find_library(rdma RDMA_UTIL_LIB librdma_util.a)
-vpp_plugin_find_library(rdma MLX5_LIB libmlx5.a)
-
-if (NOT IBVERBS_LIB OR NOT RDMA_UTIL_LIB OR NOT MLX5_LIB)
-  message(WARNING "rdma plugin - ibverbs not found - rdma plugin disabled")
-  return()
-endif()
-
-string_append(RDMA_LINK_FLAGS "-Wl,--whole-archive,${MLX5_LIB},--no-whole-archive")
-
-set(CMAKE_REQUIRED_FLAGS "-fPIC -shared -pthread -Wno-unused-command-line-argument ${RDMA_LINK_FLAGS} ${IBVERBS_LIB} ${RDMA_UTIL_LIB}")
-set(CMAKE_REQUIRED_INCLUDES "${IBVERBS_INCLUDE_DIR}")
-set(CMAKE_REQUIRED_LIBRARIES "c") # force linkage by including libc explicitely
-CHECK_C_SOURCE_COMPILES("
-#include <infiniband/verbs.h>
-int main(void)
-{
-    return 0 != ibv_get_device_list(0);
-}" IBVERBS_COMPILES_CHECK)
-
-if (NOT IBVERBS_COMPILES_CHECK)
-  message(WARNING "rdma plugins - no working ibverbs found - rdma plugin disabled")
-  return()
-endif()
-
+vpp_plugin_find_ibverbs(rdma)
 include_directories(${IBVERBS_INCLUDE_DIR})
 
 add_vpp_plugin(rdma
@@ -69,9 +37,8 @@ add_vpp_plugin(rdma
   test_api.c
 
   LINK_FLAGS
-  "${RDMA_LINK_FLAGS}"
+  "${IBVERBS_LINK_FLAGS}"
 
   LINK_LIBRARIES
-  ${IBVERBS_LIB}
-  ${RDMA_UTIL_LIB}
+  ${IBVERBS_LINK_LIBRARIES}
 )
