@@ -504,6 +504,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      next0 = IP4_SV_REASSEMBLY_NEXT_DROP;
 	      error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
+	      b0->error = node->errors[error0];
 	      goto packet_enqueue;
 	    }
 	  ip4_sv_reass_kv_t kv;
@@ -532,6 +533,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      next0 = IP4_SV_REASSEMBLY_NEXT_DROP;
 	      error0 = IP4_ERROR_REASS_LIMIT_REACHED;
+	      b0->error = node->errors[error0];
 	      goto packet_enqueue;
 	    }
 
@@ -556,7 +558,6 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		reass->tcp_seq_number;
 	      vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
-	      error0 = IP4_ERROR_NONE;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip4_sv_reass_add_trace (vm, node, rm, reass, bi0,
@@ -644,8 +645,6 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto next_packet;
 
 	packet_enqueue:
-	  b0->error = node->errors[error0];
-
 	  to_next[0] = bi0;
 	  to_next += 1;
 	  n_left_to_next -= 1;
