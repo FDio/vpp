@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "dc87d8db_bb1ddd7e",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-30T14:13:24Z",
+      "side": 1,
+      "message": "I choose this style very deliberately in order to make it easier and cleaner to do a multi-arch variant of this node. In the multi-arch variant the value of N varies depending on the variant. The classifer\u0027s find_entry may then be amortized across a 8x matching packets etc. \n\nHandling the multi-arch variation becomes quiet verbose if everything is hand-unrolled, you would essentially need to hand-unroll each variation, which would be cumbersome and error prone.",
+      "parentUuid": "02dee8ea_9ec86983",
+      "range": {
+        "startLine": 141,
+        "startChar": 5,
+        "endLine": 141,
+        "endChar": 33
+      },
+      "revId": "056d5634a23b029f7ff97170c7c28350a7900d79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9563c4ef_4ff7f66c",
         "filename": "src/vnet/ip/ip_in_out_acl.c",
         "patchSetId": 11
@@ -36,6 +60,30 @@
       "writtenOn": "2020-03-30T13:53:15Z",
       "side": 1,
       "message": "Actually, almost always, 1st operation on the buffer metadata is load. Using store on x86 results in PREFETCHW instruction, which according to my observation only brings data to L2...\n\nAnd yes, this is also wrong in old code... :)",
+      "range": {
+        "startLine": 149,
+        "startChar": 44,
+        "endLine": 149,
+        "endChar": 49
+      },
+      "revId": "056d5634a23b029f7ff97170c7c28350a7900d79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ba711d7_487dbcca",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-03-30T14:13:24Z",
+      "side": 1,
+      "message": "I did wonder at this at the time, and forgot to dig deeper. \nI will fix.",
+      "parentUuid": "9563c4ef_4ff7f66c",
       "range": {
         "startLine": 149,
         "startChar": 44,
