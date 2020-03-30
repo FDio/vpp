@@ -823,6 +823,18 @@ dpdk_lib_init (dpdk_main_t * dm)
   return 0;
 }
 
+static dpdk_device_config_t *
+dpdk_blacklist (dpdk_config_main_t * conf, const vlib_pci_addr_t * addr)
+{
+  dpdk_device_config_t *devconf;
+  pool_get (conf->dev_confs, devconf);
+  hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
+           devconf - conf->dev_confs);
+  devconf->pci_addr.as_u32 = addr->as_u32;
+  devconf->is_blacklisted = 1;
+  return devconf;
+}
+
 static void
 dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 {
@@ -884,11 +896,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
             if (devconf == 0)
               {
                 /* Device is blacklisted */
-                pool_get (conf->dev_confs, devconf);
-                hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
-                          devconf - conf->dev_confs);
-                devconf->pci_addr.as_u32 = addr->as_u32;
-                devconf->is_blacklisted = 1;
+                devconf = dpdk_blacklist (conf, addr);
                 goto skipped;
               }
             else /* explicitly whitelisted, ignore the device blacklist  */
@@ -909,13 +917,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	 * the default is to put it in the blacklist.
 	 */
 	if (devconf == 0)
-	  {
-	    pool_get (conf->dev_confs, devconf);
-	    hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
-		      devconf - conf->dev_confs);
-	    devconf->pci_addr.as_u32 = addr->as_u32;
-	    devconf->is_blacklisted = 1;
-	  }
+          dpdk_blacklist (conf, addr);
       }
     /* all Intel network devices */
     else if (d->vendor_id == 0x8086 && d->device_class == PCI_CLASS_NETWORK_ETHERNET)
@@ -949,6 +951,13 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Mellanox mlx5 */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
       {
+	/*
+	 * For mlx5, unless it is explicitly specified in the whitelist,
+	 * the default is to put it in the blacklist.
+	 */
+	if (devconf == 0)
+          dpdk_blacklist (conf, addr);
+
         continue;
       }
     /* Broadcom NetXtreme S, and E series only */

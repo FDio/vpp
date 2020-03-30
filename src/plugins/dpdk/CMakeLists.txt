@@ -100,15 +100,12 @@ endif()
 ##############################################################################
 # Mellanox libraries
 ##############################################################################
-if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
-  vpp_plugin_find_library(dpdk MNL_LIB "mnl")
-  list(APPEND DPDK_LINK_LIBRARIES "${MNL_LIB}")
-  if (DPDK_RTE_IBVERBS_LINK_DLOPEN)
-    message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
-  else()
-    message(WARNING "unsupported DPDK configuration: DPDK Mellanox PMD requires RTE_IBVERBS_LINK_DLOPEN")
-  endif()
-endif()
+vpp_plugin_find_ibverbs(dpdk)
+#vpp_plugin_find_library(dpdk MNL_LIB "mnl")
+include_directories(${IBVERBS_INCLUDE_DIR})
+string_append(DPDK_LINK_FLAGS "${IBVERBS_LINK_FLAGS}")
+#list(APPEND DPDK_LINK_LIBRARIES ${MNL_LIB} ${IBVERBS_LINK_LIBRARIES})
+list(APPEND DPDK_LINK_LIBRARIES ${IBVERBS_LINK_LIBRARIES})
 
 ##############################################################################
 # DPDK plugin
@@ -152,4 +149,3 @@ add_vpp_plugin(dpdk
   COMPONENT
   vpp-plugin-dpdk
 )
-
