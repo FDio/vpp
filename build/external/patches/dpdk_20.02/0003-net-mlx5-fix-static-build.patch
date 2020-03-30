@@ -1,0 +1,31 @@
+From b7a589855346bc5504359181b4c9a863f159f962 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Beno=C3=AEt=20Ganne?= <bganne@cisco.com>
+Date: Tue, 31 Mar 2020 11:53:19 +0200
+Subject: [PATCH 3/4] net/mlx5: fix static build
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+rdma-core libraries should not be enclosed as whole-archive.
+
+Signed-off-by: Benoît Ganne <bganne@cisco.com>
+---
+ mk/rte.app.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mk/rte.app.mk b/mk/rte.app.mk
+index d295ca0a5..5f10a1923 100644
+--- a/mk/rte.app.mk
++++ b/mk/rte.app.mk
+@@ -205,7 +205,7 @@ ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
+ _LDLIBS-y                                   += -ldl
+ else ifeq ($(CONFIG_RTE_IBVERBS_LINK_STATIC),y)
+ LIBS_IBVERBS_STATIC = $(shell $(RTE_SDK)/buildtools/options-ibverbs-static.sh)
+-_LDLIBS-y                                   += $(LIBS_IBVERBS_STATIC)
++_LDLIBS-y                                   += --no-whole-archive $(LIBS_IBVERBS_STATIC) --whole-archive
+ else
+ ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+ _LDLIBS-y                                   += -libverbs -lmlx5
+-- 
+2.17.1
+
