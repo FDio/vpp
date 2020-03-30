@@ -75,13 +75,27 @@ format_rdma_bit_flag (u8 * s, va_list * args)
 u8 *
 format_rdma_device (u8 * s, va_list * args)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u32 i = va_arg (*args, u32);
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
+  vlib_pci_device_info_t *d;
   u32 indent = format_get_indent (s);
 
   s = format (s, "netdev %v pci-addr %U\n", rd->linux_ifname,
 	      format_vlib_pci_addr, &rd->pci->addr);
+  if ((d = vlib_pci_get_device_info (vm, &rd->pci->addr, 0)))
+    {
+      s = format (s, "%Uproduct name: %s\n", format_white_space, indent,
+		  d->product_name ? (char *) d->product_name : "");
+      s = format (s, "%Upart number: %U\n", format_white_space, indent,
+		  format_vlib_pci_vpd, d->vpd_r, "PN");
+      s = format (s, "%Urevision: %U\n", format_white_space, indent,
+		  format_vlib_pci_vpd, d->vpd_r, "EC");
+      s = format (s, "%Userial number: %U\n", format_white_space, indent,
+		  format_vlib_pci_vpd, d->vpd_r, "SN");
+      vlib_pci_free_device_info (d);
+    }
   s = format (s, "%Uflags: %U", format_white_space, indent,
 	      format_rdma_device_flags, rd);
   if (rd->error)
