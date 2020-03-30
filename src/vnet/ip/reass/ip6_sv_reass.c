@@ -556,6 +556,7 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		   &(vnet_buffer (b0)->ip.reass.tcp_seq_number)))
 		{
 		  error0 = IP6_ERROR_REASS_UNSUPP_IP_PROTO;
+		  b0->error = node->errors[error0];
 		  next0 = IP6_SV_REASSEMBLY_NEXT_DROP;
 		  goto packet_enqueue;
 		}
@@ -623,6 +624,7 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	    {
 	      next0 = IP6_SV_REASSEMBLY_NEXT_DROP;
 	      error0 = IP6_ERROR_REASS_LIMIT_REACHED;
+	      b0->error = node->errors[error0];
 	      goto packet_enqueue;
 	    }
 
@@ -640,7 +642,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	      vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
 	      next0 = IP6_SV_REASSEMBLY_NEXT_INPUT;
-	      error0 = IP6_ERROR_NONE;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip6_sv_reass_add_trace (vm, node, rm, reass, bi0,
@@ -679,8 +680,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	      goto next_packet;
 	      break;
 	    }
-
-	  b0->error = node->errors[error0];
 
 	  if (reass->is_complete)
 	    {
