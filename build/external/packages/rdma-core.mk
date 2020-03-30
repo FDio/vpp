@@ -29,6 +29,7 @@ endif
 
 BUILD_FILES := include/ \
 	       lib/statics/libibverbs.a \
+	       lib/statics/libmlx4.a \
 	       lib/statics/libmlx5.a \
 	       util/librdma_util.a
 
@@ -41,14 +42,17 @@ define  rdma-core_config_cmds
 endef
 
 define  rdma-core_build_cmds
-	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a librdma_util.a libmlx5.a > $(rdma-core_build_log)
+	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a librdma_util.a libmlx4.a libmlx5.a > $(rdma-core_build_log)
 endef
 
 define  rdma-core_install_cmds
-	mkdir -p $(rdma-core_install_dir)
-	tar -C $(rdma-core_build_dir) -hc $(BUILD_FILES) | tar -C $(rdma-core_install_dir) -xv > $(rdma-core_install_log)
-	find $(rdma-core_install_dir) -name '*.a' -exec mv -v {} $(rdma-core_install_dir)/lib \; >> $(rdma-core_install_log)
-	rmdir -v $(rdma-core_install_dir)/util $(rdma-core_install_dir)/lib/statics >> $(rdma-core_install_log)
+	mkdir -p $(rdma-core_install_dir)/lib
+	cp -av $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
+	cp -v $(rdma-core_build_dir)/lib/statics/libibverbs.a \
+	  $(rdma-core_build_dir)/lib/statics/libmlx4.a \
+	  $(rdma-core_build_dir)/lib/statics/libmlx5.a \
+	  $(rdma-core_build_dir)/util/librdma_util.a \
+	  $(rdma-core_install_dir)/lib >> $(rdma-core_install_log)
 endef
 
 $(eval $(call package,rdma-core))
