@@ -63,6 +63,7 @@ add_vpp_library(vlib
   node_cli.c
   node_format.c
   pci/pci.c
+  pci/pci_types_api.c
   physmem.c
   punt.c
   punt_node.c
@@ -103,6 +104,7 @@ add_vpp_library(vlib
   node.h
   pci/pci_config.h
   pci/pci.h
+  pci/pci_types_api.h
   physmem_funcs.h
   physmem.h
   punt.h
@@ -115,6 +117,9 @@ add_vpp_library(vlib
   unix/unix.h
   vlib.h
   vmbus/vmbus.h
+
+  API_FILES
+  pci/pci_types.api
 
   LINK_LIBRARIES vppinfra svm ${VMBUS_LIBS} ${CMAKE_DL_LIBS}
 )

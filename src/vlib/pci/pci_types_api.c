@@ -14,7 +14,7 @@
  */
 
 #include <vlibapi/api_types.h>
-#include <vnet/pci/pci_types_api.h>
+#include <vlib/pci/pci_types_api.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
