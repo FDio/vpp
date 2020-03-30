@@ -1,0 +1,50 @@
+From 27a7c8da14866767e81b9b9b5319c5894ba44faa Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Beno=C3=AEt=20Ganne?= <bganne@cisco.com>
+Date: Thu, 2 Jul 2020 21:45:42 +0000
+Subject: [PATCH 2/2] net/mlx5: fix link state update
+
+mlx5 PMD refuses to update link state if link speed is defined but
+status is down or if link speed is undefined but status is up, even if
+the ioctl() succeeded.
+This prevents application to detect link up/down event, especially when
+the link speed is not correctly detected.
+As link speed is nice to have whereas link status is mandatory for
+operations, always update link state regardless of link speed. The
+application can then check link speed if needs be.
+
+Signed-off-by: Alexander Kozyrev <akozyrev@mellanox.com>
+---
+ drivers/net/mlx5/mlx5_ethdev.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/drivers/net/mlx5/mlx5_ethdev.c b/drivers/net/mlx5/mlx5_ethdev.c
+index 47f11b9630..2b82047834 100644
+--- a/drivers/net/mlx5/mlx5_ethdev.c
++++ b/drivers/net/mlx5/mlx5_ethdev.c
+@@ -905,11 +905,6 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
+ 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+ 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+ 			ETH_LINK_SPEED_FIXED);
+-	if (((dev_link.link_speed && !dev_link.link_status) ||
+-	     (!dev_link.link_speed && dev_link.link_status))) {
+-		rte_errno = EAGAIN;
+-		return -rte_errno;
+-	}
+ 	*link = dev_link;
+ 	return 0;
+ }
+@@ -1052,11 +1047,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
+ 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+ 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+ 				  ETH_LINK_SPEED_FIXED);
+-	if (((dev_link.link_speed && !dev_link.link_status) ||
+-	     (!dev_link.link_speed && dev_link.link_status))) {
+-		rte_errno = EAGAIN;
+-		return -rte_errno;
+-	}
+ 	*link = dev_link;
+ 	return 0;
+ }
+-- 
+2.24.1
+
