@@ -105,3 +105,33 @@ if (NOT ${var})
 endif()
     message(STATUS "${plugin} plugin needs ${name} library - found at ${${var}}")
 endmacro()
+
+macro(vpp_plugin_find_ibverbs plugin)
+  # look for libibverbs headers
+  find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h)
+  if (NOT IBVERBS_INCLUDE_DIR)
+    message(WARNING "-- no working libibverbs found - ${plugin} plugin disabled")
+    return()
+  endif()
+
+  # look for libibverbs libraries
+  vpp_plugin_find_library(${plugin} IBVERBS_LIB libibverbs.a)
+  vpp_plugin_find_library(${plugin} RDMA_UTIL_LIB librdma_util.a)
+  vpp_plugin_find_library(${plugin} MLX5_LIB libmlx5.a)
+  if (NOT IBVERBS_LIB OR NOT RDMA_UTIL_LIB OR NOT MLX5_LIB)
+    message(WARNING "-- no working libibverbs found - ${plugin} plugin disabled")
+    return()
+  endif()
+
+  # check libibverbs linkage
+  string_append(IBVERBS_LINK_FLAGS "-Wl,--whole-archive,${MLX5_LIB},--no-whole-archive")
+  set(CMAKE_REQUIRED_FLAGS "-fPIC -shared -pthread ${RDMA_LINK_FLAGS} ${IBVERBS_LIB} ${RDMA_UTIL_LIB}")
+  CHECK_C_SOURCE_COMPILES("int main(void) { return 0; }" IBVERBS_COMPILES_CHECK)
+  if (NOT IBVERBS_COMPILES_CHECK)
+    message(WARNING "-- no working libibverbs found - ${plugin} plugin disabled")
+    return()
+  endif()
+
+  set(IBVERBS_LINK_FLAGS "${IBVERBS_LINK_FLAGS}")
+  set(IBVERBS_LINK_LIBRARIES ${IBVERBS_LIB} ${RDMA_UTIL_LIB})
+endmacro()

@@ -1,0 +1,43 @@
+From 749731edff9273b090adbf42d9c5ba309fc6d510 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Beno=C3=AEt=20Ganne?= <bganne@cisco.com>
+Date: Mon, 30 Mar 2020 17:55:46 +0200
+Subject: [PATCH 4/4] buildtools: use local rdma-core for static linking
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Benoît Ganne <bganne@cisco.com>
+---
+ buildtools/options-ibverbs-static.sh | 21 +--------------------
+ 1 file changed, 1 insertion(+), 20 deletions(-)
+
+diff --git a/buildtools/options-ibverbs-static.sh b/buildtools/options-ibverbs-static.sh
+index 0740a711f..2a6d74bee 100755
+--- a/buildtools/options-ibverbs-static.sh
++++ b/buildtools/options-ibverbs-static.sh
+@@ -1,21 +1,2 @@
+ #! /bin/sh
+-# SPDX-License-Identifier: BSD-3-Clause
+-#
+-# Print link options -l for static link of ibverbs.
+-#
+-# Static flavour of ibverbs and the providers libs are explicitly picked,
+-# thanks to the syntax -l:libfoo.a
+-# Other libs (pthread and nl) are unchanged, i.e. linked dynamically by default.
+-#
+-# PKG_CONFIG_PATH may be required to be set if libibverbs.pc is not installed.
+-
+-lib='libibverbs'
+-deps='pthread|nl'
+-
+-pkg-config --libs --static $lib |
+-	tr '[:space:]' '\n' |
+-	sed -r "/^-l($deps)/! s,(^-l)(.*),\1:lib\2.a," |   # explicit .a
+-	sed -n '/^-[Ll]/p' |   # extra link options may break with make
+-	tac |
+-	awk "/^-l:$lib.a/&&c++ {next} 1" | # drop first duplicates of main lib
+-	tac
++echo '--whole-archive -lmlx4 -lmlx5 --no-whole-archive -libverbs -lrdma_util'
+-- 
+2.17.1
+
