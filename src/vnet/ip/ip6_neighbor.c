@@ -3708,34 +3708,28 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 			 unformat_ip6_address, &ip6_addr, &addr_len))
 	{
 	  add_radv_info = 0;
-	  break;
 	}
       else if (unformat (line_input, "ra-managed-config-flag"))
 	{
 	  managed = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-other-config-flag"))
 	{
 	  other = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-suppress") ||
 	       unformat (line_input, "ra-surpress"))
 	{
 	  suppress = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-suppress-link-layer") ||
 	       unformat (line_input, "ra-surpress-link-layer"))
 	{
 	  suppress_ll_option = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-send-unicast"))
 	{
 	  send_unicast = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-lifetime"))
 	{
@@ -3745,7 +3739,6 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 	      goto done;
 	    }
 	  use_lifetime = 1;
-	  break;
 	}
       else if (unformat (line_input, "ra-initial"))
 	{
@@ -3755,7 +3748,6 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 	      error = unformat_parse_error (line_input);
 	      goto done;
 	    }
-	  break;
 	}
       else if (unformat (line_input, "ra-interval"))
 	{
@@ -3767,12 +3759,10 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 
 	  if (!unformat (line_input, "%d", &ra_min_interval))
 	    ra_min_interval = 0;
-	  break;
 	}
       else if (unformat (line_input, "ra-cease"))
 	{
 	  cease = 1;
-	  break;
 	}
       else
 	{
