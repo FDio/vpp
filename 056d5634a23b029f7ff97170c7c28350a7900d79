@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "02dee8ea_9ec86983",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-03-30T13:53:15Z",
+      "side": 1,
+      "message": "idea behind our quad-looping style is to give more chance for CPU to utilise instruction level parallelism by interleaving 2 or 4 independent flows of instructions. This looks like step back to me.",
+      "range": {
+        "startLine": 141,
+        "startChar": 5,
+        "endLine": 141,
+        "endChar": 33
+      },
+      "revId": "056d5634a23b029f7ff97170c7c28350a7900d79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9563c4ef_4ff7f66c",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-03-30T13:53:15Z",
+      "side": 1,
+      "message": "Actually, almost always, 1st operation on the buffer metadata is load. Using store on x86 results in PREFETCHW instruction, which according to my observation only brings data to L2...\n\nAnd yes, this is also wrong in old code... :)",
+      "range": {
+        "startLine": 149,
+        "startChar": 44,
+        "endLine": 149,
+        "endChar": 49
+      },
+      "revId": "056d5634a23b029f7ff97170c7c28350a7900d79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
