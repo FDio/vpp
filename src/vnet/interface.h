@@ -503,6 +503,18 @@ typedef enum vnet_hw_interface_flags_t_
 
   /* non-broadcast multiple access */
   VNET_HW_INTERFACE_FLAG_NBMA = (1 << 19),
+
+  /* gso vxlan */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN = (1 << 20),
+
+  /* gso gre */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_GRE = (1 << 21),
+
+  /* gso ipip */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_IPIP = (1 << 22),
+
+  /* gso geneve */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_GENEVE = (1 << 23),
 } vnet_hw_interface_flags_t;
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
