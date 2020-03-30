@@ -237,6 +237,7 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 	  ip4->checksum = ip4_header_checksum (ip4);
 	  if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
 	    {
+              uh->checksum = 0;
 	      uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
 	    }
 	}

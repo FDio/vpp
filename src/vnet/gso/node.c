@@ -18,6 +18,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/feature/feature.h>
+#include <vnet/gso/gho.h>
 #include <vnet/gso/gso.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4.h>
@@ -139,8 +140,7 @@ tso_alloc_tx_bufs (vlib_main_t * vm,
 		   u16 gso_size, gso_header_offset_t * gho)
 {
   u16 size =
-    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz
-	      - gho->l2_hdr_offset);
+    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz);
 
   /* rounded-up division */
   u16 n_bufs = (n_bytes_b0 - l234_sz + (size - 1)) / size;
@@ -255,14 +255,33 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 {
   u32 n_tx_bytes = 0;
   u16 gso_size = vnet_buffer2 (sb0)->gso_size;
-
+  u16 l234_sz = 0;
   int l4_hdr_sz = gho->l4_hdr_sz;
   u8 save_tcp_flags = 0;
   u8 tcp_flags_no_fin_psh = 0;
   u32 next_tcp_seq = 0;
 
-  tcp_header_t *tcp =
-    (tcp_header_t *) (vlib_buffer_get_current (sb0) + gho->l4_hdr_offset);
+  tcp_header_t *tcp;
+
+  if (gho->gho_flags & GSO_F_OUTER_TCP)
+    {
+      tcp = (tcp_header_t *) (vlib_buffer_get_current (sb0) + gho->outer_l4_hdr_offset);  
+      /*
+       * gho->outer_l2_hdr_offset is same as vlib_buffer_t current_data
+       * As we use vlib_buffer_get_current to access the vlib_buffer_t
+       * we don't include it in the total outer header size.
+       */
+      l234_sz = gho->outer_hdr_sz - gho->outer_l2_hdr_offset;
+    }
+  else if (gho->gho_flags & GSO_F_INNER_TCP)
+    {
+      tcp = (tcp_header_t *) (vlib_buffer_get_current (sb0) + gho->inner_l4_hdr_offset);
+      l234_sz = gho->inner_hdr_sz;
+    }
+  else
+    return 0;
+
+  l234_sz = (gho->outer_hdr_sz - gho->outer_l2_hdr_offset) + gho->inner_hdr_sz;
   next_tcp_seq = clib_net_to_host_u32 (tcp->seq_number);
   /* store original flags for last packet and reset FIN and PSH */
   save_tcp_flags = tcp->flags;
@@ -271,7 +290,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 
   u32 default_bflags =
     sb0->flags & ~(VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT);
-  u16 l234_sz = gho->l4_hdr_offset + l4_hdr_sz - gho->l2_hdr_offset;
+  //u16 l234_sz = gho->l4_hdr_offset + l4_hdr_sz - gho->l2_hdr_offset;
   int first_data_size = clib_min (gso_size, sb0->current_length - l234_sz);
   next_tcp_seq += first_data_size;
 
@@ -448,6 +467,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      {
 		hi0 = vnet_get_sup_hw_interface (vnm, swif0);
 		if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+                    (hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN) == 0 &&
 		    (b[0]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
@@ -455,6 +475,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      {
 		hi1 = vnet_get_sup_hw_interface (vnm, swif1);
 		if (!(hi1->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+                    (hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN) == 0 &&
 		    (b[1]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
@@ -462,6 +483,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      {
 		hi2 = vnet_get_sup_hw_interface (vnm, swif2);
 		if ((hi2->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+                    (hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN) == 0 &&
 		    (b[2]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
@@ -469,6 +491,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      {
 		hi3 = vnet_get_sup_hw_interface (vnm, swif3);
 		if (!(hi3->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+                    (hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN) == 0 &&
 		    (b[3]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
@@ -533,6 +556,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	    {
 	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
 	      if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+                  (hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO_VXLAN) == 0 &&
 		  (b[0]->flags & VNET_BUFFER_F_GSO))
 		do_segmentation0 = 1;
 	    }
@@ -571,13 +595,13 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		  u32 n_tx_bytes = 0;
 		  i32 tunnel_size = 0;
 
-		  gho = vnet_gso_header_offset_parser (b[0]);
+		  gho = vnet_generic_header_offset_parser (b[0]);
 
 		  if (PREDICT_FALSE (gho.gso_flags & GSO_F_VXLAN_TUNNEL))
 		    {
-		      tunnel_size -= b[0]->current_data - gho.l2_hdr_offset;
-		      vlib_buffer_advance (b[0], tunnel_size);
-		      n_bytes_b0 -= tunnel_size;
+		      //tunnel_size -= b[0]->current_data - gho.l2_hdr_offset;
+		      //vlib_buffer_advance (b[0], tunnel_size);
+		      //n_bytes_b0 -= tunnel_size;
 		      /*
 		       * In case of vxlan encapsulated packet, we will calculate the checksums
 		       * for segmented inner packets.
