@@ -490,6 +490,12 @@ typedef struct
 
   /* custom ipsec-over-udp ports managed by ike */
   uword *udp_ports;
+
+  /* how often a liveness check will be performed */
+  u32 liveness_period;
+
+  /* max number of retries before considering peer dead */
+  u32 liveness_max_retries;
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;
