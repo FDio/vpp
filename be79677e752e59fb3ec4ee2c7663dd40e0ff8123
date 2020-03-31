@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0622e69a_98090ce2",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-31T09:20:32Z",
+      "side": 1,
+      "message": "should there be a change to the byte swapping on the API too?",
+      "revId": "be79677e752e59fb3ec4ee2c7663dd40e0ff8123",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
