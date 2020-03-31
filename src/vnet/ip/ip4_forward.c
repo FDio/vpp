@@ -54,6 +54,7 @@
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
+#include <vnet/adj/adj_dp.h>
 
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
@@ -2235,12 +2236,8 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       if (is_midchain)
 	{
-	  if (error0 == IP4_ERROR_NONE && adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	  if (error1 == IP4_ERROR_NONE && adj1->sub_type.midchain.fixup_func)
-	    adj1->sub_type.midchain.fixup_func
-	      (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
+	  if (error0 == IP4_ERROR_NONE) adj_midchain_fixup (vm, adj0, b[0]);
+	  if (error1 == IP4_ERROR_NONE) adj_midchain_fixup (vm, adj1, b[1]);
 	}
 
       if (is_mcast)
@@ -2362,9 +2359,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	       adj_index0, 1, vlib_buffer_length_in_chain (vm,
 							   b[0]) + rw_len0);
 
-	  if (is_midchain && adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+	  if (is_midchain) adj_midchain_fixup (vm, adj0, b[0]);
 
 	  if (is_mcast)
 	    /* copy bytes from the IP address into the MAC rewrite */
