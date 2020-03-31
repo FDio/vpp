@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "69dcd99e_9fbca4a4",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-03-31T10:15:47Z",
+      "side": 1,
+      "message": "un-necessary new line",
+      "revId": "0dbd9184cb64ba25cc5b07d3de7842a7f3f7324f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "301a2d38_6e03f772",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-03-31T10:15:47Z",
+      "side": 1,
+      "message": "add to \"if (ctx-\u003en_segs_per_evt \u003e1)\" to avoid a \"/\" for (n_segs_per_evt\u003d\u003d1) case",
+      "revId": "0dbd9184cb64ba25cc5b07d3de7842a7f3f7324f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "92daefc6_b87e4f3b",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 936,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-03-31T10:15:47Z",
+      "side": 1,
+      "message": "add this in #812, so here no need for condition check",
+      "revId": "0dbd9184cb64ba25cc5b07d3de7842a7f3f7324f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
