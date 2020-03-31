@@ -23,8 +23,8 @@
 #include <vnet/fib/fib_table.h>
 
 int
-nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
-	       u32 st_buckets, u32 st_memory_size,
+nat64_db_init (nat64_db_t * db, u32 bib_buckets, uword bib_memory_size,
+	       u32 st_buckets, uword st_memory_size,
 	       nat64_db_free_addr_port_function_t free_addr_port_cb)
 {
   clib_bihash_init_24_8 (&db->bib.in2out, "bib-in2out", bib_buckets,

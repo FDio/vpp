@@ -91,9 +91,9 @@ typedef struct
 
   /** config parameters */
   u32 bib_buckets;
-  u32 bib_memory_size;
+  uword bib_memory_size;
   u32 st_buckets;
-  u32 st_memory_size;
+  uword st_memory_size;
 
   /** values of various timeouts */
   u32 udp_timeout;
@@ -359,8 +359,8 @@ void nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4,
  * @param st_buckets Number of session table hash buckets.
  * @param st_memory_size Memory size of session table hash.
  */
-void nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
-		     u32 st_memory_size);
+void nat64_set_hash (u32 bib_buckets, uword bib_memory_size, u32 st_buckets,
+		     uword st_memory_size);
 
 /**
  * @brief Get worker thread index for NAT64 in2out.
