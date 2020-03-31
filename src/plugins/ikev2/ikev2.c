@@ -2595,7 +2595,11 @@ ikev2_node_fn (vlib_main_t * vm,
 			    }
 			}
 		    }
-		  len = ikev2_generate_message (sa0, ike0, 0);
+		  if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
+		    {
+		      ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
+		      len = ikev2_generate_message (sa0, ike0, 0);
+		    }
 		}
 	    }
 	  else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
@@ -3955,6 +3959,9 @@ ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
   vlib_main_t *vm = km->vlib_main;
+
+  if (!sa->sk_ai || !sa->sk_ar)
+    return 0;
 
   if (sa->liveness_retries > IKEV2_LIVENESS_RETRIES)
     return 1;
