@@ -261,7 +261,8 @@ vnet_get_feature_config_index (u8 arc, u32 sw_if_index)
 
 static_always_inline void *
 vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
-				  vlib_buffer_t * b, u32 n_data_bytes)
+				  vlib_buffer_t * b,
+                                  u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -276,6 +277,24 @@ vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
 				   next, n_data_bytes);
     }
   return 0;
+}
+
+static_always_inline void *
+vnet_feature_arc_start_w_cfg_index (u8 arc,
+                                    u32 sw_if_index,
+                                    u32 * next,
+                                    vlib_buffer_t * b,
+                                    u32 cfg_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  cm = &fm->feature_config_mains[arc];
+
+  vnet_buffer (b)->feature_arc_index = arc;
+  b->current_config_index = cfg_index;
+
+  return vnet_get_config_data (&cm->config_main, &b->current_config_index,
+                               next, 0);
 }
 
 static_always_inline void

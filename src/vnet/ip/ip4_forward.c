@@ -54,6 +54,7 @@
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
+#include <vnet/adj/adj_dp.h>
 
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
@@ -2177,9 +2178,12 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
-	  next[0] = next_index;
+            vnet_feature_arc_start_w_cfg_index (lm->output_feature_arc_index,
+                                                tx_sw_if_index0,
+                                                &next_index, b[0],
+                                                adj0->ia_cfg_index);
+
+          next[0] = next_index;
 	  if (is_midchain)
 	    calc_checksums (vm, b[0]);
 	}
@@ -2199,9 +2203,11 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index1, &next_index, b[1]);
-	  next[1] = next_index;
+            vnet_feature_arc_start_w_cfg_index (lm->output_feature_arc_index,
+                                                tx_sw_if_index1,
+                                                &next_index, b[1],
+                                                adj1->ia_cfg_index);
+          next[1] = next_index;
 	  if (is_midchain)
 	    calc_checksums (vm, b[1]);
 	}
@@ -2212,9 +2218,14 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    ip4_ttl_inc (b[1], ip1);
 	}
 
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_two_headers (adj0[0], adj1[0],
-				ip0, ip1, sizeof (ethernet_header_t));
+      if (is_midchain)
+        /* Guess we are only writing on ipv4 header. */
+        vnet_rewrite_two_headers (adj0[0], adj1[0],
+                                  ip0, ip1, sizeof (ip4_header_t));
+      else
+        /* Guess we are only writing on simple Ethernet header. */
+        vnet_rewrite_two_headers (adj0[0], adj1[0],
+                                  ip0, ip1, sizeof (ethernet_header_t));
 
       if (do_counters)
 	{
@@ -2235,12 +2246,8 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       if (is_midchain)
 	{
-	  if (error0 == IP4_ERROR_NONE && adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	  if (error1 == IP4_ERROR_NONE && adj1->sub_type.midchain.fixup_func)
-	    adj1->sub_type.midchain.fixup_func
-	      (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
+	  if (error0 == IP4_ERROR_NONE) adj_midchain_fixup (vm, adj0, b[0]);
+	  if (error1 == IP4_ERROR_NONE) adj_midchain_fixup (vm, adj1, b[1]);
 	}
 
       if (is_mcast)
@@ -2342,15 +2349,22 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
+            vnet_feature_arc_start_w_cfg_index (lm->output_feature_arc_index,
+                                                tx_sw_if_index0,
+                                                &next_index, b[0],
+                                                adj0->ia_cfg_index);
 	  next[0] = next_index;
 
 	  if (is_midchain)
-	    calc_checksums (vm, b[0]);
+            {
+              calc_checksums (vm, b[0]);
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+              /* Guess we are only writing on ipv4 header. */
+              vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
+            }
+	  else
+            /* Guess we are only writing on simple Ethernet header. */
+            vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
 	  /*
 	   * Bump the per-adjacency counters
@@ -2362,9 +2376,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	       adj_index0, 1, vlib_buffer_length_in_chain (vm,
 							   b[0]) + rw_len0);
 
-	  if (is_midchain && adj0->sub_type.midchain.fixup_func)
-	    adj0->sub_type.midchain.fixup_func
-	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+	  if (is_midchain) adj_midchain_fixup (vm, adj0, b[0]);
 
 	  if (is_mcast)
 	    /* copy bytes from the IP address into the MAC rewrite */
@@ -2440,16 +2452,23 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
+            vnet_feature_arc_start_w_cfg_index (lm->output_feature_arc_index,
+                                                tx_sw_if_index0,
+                                                &next_index, b[0],
+                                                adj0->ia_cfg_index);
 	  next[0] = next_index;
 
 	  if (is_midchain)
-	    /* this acts on the packet that is about to be encapped */
-	    calc_checksums (vm, b[0]);
+            {
+              /* this acts on the packet that is about to be encapped */
+              calc_checksums (vm, b[0]);
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+              /* Guess we are only writing on ipv4 header. */
+              vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
+            }
+	  else
+            /* Guess we are only writing on simple Ethernet header. */
+            vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
 	  if (do_counters)
 	    vlib_increment_combined_counter
