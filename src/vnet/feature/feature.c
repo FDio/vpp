@@ -321,6 +321,35 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 						 n_feature_config_bytes);
 }
 
+int
+vnet_feature_modify_end_node (u8 arc_index,
+			      u32 sw_if_index, u32 end_node_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  u32 ci;
+
+  if (arc_index == (u8) ~ 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (end_node_index == ~0)
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  cm = &fm->feature_config_mains[arc_index];
+  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
+  ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+  ci = vnet_config_modify_end_node (vlib_get_main (), &cm->config_main,
+				    ci, end_node_index);
+
+  if (ci == ~0)
+    return 0;
+
+  cm->config_index_by_sw_if_index[sw_if_index] = ci;
+
+  return 0;
+}
+
 static int
 feature_cmp (void *a1, void *a2)
 {
