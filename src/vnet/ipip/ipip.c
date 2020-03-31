@@ -84,7 +84,6 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 	ip4_header_set_dscp (ip4, t->dscp);
       if (t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_SET_DF)
 	ip4_header_set_df (ip4);
-      ip4->checksum = ip4_header_checksum (ip4);
 
       switch (link_type)
 	{
@@ -97,6 +96,7 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 	default:
 	  break;
 	}
+      ip4->checksum = ip4_header_checksum (ip4);
       break;
 
     case IPIP_TRANSPORT_IP6:
@@ -259,7 +259,7 @@ ipip_tunnel_restack (ipip_tunnel_t * gt)
 }
 
 static adj_midchain_fixup_t
-ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt)
+ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt, adj_flags_t * aflags)
 {
   if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_IP6)
     return (ipip66_fixup);
@@ -268,7 +268,10 @@ ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt)
   if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP6)
     return (ipip64_fixup);
   if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP4)
-    return (ipip44_fixup);
+    {
+      *aflags = *aflags | ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR;
+      return (ipip44_fixup);
+    }
 
   ASSERT (0);
   return (ipip44_fixup);
@@ -277,6 +280,7 @@ ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt)
 void
 ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
+  adj_midchain_fixup_t fixup;
   ipip_tunnel_t *t;
   adj_flags_t af;
 
@@ -288,8 +292,9 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
+  fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
   adj_nbr_midchain_update_rewrite
-    (ai, ipip_get_fixup (t, adj_get_link_type (ai)),
+    (ai, fixup,
      uword_to_pointer (t->flags, void *), af,
      ipip_build_rewrite (vnm, sw_if_index,
 			 adj_get_link_type (ai), &t->tunnel_dst));
@@ -305,10 +310,15 @@ typedef struct mipip_walk_ctx_t_
 static adj_walk_rc_t
 mipip_mk_complete_walk (adj_index_t ai, void *data)
 {
+  adj_midchain_fixup_t fixup;
   mipip_walk_ctx_t *ctx = data;
+  adj_flags_t af;
+
+  af = ADJ_FLAG_NONE;
+  fixup = ipip_get_fixup (ctx->t, adj_get_link_type (ai), &af);
 
   adj_nbr_midchain_update_rewrite
-    (ai, ipip_get_fixup (ctx->t, adj_get_link_type (ai)),
+    (ai, fixup,
      uword_to_pointer (ctx->t->flags, void *),
      ADJ_FLAG_MIDCHAIN_IP_STACK, ipip_build_rewrite (vnet_get_main (),
 						     ctx->t->sw_if_index,
@@ -324,11 +334,14 @@ mipip_mk_complete_walk (adj_index_t ai, void *data)
 static adj_walk_rc_t
 mipip_mk_incomplete_walk (adj_index_t ai, void *data)
 {
+  adj_midchain_fixup_t fixup;
   ipip_tunnel_t *t = data;
+  adj_flags_t af;
 
-  adj_nbr_midchain_update_rewrite
-    (ai, ipip_get_fixup (t, adj_get_link_type (ai)),
-     NULL, ADJ_FLAG_NONE, NULL);
+  af = ADJ_FLAG_NONE;
+  fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
+
+  adj_nbr_midchain_update_rewrite (ai, fixup, NULL, ADJ_FLAG_NONE, NULL);
 
   adj_midchain_delegate_unstack (ai);
 
@@ -339,11 +352,14 @@ void
 mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   ipip_main_t *gm = &ipip_main;
+  adj_midchain_fixup_t fixup;
   ip_adjacency_t *adj;
   teib_entry_t *ne;
   ipip_tunnel_t *t;
+  adj_flags_t af;
   u32 ti;
 
+  af = ADJ_FLAG_NONE;
   adj = adj_get (ai);
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
@@ -352,10 +368,10 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   if (NULL == ne)
     {
-      // no NHRP entry to provide the next-hop
+      // no TEIB entry to provide the next-hop
+      fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
       adj_nbr_midchain_update_rewrite
-	(ai, ipip_get_fixup (t, adj_get_link_type (ai)),
-	 uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
+	(ai, fixup, uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
       return;
     }
 

@@ -18,6 +18,8 @@
 #ifndef __TUNNEL_DP_H__
 #define __TUNNEL_DP_H__
 
+#include <vnet/tunnel/tunnel.h>
+
 static_always_inline void
 tunnel_encap_fixup_4o4 (tunnel_encap_decap_flags_t flags,
 			const ip4_header_t * inner, ip4_header_t * outer)

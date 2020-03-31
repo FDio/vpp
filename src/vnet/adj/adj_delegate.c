@@ -125,6 +125,20 @@ adj_delegate_add (ip_adjacency_t *adj,
 }
 
 void
+adj_delegate_adj_modified (ip_adjacency_t *adj)
+{
+    adj_delegate_t *aed;
+
+    vec_foreach(aed, adj->ia_delegates)
+    {
+        if (ad_vfts[aed->ad_type].adv_adj_modified)
+        {
+            ad_vfts[aed->ad_type].adv_adj_modified(aed);
+        }
+    }
+}
+
+void
 adj_delegate_adj_deleted (ip_adjacency_t *adj)
 {
     adj_delegate_t *aed;
