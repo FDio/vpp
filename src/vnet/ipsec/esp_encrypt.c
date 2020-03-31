@@ -312,7 +312,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp_header_t *esp;
       u8 *payload, *next_hdr_ptr;
       u16 payload_len, payload_len_total, n_bufs;
-      u32 hdr_len, config_index;
+      u32 hdr_len;
 
       if (n_left > 2)
 	{
@@ -327,8 +327,6 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (is_tun)
 	{
 	  /* we are on a ipsec tunnel's feature arc */
-	  config_index = b[0]->current_config_index;
-	  vnet_feature_next_u16 (&next[0], b[0]);
 	  vnet_buffer (b[0])->ipsec.sad_index =
 	    sa_index0 = ipsec_tun_protect_get_sa_out
 	    (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
@@ -365,10 +363,6 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_TRUE (thread_index != sa0->encrypt_thread_index))
 	{
 	  next[0] = ESP_ENCRYPT_NEXT_HANDOFF;
-	  if (is_tun)
-	    {
-	      b[0]->current_config_index = config_index;
-	    }
 	  goto trace;
 	}
 
@@ -468,6 +462,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next[0] = dpo->dpoi_next_node;
 	      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
 	    }
+	  else
+	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	}
       else			/* transport mode */
 	{
@@ -562,8 +558,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      esp_fill_udp_hdr (sa0, udp, udp_len);
 	    }
 
-	  if (!is_tun)
-	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	}
 
       esp->spi = spi;
@@ -810,7 +805,7 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
   .next_nodes = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
+    [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
 };
 
@@ -857,7 +852,7 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
   .next_nodes = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
+    [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
 };
 
@@ -914,7 +909,6 @@ esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * frame)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
-  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
 
@@ -922,14 +916,11 @@ esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left > 0)
     {
-      u32 next0;
       u32 sa_index0;
 
       /* packets are always going to be dropped, but get the sa_index */
-      sa_index0 = *(u32 *) vnet_feature_next_with_data (&next0, b[0],
-							sizeof (sa_index0));
-
-      next[0] = ESP_NO_CRYPTO_NEXT_DROP;
+      sa_index0 = ipsec_tun_protect_get_sa_out
+	(vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -939,14 +930,15 @@ esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       n_left -= 1;
-      next += 1;
       b += 1;
     }
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_NO_CRYPTO_ERROR_RX_PKTS, frame->n_vectors);
 
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  vlib_buffer_enqueue_to_single_next (vm, node, from,
+				      ESP_NO_CRYPTO_NEXT_DROP,
+				      frame->n_vectors);
 
   return frame->n_vectors;
 }

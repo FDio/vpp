@@ -168,9 +168,16 @@ adj_nbr_evaluate_feature (adj_index_t ai)
     {
         feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
         if (feature_count > 0)
-            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
-    }
+        {
+            vnet_feature_config_main_t *cm;
 
+            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
+            cm = &fm->feature_config_mains[arc_index];
+
+            adj->ia_cfg_index = vec_elt (cm->config_index_by_sw_if_index,
+                                         sw_if_index);
+        }
+    }
     return;
 }
 
@@ -521,6 +528,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
         walk_adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
     }
 
+    adj_delegate_adj_modified(adj);
     adj_unlock(ai);
     adj_unlock(walk_ai);
 }
@@ -578,7 +586,6 @@ adj_nbr_walk_cb (BVT(clib_bihash_kv) * kvp,
 {
     adj_walk_ctx_t *ctx = arg;
 
-    // FIXME: can't stop early...
     if (ADJ_WALK_RC_STOP == ctx->awc_cb(kvp->value, ctx->awc_ctx))
         return (BIHASH_WALK_STOP);
     return (BIHASH_WALK_CONTINUE);

@@ -181,6 +181,10 @@ typedef enum adj_attr_t_
      * If the midchain were to stack on its FIB entry a loop would form.
      */
     ADJ_ATTR_MIDCHAIN_LOOPED,
+    /**
+     * the fixup function is standard IP4o4 header
+     */
+    ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR,
 }  adj_attr_t;
 
 #define ADJ_ATTR_NAMES {                                        \
@@ -188,11 +192,12 @@ typedef enum adj_attr_t_
     [ADJ_ATTR_MIDCHAIN_NO_COUNT] = "midchain-no-count",         \
     [ADJ_ATTR_MIDCHAIN_IP_STACK] = "midchain-ip-stack",         \
     [ADJ_ATTR_MIDCHAIN_LOOPED] = "midchain-looped",             \
+    [ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR] = "midchain-ip4o4-hdr-fixup",   \
 }
 
-#define FOR_EACH_ADJ_ATTR(_attr)                 \
-    for (_attr = ADJ_ATTR_SYNC_WALK_ACTIVE;      \
-	 _attr <= ADJ_ATTR_MIDCHAIN_LOOPED;      \
+#define FOR_EACH_ADJ_ATTR(_attr)                        \
+    for (_attr = ADJ_ATTR_SYNC_WALK_ACTIVE;             \
+	 _attr <= ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR;    \
 	 _attr++)
 
 /**
@@ -205,6 +210,7 @@ typedef enum adj_flags_t_
     ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << ADJ_ATTR_MIDCHAIN_NO_COUNT),
     ADJ_FLAG_MIDCHAIN_IP_STACK = (1 << ADJ_ATTR_MIDCHAIN_IP_STACK),
     ADJ_FLAG_MIDCHAIN_LOOPED = (1 << ADJ_ATTR_MIDCHAIN_LOOPED),
+    ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR = (1 << ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR),
 }  __attribute__ ((packed)) adj_flags_t;
 
 /**
@@ -223,36 +229,9 @@ typedef struct ip_adjacency_t_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /**
-   * Linkage into the FIB node graph. First member since this type
-   * has 8 byte alignment requirements.
+   * feature [arc] config index
    */
-  fib_node_t ia_node;
-
-  /**
-   * Next hop after ip4-lookup.
-   *  This is not accessed in the rewrite nodes.
-   * 1-bytes
-   */
-  ip_lookup_next_t lookup_next_index;
-
-  /**
-   * link/ether-type
-   * 1 bytes
-   */
-  vnet_link_t ia_link;
-
-  /**
-   * The protocol of the neighbor/peer. i.e. the protocol with
-   * which to interpret the 'next-hop' attributes of the sub-types.
-   * 1-bytes
-   */
-  fib_protocol_t ia_nh_proto;
-
-  /**
-   * Flags on the adjacency
-   * 1-bytes
-   */
-  adj_flags_t ia_flags;
+  u32 ia_cfg_index;
 
   union
   {
@@ -315,12 +294,18 @@ typedef struct ip_adjacency_t_
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-  /* Rewrite in second/third cache lines */
+  /** Rewrite in second/third cache lines */
   VNET_DECLARE_REWRITE;
 
   /**
    * more control plane members that do not fit on the first cacheline
    */
+  /**
+   * Linkage into the FIB node graph. First member since this type
+   * has 8 byte alignment requirements.
+   */
+  fib_node_t ia_node;
+
   /**
    * A sorted vector of delegates
    */
@@ -330,6 +315,37 @@ typedef struct ip_adjacency_t_
    * The VLIB node in which this adj is used to forward packets
    */
   u32 ia_node_index;
+
+  /**
+   * Next hop after ip4-lookup.
+   *  This is not accessed in the rewrite nodes.
+   * 1-bytes
+   */
+  ip_lookup_next_t lookup_next_index;
+
+  /**
+   * link/ether-type
+   * 1 bytes
+   */
+  vnet_link_t ia_link;
+
+  /**
+   * The protocol of the neighbor/peer. i.e. the protocol with
+   * which to interpret the 'next-hop' attributes of the sub-types.
+   * 1-bytes
+   */
+  fib_protocol_t ia_nh_proto;
+
+  /**
+   * Flags on the adjacency
+   * 1-bytes
+   */
+  adj_flags_t ia_flags;
+
+  /**
+   * Free space on the fourth cacheline (not used in the DP)
+   */
+  u8 __ia_pad[32];
 } ip_adjacency_t;
 
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
@@ -337,6 +353,7 @@ STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
 		CLIB_CACHE_LINE_BYTES),
 	       "IP adjacency cacheline 1 is more than one cacheline size offset");
+STATIC_ASSERT_SIZEOF (ip_adjacency_t, 4 * CLIB_CACHE_LINE_BYTES);
 
 /**
  * @brief

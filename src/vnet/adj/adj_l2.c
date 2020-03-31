@@ -48,7 +48,8 @@ always_inline uword
 adj_l2_rewrite_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
 		       vlib_frame_t * frame,
-		       int is_midchain)
+		       int is_midchain,
+                       int do_counters)
 {
     u32 * from = vlib_frame_vector_args (frame);
     u32 n_left_from, n_left_to_next, * to_next, next_index;
@@ -67,7 +68,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 	    ip_adjacency_t * adj0;
 	    vlib_buffer_t * p0;
 	    char *h0;
-	    u32 pi0, rw_len0, adj_index0, next0 = 0;
+	    u32 pi0, rw_len0, len0, adj_index0, next0 = 0;
 	    u32 tx_sw_if_index0;
 
 	    pi0 = to_next[0] = from[0];
@@ -83,29 +84,30 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 
 	    adj0 = adj_get (adj_index0);
 
-	    /* Guess we are only writing on simple Ethernet header. */
+	    /* Guess we are writing on ip4 header. */
 	    vnet_rewrite_one_header (adj0[0], h0,
-				     sizeof (ethernet_header_t));
+                                     //sizeof (gre_header_t) +
+                                     sizeof (ip4_header_t));
 
 	    /* Update packet buffer attributes/set output interface. */
 	    rw_len0 = adj0[0].rewrite_header.data_bytes;
 	    vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
             vnet_buffer(p0)->sw_if_index[VLIB_TX] = adj0->rewrite_header.sw_if_index;
+            len0 = vlib_buffer_length_in_chain (vm, p0);
             /* since we are coming out of the L2 world, where the vlib_buffer
              * union is used for other things, make sure it is clean for
              * MPLS from now on.
              */
             vnet_buffer(p0)->mpls.first = 0;
 
-	    vlib_increment_combined_counter(&adjacency_counters,
-                                            thread_index,
-                                            adj_index0,
-                                            /* packet increment */ 0,
-                                            /* byte increment */ rw_len0);
+            if (do_counters)
+                vlib_increment_combined_counter(&adjacency_counters,
+                                                thread_index,
+                                                adj_index0,
+                                                0, len0);
 
 	    /* Check MTU of outgoing interface. */
-	    if (PREDICT_TRUE((vlib_buffer_length_in_chain (vm, p0)  <=
-			      adj0[0].rewrite_header.max_l3_packet_bytes)))
+	    if (PREDICT_TRUE(len0 <= adj0[0].rewrite_header.max_l3_packet_bytes))
 	    {
 		/* Don't adjust the buffer for ttl issue; icmp-error node wants
 		 * to see the IP header */
@@ -126,7 +128,15 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 		 * Follow the feature ARC. this will result eventually in
 		 * the midchain-tx node
 		 */
-		vnet_feature_arc_start(em->output_feature_arc_index, tx_sw_if_index0, &next0, p0);
+                if (PREDICT_FALSE (adj0->rewrite_header.flags &
+                                   VNET_REWRITE_HAS_FEATURES))
+                    vnet_feature_arc_start_w_cfg_index (
+                        em->output_feature_arc_index,
+                        tx_sw_if_index0,
+                        &next0, p0,
+                        adj0->ia_cfg_index);
+                else
+                    next0 = adj0[0].rewrite_header.next_index;
 	    }
 	    else
 	    {
@@ -156,14 +166,20 @@ VLIB_NODE_FN (adj_l2_rewrite_node) (vlib_main_t * vm,
 		vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-    return adj_l2_rewrite_inline (vm, node, frame, 0);
+  if (adj_are_counters_enabled ())
+      return adj_l2_rewrite_inline (vm, node, frame, 0, 1);
+  else
+      return adj_l2_rewrite_inline (vm, node, frame, 0, 0);
 }
 
 VLIB_NODE_FN (adj_l2_midchain_node) (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
 		 vlib_frame_t * frame)
 {
-    return adj_l2_rewrite_inline (vm, node, frame, 1);
+  if (adj_are_counters_enabled ())
+      return adj_l2_rewrite_inline (vm, node, frame, 1, 1);
+  else
+      return adj_l2_rewrite_inline (vm, node, frame, 1, 0);
 }
 
 VLIB_REGISTER_NODE (adj_l2_rewrite_node) = {
