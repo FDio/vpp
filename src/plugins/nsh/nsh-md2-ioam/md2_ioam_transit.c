@@ -59,7 +59,6 @@ VNET_FEATURE_INIT (nsh_md2_ioam_encap_transit, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "nsh-md2-ioam-encap-transit",
-  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 

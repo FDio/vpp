@@ -1337,6 +1337,7 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_MULTIARCH_SOURCES
   adj/adj_nsh.c
   adj/adj_l2.c
+  adj/adj_midchain.c
 )
 
 list(APPEND VNET_HEADERS

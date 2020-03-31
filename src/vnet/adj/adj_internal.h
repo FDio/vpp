@@ -53,7 +53,7 @@ adj_get_rewrite_node (vnet_link_t linkt)
     case VNET_LINK_MPLS:
 	return (mpls_output_node.index);
     case VNET_LINK_ETHERNET:
-	return (adj_l2_rewrite_node.index);
+        return (adj_l2_rewrite_node.index);
     case VNET_LINK_NSH:
         return (adj_nsh_rewrite_node.index);
     case VNET_LINK_ARP:
@@ -138,6 +138,7 @@ extern int adj_bfd_is_up (adj_index_t ai);
  */ 
 extern void adj_delegate_adj_deleted(ip_adjacency_t *adj);
 extern void adj_delegate_adj_created(ip_adjacency_t *adj);
+extern void adj_delegate_adj_modified(ip_adjacency_t *adj);
 extern u8* adj_delegate_format(u8* s, ip_adjacency_t *adj);
 
 #endif
