@@ -3000,7 +3000,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ikev2_sa_free_proposal_vector (&proposals);
 
     sa.is_initiator = 1;
-    sa.profile_index = km->profiles - p;
+    sa.profile_index = p - km->profiles;
     sa.is_profile_index_set = 1;
     sa.state = IKEV2_STATE_SA_INIT;
     ikev2_generate_sa_init_data (&sa);
