@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c63887f8_ca3b1a21",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3853,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-31T03:45:48Z",
+      "side": 1,
+      "message": "How did you calculate this value?",
+      "range": {
+        "startLine": 3853,
+        "startChar": 45,
+        "endLine": 3853,
+        "endChar": 50
+      },
+      "revId": "92083457d248e4660aa214d2c77bc29ef9a07781",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56be72dd_b9bdfcf7",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3986,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-03-31T03:45:48Z",
+      "side": 1,
+      "message": "Can we use nat_log_[notice|info] here?\nclib_warning creates excess noise when running in a container.",
+      "range": {
+        "startLine": 3986,
+        "startChar": 3,
+        "endLine": 3986,
+        "endChar": 15
+      },
+      "revId": "92083457d248e4660aa214d2c77bc29ef9a07781",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
