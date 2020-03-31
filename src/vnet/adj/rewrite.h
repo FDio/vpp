@@ -55,10 +55,15 @@ typedef enum vnet_rewrite_flags_t_
    * This adjacency/interface has output features configured
    */
   VNET_REWRITE_HAS_FEATURES = (1 << 0),
+
+  /**
+   * this adj performs IP4 over IP4 fixup
+   */
+  VNET_REWRITE_FIXUP_IP4_O_4 = (1 << 1),
 } __attribute__ ((packed)) vnet_rewrite_flags_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
+typedef struct vnet_rewrite_header_t_
+{
   /* Interface to mark re-written packets with. */
   u32 sw_if_index;
 
@@ -83,8 +88,7 @@ typedef CLIB_PACKED (struct {
 
   /* Rewrite string starting at end and going backwards. */
   u8 data[0];
-}) vnet_rewrite_header_t;
-/* *INDENT-ON* */
+} __clib_packed vnet_rewrite_header_t;
 
 /**
  * At 16 bytes of rewrite herader we have enought space left for a IPv6
@@ -113,6 +117,13 @@ STATIC_ASSERT (sizeof (vnet_rewrite_header_t) <= 16,
     u8 rewrite_data[(VNET_REWRITE_TOTAL_BYTES) -     \
                     sizeof (vnet_rewrite_header_t)]; \
   }
+
+typedef struct __rewrite_unused_t__
+{
+  VNET_DECLARE_REWRITE;
+} __rewrite_unused_t;
+
+STATIC_ASSERT_SIZEOF (__rewrite_unused_t, 128);
 
 always_inline void
 vnet_rewrite_clear_data_internal (vnet_rewrite_header_t * rw, int max_size)

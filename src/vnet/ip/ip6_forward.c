@@ -1893,8 +1893,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start (lm->output_feature_arc_index,
-					tx_sw_if_index0, &next0, p0);
+		vnet_feature_arc_start_w_cfg_index
+		  (lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
+		   adj0->ia_cfg_index);
 	    }
 	  else
 	    {
@@ -1911,8 +1912,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start (lm->output_feature_arc_index,
-					tx_sw_if_index1, &next1, p1);
+		vnet_feature_arc_start_w_cfg_index
+		  (lm->output_feature_arc_index, tx_sw_if_index1, &next1, p1,
+		   adj1->ia_cfg_index);
 	    }
 	  else
 	    {
@@ -1929,11 +1931,15 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      vnet_calc_checksums_inline (vm, p1, 0 /* is_ip4 */ ,
 					  1 /* is_ip6 */ ,
 					  0 /* with gso */ );
-	    }
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_two_headers (adj0[0], adj1[0],
-				    ip0, ip1, sizeof (ethernet_header_t));
+	      /* Guess we are only writing on ipv6 header. */
+	      vnet_rewrite_two_headers (adj0[0], adj1[0],
+					ip0, ip1, sizeof (ip6_header_t));
+	    }
+	  else
+	    /* Guess we are only writing on simple Ethernet header. */
+	    vnet_rewrite_two_headers (adj0[0], adj1[0],
+				      ip0, ip1, sizeof (ethernet_header_t));
 
 	  if (is_midchain)
 	    {
@@ -2022,10 +2028,14 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      vnet_calc_checksums_inline (vm, p0, 0 /* is_ip4 */ ,
 					  1 /* is_ip6 */ ,
 					  0 /* with gso */ );
-	    }
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+	      /* Guess we are only writing on ip6 header. */
+	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip6_header_t));
+	    }
+	  else
+	    /* Guess we are only writing on simple Ethernet header. */
+	    vnet_rewrite_one_header (adj0[0], ip0,
+				     sizeof (ethernet_header_t));
 
 	  /* Update packet buffer attributes/set output interface. */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
@@ -2065,8 +2075,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start (lm->output_feature_arc_index,
-					tx_sw_if_index0, &next0, p0);
+		vnet_feature_arc_start_w_cfg_index
+		  (lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
+		   adj0->ia_cfg_index);
 	    }
 	  else
 	    {

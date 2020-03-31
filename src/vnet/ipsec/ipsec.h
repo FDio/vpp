@@ -66,12 +66,10 @@ typedef struct
   u32 esp6_decrypt_next_index;
   u32 esp4_decrypt_tun_node_index;
   u32 esp4_decrypt_tun_next_index;
+  u32 esp4_encrypt_tun_node_index;
   u32 esp6_decrypt_tun_node_index;
   u32 esp6_decrypt_tun_next_index;
-  u32 esp44_encrypt_tun_feature_index;
-  u32 esp46_encrypt_tun_feature_index;
-  u32 esp66_encrypt_tun_feature_index;
-  u32 esp64_encrypt_tun_feature_index;
+  u32 esp6_encrypt_tun_node_index;
 } ipsec_esp_backend_t;
 
 typedef struct
@@ -132,11 +130,13 @@ typedef struct
   u32 esp4_encrypt_node_index;
   u32 esp4_decrypt_node_index;
   u32 esp4_decrypt_tun_node_index;
+  u32 esp4_encrypt_tun_node_index;
   u32 ah4_encrypt_node_index;
   u32 ah4_decrypt_node_index;
   u32 esp6_encrypt_node_index;
   u32 esp6_decrypt_node_index;
   u32 esp6_decrypt_tun_node_index;
+  u32 esp6_encrypt_tun_node_index;
   u32 ah6_encrypt_node_index;
   u32 ah6_decrypt_node_index;
   /* next node indices */
@@ -151,15 +151,13 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
-  /* tun encrypt arcs and feature nodes */
-  u32 esp44_encrypt_tun_feature_index;
-  u32 esp64_encrypt_tun_feature_index;
-  u32 esp46_encrypt_tun_feature_index;
-  u32 esp66_encrypt_tun_feature_index;
-
   /* tun nodes to drop packets when no crypto alg set on outbound SA */
-  u32 esp4_no_crypto_tun_feature_index;
-  u32 esp6_no_crypto_tun_feature_index;
+  u32 esp4_no_crypto_tun_node_index;
+  u32 esp6_no_crypto_tun_node_index;
+
+  /* tun nodes for encrypt on L2 interfaces */
+  u32 esp4_encrypt_l2_tun_node_index;
+  u32 esp6_encrypt_l2_tun_node_index;
 
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
@@ -278,17 +276,13 @@ int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 
 clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
+void ipsec_set_async_mode (u32 is_enabled);
 
 always_inline ipsec_sa_t *
 ipsec_sa_get (u32 sa_index)
 {
   return (pool_elt_at_index (ipsec_main.sad, sa_index));
 }
-
-void ipsec_add_feature (const char *arc_name, const char *node_name,
-			u32 * out_feature_index);
-
-void ipsec_set_async_mode (u32 is_enabled);
 
 #endif /* __IPSEC_H__ */
 
