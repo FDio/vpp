@@ -52,6 +52,7 @@ typedef struct session_tx_context_
   u16 deq_per_first_buf;
   u16 deq_per_buf;
   u16 n_segs_per_evt;
+  u16 n_bufs_needed;
   u8 n_bufs_per_seg;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
