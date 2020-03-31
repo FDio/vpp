@@ -118,6 +118,30 @@
       "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "406dad4a_44087e90",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-03-31T09:06:38Z",
+      "side": 1,
+      "message": "hi Paul,\ni would say we have a feature and test missing to cover the case you mentioned. let\u0027s address that in another patch.",
+      "parentUuid": "5edb6a2d_4ff52886",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 54
+      },
+      "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
