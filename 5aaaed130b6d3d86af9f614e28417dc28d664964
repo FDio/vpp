@@ -94,6 +94,30 @@
       "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1a56e43b_2f074aef",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-03-31T08:32:57Z",
+      "side": 1,
+      "message": "The goal of this test is to cover the fix in the patch, namely that UDP encapsulation doesn\u0027t generate corrupted headers in transport mode for certain crypto algorithms.\n\nIt seems to me that a test where UDP encapsulation is tested with a working NAT device in the middle is more of a system test, not a unit-test. But still, it would be good to have one.\n\nI looked into the code to find a way to set a destination port in the UDP header to able be to send ESP packets encapsulated with UDP(4500,Y) and didn\u0027t find anything. Therefore, the test with an actual NAT device wouldn\u0027t work and further patches will be needed.",
+      "parentUuid": "5edb6a2d_4ff52886",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 54
+      },
+      "revId": "5aaaed130b6d3d86af9f614e28417dc28d664964",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
