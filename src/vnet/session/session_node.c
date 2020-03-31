@@ -757,7 +757,7 @@ always_inline void
 session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 			       u32 max_segs, u8 peek_data)
 {
-  u32 n_bytes_per_buf, n_bytes_per_seg;
+  u32 n_bytes_per_buf, n_bytes_per_seg, n_bytes_last_seg;
   ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
   if (peek_data)
     {
@@ -803,6 +803,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
   /* Check if we're tx constrained by the node */
   ctx->n_segs_per_evt = ceil ((f64) ctx->max_len_to_snd / ctx->sp.snd_mss);
+
   if (ctx->n_segs_per_evt > max_segs)
     {
       ctx->n_segs_per_evt = max_segs;
@@ -811,8 +812,19 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
   n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
   ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
-  n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->sp.snd_mss;
-  ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+  if (ctx->n_segs_per_evt > 1)
+    n_bytes_per_seg = ctx->sp.snd_mss;
+  else
+    n_bytes_per_seg = ctx->max_len_to_snd;
+  ctx->n_bufs_per_seg =
+    ceil ((f64) (n_bytes_per_seg + TRANSPORT_MAX_HDRS_LEN) / n_bytes_per_buf);
+  n_bytes_last_seg =
+    ctx->max_len_to_snd - ((ctx->n_segs_per_evt - 1) * n_bytes_per_seg);
+
+  ctx->n_bufs_last_seg =
+    ceil ((f64) (n_bytes_last_seg + TRANSPORT_MAX_HDRS_LEN) /
+	  n_bytes_per_buf);
+
   ctx->deq_per_buf = clib_min (ctx->sp.snd_mss, n_bytes_per_buf);
   ctx->deq_per_first_buf = clib_min (ctx->sp.snd_mss,
 				     n_bytes_per_buf -
@@ -928,7 +940,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_DATA;
     }
 
-  n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
+  n_bufs_needed =
+    (ctx->n_segs_per_evt - 1) * ctx->n_bufs_per_seg + ctx->n_bufs_last_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
 			CLIB_CACHE_LINE_BYTES);
   n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, n_bufs_needed);
@@ -979,6 +992,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       vec_add1 (wrk->pending_tx_nexts, next_index);
       vec_add1 (wrk->pending_tx_nexts, next_index);
     }
+
   while (n_left)
     {
       vlib_buffer_t *b0;
@@ -992,6 +1006,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	}
 
       bi0 = wrk->tx_buffers[--n_bufs];
+
       b0 = vlib_get_buffer (vm, bi0);
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
 
