@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5fb5c192_e276be3e",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-31T10:48:50Z",
+      "side": 1,
+      "message": "These flags are required to show hardware capabilities in VPP.\nXL710 tx offload available:  ipv4-cksum udp-cksum tcp-cksum sctp-cksum  tcp-tso outer-ipv4-cksum vxlan-tnl-tso gre-tnl-tso ipip-tnl-tso geneve-tnl-tso",
+      "parentUuid": "6e7f0f06_6d351000",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "102ae0cc_e3e886ad",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "5bf2e751_22b430fb",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-31T10:48:50Z",
+      "side": 1,
+      "message": "It has nothing to do with GSO. I can rename the flag to preserve the genericness and it is required here to advance the outer header to calculate the checksums of inner header.",
+      "parentUuid": "102ae0cc_e3e886ad",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7d2a7ce8_bdaf50fe",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -47,6 +83,24 @@
       "writtenOn": "2020-03-27T15:04:54Z",
       "side": 1,
       "message": "Same as above: could it be generic regardless of vxlan or not? eg. test for PREDICT_FALSE(gho.gso_flags \u0026 (GSO_F_OUTER_IP4|GSO_F_OUTER_IP6)) instead.\nIn case in the future we need to support yet another GSO mode (NVGRE?)...",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a58fcbbe_1aefff05",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-03-31T10:48:50Z",
+      "side": 1,
+      "message": "GSO_F_OUTER_IP or GSO_F_OUTER_IP6 will not tell us tunnel type and hence there is no hint on header length, we need to advance.",
+      "parentUuid": "7d2a7ce8_bdaf50fe",
       "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
