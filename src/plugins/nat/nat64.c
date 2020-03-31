@@ -256,8 +256,8 @@ static void nat64_free_out_addr_and_port (struct nat64_db_s *db,
 					  u8 protocol);
 
 void
-nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
-		u32 st_memory_size)
+nat64_set_hash (u32 bib_buckets, uword bib_memory_size, u32 st_buckets,
+		uword st_memory_size)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
