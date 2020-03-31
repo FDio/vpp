@@ -682,13 +682,6 @@ VLIB_REGISTER_NODE (dpdk_esp4_encrypt_tun_node) = {
       [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
     }
 };
-
-VNET_FEATURE_INIT (dpdk_esp4_encrypt_tun_feat_node, static) =
-{
-  .arc_name = "ip4-output",
-  .node_name = "dpdk-esp4-encrypt-tun",
-  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
-};
 /* *INDENT-ON* */
 
 VLIB_NODE_FN (dpdk_esp6_encrypt_tun_node) (vlib_main_t * vm,
@@ -711,13 +704,6 @@ VLIB_REGISTER_NODE (dpdk_esp6_encrypt_tun_node) = {
     {
       [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
     }
-};
-
-VNET_FEATURE_INIT (dpdk_esp6_encrypt_tun_feat_node, static) =
-{
-  .arc_name = "ip6-output",
-  .node_name = "dpdk-esp6-encrypt-tun",
-  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 
