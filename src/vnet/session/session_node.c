@@ -811,8 +811,25 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
   n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
   ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
-  n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->sp.snd_mss;
-  ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+  if (ctx->n_segs_per_evt > 1)
+    {
+      u32 n_bytes_last_seg, n_bufs_last_seg;
+
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->sp.snd_mss;
+      n_bytes_last_seg = TRANSPORT_MAX_HDRS_LEN + ctx->max_len_to_snd
+	- ((ctx->n_segs_per_evt - 1) * ctx->sp.snd_mss);
+      ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      n_bufs_last_seg = ceil ((f64) n_bytes_last_seg / n_bytes_per_buf);
+      ctx->n_bufs_needed = ((ctx->n_segs_per_evt - 1) * ctx->n_bufs_per_seg)
+	+ n_bufs_last_seg;
+    }
+  else
+    {
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->max_len_to_snd;
+      ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      ctx->n_bufs_needed = ctx->n_bufs_per_seg;
+    }
+
   ctx->deq_per_buf = clib_min (ctx->sp.snd_mss, n_bytes_per_buf);
   ctx->deq_per_first_buf = clib_min (ctx->sp.snd_mss,
 				     n_bytes_per_buf -
@@ -838,7 +855,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				session_evt_elt_t * elt,
 				int *n_tx_packets, u8 peek_data)
 {
-  u32 n_trace, n_bufs_needed = 0, n_left, pbi, next_index, max_burst;
+  u32 n_trace, n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
@@ -928,11 +945,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_DATA;
     }
 
-  n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
-  vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
+  vec_validate_aligned (wrk->tx_buffers, ctx->n_bufs_needed - 1,
 			CLIB_CACHE_LINE_BYTES);
-  n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, n_bufs_needed);
-  if (PREDICT_FALSE (n_bufs < n_bufs_needed))
+  n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, ctx->n_bufs_needed);
+  if (PREDICT_FALSE (n_bufs < ctx->n_bufs_needed))
     {
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
