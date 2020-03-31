@@ -171,7 +171,8 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
   ipsec_tunnel_protect_walk_ctx_t *ctx = arg;
   vl_api_ipsec_tunnel_protect_details_t *mp;
   ipsec_tun_protect_t *itp;
-  u32 sai, ii = 0;
+  u32 ii = 0;
+  ipsec_sa_t *sa;
 
   itp = ipsec_tun_protect_get (itpi);
 
@@ -183,12 +184,13 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
 
   mp->tun.sw_if_index = htonl (itp->itp_sw_if_index);
 
-  mp->tun.sa_out = htonl (itp->itp_out_sa);
+  sa = ipsec_sa_get (itp->itp_out_sa);
+  mp->tun.sa_out = htonl (sa->id);
   mp->tun.n_sa_in = itp->itp_n_sa_in;
   /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
+  FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
-    mp->tun.sa_in[ii++] = htonl (sai);
+    mp->tun.sa_in[ii++] = htonl (sa->id);
   }));
   /* *INDENT-ON* */
 
