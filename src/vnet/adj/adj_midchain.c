@@ -27,10 +27,12 @@
 /**
  * The two midchain tx feature node indices
  */
+#ifndef CLIB_MARCH_VARIANT
 static u32 adj_midchain_tx_feature_node[VNET_LINK_NUM];
 static u32 adj_midchain_tx_no_count_feature_node[VNET_LINK_NUM];
 
 static u32 *adj_midchain_feat_count_per_sw_if_index[VNET_LINK_NUM];
+#endif
 
 /**
  * @brief Trace data for packets traversing the midchain tx node
@@ -271,7 +273,7 @@ adj_midchain_tx (vlib_main_t * vm,
     return (adj_midchain_tx_inline(vm, node, frame, 1));
 }
 
-VLIB_REGISTER_NODE (adj_midchain_tx_node, static) = {
+VLIB_REGISTER_NODE (adj_midchain_tx_node) = {
     .function = adj_midchain_tx,
     .name = "adj-midchain-tx",
     .vector_size = sizeof (u32),
@@ -292,7 +294,7 @@ adj_midchain_tx_no_count (vlib_main_t * vm,
     return (adj_midchain_tx_inline(vm, node, frame, 0));
 }
 
-VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
+VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node) = {
     .function = adj_midchain_tx_no_count,
     .name = "adj-midchain-tx-no-count",
     .vector_size = sizeof (u32),
@@ -304,6 +306,8 @@ VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
 	[0] = "error-drop",
     },
 };
+
+#ifndef CLIB_MARCH_VARIANT
 
 VNET_FEATURE_INIT (adj_midchain_tx_ip4, static) = {
     .arc_name = "ip4-output",
@@ -365,6 +369,7 @@ VNET_FEATURE_INIT (adj_midchain_tx_no_count_nsh, static) = {
     .runs_before = VNET_FEATURES ("error-drop"),
     .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_NSH],
 };
+
 
 static inline u32
 adj_get_midchain_node (vnet_link_t link)
@@ -494,6 +499,15 @@ adj_midchain_setup (adj_index_t adj_index,
     adj->sub_type.midchain.fixup_data = data;
     adj->sub_type.midchain.fei = FIB_NODE_INDEX_INVALID;
     adj->ia_flags |= flags;
+
+    if (flags & ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR)
+    {
+        adj->rewrite_header.flags |= VNET_REWRITE_FIXUP_IP4_O_4;
+    }
+    else
+    {
+        adj->rewrite_header.flags &= ~VNET_REWRITE_FIXUP_IP4_O_4;
+    }
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
     feature_index = adj_nbr_midchain_get_feature_node(adj);
@@ -810,3 +824,5 @@ adj_midchain_module_init (void)
 {
     dpo_register(DPO_ADJACENCY_MIDCHAIN, &adj_midchain_dpo_vft, midchain_nodes);
 }
+
+#endif

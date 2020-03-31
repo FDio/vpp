@@ -168,9 +168,16 @@ adj_nbr_evaluate_feature (adj_index_t ai)
     {
         feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
         if (feature_count > 0)
-            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
-    }
+        {
+            vnet_feature_config_main_t *cm;
 
+            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
+            cm = &fm->feature_config_mains[arc_index];
+
+            adj->ia_cfg_index = vec_elt (cm->config_index_by_sw_if_index,
+                                         sw_if_index);
+        }
+    }
     return;
 }
 

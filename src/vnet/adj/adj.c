@@ -79,6 +79,7 @@ adj_alloc (fib_protocol_t proto)
 
     adj->ia_nh_proto = proto;
     adj->ia_flags = 0;
+    adj->ia_cfg_index = 0;
     adj->rewrite_header.sw_if_index = ~0;
     adj->rewrite_header.flags = 0;
     adj->lookup_next_index = 0;
@@ -399,10 +400,18 @@ adj_feature_update_walk_cb (adj_index_t ai,
         ((ctx->arc == mpls_main.output_feature_arc_index) &&
          (VNET_LINK_MPLS == adj->ia_link)))
     {
+        vnet_feature_main_t *fm = &feature_main;
+        vnet_feature_config_main_t *cm;
+
+        cm = &fm->feature_config_mains[ctx->arc];
+
         if (ctx->enable)
             adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
         else
             adj->rewrite_header.flags &= ~VNET_REWRITE_HAS_FEATURES;
+
+        adj->ia_cfg_index = vec_elt (cm->config_index_by_sw_if_index,
+                                     adj->rewrite_header.sw_if_index);
     }
     return (ADJ_WALK_RC_CONTINUE);
 }
