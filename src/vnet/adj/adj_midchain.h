@@ -52,6 +52,27 @@ extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
 
 /**
  * @brief
+ *  Return the adjacency's next node to its default value
+ *
+ * @param adj_index
+ *  The index of the neighbour adjacency.
+ */
+extern void adj_nbr_midchain_reset_next_node(adj_index_t adj_index);
+
+/**
+ * @brief
+ *  Update the VLIB node to which packets are sent post processing
+ *
+ * @param adj_index
+ *  The index of the neighbour adjacency.
+ *
+ * @param node node-index to send to
+ */
+extern void adj_nbr_midchain_update_next_node(adj_index_t adj_index,
+                                              u32 node_index);
+
+/**
+ * @brief
  *  [re]stack a midchain. 'Stacking' is the act of forming parent-child
  *  relationships in the data-plane graph. Do NOT use this function to
  *  stack on a DPO type that might form a loop.
@@ -138,5 +159,7 @@ extern void adj_midchain_delegate_restack(adj_index_t ai);
  * @brief unstack a midchain delegate (this stacks it on a drop)
  */
 extern void adj_midchain_delegate_unstack(adj_index_t ai);
+
+extern u8 adj_is_midchain (adj_index_t ai);
 
 #endif

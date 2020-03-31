@@ -19,6 +19,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/adj/adj_delegate.h>
+#include <vnet/adj/adj_midchain.h>
 #include <vnet/teib/teib.h>
 
 /**
@@ -118,15 +119,6 @@ ipsec_tun_unregister_nodes (ip_address_family_t af)
     }
 }
 
-static void
-ipsec_tun_protect_add_adj (adj_index_t ai, index_t sai)
-{
-  vec_validate_init_empty (ipsec_tun_protect_sa_by_adj_index, ai,
-			   INDEX_INVALID);
-
-  ipsec_tun_protect_sa_by_adj_index[ai] = sai;
-}
-
 static inline const ipsec_tun_protect_t *
 ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
 {
@@ -135,60 +127,51 @@ ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
   return (pool_elt_at_index (ipsec_tun_protect_pool, ad->ad_index));
 }
 
-static void
-ipsec_tun_protect_feature_set (ipsec_tun_protect_t * itp, u8 enable)
+static u32
+ipsec_tun_protect_get_adj_next (const ipsec_tun_protect_t * itp)
 {
-  ITP_DBG2 ("%s on %U", (enable ? "enable" : "disable"),
-	    format_vnet_sw_if_index_name, vnet_get_main (),
-	    itp->itp_sw_if_index);
+  ipsec_main_t *im;
+  ipsec_sa_t *sa;
+  bool is_ip4;
+  u32 next;
 
-  if (itp->itp_flags & IPSEC_PROTECT_L2)
+  is_ip4 = ip46_address_is_ip4 (&itp->itp_tun.src);
+  sa = ipsec_sa_get (itp->itp_out_sa);
+  im = &ipsec_main;
+
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+      sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+    next = (is_ip4 ?
+	    im->esp4_no_crypto_tun_node_index :
+	    im->esp6_no_crypto_tun_node_index);
+  else if (itp->itp_flags & IPSEC_PROTECT_L2)
+    next = (is_ip4 ?
+	    im->esp4_encrypt_l2_tun_node_index :
+	    im->esp6_encrypt_l2_tun_node_index);
+  else
+    next = (is_ip4 ?
+	    im->esp4_encrypt_tun_node_index :
+	    im->esp6_encrypt_tun_node_index);
+
+  return (next);
+}
+
+static void
+ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
+{
+  vec_validate_init_empty (ipsec_tun_protect_sa_by_adj_index, ai,
+			   INDEX_INVALID);
+
+  if (NULL == itp)
     {
-      /* l2-GRE only supported by the vnet ipsec code */
-      vnet_feature_enable_disable ("ethernet-output",
-				   (ip46_address_is_ip4 (&itp->itp_tun.src) ?
-				    "esp4-encrypt-tun" :
-				    "esp6-encrypt-tun"),
-				   itp->itp_sw_if_index, enable, NULL, 0);
+      ipsec_tun_protect_sa_by_adj_index[ai] = INDEX_INVALID;
+      adj_nbr_midchain_reset_next_node (ai);
     }
   else
     {
-      u32 fi4, fi6, sai;
-      ipsec_main_t *im;
-      ipsec_sa_t *sa;
-
-      im = &ipsec_main;
-      sai = itp->itp_out_sa;
-      sa = ipsec_sa_get (sai);
-
-      if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
-	  sa->integ_alg == IPSEC_INTEG_ALG_NONE)
-	{
-	  fi4 = im->esp4_no_crypto_tun_feature_index;
-	  fi6 = im->esp6_no_crypto_tun_feature_index;
-	}
-      else
-	{
-	  if (ip46_address_is_ip4 (&itp->itp_tun.src))
-	    {
-	      /* tunnel destination is v4 so we need the Xo4 indexes */
-	      fi4 = im->esp44_encrypt_tun_feature_index;
-	      fi6 = im->esp64_encrypt_tun_feature_index;
-	    }
-	  else
-	    {
-	      /* tunnel destination is v6 so we need the Xo6 indexes */
-	      fi4 = im->esp46_encrypt_tun_feature_index;
-	      fi6 = im->esp66_encrypt_tun_feature_index;
-	    }
-	}
-
-      vnet_feature_enable_disable_with_index
-	(vnet_get_feature_arc_index ("ip4-output"),
-	 fi4, itp->itp_sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable_with_index
-	(vnet_get_feature_arc_index ("ip6-output"),
-	 fi6, itp->itp_sw_if_index, enable, NULL, 0);
+      ipsec_tun_protect_sa_by_adj_index[ai] = itp->itp_out_sa;
+      adj_nbr_midchain_update_next_node
+	(ai, ipsec_tun_protect_get_adj_next (itp));
     }
 }
 
@@ -266,7 +249,7 @@ ipsec_tun_protect_adj_add (adj_index_t ai, void *arg)
   ipsec_tun_protect_t *itp = arg;
   adj_delegate_add (adj_get (ai), ipsec_tun_adj_delegate_type,
 		    itp - ipsec_tun_protect_pool);
-  ipsec_tun_protect_add_adj (ai, itp->itp_out_sa);
+  ipsec_tun_protect_add_adj (ai, itp);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -291,7 +274,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
     {
       if (INDEX_INVALID == idi->id_itp)
 	{
-	  ipsec_tun_protect_feature_set (itp, 1);
+	  // ipsec_tun_protect_feature_set (itp, 1);
 	}
       idi->id_itp = itp - ipsec_tun_protect_pool;
 
@@ -309,7 +292,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
 	   * enable the encrypt feature for egress if this is the first addition
 	   * on this interface
 	   */
-	  ipsec_tun_protect_feature_set (itp, 1);
+	  // ipsec_tun_protect_feature_set (itp, 1);
 	}
 
       hash_set_mem (idi->id_hash, itp->itp_key, itp - ipsec_tun_protect_pool);
@@ -337,31 +320,31 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
   /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
-      if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
-        {
-          ipsec4_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip4,
-            .spi = clib_host_to_net_u32 (sa->spi),
-          };
-          if (hash_get(im->tun4_protect_by_key, key.as_u64))
-            {
-              hash_unset (im->tun4_protect_by_key, key.as_u64);
-              ipsec_tun_unregister_nodes(AF_IP4);
-            }
-        }
-      else
-        {
-          ipsec6_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip6,
-            .spi = clib_host_to_net_u32 (sa->spi),
-          };
-          if (hash_get_mem(im->tun6_protect_by_key, &key))
-            {
-              hash_unset_mem_free (&im->tun6_protect_by_key, &key);
-              ipsec_tun_unregister_nodes(AF_IP6);
-            }
-        }
-  }))
+    if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
+      {
+        ipsec4_tunnel_key_t key = {
+          .remote_ip = itp->itp_crypto.dst.ip4,
+          .spi = clib_host_to_net_u32 (sa->spi),
+        };
+        if (hash_get(im->tun4_protect_by_key, key.as_u64))
+          {
+            hash_unset (im->tun4_protect_by_key, key.as_u64);
+            ipsec_tun_unregister_nodes(AF_IP4);
+          }
+      }
+    else
+      {
+        ipsec6_tunnel_key_t key = {
+          .remote_ip = itp->itp_crypto.dst.ip6,
+          .spi = clib_host_to_net_u32 (sa->spi),
+        };
+        if (hash_get_mem(im->tun6_protect_by_key, &key))
+          {
+            hash_unset_mem_free (&im->tun6_protect_by_key, &key);
+            ipsec_tun_unregister_nodes(AF_IP6);
+          }
+      }
+  }));
   /* *INDENT-ON* */
 }
 
@@ -369,7 +352,7 @@ static adj_walk_rc_t
 ipsec_tun_protect_adj_remove (adj_index_t ai, void *arg)
 {
   adj_delegate_remove (ai, ipsec_tun_adj_delegate_type);
-  ipsec_tun_protect_add_adj (ai, INDEX_INVALID);
+  ipsec_tun_protect_add_adj (ai, NULL);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -386,7 +369,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
-      ipsec_tun_protect_feature_set (itp, 0);
+      // ipsec_tun_protect_feature_set (itp, 0);
       idi->id_itp = INDEX_INVALID;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)
@@ -402,7 +385,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
       if (0 == hash_elts (idi->id_hash))
 	{
-	  ipsec_tun_protect_feature_set (itp, 0);
+	  // ipsec_tun_protect_feature_set (itp, 0);
 	  hash_free (idi->id_hash);
 	  idi->id_hash = NULL;
 	}
@@ -817,8 +800,15 @@ static void
 ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t * ad)
 {
   /* remove our delegate */
-  ipsec_tun_protect_add_adj (ad->ad_adj_index, INDEX_INVALID);
+  ipsec_tun_protect_add_adj (ad->ad_adj_index, NULL);
   adj_delegate_remove (ad->ad_adj_index, ipsec_tun_adj_delegate_type);
+}
+
+static void
+ipsec_tun_protect_adj_delegate_adj_modified (adj_delegate_t * ad)
+{
+  ipsec_tun_protect_add_adj (ad->ad_adj_index,
+			     ipsec_tun_protect_get (ad->ad_index));
 }
 
 static void
@@ -829,10 +819,10 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
   ip_adjacency_t *adj;
   index_t itpi;
 
-  adj = adj_get (ai);
-
-  if (adj->lookup_next_index != IP_LOOKUP_NEXT_MIDCHAIN)
+  if (!adj_is_midchain (ai))
     return;
+
+  adj = adj_get (ai);
 
   ip_address_from_46 (&adj->sub_type.midchain.next_hop,
 		      adj->ia_nh_proto, &ip);
@@ -845,7 +835,7 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
 
       itp = ipsec_tun_protect_get (itpi);
       adj_delegate_add (adj_get (ai), ipsec_tun_adj_delegate_type, itpi);
-      ipsec_tun_protect_add_adj (ai, itp->itp_out_sa);
+      ipsec_tun_protect_add_adj (ai, itp);
     }
 }
 
@@ -919,6 +909,7 @@ ipsec_tun_teib_entry_deleted (const teib_entry_t * ne)
 const static adj_delegate_vft_t ipsec_tun_adj_delegate_vft = {
   .adv_adj_deleted = ipsec_tun_protect_adj_delegate_adj_deleted,
   .adv_adj_created = ipsec_tun_protect_adj_delegate_adj_created,
+  .adv_adj_modified = ipsec_tun_protect_adj_delegate_adj_modified,
   .adv_format = ipsec_tun_protect_adj_delegate_format,
 };
 
@@ -926,6 +917,7 @@ const static teib_vft_t ipsec_tun_teib_vft = {
   .nv_added = ipsec_tun_teib_entry_added,
   .nv_deleted = ipsec_tun_teib_entry_deleted,
 };
+
 
 clib_error_t *
 ipsec_tunnel_protect_init (vlib_main_t * vm)
@@ -939,10 +931,14 @@ ipsec_tunnel_protect_init (vlib_main_t * vm)
   im->tun4_protect_by_key = hash_create (0, sizeof (u64));
 
   /* set up feature nodes to drop outbound packets with no crypto alg set */
-  ipsec_add_feature ("ip4-output", "esp4-no-crypto",
-		     &im->esp4_no_crypto_tun_feature_index);
-  ipsec_add_feature ("ip6-output", "esp6-no-crypto",
-		     &im->esp6_no_crypto_tun_feature_index);
+  im->esp4_no_crypto_tun_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "esp4-no-crypto")->index;
+  im->esp6_no_crypto_tun_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "esp6-no-crypto")->index;
+  im->esp6_encrypt_l2_tun_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt-tun")->index;
+  im->esp4_encrypt_l2_tun_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun")->index;
 
   ipsec_tun_adj_delegate_type =
     adj_delegate_register_new_type (&ipsec_tun_adj_delegate_vft);

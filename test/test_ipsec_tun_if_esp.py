@@ -599,7 +599,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
 
 
 class TestIpsec4TunIfEspNoAlgo(TemplateIpsec, IpsecTun4):
-    """ IPsec IPv4 Tunnel interface all Algos """
+    """ IPsec IPv4 Tunnel interface no Algos """
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
@@ -650,6 +650,7 @@ class TestIpsec4TunIfEspNoAlgo(TemplateIpsec, IpsecTun4):
         super(TestIpsec4TunIfEspNoAlgo, self).tearDown()
 
     def test_tun_44(self):
+        """ IPSec SA with NULL algos """
         p = self.ipv4_params
 
         self.config_network(p)
@@ -1445,7 +1446,7 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
         # setup some SAs for several next-hops on the interface
         self.multi_params = []
 
-        for ii in range(N_NHS):
+        for ii in range(1):
             p = copy.copy(self.ipv4_params)
 
             p.remote_tun_if_host = "1.1.1.%d" % (ii + 1)
