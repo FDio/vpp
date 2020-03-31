@@ -3917,18 +3917,18 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   snat_main_per_thread_data_t *tsm;
 
   u32 static_mapping_buckets = 1024;
-  u32 static_mapping_memory_size = 64 << 20;
+  uword static_mapping_memory_size = 64 << 20;
 
   u32 nat64_bib_buckets = 1024;
   u32 nat64_bib_memory_size = 128 << 20;
 
   u32 nat64_st_buckets = 2048;
-  u32 nat64_st_memory_size = 256 << 20;
+  uword nat64_st_memory_size = 256 << 20;
 
   u32 user_buckets = 128;
-  u32 user_memory_size = 64 << 20;
+  uword user_memory_size = 64 << 20;
   u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128 << 20;
+  uword translation_memory_size = 128 << 20;
 
   u32 max_translations_per_user = ~0;
 

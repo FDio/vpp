@@ -104,9 +104,9 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = htonl (sm->translation_memory_size);
+    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = htonl (sm->user_memory_size);
+    rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -117,10 +117,10 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
     rmp->endpoint_dependent = sm->endpoint_dependent;
     rmp->out2in_dpo = sm->out2in_dpo;
     //rmp->dslite_ce = dm->is_ce;
-    rmp->nat64_bib_buckets = n64m->bib_buckets;
-    rmp->nat64_bib_memory_size = n64m->bib_memory_size;
-    rmp->nat64_st_buckets = n64m->st_buckets;
-    rmp->nat64_st_memory_size = n64m->st_memory_size;
+    rmp->nat64_bib_buckets = clib_net_to_host_u32(n64m->bib_buckets);
+    rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
+    rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
+    rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
   }));
   /* *INDENT-ON* */
 }
