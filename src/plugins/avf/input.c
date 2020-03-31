@@ -55,6 +55,12 @@ avf_rx_desc_write (avf_rx_desc_t * d, u64 addr)
 }
 
 static_always_inline void
+clib_prefetch_l2_load (void *p)
+{
+  _mm_prefetch (p, _MM_HINT_T1);
+}
+
+static_always_inline void
 avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 		int use_va_dma)
 {
@@ -159,6 +165,59 @@ avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
 }
 
 static_always_inline uword
+avf_process_rx_four (vlib_main_t * vm, vlib_buffer_t ** b,
+		     vlib_buffer_t ** pb, vlib_buffer_t * bt, u64 * qw1,
+		     avf_rx_tail_t * tail, int maybe_multiseg,
+		     int with_prefetch)
+{
+  uword n_rx_bytes = 0;
+
+  if (with_prefetch)
+    {
+      vlib_prefetch_buffer_header (pb[0], LOAD);
+      vlib_prefetch_buffer_header (pb[1], LOAD);
+    }
+
+  vlib_buffer_copy_template (b[0], bt);
+  vlib_buffer_copy_template (b[1], bt);
+  vlib_buffer_copy_template (b[2], bt);
+  vlib_buffer_copy_template (b[3], bt);
+
+  if (with_prefetch)
+    {
+      vlib_prefetch_buffer_header (pb[2], LOAD);
+      vlib_prefetch_buffer_header (pb[3], LOAD);
+    }
+
+  n_rx_bytes += b[0]->current_length = qw1[0] >> AVF_RXD_LEN_SHIFT;
+  n_rx_bytes += b[1]->current_length = qw1[1] >> AVF_RXD_LEN_SHIFT;
+
+  clib_prefetch_l2_load (b[0]->data);
+  clib_prefetch_l2_load (b[1]->data);
+
+
+  n_rx_bytes += b[2]->current_length = qw1[2] >> AVF_RXD_LEN_SHIFT;
+  n_rx_bytes += b[3]->current_length = qw1[3] >> AVF_RXD_LEN_SHIFT;
+
+  clib_prefetch_l2_load (b[2]->data);
+  clib_prefetch_l2_load (b[3]->data);
+
+  if (maybe_multiseg)
+    {
+      n_rx_bytes += avf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
+      n_rx_bytes += avf_rx_attach_tail (vm, bt, b[1], qw1[1], tail + 1);
+      n_rx_bytes += avf_rx_attach_tail (vm, bt, b[2], qw1[2], tail + 2);
+      n_rx_bytes += avf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3);
+    }
+
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
+  return n_rx_bytes;
+}
+
+static_always_inline uword
 avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      avf_per_thread_data_t * ptd, u32 n_left,
 		      int maybe_multiseg)
@@ -172,38 +231,20 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* copy template into local variable - will save per packet load */
   vlib_buffer_copy_template (&bt, &ptd->buffer_template);
 
+  while (n_left >= 12)
+    {
+      avf_process_rx_four (vm, b, b + 8, &bt, qw1, tail, maybe_multiseg, 1);
+
+      /* next */
+      qw1 += 4;
+      tail += 4;
+      b += 4;
+      n_left -= 4;
+    }
+
   while (n_left >= 4)
     {
-      if (n_left >= 12)
-	{
-	  vlib_prefetch_buffer_header (b[8], LOAD);
-	  vlib_prefetch_buffer_header (b[9], LOAD);
-	  vlib_prefetch_buffer_header (b[10], LOAD);
-	  vlib_prefetch_buffer_header (b[11], LOAD);
-	}
-
-      vlib_buffer_copy_template (b[0], &bt);
-      vlib_buffer_copy_template (b[1], &bt);
-      vlib_buffer_copy_template (b[2], &bt);
-      vlib_buffer_copy_template (b[3], &bt);
-
-      n_rx_bytes += b[0]->current_length = qw1[0] >> AVF_RXD_LEN_SHIFT;
-      n_rx_bytes += b[1]->current_length = qw1[1] >> AVF_RXD_LEN_SHIFT;
-      n_rx_bytes += b[2]->current_length = qw1[2] >> AVF_RXD_LEN_SHIFT;
-      n_rx_bytes += b[3]->current_length = qw1[3] >> AVF_RXD_LEN_SHIFT;
-
-      if (maybe_multiseg)
-	{
-	  n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[0], qw1[0], tail + 0);
-	  n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[1], qw1[1], tail + 1);
-	  n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[2], qw1[2], tail + 2);
-	  n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[3], qw1[3], tail + 3);
-	}
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
+      avf_process_rx_four (vm, b, b + 8, &bt, qw1, tail, maybe_multiseg, 0);
 
       /* next */
       qw1 += 4;
@@ -214,6 +255,7 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left)
     {
       vlib_buffer_copy_template (b[0], &bt);
+      clib_prefetch_l2_load (b[0]->data);
 
       n_rx_bytes += b[0]->current_length = qw1[0] >> AVF_RXD_LEN_SHIFT;
 
