@@ -711,10 +711,10 @@ typedef struct snat_main_s
   u8 out2in_dpo;
   u8 endpoint_dependent;
   u32 translation_buckets;
-  u32 translation_memory_size;
+  uword translation_memory_size;
   u32 max_translations;
   u32 user_buckets;
-  u32 user_memory_size;
+  uword user_memory_size;
   u32 max_translations_per_user;
   u32 outside_vrf_id;
   u32 outside_fib_index;

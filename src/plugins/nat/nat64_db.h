@@ -153,8 +153,8 @@ typedef struct nat64_db_s
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
-		   u32 st_buckets, u32 st_memory_size,
+int nat64_db_init (nat64_db_t * db, u32 bib_buckets, uword bib_memory_size,
+		   u32 st_buckets, uword st_memory_size,
 		   nat64_db_free_addr_port_function_t free_addr_port_cb);
 
 /**
