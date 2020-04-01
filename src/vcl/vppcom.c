@@ -1652,25 +1652,6 @@ handle:
   return vcl_session_handle (client_session);
 }
 
-static void
-vcl_ip_copy_from_ep (ip46_address_t * ip, vppcom_endpt_t * ep)
-{
-  if (ep->is_ip4)
-    clib_memcpy_fast (&ip->ip4, ep->ip, sizeof (ip4_address_t));
-  else
-    clib_memcpy_fast (&ip->ip6, ep->ip, sizeof (ip6_address_t));
-}
-
-void
-vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
-{
-  ep->is_ip4 = is_ip4;
-  if (is_ip4)
-    clib_memcpy_fast (ep->ip, &ip->ip4, sizeof (ip4_address_t));
-  else
-    clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
-}
-
 int
 vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 {
@@ -3568,20 +3549,8 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
 			 uint32_t buflen, int flags, vppcom_endpt_t * ep)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session;
   int rv = VPPCOM_OK;
-  vcl_session_t *session = 0;
-
-  if (ep)
-    {
-      session = vcl_session_get_w_handle (wrk, session_handle);
-      if (PREDICT_FALSE (!session))
-	{
-	  VDBG (0, "sh 0x%llx is closed!", session_handle);
-	  return VPPCOM_EBADFD;
-	}
-      ep->is_ip4 = session->transport.is_ip4;
-      ep->port = session->transport.rmt_port;
-    }
 
   if (flags == 0)
     rv = vppcom_session_read (session_handle, buffer, buflen);
@@ -3593,14 +3562,17 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
       return VPPCOM_EAFNOSUPPORT;
     }
 
-  if (ep)
+  if (ep && !rv)
     {
+      session = vcl_session_get_w_handle (wrk, session_handle);
       if (session->transport.is_ip4)
 	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip4,
 			  sizeof (ip4_address_t));
       else
 	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
 			  sizeof (ip6_address_t));
+      ep->is_ip4 = session->transport.is_ip4;
+      ep->port = session->transport.rmt_port;
     }
 
   return rv;
@@ -3615,8 +3587,27 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
 
   if (ep)
     {
-      // TBD
-      return VPPCOM_EINVAL;
+      vcl_worker_t *wrk = vcl_worker_get_current ();
+      vcl_session_t *s;
+
+      s = vcl_session_get_w_handle (wrk, session_handle);
+      if (!s)
+	return VPPCOM_EBADFD;
+
+      if (s->session_type != VPPCOM_PROTO_UDP)
+	return VPPCOM_EINVAL;
+
+      /* Session not connected/bound in vpp. Create it by 'connecting' it */
+      if (PREDICT_FALSE (s->session_state == STATE_CLOSED))
+	{
+	  vcl_send_session_connect (wrk, s);
+	}
+      else
+	{
+	  s->transport.is_ip4 = ep->is_ip4;
+	  s->transport.rmt_port = ep->port;
+	  vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
+	}
     }
 
   if (flags)
