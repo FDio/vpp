@@ -67,13 +67,10 @@ format_session (u8 * s, va_list * args)
 
   if (verbose == 1)
     {
-      u8 post_accept = ss->session_state >= SESSION_STATE_ACCEPTING;
-      u8 hasf = post_accept
-	|| session_transport_service_type (ss) == TRANSPORT_SERVICE_CL;
       u32 rxf, txf;
 
-      rxf = hasf ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
-      txf = hasf ? svm_fifo_max_dequeue (ss->tx_fifo) : 0;
+      rxf = ss->rx_fifo ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
+      txf = ss->tx_fifo ? svm_fifo_max_dequeue (ss->tx_fifo) : 0;
       str = format (0, "%-10u%-10u", rxf, txf);
     }
 
