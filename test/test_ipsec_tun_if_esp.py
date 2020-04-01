@@ -64,13 +64,15 @@ def config_tra_params(p, encryption_type, tun_if):
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
-        esn_en=esn_en)
+        esn_en=esn_en,
+        nat_t_header=p.nat_header)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
-        esn_en=esn_en)
+        esn_en=esn_en,
+        nat_t_header=p.nat_header)
 
 
 class TemplateIpsec4TunIfEsp(TemplateIpsec):
@@ -1059,6 +1061,127 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec,
         super(TestIpsecGreTebIfEspTra, self).tearDown()
 
 
+class TestIpsecGreTebUdpIfEspTra(TemplateIpsec,
+                                 IpsecTun4Tests):
+    """ Ipsec GRE TEB UDP ESP - Tra tests """
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    encryption_type = ESP
+    omac = "00:11:22:33:44:55"
+
+    def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
+                         payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=self.pg0.remote_ip4,
+                              dst=self.pg0.local_ip4) /
+                           GRE() /
+                           Ether(dst=self.omac) /
+                           IP(src="1.1.1.1", dst="1.1.1.2") /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def gen_pkts(self, sw_intf, src, dst, count=1,
+                 payload_size=100):
+        return [Ether(dst=self.omac) /
+                IP(src="1.1.1.1", dst="1.1.1.2") /
+                UDP(sport=1144, dport=2233) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[Ether].dst, self.omac)
+            self.assert_equal(rx[IP].dst, "1.1.1.2")
+
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            self.assertTrue(rx.haslayer(UDP))
+            self.assertEqual(rx[UDP].dport, 4545)
+            self.assertEqual(rx[UDP].sport, 5454)
+            try:
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+                self.assert_packet_checksums_valid(pkt)
+                self.assert_equal(pkt[IP].dst, self.pg0.remote_ip4)
+                self.assert_equal(pkt[IP].src, self.pg0.local_ip4)
+                self.assertTrue(pkt.haslayer(GRE))
+                e = pkt[Ether]
+                self.assertEqual(e[Ether].dst, self.omac)
+                self.assertEqual(e[IP].dst, "1.1.1.2")
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def setUp(self):
+        super(TestIpsecGreTebUdpIfEspTra, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+        p = self.ipv4_params
+        p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                   IPSEC_API_SAD_FLAG_UDP_ENCAP)
+        p.nat_header = UDP(sport=5454, dport=4545)
+
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol,
+                                  flags=p.flags,
+                                  udp_src=5454,
+                                  udp_dst=4545)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol,
+                                 flags=(p.flags |
+                                        VppEnum.vl_api_ipsec_sad_flags_t.
+                                        IPSEC_API_SAD_FLAG_IS_INBOUND),
+                                 udp_src=5454,
+                                 udp_dst=4545)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_if = VppGreInterface(self,
+                                   self.pg0.local_ip4,
+                                   self.pg0.remote_ip4,
+                                   type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                         GRE_API_TUNNEL_TYPE_TEB))
+        p.tun_if.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_out,
+                                           [p.tun_sa_in])
+
+        p.tun_protect.add_vpp_config()
+
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        config_tra_params(p, self.encryption_type, p.tun_if)
+
+        VppBridgeDomainPort(self, bd1, p.tun_if).add_vpp_config()
+        VppBridgeDomainPort(self, bd1, self.pg1).add_vpp_config()
+
+        self.vapi.cli("clear ipsec sa")
+        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
+
+    def tearDown(self):
+        p = self.ipv4_params
+        p.tun_if.unconfig_ip4()
+        super(TestIpsecGreTebUdpIfEspTra, self).tearDown()
+
+
 class TestIpsecGreIfEsp(TemplateIpsec,
                         IpsecTun4Tests):
     """ Ipsec GRE ESP - TUN tests """
@@ -1798,7 +1921,7 @@ class TestIpsec4TunProtectUdp(TemplateIpsec,
         p = self.ipv4_params
         p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
                    IPSEC_API_SAD_FLAG_UDP_ENCAP)
-        p.nat_header = UDP(sport=5454, dport=4500)
+        p.nat_header = UDP(sport=4500, dport=4500)
         self.config_network(p)
         self.config_sa_tra(p)
         self.config_protect(p)
@@ -1809,6 +1932,13 @@ class TestIpsec4TunProtectUdp(TemplateIpsec,
         self.unconfig_sa(p)
         self.unconfig_network(p)
         super(TestIpsec4TunProtectUdp, self).tearDown()
+
+    def verify_encrypted(self, p, sa, rxs):
+        # ensure encrypted packets are recieved with the default UDP ports
+        for rx in rxs:
+            self.assertEqual(rx[UDP].sport, 4500)
+            self.assertEqual(rx[UDP].dport, 4500)
+        super(TestIpsec4TunProtectUdp, self).verify_encrypted(p, sa, rxs)
 
     def test_tun_44(self):
         """IPSEC UDP tunnel protect"""
