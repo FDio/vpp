@@ -682,7 +682,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
 	  ASSERT (n_bytes_read > 0);
 
-	  if (ctx->s->session_state == SESSION_STATE_LISTENING)
+	  if (ctx->s->session_state == SESSION_STATE_LISTENING
+	      && offset == SESSION_CONN_HDR_LEN)
 	    {
 	      ip_copy (&ctx->tc->rmt_ip, &hdr->rmt_ip, ctx->tc->is_ip4);
 	      ctx->tc->rmt_port = hdr->rmt_port;
@@ -709,6 +710,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
     session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
+
+  ASSERT (ctx->hdr.data_offset == ctx->hdr.data_length);
 }
 
 always_inline u8
@@ -782,8 +785,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	    }
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
-	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  ASSERT (ctx->hdr.data_offset == 0);
+	  ctx->max_dequeue = ctx->hdr.data_length;
+	  if (ctx->max_dequeue > ctx->sp.snd_space)
+	    {
+	      ctx->max_len_to_snd = 0;
+	      return;
+	    }
 	}
     }
   ASSERT (ctx->max_dequeue > 0);
@@ -1035,13 +1043,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
     {
       /* Fix dgram pre header */
-      if (ctx->max_len_to_snd < ctx->max_dequeue)
-	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
-				 sizeof (session_dgram_pre_hdr_t));
-      /* More data needs to be read */
-      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
-	if (svm_fifo_set_event (ctx->s->tx_fifo))
-	  session_evt_add_old (wrk, elt);
+//      if (ctx->max_len_to_snd < ctx->max_dequeue)
+//	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
+//				 sizeof (session_dgram_pre_hdr_t));
+//      /* More data needs to be read */
+//      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
+//	if (svm_fifo_set_event (ctx->s->tx_fifo))
+//	  session_evt_add_old (wrk, elt);
 
       if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
 	session_dequeue_notify (ctx->s);
