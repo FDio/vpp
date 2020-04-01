@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "155b9317_285c2a68",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-01T17:01:48Z",
+      "side": 1,
+      "message": "Do we need to worry about memsetting t0-\u003egho to 0? It was set to 0 by the called function prior to changing to pass by reference. The called function does not do that anymore. Maybe it should.",
+      "revId": "272c808906554c5a7a4e9a036e85150e9a4daa2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
