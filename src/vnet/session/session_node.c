@@ -632,6 +632,8 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
   ctx->left_to_snd -= left_from_seg;
 }
 
+//static int is_first = 1;
+
 always_inline void
 session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 			vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)
@@ -675,7 +677,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
 	  ASSERT (n_bytes_read > 0);
 
-	  if (ctx->s->session_state == SESSION_STATE_LISTENING)
+	  if (ctx->s->session_state == SESSION_STATE_LISTENING
+	      && offset == SESSION_CONN_HDR_LEN)
 	    {
 	      ip_copy (&ctx->tc->rmt_ip, &hdr->rmt_ip, ctx->tc->is_ip4);
 	      ctx->tc->rmt_port = hdr->rmt_port;
@@ -702,6 +705,19 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
     session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
+
+//  clib_warning ("buflen %u", b->current_length + b->total_length_not_including_first_buffer);
+//  if (is_first && (b->current_length + b->total_length_not_including_first_buffer > 2000))
+//    {
+//      int i;
+//      u8 *s = 0;
+//      u8 *data = b->data + b->current_data;
+//      for (i = 0; i < 10; i++)
+//      s = format (s, "%u ", data[i]);
+//      clib_warning ("%s\n", s);
+//      vec_free (s);
+//      is_first = 0;
+//    }
 }
 
 always_inline u8
@@ -775,8 +791,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	    }
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
-	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  ASSERT (ctx->hdr.data_offset == 0);
+	  ctx->max_dequeue = ctx->hdr.data_length;
+	  if (ctx->max_dequeue > ctx->sp.snd_space)
+	    {
+	      ctx->max_len_to_snd = 0;
+	      return;
+	    }
 	}
     }
   ASSERT (ctx->max_dequeue > 0);

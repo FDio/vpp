@@ -223,8 +223,12 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
 
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
   if (tc->is_ip4)
-    vlib_buffer_push_ip4 (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-			  IP_PROTOCOL_UDP, 1);
+    {
+      ip4_header_t *ih;
+      ih = vlib_buffer_push_ip4 (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
+				 IP_PROTOCOL_UDP, 1);
+      ih->flags_and_fragment_offset = 0;
+    }
   else
     {
       ip6_header_t *ih;
@@ -391,7 +395,8 @@ udp_session_send_params (transport_connection_t * tconn,
   /* No constraint on TX window */
   sp->snd_space = ~0;
   /* TODO figure out MTU of output interface */
-  sp->snd_mss = 1460;
+//  sp->snd_mss = 1460;
+  sp->snd_mss = ~0;
   sp->tx_offset = 0;
   sp->flags = 0;
   return 0;
