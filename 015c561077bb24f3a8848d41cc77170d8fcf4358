@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "97b46b60_6bb5858a",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-01T15:46:15Z",
+      "side": 1,
+      "message": "Do we really need this?",
+      "revId": "015c561077bb24f3a8848d41cc77170d8fcf4358",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
