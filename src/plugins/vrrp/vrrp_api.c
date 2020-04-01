@@ -186,14 +186,14 @@ send_vrrp_vr_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
 
     if (vrrp_vr_is_ipv6 (vr))
       {
-	api_addr->af = htonl (ADDRESS_IP6);
+	api_addr->af = ADDRESS_IP6;
 	dst = &api_addr->un.ip6;
 	src = &addr->ip6;
 	len = sizeof (addr->ip6);
       }
     else
       {
-	api_addr->af = htonl (ADDRESS_IP4);
+	api_addr->af = ADDRESS_IP4;
 	dst = &api_addr->un.ip4;
 	src = &addr->ip4;
 	len = sizeof (addr->ip4);
@@ -317,14 +317,14 @@ send_vrrp_vr_peer_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
 
     if (vrrp_vr_is_ipv6 (vr))
       {
-	api_addr->af = htonl (ADDRESS_IP6);
+	api_addr->af = ADDRESS_IP6;
 	dst = &api_addr->un.ip6;
 	src = &addr->ip6;
 	len = sizeof (addr->ip6);
       }
     else
       {
-	api_addr->af = htonl (ADDRESS_IP4);
+	api_addr->af = ADDRESS_IP4;
 	dst = &api_addr->un.ip4;
 	src = &addr->ip4;
 	len = sizeof (addr->ip4);
