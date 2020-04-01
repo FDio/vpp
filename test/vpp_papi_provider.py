@@ -53,7 +53,6 @@ defaultmapping = {
     'ip_punt_redirect': {'is_add': 1, },
     'ip_route_add_del': {'is_add': 1, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
-    'ipsec_sad_entry_add_del': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
     'ipsec_spd_dump': {'sa_id': 4294967295, },
     'ipsec_spd_entry_add_del': {'local_port_stop': 65535,
@@ -1088,60 +1087,6 @@ class VppPapiProvider(object):
         return self.api(self.papi.ipsec_spd_interface_dump,
                         {'spd_index': spd_index if spd_index else 0,
                          'spd_index_valid': 1 if spd_index else 0})
-
-    def ipsec_sad_entry_add_del(self,
-                                sad_id,
-                                spi,
-                                integrity_algorithm,
-                                integrity_key,
-                                crypto_algorithm,
-                                crypto_key,
-                                protocol,
-                                tunnel_src_address='',
-                                tunnel_dst_address='',
-                                flags=0,
-                                salt=0,
-                                is_add=1):
-        """ IPSEC SA add/del
-        :param sad_id: security association ID
-        :param spi: security param index of the SA in decimal
-        :param integrity_algorithm:
-        :param integrity_key:
-        :param crypto_algorithm:
-        :param crypto_key:
-        :param protocol: AH(0) or ESP(1) protocol
-        :param tunnel_src_address: tunnel mode outer src address
-        :param tunnel_dst_address: tunnel mode outer dst address
-        :param is_add:
-        :param is_tunnel:
-        :** reference /vpp/src/vnet/ipsec/ipsec.h file for enum values of
-             crypto and ipsec algorithms
-        """
-        return self.api(
-            self.papi.ipsec_sad_entry_add_del,
-            {
-                'is_add': is_add,
-                'entry':
-                    {
-                        'sad_id': sad_id,
-                        'spi': spi,
-                        'tunnel_src': tunnel_src_address,
-                        'tunnel_dst': tunnel_dst_address,
-                        'protocol': protocol,
-                        'integrity_algorithm': integrity_algorithm,
-                        'integrity_key': {
-                            'length': len(integrity_key),
-                            'data': integrity_key,
-                        },
-                        'crypto_algorithm': crypto_algorithm,
-                        'crypto_key': {
-                            'length': len(crypto_key),
-                            'data': crypto_key,
-                        },
-                        'flags': flags,
-                        'salt': salt,
-                    }
-            })
 
     def ipsec_sa_dump(self, sa_id=None):
         return self.api(self.papi.ipsec_sa_dump,
