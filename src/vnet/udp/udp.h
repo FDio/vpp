@@ -106,7 +106,7 @@ typedef struct
   /* Name (a c string). */
   char *name;
 
-  /* GRE protocol type in host byte order. */
+  /* Port number in host byte order. */
   udp_dst_port_t dst_port;
 
   /* Node which handles this type. */
@@ -114,6 +114,9 @@ typedef struct
 
   /* Next index for this type. */
   u32 next_index;
+
+  /* UDP sessions refcount (not tunnels) */
+  u32 n_connections;
 
   /* Parser for packet generator edits for this protocol */
   unformat_function_t *unformat_pg_edit;
@@ -140,6 +143,9 @@ typedef struct
   u16 *next_by_dst_port6;
   u8 punt_unknown4;
   u8 punt_unknown6;
+
+  /* Udp local to input arc index */
+  u32 local_to_input_edge[N_UDP_AF];
 
   /*
    * Per-worker thread udp connection pools used with session layer
@@ -257,12 +263,16 @@ format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
 unformat_function_t unformat_udp_header;
 
+void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
+		       char *dst_port_name, u8 is_ip4);
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
 			    u32 node_index, u8 is_ip4);
 void udp_unregister_dst_port (vlib_main_t * vm,
 			      udp_dst_port_t dst_port, u8 is_ip4);
 bool udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
+
+void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
