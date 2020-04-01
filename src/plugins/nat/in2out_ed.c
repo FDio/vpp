@@ -31,6 +31,7 @@
 #include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
+#include <vppinfra/profile.h>
 
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,
@@ -311,10 +312,14 @@ slow_path_ed (snat_main_t * sm,
   key0.fib_index = rx_fib_index;
   key1.fib_index = sm->outside_fib_index;
 
+#define p_alloc_addr(x) p_alloc_addr##x
+  PROFILE_DECL (p_alloc_addr, "alloc-addr", 5);
+
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match
       (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
+      PROFILE_START (p_alloc_addr);
       /* Try to create dynamic translation */
       if (nat_alloc_addr_and_port_ed (sm->addresses, rx_fib_index,
 				      thread_index, key, &key1,
@@ -332,6 +337,7 @@ slow_path_ed (snat_main_t * sm,
 	      return NAT_NEXT_DROP;
 	    }
 	}
+      PROFILE_END (p_alloc_addr);
     }
   else
     {
@@ -357,6 +363,9 @@ slow_path_ed (snat_main_t * sm,
 	}
     }
 
+#define p_user_create(x) p_user_create##x
+  PROFILE_DECL (p_user_create, "nat-user-create", 5);
+  PROFILE_START (p_user_create);
   u = nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
   if (!u)
     {
@@ -367,7 +376,11 @@ slow_path_ed (snat_main_t * sm,
       b->error = node->errors[NAT_IN2OUT_ED_ERROR_CANNOT_CREATE_USER];
       return NAT_NEXT_DROP;
     }
+  PROFILE_END (p_user_create);
 
+#define p_sess_alloc(x) p_sess_alloc##x
+  PROFILE_DECL (p_sess_alloc, "nat-session-alloc", 5);
+  PROFILE_START (p_sess_alloc);
   s = nat_ed_session_alloc (sm, u, thread_index, now);
   if (!s)
     {
@@ -379,6 +392,7 @@ slow_path_ed (snat_main_t * sm,
       b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
       return NAT_NEXT_DROP;
     }
+  PROFILE_END (p_sess_alloc);
 
   user_session_increment (sm, u, is_sm);
   if (is_sm)
@@ -418,6 +432,9 @@ slow_path_ed (snat_main_t * sm,
       break;
     }
 
+#define p_add_lookups(x) p_add_lookups##x
+  PROFILE_DECL (p_add_lookups, "nat-add-to-lookup-tables", 5);
+  PROFILE_START (p_add_lookups);
   /* Add to lookup tables */
   kv->value = s - tsm->sessions;
   ctx.now = now;
@@ -434,6 +451,7 @@ slow_path_ed (snat_main_t * sm,
 					       nat44_o2i_ed_is_idle_session_cb,
 					       &ctx))
     nat_elog_notice ("out2in-ed key add failed");
+  PROFILE_END (p_add_lookups);
 
   *sessionp = s;
 
@@ -1230,6 +1248,12 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
+#define p_in2out(x) p_in2out##x
+  PROFILE_DECL (p_in2out, "in2out-slow-path-loop", 5);
+
+#define p_slow_path_ed(x) p_slow_path_ed##x
+  PROFILE_DECL (p_slow_path_ed, "slow_path_ed()", 5);
+
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -1238,6 +1262,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  PROFILE_START (p_in2out);
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  u32 next0, sw_if_index0, rx_fib_index0, iph_offset0 = 0, proto0,
@@ -1362,8 +1387,10 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		    goto trace0;
 		}
 
+	      PROFILE_START (p_slow_path_ed);
 	      next0 = slow_path_ed (sm, b0, rx_fib_index0, &kv0, &s0, node,
 				    next0, thread_index, now);
+	      PROFILE_END (p_slow_path_ed);
 
 	      if (PREDICT_FALSE (next0 == NAT_NEXT_DROP))
 		goto trace0;
@@ -1494,9 +1521,11 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
+	  PROFILE_END (p_in2out);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
     }
 
   vlib_node_increment_counter (vm, stats_node_index,
