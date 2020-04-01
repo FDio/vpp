@@ -210,7 +210,7 @@ extern int ipsec_sa_add_and_lock (u32 id,
 				  u32 salt,
 				  const ip46_address_t * tunnel_src_addr,
 				  const ip46_address_t * tunnel_dst_addr,
-				  u32 * sa_index, u16 dst_port);
+				  u32 * sa_index, u16 src_port, u16 dst_port);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);

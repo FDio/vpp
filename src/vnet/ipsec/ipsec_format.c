@@ -310,6 +310,9 @@ format_ipsec_sa (u8 * s, va_list * args)
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
   else
     s = format (s, " key [redacted]");
+  s = format (s, "\n   UDP:[src:%d dst:%d]",
+	      clib_host_to_net_u16 (sa->udp_hdr.src_port),
+	      clib_host_to_net_u16 (sa->udp_hdr.dst_port));
 
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);

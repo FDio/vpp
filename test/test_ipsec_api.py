@@ -70,23 +70,48 @@ class IpsecApiTestCase(VppTestCase):
         crypt_algo_vpp_id = params.crypt_algo_vpp_id
         crypt_key = params.crypt_key
 
-        self.vapi.ipsec_sad_entry_add_del(scapy_tun_sa_id, scapy_tun_spi,
-                                          auth_algo_vpp_id, auth_key,
-                                          crypt_algo_vpp_id, crypt_key,
-                                          self.vpp_ah_protocol,
-                                          self.pg0.local_addr[addr_type],
-                                          self.pg0.remote_addr[addr_type])
+        self.vapi.ipsec_sad_entry_add_del(
+            is_add=1,
+            entry={
+                'sad_id': scapy_tun_sa_id,
+                'spi': scapy_tun_spi,
+                'integrity_algorithm': auth_algo_vpp_id,
+                'integrity_key': {
+                    'data': auth_key,
+                    'length': len(auth_key),
+                },
+                'crypto_algorithm': crypt_algo_vpp_id,
+                'crypto_key': {
+                    'data': crypt_key,
+                    'length': len(crypt_key),
+                },
+                'protocol': self.vpp_ah_protocol,
+                'tunnel_src': self.pg0.local_addr[addr_type],
+                'tunnel_dst': self.pg0.remote_addr[addr_type]
+            })
         with self.vapi.assert_negative_api_retval():
             self.vapi.ipsec_select_backend(
                 protocol=self.vpp_ah_protocol, index=0)
 
-        self.vapi.ipsec_sad_entry_add_del(scapy_tun_sa_id, scapy_tun_spi,
-                                          auth_algo_vpp_id, auth_key,
-                                          crypt_algo_vpp_id, crypt_key,
-                                          self.vpp_ah_protocol,
-                                          self.pg0.local_addr[addr_type],
-                                          self.pg0.remote_addr[addr_type],
-                                          is_add=0)
+        self.vapi.ipsec_sad_entry_add_del(
+            is_add=0,
+            entry={
+                'sad_id': scapy_tun_sa_id,
+                'spi': scapy_tun_spi,
+                'integrity_algorithm': auth_algo_vpp_id,
+                'integrity_key': {
+                    'data': auth_key,
+                    'length': len(auth_key),
+                },
+                'crypto_algorithm': crypt_algo_vpp_id,
+                'crypto_key': {
+                    'data': crypt_key,
+                    'length': len(crypt_key),
+                },
+                'protocol': self.vpp_ah_protocol,
+                'tunnel_src': self.pg0.local_addr[addr_type],
+                'tunnel_dst': self.pg0.remote_addr[addr_type]
+            })
         self.vapi.ipsec_select_backend(
             protocol=self.vpp_ah_protocol, index=0)
 

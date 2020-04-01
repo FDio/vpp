@@ -90,9 +90,7 @@ ipsec_tun_register_nodes (ip_address_family_t af)
     {
       if (AF_IP4 == af)
 	{
-	  udp_register_dst_port (vlib_get_main (),
-				 UDP_DST_PORT_ipsec,
-				 ipsec4_tun_input_node.index, 1);
+	  ipsec_register_udp_port (UDP_DST_PORT_ipsec);
 	  ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
 				 ipsec4_tun_input_node.index);
 	}
@@ -110,7 +108,7 @@ ipsec_tun_unregister_nodes (ip_address_family_t af)
     {
       if (AF_IP4 == af)
 	{
-	  udp_unregister_dst_port (vlib_get_main (), UDP_DST_PORT_ipsec, 1);
+	  ipsec_unregister_udp_port (UDP_DST_PORT_ipsec);
 	  ip4_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
 	}
       else
