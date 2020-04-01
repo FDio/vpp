@@ -220,6 +220,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      s0->session_state = SESSION_STATE_READY;
 	      tc0 = &child0->connection;
 	      uc0 = udp_get_connection_from_transport (tc0);
+	      udp_port_connections_inc (clib_net_to_host_u16
+					(uc0->c_lcl_port), uc0->c_is_ip4);
 	      error0 = UDP_ERROR_LISTENER;
 	    }
 	}
