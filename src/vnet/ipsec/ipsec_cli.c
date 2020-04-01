@@ -86,7 +86,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   clib_error_t *error;
   ipsec_key_t ck = { 0 };
   ipsec_key_t ik = { 0 };
-  u32 id, spi, salt;
+  u32 id, spi, salt, sai;
+  u16 udp_src, udp_dst;
   int is_add, rv;
 
   salt = 0;
@@ -96,6 +97,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   proto = IPSEC_PROTOCOL_ESP;
   integ_alg = IPSEC_INTEG_ALG_NONE;
   crypto_alg = IPSEC_CRYPTO_ALG_NONE;
+  udp_src = udp_dst = IPSEC_UDP_PORT_NONE;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -149,8 +151,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
 				&ck, integ_alg, &ik, flags,
 				0, clib_host_to_net_u32 (salt),
-				&tun_src, &tun_dst, NULL,
-				IPSEC_UDP_PORT_NONE);
+				&tun_src, &tun_dst, &sai, udp_src, udp_dst);
   else
     rv = ipsec_sa_unlock_id (id);
 
@@ -853,14 +854,16 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 			       local_spi, IPSEC_PROTOCOL_ESP, crypto_alg,
 			       &lck, integ_alg, &lik, flags, table_id,
 			       clib_host_to_net_u32 (salt), &local_ip,
-			       &remote_ip, NULL, IPSEC_UDP_PORT_NONE);
+			       &remote_ip, NULL, IPSEC_UDP_PORT_NONE,
+			       IPSEC_UDP_PORT_NONE);
       rv |=
 	ipsec_sa_add_and_lock (ipsec_tun_mk_remote_sa_id (sw_if_index),
 			       remote_spi, IPSEC_PROTOCOL_ESP, crypto_alg,
 			       &rck, integ_alg, &rik,
 			       (flags | IPSEC_SA_FLAG_IS_INBOUND), table_id,
 			       clib_host_to_net_u32 (salt), &remote_ip,
-			       &local_ip, NULL, IPSEC_UDP_PORT_NONE);
+			       &local_ip, NULL, IPSEC_UDP_PORT_NONE,
+			       IPSEC_UDP_PORT_NONE);
       rv |=
 	ipsec_tun_protect_update_one (sw_if_index, &nh,
 				      ipsec_tun_mk_local_sa_id (sw_if_index),

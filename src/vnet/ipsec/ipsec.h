@@ -107,6 +107,9 @@ typedef struct
   /* pool of policies */
   ipsec_policy_t *policies;
 
+  /* hash tables of UDP port registrations */
+  uword *udp_port_registrations;
+
   uword *tunnel_index_by_key;
 
   /* convenience */
@@ -222,8 +225,8 @@ extern vlib_node_registration_t esp4_encrypt_tun_node;
 extern vlib_node_registration_t esp6_encrypt_tun_node;
 extern vlib_node_registration_t esp4_decrypt_tun_node;
 extern vlib_node_registration_t esp6_decrypt_tun_node;
-extern vlib_node_registration_t ipsec4_if_input_node;
-extern vlib_node_registration_t ipsec6_if_input_node;
+extern vlib_node_registration_t ipsec4_tun_input_node;
+extern vlib_node_registration_t ipsec6_tun_input_node;
 
 /*
  * functions
@@ -282,6 +285,8 @@ ipsec_sa_get (u32 sa_index)
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
 
+extern void ipsec_register_udp_port (u16 udp_port);
+extern void ipsec_unregister_udp_port (u16 udp_port);
 
 #endif /* __IPSEC_H__ */
 

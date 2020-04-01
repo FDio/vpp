@@ -184,12 +184,15 @@ class VppIpsecSA(VppObject):
     VPP SAD Entry
     """
 
+    DEFAULT_UDP_PORT = 4500
+
     def __init__(self, test, id, spi,
                  integ_alg, integ_key,
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None, salt=0):
+                 flags=None, salt=0, udp_src=None,
+                 udp_dst=None):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -214,44 +217,87 @@ class VppIpsecSA(VppObject):
                 self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
             self.tun_dst = ip_address(text_type(tun_dst))
+        self.udp_src = udp_src
+        self.udp_dst = udp_dst
 
     def add_vpp_config(self):
-        r = self.test.vapi.ipsec_sad_entry_add_del(
-            self.id,
-            self.spi,
-            self.integ_alg,
-            self.integ_key,
-            self.crypto_alg,
-            self.crypto_key,
-            self.proto,
-            (self.tun_src if self.tun_src else []),
-            (self.tun_dst if self.tun_dst else []),
-            flags=self.flags,
-            salt=self.salt)
+        entry = {
+            'sad_id': self.id,
+            'spi': self.spi,
+            'integrity_algorithm': self.integ_alg,
+            'integrity_key': {
+                'length': len(self.integ_key),
+                'data': self.integ_key,
+            },
+            'crypto_algorithm': self.crypto_alg,
+            'crypto_key': {
+                'data': self.crypto_key,
+                'length': len(self.crypto_key),
+            },
+            'protocol': self.proto,
+            'tunnel_src': (self.tun_src if self.tun_src else []),
+            'tunnel_dst': (self.tun_dst if self.tun_dst else []),
+            'flags': self.flags,
+            'salt': self.salt
+        }
+        # don't explicitly send the defaults, let papi fill them in
+        if self.udp_src:
+            entry['udp_src_port'] = self.udp_src
+        if self.udp_dst:
+            entry['udp_dst_port'] = self.udp_dst
+        r = self.test.vapi.ipsec_sad_entry_add_del(is_add=1, entry=entry)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.ipsec_sad_entry_add_del(
-            self.id,
-            self.spi,
-            self.integ_alg,
-            self.integ_key,
-            self.crypto_alg,
-            self.crypto_key,
-            self.proto,
-            (self.tun_src if self.tun_src else []),
-            (self.tun_dst if self.tun_dst else []),
-            flags=self.flags,
-            is_add=0)
+        r = self.test.vapi.ipsec_sad_entry_add_del(
+            is_add=0,
+            entry={
+                'sad_id': self.id,
+                'spi': self.spi,
+                'integrity_algorithm': self.integ_alg,
+                'integrity_key': {
+                    'length': len(self.integ_key),
+                    'data': self.integ_key,
+                },
+                'crypto_algorithm': self.crypto_alg,
+                'crypto_key': {
+                    'data': self.crypto_key,
+                    'length': len(self.crypto_key),
+                },
+                'protocol': self.proto,
+                'tunnel_src': (self.tun_src if self.tun_src else []),
+                'tunnel_dst': (self.tun_dst if self.tun_dst else []),
+                'flags': self.flags,
+                'salt': self.salt
+            })
 
     def object_id(self):
         return "ipsec-sa-%d" % self.id
 
     def query_vpp_config(self):
+        e = VppEnum.vl_api_ipsec_sad_flags_t
+
         bs = self.test.vapi.ipsec_sa_dump()
         for b in bs:
             if b.entry.sad_id == self.id:
+                # if udp encap is configured then the ports should match
+                # those configured or the default
+                if (self.flags & e.IPSEC_API_SAD_FLAG_UDP_ENCAP):
+                    if not b.entry.flags & e.IPSEC_API_SAD_FLAG_UDP_ENCAP:
+                        return False
+                    if self.udp_src:
+                        if self.udp_src != b.entry.udp_src_port:
+                            return False
+                    else:
+                        if self.DEFAULT_UDP_PORT != b.entry.udp_src_port:
+                            return False
+                    if self.udp_dst:
+                        if self.udp_dst != b.entry.udp_dst_port:
+                            return False
+                    else:
+                        if self.DEFAULT_UDP_PORT != b.entry.udp_dst_port:
+                            return False
                 return True
         return False
 

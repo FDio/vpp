@@ -1568,13 +1568,13 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
 			       &a->loc_ckey, a->integ_type, &a->loc_ikey,
 			       a->flags, 0, a->salt_local, &a->local_ip,
-			       &a->remote_ip, NULL, a->dst_port);
+			       &a->remote_ip, NULL, a->dst_port, a->dst_port);
   rv |= ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
 			       a->integ_type, &a->rem_ikey,
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
 			       a->salt_remote, &a->remote_ip,
-			       &a->local_ip, NULL, a->dst_port);
+			       &a->local_ip, NULL, a->dst_port, a->dst_port);
 
   rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
 }
