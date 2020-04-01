@@ -21,6 +21,7 @@
 
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
+#include <vppinfra/benchmark.h>
 
 static_always_inline u8
 nat44_maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
@@ -74,10 +75,18 @@ nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
   snat_session_t *s;
   dlist_elt_t *per_user_translation_list_elt;
 
+#define b_nat44_session_alloc_new_pool_get1(x) b_nat44_session_alloc_new_pool_get1##x
+  BENCHMARK_DECL (b_nat44_session_alloc_new_pool_get1, "nat44_session_alloc_new_pool_get1", 5);
+  BENCHMARK_START(b_nat44_session_alloc_new_pool_get1);
   pool_get (tsm->sessions, s);
+  BENCHMARK_END(b_nat44_session_alloc_new_pool_get1);
   clib_memset (s, 0, sizeof (*s));
   /* Create list elts */
+#define b_nat44_session_alloc_new_pool_get2(x) b_nat44_session_alloc_new_pool_get2##x
+  BENCHMARK_DECL (b_nat44_session_alloc_new_pool_get2, "nat44_session_alloc_new_pool_get2", 5);
+  BENCHMARK_START(b_nat44_session_alloc_new_pool_get2);
   pool_get (tsm->list_pool, per_user_translation_list_elt);
+  BENCHMARK_END(b_nat44_session_alloc_new_pool_get2);
   clib_dlist_init (tsm->list_pool,
 		   per_user_translation_list_elt - tsm->list_pool);
 
