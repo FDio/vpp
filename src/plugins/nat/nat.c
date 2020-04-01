@@ -34,6 +34,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vppinfra/bihash_16_8.h>
+#include <vppinfra/benchmark.h>
 
 #include <vpp/app/version.h>
 
@@ -654,7 +655,17 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       clib_dlist_addhead (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
     alloc_new:
-      s = nat44_session_alloc_new (tsm, u, now);
+      do
+	{
+#define b_nat44_session_alloc_new(x) b_nat44_session_alloc_new##x
+	  BENCHMARK_DECL (b_nat44_session_alloc_new,
+			  "nat44_session_alloc_new", 5);
+
+	  BENCHMARK_START (b_nat44_session_alloc_new);
+	  s = nat44_session_alloc_new (tsm, u, now);
+	  BENCHMARK_END (b_nat44_session_alloc_new);
+	}
+      while (0);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
     }
