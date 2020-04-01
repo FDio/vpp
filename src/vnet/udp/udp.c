@@ -242,7 +242,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
   if (tc->is_ip4)
     vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, 1 /* csum offload */ ,
+				 IP_PROTOCOL_UDP, 0 /* csum offload */ ,
 				 0 /* is_df */ );
   else
     vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,

@@ -22,6 +22,7 @@
 #include "ip_frag.h"
 
 #include <vnet/ip/ip.h>
+#include <vnet/interface_output.h>
 
 typedef struct
 {
@@ -146,6 +147,12 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u16 left_in_from_buffer =
     from_b->current_length - (l2unfragmentablesize + sizeof (ip4_header_t));
   u16 ptr = 0;
+
+//  if (from_b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+//    {
+//      clib_warning ("checksum computation");
+//      calc_checksums (vm, from_b);
+//    }
 
   /* Do the actual fragmentation */
   while (rem)
