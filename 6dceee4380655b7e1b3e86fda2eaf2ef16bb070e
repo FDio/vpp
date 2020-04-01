@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "c08589fd_c6409bed",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T10:15:42Z",
+      "side": 1,
+      "message": "I don\u0027t understand the rational behind your concern. Having extended flags in the struct put it in second cache line. Right now, GSO infra is accessing only 1st cache line per packet. Then it will need to fetch two cache line per packet just for interface flags checking.",
+      "parentUuid": "41e6c7e6_56413bf8",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "102ae0cc_e3e886ad",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -108,6 +126,24 @@
     },
     {
       "key": {
+        "uuid": "225158c0_dcb76b55",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T10:15:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c162be5f_8c8304be",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7d2a7ce8_bdaf50fe",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -155,6 +191,24 @@
       "side": 1,
       "message": "My point was outer_header could be updated in gho struct by vnet_gso_header_offset_parser() so that we can use it here w/o knowing which kind of tunnel it is",
       "parentUuid": "a58fcbbe_1aefff05",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6504251_312f9fcc",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T10:15:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "099fe3a9_6dc05d0c",
       "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
