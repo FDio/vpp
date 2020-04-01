@@ -132,13 +132,21 @@ udp_connection_free (udp_connection_t * uc)
   pool_put (udp_main.connections[thread_index], uc);
 }
 
+static void
+udp_connection_cleanup (udp_connection_t * uc)
+{
+  transport_endpoint_cleanup (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
+			      uc->c_lcl_port);
+  udp_connection_unregister_port (clib_net_to_host_u16 (uc->c_lcl_port),
+				  uc->c_is_ip4);
+  udp_connection_free (uc);
+}
+
 void
 udp_connection_delete (udp_connection_t * uc)
 {
-  udp_connection_unregister_port (clib_net_to_host_u16 (uc->c_lcl_port),
-				  uc->c_is_ip4);
   session_transport_delete_notify (&uc->connection);
-  udp_connection_free (uc);
+  udp_connection_cleanup (uc);
 }
 
 u32
@@ -149,12 +157,14 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   transport_endpoint_cfg_t *lcl_ext;
   udp_connection_t *listener;
   udp_dst_port_info_t *pi;
+  u16 lcl_port_ho;
   void *iface_ip;
 
-  pi = udp_get_dst_port_info (um, clib_net_to_host_u16 (lcl->port),
-			      lcl->is_ip4);
+  lcl_port_ho = clib_net_to_host_u16 (lcl->port);
+  pi = udp_get_dst_port_info (um, lcl_port_ho, lcl->is_ip4);
 
-  if (pi && !pi->n_connections)
+  if (pi && !pi->n_connections
+      && udp_is_valid_dst_port (lcl_port_ho, lcl->is_ip4))
     {
       clib_warning ("port already used");
       return -1;
@@ -186,8 +196,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
     listener->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
   clib_spinlock_init (&listener->rx_lock);
 
-  udp_connection_register_port (vm, clib_net_to_host_u16 (lcl->port),
-				lcl->is_ip4);
+  udp_connection_register_port (vm, lcl_port_ho, lcl->is_ip4);
   return listener->c_c_index;
 }
 
@@ -276,7 +285,7 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
   udp_connection_t *uc;
   uc = udp_connection_get (connection_index, thread_index);
   if (uc)
-    udp_connection_free (uc);
+    udp_connection_cleanup (uc);
 }
 
 u8 *
