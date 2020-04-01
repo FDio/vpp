@@ -104,6 +104,10 @@ typedef key
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tx_table_id - the FIB id used for encapsulated packets
     @param salt - for use with counter mode ciphers
+    @param udp_src_port - If using UDP Encapsulation, use this source port for
+                          TX. It is ignored for RX.
+    @param udp_dst_port - If using UDP Encapsulation, use this destination port
+                          for TX. Expect traffic on this port for RX.
  */
 typedef ipsec_sad_entry
 {
@@ -125,6 +129,8 @@ typedef ipsec_sad_entry
   vl_api_address_t tunnel_dst;
   u32 tx_table_id;
   u32 salt;
+  u16 udp_src_port [default=4500];
+  u16 udp_dst_port [default=4500];
 };
 
 /*
