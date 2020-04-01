@@ -698,6 +698,8 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
     svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
+  if (rv <= 0)
+    return 0;
   if (peek)
     return rv;
   ASSERT (rv > 0);
