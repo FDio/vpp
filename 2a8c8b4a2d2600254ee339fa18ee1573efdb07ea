@@ -37,6 +37,40 @@
     },
     {
       "key": {
+        "uuid": "42c93edc_6e078d4f",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-01T15:46:15Z",
+      "side": 1,
+      "message": "Please consider pass by reference rather than returning a 20+ bytes structure.",
+      "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35485d2a_b1a3cd61",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-01T15:46:15Z",
+      "side": 1,
+      "message": "should be included_gho_h",
+      "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8453d46c_cd8add01",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 16
