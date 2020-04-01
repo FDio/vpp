@@ -555,6 +555,25 @@ vcl_session_closed_error (vcl_session_t * s)
     ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
 }
 
+static inline void
+vcl_ip_copy_from_ep (ip46_address_t * ip, vppcom_endpt_t * ep)
+{
+  if (ep->is_ip4)
+    clib_memcpy_fast (&ip->ip4, ep->ip, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (&ip->ip6, ep->ip, sizeof (ip6_address_t));
+}
+
+static inline void
+vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
+{
+  ep->is_ip4 = is_ip4;
+  if (is_ip4)
+    clib_memcpy_fast (ep->ip, &ip->ip4, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
+}
+
 /*
  * Helpers
  */
