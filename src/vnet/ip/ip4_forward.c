@@ -1991,7 +1991,7 @@ ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
   u32 checksum;
   if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
     {
-      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
+//      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
       return;
     }
 
@@ -2017,7 +2017,7 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
   u32 checksum;
   if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
     {
-      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
+//      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
       return;
     }
 

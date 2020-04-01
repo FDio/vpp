@@ -363,23 +363,10 @@ u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
 
 #define IP_DF 0x4000		/* don't fragment */
 
-/**
- * Push IPv4 header to buffer
- *
- * This does not support fragmentation.
- *
- * @param vm - vlib_main
- * @param b - buffer to write the header to
- * @param src - source IP
- * @param dst - destination IP
- * @param prot - payload proto
- *
- * @return - pointer to start of IP header
- */
-always_inline void *
-vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip4_address_t * src, ip4_address_t * dst, int proto,
-		      u8 csum_offload)
+always_inline void*
+vlib_buffer_push_ip4_custom (vlib_main_t *vm, vlib_buffer_t *b,
+                             ip4_address_t *src, ip4_address_t *dst,
+                             int proto, u8 csum_offload, u8 is_df)
 {
   ip4_header_t *ih;
 
@@ -391,7 +378,7 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
   ih->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
 
   /* No fragments */
-  ih->flags_and_fragment_offset = clib_host_to_net_u16 (IP_DF);
+  ih->flags_and_fragment_offset = is_df ? clib_host_to_net_u16 (IP_DF) : 0;
   ih->ttl = 255;
   ih->protocol = proto;
   ih->src_address.as_u32 = src->as_u32;
@@ -410,6 +397,28 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
     ih->checksum = ip4_header_checksum (ih);
 
   return ih;
+}
+
+/**
+ * Push IPv4 header to buffer
+ *
+ * This does not support fragmentation.
+ *
+ * @param vm - vlib_main
+ * @param b - buffer to write the header to
+ * @param src - source IP
+ * @param dst - destination IP
+ * @param prot - payload proto
+ *
+ * @return - pointer to start of IP header
+ */
+always_inline void *
+vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
+		      ip4_address_t * src, ip4_address_t * dst, int proto,
+		      u8 csum_offload)
+{
+  return vlib_buffer_push_ip4_custom (vm, b, src, dst, proto, csum_offload,
+                                      1 /* is_df */);
 }
 
 always_inline u32
