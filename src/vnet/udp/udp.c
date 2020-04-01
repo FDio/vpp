@@ -178,7 +178,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
-  listener->flags |= UDP_CONN_F_OWNS_PORT;
+  listener->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_LISTEN;
   lcl_ext = (transport_endpoint_cfg_t *) lcl;
   if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     listener->flags |= UDP_CONN_F_CONNECTED;
@@ -286,15 +286,52 @@ format_udp_connection_id (u8 * s, va_list * args)
   if (!uc)
     return s;
   if (uc->c_is_ip4)
-    s = format (s, "[#%d][%s] %U:%d->%U:%d", uc->c_thread_index, "U",
-		format_ip4_address, &uc->c_lcl_ip4,
+    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
+		uc->c_s_index, "U", format_ip4_address, &uc->c_lcl_ip4,
 		clib_net_to_host_u16 (uc->c_lcl_port), format_ip4_address,
 		&uc->c_rmt_ip4, clib_net_to_host_u16 (uc->c_rmt_port));
   else
-    s = format (s, "[#%d][%s] %U:%d->%U:%d", uc->c_thread_index, "U",
-		format_ip6_address, &uc->c_lcl_ip6,
+    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
+		uc->c_s_index, "U", format_ip6_address, &uc->c_lcl_ip6,
 		clib_net_to_host_u16 (uc->c_lcl_port), format_ip6_address,
 		&uc->c_rmt_ip6, clib_net_to_host_u16 (uc->c_rmt_port));
+  return s;
+}
+
+const char *udp_connection_flags_str[] = {
+#define _(sym, str) str,
+  foreach_udp_connection_flag
+#undef _
+};
+
+static u8 *
+format_udp_connection_flags (u8 * s, va_list * args)
+{
+  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+  int i, last = -1;
+
+  for (i = 0; i < UDP_CONN_N_FLAGS; i++)
+    if (uc->flags & (1 << i))
+      last = i;
+  for (i = 0; i < last; i++)
+    {
+      if (uc->flags & (1 << i))
+	s = format (s, "%s, ", udp_connection_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", udp_connection_flags_str[last]);
+  return s;
+}
+
+static u8 *
+format_udp_vars (u8 * s, va_list * args)
+{
+  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+  s = format (s, " index %u flags: %U", uc->c_c_index,
+	      format_udp_connection_flags, uc);
+
+  if (!(uc->flags & UDP_CONN_F_LISTEN))
+    s = format (s, "\n");
   return s;
 }
 
@@ -308,10 +345,10 @@ format_udp_connection (u8 * s, va_list * args)
   s = format (s, "%-50U", format_udp_connection_id, uc);
   if (verbose)
     {
-      if (verbose == 1)
-	s = format (s, "%-15s", "-");
-      else
-	s = format (s, "\n");
+      s = format (s, "%-15s",
+		  (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED", uc);
+      if (verbose > 1)
+	s = format (s, "\n%U", format_udp_vars, uc);
     }
   return s;
 }
