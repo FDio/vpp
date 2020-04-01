@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "41e6c7e6_56413bf8",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-01T08:10:47Z",
+      "side": 1,
+      "message": "I understand we need them. My point was to split it into 2: use 1 bit in vnet_hw_interface_flags and add next \u0027extended hw interface flags\u0027 field somewhere at the bottom. If VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO is set then check the extended flags to know which GSO type is supported.",
+      "parentUuid": "5fb5c192_e276be3e",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "102ae0cc_e3e886ad",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "c162be5f_8c8304be",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-01T08:10:47Z",
+      "side": 1,
+      "message": "My point was the other \u0027gho\u0027 fixups are done in vnet_gso_header_offset_parser() and this one should be done there too if we can",
+      "parentUuid": "5bf2e751_22b430fb",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7d2a7ce8_bdaf50fe",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 13
@@ -101,6 +137,24 @@
       "side": 1,
       "message": "GSO_F_OUTER_IP or GSO_F_OUTER_IP6 will not tell us tunnel type and hence there is no hint on header length, we need to advance.",
       "parentUuid": "7d2a7ce8_bdaf50fe",
+      "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "099fe3a9_6dc05d0c",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-01T08:10:47Z",
+      "side": 1,
+      "message": "My point was outer_header could be updated in gho struct by vnet_gso_header_offset_parser() so that we can use it here w/o knowing which kind of tunnel it is",
+      "parentUuid": "a58fcbbe_1aefff05",
       "revId": "6dceee4380655b7e1b3e86fda2eaf2ef16bb070e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
