@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ab25640a_af9a8818",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T15:41:57Z",
+      "side": 1,
+      "message": "will be use in some other features i.e. GRO",
+      "parentUuid": "22107ee7_9ced0a85",
+      "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8453d46c_cd8add01",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 16
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "8f1d1192_199f5627",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T15:41:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8453d46c_cd8add01",
+      "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e90d4e22_85685ff4",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 16
@@ -47,6 +83,24 @@
       "writtenOn": "2020-04-01T14:49:38Z",
       "side": 1,
       "message": "what does \"may be - gho-\u003el2_hdr_offset\" means?",
+      "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ad776b87_b19c6e05",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-01T15:41:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e90d4e22_85685ff4",
       "revId": "2a8c8b4a2d2600254ee339fa18ee1573efdb07ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
