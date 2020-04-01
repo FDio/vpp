@@ -4073,6 +4073,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
               tsm->cleanup_runs = 0;
               tsm->cleanup_timeout = 0;
 
+              pool_alloc (tsm->sessions, sm->max_translations);
+              pool_alloc (tsm->list_pool, sm->max_translations);
+
               if (sm->endpoint_dependent)
                 {
                   clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
