@@ -34,11 +34,25 @@ typedef enum
   UDP_N_ERROR,
 } udp_error_t;
 
-typedef enum
+#define foreach_udp_connection_flag					\
+  _(CONNECTED, "CONNECTED")	/**< connected mode */			\
+  _(OWNS_PORT, "OWNS_PORT")	/**< port belong to conn (UDPC) */	\
+  _(CLOSING, "CLOSING")		/**< conn closed with data */		\
+  _(LISTEN, "LISTEN")		/**< conn is listening */		\
+
+enum udp_conn_flags_bits
 {
-  UDP_CONN_F_CONNECTED = 1 << 0,	/**< connected mode */
-  UDP_CONN_F_OWNS_PORT = 1 << 1,	/**< port belong to conn (UDPC) */
-  UDP_CONN_F_CLOSING = 1 << 2,		/**< conn closed with data */
+#define _(sym, str) UDP_CONN_F_BIT_##sym,
+  foreach_udp_connection_flag
+#undef _
+  UDP_CONN_N_FLAGS
+};
+
+typedef enum udp_conn_flags_
+{
+#define _(sym, str) UDP_CONN_F_##sym = 1 << UDP_CONN_F_BIT_##sym,
+  foreach_udp_connection_flag
+#undef _
 } udp_conn_flags_t;
 
 typedef struct
