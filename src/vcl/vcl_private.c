@@ -338,8 +338,20 @@ vcl_session_read_ready (vcl_session_t * session)
     return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
 
   max_deq = svm_fifo_max_dequeue_cons (session->rx_fifo);
+  if (session->is_dgram)
+    {
+      if (max_deq <= SESSION_CONN_HDR_LEN)
+	return 0;
 
-  return (max_deq > (session->is_dgram ? SESSION_CONN_HDR_LEN : 0));
+      session_dgram_pre_hdr_t ph;
+      svm_fifo_peek (session->rx_fifo, 0, sizeof (ph), (u8 *) & ph);
+      if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
+	return 0;
+
+      return ph.data_length;
+    }
+
+  return max_deq;
 }
 
 int
