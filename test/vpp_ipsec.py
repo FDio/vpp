@@ -189,7 +189,8 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None, salt=0):
+                 flags=None, salt=0, udp_src=4500,
+                 udp_dst=4500):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -214,36 +215,58 @@ class VppIpsecSA(VppObject):
                 self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
             self.tun_dst = ip_address(text_type(tun_dst))
+        self.udp_src = udp_src
+        self.udp_dst = udp_dst
 
     def add_vpp_config(self):
         r = self.test.vapi.ipsec_sad_entry_add_del(
-            self.id,
-            self.spi,
-            self.integ_alg,
-            self.integ_key,
-            self.crypto_alg,
-            self.crypto_key,
-            self.proto,
-            (self.tun_src if self.tun_src else []),
-            (self.tun_dst if self.tun_dst else []),
-            flags=self.flags,
-            salt=self.salt)
+            is_add=1,
+            entry={
+                'sad_id': self.id,
+                'spi': self.spi,
+                'integrity_algorithm': self.integ_alg,
+                'integrity_key': {
+                    'length': len(self.integ_key),
+                    'data': self.integ_key,
+                },
+                'crypto_algorithm': self.crypto_alg,
+                'crypto_key': {
+                    'data': self.crypto_key,
+                    'length': len(self.crypto_key),
+                },
+                'protocol': self.proto,
+                'tunnel_src': (self.tun_src if self.tun_src else []),
+                'tunnel_dst': (self.tun_dst if self.tun_dst else []),
+                'flags': self.flags,
+                'salt': self.salt,
+                'udp_src_port': self.udp_src,
+                'udp_dst_port': self.udp_dst
+            })
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.ipsec_sad_entry_add_del(
-            self.id,
-            self.spi,
-            self.integ_alg,
-            self.integ_key,
-            self.crypto_alg,
-            self.crypto_key,
-            self.proto,
-            (self.tun_src if self.tun_src else []),
-            (self.tun_dst if self.tun_dst else []),
-            flags=self.flags,
-            is_add=0)
+        r = self.test.vapi.ipsec_sad_entry_add_del(
+            is_add=0,
+            entry={
+                'sad_id': self.id,
+                'spi': self.spi,
+                'integrity_algorithm': self.integ_alg,
+                'integrity_key': {
+                    'length': len(self.integ_key),
+                    'data': self.integ_key,
+                },
+                'crypto_algorithm': self.crypto_alg,
+                'crypto_key': {
+                    'data': self.crypto_key,
+                    'length': len(self.crypto_key),
+                },
+                'protocol': self.proto,
+                'tunnel_src': (self.tun_src if self.tun_src else []),
+                'tunnel_dst': (self.tun_dst if self.tun_dst else []),
+                'flags': self.flags,
+                'salt': self.salt
+            })
 
     def object_id(self):
         return "ipsec-sa-%d" % self.id
