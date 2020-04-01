@@ -2,6 +2,14 @@ diff --git a/scapy/layers/ipsec.py b/scapy/layers/ipsec.py
 index f8c601fa..f566d288 100644
 --- a/scapy/layers/ipsec.py
 +++ b/scapy/layers/ipsec.py
+@@ -138,6 +138,7 @@ bind_layers(IP, ESP, proto=socket.IPPROTO_ESP)
+ bind_layers(IPv6, ESP, nh=socket.IPPROTO_ESP)
+ bind_layers(UDP, ESP, dport=4500)  # NAT-Traversal encapsulation
+ bind_layers(UDP, ESP, sport=4500)  # NAT-Traversal encapsulation
++bind_layers(UDP, ESP, dport=4545)  # NAT-Traversal encapsulation - random port
+ 
+ ###############################################################################
+
 @@ -359,11 +359,8 @@ class CryptAlgo(object):
              encryptor = cipher.encryptor()
  
@@ -147,7 +155,7 @@ index f8c601fa..f566d288 100644
  
          esp = self.crypt_algo.decrypt(self, encrypted, self.crypt_key,
                                        self.crypt_algo.icv_size or
-@@ -1050,9 +1069,10 @@ class SecurityAssociation(object):
+@@ -1050,11 +1069,12 @@ class SecurityAssociation(object):
  
      def _decrypt_ah(self, pkt, verify=True):
  
@@ -160,3 +168,4 @@ index f8c601fa..f566d288 100644
          ah = pkt[AH]
          payload = ah.payload
 
+ 
