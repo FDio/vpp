@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+go_binary(
+    name = "responder",
+    srcs = ["responder.go"],
+    visibility = ["//visibility:public",],
+    deps = [
+    	"//memif:memif",
+        "@com_github_profile//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "bridge",
+    srcs = ["bridge.go"],
+    visibility = ["//visibility:public",],
+    deps = [
+    	"//memif:memif",
+        "@com_github_profile//:go_default_library",
+    ],
+)
