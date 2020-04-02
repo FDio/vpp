@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "memif",
+    srcs = [
+        "endpoint.go",
+        "endpoint_unsafe.go",
+        "control_channel.go",
+        "control_channel_unsafe.go",
+        "memif.go",
+        "atomic16.go",
+        "atomic16_amd64.s",
+    ],
+    importpath = "memif",
+    visibility = ["//visibility:public",],
+)
