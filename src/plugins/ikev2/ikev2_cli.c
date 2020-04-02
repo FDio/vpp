@@ -512,8 +512,8 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
 
-    if (p->dst_port != IPSEC_UDP_PORT_NONE)
-      vlib_cli_output(vm, "  ipsec-over-udp port %d", p->dst_port);
+    if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
+      vlib_cli_output(vm, "  ipsec-over-udp port %d", p->ipsec_over_udp_port);
   }));
   /* *INDENT-ON* */
 

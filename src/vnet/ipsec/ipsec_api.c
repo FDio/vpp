@@ -374,7 +374,8 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
 				crypto_alg, &crypto_key,
 				integ_alg, &integ_key, flags,
 				0, mp->entry.salt, &tun_src, &tun_dst,
-				&sa_index, IPSEC_UDP_PORT_NONE);
+				&sa_index, IPSEC_UDP_PORT_NONE,
+				IPSEC_UDP_PORT_NONE);
   else
     rv = ipsec_sa_unlock_id (id);
 
@@ -665,7 +666,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 				  (flags | IPSEC_SA_FLAG_IS_INBOUND),
 				  ntohl (mp->tx_table_id),
 				  mp->salt, &remote_ip, &local_ip, NULL,
-				  IPSEC_UDP_PORT_NONE);
+				  IPSEC_UDP_PORT_NONE, IPSEC_UDP_PORT_NONE);
 
       if (rv)
 	goto done;
@@ -680,7 +681,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 				  flags,
 				  ntohl (mp->tx_table_id),
 				  mp->salt, &local_ip, &remote_ip, NULL,
-				  IPSEC_UDP_PORT_NONE);
+				  IPSEC_UDP_PORT_NONE, IPSEC_UDP_PORT_NONE);
 
       if (rv)
 	goto done;
