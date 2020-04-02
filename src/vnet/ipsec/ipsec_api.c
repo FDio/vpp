@@ -827,6 +827,8 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
 
+  mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
+
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
   return (WALK_CONTINUE);
