@@ -17,8 +17,9 @@
 
 /**
  * The last allocated punt reason
+ * Value 0 is reserved for invalid index.
  */
-static vlib_punt_reason_t punt_reason_last;
+static vlib_punt_reason_t punt_reason_last = 1;
 
 /**
  * Counters per punt-reason
@@ -434,10 +435,10 @@ punt_reason_walk (punt_reason_walk_cb_t cb, void *ctx)
 {
   punt_reason_data_t *pd;
 
-  vec_foreach (pd, punt_reason_data)
-  {
-    cb (pd->pd_reason, pd->pd_name, ctx);
-  }
+  for (pd = punt_reason_data + 1; pd < vec_end (punt_reason_data); pd++)
+    {
+      cb (pd->pd_reason, pd->pd_name, ctx);
+    }
 }
 
 /* Parse node name -> node index. */

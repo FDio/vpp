@@ -795,15 +795,12 @@ class TestExceptionPuntSocket(TestPuntSocket):
 
         #
         # we're dealing with IPSec tunnels punting for no-such-tunnel
-        # adn SPI=0
+        # (SPI=0 goes to ikev2)
         #
         cfgs = dict()
         cfgs['ipsec4-no-such-tunnel'] = {'spi': 99,
                                          'udp': False,
                                          'itf': self.pg0}
-        cfgs['ipsec4-spi-o-udp-0'] = {'spi': 0,
-                                      'udp': True,
-                                      'itf': self.pg1}
 
         #
         # find the VPP ID for these punt exception reasin

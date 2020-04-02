@@ -358,7 +358,7 @@ typedef struct
   u64 lifetime_maxdata;
   u32 lifetime_jitter;
   u32 handover;
-  u16 dst_port;
+  u16 ipsec_over_udp_port;
 
   u32 tun_itf;
   u8 udp_encap;
@@ -425,7 +425,7 @@ typedef struct
   u8 is_tun_itf_set;
   u32 tun_itf;
   u8 udp_encap;
-  u16 dst_port;
+  u16 ipsec_over_udp_port;
 
   f64 old_id_expiration;
   u32 current_remote_id_mask;
@@ -437,6 +437,12 @@ typedef struct
 
   u8 liveness_retries;
   f64 liveness_period_check;
+
+  u16 dst_port;
+  u32 sw_if_index;
+
+  /* is NAT traversal mode */
+  u8 natt;
 } ikev2_sa_t;
 
 
