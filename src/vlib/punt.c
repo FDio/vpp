@@ -17,8 +17,9 @@
 
 /**
  * The last allocated punt reason
+ * Value 0 is reserved for invalid index.
  */
-static vlib_punt_reason_t punt_reason_last;
+static vlib_punt_reason_t punt_reason_last = 1;
 
 /**
  * Counters per punt-reason
