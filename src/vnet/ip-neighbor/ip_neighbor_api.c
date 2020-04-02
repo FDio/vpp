@@ -275,6 +275,32 @@ vl_api_ip_neighbor_config_t_handler (vl_api_ip_neighbor_config_t * mp)
   REPLY_MACRO (VL_API_IP_NEIGHBOR_CONFIG_REPLY);
 }
 
+static void
+vl_api_ip_neighbor_replace_begin_t_handler (vl_api_ip_neighbor_replace_begin_t
+					    * mp)
+{
+  vl_api_ip_neighbor_replace_begin_reply_t *rmp;
+  int rv = 0;
+
+  ip_neighbor_mark (IP46_TYPE_IP4);
+  ip_neighbor_mark (IP46_TYPE_IP6);
+
+  REPLY_MACRO (VL_API_IP_NEIGHBOR_REPLACE_BEGIN_REPLY);
+}
+
+static void
+vl_api_ip_neighbor_replace_end_t_handler (vl_api_ip_neighbor_replace_end_t *
+					  mp)
+{
+  vl_api_ip_neighbor_replace_end_reply_t *rmp;
+  int rv = 0;
+
+  ip_neighbor_sweep (IP46_TYPE_IP4);
+  ip_neighbor_sweep (IP46_TYPE_IP6);
+
+  REPLY_MACRO (VL_API_IP_NEIGHBOR_REPLACE_END_REPLY);
+}
+
 #define vl_msg_name_crc_list
 #include <vnet/ip-neighbor/ip_neighbor.api.h>
 #undef vl_msg_name_crc_list

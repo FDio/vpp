@@ -37,13 +37,19 @@ typedef struct
   u8 stale_threshold;		/* Threshold in minutes to delete nei entry */
 } ip_neighbor_scan_arg_t;
 
+#define foreach_ip_neighbor_flag                 \
+  _(STATIC, 1 << 0, "static", "S")               \
+  _(DYNAMIC, 1 << 1, "dynamic", "D")             \
+  _(NO_FIB_ENTRY, 1 << 2, "no-fib-entry", "N")   \
+  _(PENDING, 1 << 3, "pending", "P")             \
+  _(STALE, 1 << 4, "stale", "A")                 \
+
 typedef enum ip_neighbor_flags_t_
 {
   IP_NEIGHBOR_FLAG_NONE = 0,
-  IP_NEIGHBOR_FLAG_STATIC = (1 << 0),
-  IP_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
-  IP_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
-  IP_NEIGHBOR_FLAG_PENDING = (1 << 3),
+#define _(a,b,c,d) IP_NEIGHBOR_FLAG_##a = b,
+  foreach_ip_neighbor_flag
+#undef _
 } __attribute__ ((packed)) ip_neighbor_flags_t;
 
 typedef struct ip_neighbor_watcher_t_
