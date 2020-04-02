@@ -232,7 +232,6 @@ typedef enum echo_test_evt_
 typedef union session_connected_bundled_msg_
 {
   session_connected_msg_t *mp;
-  vl_api_connect_uri_reply_t *bmp;
 } session_connected_bundled_msg_t;
 
 typedef struct echo_proto_cb_vft_
