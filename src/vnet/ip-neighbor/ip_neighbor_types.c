@@ -22,18 +22,13 @@ format_ip_neighbor_flags (u8 * s, va_list * args)
 {
   ip_neighbor_flags_t flags = va_arg (*args, int);
 
-  if (flags & IP_NEIGHBOR_FLAG_STATIC)
-    s = format (s, "S");
-
-  if (flags & IP_NEIGHBOR_FLAG_DYNAMIC)
-    s = format (s, "D");
-
-  if (flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
-    s = format (s, "N");
-
-  return s;
+#define _(a,b,c,d)                              \
+  if (flags & IP_NEIGHBOR_FLAG_##a)             \
+    s = format (s, "%s", d);
+  foreach_ip_neighbor_flag
+#undef _
+    return s;
 }
-
 
 u8 *
 format_ip_neighbor_key (u8 * s, va_list * va)

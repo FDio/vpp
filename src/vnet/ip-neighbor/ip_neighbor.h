@@ -62,6 +62,9 @@ extern void ip_neighbor_probe (const ip_adjacency_t * adj);
 extern void ip_neighbor_probe_dst (const ip_adjacency_t * adj,
 				   const ip46_address_t * ip);
 
+extern void ip_neighbor_mark (ip46_type_t type);
+extern void ip_neighbor_sweep (ip46_type_t type);
+
 /**
  * From the watcher to the API to publish a new neighbor
  */
