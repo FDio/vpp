@@ -106,3 +106,5 @@ GTAGS
 # extra scripts config
 /extras/scripts/.config/
 
+# extras gomemif build files
+/extras/gomemif/bazel*
