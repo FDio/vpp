@@ -21,7 +21,8 @@
 #include <vppinfra/error.h>
 
 #define IKEV2_NONCE_SIZE  32
-
+#define IKEV2_PORT        500
+#define IKEV2_PORT_NATT   4500
 #define IKEV2_KEY_PAD "Key Pad for IKEv2"
 
 typedef u8 v8;
@@ -91,6 +92,8 @@ typedef CLIB_PACKED (struct {
 #define IKEV2_PAYLOAD_FLAG_CRITICAL      (1<<7)
 
 #define IKEV2_PAYLOAD_NONE      0
+#define IKEV2_PAYLOAD_NAT_D     20
+#define IKEV2_PAYLOAD_NAT_OA    21
 #define IKEV2_PAYLOAD_SA        33
 #define IKEV2_PAYLOAD_KE        34
 #define IKEV2_PAYLOAD_IDI       35
