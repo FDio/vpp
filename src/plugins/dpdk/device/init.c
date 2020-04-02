@@ -516,6 +516,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* virtio */
 	    case VNET_DPDK_PMD_VIRTIO:
+	      xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
 	      xd->nb_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
 	      xd->nb_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
