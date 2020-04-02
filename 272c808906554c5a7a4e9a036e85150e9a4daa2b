@@ -34,6 +34,24 @@
       "revId": "272c808906554c5a7a4e9a036e85150e9a4daa2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "623328b2_3d4e7bb8",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-02T15:56:04Z",
+      "side": 1,
+      "message": "\u003e we need to memset it explicitly here by\n \u003e calling vnet_generic_header_offset_parser().\ns/by/before",
+      "parentUuid": "9488a6d8_08d43d44",
+      "revId": "272c808906554c5a7a4e9a036e85150e9a4daa2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
