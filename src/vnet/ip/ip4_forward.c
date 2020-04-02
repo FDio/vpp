@@ -903,20 +903,6 @@ VNET_FEATURE_INIT (ip4_inacl, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-inacl",
-  .runs_before = VNET_FEATURES ("ip4-source-check-via-rx"),
-};
-
-VNET_FEATURE_INIT (ip4_source_check_1, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-source-check-via-rx",
-  .runs_before = VNET_FEATURES ("ip4-source-check-via-any"),
-};
-
-VNET_FEATURE_INIT (ip4_source_check_2, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-source-check-via-any",
   .runs_before = VNET_FEATURES ("ip4-policer-classify"),
 };
 

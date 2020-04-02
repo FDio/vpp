@@ -384,6 +384,12 @@ ip4_address_is_multicast (const ip4_address_t * a)
   return (a->data[0] & 0xf0) == 0xe0;
 }
 
+always_inline uword
+ip4_address_is_global_broadcast (const ip4_address_t * a)
+{
+  return (a->as_u32) == 0xffffffff;
+}
+
 always_inline void
 ip4_multicast_address_set_for_group (ip4_address_t * a,
 				     ip_multicast_group_t g)

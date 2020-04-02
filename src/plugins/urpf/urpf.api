@@ -1,0 +1,59 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the URPF plugin
+*/
+
+option version = "1.0.0";
+import "vnet/ip/ip_types.api";
+import "vnet/fib/fib_types.api";
+import "vnet/interface_types.api";
+
+enum urpf_mode:u8
+{
+  URPF_API_MODE_OFF,
+  URPF_API_MODE_LOOSE,
+  URPF_API_MODE_STRICT,
+};
+
+/**
+ * @brief Enable uRPF on a given interface in a given direction
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param mode - Mode
+ * @param af - Address Family
+ * @param sw_if_index - Interface
+ * @param is_input - Direction.
+ */
+autoreply define urpf_update
+{
+  u32 client_index;
+  u32 context;
+  bool is_input[default = true];
+  vl_api_urpf_mode_t mode;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

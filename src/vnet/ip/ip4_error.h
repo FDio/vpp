@@ -67,9 +67,6 @@
   _ (UDP_CHECKSUM, "bad udp checksum")					\
   _ (UDP_LENGTH, "inconsistent udp/ip lengths")				\
 									\
-  /* Errors signalled by ip4-source-check. */				\
-  _ (UNICAST_SOURCE_CHECK_FAILS, "ip4 unicast source check fails")	\
-                                                                        \
   /* Spoofed packets in ip4-rewrite-local */                            \
   _ (SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")   \
                                                                         \
