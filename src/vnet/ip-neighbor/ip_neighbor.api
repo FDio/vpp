@@ -126,6 +126,43 @@ autoreply define ip_neighbor_config
   bool recycle;
 };
 
+/** \brief IP neighbour replace begin
+
+    The use-case is that, for some unspecified reason, the control plane
+    has a different set of neighbours it than VPP
+    currently has. The CP would thus like to 'replace' VPP's set
+    only by specifying what the new set shall be, i.e. it is not
+    going to delete anything that already eixts, rather, is wants any
+    unspecified neighbors deleted implicitly.
+    The CP declares the start of this procedure with this replace_begin
+    API Call, and when it has populated all neighbours it wants, it calls
+    the below replace_end API. From this point on it is of course free
+    to add and delete neighbours as usual.
+    The underlying mechanism by which VPP implements this replace is
+    intentionally left unspecified.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define ip_neighbor_replace_begin
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IP neighbour replace end
+
+    see ip_neighbor_replace_begin description.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define ip_neighbor_replace_end
+{
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief Register for IP4 ARP resolution event on receing ARP reply or
            MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender

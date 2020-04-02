@@ -1849,5 +1849,122 @@ class NeighborAgeTestCase(VppTestCase):
                                  self.pg0.remote_hosts[0].ip4))
 
 
+class NeighborReplaceTestCase(VppTestCase):
+    """ ARP/ND Replacement """
+
+    @classmethod
+    def setUpClass(cls):
+        super(NeighborReplaceTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(NeighborReplaceTestCase, cls).tearDownClass()
+
+    def setUp(self):
+        super(NeighborReplaceTestCase, self).setUp()
+
+        self.create_pg_interfaces(range(4))
+
+        # pg0 configured with ip4 and 6 addresses used for input
+        # pg1 configured with ip4 and 6 addresses used for output
+        # pg2 is unnumbered to pg0
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.resolve_arp()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(NeighborReplaceTestCase, self).tearDown()
+
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def test_replace(self):
+        """ replace """
+
+        N_HOSTS = 16
+
+        for i in self.pg_interfaces:
+            i.generate_remote_hosts(N_HOSTS)
+            i.configure_ipv4_neighbors()
+            i.configure_ipv6_neighbors()
+
+        # replace them all
+        self.vapi.ip_neighbor_replace_begin()
+        self.vapi.ip_neighbor_replace_end()
+
+        for i in self.pg_interfaces:
+            for h in range(N_HOSTS):
+                self.assertFalse(find_nbr(self,
+                                          self.pg0.sw_if_index,
+                                          self.pg0.remote_hosts[h].ip4))
+                self.assertFalse(find_nbr(self,
+                                          self.pg0.sw_if_index,
+                                          self.pg0.remote_hosts[h].ip6))
+
+        #
+        # and them all back via the API
+        #
+        for i in self.pg_interfaces:
+            for h in range(N_HOSTS):
+                VppNeighbor(self,
+                            i.sw_if_index,
+                            i.remote_hosts[h].mac,
+                            i.remote_hosts[h].ip4).add_vpp_config()
+                VppNeighbor(self,
+                            i.sw_if_index,
+                            i.remote_hosts[h].mac,
+                            i.remote_hosts[h].ip6).add_vpp_config()
+
+        #
+        # begin the replacement again, this time touch some
+        # the neighbours on pg1 so they are not deleted
+        #
+        self.vapi.ip_neighbor_replace_begin()
+
+        # update from the API all neighbours on pg1
+        for h in range(N_HOSTS):
+            VppNeighbor(self,
+                        self.pg1.sw_if_index,
+                        self.pg1.remote_hosts[h].mac,
+                        self.pg1.remote_hosts[h].ip4).add_vpp_config()
+            VppNeighbor(self,
+                        self.pg1.sw_if_index,
+                        self.pg1.remote_hosts[h].mac,
+                        self.pg1.remote_hosts[h].ip6).add_vpp_config()
+
+        # update from the data-plane all neighbours on pg3
+        self.pg3.configure_ipv4_neighbors()
+        self.pg3.configure_ipv6_neighbors()
+
+        # complete the replacement
+        self.logger.info(self.vapi.cli("sh ip neighbors"))
+        self.vapi.ip_neighbor_replace_end()
+
+        for i in self.pg_interfaces:
+            if i == self.pg1 or i == self.pg3:
+                # neighbours on pg1 and pg3 are still present
+                for h in range(N_HOSTS):
+                    self.assertTrue(find_nbr(self,
+                                             i.sw_if_index,
+                                             i.remote_hosts[h].ip4))
+                    self.assertTrue(find_nbr(self,
+                                             i.sw_if_index,
+                                             i.remote_hosts[h].ip6))
+            else:
+                # all other neighbours are toast
+                for h in range(N_HOSTS):
+                    self.assertFalse(find_nbr(self,
+                                              i.sw_if_index,
+                                              i.remote_hosts[h].ip4))
+                    self.assertFalse(find_nbr(self,
+                                              i.sw_if_index,
+                                              i.remote_hosts[h].ip6))
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
