@@ -237,8 +237,12 @@ dpdk_lib_init (dpdk_main_t * dm)
     dpdk_log_notice ("DPDK drivers found %d ports...", nports);
 
   if (dm->conf->enable_tcp_udp_checksum)
-    dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+    {
+      dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
+				     | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+      dm->buffer_flags_template |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+	| VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+    }
 
   /* vlib_buffer_t template */
   vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
