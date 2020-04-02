@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a8294522_e122086c",
+        "filename": "src/vppinfra/test_cuckoo_template.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-04-02T12:25:35Z",
+      "side": 1,
+      "message": "How is this overwrite, when line 212 says dont_overwrite?",
+      "range": {
+        "startLine": 142,
+        "startChar": 4,
+        "endLine": 142,
+        "endChar": 5
+      },
+      "revId": "d7b828f0cf0e21eebc4ae836668db68971225dd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
