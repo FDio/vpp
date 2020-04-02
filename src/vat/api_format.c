@@ -2890,7 +2890,7 @@ typedef struct
 {
   u32 spi;
   u8 si;
-} __attribute__ ((__packed__)) lisp_nsh_api_t;
+} __attribute__((__packed__)) lisp_nsh_api_t;
 
 uword
 unformat_nsh_address (unformat_input_t * input, va_list * args)
@@ -8966,14 +8966,14 @@ api_create_subif (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 sub_id;
   u8 sub_id_set = 0;
-  u32 __attribute__ ((unused)) no_tags = 0;
-  u32 __attribute__ ((unused)) one_tag = 0;
-  u32 __attribute__ ((unused)) two_tags = 0;
-  u32 __attribute__ ((unused)) dot1ad = 0;
-  u32 __attribute__ ((unused)) exact_match = 0;
-  u32 __attribute__ ((unused)) default_sub = 0;
-  u32 __attribute__ ((unused)) outer_vlan_id_any = 0;
-  u32 __attribute__ ((unused)) inner_vlan_id_any = 0;
+  u32 __attribute__((unused)) no_tags = 0;
+  u32 __attribute__((unused)) one_tag = 0;
+  u32 __attribute__((unused)) two_tags = 0;
+  u32 __attribute__((unused)) dot1ad = 0;
+  u32 __attribute__((unused)) exact_match = 0;
+  u32 __attribute__((unused)) default_sub = 0;
+  u32 __attribute__((unused)) outer_vlan_id_any = 0;
+  u32 __attribute__((unused)) inner_vlan_id_any = 0;
   u32 tmp;
   u16 outer_vlan_id = 0;
   u16 inner_vlan_id = 0;
@@ -12150,8 +12150,7 @@ static int
 api_gre_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
-  vl_api_address_t src = { }, dst =
-  {
+  vl_api_address_t src = { }, dst = {
   };
   vl_api_gre_tunnel_add_del_t *mp;
   vl_api_gre_tunnel_type_t t_type;
@@ -13406,12 +13405,9 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
-  vl_api_address_t laddr_start = { }, laddr_stop =
-  {
-  }, raddr_start =
-  {
-  }, raddr_stop =
-  {
+  vl_api_address_t laddr_start = { }, laddr_stop = {
+  }, raddr_start = {
+  }, raddr_stop = {
   };
   int ret;
 
@@ -13849,15 +13845,15 @@ static void vl_api_ipsec_sa_details_t_handler_json
 			    ntohl (mp->entry.integrity_algorithm));
   flags = ntohl (mp->entry.flags);
   vat_json_object_add_uint (node, "use_esn",
-			    ! !(flags & IPSEC_API_SAD_FLAG_USE_ESN));
+			    !!(flags & IPSEC_API_SAD_FLAG_USE_ESN));
   vat_json_object_add_uint (node, "use_anti_replay",
-			    ! !(flags & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY));
+			    !!(flags & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY));
   vat_json_object_add_uint (node, "is_tunnel",
-			    ! !(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL));
+			    !!(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL));
   vat_json_object_add_uint (node, "is_tunnel_ip6",
-			    ! !(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6));
+			    !!(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6));
   vat_json_object_add_uint (node, "udp_encap",
-			    ! !(flags & IPSEC_API_SAD_FLAG_UDP_ENCAP));
+			    !!(flags & IPSEC_API_SAD_FLAG_UDP_ENCAP));
   vat_json_object_add_bytes (node, "crypto_key", mp->entry.crypto_key.data,
 			     mp->entry.crypto_key.length);
   vat_json_object_add_bytes (node, "integ_key", mp->entry.integrity_key.data,
@@ -17636,7 +17632,7 @@ vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
       clib_memcpy (&ip4, &fp->nh.address.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "next_hop", ip4);
     }
-  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP4)
+  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP6)
     {
       clib_memcpy (&ip6, &fp->nh.address.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "next_hop", ip6);
