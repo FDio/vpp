@@ -432,7 +432,7 @@ vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
 u32
 vcl_max_nsid_len (void)
 {
-  vl_api_application_attach_t *mp;
+  vl_api_app_attach_t *mp;
   return (sizeof (mp->namespace_id) - 1);
 }
 
