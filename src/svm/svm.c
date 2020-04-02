@@ -103,7 +103,7 @@ region_lock (svm_region_t * rp, int tag)
   rp->mutex_owner_pid = getpid ();
   rp->mutex_owner_tag = tag;
 #endif
-  ASSERT (nheld < MAXLOCK);
+  ASSERT (nheld < MAXLOCK);	//NOSONAR
   /*
    * Keep score of held mutexes so we can try to exit
    * cleanly if the world comes to an end at the worst possible
@@ -770,7 +770,7 @@ svm_map_region (svm_map_region_args_t * a)
       return ((void *) rp);
 
     }
-  return 0;			/* NOTREACHED */
+  return 0;			/* NOTREACHED *///NOSONAR
 }
 
 static void
@@ -779,7 +779,7 @@ svm_mutex_cleanup (void)
   int i;
   for (i = 0; i < nheld; i++)
     {
-      pthread_mutex_unlock (mutexes_held[i]);
+      pthread_mutex_unlock (mutexes_held[i]);	//NOSONAR
     }
 }
 

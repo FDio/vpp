@@ -18741,7 +18741,7 @@ vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
       clib_memcpy (&ip4, &fp->nh.address.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "next_hop", ip4);
     }
-  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP4)
+  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP6)
     {
       clib_memcpy (&ip6, &fp->nh.address.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "next_hop", ip6);
