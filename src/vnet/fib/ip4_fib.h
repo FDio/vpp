@@ -172,6 +172,30 @@ ip4_fib_forwarding_lookup (u32 fib_index,
     return (ip4_fib_mtrie_leaf_get_adj_index(leaf));
 }
 
+static_always_inline void
+ip4_fib_forwarding_lookup_x2 (u32 fib_index0,
+                              u32 fib_index1,
+                              const ip4_address_t * addr0,
+                              const ip4_address_t * addr1,
+                              index_t *lb0,
+                              index_t *lb1)
+{
+    ip4_fib_mtrie_leaf_t leaf[2];
+    ip4_fib_mtrie_t * mtrie[2];
+
+    mtrie[0] = &ip4_fib_get(fib_index0)->mtrie;
+    mtrie[1] = &ip4_fib_get(fib_index1)->mtrie;
+
+    leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], addr0);
+    leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], addr1);
+    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 2);
+    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 2);
+    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 3);
+    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 3);
+
+    *lb0 = ip4_fib_mtrie_leaf_get_adj_index(leaf[0]);
+    *lb1 = ip4_fib_mtrie_leaf_get_adj_index(leaf[1]);
+}
 
 #endif
 
