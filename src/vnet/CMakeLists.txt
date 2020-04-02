@@ -440,7 +440,6 @@ list(APPEND VNET_SOURCES
   ip/ip4_mtrie.c
   ip/ip4_pg.c
   ip/ip4_source_and_port_range_check.c
-  ip/ip4_source_check.c
   ip/reass/ip4_full_reass.c
   ip/reass/ip4_sv_reass.c
   ip/ip6_format.c
@@ -470,7 +469,6 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
-  ip/ip4_source_check.c
   ip/ip4_punt_drop.c
   ip/reass/ip4_full_reass.c
   ip/ip6_hop_by_hop.c
