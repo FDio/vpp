@@ -593,6 +593,11 @@ I:	libmemif
 M:	Damjan Marion <damarion@cisco.com>
 F:	extras/libmemif
 
+gomemif
+I:	gomemif
+M:	Jakub Grajciar <jgrajcia@cisco.com>
+F:	extras/gomemif
+
 VPP Comms Library
 I:	vcl
 Y:	src/vnet/vcl/FEATURE.yaml
