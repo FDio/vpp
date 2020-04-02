@@ -185,7 +185,7 @@ clib_error_t *create_sym_session (struct rte_cryptodev_sym_session **session,
 static_always_inline u32
 crypto_op_len (void)
 {
-  const u32 align = 4;
+  const u32 align = 16;
   u32 op_size =
     sizeof (struct rte_crypto_op) + sizeof (struct rte_crypto_sym_op);
 
