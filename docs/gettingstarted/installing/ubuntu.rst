@@ -1,11 +1,11 @@
 .. _ubuntu:
 
 .. toctree::
- 
-Ubuntu 18.04 - Setup the FD.io Repository
-==========================================
 
-Choose one of the following releases to install. 
+Ubuntu - Setup the FD.io Repository
+===================================
+
+Choose one of the following releases to install.
 
 Update the OS
 -----------------------
@@ -85,4 +85,4 @@ Uninstall the  packages by running the following command:
 
 .. code-block:: console
 
-  sudo apt-get remove --purge vpp*
+  sudo apt-get remove --purge "vpp*"
