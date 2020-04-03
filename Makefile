@@ -415,7 +415,7 @@ rebuild-release: wipe-release build-release
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
 export TEST_DIR ?= $(WS_ROOT)/test
-export RND_SEED ?= $(shell python3 -c 'import time; print(time.time())')
+export RND_SEED ?= $(shell echo `date +%s`.$$$$)
 
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
