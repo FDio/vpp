@@ -648,7 +648,7 @@ class VPPAPIParser(object):
         elif len(p) == 4:
             p[0] = Field(p[1], p[2])
         else:
-            self._parse_error('ERROR')
+            self._parse_error('ERROR', self._token_coord(p, 1))
         self.fields.append(p[2])
 
     def p_declaration_array_vla(self, p):

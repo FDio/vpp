@@ -248,6 +248,7 @@ class Containers(object):
 
     def build(self, path, vpp_path):
         env = Environment(loader=FileSystemLoader(path),
+                          autoescape=True,
                           trim_blocks=True)
 
         self.tmp_render(join(vpp_path, "Dockerfile"),
@@ -264,6 +265,7 @@ class Containers(object):
 
     def release(self, path, vpp_path):
         env = Environment(loader=FileSystemLoader(path),
+                          autoescape=True,
                           trim_blocks=True)
 
         self.tmp_render(join(vpp_path, "Dockerfile"),
