@@ -527,7 +527,13 @@ esp_decrypt_inline (vlib_main_t * vm,
 				{
 				  /* no space, need to allocate new buffer */
 				  u32 tmp_bi = 0;
-				  vlib_buffer_alloc (vm, &tmp_bi, 1);
+				  if (1 != vlib_buffer_alloc (vm, &tmp_bi, 1))
+				    {
+				      b[0]->error = node->errors
+					[ESP_DECRYPT_ERROR_NO_BUFFERS];
+				      next[0] = ESP_DECRYPT_NEXT_DROP;
+				      goto next;
+				    }
 				  tmp_b = vlib_get_buffer (vm, tmp_bi);
 				  esn = tmp_b->data;
 				  pd->free_buffer_index = tmp_bi;
