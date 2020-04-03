@@ -489,6 +489,11 @@ I:	srv6-ad
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-ad/
 
+Plugin - IPv6 Segment Routing Flow-Based Dynamic Proxy
+I:	srv6-ad-flow
+M:	Francois Clad <fclad@cisco.com>
+F:	src/plugins/srv6-ad-flow/
+
 Plugin - IPv6 Segment Routing Masquerading Proxy
 I:	srv6-am
 M:	Francois Clad <fclad@cisco.com>
