@@ -145,11 +145,12 @@ class TestVxlanGbp(VppTestCase):
             # Create VXLAN GBP VTEP on VPP pg0, and put vxlan_gbp_tunnel0 and
             # pg1 into BD.
             cls.single_tunnel_bd = 1
+            cls.single_tunnel_vni = 1
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 tunnel={
                     'src': cls.pg0.local_ip4,
                     'dst': cls.pg0.remote_ip4,
-                    'vni': cls.single_tunnel_bd,
+                    'vni': cls.single_tunnel_vni,
                     'instance': INVALID_INDEX,
                     'mcast_sw_if_index': INVALID_INDEX,
                     'mode': 1,
