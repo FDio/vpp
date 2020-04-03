@@ -292,6 +292,7 @@ geneve_decap_next_is_valid (geneve_main_t * vxm, u32 is_ip6,
   return decap_next_index < r->n_next_nodes;
 }
 
+<<<<<<< HEAD   (5a4ee8 tests: pin sphinx and sphinx-rtd-theme)
 static uword
 vtep_addr_ref (ip46_address_t * ip)
 {
@@ -329,6 +330,17 @@ typedef CLIB_PACKED (union
 		     adj_index_t mcast_adj_index;
 		     }; u64 as_u64;
 		     }) mcast_shared_t;
+=======
+typedef union
+{
+  struct
+  {
+    fib_node_index_t mfib_entry_index;
+    adj_index_t mcast_adj_index;
+  };
+  u64 as_u64;
+} __clib_packed mcast_shared_t;
+>>>>>>> CHANGE (91fd91 geneve: Fix the byte swapping for the VNI)
 
 static inline mcast_shared_t
 mcast_shared_get (ip46_address_t * ip)
@@ -381,15 +393,13 @@ int vnet_geneve_add_del_tunnel
   if (!is_ip6)
     {
       key4.remote = a->remote.ip4.as_u32;
-      key4.vni =
-	clib_host_to_net_u32 ((a->vni << GENEVE_VNI_SHIFT) & GENEVE_VNI_MASK);
+      key4.vni = clib_host_to_net_u32 (a->vni << GENEVE_VNI_SHIFT);
       p = hash_get (vxm->geneve4_tunnel_by_key, key4.as_u64);
     }
   else
     {
       key6.remote = a->remote.ip6;
-      key6.vni =
-	clib_host_to_net_u32 ((a->vni << GENEVE_VNI_SHIFT) & GENEVE_VNI_MASK);
+      key6.vni = clib_host_to_net_u32 (a->vni << GENEVE_VNI_SHIFT);
       p = hash_get_mem (vxm->geneve6_tunnel_by_key, &key6);
     }
 
