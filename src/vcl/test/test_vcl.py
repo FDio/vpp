@@ -500,20 +500,15 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
         super(LDPThruHostStackBidirNsock, self).setUp()
 
         self.thru_host_stack_setup()
-        if self.vppDebug:
-            self.client_bi_dir_nsock_timeout = 20
-            self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
-                                                  # OUCH! Host Stack Bug?
-                                                  # "-I", "2",
-                                                  self.loop0.local_ip4,
-                                                  self.server_port]
-        else:
-            self.client_bi_dir_nsock_timeout = 20
-            self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
-                                                  # OUCH! Host Stack Bug?
-                                                  # "-I", "2",
-                                                  self.loop0.local_ip4,
-                                                  self.server_port]
+        self.client_bi_dir_nsock_timeout = 20
+        self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
+                                              # OUCH! Host Stack Bug?
+                                              # Only fails when running
+                                              # 'make test TEST_JOBS=auto'
+                                              # or TEST_JOBS > 1
+                                              # "-I", "2",
+                                              self.loop0.local_ip4,
+                                              self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
