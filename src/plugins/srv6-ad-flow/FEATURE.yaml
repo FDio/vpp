@@ -1,0 +1,8 @@
+---
+name: SRv6 - Service Chaining Flow-based Dynamic Proxy
+maintainer: Francois Clad <fclad@cisco.com>
+features:
+        - SRv6 - flow-based dynamic service chaining proxy (draft-ietf-spring-sr-service-programming-01)
+description: "SRv6 flow-based dynamic proxy"
+state: production
+properties: [CLI]
