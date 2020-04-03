@@ -726,6 +726,9 @@ typedef struct snat_main_s
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
 
+  /* scavenging enabled */
+  u8 do_scavenging;
+
 } snat_main_t;
 
 typedef struct

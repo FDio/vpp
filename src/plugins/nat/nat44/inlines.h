@@ -280,13 +280,19 @@ done:
 static_always_inline u32
 nat44_partial_scavenging (snat_user_t * u, u32 thread_index, f64 now)
 {
-  return nat44_user_session_cleanup (u, thread_index, now);
+  snat_main_t *sm = &snat_main;
+  if (PREDICT_TRUE (sm->do_scavenging))
+    return nat44_user_session_cleanup (u, thread_index, now);
+  return 0;
 }
 
 static_always_inline u32
 nat44_full_scavenging (u32 thread_index, f64 now)
 {
-  return nat44_users_cleanup (thread_index, now);
+  snat_main_t *sm = &snat_main;
+  if (PREDICT_TRUE (sm->do_scavenging))
+    return nat44_users_cleanup (thread_index, now);
+  return 0;
 }
 
 static_always_inline u32
