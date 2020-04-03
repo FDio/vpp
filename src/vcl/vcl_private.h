@@ -151,7 +151,7 @@ do {                                            \
 
 typedef enum vcl_session_flags_
 {
-  VCL_SESSION_F_CONNECTED,
+  VCL_SESSION_F_CONNECTED = 1 << 0,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct

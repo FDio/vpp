@@ -461,7 +461,7 @@ quic_echo_process_opts_cb (unformat_input_t * a)
   else if (unformat (a, "quic-setup %U", quic_echo_unformat_setup_vft))
     ;
   else if (unformat (a, "uni"))
-    em->connect_flag = SESSION_F_UNIDIRECTIONAL;
+    em->connect_flag = TRANSPORT_CFG_F_UNIDIRECTIONAL;
   else if (unformat (a, "qclose=%U",
 		     echo_unformat_close, &eqm->send_quic_disconnects))
     ;

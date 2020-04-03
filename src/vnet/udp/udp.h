@@ -39,6 +39,7 @@ typedef enum
   _(OWNS_PORT, "OWNS_PORT")	/**< port belong to conn (UDPC) */	\
   _(CLOSING, "CLOSING")		/**< conn closed with data */		\
   _(LISTEN, "LISTEN")		/**< conn is listening */		\
+  _(MIGRATED, "MIGRATED")	/**< cloned to another thread */	\
 
 enum udp_conn_flags_bits
 {
@@ -258,6 +259,7 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   udp_pool_add_peeker (thread_index);
   old_c = udp_main.connections[thread_index] + connection_index;
   clib_memcpy_fast (new_c, old_c, sizeof (*new_c));
+  old_c->flags |= UDP_CONN_F_MIGRATED;
   udp_pool_remove_peeker (thread_index);
   new_c->c_thread_index = current_thread_index;
   new_c->c_c_index = udp_connection_index (new_c);

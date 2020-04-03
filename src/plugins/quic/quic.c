@@ -1182,6 +1182,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_index;
+  u8 is_unidir;
   int rv;
 
   /*  Find base session to which the user want to attach a stream */
@@ -1225,9 +1226,8 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   if (!conn || !quicly_connection_is_ready (conn))
     return -1;
 
-  if ((rv =
-       quicly_open_stream (conn, &stream,
-			   sep->flags & SESSION_F_UNIDIRECTIONAL)))
+  is_unidir = sep->transport_flags & TRANSPORT_CFG_F_UNIDIRECTIONAL;
+  if ((rv = quicly_open_stream (conn, &stream, is_unidir)))
     {
       QUIC_DBG (2, "Stream open failed with %d", rv);
       return -1;
@@ -1246,7 +1246,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   stream_session->listener_handle = quic_session_handle;
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
-  if (sep->flags & SESSION_F_UNIDIRECTIONAL)
+  if (is_unidir)
     stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
   sctx->c_s_index = stream_session->session_index;
