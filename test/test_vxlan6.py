@@ -175,6 +175,44 @@ class TestVxlan6(BridgeDomain, VppTestCase):
     def tearDownClass(cls):
         super(TestVxlan6, cls).tearDownClass()
 
+<<<<<<< HEAD   (5a4ee8 tests: pin sphinx and sphinx-rtd-theme)
+=======
+    def setUp(self):
+        super(TestVxlan6, self).setUp()
+        # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
+        #  into BD.
+        self.single_tunnel_vni = 0x12345
+        self.single_tunnel_bd = 1
+        r = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+                           dst=self.pg0.remote_ip6,
+                           vni=self.single_tunnel_vni)
+        r.add_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=self.single_tunnel_bd)
+
+        # Setup vni 2 to test multicast flooding
+        self.n_ucast_tunnels = 10
+        self.mcast_flood_bd = 2
+        self.create_vxlan_flood_test_bd(self.mcast_flood_bd,
+                                        self.n_ucast_tunnels)
+        r = VppVxlanTunnel(self, src=self.pg0.local_ip6, dst=self.mcast_ip6,
+                           mcast_sw_if_index=1, vni=self.mcast_flood_bd)
+        r.add_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.mcast_flood_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.mcast_flood_bd)
+
+        # Setup vni 3 to test unicast flooding
+        self.ucast_flood_bd = 3
+        self.create_vxlan_flood_test_bd(self.ucast_flood_bd,
+                                        self.n_ucast_tunnels)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg3.sw_if_index, bd_id=self.ucast_flood_bd)
+
+>>>>>>> CHANGE (91fd91 geneve: Fix the byte swapping for the VNI)
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.

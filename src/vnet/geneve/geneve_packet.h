@@ -137,21 +137,14 @@ typedef struct
 static inline u32
 vnet_get_geneve_vni (geneve_header_t * h)
 {
-  return (clib_net_to_host_u32 (h->vni_rsvd & GENEVE_VNI_MASK) >>
+  return ((clib_net_to_host_u32 (h->vni_rsvd) & GENEVE_VNI_MASK) >>
 	  GENEVE_VNI_SHIFT);
 }
 
-/*
- * Return the VNI in network-byte order
- *
- * To be used in the DECAP phase to create the lookup key (IP + VNI)
- */
 static inline u32
-vnet_get_geneve_vni_bigendian (geneve_header_t * h)
+vnet_get_geneve_vni_network_order (geneve_header_t * h)
 {
-  u32 vni_host = vnet_get_geneve_vni (h);
-  return clib_host_to_net_u32 ((vni_host << GENEVE_VNI_SHIFT) &
-			       GENEVE_VNI_MASK);
+  return (h->vni_rsvd & clib_net_to_host_u32 (GENEVE_VNI_MASK));
 }
 
 static inline void
