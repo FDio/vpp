@@ -185,9 +185,10 @@ class TestVxlan(BridgeDomain, VppTestCase):
             # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
             #  into BD.
             cls.single_tunnel_bd = 1
+            cls.single_tunnel_vni = 0xabcde
             r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip4n,
                                               dst_address=cls.pg0.remote_ip4n,
-                                              vni=cls.single_tunnel_bd)
+                                              vni=cls.single_tunnel_vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
@@ -250,7 +251,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         ether = out[0]
         pkt = reassemble4(out)
         pkt = ether / pkt
-        self.check_encapsulation(pkt, self.single_tunnel_bd)
+        self.check_encapsulation(pkt, self.single_tunnel_vni)
 
         payload = self.decapsulate(pkt)
         # TODO: Scapy bug?

@@ -138,10 +138,11 @@ class TestVxlan6(BridgeDomain, VppTestCase):
             # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
             #  into BD.
             cls.single_tunnel_bd = 1
+            cls.single_tunnel_vni = 0xabcde
             r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip6n,
                                               dst_address=cls.pg0.remote_ip6n,
                                               is_ipv6=1,
-                                              vni=cls.single_tunnel_bd)
+                                              vni=cls.single_tunnel_vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
