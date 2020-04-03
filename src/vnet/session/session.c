@@ -1570,7 +1570,6 @@ session_manager_main_enable (vlib_main_t * vm)
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
 
-  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -1686,10 +1685,14 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
 }
 
 clib_error_t *
-session_manager_main_init (vlib_main_t * vm)
+session_main_init (vlib_main_t * vm)
 {
   session_main_t *smm = &session_main;
+
+  smm->is_enabled = 0;
+  smm->session_enable_asap = 0;
   smm->session_baseva = HIGH_SEGMENT_BASEVA;
+
 #if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
   smm->session_va_space_size = 128ULL << 30;
   smm->evt_qs_segment_size = 64 << 20;
@@ -1697,13 +1700,14 @@ session_manager_main_init (vlib_main_t * vm)
   smm->session_va_space_size = 128 << 20;
   smm->evt_qs_segment_size = 1 << 20;
 #endif
-  smm->is_enabled = 0;
-  smm->session_enable_asap = 0;
+
+  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
+
   return 0;
 }
 
 static clib_error_t *
-session_main_init (vlib_main_t * vm)
+session_main_loop_init (vlib_main_t * vm)
 {
   session_main_t *smm = &session_main;
   if (smm->session_enable_asap)
@@ -1715,8 +1719,8 @@ session_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (session_manager_main_init);
-VLIB_MAIN_LOOP_ENTER_FUNCTION (session_main_init);
+VLIB_INIT_FUNCTION (session_main_init);
+VLIB_MAIN_LOOP_ENTER_FUNCTION (session_main_loop_init);
 
 static clib_error_t *
 session_config_fn (vlib_main_t * vm, unformat_input_t * input)
