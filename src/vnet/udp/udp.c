@@ -284,7 +284,11 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *uc;
   uc = udp_connection_get (connection_index, thread_index);
-  if (uc)
+  if (!uc)
+    return;
+  if (uc->flags & UDP_CONN_F_MIGRATED)
+    udp_connection_free (uc);
+  else
     udp_connection_cleanup (uc);
 }
 
