@@ -164,63 +164,63 @@ class VppGrubUtil(object):
         """
 
         vpp_cmdline = self.create_cmdline(isolated_cpus)
-        if vpp_cmdline == '':
-            return vpp_cmdline
+        if len(vpp_cmdline):
+            # Update grub
+            # Save the original file
+            rootdir = node['rootdir']
+            grubcmdline = node['cpu']['grubcmdline']
+            ofilename = rootdir + node['cpu']['grub_config_file'] + '.orig'
+            filename = rootdir + node['cpu']['grub_config_file']
 
-        # Update grub
-        # Save the original file
-        rootdir = node['rootdir']
-        grubcmdline = node['cpu']['grubcmdline']
-        ofilename = rootdir + node['cpu']['grub_config_file'] + '.orig'
-        filename = rootdir + node['cpu']['grub_config_file']
+            # Write the output file
+            # Does a copy of the original file exist, if not create one
+            (ret, stdout, stderr) = VPPUtil.exec_command(
+                'ls {}'.format(ofilename))
+            if ret != 0:
+                if stdout.strip('\n') != ofilename:
+                    cmd = 'sudo cp {} {}'.format(filename, ofilename)
+                    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+                    if ret != 0:
+                        raise RuntimeError('{} failed on node {} {}'.
+                                           format(cmd, self._node['host'],
+                                                  stderr))
 
-        # Write the output file
-        # Does a copy of the original file exist, if not create one
-        (ret, stdout, stderr) = VPPUtil.exec_command('ls {}'.format(ofilename))
-        if ret != 0:
-            if stdout.strip('\n') != ofilename:
-                cmd = 'sudo cp {} {}'.format(filename, ofilename)
-                (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-                if ret != 0:
-                    raise RuntimeError('{} failed on node {} {}'.
-                                       format(cmd, self._node['host'], stderr))
+            # Get the contents of the current grub config file
+            cmd = 'cat {}'.format(filename)
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                raise RuntimeError('{} failed on node {} {}'.format(
+                    cmd,
+                    self._node['host'],
+                    stderr))
 
-        # Get the contents of the current grub config file
-        cmd = 'cat {}'.format(filename)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {}'.format(
-                cmd,
-                self._node['host'],
-                stderr))
+            # Write the new contents
+            # Get the Default Linux command line, ignoring commented lines
+            content = ""
+            lines = stdout.split('\n')
+            for line in lines:
+                if line == '':
+                    content += line + '\n'
+                    continue
+                if line[0] == '#':
+                    content += line + '\n'
+                    continue
 
-        # Write the new contents
-        # Get the Default Linux command line, ignoring commented lines
-        content = ""
-        lines = stdout.split('\n')
-        for line in lines:
-            if line == '':
-                content += line + '\n'
-                continue
-            if line[0] == '#':
-                content += line + '\n'
-                continue
+                ldefault = re.findall(r'{}=.+'.format(grubcmdline), line)
+                if ldefault:
+                    content += vpp_cmdline + '\n'
+                else:
+                    content += line + '\n'
 
-            ldefault = re.findall(r'{}=.+'.format(grubcmdline), line)
-            if ldefault:
-                content += vpp_cmdline + '\n'
-            else:
-                content += line + '\n'
-
-        content = content.replace(r"`", r"\`")
-        content = content.rstrip('\n')
-        cmd = "sudo cat > {0} << EOF\n{1}\n".format(filename, content)
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {}'.format(
-                cmd,
-                self._node['host'],
-                stderr))
+            content = content.replace(r"`", r"\`")
+            content = content.rstrip('\n')
+            cmd = "sudo cat > {0} << EOF\n{1}\n".format(filename, content)
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                raise RuntimeError('{} failed on node {} {}'.format(
+                    cmd,
+                    self._node['host'],
+                    stderr))
 
         return vpp_cmdline
 
