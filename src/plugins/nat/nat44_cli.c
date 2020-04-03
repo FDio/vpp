@@ -31,6 +31,8 @@
   "This command is unsupported in deterministic mode"
 #define SUPPORTED_ONLY_IN_DET_MODE_STR \
   "This command is supported only in deterministic mode"
+#define SUPPORTED_ONLY_IN_ED_MODE_STR \
+  "This command is supported only in endpoint dependent mode"
 
 static clib_error_t *
 set_workers_command_fn (vlib_main_t * vm,
@@ -712,20 +714,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
               }
           }));
           count += pool_elts (tsm->sessions);
-
-          vlib_cli_output (vm, "tid[%u] session scavenging cleared: %u",
-              tsm->thread_index, tsm->cleared);
-          vlib_cli_output (vm, "tid[%u] session partial scavenging runs: %u",
-              tsm->thread_index, tsm->partial_cleanup_runs);
-          vlib_cli_output (vm, "tid[%u] session full scavenging runs: %u",
-              tsm->thread_index, tsm->full_cleanup_runs);
-
-          if (now < tsm->full_cleanup_timeout)
-            vlib_cli_output (vm, "tid[%u] session full scavenging available in: %f",
-              tsm->thread_index, tsm->full_cleanup_timeout - now);
-          else
-            vlib_cli_output (vm, "tid[%u] session full scavenging available now",
-              tsm->thread_index);
         }
       /* *INDENT-ON* */
     }
@@ -773,20 +761,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
       }));
       /* *INDENT-ON* */
       count = pool_elts (tsm->sessions);
-
-      vlib_cli_output (vm, "tid[0] session scavenging cleared: %u",
-		       tsm->cleared);
-      vlib_cli_output (vm, "tid[0] session partial scavenging runs: %u",
-		       tsm->partial_cleanup_runs);
-      vlib_cli_output (vm, "tid[0] session full scavenging runs: %u",
-		       tsm->full_cleanup_runs);
-
-      if (now < tsm->full_cleanup_timeout)
-	vlib_cli_output (vm,
-			 "tid[0] session full scavenging available in: %f",
-			 tsm->full_cleanup_timeout - now);
-      else
-	vlib_cli_output (vm, "tid[0] session full scavenging available now");
     }
 
   vlib_cli_output (vm, "total timed out sessions: %u", timed_out);
@@ -1741,6 +1715,104 @@ done:
 }
 
 static clib_error_t *
+nat44_scavenging_set_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 do_scavenging = ~0;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "'enable' or 'disable' expected");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	do_scavenging = 1;
+      else if (unformat (line_input, "disable"))
+	do_scavenging = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+  if (do_scavenging == ~0)
+    {
+      error = clib_error_return (0, "'enable' or 'disable' expected");
+      goto done;
+    }
+  sm->do_scavenging = do_scavenging;
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+static clib_error_t *
+nat44_scavenging_show_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  snat_main_per_thread_data_t *tsm;
+  snat_main_t *sm = &snat_main;
+
+  if (!sm->endpoint_dependent)
+    return clib_error_return (0, SUPPORTED_ONLY_IN_ED_MODE_STR);
+
+  if (!sm->do_scavenging)
+    return clib_error_return (0, "scavenging disabled");
+
+  u64 now = vlib_time_now (sm->vlib_main);
+
+  if (sm->num_workers > 1)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          vlib_cli_output (vm, "tid[%u] session scavenging cleared: %u",
+              tsm->thread_index, tsm->cleared);
+          vlib_cli_output (vm, "tid[%u] session partial scavenging runs: %u",
+              tsm->thread_index, tsm->partial_cleanup_runs);
+          vlib_cli_output (vm, "tid[%u] session full scavenging runs: %u",
+              tsm->thread_index, tsm->full_cleanup_runs);
+
+          if (now < tsm->full_cleanup_timeout)
+            vlib_cli_output (vm, "tid[%u] session full scavenging available in: %f",
+              tsm->thread_index, tsm->full_cleanup_timeout - now);
+          else
+            vlib_cli_output (vm, "tid[%u] session full scavenging available now",
+              tsm->thread_index);
+
+        }
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+      /* *INDENT-OFF* */
+
+      vlib_cli_output (vm, "tid[0] session scavenging cleared: %u",
+		       tsm->cleared);
+      vlib_cli_output (vm, "tid[0] session partial scavenging runs: %u",
+		       tsm->partial_cleanup_runs);
+      vlib_cli_output (vm, "tid[0] session full scavenging runs: %u",
+		       tsm->full_cleanup_runs);
+
+      if (now < tsm->full_cleanup_timeout)
+	vlib_cli_output (vm,
+			 "tid[0] session full scavenging available in: %f",
+			 tsm->full_cleanup_timeout - now);
+      else
+	vlib_cli_output (vm, "tid[0] session full scavenging available now");
+    }
+  return 0;
+}
+
+static clib_error_t *
 snat_det_map_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -1819,219 +1891,218 @@ nat44_det_show_mappings_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  return 0;
-}
+      return 0;
+    }
 
-static clib_error_t *
-snat_det_forward_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, out_addr;
-  u16 lo_port;
-  snat_det_map_t *dm;
-  clib_error_t *error = 0;
+  static clib_error_t *snat_det_forward_command_fn (vlib_main_t * vm,
+						    unformat_input_t * input,
+						    vlib_cli_command_t * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    unformat_input_t _line_input, *line_input = &_line_input;
+    ip4_address_t in_addr, out_addr;
+    u16 lo_port;
+    snat_det_map_t *dm;
+    clib_error_t *error = 0;
 
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
+    if (!sm->deterministic)
+      return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
+    /* Get a line of input. */
+    if (!unformat_user (input, unformat_line_input, line_input))
+      return 0;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (line_input, "%U", unformat_ip4_address, &in_addr))
+	  ;
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
+      }
+
+    dm = snat_det_map_by_user (sm, &in_addr);
+    if (!dm)
+      vlib_cli_output (vm, "no match");
+    else
+      {
+	snat_det_forward (dm, &in_addr, &out_addr, &lo_port);
+	vlib_cli_output (vm, "%U:<%d-%d>", format_ip4_address, &out_addr,
+			 lo_port, lo_port + dm->ports_per_host - 1);
+      }
+
+  done:
+    unformat_free (line_input);
+
+    return error;
+  }
+
+  static clib_error_t *snat_det_reverse_command_fn (vlib_main_t * vm,
+						    unformat_input_t * input,
+						    vlib_cli_command_t * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    unformat_input_t _line_input, *line_input = &_line_input;
+    ip4_address_t in_addr, out_addr;
+    u32 out_port;
+    snat_det_map_t *dm;
+    clib_error_t *error = 0;
+
+    if (!sm->deterministic)
+      return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
+
+    /* Get a line of input. */
+    if (!unformat_user (input, unformat_line_input, line_input))
+      return 0;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat
+	    (line_input, "%U:%d", unformat_ip4_address, &out_addr, &out_port))
+	  ;
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
+      }
+
+    if (out_port < 1024 || out_port > 65535)
+      {
+	error = clib_error_return (0, "wrong port, must be <1024-65535>");
+	goto done;
+      }
+
+    dm = snat_det_map_by_out (sm, &out_addr);
+    if (!dm)
+      vlib_cli_output (vm, "no match");
+    else
+      {
+	snat_det_reverse (dm, &out_addr, (u16) out_port, &in_addr);
+	vlib_cli_output (vm, "%U", format_ip4_address, &in_addr);
+      }
+
+  done:
+    unformat_free (line_input);
+
+    return error;
+  }
+
+  static clib_error_t *set_timeout_command_fn (vlib_main_t * vm,
+					       unformat_input_t * input,
+					       vlib_cli_command_t * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    unformat_input_t _line_input, *line_input = &_line_input;
+    clib_error_t *error = 0;
+
+    /* Get a line of input. */
+    if (!unformat_user (input, unformat_line_input, line_input))
+      return 0;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (line_input, "udp %u", &sm->udp_timeout))
+	  {
+	    if (nat64_set_udp_timeout (sm->udp_timeout))
+	      {
+		error = clib_error_return (0, "Invalid UDP timeout value");
+		goto done;
+	      }
+	  }
+	else if (unformat (line_input, "tcp-established %u",
+			   &sm->tcp_established_timeout))
+	  {
+	    if (nat64_set_tcp_timeouts
+		(sm->tcp_transitory_timeout, sm->tcp_established_timeout))
+	      {
+		error =
+		  clib_error_return (0,
+				     "Invalid TCP established timeouts value");
+		goto done;
+	      }
+	  }
+	else if (unformat (line_input, "tcp-transitory %u",
+			   &sm->tcp_transitory_timeout))
+	  {
+	    if (nat64_set_tcp_timeouts
+		(sm->tcp_transitory_timeout, sm->tcp_established_timeout))
+	      {
+		error =
+		  clib_error_return (0,
+				     "Invalid TCP transitory timeouts value");
+		goto done;
+	      }
+	  }
+	else if (unformat (line_input, "icmp %u", &sm->icmp_timeout))
+	  {
+	    if (nat64_set_icmp_timeout (sm->icmp_timeout))
+	      {
+		error = clib_error_return (0, "Invalid ICMP timeout value");
+		goto done;
+	      }
+	  }
+	else if (unformat (line_input, "reset"))
+	  {
+	    sm->udp_timeout = SNAT_UDP_TIMEOUT;
+	    sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+	    sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+	    sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+	    nat64_set_udp_timeout (0);
+	    nat64_set_icmp_timeout (0);
+	    nat64_set_tcp_timeouts (0, 0);
+	  }
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
+      }
+  done:
+    unformat_free (line_input);
+    sm->min_timeout = nat44_minimal_timeout (sm);
+    return error;
+  }
+
+  static clib_error_t *nat_show_timeouts_command_fn (vlib_main_t * vm,
+						     unformat_input_t * input,
+						     vlib_cli_command_t * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+
+    // fix text
+    vlib_cli_output (vm, "min session cleanup timeout: %dsec",
+		     sm->min_timeout);
+    vlib_cli_output (vm, "udp timeout: %dsec", sm->udp_timeout);
+    vlib_cli_output (vm, "tcp-established timeout: %dsec",
+		     sm->tcp_established_timeout);
+    vlib_cli_output (vm, "tcp-transitory timeout: %dsec",
+		     sm->tcp_transitory_timeout);
+    vlib_cli_output (vm, "icmp timeout: %dsec", sm->icmp_timeout);
+
     return 0;
+  }
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_ip4_address, &in_addr))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
+  static clib_error_t *nat44_det_show_sessions_command_fn (vlib_main_t * vm,
+							   unformat_input_t *
+							   input,
+							   vlib_cli_command_t
+							   * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    snat_det_map_t *dm;
+    snat_det_session_t *ses;
+    int i;
 
-  dm = snat_det_map_by_user (sm, &in_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_forward (dm, &in_addr, &out_addr, &lo_port);
-      vlib_cli_output (vm, "%U:<%d-%d>", format_ip4_address, &out_addr,
-		       lo_port, lo_port + dm->ports_per_host - 1);
-    }
+    if (!sm->deterministic)
+      return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
 
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-snat_det_reverse_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, out_addr;
-  u32 out_port;
-  snat_det_map_t *dm;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U:%d", unformat_ip4_address, &out_addr, &out_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (out_port < 1024 || out_port > 65535)
-    {
-      error = clib_error_return (0, "wrong port, must be <1024-65535>");
-      goto done;
-    }
-
-  dm = snat_det_map_by_out (sm, &out_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_reverse (dm, &out_addr, (u16) out_port, &in_addr);
-      vlib_cli_output (vm, "%U", format_ip4_address, &in_addr);
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-set_timeout_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "udp %u", &sm->udp_timeout))
-	{
-	  if (nat64_set_udp_timeout (sm->udp_timeout))
-	    {
-	      error = clib_error_return (0, "Invalid UDP timeout value");
-	      goto done;
-	    }
-	}
-      else if (unformat (line_input, "tcp-established %u",
-			 &sm->tcp_established_timeout))
-	{
-	  if (nat64_set_tcp_timeouts
-	      (sm->tcp_transitory_timeout, sm->tcp_established_timeout))
-	    {
-	      error =
-		clib_error_return (0,
-				   "Invalid TCP established timeouts value");
-	      goto done;
-	    }
-	}
-      else if (unformat (line_input, "tcp-transitory %u",
-			 &sm->tcp_transitory_timeout))
-	{
-	  if (nat64_set_tcp_timeouts
-	      (sm->tcp_transitory_timeout, sm->tcp_established_timeout))
-	    {
-	      error =
-		clib_error_return (0,
-				   "Invalid TCP transitory timeouts value");
-	      goto done;
-	    }
-	}
-      else if (unformat (line_input, "icmp %u", &sm->icmp_timeout))
-	{
-	  if (nat64_set_icmp_timeout (sm->icmp_timeout))
-	    {
-	      error = clib_error_return (0, "Invalid ICMP timeout value");
-	      goto done;
-	    }
-	}
-      else if (unformat (line_input, "reset"))
-	{
-	  sm->udp_timeout = SNAT_UDP_TIMEOUT;
-	  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
-	  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
-	  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
-	  nat64_set_udp_timeout (0);
-	  nat64_set_icmp_timeout (0);
-	  nat64_set_tcp_timeouts (0, 0);
-	}
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-done:
-  unformat_free (line_input);
-  sm->min_timeout = nat44_minimal_timeout (sm);
-  return error;
-}
-
-static clib_error_t *
-nat_show_timeouts_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-
-  // fix text
-  vlib_cli_output (vm, "min session cleanup timeout: %dsec", sm->min_timeout);
-  vlib_cli_output (vm, "udp timeout: %dsec", sm->udp_timeout);
-  vlib_cli_output (vm, "tcp-established timeout: %dsec",
-		   sm->tcp_established_timeout);
-  vlib_cli_output (vm, "tcp-transitory timeout: %dsec",
-		   sm->tcp_transitory_timeout);
-  vlib_cli_output (vm, "icmp timeout: %dsec", sm->icmp_timeout);
-
-  return 0;
-}
-
-static clib_error_t *
-nat44_det_show_sessions_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  int i;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  vlib_cli_output (vm, "NAT44 deterministic sessions:");
+    vlib_cli_output (vm, "NAT44 deterministic sessions:");
   /* *INDENT-OFF* */
   pool_foreach (dm, sm->det_maps,
   ({
@@ -2043,125 +2114,125 @@ nat44_det_show_sessions_command_fn (vlib_main_t * vm,
       }
   }));
   /* *INDENT-ON* */
-  return 0;
-}
-
-static clib_error_t *
-snat_det_close_session_out_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t out_addr, ext_addr, in_addr;
-  u32 out_port, ext_port;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  snat_det_out_key_t key;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
+  }
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &out_addr, &out_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
+  static clib_error_t *snat_det_close_session_out_fn (vlib_main_t * vm,
+						      unformat_input_t *
+						      input,
+						      vlib_cli_command_t *
+						      cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    unformat_input_t _line_input, *line_input = &_line_input;
+    ip4_address_t out_addr, ext_addr, in_addr;
+    u32 out_port, ext_port;
+    snat_det_map_t *dm;
+    snat_det_session_t *ses;
+    snat_det_out_key_t key;
+    clib_error_t *error = 0;
 
-  unformat_free (line_input);
+    if (!sm->deterministic)
+      return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
 
-  dm = snat_det_map_by_out (sm, &out_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_reverse (dm, &ext_addr, (u16) out_port, &in_addr);
-      key.ext_host_addr = out_addr;
-      key.ext_host_port = ntohs ((u16) ext_port);
-      key.out_port = ntohs ((u16) out_port);
-      ses = snat_det_get_ses_by_out (dm, &out_addr, key.as_u64);
-      if (!ses)
-	vlib_cli_output (vm, "no match");
-      else
-	snat_det_ses_close (dm, ses);
-    }
+    /* Get a line of input. */
+    if (!unformat_user (input, unformat_line_input, line_input))
+      return 0;
 
-done:
-  unformat_free (line_input);
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (line_input, "%U:%d %U:%d",
+		      unformat_ip4_address, &out_addr, &out_port,
+		      unformat_ip4_address, &ext_addr, &ext_port))
+	  ;
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
+      }
 
-  return error;
-}
+    unformat_free (line_input);
 
-static clib_error_t *
-snat_det_close_session_in_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, ext_addr;
-  u32 in_port, ext_port;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  snat_det_out_key_t key;
-  clib_error_t *error = 0;
+    dm = snat_det_map_by_out (sm, &out_addr);
+    if (!dm)
+      vlib_cli_output (vm, "no match");
+    else
+      {
+	snat_det_reverse (dm, &ext_addr, (u16) out_port, &in_addr);
+	key.ext_host_addr = out_addr;
+	key.ext_host_port = ntohs ((u16) ext_port);
+	key.out_port = ntohs ((u16) out_port);
+	ses = snat_det_get_ses_by_out (dm, &out_addr, key.as_u64);
+	if (!ses)
+	  vlib_cli_output (vm, "no match");
+	else
+	  snat_det_ses_close (dm, ses);
+      }
 
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
+  done:
+    unformat_free (line_input);
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return error;
+  }
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &in_addr, &in_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
+  static clib_error_t *snat_det_close_session_in_fn (vlib_main_t * vm,
+						     unformat_input_t * input,
+						     vlib_cli_command_t * cmd)
+  {
+    snat_main_t *sm = &snat_main;
+    unformat_input_t _line_input, *line_input = &_line_input;
+    ip4_address_t in_addr, ext_addr;
+    u32 in_port, ext_port;
+    snat_det_map_t *dm;
+    snat_det_session_t *ses;
+    snat_det_out_key_t key;
+    clib_error_t *error = 0;
 
-  unformat_free (line_input);
+    if (!sm->deterministic)
+      return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
 
-  dm = snat_det_map_by_user (sm, &in_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      key.ext_host_addr = ext_addr;
-      key.ext_host_port = ntohs ((u16) ext_port);
-      ses =
-	snat_det_find_ses_by_in (dm, &in_addr, ntohs ((u16) in_port), key);
-      if (!ses)
-	vlib_cli_output (vm, "no match");
-      else
-	snat_det_ses_close (dm, ses);
-    }
+    /* Get a line of input. */
+    if (!unformat_user (input, unformat_line_input, line_input))
+      return 0;
 
-done:
-  unformat_free (line_input);
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (line_input, "%U:%d %U:%d",
+		      unformat_ip4_address, &in_addr, &in_port,
+		      unformat_ip4_address, &ext_addr, &ext_port))
+	  ;
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
+      }
 
-  return error;
-}
+    unformat_free (line_input);
+
+    dm = snat_det_map_by_user (sm, &in_addr);
+    if (!dm)
+      vlib_cli_output (vm, "no match");
+    else
+      {
+	key.ext_host_addr = ext_addr;
+	key.ext_host_port = ntohs ((u16) ext_port);
+	ses =
+	  snat_det_find_ses_by_in (dm, &in_addr, ntohs ((u16) in_port), key);
+	if (!ses)
+	  vlib_cli_output (vm, "no match");
+	else
+	  snat_det_ses_close (dm, ses);
+      }
+
+  done:
+    unformat_free (line_input);
+
+    return error;
+  }
 /* *INDENT-OFF* */
 
 /*?
@@ -2681,6 +2752,35 @@ VLIB_CLI_COMMAND (snat_forwarding_set_command, static) = {
   .path = "nat44 forwarding",
   .short_help = "nat44 forwarding enable|disable",
   .function = snat_forwarding_set_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 scavenging}
+ * Enable or disable scavenging
+ * To enable scavenging, use:
+ *  vpp# nat44 scavenging enable
+ * To disable scavenging, use:
+ *  vpp# nat44 scavenging disable
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_scavenging_set_command, static) = {
+  .path = "nat44 scavenging",
+  .short_help = "nat44 scavenging enable|disable",
+  .function = nat44_scavenging_set_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show nat44 scavenging}
+ * Show NAT44 scavenging
+ * vpp# show nat44 scavenging
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_scavenging_show_command, static) = {
+  .path = "show nat44 scavenging",
+  .short_help = "show nat44 scavenging",
+  .function = nat44_scavenging_show_command_fn,
 };
 
 /*?

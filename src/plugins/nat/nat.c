@@ -2472,6 +2472,7 @@ snat_init (vlib_main_t * vm)
   ip4_add_del_interface_address_callback_t cb4;
   vlib_node_t *node;
 
+  sm->do_scavenging = 1;
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
   sm->ip4_main = im;
