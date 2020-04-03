@@ -182,10 +182,11 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
             # Create GENEVE VTEP on VPP pg0, and put geneve_tunnel0 and pg1
             #  into BD.
+            cls.single_tunnel_vni = 0xabcde
             cls.single_tunnel_bd = 1
             r = cls.vapi.geneve_add_del_tunnel(
                 local_address=cls.pg0.local_ip4,
-                remote_address=cls.pg0.remote_ip4, vni=cls.single_tunnel_bd)
+                remote_address=cls.pg0.remote_ip4, vni=cls.single_tunnel_vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
