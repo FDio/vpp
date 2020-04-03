@@ -187,7 +187,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
         # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
-        self.check_encapsulation(pkt, self.single_tunnel_bd)
+        self.check_encapsulation(pkt, self.single_tunnel_vni)
 
         # payload = self.decapsulate(pkt)
         # self.assert_eq_pkts(payload, self.frame_reply)
@@ -343,13 +343,14 @@ class TestGtpu(BridgeDomain, VppTestCase):
             # Create GTPU VTEP on VPP pg0, and put gtpu_tunnel0 and pg1
             #  into BD.
             cls.single_tunnel_bd = 11
+            cls.single_tunnel_vni = 11
             r = cls.vapi.gtpu_add_del_tunnel(
                 is_add=True,
                 mcast_sw_if_index=0xFFFFFFFF,
                 decap_next_index=0xFFFFFFFF,
                 src_address=cls.pg0.local_ip4,
                 dst_address=cls.pg0.remote_ip4,
-                teid=cls.single_tunnel_bd)
+                teid=cls.single_tunnel_vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
