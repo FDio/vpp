@@ -299,8 +299,12 @@ nat44_partial_scavenging (snat_user_t * u, u32 thread_index, f64 now)
       tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
 
       if (PREDICT_FALSE (cleared))
-	vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
-				 pool_elts (tsm->sessions));
+	{
+	  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+				   pool_elts (tsm->sessions));
+	  nat_log_notice ("partial scavenging cleared %u at %f", cleared,
+			  now);
+	}
     }
   return cleared;
 }
@@ -311,7 +315,11 @@ nat44_full_scavenging (u32 thread_index, f64 now)
   snat_main_t *sm = &snat_main;
   u32 cleared = 0;
   if (PREDICT_TRUE (sm->do_scavenging))
-    cleared = nat44_users_cleanup (thread_index, now);
+    {
+      cleared = nat44_users_cleanup (thread_index, now);
+      if (PREDICT_FALSE (cleared))
+	nat_log_notice ("full scavenging cleared %u at %f", cleared, now);
+    }
   return cleared;
 }
 
