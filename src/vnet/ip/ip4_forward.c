@@ -2052,6 +2052,37 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
 	  (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
 }
 
+typedef struct
+{
+  u32 sw_if_index;
+  u32 config;
+  u16 next;
+  const u8 arc;
+} ip4_rewrite_feature_cache_t;
+
+static_always_inline void
+ip4_rewrite_feature_arc (const vnet_rewrite_flags_t flags,
+			 const u32 sw_if_index, u16 * next, vlib_buffer_t * b,
+			 ip4_rewrite_feature_cache_t * cache)
+{
+  if (PREDICT_TRUE (0 == (flags & VNET_REWRITE_HAS_FEATURES)))
+    return;
+
+  if (PREDICT_FALSE (sw_if_index != cache->sw_if_index))
+    {
+      u32 next_ = *next;
+      vnet_feature_arc_start (cache->arc, sw_if_index, &next_, b);
+      cache->sw_if_index = sw_if_index;
+      cache->config = b->current_config_index;
+      cache->next = *next = next_;
+    }
+  else
+    {
+      b->current_config_index = cache->config;
+      *next = cache->next;
+      vnet_buffer (b)->feature_arc_index = cache->arc;
+    }
+}
 
 always_inline uword
 ip4_rewrite_inline_with_gso (vlib_main_t * vm,
@@ -2069,6 +2100,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
   n_left_from = frame->n_vectors;
   u32 thread_index = vm->thread_index;
+
+  ip4_rewrite_feature_cache_t feature_cache = {.sw_if_index = ~0,.arc =
+      lm->output_feature_arc_index
+  };
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   clib_memset_u16 (nexts, IP4_REWRITE_NEXT_DROP, n_left_from);
@@ -2169,17 +2204,16 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
-	  u32 next_index = adj0[0].rewrite_header.next_index;
+	  next[0] = adj0[0].rewrite_header.next_index;
 	  vlib_buffer_advance (b[0], -(word) rw_len0);
 
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
-	  if (PREDICT_FALSE
-	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
-	  next[0] = next_index;
+	  ip4_rewrite_feature_arc (adj0[0].rewrite_header.flags,
+				   tx_sw_if_index0, next, b[0],
+				   &feature_cache);
+
 	  if (is_midchain)
 	    calc_checksums (vm, b[0]);
 	}
@@ -2191,17 +2225,16 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	}
       if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	{
-	  u32 next_index = adj1[0].rewrite_header.next_index;
+	  next[1] = adj1[0].rewrite_header.next_index;
 	  vlib_buffer_advance (b[1], -(word) rw_len1);
 
 	  tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 
-	  if (PREDICT_FALSE
-	      (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index1, &next_index, b[1]);
-	  next[1] = next_index;
+	  ip4_rewrite_feature_arc (adj1[0].rewrite_header.flags,
+				   tx_sw_if_index1, next + 1, b[1],
+				   &feature_cache);
+
 	  if (is_midchain)
 	    calc_checksums (vm, b[1]);
 	}
@@ -2335,16 +2368,14 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
-	  u32 next_index = adj0[0].rewrite_header.next_index;
+	  next[0] = adj0[0].rewrite_header.next_index;
 	  vlib_buffer_advance (b[0], -(word) rw_len0);
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
-	  if (PREDICT_FALSE
-	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
-	  next[0] = next_index;
+	  ip4_rewrite_feature_arc (adj0[0].rewrite_header.flags,
+				   tx_sw_if_index0, next, b[0],
+				   &feature_cache);
 
 	  if (is_midchain)
 	    calc_checksums (vm, b[0]);
@@ -2433,16 +2464,14 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
-	  u32 next_index = adj0[0].rewrite_header.next_index;
+	  next[0] = adj0[0].rewrite_header.next_index;
 	  vlib_buffer_advance (b[0], -(word) rw_len0);
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
-	  if (PREDICT_FALSE
-	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-	    vnet_feature_arc_start (lm->output_feature_arc_index,
-				    tx_sw_if_index0, &next_index, b[0]);
-	  next[0] = next_index;
+	  ip4_rewrite_feature_arc (adj0[0].rewrite_header.flags,
+				   tx_sw_if_index0, next, b[0],
+				   &feature_cache);
 
 	  if (is_midchain)
 	    /* this acts on the packet that is about to be encapped */
@@ -2482,7 +2511,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 
   /* Need to do trace after rewrites to pick up new packet data. */
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
