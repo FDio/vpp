@@ -190,11 +190,12 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
 
             # Create VXLAN-GPE VTEP on VPP pg0, and put vxlan_gpe_tunnel0
             # and pg1 into BD.
+            cls.single_tunnel_vni = 0xabcde
             cls.single_tunnel_bd = 11
             r = cls.vapi.vxlan_gpe_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
                 dst_addr=cls.pg0.remote_ip4n,
-                vni=cls.single_tunnel_bd)
+                vni=cls.single_tunnel_vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
