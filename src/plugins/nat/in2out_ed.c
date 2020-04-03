@@ -213,8 +213,10 @@ slow_path_ed (snat_main_t * sm,
 
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
+      // SCAVENGING:
+      // if maximums sessions is reached do full scavenging
       if (PREDICT_FALSE
-	  (!(cleared = nat44_users_cleanup (thread_index, now))))
+	  (!(cleared = nat44_full_scavenging (thread_index, now))))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
@@ -239,7 +241,9 @@ slow_path_ed (snat_main_t * sm,
 					       sm->port_per_thread,
 					       tsm->snat_thread_index))
 	{
-	  if (cleared || !nat44_out_of_ports_cleanup (thread_index, now) ||
+	  // SCAVENGING:
+	  // if port allocation call fails do full scavenging
+	  if (cleared || !nat44_full_scavenging (thread_index, now) ||
 	      snat_alloc_outside_address_and_port (sm->addresses,
 						   rx_fib_index, thread_index,
 						   &key1, sm->port_per_thread,

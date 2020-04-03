@@ -358,8 +358,8 @@ typedef struct
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
+  /* time required to pass before partial scavenging can run */
+  u64 partial_cleanup_timeout;
 } snat_user_t;
 
 typedef struct
@@ -528,13 +528,14 @@ typedef struct
   /* real thread index */
   u32 thread_index;
 
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
-
-  /* session scavenging */
+  /* Session Scavenging */
+  /* number of cleared sessions */
   u32 cleared;
-  u32 cleanup_runs;
-  f64 cleanup_timeout;
+  /* time required to pass before full scavenging can run */
+  f64 full_cleanup_timeout;
+  /* number of partial/full scavenging runs */
+  u32 partial_cleanup_runs;
+  u32 full_cleanup_runs;
 
 } snat_main_per_thread_data_t;
 

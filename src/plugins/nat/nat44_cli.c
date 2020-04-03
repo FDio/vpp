@@ -650,7 +650,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   // print session configuration values
   vlib_cli_output (vm, "max translations: %u", sm->max_translations);
-  vlib_cli_output (vm, "max translations per user: %u",
+  vlib_cli_output (vm, "max translations per inside address: %u",
 		   sm->max_translations_per_user);
 
   u32 count = 0;
@@ -700,10 +700,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                             ++transitory_wait_closed;
                           }
                       }
-                    else
-                      {
-                        transitory++;
-                      }
+                    transitory++;
                   }
                 else
                   established++;
@@ -718,14 +715,16 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
           vlib_cli_output (vm, "tid[%u] session scavenging cleared: %u",
               tsm->thread_index, tsm->cleared);
-          vlib_cli_output (vm, "tid[%u] session scavenging cleanup runs: %u",
-              tsm->thread_index, tsm->cleanup_runs);
+          vlib_cli_output (vm, "tid[%u] session partial scavenging runs: %u",
+              tsm->thread_index, tsm->partial_cleanup_runs);
+          vlib_cli_output (vm, "tid[%u] session full scavenging runs: %u",
+              tsm->thread_index, tsm->full_cleanup_runs);
 
-          if (now < tsm->cleanup_timeout)
-            vlib_cli_output (vm, "tid[%u] session scavenging next run in: %f",
-              tsm->thread_index, tsm->cleanup_timeout - now);
+          if (now < tsm->full_cleanup_timeout)
+            vlib_cli_output (vm, "tid[%u] session full scavenging available in: %f",
+              tsm->thread_index, tsm->full_cleanup_timeout - now);
           else
-            vlib_cli_output (vm, "tid[%u] session scavenging next run in: 0",
+            vlib_cli_output (vm, "tid[%u] session full scavenging available now",
               tsm->thread_index);
         }
       /* *INDENT-ON* */
@@ -761,10 +760,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                         ++transitory_wait_closed;
                       }
                   }
-                else
-                  {
-                    transitory++;
-                  }
+                transitory++;
               }
             else
               established++;
@@ -780,14 +776,17 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
       vlib_cli_output (vm, "tid[0] session scavenging cleared: %u",
 		       tsm->cleared);
-      vlib_cli_output (vm, "tid[0] session scavenging cleanup runs: %u",
-		       tsm->cleanup_runs);
+      vlib_cli_output (vm, "tid[0] session partial scavenging runs: %u",
+		       tsm->partial_cleanup_runs);
+      vlib_cli_output (vm, "tid[0] session full scavenging runs: %u",
+		       tsm->full_cleanup_runs);
 
-      if (now < tsm->cleanup_timeout)
-	vlib_cli_output (vm, "tid[0] session scavenging next run in: %f",
-			 tsm->cleanup_timeout - now);
+      if (now < tsm->full_cleanup_timeout)
+	vlib_cli_output (vm,
+			 "tid[0] session full scavenging available in: %f",
+			 tsm->full_cleanup_timeout - now);
       else
-	vlib_cli_output (vm, "tid[0] session scavenging next run in: 0");
+	vlib_cli_output (vm, "tid[0] session full scavenging available now");
     }
 
   vlib_cli_output (vm, "total timed out sessions: %u", timed_out);

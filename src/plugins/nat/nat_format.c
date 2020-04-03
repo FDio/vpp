@@ -289,6 +289,11 @@ format_snat_user_v2 (u8 * s, va_list * args)
 	      timed_out, transitory, established);
   s = format (s, "\t%u tcp sessions, %u udp sessions, %u icmp sessions\n",
 	      tcp_sessions, udp_sessions, icmp_sessions);
+  if (now < u->partial_cleanup_timeout)
+    s =
+      format (s, "\tsca available in %f\n", u->partial_cleanup_timeout - now);
+  else
+    s = format (s, "\tsca available now\n");
 
   return s;
 }

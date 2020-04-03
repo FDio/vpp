@@ -474,7 +474,7 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
 
-      u->min_session_timeout = 0;
+      u->partial_cleanup_timeout = 0;
 
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
@@ -601,7 +601,10 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   if (PREDICT_FALSE
       ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user))
     {
-      if (nat44_max_translations_per_user_cleanup (u, thread_index, now))
+      // SCAVENGING:
+      // if maximums sessions per inside address is reached
+      // do partial scavenging
+      if (nat44_partial_scavenging (u, thread_index, now))
 	goto alloc_new;
 
       nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
@@ -4049,11 +4052,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
-	      tsm->min_session_timeout = 0;
-
               tsm->cleared = 0;
-              tsm->cleanup_runs = 0;
-              tsm->cleanup_timeout = 0;
+              tsm->full_cleanup_runs = 0;
+              tsm->partial_cleanup_runs = 0;
+              tsm->full_cleanup_timeout = 0;
 
               if (sm->endpoint_dependent)
                 {
