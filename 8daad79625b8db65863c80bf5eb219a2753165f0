@@ -22,6 +22,30 @@
       "revId": "8daad79625b8db65863c80bf5eb219a2753165f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ba9025b_17acbe76",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-04T15:44:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "94e536e7_66a2cacb",
+      "range": {
+        "startLine": 5,
+        "startChar": 7,
+        "endLine": 5,
+        "endChar": 12
+      },
+      "revId": "8daad79625b8db65863c80bf5eb219a2753165f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
