@@ -1099,7 +1099,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   if (rv < 0)
     {
       SESSION_DBG ("Transport failed to open connection.");
-      return VNET_API_ERROR_SESSION_CONNECT;
+      return rv;
     }
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
@@ -1133,7 +1133,7 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   if (rv < 0)
     {
       SESSION_DBG ("Transport failed to open connection.");
-      return VNET_API_ERROR_SESSION_CONNECT;
+      return rv;
     }
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);

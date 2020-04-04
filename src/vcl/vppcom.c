@@ -656,6 +656,7 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
     }
 
   s->vpp_thread_index = mp->vpp_thread_index;
+  s->vpp_handle = mp->new_handle;
   s->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
 
   vec_validate (wrk->vpp_event_queues, s->vpp_thread_index);
@@ -669,7 +670,8 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
     app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
 			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 
-  VDBG (0, "Migrated 0x%x to thread %u", mp->handle, s->vpp_thread_index);
+  VDBG (0, "Migrated 0x%lx to thread %u 0x%lx", mp->handle,
+	s->vpp_thread_index, mp->new_handle);
 }
 
 static vcl_session_t *
