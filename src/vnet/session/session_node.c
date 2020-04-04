@@ -137,7 +137,7 @@ session_mq_connect_handler (void *data)
 
   if ((rv = vnet_connect (a)))
     {
-      clib_warning ("connect returned: %U", format_vnet_api_errno, rv);
+      clib_warning ("connect returned: %U", format_session_error, rv);
       app_wrk = application_get_worker (app, mp->wrk_index);
       mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
@@ -182,6 +182,8 @@ session_mq_disconnect_handler (void *data)
   app = application_lookup (mp->client_index);
   if (!app)
     return;
+
+  clib_warning ("disconnect req 0x%lx", mp->handle);
 
   a->app_index = app->app_index;
   a->handle = mp->handle;
