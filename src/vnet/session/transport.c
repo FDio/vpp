@@ -17,6 +17,12 @@
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 
+typedef struct local_endpoint_
+{
+  transport_endpoint_t ep;
+  int refcnt;
+} local_endpoint_t;
+
 /**
  * Per-type vector of transport protocol virtual function tables
  */
@@ -35,7 +41,7 @@ static transport_endpoint_table_t local_endpoints_table;
 /*
  * Pool of local endpoints
  */
-static transport_endpoint_t *local_endpoints;
+static local_endpoint_t *local_endpoints;
 
 /*
  * Local endpoints pool lock
@@ -401,42 +407,62 @@ transport_endpoint_del (u32 tepi)
   clib_spinlock_unlock_if_init (&local_endpoints_lock);
 }
 
-always_inline transport_endpoint_t *
+always_inline local_endpoint_t *
 transport_endpoint_new (void)
 {
-  transport_endpoint_t *tep;
-  pool_get_zero (local_endpoints, tep);
-  return tep;
+  local_endpoint_t *lep;
+  pool_get_zero (local_endpoints, lep);
+  return lep;
 }
 
 void
 transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
 {
-  u32 tepi;
-  transport_endpoint_t *tep;
+  local_endpoint_t *lep;
+  u32 lepi;
 
   /* Cleanup local endpoint if this was an active connect */
-  tepi = transport_endpoint_lookup (&local_endpoints_table, proto, lcl_ip,
+  lepi = transport_endpoint_lookup (&local_endpoints_table, proto, lcl_ip,
 				    clib_net_to_host_u16 (port));
-  if (tepi != ENDPOINT_INVALID_INDEX)
+  if (lepi != ENDPOINT_INVALID_INDEX)
     {
-      tep = pool_elt_at_index (local_endpoints, tepi);
-      transport_endpoint_table_del (&local_endpoints_table, proto, tep);
-      transport_endpoint_del (tepi);
+      lep = pool_elt_at_index (local_endpoints, lepi);
+      if (!clib_atomic_sub_fetch (&lep->refcnt, 1))
+	{
+	  transport_endpoint_table_del (&local_endpoints_table, proto,
+					&lep->ep);
+	  transport_endpoint_del (lepi);
+	}
     }
 }
 
 static void
 transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
 {
-  transport_endpoint_t *tep;
+  local_endpoint_t *lep;
   clib_spinlock_lock_if_init (&local_endpoints_lock);
-  tep = transport_endpoint_new ();
-  clib_memcpy_fast (&tep->ip, ip, sizeof (*ip));
-  tep->port = port;
-  transport_endpoint_table_add (&local_endpoints_table, proto, tep,
-				tep - local_endpoints);
+  lep = transport_endpoint_new ();
+  clib_memcpy_fast (&lep->ep.ip, ip, sizeof (*ip));
+  lep->ep.port = port;
+  lep->refcnt = 1;
+  transport_endpoint_table_add (&local_endpoints_table, proto, &lep->ep,
+				lep - local_endpoints);
   clib_spinlock_unlock_if_init (&local_endpoints_lock);
+}
+
+void
+transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
+{
+  local_endpoint_t *lep;
+  u32 lepi;
+
+  lepi = transport_endpoint_lookup (&local_endpoints_table, proto, lcl_ip,
+				    clib_net_to_host_u16 (port));
+  if (lepi != ENDPOINT_INVALID_INDEX)
+    {
+      lep = pool_elt_at_index (local_endpoints, lepi);
+      clib_atomic_add_fetch (&lep->refcnt, 1);
+    }
 }
 
 /**
@@ -572,13 +598,13 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
   else
     {
       port = clib_net_to_host_u16 (rmt_cfg->peer.port);
+      *lcl_port = port;
       tei = transport_endpoint_lookup (&local_endpoints_table, proto,
 				       lcl_addr, port);
       if (tei != ENDPOINT_INVALID_INDEX)
 	return SESSION_E_PORTINUSE;
 
       transport_endpoint_mark_used (proto, lcl_addr, port);
-      *lcl_port = port;
     }
 
   return 0;

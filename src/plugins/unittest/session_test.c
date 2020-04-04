@@ -616,7 +616,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "client attachment should work");
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
-  SESSION_TEST ((error == VNET_API_ERROR_SESSION_CONNECT),
+  SESSION_TEST ((error == SESSION_E_NOINTF),
 		"error code should be connect (nothing in local scope)");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
