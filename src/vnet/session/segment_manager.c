@@ -211,6 +211,15 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
   pool_put (sm->segments, fs);
 }
 
+static fifo_segment_t *
+segment_manager_get_segment_if_valid (segment_manager_t * sm,
+				      u32 segment_index)
+{
+  if (pool_is_free_index (sm->segments, segment_index))
+    return 0;
+  return pool_elt_at_index (sm->segments, segment_index);
+}
+
 /**
  * Removes segment after acquiring writer lock
  */
@@ -221,15 +230,18 @@ segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
   u8 is_prealloc;
 
   clib_rwlock_writer_lock (&sm->segments_rwlock);
-  fs = segment_manager_get_segment (sm, fs_index);
+
+  fs = segment_manager_get_segment_if_valid (sm, fs_index);
+  if (!fs)
+    goto done;
+
   is_prealloc = fifo_segment_flags (fs) & FIFO_SEGMENT_F_IS_PREALLOCATED;
   if (is_prealloc && !segment_manager_app_detached (sm))
-    {
-      clib_rwlock_writer_unlock (&sm->segments_rwlock);
-      return;
-    }
+    goto done;
 
   segment_manager_del_segment (sm, fs);
+
+done:
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
 }
 
