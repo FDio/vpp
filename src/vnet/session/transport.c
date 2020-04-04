@@ -572,13 +572,13 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
   else
     {
       port = clib_net_to_host_u16 (rmt_cfg->peer.port);
+      *lcl_port = port;
       tei = transport_endpoint_lookup (&local_endpoints_table, proto,
 				       lcl_addr, port);
       if (tei != ENDPOINT_INVALID_INDEX)
 	return SESSION_E_PORTINUSE;
 
       transport_endpoint_mark_used (proto, lcl_addr, port);
-      *lcl_port = port;
     }
 
   return 0;
