@@ -327,7 +327,7 @@ echo_test_client ()
 	{
 	  static char buf[64];
 
-	  sprintf (buf, "CLIENT (fd %d) RESULTS", tsock->fd);
+	  snprintf (buf, sizeof (buf), "CLIENT (fd %d) RESULTS", tsock->fd);
 	  vcl_test_stats_dump (buf, &tsock->stats,
 			       1 /* show_rx */ , 1 /* show tx */ ,
 			       ctrl->cfg.verbose);
@@ -498,7 +498,7 @@ stream_test_client (vcl_test_t test)
 	{
 	  static char buf[64];
 
-	  sprintf (buf, "CLIENT (fd %d) RESULTS", tsock->fd);
+	  snprintf (buf, sizeof (buf), "CLIENT (fd %d) RESULTS", tsock->fd);
 	  vcl_test_stats_dump (buf, &tsock->stats,
 			       test == VCL_TEST_TYPE_BI /* show_rx */ ,
 			       1 /* show tx */ , ctrl->cfg.verbose);

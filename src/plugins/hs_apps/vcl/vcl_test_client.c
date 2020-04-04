@@ -394,7 +394,7 @@ vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
 
       if (ctrl->cfg.verbose > 1)
 	{
-	  sprintf (buf, "CLIENT (fd %d) RESULTS", ts->fd);
+	  snprintf (buf, sizeof (buf), "CLIENT (fd %d) RESULTS", ts->fd);
 	  vcl_test_stats_dump (buf, &ts->stats, show_rx, 1 /* show tx */ ,
 			       ctrl->cfg.verbose);
 	}
@@ -553,10 +553,10 @@ vtc_print_stats (vcl_test_session_t * ctrl)
     }
 
   if (is_echo)
-    sprintf (buf, "Echo");
+    snprintf (buf, sizeof (buf), "Echo");
   else
-    sprintf (buf, "%s-directional Stream",
-	     ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+    snprintf (buf, sizeof (buf), "%s-directional Stream",
+	      ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 }
 
 static void

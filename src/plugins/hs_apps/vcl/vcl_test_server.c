@@ -180,7 +180,7 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 	  conn->stats.stop.tv_sec -= VCL_TEST_DELAY_DISCONNECT;
 	  if (conn->cfg.verbose)
 	    {
-	      sprintf (buf, "SERVER (fd %d) RESULTS", tc->fd);
+	      snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS", tc->fd);
 	      vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
 				   is_bi /* show tx */ , conn->cfg.verbose);
 	    }
