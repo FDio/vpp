@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 1997-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ static prop_t *buckets [NBUCKETS];
 static int hash_shifts[4] = {24, 16, 8, 0};
 
 /*
- * getprop 
+ * getprop
  */
 
 char *getprop (char *name)
@@ -106,7 +106,7 @@ void addprop (char *name, char *value)
 }
 
 /*
- * sxerox 
+ * sxerox
  */
 
 static char *sxerox (char *s)
@@ -117,7 +117,7 @@ static char *sxerox (char *s)
 }
 
 /*
- * readprops 
+ * readprops
  */
 
 #define START 0
@@ -183,7 +183,7 @@ int readprops (char *filename)
                      c, linenum);
             exit (1);
             break;
-            
+
         case CPP_COMMENT:
             while (1) {
                 c = getc (ifp);
@@ -217,7 +217,7 @@ int readprops (char *filename)
                 }
             }
             break;
-                    
+
         case READNAME:
             i = 0;
             namebuf[i++] = c;

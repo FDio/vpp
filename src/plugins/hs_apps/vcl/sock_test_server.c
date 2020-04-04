@@ -238,7 +238,8 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
 		{
 		  static char buf[64];
 
-		  sprintf (buf, "SERVER (fd %d) RESULTS", tc->fd);
+		  snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS",
+			    tc->fd);
 		  vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
 				       test == VCL_TEST_TYPE_BI
 				       /* show tx */ ,

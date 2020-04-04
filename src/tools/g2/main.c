@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2005-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,7 @@ GtkWidget *g_mainwindow;        /* The main window */
  * [main window]
  *   [main vbox]
  *     [main (e.g. file) menubar]
- *     [view hbox] 
+ *     [view hbox]
  *     [view bottom menu]
  */
 
@@ -62,7 +62,7 @@ int main (int argc, char **argv)
     char *title = "none";
     int curarg=1;
     char *homedir;
-    
+
     clib_mem_init (0, ((uword)3<<30));
 
     gtk_init(&argc, &argv);
@@ -71,11 +71,11 @@ int main (int argc, char **argv)
     tmpbuf[0] = 0;
 
     if (homedir) {
-        sprintf(tmpbuf, "%s/.g2", homedir);
+        snprintf(tmpbuf, sizeof(tmpbuf), "%s/.g2", homedir);
     } else {
         pw = getpwuid(geteuid());
         if (pw) {
-            sprintf(tmpbuf, "%s/.g2", pw->pw_dir);
+            snprintf(tmpbuf, sizeof(tmpbuf), "%s/.g2", pw->pw_dir);
         }
     }
     if (tmpbuf[0])
@@ -94,7 +94,7 @@ int main (int argc, char **argv)
     g_mainvbox = gtk_vbox_new(FALSE, 0);
     g_mainhbox = gtk_hbox_new(FALSE, 0);
 
-    /* 
+    /*
      * init routines
      */
 
@@ -103,11 +103,11 @@ int main (int argc, char **argv)
     view1_init();
     event_init();
 
-    /* 
+    /*
      * Now that we're ready to rock 'n roll, see if we've been asked to
      * press a few buttons...
      */
-    
+
     while (curarg < argc) {
         if (!strncmp(argv[curarg], "--cpel-input", 4)) {
             curarg++;
@@ -163,12 +163,12 @@ int main (int argc, char **argv)
             g_error ("Missing filename after --event-log\n");
         }
 
-        fprintf(stderr, 
+        fprintf(stderr,
                 "g2 [--pointdefs <filename>] [--event-log <filename>]\n");
         fprintf(stderr, "   [--ticks-per-us <value>]\n");
-        fprintf(stderr, 
+        fprintf(stderr,
                 "   [--cpel-input <filename>] [--clib-input <filename]>\n");
-        fprintf(stderr, 
+        fprintf(stderr,
                 "%s\n%s\n", version_string, minor_v_string);
         exit(0);
     }
