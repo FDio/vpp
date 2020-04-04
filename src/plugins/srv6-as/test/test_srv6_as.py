@@ -15,6 +15,14 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_HARDWARE,
+    SHOW_INTERFACE,
+    SHOW_IP_NEIGHBORS,
+    SHOW_IP6_NEIGHBORS,
+    SHOW_SR_LOCALSID,
+    SR_LOCALSID_DEL_ADDRESS_X,
+)
 from util import ppp
 
 
@@ -112,11 +120,11 @@ class TestSRv6(VppTestCase):
                                      ipv6_table_id[i], ipv4_table_id[i])
 
         if any(ipv6):
-            self.logger.debug(self.vapi.cli("show ip6 neighbors"))
+            self.logger.debug(self.vapi.cli(SHOW_IP6_NEIGHBORS))
         if any(ipv4):
-            self.logger.debug(self.vapi.cli("show ip4 neighbors"))
-        self.logger.debug(self.vapi.cli("show interface"))
-        self.logger.debug(self.vapi.cli("show hardware"))
+            self.logger.debug(self.vapi.cli(SHOW_IP_NEIGHBORS))
+        self.logger.debug(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.debug(self.vapi.cli(SHOW_HARDWARE))
 
         return self.pg_interfaces
 
@@ -208,7 +216,7 @@ class TestSRv6(VppTestCase):
         self.vapi.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -228,7 +236,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_L2_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # prepare L2 header for returning packets
         packet_header2 = self.create_packet_header_L2()
@@ -242,10 +250,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_L2_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vapi.cli(SR_LOCALSID_DEL_ADDRESS_X % sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -278,7 +286,7 @@ class TestSRv6(VppTestCase):
         self.vapi.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -297,7 +305,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv6_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv6()
@@ -311,10 +319,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv6_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vapi.cli(SR_LOCALSID_DEL_ADDRESS_X % sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -347,7 +355,7 @@ class TestSRv6(VppTestCase):
         self.vapi.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -366,7 +374,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv4_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv4()
@@ -380,10 +388,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv4_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vapi.cli(SR_LOCALSID_DEL_ADDRESS_X % sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()

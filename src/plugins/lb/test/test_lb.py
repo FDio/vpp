@@ -7,6 +7,12 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
 
+from cli_commands import (
+    LB_VIP_X_ENCAP_GRE4,
+    LB_VIP_X_ENCAP_GRE6,
+    SHOW_LB_VIP_VERBOSE,
+    TEST_LB_FLOWTABLE_FLUSH,
+)
 from framework import VppTestCase
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -77,7 +83,7 @@ class TestLB(VppTestCase):
         super(TestLB, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show lb vip verbose"))
+        self.logger.info(self.vapi.cli(SHOW_LB_VIP_VERBOSE))
 
     def getIPv4Flow(self, id):
         return (IP(dst="90.0.%u.%u" % (id / 255, id % 255),
@@ -209,7 +215,7 @@ class TestLB(VppTestCase):
         """ Load Balancer IP4 GRE4 on vip case """
         try:
             self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre4")
+                LB_VIP_X_ENCAP_GRE4 % "90.0.0.0/8")
             for asid in self.ass:
                 self.vapi.cli(
                     "lb as 90.0.0.0/8 10.0.0.%u"
@@ -227,14 +233,14 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 encap gre4 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip6_gre4(self):
         """ Load Balancer IP6 GRE4 on vip case """
 
         try:
             self.vapi.cli(
-                "lb vip 2001::/16 encap gre4")
+                LB_VIP_X_ENCAP_GRE4 % "2001::/16")
             for asid in self.ass:
                 self.vapi.cli(
                     "lb as 2001::/16 10.0.0.%u"
@@ -252,13 +258,13 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 2001::/16 encap gre4 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_gre6(self):
         """ Load Balancer IP4 GRE6 on vip case """
         try:
             self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre6")
+                LB_VIP_X_ENCAP_GRE6 % "90.0.0.0/8")
             for asid in self.ass:
                 self.vapi.cli(
                     "lb as 90.0.0.0/8 2002::%u"
@@ -276,13 +282,13 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 encap gre6 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip6_gre6(self):
         """ Load Balancer IP6 GRE6 on vip case """
         try:
             self.vapi.cli(
-                "lb vip 2001::/16 encap gre6")
+                LB_VIP_X_ENCAP_GRE6 % "2001::/16")
             for asid in self.ass:
                 self.vapi.cli(
                     "lb as 2001::/16 2002::%u"
@@ -300,7 +306,7 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 2001::/16 encap gre6 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_gre4_port(self):
         """ Load Balancer IP4 GRE4 on per-port-vip case """
@@ -324,7 +330,7 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre4 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip6_gre4_port(self):
         """ Load Balancer IP6 GRE4 on per-port-vip case """
@@ -349,7 +355,7 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap gre4 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_gre6_port(self):
         """ Load Balancer IP4 GRE6 on per-port-vip case """
@@ -373,7 +379,7 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre6 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip6_gre6_port(self):
         """ Load Balancer IP6 GRE6 on per-port-vip case """
@@ -397,7 +403,7 @@ class TestLB(VppTestCase):
                     % (asid))
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap gre6 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_l3dsr(self):
         """ Load Balancer IP4 L3DSR on vip case """
@@ -422,7 +428,7 @@ class TestLB(VppTestCase):
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 encap l3dsr"
                 " dscp 7 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_l3dsr_port(self):
         """ Load Balancer IP4 L3DSR on per-port-vip case """
@@ -447,7 +453,7 @@ class TestLB(VppTestCase):
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr"
                 " dscp 7 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip4_nat4_port(self):
         """ Load Balancer IP4 NAT4 on per-port-vip case """
@@ -473,7 +479,7 @@ class TestLB(VppTestCase):
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap nat4"
                 " type clusterip target_port 3307 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)
 
     def test_lb_ip6_nat6_port(self):
         """ Load Balancer IP6 NAT6 on per-port-vip case """
@@ -499,4 +505,4 @@ class TestLB(VppTestCase):
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap nat6"
                 " type clusterip target_port 3307 del")
-            self.vapi.cli("test lb flowtable flush")
+            self.vapi.cli(TEST_LB_FLOWTABLE_FLUSH)

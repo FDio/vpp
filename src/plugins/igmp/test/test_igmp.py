@@ -7,6 +7,10 @@ from scapy.packet import Raw
 from scapy.layers.inet import IP, IPOption
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 
+from cli_commands import (
+    SET_LOGGING_CLASS_IGMP_LEVEL_DEBUG,
+    SHOW_IGMP_CONFIG,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
     IgmpSG, VppHostState, wait_for_igmp_event
@@ -488,7 +492,7 @@ class TestIgmp(VppTestCase):
         self.remove_group(h7)
         self.remove_group(h10)
 
-        self.logger.info(self.vapi.cli("sh igmp config"))
+        self.logger.info(self.vapi.cli(SHOW_IGMP_CONFIG))
         self.assertFalse(self.vapi.igmp_dump())
 
         #
@@ -709,7 +713,7 @@ class TestIgmp(VppTestCase):
         #
         # a TO_IN({}) and IS_IN({}) are treated like a (*,G) leave
         #
-        self.vapi.cli("set logging class igmp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_IGMP_LEVEL_DEBUG)
         p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
                   options=[IPOption(copy_flag=1, optclass="control",

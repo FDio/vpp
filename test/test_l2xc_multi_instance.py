@@ -58,6 +58,9 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_L2PATCH,
+)
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
@@ -130,7 +133,7 @@ class TestL2xcMultiInst(VppTestCase):
         super(TestL2xcMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2patch"))
+        self.logger.info(self.vapi.ppcli(SHOW_L2PATCH))
 
     @classmethod
     def create_hosts(cls, count):

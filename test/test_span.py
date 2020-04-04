@@ -7,6 +7,9 @@ from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
+from cli_commands import (
+    SHOW_INTERFACE_SPAN,
+)
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
@@ -65,7 +68,7 @@ class TestSpan(VppTestCase):
         super(TestSpan, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
 
     def xconnect(self, a, b, is_add=1):
         self.vapi.sw_interface_set_l2_xconnect(a, b, enable=is_add)
@@ -178,7 +181,7 @@ class TestSpan(VppTestCase):
         self.vapi.sw_interface_span_enable_disable(
             self.pg0.sw_if_index, self.pg2.sw_if_index)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -212,7 +215,7 @@ class TestSpan(VppTestCase):
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -249,7 +252,7 @@ class TestSpan(VppTestCase):
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vxlan.sw_if_index, is_l2=1)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -461,7 +464,7 @@ class TestSpan(VppTestCase):
         self.vapi.sw_interface_span_enable_disable(
             self.pg1.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=2)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -497,7 +500,7 @@ class TestSpan(VppTestCase):
         # Enable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=3)
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
 
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
@@ -543,7 +546,7 @@ class TestSpan(VppTestCase):
         # Enable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=3)
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_SPAN))
 
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)

@@ -16,6 +16,13 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
 from scapy.packet import bind_layers, Raw
+
+from cli_commands import (
+    SHOW_DSLITE_AFTRTUNNELENDPOINTADDRESS,
+    SHOW_DSLITE_B4TUNNELENDPOINTADDRESS,
+    SHOW_DSLITE_POOL,
+    SHOW_DSLITE_SESSIONS,
+)
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
@@ -225,10 +232,10 @@ class TestDSlite(VppTestCase):
         super(TestDSlite, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show dslite pool"))
+        self.logger.info(self.vapi.cli(SHOW_DSLITE_POOL))
         self.logger.info(
-            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
-        self.logger.info(self.vapi.cli("show dslite sessions"))
+            self.vapi.cli(SHOW_DSLITE_AFTRTUNNELENDPOINTADDRESS))
+        self.logger.info(self.vapi.cli(SHOW_DSLITE_SESSIONS))
 
 
 class TestDSliteCE():
@@ -333,6 +340,6 @@ class TestDSliteCE():
 
     def show_commands_at_teardown(self):
         self.logger.info(
-            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
+            self.vapi.cli(SHOW_DSLITE_AFTRTUNNELENDPOINTADDRESS))
         self.logger.info(
-            self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
+            self.vapi.cli(SHOW_DSLITE_B4TUNNELENDPOINTADDRESS))

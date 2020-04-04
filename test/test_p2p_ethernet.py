@@ -9,6 +9,10 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
+from cli_commands import (
+    SHOW_INTERFACE,
+    TRACE_ADD_P2PETHERNETINPUT_X,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
 from vpp_ip import DpoProto
@@ -50,7 +54,7 @@ class P2PEthernetAPI(VppTestCase):
 
         self.create_p2p_ethernet(self.pg0, 1, "de:ad:00:00:00:01")
         self.create_p2p_ethernet(self.pg0, 2, "de:ad:00:00:00:02")
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vapi.cli(SHOW_INTERFACE)
 
         self.assertIn('pg0.1', intfs)
         self.assertIn('pg0.2', intfs)
@@ -58,12 +62,12 @@ class P2PEthernetAPI(VppTestCase):
 
         # create pg2.5 subif
         self.create_p2p_ethernet(self.pg0, 5, "de:ad:00:00:00:ff")
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vapi.cli(SHOW_INTERFACE)
         self.assertIn('pg0.5', intfs)
         # delete pg2.5 subif
         self.delete_p2p_ethernet(self.pg0, "de:ad:00:00:00:ff")
 
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vapi.cli(SHOW_INTERFACE)
 
         self.assertIn('pg0.1', intfs)
         self.assertIn('pg0.2', intfs)
@@ -91,7 +95,7 @@ class P2PEthernetAPI(VppTestCase):
                     i, macs[i-1]))
                 raise
 
-        intfs = self.vapi.cli("show interface").split("\n")
+        intfs = self.vapi.cli(SHOW_INTERFACE).split("\n")
         count = 0
         for intf in intfs:
             if intf.startswith('pg2.'):
@@ -143,7 +147,7 @@ class P2PEthernetIPV6(VppTestCase):
         self.p2p_sub_ifs.append(
             self.create_p2p_ethernet(self.pg0, 2,
                                      self.pg0._remote_hosts[1].mac))
-        self.vapi.cli("trace add p2p-ethernet-input 50")
+        self.vapi.cli(TRACE_ADD_P2PETHERNETINPUT_X % 50)
 
     def tearDown(self):
         while len(self.p2p_sub_ifs):
@@ -360,7 +364,7 @@ class P2PEthernetIPV4(VppTestCase):
         self.p2p_sub_ifs.append(
             self.create_p2p_ethernet(self.pg0, 2,
                                      self.pg0._remote_hosts[1].mac))
-        self.vapi.cli("trace add p2p-ethernet-input 50")
+        self.vapi.cli(TRACE_ADD_P2PETHERNETINPUT_X % 50)
 
     def tearDown(self):
         while len(self.p2p_sub_ifs):

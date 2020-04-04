@@ -61,5 +61,6 @@ class TestBihash(VppTestCase):
             self.logger.critical(error)
             self.assertNotIn('failed', error)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

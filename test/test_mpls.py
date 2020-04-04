@@ -19,6 +19,14 @@ from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
 from scapy.contrib.mpls import MPLS
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SHOW_LOG,
+    TEST_FIBWALKPROCESS_DISABLE,
+    TEST_FIBWALKPROCESS_ENABLE,
+
+)
+
 NUM_PKTS = 67
 
 # scapy removed these attributes.
@@ -938,7 +946,7 @@ class TestMPLS(VppTestCase):
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
         self.pg0.add_stream(tx)
 
@@ -959,7 +967,7 @@ class TestMPLS(VppTestCase):
                                                   labels=[33])])
         route_10_0_0_4.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
         self.pg0.add_stream(tx)
 
@@ -1028,7 +1036,7 @@ class TestMPLS(VppTestCase):
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3", ip_ttl=24)
         self.pg0.add_stream(tx)
 
@@ -1050,7 +1058,7 @@ class TestMPLS(VppTestCase):
                           labels=[VppMplsLabel(33, ttl=47)])])
         route_10_0_0_4.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
         self.pg0.add_stream(tx)
 
@@ -1259,7 +1267,7 @@ class TestMPLS(VppTestCase):
         # ping an interface in the default table
         # PG0 is in the default table
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_labelled_ip4(self.pg0,
                                              [VppMplsLabel(3400, ttl=64)],
                                              n=257,
@@ -1305,7 +1313,7 @@ class TestMPLS(VppTestCase):
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
         self.pg0.add_stream(tx)
 
@@ -1334,7 +1342,7 @@ class TestMPLS(VppTestCase):
         route_232_1_1_1.add_vpp_config()
         self.logger.info(self.vapi.cli("sh ip mfib index 0"))
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -1385,7 +1393,7 @@ class TestMPLS(VppTestCase):
         #
         # Drop due to interface lookup miss
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_labelled_ip4(self.pg0, [VppMplsLabel(34)],
                                              dst_ip="232.1.1.1", n=1)
         self.send_and_assert_no_replies(self.pg0, tx, "RPF-ID drop none")
@@ -1779,7 +1787,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # now all packets should be forwarded through the remaining peer
         #
-        self.vapi.ppcli("clear trace")
+        self.vapi.ppcli(CLEAR_TRACE)
         self.pg2.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1792,7 +1800,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vapi.ppcli(TEST_FIBWALKPROCESS_ENABLE)
 
         #
         # packets should still be forwarded through the remaining peer
@@ -1891,7 +1899,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vapi.ppcli(TEST_FIBWALKPROCESS_DISABLE)
 
         #
         # withdraw the connected prefix on the interface.
@@ -1913,7 +1921,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vapi.ppcli(TEST_FIBWALKPROCESS_ENABLE)
 
         #
         # packets should still be forwarded through the remaining peer
@@ -2007,7 +2015,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vapi.ppcli(TEST_FIBWALKPROCESS_DISABLE)
 
         #
         # withdraw the connected prefix on the interface.
@@ -2031,7 +2039,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vapi.ppcli(TEST_FIBWALKPROCESS_ENABLE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -2044,7 +2052,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # put the connected routes back
         #
-        self.logger.info(self.vapi.cli("sh log"))
+        self.logger.info(self.vapi.cli(SHOW_LOG))
         self.pg2.admin_up()
         self.pg2.config_ip6()
         self.pg2.resolve_ndp()

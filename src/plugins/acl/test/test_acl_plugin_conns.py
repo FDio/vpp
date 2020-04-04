@@ -16,6 +16,19 @@ from random import randint
 from util import L4_Conn
 from ipaddress import ip_network
 
+from cli_commands import (
+    CLEAR_ACLPLUGIN_SESSIONS,
+    SET_ACLPLUGIN_SESSION_TIMEOUT_TCP_IDLE_X,
+    SET_ACLPLUGIN_SESSION_TIMEOUT_TCP_TRANSIENT_X,
+    SET_ACLPLUGIN_SESSION_TIMEOUT_UDP_IDLE_X,
+    SHOW_ACLPLUGIN_ACL,
+    SHOW_ACLPLUGIN_INTERFACE,
+    SHOW_ACLPLUGIN_SESSIONS,
+    SHOW_ACLPLUGIN_TABLES,
+    SHOW_EVENTLOGGER_ALL,
+    SHOW_IP_NEIGHBORS,
+    SHOW_IP6_NEIGHBORS,
+)
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 
 
@@ -146,13 +159,13 @@ class ACLPluginConnTestCase(VppTestCase):
         super(ACLPluginConnTestCase, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip neighbors"))
-        self.logger.info(self.vapi.cli("show ip6 neighbors"))
-        self.logger.info(self.vapi.cli("show acl-plugin sessions"))
-        self.logger.info(self.vapi.cli("show acl-plugin acl"))
-        self.logger.info(self.vapi.cli("show acl-plugin interface"))
-        self.logger.info(self.vapi.cli("show acl-plugin tables"))
-        self.logger.info(self.vapi.cli("show event-logger all"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
+        self.logger.info(self.vapi.cli(SHOW_IP6_NEIGHBORS))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_SESSIONS))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_TABLES))
+        self.logger.info(self.vapi.cli(SHOW_EVENTLOGGER_ALL))
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic conn timeout test """
@@ -215,7 +228,7 @@ class ACLPluginConnTestCase(VppTestCase):
         for i in IterateWithSleep(self, 20, "Keep conn active", 0.3):
             conn1.send_through(1)
         # clear all connections
-        self.vapi.ppcli("clear acl-plugin sessions")
+        self.vapi.ppcli(CLEAR_ACLPLUGIN_SESSIONS)
         # now try to send a packet on the reflected side
         try:
             p2 = conn1.send_through(1).command()
@@ -298,7 +311,7 @@ class ACLPluginConnTestCase(VppTestCase):
 
     def test_0000_conn_prepare_test(self):
         """ Prepare the settings """
-        self.vapi.ppcli("set acl-plugin session timeout udp idle 1")
+        self.vapi.ppcli(SET_ACLPLUGIN_SESSION_TIMEOUT_UDP_IDLE_X % 1)
 
     def test_0001_basic_conn_test(self):
         """ IPv4: Basic conn timeout test reflect on ingress """
@@ -351,10 +364,10 @@ class ACLPluginConnTestCase(VppTestCase):
     def test_2000_prepare_for_tcp_test(self):
         """ Prepare for TCP session tests """
         # ensure the session hangs on if it gets treated as UDP
-        self.vapi.ppcli("set acl-plugin session timeout udp idle 200")
+        self.vapi.ppcli(SET_ACLPLUGIN_SESSION_TIMEOUT_UDP_IDLE_X % 200)
         # let the TCP connection time out at 5 seconds
-        self.vapi.ppcli("set acl-plugin session timeout tcp idle 10")
-        self.vapi.ppcli("set acl-plugin session timeout tcp transient 1")
+        self.vapi.ppcli(SET_ACLPLUGIN_SESSION_TIMEOUT_TCP_IDLE_X % 10)
+        self.vapi.ppcli(SET_ACLPLUGIN_SESSION_TIMEOUT_TCP_TRANSIENT_X % 1)
 
     def test_2001_tcp_transient_conn_test(self):
         """ IPv4: transient TCP session (incomplete 3WHS), ref. on ingress """

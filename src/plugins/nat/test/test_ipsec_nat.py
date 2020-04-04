@@ -7,6 +7,9 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import ICMP, IP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
 
+from cli_commands import (
+    SHOW_IPSEC_ALL,
+)
 from util import ppp, ppc
 from template_ipsec import TemplateIpsec
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
@@ -57,7 +60,7 @@ class IPSecNATTestCase(TemplateIpsec):
 
         p = self.ipv4_params
         self.config_esp_tun(p)
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,

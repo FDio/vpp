@@ -13,6 +13,30 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SET_LOGGING_CLASS_GBP_LEVEL_DEBUG,
+    SHOW_BRIDGEDOMAIN,
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_ERRORS,
+    SHOW_GBP_BRIDGE,
+    SHOW_GBP_CONTRACT,
+    SHOW_GBP_ENDPOINT,
+    SHOW_GBP_ENDPOINTGROUP,
+    SHOW_GBP_INTERFACE,
+    SHOW_GBP_RECIRC,
+    SHOW_GBP_ROUTE,
+    SHOW_GBP_VXLAN,
+    SHOW_INTERFACE,
+    SHOW_INTERFACE_ADDRESS,
+    SHOW_INTERFACE_FEAT_X,
+    SHOW_IP_FIB_X,
+    SHOW_IP_MFIB,
+    SHOW_IP6_FIB_X,
+    SHOW_L2FIB_BDID_X,
+    SHOW_VLIB_GRAPH_X,
+    SHOW_VXLANGBP_TUNNEL,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
@@ -912,7 +936,7 @@ class TestGBP(VppTestCase):
             # VPP EP create ...
             ep.add_vpp_config()
 
-            self.logger.info(self.vapi.cli("sh gbp endpoint"))
+            self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
 
             # ... results in a Gratuitous ARP/ND on the EPG's uplink
             rx = ep.epg.uplink.get_capture(len(ep.ips), timeout=0.2)
@@ -961,7 +985,7 @@ class TestGBP(VppTestCase):
                        pdst="10.0.0.88",
                        psrc="10.0.0.99"))
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkt_arp)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -1000,7 +1024,7 @@ class TestGBP(VppTestCase):
                      UDP(sport=1234, dport=1234) /
                      Raw(b'\xa5' * 100))
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkt_bcast)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -1077,16 +1101,17 @@ class TestGBP(VppTestCase):
                                       pkt_inter_epg_222_ip6 * NUM_PKTS,
                                       eps[0].epg.uplink)
 
-        self.logger.info(self.vapi.cli("sh ip fib 11.0.0.2"))
-        self.logger.info(self.vapi.cli("sh gbp endpoint-group"))
-        self.logger.info(self.vapi.cli("sh gbp endpoint"))
-        self.logger.info(self.vapi.cli("sh gbp recirc"))
-        self.logger.info(self.vapi.cli("sh int"))
-        self.logger.info(self.vapi.cli("sh int addr"))
-        self.logger.info(self.vapi.cli("sh int feat loop6"))
-        self.logger.info(self.vapi.cli("sh vlib graph ip4-gbp-src-classify"))
-        self.logger.info(self.vapi.cli("sh int feat loop3"))
-        self.logger.info(self.vapi.cli("sh int feat pg0"))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB_X % "11.0.0.2"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINTGROUP))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
+        self.logger.info(self.vapi.cli(SHOW_GBP_RECIRC))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_FEAT_X % "loop6"))
+        self.logger.info(self.vapi.cli(SHOW_VLIB_GRAPH_X %
+                                       "ip4-gbp-src-classify"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_FEAT_X % "loop3"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_FEAT_X % "pg0"))
 
         #
         # Packet destined to unknown unicast is sent on the epg uplink ...
@@ -1261,7 +1286,7 @@ class TestGBP(VppTestCase):
             [ETH_P_IP, ETH_P_IPV6])
         c3.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh gbp contract"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_CONTRACT))
 
         self.send_and_expect_routed(eps[0].itf,
                                     pkt_inter_epg_220_to_222 * NUM_PKTS,
@@ -1327,10 +1352,10 @@ class TestGBP(VppTestCase):
         se36.add_vpp_config()
         se4.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh ip fib 0.0.0.0/0"))
-        self.logger.info(self.vapi.cli("sh ip fib 11.0.0.1"))
-        self.logger.info(self.vapi.cli("sh ip6 fib ::/0"))
-        self.logger.info(self.vapi.cli("sh ip6 fib %s" %
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB_X % "0.0.0.0/0"))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB_X % "11.0.0.1"))
+        self.logger.info(self.vapi.cli(SHOW_IP6_FIB_X % "::/0"))
+        self.logger.info(self.vapi.cli(SHOW_IP6_FIB_X %
                                        eps[0].fip6))
 
         #
@@ -1564,8 +1589,8 @@ class TestGBP(VppTestCase):
                                   self.pg3, tun_bm)
         gbd1.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
 
         # ... and has a /32 applied
         ip_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
@@ -1623,7 +1648,7 @@ class TestGBP(VppTestCase):
 
         self.send_and_assert_no_replies(self.pg2, p)
 
-        self.logger.info(self.vapi.cli("sh error"))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
         self.assert_error_counter_equal(
             '/err/gbp-policy-port/drop-no-contract',
             drop_no_contract + 1)
@@ -1683,9 +1708,9 @@ class TestGBP(VppTestCase):
             '/err/gbp-policy-port/allow-intra-sclass',
             allow_intra_class + 2)
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
-        self.logger.info(self.vapi.cli("show gbp vxlan"))
-        self.logger.info(self.vapi.cli("show ip mfib"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
+        self.logger.info(self.vapi.cli(SHOW_GBP_VXLAN))
+        self.logger.info(self.vapi.cli(SHOW_IP_MFIB))
 
         #
         # If we sleep for the threshold time, the learnt endpoints should
@@ -1774,9 +1799,9 @@ class TestGBP(VppTestCase):
                                               vx_tun_l2_1.sw_if_index,
                                               mac=l['mac']))
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
-        self.logger.info(self.vapi.cli("show gbp vxlan"))
-        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
+        self.logger.info(self.vapi.cli(SHOW_GBP_VXLAN))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
 
         #
         # wait for the learnt endpoints to age out
@@ -1835,7 +1860,7 @@ class TestGBP(VppTestCase):
         #
         # Static EP replies to dynamics
         #
-        self.logger.info(self.vapi.cli("sh l2fib bd_id 1"))
+        self.logger.info(self.vapi.cli(SHOW_L2FIB_BDID_X % 1))
         for l in learnt:
             p = (Ether(src=ep.mac, dst=l['mac']) /
                  IP(dst=l['ip'], src=ep.ip4) /
@@ -1950,15 +1975,15 @@ class TestGBP(VppTestCase):
         #
         # send UU packets from the local EP
         #
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
-        self.logger.info(self.vapi.cli("sh bridge-domain 1 detail"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
                 IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 100))
         rxs = self.send_and_expect(ep.itf, [p_uu], gbd1.uu_fwd)
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
 
         p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
                 IP(dst="10.0.0.133", src=ep.ip4) /
@@ -2026,11 +2051,11 @@ class TestGBP(VppTestCase):
                 tep=[self.pg2.local_ip4,
                      self.pg2.remote_hosts[1].ip4]))
 
-        self.logger.info(self.vapi.cli("sh int"))
-        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
-        self.logger.info(self.vapi.cli("sh gbp vxlan"))
-        self.logger.info(self.vapi.cli("sh gbp endpoint"))
-        self.logger.info(self.vapi.cli("sh gbp interface"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
+        self.logger.info(self.vapi.cli(SHOW_GBP_VXLAN))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
+        self.logger.info(self.vapi.cli(SHOW_GBP_INTERFACE))
 
         #
         # EP moves to a different TEP
@@ -2244,9 +2269,9 @@ class TestGBP(VppTestCase):
         for ep in eps:
             ep.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
-        self.logger.info(self.vapi.cli("show interface"))
-        self.logger.info(self.vapi.cli("show br"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN))
 
         #
         # Intra epg allowed without contract
@@ -2443,8 +2468,8 @@ class TestGBP(VppTestCase):
                                   uu_drop=True, bm_drop=True)
         gbd1.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
 
         # ... and has a /32 applied
         ip_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
@@ -2470,8 +2495,8 @@ class TestGBP(VppTestCase):
         # send UU/BM packet from the local EP with UU drop and BM drop enabled
         # in bd
         #
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
                 IP(dst="10.0.0.133", src=ep.ip4) /
                 UDP(sport=1234, dport=1234) /
@@ -2486,7 +2511,7 @@ class TestGBP(VppTestCase):
 
         self.pg3.unconfig_ip4()
 
-        self.logger.info(self.vapi.cli("sh int"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_INTERFACE))
 
     def test_gbp_bd_arp_flags(self):
         """ GBP BD arp flags """
@@ -2550,8 +2575,8 @@ class TestGBP(VppTestCase):
         #
         # send ARP packet from the local EP expect it on the uu interface
         #
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
         p_arp = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
                  ARP(op="who-has",
                      psrc=ep.ip4, pdst="10.0.0.99",
@@ -2617,8 +2642,8 @@ class TestGBP(VppTestCase):
                                   learn=False)
         gbd1.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
 
         # ... and has a /32 applied
         ip_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
@@ -2728,7 +2753,7 @@ class TestGBP(VppTestCase):
     def test_gbp_learn_l3(self):
         """ GBP L3 Endpoint Learning """
 
-        self.vapi.cli("set logging class gbp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_GBP_LEVEL_DEBUG)
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
@@ -2790,9 +2815,9 @@ class TestGBP(VppTestCase):
         gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0, self.pg3)
         gbd1.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
-        self.logger.info(self.vapi.cli("sh gbp bridge"))
-        self.logger.info(self.vapi.cli("sh gbp route"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ROUTE))
 
         # ... and has a /32 and /128 applied
         ip4_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
@@ -2923,15 +2948,15 @@ class TestGBP(VppTestCase):
                 vx_tun_l3.vni)
             self.assertNotEqual(INDEX_INVALID, tep1_sw_if_index)
 
-            self.logger.info(self.vapi.cli("show gbp bridge"))
-            self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
-            self.logger.info(self.vapi.cli("show gbp vxlan"))
-            self.logger.info(self.vapi.cli("show int addr"))
+            self.logger.info(self.vapi.cli(SHOW_GBP_BRIDGE))
+            self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
+            self.logger.info(self.vapi.cli(SHOW_GBP_VXLAN))
+            self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
 
             # endpoint learnt via the TEP
             self.assertTrue(find_gbp_endpoint(self, ip=l['ip6']))
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
         self.logger.info(self.vapi.cli("show ip fib index 1 %s" % l['ip']))
 
         #
@@ -2964,7 +2989,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(inner[IPv6].src, ep.ip6)
                 self.assertEqual(inner[IPv6].dst, l['ip6'])
 
-        self.logger.info(self.vapi.cli("sh gbp endpoint"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
         for l in learnt:
             self.wait_for_ep_timeout(ip=l['ip'])
 
@@ -3094,7 +3119,7 @@ class TestGBP(VppTestCase):
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_TRANSPORT)
         se_10_1_24.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
+        self.logger.info(self.vapi.cli(SHOW_GBP_ENDPOINT))
 
         ips = ["10.0.0.88", learnt[0]['ip']]
         for ip in ips:
@@ -3241,7 +3266,7 @@ class TestGBP(VppTestCase):
     def test_gbp_redirect(self):
         """ GBP Endpoint Redirect """
 
-        self.vapi.cli("set logging class gbp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_GBP_LEVEL_DEBUG)
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
@@ -4136,7 +4161,7 @@ class TestGBP(VppTestCase):
     def test_gbp_redirect_extended(self):
         """ GBP Endpoint Redirect Extended """
 
-        self.vapi.cli("set logging class gbp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_GBP_LEVEL_DEBUG)
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
@@ -4550,11 +4575,11 @@ class TestGBP(VppTestCase):
             self.assertEqual(inner[IP].src, ep1.ip4)
             self.assertEqual(inner[IP].dst, ep2.ip4)
 
-        self.logger.info(self.vapi.cli("show bridge 3 detail"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 3))
         sep1.remove_vpp_config()
 
-        self.logger.info(self.vapi.cli("show bridge 1 detail"))
-        self.logger.info(self.vapi.cli("show bridge 2 detail"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 2))
 
         # re-add ep2: it is local again :)
         ep2.add_vpp_config()
@@ -4595,7 +4620,7 @@ class TestGBP(VppTestCase):
         """ GBP L3 Out """
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
-        self.vapi.cli("set logging class gbp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_GBP_LEVEL_DEBUG)
 
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
         routed_src_mac = "00:22:bd:f8:19:ff"
@@ -5046,7 +5071,7 @@ class TestGBP(VppTestCase):
         vx_tun_r1.add_vpp_config()
         VppIpInterfaceBind(self, vx_tun_r1, t4).add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
 
         #
         # then the special adj to resolve through on that tunnel
@@ -5141,7 +5166,7 @@ class TestGBP(VppTestCase):
         vx_tun_r2.add_vpp_config()
         VppIpInterfaceBind(self, vx_tun_r2, t4).add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
 
         n2 = VppNeighbor(self,
                          vx_tun_r2.sw_if_index,
@@ -5212,7 +5237,7 @@ class TestGBP(VppTestCase):
               UDP(sport=7777, dport=8881) /
               Raw(b'\xa5' * 100))]
 
-        self.logger.info(self.vapi.cli("sh ip6 fib 10:222::1"))
+        self.logger.info(self.vapi.cli(SHOW_IP6_FIB_X % "10:222::1"))
         rxs = self.send_and_expect(self.pg0, p, self.pg7)
 
         self.assertEqual(rxs[0][VXLAN].vni, 445)
@@ -5332,8 +5357,8 @@ class TestGBP(VppTestCase):
             sclass=4220)
         l3o6_20.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh ip fib 10.20.0.1"))
-        self.logger.info(self.vapi.cli("sh ip6 fib 10:20::1"))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB_X % "10.20.0.1"))
+        self.logger.info(self.vapi.cli(SHOW_IP6_FIB_X % "10:20::1"))
 
         # two ip6 packets whose port are chosen so they load-balance
         p = [(Ether(src=lep1.mac, dst=str(self.router_mac)) /
@@ -5381,7 +5406,7 @@ class TestGBP(VppTestCase):
         """ GBP Anonymous L3 Out """
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
-        self.vapi.cli("set logging class gbp level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_GBP_LEVEL_DEBUG)
 
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
         routed_src_mac = "00:22:bd:f8:19:ff"
@@ -5721,7 +5746,7 @@ class TestGBP(VppTestCase):
         vx_tun_r.add_vpp_config()
         VppIpInterfaceBind(self, vx_tun_r, t4).add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
 
         #
         # then the special adj to resolve through on that tunnel
