@@ -18,6 +18,13 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 
+from cli_commands import (
+    ADJACENCY_COUNTERS_ENABLE,
+    SHOW_IP_NEIGHBORCONFIG,
+    SHOW_IP_NEIGHBORS,
+    SHOW_IP_NEIGHBORSORTED,
+    SHOW_IP_NEIGHBORWATCHER,
+)
 
 NUM_PKTS = 67
 
@@ -172,7 +179,7 @@ class ARPTestCase(VppTestCase):
                                           sw_if_index=self.pg1.sw_if_index,
                                           ip=self.pg1.remote_hosts[1].ip4)
 
-        self.logger.info(self.vapi.cli("sh ip neighbor-watcher"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORWATCHER))
 
         #
         # Send IP traffic to one of these unresolved hosts.
@@ -1495,7 +1502,7 @@ class ARPTestCase(VppTestCase):
 
             self.send_and_assert_no_replies(self.pg1, p1, "ARP reply")
 
-        self.logger.info(self.vapi.cli("sh ip neighbors"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
 
         #
         # swap the table pg1 is in
@@ -1577,7 +1584,7 @@ class NeighborStatsTestCase(VppTestCase):
     def test_arp_stats(self):
         """ ARP Counters """
 
-        self.vapi.cli("adj counters enable")
+        self.vapi.cli(ADJACENCY_COUNTERS_ENABLE)
         self.pg1.generate_remote_hosts(2)
 
         arp1 = VppNeighbor(self,
@@ -1616,7 +1623,7 @@ class NeighborStatsTestCase(VppTestCase):
     def test_nd_stats(self):
         """ ND Counters """
 
-        self.vapi.cli("adj counters enable")
+        self.vapi.cli(ADJACENCY_COUNTERS_ENABLE)
         self.pg0.generate_remote_hosts(3)
 
         nd1 = VppNeighbor(self,
@@ -1739,7 +1746,7 @@ class NeighborAgeTestCase(VppTestCase):
                                      max_age=0,
                                      recycle=False)
 
-        self.vapi.cli("sh ip neighbor-config")
+        self.vapi.cli(SHOW_IP_NEIGHBORCONFIG)
 
         # add the 198 neighbours that should pass (-1 for one created in setup)
         for ii in range(200):
@@ -1785,7 +1792,7 @@ class NeighborAgeTestCase(VppTestCase):
                                      max_age=2,
                                      recycle=True)
 
-        self.vapi.cli("sh ip4 neighbor-sorted")
+        self.vapi.cli(SHOW_IP_NEIGHBORSORTED)
 
         #
         # expect probes from all these ARP entries as they age

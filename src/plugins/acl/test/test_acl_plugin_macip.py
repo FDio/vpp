@@ -17,6 +17,17 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
+from cli_commands import (
+    SHOW_ACLPLUGIN_ACL,
+    SHOW_ACLPLUGIN_INTERFACE,
+    SHOW_ACLPLUGIN_MACIP_ACL,
+    SHOW_ACLPLUGIN_MACIP_ACL_INDEX_X,
+    SHOW_ACLPLUGIN_MACIP_INTERFACE,
+    SHOW_ACLPLUGIN_TABLES,
+    SHOW_CLASSIFY_TABLES_VERBOSE,
+    SHOW_HARDWARE,
+    SHOW_INTERFACE_ADDRESS,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_lo_interface import VppLoInterface
 from vpp_l2 import L2_PORT_TYPE
@@ -164,14 +175,14 @@ class MethodHolder(VppTestCase):
         self.reset_packet_infos()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface address"))
-        self.logger.info(self.vapi.ppcli("show hardware"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
-        self.logger.info(self.vapi.ppcli("sh classify tables verbose"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin interface"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin tables"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_ADDRESS))
+        self.logger.info(self.vapi.ppcli(SHOW_HARDWARE))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_ACL))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_INTERFACE))
+        self.logger.info(self.vapi.ppcli(SHOW_CLASSIFY_TABLES_VERBOSE))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_INTERFACE))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_TABLES))
         # print(self.vapi.ppcli("show interface address"))
         # print(self.vapi.ppcli("show hardware"))
         # print(self.vapi.ppcli("sh acl-plugin macip interface"))
@@ -1140,11 +1151,12 @@ class TestMACIP(MethodHolder):
         self.assertEqual(reply.acls[sw_if_index2], 1)
         self.assertEqual(reply.acls[sw_if_index3], 1)
         self.logger.info("MACIP ACL on multiple interfaces:")
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1234"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 0"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_ACL))
+        self.logger.info(self.vapi.ppcli(
+            SHOW_ACLPLUGIN_MACIP_ACL_INDEX_X % 1234))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_ACL_INDEX_X % 1))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_ACL_INDEX_X % 0))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_MACIP_INTERFACE))
 
         intf[2].remove_vpp_config()
         intf[1].remove_vpp_config()

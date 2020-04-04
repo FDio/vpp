@@ -30,6 +30,13 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_IP_NEIGHBORS,
+    SHOW_L2FIB_VERBOSE,
+    SHOW_L2PATCH,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import MACAddress
 from vpp_l2 import L2_PORT_TYPE
@@ -101,11 +108,11 @@ class TestIpIrb(VppTestCase):
         super(TestIpIrb, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show l2patch"))
-        self.logger.info(self.vapi.cli("show l2fib verbose"))
-        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+        self.logger.info(self.vapi.cli(SHOW_L2PATCH))
+        self.logger.info(self.vapi.cli(SHOW_L2FIB_VERBOSE))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL %
                                        self.bd_id))
-        self.logger.info(self.vapi.cli("show ip neighbors"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []
@@ -251,7 +258,7 @@ class TestIpIrb(VppTestCase):
             self.pg0, self.bvi0, self.pg2, self.pg_if_packet_sizes)
         stream2 = self.create_stream_l2_to_ip(
             self.pg1, self.bvi0, self.pg2, self.pg_if_packet_sizes)
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(stream1)
         self.pg1.add_stream(stream2)
 

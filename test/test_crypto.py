@@ -24,5 +24,6 @@ class TestCrypto(VppTestCase):
             self.logger.critical(error)
         self.assertNotIn("FAIL", error)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

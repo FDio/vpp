@@ -22,6 +22,19 @@ from logging import FileHandler, DEBUG, Formatter
 
 import scapy.compat
 from scapy.packet import Raw
+
+from cli_commands import (
+    CLEAR_TRACE,
+    PACKETGENERATOR_DELETESTREAM_X,
+    PACKETGENERATOR_ENABLESTREAM,
+    SHOW_BIHASH,
+    SHOW_ERRORS,
+    SHOW_HARDWARE,
+    SHOW_INTERFACE,
+    SHOW_LOG,
+    SHOW_RUN,
+    SHOW_TRACE_MAX_X,
+)
 import hook as hookmodule
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
@@ -686,13 +699,13 @@ class VppTestCase(unittest.TestCase):
 
         try:
             if not self.vpp_dead:
-                self.logger.debug(self.vapi.cli("show trace max 1000"))
-                self.logger.info(self.vapi.ppcli("show interface"))
-                self.logger.info(self.vapi.ppcli("show hardware"))
+                self.logger.debug(self.vapi.cli(SHOW_TRACE_MAX_X % 1000))
+                self.logger.info(self.vapi.ppcli(SHOW_INTERFACE))
+                self.logger.info(self.vapi.ppcli(SHOW_HARDWARE))
                 self.logger.info(self.statistics.set_errors_str())
-                self.logger.info(self.vapi.ppcli("show run"))
-                self.logger.info(self.vapi.ppcli("show log"))
-                self.logger.info(self.vapi.ppcli("show bihash"))
+                self.logger.info(self.vapi.ppcli(SHOW_RUN))
+                self.logger.info(self.vapi.ppcli(SHOW_LOG))
+                self.logger.info(self.vapi.ppcli(SHOW_BIHASH))
                 self.logger.info("Logging testcase specific show commands.")
                 self.show_commands_at_teardown()
                 self.registry.remove_vpp_config(self.logger)
@@ -731,7 +744,7 @@ class VppTestCase(unittest.TestCase):
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
             (self.__class__.__name__, self._testMethodName,
              self._testMethodDoc))
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         # store the test instance inside the test class - so that objects
         # holding the class can access instance methods (like assertEqual)
         type(self).test_instance = self
@@ -779,7 +792,7 @@ class VppTestCase(unittest.TestCase):
     def pg_start(cls):
         """ Enable the PG, wait till it is done, then clean up """
         cls.vapi.cli("trace add pg-input 1000")
-        cls.vapi.cli('packet-generator enable')
+        cls.vapi.cli(PACKETGENERATOR_ENABLESTREAM)
         # PG, when starts, runs to completion -
         # so let's avoid a race condition,
         # and wait a little till it's done.
@@ -791,7 +804,7 @@ class VppTestCase(unittest.TestCase):
                 cls.logger.error("Timeout waiting for pg to stop")
                 break
         for stamp, cap_name in cls._captures:
-            cls.vapi.cli('packet-generator delete %s' % cap_name)
+            cls.vapi.cli(PACKETGENERATOR_DELETESTREAM_X % cap_name)
         cls._captures = []
 
     @classmethod
@@ -1097,7 +1110,7 @@ class VppTestCase(unittest.TestCase):
         if counter.startswith("/"):
             counter_value = self.statistics.get_counter(counter)
         else:
-            counters = self.vapi.cli("sh errors").split('\n')
+            counters = self.vapi.cli(SHOW_ERRORS).split('\n')
             counter_value = 0
             for i in range(1, len(counters) - 1):
                 results = counters[i].split()
@@ -1146,7 +1159,7 @@ class VppTestCase(unittest.TestCase):
                 remark, after - before, timeout)
 
     def pg_send(self, intf, pkts, worker=None):
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         intf.add_stream(pkts, worker=worker)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()

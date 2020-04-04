@@ -12,6 +12,10 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
+from cli_commands import (
+    SHOW_UDP_ENCAP,
+)
+
 NUM_PKTS = 67
 
 
@@ -122,7 +126,7 @@ class TestUdpEncap(VppTestCase):
         udp_encap_2.add_vpp_config()
         udp_encap_3.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh udp encap"))
+        self.logger.info(self.vapi.cli(SHOW_UDP_ENCAP))
 
         self.assertTrue(find_udp_encap(self, udp_encap_2))
         self.assertTrue(find_udp_encap(self, udp_encap_3))

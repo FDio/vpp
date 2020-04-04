@@ -12,6 +12,12 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.gtp import GTP_U_Header
 from scapy.utils import atol
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_INTERFACE,
+    SHOW_GTPU_TUNNEL,
+    SHOW_TRACE,
+)
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
@@ -399,12 +405,12 @@ class TestGtpu(BridgeDomain, VppTestCase):
         super(TestGtpu, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
-        self.logger.info(self.vapi.cli("show int"))
-        self.logger.info(self.vapi.cli("show gtpu tunnel"))
-        self.logger.info(self.vapi.cli("show trace"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 11))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 12))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 13))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_GTPU_TUNNEL))
+        self.logger.info(self.vapi.cli(SHOW_TRACE))
 
 
 if __name__ == '__main__':

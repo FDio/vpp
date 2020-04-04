@@ -5,6 +5,10 @@ import unittest
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
+
+from cli_commands import (
+    SHOW_IP6_FIB,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
@@ -98,7 +102,7 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vapi.cli(SHOW_IP6_FIB)
         p_payload = UDP(sport=1234, dport=1234)
         p = (p_ether / p_ip6 / p_payload)
 
@@ -133,7 +137,7 @@ class Test6RD(VppTestCase):
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vapi.cli(SHOW_IP6_FIB)
         p_payload = UDP(sport=1234, dport=1234)
         p = (p_ether / p_ip6 / p_payload)
 
@@ -246,7 +250,7 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index.append(rv.sw_if_index)
 
-        self.vapi.cli("show ip6 fib")
+        self.vapi.cli(SHOW_IP6_FIB)
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip4 = IP(src=self.pg1.remote_ip4, dst=self.pg0.local_ip4)
         p_ip6_1 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
@@ -277,7 +281,7 @@ class Test6RD(VppTestCase):
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vapi.cli(SHOW_IP6_FIB)
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip4 = IP(src=self.pg1.remote_ip4, dst=self.pg0.local_ip4)
         p_ip6 = (IPv6(src="2002:1002:0200::1", dst=self.pg1.remote_ip6) /
@@ -300,7 +304,7 @@ class Test6RD(VppTestCase):
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vapi.cli(SHOW_IP6_FIB)
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
                  UDP(sport=1234, dport=1234))
         p_ip6_fail = (IPv6(src="2002:DEAD:0202::1", dst=self.pg1.remote_ip6) /

@@ -6,6 +6,16 @@ from ipaddress import IPv6Address
 from scapy.contrib.gtp import *
 from scapy.all import *
 
+from cli_commands import (
+    CLEAR_ERRORS,
+    SET_SR_ENCAPS_SOURCE_ADDR_X,
+    SHOW_ERRORS,
+    SHOW_INTERFACE_ADDRESS,
+    SHOW_SR_LOCALSID,
+    SHOW_SR_POLICIES,
+    SHOW_SR_STEERING_POLICIES,
+)
+
 
 class TestSRv6EndMGTP4E(VppTestCase):
     """ SRv6 End.M.GTP4.E (SRv6 -> GTP-U) """
@@ -71,16 +81,16 @@ class TestSRv6EndMGTP4E(VppTestCase):
         self.vapi.cli(
             "sr localsid address {} behavior end.m.gtp4.e v4src_position 64"
             .format(pkts[0]['IPv6'].dst))
-        self.logger.info(self.vapi.cli("show sr localsids"))
+        self.logger.info(self.vapi.cli(SHOW_SR_LOCALSID))
 
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -147,7 +157,7 @@ class TestSRv6TMGTP4D(VppTestCase):
         """ test_srv6_mobile """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
+        self.vapi.cli(SET_SR_ENCAPS_SOURCE_ADDR_X % "A1::1")
         self.vapi.cli("sr policy add bsid D4:: next D2:: next D3::")
         self.vapi.cli(
             "sr policy add bsid D5:: behavior t.m.gtp4.d"
@@ -155,17 +165,17 @@ class TestSRv6TMGTP4D(VppTestCase):
         self.vapi.cli("sr steer l3 {}/32 via bsid D5::".format(self.ip4_dst))
         self.vapi.cli("ip route add D2::/32 via {}".format(self.ip6_dst))
 
-        self.logger.info(self.vapi.cli("show sr steer"))
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vapi.cli(SHOW_SR_STEERING_POLICIES))
+        self.logger.info(self.vapi.cli(SHOW_SR_POLICIES))
 
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -242,14 +252,14 @@ class TestSRv6EndMGTP6E(VppTestCase):
             "ip route add a1::/64 via {}".format(self.ip6_nhop))
         self.logger.info(self.vapi.cli("show sr localsids"))
 
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -313,22 +323,22 @@ class TestSRv6EndMGTP6D(VppTestCase):
         """ test_srv6_mobile """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
+        self.vapi.cli(SET_SR_ENCAPS_SOURCE_ADDR_X % "A1::1")
         self.vapi.cli("sr policy add bsid D4:: next D2:: next D3::")
         self.vapi.cli(
             "sr localsid prefix 2001::/64 behavior end.m.gtp6.d D4::/64")
         self.vapi.cli("ip route add D2::/64 via {}".format(self.ip6_nhop))
 
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vapi.cli(SHOW_SR_POLICIES))
 
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
 
         capture = self.pg1.get_capture(len(pkts))
 

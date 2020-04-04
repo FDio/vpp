@@ -13,6 +13,10 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.dns import DNSRR, DNS, DNSQR
 
+from cli_commands import (
+    SHOW_DNS_CACHE_VERBOSE,
+)
+
 
 class TestDns(VppTestCase):
     """ Dns Test Cases """
@@ -101,9 +105,10 @@ class TestDns(VppTestCase):
         self.verify_capture(self.pg0, pkts)
 
         # Make sure that the cache contents are correct
-        str = self.vapi.cli("show dns cache verbose")
+        str = self.vapi.cli(SHOW_DNS_CACHE_VERBOSE)
         self.assertIn('1.2.3.4', str)
         self.assertIn('[P] no.clown.org:', str)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

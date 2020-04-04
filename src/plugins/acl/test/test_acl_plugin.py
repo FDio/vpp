@@ -14,6 +14,17 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from ipaddress import IPv4Network, IPv6Network
 
+from cli_commands import (
+    SHOW_ACLPLUGIN_ACL,
+    SHOW_ACLPLUGIN_INTERFACE,
+    SHOW_ACLPLUGIN_TABLES,
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_L2FIB_VERBOSE,
+    SHOW_VLIB_GRAPH_L2INPUTFEATARC,
+    SHOW_VLIB_GRAPH_L2INPUTFEATARCEND,
+    SHOW_VLIB_GRAPH_L2OUTPUTFEATARC,
+    SHOW_VLIB_GRAPH_L2OUTPUTFEATARCEND,
+)
 from vpp_lo_interface import VppLoInterface
 from vpp_acl import AclRule, VppAcl, VppAclInterface, VppEtypeWhitelist
 from vpp_ip import INVALID_INDEX
@@ -162,19 +173,15 @@ class TestACLplugin(VppTestCase):
         super(TestACLplugin, self).tearDown()
 
     def show_commands_at_teardown(self):
-        cli = "show vlib graph l2-input-feat-arc"
-        self.logger.info(self.vapi.ppcli(cli))
-        cli = "show vlib graph l2-input-feat-arc-end"
-        self.logger.info(self.vapi.ppcli(cli))
-        cli = "show vlib graph l2-output-feat-arc"
-        self.logger.info(self.vapi.ppcli(cli))
-        cli = "show vlib graph l2-output-feat-arc-end"
-        self.logger.info(self.vapi.ppcli(cli))
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin acl"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin interface"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin tables"))
-        self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
+        self.logger.info(self.vapi.ppcli(SHOW_VLIB_GRAPH_L2INPUTFEATARC))
+        self.logger.info(self.vapi.ppcli(SHOW_VLIB_GRAPH_L2INPUTFEATARCEND))
+        self.logger.info(self.vapi.ppcli(SHOW_VLIB_GRAPH_L2OUTPUTFEATARC))
+        self.logger.info(self.vapi.ppcli(SHOW_VLIB_GRAPH_L2OUTPUTFEATARCEND))
+        self.logger.info(self.vapi.ppcli(SHOW_L2FIB_VERBOSE))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_INTERFACE))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_TABLES))
+        self.logger.info(self.vapi.ppcli(SHOW_BRIDGEDOMAIN_X_DETAIL
                                          % self.bd_id))
 
     def create_rule(self, ip=0, permit_deny=0, ports=PORTS_ALL, proto=-1,
@@ -574,10 +581,8 @@ class TestACLplugin(VppTestCase):
 
         matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
         self.logger.info("stat segment counters: %s" % repr(matches))
-        cli = "show acl-plugin acl"
-        self.logger.info(self.vapi.ppcli(cli))
-        cli = "show acl-plugin tables"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_TABLES))
 
         total_hits = matches[0][0]['packets'] + matches[0][1]['packets']
         self.assertEqual(total_hits, 64)
@@ -612,10 +617,8 @@ class TestACLplugin(VppTestCase):
 
         matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
         self.logger.info("stat segment counters: %s" % repr(matches))
-        cli = "show acl-plugin acl"
-        self.logger.info(self.vapi.ppcli(cli))
-        cli = "show acl-plugin tables"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.ppcli(SHOW_ACLPLUGIN_TABLES))
         self.assertEqual(matches[0][0]['packets'], 64)
         # disable counters
         reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)

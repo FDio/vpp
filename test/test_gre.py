@@ -9,6 +9,11 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.volatile import RandMAC, RandIP
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SHOW_ADJ,
+    SHOW_IP_FIB,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
@@ -557,7 +562,7 @@ class TestGRE(VppTestCase):
         #
         # Send tunneled packets that do not match the tunnel's src
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_tunnel_stream_4o4(self.pg0,
                                            "1.1.1.3",
                                            self.pg0.local_ip4,
@@ -769,7 +774,7 @@ class TestGRE(VppTestCase):
         # packets are sent in on pg0 which is in the default table
         #  - packets are GRE encapped
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "9.9.9.9",
                                     dscp=5, ecn=3)
         rx = self.send_and_expect(self.pg0, tx, self.pg1)
@@ -782,7 +787,7 @@ class TestGRE(VppTestCase):
         # are decapped and forwarded. This tests the decap lookup
         # does not happen in the encap table
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_tunnel_stream_4o4(self.pg1,
                                            "2.2.2.2",
                                            self.pg1.local_ip4,
@@ -799,7 +804,7 @@ class TestGRE(VppTestCase):
         # IP not being enabled.
         #
         self.pg2.config_ip4()
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_tunnel_stream_4o4(self.pg2,
                                            "2.2.2.2",
                                            self.pg1.local_ip4,
@@ -1037,8 +1042,8 @@ class TestGRE(VppTestCase):
             gre_if.config_ip4()
             gre_if.generate_remote_hosts(4)
 
-            self.logger.info(self.vapi.cli("sh adj"))
-            self.logger.info(self.vapi.cli("sh ip fib"))
+            self.logger.info(self.vapi.cli(SHOW_ADJ))
+            self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
             #
             # ensure we don't match to the tunnel if the source address
