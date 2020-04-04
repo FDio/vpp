@@ -277,7 +277,7 @@ VLIB_CLI_COMMAND (qos_egress_map_update_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_egress_map_show_command, static) = {
   .path = "show qos egress map",
-  .short_help = "show qos egress map id %d",
+  .short_help = "show qos egress map [id %d]",
   .function = qos_egress_map_show,
   .is_mp_safe = 1,
 };

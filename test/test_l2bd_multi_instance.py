@@ -69,6 +69,11 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN,
+    SHOW_L2FIB,
+    SHOW_L2FIB_VERBOSE,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import Host, ppp
 
@@ -144,8 +149,8 @@ class TestL2bdMultiInst(VppTestCase):
         """
         super(TestL2bdMultiInst, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain"))
+            self.logger.info(self.vapi.ppcli(SHOW_L2FIB_VERBOSE))
+            self.logger.info(self.vapi.ppcli(SHOW_BRIDGEDOMAIN))
 
     @classmethod
     def create_hosts(cls, hosts_per_if):
@@ -201,8 +206,8 @@ class TestL2bdMultiInst(VppTestCase):
                 pg_if.add_stream(packets)
         self.logger.info("Sending broadcast eth frames for MAC learning")
         self.pg_start()
-        self.logger.info(self.vapi.ppcli("show bridge-domain"))
-        self.logger.info(self.vapi.ppcli("show l2fib"))
+        self.logger.info(self.vapi.ppcli(SHOW_BRIDGEDOMAIN))
+        self.logger.info(self.vapi.ppcli(SHOW_L2FIB))
 
     def delete_bd(self, count, start=1):
         """

@@ -38,6 +38,18 @@ from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
+from cli_commands import (
+    SET_ACLPLUGIN_SESSION_TIMEOUT_UDP_IDLE_X,
+    SHOW_ACLPLUGIN_ACL,
+    SHOW_ACLPLUGIN_INTERFACE,
+    SHOW_ACLPLUGIN_SESSIONS_VERBOSE_X,
+    SHOW_ACLPLUGIN_TABLES,
+    SHOW_CLASSIFY_TABLES,
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_IP_NEIGHBORS,
+    SHOW_L2PATCH,
+    SHOW_L2FIB_VERBOSE,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_l2 import L2_PORT_TYPE
 import time
@@ -122,17 +134,16 @@ class TestACLpluginL2L3(VppTestCase):
         super(TestACLpluginL2L3, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show l2patch"))
-        self.logger.info(self.vapi.cli("show classify tables"))
-        self.logger.info(self.vapi.cli("show l2fib verbose"))
-        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+        self.logger.info(self.vapi.cli(SHOW_L2PATCH))
+        self.logger.info(self.vapi.cli(SHOW_CLASSIFY_TABLES))
+        self.logger.info(self.vapi.cli(SHOW_L2FIB_VERBOSE))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL %
                                        self.bd_id))
-        self.logger.info(self.vapi.cli("show ip neighbors"))
-        cmd = "show acl-plugin sessions verbose 1"
-        self.logger.info(self.vapi.cli(cmd))
-        self.logger.info(self.vapi.cli("show acl-plugin acl"))
-        self.logger.info(self.vapi.cli("show acl-plugin interface"))
-        self.logger.info(self.vapi.cli("show acl-plugin tables"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_SESSIONS_VERBOSE_X % 1))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_ACL))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_ACLPLUGIN_TABLES))
 
     def create_stream(self, src_ip_if, dst_ip_if, reverse, packet_sizes,
                       is_ip6, expect_blocked, expect_established,
@@ -628,8 +639,8 @@ class TestACLpluginL2L3(VppTestCase):
     def test_0000_ip6_irb_1(self):
         """ ACL plugin prepare"""
         if not self.vpp_dead:
-            cmd = "set acl-plugin session timeout udp idle 2000"
-            self.logger.info(self.vapi.ppcli(cmd))
+            self.logger.info(self.vapi.ppcli(
+                SET_ACLPLUGIN_SESSION_TIMEOUT_UDP_IDLE_X % 2000))
             # uncomment to not skip past the routing header
             # and watch the EH tests fail
             # self.logger.info(self.vapi.ppcli(

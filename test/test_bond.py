@@ -7,6 +7,13 @@ from framework import VppTestCase, VppTestRunner
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+
+from cli_commands import (
+    CLEAR_INTERFACES,
+    SHOW_INTERFACE,
+    SHOW_INTERFACE_ADDRESS,
+    SHOW_IP_NEIGHBORS,
+)
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import MACAddress
 
@@ -42,7 +49,7 @@ class TestBondInterface(VppTestCase):
         super(TestBondInterface, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE))
 
     def test_bond_traffic(self):
         """ Bond traffic test """
@@ -79,9 +86,9 @@ class TestBondInterface(VppTestCase):
         self.pg3.config_ip4()
         self.pg3.resolve_arp()
 
-        self.logger.info(self.vapi.cli("show interface"))
-        self.logger.info(self.vapi.cli("show interface address"))
-        self.logger.info(self.vapi.cli("show ip neighbors"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_ADDRESS))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
 
         # enslave pg0 and pg1 to BondEthernet0
         self.logger.info("bond enslave interface pg0 to BondEthernet0")
@@ -121,7 +128,7 @@ class TestBondInterface(VppTestCase):
             "set ip neighbor static BondEthernet0 10.10.10.11 abcd.abcd.0004"))
 
         # clear the interface counters
-        self.logger.info(self.vapi.cli("clear interfaces"))
+        self.logger.info(self.vapi.cli(CLEAR_INTERFACES))
 
         self.pg_start()
 
@@ -229,7 +236,7 @@ class TestBondInterface(VppTestCase):
         bond1.admin_up()
 
         # verify both interfaces in the show
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         self.assertIn('BondEthernet0', ifs)
         self.assertIn('BondEthernet1', ifs)
 
@@ -244,7 +251,7 @@ class TestBondInterface(VppTestCase):
 
         self.logger.info("Verifying BondEthernet1 is deleted")
 
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         # verify BondEthernet0 still in the show
         self.assertIn('BondEthernet0', ifs)
 
@@ -265,7 +272,7 @@ class TestBondInterface(VppTestCase):
         self.logger.info("Verifying BondEthernet0 is deleted")
 
         # verify BondEthernet0 not in the show
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         self.assertNotIn('BondEthernet0', ifs)
 
         # verify BondEthernet0 is not in the dump

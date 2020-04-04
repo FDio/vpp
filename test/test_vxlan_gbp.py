@@ -11,6 +11,12 @@ from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
+
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_ERRORS,
+    SHOW_VXLANGBP_TUNNEL,
+)
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
@@ -281,10 +287,10 @@ class TestVxlanGbp(VppTestCase):
         super(TestVxlanGbp, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
-        self.logger.info(self.vapi.cli("show error"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 3))
+        self.logger.info(self.vapi.cli(SHOW_VXLANGBP_TUNNEL))
+        self.logger.info(self.vapi.cli(SHOW_ERRORS))
 
 
 if __name__ == '__main__':

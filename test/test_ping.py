@@ -5,6 +5,12 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
+from cli_commnds import (
+    SHOW_ERRORS,
+    SHOW_HARDWARE,
+    SHOW_IP_NEIGHBORS,
+    SHOW_IP6_NEIGHBORS,
+)
 from framework import VppTestCase
 from util import ppp
 
@@ -44,15 +50,15 @@ class TestPing(VppTestCase):
         super(TestPing, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show hardware"))
+        self.logger.info(self.vapi.cli(SHOW_HARDWARE))
 
     def test_ping_basic(self):
         """ basic ping test """
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip4 neighbors"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+            self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
+            self.logger.info(self.vapi.cli(SHOW_IP6_NEIGHBORS))
 
             remote_ip4 = self.pg1.remote_ip4
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 repeat 10"
@@ -80,14 +86,14 @@ class TestPing(VppTestCase):
                 else:
                     self.assertEqual(icmp.id, icmp_id)
         finally:
-            self.vapi.cli("show error")
+            self.vapi.cli(SHOW_ERRORS)
 
     def test_ping_burst(self):
         """ burst ping test """
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip neighbors"))
+            self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
 
             remote_ip4 = self.pg1.remote_ip4
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 burst 3"
@@ -119,4 +125,4 @@ class TestPing(VppTestCase):
                 else:
                     self.assertEqual(icmp.id, icmp_id)
         finally:
-            self.vapi.cli("show error")
+            self.vapi.cli(SHOW_ERRORS)

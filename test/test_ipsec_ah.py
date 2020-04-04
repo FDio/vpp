@@ -3,6 +3,11 @@ import unittest
 
 from scapy.layers.ipsec import AH
 
+from cli_commands import (
+    SET_CRYPTO_HANDLER_ALL_X,
+    SHOW_INTERFACE_ADDRESS,
+    SHOW_IPSEC_ALL,
+)
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
     config_tun_params, config_tra_params, IPsecIPv4Params, IPsecIPv6Params, \
@@ -65,7 +70,7 @@ class ConfigIpsecAH(TemplateIpsec):
         self.net_objs = []
         self.tun_if = self.pg0
         self.tra_if = self.pg2
-        self.logger.info(self.vapi.ppcli("show int addr"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_ADDRESS))
 
         self.tra_spd = VppIpsecSpd(self, self.tra_spd_id)
         self.tra_spd.add_vpp_config()
@@ -98,7 +103,7 @@ class ConfigIpsecAH(TemplateIpsec):
                                          proto=d)])
             r.add_vpp_config()
             self.net_objs.append(r)
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
     def unconfig_network(self):
         for o in reversed(self.net_objs):
@@ -345,7 +350,7 @@ class TestIpsecAhAll(ConfigIpsecAH,
         # loop through the VPP engines
         #
         for engine in engines:
-            self.vapi.cli("set crypto handler all %s" % engine)
+            self.vapi.cli(SET_CRYPTO_HANDLER_ALL_X % engine)
             #
             # loop through each of the algorithms
             #

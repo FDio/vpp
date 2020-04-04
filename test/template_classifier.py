@@ -12,6 +12,16 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.layers.inet6 import IPv6
+
+from cli_commands import (
+    SHOW_CLASSIFY_TABLES_VERBOSE,
+    SHOW_INACL_TYPE_IP4,
+    SHOW_INACL_TYPE_IP6,
+    SHOW_IP_FIB,
+    SHOW_OUTACL_TYPE_IP4,
+    SHOW_OUTACL_TYPE_IP6,
+
+)
 from util import ppp
 
 
@@ -89,14 +99,14 @@ class TestClassifier(VppTestCase):
         """Run standard test teardown and acl related log."""
         if self.af is not None and not self.vpp_dead:
             if self.af == AF_INET:
-                self.logger.info(self.vapi.ppcli("show inacl type ip4"))
-                self.logger.info(self.vapi.ppcli("show outacl type ip4"))
+                self.logger.info(self.vapi.ppcli(SHOW_INACL_TYPE_IP4))
+                self.logger.info(self.vapi.ppcli(SHOW_OUTACL_TYPE_IP4))
             elif self.af == AF_INET6:
-                self.logger.info(self.vapi.ppcli("show inacl type ip6"))
-                self.logger.info(self.vapi.ppcli("show outacl type ip6"))
+                self.logger.info(self.vapi.ppcli(SHOW_INACL_TYPE_IP6))
+                self.logger.info(self.vapi.ppcli(SHOW_OUTACL_TYPE_IP6))
 
-            self.logger.info(self.vapi.cli("show classify table verbose"))
-            self.logger.info(self.vapi.cli("show ip fib"))
+            self.logger.info(self.vapi.cli(SHOW_CLASSIFY_TABLES_VERBOSE))
+            self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
             acl_active_table = 'ip_out'
             if self.af == AF_INET6:

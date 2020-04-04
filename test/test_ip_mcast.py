@@ -13,6 +13,9 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, getmacbyip
 from scapy.layers.inet6 import IPv6, getmacbyip6
 
+from cli_commands import (
+    CLEAR_TRACE,
+)
 #
 # The number of packets sent is set to 91 so that when we replicate more than 3
 # times, which we do for some entries, we will generate more than 256 packets
@@ -188,7 +191,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the default route. gets dropped.
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -283,7 +286,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  small packets
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -307,7 +310,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  large packets
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1",
                                     payload_size=1024)
         self.pg0.add_stream(tx)
@@ -331,7 +334,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream to the unicast next-hops
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.2")
         self.pg0.add_stream(tx)
 
@@ -353,7 +356,7 @@ class TestIPMcast(VppTestCase):
         # Send packets with the 9th bit set so we test the correct clearing
         # of that bit in the mac rewrite
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.255.255.255")
         self.pg0.add_stream(tx)
 
@@ -375,7 +378,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (*,232.1.1.1)
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -401,7 +404,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the default route. gets dropped.
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -475,7 +478,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (*, ff01::/16)
         # sent on the non-accepting interface
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg1, "2002::1", "ff01:2::255")
         self.send_and_assert_no_replies(self.pg1, tx, "RPF miss")
 
@@ -483,7 +486,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (*, ff01::/16)
         # sent on the accepting interface
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg0, "2002::1", "ff01:2::255")
         self.pg0.add_stream(tx)
 
@@ -520,7 +523,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (*,ff01::1)
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg0, "2002::2", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -539,7 +542,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (2001::1, ff00::1)
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -557,7 +560,7 @@ class TestIPMcast(VppTestCase):
             remark="IP multicast packets forwarded on PG3")
 
     def _mcast_connected_send_stream(self, dst_ip):
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg0,
                                     self.pg0.remote_ip4,
                                     dst_ip)
@@ -730,7 +733,7 @@ class TestIPMcast(VppTestCase):
             (MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
              MRouteItfFlags.MFIB_ITF_FLAG_NEGATE_SIGNAL))
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
         signals = self.vapi.mfib_signal_dump()
@@ -785,7 +788,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  small packets
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip4(self.pg8, "1.1.1.1", "232.1.1.1")
         self.pg8.add_stream(tx)
 
@@ -849,7 +852,7 @@ class TestIPMcast(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw(b'\a5' * 64)) * 63
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg1.add_stream(tx)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -896,7 +899,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (2001::1, ff00::1)
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx = self.create_stream_ip6(self.pg8, "2001::1", "ff01::1")
         self.pg8.add_stream(tx)
 

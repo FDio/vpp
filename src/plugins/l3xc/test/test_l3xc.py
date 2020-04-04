@@ -12,6 +12,9 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
+from cli_commands import (
+    SHOW_L3CX,
+)
 from vpp_object import VppObject
 
 NUM_PKTS = 67
@@ -121,7 +124,7 @@ class TestL3xc(VppTestCase):
 
         self.assertTrue(find_l3xc(self, self.pg2.sw_if_index, 0xffffffff))
 
-        self.logger.info(self.vapi.cli("sh l3xc"))
+        self.logger.info(self.vapi.cli(SHOW_L3CX))
 
         #
         # fire in packets. If it's forwarded then the L3XC was successful,

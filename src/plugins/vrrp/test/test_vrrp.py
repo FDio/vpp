@@ -22,6 +22,12 @@ from scapy.layers.inet6 import IPv6, ipv6nh, IPv6ExtHdrHopByHop, \
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3mr, IGMPv3gr
 from scapy.layers.vrrp import IPPROTO_VRRP, VRRPv3
 from scapy.utils6 import in6_getnsma, in6_getnsmac
+
+from cli_commands import (
+    SHOW_TRACE,
+    SHOW_VLIB_GRAPH,
+    SHOW_VRRP_VR,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import ip6_normalize
 
@@ -323,9 +329,9 @@ class TestVRRP4(VppTestCase):
 
         vr.add_vpp_config()
         vr.start_stop(is_start=1)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
 
         pkts = self.pg0.get_capture(4)
 
@@ -372,10 +378,10 @@ class TestVRRP4(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli(SHOW_TRACE))
 
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
         vr.remove_vpp_config()
         self._vrs = []
 
@@ -512,7 +518,7 @@ class TestVRRP4(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while time.time() + intvl_s < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli(SHOW_TRACE))
 
         # when timer expires, VR should take over as master
         self.pg0.enable_capture()
@@ -855,11 +861,11 @@ class TestVRRP6(VppTestCase):
         self._vrs.append(vr)
 
         vr.add_vpp_config()
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
         vr.start_stop(is_start=1)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
 
         pkts = self.pg0.get_capture(4, filter_out_fn=None)
 
@@ -904,14 +910,14 @@ class TestVRRP6(VppTestCase):
         src_ip = self.pg0.remote_ip6_ll
         num_advs = 5
         pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
-        self.logger.info(self.vapi.cli("show vlib graph"))
+        self.logger.info(self.vapi.cli(SHOW_VLIB_GRAPH))
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli(SHOW_TRACE))
             num_advs -= 1
 
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vapi.cli(SHOW_VRRP_VR))
         vr.remove_vpp_config()
         self._vrs = []
 
@@ -1050,7 +1056,7 @@ class TestVRRP6(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while (time.time() + intvl_s) < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli(SHOW_TRACE))
 
         # when timer expires, VR should take over as master
         self.pg0.enable_capture()

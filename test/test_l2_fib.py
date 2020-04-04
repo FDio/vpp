@@ -67,6 +67,11 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_L2FIB,
+    SHOW_L2FIB_VERBOSE,
+)
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_papi import mac_pton, VppEnum
@@ -141,11 +146,11 @@ class TestL2fib(VppTestCase):
         super(TestL2fib, self).tearDown()
         if not self.vpp_dead:
             for bd_id in self.n_brs:
-                self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
+                self.logger.info(self.vapi.ppcli(SHOW_BRIDGEDOMAIN_X_DETAIL
                                                  % bd_id))
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vapi.ppcli(SHOW_L2FIB_VERBOSE))
 
     def create_hosts(self, n_hosts_per_if, subnet):
         """
@@ -487,7 +492,7 @@ class TestL2fib(VppTestCase):
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
-        self.logger.info(self.vapi.ppcli("show l2fib"))
+        self.logger.info(self.vapi.ppcli(SHOW_L2FIB))
         evs = self.vapi.collect_events()
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
         learned_macs = {
@@ -509,7 +514,7 @@ class TestL2fib(VppTestCase):
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
-        self.logger.info(self.vapi.ppcli("show l2fib"))
+        self.logger.info(self.vapi.ppcli(SHOW_L2FIB))
         evs = self.vapi.collect_events()
         self.vapi.want_l2_macs_events(enable_disable=0)
 

@@ -12,6 +12,12 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.compat import raw
 
+from cli_commands import (
+    CLEAR_TRACE,
+    PACKETGENERATOR_DELETESTREAM_X,
+    PACKETGENERATOR_ENABLESTREAM,
+    SHOW_CLASSIFY_TABLES_VERBOSE_X,
+)
 
 class TestTracefilter(VppTestCase):
     """ Packet Tracer Filter Test """
@@ -48,7 +54,7 @@ class TestTracefilter(VppTestCase):
 
     # check number of hits for classifier
     def assert_hits(self, n):
-        r = self.cli("show classify table verbose 2")
+        r = self.cli(SHOW_CLASSIFY_TABLES_VERBOSE_X % "2")
         self.assertTrue(r.retval == 0)
         self.assertTrue(hasattr(r, 'reply'))
         self.assertTrue(r.reply.find("hits %i" % n) != -1)
@@ -83,7 +89,7 @@ class TestTracefilter(VppTestCase):
         self.assert_hits(9)
 
         # cleanup
-        self.cli("pa de classifyme")
+        self.cli(PACKETGENERATOR_DELETESTREAM_X % "classifyme")
         self.cli("classify filter trace del mask l3 ip4 src "
                  "match l3 ip4 src 192.168.1.15")
 
@@ -96,9 +102,9 @@ class TestTracefilter(VppTestCase):
         r = self.cli("trace add pg-input %i filter" % len(packets))
         self.assertTrue(r.retval == 0)
         self.pg0.add_stream(packets)
-        self.cli("pa en")
+        self.cli(PACKETGENERATOR_ENABLESTREAM)
         self.assert_hits(n if n is not None else len(packets))
-        self.cli("clear trace")
+        self.cli(CLEAR_TRACE)
         self.cli(
             "classify filter trace del mask hex %s match hex %s" %
             (mask, match))

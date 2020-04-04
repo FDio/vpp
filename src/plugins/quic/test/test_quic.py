@@ -5,6 +5,11 @@ import unittest
 import os
 import subprocess
 import signal
+
+from cli_commands import (
+    SET_QUIC_FIFOSIZE_X,
+    SHOW_IP_FIB,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
@@ -93,7 +98,7 @@ class QUICTestCase(VppTestCase):
                                                nh_table_id=1)], table_id=2)
         self.ip_t01.add_vpp_config()
         self.ip_t10.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip fib"))
+        self.logger.debug(self.vapi.cli(SHOW_IP_FIB))
 
     def tearDown(self):
         # Delete inter-table routes
@@ -203,7 +208,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         self.client_echo_test_args = common_args + \
             ["client", "appns", "client", "fifo-size",
              f"{self.client_fifo_size}"]
-        error = self.vapi.cli("quic set fifo-size 2M")
+        error = self.vapi.cli(SET_QUIC_FIFOSIZE_X % "2M")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
