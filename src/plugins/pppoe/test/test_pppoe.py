@@ -8,6 +8,15 @@ from scapy.layers.l2 import Ether
 from scapy.layers.ppp import PPPoE, PPPoED, PPP
 from scapy.layers.inet import IP
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SHOW_ADJ,
+    SHOW_INTERFACE,
+    SHOW_IP_FIB,
+    SHOW_PPPOE_FIB,
+    SHOW_PPPOE_SESSION,
+    SHOW_TRACE,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_pppoe_interface import VppPppoeInterface
@@ -48,11 +57,11 @@ class TestPPPoE(VppTestCase):
             i.admin_down()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show int"))
-        self.logger.info(self.vapi.cli("show pppoe fib"))
-        self.logger.info(self.vapi.cli("show pppoe session"))
-        self.logger.info(self.vapi.cli("show ip fib"))
-        self.logger.info(self.vapi.cli("show trace"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_FIB))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_SESSION))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB))
+        self.logger.info(self.vapi.cli(SHOW_TRACE))
 
     def create_stream_pppoe_discovery(self, src_if, dst_if,
                                       client_mac, count=1):
@@ -182,7 +191,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Decap(self):
         """ PPPoE Decap Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -228,9 +237,9 @@ class TestPPPoE(VppTestCase):
         rx2 = self.pg1.get_capture(len(tx2))
         self.verify_decapped_pppoe(self.pg0, rx2, tx2)
 
-        self.logger.info(self.vapi.cli("show pppoe fib"))
-        self.logger.info(self.vapi.cli("show pppoe session"))
-        self.logger.info(self.vapi.cli("show ip fib"))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_FIB))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_SESSION))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
         #
         # test case cleanup
@@ -245,7 +254,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Encap(self):
         """ PPPoE Encap Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -279,7 +288,7 @@ class TestPPPoE(VppTestCase):
         # Send a packet stream that is routed into the session
         #  - packets are PPPoE encapped
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx2 = self.create_stream_ip4(self.pg1, self.pg0,
                                      self.pg0.remote_ip4, self.dst_ip, 65)
         self.pg1.add_stream(tx2)
@@ -290,10 +299,10 @@ class TestPPPoE(VppTestCase):
         rx2 = self.pg0.get_capture(len(tx2))
         self.verify_encaped_pppoe(self.pg1, rx2, tx2, self.session_id)
 
-        self.logger.info(self.vapi.cli("show pppoe fib"))
-        self.logger.info(self.vapi.cli("show pppoe session"))
-        self.logger.info(self.vapi.cli("show ip fib"))
-        self.logger.info(self.vapi.cli("show adj"))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_FIB))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_SESSION))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB))
+        self.logger.info(self.vapi.cli(SHOW_ADJ))
 
         #
         # test case cleanup
@@ -308,7 +317,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Add_Twice(self):
         """ PPPoE Add Same Session Twice Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -362,7 +371,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Del_Twice(self):
         """ PPPoE Delete Same Session Twice Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -416,7 +425,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Decap_Multiple(self):
         """ PPPoE Decap Multiple Sessions Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -494,9 +503,9 @@ class TestPPPoE(VppTestCase):
         rx5 = self.pg1.get_capture(len(tx5))
         self.verify_decapped_pppoe(self.pg2, rx5, tx5)
 
-        self.logger.info(self.vapi.cli("show pppoe fib"))
-        self.logger.info(self.vapi.cli("show pppoe session"))
-        self.logger.info(self.vapi.cli("show ip fib"))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_FIB))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_SESSION))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
         #
         # test case cleanup
@@ -512,7 +521,7 @@ class TestPPPoE(VppTestCase):
     def test_PPPoE_Encap_Multiple(self):
         """ PPPoE Encap Multiple Sessions Test """
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
 
         #
         # Add a route that resolves the server's destination
@@ -566,7 +575,7 @@ class TestPPPoE(VppTestCase):
         # Send a packet stream that is routed into the session
         #  - packets are PPPoE encapped
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx2 = self.create_stream_ip4(self.pg1, self.pg0,
                                      self.pg0.remote_ip4, self.dst_ip)
         self.pg1.add_stream(tx2)
@@ -587,9 +596,9 @@ class TestPPPoE(VppTestCase):
         rx5 = self.pg2.get_capture(len(tx5))
         self.verify_encaped_pppoe(self.pg1, rx5, tx5, self.session_id + 1)
 
-        self.logger.info(self.vapi.cli("show pppoe fib"))
-        self.logger.info(self.vapi.cli("show pppoe session"))
-        self.logger.info(self.vapi.cli("show ip fib"))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_FIB))
+        self.logger.info(self.vapi.cli(SHOW_PPPOE_SESSION))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
         #
         # test case cleanup

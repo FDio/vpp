@@ -11,6 +11,12 @@ from scapy.layers.l2 import Ether, Dot1Q, ARP
 from scapy.packet import Raw
 from six import moves
 
+from cli_commands import (
+    ADJACENCY_COUNTERS_ENABLE,
+    CLEAR_TRACE,
+    SHOW_IP_FIB_MTRIE,
+    SHOW_IP_NEIGHBORS,
+)
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
@@ -90,7 +96,7 @@ class TestIPv4(VppTestCase):
         super(TestIPv4, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip4 neighbors"))
+        self.logger.info(self.vapi.cli(SHOW_IP_NEIGHBORS))
         # info(self.vapi.cli("show ip fib"))  # many entries
 
     def modify_packet(self, src_if, packet_size, pkt):
@@ -1159,7 +1165,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         # inject the packet on pg0 - expect load-balancing across all 4 paths
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.send_and_expect_load_balancing(self.pg0, port_pkts,
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
@@ -1239,7 +1245,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         # inject the packet on pg0 - rx only on via routes output interface
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
 
         #
@@ -1395,7 +1401,7 @@ class TestIPPunt(VppTestCase):
         policer.add_vpp_config()
         self.vapi.ip_punt_police(policer.policer_index)
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1893,7 +1899,7 @@ class TestIPLPM(VppTestCase):
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 2000))
 
-        self.logger.info(self.vapi.cli("sh ip fib mtrie"))
+        self.logger.info(self.vapi.cli(SHOW_IP_FIB_MTRIE))
         rx = self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
         rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
@@ -1922,7 +1928,7 @@ class TestIPv4Frag(VppTestCase):
     def test_frag_large_packets(self):
         """ Fragmentation of large packets """
 
-        self.vapi.cli("adjacency counters enable")
+        self.vapi.cli(ADJACENCY_COUNTERS_ENABLE)
 
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IP(src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4) /

@@ -7,6 +7,17 @@ from scapy.layers.l2 import Ether, GRE, Dot1Q
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+
+from cli_commands import (
+    CLEAR_IPSEC_SA,
+    SET_CRYPTO_HANDLER_ALL_X,
+    SET_LOGGING_CLASS_IPSEC_LEVEL_DEBUG,
+    SHOW_ADJ,
+    SHOW_IPSEC_PROTECTHASH,
+    SHOW_IPSEC_SA,
+    SHOW_IPSEC_SA_X,
+    SHOW_LOG,
+)
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
     IpsecTun4, IpsecTun6,  IpsecTcpTests, mk_scapy_crypt_key, \
@@ -432,8 +443,8 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
         config_tun_params(p, self.encryption_type, p.tun_if)
-        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
-        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_SA_X % 0))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_SA_X % 1))
 
         p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
                              [VppRoutePath(p.tun_if.remote_ip4,
@@ -496,7 +507,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
         self.vapi.ipsec_tunnel_if_set_sa(sw_if_index=p.tun_if.sw_if_index,
                                          sa_id=p.tun_sa_out.id,
                                          is_outbound=0)
-        self.logger.info(self.vapi.cli("sh ipsec sa"))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_SA))
 
     def test_tun_44(self):
         """IPSEC tunnel all algos """
@@ -563,7 +574,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
         for engine in engines:
-            self.vapi.cli("set crypto handler all %s" % engine)
+            self.vapi.cli(SET_CRYPTO_HANDLER_ALL_X % engine)
 
             #
             # loop through each of the algorithms
@@ -628,8 +639,8 @@ class TestIpsec4TunIfEspNoAlgo(TemplateIpsec, IpsecTun4):
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
         config_tun_params(p, self.encryption_type, p.tun_if)
-        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
-        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_SA_X % 0))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_SA_X % 1))
 
         p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
                              [VppRoutePath(p.tun_if.remote_ip4,
@@ -824,8 +835,8 @@ class TestIpsecGreTebIfEsp(TemplateIpsec,
         VppBridgeDomainPort(self, bd1, p.tun_if).add_vpp_config()
         VppBridgeDomainPort(self, bd1, self.pg1).add_vpp_config()
 
-        self.vapi.cli("clear ipsec sa")
-        self.vapi.cli("sh adj")
+        self.vapi.cli(CLEAR_IPSEC_SA)
+        self.vapi.cli(SHOW_ADJ)
         self.vapi.cli("sh ipsec tun")
 
     def tearDown(self):
@@ -944,7 +955,7 @@ class TestIpsecGreTebVlanIfEsp(TemplateIpsec,
         VppBridgeDomainPort(self, bd1, p.tun_if).add_vpp_config()
         VppBridgeDomainPort(self, bd1, self.pg1_11).add_vpp_config()
 
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_IPSEC_SA)
 
     def tearDown(self):
         p = self.ipv4_params
@@ -1051,7 +1062,7 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec,
         VppBridgeDomainPort(self, bd1, p.tun_if).add_vpp_config()
         VppBridgeDomainPort(self, bd1, self.pg1).add_vpp_config()
 
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_IPSEC_SA)
 
     def tearDown(self):
         p = self.ipv4_params
@@ -1489,7 +1500,7 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
                              p.tun_if.remote_hosts[ii].ip4,
                              self.pg0.remote_hosts[ii].ip4).add_vpp_config()
             p.tun_dst = self.pg0.remote_hosts[ii].ip4
-        self.logger.info(self.vapi.cli("sh ipsec protect-hash"))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_PROTECTHASH))
 
     def tearDown(self):
         p = self.ipv4_params
@@ -1559,7 +1570,7 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
     def setUp(self):
         super(TestIpsecMGreIfEspTra6, self).setUp()
 
-        self.vapi.cli("set logging class ipsec level debug")
+        self.vapi.cli(SET_LOGGING_CLASS_IPSEC_LEVEL_DEBUG)
 
         N_NHS = 16
         self.tun_if = self.pg0
@@ -1625,8 +1636,8 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
                                      p.tun_if.sw_if_index)]).add_vpp_config()
             p.tun_dst = self.pg0.remote_hosts[ii].ip6
 
-        self.logger.info(self.vapi.cli("sh log"))
-        self.logger.info(self.vapi.cli("sh ipsec protect-hash"))
+        self.logger.info(self.vapi.cli(SHOW_LOG))
+        self.logger.info(self.vapi.cli(SHOW_IPSEC_PROTECTHASH))
         self.logger.info(self.vapi.cli("sh adj 41"))
 
     def tearDown(self):
@@ -1752,7 +1763,7 @@ class TestIpsec4TunProtect(TemplateIpsec,
         c = p.tun_if.get_tx_stats()
         self.assertEqual(c['packets'], 127)
 
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_IPSEC_SA)
         self.verify_tun_64(p, count=127)
         c = p.tun_if.get_rx_stats()
         self.assertEqual(c['packets'], 254)

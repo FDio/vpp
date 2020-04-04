@@ -9,7 +9,16 @@ from scapy.packet import Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, IPv6ExtHdrHopByHop, \
     IPv6ExtHdrFragment, IPv6ExtHdrDestOpt
 
-
+from cli_commands import (
+    CLEAR_ERRORS,
+    CLEAR_IPSEC_COUNTERS,
+    CLEAR_IPSEC_SA,
+    SHOW_ERRORS,
+    SHOW_HARDWARE,
+    SHOW_IPSEC_ALL,
+    SHOW_IPSEC_SA_X,
+    TEST_HTTP_SERVER,
+)
 from framework import VppTestCase, VppTestRunner
 from util import ppp, reassemble4, fragment_rfc791, fragment_rfc8200
 from vpp_papi import VppEnum
@@ -222,7 +231,7 @@ class TemplateIpsec(VppTestCase):
         self.unconfig_interfaces()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show hardware"))
+        self.logger.info(self.vapi.cli(SHOW_HARDWARE))
 
     def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
                          payload_size=54):
@@ -253,7 +262,7 @@ class TemplateIpsec(VppTestCase):
 
 class IpsecTcp(object):
     def verify_tcp_checksum(self):
-        self.vapi.cli("test http server")
+        self.vapi.cli(TEST_HTTP_SERVER)
         p = self.params[socket.AF_INET]
         send = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                 p.scapy_tun_sa.encrypt(IP(src=p.remote_tun_if_host,
@@ -449,8 +458,8 @@ class IpsecTra4(object):
         # numbers.
         #
         self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
-        self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
-        self.logger.info(self.vapi.ppcli("show ipsec sa 1"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_SA_X % 0))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_SA_X % 1))
 
         pkts = [(Ether(src=self.tra_if.remote_mac,
                        dst=self.tra_if.local_mac) /
@@ -558,8 +567,8 @@ class IpsecTra4(object):
 
     def verify_tra_basic4(self, count=1, payload_size=54):
         """ ipsec v4 transport basic test """
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_IPSEC_SA)
         try:
             p = self.params[socket.AF_INET]
             send_pkts = self.gen_encrypt_pkts(p, p.scapy_tra_sa, self.tra_if,
@@ -579,8 +588,8 @@ class IpsecTra4(object):
                     self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -613,8 +622,8 @@ class IpsecTra4Tests(IpsecTra4):
 class IpsecTra6(object):
     """ verify methods for Transport v6 """
     def verify_tra_basic6(self, count=1, payload_size=54):
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_IPSEC_SA)
         try:
             p = self.params[socket.AF_INET6]
             send_pkts = self.gen_encrypt_pkts6(p, p.scapy_tra_sa, self.tra_if,
@@ -634,8 +643,8 @@ class IpsecTra6(object):
                     self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -829,9 +838,9 @@ class IpsecTun4(object):
             self.assert_packet_checksums_valid(pkt)
 
     def verify_tun_44(self, p, count=1, payload_size=64, n_rx=None):
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear ipsec counters")
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_IPSEC_COUNTERS)
+        self.vapi.cli(CLEAR_IPSEC_SA)
         if not n_rx:
             n_rx = count
         try:
@@ -855,15 +864,15 @@ class IpsecTun4(object):
                 self.assertEqual(rx[IP].dst, p.tun_dst)
 
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
-        self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
-        self.logger.info(self.vapi.ppcli("show ipsec sa 4"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_SA_X % 0))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_SA_X % 4))
         self.verify_counters4(p, count, n_rx)
 
     def verify_tun_dropped_44(self, p, count=1, payload_size=64, n_rx=None):
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
         if not n_rx:
             n_rx = count
         try:
@@ -879,11 +888,11 @@ class IpsecTun4(object):
             self.send_and_assert_no_replies(self.pg1, send_pkts)
 
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
     def verify_tun_reass_44(self, p):
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.tun_if.sw_if_index, enable_ip4=True)
 
@@ -905,15 +914,15 @@ class IpsecTun4(object):
             self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
 
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         self.verify_counters4(p, 1, 1)
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.tun_if.sw_if_index, enable_ip4=False)
 
     def verify_tun_64(self, p, count=1):
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
         try:
             send_pkts = self.gen_encrypt_pkts6(p, p.scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host6,
@@ -944,8 +953,8 @@ class IpsecTun4(object):
                         pass
                     raise
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         self.verify_counters4(p, count)
 
@@ -1029,8 +1038,8 @@ class IpsecTun6(object):
                 raise
 
     def verify_drop_tun_66(self, p_in, count=1, payload_size=64):
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_IPSEC_SA)
 
         send_pkts = self.gen_encrypt_pkts6(p_in, p_in.scapy_tun_sa,
                                            self.tun_if,
@@ -1041,8 +1050,8 @@ class IpsecTun6(object):
         self.logger.info(self.vapi.cli("sh punt stats"))
 
     def verify_tun_66(self, p_in, p_out=None, count=1, payload_size=64):
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear ipsec sa")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_IPSEC_SA)
         if not p_out:
             p_out = p_in
         try:
@@ -1067,12 +1076,12 @@ class IpsecTun6(object):
                 self.assertEqual(rx[IPv6].dst, p_out.tun_dst)
 
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
         self.verify_counters6(p_in, p_out, count)
 
     def verify_tun_reass_66(self, p):
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.tun_if.sw_if_index, enable_ip6=True)
 
@@ -1095,15 +1104,15 @@ class IpsecTun6(object):
                                              self.tun_if)
             self.verify_encrypted6(p, p.vpp_tun_sa, recv_pkts)
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
         self.verify_counters6(p, p, 1)
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.tun_if.sw_if_index, enable_ip6=False)
 
     def verify_tun_46(self, p, count=1):
         """ ipsec 4o6 tunnel basic test """
-        self.vapi.cli("clear errors")
+        self.vapi.cli(CLEAR_ERRORS)
         try:
             send_pkts = self.gen_encrypt_pkts(p, p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host4,
@@ -1135,8 +1144,8 @@ class IpsecTun6(object):
                         pass
                     raise
         finally:
-            self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec all"))
+            self.logger.info(self.vapi.ppcli(SHOW_ERRORS))
+            self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
         self.verify_counters6(p, p, count)
 
 

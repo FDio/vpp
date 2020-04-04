@@ -7,6 +7,11 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_L2FIB,
+    SHOW_L2FIB_VERBOSE,
+)
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
@@ -88,7 +93,7 @@ class TestL2bd(VppTestCase):
             # create test host entries and inject packets to learn MAC entries
             # in the bridge-domain
             cls.create_hosts_and_learn(cls.mac_entries_count)
-            cls.logger.info(cls.vapi.ppcli("show l2fib"))
+            cls.logger.info(cls.vapi.ppcli(SHOW_L2FIB))
 
         except Exception:
             super(TestL2bd, cls).tearDownClass()
@@ -111,8 +116,8 @@ class TestL2bd(VppTestCase):
         """
         super(TestL2bd, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
+            self.logger.info(self.vapi.ppcli(SHOW_L2FIB_VERBOSE))
+            self.logger.info(self.vapi.ppcli(SHOW_BRIDGEDOMAIN_X_DETAIL %
                                              self.bd_id))
 
     @classmethod

@@ -26,8 +26,21 @@ from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
 from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
-from framework import VppTestCase, VppTestRunner
 
+from cli_commands import (
+    CLEAR_ERRORS,
+    CLEAR_TRACE,
+    SHOW_PUNT_SOCKET_REGISTRATIONS,
+    SHOW_PUNT_SOCKET_REGISTRATION_IP,
+    SHOW_PUNT_SOCKET_REGISTRATION_EXCEPTION,
+    SHOW_PUNT_CLIENT,
+    SHOW_PUNT_DB,
+    SHOW_PUNT_REASON,
+    SHOW_PUNT_STATS,
+    SHOW_TRACE,
+    SHOW_VLIB_GRAPH_X,
+)
+from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
@@ -270,7 +283,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 3)
 
-        self.logger.info(self.vapi.cli("sh punt sock reg"))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_SOCKET_REGISTRATIONS))
 
         #
         # deregister all punt socket
@@ -414,7 +427,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         # expect punt socket and no packets on pg0
         #
         self.send_and_assert_no_replies(self.pg0, pkts)
-        self.logger.info(self.vapi.cli("show trace"))
+        self.logger.info(self.vapi.cli(SHOW_TRACE))
         rx = self.socket_client_close()
 
         for p in self.ports:
@@ -538,7 +551,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # expect ICMPv6 - destination unreachable for all packets
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -560,13 +573,13 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # expect punt socket and no packets on pg0
         #
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg0.get_capture(0)
-        self.logger.info(self.vapi.cli("show trace"))
+        self.logger.info(self.vapi.cli(SHOW_TRACE))
         rx = self.socket_client_close()
         self.verify_udp_pkts(rx, len(pkts), port)
 
@@ -675,8 +688,8 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # expect punt socket and no packets on pg0
         #
-        self.vapi.cli("clear errors")
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_ERRORS)
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -761,7 +774,8 @@ class TestExceptionPuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_ex)
         self.assertEqual(len(punts), 3)
 
-        self.logger.info(self.vapi.cli("sh punt sock reg exception"))
+        self.logger.info(self.vapi.cli(
+            SHOW_PUNT_SOCKET_REGISTRATION_EXCEPTION))
 
         #
         # deregister all punt socket
@@ -961,7 +975,7 @@ class TestIpProtoPuntSocket(TestPuntSocket):
                                        "%s/socket_punt_1" % self.tempdir)
         self.vapi.punt_socket_register(punt_eigrp,
                                        "%s/socket_punt_2" % self.tempdir)
-        self.logger.info(self.vapi.cli("sh punt sock reg ip"))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_SOCKET_REGISTRATION_IP))
         punts = self.vapi.punt_socket_dump(type=pt_ip)
         self.assertEqual(len(punts), 2)
         self.verify_ip_proto(punt_ospf, punts[0])
@@ -982,7 +996,8 @@ class TestIpProtoPuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_ip)
         self.assertEqual(len(punts), 2)
 
-        self.logger.info(self.vapi.cli("sh punt sock reg exception"))
+        self.logger.info(self.vapi.cli(
+            SHOW_PUNT_SOCKET_REGISTRATION_EXCEPTION))
 
         #
         # deregister all punt socket
@@ -1191,7 +1206,7 @@ class TestPunt(VppTestCase):
         self.vapi.cli("test punt pg1 %s" % self.pg1.remote_ip4)
         self.vapi.cli("test punt pg1 %s" % self.pg1.remote_ip6)
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg2.add_stream(p4 * NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1209,7 +1224,7 @@ class TestPunt(VppTestCase):
             self.assertEqual(p4[IP].dst, rx[IP].dst)
             self.assertEqual(p4[IP].ttl, rx[IP].ttl)
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg2.add_stream(p6 * NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1231,11 +1246,11 @@ class TestPunt(VppTestCase):
         self.assertEqual(stats[0][r4]['packets'], 3*NUM_PKTS)
         self.assertEqual(stats[0][r6]['packets'], 3*NUM_PKTS)
 
-        self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
-        self.logger.info(self.vapi.cli("show punt client"))
-        self.logger.info(self.vapi.cli("show punt reason"))
-        self.logger.info(self.vapi.cli("show punt stats"))
-        self.logger.info(self.vapi.cli("show punt db"))
+        self.logger.info(self.vapi.cli(SHOW_VLIB_GRAPH_X % "punt-dispatch"))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_CLIENT))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_REASON))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_STATS))
+        self.logger.info(self.vapi.cli(SHOW_PUNT_DB))
 
 
 if __name__ == '__main__':

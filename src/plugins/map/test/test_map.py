@@ -15,6 +15,11 @@ from scapy.layers.inet import IP, UDP, ICMP, TCP
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, IPv6ExtHdrFragment, \
     ICMPv6EchoRequest, ICMPv6DestUnreach
 
+from cli_commands import (
+    MAP_PARAMS_PRERESOLVE_DEL_IP6NH_X,
+    MAP_PARAMS_PRERESOLVE_IP6NH_X,
+)
+
 
 class TestMAP(VppTestCase):
     """ MAP Test Case """
@@ -261,7 +266,7 @@ class TestMAP(VppTestCase):
         #
         # Pre-resolve. No API for this!!
         #
-        self.vapi.ppcli("map params pre-resolve ip6-nh 4001::1")
+        self.vapi.ppcli(MAP_PARAMS_PRERESOLVE_IP6NH_X % "4001::1")
 
         self.send_and_assert_no_replies(self.pg0, v4,
                                         "resolved via default route")
@@ -295,7 +300,7 @@ class TestMAP(VppTestCase):
         # the route is really gone and thus that the unresolve worked.
         #
         pre_res_route.remove_vpp_config()
-        self.vapi.ppcli("map params pre-resolve del ip6-nh 4001::1")
+        self.vapi.ppcli(MAP_PARAMS_PRERESOLVE_DEL_IP6NH_X % "4001::1")
 
     def test_map_e_inner_frag(self):
         """ MAP-E Inner fragmentation """

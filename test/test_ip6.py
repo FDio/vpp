@@ -18,6 +18,10 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid
 from six import moves
 
+from cli_commands import (
+    CLEAR_TRACE,
+    SHOW_IP6_NEIGHBORS,
+)
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_ip import DpoProto
@@ -139,7 +143,7 @@ class TestIPv6ND(VppTestCase):
 
     def send_and_expect_ns(self, tx_intf, rx_intf, pkts, tgt_ip,
                            filter_out_fn=is_ipv6_misc):
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         tx_intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -230,7 +234,7 @@ class TestIPv6(TestIPv6ND):
 
         super(TestIPv6, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+            self.logger.info(self.vapi.cli(SHOW_IP6_NEIGHBORS))
             # info(self.vapi.cli("show ip6 fib"))  # many entries
 
     def modify_packet(self, src_if, packet_size, pkt):
@@ -640,7 +644,7 @@ class TestIPv6(TestIPv6ND):
                            filter_out_fn=is_ipv6_misc,
                            opt=None,
                            src_ip=None):
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1842,7 +1846,7 @@ class TestIP6LoadBalance(VppTestCase):
         super(TestIP6LoadBalance, self).tearDown()
 
     def pg_send(self, input, pkts):
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -2027,7 +2031,7 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # inject the packet on pg0 - expect load-balancing across all 4 paths
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.send_and_expect_load_balancing(self.pg0, port_pkts,
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
@@ -2063,7 +2067,7 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # inject the packet on pg0 - expect load-balancing across all 4 paths
         #
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
 
 
@@ -2123,7 +2127,7 @@ class TestIP6Punt(VppTestCase):
         policer.add_vpp_config()
         self.vapi.ip_punt_police(policer.policer_index, is_ip6=1)
 
-        self.vapi.cli("clear trace")
+        self.vapi.cli(CLEAR_TRACE)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()

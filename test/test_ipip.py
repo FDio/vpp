@@ -4,6 +4,12 @@
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.all import fragment, fragment6, RandShort, defragment6
+
+from cli_commands import (
+    SHOW_ADJ,
+    SHOW_IP_FIB,
+    SHOW_IPIP_TUNNELHAS,
+)
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
@@ -498,8 +504,8 @@ class TestIPIP(VppTestCase):
             ipip_if.config_ip4()
             ipip_if.generate_remote_hosts(4)
 
-            self.logger.info(self.vapi.cli("sh adj"))
-            self.logger.info(self.vapi.cli("sh ip fib"))
+            self.logger.info(self.vapi.cli(SHOW_ADJ))
+            self.logger.info(self.vapi.cli(SHOW_IP_FIB))
 
             #
             # ensure we don't match to the tunnel if the source address
@@ -562,7 +568,7 @@ class TestIPIP(VppTestCase):
                          UDP(sport=1234, dport=1234) /
                          Raw(b'0x44' * 100)) for x in range(63)]
 
-                self.logger.info(self.vapi.cli("sh ipip tunnel-hash"))
+                self.logger.info(self.vapi.cli(SHOW_IPIP_TUNNELHAS))
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
 
                 #

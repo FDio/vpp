@@ -20,6 +20,9 @@ from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
     DHCP6OptStatusCode, DHCP6OptVSS, DHCP6OptClientLinkLayerAddr, DHCP6_Request
 from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
+from cli_commands import (
+    SHOW_DHCP_CLIENT_INTFC_X_VERBOSE,
+)
 from vpp_papi import mac_pton, VppEnum
 from vpp_sub_interface import VppDot1QSubint
 from vpp_qos import VppQosEgressMap, VppQosMark
@@ -1482,7 +1485,8 @@ class TestDHCP(VppTestCase):
         #  the first attempt will be an ARP packet, since we have not yet
         #  responded to VPP's request
         #
-        self.logger.info(self.vapi.cli("sh dhcp client intfc pg3 verbose"))
+        self.logger.info(self.vapi.cli(
+            SHOW_DHCP_CLIENT_INTFC_X_VERBOSE % "pg3"))
         rx = self.pg3.get_capture(1, timeout=10)
 
         self.assertEqual(rx[0][ARP].pdst, self.pg3.remote_ip4)

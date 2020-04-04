@@ -20,6 +20,13 @@ from scapy.packet import Raw
 
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
+from cli_commands import (
+    SET_LOGGING_CLASS_BFD_LEVEL_DEBUG,
+    SHOW_ADJ_NBR,
+    SHOW_BFD,
+    SHOW_BFD_KEYS,
+    SHOW_BFD_SESSIONS,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import ppp
 from vpp_ip import DpoProto
@@ -61,7 +68,7 @@ class BFDAPITestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDAPITestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces(range(2))
             for i in cls.pg_interfaces:
@@ -687,7 +694,7 @@ class BFD4TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFD4TestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces([0])
             cls.create_loopback_interfaces(1)
@@ -1495,7 +1502,7 @@ class BFD6TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFD6TestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip6()
@@ -1527,7 +1534,7 @@ class BFD6TestCase(VppTestCase):
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()
             self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
-            self.logger.debug(self.vapi.cli("show adj nbr"))
+            self.logger.debug(self.vapi.cli(SHOW_ADJ_NBR))
         except BaseException:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
@@ -1894,7 +1901,7 @@ class BFDSHA1TestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDSHA1TestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip4()
@@ -2124,7 +2131,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces([0])
             cls.pg0.config_ip4()
@@ -2333,7 +2340,7 @@ class BFDCLITestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDCLITestCase, cls).setUpClass()
-        cls.vapi.cli("set log class bfd level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_BFD_LEVEL_DEBUG)
         try:
             cls.create_pg_interfaces((0,))
             cls.pg0.config_ip4()
@@ -2391,9 +2398,9 @@ class BFDCLITestCase(VppTestCase):
         s2 = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip6, af=AF_INET6,
                               sha1_key=k2)
         s2.add_vpp_config()
-        self.logger.info(self.vapi.ppcli("show bfd keys"))
-        self.logger.info(self.vapi.ppcli("show bfd sessions"))
-        self.logger.info(self.vapi.ppcli("show bfd"))
+        self.logger.info(self.vapi.ppcli(SHOW_BFD_KEYS))
+        self.logger.info(self.vapi.ppcli(SHOW_BFD_SESSIONS))
+        self.logger.info(self.vapi.ppcli(SHOW_BFD))
 
     def test_set_del_sha1_key(self):
         """ set/delete SHA1 auth key """
