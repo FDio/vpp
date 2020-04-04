@@ -559,7 +559,8 @@ main (int argc, char **argv)
 
   memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
   ssm->serveraddr.sun_family = AF_UNIX;
-  strcpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME);
+  strncpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
+	   sizeof (ssm->serveraddr.sun_path));
 
   rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
 	     SUN_LEN (&ssm->serveraddr));
