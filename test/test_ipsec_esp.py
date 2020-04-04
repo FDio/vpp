@@ -4,6 +4,13 @@ from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
 from parameterized import parameterized
+
+from cli_commands import (
+    SET_CRYPTO_HANDLER_ALL_X,
+    SHOW_HARDWARE,
+    SHOW_INTERFACE_ADDRESS,
+    SHOW_IPSEC_ALL,
+)
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
@@ -50,7 +57,7 @@ class ConfigIpsecESP(TemplateIpsec):
         self.net_objs = []
         self.tun_if = self.pg0
         self.tra_if = self.pg2
-        self.logger.info(self.vapi.ppcli("show int addr"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_ADDRESS))
 
         self.tra_spd = VppIpsecSpd(self, self.tra_spd_id)
         self.tra_spd.add_vpp_config()
@@ -85,7 +92,7 @@ class ConfigIpsecESP(TemplateIpsec):
             r.add_vpp_config()
             self.net_objs.append(r)
 
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
     def unconfig_network(self):
         for o in reversed(self.net_objs):
@@ -324,7 +331,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
         self.net_objs = []
         self.tun_if = self.pg0
         self.tra_if = self.pg2
-        self.logger.info(self.vapi.ppcli("show int addr"))
+        self.logger.info(self.vapi.ppcli(SHOW_INTERFACE_ADDRESS))
 
         p = self.ipv4_params
         p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
@@ -345,7 +352,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
                               self.tun_if).add_vpp_config()
 
         self.config_esp_tun(p)
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vapi.ppcli(SHOW_IPSEC_ALL))
 
         d = DpoProto.DPO_PROTO_IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
@@ -357,7 +364,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
         super(TemplateIpsecEspUdp, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show hardware"))
+        self.logger.info(self.vapi.cli(SHOW_HARDWARE))
 
 
 class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
@@ -470,7 +477,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.run_a_test(self.engine, self.flag, self.algo)
 
     def run_a_test(self, engine, flag, algo, payload_size=None):
-        self.vapi.cli("set crypto handler all %s" % engine)
+        self.vapi.cli(SET_CRYPTO_HANDLER_ALL_X % engine)
 
         self.ipv4_params = IPsecIPv4Params()
         self.ipv6_params = IPsecIPv6Params()

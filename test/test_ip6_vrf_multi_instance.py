@@ -74,6 +74,11 @@ from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
 from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
 
+
+from cli_commands import (
+    SHOW_IP6_FIB,
+    SHOW_IP6_NEIGHBORS,
+)
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vrf import VRFState
@@ -178,8 +183,8 @@ class TestIP6VrfMultiInst(VppTestCase):
         super(TestIP6VrfMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show ip6 fib"))
-        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.info(self.vapi.ppcli(SHOW_IP6_FIB))
+        self.logger.info(self.vapi.ppcli(SHOW_IP6_NEIGHBORS))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
@@ -214,8 +219,8 @@ class TestIP6VrfMultiInst(VppTestCase):
                 pg_if.config_ip6()
                 pg_if.disable_ipv6_ra()
                 pg_if.configure_ipv6_neighbors()
-        self.logger.debug(self.vapi.ppcli("show ip6 fib"))
-        self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.debug(self.vapi.ppcli(SHOW_IP6_FIB))
+        self.logger.debug(self.vapi.ppcli(SHOW_IP6_NEIGHBORS))
 
     def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
@@ -236,8 +241,8 @@ class TestIP6VrfMultiInst(VppTestCase):
             if pg_if not in self.pg_not_in_vrf:
                 self.pg_not_in_vrf.append(pg_if)
         self.logger.info("IPv6 VRF ID %d reset finished" % vrf_id)
-        self.logger.debug(self.vapi.ppcli("show ip6 fib"))
-        self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.debug(self.vapi.ppcli(SHOW_IP6_FIB))
+        self.logger.debug(self.vapi.ppcli(SHOW_IP6_NEIGHBORS))
         self.vapi.ip_table_add_del(is_add=0,
                                    table={'table_id': vrf_id, 'is_ip6': 1})
 

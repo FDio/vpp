@@ -2,8 +2,10 @@
 
 import unittest
 
+from cli_commands import (
+    SHOW_INTERFACE,
+)
 from framework import VppTestCase, VppTestRunner
-
 from vpp_vhost_interface import VppVhostInterface
 
 
@@ -41,7 +43,7 @@ class TesVhostInterface(VppTestCase):
         vhost_if2.admin_up()
 
         # verify both interfaces in the show
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         self.assertIn('VirtualEthernet0/0/0', ifs)
         self.assertIn('VirtualEthernet0/0/1', ifs)
 
@@ -56,7 +58,7 @@ class TesVhostInterface(VppTestCase):
 
         self.logger.info("Verifying VirtualEthernet0/0/1 is deleted")
 
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         # verify VirtualEthernet0/0/0 still in the show
         self.assertIn('VirtualEthernet0/0/0', ifs)
 
@@ -77,7 +79,7 @@ class TesVhostInterface(VppTestCase):
         self.logger.info("Verifying VirtualEthernet0/0/0 is deleted")
 
         # verify VirtualEthernet0/0/0 not in the show
-        ifs = self.vapi.cli("show interface")
+        ifs = self.vapi.cli(SHOW_INTERFACE)
         self.assertNotIn('VirtualEthernet0/0/0', ifs)
 
         # verify VirtualEthernet0/0/0 is not in the dump

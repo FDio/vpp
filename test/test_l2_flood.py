@@ -11,6 +11,10 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+)
+
 NUM_PKTS = 67
 
 
@@ -117,7 +121,7 @@ class TestL2Flood(VppTestCase):
                                             self.pg12.sw_if_index)])
         ip_route.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
 
         #
         # input on pg0 expect copies on pg1->12
@@ -294,7 +298,7 @@ class TestL2Flood(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD)
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
 
         self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)

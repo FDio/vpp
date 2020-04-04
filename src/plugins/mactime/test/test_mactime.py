@@ -156,5 +156,6 @@ class TestMactime(VppTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

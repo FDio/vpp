@@ -17,6 +17,14 @@ from scapy.contrib.mpls import MPLS
 from vpp_papi import VppEnum
 from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark, VppQosStore
 
+from cli_commands import (
+    SHOW_INTERFACE_FEAT_X,
+    SHOW_QOS_EGRESS_MAP,
+    SHOW_QOS_MARK,
+    SHOW_QOS_RECORD,
+    SHOW_QOS_STORE,
+)
+
 NUM_PKTS = 67
 
 
@@ -114,7 +122,7 @@ class TestQOS(VppTestCase):
         qem7 = VppQosEgressMap(self, 7, rows).add_vpp_config()
 
         self.assertTrue(qem7.query_vpp_config())
-        self.logger.info(self.vapi.cli("sh qos eg map"))
+        self.logger.info(self.vapi.cli(SHOW_QOS_EGRESS_MAP))
 
         #
         # Bind interface pgN to table n
@@ -129,7 +137,7 @@ class TestQOS(VppTestCase):
                          self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
         self.assertTrue(qm3.query_vpp_config())
 
-        self.logger.info(self.vapi.cli("sh qos mark"))
+        self.logger.info(self.vapi.cli(SHOW_QOS_MARK))
 
         #
         # packets ingress on Pg0
@@ -161,7 +169,7 @@ class TestQOS(VppTestCase):
         qr1 = VppQosRecord(self, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP)
         qr1.add_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos record"))
+        self.logger.info(self.vapi.cli(SHOW_QOS_RECORD))
 
         #
         # send the same packets, this time expect the input TOS of 1
@@ -219,10 +227,10 @@ class TestQOS(VppTestCase):
         #
         qm2.remove_vpp_config()
         qm3.remove_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos mark"))
+        self.logger.info(self.vapi.cli(SHOW_QOS_MARK))
 
         self.assertFalse(qm3.query_vpp_config())
-        self.logger.info(self.vapi.cli("sh int feat pg2"))
+        self.logger.info(self.vapi.cli(SHOW_INTERFACE_FEAT_X % "pg2"))
 
         p_v4[IP].dst = self.pg2.remote_ip4
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg2)
@@ -261,7 +269,7 @@ class TestQOS(VppTestCase):
         qst1 = VppQosStore(self, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
                            5).add_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos store"))
+        self.logger.info(self.vapi.cli(SHOW_QOS_STORE))
 
         p_v4[IP].dst = self.pg1.remote_ip4
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)

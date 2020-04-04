@@ -3,6 +3,7 @@ from __future__ import print_function
 import binascii
 import random
 import socket
+from socket import inet_ntop
 import unittest
 import time
 import re
@@ -12,6 +13,11 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
+from cli_commands import (
+    FLOWPROBE_FEATURE_ADDDEL_X_X_DISABLE,
+    IPFIX_FLUSH,
+    SET_IPFIX_EXPORTER_COLLECTOR_X,
+)
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
@@ -19,7 +25,7 @@ from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi.macaddress import mac_ntop
-from socket import inet_ntop
+
 from vpp_papi import VppEnum
 
 
@@ -59,13 +65,13 @@ class VppCFLOW(VppObject):
             record_flags=(l2_flag | l3_flag | l4_flag),
             active_timer=self._active, passive_timer=self._passive)
         self.enable_flowprobe_feature()
-        self._test.vapi.cli("ipfix flush")
+        self._test.vapi.cli(IPFIX_FLUSH)
         self._configured = True
 
     def remove_vpp_config(self):
         self.disable_exporter()
         self.disable_flowprobe_feature()
-        self._test.vapi.cli("ipfix flush")
+        self._test.vapi.cli(IPFIX_FLUSH)
         self._configured = False
 
     def enable_exporter(self):
@@ -80,10 +86,10 @@ class VppCFLOW(VppObject):
                               (self._intf, self._datapath))
 
     def disable_exporter(self):
-        self._test.vapi.cli("set ipfix exporter collector 0.0.0.0")
+        self._test.vapi.cli(SET_IPFIX_EXPORTER_COLLECTOR_X % "0.0.0.0")
 
     def disable_flowprobe_feature(self):
-        self._test.vapi.cli("flowprobe feature add-del %s %s disable" %
+        self._test.vapi.cli(FLOWPROBE_FEATURE_ADDDEL_X_X_DISABLE %
                             (self._intf, self._datapath))
 
     def object_id(self):

@@ -16,6 +16,10 @@ import platform
 import sys
 import unittest
 
+from cli_commands import (
+    SHOW_CDP,
+    SHOW_ERRORS,
+)
 
 """ TestCDP is a subclass of  VPPTestCase classes.
 
@@ -79,7 +83,7 @@ class TestCDP(VppTestCase):
 
     def test_enable_cdp(self):
         self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
-        ret = self.vapi.cli("show cdp")
+        ret = self.vapi.cli(SHOW_CDP)
         self.logger.info(ret)
         not_enabled = self.nen_ptr.search(ret)
         self.assertFalse(not_enabled, "CDP isn't enabled")
@@ -155,7 +159,7 @@ class TestCDP(VppTestCase):
                 yield m.groups()
 
     def show_cdp(self):
-        for pack in self.process_cli("show cdp", self.cdp_ptr):
+        for pack in self.process_cli(SHOW_CDP, self.cdp_ptr):
             try:
                 port, system, _, _ = pack
             except ValueError:
@@ -164,7 +168,7 @@ class TestCDP(VppTestCase):
                 yield port, system
 
     def show_errors(self):
-        for pack in self.process_cli("show errors", self.err_ptr):
+        for pack in self.process_cli(SHOW_ERRORS, self.err_ptr):
             try:
                 count, node, reason = pack
             except ValueError:

@@ -10,6 +10,11 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.contrib.geneve import GENEVE
 from scapy.utils import atol
+
+from cli_commands import (
+    SHOW_BRIDGEDOMAIN_X_DETAIL,
+    SHOW_GENEVE_TUNNEL,
+)
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
@@ -228,10 +233,10 @@ class TestGeneve(BridgeDomain, VppTestCase):
         super(TestGeneve, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-        self.logger.info(self.vapi.cli("show geneve tunnel"))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 1))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 2))
+        self.logger.info(self.vapi.cli(SHOW_BRIDGEDOMAIN_X_DETAIL % 3))
+        self.logger.info(self.vapi.cli(SHOW_GENEVE_TUNNEL))
 
 
 if __name__ == '__main__':

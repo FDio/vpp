@@ -16,6 +16,31 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
 from scapy.packet import bind_layers, Raw
+
+from cli_commands import (
+    CLEAR_LOGGING,
+    SET_LOGGING_CLASS_NAT_LEVEL_DEBUG,
+    SHOW_INTERFACE_FEAT_X,
+    SHOW_NAT_ADDRPORTASSIGNMENTALG,
+    SHOW_NAT_HA,
+    SHOW_NAT_TIMEOUTS,
+    SHOW_NAT44_ADDRESSES,
+    SHOW_NAT44_DETERMINISTIC_MAPPINGS,
+    SHOW_NAT44_DETERMINISTIC_SESSIONS,
+    SHOW_NAT44_HASH_TABLES_DETAIL,
+    SHOW_NAT44_INTERFACE_ADDRESS,
+    SHOW_NAT44_INTERFACES,
+    SHOW_NAT44_SESSIONS_DETAIL,
+    SHOW_NAT44_STATIC_MAPPINGS,
+    SHOW_NAT64_BIB_ALL,
+    SHOW_NAT64_INTERFACES,
+    SHOW_NAT64_POOL,
+    SHOW_NAT64_PREFIX,
+    SHOW_NAT64_SESSION_TABLE_ALL,
+    SHOW_NAT66_INTERFACE,
+    SHOW_NAT66_STATIC_MAPPINGS,
+    SHOW_TRACE,
+)
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
@@ -1418,7 +1443,7 @@ class TestNAT44(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_NAT_LEVEL_DEBUG)
 
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
@@ -4172,19 +4197,19 @@ class TestNAT44(MethodHolder):
     def tearDown(self):
         super(TestNAT44, self).tearDown()
         self.clear_nat44()
-        self.vapi.cli("clear logging")
+        self.vapi.cli(CLEAR_LOGGING)
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat44 addresses"))
-        self.logger.info(self.vapi.cli("show nat44 interfaces"))
-        self.logger.info(self.vapi.cli("show nat44 static mappings"))
-        self.logger.info(self.vapi.cli("show nat44 interface address"))
-        self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-        self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
-        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_ADDRESSES))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_INTERFACES))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_STATIC_MAPPINGS))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_INTERFACE_ADDRESS))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_SESSIONS_DETAIL))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_HASH_TABLES_DETAIL))
+        self.logger.info(self.vapi.cli(SHOW_NAT_TIMEOUTS))
         self.logger.info(
-            self.vapi.cli("show nat addr-port-assignment-alg"))
-        self.logger.info(self.vapi.cli("show nat ha"))
+            self.vapi.cli(SHOW_NAT_ADDRPORTASSIGNMENTALG))
+        self.logger.info(self.vapi.cli(SHOW_NAT_HA))
 
 
 class TestNAT44EndpointDependent2(MethodHolder):
@@ -4292,7 +4317,7 @@ class TestNAT44EndpointDependent(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44EndpointDependent, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_NAT_LEVEL_DEBUG)
 
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
@@ -5774,7 +5799,7 @@ class TestNAT44EndpointDependent(MethodHolder):
                             self.config_flags.NAT_IS_EXT_HOST_VALID)
             self.assertTrue(sessions[0].flags &
                             self.config_flags.NAT_IS_TWICE_NAT)
-            self.logger.info(self.vapi.cli("show nat44 sessions detail"))
+            self.logger.info(self.vapi.cli(SHOW_NAT44_SESSIONS_DETAIL))
             self.vapi.nat44_del_session(
                 address=sessions[0].inside_ip_address,
                 port=sessions[0].inside_port,
@@ -6557,7 +6582,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         capture = self.send_and_expect(self.pg1, pkts_out2in, self.pg0,
                                        len(pkts_out2in))
         self.verify_capture_in(capture, self.pg0)
-        self.logger.info(self.vapi.cli("show trace"))
+        self.logger.info(self.vapi.cli(SHOW_TRACE))
 
     def test_multiple_vrf(self):
         """ Multiple VRF setup """
@@ -6991,16 +7016,16 @@ class TestNAT44EndpointDependent(MethodHolder):
         super(TestNAT44EndpointDependent, self).tearDown()
         if not self.vpp_dead:
             self.clear_nat44()
-            self.vapi.cli("clear logging")
+            self.vapi.cli(CLEAR_LOGGING)
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat44 addresses"))
-        self.logger.info(self.vapi.cli("show nat44 interfaces"))
-        self.logger.info(self.vapi.cli("show nat44 static mappings"))
-        self.logger.info(self.vapi.cli("show nat44 interface address"))
-        self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-        self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
-        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_ADDRESSES))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_INTERFACES))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_STATIC_MAPPINGS))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_INTERFACE_ADDRESS))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_SESSIONS_DETAIL))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_HASH_TABLES_DETAIL))
+        self.logger.info(self.vapi.cli(SHOW_NAT_TIMEOUTS))
 
 
 class TestNAT44Out2InDPO(MethodHolder):
@@ -7014,7 +7039,7 @@ class TestNAT44Out2InDPO(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44Out2InDPO, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_NAT_LEVEL_DEBUG)
 
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
@@ -7143,7 +7168,7 @@ class TestDeterministicNAT(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestDeterministicNAT, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli(SET_LOGGING_CLASS_NAT_LEVEL_DEBUG)
 
         cls.tcp_port_in = 6303
         cls.tcp_external_port = 6303
@@ -7743,12 +7768,12 @@ class TestDeterministicNAT(MethodHolder):
             self.clear_nat_det()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat44 interfaces"))
-        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(self.vapi.cli(SHOW_NAT44_INTERFACES))
+        self.logger.info(self.vapi.cli(SHOW_NAT_TIMEOUTS))
         self.logger.info(
-            self.vapi.cli("show nat44 deterministic mappings"))
+            self.vapi.cli(SHOW_NAT44_DETERMINISTIC_MAPPINGS))
         self.logger.info(
-            self.vapi.cli("show nat44 deterministic sessions"))
+            self.vapi.cli(SHOW_NAT44_DETERMINISTIC_SESSIONS))
 
 
 class TestNAT64(MethodHolder):
@@ -7909,9 +7934,9 @@ class TestNAT64(MethodHolder):
         self.assertTrue(pg0_found)
         self.assertTrue(pg1_found)
 
-        features = self.vapi.cli("show interface features pg0")
+        features = self.vapi.cli(SHOW_INTERFACE_FEAT_X % "pg0")
         self.assertIn('nat64-in2out', features)
-        features = self.vapi.cli("show interface features pg1")
+        features = self.vapi.cli(SHOW_INTERFACE_FEAT_X % "pg1")
         self.assertIn('nat64-out2in', features)
 
         self.vapi.nat64_add_del_interface(is_add=0, flags=flags,
@@ -9161,11 +9186,11 @@ class TestNAT64(MethodHolder):
             self.clear_nat64()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat64 pool"))
-        self.logger.info(self.vapi.cli("show nat64 interfaces"))
-        self.logger.info(self.vapi.cli("show nat64 prefix"))
-        self.logger.info(self.vapi.cli("show nat64 bib all"))
-        self.logger.info(self.vapi.cli("show nat64 session table all"))
+        self.logger.info(self.vapi.cli(SHOW_NAT64_POOL))
+        self.logger.info(self.vapi.cli(SHOW_NAT64_INTERFACES))
+        self.logger.info(self.vapi.cli(SHOW_NAT64_PREFIX))
+        self.logger.info(self.vapi.cli(SHOW_NAT64_BIB_ALL))
+        self.logger.info(self.vapi.cli(SHOW_NAT64_SESSION_TABLE_ALL))
 
 
 class TestNAT66(MethodHolder):
@@ -9317,8 +9342,8 @@ class TestNAT66(MethodHolder):
         self.clear_nat66()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat66 interfaces"))
-        self.logger.info(self.vapi.cli("show nat66 static mappings"))
+        self.logger.info(self.vapi.cli(SHOW_NAT66_INTERFACE))
+        self.logger.info(self.vapi.cli(SHOW_NAT66_STATIC_MAPPINGS))
 
 
 if __name__ == '__main__':
