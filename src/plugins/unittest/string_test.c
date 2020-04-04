@@ -594,7 +594,7 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* verify it against strcpy */
-  strcpy (dst, src);
+  strcpy (dst, src);		//NOSONAR
 
   /* This better not fail but check anyhow */
   if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=

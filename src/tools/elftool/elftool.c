@@ -61,7 +61,7 @@ typedef struct {
   u64 rpath_offset;
 } elf_tool_main_t;
 
-static clib_error_t * elf_set_interpreter (elf_main_t * em, 
+static clib_error_t * elf_set_interpreter (elf_main_t * em,
                                            elf_tool_main_t * tm)
 {
   elf_segment_t * g;
@@ -79,7 +79,7 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em,
         break;
       /* Note flowthrough */
     default:
-      return clib_error_return (0, "unacceptable file_type");    
+      return clib_error_return (0, "unacceptable file_type");
     }
 
   vec_foreach (g, em->segments)
@@ -178,7 +178,7 @@ set_rpath_for_section (elf_main_t * em, elf_section_t * s, char * new_rpath)
 	  if (old_len < new_len)
 	    return clib_error_return (0, "rpath of `%s' does not fit (old rpath `%s')",
 				      new_rpath, old_rpath);
-	  strcpy (old_rpath, new_rpath);
+	  strcpy (old_rpath, new_rpath); //NOSONAR
 	  break;
 
 	default:
@@ -246,7 +246,7 @@ set_interpreter_rpath (elf_tool_main_t * tm)
       goto done;
     }
 
-  if (!(fd_stat.st_mode & S_IFREG)) 
+  if (!(fd_stat.st_mode & S_IFREG))
     {
       error = clib_error_return (0, "%s is not a regular file", tm->input_file);
       goto done;
@@ -261,10 +261,10 @@ set_interpreter_rpath (elf_tool_main_t * tm)
 
   /* COW-mapping, since we intend to write the fixups */
   if (fix_in_place)
-    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_SHARED, 
+    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_SHARED,
               ifd, /* offset */ 0);
   else
-    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, 
+    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_PRIVATE,
               ifd, /* offset */ 0);
   if (~pointer_to_uword (idp) == 0)
     {
@@ -272,7 +272,7 @@ set_interpreter_rpath (elf_tool_main_t * tm)
       error = clib_error_return_unix (0, "mmap `%s'", tm->input_file);
       goto done;
     }
-  
+
   if (idp[0] != 0x7f || idp[1] != 'E' || idp[2] != 'L' || idp[3] != 'F')
     {
       error = clib_error_return (0, "not an ELF file '%s'", tm->input_file);
@@ -313,14 +313,14 @@ set_interpreter_rpath (elf_tool_main_t * tm)
 
   if (offset0 == 0)
     {
-      error = clib_error_return (0, "no fixup markers in %s", 
+      error = clib_error_return (0, "no fixup markers in %s",
                                  tm->input_file);
       goto done;
     }
 
  found_both:
   if (0)
-    clib_warning ("offset0 %lld (0x%llx), offset1 %lld (0x%llx)", 
+    clib_warning ("offset0 %lld (0x%llx), offset1 %lld (0x%llx)",
                   offset0, offset0, offset1, offset1);
 
   /* Executable file case */
@@ -329,18 +329,18 @@ set_interpreter_rpath (elf_tool_main_t * tm)
       tm->interpreter_offset = offset0;
       tm->rpath_offset = offset1;
     }
-  else /* shared library case */                         
+  else /* shared library case */
     {
       tm->interpreter_offset = 0;
       tm->rpath_offset = offset0;
     }
-  
+
   if (tm->interpreter_offset)
-    clib_memcpy (&idp[tm->interpreter_offset], tm->set_interpreter, 
+    clib_memcpy (&idp[tm->interpreter_offset], tm->set_interpreter,
             strlen (tm->set_interpreter)+1);
 
   if (tm->rpath_offset)
-    clib_memcpy (&idp[tm->rpath_offset], tm->set_rpath, 
+    clib_memcpy (&idp[tm->rpath_offset], tm->set_rpath,
             strlen (tm->set_rpath)+1);
 
   /* Write the output file... */

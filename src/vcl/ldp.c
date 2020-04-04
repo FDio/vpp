@@ -1813,8 +1813,8 @@ getsockopt (int fd, int level, int optname,
 		rv = -EFAULT;
 	      break;
 	    case TCP_CONGESTION:
-	      strcpy (optval, "cubic");
 	      *optlen = strlen ("cubic");
+	      strncpy (optval, "cubic", *optlen + 1);
 	      rv = 0;
 	      break;
 	    default:

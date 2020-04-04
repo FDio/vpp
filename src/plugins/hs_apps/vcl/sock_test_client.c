@@ -252,7 +252,8 @@ echo_test_client ()
       }
     memset (&serveraddr, 0, sizeof (serveraddr));
     serveraddr.sun_family = AF_UNIX;
-    strcpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME);
+    strncpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
+	     sizeof (serveraddr.sun_path));
     rv = connect (fd, (struct sockaddr *) &serveraddr, SUN_LEN (&serveraddr));
     if (rv < 0)
       {
@@ -265,7 +266,7 @@ echo_test_client ()
       }
 
     scm->af_unix_echo_tx++;
-    strcpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA);
+    strncpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA, sizeof (buffer));
     timeout.tv_sec = 0;
     timeout.tv_usec = 250000;
     select (0, NULL, NULL, NULL, &timeout);	/* delay .25 secs */
@@ -946,7 +947,7 @@ main (int argc, char **argv)
 		     optopt, ctrl->txbuf_size);
 	    print_usage_and_exit ();
 	  }
-	strcpy (ctrl->txbuf, optarg);
+	strncpy (ctrl->txbuf, optarg, ctrl->txbuf_size);
 	ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
 	break;
 

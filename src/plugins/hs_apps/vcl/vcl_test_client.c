@@ -912,7 +912,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 		   optopt, ctrl->txbuf_size);
 	    print_usage_and_exit ();
 	  }
-	strcpy (ctrl->txbuf, optarg);
+	strncpy (ctrl->txbuf, optarg, ctrl->txbuf_size);
 	ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
 	break;
 
