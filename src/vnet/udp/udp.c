@@ -149,6 +149,17 @@ udp_connection_delete (udp_connection_t * uc)
   udp_connection_cleanup (uc);
 }
 
+static u8
+udp_connection_port_used_extern (u16 lcl_port, u8 is_ip4)
+{
+  udp_main_t *um = vnet_get_udp_main ();
+  udp_dst_port_info_t *pi;
+
+  pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
+  return (pi && !pi->n_connections
+	  && udp_is_valid_dst_port (lcl_port, is_ip4));
+}
+
 u32
 udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
 {
@@ -156,18 +167,15 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   vlib_main_t *vm = vlib_get_main ();
   transport_endpoint_cfg_t *lcl_ext;
   udp_connection_t *listener;
-  udp_dst_port_info_t *pi;
   u16 lcl_port_ho;
   void *iface_ip;
 
   lcl_port_ho = clib_net_to_host_u16 (lcl->port);
-  pi = udp_get_dst_port_info (um, lcl_port_ho, lcl->is_ip4);
 
-  if (pi && !pi->n_connections
-      && udp_is_valid_dst_port (lcl_port_ho, lcl->is_ip4))
+  if (udp_connection_port_used_extern (lcl_port_ho, lcl->is_ip4))
     {
       clib_warning ("port already used");
-      return -1;
+      return SESSION_E_PORTINUSE;
     }
 
   pool_get (um->listener_pool, listener);
@@ -415,15 +423,33 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 thread_index = vm->thread_index;
-  udp_connection_t *uc;
   ip46_address_t lcl_addr;
+  udp_connection_t *uc;
   u16 lcl_port;
   int rv;
 
   rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				       &lcl_port);
   if (rv)
-    return rv;
+    {
+      if (rv != SESSION_E_PORTINUSE)
+	return rv;
+
+      if (udp_connection_port_used_extern (lcl_port, rmt->is_ip4))
+	return SESSION_E_PORTINUSE;
+
+      /* If port in use, check if 5-tuple is also in use */
+      if (session_lookup_connection (rmt->fib_index, &lcl_addr, &rmt->ip,
+				     lcl_port, rmt->port, TRANSPORT_PROTO_UDP,
+				     rmt->is_ip4))
+	return SESSION_E_PORTINUSE;
+
+      /* 5-tuple is available so increase lcl endpoint refcount and proceed
+       * with connection allocation */
+      transport_share_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
+				      lcl_port);
+      goto conn_alloc;
+    }
 
   if (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
     {
@@ -440,6 +466,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 	    return SESSION_E_PORTINUSE;
 	}
     }
+
+conn_alloc:
 
   udp_connection_register_port (vm, lcl_port, rmt->is_ip4);
 
