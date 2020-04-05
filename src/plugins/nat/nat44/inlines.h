@@ -89,6 +89,14 @@ nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
 		      s->per_user_list_head_index,
 		      per_user_translation_list_elt - tsm->list_pool);
 
+  dlist_elt_t *lru_list_elt;
+  pool_get (tsm->global_lru_pool, lru_list_elt);
+  s->global_lru_index = lru_list_elt - tsm->global_lru_pool;
+  clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
+		      s->global_lru_index);
+  lru_list_elt->value = s - tsm->sessions;
+  s->last_lru_update = now;
+
   s->ha_last_refreshed = now;
   return s;
 }
