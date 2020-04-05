@@ -320,6 +320,10 @@ typedef CLIB_PACKED(struct
   u32 per_user_index;
   u32 per_user_list_head_index;
 
+  /* index in global LRU list */
+  u32 global_lru_index;
+  f64 last_lru_update;
+
   /* Last heard timer */
   f64 last_heard;
 
@@ -520,6 +524,10 @@ typedef struct
 
   /* Pool of doubly-linked list elements */
   dlist_elt_t *list_pool;
+
+  /* LRU session list - head is stale, tail is fresh */
+  dlist_elt_t *global_lru_pool;
+  u32 global_lru_head_index;
 
   /* NAT thread index */
   u32 snat_thread_index;

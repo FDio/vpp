@@ -593,6 +593,14 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
 			  s->per_user_list_head_index,
 			  per_user_translation_list_elt - tsm->list_pool);
 
+      dlist_elt_t *global_lru_list_elt;
+      pool_get (tsm->global_lru_pool, global_lru_list_elt);
+      global_lru_list_elt->value = s - tsm->sessions;
+      s->global_lru_index = global_lru_list_elt - tsm->global_lru_pool;
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
+			  s->global_lru_index);
+      s->last_lru_update = now;
+
       s->user_index = u - tsm->users;
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -607,7 +615,7 @@ snat_session_t *
 nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 		      f64 now)
 {
-  snat_session_t *s;
+  snat_session_t *s = NULL;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   dlist_elt_t *oldest_elt;
@@ -633,6 +641,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       return 0;
     }
 
+  /* first try to reuse an expired session from this ip */
   oldest_index =
     clib_dlist_remove_head (tsm->list_pool,
 			    u->sessions_per_user_list_head_index);
@@ -647,13 +656,44 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       clib_dlist_addtail (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
       s = nat44_session_reuse_old (sm, u, s, thread_index, now);
+      s->last_lru_update = now;
     }
   else
     {
-      // alloc new session
       clib_dlist_addhead (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
-    alloc_new:
+      s = NULL;
+    }
+
+alloc_new:
+  /* try to free an expired session from global LRU list */
+  if (!s)
+    {
+      oldest_index = clib_dlist_remove_head (tsm->global_lru_pool,
+					     tsm->global_lru_head_index);
+      if (~0 != oldest_index)
+	{
+	  oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
+	  s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
+	  sess_timeout_time =
+	    s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+	  if (now >= sess_timeout_time
+	      || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
+	    {
+	      nat_free_session_data (sm, s, thread_index, 0);
+	      nat44_ed_delete_session (sm, s, thread_index, 0);
+	    }
+	  else
+	    {
+	      clib_dlist_addhead (tsm->global_lru_pool,
+				  tsm->global_lru_head_index, oldest_index);
+	    }
+	  s = NULL;
+	}
+    }
+  if (!s)
+    {
       s = nat44_session_alloc_new (tsm, u, now);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -4075,6 +4115,13 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
               pool_alloc (tsm->sessions, sm->max_translations);
               pool_alloc (tsm->list_pool, sm->max_translations);
+              pool_alloc (tsm->global_lru_pool, sm->max_translations);
+
+              dlist_elt_t *head;
+              pool_get (tsm->global_lru_pool, head);
+              tsm->global_lru_head_index = head - tsm->global_lru_pool;
+              clib_dlist_init (tsm->global_lru_pool,
+                               tsm->global_lru_head_index);
 
               if (sm->endpoint_dependent)
                 {
