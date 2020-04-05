@@ -2004,13 +2004,22 @@ vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
   return (e->event_type == SESSION_IO_EVT_TX && e->session_index == sid);
 }
 
-static inline int
-vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
-			     u8 is_flush)
+always_inline u8
+vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u32 max_enq = svm_fifo_max_enqueue_prod (f);
+  if (is_dgram)
+    return max_enq >= (sizeof (session_dgram_hdr_t) + len);
+  else
+    return max_enq > 0;
+
+}
+
+always_inline int
+vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
+			     size_t n, u8 is_flush, u8 is_dgram)
+{
   int n_write, is_nonblocking;
-  vcl_session_t *s = 0;
   session_evt_type_t et;
   svm_msg_q_msg_t msg;
   svm_fifo_t *tx_fifo;
@@ -2020,10 +2029,6 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 
   if (PREDICT_FALSE (!buf || n == 0))
     return VPPCOM_EINVAL;
-
-  s = vcl_session_get_w_handle (wrk, session_handle);
-  if (PREDICT_FALSE (!s))
-    return VPPCOM_EBADFD;
 
   if (PREDICT_FALSE (s->is_vep))
     {
@@ -2045,13 +2050,13 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
 
   mq = wrk->app_event_queue;
-  if (svm_fifo_is_full_prod (tx_fifo))
+  if (!vcl_fifo_is_writeable (tx_fifo, n, is_dgram))
     {
       if (is_nonblocking)
 	{
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_full_prod (tx_fifo))
+      while (!vcl_fifo_is_writeable (tx_fifo, n, is_dgram))
 	{
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))
@@ -2074,7 +2079,7 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   if (is_flush && !is_ct)
     et = SESSION_IO_EVT_TX_FLUSH;
 
-  if (s->is_dgram)
+  if (is_dgram)
     n_write = app_send_dgram_raw (tx_fifo, &s->transport,
 				  s->vpp_evt_q, buf, n, et,
 				  0 /* do_evt */ , SVM_Q_WAIT);
@@ -2097,15 +2102,29 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 int
 vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 {
-  return vppcom_session_write_inline (session_handle, buf, n,
-				      0 /* is_flush */ );
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!s))
+    return VPPCOM_EBADFD;
+
+  return vppcom_session_write_inline (wrk, s, buf, n,
+				      0 /* is_flush */ , s->is_dgram ? 1 : 0);
 }
 
 int
 vppcom_session_write_msg (uint32_t session_handle, void *buf, size_t n)
 {
-  return vppcom_session_write_inline (session_handle, buf, n,
-				      1 /* is_flush */ );
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!s))
+    return VPPCOM_EBADFD;
+
+  return vppcom_session_write_inline (wrk, s, buf, n,
+				      1 /* is_flush */ , s->is_dgram ? 1 : 0);
 }
 
 #define vcl_fifo_rx_evt_valid_or_break(_s)				\
@@ -3608,18 +3627,18 @@ int
 vppcom_session_sendto (uint32_t session_handle, void *buffer,
 		       uint32_t buflen, int flags, vppcom_endpt_t * ep)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_handle (wrk, session_handle);
+  if (!s)
+    return VPPCOM_EBADFD;
+
   if (!buffer)
     return VPPCOM_EINVAL;
 
   if (ep)
     {
-      vcl_worker_t *wrk = vcl_worker_get_current ();
-      vcl_session_t *s;
-
-      s = vcl_session_get_w_handle (wrk, session_handle);
-      if (!s)
-	return VPPCOM_EBADFD;
-
       if (s->session_type != VPPCOM_PROTO_UDP
 	  || (s->flags & VCL_SESSION_F_CONNECTED))
 	return VPPCOM_EINVAL;
@@ -3643,7 +3662,8 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
       VDBG (2, "handling flags 0x%u (%d) not implemented yet.", flags, flags);
     }
 
-  return (vppcom_session_write_inline (session_handle, buffer, buflen, 1));
+  return (vppcom_session_write_inline (wrk, s, buffer, buflen, 1,
+				       s->is_dgram ? 1 : 0));
 }
 
 int
