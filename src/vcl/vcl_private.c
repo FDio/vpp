@@ -390,6 +390,15 @@ vcl_session_write_ready (vcl_session_t * session)
   if (vcl_session_is_ct (session))
     return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
 
+  if (session->is_dgram)
+    {
+      u32 max_enq = svm_fifo_max_enqueue_prod (session->tx_fifo);
+
+      if (max_enq <= sizeof (session_dgram_hdr_t))
+	return 0;
+      return max_enq - sizeof (session_dgram_hdr_t);
+    }
+
   return svm_fifo_max_enqueue_prod (session->tx_fifo);
 }
 
