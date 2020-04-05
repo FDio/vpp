@@ -693,7 +693,6 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
     0, fragments = 0;
-  u32 tcp_closed_drops = 0;
 
   stats_node_index = sm->ed_out2in_node_index;
 
@@ -789,7 +788,6 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 		{
 		  // session in transitory timeout, drop
 		  b0->error = node->errors[NAT_OUT2IN_ED_ERROR_TCP_CLOSED];
-		  ++tcp_closed_drops;
 		  next0 = NAT_NEXT_DROP;
 		}
 	      goto trace0;
@@ -801,11 +799,9 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	    (f64) nat44_session_get_timeout (sm, s0);
 	  if (now >= sess_timeout_time)
 	    {
-	      // delete session
+	      // session is closed, go slow path
 	      nat_free_session_data (sm, s0, thread_index, 0);
 	      nat44_delete_session (sm, s0, thread_index);
-
-	      // session no longer exists, go slow path
 	      next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	      goto trace0;
 	    }
