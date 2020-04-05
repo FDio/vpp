@@ -673,6 +673,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  u16 deq_now;
 	  u32 offset;
 
+	  if (hdr->data_offset != 0)
+	    os_panic ();
 	  ASSERT (hdr->data_length > hdr->data_offset);
 	  deq_now = clib_min (hdr->data_length - hdr->data_offset,
 			      len_to_deq);
@@ -691,6 +693,12 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
 	      svm_fifo_dequeue_drop (f, offset);
 	    }
+	  else
+	    os_panic ();
+	  if (n_bytes_read > 1400)
+	    os_panic ();
+	  if (n_bytes_read != 1400)
+	    clib_warning ("wrote %u", n_bytes_read);
 	}
       else
 	{

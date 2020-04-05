@@ -2045,13 +2045,15 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
 
   mq = wrk->app_event_queue;
-  if (svm_fifo_is_full_prod (tx_fifo))
+  if (svm_fifo_max_enqueue_prod (tx_fifo) <=
+      (s->is_dgram ? sizeof (session_dgram_hdr_t) + n : 0))
     {
       if (is_nonblocking)
 	{
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_full_prod (tx_fifo))
+      while (svm_fifo_max_enqueue_prod (tx_fifo) <=
+	     (s->is_dgram ? sizeof (session_dgram_hdr_t) + n : 0))
 	{
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))

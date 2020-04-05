@@ -359,6 +359,8 @@ vcl_session_read_ready (vcl_session_t * session)
 int
 vcl_session_write_ready (vcl_session_t * session)
 {
+  u32 max_enq;
+
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
@@ -390,7 +392,8 @@ vcl_session_write_ready (vcl_session_t * session)
   if (vcl_session_is_ct (session))
     return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
 
-  return svm_fifo_max_enqueue_prod (session->tx_fifo);
+  max_enq = svm_fifo_max_enqueue_prod (session->tx_fifo);
+  return max_enq - (session->is_dgram ? sizeof (session_dgram_hdr_t) : 0);
 }
 
 int

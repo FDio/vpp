@@ -605,10 +605,11 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 {
   u32 max_enqueue, actual_write;
   session_dgram_hdr_t hdr;
-  int rv;
+  int rv, olen;
 
+  olen = len;
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+  if (max_enqueue <= (sizeof (session_dgram_hdr_t) + len))
     return 0;
 
   max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -631,6 +632,10 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 				noblock);
     }
   ASSERT (rv);
+  if (rv > 500 && rv != 1400 && rv != olen)
+    os_panic ();
+  if (rv != 1400)
+    clib_warning ("wrote %u", rv);
   return rv;
 }
 
@@ -678,9 +683,10 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 		    app_session_transport_t * at, u8 clear_evt, u8 peek)
 {
   session_dgram_pre_hdr_t ph;
-  u32 max_deq;
+  u32 max_deq, olen;
   int rv;
 
+  olen = len;
   max_deq = svm_fifo_max_dequeue_cons (f);
   if (max_deq <= sizeof (session_dgram_hdr_t))
     {
@@ -700,12 +706,23 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
     return rv;
-  ASSERT (rv > 0);
+
+  /* full datagrams only */
+  if (rv < ph.data_length)
+    return 0;
+
   ph.data_offset += rv;
   if (ph.data_offset == ph.data_length)
     svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
   else
-    svm_fifo_overwrite_head (f, (u8 *) & ph, sizeof (ph));
+    {
+      os_panic ();
+      svm_fifo_overwrite_head (f, (u8 *) & ph, sizeof (ph));
+    }
+  if (rv > 500 && rv != 1400 && rv != olen)
+    os_panic ();
+  if (rv != 1400)
+    clib_warning ("read %u", rv);
   return rv;
 }
 
