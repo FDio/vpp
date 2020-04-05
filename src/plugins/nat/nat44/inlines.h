@@ -89,6 +89,14 @@ nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
 		      s->per_user_list_head_index,
 		      per_user_translation_list_elt - tsm->list_pool);
 
+  dlist_elt_t *lru_list_elt;
+  pool_get (tsm->global_lru_pool, lru_list_elt);
+  s->global_lru_index = lru_list_elt - tsm->global_lru_pool;
+  clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
+		      s->global_lru_index);
+  lru_list_elt->value = s - tsm->sessions;
+  s->last_lru_update = now;
+
   s->ha_last_refreshed = now;
   return s;
 }
@@ -207,6 +215,8 @@ nat44_user_session_cleanup (snat_user_t * u, u32 thread_index, f64 now)
 
       clib_dlist_remove (tsm->list_pool, s->per_user_index);
       pool_put_index (tsm->list_pool, s->per_user_index);
+      clib_dlist_remove (tsm->global_lru_pool, s->global_lru_index);
+      pool_put_index (tsm->global_lru_pool, s->global_lru_index);
       pool_put (tsm->sessions, s);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
