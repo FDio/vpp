@@ -275,14 +275,14 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
       vnet_buffer (b0)->l4_hdr_offset = hdr->csum_start;
       b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID |
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 
       if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
 	{
 	  ip4_header_t *ip4 = (ip4_header_t *) (b0_data + l2hdr_sz);
 	  l4_proto = ip4->protocol;
-	  b0->flags |= VNET_BUFFER_F_IS_IP4;
+	  b0->flags |= (VNET_BUFFER_F_IS_IP4 |
+			VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
 	{
