@@ -795,8 +795,8 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	      nat_free_session_data (sm, s0, thread_index, 0);
 	      nat44_delete_session (sm, s0, thread_index);
 
-	      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_SESS_EXPIRED];
-	      next0 = NAT_NEXT_DROP;
+	      // session no longer exists, go slow path
+	      next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	      goto trace0;
 	    }
 	  //
