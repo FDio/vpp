@@ -75,17 +75,19 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
     }
   else
     {
+      svm_fifo_t *f = s->data.tx_fifo;
+      u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
+
+      if (max_enqueue < sizeof (session_dgram_hdr_t))
+	return;
+
+      max_enqueue -= sizeof (session_dgram_hdr_t);
+
       if (ecm->no_copy)
 	{
 	  session_dgram_hdr_t hdr;
-	  svm_fifo_t *f = s->data.tx_fifo;
 	  app_session_transport_t *at = &s->data.transport;
-	  u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
 
-	  if (max_enqueue <= sizeof (session_dgram_hdr_t))
-	    return;
-
-	  max_enqueue -= sizeof (session_dgram_hdr_t);
 	  rv = clib_min (max_enqueue, bytes_this_chunk);
 
 	  hdr.data_length = rv;
@@ -104,8 +106,11 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 						SESSION_IO_EVT_TX);
 	}
       else
-	rv = app_send_dgram (&s->data, test_data + test_buf_offset,
-			     bytes_this_chunk, 0);
+	{
+	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
+	  rv = app_send_dgram (&s->data, test_data + test_buf_offset,
+			       bytes_this_chunk, 0);
+	}
     }
 
   /* If we managed to enqueue data... */

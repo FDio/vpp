@@ -608,7 +608,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   int rv;
 
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+  if (max_enqueue < (sizeof (session_dgram_hdr_t) + len))
     return 0;
 
   max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -694,18 +694,16 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 
   svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
   ASSERT (ph.data_length >= ph.data_offset);
-  if (!ph.data_offset)
-    svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
+  svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
+
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
     return rv;
-  ASSERT (rv > 0);
-  ph.data_offset += rv;
-  if (ph.data_offset == ph.data_length)
-    svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
-  else
-    svm_fifo_overwrite_head (f, (u8 *) & ph, sizeof (ph));
+
+  /* Discards data that did not fit in buffer */
+  svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
+
   return rv;
 }
 

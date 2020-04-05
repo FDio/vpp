@@ -320,6 +320,8 @@ class TestUDP(VppTestCase):
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
