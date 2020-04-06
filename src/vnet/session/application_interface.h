@@ -694,8 +694,13 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 
   svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
   ASSERT (ph.data_length >= ph.data_offset);
-  svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
 
+  /* If we don't yet have the full dgram return */
+  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN)
+      && len >= ph.data_length)
+    return 0;
+
+  svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
@@ -703,6 +708,11 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 
   /* Discards data that did not fit in buffer */
   svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
+  if (rv > 1000 && rv != 8192)
+    {
+      clib_warning ("read %u", rv);
+      os_panic ();
+    }
 
   return rv;
 }

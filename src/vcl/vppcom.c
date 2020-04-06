@@ -1814,6 +1814,16 @@ vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
   return (e->event_type == SESSION_IO_EVT_RX && e->session_index == sid);
 }
 
+//always_inline u8
+//vcl_fifo_is_readable (svm_fifo_t * f, u32 len, u8 is_dgram)
+//{
+//  u32 max_deq = svm_fifo_max_dequeue_cons (f);
+//  if (is_dgram)
+//    return max_deq >= (sizeof (session_dgram_hdr_t) + len);
+//  else
+//    return max_deq > 0;
+//}
+
 static inline int
 vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 			      u8 peek)
@@ -2012,7 +2022,6 @@ vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
     return max_enq >= (sizeof (session_dgram_hdr_t) + len);
   else
     return max_enq > 0;
-
 }
 
 always_inline int

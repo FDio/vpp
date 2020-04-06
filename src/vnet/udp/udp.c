@@ -412,7 +412,8 @@ udp_session_send_params (transport_connection_t * tconn,
   /* No constraint on TX window */
   sp->snd_space = ~0;
   /* TODO figure out MTU of output interface */
-  sp->snd_mss = 1460;
+//  sp->snd_mss = 1460;
+  sp->snd_mss = 9000;
   sp->tx_offset = 0;
   sp->flags = 0;
   return 0;

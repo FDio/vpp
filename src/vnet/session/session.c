@@ -517,6 +517,7 @@ session_enqueue_dgram_connection (session_t * s,
       rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
       if (rv > 0)
 	enqueued += rv;
+//      clib_warning ("enqueued %u", enqueued);
     }
   if (queue_event)
     {
