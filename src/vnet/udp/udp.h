@@ -63,6 +63,7 @@ typedef struct
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 flags;				/**< connection flags */
+  u16 mss;				/**< connection mss */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -171,6 +172,7 @@ typedef struct
   clib_spinlock_t *peekers_write_locks;
   udp_connection_t *listener_pool;
 
+  u16 default_mtu;
 } udp_main_t;
 
 extern udp_main_t udp_main;

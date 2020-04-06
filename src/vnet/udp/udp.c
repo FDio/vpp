@@ -196,6 +196,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
+  listener->mss = um->default_mtu - sizeof (udp_header_t);
   listener->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_LISTEN;
   lcl_ext = (transport_endpoint_cfg_t *) lcl;
   if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
@@ -409,10 +410,14 @@ static int
 udp_session_send_params (transport_connection_t * tconn,
 			 transport_send_params_t * sp)
 {
+  udp_connection_t *uc;
+
+  uc = udp_get_connection_from_transport (tconn);
+
   /* No constraint on TX window */
   sp->snd_space = ~0;
   /* TODO figure out MTU of output interface */
-  sp->snd_mss = 1460;
+  sp->snd_mss = uc->mss;
   sp->tx_offset = 0;
   sp->flags = 0;
   return 0;
@@ -423,6 +428,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 thread_index = vm->thread_index;
+  udp_main_t *um = &udp_main;
   ip46_address_t lcl_addr;
   udp_connection_t *uc;
   u16 lcl_port;
@@ -483,6 +489,7 @@ conn_alloc:
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
+  uc->mss = rmt->mss ? rmt->mss : (um->default_mtu - sizeof (udp_header_t));
   uc->flags |= UDP_CONN_F_OWNS_PORT;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     uc->flags |= UDP_CONN_F_CONNECTED;
@@ -639,6 +646,8 @@ udp_init (vlib_main_t * vm)
     vlib_node_add_next (vm, udp4_local_node.index, udp4_input_node.index);
   um->local_to_input_edge[UDP_IP6] =
     vlib_node_add_next (vm, udp6_local_node.index, udp6_input_node.index);
+
+  um->default_mtu = 1500;
   return 0;
 }
 
@@ -650,6 +659,24 @@ VLIB_INIT_FUNCTION (udp_init) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  udp_main_t *um = &udp_main;
+  u32 tmp;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "mtu %u", &tmp))
+	um->default_mtu = tmp;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (udp_config_fn, "udp");
 
 static clib_error_t *
 show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
