@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c4034d27_14665302",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-04-06T13:03:31Z",
+      "side": 1,
+      "message": "detach\n\nFix: https://gerrit.fd.io/r/c/vpp/+/26385",
+      "range": {
+        "startLine": 74,
+        "startChar": 25,
+        "endLine": 74,
+        "endChar": 31
+      },
+      "revId": "888d9f05eff1801cbd6c5227eb22e464d3a117c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
