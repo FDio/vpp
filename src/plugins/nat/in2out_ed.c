@@ -309,18 +309,12 @@ slow_path_ed (snat_main_t * sm,
   };
   nat44_is_idle_session_ctx_t ctx;
 
-  u32 cleared = 0;
-
   if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
     {
-      if (PREDICT_FALSE
-	  (!(cleared = nat44_users_cleanup (thread_index, now))))
-	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
-	  nat_elog_notice ("maximum sessions exceeded");
-	  return NAT_NEXT_DROP;
-	}
+      b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
+      nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
+      nat_elog_notice ("maximum sessions exceeded");
+      return NAT_NEXT_DROP;
     }
 
   key0.addr = key->l_addr;
@@ -339,16 +333,9 @@ slow_path_ed (snat_main_t * sm,
 				      sm->port_per_thread,
 				      tsm->snat_thread_index))
 	{
-	  if (cleared || !nat44_out_of_ports_cleanup (thread_index, now) ||
-	      nat_alloc_addr_and_port_ed (sm->addresses, rx_fib_index,
-					  thread_index, key, &key1,
-					  sm->port_per_thread,
-					  tsm->snat_thread_index))
-	    {
-	      nat_elog_notice ("addresses exhausted");
-	      b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
-	      return NAT_NEXT_DROP;
-	    }
+	  nat_elog_notice ("addresses exhausted");
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
+	  return NAT_NEXT_DROP;
 	}
     }
   else
