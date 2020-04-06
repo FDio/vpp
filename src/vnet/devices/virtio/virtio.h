@@ -80,11 +80,17 @@ typedef enum
 #define TX_QUEUE_ACCESS(X) (X/2)
 #define RX_QUEUE_ACCESS(X) (X/2)
 
+#define foreach_virtio_if_types \
+  _ (TAP, 1)                    \
+  _ (TUN, 2)                    \
+  _ (PCI, 3)
+
 typedef enum
 {
-  VIRTIO_IF_TYPE_TAP = 1,
-  VIRTIO_IF_TYPE_PCI,
-  VIRTIO_IF_N_TYPES,
+#define _(a, b) VIRTIO_IF_TYPE_##a = (1 << b),
+  foreach_virtio_if_types
+#undef _
+    VIRTIO_IF_N_TYPES = (1 << 4),
 } virtio_if_type_t;
 
 

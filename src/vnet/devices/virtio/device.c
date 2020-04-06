@@ -21,6 +21,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gso.h>
 #include <vnet/ip/ip4_packet.h>
@@ -337,7 +338,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 	      id->len = b->current_length;
 	    }
 	}
-      else			/* VIRTIO_IF_TYPE_TAP */
+      else			/* VIRTIO_IF_TYPE_[TAP | TUN] */
 	{
 	  d->addr = pointer_to_uword (id);
 	  /* first buffer in chain */
@@ -601,6 +602,7 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .subif_add_del_function = virtio_subif_add_del_function,
   .rx_mode_change_function = virtio_interface_rx_mode_change,
 };
+
 /* *INDENT-ON* */
 
 /*
