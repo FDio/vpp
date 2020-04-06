@@ -129,18 +129,18 @@ static inline void *
 vl_api_acl_rule_t_print (vl_api_acl_rule_t * a, void *handle)
 {
   u8 *s;
-  fib_prefix_t src, dst;
+  ip_prefix_t src, dst;
 
-  ip_prefix_decode (&a->src_prefix, &src);
-  ip_prefix_decode (&a->dst_prefix, &dst);
+  ip_prefix_decode2 (&a->src_prefix, &src);
+  ip_prefix_decode2 (&a->dst_prefix, &dst);
 
   s = format (0, "  %s ", a->src_prefix.address.af ? "ipv6" : "ipv4");
   s = format_acl_action (s, a->is_permit);
   s = format (s, " \\\n");
 
   s = format (s, "    src %U dst %U \\\n",
-              format_fib_prefix, &src,
-              format_fib_prefix, &dst);
+              format_ip_prefix, &src,
+              format_ip_prefix, &dst);
   s = format (s, "    proto %d \\\n", a->proto);
   s = format (s, "    sport %d-%d dport %d-%d \\\n",
 	      clib_net_to_host_u16 (a->srcport_or_icmptype_first),
@@ -158,9 +158,9 @@ static inline void *
 vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
 {
   u8 *s;
-  fib_prefix_t src;
+  ip_prefix_t src;
 
-  ip_prefix_decode (&a->src_prefix, &src);
+  ip_prefix_decode2 (&a->src_prefix, &src);
 
   s = format (0, "  %s %s \\\n", a->src_prefix.address.af ? "ipv6" : "ipv4",
               a->is_permit ? "permit" : "deny");
@@ -170,7 +170,7 @@ vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
 	      format_ethernet_address, a->src_mac_mask);
 
   s = format (s, "    src ip %U, \\",
-		format_fib_prefix, &src);
+		format_ip_prefix, &src);
 
   PRINT_S;
   return handle;
