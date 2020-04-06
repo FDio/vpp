@@ -8,8 +8,9 @@ endif
 # Work out the OS if we haven't already
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
-DOC_DEB_DEPENDS = enchant
-DOC_RPM_DEPENDS = enchant
+DOC_DEB_DEPENDS = enchant libenchant-dev
+DOC_RPM_DEPENDS = enchant libenchant-dev
+
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
@@ -27,9 +28,6 @@ help:
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-spell:
 	@echo "Checking whether dependencies for Docs are installed..."
 ifeq ($(OS_ID),ubuntu)
 	@set -e; inst=; \
@@ -43,4 +41,7 @@ ifeq ($(OS_ID),ubuntu)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 endif
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" -W -b spelling  $(O)
+# Disable spell checking for now
+#	@python3 -m pip install sphinxcontrib-spelling
+#	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" -W -b spelling  $(O)
+	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
