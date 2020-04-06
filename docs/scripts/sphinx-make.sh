@@ -1,34 +1,20 @@
-#!/bin/bash -ex
-
-# Not refactored to root Makefile because CI calls this from
-# makefile in /docs (as if 'make -C docs').
-if [ -z "$PYTHON" ]
-then
-PYTHON_INTERP=python3
-else
-PYTHON_INTERP=$(PYTHON)
-fi
-
-# Get the OS
-OS_ID=$(grep '^ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
+#!/bin/bash
 
 if [ "$1" == "venv" ]
 then
-    # We need to install the venv package on new systems
+    OS_ID=$(grep '^ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
     if [ "$OS_ID" == "ubuntu" ]
     then
-	sudo apt-get install $CONFIRM python3-venv
+	sudo apt-get install -y python3-pip
     fi
     if [ "$OS_ID" == "centos" ]
     then
-	sudo yum install $CONFIRM python3-venv
+	sudo yum install -y python3-pip
     fi
-
-    # Install the virtual environment
-    $PYTHON_INTERP -m venv $VENV_DIR
+    pip3 install --user virtualenv
+    python3 -m virtualenv $VENV_DIR
     source $VENV_DIR/bin/activate;
-    $PYTHON_INTERP -m pip install wheel==0.34.2
-    $PYTHON_INTERP -m pip install -r $DOCS_DIR/etc/requirements.txt
+    pip3 install -r $DOCS_DIR/etc/requirements.txt
 else
     source $VENV_DIR/bin/activate;
     VERSION=`source $WS_ROOT/src/scripts/version`
