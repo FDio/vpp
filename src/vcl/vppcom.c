@@ -2012,7 +2012,6 @@ vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
     return max_enq >= (sizeof (session_dgram_hdr_t) + len);
   else
     return max_enq > 0;
-
 }
 
 always_inline int
