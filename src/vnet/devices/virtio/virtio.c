@@ -294,7 +294,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
 			   &vif->pci_addr);
 	}
-      if (type == VIRTIO_IF_TYPE_TAP)
+      if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	{
 	  u8 *str = 0;
 	  if (vif->host_if_name)
@@ -304,8 +304,9 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  if (vif->host_mtu_size)
 	    vlib_cli_output (vm, "  host-mtu-size \"%d\"",
 			     vif->host_mtu_size);
-	  vlib_cli_output (vm, "  host-mac-addr: %U",
-			   format_ethernet_address, vif->host_mac_addr);
+	  if (type == VIRTIO_IF_TYPE_TAP)
+	    vlib_cli_output (vm, "  host-mac-addr: %U",
+			     format_ethernet_address, vif->host_mac_addr);
 
 	  vec_foreach_index (i, vif->vhost_fds)
 	    str = format (str, " %d", vif->vhost_fds[i]);
@@ -315,8 +316,9 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	}
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
-      vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
-		       vif->mac_addr);
+      if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_PCI))
+	vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
+			 vif->mac_addr);
       vlib_cli_output (vm, "  Device instance: %u", vif->dev_instance);
       vlib_cli_output (vm, "  flags 0x%x", vif->flags);
       flag_entry = (struct feat_struct *) &flags_array;
@@ -366,7 +368,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
 			 vring->avail->flags, vring->avail->idx,
 			 vring->used->flags, vring->used->idx);
-	if (type == VIRTIO_IF_TYPE_TAP)
+	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	  {
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
 			     vring->call_fd);
@@ -401,7 +403,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
 			 vring->avail->flags, vring->avail->idx,
 			 vring->used->flags, vring->used->idx);
-	if (type == VIRTIO_IF_TYPE_TAP)
+	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	  {
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
 			     vring->call_fd);
@@ -437,7 +439,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
 			   vring->avail->flags, vring->avail->idx,
 			   vring->used->flags, vring->used->idx);
-	  if (type == VIRTIO_IF_TYPE_TAP)
+	  if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	    {
 	      vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
 			       vring->call_fd);
