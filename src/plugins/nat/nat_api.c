@@ -242,28 +242,6 @@ vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
 }
 
 static void
-vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat44_session_cleanup_reply_t *rmp;
-  int rv = 0;
-  nat44_force_users_cleanup ();
-  REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
-}
-
-static void *
-vl_api_nat44_session_cleanup_t_print (vl_api_nat44_session_cleanup_t * mp,
-				      void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_session_cleanup");
-
-  FINISH;
-}
-
-
-static void
 vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
 {
   snat_main_t *sm = &snat_main;
@@ -335,8 +313,6 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
   sm->tcp_established_timeout = ntohl (mp->tcp_established);
   sm->tcp_transitory_timeout = ntohl (mp->tcp_transitory);
   sm->icmp_timeout = ntohl (mp->icmp);
-
-  sm->min_timeout = nat44_minimal_timeout (sm);
 
   rv = nat64_set_icmp_timeout (ntohl (mp->icmp));
   if (rv)
@@ -3142,7 +3118,6 @@ _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT44_DEL_USER, nat44_del_user)                                       \
-_(NAT44_SESSION_CLEANUP, nat44_session_cleanup)                         \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \

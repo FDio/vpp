@@ -495,8 +495,6 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
 
-      u->min_session_timeout = 0;
-
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
 
@@ -630,9 +628,6 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   if (PREDICT_FALSE
       ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user))
     {
-      if (nat44_max_translations_per_user_cleanup (u, thread_index, now))
-	goto alloc_new;
-
       nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
 		     clib_net_to_host_u32 (u->addr.as_u32));
       snat_ipfix_logging_max_entries_per_user (thread_index,
@@ -4025,8 +4020,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->tcp_established_timeout = tcp_established_timeout;
   sm->icmp_timeout = icmp_timeout;
 
-  sm->min_timeout = nat44_minimal_timeout (sm);
-
   sm->user_buckets = user_buckets;
   sm->user_memory_size = user_memory_size;
 
@@ -4107,12 +4100,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
-	      tsm->min_session_timeout = 0;
-
-              tsm->cleared = 0;
-              tsm->cleanup_runs = 0;
-              tsm->cleanup_timeout = 0;
-
               pool_alloc (tsm->sessions, sm->max_translations);
               pool_alloc (tsm->list_pool, sm->max_translations);
               pool_alloc (tsm->global_lru_pool, sm->max_translations);
