@@ -117,16 +117,6 @@ nat_show_workers_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
-nat44_session_cleanup_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
-{
-  clib_error_t *error = 0;
-  nat44_force_users_cleanup ();
-  return error;
-}
-
-static clib_error_t *
 snat_set_log_level_command_fn (vlib_main_t * vm,
 			       unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
@@ -703,10 +693,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                             ++transitory_wait_closed;
                           }
                       }
-                    else
-                      {
-                        transitory++;
-                      }
+                    transitory++;
                   }
                 else
                   established++;
@@ -718,18 +705,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
               }
           }));
           count += pool_elts (tsm->sessions);
-
-          vlib_cli_output (vm, "tid[%u] session scavenging cleared: %u",
-              tsm->thread_index, tsm->cleared);
-          vlib_cli_output (vm, "tid[%u] session scavenging cleanup runs: %u",
-              tsm->thread_index, tsm->cleanup_runs);
-
-          if (now < tsm->cleanup_timeout)
-            vlib_cli_output (vm, "tid[%u] session scavenging next run in: %f",
-              tsm->thread_index, tsm->cleanup_timeout - now);
-          else
-            vlib_cli_output (vm, "tid[%u] session scavenging next run in: 0",
-              tsm->thread_index);
         }
       /* *INDENT-ON* */
     }
@@ -764,10 +739,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                         ++transitory_wait_closed;
                       }
                   }
-                else
-                  {
-                    transitory++;
-                  }
+                transitory++;
               }
             else
               established++;
@@ -780,17 +752,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
       }));
       /* *INDENT-ON* */
       count = pool_elts (tsm->sessions);
-
-      vlib_cli_output (vm, "tid[0] session scavenging cleared: %u",
-		       tsm->cleared);
-      vlib_cli_output (vm, "tid[0] session scavenging cleanup runs: %u",
-		       tsm->cleanup_runs);
-
-      if (now < tsm->cleanup_timeout)
-	vlib_cli_output (vm, "tid[0] session scavenging next run in: %f",
-			 tsm->cleanup_timeout - now);
-      else
-	vlib_cli_output (vm, "tid[0] session scavenging next run in: 0");
     }
 
   vlib_cli_output (vm, "total timed out sessions: %u", timed_out);
@@ -1999,7 +1960,6 @@ set_timeout_command_fn (vlib_main_t * vm,
     }
 done:
   unformat_free (line_input);
-  sm->min_timeout = nat44_minimal_timeout (sm);
   return error;
 }
 
@@ -2010,8 +1970,6 @@ nat_show_timeouts_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
 
-  // fix text
-  vlib_cli_output (vm, "min session cleanup timeout: %dsec", sm->min_timeout);
   vlib_cli_output (vm, "udp timeout: %dsec", sm->udp_timeout);
   vlib_cli_output (vm, "tcp-established timeout: %dsec",
 		   sm->tcp_established_timeout);
@@ -2229,19 +2187,6 @@ VLIB_CLI_COMMAND (nat_show_timeouts_command, static) = {
   .path = "show nat timeouts",
   .short_help = "show nat timeouts",
   .function = nat_show_timeouts_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat set logging level}
- * To force garbage collection of nat sessions
- *  vpp# nat44 session cleanup
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (nat44_session_cleanup_command, static) = {
-  .path = "nat44 session cleanup",
-  .function = nat44_session_cleanup_command_fn,
-  .short_help = "nat44 session cleanup",
 };
 
 /*?

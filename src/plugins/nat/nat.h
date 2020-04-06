@@ -361,8 +361,6 @@ typedef struct
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
 } snat_user_t;
 
 typedef struct
@@ -534,14 +532,6 @@ typedef struct
 
   /* real thread index */
   u32 thread_index;
-
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
-
-  /* session scavenging */
-  u32 cleared;
-  u32 cleanup_runs;
-  f64 cleanup_timeout;
 
 } snat_main_per_thread_data_t;
 
@@ -722,9 +712,6 @@ typedef struct snat_main_s
   u32 inside_fib_index;
 
   /* values of various timeouts */
-
-  // min timeout of all proto timeouts
-  u32 min_timeout;
   // proto timeouts
   u32 udp_timeout;
   u32 tcp_transitory_timeout;
