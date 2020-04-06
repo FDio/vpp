@@ -57,6 +57,14 @@ tap_main_t tap_main;
       goto error; \
     }
 
+  /* *INDENT-OFF* */
+VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) =
+{
+  .name = "tun-device",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+  /* *INDENT-ON* */
+
 static u32
 virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			u32 flags)
@@ -134,7 +142,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_t *hw;
   int i;
   int old_netns_fd = -1;
-  struct ifreq ifr = {.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR };
+  struct ifreq ifr = {.ifr_flags = IFF_NO_PI | IFF_VNET_HDR };
   struct ifreq get_ifr = {.ifr_flags = 0 };
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
@@ -168,7 +176,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   pool_get_zero (vim->interfaces, vif);
-  vif->type = VIRTIO_IF_TYPE_TAP;
+
+  if (args->tap_flags & TAP_FLAG_TUN)
+    {
+      vif->type = VIRTIO_IF_TYPE_TUN;
+      ifr.ifr_flags |= IFF_TUN;
+    }
+  else
+    {
+      vif->type = VIRTIO_IF_TYPE_TAP;
+      ifr.ifr_flags |= IFF_TAP;
+    }
+
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
   vif->num_txqs = thm->n_vlib_mains;
@@ -404,14 +423,17 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
-    ethernet_mac_address_generate (args->host_mac_addr.bytes);
-  args->error = vnet_netlink_set_link_addr (vif->ifindex,
-					    args->host_mac_addr.bytes);
-  if (args->error)
+  if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
-      args->rv = VNET_API_ERROR_NETLINK_ERROR;
-      goto error;
+      if (ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
+	ethernet_mac_address_generate (args->host_mac_addr.bytes);
+      args->error = vnet_netlink_set_link_addr (vif->ifindex,
+						args->host_mac_addr.bytes);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
     }
 
   if (args->host_bridge)
@@ -615,11 +637,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       _IOCTL (fd, VHOST_NET_SET_BACKEND, &file);
     }
 
-  if (!args->mac_addr_set)
-    ethernet_mac_address_generate (args->mac_addr.bytes);
+  if (vif->type == VIRTIO_IF_TYPE_TAP)
+    {
+      if (!args->mac_addr_set)
+	ethernet_mac_address_generate (args->mac_addr.bytes);
 
-  clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
-
+      clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
+    }
   vif->host_if_name = format (0, "%s%c", host_if_name, 0);
   vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
@@ -632,17 +656,28 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->host_ip6_prefix_len)
     clib_memcpy (&vif->host_ip6_addr, &args->host_ip6_addr, 16);
 
-  args->error = ethernet_register_interface (vnm, virtio_device_class.index,
-					     vif->dev_instance,
-					     vif->mac_addr,
-					     &vif->hw_if_index,
-					     virtio_eth_flag_change);
-  if (args->error)
+  if (vif->type != VIRTIO_IF_TYPE_TUN)
     {
-      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      goto error;
-    }
+      args->error =
+	ethernet_register_interface (vnm, virtio_device_class.index,
+				     vif->dev_instance, vif->mac_addr,
+				     &vif->hw_if_index,
+				     virtio_eth_flag_change);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
+	  goto error;
+	}
 
+    }
+  else
+    {
+      vif->hw_if_index = vnet_register_interface
+	(vnm, virtio_device_class.index,
+	 vif->dev_instance /* device instance */ ,
+	 tun_device_hw_interface_class.index, vif->dev_instance);
+
+    }
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 1);
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
