@@ -224,7 +224,7 @@ static void vl_api_sr_steering_add_del_t_handler
 			   ntohl (mp->sr_policy_index),
 			   ntohl (mp->table_id),
 			   &prefix_addr,
-			   ntohl (mp->prefix.len),
+			   mp->prefix.len,
 			   ntohl (mp->sw_if_index), mp->traffic_type);
 
   BAD_SW_IF_INDEX_LABEL;
@@ -364,7 +364,7 @@ static void send_sr_steering_pol_details
   rmp->fib_table = htonl (t->classify.l3.fib_table);
   ip_address_encode (&t->classify.l3.prefix, IP46_TYPE_ANY,
 		     &rmp->prefix.address);
-  rmp->prefix.len = htonl (t->classify.l3.mask_width);
+  rmp->prefix.len = t->classify.l3.mask_width;
 
   rmp->sw_if_index = htonl (t->classify.l2.sw_if_index);
 
