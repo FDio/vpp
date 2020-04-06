@@ -323,6 +323,22 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  n_left--;
 		}
 	    }
+	  if (PREDICT_FALSE (vif->type == VIRTIO_IF_TYPE_TUN))
+	    {
+	      switch (b0->data[0] & 0xf0)
+		{
+		case 0x40:
+		  next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+		  break;
+		case 0x60:
+		  next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		  break;
+		default:
+		  next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+		  break;
+		}
+	    }
+
 
 	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
 	    next0 = vif->per_interface_next_index;
