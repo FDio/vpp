@@ -238,7 +238,14 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  error0 = UDP_ERROR_FIFO_FULL;
 	  goto trace0;
 	}
-      hdr0.data_length = b0->current_length = data_len;
+
+      hdr0.data_length = data_len;
+      if (PREDICT_TRUE (!(b0->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	b0->current_length = data_len;
+      else
+	b0->total_length_not_including_first_buffer = data_len
+	  - b0->current_length;
+
       hdr0.data_offset = 0;
       ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);
       ip_set (&hdr0.rmt_ip, rmt_addr, is_ip4);
