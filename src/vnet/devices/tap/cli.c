@@ -96,6 +96,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.tap_flags |= TAP_FLAG_PERSIST;
 	  else if (unformat (line_input, "attach"))
 	    args.tap_flags |= TAP_FLAG_ATTACH;
+	  else if (unformat (line_input, "tun"))
+	    args.tap_flags |= TAP_FLAG_TUN;
 	  else if (unformat (line_input, "hw-addr %U",
 			     unformat_ethernet_address, args.mac_addr.bytes))
 	    args.mac_addr_set = 1;
@@ -136,7 +138,7 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
     "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
     "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso|csum-offload] "
-    "[persist] [attach]",
+    "[persist] [attach] [tun]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -303,6 +305,56 @@ VLIB_CLI_COMMAND (tap_show_command, static) = {
   .path = "show tap",
   .short_help = "show tap {<interface>] [descriptors]",
   .function = tap_show_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
+		     vlib_cli_command_t * cmd)
+{
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif;
+  vnet_main_t *vnm = vnet_get_main ();
+  int show_descr = 0;
+  clib_error_t *error = 0;
+  u32 hw_if_index, *hw_if_indices = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	vec_add1 (hw_if_indices, hw_if_index);
+      else if (unformat (input, "descriptors"))
+	show_descr = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (vec_len (hw_if_indices) == 0)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (vif, mm->interfaces,
+          vec_add1 (hw_if_indices, vif->hw_if_index);
+      );
+      /* *INDENT-ON* */
+    }
+
+  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
+
+done:
+  vec_free (hw_if_indices);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tun_show_command, static) = {
+  .path = "show tun",
+  .short_help = "show tun {<interface>] [descriptors]",
+  .function = tun_show_command_fn,
 };
 /* *INDENT-ON* */
 
