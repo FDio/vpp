@@ -25,6 +25,10 @@
 
 session_main_t session_main;
 
+#if SESSION_DEBUG
+session_dbg_main_t session_dbg_main;
+#endif
+
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 			    session_evt_type_t evt_type)
@@ -1705,6 +1709,17 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
+
+#if SESSION_DEBUG
+  session_dbg_main_t *sdm = &session_dbg_main;
+  vec_validate_aligned (sdm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
+  int thread;
+  for (thread = 1; thread < num_threads; thread++)
+    {
+      clib_memset (&sdm->wrk[thread], 0, sizeof (session_dbg_evts_t));
+    }
+#endif /* SESSION_DEBUG */
+
   return 0;
 }
 
