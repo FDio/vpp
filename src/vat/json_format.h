@@ -95,8 +95,7 @@ vat_json_set_string_copy (vat_json_node_t * json, const u8 * str)
   u8 *ns = NULL;
   int len = strlen ((const char *) str);
   vec_validate (ns, len);
-  strncpy ((char *) ns, (const char *) str, len + 1);
-  vec_add1 (ns, '\0');
+  memcpy ((char *) ns, (const char *) str, len + 1);
   vat_json_set_string (json, ns);
 }
 
