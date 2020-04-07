@@ -943,7 +943,7 @@ unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 cwnd_multiplier, tmp_time;
+  u32 cwnd_multiplier, tmp_time, mtu;
   uword memory_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -979,8 +979,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	    }
 	  tcp_cfg.min_rx_fifo = memory_size;
 	}
-      else if (unformat (input, "mtu %u", &tcp_cfg.default_mtu))
-	;
+      else if (unformat (input, "mtu %u", &mtu))
+	tcp_cfg.default_mtu = mtu;
       else if (unformat (input, "rwnd-min-update-ack %d",
 			 &tcp_cfg.rwnd_min_update_ack))
 	;
