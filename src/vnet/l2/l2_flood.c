@@ -225,6 +225,10 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 					    n_clones,
 					    VLIB_BUFFER_CLONE_HEAD_SIZE);
 
+	      /* Worst-case, no buffers whatsoever */
+	      if (n_cloned == 0)
+		goto noclone;
+
 	      vec_set_len (msm->clones[thread_index], n_cloned);
 
 	      if (PREDICT_FALSE (n_cloned != n_clones))
@@ -339,6 +343,7 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   ci0, next0);
+	noclone:
 	  if (PREDICT_FALSE (0 == n_left_to_next))
 	    {
 	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
