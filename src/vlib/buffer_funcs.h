@@ -662,7 +662,7 @@ vlib_buffer_alloc_on_numa (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     less than the number requested or zero
 */
 
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 {
   return vlib_buffer_alloc_on_numa (vm, buffers, n_buffers, vm->numa_node);
