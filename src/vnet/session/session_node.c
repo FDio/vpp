@@ -1239,6 +1239,8 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       clib_warning ("unhandled event type %d", e->event_type);
     }
 
+  SESSION_EVT (SESSION_EVT_COUNTS,
+	       BASE_OFFSET_IO_EVTS + e->event_type + 1, thread_index, wrk);
   /* Regrab elements in case pool moved */
   elt = pool_elt_at_index (wrk->event_elts, ei);
   if (!clib_llist_elt_is_linked (elt, evt_list))
@@ -1311,12 +1313,14 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   wrk->last_vlib_time = vlib_time_now (vm);
   wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+  SESSION_EVT (SESSION_EVT_COUNTS, NODE_CALL_CNT, thread_index, wrk);
 
   /*
    *  Update transport time
    */
   transport_update_time (wrk->last_vlib_time, thread_index);
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
+  SESSION_EVT (SESSION_EVT_CLOCKS, UPDATE_TIME, thread_index, wrk);
 
   /*
    *  Dequeue and handle new events
@@ -1336,6 +1340,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
+      SESSION_EVT (SESSION_EVT_COUNTS, CNT_MQ_EVTS, thread_index, wrk);
     }
 
   /*
@@ -1348,6 +1353,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   clib_llist_foreach_safe (wrk->event_elts, evt_list, ctrl_he, elt, ({
     clib_llist_remove (wrk->event_elts, evt_list, elt);
     session_event_dispatch_ctrl (wrk, elt);
+    SESSION_EVT (SESSION_EVT_COUNTS, CNT_CTRL_EVTS, thread_index, wrk);
   }));
   /* *INDENT-ON* */
 
@@ -1366,8 +1372,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (wrk->event_elts, evt_list, elt);
       session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
+      SESSION_EVT (SESSION_EVT_COUNTS, CNT_NEW_EVTS, thread_index, wrk);
     }
 
+  SESSION_EVT (SESSION_EVT_CLOCKS, NEW_IO_EVTS, thread_index, wrk);
   /*
    * Handle the old io events, if we had any prior to processing the new ones
    */
@@ -1391,6 +1399,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ei = next_ei;
 	};
+      SESSION_EVT (SESSION_EVT_COUNTS, OLD_IO_EVTS, thread_index, wrk);
     }
 
   if (vec_len (wrk->pending_tx_buffers))
