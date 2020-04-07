@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd642cb4_fbc49412",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-07T15:15:35Z",
+      "side": 1,
+      "message": "shouldn\u0027t n_cloned always be at least 1, since the returned cloned array contains bi0?\n\nor to put it another way, what happens to bi0 if the cloning fails?",
+      "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
