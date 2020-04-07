@@ -28,6 +28,7 @@
 
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
+typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
@@ -36,6 +37,8 @@ typedef struct
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
   /* check support function */
   check_support_cb_t check_support_cb;
+  /* enable or disable function */
+  enable_disable_cb_t enable_disable_cb;
   u32 ah4_encrypt_node_index;
   u32 ah4_decrypt_node_index;
   u32 ah4_encrypt_next_index;
@@ -53,6 +56,8 @@ typedef struct
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
   /* check support function */
   check_support_cb_t check_support_cb;
+  /* enable or disable function */
+  enable_disable_cb_t enable_disable_cb;
   u32 esp4_encrypt_node_index;
   u32 esp4_decrypt_node_index;
   u32 esp4_encrypt_next_index;
@@ -194,6 +199,8 @@ typedef struct
   u32 esp6_enc_tun_fq_index;
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
+
+  u8 async_mode;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_

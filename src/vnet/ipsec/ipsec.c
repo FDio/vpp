@@ -26,6 +26,8 @@
 #include <vnet/ipsec/ah.h>
 
 ipsec_main_t ipsec_main;
+esp_async_post_next_t esp_encrypt_async_next;
+esp_async_post_next_t esp_decrypt_async_next;
 
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
@@ -206,6 +208,7 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
   b->check_support_cb = esp_check_support_cb;
   b->add_del_sa_sess_cb = esp_add_del_sa_sess_cb;
+
   return b - im->esp_backends;
 }
 
@@ -253,6 +256,17 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   if (pool_is_free_index (im->esp_backends, backend_idx))
     return VNET_API_ERROR_INVALID_VALUE;
 
+  /* disable current backend */
+  if (im->esp_current_backend != ~0)
+    {
+      ipsec_esp_backend_t *cb = pool_elt_at_index (im->esp_backends,
+						   im->esp_current_backend);
+      if (cb->enable_disable_cb)
+	{
+	  if ((cb->enable_disable_cb) (0) != 0)
+	    return VNET_API_ERROR_RSRC_IN_USE;
+	}
+    }
   ipsec_esp_backend_t *b = pool_elt_at_index (im->esp_backends, backend_idx);
   im->esp_current_backend = backend_idx;
   im->esp4_encrypt_node_index = b->esp4_encrypt_node_index;
@@ -273,7 +287,39 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp46_encrypt_tun_feature_index = b->esp46_encrypt_tun_feature_index;
   im->esp66_encrypt_tun_feature_index = b->esp66_encrypt_tun_feature_index;
 
+  if (b->enable_disable_cb)
+    {
+      if ((b->enable_disable_cb) (1) != 0)
+	return VNET_API_ERROR_RSRC_IN_USE;
+    }
   return 0;
+}
+
+static void
+crypto_engine_backend_register_post_node (vlib_main_t * vm)
+{
+  esp_async_post_next_t *eit;
+  esp_async_post_next_t *dit;
+
+  eit = &esp_encrypt_async_next;
+  eit->esp4_post_next =
+    vnet_crypto_register_post_node (vm, "esp4-encrypt-post");
+  eit->esp6_post_next =
+    vnet_crypto_register_post_node (vm, "esp6-encrypt-post");
+  eit->esp4_tun_post_next =
+    vnet_crypto_register_post_node (vm, "esp4-encrypt-tun-post");
+  eit->esp6_tun_post_next =
+    vnet_crypto_register_post_node (vm, "esp6-encrypt-tun-post");
+
+  dit = &esp_decrypt_async_next;
+  dit->esp4_post_next =
+    vnet_crypto_register_post_node (vm, "esp4-decrypt-post");
+  dit->esp6_post_next =
+    vnet_crypto_register_post_node (vm, "esp6-decrypt-post");
+  dit->esp4_tun_post_next =
+    vnet_crypto_register_post_node (vm, "esp4-decrypt-tun-post");
+  dit->esp6_tun_post_next =
+    vnet_crypto_register_post_node (vm, "esp6-decrypt-tun-post");
 }
 
 static clib_error_t *
@@ -297,6 +343,8 @@ ipsec_init (vlib_main_t * vm)
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);
   im->error_drop_node_index = node->index;
+
+  im->esp_current_backend = ~0;
 
   u32 idx = ipsec_register_ah_backend (vm, im, "crypto engine backend",
 				       "ah4-encrypt",
@@ -453,6 +501,9 @@ ipsec_init (vlib_main_t * vm)
     vlib_frame_queue_main_init (esp4_decrypt_tun_node.index, 0);
   im->esp6_dec_tun_fq_index =
     vlib_frame_queue_main_init (esp6_decrypt_tun_node.index, 0);
+
+  im->async_mode = 0;
+  crypto_engine_backend_register_post_node (vm);
 
   return 0;
 }

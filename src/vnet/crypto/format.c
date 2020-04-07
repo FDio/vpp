@@ -105,6 +105,61 @@ format_vnet_crypto_engine (u8 * s, va_list * args)
   return format (s, "%s", e->name);
 }
 
+u8 *
+format_vnet_crypto_async_op_type (u8 * s, va_list * args)
+{
+  vnet_crypto_async_op_type_t opt =
+    va_arg (*args, vnet_crypto_async_op_type_t);
+  char *strings[] = {
+#define _(n, s) [VNET_CRYPTO_ASYNC_OP_TYPE_##n] = s,
+    foreach_crypto_async_op_type
+#undef _
+  };
+
+  if (opt >= VNET_CRYPTO_ASYNC_OP_N_TYPES)
+    return format (s, "unknown");
+
+  return format (s, "%s", strings[opt]);
+}
+
+u8 *
+format_vnet_crypto_async_alg (u8 * s, va_list * args)
+{
+  vnet_crypto_async_alg_t alg = va_arg (*args, vnet_crypto_async_alg_t);
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_async_alg_data_t *d = vec_elt_at_index (cm->async_algs, alg);
+  return format (s, "%s", d->name);
+}
+
+u8 *
+format_vnet_crypto_async_op (u8 * s, va_list * args)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_async_op_id_t op = va_arg (*args, int);	// vnet_crypto_op_id_t);
+  vnet_crypto_async_op_data_t *otd = cm->async_opt_data + op;
+
+  return format (s, "%U-%U", format_vnet_crypto_async_op_type, otd->type,
+		 format_vnet_crypto_async_alg, otd->alg);
+
+  vnet_crypto_async_op_id_t opt = va_arg (*args, vnet_crypto_async_op_id_t);
+  char *strings[] = {
+#define _(n, s, k, t, a) \
+		[VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC] = s "-enc", \
+		[VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC] = s "-dec",
+    foreach_crypto_aead_async_alg
+#undef _
+#define _(c, h, s, k ,d) \
+		[VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC] = s "-enc", \
+		[VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC] = s "-dec",
+      foreach_crypto_link_async_alg
+#undef _
+  };
+
+  if (opt >= VNET_CRYPTO_ASYNC_OP_N_IDS)
+    return format (s, "unknown");
+
+  return format (s, "%s", strings[opt]);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
