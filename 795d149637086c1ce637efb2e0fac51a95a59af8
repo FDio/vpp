@@ -16,6 +16,29 @@
       "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf2f66e3_3ccf596b",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-04-07T15:28:49Z",
+      "side": 1,
+      "message": "Perhaps we should just goto the one clone path to send the current packet to the first element in the flood list?  Otherwise, I am not sure what is happening to the current packet.",
+      "range": {
+        "startLine": 230,
+        "startChar": 7,
+        "endLine": 230,
+        "endChar": 14
+      },
+      "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
