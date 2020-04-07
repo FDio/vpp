@@ -201,7 +201,6 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  *l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
 	}
       else if (*l4_proto == IP_PROTOCOL_UDP)
 	{
@@ -210,7 +209,6 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  *l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
 	}
     }
 
