@@ -524,7 +524,7 @@ vlib_get_buffer_pool (vlib_main_t * vm, u8 buffer_pool_index)
   return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
 }
 
-static_always_inline uword
+static_always_inline __clib_warn_unused_result uword
 vlib_buffer_pool_get (vlib_main_t * vm, u8 buffer_pool_index, u32 * buffers,
 		      u32 n_buffers)
 {
@@ -562,7 +562,7 @@ vlib_buffer_pool_get (vlib_main_t * vm, u8 buffer_pool_index, u32 * buffers,
     less than the number requested or zero
 */
 
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 			     u8 buffer_pool_index)
 {
@@ -656,7 +656,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     @return - (u32) number of buffers actually allocated, may be
     less than the number requested or zero
 */
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc_on_numa (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 			   u32 numa_node)
 {
@@ -673,7 +673,7 @@ vlib_buffer_alloc_on_numa (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     less than the number requested or zero
 */
 
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 {
   return vlib_buffer_alloc_on_numa (vm, buffers, n_buffers, vm->numa_node);
@@ -689,7 +689,7 @@ vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
     @return - (u32) number of buffers actually allocated, may be
     less than the number requested or zero
 */
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc_to_ring (vlib_main_t * vm, u32 * ring, u32 start,
 			   u32 ring_size, u32 n_buffers)
 {
@@ -718,7 +718,7 @@ vlib_buffer_alloc_to_ring (vlib_main_t * vm, u32 * ring, u32 start,
     @return - (u32) number of buffers actually allocated, may be
     less than the number requested or zero
 */
-always_inline u32
+always_inline __clib_warn_unused_result u32
 vlib_buffer_alloc_to_ring_from_pool (vlib_main_t * vm, u32 * ring, u32 start,
 				     u32 ring_size, u32 n_buffers,
 				     u8 buffer_pool_index)
