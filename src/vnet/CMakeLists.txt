@@ -693,6 +693,7 @@ list(APPEND VNET_API_FILES tcp/tcp.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   udp/udp.c
+  udp/udp_cli.c
   udp/udp_input.c
   udp/udp_format.c
   udp/udp_local.c
