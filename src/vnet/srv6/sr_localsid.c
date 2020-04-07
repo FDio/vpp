@@ -2201,27 +2201,19 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	    (&(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids,
 	     1, vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_increment_combined_counter
-	    (((next1 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
+	    (&(sm->sr_ls_valid_counters), thread_index, ls1 - sm->localsids,
 	     1, vlib_buffer_length_in_chain (vm, b1));
 
 	  vlib_increment_combined_counter
-	    (((next2 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
+	    (&(sm->sr_ls_valid_counters), thread_index, ls2 - sm->localsids,
 	     1, vlib_buffer_length_in_chain (vm, b2));
 
 	  vlib_increment_combined_counter
-	    (((next3 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
+	    (&(sm->sr_ls_valid_counters), thread_index, ls3 - sm->localsids,
 	     1, vlib_buffer_length_in_chain (vm, b3));
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
@@ -2267,9 +2259,7 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
+	    (&(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids,
 	     1, vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
