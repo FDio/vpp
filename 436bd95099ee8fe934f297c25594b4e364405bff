@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "cae91963_a34d0582",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "45d5bf7c_cbbf3087",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3caefc76_1c980c9f",
         "filename": "src/vnet/srv6/sr_localsid.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-03-24T09:07:34Z",
       "side": 1,
       "message": "Please use two different behavior ids for End and uN. This helps the control-plane identify the required behavior.",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a523d098_4081e61a",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Add a new behavior named as SR_BEHAVIOR_END_UN",
+      "parentUuid": "3caefc76_1c980c9f",
       "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "ede9738f_40e5e68d",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Changed it because of adding the new function for uN.",
+      "parentUuid": "d41b892c_470bde02",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1795f90d_0e51b6fb",
         "filename": "src/vnet/srv6/sr_localsid.c",
         "patchSetId": 1
@@ -64,6 +118,24 @@
       "writtenOn": "2020-03-24T09:07:34Z",
       "side": 1,
       "message": "This check in the dataplane seems expensive. Should we not use the FIB to do this for us? Then we would get it for free..",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f0eb8cc5_2d2682e6",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 799,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Removed these check because of adding the new function for uN.",
+      "parentUuid": "1795f90d_0e51b6fb",
       "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "34458566_6eaf8700",
+        "filename": "test/test_srv6_usid.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "5e89e355_80e14d91",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "479735cd_c6f9c80c",
         "filename": "test/test_srv6_usid.py",
         "patchSetId": 1
@@ -98,6 +188,24 @@
       "writtenOn": "2020-03-24T09:07:34Z",
       "side": 1,
       "message": "Please include test case for shift with no SRH\nPlease include case of last uSID and End function",
+      "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8af70a2_c0218df3",
+        "filename": "test/test_srv6_usid.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Add one more test case without SRH.",
+      "parentUuid": "479735cd_c6f9c80c",
       "revId": "436bd95099ee8fe934f297c25594b4e364405bff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
