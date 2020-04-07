@@ -440,15 +440,21 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
   _(REFUSED, "refused")							\
   _(TIMEDOUT, "timedout")						\
   _(ALLOC, "obj/memory allocation error")				\
+  _(OWNER, "object not owned by application")				\
   _(NOROUTE, "no route")						\
   _(NOINTF, "no resolving interface")					\
   _(NOIP, "no ip for lcl interface")					\
   _(NOPORT, "no lcl port")						\
   _(NOSUPPORT, "not supported")						\
+  _(NOLISTEN, "not listening")						\
+  _(NOSESSION, "session does not exist")				\
+  _(NOAPP, "app not attached")						\
   _(PORTINUSE, "lcl port in use")					\
   _(IPINUSE, "ip in use")						\
   _(ALREADY_LISTENING, "ip port pair already listened on")		\
   _(INVALID_RMT_IP, "invalid remote ip")				\
+  _(INVALID_APPWRK, "invalid app worker")				\
+  _(INVALID_NS, "invalid namespace")					\
   _(SEG_NO_SPACE, "Couldn't allocate a fifo pair")			\
   _(SEG_NO_SPACE2, "Created segment, couldn't allocate a fifo pair") 	\
   _(SEG_CREATE, "Couldn't create a new segment")			\

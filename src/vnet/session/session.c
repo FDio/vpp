@@ -1212,7 +1212,8 @@ int
 session_listen (session_t * ls, session_endpoint_cfg_t * sep)
 {
   transport_endpoint_t *tep;
-  u32 tc_index, s_index;
+  int tc_index;
+  u32 s_index;
 
   /* Transport bind/listen */
   tep = session_endpoint_to_transport (sep);
@@ -1220,8 +1221,8 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
   tc_index = transport_start_listen (session_get_transport_proto (ls),
 				     s_index, tep);
 
-  if (tc_index == (u32) ~ 0)
-    return -1;
+  if (tc_index < 0)
+    return tc_index;
 
   /* Attach transport to session. Lookup tables are populated by the app
    * worker because local tables (for ct sessions) are not backed by a fib */
@@ -1243,14 +1244,17 @@ session_stop_listen (session_t * s)
   transport_connection_t *tc;
 
   if (s->session_state != SESSION_STATE_LISTENING)
-    return -1;
+    return SESSION_E_NOLISTEN;
 
   tc = transport_get_listener (tp, s->connection_index);
+
+  /* If not transport, assume everything was cleaned up already */
   if (!tc)
-    return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
+    return SESSION_E_NONE;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_del_connection (tc);
+
   transport_stop_listen (tp, s->connection_index);
   return 0;
 }
