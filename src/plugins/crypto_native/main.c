@@ -45,6 +45,10 @@ crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       return;
     }
 
+  /** TODO: add linked alg support **/
+  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+    return;
+
   vec_validate_aligned (cm->key_data, idx, CLIB_CACHE_LINE_BYTES);
 
   if (kop == VNET_CRYPTO_KEY_OP_MODIFY && cm->key_data[idx])

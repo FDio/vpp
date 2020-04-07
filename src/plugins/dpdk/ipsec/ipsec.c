@@ -991,6 +991,24 @@ crypto_disable (void)
   vec_free (dcm->auth_algs);
 }
 
+static clib_error_t *
+dpdk_ipsec_enable_disable (int is_enable)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "dpdk-crypto-input");
+  u32 skip_master = vlib_num_workers () > 0;
+  u32 n_mains = tm->n_vlib_mains;
+  u32 i;
+
+  ASSERT (node);
+  for (i = skip_master; i < n_mains; i++)
+    vlib_node_set_state (vlib_mains[i], node->index, is_enable != 0 ?
+			 VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED);
+
+  return 0;
+}
+
 static uword
 dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    vlib_frame_t * f)
@@ -1000,7 +1018,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   crypto_worker_main_t *cwm;
   clib_error_t *error = NULL;
-  u32 i, skip_master, n_mains;
+  u32 skip_master, n_mains;
 
   n_mains = tm->n_vlib_mains;
   skip_master = vlib_num_workers () > 0;
@@ -1055,14 +1073,14 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					"dpdk-esp6-decrypt",
 					"dpdk-esp6-decrypt",
 					dpdk_ipsec_check_support,
-					add_del_sa_session);
-  int rv = ipsec_select_esp_backend (im, idx);
-  ASSERT (rv == 0);
-
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "dpdk-crypto-input");
-  ASSERT (node);
-  for (i = skip_master; i < n_mains; i++)
-    vlib_node_set_state (vlib_mains[i], node->index, VLIB_NODE_STATE_POLLING);
+					add_del_sa_session,
+					dpdk_ipsec_enable_disable);
+  int rv;
+  if (im->esp_current_backend == ~0)
+    {
+      rv = ipsec_select_esp_backend (im, idx);
+      ASSERT (rv == 0);
+    }
   return 0;
 }
 
