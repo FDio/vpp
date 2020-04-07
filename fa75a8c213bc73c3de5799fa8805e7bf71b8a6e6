@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "796771fc_35694625",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Modified.",
+      "parentUuid": "d0775f62_8bc41192",
+      "revId": "fa75a8c213bc73c3de5799fa8805e7bf71b8a6e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "eb0c7312_aff4906a",
         "filename": "test/test_srv6_un.py",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2020-03-25T09:04:09Z",
       "side": 1,
       "message": "Can we change it to 1111:2222:aaaa:bbbb:cccc:dddd:eeee:ffff to ensure that the EoC is being set correctly please?",
+      "revId": "fa75a8c213bc73c3de5799fa8805e7bf71b8a6e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f84d02cd_fd4328fa",
+        "filename": "test/test_srv6_un.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Modified.",
+      "parentUuid": "eb0c7312_aff4906a",
       "revId": "fa75a8c213bc73c3de5799fa8805e7bf71b8a6e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
