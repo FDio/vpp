@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -269,7 +269,6 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   return new_c;
 }
 
-
 always_inline udp_dst_port_info_t *
 udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 {
@@ -279,6 +278,7 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 
 format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
+format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 
 void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
@@ -289,7 +289,6 @@ void udp_register_dst_port (vlib_main_t * vm,
 void udp_unregister_dst_port (vlib_main_t * vm,
 			      udp_dst_port_t dst_port, u8 is_ip4);
 bool udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
-
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);

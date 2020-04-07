@@ -300,7 +300,6 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-
 static uword
 udp4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_frame_t * frame)

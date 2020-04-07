@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,10 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/** @file
-    udp state machine, etc.
-*/
 
 #include <vnet/udp/udp.h>
 #include <vnet/session/session.h>
@@ -160,7 +156,14 @@ udp_connection_port_used_extern (u16 lcl_port, u8 is_ip4)
 	  && udp_is_valid_dst_port (lcl_port, is_ip4));
 }
 
-u32
+static u16
+udp_default_mtu (udp_main_t * um, u8 is_ip4)
+{
+  u16 ip_hlen = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+  return (um->default_mtu - sizeof (udp_header_t) - ip_hlen);
+}
+
+static u32
 udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_main_t *um = vnet_get_udp_main ();
@@ -196,7 +199,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
-  listener->mss = um->default_mtu - sizeof (udp_header_t);
+  listener->mss = udp_default_mtu (um, listener->c_is_ip4);
   listener->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_LISTEN;
   lcl_ext = (transport_endpoint_cfg_t *) lcl;
   if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
@@ -209,7 +212,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   return listener->c_c_index;
 }
 
-u32
+static u32
 udp_session_unbind (u32 listener_index)
 {
   udp_main_t *um = &udp_main;
@@ -222,7 +225,7 @@ udp_session_unbind (u32 listener_index)
   return 0;
 }
 
-transport_connection_t *
+static transport_connection_t *
 udp_session_get_listener (u32 listener_index)
 {
   udp_connection_t *us;
@@ -231,7 +234,7 @@ udp_session_get_listener (u32 listener_index)
   return &us->connection;
 }
 
-u32
+static u32
 udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
 {
   udp_connection_t *uc;
@@ -260,7 +263,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   return 0;
 }
 
-transport_connection_t *
+static transport_connection_t *
 udp_session_get (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *uc;
@@ -270,7 +273,7 @@ udp_session_get (u32 connection_index, u32 thread_index)
   return 0;
 }
 
-void
+static void
 udp_session_close (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *uc;
@@ -285,7 +288,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
     uc->flags |= UDP_CONN_F_CLOSING;
 }
 
-void
+static void
 udp_session_cleanup (u32 connection_index, u32 thread_index)
 {
   udp_connection_t *uc;
@@ -296,111 +299,6 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
     udp_connection_free (uc);
   else
     udp_connection_cleanup (uc);
-}
-
-u8 *
-format_udp_connection_id (u8 * s, va_list * args)
-{
-  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
-  if (!uc)
-    return s;
-  if (uc->c_is_ip4)
-    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
-		uc->c_s_index, "U", format_ip4_address, &uc->c_lcl_ip4,
-		clib_net_to_host_u16 (uc->c_lcl_port), format_ip4_address,
-		&uc->c_rmt_ip4, clib_net_to_host_u16 (uc->c_rmt_port));
-  else
-    s = format (s, "[%u:%u][%s] %U:%d->%U:%d", uc->c_thread_index,
-		uc->c_s_index, "U", format_ip6_address, &uc->c_lcl_ip6,
-		clib_net_to_host_u16 (uc->c_lcl_port), format_ip6_address,
-		&uc->c_rmt_ip6, clib_net_to_host_u16 (uc->c_rmt_port));
-  return s;
-}
-
-const char *udp_connection_flags_str[] = {
-#define _(sym, str) str,
-  foreach_udp_connection_flag
-#undef _
-};
-
-static u8 *
-format_udp_connection_flags (u8 * s, va_list * args)
-{
-  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
-  int i, last = -1;
-
-  for (i = 0; i < UDP_CONN_N_FLAGS; i++)
-    if (uc->flags & (1 << i))
-      last = i;
-  for (i = 0; i < last; i++)
-    {
-      if (uc->flags & (1 << i))
-	s = format (s, "%s, ", udp_connection_flags_str[i]);
-    }
-  if (last >= 0)
-    s = format (s, "%s", udp_connection_flags_str[last]);
-  return s;
-}
-
-static u8 *
-format_udp_vars (u8 * s, va_list * args)
-{
-  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
-  s = format (s, " index %u flags: %U", uc->c_c_index,
-	      format_udp_connection_flags, uc);
-
-  if (!(uc->flags & UDP_CONN_F_LISTEN))
-    s = format (s, "\n");
-  return s;
-}
-
-u8 *
-format_udp_connection (u8 * s, va_list * args)
-{
-  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
-  u32 verbose = va_arg (*args, u32);
-  if (!uc)
-    return s;
-  s = format (s, "%-50U", format_udp_connection_id, uc);
-  if (verbose)
-    {
-      s = format (s, "%-15s",
-		  (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED", uc);
-      if (verbose > 1)
-	s = format (s, "\n%U", format_udp_vars, uc);
-    }
-  return s;
-}
-
-u8 *
-format_udp_session (u8 * s, va_list * args)
-{
-  u32 uci = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
-  udp_connection_t *uc;
-
-  uc = udp_connection_get (uci, thread_index);
-  return format (s, "%U", format_udp_connection, uc, verbose);
-}
-
-u8 *
-format_udp_half_open_session (u8 * s, va_list * args)
-{
-  u32 __clib_unused tci = va_arg (*args, u32);
-  u32 __clib_unused thread_index = va_arg (*args, u32);
-  clib_warning ("BUG");
-  return 0;
-}
-
-u8 *
-format_udp_listener_session (u8 * s, va_list * args)
-{
-  u32 tci = va_arg (*args, u32);
-  u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 verbose = va_arg (*args, u32);
-  udp_connection_t *uc = udp_listener_get (tci);
-  return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
 static int
@@ -420,7 +318,7 @@ udp_session_send_params (transport_connection_t * tconn,
   return 0;
 }
 
-int
+static int
 udp_open_connection (transport_endpoint_cfg_t * rmt)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -486,7 +384,7 @@ conn_alloc:
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
-  uc->mss = rmt->mss ? rmt->mss : (um->default_mtu - sizeof (udp_header_t));
+  uc->mss = rmt->mss ? rmt->mss : udp_default_mtu (um, uc->c_is_ip4);
   uc->flags |= UDP_CONN_F_OWNS_PORT;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     uc->flags |= UDP_CONN_F_CONNECTED;
@@ -496,7 +394,7 @@ conn_alloc:
   return uc->c_c_index;
 }
 
-transport_connection_t *
+static transport_connection_t *
 udp_session_get_half_open (u32 conn_index)
 {
   udp_connection_t *uc;
@@ -508,6 +406,37 @@ udp_session_get_half_open (u32 conn_index)
   if (!uc)
     return 0;
   return &uc->connection;
+}
+
+static u8 *
+format_udp_session (u8 * s, va_list * args)
+{
+  u32 uci = va_arg (*args, u32);
+  u32 thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  udp_connection_t *uc;
+
+  uc = udp_connection_get (uci, thread_index);
+  return format (s, "%U", format_udp_connection, uc, verbose);
+}
+
+static u8 *
+format_udp_half_open_session (u8 * s, va_list * args)
+{
+  u32 __clib_unused tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  clib_warning ("BUG");
+  return 0;
+}
+
+static u8 *
+format_udp_listener_session (u8 * s, va_list * args)
+{
+  u32 tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  udp_connection_t *uc = udp_listener_get (tci);
+  return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
 /* *INDENT-OFF* */
@@ -533,7 +462,6 @@ static const transport_proto_vft_t udp_proto = {
   },
 };
 /* *INDENT-ON* */
-
 
 int
 udpc_connection_open (transport_endpoint_cfg_t * rmt)
@@ -653,85 +581,6 @@ VLIB_INIT_FUNCTION (udp_init) =
 {
   .runs_after = VLIB_INITS("ip_main_init", "ip4_lookup_init",
                            "ip6_lookup_init"),
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
-{
-  udp_main_t *um = &udp_main;
-  u32 tmp;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "mtu %u", &tmp))
-	um->default_mtu = tmp;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  return 0;
-}
-
-VLIB_CONFIG_FUNCTION (udp_config_fn, "udp");
-
-static clib_error_t *
-show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
-{
-  udp_main_t *um = vnet_get_udp_main ();
-
-  clib_error_t *error = NULL;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
-
-  udp_dst_port_info_t *port_info;
-  if (um->punt_unknown4)
-    {
-      vlib_cli_output (vm, "IPv4 UDP punt: enabled");
-    }
-  else
-    {
-      u8 *s = NULL;
-      vec_foreach (port_info, um->dst_port_infos[UDP_IP4])
-      {
-	if (udp_is_valid_dst_port (port_info->dst_port, 1))
-	  {
-	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
-	  }
-      }
-      s = format (s, "%c", 0);
-      vlib_cli_output (vm, "IPV4 UDP ports punt : %s", s);
-    }
-
-  if (um->punt_unknown6)
-    {
-      vlib_cli_output (vm, "IPv6 UDP punt: enabled");
-    }
-  else
-    {
-      u8 *s = NULL;
-      vec_foreach (port_info, um->dst_port_infos[UDP_IP6])
-      {
-	if (udp_is_valid_dst_port (port_info->dst_port, 01))
-	  {
-	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
-	  }
-      }
-      s = format (s, "%c", 0);
-      vlib_cli_output (vm, "IPV6 UDP ports punt : %s", s);
-    }
-
-  return (error);
-}
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
-{
-  .path = "show udp punt",
-  .short_help = "show udp punt [ipv4|ipv6]",
-  .function = show_udp_punt_fn,
 };
 /* *INDENT-ON* */
 
