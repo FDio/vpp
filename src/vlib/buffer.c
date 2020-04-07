@@ -578,6 +578,15 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 	p = m->base + (j << m->log2_page_size) + i * alloc_size;
 	p += bm->ext_hdr_size;
 
+	/*
+	 * Never allow 0 to be a valid buffer index.
+	 * This allows us to ASSERT (bi) in a few key places.
+	 * Otherwise, we end up having to track down rogue enqueues
+	 * the hard way.
+	 */
+	if (CLIB_DEBUG && p == m->base)
+	  continue;
+
 	vlib_buffer_copy_template ((vlib_buffer_t *) p, &bp->buffer_template);
 
 	bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);

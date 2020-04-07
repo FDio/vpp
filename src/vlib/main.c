@@ -199,6 +199,18 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
   if (f->n_vectors == 0)
     return;
 
+  /* Make sure all buffer indices are legal */
+  if (CLIB_DEBUG)
+    {
+      int i;
+      u32 *from = vlib_frame_vector_args (f);
+
+      for (i = 0; i < f->n_vectors; i++)
+	{
+	  ASSERT (from[i] != 0);
+	}
+    }
+
   to_node = vlib_get_node (vm, to_node_index);
 
   vec_add2 (vm->node_main.pending_frames, p, 1);
