@@ -24,6 +24,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
+#include <dpdk/cryptodev/cryptodev.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
 
@@ -1598,6 +1599,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   error = dpdk_lib_init (dm);
 
+  if (error)
+    clib_error_report (error);
+
+  error = dpdk_cryptodev_init (vm);
   if (error)
     clib_error_report (error);
 
