@@ -1030,18 +1030,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);
 
-  if (!peek_data
-      && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
+  if (!peek_data)
     {
       /* Fix dgram pre header */
-      if (ctx->max_len_to_snd < ctx->max_dequeue)
+      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM
+	  && ctx->max_len_to_snd < ctx->max_dequeue)
 	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
 				 sizeof (session_dgram_pre_hdr_t));
-      /* More data needs to be read */
-      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
-	if (svm_fifo_set_event (ctx->s->tx_fifo))
-	  session_evt_add_old (wrk, elt);
-
       if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
 	session_dequeue_notify (ctx->s);
     }
