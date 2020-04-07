@@ -1622,13 +1622,13 @@ class TestGBP(VppTestCase):
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_220.add_vpp_config()
         epg_330 = VppGbpEndpointGroup(self, 330, 113, rd1, gbd1,
                                       None, self.loop1,
                                       "10.0.1.128",
                                       "2001:11::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_330.add_vpp_config()
 
         #
@@ -2495,7 +2495,7 @@ class TestGBP(VppTestCase):
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(3))
         epg_220.add_vpp_config()
 
         ep = VppGbpEndpoint(self, self.pg0,
@@ -2669,7 +2669,7 @@ class TestGBP(VppTestCase):
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_220.add_vpp_config()
 
         #
@@ -2845,7 +2845,7 @@ class TestGBP(VppTestCase):
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_220.add_vpp_config()
 
         #
@@ -3347,19 +3347,19 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_220.add_vpp_config()
         epg_221 = VppGbpEndpointGroup(self, 221, 441, rd1, gbd2,
                                       None, gbd2.bvi,
                                       "10.0.1.128",
                                       "2001:11::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_221.add_vpp_config()
         epg_222 = VppGbpEndpointGroup(self, 222, 442, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.2.128",
                                       "2001:12::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_222.add_vpp_config()
 
         #
@@ -3390,13 +3390,13 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "12.0.0.128",
                                       "4001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_320.add_vpp_config()
         epg_321 = VppGbpEndpointGroup(self, 321, 551, rd1, gbd4,
                                       None, gbd2.bvi,
                                       "12.0.1.128",
                                       "4001:11::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_321.add_vpp_config()
 
         #
@@ -3907,7 +3907,7 @@ class TestGBP(VppTestCase):
                                    None, gebd.bvi,
                                    "10.1.0.128",
                                    "2001:10:1::128",
-                                   VppGbpEndpointRetention(2))
+                                   VppGbpEndpointRetention(60))
         eepg.add_vpp_config()
         # add subnets to BVI
         VppIpInterfaceAddress(
@@ -4269,13 +4269,13 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_220.add_vpp_config()
         epg_221 = VppGbpEndpointGroup(self, 221, 441, rd1, gbd2,
                                       None, gbd2.bvi,
                                       "10.0.1.128",
                                       "2001:11::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_221.add_vpp_config()
 
         #
@@ -4310,7 +4310,7 @@ class TestGBP(VppTestCase):
                                       None, gbd3.bvi,
                                       "12.0.0.128",
                                       "4001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(60))
         epg_320.add_vpp_config()
 
         #
@@ -4685,7 +4685,7 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_220.add_vpp_config()
 
         # the BVIs have the subnets applied ...
@@ -5462,7 +5462,7 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(2))
+                                      VppGbpEndpointRetention(4))
         epg_220.add_vpp_config()
 
         # the BVIs have the subnet applied ...
