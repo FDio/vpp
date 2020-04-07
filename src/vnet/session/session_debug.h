@@ -27,6 +27,9 @@
   _(DISPATCH_START, "dispatch start")	\
   _(DISPATCH_END, "dispatch end")	\
   _(FREE, "session free")		\
+  _(DSP_CNTRS, "dispatch counters")	\
+  _(IO_EVT_COUNTS, "io evt counts")	\
+  _(EVT_COUNTS, "ctrl evt counts")	\
 
 typedef enum _session_evt_dbg
 {
@@ -35,11 +38,69 @@ typedef enum _session_evt_dbg
 #undef _
 } session_evt_dbg_e;
 
+#define foreach_session_events                          \
+_(CLK_UPDATE_TIME, 1, 1, "Time Session Update Timers") 	\
+_(CLK_MQ_DEQ, 1, 1, "Time MQ Dequeue") 	          	\
+_(CLK_CTRL_EVTS, 1, 1, "Time Ctrl Events")			\
+_(CLK_NEW_IO_EVTS, 1, 1, "Time New IO Events")		\
+_(CLK_OLD_IO_EVTS, 1, 1, "Time Old IO Events")		\
+\
+_(CNT_MQ_EVTS, 1, 0, "# of MQ Events Processed" )           \
+_(CNT_CTRL_EVTS, 1, 0, "# of Cntrl Events Processed" )      \
+_(CNT_NEW_EVTS, 1, 0, "# of New Events Processed" )         \
+_(CNT_OLD_EVTS, 1, 0, "# of Old Events Processed" )         \
+_(CNT_IO_EVTS, 1, 0, "# of Events Processed" )      	\
+_(NODE_CALL_CNT, 1, 0, "Node call count")                  \
+_(NEW_IO_EVTS, 1, 0, "New IO Events")                      \
+_(OLD_IO_EVTS, 1, 0, "Old IO Events")                      \
+\
+_(BASE_OFFSET_IO_EVTS, 0, 0, "NULL")                        \
+_(SESSION_IO_EVT_RX, 1, 0, "# of IO Event RX")                  \
+_(SESSION_IO_EVT_TX,  1, 0, "# of IO Event TX")                 \
+_(SESSION_IO_EVT_TX_FLUSH, 1, 0, "# of IO Event TX Flush")      \
+_(SESSION_IO_EVT_BUILTIN_RX, 1, 0, "# of IO Event BuiltIn RX")  \
+_(SESSION_IO_EVT_BUILTIN_TX, 1, 0, "# of IO Event BuiltIn TX")   \
+
+
+typedef enum
+{
+#define _(sym, disp, type, str) SESS_Q_##sym,
+  foreach_session_events
+#undef _
+  SESS_Q_MAX_EVT_TYPES
+} sess_q_node_events_types_t;
+
+typedef struct session_dbg_counter_
+{
+  union
+  {
+    f64 f64;
+    u64 u64;
+  };
+} session_dbg_counter_t;
+
+typedef struct session_dbg_evts_t
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  f64 last_time;
+  u64 prev_io;
+  session_dbg_counter_t sess_dbg_evt_type[SESS_Q_MAX_EVT_TYPES];
+} session_dbg_evts_t;
+
+typedef struct session_dbg_main_
+{
+  session_dbg_evts_t *wrk;
+} session_dbg_main_t;
+
+extern session_dbg_main_t session_dbg_main;
+
 #define SESSION_DEBUG 0 * (TRANSPORT_DEBUG > 0)
 #define SESSION_DEQ_EVTS (0)
 #define SESSION_DISPATCH_DBG (0)
 #define SESSION_EVT_POLL_DBG (0)
 #define SESSION_SM (0)
+#define SESSION_CLOCKS_EVT_DBG (0)
+#define SESSION_COUNTS_EVT_DBG (0)
 
 #if SESSION_DEBUG
 
@@ -170,13 +231,78 @@ typedef enum _session_evt_dbg
 #define SESSION_EVT_POLL_GAP(_wrk)
 #define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_wrk)
 #define SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_wrk)
+#define SESSION_EVT_POLL_CLOCKS_TIME_HANDLER(_wrk)
+
 #endif /* SESSION_EVT_POLL_DBG */
+
+#if SESSION_CLOCKS_EVT_DBG
+
+#define SESSION_EVT_DSP_CNTRS_UPDATE_TIME_HANDLER(_wrk, _diff, _args...)	\
+  session_dbg_evts_t *sdm = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
+  sdm->sess_dbg_evt_type[SESS_Q_CLK_UPDATE_TIME].f64 += _diff;       		\
+
+#define SESSION_EVT_DSP_CNTRS_MQ_DEQ_HANDLER(_wrk, _diff, _cnt, _args...)	\
+  session_dbg_evts_t *sdm = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
+  sdm->sess_dbg_evt_type[SESS_Q_CNT_MQ_EVTS].u64 += _cnt;      			\
+  sdm->sess_dbg_evt_type[SESS_Q_CLK_MQ_DEQ].f64 += _diff;	      		\
+
+#define SESSION_EVT_DSP_CNTRS_CTRL_EVTS_HANDLER(_wrk, _diff, _args...)		\
+  session_dbg_evts_t *sdm = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
+  sdm->sess_dbg_evt_type[SESS_Q_CLK_CTRL_EVTS].f64 += _diff;                  	\
+  sdm->prev_io = sdm->sess_dbg_evt_type[SESS_Q_CNT_IO_EVTS].u64;		\
+
+#define SESSION_EVT_DSP_CNTRS_NEW_IO_EVTS_HANDLER(_wrk, _diff, _args...)	\
+  session_dbg_evts_t *sdm = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
+  sdm->sess_dbg_evt_type[SESS_Q_CLK_NEW_IO_EVTS].f64 += _diff;         		\
+  sdm->sess_dbg_evt_type[SESS_Q_CNT_NEW_EVTS].u64 += 				\
+    sdm->sess_dbg_evt_type[SESS_Q_CNT_IO_EVTS].u64 - sdm->prev_io;		\
+  sdm->prev_io = sdm->sess_dbg_evt_type[SESS_Q_CNT_IO_EVTS].u64;		\
+
+#define SESSION_EVT_DSP_CNTRS_OLD_IO_EVTS_HANDLER(_wrk, _diff, _args...)	\
+  session_dbg_evts_t *sdm = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
+  sdm->sess_dbg_evt_type[SESS_Q_CLK_OLD_IO_EVTS].f64 += _diff;                 	\
+  sdm->sess_dbg_evt_type[SESS_Q_CNT_OLD_EVTS].u64 += 				\
+    sdm->sess_dbg_evt_type[SESS_Q_CNT_IO_EVTS].u64 - sdm->prev_io;		\
+
+#define SESSION_EVT_DSP_CNTRS_HANDLER(_disp_evt, _wrk, _args...)              	\
+{                                                                               \
+  f64 time_now = vlib_time_now (_wrk->vm);                                      \
+  f64 diff = time_now - session_dbg_main.wrk[_wrk->vm->thread_index].last_time; \
+  session_dbg_main.wrk[_wrk->vm->thread_index].last_time = time_now;            \
+  CC(CC(SESSION_EVT_DSP_CNTRS_,_disp_evt),_HANDLER)(wrk, diff, _args);		\
+}
+#else
+#define SESSION_EVT_CLOCKS_HANDLER(_node_evt, _wrk)
+#endif /*SESSION_CLOCKS_EVT_DBG */
+
+#if SESSION_COUNTS_EVT_DBG
+#define SESSION_EVT_COUNTS_HANDLER(_node_evt, _cnt, _wrk) 	 \
+{                                                            	\
+  session_dbg_main.wrk[_wrk->vm->thread_index].              	\
+	sess_dbg_evt_type[SESS_Q_##_node_evt].u64 += _cnt;     	\
+}
+
+#define SESSION_IO_EVT_COUNTS_HANDLER(_node_evt, _cnt, _wrk)     \
+{                                                                \
+  u8 type = SESS_Q_BASE_OFFSET_IO_EVTS + _node_evt +1 ;       	 \
+  session_dbg_main.wrk[_wrk->vm->thread_index].                  \
+        sess_dbg_evt_type[type].u64 += _cnt ;                    \
+  session_dbg_main.wrk[_wrk->vm->thread_index].                  \
+        sess_dbg_evt_type[SESS_Q_CNT_IO_EVTS].u64 += _cnt ;     \
+}
+#else
+#define SESSION_EVT_COUNTS_HANDLER(_node_evt, _wrk)
+#define SESSION_IO_EVT_COUNTS_HANDLER(_node_evt, _cnt, _wrk)
+#endif /*SESSION_COUNTS_EVT_DBG */
+
 
 #define SESSION_EVT_DISPATCH_START_HANDLER(_wrk)			\
 {									\
   if (SESSION_DEQ_EVTS > 1)						\
     SESSION_EVT_DEQ_NODE_HANDLER (_wrk, 0, 0);				\
   SESSION_EVT_POLL_GAP_TRACK_HANDLER (wrk);				\
+  session_dbg_main.wrk[_wrk->vm->thread_index].                         \
+	sess_dbg_evt_type[SESS_Q_##NODE_CALL_CNT].u64 +=1;              \
 }
 
 #define SESSION_EVT_DISPATCH_END_HANDLER(_wrk, _ntx)			\
