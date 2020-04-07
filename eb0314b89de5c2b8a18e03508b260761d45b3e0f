@@ -16,6 +16,24 @@
       "revId": "eb0314b89de5c2b8a18e03508b260761d45b3e0f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cb588246_3a651b48",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2020-04-07T21:01:46Z",
+      "side": 1,
+      "message": "Pablo: I think all behavior names are not using any capital letter even though the draft is using the capital letter for each behavior name. Do we need to use the capital letter for uSID behavior only??",
+      "parentUuid": "6b66f2b4_a373e9ad",
+      "revId": "eb0314b89de5c2b8a18e03508b260761d45b3e0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
