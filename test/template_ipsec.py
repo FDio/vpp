@@ -624,6 +624,7 @@ class IpsecTra6(object):
                                                payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
+
             for rx in recv_pkts:
                 self.assertEqual(len(rx) - len(Ether()) - len(IPv6()),
                                  rx[IPv6].plen)
@@ -634,6 +635,7 @@ class IpsecTra6(object):
                     self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
+            print(self.vapi.cli("sh trace"))
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
 

@@ -3,6 +3,8 @@ import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
+import os
+
 from parameterized import parameterized
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
@@ -18,7 +20,7 @@ from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 NUM_PKTS = 67
-engines_supporting_chain_bufs = ["openssl"]
+engines_supporting_chain_bufs = ["openssl", "dpdk_cryptodev"]
 
 
 class ConfigIpsecESP(TemplateIpsec):
@@ -448,8 +450,29 @@ class MyParameters():
 
 class RunTestIpsecEspAll(ConfigIpsecESP,
                          IpsecTra4, IpsecTra6,
-                         IpsecTun4, IpsecTun6):
+                         IpsecTun4, IpsecTun6
+                         ):
     """ Ipsec ESP all Algos """
+    async_mode_enabled = False
+
+    @classmethod
+    def setUpClass(cls):
+        test_args = str.split(cls.__doc__, " ")
+        cls.async_mode_enabled = test_args[3] == 'async'
+
+        if cls.async_mode_enabled:
+            for i, config in enumerate(cls.extra_vpp_plugin_config):
+                if "dpdk_plugin.so" in config is True:
+                    break
+            del (cls.extra_vpp_plugin_config[i])
+            cls.extra_vpp_plugin_config.append(" plugin dpdk_plugin.so { enable } ")
+            dpdk_conf = os.environ.get('DPDK_CONFIG')
+            cls.extra_vpp_punt_config.append("dpdk")
+            cls.extra_vpp_punt_config.append("{")
+            cls.extra_vpp_punt_config.append(dpdk_conf)
+            cls.extra_vpp_punt_config.append("}")
+            print(cls.extra_vpp_punt_config)
+        super(RunTestIpsecEspAll, cls).setUpClass()
 
     def setUp(self):
         super(RunTestIpsecEspAll, self).setUp()
@@ -470,7 +493,12 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.run_a_test(self.engine, self.flag, self.algo)
 
     def run_a_test(self, engine, flag, algo, payload_size=None):
-        self.vapi.cli("set crypto handler all %s" % engine)
+        if self.async_mode_enabled:
+            self.vapi.cli("set crypto async handler all %s" % engine)
+            self.vapi.cli("set ipsec async mode on")
+        else:
+            self.vapi.cli("set crypto handler all %s" % engine)
+            self.vapi.cli("set ipsec async mode off")
 
         self.ipv4_params = IPsecIPv4Params()
         self.ipv6_params = IPsecIPv6Params()
@@ -501,12 +529,62 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         #  An exhautsive 4o6, 6o4 is not necessary
         #  for each algo
         #
-        self.verify_tra_basic6(count=NUM_PKTS)
-        self.verify_tra_basic4(count=NUM_PKTS)
-        self.verify_tun_66(self.params[socket.AF_INET6],
-                           count=NUM_PKTS)
-        self.verify_tun_44(self.params[socket.AF_INET],
-                           count=NUM_PKTS)
+        env_pkt_num = os.environ.get('NUM_PKTS')
+        if env_pkt_num is not None:
+            num_pkts = int(env_pkt_num)
+        else:
+            num_pkts = NUM_PKTS
+
+        skip_to_phase = os.environ.get('SKIP_TO_PHASE')
+        if skip_to_phase is None:
+            skip_to_phase = 0
+        else:
+            skip_to_phase = int(skip_to_phase)
+
+        if self.async_mode_enabled:
+            print(self.vapi.cli("show ipsec all"))
+            self.vapi.cli("clear trace")
+            self.vapi.cli("trace add pg-input 1000")
+
+        if skip_to_phase <= 1:
+            print("verify_tra_basic6")
+            self.verify_tra_basic6(count=num_pkts)
+            if self.async_mode_enabled:
+                print(self.vapi.cli("show trace"))
+
+        if self.async_mode_enabled:
+            self.vapi.cli("clear trace")
+            self.vapi.cli("trace add pg-input 1000")
+
+        if skip_to_phase <= 2:
+            print("verify_tra_basic4")
+            self.verify_tra_basic4(count=num_pkts)
+            if self.async_mode_enabled:
+                print(self.vapi.cli("show trace"))
+
+        if self.async_mode_enabled:
+            self.vapi.cli("clear trace")
+            self.vapi.cli("trace add pg-input 1000")
+
+        if skip_to_phase <= 3:
+            print("verify_tun_66")
+            self.verify_tun_66(self.params[socket.AF_INET6], count=num_pkts)
+            if self.async_mode_enabled:
+                print(self.vapi.cli("show trace"))
+
+        if self.async_mode_enabled:
+            self.vapi.cli("clear trace")
+            self.vapi.cli("trace add pg-input 1000")
+
+        if skip_to_phase <= 4:
+            print("verify_tun_44")
+            self.verify_tun_44(self.params[socket.AF_INET], count=num_pkts)
+            if self.async_mode_enabled:
+                print(self.vapi.cli("show trace"))
+
+        if self.async_mode_enabled:
+            self.vapi.cli("clear trace")
+            self.vapi.cli("trace add pg-input 1000")
 
         LARGE_PKT_SZ = [
             1970,  # results in 2 chained buffers entering decrypt node
@@ -515,15 +593,52 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
                    # for transport4; transport6 takes normal path
             4020,  # same as above but tra4 and tra6 are switched
         ]
-        if self.engine in engines_supporting_chain_bufs:
+        i = 0
+        skip_chain = os.environ.get('SKIP_CHAIN') is not None
+        if self.engine in engines_supporting_chain_bufs and not skip_chain:
             for sz in LARGE_PKT_SZ:
-                self.verify_tra_basic4(count=NUM_PKTS, payload_size=sz)
-                self.verify_tra_basic6(count=NUM_PKTS, payload_size=sz)
-                self.verify_tun_66(self.params[socket.AF_INET6],
-                                   count=NUM_PKTS, payload_size=sz)
-                self.verify_tun_44(self.params[socket.AF_INET],
-                                   count=NUM_PKTS, payload_size=sz)
+                if self.async_mode_enabled:
+                    self.vapi.cli("clear trace")
+                    self.vapi.cli("trace add pg-input 1000")
 
+                if skip_to_phase <= 5 + i:
+                    print("chaining verify_tra_basic4")
+                    self.verify_tra_basic4(count=num_pkts, payload_size=sz)
+                    if self.async_mode_enabled:
+                        print(self.vapi.cli("show trace"))
+
+                if self.async_mode_enabled:
+                    self.vapi.cli("clear trace")
+                    self.vapi.cli("trace add pg-input 1000")
+
+                if skip_to_phase <= 6 + i:
+                    print("chaining verify_tra_basic6")
+                    self.verify_tra_basic6(count=num_pkts, payload_size=sz)
+                    if self.async_mode_enabled:
+                        print(self.vapi.cli("show trace"))
+
+                if self.async_mode_enabled:
+                    self.vapi.cli("clear trace")
+                    self.vapi.cli("trace add pg-input 1000")
+
+                if skip_to_phase <= 7 + i:
+                    print("chaining verify_tun_66")
+                    self.verify_tun_66(self.params[socket.AF_INET6],
+                                       count=num_pkts, payload_size=sz)
+                    if self.async_mode_enabled:
+                        print(self.vapi.cli("show trace"))
+
+                if self.async_mode_enabled:
+                    self.vapi.cli("clear trace")
+                    self.vapi.cli("trace add pg-input 1000")
+
+                if skip_to_phase <= 8 + i:
+                    print("chaining verify_tun_44")
+                    self.verify_tun_44(self.params[socket.AF_INET],
+                                       count=num_pkts, payload_size=sz)
+                    if self.async_mode_enabled:
+                        print(self.vapi.cli("show trace"))
+                i += 4
         #
         # remove the SPDs, SAs, etc
         #
@@ -533,9 +648,12 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         # reconfigure the network and SA to run the
         # anti replay tests
         #
-        self.config_network(self.params.values())
-        self.verify_tra_anti_replay()
-        self.unconfig_network()
+
+        skip_anti_replay = os.environ.get('SKIP_ANTI_REPLAY') is not None
+        if not skip_anti_replay:
+            self.config_network(self.params.values())
+            self.verify_tra_anti_replay()
+            self.unconfig_network()
 
 #
 # To generate test classes, do:
@@ -785,6 +903,54 @@ class Test_openssl_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_openssl_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_CBC_128_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-CBC-128/SHA1-96 async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-CBC-256/SHA1-96 async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-GCM-128/NONE async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-GCM-128/NONE async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_CBC_128_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-CBC-128/SHA1-96 async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-CBC-256/SHA1-96 async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-GCM-128/NONE async IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-GCM-128/NONE async IPSec test"""
     def test_ipsec(self):
         self.run_test()
 

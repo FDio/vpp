@@ -274,7 +274,7 @@ class VppTestCase(unittest.TestCase):
     """
 
     extra_vpp_punt_config = []
-    extra_vpp_plugin_config = []
+    extra_vpp_plugin_config = [" plugin dpdk_plugin.so { disable } "]
     vapi_response_timeout = 5
 
     @property
@@ -388,12 +388,11 @@ class VppTestCase(unittest.TestCase):
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
                            "main-core", str(cpu_core_number),
                            cls.worker_config, "}",
-                           "physmem", "{", "max-size", "32m", "}",
+                           # "physmem", "{", "max-size", "32m", "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "plugins",
-                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
-                           "}", "plugin", "rdma_plugin.so", "{", "disable",
+                           "{", "plugin", "rdma_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}"] + cls.extra_vpp_plugin_config + ["}", ]
         if cls.extra_vpp_punt_config is not None:
@@ -1164,7 +1163,8 @@ class VppTestCase(unittest.TestCase):
         if not n_rx:
             n_rx = len(pkts)
         self.pg_send(intf, pkts, worker=worker)
-        rx = output.get_capture(n_rx)
+        time.sleep(1)
+        rx = output.get_capture(n_rx, timeout=5)
         return rx
 
     def send_and_expect_only(self, intf, pkts, output, timeout=None):
