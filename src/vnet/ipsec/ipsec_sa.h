@@ -134,6 +134,10 @@ typedef struct
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+  vnet_crypto_async_op_id_t crypto_async_enc_op_id:16;
+  vnet_crypto_async_op_id_t crypto_async_dec_op_id:16;
+  vnet_crypto_key_index_t linked_key_index;
+
   union
   {
     ip4_header_t ip4_hdr;
