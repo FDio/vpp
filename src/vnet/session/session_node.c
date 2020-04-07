@@ -1196,6 +1196,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
 	session_evt_ctrl_data_free (wrk, elt);
       session_evt_elt_free (wrk, elt);
     }
+  SESSION_EVT (SESSION_EVT_COUNTS, CNT_CTRL_EVTS, 1, wrk);
 }
 
 always_inline void
@@ -1249,6 +1250,8 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
     default:
       clib_warning ("unhandled event type %d", e->event_type);
     }
+
+  SESSION_EVT (SESSION_IO_EVT_COUNTS, e->event_type, 1, wrk);
 
   /* Regrab elements in case pool moved */
   elt = pool_elt_at_index (wrk->event_elts, ei);
@@ -1328,6 +1331,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    */
   transport_update_time (wrk->last_vlib_time, thread_index);
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 
   /*
    *  Dequeue and handle new events
@@ -1347,6 +1351,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
+      SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue);
     }
 
   /*
@@ -1361,6 +1366,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     session_event_dispatch_ctrl (wrk, elt);
   }));
   /* *INDENT-ON* */
+
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, CTRL_EVTS, wrk);
 
   /*
    * Handle the new io events.
@@ -1378,6 +1385,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       clib_llist_remove (wrk->event_elts, evt_list, elt);
       session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
     }
+
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, NEW_IO_EVTS, wrk);
 
   /*
    * Handle the old io events, if we had any prior to processing the new ones
@@ -1403,6 +1412,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ei = next_ei;
 	};
     }
+
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, OLD_IO_EVTS, wrk);
 
   if (vec_len (wrk->pending_tx_buffers))
     session_flush_pending_tx_buffers (wrk, node);
