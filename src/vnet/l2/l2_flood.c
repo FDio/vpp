@@ -230,6 +230,13 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	      if (PREDICT_FALSE (n_cloned != n_clones))
 		{
 		  b0->error = node->errors[L2FLOOD_ERROR_REPL_FAIL];
+		  /* Worst-case, no clones, consume the original buf */
+		  if (n_cloned == 0)
+		    {
+		      ci0 = bi0;
+		      member = msm->members[thread_index][0];
+		      goto use_original_buffer;
+		    }
 		}
 
 	      /*
@@ -284,6 +291,7 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	      member = msm->members[thread_index][0];
 	    }
 
+	use_original_buffer:
 	  /*
 	   * the last clone that might go to a BVI
 	   */
@@ -306,8 +314,6 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	      clib_memcpy_fast (t->src, h0->src_address, 6);
 	      clib_memcpy_fast (t->dst, h0->dst_address, 6);
 	    }
-
-
 	  /* Forward packet to the current member */
 	  if (PREDICT_FALSE (member->flags & L2_FLOOD_MEMBER_BVI))
 	    {
