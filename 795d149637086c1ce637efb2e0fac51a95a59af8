@@ -39,6 +39,48 @@
       "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f43ece5_d132730c",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-04-07T18:12:17Z",
+      "side": 1,
+      "message": "Maybe it should, but vlib_buffer_clone(...) returns 0 if the buffer allocator returns 0.",
+      "parentUuid": "bd642cb4_fbc49412",
+      "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5542ad7f_f358afd0",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-04-07T18:12:17Z",
+      "side": 1,
+      "message": "You\u0027re right. See next patch set...",
+      "parentUuid": "bf2f66e3_3ccf596b",
+      "range": {
+        "startLine": 230,
+        "startChar": 7,
+        "endLine": 230,
+        "endChar": 14
+      },
+      "revId": "795d149637086c1ce637efb2e0fac51a95a59af8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
