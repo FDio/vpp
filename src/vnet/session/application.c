@@ -968,17 +968,17 @@ vnet_listen (vnet_listen_args_t * a)
 
   app = application_get_if_valid (a->app_index);
   if (!app)
-    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    return SESSION_E_NOAPP;
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID_APPWRK;
 
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
   session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
   if (!session_endpoint_in_ns (&a->sep))
-    return VNET_API_ERROR_INVALID_VALUE_2;
+    return SESSION_E_INVALID_NS;
 
   /*
    * Check if we already have an app listener
@@ -987,9 +987,9 @@ vnet_listen (vnet_listen_args_t * a)
   if (app_listener)
     {
       if (app_listener->app_index != app->app_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-      if (app_worker_start_listen (app_wrk, app_listener))
-	return -1;
+	return SESSION_E_ALREADY_LISTENING;
+      if ((rv = app_worker_start_listen (app_wrk, app_listener)))
+	return rv;
       a->handle = app_listener_handle (app_listener);
       return 0;
     }
@@ -1057,22 +1057,22 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   ASSERT (vlib_thread_is_main_w_barrier ());
 
   if (!(app = application_get_if_valid (a->app_index)))
-    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    return SESSION_E_NOAPP;
 
   if (!(al = app_listener_get_w_handle (a->handle)))
-    return -1;
+    return SESSION_E_NOLISTEN;
 
   if (al->app_index != app->app_index)
     {
       clib_warning ("app doesn't own handle %llu!", a->handle);
-      return -1;
+      return SESSION_E_OWNER;
     }
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)
     {
       clib_warning ("no app %u worker %u", app->app_index, a->wrk_map_index);
-      return -1;
+      return SESSION_E_INVALID_APPWRK;
     }
 
   return app_worker_stop_listen (app_wrk, al);
@@ -1086,10 +1086,11 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
 
   s = session_get_from_handle_if_valid (a->handle);
   if (!s)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_NOSESSION;
+
   app_wrk = app_worker_get (s->app_wrk_index);
   if (app_wrk->app_index != a->app_index)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_OWNER;
 
   /* We're peeking into another's thread pool. Make sure */
   ASSERT (s->session_index == session_index_from_handle (a->handle));
@@ -1104,9 +1105,10 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   app_worker_t *old_wrk = app_worker_get (s->app_wrk_index);
   app_listener_t *app_listener;
   application_t *app;
+  int rv;
 
   if (!old_wrk)
-    return -1;
+    return SESSION_E_INVALID_APPWRK;
 
   hash_unset (old_wrk->listeners_table, listen_session_get_handle (s));
   if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL
@@ -1115,7 +1117,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
 
   app = application_get (old_wrk->app_index);
   if (!app)
-    return -1;
+    return SESSION_E_NOAPP;
 
   app_listener = app_listener_get (app, s->al_index);
 
@@ -1123,8 +1125,8 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   old_wrk->wrk_map_index, 0);
 
-  if (app_worker_start_listen (app_wrk, app_listener))
-    return -1;
+  if ((rv = app_worker_start_listen (app_wrk, app_listener)))
+    return rv;
 
   s->app_wrk_index = app_wrk->wrk_index;
 
