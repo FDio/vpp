@@ -217,6 +217,7 @@ do {                                                                    \
 */
 #define vlib_validate_buffer_enqueue_x1(vm,node,next_index,to_next,n_left_to_next,bi0,next0) \
 do {									\
+  ASSERT (bi0 != 0);							\
   if (PREDICT_FALSE (next0 != next_index))				\
     {									\
       vlib_put_next_frame (vm, node, next_index, n_left_to_next + 1);	\
