@@ -1172,11 +1172,11 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
-  s->ref_count = n_buffers;
+  s->ref_count = n_buffers ? n_buffers : s->ref_count;
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       s = vlib_get_buffer (vm, s->next_buffer);
-      s->ref_count = n_buffers;
+      s->ref_count = n_buffers ? n_buffers : s->ref_count;
     }
 
   return n_buffers;
