@@ -1744,10 +1744,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
+
 	  is_locally_originated1 =
 	    p1->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  if (PREDICT_TRUE (!is_locally_originated1))
@@ -1775,10 +1772,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p1->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
+
 	  adj0 = adj_get (adj_index0);
 	  adj1 = adj_get (adj_index1);
 
