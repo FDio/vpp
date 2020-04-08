@@ -154,6 +154,7 @@ typedef struct quic_ctx_
     struct
     {	      /** STREAM ctx case */
       quicly_stream_t *stream;
+      u64 bytes_written;
       u32 quic_connection_ctx_id;
       u8 _sctx_end_marker;	/* Leave this at the end */
     };

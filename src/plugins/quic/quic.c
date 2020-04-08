@@ -445,15 +445,15 @@ quic_ctx_is_conn (quic_ctx_t * ctx)
   return !(quic_ctx_is_listener (ctx) || quic_ctx_is_stream (ctx));
 }
 
-static session_t *
-get_stream_session_from_stream (quicly_stream_t * stream)
+static inline session_t *
+get_stream_session_and_ctx_from_stream (quicly_stream_t * stream,
+					quic_ctx_t ** ctx)
 {
-  quic_ctx_t *ctx;
   quic_stream_data_t *stream_data;
 
   stream_data = (quic_stream_data_t *) stream->data;
-  ctx = quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
-  return session_get (ctx->c_s_index, stream_data->thread_index);
+  *ctx = quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
+  return session_get ((*ctx)->c_s_index, stream_data->thread_index);
 }
 
 static inline void
@@ -826,6 +826,9 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
   svm_fifo_t *f;
   quic_stream_data_t *stream_data;
 
+  if (!len)
+    return;
+
   stream_data = (quic_stream_data_t *) stream->data;
   sctx = quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
   stream_session = session_get (sctx->c_s_index, stream_data->thread_index);
@@ -894,15 +897,17 @@ quic_fifo_egress_shift (quicly_stream_t * stream, size_t delta)
 {
   quic_stream_data_t *stream_data;
   session_t *stream_session;
+  quic_ctx_t *ctx;
   svm_fifo_t *f;
   u32 rv;
 
   stream_data = (quic_stream_data_t *) stream->data;
-  stream_session = get_stream_session_from_stream (stream);
+  stream_session = get_stream_session_and_ctx_from_stream (stream, &ctx);
   f = stream_session->tx_fifo;
 
   QUIC_ASSERT (stream_data->app_tx_data_len >= delta);
   stream_data->app_tx_data_len -= delta;
+  ctx->bytes_written += delta;
   rv = svm_fifo_dequeue_drop (f, delta);
   QUIC_ASSERT (rv == delta);
 
@@ -915,12 +920,13 @@ quic_fifo_egress_emit (quicly_stream_t * stream, size_t off, void *dst,
 		       size_t * len, int *wrote_all)
 {
   quic_stream_data_t *stream_data;
+  quic_ctx_t *ctx;
   session_t *stream_session;
   svm_fifo_t *f;
   u32 deq_max;
 
   stream_data = (quic_stream_data_t *) stream->data;
-  stream_session = get_stream_session_from_stream (stream);
+  stream_session = get_stream_session_and_ctx_from_stream (stream, &ctx);
   f = stream_session->tx_fifo;
 
   QUIC_DBG (3, "Emitting %u, offset %u", *len, off);
@@ -1352,12 +1358,13 @@ quic_connect (transport_endpoint_cfg_t * tep)
 static void
 quic_proto_on_close (u32 ctx_index, u32 thread_index)
 {
+  int err;
   quic_ctx_t *ctx = quic_ctx_get_if_valid (ctx_index, thread_index);
   if (!ctx)
     return;
-#if QUIC_DEBUG >= 2
   session_t *stream_session = session_get (ctx->c_s_index,
 					   ctx->c_thread_index);
+#if QUIC_DEBUG >= 2
   clib_warning ("Closing session 0x%lx", session_handle (stream_session));
 #endif
   if (quic_ctx_is_stream (ctx))
@@ -1366,7 +1373,16 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
       if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
 					stream->stream_id))
 	return;
-      quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
+      quicly_sendstate_shutdown (&stream->sendstate, ctx->bytes_written +
+				 svm_fifo_max_dequeue
+				 (stream_session->tx_fifo));
+      err = quicly_stream_sync_sendbuf (stream, 1);
+      if (err)
+	{
+	  QUIC_DBG (1, "sendstate_shutdown failed for stream session %lu",
+		    session_handle (stream_session));
+	  quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
+	}
       quic_send_packets (ctx);
       return;
     }
