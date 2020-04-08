@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0460877_f8c6570d",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-04-08T15:55:15Z",
+      "side": 1,
+      "message": "Do we want \" : u8\" at the end?\nProbably a job for a separate change.",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 4
+      },
+      "revId": "73b07d05560b67ef3f9c79c002077f093b051307",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
