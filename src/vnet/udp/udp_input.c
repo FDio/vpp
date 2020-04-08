@@ -67,30 +67,43 @@ typedef enum
 always_inline void
 udp_input_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
 {
-  if (PREDICT_TRUE (!val))
-    return;
-
   if (is_ip4)
     vlib_node_increment_counter (vm, udp4_input_node.index, evt, val);
   else
     vlib_node_increment_counter (vm, udp6_input_node.index, evt, val);
 }
 
+#define udp_store_err_counters(vm, is_ip4, cnts)			\
+{									\
+  int i;								\
+  for (i = 0; i < UDP_N_ERROR; i++)					\
+    if (cnts[i])							\
+      udp_input_inc_counter(vm, is_ip4, i, cnts[i]);			\
+}
+
+#define udp_inc_err_counter(cnts, err, val)				\
+{									\
+  cnts[err] += val;							\
+}
+
 always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, u8 is_ip4)
 {
-  u32 n_left_from, *from;
-  u32 errors, *first_buffer;
-  u32 my_thread_index = vm->thread_index;
+  u32 n_left_from, *from, errors, *first_buffer;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 err_counters[UDP_N_ERROR] = { 0 };
+  u32 thread_index = vm->thread_index;
 
   from = first_buffer = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
 
   while (n_left_from > 0)
     {
-      u32 bi0, fib_index0, data_len;
-      vlib_buffer_t *b0;
+      u32 fib_index0, data_len;
       u32 error0 = UDP_ERROR_ENQUEUED;
       udp_header_t *udp0;
       ip4_header_t *ip40;
@@ -104,17 +117,10 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       session_dgram_hdr_t hdr0;
       u8 queue_event = 1;
 
-      /* speculatively enqueue b0 to the current next frame */
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-
       /* udp_local hands us a pointer to the udp data */
-      data0 = vlib_buffer_get_current (b0);
+      data0 = vlib_buffer_get_current (b[0]);
       udp0 = (udp_header_t *) (data0 - sizeof (*udp0));
-      fib_index0 = vnet_buffer (b0)->ip.fib_index;
+      fib_index0 = vnet_buffer (b[0])->ip.fib_index;
 
       if (is_ip4)
 	{
@@ -193,7 +199,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  uc0 = udp_get_connection_from_transport (tc0);
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
-	      child0 = udp_connection_alloc (my_thread_index);
+	      child0 = udp_connection_alloc (thread_index);
 	      if (is_ip4)
 		{
 		  ip_set (&child0->c_lcl_ip, &ip40->dst_address, 1);
@@ -241,11 +247,11 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       hdr0.data_length = data_len;
-      if (PREDICT_TRUE (!(b0->flags & VLIB_BUFFER_NEXT_PRESENT)))
-	b0->current_length = data_len;
+      if (PREDICT_TRUE (!(b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	b[0]->current_length = data_len;
       else
-	b0->total_length_not_including_first_buffer = data_len
-	  - b0->current_length;
+	b[0]->total_length_not_including_first_buffer = data_len
+	  - b[0]->current_length;
 
       hdr0.data_offset = 0;
       ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);
@@ -257,9 +263,9 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       clib_spinlock_lock (&uc0->rx_lock);
       /* If session is owned by another thread and rx event needed,
        * enqueue event now while we still have the peeker lock */
-      if (s0->thread_index != my_thread_index)
+      if (s0->thread_index != thread_index)
 	{
-	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
+	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b[0],
 						     TRANSPORT_PROTO_UDP,
 						     /* queue event */ 0);
 	  if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
@@ -267,7 +273,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
+	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b[0],
 						     TRANSPORT_PROTO_UDP,
 						     queue_event);
 	}
@@ -279,24 +285,30 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
     trace0:
 
-      b0->error = node->errors[error0];
+      b[0]->error = node->errors[error0];
+
+      b += 1;
+      n_left_from -= 1;
+
+      udp_inc_err_counter (err_counters, error0, 1);
 
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
-	  udp_input_trace_t *t = vlib_add_trace (vm, node, b0,
+	  udp_input_trace_t *t = vlib_add_trace (vm, node, b[0],
 						 sizeof (*t));
 
 	  t->connection = s0 ? s0->connection_index : ~0;
 	  t->disposition = error0;
-	  t->thread_index = my_thread_index;
+	  t->thread_index = thread_index;
 	}
     }
 
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
-					      my_thread_index);
-  udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
+					      thread_index);
+  err_counters[UDP_ERROR_MQ_FULL] = errors;
+  udp_store_err_counters (vm, is_ip4, err_counters);
   return frame->n_vectors;
 }
 
