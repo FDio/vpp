@@ -222,7 +222,7 @@ static_always_inline void
 dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
 {
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-  CLIB_PREFETCH (mb, sizeof (struct rte_mbuf), STORE);
+  CLIB_PREFETCH (mb, CLIB_CACHE_LINE_BYTES, STORE);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
@@ -342,6 +342,14 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
 			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
 	{
+	  CLIB_PREFETCH (mb[4] + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 STORE);
+	  CLIB_PREFETCH (mb[5] + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 STORE);
+	  CLIB_PREFETCH (mb[6] + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 STORE);
+	  CLIB_PREFETCH (mb[7] + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 STORE);
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
 	  dpdk_buffer_tx_offload (xd, b[1], mb[1]);
 	  dpdk_buffer_tx_offload (xd, b[2], mb[2]);
