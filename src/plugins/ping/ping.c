@@ -933,6 +933,8 @@ ip46_enqueue_packet (vlib_main_t * vm, vlib_buffer_t * b0, u32 burst,
    * we did not enqueue it here yet.
    */
 ship_and_ret:
+  ASSERT (n_to_send <= f->n_vectors);
+  f->n_vectors -= n_to_send;
   n_sent += f->n_vectors;
   vlib_put_frame_to_node (vm, lookup_node_index, f);
   return n_sent;
