@@ -1085,6 +1085,36 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
+session_dgram_accept (transport_connection_t * tc, u32 listener_index,
+		      u32 thread_index)
+{
+  app_worker_t *app_wrk;
+  session_t *s;
+  int rv;
+
+  s = session_alloc_for_connection (tc);
+  s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
+
+  if ((rv = app_worker_init_accepted (s)))
+    {
+      session_free (s);
+      return rv;
+    }
+
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if ((rv = app_worker_accept_notify (app_wrk, s)))
+    {
+      session_free_w_fifos (s);
+      return rv;
+    }
+
+  s->session_state = SESSION_STATE_READY;
+  session_lookup_add_connection (tc, session_handle (s));
+
+  return 0;
+}
+
+int
 session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
