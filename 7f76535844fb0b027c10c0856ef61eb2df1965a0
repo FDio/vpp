@@ -50,6 +50,24 @@
       "revId": "7f76535844fb0b027c10c0856ef61eb2df1965a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5d45532f_43c538a6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-08T15:32:39Z",
+      "side": 1,
+      "message": "if (PREDICT_TRUE (n_added \u003d\u003d 1)\n...\nelse if (n_added \u003d\u003d 2)\n..\nelse if (n_added \u003d\u003d 0)\n..\nelse \n  ASSERT (0);",
+      "parentUuid": "6a1f18bc_6608e34b",
+      "revId": "7f76535844fb0b027c10c0856ef61eb2df1965a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
