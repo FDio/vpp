@@ -222,13 +222,15 @@ ip6_hbh_ioam_loopback_handler (vlib_buffer_t * b, ip6_header_t * ip,
   ioam_trace_option_t *opt;
   udp_ping_t *udp;
 
+  b0 = vlib_buffer_copy (hm->vlib_main, b);
+  if (b0 == NULL)
+    return;
+
+  buf_index = vlib_get_buffer_index (hm->vlib_main, b0);
   next_node = vlib_get_node_by_name (hm->vlib_main, (u8 *) "ip6-lookup");
   nf = vlib_get_frame_to_node (hm->vlib_main, next_node->index);
   nf->n_vectors = 0;
   to_next = vlib_frame_vector_args (nf);
-
-  b0 = vlib_buffer_copy (hm->vlib_main, b);
-  buf_index = vlib_get_buffer_index (hm->vlib_main, b0);
 
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
