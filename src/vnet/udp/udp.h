@@ -202,7 +202,7 @@ vnet_get_udp_main ()
 }
 
 always_inline udp_connection_t *
-udp_get_connection_from_transport (transport_connection_t * tc)
+udp_connection_from_transport (transport_connection_t * tc)
 {
   return ((udp_connection_t *) tc);
 }
@@ -213,6 +213,7 @@ udp_connection_index (udp_connection_t * uc)
   return (uc - udp_main.connections[uc->c_thread_index]);
 }
 
+void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
 
 /**
