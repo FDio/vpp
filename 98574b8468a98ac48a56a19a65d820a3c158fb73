@@ -1,0 +1,441 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b256a63_1c45758b",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1643,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "For now, I guess it\u0027s fine to do things this way. Eventually, I\u0027d move these to session_debug.c",
+      "range": {
+        "startLine": 1635,
+        "startChar": 0,
+        "endLine": 1643,
+        "endChar": 26
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34b2d933_f8f2f5b8",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Personal preference so you can ignore it: either dbg_evts or dbg_events. \"evnt\" is too close to the \u0027actual\u0027 word.",
+      "range": {
+        "startLine": 73,
+        "startChar": 2,
+        "endLine": 73,
+        "endChar": 21
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "291e2625_432f9136",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "This will obviously need fixing in the final version.",
+      "range": {
+        "startLine": 82,
+        "startChar": 0,
+        "endLine": 89,
+        "endChar": 34
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ce7f444_49171dde",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "no need, use wrk-\u003evm-\u003ethread_index",
+      "range": {
+        "startLine": 225,
+        "startChar": 46,
+        "endLine": 225,
+        "endChar": 52
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "099dbec0_3f51199c",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "wrk-\u003evm",
+      "range": {
+        "startLine": 227,
+        "startChar": 28,
+        "endLine": 227,
+        "endChar": 44
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c02e556e_c07d3717",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Because you\u0027ll call this event several times and you always to t_new - t_old, you might want to add an f64 to the worker debug structure",
+      "range": {
+        "startLine": 227,
+        "startChar": 48,
+        "endLine": 227,
+        "endChar": 69
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "413c175f_85638f31",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Shift everything left",
+      "range": {
+        "startLine": 228,
+        "startChar": 1,
+        "endLine": 228,
+        "endChar": 6
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2274074_0c8cfc4a",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "this is actually f64 (f8 in elog). \n\nHowever, I just realized that for now it might be better to drop the elogs. The scheduler is called a lot of times and it will quickly fill the elog buffer.",
+      "range": {
+        "startLine": 230,
+        "startChar": 53,
+        "endLine": 230,
+        "endChar": 59
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3048d175_6a496c8d",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Fix to match the one above",
+      "range": {
+        "startLine": 241,
+        "startChar": 35,
+        "endLine": 241,
+        "endChar": 39
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eca137f2_c0390709",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Not needed. Also, doesn\u0027t this need a \"count\" variable? We should generate 1 event once everything has been dispatched, e.g., ctrl, new or old events.\n\nFor individual io evt counts, you might need a different macro and no evt logging because those are just too many. If you do that, you can also keep the BASE_OFFSET_IO_EVTS within the macro instead of exposing it.",
+      "range": {
+        "startLine": 245,
+        "startChar": 46,
+        "endLine": 245,
+        "endChar": 52
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93d2f1c8_9b210d37",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Shift everything left",
+      "range": {
+        "startLine": 247,
+        "startChar": 0,
+        "endLine": 247,
+        "endChar": 3
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5799663c_699f8091",
+        "filename": "src/vnet/session/session_debug.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Fix to match the one above",
+      "range": {
+        "startLine": 260,
+        "startChar": 35,
+        "endLine": 260,
+        "endChar": 39
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee0afecd_5a582910",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "I understand now why you were asking yesterday about a way to better map between event types. Maybe include the 1 in the offset. If, as suggested in the .h file, you do a different event, e.g., IO_COUNTS, then you can completely hide this mapping within the macro",
+      "range": {
+        "startLine": 1243,
+        "startChar": 8,
+        "endLine": 1243,
+        "endChar": 47
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59396660_ad0064cc",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1316,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Maybe add this to SESSION_EVT_DISPATCH_START_HANDLER",
+      "range": {
+        "startLine": 1316,
+        "startChar": 2,
+        "endLine": 1316,
+        "endChar": 69
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fe4f1530_03bb4088",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1343,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "This should also take n_to_dequeue and store it. In contrast, for ctrl and io events, you do an incremental counting",
+      "range": {
+        "startLine": 1343,
+        "startChar": 39,
+        "endLine": 1343,
+        "endChar": 50
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3d4ee30_a9734d3a",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1356,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Maybe count these within session_event_dispatch_ctrl.",
+      "range": {
+        "startLine": 1356,
+        "startChar": 37,
+        "endLine": 1356,
+        "endChar": 50
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6e6cd96_c93db7b4",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1375,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "These are already counted in session_event_dispatch_io",
+      "range": {
+        "startLine": 1375,
+        "startChar": 0,
+        "endLine": 1375,
+        "endChar": 72
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d59b5652_41f13b6d",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1402,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Already counted within session_event_dispatch_io",
+      "range": {
+        "startLine": 1402,
+        "startChar": 19,
+        "endLine": 1402,
+        "endChar": 37
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13f34df7_c67c02c6",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1411,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-08T00:46:43Z",
+      "side": 1,
+      "message": "Update the handler to do the last call to SESSION_EVT_CLOCKS with OLD_IO_EVTS",
+      "range": {
+        "startLine": 1411,
+        "startChar": 15,
+        "endLine": 1411,
+        "endChar": 39
+      },
+      "revId": "98574b8468a98ac48a56a19a65d820a3c158fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
