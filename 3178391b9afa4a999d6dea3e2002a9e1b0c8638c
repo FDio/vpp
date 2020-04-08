@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b0522569_09ce58ed",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-04-08T11:09:31Z",
+      "side": 1,
+      "message": "return clib_crc32c ((u8 *) \u0026 xor_sum, sizeof(xor_sum)); maybe?",
+      "revId": "3178391b9afa4a999d6dea3e2002a9e1b0c8638c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
