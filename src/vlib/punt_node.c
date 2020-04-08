@@ -120,11 +120,16 @@ punt_replicate (vlib_main_t * vm,
        * so there's no need to check if the to_next frame
        * is full */
     }
-  *n_dispatched = *n_dispatched + n_clones0;
+  *n_dispatched = *n_dispatched + n_cloned0;
 
   /* The original buffer is the first clone */
   next0 = punt_dp_db[pr0][0];
-  *to_next[0] = bi0;
+  /*
+   * Note: the original buffer is enqueued in punt_dispatch_node.
+   * Don't do it here.
+   *
+   * *to_next[0] = bi0;
+   */
   return next0;
 }
 
