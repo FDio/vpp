@@ -43,7 +43,7 @@ class TestGtpuUDP(VppTestCase):
         self.pg_start()
 
         err = self.statistics.get_counter(
-            '/err/ip4-udp-lookup/no listener for dst port')[0]
+            '/err/ip4-udp-lookup/No listener for dst port')[0]
 
         if enabled:
             self.assertEqual(err, self.ip4_err)
@@ -62,7 +62,7 @@ class TestGtpuUDP(VppTestCase):
         self.pg_start()
 
         err = self.statistics.get_counter(
-            '/err/ip6-udp-lookup/no listener for dst port')[0]
+            '/err/ip6-udp-lookup/No listener for dst port')[0]
 
         if enabled:
             self.assertEqual(err, self.ip6_err)
