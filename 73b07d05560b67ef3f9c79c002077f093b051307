@@ -22,6 +22,30 @@
       "revId": "73b07d05560b67ef3f9c79c002077f093b051307",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e0aed6b_582dafdb",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-04-08T16:01:54Z",
+      "side": 1,
+      "message": "Yes, it would be better. Thanks.",
+      "parentUuid": "c0460877_f8c6570d",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 4
+      },
+      "revId": "73b07d05560b67ef3f9c79c002077f093b051307",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
