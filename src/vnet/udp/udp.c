@@ -240,7 +240,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   udp_connection_t *uc;
   vlib_main_t *vm = vlib_get_main ();
 
-  uc = udp_get_connection_from_transport (tc);
+  uc = udp_connection_from_transport (tc);
 
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
   if (tc->is_ip4)
@@ -307,7 +307,7 @@ udp_session_send_params (transport_connection_t * tconn,
 {
   udp_connection_t *uc;
 
-  uc = udp_get_connection_from_transport (tconn);
+  uc = udp_connection_from_transport (tconn);
 
   /* No constraint on TX window */
   sp->snd_space = ~0;
