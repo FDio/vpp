@@ -228,6 +228,43 @@ autoreply define sw_interface_add_del_address
   vl_api_address_with_prefix_t prefix;
 };
 
+/** \brief IP interface address replace begin
+
+    The use-case is that, for some unspecified reason, the control plane
+    has a different set of interface addresses than VPP
+    currently has. The CP would thus like to 'replace' VPP's set
+    only by specifying what the new set shall be, i.e. it is not
+    going to delete anything that already eixts, rather, is wants any
+    unspecified interface addresses to be deleted implicitly.
+    The CP declares the start of this procedure with this replace_begin
+    API Call, and when it has populated all addresses it wants, it calls
+    the below replace_end API. From this point on it is of course free
+    to add and delete interface addresses as usual.
+    The underlying mechanism by which VPP implements this replace is
+    intentionally left unspecified.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define sw_interface_address_replace_begin
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IP interface address replace end
+
+    see ip_interface_address_replace_begin description.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define sw_interface_address_replace_end
+{
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief Associate the specified interface with a fib table
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
