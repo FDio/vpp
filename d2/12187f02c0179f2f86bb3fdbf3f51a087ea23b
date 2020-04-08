@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Aloys Augustin <aloaugus@cisco.com>
+Code-Review+2: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Wed, 08 Apr 2020 11:35:44 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/26392
+Project: vpp
+Branch: refs/heads/stable/1908
