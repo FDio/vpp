@@ -596,6 +596,7 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
   return 1;
 
 error:
+  vlib_put_next_frame (vm, node, next, n_left_to_next);
   vlib_node_increment_counter (vm, punt_socket_rx_node.index, error, 1);
   return 0;
 }
