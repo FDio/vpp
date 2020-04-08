@@ -466,6 +466,8 @@ void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,
 			   u32 thread_index, u8 notify);
+int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
+			  u32 thread_index, u8 notify);
 /**
  * Initialize session layer for given transport proto and ip version
  *
