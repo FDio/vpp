@@ -79,8 +79,12 @@ _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)		\
 _(DELETE_LOOPBACK, delete_loopback)                             \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)             \
 _(COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats) \
-_(SW_INTERFACE_SET_IP_DIRECTED_BROADCAST,                            \
-  sw_interface_set_ip_directed_broadcast)
+_(SW_INTERFACE_SET_IP_DIRECTED_BROADCAST,                       \
+  sw_interface_set_ip_directed_broadcast)                       \
+_(SW_INTERFACE_ADDRESS_REPLACE_BEGIN,                           \
+  sw_interface_address_replace_begin)                           \
+_(SW_INTERFACE_ADDRESS_REPLACE_END,                             \
+  sw_interface_address_replace_end)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -1364,6 +1368,30 @@ static void
 						    mp->enable_disable);
 
   REPLY_MACRO (VL_API_COLLECT_DETAILED_INTERFACE_STATS_REPLY);
+}
+
+static void
+  vl_api_sw_interface_address_replace_begin_t_handler
+  (vl_api_sw_interface_address_replace_begin_t * mp)
+{
+  vl_api_sw_interface_address_replace_begin_reply_t *rmp;
+  int rv = 0;
+
+  ip_interface_address_mark ();
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_ADDRESS_REPLACE_BEGIN_REPLY);
+}
+
+static void
+  vl_api_sw_interface_address_replace_end_t_handler
+  (vl_api_sw_interface_address_replace_end_t * mp)
+{
+  vl_api_sw_interface_address_replace_end_reply_t *rmp;
+  int rv = 0;
+
+  ip_interface_address_sweep ();
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_ADDRESS_REPLACE_END_REPLY);
 }
 
 /*

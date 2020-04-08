@@ -47,6 +47,7 @@
 #include <vnet/ip/ip46_address.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
+#include <vnet/ip/ip_interface.h>
 #include <stdbool.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_40_8.h>

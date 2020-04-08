@@ -680,7 +680,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
   clib_error_t *error = 0;
-  u32 if_address_index, elts_before;
+  u32 if_address_index;
   ip4_address_fib_t ip4_af, *addr_fib = 0;
 
   /* local0 interface doesn't support IP addressing  */
@@ -720,6 +720,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
                    ip4_address_t * x =
                      ip_interface_address_get_address
                      (&im->lookup_main, ia);
+
                    if (ip4_destination_matches_route
                        (im, address, x, ia->address_length) ||
                        ip4_destination_matches_route (im,
@@ -733,11 +734,18 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 			   (x->as_u32 != address->as_u32))
 		         continue;
 
-		       /* error if the length or intf was different */
-                       vnm->api_errno = VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
+                       if (ia->flags & IP_INTERFACE_ADDRESS_FLAG_STALE)
+                         /* if the address we're comparing against is stale
+                          * then the CP has not added this one back yet, maybe
+                          * it never will, so we have to assume it won't and
+                          * ignore it. if it does add it back, then it will fail
+                          * because this one is now present */
+                         continue;
 
-                       return
-                         clib_error_create
+		       /* error if the length or intf was different */
+                       vnm->api_errno = VNET_API_ERROR_ADDRESS_IN_USE;
+
+                       error = clib_error_create
                          ("failed to add %U on %U which conflicts with %U for interface %U",
                           format_ip4_address_and_length, address,
                           address_length,
@@ -747,6 +755,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
                           ia->address_length,
                           format_vnet_sw_if_index_name, vnm,
                           sif->sw_if_index);
+                       goto done;
                      }
                  }));
             }
@@ -754,10 +763,70 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
     }
   /* *INDENT-ON* */
 
-  elts_before = pool_elts (lm->if_address_pool);
+  if_address_index = ip_interface_address_find (lm, addr_fib, address_length);
 
-  error = ip_interface_address_add_del
-    (lm, sw_if_index, addr_fib, address_length, is_del, &if_address_index);
+  if (is_del)
+    {
+      if (~0 == if_address_index)
+	{
+	  vnm->api_errno = VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE;
+	  error = clib_error_create ("%U not found for interface %U",
+				     lm->format_address_and_length,
+				     addr_fib, address_length,
+				     format_vnet_sw_if_index_name, vnm,
+				     sw_if_index);
+	  goto done;
+	}
+
+      ip_interface_address_del (lm, if_address_index, addr_fib);
+    }
+  else
+    {
+      if (~0 != if_address_index)
+	{
+	  ip_interface_address_t *ia;
+
+	  ia = pool_elt_at_index (lm->if_address_pool, if_address_index);
+
+	  if (ia->flags & IP_INTERFACE_ADDRESS_FLAG_STALE)
+	    {
+	      if (ia->sw_if_index == sw_if_index)
+		{
+		  /* re-adding an address during the replace action.
+		   * consdier this the update. clear the flag and
+		   * we're done */
+		  ia->flags &= ~IP_INTERFACE_ADDRESS_FLAG_STALE;
+		  goto done;
+		}
+	      else
+		{
+		  /* The prefix is moving from one interface to another.
+		   * delete the stale and add the new */
+		  ip4_add_del_interface_address_internal (vm,
+							  ia->sw_if_index,
+							  address,
+							  address_length, 1);
+		  ia = NULL;
+		  error = ip_interface_address_add (lm, sw_if_index,
+						    addr_fib, address_length,
+						    &if_address_index);
+		}
+	    }
+	  else
+	    {
+	      vnm->api_errno = VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
+	      error = clib_error_create
+		("Prefix %U already found on interface %U",
+		 lm->format_address_and_length, addr_fib, address_length,
+		 format_vnet_sw_if_index_name, vnm, ia->sw_if_index);
+	    }
+	}
+      else
+	error = ip_interface_address_add (lm, sw_if_index,
+					  addr_fib, address_length,
+					  &if_address_index);
+    }
+
   if (error)
     goto done;
 
@@ -778,14 +847,10 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 				  (lm->if_address_pool, if_address_index));
     }
 
-  /* If pool did not grow/shrink: add duplicate address. */
-  if (elts_before != pool_elts (lm->if_address_pool))
-    {
-      ip4_add_del_interface_address_callback_t *cb;
-      vec_foreach (cb, im->add_del_interface_address_callbacks)
-	cb->function (im, cb->function_opaque, sw_if_index,
-		      address, address_length, if_address_index, is_del);
-    }
+  ip4_add_del_interface_address_callback_t *cb;
+  vec_foreach (cb, im->add_del_interface_address_callbacks)
+    cb->function (im, cb->function_opaque, sw_if_index,
+		  address, address_length, if_address_index, is_del);
 
 done:
   vec_free (addr_fib);

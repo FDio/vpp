@@ -8,7 +8,7 @@ from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, INVALID_INDEX, VppIpAddressUnion, \
     VppIpMPrefix
-from ipaddress import ip_address, IPv4Network, IPv6Network
+from ipaddress import ip_network, ip_address, IPv4Network, IPv6Network
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -93,7 +93,7 @@ def address_proto(ip_addr):
         return FibPathProto.FIB_PATH_NH_PROTO_IP6
 
 
-def find_route(test, addr, len, table_id=0):
+def find_route(test, addr, len, table_id=0, sw_if_index=None):
     prefix = mk_network(addr, len)
 
     if 4 == prefix.version:
@@ -104,7 +104,16 @@ def find_route(test, addr, len, table_id=0):
     for e in routes:
         if table_id == e.route.table_id \
            and str(e.route.prefix) == str(prefix):
-            return True
+            if not sw_if_index:
+                return True
+            else:
+                # should be only one path if the user is looking
+                # for the interface the route is reachable through
+                if e.route.n_paths != 1:
+                    return False
+                else:
+                    return (e.route.paths[0].sw_if_index == sw_if_index)
+
     return False
 
 
@@ -234,12 +243,16 @@ class VppIpTable(VppObject):
 
 class VppIpInterfaceAddress(VppObject):
 
-    def __init__(self, test, intf, addr, len):
+    def __init__(self, test, intf, addr, len, bind=None):
         self._test = test
         self.intf = intf
         self.addr = addr
         self.len = len
         self.prefix = "%s/%d" % (addr, len)
+        self.host_len = ip_network(self.prefix, strict=False).max_prefixlen
+        self.table_id = 0
+        if bind:
+            self.table_id = bind.table.table_id
 
     def add_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
@@ -254,13 +267,40 @@ class VppIpInterfaceAddress(VppObject):
             is_add=0)
 
     def query_vpp_config(self):
-        return fib_interface_ip_prefix(self._test,
-                                       self.addr,
-                                       self.len,
-                                       self.intf.sw_if_index)
+        # search for the IP address mapping and the two expected
+        # FIB entries
+        v = ip_address(self.addr).version
+
+        if ((v == 4 and self.len < 31) or (v == 6 and self.len < 127)):
+            return (fib_interface_ip_prefix(self._test,
+                                            self.addr,
+                                            self.len,
+                                            self.intf.sw_if_index) &
+                    find_route(self._test,
+                               self.addr,
+                               self.len,
+                               table_id=self.table_id,
+                               sw_if_index=self.intf.sw_if_index) &
+                    find_route(self._test,
+                               self.addr,
+                               self.host_len,
+                               table_id=self.table_id,
+                               sw_if_index=self.intf.sw_if_index))
+        else:
+            return (fib_interface_ip_prefix(self._test,
+                                            self.addr,
+                                            self.len,
+                                            self.intf.sw_if_index) &
+                    find_route(self._test,
+                               self.addr,
+                               self.host_len,
+                               table_id=self.table_id,
+                               sw_if_index=self.intf.sw_if_index))
 
     def object_id(self):
-        return "interface-ip-%s-%s" % (self.intf, self.prefix)
+        return "interface-ip-%s-%d-%s" % (self.intf,
+                                          self.table_id,
+                                          self.prefix)
 
 
 class VppIpInterfaceBind(VppObject):
@@ -276,6 +316,7 @@ class VppIpInterfaceBind(VppObject):
         else:
             self.intf.set_table_ip4(self.table.table_id)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         if 0 == self.table.table_id:
