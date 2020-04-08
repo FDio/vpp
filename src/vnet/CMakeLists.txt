@@ -458,6 +458,7 @@ list(APPEND VNET_SOURCES
   ip/ip_checksum.c
   ip/ip_frag.c
   ip/ip.c
+  ip/ip_interface.c
   ip/ip_init.c
   ip/ip_in_out_acl.c
   ip/ip_punt_drop.c
@@ -502,6 +503,7 @@ list(APPEND VNET_HEADERS
   ip/ip6_hop_by_hop_packet.h
   ip/ip6_packet.h
   ip/ip.h
+  ip/ip_interface.h
   ip/ip_packet.h
   ip/ip_source_and_port_range_check.h
   ip/ip_types.h

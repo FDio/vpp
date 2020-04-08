@@ -42,6 +42,7 @@
 
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
+#include <vnet/ip/ip_interface.h>
 #include <vnet/buffer.h>
 #include <vnet/feature/feature.h>
 #include <vnet/ip/icmp46_packet.h>
