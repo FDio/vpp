@@ -249,9 +249,9 @@ mpls_output_inline (vlib_main_t * vm,
 	  hdr0 = vlib_buffer_get_current (p0);
 
 	  /* Guess we are only writing on simple Ethernet header. */
-          vnet_rewrite_one_header (adj0[0], hdr0, 
+          vnet_rewrite_one_header (adj0[0], hdr0,
                                    sizeof (ethernet_header_t));
-          
+
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
           vnet_buffer (p0)->mpls.save_rewrite_length = rw_len0;
@@ -300,10 +300,10 @@ mpls_output_inline (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  to_next += 1;
 	  n_left_to_next -= 1;
-      
-          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED)) 
+
+          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              mpls_output_trace_t *tr = vlib_add_trace (vm, node, 
+              mpls_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p0, sizeof (*tr));
               tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
@@ -430,7 +430,7 @@ mpls_frag (vlib_main_t * vm,
 
             /* the size of the MPLS stack */
             encap_size = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;
-            
+
             /* IP fragmentation */
             if (is_ip4)
                 error0 = ip4_frag_do_fragment (vm, pi0,
@@ -467,7 +467,7 @@ mpls_frag (vlib_main_t * vm,
 	    }
             else
 	    {
-                vlib_error_count (vm, next_index, error0, 1);
+                vlib_error_count (vm, mpls_output_node.index, error0, 1);
                 vec_add1 (frags, pi0);	/* Get rid of the original buffer */
                 next0 = MPLS_FRAG_NEXT_DROP;
 	    }
@@ -612,9 +612,9 @@ VLIB_NODE_FN (mpls_adj_incomplete_node) (vlib_main_t * vm,
           else
           {
               next0 = MPLS_ADJ_INCOMPLETE_NEXT_IP6;
-          }              
+          }
 
-	  if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED)) 
+	  if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
 	  {
 	      mpls_adj_incomplete_trace_t *tr =
 		  vlib_add_trace (vm, node, p0, sizeof (*tr));
@@ -664,4 +664,3 @@ VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
 #undef _
   },
 };
-
