@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "21d163dc_65fd5550",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-08T15:21:01Z",
+      "side": 1,
+      "message": "I think you took this out in another patch.",
+      "revId": "7f76535844fb0b027c10c0856ef61eb2df1965a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "72deac93_9bfa33c6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-08T15:21:01Z",
+      "side": 1,
+      "message": "ditto.",
+      "revId": "7f76535844fb0b027c10c0856ef61eb2df1965a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a1f18bc_6608e34b",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-08T15:21:01Z",
+      "side": 1,
+      "message": "I found this code is pretty confusing. Can I suggest simplifying it, something like this?\n\nif (PREDICT_TRUE (n_added \u003d\u003d 1)\n...\nelse (n_added \u003d\u003d 2)\n..\nelse (n_added \u003d\u003d 0)\n...",
+      "revId": "7f76535844fb0b027c10c0856ef61eb2df1965a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
