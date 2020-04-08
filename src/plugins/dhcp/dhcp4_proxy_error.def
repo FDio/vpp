@@ -30,4 +30,4 @@ dhcp_proxy_error (BAD_YIADDR, "DHCP packets with bad your_ip_address fields")
 dhcp_proxy_error (BAD_SVR_FIB_OR_ADDRESS, "DHCP packets not from DHCP server or server FIB.")
 dhcp_proxy_error (PKT_TOO_BIG, "DHCP packets which are too big.")
 dhcp_proxy_error (FOR_US, "DHCP packets for local client.")
-
+dhcp_proxy_error (ALLOC_FAIL, "DHCP buffer allocation failures.")
