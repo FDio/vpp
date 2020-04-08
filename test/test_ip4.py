@@ -2155,5 +2155,167 @@ class TestIPCover(VppTestCase):
         # remove the default route
         r.remove_vpp_config()
 
+
+class TestIP4Replace(VppTestCase):
+    """ IPv4 Interface Address Replace """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP4Replace, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP4Replace, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIP4Replace, self).setUp()
+
+        self.create_pg_interfaces(range(4))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+    def tearDown(self):
+        super(TestIP4Replace, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+
+    def get_n_pfxs(self, intf):
+        return len(self.vapi.ip_address_dump(intf.sw_if_index))
+
+    def test_replace(self):
+        """ IP interface address replace """
+
+        intf_pfxs = [[], [], [], []]
+
+        # add prefixes to each of the interfaces
+        for i in range(len(self.pg_interfaces)):
+            intf = self.pg_interfaces[i]
+
+            # 172.16.x.1/24
+            addr = "172.16.%d.1" % intf.sw_if_index
+            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            intf_pfxs[i].append(a)
+
+            # 172.16.x.2/24 - a different address in the same subnet as above
+            addr = "172.16.%d.2" % intf.sw_if_index
+            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            intf_pfxs[i].append(a)
+
+            # 172.15.x.2/24 - a different address and subnet
+            addr = "172.15.%d.2" % intf.sw_if_index
+            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            intf_pfxs[i].append(a)
+
+        # a dump should n_address in it
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 3)
+
+        #
+        # remove all the address thru a replace
+        #
+        self.vapi.sw_interface_address_replace_begin()
+        self.vapi.sw_interface_address_replace_end()
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 0)
+
+        #
+        # add all the interface addresses back
+        #
+        for p in intf_pfxs:
+            for v in p:
+                v.add_vpp_config()
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 3)
+
+        #
+        # replace again, but this time update/re-add the address on the first
+        # two interfaces
+        #
+        self.vapi.sw_interface_address_replace_begin()
+
+        for p in intf_pfxs[:2]:
+            for v in p:
+                v.add_vpp_config()
+
+        self.vapi.sw_interface_address_replace_end()
+
+        # on the first two the address still exist,
+        # on the other two they do not
+        for intf in self.pg_interfaces[:2]:
+            self.assertEqual(self.get_n_pfxs(intf), 3)
+        for p in intf_pfxs[:2]:
+            for v in p:
+                self.assertTrue(v.query_vpp_config())
+        for intf in self.pg_interfaces[2:]:
+            self.assertEqual(self.get_n_pfxs(intf), 0)
+
+        #
+        # add all the interface addresses back on the last two
+        #
+        for p in intf_pfxs[2:]:
+            for v in p:
+                v.add_vpp_config()
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 3)
+
+        #
+        # replace again, this time add different prefixes on all the interfaces
+        #
+        self.vapi.sw_interface_address_replace_begin()
+
+        pfxs = []
+        for intf in self.pg_interfaces:
+            # 172.18.x.1/24
+            addr = "172.18.%d.1" % intf.sw_if_index
+            pfxs.append(VppIpInterfaceAddress(self, intf, addr,
+                                              24).add_vpp_config())
+
+        self.vapi.sw_interface_address_replace_end()
+
+        # only .18 should exist on each interface
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 1)
+        for pfx in pfxs:
+            self.assertTrue(pfx.query_vpp_config())
+
+        #
+        # remove everything
+        #
+        self.vapi.sw_interface_address_replace_begin()
+        self.vapi.sw_interface_address_replace_end()
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 0)
+
+        #
+        # add prefixes to each interface. post-begin add the prefix from
+        # interface X onto interface Y. this would normally be an error
+        # since it would generate a 'duplicate address' warning. but in
+        # this case, since what is newly downloaded is sane, it's ok
+        #
+        for intf in self.pg_interfaces:
+            # 172.18.x.1/24
+            addr = "172.18.%d.1" % intf.sw_if_index
+            VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+
+        self.vapi.sw_interface_address_replace_begin()
+
+        pfxs = []
+        for intf in self.pg_interfaces:
+            # 172.18.x.1/24
+            addr = "172.18.%d.1" % (intf.sw_if_index + 1)
+            pfxs.append(VppIpInterfaceAddress(self, intf,
+                                              addr, 24).add_vpp_config())
+
+        self.vapi.sw_interface_address_replace_end()
+
+        self.logger.info(self.vapi.cli("sh int addr"))
+
+        for intf in self.pg_interfaces:
+            self.assertEqual(self.get_n_pfxs(intf), 1)
+        for pfx in pfxs:
+            self.assertTrue(pfx.query_vpp_config())
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
