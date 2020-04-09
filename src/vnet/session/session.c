@@ -642,6 +642,15 @@ session_enqueue_notify_rpc (void *arg)
     return;
 
   session_enqueue_notify (s);
+
+  app_worker_t *app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return;
+
+  segment_manager_t *sm;
+  sm = app_worker_get_connect_segment_manager (app_wrk);
+  segment_manager_attach_fifo (sm, s->rx_fifo, s);
+  segment_manager_attach_fifo (sm, s->tx_fifo, s);
 }
 
 /**
@@ -824,27 +833,36 @@ static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  session_handle_t new_sh;
+  segment_manager_t *sm;
   app_worker_t *app_wrk;
   session_t *s;
 
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
-  s->tx_fifo->master_session_index = args->new_session_index;
-  s->tx_fifo->master_thread_index = args->new_thread_index;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return;
+
+  sm = app_worker_get_connect_segment_manager (app_wrk);
+//  segment_manager_attach_fifo (sm, s->tx_fifo, s);
+
+//  s->tx_fifo->master_session_index = args->new_session_index;
+//  s->tx_fifo->master_thread_index = args->new_thread_index;
+
+  segment_manager_detach_fifo (sm, s->rx_fifo);
+  segment_manager_detach_fifo (sm, s->tx_fifo);
+
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
 
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (app_wrk)
-    {
-      session_handle_t new_sh;
-      new_sh = session_make_handle (args->new_session_index,
-				    args->new_thread_index);
-      app_worker_migrate_notify (app_wrk, s, new_sh);
+  new_sh = session_make_handle (args->new_session_index,
+				args->new_thread_index);
+  app_worker_migrate_notify (app_wrk, s, new_sh);
 
-      /* Trigger app read on the new thread */
-      session_enqueue_notify_thread (new_sh);
-    }
+  /* Trigger app read on the new thread */
+  session_enqueue_notify_thread (new_sh);
 
   session_free (s);
   clib_mem_free (cb_args);
@@ -865,10 +883,11 @@ session_dgram_connect_notify (transport_connection_t * tc,
    */
   new_s = session_clone_safe (tc->s_index, old_thread_index);
   new_s->connection_index = tc->c_index;
-  new_s->rx_fifo->master_session_index = new_s->session_index;
-  new_s->rx_fifo->master_thread_index = new_s->thread_index;
+//  new_s->rx_fifo->master_session_index = new_s->session_index;
+//  new_s->rx_fifo->master_thread_index = new_s->thread_index;
   new_s->session_state = SESSION_STATE_READY;
   new_s->flags |= SESSION_F_IS_MIGRATING;
+
   session_lookup_add_connection (tc, session_handle (new_s));
 
   /*
