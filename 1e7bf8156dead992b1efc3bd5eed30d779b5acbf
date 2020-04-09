@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e004832b_4451dfbc",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-09T17:26:49Z",
+      "side": 1,
+      "message": "What are you trying to do here?\npvinci@host-2-2:/ssd/vpp$ python3 -c \u0027import time; print(time.time())\u0027\n1586452952.0061069\n\npvinci@host-2-2:/ssd/vpp$ printf %.7f\\\\n `date +%s.%N`\n1586452961.2588151",
+      "range": {
+        "startLine": 418,
+        "startChar": 0,
+        "endLine": 418,
+        "endChar": 48
+      },
+      "revId": "1e7bf8156dead992b1efc3bd5eed30d779b5acbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
