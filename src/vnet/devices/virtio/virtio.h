@@ -221,8 +221,8 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
       int __clib_unused r;
 
       r = write (vring->kick_fd, &x, sizeof (x));
-      vring->last_kick_avail_idx = vring->avail->idx;
     }
+  vring->last_kick_avail_idx = vring->avail->idx;
 }
 
 

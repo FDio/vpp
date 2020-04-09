@@ -114,6 +114,14 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 	  n_left--;
 	  last++;
 	  n_buffers++;
+	  struct vring_desc *d = &vring->desc[e->id];
+	  u16 next;
+	  while (d->flags & VRING_DESC_F_NEXT)
+	    {
+	      n_buffers++;
+	      next = d->next;
+	      d = &vring->desc[next];
+	    }
 	  if (n_left == 0)
 	    break;
 	  e = &vring->used->ring[last & mask];
@@ -193,8 +201,9 @@ set_checksum_offsets (vlib_main_t * vm, virtio_if_t * vif, vlib_buffer_t * b,
 
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
-		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
-		    u16 mask, int do_gso, int csum_offload)
+		    virtio_vring_t * vring, u32 bi, u16 free_desc_count,
+		    u16 avail, u16 next, u16 mask, int do_gso,
+		    int csum_offload)
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
@@ -254,7 +263,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
-  else
+  else if (vif->features & VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC))
     {
       /*
        * We are using single vlib_buffer_t for indirect descriptor(s)
@@ -333,6 +342,55 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       id->next = 0;
       d->len = count * sizeof (struct vring_desc);
       d->flags = VRING_DESC_F_INDIRECT;
+    }
+  else
+    if (((vif->features & VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC)) == 0)
+	&& (vif->type == VIRTIO_IF_TYPE_PCI))
+    {
+      u16 count = next;
+      vlib_buffer_t *b_temp = b;
+      u16 n_buffers_in_chain = 1;
+
+      /*
+       * Check the length of the chain for the required number of
+       * descriptors. Return from here, retry to get more descriptors,
+       * if chain length is greater than available descriptors.
+       */
+      while (b_temp->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  n_buffers_in_chain++;
+	  b_temp = vlib_get_buffer (vm, b_temp->next_buffer);
+	}
+
+      if (n_buffers_in_chain > free_desc_count)
+	return n_added;
+
+      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->len = b->current_length + hdr_sz;
+
+      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  d->flags = VRING_DESC_F_NEXT;
+	  vring->buffers[count] = bi;
+	  b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  bi = b->next_buffer;
+	  n_added++;
+	  count = (count + 1) & mask;
+	  d->next = count;
+	  d = &vring->desc[count];
+	  b = vlib_get_buffer (vm, bi);
+	  d->addr = vlib_buffer_get_current_pa (vm, b);
+	  d->len = b->current_length;
+	}
+      d->flags = 0;
+      vring->buffers[count] = bi;
+      vring->avail->ring[avail & mask] = next;
+      n_added++;
+      return n_added;
+    }
+  else
+    {
+      return n_added;
     }
   vring->buffers[next] = bi;
   vring->avail->ring[avail & mask] = next;
@@ -424,16 +482,16 @@ retry:
     {
       u16 n_added = 0;
       n_added =
-	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
-			    do_gso, csum_offload);
+	add_buffer_to_slot (vm, vif, vring, buffers[0], free_desc_count,
+			    avail, next, mask, do_gso, csum_offload);
       if (!n_added)
 	break;
-      avail += n_added;
+      avail++;
       next = (next + n_added) & mask;
       used += n_added;
       buffers++;
       n_left--;
-      free_desc_count--;
+      free_desc_count -= n_added;
     }
 
   if (n_left != frame->n_vectors)
