@@ -90,6 +90,12 @@ fsh_active_fifos_update (fifo_segment_header_t * fsh, int inc)
   clib_atomic_fetch_add_rel (&fsh->n_active_fifos, inc);
 }
 
+static inline u32
+fsh_n_active_fifos (fifo_segment_header_t * fsh)
+{
+  return clib_atomic_load_relax_n (&fsh->n_active_fifos);
+}
+
 static inline uword
 fsh_virtual_mem (fifo_segment_header_t * fsh)
 {
@@ -1215,17 +1221,7 @@ fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 u8
 fifo_segment_has_fifos (fifo_segment_t * fs)
 {
-  fifo_segment_header_t *fsh = fs->h;
-  fifo_segment_slice_t *fss;
-  int slice_index;
-
-  for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
-    {
-      fss = fsh_slice_get (fsh, slice_index);
-      if (fss->fifos)
-	return 1;
-    }
-  return 0;
+  return (fsh_n_active_fifos (fs->h) != 0);
 }
 
 svm_fifo_t *
