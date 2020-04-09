@@ -323,16 +323,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   if (snat_is_session_static (s))
     return;
 
-  ed_bihash_kv_t bihash_key;
-  clib_memset (&bihash_key, 0, sizeof (bihash_key));
-  bihash_key.k.dst_address = s->ext_host_addr.as_u32;
-  bihash_key.k.dst_port = s->ext_host_port;
-  bihash_key.k.src_address = s->out2in.addr.as_u32;
-  bihash_key.k.src_port = s->out2in.port;
-  bihash_key.k.protocol = s->out2in.protocol;
-  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
-			    0 /* is_add */ );
-
   snat_free_outside_address_and_port (sm->addresses, thread_index,
 				      &s->out2in);
 }
@@ -457,16 +447,6 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 
   if (snat_is_session_static (s))
     return;
-
-  ed_bihash_kv_t bihash_key;
-  clib_memset (&bihash_key, 0, sizeof (bihash_key));
-  bihash_key.k.dst_address = s->ext_host_addr.as_u32;
-  bihash_key.k.dst_port = s->ext_host_port;
-  bihash_key.k.src_address = s->out2in.addr.as_u32;
-  bihash_key.k.src_port = s->out2in.port;
-  bihash_key.k.protocol = s->out2in.protocol;
-  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
-			    0 /* is_add */ );
 
   // should be called for every dynamic session
   snat_free_outside_address_and_port (sm->addresses, thread_index,
@@ -611,6 +591,39 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
   return s;
 }
 
+int
+nat_global_lru_free_one (snat_main_t * sm, int thread_index, f64 now)
+{
+  snat_session_t *s = NULL;
+  dlist_elt_t *oldest_elt;
+  u64 sess_timeout_time;
+  u32 oldest_index;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  oldest_index = clib_dlist_remove_head (tsm->global_lru_pool,
+					 tsm->global_lru_head_index);
+  if (~0 != oldest_index)
+    {
+      oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
+      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
+      sess_timeout_time =
+	s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+      if (now >= sess_timeout_time
+	  || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
+	{
+	  nat_free_session_data (sm, s, thread_index, 0);
+	  nat44_ed_delete_session (sm, s, thread_index, 0);
+	  return 1;
+	}
+      else
+	{
+	  clib_dlist_addhead (tsm->global_lru_pool,
+			      tsm->global_lru_head_index, oldest_index);
+	}
+    }
+  return 0;
+}
+
 snat_session_t *
 nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 		      f64 now)
@@ -666,34 +679,9 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
     }
 
 alloc_new:
-  /* try to free an expired session from global LRU list */
   if (!s)
     {
-      oldest_index = clib_dlist_remove_head (tsm->global_lru_pool,
-					     tsm->global_lru_head_index);
-      if (~0 != oldest_index)
-	{
-	  oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
-	  s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
-
-	  sess_timeout_time =
-	    s->last_heard + (f64) nat44_session_get_timeout (sm, s);
-	  if (now >= sess_timeout_time
-	      || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
-	    {
-	      nat_free_session_data (sm, s, thread_index, 0);
-	      nat44_ed_delete_session (sm, s, thread_index, 0);
-	    }
-	  else
-	    {
-	      clib_dlist_addhead (tsm->global_lru_pool,
-				  tsm->global_lru_head_index, oldest_index);
-	    }
-	  s = NULL;
-	}
-    }
-  if (!s)
-    {
+      nat_global_lru_free_one (sm, thread_index, now);
       s = nat44_session_alloc_new (tsm, u, now);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -4136,9 +4124,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                                          translation_memory_size);
                   clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
                                                       format_ed_session_kvp);
-                  clib_bihash_init_16_8
-                  (&sm->ed_ext_ports, "ed-nat-5-tuple-port-overload-hash",
-                   translation_buckets, translation_memory_size);
                 }
               else
                 {
