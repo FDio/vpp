@@ -15,11 +15,14 @@ macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
     ""
     "COMPONENT"
-    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
+    "SOURCES;MULTIARCH_SOURCES;BUILD_ALSO_STATIC;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
     ${ARGN}
   )
 
   add_library(${lib} SHARED ${ARG_SOURCES})
+  if(ARG_BUILD_ALSO_STATIC)
+    add_library(${lib}_static STATIC ${ARG_SOURCES})
+  endif()
   if(VPP_LIB_VERSION)
     set_target_properties(${lib} PROPERTIES SOVERSION ${VPP_LIB_VERSION})
   endif()

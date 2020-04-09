@@ -94,6 +94,12 @@ add_vpp_executable(vppctl
   LINK_LIBRARIES vppinfra
 )
 
+add_vpp_executable(vppctl_static
+  SOURCES app/vppctl.c
+  STATIC_LINK 1
+  LINK_LIBRARIES vppinfra_static
+)
+
 ##############################################################################
 # vpp_get_metrics binary
 ##############################################################################
