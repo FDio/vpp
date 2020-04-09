@@ -1104,7 +1104,10 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
   s->session_state = SESSION_STATE_CREATED;
 
   if ((rv = app_worker_init_accepted (s)))
-    return rv;
+    {
+      session_free (s);
+      return rv;
+    }
 
   session_lookup_add_connection (tc, session_handle (s));
 
@@ -1112,7 +1115,13 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
   if (notify)
     {
       app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-      return app_worker_accept_notify (app_wrk, s);
+      if ((rv = app_worker_accept_notify (app_wrk, s)))
+	{
+	  session_lookup_del_session (s);
+	  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+	  session_free (s);
+	  return rv;
+	}
     }
 
   return 0;
@@ -1138,7 +1147,8 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
   app_wrk = app_worker_get (s->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, s)))
     {
-      session_free_w_fifos (s);
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      session_free (s);
       return rv;
     }
 
