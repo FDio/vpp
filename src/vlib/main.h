@@ -276,6 +276,10 @@ typedef struct vlib_main_t
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
 
+  /* buffer fault injector */
+  u32 buffer_alloc_success_seed;
+  f64 buffer_alloc_success_rate;
+
 } vlib_main_t;
 
 /* Global main structure. */

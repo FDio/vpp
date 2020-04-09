@@ -199,6 +199,27 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
   if (f->n_vectors == 0)
     return;
 
+  if (CLIB_DEBUG > 0)
+    {
+      int i;
+      u32 *from = vlib_frame_vector_args (f);
+
+      /* Check for bad buffer index values */
+      for (i = 0; i < f->n_vectors; i++)
+	{
+	  if (from[i] == 0)
+	    {
+	      clib_warning ("BUG: buffer index 0 at index %d", i);
+	      ASSERT (0);
+	    }
+	  else if (from[i] == 0xfefefefe)
+	    {
+	      clib_warning ("BUG: frame poison pattern at index %d", i);
+	      ASSERT (0);
+	    }
+	}
+    }
+
   to_node = vlib_get_node (vm, to_node_index);
 
   vec_add2 (vm->node_main.pending_frames, p, 1);
@@ -467,6 +488,27 @@ vlib_put_next_frame (vlib_main_t * vm,
 
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
   f = vlib_get_frame (vm, nf->frame);
+
+  if (CLIB_DEBUG > 0)
+    {
+      int i;
+      u32 *from = vlib_frame_vector_args (f);
+
+      /* Check for bad buffer index values */
+      for (i = 0; i < f->n_vectors; i++)
+	{
+	  if (from[i] == 0)
+	    {
+	      clib_warning ("BUG: buffer index 0 at index %d", i);
+	      ASSERT (0);
+	    }
+	  else if (from[i] == 0xfefefefe)
+	    {
+	      clib_warning ("BUG: frame poison pattern at index %d", i);
+	      ASSERT (0);
+	    }
+	}
+    }
 
   /* Make sure that magic number is still there.  Otherwise, caller
      has overrun frame meta data. */
@@ -1986,6 +2028,20 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "elog-post-mortem-dump"))
 	vm->elog_post_mortem_dump = 1;
+      else if (unformat (input, "buffer-alloc-success-rate %f",
+			 &vm->buffer_alloc_success_rate))
+	{
+	  if (VLIB_BUFFER_ALLOC_FAULT_INJECTOR == 0)
+	    return clib_error_return
+	      (0, "Buffer fault injection not configured");
+	}
+      else if (unformat (input, "buffer-alloc-success-seed %u",
+			 &vm->buffer_alloc_success_seed))
+	{
+	  if (VLIB_BUFFER_ALLOC_FAULT_INJECTOR == 0)
+	    return clib_error_return
+	      (0, "Buffer fault injection not configured");
+	}
       else
 	return unformat_parse_error (input);
     }
@@ -2146,6 +2202,13 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   _vec_len (vm->pending_rpc_requests) = 0;
   vec_validate (vm->processing_rpc_requests, 0);
   _vec_len (vm->processing_rpc_requests) = 0;
+
+  /* Default params for the buffer allocator fault injector, if configured */
+  if (VLIB_BUFFER_ALLOC_FAULT_INJECTOR > 0)
+    {
+      vm->buffer_alloc_success_seed = 0xdeaddabe;
+      vm->buffer_alloc_success_rate = 0.80;
+    }
 
   if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
     goto done;
