@@ -2836,11 +2836,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  vlib_node_runtime_t *error_node;
 
   tcp_set_time_now (tcp_get_worker (thread_index));
 
-  error_node = vlib_node_get_runtime (vm, tcp_node_index (input, is_ip4));
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
@@ -2876,8 +2874,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], error_node);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
+	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], node);
 	}
       else
 	{
@@ -2885,24 +2883,24 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
+	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
 	    }
 	  else
 	    {
 	      tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	      b[0]->error = error_node->errors[error0];
+	      b[0]->error = node->errors[error0];
 	    }
 
 	  if (PREDICT_TRUE (tc1 != 0))
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], error_node);
+	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], node);
 	    }
 	  else
 	    {
 	      tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
-	      b[1]->error = error_node->errors[error1];
+	      b[1]->error = node->errors[error1];
 	    }
 	}
 
@@ -2928,12 +2926,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], error_node);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
 	}
       else
 	{
 	  tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	  b[0]->error = error_node->errors[error0];
+	  b[0]->error = node->errors[error0];
 	}
 
       b += 1;
