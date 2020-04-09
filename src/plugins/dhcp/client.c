@@ -827,7 +827,9 @@ dhcp_client_sm (f64 now, f64 timeout, uword pool_index)
 
   /* Time for us to do something with this client? */
   if (now < c->next_transmit)
-    return timeout;
+    return c->next_transmit;
+
+  DHCP_INFO ("sm active session %d", c - dcm->clients);
 
 again:
   switch (c->state)
@@ -853,17 +855,15 @@ again:
       break;
     }
 
-  if (c->next_transmit < now + timeout)
-    return c->next_transmit - now;
-
-  return timeout;
+  return c->next_transmit;
 }
 
 static uword
 dhcp_client_process (vlib_main_t * vm,
 		     vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  f64 timeout = 100.0;
+  f64 timeout = 1000.0;
+  f64 next_expire_time, this_next_expire_time;
   f64 now;
   uword event_type;
   uword *event_data = 0;
@@ -883,23 +883,32 @@ dhcp_client_process (vlib_main_t * vm,
 	{
 	case EVENT_DHCP_CLIENT_WAKEUP:
 	  for (i = 0; i < vec_len (event_data); i++)
-	    timeout = dhcp_client_sm (now, timeout, event_data[i]);
-	  break;
+	    (void) dhcp_client_sm (now, timeout, event_data[i]);
+	  /* FALLTHROUGH */
 
 	case ~0:
 	  if (pool_elts (dcm->clients))
 	    {
-	      DHCP_INFO ("timeout");
               /* *INDENT-OFF* */
+              next_expire_time = 1e70;
               pool_foreach (c, dcm->clients,
               ({
-                timeout = dhcp_client_sm (now, timeout,
-                                          (uword) (c - dcm->clients));
+                this_next_expire_time = dhcp_client_sm
+                  (now, timeout, (uword) (c - dcm->clients));
+                next_expire_time = this_next_expire_time < next_expire_time ?
+                  this_next_expire_time : next_expire_time;
               }));
+              if (next_expire_time > now)
+                timeout = next_expire_time - now;
+              else
+                {
+                  clib_warning ("BUG");
+                  timeout = 1.13;
+                }
               /* *INDENT-ON* */
 	    }
 	  else
-	    timeout = 100.0;
+	    timeout = 1000.0;
 	  break;
 	}
 
