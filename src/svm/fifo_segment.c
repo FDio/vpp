@@ -790,6 +790,31 @@ fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
   fsh_slice_collect_chunks (fsh, fss, c);
 }
 
+static inline void
+fss_fifo_add_active_list (fifo_segment_slice_t * fss, svm_fifo_t * f)
+{
+  if (fss->fifos)
+    {
+      fss->fifos->prev = f;
+      f->next = fss->fifos;
+    }
+  fss->fifos = f;
+}
+
+static inline void
+fss_fifo_del_active_list (fifo_segment_slice_t * fss, svm_fifo_t * f)
+{
+  if (f->flags & SVM_FIFO_F_LL_TRACKED)
+    {
+      if (f->prev)
+	f->prev->next = f->next;
+      else
+	fss->fifos = f->next;
+      if (f->next)
+	f->next->prev = f->prev;
+    }
+}
+
 /**
  * Allocate fifo in fifo segment
  */
@@ -818,12 +843,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
    * only one. */
   if (ftype == FIFO_SEGMENT_RX_FIFO)
     {
-      if (fss->fifos)
-	{
-	  fss->fifos->prev = f;
-	  f->next = fss->fifos;
-	}
-      fss->fifos = f;
+      fss_fifo_add_active_list (fss, f);
       f->flags |= SVM_FIFO_F_LL_TRACKED;
 
       svm_fifo_init_ooo_lookup (f, 0 /* ooo enq */ );
@@ -859,12 +879,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   /* Remove from active list. Only rx fifos are tracked */
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     {
-      if (f->prev)
-	f->prev->next = f->next;
-      else
-	fss->fifos = f->next;
-      if (f->next)
-	f->next->prev = f->prev;
+      fss_fifo_del_active_list (fss, f);
       f->flags &= ~SVM_FIFO_F_LL_TRACKED;
     }
 
@@ -892,6 +907,48 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   fss->free_fifos = f;
 
   fsh_active_fifos_update (fsh, -1);
+}
+
+void
+fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
+{
+  fifo_segment_slice_t *fss;
+  svm_fifo_chunk_t *c;
+
+  ASSERT (f->refcnt == 1);
+
+  fss = fsh_slice_get (fs->h, f->slice_index);
+  fss->virtual_mem -= svm_fifo_size (f);
+  if (f->flags & SVM_FIFO_F_LL_TRACKED)
+    fss_fifo_del_active_list (fss, f);
+
+  c = f->start_chunk;
+  while (c)
+    {
+      fss->num_chunks[fs_freelist_for_size (c->length)] -= 1;
+      c = c->next;
+    }
+}
+
+void
+fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
+			  u32 slice_index)
+{
+  fifo_segment_slice_t *fss;
+  svm_fifo_chunk_t *c;
+
+  fss = fsh_slice_get (fs->h, f->slice_index);
+  f->slice_index = slice_index;
+  fss->virtual_mem += svm_fifo_size (f);
+  if (f->flags & SVM_FIFO_F_LL_TRACKED)
+    fss_fifo_add_active_list (fss, f);
+
+  c = f->start_chunk;
+  while (c)
+    {
+      fss->num_chunks[fs_freelist_for_size (c->length)] += 1;
+      c = c->next;
+    }
 }
 
 int
