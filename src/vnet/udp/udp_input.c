@@ -98,7 +98,7 @@ udp_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
   t = vlib_add_trace (vm, node, b, sizeof (*t));
   t->connection = s ? s->connection_index : ~0;
   t->disposition = error0;
-  t->thread_index = s->thread_index;
+  t->thread_index = s ? s->thread_index : vm->thread_index;
 }
 
 static udp_connection_t *
