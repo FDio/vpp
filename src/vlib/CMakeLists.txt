@@ -11,9 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(VPP_BUFFER_FAULT_INJECTOR "Include the buffer fault injector" OFF)
+
 ##############################################################################
 # Generate vlib/config.h
 ##############################################################################
+if(VPP_BUFFER_FAULT_INJECTOR)
+  set(BUFFER_ALLOC_FAULT_INJECTOR 1 CACHE STRING "fault injector on")
+else()
+  set(BUFFER_ALLOC_FAULT_INJECTOR 0 CACHE STRING "fault injector off")
+endif()
+
 set(PRE_DATA_SIZE 128 CACHE STRING "Buffer headroom size.")
 configure_file(
   ${CMAKE_SOURCE_DIR}/vlib/config.h.in
