@@ -45,8 +45,8 @@ create_cmd::operator()(vapi::Pipe_create& reply)
 
   const rc_t& rc = rc_t::from_vpp_retval(payload.retval);
 
-  m_hdl_pair = { pipe::handle_pair_t(payload.pipe_sw_if_index[0],
-                                     payload.pipe_sw_if_index[1]),
+  m_hdl_pair = { pipe::handle_pair_t((handle_t)payload.pipe_sw_if_index[0],
+                                     (handle_t)payload.pipe_sw_if_index[1]),
                  rc };
 
   fulfill(HW::item<handle_t>(payload.sw_if_index, rc));
