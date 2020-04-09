@@ -1,7 +1,11 @@
 #!/bin/sh -e
 
 # try to set the required values now. This may or may not work.
-sysctl --system
+# Allow for a nerd knob to skip this, e.g. during the container installs
+if [ -z "${VPP_INSTALL_SKIP_SYSCTL}" ]
+then
+	sysctl --system
+fi
 
 #DEBHELPER#
 
