@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "28453e16_f636c263",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-04-09T08:51:18Z",
+      "side": 1,
+      "message": "_permute_single",
+      "revId": "a6dc7bd0ab592ba533bce81ef080da021190536d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc3d7304_3c9109a1",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-04-09T08:51:18Z",
+      "side": 1,
+      "message": "u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)",
+      "revId": "a6dc7bd0ab592ba533bce81ef080da021190536d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
