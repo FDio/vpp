@@ -2181,9 +2181,6 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  vlib_node_runtime_t *error_node;
-
-  error_node = vlib_node_get_runtime (vm, tcp_node_index (output, is_ip4));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2221,8 +2218,8 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_check_if_gso (tc0, b[0]);
 	  tcp_check_if_gso (tc1, b[1]);
 
-	  tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
-	  tcp_output_handle_packet (tc1, b[1], error_node, &next[1], is_ip4);
+	  tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
+	  tcp_output_handle_packet (tc1, b[1], node, &next[1], is_ip4);
 	}
       else
 	{
@@ -2230,24 +2227,22 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      tcp_output_push_ip (vm, b[0], tc0, is_ip4);
 	      tcp_check_if_gso (tc0, b[0]);
-	      tcp_output_handle_packet (tc0, b[0], error_node, &next[0],
-					is_ip4);
+	      tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
 	    }
 	  else
 	    {
-	      b[0]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	      b[0]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	      next[0] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	  if (tc1 != 0)
 	    {
 	      tcp_output_push_ip (vm, b[1], tc1, is_ip4);
 	      tcp_check_if_gso (tc1, b[1]);
-	      tcp_output_handle_packet (tc1, b[1], error_node, &next[1],
-					is_ip4);
+	      tcp_output_handle_packet (tc1, b[1], node, &next[1], is_ip4);
 	    }
 	  else
 	    {
-	      b[1]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	      b[1]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	      next[1] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	}
@@ -2273,11 +2268,11 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  tcp_output_push_ip (vm, b[0], tc0, is_ip4);
 	  tcp_check_if_gso (tc0, b[0]);
-	  tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
+	  tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
 	}
       else
 	{
-	  b[0]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	  b[0]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	  next[0] = TCP_OUTPUT_NEXT_DROP;
 	}
 
