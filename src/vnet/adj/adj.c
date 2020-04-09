@@ -610,9 +610,7 @@ adj_show (vlib_main_t * vm,
     {
 	if (unformat (input, "%d", &ai))
 	    ;
-	else if (unformat (input, "sum"))
-	    summary = 1;
-	else if (unformat (input, "summary"))
+	else if (unformat (input, "summary") || unformat (input, "sum"))
 	    summary = 1;
 	else if (unformat (input, "%U",
 			   unformat_vnet_sw_interface, vnet_get_main(),
