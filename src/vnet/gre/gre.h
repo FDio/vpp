@@ -340,7 +340,8 @@ format_function_t format_gre_header_with_length;
 
 extern vlib_node_registration_t gre4_input_node;
 extern vlib_node_registration_t gre6_input_node;
-extern vlib_node_registration_t gre_encap_node;
+extern vlib_node_registration_t gre_erspan_encap_node;
+extern vlib_node_registration_t gre_teb_encap_node;
 extern vnet_device_class_t gre_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.

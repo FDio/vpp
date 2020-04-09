@@ -377,7 +377,12 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
     }
 
   /* Set GRE tunnel interface output node (not used for L3 payload) */
-  vnet_set_interface_output_node (vnm, hw_if_index, gre_encap_node.index);
+  if (GRE_TUNNEL_TYPE_ERSPAN == t->type)
+    vnet_set_interface_output_node (vnm, hw_if_index,
+				    gre_erspan_encap_node.index);
+  else
+    vnet_set_interface_output_node (vnm, hw_if_index,
+				    gre_teb_encap_node.index);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   sw_if_index = hi->sw_if_index;
