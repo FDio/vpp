@@ -108,8 +108,6 @@ typedef struct dhcp_client_t_
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
 
-  /* the unicast adjacency for the DHCP server */
-  adj_index_t ai_ucast;
   /* the broadcast adjacency on the link */
   adj_index_t ai_bcast;
   /* IP DSCP to set in sent packets */
@@ -124,6 +122,9 @@ typedef struct
   dhcp_client_t *clients;
   uword *client_by_sw_if_index;
   u32 seed;
+
+  /* ip4-lookup node index */
+  u32 ip4_lookup_node_index;
 
   /* convenience */
   vlib_main_t *vlib_main;
