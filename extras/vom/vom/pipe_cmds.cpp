@@ -27,8 +27,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   : interface::create_cmd<vapi::Pipe_create>(item, name)
   , m_hdl_pair(ends)
   , m_instance(instance)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -45,8 +44,9 @@ create_cmd::operator()(vapi::Pipe_create& reply)
 
   const rc_t& rc = rc_t::from_vpp_retval(payload.retval);
 
-  m_hdl_pair = { pipe::handle_pair_t(payload.pipe_sw_if_index[0],
-                                     payload.pipe_sw_if_index[1]),
+  m_hdl_pair = { pipe::handle_pair_t(
+                   static_cast<handle_t>(payload.pipe_sw_if_index[0]),
+                   static_cast<handle_t>(payload.pipe_sw_if_index[1])),
                  rc };
 
   fulfill(HW::item<handle_t>(payload.sw_if_index, rc));
@@ -86,8 +86,7 @@ delete_cmd::delete_cmd(HW::item<handle_t>& item,
                        HW::item<pipe::handle_pair_t>& end_pair)
   : interface::delete_cmd<vapi::Pipe_delete>(item)
   , m_hdl_pair(end_pair)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
