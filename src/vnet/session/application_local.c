@@ -294,7 +294,6 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 
   if (ct_init_local_session (client_wrk, server_wrk, sct, ss, ll))
     {
-      clib_warning ("failed");
       ct_connection_free (sct);
       session_free (ss);
       return -1;
@@ -303,9 +302,9 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ss->session_state = SESSION_STATE_ACCEPTING;
   if (app_worker_accept_notify (server_wrk, ss))
     {
-      clib_warning ("failed");
       ct_connection_free (sct);
-      session_free_w_fifos (ss);
+      segment_manager_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
+      session_free (ss);
       return -1;
     }
 
