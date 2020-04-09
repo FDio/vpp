@@ -317,7 +317,7 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 	{
 	  ret =
 	    ptls_receive (ptls_ctx->tls, buf, svm_fifo_head (tls_rx_fifo),
-			  (size_t *) & deq_now);
+			  (size_t *) &deq_now);
 	  svm_fifo_dequeue_drop (tls_rx_fifo, deq_now);
 	  goto enq_buf;
 	}
@@ -437,14 +437,14 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 	svm_fifo_enqueue (tls_tx_fifo, to_write, TLS_WRITE_OFFSET (ptls_ctx));
       if (to_tls_len < 0)
 	{
-	  tls_add_vpp_q_builtin_tx_evt (app_session);
+	  app_session->flags |= SESSION_F_CUSTOM_TX;
 	  return 0;
 	}
       ptls_ctx->write_buffer_offset += to_tls_len;
 
       if (TLS_WRITE_IS_LEFT (ptls_ctx))
 	{
-	  tls_add_vpp_q_builtin_tx_evt (app_session);
+	  app_session->flags |= SESSION_F_CUSTOM_TX;
 	  return to_tls_len;
 	}
       else
