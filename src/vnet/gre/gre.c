@@ -498,8 +498,10 @@ typedef enum
  * @brief TX function. Only called for L2 payload including TEB or ERSPAN.
  *        L3 traffic uses the adj-midchains.
  */
-VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+static_always_inline u32
+gre_encap_inline (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame, gre_tunnel_type_t type)
 {
   gre_main_t *gm = &gre_main;
   u32 *from, n_left_from;
@@ -537,7 +539,7 @@ VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
       vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = adj_index[1];
 
-      if (PREDICT_FALSE (gt[0]->type == GRE_TUNNEL_TYPE_ERSPAN))
+      if (type == GRE_TUNNEL_TYPE_ERSPAN)
 	{
 	  /* Encap GRE seq# and ERSPAN type II header */
 	  erspan_t2_t *h0;
@@ -551,7 +553,7 @@ VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  h0->t2_u64 = hdr;
 	  h0->t2.cos_en_t_session |= clib_host_to_net_u16 (gt[0]->session_id);
 	}
-      if (PREDICT_FALSE (gt[1]->type == GRE_TUNNEL_TYPE_ERSPAN))
+      if (type == GRE_TUNNEL_TYPE_ERSPAN)
 	{
 	  /* Encap GRE seq# and ERSPAN type II header */
 	  erspan_t2_t *h0;
@@ -604,12 +606,13 @@ VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
 
-      if (PREDICT_FALSE (gt[0]->type == GRE_TUNNEL_TYPE_ERSPAN))
+      if (type == GRE_TUNNEL_TYPE_ERSPAN)
 	{
 	  /* Encap GRE seq# and ERSPAN type II header */
 	  erspan_t2_t *h0;
 	  u32 seq_num;
 	  u64 hdr;
+	  ASSERT (gt[0]->type == GRE_TUNNEL_TYPE_ERSPAN);
 	  vlib_buffer_advance (b[0], -sizeof (erspan_t2_t));
 	  h0 = vlib_buffer_get_current (b[0]);
 	  seq_num = clib_atomic_fetch_add (&gt[0]->gre_sn->seq_num, 1);
@@ -649,10 +652,37 @@ static char *gre_error_strings[] = {
 #undef gre_error
 };
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (gre_encap_node) =
+VLIB_NODE_FN (gre_teb_encap_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
-  .name = "gre-encap",
+  return (gre_encap_inline (vm, node, frame, GRE_TUNNEL_TYPE_TEB));
+}
+
+VLIB_NODE_FN (gre_erspan_encap_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
+{
+  return (gre_encap_inline (vm, node, frame, GRE_TUNNEL_TYPE_ERSPAN));
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (gre_teb_encap_node) =
+{
+  .name = "gre-teb-encap",
+  .vector_size = sizeof (u32),
+  .format_trace = format_gre_tx_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = GRE_N_ERROR,
+  .error_strings = gre_error_strings,
+  .n_next_nodes = GRE_ENCAP_N_NEXT,
+  .next_nodes = {
+    [GRE_ENCAP_NEXT_L2_MIDCHAIN] = "adj-l2-midchain",
+  },
+};
+VLIB_REGISTER_NODE (gre_erspan_encap_node) =
+{
+  .name = "gre-erspan-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_gre_tx_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
