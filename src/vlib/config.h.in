@@ -17,5 +17,6 @@
 #define included_vlib_config_h
 
 #define __PRE_DATA_SIZE @PRE_DATA_SIZE@
+#define VLIB_BUFFER_ALLOC_FAULT_INJECTOR @BUFFER_ALLOC_FAULT_INJECTOR@
 
 #endif
