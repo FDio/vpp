@@ -11,3 +11,14 @@ missing:
   - Thorough Testing with VXLAN tunnel
 state: experimental
 properties: [API, CLI]
+
+name: VNET GRO
+maintainer: sykazmi@cisco.com
+features:
+  - Basic GRO support
+  - Implements flow table support
+description: "Generic Receive Offload"
+missing:
+  - Thorough Testing
+state: experimental
+properties: [API, CLI]

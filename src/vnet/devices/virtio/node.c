@@ -28,6 +28,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
+#include <vnet/gso/gro_func.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
@@ -243,6 +244,8 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
   virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  u16 txq_id = vm->thread_index % vif->num_txqs;
+  virtio_vring_t *txq_vring = vec_elt_at_index (vif->txq_vrings, txq_id);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
@@ -251,6 +254,17 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
+
+  if (txq_vring->flush_count == 100)
+    {
+      u32 to[VLIB_FRAME_SIZE], n_left_to;
+      n_left_to = vnet_gro_flow_table_flush (vm, txq_vring->flow_table, to);
+      // call virtio_interface_tx_inline to flush the packets
+      vlib_buffer_free (vm, to, n_left_to);
+      txq_vring->flush_count = 0;
+    }
+  else
+    txq_vring->flush_count++;
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
       vring->last_kick_avail_idx != vring->avail->idx)

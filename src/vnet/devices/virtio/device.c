@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gho.h>
+#include <vnet/gso/gro_func.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
@@ -485,6 +486,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = sz - 1;
   u16 retry_count = 2;
   u32 *buffers = vlib_frame_vector_args (frame);
+  u32 to[n_left];
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
@@ -515,9 +517,24 @@ retry:
   else
     free_desc_count = sz - used;
 
+  if (do_gso)
+    {
+      u32 n_left_to = 0;
+      n_left_to =
+	vnet_gro_inline (vm, vring->flow_table, buffers, n_left, to);
+      n_left = n_left_to;
+      buffers = to;
+    }
+
   while (n_left && free_desc_count)
     {
-      u16 n_added = 0;
+      u16 n_added = 0, n_coalesce = 1;
+
+      //if (do_gso)
+      //  {
+      //  n_coalesce = vnet_gro_simple_inline (vm, buffers, n_left);
+      //  }
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], free_desc_count,
 			    avail, next, mask, do_gso, csum_offload,
@@ -525,8 +542,8 @@ retry:
 
       if (PREDICT_FALSE (n_added == 0))
 	{
-	  buffers++;
-	  n_left--;
+	  buffers += n_coalesce;
+	  n_left -= n_coalesce;
 	  continue;
 	}
       else if (PREDICT_FALSE (n_added > free_desc_count))
@@ -535,9 +552,14 @@ retry:
       avail++;
       next = (next + n_added) & mask;
       used += n_added;
-      buffers++;
-      n_left--;
+      buffers += n_coalesce;
+      n_left -= n_coalesce;
       free_desc_count -= n_added;
+      if (n_coalesce >= 2)
+	{
+	  vring->total_gro_vectors += n_coalesce;
+	  vring->n_gro_vectors++;
+	}
     }
 
   if (n_left != frame->n_vectors)
