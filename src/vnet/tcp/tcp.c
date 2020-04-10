@@ -764,7 +764,20 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
 					 rmt, &lcl_addr, &lcl_port);
 
   if (rv)
-    return rv;
+    {
+      if (rv != SESSION_E_PORTINUSE)
+	return rv;
+
+      if (session_lookup_connection (rmt->fib_index, &lcl_addr, &rmt->ip,
+				     lcl_port, rmt->port, TRANSPORT_PROTO_UDP,
+				     rmt->is_ip4))
+	return SESSION_E_PORTINUSE;
+
+      /* 5-tuple is available so increase lcl endpoint refcount and proceed
+       * with connection allocation */
+      transport_share_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
+				      lcl_port);
+    }
 
   /*
    * Create connection and send SYN
