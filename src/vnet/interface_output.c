@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/gso/gso.h>
+#include <vnet/gso/gho.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
@@ -164,18 +164,21 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 {
   tcp_header_t *th;
   udp_header_t *uh;
-  gso_header_offset_t gho = { 0 };
+  generic_header_offset_t gho = { 0 };
 
   int is_ip4 = (b->flags & VNET_BUFFER_F_IS_IP4) != 0;
   int is_ip6 = (b->flags & VNET_BUFFER_F_IS_IP6) != 0;
 
   ASSERT (!(is_ip4 && is_ip6));
 
-  gho = vnet_gso_header_offset_parser (b, is_ip6);
+  vnet_generic_header_offset_parser (b, &gho);
+
+  vnet_get_inner_header (b, &gho);
+
   th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
   uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
 
-  if (is_ip4)
+  if (gho.gho_flags & GHO_F_IP4)
     {
       ip4_header_t *ip4;
 
@@ -194,7 +197,7 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 	  uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
 	}
     }
-  else if (is_ip6)
+  else if (gho.gho_flags & GHO_F_IP6)
     {
       int bogus;
       ip6_header_t *ip6;
@@ -214,6 +217,39 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
 	}
     }
+
+  vnet_get_outer_header (b, &gho);
+
+  if ((gho.gho_flags & GHO_F_OUTER_IP4)
+      && (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+    {
+      ip4_header_t *ip4 =
+	(ip4_header_t *) (vlib_buffer_get_current (b) +
+			  gho.outer_l3_hdr_offset);
+      ip4->checksum = ip4_header_checksum (ip4);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+	{
+	  uh =
+	    (udp_header_t *) (vlib_buffer_get_current (b) +
+			      gho.outer_l4_hdr_offset);
+	  uh->checksum = 0;
+	  uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+	}
+    }
+  else if ((gho.gho_flags & GHO_F_OUTER_IP6)
+	   && (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+    {
+      int bogus;
+      ip6_header_t *ip6 =
+	(ip6_header_t *) (vlib_buffer_get_current (b) +
+			  gho.outer_l3_hdr_offset);
+      uh =
+	(udp_header_t *) (vlib_buffer_get_current (b) +
+			  gho.outer_l4_hdr_offset);
+      uh->checksum = 0;
+      uh->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+    }
+
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
