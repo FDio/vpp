@@ -687,7 +687,10 @@ replicate_show (vlib_main_t * vm,
 
     if (INDEX_INVALID != repi)
     {
-        vlib_cli_output (vm, "%U", format_replicate, repi,
+	    if (pool_is_free_index (replicate_pool, repi))
+		vlib_cli_output (vm, "no such index %d", repi);
+	    else
+		vlib_cli_output (vm, "%U", format_replicate, repi,
                          REPLICATE_FORMAT_DETAIL);
     }
     else
