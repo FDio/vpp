@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b49d5e8_b07a80fc",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2020-04-10T12:58:36Z",
+      "side": 1,
+      "message": "\"sa-\u003eudp_hdr\" is used for encapsulation of encrypted packets that are going to be sent. Thus \"sa-\u003eudp_hdr.dst_port\" is the destination port of outgoing packets, not incoming.\n\nAs I understand the source port of incoming encapsulated packets will be changed by the NAT device, but the destination port will be 4500: UDP(sport\u003dNAT\u0027ed port, dport\u003d4500). In this case, outgoing encapsulated packets should be UDP(sport\u003d4500, dport\u003dNAT\u0027ed port) because the NAT device will have the translation for this pair of ports.\n\nI think that only registration for 4500 destination port is needed.",
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
