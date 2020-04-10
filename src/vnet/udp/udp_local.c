@@ -61,7 +61,6 @@ udp46_local_inline (vlib_main_t * vm,
 {
   udp_main_t *um = &udp_main;
   __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
-  word n_no_listener = 0;
   u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
   u16 *next_by_dst_port = (is_ip4 ?
 			   um->next_by_dst_port4 : um->next_by_dst_port6);
@@ -187,8 +186,8 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP4_destination_unreachable,
 					       ICMP4_destination_unreachable_port_unreachable,
 					       0);
+		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next0 = UDP_LOCAL_NEXT_ICMP;
-		  n_no_listener++;
 		}
 	      else
 		{
@@ -196,8 +195,8 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP6_destination_unreachable,
 					       ICMP6_destination_unreachable_port_unreachable,
 					       0);
+		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next0 = UDP_LOCAL_NEXT_ICMP;
-		  n_no_listener++;
 		}
 	    }
 	  else
@@ -225,8 +224,8 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP4_destination_unreachable,
 					       ICMP4_destination_unreachable_port_unreachable,
 					       0);
+		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next1 = UDP_LOCAL_NEXT_ICMP;
-		  n_no_listener++;
 		}
 	      else
 		{
@@ -234,8 +233,8 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP6_destination_unreachable,
 					       ICMP6_destination_unreachable_port_unreachable,
 					       0);
+		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next1 = UDP_LOCAL_NEXT_ICMP;
-		  n_no_listener++;
 		}
 	    }
 	  else
@@ -331,8 +330,8 @@ udp46_local_inline (vlib_main_t * vm,
 						   ICMP4_destination_unreachable,
 						   ICMP4_destination_unreachable_port_unreachable,
 						   0);
+		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		      next0 = UDP_LOCAL_NEXT_ICMP;
-		      n_no_listener++;
 		    }
 		  else
 		    {
@@ -340,8 +339,8 @@ udp46_local_inline (vlib_main_t * vm,
 						   ICMP6_destination_unreachable,
 						   ICMP6_destination_unreachable_port_unreachable,
 						   0);
+		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		      next0 = UDP_LOCAL_NEXT_ICMP;
-		      n_no_listener++;
 		    }
 		}
 	      else
@@ -377,8 +376,6 @@ udp46_local_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_error_count (vm, node->node_index, UDP_ERROR_NO_LISTENER,
-		    n_no_listener);
   return from_frame->n_vectors;
 }
 
