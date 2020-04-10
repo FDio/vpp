@@ -66,8 +66,6 @@ api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
       return TRANSPORT_PROTO_UDP;
     case TRANSPORT_PROTO_API_TLS:
       return TRANSPORT_PROTO_TLS;
-    case TRANSPORT_PROTO_API_UDPC:
-      return TRANSPORT_PROTO_UDPC;
     case TRANSPORT_PROTO_API_QUIC:
       return TRANSPORT_PROTO_QUIC;
     default:
@@ -86,8 +84,6 @@ api_session_transport_proto_encode (const transport_proto_t tp)
       return TRANSPORT_PROTO_API_UDP;
     case TRANSPORT_PROTO_TLS:
       return TRANSPORT_PROTO_API_TLS;
-    case TRANSPORT_PROTO_UDPC:
-      return TRANSPORT_PROTO_API_UDPC;
     case TRANSPORT_PROTO_QUIC:
       return TRANSPORT_PROTO_API_QUIC;
     default:

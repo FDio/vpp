@@ -159,7 +159,6 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
   _(UDP, "udp", "U")					\
   _(NONE, "ct", "C")					\
   _(TLS, "tls", "J")					\
-  _(UDPC, "udpc", "U")					\
   _(QUIC, "quic", "Q")					\
 
 typedef enum _transport_proto

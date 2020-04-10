@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -25,7 +25,6 @@ enum transport_proto : u8
         TRANSPORT_PROTO_API_UDP,
         TRANSPORT_PROTO_API_NONE,
         TRANSPORT_PROTO_API_TLS,
-        TRANSPORT_PROTO_API_UDPC,
         TRANSPORT_PROTO_API_QUIC,
 };
 

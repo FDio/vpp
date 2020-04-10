@@ -898,8 +898,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
     return clib_error_return (0, "Uri parse error: %d", rv);
   ecm->transport_proto = sep.transport_proto;
-  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP
-		   || sep.transport_proto == TRANSPORT_PROTO_UDPC);
+  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();

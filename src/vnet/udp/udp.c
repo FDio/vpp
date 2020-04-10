@@ -463,62 +463,6 @@ static const transport_proto_vft_t udp_proto = {
 };
 /* *INDENT-ON* */
 
-int
-udpc_connection_open (transport_endpoint_cfg_t * rmt)
-{
-  udp_connection_t *uc;
-  /* Reproduce the logic of udp_open_connection to find the correct thread */
-  u32 thread_index = vlib_num_workers ()? 1 : vlib_get_main ()->thread_index;
-  u32 uc_index;
-  uc_index = udp_open_connection (rmt);
-  if (uc_index == (u32) ~ 0)
-    return -1;
-  uc = udp_connection_get (uc_index, thread_index);
-  uc->flags |= UDP_CONN_F_CONNECTED;
-  return uc_index;
-}
-
-u32
-udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
-{
-  udp_connection_t *listener;
-  u32 li_index;
-  li_index = udp_session_bind (session_index, lcl);
-  if (li_index == (u32) ~ 0)
-    return -1;
-  listener = udp_listener_get (li_index);
-  listener->flags |= UDP_CONN_F_CONNECTED;
-  /* Fake udp listener, i.e., make sure session layer adds a udp instead of
-   * udpc listener to the lookup table */
-  ((session_endpoint_cfg_t *) lcl)->transport_proto = TRANSPORT_PROTO_UDP;
-  return li_index;
-}
-
-/* *INDENT-OFF* */
-static const transport_proto_vft_t udpc_proto = {
-  .start_listen = udpc_connection_listen,
-  .stop_listen = udp_session_unbind,
-  .connect = udpc_connection_open,
-  .push_header = udp_push_header,
-  .get_connection = udp_session_get,
-  .get_listener = udp_session_get_listener,
-  .get_half_open = udp_session_get_half_open,
-  .close = udp_session_close,
-  .cleanup = udp_session_cleanup,
-  .send_params = udp_session_send_params,
-  .format_connection = format_udp_session,
-  .format_half_open = format_udp_half_open_session,
-  .format_listener = format_udp_listener_session,
-  .transport_options = {
-    .name = "udpc",
-    .short_name = "U",
-    .tx_type = TRANSPORT_TX_DGRAM,
-    .service_type = TRANSPORT_SERVICE_VC,
-    .half_open_has_fifos = 1
-  },
-};
-/* *INDENT-ON* */
-
 static clib_error_t *
 udp_init (vlib_main_t * vm)
 {
@@ -544,10 +488,6 @@ udp_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
 			       FIB_PROTOCOL_IP4, ip4_lookup_node.index);
   transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
-			       FIB_PROTOCOL_IP6, ip6_lookup_node.index);
-  transport_register_protocol (TRANSPORT_PROTO_UDPC, &udpc_proto,
-			       FIB_PROTOCOL_IP4, ip4_lookup_node.index);
-  transport_register_protocol (TRANSPORT_PROTO_UDPC, &udpc_proto,
 			       FIB_PROTOCOL_IP6, ip6_lookup_node.index);
 
   /*
