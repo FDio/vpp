@@ -1467,7 +1467,10 @@ lookup_dpo_show (vlib_main_t * vm,
 
     if (INDEX_INVALID != lkdi)
     {
-        vlib_cli_output (vm, "%U", format_lookup_dpo, lkdi);
+	if (pool_is_free_index(lookup_dpo_pool, lkdi))
+		vlib_cli_output (vm, "no such index %d", lkdi);
+	else
+		vlib_cli_output (vm, "%U", format_lookup_dpo, lkdi);
     }
     else
     {
