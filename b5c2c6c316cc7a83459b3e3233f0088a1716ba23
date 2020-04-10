@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fcb31e0e_561852d3",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-10T09:43:53Z",
+      "side": 1,
+      "message": "also clear VLIB_BUFFER_TOTAL_LENGTH_VALID flag",
+      "revId": "b5c2c6c316cc7a83459b3e3233f0088a1716ba23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb393ce8_f6f8a983",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-10T09:43:53Z",
+      "side": 1,
+      "message": "this looks like an unrelated bugfix? If so it would probably be better to split the patch in case we need to backport",
+      "revId": "b5c2c6c316cc7a83459b3e3233f0088a1716ba23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
