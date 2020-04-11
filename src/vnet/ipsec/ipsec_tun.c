@@ -626,6 +626,12 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
 	    format_ip_address, nh);
 
+  if (vec_len (sas_in) > ITP_MAX_N_SA_IN)
+    {
+      rv = VNET_API_ERROR_LIMIT_EXCEEDED;
+      goto out;
+    }
+
   rv = 0;
   im = &ipsec_main;
   if (NULL == nh)
