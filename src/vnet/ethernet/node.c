@@ -114,7 +114,7 @@ parse_header (ethernet_input_variant_t variant,
     {
       ethernet_header_t *e0;
 
-      e0 = (void *) (b0->data + b0->current_data);
+      e0 = vlib_buffer_get_current (b0);
 
       vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
       b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
@@ -128,7 +128,7 @@ parse_header (ethernet_input_variant_t variant,
       // here when prior node was LLC/SNAP processing
       u16 *e0;
 
-      e0 = (void *) (b0->data + b0->current_data);
+      e0 = vlib_buffer_get_current (b0);
 
       vlib_buffer_advance (b0, sizeof (e0[0]));
 
@@ -153,7 +153,7 @@ parse_header (ethernet_input_variant_t variant,
 
       *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_1_TAG;
 
-      h0 = (void *) (b0->data + b0->current_data);
+      h0 = vlib_buffer_get_current (b0);
 
       tag = clib_net_to_host_u16 (h0->priority_cfi_and_id);
 
@@ -171,7 +171,7 @@ parse_header (ethernet_input_variant_t variant,
 	  // Double tagged packet
 	  *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_2_TAG;
 
-	  h0 = (void *) (b0->data + b0->current_data);
+	  h0 = vlib_buffer_get_current (b0);
 
 	  tag = clib_net_to_host_u16 (h0->priority_cfi_and_id);
 
