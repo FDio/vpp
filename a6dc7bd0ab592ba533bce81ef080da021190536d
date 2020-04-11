@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f7aa990b_a0cc50d1",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-04-11T13:20:08Z",
+      "side": 1,
+      "message": "Ok.",
+      "parentUuid": "28453e16_f636c263",
+      "revId": "a6dc7bd0ab592ba533bce81ef080da021190536d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dc3d7304_3c9109a1",
         "filename": "src/vppinfra/vector_avx512.h",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-09T08:51:18Z",
       "side": 1,
       "message": "u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)",
+      "revId": "a6dc7bd0ab592ba533bce81ef080da021190536d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "795a3fe0_600e336a",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-04-11T13:20:08Z",
+      "side": 1,
+      "message": "Ok",
+      "parentUuid": "dc3d7304_3c9109a1",
       "revId": "a6dc7bd0ab592ba533bce81ef080da021190536d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
