@@ -16,6 +16,24 @@
       "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b04e9d4e_0e64cd90",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-11T17:33:46Z",
+      "side": 1,
+      "message": "\"\n\"sa-\u003eudp_hdr\" is used for encapsulation of encrypted packets that are going to be sent. Thus \"sa-\u003eudp_hdr.dst_port\" is the destination port of outgoing packets, not incoming.\n\"\n\nthat\u0027s true, but of the OUTBOUD SA, not the INBOUND. The INBOUD will have dport 4500 and that is what we are registering for.\n\nit\u0027s the caller\u0027s responsibility to set the dport for the OUTBOUND SA to the NAT translated value.",
+      "parentUuid": "2b49d5e8_b07a80fc",
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
