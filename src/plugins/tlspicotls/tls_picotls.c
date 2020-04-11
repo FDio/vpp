@@ -317,7 +317,7 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 	{
 	  ret =
 	    ptls_receive (ptls_ctx->tls, buf, svm_fifo_head (tls_rx_fifo),
-			  (size_t *) & deq_now);
+			  (size_t *) &deq_now);
 	  svm_fifo_dequeue_drop (tls_rx_fifo, deq_now);
 	  goto enq_buf;
 	}
@@ -514,7 +514,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   if (ctx->app_closed)
     picotls_app_close (ctx);
 
-  return 0;
+  return to_tls_len;
 }
 
 static int
