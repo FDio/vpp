@@ -514,7 +514,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   if (ctx->app_closed)
     picotls_app_close (ctx);
 
-  return 0;
+  return to_tls_len;
 }
 
 static int
