@@ -145,16 +145,23 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 */
 
 static_always_inline u16
-dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
+dpdk_ol_flags_extract (struct rte_mbuf **mb, vlib_buffer_t ** b,
+		       u16 * flags, int count)
 {
   u16 rv = 0;
   int i;
+
   for (i = 0; i < count; i++)
     {
       /* all flags we are interested in are in lower 8 bits but
          that might change */
       flags[i] = (u16) mb[i]->ol_flags;
       rv |= flags[i];
+
+      if (PREDICT_FALSE ((flags[i]) & PKT_RX_L4_CKSUM_BAD))
+	{
+	  b[i]->flags &= ~VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+	}
     }
   return rv;
 }
@@ -192,7 +199,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
       dpdk_prefetch_mbuf_x4 (mb + 4);
 
-      or_flags |= dpdk_ol_flags_extract (mb, flags, 4);
+      or_flags |= dpdk_ol_flags_extract (mb, b, flags, 4);
       flags += 4;
 
       b[0]->current_data = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
@@ -229,7 +236,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
       vlib_buffer_copy_template (b[0], &bt);
-      or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
+      or_flags |= dpdk_ol_flags_extract (mb, b, flags, 1);
       flags += 1;
 
       b[0]->current_data = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
