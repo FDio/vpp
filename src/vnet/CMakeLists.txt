@@ -56,6 +56,7 @@ list(APPEND VNET_HEADERS
   handoff.h
   interface.h
   interface_funcs.h
+  interface_output.h
   ip/ip4_to_ip6.h
   ip/ip6_to_ip4.h
   ip/ip_types_api.h
