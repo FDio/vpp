@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49bdc12c_30c4a6cc",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 863,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-12T00:55:34Z",
+      "side": 1,
+      "message": "For coverity?\nSonar looks for: [[fallthrough]];\nhttps://rules.sonarsource.com/c/RSPEC-128",
+      "range": {
+        "startLine": 863,
+        "startChar": 2,
+        "endLine": 863,
+        "endChar": 20
+      },
+      "revId": "210fec3ac83fc551d96ddd7204e5a85bff93b399",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
