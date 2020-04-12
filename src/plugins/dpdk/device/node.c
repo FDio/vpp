@@ -36,8 +36,12 @@ static char *dpdk_error_strings[] = {
 };
 
 /* make sure all flags we need are stored in lower 8 bits */
-STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) <
+STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR |
+		PKT_RX_L4_CKSUM_BAD) <
 	       256, "dpdk flags not un lower byte, fix needed");
+
+STATIC_ASSERT (PKT_RX_L4_CKSUM_BAD == (1ULL << 3),
+	       "bit number of PKT_RX_L4_CKSUM_BAD is no longer 3!");
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -145,10 +149,12 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 */
 
 static_always_inline u16
-dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
+dpdk_ol_flags_extract (struct rte_mbuf **mb, vlib_buffer_t ** b,
+		       u16 * flags, int count)
 {
   u16 rv = 0;
   int i;
+
   for (i = 0; i < count; i++)
     {
       /* all flags we are interested in are in lower 8 bits but
@@ -192,7 +198,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
       dpdk_prefetch_mbuf_x4 (mb + 4);
 
-      or_flags |= dpdk_ol_flags_extract (mb, flags, 4);
+      or_flags |= dpdk_ol_flags_extract (mb, b, flags, 4);
       flags += 4;
 
       b[0]->current_data = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
@@ -229,7 +235,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
       vlib_buffer_copy_template (b[0], &bt);
-      or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
+      or_flags |= dpdk_ol_flags_extract (mb, b, flags, 1);
       flags += 1;
 
       b[0]->current_data = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
@@ -392,6 +398,24 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM &&
 	      (or_flags & PKT_RX_IP_CKSUM_BAD) == 0)
 	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+
+	  if (PREDICT_FALSE ((or_flags & PKT_RX_L4_CKSUM_BAD) &&
+			     (dm->conf->enable_tcp_udp_checksum)))
+	    {
+	      for (n = 0; n < n_rx_packets; n++)
+		{
+		  /* Check and reset VNET_BUFFER_F_L4_CHECKSUM_CORRECT flag
+		     if PKT_RX_L4_CKSUM_BAD is set.
+		     The magic num 3 is the bit number of PKT_RX_L4_CKSUM_BAD
+		     which is defined in DPDK.
+		     Have made a STATIC_ASSERT in this file to ensure this.
+		   */
+		  b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+		  b0->flags ^= (ptd->flags[n] & PKT_RX_L4_CKSUM_BAD) <<
+		    (VNET_BUFFER_F_LOG2_L4_CHECKSUM_CORRECT - 3);
+		}
+	    }
+
 	  vlib_frame_no_append (f);
 	}
       n_left_to_next -= n_rx_packets;
