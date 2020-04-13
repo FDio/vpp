@@ -32,7 +32,6 @@ typedef struct _transport_options_t
   char *short_name;
   transport_tx_fn_type_t tx_type;
   transport_service_type_t service_type;
-  u8 half_open_has_fifos;
 } transport_options_t;
 
 typedef enum transport_snd_flags_
