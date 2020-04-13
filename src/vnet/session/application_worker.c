@@ -230,24 +230,22 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   if (PREDICT_FALSE (!sm_indexp))
     return;
 
-  /* Dealloc fifos first, if any, to avoid cleanup attempt lower */
+  /* Dealloc fifos, if any (dgram listeners) */
   if (ls->rx_fifo)
     {
       segment_manager_dealloc_fifos (ls->rx_fifo, ls->tx_fifo);
       ls->tx_fifo = ls->rx_fifo = 0;
     }
 
+  /* Try to cleanup segment manager */
   sm = segment_manager_get (*sm_indexp);
-  if (app_wrk->first_segment_manager == *sm_indexp)
+  if (sm && app_wrk->first_segment_manager != *sm_indexp)
     {
-      /* Delete sessions but don't remove segment manager */
-      app_wrk->first_segment_manager_in_use = 0;
-      segment_manager_del_sessions (sm);
+      segment_manager_app_detach (sm);
+      if (!segment_manager_has_fifos (sm))
+	segment_manager_free (sm);
     }
-  else
-    {
-      segment_manager_init_free (sm);
-    }
+
   hash_unset (app_wrk->listeners_table, handle);
 }
 
