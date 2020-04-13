@@ -890,6 +890,7 @@ list(APPEND VNET_API_FILES lisp-gpe/lisp_gpe.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   dhcp/client.c
+  dhcp/dhcp4_packet.c
   dhcp/dhcp_client_detect.c
   dhcp/dhcp6_client_common_dp.c
   dhcp/dhcp6_pd_client_dp.c

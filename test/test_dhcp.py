@@ -242,6 +242,7 @@ class TestDHCP(VppTestCase):
         self.verify_dhcp_msg_type(pkt, "discover")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
         if client_id:
+            client_id = '\x00' + client_id
             self.verify_dhcp_has_option(pkt, "client_id", client_id)
         bootp = pkt[BOOTP]
         self.assertEqual(bootp.ciaddr, "0.0.0.0")

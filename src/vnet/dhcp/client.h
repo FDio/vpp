@@ -42,6 +42,24 @@ struct dhcp_client_t_;
 typedef void (*dhcp_event_cb_t) (u32 client_index,
 				 const struct dhcp_client_t_ * client);
 
+/**
+ * The set of addresses/mask that contribute forwarding info
+ * and are installed.
+ */
+typedef struct dhcp_client_fwd_addresses_t_
+{
+  /** the address assigned to this client and it's mask */
+  ip4_address_t leased_address;
+  u32 subnet_mask_width;
+
+  /** the address of the DHCP server handing out the address.
+      this is used to send any unicast messages */
+  ip4_address_t dhcp_server;
+
+  /** The address of this client's default gateway - may not be present */
+  ip4_address_t router_address;
+} dhcp_client_fwd_addresses_t;
+
 typedef struct dhcp_client_t_
 {
   dhcp_client_state_t state;
@@ -59,11 +77,16 @@ typedef struct dhcp_client_t_
   /* DHCP transaction ID, a random number */
   u32 transaction_id;
 
-  /* leased address, other learned info DHCP */
-  ip4_address_t leased_address;	/* from your_ip_address field */
-  ip4_address_t dhcp_server;
-  u32 subnet_mask_width;	/* option 1 */
-  ip4_address_t router_address;	/* option 3 */
+  /**
+   * leased address, other learned info DHCP
+   *  the learned set is updated by new messages recieved in the DP
+   *  the installed set is what's actually been added
+   */
+  dhcp_client_fwd_addresses_t learned;
+  dhcp_client_fwd_addresses_t installed;
+  /* have local Addresses and default route been installed */
+  u8 addresses_installed;
+
   ip4_address_t *domain_server_address;	/* option 6 */
   u32 lease_renewal_interval;	/* option 51 */
   u32 lease_lifetime;		/* option 59 */
@@ -85,8 +108,6 @@ typedef struct dhcp_client_t_
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
 
-  /* the unicast adjacency for the DHCP server */
-  adj_index_t ai_ucast;
   /* the broadcast adjacency on the link */
   adj_index_t ai_bcast;
   /* IP DSCP to set in sent packets */
@@ -101,6 +122,9 @@ typedef struct
   dhcp_client_t *clients;
   uword *client_by_sw_if_index;
   u32 seed;
+
+  /* ip4-lookup node index */
+  u32 ip4_lookup_node_index;
 
   /* convenience */
   vlib_main_t *vlib_main;
