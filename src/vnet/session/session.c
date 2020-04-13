@@ -18,16 +18,11 @@
  */
 
 #include <vnet/session/session.h>
-#include <vnet/session/session_debug.h>
 #include <vnet/session/application.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 
 session_main_t session_main;
-
-#if SESSION_DEBUG
-session_dbg_main_t session_dbg_main;
-#endif
 
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
@@ -1709,16 +1704,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
-
-#if SESSION_DEBUG
-  session_dbg_main_t *sdm = &session_dbg_main;
-  vec_validate_aligned (sdm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
-  int thread;
-  for (thread = 0; thread < num_threads; thread++)
-    {
-      clib_memset (&sdm->wrk[thread], 0, sizeof (session_dbg_evts_t));
-    }
-#endif /* SESSION_DEBUG */
+  session_debug_init ();
 
   return 0;
 }
