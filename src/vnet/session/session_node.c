@@ -1317,7 +1317,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   clib_llist_index_t ei, next_ei, old_ti;
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  int i, n_tx_packets;
+  int i = 0, n_tx_packets;
   session_event_t *evt;
   svm_msg_q_t *mq;
 
@@ -1351,8 +1351,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
-      SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue);
     }
+
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
 
   /*
    * Handle control events
@@ -1439,161 +1440,6 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .state = VLIB_NODE_STATE_DISABLED,
 };
 /* *INDENT-ON* */
-
-void
-dump_thread_0_event_queue (void)
-{
-  session_main_t *smm = vnet_get_session_main ();
-  vlib_main_t *vm = &vlib_global_main;
-  u32 my_thread_index = vm->thread_index;
-  session_event_t _e, *e = &_e;
-  svm_msg_q_ring_t *ring;
-  session_t *s0;
-  svm_msg_q_msg_t *msg;
-  svm_msg_q_t *mq;
-  int i, index;
-
-  mq = smm->wrk[my_thread_index].vpp_event_queue;
-  index = mq->q->head;
-
-  for (i = 0; i < mq->q->cursize; i++)
-    {
-      msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
-      ring = svm_msg_q_ring (mq, msg->ring_index);
-      clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
-
-      switch (e->event_type)
-	{
-	case SESSION_IO_EVT_TX:
-	  s0 = session_event_get_session (e, my_thread_index);
-	  fformat (stdout, "[%04d] TX session %d\n", i, s0->session_index);
-	  break;
-
-	case SESSION_CTRL_EVT_CLOSE:
-	  s0 = session_get_from_handle (e->session_handle);
-	  fformat (stdout, "[%04d] disconnect session %d\n", i,
-		   s0->session_index);
-	  break;
-
-	case SESSION_IO_EVT_BUILTIN_RX:
-	  s0 = session_event_get_session (e, my_thread_index);
-	  fformat (stdout, "[%04d] builtin_rx %d\n", i, s0->session_index);
-	  break;
-
-	case SESSION_CTRL_EVT_RPC:
-	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
-		   i, (u64) (uword) (e->rpc_args.fp),
-		   (u64) (uword) (e->rpc_args.arg));
-	  break;
-
-	default:
-	  fformat (stdout, "[%04d] unhandled event type %d\n",
-		   i, e->event_type);
-	  break;
-	}
-
-      index++;
-
-      if (index == mq->q->maxsize)
-	index = 0;
-    }
-}
-
-static u8
-session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
-{
-  session_t *s;
-  switch (e->event_type)
-    {
-    case SESSION_IO_EVT_RX:
-    case SESSION_IO_EVT_TX:
-    case SESSION_IO_EVT_BUILTIN_RX:
-    case SESSION_IO_EVT_BUILTIN_TX:
-    case SESSION_IO_EVT_TX_FLUSH:
-      if (e->session_index == f->master_session_index)
-	return 1;
-      break;
-    case SESSION_CTRL_EVT_CLOSE:
-      break;
-    case SESSION_CTRL_EVT_RPC:
-      s = session_get_from_handle (e->session_handle);
-      if (!s)
-	{
-	  clib_warning ("session has event but doesn't exist!");
-	  break;
-	}
-      if (s->rx_fifo == f || s->tx_fifo == f)
-	return 1;
-      break;
-    default:
-      break;
-    }
-  return 0;
-}
-
-u8
-session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
-{
-  session_evt_elt_t *elt;
-  session_worker_t *wrk;
-  int i, index, found = 0;
-  svm_msg_q_msg_t *msg;
-  svm_msg_q_ring_t *ring;
-  svm_msg_q_t *mq;
-  u8 thread_index;
-
-  ASSERT (e);
-  thread_index = f->master_thread_index;
-  wrk = session_main_get_worker (thread_index);
-
-  /*
-   * Search evt queue
-   */
-  mq = wrk->vpp_event_queue;
-  index = mq->q->head;
-  for (i = 0; i < mq->q->cursize; i++)
-    {
-      msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
-      ring = svm_msg_q_ring (mq, msg->ring_index);
-      clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
-      found = session_node_cmp_event (e, f);
-      if (found)
-	return 1;
-      index = (index + 1) % mq->q->maxsize;
-    }
-  /*
-   * Search pending events vector
-   */
-
-  /* *INDENT-OFF* */
-  clib_llist_foreach (wrk->event_elts, evt_list,
-                      pool_elt_at_index (wrk->event_elts, wrk->new_head),
-                      elt, ({
-    found = session_node_cmp_event (&elt->evt, f);
-    if (found)
-      {
-	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
-	goto done;
-      }
-  }));
-  /* *INDENT-ON* */
-
-  /* *INDENT-OFF* */
-  clib_llist_foreach (wrk->event_elts, evt_list,
-                      pool_elt_at_index (wrk->event_elts, wrk->old_head),
-                      elt, ({
-    found = session_node_cmp_event (&elt->evt, f);
-    if (found)
-      {
-	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
-	goto done;
-      }
-  }));
-  /* *INDENT-ON* */
-
-done:
-  return found;
-}
 
 static clib_error_t *
 session_queue_exit (vlib_main_t * vm)
