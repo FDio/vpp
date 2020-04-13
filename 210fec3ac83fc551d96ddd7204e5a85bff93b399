@@ -22,6 +22,30 @@
       "revId": "210fec3ac83fc551d96ddd7204e5a85bff93b399",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1ab4353_5d0add41",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 863,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-04-13T00:08:22Z",
+      "side": 1,
+      "message": "A classic noise warning, will simply mark it as such.",
+      "parentUuid": "49bdc12c_30c4a6cc",
+      "range": {
+        "startLine": 863,
+        "startChar": 2,
+        "endLine": 863,
+        "endChar": 20
+      },
+      "revId": "210fec3ac83fc551d96ddd7204e5a85bff93b399",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
