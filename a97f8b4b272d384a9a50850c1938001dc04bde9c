@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "646c5ed9_0f111155",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-13T14:18:12Z",
+      "side": 1,
+      "message": "Maybe one liner?",
+      "range": {
+        "startLine": 72,
+        "startChar": 1,
+        "endLine": 73,
+        "endChar": 20
+      },
+      "revId": "a97f8b4b272d384a9a50850c1938001dc04bde9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "570a7b54_3a60e443",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-13T14:18:12Z",
+      "side": 1,
+      "message": "Maybe convert to a one liner?",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 20
+      },
+      "revId": "a97f8b4b272d384a9a50850c1938001dc04bde9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd0cac01_37f9f82d",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-13T14:18:12Z",
+      "side": 1,
+      "message": "Could we pull this to a separate validate function and afterwards call it here and lower call it in vlib_put_next_frame_validate? Speaking of which, shouldn\u0027t we call vlib_put_next_frame_validate here as well?",
+      "range": {
+        "startLine": 203,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 5
+      },
+      "revId": "a97f8b4b272d384a9a50850c1938001dc04bde9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bde9f229_a68c1874",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-13T14:18:12Z",
+      "side": 1,
+      "message": "Could we move this to vlib_put_next_frame_validate?",
+      "range": {
+        "startLine": 492,
+        "startChar": 0,
+        "endLine": 511,
+        "endChar": 5
+      },
+      "revId": "a97f8b4b272d384a9a50850c1938001dc04bde9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
