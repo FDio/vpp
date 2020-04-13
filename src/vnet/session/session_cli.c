@@ -14,7 +14,6 @@
  */
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
-#include <vnet/session/session_debug.h>
 
 u8 *
 format_session_fifos (u8 * s, va_list * args)
@@ -878,84 +877,6 @@ VLIB_CLI_COMMAND (session_enable_disable_command, static) =
   .short_help = "session [enable|disable]",
   .function = session_enable_disable_fn,
 };
-/* *INDENT-ON* */
-
-#if SESSION_DEBUG
-
-static clib_error_t *
-show_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
-{
-  u32 thread;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
-
-  for (thread = 0; thread < vec_len (session_dbg_main.wrk); thread++)
-    {
-      vlib_cli_output (vm, "Threads %u:\n", thread);
-      session_dbg_evts_t *sdm = &session_dbg_main.wrk[thread];
-
-#define _(sym, disp, type, str) 								         \
-  if(disp)								\
-    {									\
-      if (!type)							\
-	vlib_cli_output (vm, "\t %25s : %12lu ",                       	\
-	                 str, sdm->sess_dbg_evt_type[SESS_Q_##sym].u64);\
-      else								\
-	vlib_cli_output (vm, "\t %25s : %12.3f ",                       \
-	                 str, sdm->sess_dbg_evt_type[SESS_Q_##sym].f64);\
-    }
-
-      foreach_session_events
-#undef _
-    }
-  return 0;
-}
-
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_session_dbg_clock_cycles_command, static) =
-{
-  .path = "show session dbg clock_cycles",
-  .short_help = "show session dbg clock_cycles",
-  .function = show_session_dbg_clock_cycles_fn,
-};
-/* *INDENT-ON* */
-
-
-static clib_error_t *
-clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
-{
-  session_dbg_evts_t *sdb;
-  u32 thread;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
-
-  for (thread = 0; thread < vec_len (session_dbg_main.wrk); thread++)
-    {
-      sdb = &session_dbg_main.wrk[thread];
-      clib_memset (sdb, 0, sizeof (session_dbg_evts_t));
-      sdb->last_time = vlib_time_now (vlib_mains[thread]);
-    }
-
-  return 0;
-}
-
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_session_clock_cycles_command, static) =
-{
-  .path = "clear session dbg clock_cycles",
-  .short_help = "clear session dbg clock_cycles",
-  .function = clear_session_dbg_clock_cycles_fn,
-};
-#endif /* #if SESSION_DEBUG */
-
 /* *INDENT-ON* */
 
 /*
