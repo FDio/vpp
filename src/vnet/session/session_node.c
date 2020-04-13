@@ -1317,7 +1317,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   clib_llist_index_t ei, next_ei, old_ti;
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  int i, n_tx_packets;
+  int i = 0, n_tx_packets;
   session_event_t *evt;
   svm_msg_q_t *mq;
 
@@ -1351,8 +1351,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
-      SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue);
     }
+
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
 
   /*
    * Handle control events
