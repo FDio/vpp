@@ -1159,6 +1159,7 @@ list(APPEND VNET_API_FILES devices/pipe/pipe.api)
 
 list(APPEND VNET_SOURCES
   session/session.c
+  session/session_debug.c
   session/session_table.c
   session/session_rules_table.c
   session/session_lookup.c
