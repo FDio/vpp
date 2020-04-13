@@ -114,6 +114,21 @@ dslite_set_ce (dslite_main_t * dm, u8 set)
   dm->is_ce = (set != 0);
 }
 
+static clib_error_t *
+dslite_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  dslite_main_t *dm = &dslite_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ce"))
+	dslite_set_ce (dm, 1);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (dslite_config, "dslite");
+
 int
 dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 {

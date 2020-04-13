@@ -231,13 +231,13 @@ class TestDSlite(VppTestCase):
         self.logger.info(self.vapi.cli("show dslite sessions"))
 
 
-class TestDSliteCE():
+class TestDSliteCE(VppTestCase):
     """ DS-Lite CE Test Cases """
 
     @classmethod
     def setUpConstants(cls):
         super(TestDSliteCE, cls).setUpConstants()
-        cls.vpp_cmdline.extend(["nat", "{", "dslite ce", "}"])
+        cls.vpp_cmdline.extend(["dslite", "{", "ce", "}"])
 
     @classmethod
     def setUpClass(cls):
@@ -264,8 +264,9 @@ class TestDSliteCE():
     def test_dslite_ce(self):
         """ Test DS-Lite CE """
 
-        nat_config = self.vapi.nat_show_config()
-        self.assertEqual(1, nat_config.dslite_ce)
+        # TODO: add message to retrieve dslite config
+        # nat_config = self.vapi.nat_show_config()
+        # self.assertEqual(1, nat_config.dslite_ce)
 
         b4_ip4 = '192.0.0.2'
         b4_ip6 = '2001:db8:62aa::375e:f4c1:1'
