@@ -5427,7 +5427,7 @@ class TestGBP(VppTestCase):
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128",
-                                      VppGbpEndpointRetention(4))
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
 
         # the BVIs have the subnet applied ...
