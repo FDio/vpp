@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "1587e40d_0802049a",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-14T18:26:39Z",
+      "side": 1,
+      "message": "OK, so we want to retain the check for VIRTIO_IF_TYPE_PCI. \nBut do we still need the check INDIRECT_DESC\u003d\u003d0? If it is INDIRECT_DESC\u003d1, execution would not come here.",
+      "parentUuid": "4d115b2e_6c2894e2",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65e9bb0b_c11fbccf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 5
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "It is required for freeing strategy. There exists 1:1 mapping between vlib_buffer_t and descriptor in case of chained buffers. We make sure to free exactly one vlib_buffer_t against one descriptor by removing above flags from chained buffers.",
       "parentUuid": "65e9bb0b_c11fbccf",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "72dd7e50_3de15078",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-14T18:26:39Z",
+      "side": 1,
+      "message": "In that case, we may want to reset b-\u003enext_buffer also. I remember seeing some code ignoring the flags and just going for b-\u003enext_buffer. I don\u0027t know if it still exists or not.",
+      "parentUuid": "96680816_cd2c4887",
       "revId": "db3174e6b72e0a1f548b189910310686d3696902",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
