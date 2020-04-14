@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c676a8de_8b603eb4",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-14T17:11:06Z",
+      "side": 1,
+      "message": "When we hit this else, aren\u0027t we dealing with INDIRECT_DESC\u003d\u003d0 case? If so, the check for INDIRECT_DESC appears redundant.\n\nWhy do we rule out chained buffer support for tap? Just not sure if it will work for tap or not?",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "65e9bb0b_c11fbccf",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-14T17:11:06Z",
+      "side": 1,
+      "message": "Do we need to mess with the buffer flags?",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
