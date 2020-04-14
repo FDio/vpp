@@ -25,9 +25,12 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
 
-#define foreach_ipsec_input_error               \
-_(RX_PKTS, "IPSEC pkts received")		\
-_(RX_MATCH_PKTS, "IPSEC pkts matched")
+#define foreach_ipsec_input_error               	\
+_(RX_PKTS, "IPSec pkts received")			\
+_(RX_POLICY_MATCH, "IPSec policy match")		\
+_(RX_POLICY_NO_MATCH, "IPSec policy not matched")	\
+_(RX_POLICY_BYPASS, "IPSec policy bypass")		\
+_(RX_POLICY_DISCARD, "IPSec policy discard")
 
 typedef enum
 {
@@ -66,6 +69,35 @@ format_ipsec_input_trace (u8 * s, va_list * args)
 	      t->spd, t->policy_index, t->spi, t->spi, t->seq);
 
   return s;
+}
+
+always_inline ipsec_policy_t *
+ipsec_input_policy_match (ipsec_spd_t * spd, u32 sa, u32 da,
+			  ipsec_spd_policy_type_t policy_type)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *p;
+  u32 *i;
+
+  vec_foreach (i, spd->policies[policy_type])
+  {
+    p = pool_elt_at_index (im->policies, *i);
+
+    if (da < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
+      continue;
+
+    if (da > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
+      continue;
+
+    if (sa < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
+      continue;
+
+    if (sa > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
+      continue;
+
+    return p;
+  }
+  return 0;
 }
 
 always_inline ipsec_policy_t *
@@ -166,200 +198,261 @@ extern vlib_node_registration_t ipsec4_input_node;
 
 VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
+				  vlib_frame_t * frame)
 {
-  u32 n_left_from, *from, next_index, *to_next, thread_index;
+  u32 n_left_from, *from, thread_index;
   ipsec_main_t *im = &ipsec_main;
-  u32 ipsec_unprocessed = 0;
-  u32 ipsec_matched = 0;
+  u64 ipsec_unprocessed = 0, ipsec_matched = 0;
+  u64 ipsec_dropped = 0, ipsec_bypassed = 0;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next = nexts;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
   thread_index = vm->thread_index;
 
-  next_index = node->cached_next_index;
 
   while (n_left_from > 0)
     {
-      u32 n_left_to_next;
+      u32 next32, pi0;
+      ip4_header_t *ip0;
+      esp_header_t *esp0 = NULL;
+      ah_header_t *ah0;
+      ip4_ipsec_config_t *c0;
+      ipsec_spd_t *spd0;
+      ipsec_policy_t *p0 = NULL;
+      u8 has_space0;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (n_left_from > 2)
 	{
-	  u32 bi0, next0, pi0;
-	  vlib_buffer_t *b0;
-	  ip4_header_t *ip0;
-	  esp_header_t *esp0;
-	  ah_header_t *ah0;
-	  ip4_ipsec_config_t *c0;
-	  ipsec_spd_t *spd0;
-	  ipsec_policy_t *p0 = 0;
-	  u8 has_space0;
+	  vlib_prefetch_buffer_data (b[1], LOAD);
+	}
 
-	  bi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
+      b[0]->flags |= VNET_BUFFER_F_IS_IP4;
+      b[0]->flags &= ~VNET_BUFFER_F_IS_IP6;
+      c0 = vnet_feature_next_with_data (&next32, b[0], sizeof (c0[0]));
+      next[0] = (u16) next32;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b0->flags |= VNET_BUFFER_F_IS_IP4;
-	  b0->flags &= ~VNET_BUFFER_F_IS_IP6;
-	  c0 = vnet_feature_next_with_data (&next0, b0, sizeof (c0[0]));
+      spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
-	  spd0 = pool_elt_at_index (im->spds, c0->spd_index);
+      ip0 = vlib_buffer_get_current (b[0]);
 
-	  ip0 = vlib_buffer_get_current (b0);
+      if (PREDICT_TRUE
+	  (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
+	   || ip0->protocol == IP_PROTOCOL_UDP))
+	{
 
-	  if (PREDICT_TRUE
-	      (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
-	       || ip0->protocol == IP_PROTOCOL_UDP))
+	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_UDP))
 	    {
-#if 0
-	      clib_warning
-		("packet received from %U to %U spi %u size %u spd_id %u",
-		 format_ip4_address, ip0->src_address.as_u8,
-		 format_ip4_address, ip0->dst_address.as_u8,
-		 clib_net_to_host_u32 (esp0->spi),
-		 clib_net_to_host_u16 (ip0->length), spd0->id);
-#endif
-
-	      esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	      if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_UDP))
-		{
-		  esp0 =
-		    (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
-		}
-
-	      p0 = ipsec_input_protect_policy_match (spd0,
-						     clib_net_to_host_u32
-						     (ip0->src_address.
-						      as_u32),
-						     clib_net_to_host_u32
-						     (ip0->dst_address.
-						      as_u32),
-						     clib_net_to_host_u32
-						     (esp0->spi));
-
-	      has_space0 =
-		vlib_buffer_has_space (b0,
-				       (clib_address_t) (esp0 + 1) -
-				       (clib_address_t) ip0);
-
-	      if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
-		{
-		  ipsec_matched += 1;
-
-		  pi0 = p0 - im->policies;
-		  vlib_increment_combined_counter
-		    (&ipsec_spd_policy_counters,
-		     thread_index, pi0, 1,
-		     clib_net_to_host_u16 (ip0->length));
-
-		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  next0 = im->esp4_decrypt_next_index;
-		  vlib_buffer_advance (b0, ((u8 *) esp0 - (u8 *) ip0));
-		  goto trace0;
-		}
-	      else
-		{
-		  p0 = 0;
-		  pi0 = ~0;
-		};
-
-	      /* FIXME bypass and discard */
-	    trace0:
-	      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-		  PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-		{
-		  ipsec_input_trace_t *tr =
-		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-
-		  tr->proto = ip0->protocol;
-		  tr->sa_id = p0 ? p0->sa_id : ~0;
-		  tr->spi =
-		    has_space0 ? clib_net_to_host_u32 (esp0->spi) : ~0;
-		  tr->seq =
-		    has_space0 ? clib_net_to_host_u32 (esp0->seq) : ~0;
-		  tr->spd = spd0->id;
-		  tr->policy_index = pi0;
-		}
+	      /* FIXME Skip, if not a UDP encapsulated packet */
+	      esp0 = (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
 	    }
-	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
+
+	  p0 = ipsec_input_protect_policy_match (spd0,
+						 clib_net_to_host_u32
+						 (ip0->src_address.as_u32),
+						 clib_net_to_host_u32
+						 (ip0->dst_address.as_u32),
+						 clib_net_to_host_u32
+						 (esp0->spi));
+
+	  has_space0 =
+	    vlib_buffer_has_space (b[0],
+				   (clib_address_t) (esp0 + 1) -
+				   (clib_address_t) ip0);
+
+	  if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
 	    {
-	      ah0 = (ah_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	      p0 = ipsec_input_protect_policy_match (spd0,
-						     clib_net_to_host_u32
-						     (ip0->src_address.
-						      as_u32),
-						     clib_net_to_host_u32
-						     (ip0->dst_address.
-						      as_u32),
-						     clib_net_to_host_u32
-						     (ah0->spi));
+	      ipsec_matched += 1;
 
-	      has_space0 =
-		vlib_buffer_has_space (b0,
-				       (clib_address_t) (ah0 + 1) -
-				       (clib_address_t) ip0);
+	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter
+		(&ipsec_spd_policy_counters,
+		 thread_index, pi0, 1, clib_net_to_host_u16 (ip0->length));
 
-	      if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
-		{
-		  ipsec_matched += 1;
-
-		  pi0 = p0 - im->policies;
-		  vlib_increment_combined_counter
-		    (&ipsec_spd_policy_counters,
-		     thread_index, pi0, 1,
-		     clib_net_to_host_u16 (ip0->length));
-
-		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  next0 = im->ah4_decrypt_next_index;
-		  goto trace1;
-		}
-	      else
-		{
-		  p0 = 0;
-		  pi0 = ~0;
-		}
-	      /* FIXME bypass and discard */
-	    trace1:
-	      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-		  PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-		{
-		  ipsec_input_trace_t *tr =
-		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-
-		  tr->proto = ip0->protocol;
-		  tr->sa_id = p0 ? p0->sa_id : ~0;
-		  tr->spi = has_space0 ? clib_net_to_host_u32 (ah0->spi) : ~0;
-		  tr->seq =
-		    has_space0 ? clib_net_to_host_u32 (ah0->seq_no) : ~0;
-		  tr->spd = spd0->id;
-		  tr->policy_index = pi0;
-		}
+	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+	      next[0] = im->esp4_decrypt_next_index;
+	      vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
+	      goto trace0;
 	    }
 	  else
 	    {
-	      ipsec_unprocessed += 1;
+	      p0 = 0;
+	      pi0 = ~0;
+	    };
+
+	  p0 = ipsec_input_policy_match (spd0,
+					 clib_net_to_host_u32
+					 (ip0->src_address.as_u32),
+					 clib_net_to_host_u32
+					 (ip0->dst_address.as_u32),
+					 IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
+	  if (PREDICT_TRUE ((p0 != NULL)))
+	    {
+	      ipsec_bypassed += 1;
+	      pi0 = p0 - im->policies;
+	      goto trace0;
+	    }
+	  else
+	    {
+	      p0 = 0;
+	      pi0 = ~0;
+	    };
+
+	  p0 = ipsec_input_policy_match (spd0,
+					 clib_net_to_host_u32
+					 (ip0->src_address.as_u32),
+					 clib_net_to_host_u32
+					 (ip0->dst_address.as_u32),
+					 IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+	  if (PREDICT_TRUE ((p0 != NULL)))
+	    {
+	      ipsec_dropped += 1;
+	      pi0 = p0 - im->policies;
+	      next[0] = IPSEC_INPUT_NEXT_DROP;
+	      goto trace0;
+	    }
+	  else
+	    {
+	      p0 = 0;
+	      pi0 = ~0;
+	    };
+	trace0:
+	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ipsec_input_trace_t *tr =
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
+
+	      tr->proto = ip0->protocol;
+	      tr->sa_id = p0 ? p0->sa_id : ~0;
+	      tr->spi = has_space0 ? clib_net_to_host_u32 (esp0->spi) : ~0;
+	      tr->seq = has_space0 ? clib_net_to_host_u32 (esp0->seq) : ~0;
+	      tr->spd = spd0->id;
+	      tr->policy_index = pi0;
+	    }
+	}
+      else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
+	{
+	  ah0 = (ah_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  p0 = ipsec_input_protect_policy_match (spd0,
+						 clib_net_to_host_u32
+						 (ip0->src_address.as_u32),
+						 clib_net_to_host_u32
+						 (ip0->dst_address.as_u32),
+						 clib_net_to_host_u32
+						 (ah0->spi));
+
+	  has_space0 =
+	    vlib_buffer_has_space (b[0],
+				   (clib_address_t) (ah0 + 1) -
+				   (clib_address_t) ip0);
+
+	  if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
+	    {
+	      ipsec_matched += 1;
+
+	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter
+		(&ipsec_spd_policy_counters,
+		 thread_index, pi0, 1, clib_net_to_host_u16 (ip0->length));
+
+	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+	      next[0] = im->ah4_decrypt_next_index;
+	      goto trace1;
+	    }
+	  else
+	    {
+	      p0 = 0;
+	      pi0 = ~0;
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next, bi0,
-					   next0);
+	  p0 = ipsec_input_policy_match (spd0,
+					 clib_net_to_host_u32
+					 (ip0->src_address.as_u32),
+					 clib_net_to_host_u32
+					 (ip0->dst_address.as_u32),
+					 IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
+	  if (PREDICT_TRUE ((p0 != NULL)))
+	    {
+	      ipsec_bypassed += 1;
+	      pi0 = p0 - im->policies;
+	      goto trace1;
+	    }
+	  else
+	    {
+	      p0 = 0;
+	      pi0 = ~0;
+	    };
+
+	  p0 = ipsec_input_policy_match (spd0,
+					 clib_net_to_host_u32
+					 (ip0->src_address.as_u32),
+					 clib_net_to_host_u32
+					 (ip0->dst_address.as_u32),
+					 IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+	  if (PREDICT_TRUE ((p0 != NULL)))
+	    {
+	      ipsec_dropped += 1;
+	      pi0 = p0 - im->policies;
+	      next[0] = IPSEC_INPUT_NEXT_DROP;
+	      goto trace1;
+	    }
+	  else
+	    {
+	      p0 = 0;
+	      pi0 = ~0;
+	    };
+	trace1:
+	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ipsec_input_trace_t *tr =
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
+
+	      tr->proto = ip0->protocol;
+	      tr->sa_id = p0 ? p0->sa_id : ~0;
+	      tr->spi = has_space0 ? clib_net_to_host_u32 (ah0->spi) : ~0;
+	      tr->seq = has_space0 ? clib_net_to_host_u32 (ah0->seq_no) : ~0;
+	      tr->spd = spd0->id;
+	      tr->policy_index = pi0;
+	    }
 	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      else
+	{
+	  ipsec_unprocessed += 1;
+	}
+      n_left_from -= 1;
+      b += 1;
+      next += 1;
     }
 
-  vlib_node_increment_counter (vm, ipsec4_input_node.index,
-			       IPSEC_INPUT_ERROR_RX_PKTS,
-			       from_frame->n_vectors - ipsec_unprocessed);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   vlib_node_increment_counter (vm, ipsec4_input_node.index,
-			       IPSEC_INPUT_ERROR_RX_MATCH_PKTS,
+			       IPSEC_INPUT_ERROR_RX_PKTS, frame->n_vectors);
+
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_POLICY_MATCH,
 			       ipsec_matched);
-  return from_frame->n_vectors;
+
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_POLICY_NO_MATCH,
+			       ipsec_unprocessed);
+
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_POLICY_DISCARD,
+			       ipsec_dropped);
+
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_POLICY_BYPASS,
+			       ipsec_bypassed);
+
+  return frame->n_vectors;
 }
 
 
@@ -528,7 +621,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 			       from_frame->n_vectors - ipsec_unprocessed);
 
   vlib_node_increment_counter (vm, ipsec6_input_node.index,
-			       IPSEC_INPUT_ERROR_RX_MATCH_PKTS,
+			       IPSEC_INPUT_ERROR_RX_POLICY_MATCH,
 			       ipsec_matched);
 
   return from_frame->n_vectors;

@@ -23,7 +23,9 @@
   _(IP4_INBOUND_PROTECT, "ip4-inbound-protect")       \
   _(IP6_INBOUND_PROTECT, "ip6-inbound-protect")       \
   _(IP4_INBOUND_BYPASS,  "ip4-inbound-bypass")        \
-  _(IP6_INBOUND_BYPASS,  "ip6-inbound-bypass")
+  _(IP6_INBOUND_BYPASS,  "ip6-inbound-bypass")	      \
+  _(IP4_INBOUND_DISCARD,  "ip4-inbound-discard")      \
+  _(IP6_INBOUND_DISCARD,  "ip6-inbound-discard")
 
 typedef enum ipsec_spd_policy_t_
 {
