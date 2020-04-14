@@ -503,7 +503,12 @@ segment_manager_del_sessions (segment_manager_t * sm)
   /* *INDENT-ON* */
 
   vec_foreach (handle, handles)
-    session_close (session_get_from_handle (*handle));
+  {
+    session = session_get_from_handle (*handle);
+    session_close (session);
+    /* Avoid propagating notifications back to the app */
+    session->app_wrk_index = APP_INVALID_INDEX;
+  }
 }
 
 int
