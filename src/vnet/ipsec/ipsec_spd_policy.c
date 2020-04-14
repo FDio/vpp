@@ -123,6 +123,10 @@ ipsec_policy_mk_type (bool is_outbound,
 		   IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
 	  return (0);
 	case IPSEC_POLICY_ACTION_DISCARD:
+	  *type = (is_ipv6 ?
+		   IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD :
+		   IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+	  return (0);
 	case IPSEC_POLICY_ACTION_RESOLVE:
 	  break;
 	}
