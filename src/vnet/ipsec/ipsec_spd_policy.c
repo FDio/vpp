@@ -123,6 +123,10 @@ ipsec_policy_mk_type (bool is_outbound,
 		   IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
 	  return (0);
 	case IPSEC_POLICY_ACTION_DISCARD:
+	  *type = (is_ipv6 ?
+		   IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD :
+		   IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+	  return (0);
 	case IPSEC_POLICY_ACTION_RESOLVE:
 	  break;
 	}
@@ -156,16 +160,11 @@ ipsec_add_del_policy (vlib_main_t * vm,
     {
       u32 policy_index;
 
-      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-	{
-	  index_t sa_index = ipsec_sa_find_and_lock (policy->sa_id);
+      index_t sa_index = ipsec_sa_find_and_lock (policy->sa_id);
 
-	  if (INDEX_INVALID == sa_index)
-	    return VNET_API_ERROR_SYSCALL_ERROR_1;
-	  policy->sa_index = sa_index;
-	}
-      else
-	policy->sa_index = INDEX_INVALID;
+      if (INDEX_INVALID == sa_index)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      policy->sa_index = sa_index;
 
       pool_get (im->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
