@@ -635,6 +635,10 @@ dpdk-install-dev:
 install-ext-deps:
 	make -C build/external install-$(PKG)
 
+.PHONY: install-checkstyle
+install-checkstyle:
+	make -C build/external indent-install
+
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
 
