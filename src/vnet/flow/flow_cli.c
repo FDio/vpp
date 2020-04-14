@@ -276,10 +276,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   } action = FLOW_UNKNOWN_ACTION;
   u32 hw_if_index = ~0, flow_index = ~0;
   int rv;
-  u32 prot = 0, teid = 0;
+  u32 prot = 0, teid = 0, session_id = 0;
   vnet_flow_type_t type = VNET_FLOW_TYPE_IP4_N_TUPLE;
   bool is_gtpc_set = false;
   bool is_gtpu_set = false;
+  bool is_l2tpv3oip_set = false;
   vnet_flow_type_t outer_type = VNET_FLOW_TYPE_UNKNOWN;
   vnet_flow_type_t inner_type = VNET_FLOW_TYPE_UNKNOWN;
   bool outer_ip4_set = false, inner_ip4_set = false;
@@ -355,6 +356,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	is_gtpc_set = true;
       else if (unformat (line_input, "gtpu teid %u", &teid))
 	is_gtpu_set = true;
+      else if (unformat (line_input, "session id %u", &session_id))
+	{
+	  if (prot == IP_PROTOCOL_L2TP)
+	    is_l2tpv3oip_set = true;
+	}
       else if (unformat (line_input, "index %u", &flow_index))
 	;
       else if (unformat (line_input, "next-node %U", unformat_vlib_node, vm,
@@ -420,6 +426,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 		type = VNET_FLOW_TYPE_IP4_GTPC;
 	      else if (is_gtpu_set)
 		type = VNET_FLOW_TYPE_IP4_GTPU;
+	      else if (is_l2tpv3oip_set)
+		type = VNET_FLOW_TYPE_IP4_L2TPV3OIP;
 	    }
 	  else if (inner_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
 	    {
@@ -462,7 +470,14 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  memset (&flow.ethernet, 0, sizeof (flow.ethernet));
 	  flow.ethernet.eth_hdr.type = eth_type;
 	  break;
-
+	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
+	  clib_memcpy (&flow.ip4_l2tpv3oip.src_addr, &ip4s,
+		       sizeof (ip4_address_and_mask_t));
+	  clib_memcpy (&flow.ip4_l2tpv3oip.dst_addr, &ip4d,
+		       sizeof (ip4_address_and_mask_t));
+	  flow.ip4_l2tpv3oip.protocol = prot;
+	  flow.ip4_l2tpv3oip.session_id = session_id;
+	  break;
 	case VNET_FLOW_TYPE_IP4_N_TUPLE:
 	case VNET_FLOW_TYPE_IP4_GTPC:
 	case VNET_FLOW_TYPE_IP4_GTPU:
