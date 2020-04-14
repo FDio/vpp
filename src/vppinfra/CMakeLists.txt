@@ -114,6 +114,8 @@ set(VPPINFRA_HEADERS
   cuckoo_common.h
   cuckoo_debug.h
   cuckoo_template.h
+  cuckoo_debug.h
+  cuckoo_common.h
   cuckoo_template.c
   dlist.h
   dlmalloc.h
