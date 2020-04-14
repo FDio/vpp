@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "4d115b2e_6c2894e2",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-14T18:12:19Z",
+      "side": 1,
+      "message": "Today, user can\u0027t create tapv2 interface if backend doesn\u0027t support INDIRECT_DESC feature. That\u0027s why, I am explicitly enabling it for native virtio.",
+      "parentUuid": "c676a8de_8b603eb4",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65e9bb0b_c11fbccf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-14T17:11:06Z",
       "side": 1,
       "message": "Do we need to mess with the buffer flags?",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "96680816_cd2c4887",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-14T18:12:19Z",
+      "side": 1,
+      "message": "It is required for freeing strategy. There exists 1:1 mapping between vlib_buffer_t and descriptor in case of chained buffers. We make sure to free exactly one vlib_buffer_t against one descriptor by removing above flags from chained buffers.",
+      "parentUuid": "65e9bb0b_c11fbccf",
       "revId": "db3174e6b72e0a1f548b189910310686d3696902",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
