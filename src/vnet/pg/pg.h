@@ -123,6 +123,9 @@ typedef struct pg_stream_t
      for max_packet_bytes. */
   u32 buffer_bytes;
 
+  /* Buffer flags to set in each packet e.g. checksum offload flags */
+  u32 buffer_flags;
+
   /* Last packet length if packet size edit type is increment. */
   u32 last_increment_packet_size;
 
