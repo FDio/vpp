@@ -807,7 +807,7 @@ static int CV (clib_cuckoo_bucket_search_internal) (CVT (clib_cuckoo) * h,
   /* *INDENT-OFF* */
   clib_cuckoo_bucket_foreach_idx_unrolled (i, {
     CVT (clib_cuckoo_kv) *elt = &b->elts[i];
-    if (CV (clib_cuckoo_key_compare) (elt->key, kvp->key))
+    if (CV (clib_cuckoo_key_compare) (&elt->key, &kvp->key))
       {
         *found = elt;
         return CLIB_CUCKOO_ERROR_SUCCESS;

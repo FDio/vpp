@@ -383,11 +383,7 @@ always_inline int CV (clib_cuckoo_bucket_search) (CVT (clib_cuckoo_bucket) *
         break;
       }
 #endif
-    if (
-#if CLIB_CUCKOO_OPTIMIZE_CMP_REDUCED_HASH
-        reduced_hash == b->reduced_hashes[i] &&
-#endif
-        0 == memcmp (&kvp->key, &b->elts[i].key, sizeof (kvp->key)))
+    if (CV (clib_cuckoo_key_compare) (&kvp->key, &b->elts[i].key) == 0)
       {
         kvp->value = b->elts[i].value;
         clib_cuckoo_bucket_aux_t bucket_aux2 = b->aux;

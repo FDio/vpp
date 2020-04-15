@@ -31,11 +31,9 @@
 #include <vppinfra/cuckoo_common.h>
 
 #undef CLIB_CUCKOO_OPTIMIZE_PREFETCH
-#undef CLIB_CUCKOO_OPTIMIZE_CMP_REDUCED_HASH
 #undef CLIB_CUCKOO_OPTIMIZE_UNROLL
 #undef CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH
 #define CLIB_CUCKOO_OPTIMIZE_PREFETCH 1
-#define CLIB_CUCKOO_OPTIMIZE_CMP_REDUCED_HASH 1
 #define CLIB_CUCKOO_OPTIMIZE_UNROLL 1
 #define CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH 1
 
@@ -103,9 +101,9 @@ clib_cuckoo_hash_8_8 (clib_cuckoo_kv_8_8_t * v)
     @param b - second key
 */
 always_inline int
-clib_cuckoo_key_compare_8_8 (u64 a, u64 b)
+clib_cuckoo_key_compare_8_8 (u64 * a, u64 * b)
 {
-  return a == b;
+  return *a == *b;
 }
 
 #undef __included_cuckoo_template_h__
