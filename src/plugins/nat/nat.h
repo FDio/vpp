@@ -1317,13 +1317,12 @@ snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 /**
  * @brief Allocate NAT endpoint-dependent session
  *
- * @param u            NAT user
  * @param thread_index thread index
  *
  * @return session data structure on success otherwise zero value
  */
-snat_session_t *nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u,
-				      u32 thread_index, f64 now);
+snat_session_t *nat_ed_session_alloc (snat_main_t * sm, u32 thread_index,
+				      f64 now);
 
 /**
  * @brief Set address and port assignment algorithm for MAP-E CE

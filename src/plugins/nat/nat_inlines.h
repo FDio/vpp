@@ -286,9 +286,8 @@ nat44_delete_user_with_no_session (snat_main_t * sm, snat_user_t * u,
 }
 
 always_inline void
-nat44_delete_session_internal (snat_main_t * sm, snat_session_t * ses,
-			       u32 thread_index, int global_lru_delete
-			       /* delete from global LRU list */ )
+nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
+		      u32 thread_index)
 {
   snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
 						       thread_index);
@@ -302,10 +301,7 @@ nat44_delete_session_internal (snat_main_t * sm, snat_session_t * ses,
 
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
   pool_put_index (tsm->list_pool, ses->per_user_index);
-  if (global_lru_delete)
-    {
-      clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
-    }
+  clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
   pool_put_index (tsm->global_lru_pool, ses->global_lru_index);
   pool_put (tsm->sessions, ses);
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
@@ -325,19 +321,22 @@ nat44_delete_session_internal (snat_main_t * sm, snat_session_t * ses,
 }
 
 always_inline void
-nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
-		      u32 thread_index)
-{
-  return nat44_delete_session_internal (sm, ses, thread_index, 1);
-}
-
-always_inline void
 nat44_ed_delete_session (snat_main_t * sm, snat_session_t * ses,
 			 u32 thread_index, int global_lru_delete
 			 /* delete from global LRU list */ )
 {
-  return nat44_delete_session_internal (sm, ses, thread_index,
-					global_lru_delete);
+  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
+						       thread_index);
+
+  if (global_lru_delete)
+    {
+      clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
+    }
+  pool_put_index (tsm->global_lru_pool, ses->global_lru_index);
+  pool_put (tsm->sessions, ses);
+  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			   pool_elts (tsm->sessions));
+
 }
 
 /** \brief Set TCP session state.
@@ -455,10 +454,13 @@ nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
   /* don't update too often - timeout is in a magnitude of seconds anyway */
   if (s->last_heard > s->last_lru_update + 1)
     {
-      clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-			 s->per_user_index);
-      clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-			  s->per_user_list_head_index, s->per_user_index);
+      if (!sm->endpoint_dependent)
+	{
+	  clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+			     s->per_user_index);
+	  clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+			      s->per_user_list_head_index, s->per_user_index);
+	}
 
       clib_dlist_remove (sm->per_thread_data[thread_index].global_lru_pool,
 			 s->global_lru_index);
