@@ -1948,10 +1948,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
 
 	  if (is_midchain)
 	    {
