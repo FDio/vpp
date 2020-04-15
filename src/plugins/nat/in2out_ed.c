@@ -152,7 +152,7 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       snat_free_outside_address_and_port (sm->addresses, ctx->thread_index,
 					  &s->out2in);
     delete:
-      nat44_delete_session (sm, s, ctx->thread_index);
+      nat44_ed_delete_session (sm, s, ctx->thread_index, 1);
       return 1;
     }
 
@@ -285,9 +285,8 @@ slow_path_ed (snat_main_t * sm,
 	      vlib_node_runtime_t * node, u32 next, u32 thread_index, f64 now)
 {
   snat_session_t *s = NULL;
-  snat_user_t *u = NULL;
   snat_session_key_t key0, key1;
-  lb_nat_type_t lb = 0, is_sm = 0;
+  lb_nat_type_t lb = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   nat_ed_ses_key_t *key = (nat_ed_ses_key_t *) kv->key;
   u32 proto = ip_proto_to_snat_proto (key->proto);
@@ -337,16 +336,7 @@ slow_path_ed (snat_main_t * sm,
   if (snat_static_mapping_match
       (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
-      u =
-	nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
-      if (!u)
-	{
-	  nat_elog_warn ("create NAT user failed");
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_CANNOT_CREATE_USER];
-	  goto drop;
-	}
-
-      s = nat_ed_session_alloc (sm, u, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now);
       if (!s)
 	{
 	  nat_elog_warn ("create NAT session failed");
@@ -400,20 +390,9 @@ slow_path_ed (snat_main_t * sm,
 	  *sessionp = s;
 	  return next;
 	}
-      is_sm = 1;
-      u =
-	nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
-      if (!u)
-	{
-	  nat_elog_warn ("create NAT user failed");
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_CANNOT_CREATE_USER];
-	  goto drop;
-	}
-
-      s = nat_ed_session_alloc (sm, u, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now);
       if (!s)
 	{
-	  nat44_delete_user_with_no_session (sm, u, thread_index);
 	  nat_elog_warn ("create NAT session failed");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
 	  goto drop;
@@ -457,7 +436,6 @@ slow_path_ed (snat_main_t * sm,
       out2in_ed_inserted = true;
     }
 
-  user_session_increment (sm, u, is_sm);
   if (lb)
     s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
   s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
@@ -509,10 +487,6 @@ drop:
     {
       nat_free_session_data (sm, s, thread_index, 0);
       nat44_ed_delete_session (sm, s, thread_index, 1);
-    }
-  if (u)
-    {
-      nat44_delete_user_with_no_session (sm, u, thread_index);
     }
   return NAT_NEXT_DROP;
 }
@@ -634,7 +608,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       if (nat44_is_ses_closed (s))
 	{
 	  nat_free_session_data (sm, s, thread_index, 0);
-	  nat44_delete_session (sm, s, thread_index);
+	  nat44_ed_delete_session (sm, s, thread_index, 1);
 	}
       else
 	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;
@@ -786,10 +760,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
   snat_static_mapping_t *m;
   u32 old_addr, new_addr = 0;
   ip_csum_t sum;
-  snat_user_t *u;
-  dlist_elt_t *head, *elt;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 elt_index, head_index, ses_index;
   snat_session_t *s;
   u32 outside_fib_index = sm->outside_fib_index;
   int i;
@@ -849,15 +820,6 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	  return 0;
 	}
 
-      u = nat_user_get_or_create (sm, &ip->src_address, rx_fib_index,
-				  thread_index);
-      if (!u)
-	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_CANNOT_CREATE_USER];
-	  nat_elog_warn ("create NAT user failed");
-	  return 0;
-	}
-
       make_sm_kv (&kv, &ip->src_address, 0, rx_fib_index, 0);
 
       /* Try to find static mapping first */
@@ -868,41 +830,23 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	  is_sm = 1;
 	  goto create_ses;
 	}
-      /* Fallback to 3-tuple key */
       else
 	{
-	  /* Choose same out address as for TCP/UDP session to same destination */
-	  head_index = u->sessions_per_user_list_head_index;
-	  head = pool_elt_at_index (tsm->list_pool, head_index);
-	  elt_index = head->next;
-	  if (PREDICT_FALSE (elt_index == ~0))
-	    ses_index = ~0;
-	  else
-	    {
-	      elt = pool_elt_at_index (tsm->list_pool, elt_index);
-	      ses_index = elt->value;
-	    }
+	  /* *INDENT-OFF* */
+	  pool_foreach (s, tsm->sessions, {
+      	    if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
+      	      {
+      	        new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
 
-	  while (ses_index != ~0)
-	    {
-	      s = pool_elt_at_index (tsm->sessions, ses_index);
-	      elt_index = elt->next;
-	      elt = pool_elt_at_index (tsm->list_pool, elt_index);
-	      ses_index = elt->value;
+      	        make_ed_kv (&s_kv, &s->out2in.addr, &ip->dst_address, ip->protocol,
+      	                    outside_fib_index, 0, 0);
+      	        if (clib_bihash_search_16_8 (&tsm->out2in_ed, &s_kv, &s_value))
+      	          goto create_ses;
 
-	      if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
-		{
-		  new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
-
-		  make_ed_kv (&s_kv, &s->out2in.addr, &ip->dst_address,
-			      ip->protocol, outside_fib_index, 0, 0);
-		  if (clib_bihash_search_16_8
-		      (&tsm->out2in_ed, &s_kv, &s_value))
-		    goto create_ses;
-
-		  break;
-		}
-	    }
+      	        break;
+      	      }
+      	  });
+      	  /* *INDENT-ON* */
 
 	  for (i = 0; i < vec_len (sm->addresses); i++)
 	    {
@@ -919,11 +863,10 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	}
 
     create_ses:
-      s = nat_ed_session_alloc (sm, u, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now);
       if (!s)
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
-	  nat44_delete_user_with_no_session (sm, u, thread_index);
 	  nat_elog_warn ("create NAT session failed");
 	  return 0;
 	}
@@ -938,7 +881,6 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       s->in2out.port = s->out2in.port = ip->protocol;
       if (is_sm)
 	s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-      user_session_increment (sm, u, is_sm);
 
       /* Add to lookup tables */
       make_ed_kv (&s_kv, &s->in2out.addr, &ip->dst_address, ip->protocol,
@@ -1115,7 +1057,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	  if (now >= sess_timeout_time)
 	    {
 	      nat_free_session_data (sm, s0, thread_index, 0);
-	      nat44_delete_session (sm, s0, thread_index);
+	      nat44_ed_delete_session (sm, s0, thread_index, 1);
 	      // session is closed, go slow path
 	      next0 = def_slow;
 	      goto trace0;
@@ -1376,7 +1318,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      if (s0->tcp_close_timestamp && now >= s0->tcp_close_timestamp)
 		{
 		  nat_free_session_data (sm, s0, thread_index, 0);
-		  nat44_delete_session (sm, s0, thread_index);
+		  nat44_ed_delete_session (sm, s0, thread_index, 1);
 		  s0 = NULL;
 		}
 	    }
