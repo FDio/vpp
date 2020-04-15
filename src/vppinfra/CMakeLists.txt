@@ -111,6 +111,8 @@ set(VPPINFRA_HEADERS
   crc32.h
   cuckoo_8_8.h
   cuckoo_16_8.h
+  cuckoo_common.h
+  cuckoo_debug.h
   cuckoo_template.h
   cuckoo_template.c
   dlist.h
