@@ -16,6 +16,24 @@
       "revId": "449ec0e445bcbbe19483b13e2db3f551743867ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1577b24f_ce48f13e",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 847,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-04-15T03:11:29Z",
+      "side": 1,
+      "message": "absolutely right, remove it later.",
+      "parentUuid": "c8fd98bd_a2c5e6d2",
+      "revId": "449ec0e445bcbbe19483b13e2db3f551743867ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
