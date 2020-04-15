@@ -92,7 +92,7 @@ lb_vip_command_fn (vlib_main_t * vm,
     }
   else
     {
-      args.port = (u16)port;
+      args.port = clib_host_to_net_u16(port);
     }
 
   if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
@@ -151,7 +151,7 @@ lb_vip_command_fn (vlib_main_t * vm,
                || (encap == LB_ENCAP_TYPE_NAT6))
         {
           args.encap_args.srv_type = (u8) srv_type;
-          args.encap_args.target_port = (u16) target_port;
+          args.encap_args.target_port = clib_host_to_net_u16(target_port);
         }
 
     if ((ret = lb_vip_add(args, &index))) {
@@ -255,7 +255,7 @@ lb_as_command_fn (vlib_main_t * vm,
     }
 
   if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, protocol,
-                               (u16)port, &vip_index))){
+                               clib_host_to_net_u16 (port), &vip_index))){
     error = clib_error_return (0, "lb_vip_find_index error %d", ret);
     goto done;
   }

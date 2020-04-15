@@ -212,7 +212,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
     {
       s = format(s, "%U  protocol:%u port:%u\n",
                  format_white_space, indent,
-                 vip->protocol, vip->port);
+                 vip->protocol, ntohs(vip->port));
     }
 
   if (vip->type == LB_VIP_TYPE_IP4_L3DSR)
@@ -970,7 +970,7 @@ static int lb_vip_add_port_filter(lb_main_t *lbm, lb_vip_t *vip,
 
   key.vip_prefix_index = vip_prefix_index;
   key.protocol = vip->protocol;
-  key.port = clib_host_to_net_u16(vip->port);
+  key.port = vip->port;
   key.rsv = 0;
 
   kv.key = key.as_u64;
@@ -991,7 +991,7 @@ static int lb_vip_del_port_filter(lb_main_t *lbm, lb_vip_t *vip)
 
   key.vip_prefix_index = vip->vip_prefix_index;
   key.protocol = vip->protocol;
-  key.port = clib_host_to_net_u16(vip->port);
+  key.port = vip->port;
   key.rsv = 0;
 
   kv.key = key.as_u64;
@@ -1142,8 +1142,7 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
   else if ((args.type == LB_VIP_TYPE_IP4_NAT4)
            ||(args.type == LB_VIP_TYPE_IP6_NAT6)) {
       vip->encap_args.srv_type = args.encap_args.srv_type;
-      vip->encap_args.target_port =
-          clib_host_to_net_u16(args.encap_args.target_port);
+      vip->encap_args.target_port = args.encap_args.target_port;
     }
 
   vip->flags = LB_VIP_FLAGS_USED;
@@ -1173,7 +1172,7 @@ int lb_vip_add(lb_vip_add_args_t args, u32 *vip_index)
       uword * entry;
 
       //Create maping from nodeport to vip_index
-      key = clib_host_to_net_u16(args.port);
+      key = args.port;
       entry = hash_get_mem (lbm->vip_index_by_nodeport, &key);
       if (entry) {
         lb_put_writer_lock();

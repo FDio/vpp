@@ -198,8 +198,8 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
       if (PREDICT_TRUE(
           ip40->protocol == IP_PROTOCOL_TCP
               || ip40->protocol == IP_PROTOCOL_UDP))
-        ports = ((u64) ((udp_header_t *) (ip40 + 1))->src_port << 16)
-            | ((u64) ((udp_header_t *) (ip40 + 1))->dst_port);
+        ports = ((u64) ((udp_header_t *) ip4_next_header(ip40))->src_port << 16)
+            | ((u64) ((udp_header_t *) ip4_next_header(ip40))->dst_port);
       else
         ports = lb_node_get_other_ports4 (ip40);
 
@@ -220,8 +220,8 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
       if (PREDICT_TRUE(
           ip60->protocol == IP_PROTOCOL_TCP
               || ip60->protocol == IP_PROTOCOL_UDP))
-        ports = ((u64) ((udp_header_t *) (ip60 + 1))->src_port << 16)
-            | ((u64) ((udp_header_t *) (ip60 + 1))->dst_port);
+        ports = ((u64) ((udp_header_t *) ip6_next_header(ip60))->src_port << 16)
+            | ((u64) ((udp_header_t *) ip6_next_header(ip60))->dst_port);
       else
         ports = lb_node_get_other_ports6 (ip60);
 
@@ -397,7 +397,6 @@ lb_node_fn (vlib_main_t * vm,
                   vlib_buffer_advance (
                       p0, -sizeof(ip4_header_t) - sizeof(gre_header_t));
                   ip40 = vlib_buffer_get_current (p0);
-                  gre0 = (gre_header_t *) (ip40 + 1);
                   ip40->src_address = lbm->ip4_src_address;
                   ip40->dst_address = lbm->ass[asindex0].address.ip4;
                   ip40->ip_version_and_header_length = 0x45;
@@ -408,6 +407,7 @@ lb_node_fn (vlib_main_t * vm,
                       len0 + sizeof(gre_header_t) + sizeof(ip4_header_t));
                   ip40->protocol = IP_PROTOCOL_GRE;
                   ip40->checksum = ip4_header_checksum (ip40);
+                  gre0 = (gre_header_t *) ip4_next_header(ip40);
                 }
               else /* encap GRE6*/
                 {
@@ -415,7 +415,6 @@ lb_node_fn (vlib_main_t * vm,
                   vlib_buffer_advance (
                       p0, -sizeof(ip6_header_t) - sizeof(gre_header_t));
                   ip60 = vlib_buffer_get_current (p0);
-                  gre0 = (gre_header_t *) (ip60 + 1);
                   ip60->dst_address = lbm->ass[asindex0].address.ip6;
                   ip60->src_address = lbm->ip6_src_address;
                   ip60->hop_limit = 128;
@@ -424,6 +423,7 @@ lb_node_fn (vlib_main_t * vm,
                   ip60->payload_length = clib_host_to_net_u16 (
                       len0 + sizeof(gre_header_t));
                   ip60->protocol = IP_PROTOCOL_GRE;
+                  gre0 = (gre_header_t *) ip6_next_header(ip60);
                 }
 
               gre0->flags_and_version = 0;
@@ -468,6 +468,7 @@ lb_node_fn (vlib_main_t * vm,
             {
               ip_csum_t csum;
               udp_header_t *uh;
+              tcp_header_t *th;
 
               /* do NAT */
               if ((is_input_v4 == 1) && (encap_type == LB_ENCAP_TYPE_NAT4))
@@ -476,7 +477,6 @@ lb_node_fn (vlib_main_t * vm,
                   ip4_header_t *ip40;
                   u32 old_dst;
                   ip40 = vlib_buffer_get_current (p0);
-                  uh = (udp_header_t *) (ip40 + 1);
                   old_dst = ip40->dst_address.as_u32;
                   ip40->dst_address = lbm->ass[asindex0].address.ip4;
 
@@ -486,8 +486,21 @@ lb_node_fn (vlib_main_t * vm,
                       csum, lbm->ass[asindex0].address.ip4.as_u32);
                   ip40->checksum = ip_csum_fold (csum);
 
-                  if (ip40->protocol == IP_PROTOCOL_UDP)
+                  if (ip40->protocol == IP_PROTOCOL_TCP)
                     {
+		      th = (tcp_header_t *) ip4_next_header(ip40);
+                      csum = th->checksum;
+                      csum = ip_csum_sub_even (csum, old_dst);
+                      csum = ip_csum_add_even (
+                          csum, lbm->ass[asindex0].address.ip4.as_u32);
+                      csum = ip_csum_sub_even (csum, th->dst_port);
+                      th->dst_port = vip0->encap_args.target_port;
+                      csum = ip_csum_add_even (csum, th->dst_port);
+                      th->checksum = ip_csum_fold (csum);
+                    }
+                  else if (ip40->protocol == IP_PROTOCOL_UDP)
+                    {
+                      uh = (udp_header_t *) ip4_next_header(ip40);
                       uh->dst_port = vip0->encap_args.target_port;
                       csum = uh->checksum;
                       csum = ip_csum_sub_even (csum, old_dst);
@@ -507,7 +520,6 @@ lb_node_fn (vlib_main_t * vm,
                   ip6_address_t old_dst;
 
                   ip60 = vlib_buffer_get_current (p0);
-                  uh = (udp_header_t *) (ip60 + 1);
 
                   old_dst.as_u64[0] = ip60->dst_address.as_u64[0];
                   old_dst.as_u64[1] = ip60->dst_address.as_u64[1];
@@ -516,8 +528,24 @@ lb_node_fn (vlib_main_t * vm,
                   ip60->dst_address.as_u64[1] =
                       lbm->ass[asindex0].address.ip6.as_u64[1];
 
-                  if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
+                  if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_TCP))
                     {
+		      th = (tcp_header_t *) ip6_next_header(ip60);
+                      csum = th->checksum;
+                      csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
+                      csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
+                      csum = ip_csum_add_even (
+                          csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
+                      csum = ip_csum_add_even (
+                          csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
+                      csum = ip_csum_sub_even (csum, th->dst_port);
+                      th->dst_port = vip0->encap_args.target_port;
+                      csum = ip_csum_add_even (csum, th->dst_port);
+                      th->checksum = ip_csum_fold (csum);
+                    }
+                  else if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
+                    {
+                      uh = (udp_header_t *) ip6_next_header(ip60);
                       uh->dst_port = vip0->encap_args.target_port;
                       csum = uh->checksum;
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
@@ -632,7 +660,7 @@ lb_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               vlib_buffer_advance (
                   p0, -(word) (sizeof(udp_header_t) + sizeof(ip4_header_t)));
               ip40 = vlib_buffer_get_current (p0);
-              udp_0 = (udp_header_t *) (ip40 + 1);
+              udp_0 = (udp_header_t *) ip4_next_header(ip40);
             }
           else
             {
@@ -640,7 +668,7 @@ lb_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               vlib_buffer_advance (
                   p0, -(word) (sizeof(udp_header_t) + sizeof(ip6_header_t)));
               ip60 = vlib_buffer_get_current (p0);
-              udp_0 = (udp_header_t *) (ip60 + 1);
+              udp_0 = (udp_header_t *) ip6_next_header(ip60);
             }
 
           entry0 = hash_get_mem(lbm->vip_index_by_nodeport, &(udp_0->dst_port));
@@ -865,7 +893,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               if (lb_nat66_mapping_match (lbm, &key60, &index60))
                 {
-                  next0 = LB_NAT6_IN2OUT_NEXT_DROP;
+                  next0 = LB_NAT4_IN2OUT_NEXT_LOOKUP;
                   goto trace0;
                 }
 
@@ -911,8 +939,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               pkts_processed += next0 != LB_NAT4_IN2OUT_NEXT_DROP;
             }
 
-          trace0: if (PREDICT_FALSE(
-              (node->flags & VLIB_NODE_FLAG_TRACE) && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+          trace0: if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_nat_trace_t *t = vlib_add_trace (vm, node, b0, sizeof(*t));
               t->rx_sw_if_index = sw_if_index0;
