@@ -86,10 +86,10 @@ u8 *CV (format_cuckoo_bucket) (u8 * s, va_list * args)
                 CV (format_cuckoo_elt), elt, bucket->reduced_hashes[i]);
   }
   /* *INDENT-ON* */
-  clib_cuckoo_bucket_aux_t aux = bucket->aux;
+  CVT (clib_cuckoo_bucket_aux) aux = bucket->aux;
   s = format (s, "version: %lld, use count: %d\n",
-	      clib_cuckoo_bucket_aux_get_version (aux),
-	      clib_cuckoo_bucket_aux_get_use_count (aux));
+	      CV (clib_cuckoo_bucket_aux_get_version) (aux),
+	      CV (clib_cuckoo_bucket_aux_get_use_count) (aux));
   return s;
 }
 
@@ -124,8 +124,8 @@ static void CV (clib_cuckoo_deep_self_check) (CVT (clib_cuckoo) * h)
           ++used;
         }
     }
-    clib_cuckoo_bucket_aux_t aux = bucket->aux;
-    ASSERT (used == clib_cuckoo_bucket_aux_get_use_count (aux));
+    CVT(clib_cuckoo_bucket_aux) aux = bucket->aux;
+    ASSERT (used == CV(clib_cuckoo_bucket_aux_get_use_count) (aux));
     ++bucket_idx;
   });
   /* *INDENT-ON* */
@@ -190,27 +190,28 @@ void CV (clib_cuckoo_free) (CVT (clib_cuckoo) * h)
   clib_memset (h, 0, sizeof (*h));
 }
 
-static clib_cuckoo_bucket_aux_t
+static
+CVT (clib_cuckoo_bucket_aux)
 CV (clib_cuckoo_bucket_version_bump_and_lock) (CVT (clib_cuckoo_bucket) * b)
 {
-  clib_cuckoo_bucket_aux_t aux = b->aux;
-  u64 version = clib_cuckoo_bucket_aux_get_version (aux);
-  u8 use_count = clib_cuckoo_bucket_aux_get_use_count (aux);
-  u8 writer_flag = clib_cuckoo_bucket_aux_get_writer_flag (aux);
+  CVT (clib_cuckoo_bucket_aux) aux = b->aux;
+  u64 version = CV (clib_cuckoo_bucket_aux_get_version) (aux);
+  u8 use_count = CV (clib_cuckoo_bucket_aux_get_use_count) (aux);
+  u8 writer_flag = CV (clib_cuckoo_bucket_aux_get_writer_flag) (aux);
   ASSERT (0 == writer_flag);
-  aux = clib_cuckoo_bucket_aux_pack (version + 1, use_count, 1);
+  aux = CV (clib_cuckoo_bucket_aux_pack) (version + 1, use_count, 1);
   b->aux = aux;
   return aux;
 }
 
 static void CV (clib_cuckoo_bucket_unlock) (CVT (clib_cuckoo_bucket) * b,
-					    clib_cuckoo_bucket_aux_t aux)
+					    CVT (clib_cuckoo_bucket_aux) aux)
 {
-  u64 version = clib_cuckoo_bucket_aux_get_version (aux);
-  u8 use_count = clib_cuckoo_bucket_aux_get_use_count (aux);
-  u8 writer_flag = clib_cuckoo_bucket_aux_get_writer_flag (aux);
+  u64 version = CV (clib_cuckoo_bucket_aux_get_version) (aux);
+  u8 use_count = CV (clib_cuckoo_bucket_aux_get_use_count) (aux);
+  u8 writer_flag = CV (clib_cuckoo_bucket_aux_get_writer_flag) (aux);
   ASSERT (1 == writer_flag);
-  aux = clib_cuckoo_bucket_aux_pack (version, use_count, 0);
+  aux = CV (clib_cuckoo_bucket_aux_pack) (version, use_count, 0);
   b->aux = aux;
 }
 
@@ -221,9 +222,11 @@ static void CV (clib_cuckoo_bucket_unlock) (CVT (clib_cuckoo_bucket) * b,
 static u8 *CV (format_cuckoo_path) (u8 * s, va_list * args);
 #endif
 
-static clib_cuckoo_path_t *CV (clib_cuckoo_path_get) (CVT (clib_cuckoo) * h)
+static
+CVT (clib_cuckoo_path) *
+CV (clib_cuckoo_path_get) (CVT (clib_cuckoo) * h)
 {
-  clib_cuckoo_path_t *path;
+  CVT (clib_cuckoo_path) * path;
   pool_get (h->paths, path);
   clib_memset (path, 0, sizeof (*path));
 #if CLIB_CUCKOO_DEBUG_PATH_DETAIL
@@ -234,19 +237,20 @@ static clib_cuckoo_path_t *CV (clib_cuckoo_path_get) (CVT (clib_cuckoo) * h)
 
 static void CV (clib_cuckoo_path_put) (CVT (clib_cuckoo) * h, uword path_idx)
 {
-  clib_cuckoo_path_t *path = pool_elt_at_index (h->paths, path_idx);
+  CVT (clib_cuckoo_path) * path = pool_elt_at_index (h->paths, path_idx);
 #if CLIB_CUCKOO_DEBUG_PATH_DETAIL
   CLIB_CUCKOO_DBG ("Put path @%lu", (long unsigned) (path - h->paths));
 #endif
   pool_put (h->paths, path);
 }
 
-static clib_cuckoo_path_t *CV (clib_cuckoo_path_begin) (CVT (clib_cuckoo) * h,
-							uword bucket,
-							uword next_offset)
+static
+CVT (clib_cuckoo_path) *
+CV (clib_cuckoo_path_begin) (CVT (clib_cuckoo) * h,
+			     uword bucket, uword next_offset)
 {
   ASSERT (next_offset < CLIB_CUCKOO_KVP_PER_BUCKET);
-  clib_cuckoo_path_t *new_path = CV (clib_cuckoo_path_get) (h);
+  CVT (clib_cuckoo_path) * new_path = CV (clib_cuckoo_path_get) (h);
   new_path->length = 1;
   new_path->data = next_offset;
   new_path->start = bucket;
@@ -270,9 +274,9 @@ static uword CV (clib_cuckoo_path_extend) (CVT (clib_cuckoo) * h,
 					   unsigned offset)
 {
   ASSERT (offset < CLIB_CUCKOO_KVP_PER_BUCKET);
-  clib_cuckoo_path_t *new_path = CV (clib_cuckoo_path_get) (h);
+  CVT (clib_cuckoo_path) * new_path = CV (clib_cuckoo_path_get) (h);
   uword new_path_idx = new_path - h->paths;
-  clib_cuckoo_path_t *path = pool_elt_at_index (h->paths, path_idx);
+  CVT (clib_cuckoo_path) * path = pool_elt_at_index (h->paths, path_idx);
   new_path->start = path->start;
   new_path->length = path->length + 1;
   new_path->data = (path->data << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET) + offset;
@@ -285,7 +289,7 @@ static uword CV (clib_cuckoo_path_extend) (CVT (clib_cuckoo) * h,
 }
 
 /** return the offset of the last element in the path */
-static uword CV (clib_cuckoo_path_peek_offset) (const clib_cuckoo_path_t *
+static uword CV (clib_cuckoo_path_peek_offset) (const CVT (clib_cuckoo_path) *
 						path)
 {
   ASSERT (path->length > 0);
@@ -298,8 +302,8 @@ static
 CVT (clib_cuckoo_kv) *
 CV (clib_cuckoo_bucket_find_empty) (CVT (clib_cuckoo_bucket) * bucket)
 {
-  clib_cuckoo_bucket_aux_t aux = bucket->aux;
-  u8 use_count = clib_cuckoo_bucket_aux_get_use_count (aux);
+  CVT (clib_cuckoo_bucket_aux) aux = bucket->aux;
+  u8 use_count = CV (clib_cuckoo_bucket_aux_get_use_count) (aux);
   if (use_count < CLIB_CUCKOO_KVP_PER_BUCKET)
     {
       return bucket->elts + use_count;
@@ -316,10 +320,10 @@ CV (clib_cuckoo_bucket_find_empty) (CVT (clib_cuckoo_bucket) * bucket)
  * the arrays must be able to contain CLIB_CUCKOO_BFS_MAX_PATH_LENGTH elements
  */
 static void
-clib_cuckoo_path_walk (CVT (clib_cuckoo) * h, uword path_idx,
-		       uword * buckets, uword * offsets)
+CV (clib_cuckoo_path_walk) (CVT (clib_cuckoo) * h, uword path_idx,
+			    uword * buckets, uword * offsets)
 {
-  clib_cuckoo_path_t *path = pool_elt_at_index (h->paths, path_idx);
+  CVT (clib_cuckoo_path) * path = pool_elt_at_index (h->paths, path_idx);
   ASSERT (path->length > 0);
   u64 data = path->data;
   uword mask = (1 << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET) - 1;
@@ -336,9 +340,9 @@ clib_cuckoo_path_walk (CVT (clib_cuckoo) * h, uword path_idx,
       CVT (clib_cuckoo_bucket) * b =
 	CV (clib_cuckoo_bucket_at_index) (h, buckets[i - 1]);
       buckets[i] =
-	clib_cuckoo_get_other_bucket (CV (clib_cuckoo_get_nbuckets) (h),
-				      buckets[i - 1],
-				      b->reduced_hashes[offsets[i - 1]]);
+	CV (clib_cuckoo_get_other_bucket) (CV (clib_cuckoo_get_nbuckets) (h),
+					   buckets[i - 1],
+					   b->reduced_hashes[offsets[i - 1]]);
     }
 }
 
@@ -347,10 +351,10 @@ static u8 *CV (format_cuckoo_path) (u8 * s, va_list * args)
 {
   CVT (clib_cuckoo) * h = va_arg (*args, CVT (clib_cuckoo) *);
   uword path_idx = va_arg (*args, uword);
-  clib_cuckoo_path_t *p = pool_elt_at_index (h->paths, path_idx);
+  CVT (clib_cuckoo_path) * p = pool_elt_at_index (h->paths, path_idx);
   uword buckets[CLIB_CUCKOO_BFS_MAX_PATH_LENGTH];
   uword offsets[CLIB_CUCKOO_BFS_MAX_PATH_LENGTH];
-  clib_cuckoo_path_walk (h, path_idx, buckets, offsets);
+  CV (clib_cuckoo_path_walk) (h, path_idx, buckets, offsets);
   s = format (s, "length %u: ", p->length);
   for (uword i = p->length - 1; i > 0; --i)
     {
@@ -378,7 +382,7 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
 {
   uword *tail;
   ASSERT (!vec_len (h->bfs_search_queue));
-  clib_cuckoo_path_t *tmp;
+  CVT (clib_cuckoo_path) * tmp;
   pool_flush (tmp, h->paths,);
   int rv = CLIB_CUCKOO_ERROR_AGAIN;
   int counter = 0;
@@ -387,7 +391,7 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
   int i;
   for (i = 0; i < CLIB_CUCKOO_KVP_PER_BUCKET; ++i)
     {
-      clib_cuckoo_path_t *path =
+      CVT (clib_cuckoo_path) * path =
 	CV (clib_cuckoo_path_begin) (h, lookup->bucket1, i);
       tail[i] = path - h->paths;
     }
@@ -396,7 +400,7 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
       vec_add2 (h->bfs_search_queue, tail, CLIB_CUCKOO_KVP_PER_BUCKET);
       for (i = 0; i < CLIB_CUCKOO_KVP_PER_BUCKET; ++i)
 	{
-	  clib_cuckoo_path_t *path =
+	  CVT (clib_cuckoo_path) * path =
 	    CV (clib_cuckoo_path_begin) (h, lookup->bucket2, i);
 	  tail[i] = path - h->paths;
 	}
@@ -418,7 +422,8 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
 	  break;
 	}
       const uword path_idx = vec_elt (h->bfs_search_queue, counter);
-      const clib_cuckoo_path_t *path = pool_elt_at_index (h->paths, path_idx);
+      const CVT (clib_cuckoo_path) * path =
+	pool_elt_at_index (h->paths, path_idx);
 #if CLIB_CUCKOO_DEBUG_PATH
       CLIB_CUCKOO_DBG ("Examine path @%wu: %U", path_idx,
 		       CV (format_cuckoo_path), h, path_idx);
@@ -429,9 +434,9 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
       CVT (clib_cuckoo_bucket) * bucket =
 	CV (clib_cuckoo_bucket_at_index) (h, path->bucket);
       uword other_bucket =
-	clib_cuckoo_get_other_bucket (CV (clib_cuckoo_get_nbuckets) (h),
-				      path->bucket,
-				      bucket->reduced_hashes[offset]);
+	CV (clib_cuckoo_get_other_bucket) (CV (clib_cuckoo_get_nbuckets) (h),
+					   path->bucket,
+					   bucket->reduced_hashes[offset]);
       CLIB_CUCKOO_DBG
 	("Path ends in bucket %wu, offset #%wu, other bucket is %wu",
 	 path->bucket, CV (clib_cuckoo_path_peek_offset) (path),
@@ -538,9 +543,9 @@ static void CV (clib_cuckoo_free_locked_elt) (CVT (clib_cuckoo_kv) * elt)
 static void CV (clib_cuckoo_free_elt_in_bucket) (CVT (clib_cuckoo_bucket) * b,
 						 CVT (clib_cuckoo_kv) * elt)
 {
-  clib_cuckoo_bucket_aux_t aux =
+  CVT (clib_cuckoo_bucket_aux) aux =
     CV (clib_cuckoo_bucket_version_bump_and_lock) (b);
-  int use_count = clib_cuckoo_bucket_aux_get_use_count (aux);
+  int use_count = CV (clib_cuckoo_bucket_aux_get_use_count) (aux);
   int offset = elt - b->elts;
   ASSERT (offset < use_count);
   CV (clib_cuckoo_free_locked_elt) (elt);
@@ -548,7 +553,7 @@ static void CV (clib_cuckoo_free_elt_in_bucket) (CVT (clib_cuckoo_bucket) * b,
     {
       CV (clib_cuckoo_bucket_tidy) (b);
     }
-  aux = clib_cuckoo_bucket_aux_set_use_count (aux, use_count - 1);
+  aux = CV (clib_cuckoo_bucket_aux_set_use_count) (aux, use_count - 1);
   CV (clib_cuckoo_bucket_unlock) (b, aux);
 }
 
@@ -569,7 +574,7 @@ static void CV (clib_cuckoo_set_elt) (CVT (clib_cuckoo_bucket) * b,
 				      CVT (clib_cuckoo_kv) * kvp,
 				      u8 reduced_hash)
 {
-  clib_cuckoo_bucket_aux_t aux =
+  CVT (clib_cuckoo_bucket_aux) aux =
     CV (clib_cuckoo_bucket_version_bump_and_lock) (b);
   CV (clib_cuckoo_set_locked_elt) (b, elt, kvp, reduced_hash);
   CV (clib_cuckoo_bucket_unlock) (b, aux);
@@ -590,12 +595,12 @@ static int CV (clib_cuckoo_add_slow) (CVT (clib_cuckoo) * h,
     {
       uword buckets[CLIB_CUCKOO_BFS_MAX_PATH_LENGTH];
       uword offsets[CLIB_CUCKOO_BFS_MAX_PATH_LENGTH];
-      clib_cuckoo_path_walk (h, path_idx, buckets, offsets);
+      CV (clib_cuckoo_path_walk) (h, path_idx, buckets, offsets);
       /*
        * walk back the path, moving the free element forward to one of our
        * buckets ...
        */
-      clib_cuckoo_path_t *path = pool_elt_at_index (h->paths, path_idx);
+      CVT (clib_cuckoo_path) * path = pool_elt_at_index (h->paths, path_idx);
       CVT (clib_cuckoo_bucket) * empty_bucket =
 	CV (clib_cuckoo_bucket_at_index) (h, empty_bucket_idx);
       int i;
@@ -605,7 +610,7 @@ static int CV (clib_cuckoo_add_slow) (CVT (clib_cuckoo) * h,
 	  CVT (clib_cuckoo_bucket) * b =
 	    CV (clib_cuckoo_bucket_at_index) (h, buckets[i]);
 	  CVT (clib_cuckoo_kv) * elt = b->elts + offsets[i];
-	  clib_cuckoo_bucket_aux_t empty_aux =
+	  CVT (clib_cuckoo_bucket_aux) empty_aux =
 	    CV (clib_cuckoo_bucket_version_bump_and_lock) (empty_bucket);
 	  CV (clib_cuckoo_set_locked_elt)
 	    (empty_bucket, empty_elt, elt, b->reduced_hashes[elt - b->elts]);
@@ -613,10 +618,11 @@ static int CV (clib_cuckoo_add_slow) (CVT (clib_cuckoo) * h,
 	    {
 	      /* we only need to increase the use count for the bucket with
 	       * free element - all other buckets' use counts won't change */
-	      empty_aux = clib_cuckoo_bucket_aux_set_use_count (empty_aux,
-								clib_cuckoo_bucket_aux_get_use_count
-								(empty_aux) +
-								1);
+	      empty_aux =
+		CV (clib_cuckoo_bucket_aux_set_use_count) (empty_aux,
+							   CV
+							   (clib_cuckoo_bucket_aux_get_use_count)
+							   (empty_aux) + 1);
 	    }
 	  CV (clib_cuckoo_bucket_unlock) (empty_bucket, empty_aux);
 	  /*
@@ -649,13 +655,14 @@ static int CV (clib_cuckoo_add_fast) (CVT (clib_cuckoo) * h,
     CV (clib_cuckoo_bucket_at_index) (h, lookup->bucket1);
   if ((elt = CV (clib_cuckoo_bucket_find_empty) (bucket1)))
     {
-      clib_cuckoo_bucket_aux_t aux =
+      CVT (clib_cuckoo_bucket_aux) aux =
 	CV (clib_cuckoo_bucket_version_bump_and_lock) (bucket1);
       CV (clib_cuckoo_set_locked_elt) (bucket1, elt, kvp, reduced_hash);
       aux =
-	clib_cuckoo_bucket_aux_set_use_count (aux,
-					      clib_cuckoo_bucket_aux_get_use_count
-					      (aux) + 1);
+	CV (clib_cuckoo_bucket_aux_set_use_count) (aux,
+						   CV
+						   (clib_cuckoo_bucket_aux_get_use_count)
+						   (aux) + 1);
       CV (clib_cuckoo_bucket_unlock) (bucket1, aux);
 #if CLIB_CUCKOO_DEBUG_COUNTERS
       ++h->fast_adds;
@@ -668,19 +675,21 @@ static int CV (clib_cuckoo_add_fast) (CVT (clib_cuckoo) * h,
        CV (clib_cuckoo_bucket_find_empty) (CV (clib_cuckoo_bucket_at_index)
 					   (h, lookup->bucket2))))
     {
-      clib_cuckoo_bucket_aux_t aux =
+      CVT (clib_cuckoo_bucket_aux) aux =
 	CV (clib_cuckoo_bucket_version_bump_and_lock) (bucket2);
       CV (clib_cuckoo_set_locked_elt) (bucket2, elt, kvp, reduced_hash);
       aux =
-	clib_cuckoo_bucket_aux_set_use_count (aux,
-					      clib_cuckoo_bucket_aux_get_use_count
-					      (aux) + 1);
+	CV (clib_cuckoo_bucket_aux_set_use_count) (aux,
+						   CV
+						   (clib_cuckoo_bucket_aux_get_use_count)
+						   (aux) + 1);
       CV (clib_cuckoo_bucket_unlock) (bucket2, aux);
 #if CLIB_CUCKOO_DEBUG_COUNTERS
       ++h->fast_adds;
 #endif
       return CLIB_CUCKOO_ERROR_SUCCESS;
     }
+
   return CLIB_CUCKOO_ERROR_AGAIN;
 }
 
@@ -749,8 +758,8 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
       CVT (clib_cuckoo_bucket) * new_bucket = new + new_bucket_idx;
       int i = 0;
       int moved = 0;
-      clib_cuckoo_bucket_aux_t aux = old_bucket->aux;
-      for (i = 0; i < clib_cuckoo_bucket_aux_get_use_count (aux); ++i)
+      CVT (clib_cuckoo_bucket_aux) aux = old_bucket->aux;
+      for (i = 0; i < CV (clib_cuckoo_bucket_aux_get_use_count) (aux); ++i)
 	{
 	  CVT (clib_cuckoo_kv) * elt = old_bucket->elts + i;
 	  u64 hash = CV (clib_cuckoo_hash) (elt);
@@ -776,15 +785,17 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
 	{
 	  CV (clib_cuckoo_bucket_tidy) (old_bucket);
 	  aux =
-	    clib_cuckoo_bucket_aux_set_use_count (aux,
-						  clib_cuckoo_bucket_aux_get_use_count
-						  (aux) - moved);
+	    CV (clib_cuckoo_bucket_aux_set_use_count) (aux,
+						       CV
+						       (clib_cuckoo_bucket_aux_get_use_count)
+						       (aux) - moved);
 	  old_bucket->aux = aux;
 	  aux = new_bucket->aux;
 	  aux =
-	    clib_cuckoo_bucket_aux_set_use_count (aux,
-						  clib_cuckoo_bucket_aux_get_use_count
-						  (aux) + moved);
+	    CV (clib_cuckoo_bucket_aux_set_use_count) (aux,
+						       CV
+						       (clib_cuckoo_bucket_aux_get_use_count)
+						       (aux) + moved);
 	  new_bucket->aux = aux;
 	}
     }
@@ -817,15 +828,15 @@ static int CV (clib_cuckoo_bucket_search_internal) (CVT (clib_cuckoo) * h,
   return CLIB_CUCKOO_ERROR_NOT_FOUND;
 }
 
-int CV (clib_cuckoo_add_del) (CVT (clib_cuckoo) * h,
-			      CVT (clib_cuckoo_kv) * kvp, int is_add,
-			      int dont_overwrite)
+always_inline int CV (clib_cuckoo_add_del_inline) (CVT (clib_cuckoo) * h,
+						   CVT (clib_cuckoo_kv) * kvp,
+						   int is_add)
 {
-  CLIB_CUCKOO_DBG ("%s %U", is_add ? "Add" : "Del", CV (format_cuckoo_kvp),
-		   kvp);
+  CLIB_CUCKOO_DBG ("%s %U", is_add ? (2 == is_add ? "Addx" : "Add") : "Del",
+		   CV (format_cuckoo_kvp), kvp);
   clib_cuckoo_lookup_info_t lookup;
   u64 hash = CV (clib_cuckoo_hash) (kvp);
-  u8 reduced_hash = clib_cuckoo_reduce_hash (hash);
+  u8 reduced_hash = CV (clib_cuckoo_reduce_hash) (hash);
   clib_spinlock_lock (&h->writer_lock);
 restart:
   lookup = CV (clib_cuckoo_calc_lookup) (h->buckets, hash);
@@ -845,7 +856,7 @@ restart:
     {
       if (is_add)
 	{
-	  if (dont_overwrite)
+	  if (2 == is_add)
 	    {
 	      CLIB_CUCKOO_DBG ("Refused replacing existing %U",
 			       CV (format_cuckoo_elt), found,
@@ -855,7 +866,7 @@ restart:
 	  else
 	    {
 	      /* prevent readers reading this bucket while we switch the values */
-	      clib_cuckoo_bucket_aux_t aux =
+	      CVT (clib_cuckoo_bucket_aux) aux =
 		CV (clib_cuckoo_bucket_version_bump_and_lock) (b);
 	      clib_memcpy (&found->value, &kvp->value, sizeof (found->value));
 	      CLIB_CUCKOO_DBG ("Replaced existing %U", CV (format_cuckoo_elt),
@@ -911,6 +922,12 @@ unlock:
   return rv;
 }
 
+int CV (clib_cuckoo_add_del) (CVT (clib_cuckoo) * h,
+			      CVT (clib_cuckoo_kv) * kvp, int is_add)
+{
+  return CV (clib_cuckoo_add_del_inline) (h, kvp, is_add, NULL, NULL);
+}
+
 u8 *CV (format_cuckoo) (u8 * s, va_list * args)
 {
   CVT (clib_cuckoo) * h = va_arg (*args, CVT (clib_cuckoo) *);
@@ -942,8 +959,8 @@ u8 *CV (format_cuckoo) (u8 * s, va_list * args)
           ++used;
         }
     }
-    clib_cuckoo_bucket_aux_t aux = b->aux;
-    use_count_total += clib_cuckoo_bucket_aux_get_use_count (aux);
+    CVT(clib_cuckoo_bucket_aux) aux = b->aux;
+    use_count_total += CV(clib_cuckoo_bucket_aux_get_use_count) (aux);
   });
   /* *INDENT-ON* */
   s = format (s, "Used slots: %wu\n", used);
