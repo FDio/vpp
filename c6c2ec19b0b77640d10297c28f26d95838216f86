@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "5efea555_33af2b2a",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-04-15T06:00:02Z",
+      "side": 1,
+      "message": "maybe we\u0027d like to drop this packet since this packet is not checksum correct?",
+      "revId": "c6c2ec19b0b77640d10297c28f26d95838216f86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4d2f33d6_8d7f0f79",
         "filename": "src/plugins/dpdk/device/node.c",
         "patchSetId": 1
