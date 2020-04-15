@@ -412,38 +412,35 @@ always_inline int
 CV (clib_cuckoo_search_inline_with_hash) (CVT (clib_cuckoo) * h, u64 hash,
 					  CVT (clib_cuckoo_kv) * kvp)
 {
-  clib_cuckoo_lookup_info_t lookup;
+  CVT (clib_cuckoo_bucket) * buckets = h->buckets;
+  uword bucket1, bucket2;
+  u8 reduced_hash;
+  u64 nbuckets = vec_len (buckets);
+  u64 mask = nbuckets - 1;
   int rv;
 
-  CVT (clib_cuckoo_bucket) * buckets;
-again:
-  buckets = h->buckets;
-  lookup = CV (clib_cuckoo_calc_lookup) (buckets, hash);
-  do
-    {
-      rv =
-	CV (clib_cuckoo_bucket_search) (vec_elt_at_index
-					(buckets, lookup.bucket1), kvp,
-					lookup.reduced_hash);
-    }
-  while (PREDICT_FALSE (CLIB_CUCKOO_ERROR_AGAIN == rv));
-  if (CLIB_CUCKOO_ERROR_SUCCESS == rv)
-    {
-      return CLIB_CUCKOO_ERROR_SUCCESS;
-    }
+  bucket1 = hash & mask;
+  reduced_hash = clib_cuckoo_reduce_hash (hash);
 
-  rv =
-    CV (clib_cuckoo_bucket_search) (vec_elt_at_index
-				    (buckets, lookup.bucket2), kvp,
-				    lookup.reduced_hash);
-  if (PREDICT_FALSE (CLIB_CUCKOO_ERROR_AGAIN == rv))
-    {
-      /*
-       * change to 2nd bucket could bump the item to 1st bucket and the bucket
-       * indexes might not even be valid anymore - restart the search
-       */
-      goto again;
-    }
+again:
+  rv = CV (clib_cuckoo_bucket_search) (vec_elt_at_index (buckets, bucket1),
+				       kvp, reduced_hash);
+
+  if (rv == CLIB_CUCKOO_ERROR_SUCCESS)
+    return CLIB_CUCKOO_ERROR_SUCCESS;
+
+  if (PREDICT_FALSE (rv == CLIB_CUCKOO_ERROR_AGAIN))
+    goto again;
+
+  bucket2 = clib_cuckoo_get_other_bucket (nbuckets, bucket1, reduced_hash);
+  rv = CV (clib_cuckoo_bucket_search) (vec_elt_at_index (buckets, bucket2),
+				       kvp, reduced_hash);
+
+  /* change to 2nd bucket could bump the item to 1st bucket and the bucket
+   * indexes might not even be valid anymore - restart the search */
+  if (PREDICT_FALSE (rv == CLIB_CUCKOO_ERROR_AGAIN))
+    goto again;
+
   return rv;
 }
 
