@@ -436,15 +436,16 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 }
 
 int
-app_worker_connect_session (app_worker_t * app, session_endpoint_t * sep,
+app_worker_connect_session (app_worker_t * app_wrk, session_endpoint_t * sep,
 			    u32 api_context)
 {
   int rv;
 
   /* Make sure we have a segment manager for connects */
-  app_worker_alloc_connects_segment_manager (app);
+  if (app_worker_alloc_connects_segment_manager (app_wrk))
+    return SESSION_E_ALLOC;
 
-  if ((rv = session_open (app->wrk_index, sep, api_context)))
+  if ((rv = session_open (app_wrk->wrk_index, sep, api_context)))
     return rv;
 
   return 0;
