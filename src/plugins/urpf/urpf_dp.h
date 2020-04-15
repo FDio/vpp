@@ -178,7 +178,7 @@ urpf_inline (vlib_main_t * vm,
 	{
 	  /* for RX the check is: would this source adddress be forwarded
 	   * out of the interface on which it was recieved, if yes allow.
-	   * For TX it's; would this source addres be forwarded out of the
+	   * For TX it's; would this source address be forwarded out of the
 	   * interface through which it is being sent, if yes drop.
 	   */
 	  int res0, res1;
@@ -197,6 +197,10 @@ urpf_inline (vlib_main_t * vm,
 	    {
 	      pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
 	      pass1 |= !res1 && fib_urpf_check_size (lb1->lb_urpf);
+
+	      /* allow locally generated */
+	      pass0 |= b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	      pass1 |= b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 	}
       else
@@ -290,7 +294,10 @@ urpf_inline (vlib_main_t * vm,
 	  if (VLIB_RX == dir)
 	    pass0 |= res0;
 	  else
-	    pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
+	    {
+	      pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
+	      pass0 |= b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	    }
 	}
       else
 	pass0 |= fib_urpf_check_size (lb0->lb_urpf);
