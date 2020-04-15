@@ -4510,8 +4510,6 @@ class TestNAT44EndpointDependent(MethodHolder):
             '/err/nat44-ed-out2in/good out2in packets processed')
         self.assertEqual(err - totaln, 3)
 
-        users = self.statistics.get_counter('/nat44/total-users')
-        self.assertEqual(users[0][0], 1)
         sessions = self.statistics.get_counter('/nat44/total-sessions')
         self.assertEqual(sessions[0][0], 3)
 
@@ -4607,8 +4605,6 @@ class TestNAT44EndpointDependent(MethodHolder):
                 '/err/nat44-ed-out2in/good out2in packets processed')
             self.assertEqual(err - totaln, 3)
 
-            users = self.statistics.get_counter('/nat44/total-users')
-            self.assertEqual(users[0][0], 1)
             sessions = self.statistics.get_counter('/nat44/total-sessions')
             self.assertEqual(sessions[0][0], 3)
 
@@ -6816,13 +6812,6 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.get_capture(1)
-
-        nsessions = 0
-        users = self.vapi.nat44_user_dump()
-        self.assertEqual(len(users), 1)
-        self.assertEqual(str(users[0].ip_address),
-                         self.pg0.remote_ip4)
-        self.assertEqual(users[0].nsessions, 1)
 
     def test_syslog_sess(self):
         """ Test syslog session creation and deletion """
