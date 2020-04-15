@@ -1106,6 +1106,8 @@ init_buffers_inline (vlib_main_t * vm,
 
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
+      b0->flags |= s->buffer_flags;
+      b1->flags |= s->buffer_flags;
 
       vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	vnet_buffer (b1)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
@@ -1135,6 +1137,7 @@ init_buffers_inline (vlib_main_t * vm,
       n_left -= 1;
 
       b0 = vlib_get_buffer (vm, bi0);
+      b0->flags |= s->buffer_flags;
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = s->sw_if_index[VLIB_TX];
 
@@ -1269,7 +1272,7 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
 	  clib_memcpy_fast (b->data, d0 + data_offset, bytes_this_chunk);
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
 	  vnet_buffer (b)->sw_if_index[VLIB_TX] = s->sw_if_index[VLIB_TX];
-	  b->flags = 0;
+	  b->flags = s->buffer_flags;
 	  b->next_buffer = 0;
 	  b->current_data = 0;
 	  b->current_length = bytes_this_chunk;
