@@ -408,13 +408,13 @@ always_inline int CV (clib_cuckoo_bucket_search) (CVT (clib_cuckoo_bucket) *
   return CLIB_CUCKOO_ERROR_NOT_FOUND;
 }
 
-always_inline int CV (clib_cuckoo_search_inline) (CVT (clib_cuckoo) * h,
-						  CVT (clib_cuckoo_kv) * kvp)
+always_inline int
+CV (clib_cuckoo_search_inline_with_hash) (CVT (clib_cuckoo) * h, u64 hash,
+					  CVT (clib_cuckoo_kv) * kvp)
 {
   clib_cuckoo_lookup_info_t lookup;
   int rv;
 
-  u64 hash = CV (clib_cuckoo_hash) (kvp);
   CVT (clib_cuckoo_bucket) * buckets;
 again:
   buckets = h->buckets;
@@ -445,6 +445,13 @@ again:
       goto again;
     }
   return rv;
+}
+
+always_inline int CV (clib_cuckoo_search_inline) (CVT (clib_cuckoo) * h,
+						  CVT (clib_cuckoo_kv) * kvp)
+{
+  u64 hash = CV (clib_cuckoo_hash) (kvp);
+  return CV (clib_cuckoo_search_inline_with_hash) (h, hash, kvp);
 }
 
 #endif /* __included_cuckoo_template_h__ */
