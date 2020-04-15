@@ -1678,26 +1678,40 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
 			sm->worker_in2out_cb (&ip, ukey.fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
-  if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
-    return;
-  u = pool_elt_at_index (tsm->users, value.value);
-  if (!u->nsessions && !u->nstaticsessions)
-    return;
-
-  head_index = u->sessions_per_user_list_head_index;
-  head = pool_elt_at_index (tsm->list_pool, head_index);
-  elt_index = head->next;
-  elt = pool_elt_at_index (tsm->list_pool, elt_index);
-  session_index = elt->value;
-  while (session_index != ~0)
+  if (!sm->endpoint_dependent)
     {
-      s = pool_elt_at_index (tsm->sessions, session_index);
+      if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
+	return;
+      u = pool_elt_at_index (tsm->users, value.value);
+      if (!u->nsessions && !u->nstaticsessions)
+	return;
 
-      send_nat44_user_session_details (s, reg, mp->context);
-
-      elt_index = elt->next;
+      head_index = u->sessions_per_user_list_head_index;
+      head = pool_elt_at_index (tsm->list_pool, head_index);
+      elt_index = head->next;
       elt = pool_elt_at_index (tsm->list_pool, elt_index);
       session_index = elt->value;
+      while (session_index != ~0)
+	{
+	  s = pool_elt_at_index (tsm->sessions, session_index);
+
+	  send_nat44_user_session_details (s, reg, mp->context);
+
+	  elt_index = elt->next;
+	  elt = pool_elt_at_index (tsm->list_pool, elt_index);
+	  session_index = elt->value;
+	}
+    }
+  else
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (s, tsm->sessions, {
+        if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
+          {
+            send_nat44_user_session_details (s, reg, mp->context);
+          }
+      });
+      /* *INDENT-ON* */
     }
 }
 
@@ -2012,12 +2026,21 @@ static void
               vec_add1 (ses_to_be_removed, s - tsm->sessions);
             }
         }));
-        vec_foreach (ses_index, ses_to_be_removed)
-        {
-          s = pool_elt_at_index(tsm->sessions, ses_index[0]);
-          nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-          nat44_delete_session (sm, s, tsm - sm->per_thread_data);
-        }
+	if(sm->endpoint_dependent){
+	    vec_foreach (ses_index, ses_to_be_removed)
+	      {
+		s = pool_elt_at_index(tsm->sessions, ses_index[0]);
+		nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+		nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+	      }
+	}else{
+	    vec_foreach (ses_index, ses_to_be_removed)
+	      {
+		s = pool_elt_at_index(tsm->sessions, ses_index[0]);
+		nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+		nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+	      }
+	}
         vec_free (ses_to_be_removed);
       }
       /* *INDENT-ON* */
