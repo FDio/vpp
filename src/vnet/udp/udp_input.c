@@ -317,14 +317,13 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
     done:
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	udp_trace_buffer (vm, node, b[0], s0, error0);
 
       b += 1;
       n_left_from -= 1;
 
       udp_inc_err_counter (err_counters, error0, 1);
-
-      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	udp_trace_buffer (vm, node, b[0], s0, error0);
     }
 
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
