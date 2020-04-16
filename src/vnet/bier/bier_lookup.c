@@ -219,15 +219,16 @@ bier_lookup (vlib_main_t * vm,
 
             if (PREDICT_TRUE(0 != n_clones))
             {
+                vec_set_len(blm->blm_clones[thread_index], n_clones);
                 num_cloned = vlib_buffer_clone(vm, bi0,
                                                blm->blm_clones[thread_index],
                                                n_clones,
 					       VLIB_BUFFER_CLONE_HEAD_SIZE);
 
-                vec_set_len(blm->blm_clones[thread_index], num_cloned);
 
                 if (num_cloned != n_clones)
                 {
+                    vec_set_len(blm->blm_clones[thread_index], num_cloned);
                     vlib_node_increment_counter
                         (vm, node->node_index,
                          BIER_LOOKUP_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
