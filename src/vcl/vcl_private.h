@@ -360,6 +360,7 @@ typedef struct vppcom_main_t_
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
+extern vppcom_main_t _vppcom_main;
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
 #define VCL_INVALID_SESSION_HANDLE ((u64)~0)
