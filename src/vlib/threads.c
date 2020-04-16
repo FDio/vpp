@@ -1837,17 +1837,19 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   vlib_frame_queue_main_t *fqm;
   vlib_frame_queue_t *fq;
   int i;
+  u32 num_threads;
 
   if (frame_queue_nelts == 0)
     frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
 
-  ASSERT (frame_queue_nelts >= 8);
+  num_threads = 1 /* main thread */  + tm->n_threads;
+  ASSERT (frame_queue_nelts >= 8 + num_threads);
 
   vec_add2 (tm->frame_queue_mains, fqm, 1);
 
   fqm->node_index = node_index;
   fqm->frame_queue_nelts = frame_queue_nelts;
-  fqm->queue_hi_thresh = frame_queue_nelts - 2;
+  fqm->queue_hi_thresh = frame_queue_nelts - num_threads;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
   vec_validate (fqm->per_thread_data, tm->n_vlib_mains - 1);
