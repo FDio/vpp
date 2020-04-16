@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46c96e8f_b93d0f09",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-16T17:33:48Z",
+      "side": 1,
+      "message": "i think it\u0027s worth displaying this data in all cases.\nwhen you\u0027re debugging it\u0027s best to know everything...",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4abf6c2e_2666516c",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-16T17:33:48Z",
+      "side": 1,
+      "message": "please refactor this.\nif i see code that looks the same, i think to myself surely that\u0027s not a cut-n-paste job, and stare for ages looking for the subtle differences. i didn\u0027t find any...",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24380050_c1f6e975",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-16T17:33:48Z",
+      "side": 1,
+      "message": "this is novel.\ni think i\u0027d rather we stick to the standard pattern. please use vlib_buffer_enqueue_to_next. there are lots of examples to copy from.",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "daca6718_7bf5cb01",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-16T17:33:48Z",
+      "side": 1,
+      "message": "why is the policy sa_id guaranteed to be valid for any policy type other than PROTECT?",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
