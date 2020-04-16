@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "e657c34c_daaafc5b",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-16T23:29:03Z",
+      "side": 1,
+      "message": "I\u0027ll fix it.",
+      "parentUuid": "1587e40d_0802049a",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65e9bb0b_c11fbccf",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 5
@@ -120,6 +138,42 @@
       "side": 1,
       "message": "Why don\u0027t we need 1:1 mapping for INDIRECT_DESC but we need it for chained buffers only?",
       "parentUuid": "96680816_cd2c4887",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5baf067d_b585fe25",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-16T23:29:03Z",
+      "side": 1,
+      "message": "There is 1:1 mapping for descriptors and buffers in vring. In case of INDIRECT descriptors, native virtio consumes only ONE descriptors from VRING which maps the indirect descriptor chain and only ONE buffer entry to store the index of first buffer in chain.",
+      "parentUuid": "d6dd351b_27e68bcc",
+      "revId": "db3174e6b72e0a1f548b189910310686d3696902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f7da0dc_1b5ae968",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-16T23:29:03Z",
+      "side": 1,
+      "message": "I\u0027ll fix it.",
+      "parentUuid": "72dd7e50_3de15078",
       "revId": "db3174e6b72e0a1f548b189910310686d3696902",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
