@@ -214,7 +214,7 @@ add_vpp_library(vppinfra
 ##############################################################################
 # vppinfra headers
 ##############################################################################
-option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." OFF)
+option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." ON)
 if(VPP_BUILD_VPPINFRA_TESTS)
   foreach(test
     bihash_vec88
@@ -223,7 +223,6 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     elf
     elog
     fifo
-    flowhash_template
     format
     fpool
     hash

@@ -81,6 +81,7 @@ typedef struct
   uword alloc_arena;		      /**< memory allocation arena  */
   uword alloc_arena_next;	      /**< first available mem chunk */
   uword alloc_arena_size;	      /**< size of the arena */
+  uword alloc_arena_mapped;	      /**< size of mapped memory in the arena */
 } clib_bihash_t;
 
 /** Get pointer to value page given its clib mheap offset */
