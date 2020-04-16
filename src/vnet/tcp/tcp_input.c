@@ -1948,11 +1948,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       new_tc0->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
       new_tc0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-      /* If this is not the owning thread, wait for syn retransmit to
-       * expire and cleanup then */
-      if (tcp_half_open_connection_cleanup (tc0))
-	tc0->flags |= TCP_CONN_HALF_OPEN_DONE;
-
       if (tcp_opts_tstamp (&new_tc0->rcv_opts))
 	{
 	  new_tc0->tsval_recent = new_tc0->rcv_opts.tsval;
@@ -1991,7 +1986,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_send_reset_w_pkt (new_tc0, b0, my_thread_index, is_ip4);
 	      tcp_connection_cleanup (new_tc0);
 	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
-	      goto drop;
+	      goto cleanup_ho;
 	    }
 
 	  new_tc0->tx_fifo_size =
@@ -2014,7 +2009,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_send_reset_w_pkt (tc0, b0, my_thread_index, is_ip4);
 	      TCP_EVT (TCP_EVT_RST_SENT, tc0);
 	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
-	      goto drop;
+	      goto cleanup_ho;
 	    }
 
 	  new_tc0->tx_fifo_size =
@@ -2023,7 +2018,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_init_snd_vars (new_tc0);
 	  tcp_send_synack (new_tc0);
 	  error0 = TCP_ERROR_SYNS_RCVD;
-	  goto drop;
+	  goto cleanup_ho;
 	}
 
       if (!(new_tc0->cfg_flags & TCP_CFG_F_NO_TSO))
@@ -2043,6 +2038,13 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * just established and it's not optional. */
 	  tcp_send_ack (new_tc0);
 	}
+
+    cleanup_ho:
+
+      /* If this is not the owning thread, wait for syn retransmit to
+       * expire and cleanup then */
+      if (tcp_half_open_connection_cleanup (tc0))
+	tc0->flags |= TCP_CONN_HALF_OPEN_DONE;
 
     drop:
 
