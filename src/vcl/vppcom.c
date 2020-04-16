@@ -1211,35 +1211,35 @@ vppcom_app_create (char *app_name)
 void
 vppcom_app_destroy (void)
 {
-  int rv;
-  f64 orig_app_timeout;
+  vcl_worker_t *wrk;
 
   if (!pool_elts (vcm->workers))
     return;
 
   vcl_evt (VCL_EVT_DETACH, vcm);
 
-  if (pool_elts (vcm->workers) == 1)
-    {
-      vcl_send_app_detach (vcl_worker_get_current ());
-      orig_app_timeout = vcm->cfg.app_timeout;
-      vcm->cfg.app_timeout = 2.0;
-      rv = vcl_wait_for_app_state_change (STATE_APP_ENABLED);
-      vcm->cfg.app_timeout = orig_app_timeout;
-      if (PREDICT_FALSE (rv))
-	VDBG (0, "application detach timed out! returning %d (%s)", rv,
-	      vppcom_retval_str (rv));
-      vec_free (vcm->app_name);
-      vcl_worker_cleanup (vcl_worker_get_current (), 0 /* notify vpp */ );
-    }
-  else
-    {
-      vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
-    }
+  vcl_send_app_detach (vcl_worker_get_current ());
 
-  vcl_set_worker_index (~0);
-  vcl_elog_stop (vcm);
+  /* *INDENT-OFF* */
+  pool_foreach (wrk, vcm->workers, ({
+    vcl_worker_cleanup (wrk, 0 /* notify vpp */ );
+  }));
+  /* *INDENT-ON* */
+
+//  vec_free (vcm->app_name);
+//  pool_free (vcm->workers);
+//  hash_free (vcm->segment_table);
+//  hash_free (vcm->error_string_by_error_number);
+//  clib_spinlock_free (&vcm->workers_lock);
+//  clib_rwlock_free (&vcm->segment_table_lock);
   vl_client_disconnect_from_vlib ();
+  vcl_elog_stop (vcm);
+
+  struct dlmallinfo mi;
+  mspace heap;
+  heap = clib_mem_get_heap ();
+  mi = mspace_mallinfo (heap);
+  munmap (mspace_least_addr(heap), mi.arena);
 }
 
 int
