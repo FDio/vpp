@@ -168,6 +168,7 @@ set(VPPINFRA_HEADERS
   time.h
   time_range.h
   timing_wheel.h
+  tw_timer_2t_2w_512sl.h
   tw_timer_16t_1w_2048sl.h
   tw_timer_16t_2w_512sl.h
   tw_timer_1t_3w_1024sl_ov.h
