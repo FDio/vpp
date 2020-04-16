@@ -193,6 +193,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 				      snat_session_key_t l_key,
 				      snat_session_key_t e_key,
 				      vlib_node_runtime_t * node,
+				      u32 rx_fib_index,
 				      u32 thread_index,
 				      twice_nat_type_t twice_nat,
 				      lb_nat_type_t lb_nat, f64 now)
@@ -205,7 +206,8 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   snat_session_key_t eh_key;
   nat44_is_idle_session_ctx_t ctx;
 
-  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE
+      (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_elog_notice ("maximum sessions exceeded");
@@ -359,7 +361,9 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
     {
       u32 proto;
 
-      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE
+	  (nat44_ed_maximum_sessions_exceeded
+	   (sm, rx_fib_index, thread_index)))
 	return;
 
       s = nat_ed_session_alloc (sm, thread_index, now);
@@ -502,7 +506,8 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 
       /* Create session initiated by host from external network */
       s = create_session_for_static_mapping_ed (sm, b, l_key, e_key, node,
-						thread_index, 0, 0,
+						rx_fib_index, thread_index, 0,
+						0,
 						vlib_time_now
 						(sm->vlib_main));
 
@@ -568,7 +573,9 @@ nat44_ed_out2in_unknown_proto (snat_main_t * sm,
     }
   else
     {
-      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE
+	  (nat44_ed_maximum_sessions_exceeded
+	   (sm, rx_fib_index, thread_index)))
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_elog_notice ("maximum sessions exceeded");
@@ -1089,6 +1096,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      /* Create session initiated by host from external network */
 	      s0 = create_session_for_static_mapping_ed (sm, b0, l_key0,
 							 e_key0, node,
+							 rx_fib_index0,
 							 thread_index,
 							 twice_nat0,
 							 lb_nat0, now);

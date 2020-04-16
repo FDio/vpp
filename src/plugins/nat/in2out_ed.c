@@ -318,7 +318,9 @@ slow_path_ed (snat_main_t * sm,
 	}
     }
 
-  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+  // TODO: based on fib index do a lookup
+  if (PREDICT_FALSE
+      (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
     {
       if (!nat_global_lru_free_one (sm, thread_index, now))
 	{
@@ -812,7 +814,9 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
     }
   else
     {
-      if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+      if (PREDICT_FALSE
+	  (nat44_ed_maximum_sessions_exceeded
+	   (sm, rx_fib_index, thread_index)))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);

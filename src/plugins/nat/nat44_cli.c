@@ -1533,6 +1533,49 @@ print:
 }
 
 static clib_error_t *
+nat44_set_session_limit_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  u32 session_limit = 0, vrf_id = 0;
+
+  if (sm->deterministic)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &session_limit))
+	;
+      else if (unformat (line_input, "vrf %u", &vrf_id))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!session_limit)
+    error = clib_error_return (0, "missing value of session limit");
+  else if (nat44_set_session_limit (session_limit, vrf_id))
+    error = clib_error_return (0, "nat44_set_session_limit failed");
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
 nat44_del_user_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -2583,6 +2626,18 @@ VLIB_CLI_COMMAND (nat44_show_sessions_command, static) = {
   .path = "show nat44 sessions",
   .short_help = "show nat44 sessions [detail|metrics]",
   .function = nat44_show_sessions_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{set nat44 session limit}
+ * Set NAT44 session limit.
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_set_session_limit_command, static) = {
+  .path = "set nat44 session limit",
+  .short_help = "set nat44 session limit <limit> [vrf <table-id>]",
+  .function = nat44_set_session_limit_command_fn,
 };
 
 /*?
