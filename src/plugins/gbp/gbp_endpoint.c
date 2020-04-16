@@ -1398,8 +1398,8 @@ gbp_endpoint_scan_l2 (vlib_main_t * vm)
 	  last_start = vlib_time_now (vm);
 	}
 
-      b = &gte_table->buckets[i];
-      if (b->offset == 0)
+      b = clib_bihash_get_bucket_16_8 (gte_table, i);
+      if (clib_bihash_bucket_is_empty_16_8 (b))
 	continue;
       v = clib_bihash_get_value_16_8 (gte_table, b->offset);
 
@@ -1416,7 +1416,7 @@ gbp_endpoint_scan_l2 (vlib_main_t * vm)
 	       * Note: we may have just freed the bucket's backing
 	       * storage, so check right here...
 	       */
-	      if (b->offset == 0)
+	      if (clib_bihash_bucket_is_empty_16_8 (b))
 		goto doublebreak;
 	    }
 	  v++;
@@ -1453,8 +1453,8 @@ gbp_endpoint_scan_l3 (vlib_main_t * vm)
 	  last_start = vlib_time_now (vm);
 	}
 
-      b = &gte_table->buckets[i];
-      if (b->offset == 0)
+      b = clib_bihash_get_bucket_24_8 (gte_table, i);
+      if (clib_bihash_bucket_is_empty_24_8 (b))
 	continue;
       v = clib_bihash_get_value_24_8 (gte_table, b->offset);
 
@@ -1471,7 +1471,7 @@ gbp_endpoint_scan_l3 (vlib_main_t * vm)
 	       * Note: we may have just freed the bucket's backing
 	       * storage, so check right here...
 	       */
-	      if (b->offset == 0)
+	      if (clib_bihash_bucket_is_empty_24_8 (b))
 		goto doublebreak;
 	    }
 	  v++;
