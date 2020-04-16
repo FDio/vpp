@@ -4265,6 +4265,9 @@ class TestNAT44EndpointDependent(MethodHolder):
     def tearDownClass(cls):
         super(TestNAT44EndpointDependent, cls).tearDownClass()
 
+    # def test_session_limit_per_vrf(self):
+    #    pass
+
     def test_frag_in_order(self):
         """ NAT44 translate fragments arriving in order """
         self.nat44_add_address(self.nat_addr)

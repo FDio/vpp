@@ -31,6 +31,17 @@ nat44_maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
   return 0;
 }
 
+static_always_inline u8
+nat44_ed_maximum_sessions_exceeded (snat_main_t * sm,
+				    u32 fib_index, u32 thread_index)
+{
+  u32 translations;
+  translations = pool_elts (sm->per_thread_data[thread_index].sessions);
+  if (vec_len (sm->max_translations_per_fib) <= fib_index)
+    fib_index = 0;
+  return translations >= sm->max_translations_per_fib[fib_index];
+}
+
 static_always_inline snat_session_t *
 nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
 			 snat_session_t * s, u32 thread_index, f64 now)

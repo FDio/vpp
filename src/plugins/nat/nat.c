@@ -329,6 +329,26 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 				      &s->out2in);
 }
 
+int
+nat44_set_session_limit (u32 session_limit, u32 vrf_id)
+{
+  snat_main_t *sm = &snat_main;
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  u32 len = vec_len (sm->max_translations_per_fib);
+
+  if (len <= fib_index)
+    {
+      vec_validate (sm->max_translations_per_fib, fib_index + 1);
+
+      for (; len < vec_len (sm->max_translations_per_fib); len++)
+	sm->max_translations_per_fib[len] = sm->max_translations;
+    }
+
+  sm->max_translations_per_fib[fib_index] = session_limit;
+  return 0;
+}
+
+
 void
 nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 			 u32 thread_index, u8 is_ha)
@@ -4025,9 +4045,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
   sm->translation_buckets = translation_buckets;
   sm->translation_memory_size = translation_memory_size;
-
   /* do not exceed load factor 10 */
   sm->max_translations = 10 * translation_buckets;
+  vec_add1 (sm->max_translations_per_fib, sm->max_translations);
+
   sm->max_translations_per_user = max_translations_per_user == ~0 ?
     sm->max_translations : max_translations_per_user;
 

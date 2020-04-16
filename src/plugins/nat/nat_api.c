@@ -242,6 +242,33 @@ vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
 }
 
 static void
+vl_api_nat44_set_session_limit_t_handler (vl_api_nat44_set_session_limit_t *
+					  mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_set_session_limit_reply_t *rmp;
+  int rv = 0;
+
+  rv = nat44_set_session_limit
+    (ntohl (mp->session_limit), ntohl (mp->vrf_id));
+
+  REPLY_MACRO (VL_API_NAT_SET_WORKERS_REPLY);
+}
+
+static void *
+vl_api_nat44_set_session_limit_t_print (vl_api_nat44_set_session_limit_t *
+					mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_set_session_limit ");
+  s = format (s, "session_limit %d", ntohl (mp->session_limit));
+  s = format (s, "vrf_id %d", ntohl (mp->vrf_id));
+
+  FINISH;
+}
+
+static void
 vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
 {
   snat_main_t *sm = &snat_main;
@@ -3141,6 +3168,7 @@ _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT44_DEL_USER, nat44_del_user)                                       \
+_(NAT44_SET_SESSION_LIMIT, nat44_set_session_limit)                     \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \

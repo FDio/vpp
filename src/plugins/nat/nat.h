@@ -634,12 +634,16 @@ typedef struct snat_main_s
   u8 deterministic;
   u8 out2in_dpo;
   u8 endpoint_dependent;
+
   u32 translation_buckets;
   uword translation_memory_size;
   u32 max_translations;
+  u32 *max_translations_per_fib;
+
   u32 user_buckets;
   uword user_memory_size;
   u32 max_translations_per_user;
+
   u32 outside_vrf_id;
   u32 outside_fib_index;
   u32 inside_vrf_id;
@@ -1252,6 +1256,15 @@ int nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
  */
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 			    u32 thread_index, u8 is_ha);
+
+/**
+ * @brief Set NAT44 session limit (session limit, vrf id)
+ *
+ * @param session_limit Session limit
+ * @param vrf_id        VRF id
+ * @return 0 on success, non-zero value otherwise
+ */
+int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 
 /**
  * @brief Free NAT44 ED session data (lookup keys, external addrres port)

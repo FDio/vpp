@@ -139,6 +139,19 @@ autoreply define nat44_session_cleanup {
   u32 context;
 };
 
+/** \brief NAT44 set session limit
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param session_limit - session limit
+    @param vrf_id - vrf id
+*/
+autoreply define nat44_set_session_limit {
+  u32 client_index;
+  u32 context;
+  u32 session_limit;
+  u32 vrf_id;
+};
+
 /** \brief Set NAT logging level
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
