@@ -1398,18 +1398,18 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   gid_address_copy (&m_args->eid, eid);
   m_args->locator_set_index = old_map->locator_set_index;
 
-  /* delete mapping associated from map-cache */
-  vnet_lisp_map_cache_add_del (m_args, 0);
-
   ls_args->is_add = 0;
   ls_args->index = old_map->locator_set_index;
-
-  /* delete locator set */
-  vnet_lisp_add_del_locator_set (ls_args, 0);
 
   /* delete timer associated to the mapping if any */
   if (old_map->timer_set)
     mapping_delete_timer (lcm, mi);
+
+  /* delete locator set */
+  vnet_lisp_add_del_locator_set (ls_args, 0);
+
+  /* delete mapping associated from map-cache */
+  vnet_lisp_map_cache_add_del (m_args, 0);
 
   /* return old mapping index */
   if (res_map_index)
@@ -2004,8 +2004,8 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 	      removed = 1;
 	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
 	    }
-	  if (0 == loc->local &&
-	      !gid_address_cmp (&loc->address, &itloc->address))
+	  else if (0 == loc->local &&
+		   !gid_address_cmp (&loc->address, &itloc->address))
 	    {
 	      removed = 1;
 	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
