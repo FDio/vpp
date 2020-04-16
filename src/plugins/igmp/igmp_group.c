@@ -65,38 +65,39 @@ igmp_group_src_update (igmp_group_t * group,
 }
 
 void
-igmp_group_clear (igmp_group_t * group)
+igmp_group_clear (igmp_group_t ** group)
 {
   igmp_config_t *config;
   u32 ii;
 
-  ASSERT (group);
+  ASSERT (*group);
 
-  config = igmp_config_get (group->config);
+  config = igmp_config_get ((*group)->config);
 
   /* If interface is in ROUTER mode and IGMP proxy is enabled
    * remove mfib path.
    */
   if (config->mode == IGMP_MODE_ROUTER)
     {
-      igmp_proxy_device_mfib_path_add_del (group, /* add */ 0);
+      igmp_proxy_device_mfib_path_add_del (*group, /* add */ 0);
     }
 
   IGMP_DBG ("clear-group: %U %U",
-	    format_igmp_key, group->key,
+	    format_igmp_key, (*group)->key,
 	    format_vnet_sw_if_index_name,
 	    vnet_get_main (), config->sw_if_index);
 
-  igmp_group_free_all_srcs (group);
+  igmp_group_free_all_srcs (*group);
 
   for (ii = 0; ii < IGMP_GROUP_N_TIMERS; ii++)
     {
-      igmp_timer_retire (&group->timers[ii]);
+      igmp_timer_retire (&(*group)->timers[ii]);
     }
 
-  hash_unset_mem (config->igmp_group_by_key, group->key);
-  clib_mem_free (group->key);
-  pool_put (igmp_main.groups, group);
+  hash_unset_mem (config->igmp_group_by_key, (*group)->key);
+  clib_mem_free ((*group)->key);
+  pool_put (igmp_main.groups, *group);
+  *group = 0;
 }
 
 igmp_group_t *

@@ -282,7 +282,7 @@ igmp_listen (vlib_main_t * vm,
 	  }
 
 	  if (0 == igmp_group_n_srcs (group, mode))
-	    igmp_group_clear (group);
+	    igmp_group_clear (&group);
 
 	  vec_free (added);
 	  vec_free (removed);

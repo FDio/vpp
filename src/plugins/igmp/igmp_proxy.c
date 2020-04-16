@@ -246,18 +246,18 @@ igmp_proxy_device_block_src (igmp_config_t * config, igmp_group_t * group,
     {
       igmp_proxy_device_mfib_path_add_del (proxy_group, 0);
       igmp_proxy_device_mfib_path_add_del (group, 0);
-      igmp_group_clear (proxy_group);
+      igmp_group_clear (&proxy_group);
     }
 }
 
 always_inline void
-igmp_proxy_device_merge_src (igmp_group_t * proxy_group, igmp_src_t * src,
+igmp_proxy_device_merge_src (igmp_group_t ** proxy_group, igmp_src_t * src,
 			     ip46_address_t ** srcaddrs, u8 block)
 {
   igmp_src_t *proxy_src;
   u32 d_config;
 
-  proxy_src = igmp_src_lookup (proxy_group, src->key);
+  proxy_src = igmp_src_lookup (*proxy_group, src->key);
 
   if (proxy_src == NULL)
     {
@@ -267,11 +267,11 @@ igmp_proxy_device_merge_src (igmp_group_t * proxy_group, igmp_src_t * src,
       d_config = igmp_group_get (src->group)->config;
 
       proxy_src =
-	igmp_src_alloc (igmp_group_index (proxy_group), src->key,
+	igmp_src_alloc (igmp_group_index (*proxy_group), src->key,
 			IGMP_MODE_HOST);
 
-      hash_set_mem (proxy_group->igmp_src_by_key
-		    [proxy_group->router_filter_mode], proxy_src->key,
+      hash_set_mem ((*proxy_group)->igmp_src_by_key
+		    [(*proxy_group)->router_filter_mode], proxy_src->key,
 		    igmp_src_index (proxy_src));
 
       vec_validate_init_empty (proxy_src->referance_by_config_index, d_config,
@@ -299,12 +299,12 @@ igmp_proxy_device_merge_src (igmp_group_t * proxy_group, igmp_src_t * src,
 
 	  vec_add1 (*srcaddrs, *proxy_src->key);
 
-	  igmp_group_src_remove (proxy_group, proxy_src);
+	  igmp_group_src_remove (*proxy_group, proxy_src);
 	  igmp_src_free (proxy_src);
 
-	  if (igmp_group_n_srcs (proxy_group, IGMP_FILTER_MODE_INCLUDE) == 0)
+	  if (igmp_group_n_srcs (*proxy_group, IGMP_FILTER_MODE_INCLUDE) == 0)
 	    {
-	      igmp_proxy_device_mfib_path_add_del (proxy_group, 0);
+	      igmp_proxy_device_mfib_path_add_del (*proxy_group, 0);
 	      igmp_group_clear (proxy_group);
 	    }
 	  return;
@@ -348,7 +348,7 @@ igmp_proxy_device_merge_group (igmp_proxy_device_t * proxy_device,
   /* *INDENT-OFF* */
   FOR_EACH_SRC (src, group, group->router_filter_mode,
     ({
-      igmp_proxy_device_merge_src (proxy_group, src, srcaddrs, block);
+      igmp_proxy_device_merge_src (&proxy_group, src, srcaddrs, block);
     }));
   /* *INDENT-ON* */
   return proxy_group;

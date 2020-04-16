@@ -66,7 +66,7 @@ igmp_src_exp (u32 obj, void *dat)
   igmp_src_free (src);
 
   if (0 == igmp_group_n_srcs (group, IGMP_FILTER_MODE_INCLUDE))
-    igmp_group_clear (group);
+    igmp_group_clear (&group);
 }
 
 igmp_src_t *
