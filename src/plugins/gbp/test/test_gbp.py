@@ -36,7 +36,7 @@ NUM_PKTS = 67
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
-                      tep=None, sclass=None):
+                      tep=None, sclass=None, flags=None):
     if ip:
         vip = VppIpAddress(ip)
     if mac:
@@ -55,6 +55,9 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
                 continue
         if sclass:
             if ep.endpoint.sclass != sclass:
+                continue
+        if flags:
+            if flags != (flags & ep.endpoint.flags):
                 continue
         if ip:
             for eip in ep.endpoint.ips:
@@ -1542,12 +1545,17 @@ class TestGBP(VppTestCase):
 
     def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
                             tep=None, n_tries=100, s_time=1):
+        # only learnt EP can timeout
+        ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
+        flags = ep_flags.GBP_API_ENDPOINT_FLAG_LEARNT
         while (n_tries):
-            if not find_gbp_endpoint(self, sw_if_index, ip, mac, tep=tep):
+            if not find_gbp_endpoint(self, sw_if_index, ip, mac, tep=tep,
+                                     flags=flags):
                 return True
             n_tries = n_tries - 1
             self.sleep(s_time)
-        self.assertFalse(find_gbp_endpoint(self, sw_if_index, ip, mac))
+        self.assertFalse(find_gbp_endpoint(self, sw_if_index, ip, mac, tep=tep,
+                                           flags=flags))
         return False
 
     def test_gbp_learn_l2(self):
@@ -5877,6 +5885,8 @@ class TestGBP(VppTestCase):
         self.vlan_101.set_vtr(L2_VTR_OP.L2_DISABLED)
         self.vlan_100.set_vtr(L2_VTR_OP.L2_DISABLED)
         self.pg7.unconfig_ip4()
+        # make sure the programmed EP is no longer learnt from DP
+        self.wait_for_ep_timeout(sw_if_index=rep.itf.sw_if_index, ip=rep.ip4)
 
 
 if __name__ == '__main__':
