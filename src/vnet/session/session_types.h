@@ -309,9 +309,21 @@ session_parse_handle (session_handle_t handle, u32 * index,
 }
 
 static inline session_handle_t
-session_make_handle (u32 session_index, u32 thread_index)
+session_make_handle (u32 session_index, u32 data)
 {
-  return (((u64) thread_index << 32) | (u64) session_index);
+  return (((u64) data << 32) | (u64) session_index);
+}
+
+always_inline u32
+session_handle_index (session_handle_t ho_handle)
+{
+  return (ho_handle & 0xffffffff);
+}
+
+always_inline u32
+session_handle_data (session_handle_t ho_handle)
+{
+  return (ho_handle >> 32);
 }
 
 typedef enum

@@ -282,6 +282,20 @@ session_delete (session_t * s)
   session_free_w_fifos (s);
 }
 
+void
+session_cleanup_half_open (transport_proto_t tp, session_handle_t ho_handle)
+{
+  transport_cleanup_half_open (tp, session_handle_index (ho_handle));
+}
+
+void
+session_half_open_delete_notify (transport_proto_t tp,
+				 session_handle_t ho_handle)
+{
+  app_worker_t *app_wrk = app_worker_get (session_handle_data (ho_handle));
+  app_worker_del_half_open (app_wrk, tp, ho_handle);
+}
+
 session_t *
 session_alloc_for_connection (transport_connection_t * tc)
 {
@@ -738,10 +752,10 @@ int
 session_stream_connect_notify (transport_connection_t * tc,
 			       session_error_t err)
 {
+  session_handle_t ho_handle, wrk_handle;
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
   session_t *s = 0;
-  u64 ho_handle;
 
   /*
    * Find connection handle and cleanup half-open table
@@ -757,11 +771,19 @@ session_stream_connect_notify (transport_connection_t * tc,
   /* Get the app's index from the handle we stored when opening connection
    * and the opaque (api_context for external apps) from transport session
    * index */
-  app_wrk = app_worker_get_if_valid (ho_handle >> 32);
+  app_wrk = app_worker_get_if_valid (session_handle_data (ho_handle));
   if (!app_wrk)
     return -1;
 
-  opaque = tc->s_index;
+  wrk_handle = app_worker_lookup_half_open (app_wrk, tc->proto, ho_handle);
+  if (wrk_handle == SESSION_INVALID_HANDLE)
+    return -1;
+
+  /* Make sure this is the same half-open index */
+  if (session_handle_index (wrk_handle) != session_handle_index (ho_handle))
+    return -1;
+
+  opaque = session_handle_data (wrk_handle);
 
   if (err)
     return app_worker_connect_notify (app_wrk, s, err, opaque);
@@ -1183,7 +1205,7 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
-  u64 handle;
+  u64 handle, wrk_handle;
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
@@ -1203,13 +1225,20 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
    * is needed when the connect notify comes and we have to notify the
    * external app
    */
-  handle = (((u64) app_wrk_index) << 32) | (u64) tc->c_index;
+  handle = session_make_handle (tc->c_index, app_wrk_index);
   session_lookup_add_half_open (tc, handle);
 
-  /* Store api_context (opaque) for when the reply comes. Not the nicest
-   * thing but better than allocating a separate half-open pool.
+  /* Store the half-open handle in the connection. Transport will use it
+   * when cleaning up @ref session_half_open_delete_notify
    */
-  tc->s_index = opaque;
+  tc->s_ho_handle = handle;
+
+  /* Track the half-open connections in case we want to forcefully
+   * clean them up @ref session_cleanup_half_open
+   */
+  wrk_handle = session_make_handle (tc->c_index, opaque);
+  app_worker_add_half_open (app_worker_get (app_wrk_index),
+			    rmt->transport_proto, handle, wrk_handle);
 
   return 0;
 }

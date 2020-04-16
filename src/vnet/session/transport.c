@@ -303,6 +303,13 @@ transport_cleanup (transport_proto_t tp, u32 conn_index, u8 thread_index)
   tp_vfts[tp].cleanup (conn_index, thread_index);
 }
 
+void
+transport_cleanup_half_open (transport_proto_t tp, u32 conn_index)
+{
+  if (tp_vfts[tp].cleanup)
+    tp_vfts[tp].cleanup_ho (conn_index);
+}
+
 int
 transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
 {
