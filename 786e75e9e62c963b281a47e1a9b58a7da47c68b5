@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "002a9bc9_1a9df952",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2020-04-16T15:31:33Z",
+      "side": 1,
+      "message": "OMG I am not used to this kind of commit messages XD",
+      "revId": "786e75e9e62c963b281a47e1a9b58a7da47c68b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e2ac387_061b0e13",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2020-04-16T15:31:33Z",
+      "side": 1,
+      "message": "Move inside \"if\"s ?",
+      "range": {
+        "startLine": 470,
+        "startChar": 14,
+        "endLine": 471,
+        "endChar": 31
+      },
+      "revId": "786e75e9e62c963b281a47e1a9b58a7da47c68b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4afaa038_217ec471",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2020-04-16T15:31:33Z",
+      "side": 1,
+      "message": "Looks like this is missing from the UDP implementation. Looks like a bug no ?",
+      "range": {
+        "startLine": 498,
+        "startChar": 22,
+        "endLine": 498,
+        "endChar": 67
+      },
+      "revId": "786e75e9e62c963b281a47e1a9b58a7da47c68b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f32bdda9_97221d1a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2020-04-16T15:31:33Z",
+      "side": 1,
+      "message": "I guess same comment here.",
+      "range": {
+        "startLine": 543,
+        "startChar": 29,
+        "endLine": 543,
+        "endChar": 67
+      },
+      "revId": "786e75e9e62c963b281a47e1a9b58a7da47c68b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e289c2a7_42ad699a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2020-04-16T15:31:33Z",
+      "side": 1,
+      "message": "Should this be a 6 ?",
+      "range": {
+        "startLine": 896,
+        "startChar": 32,
+        "endLine": 896,
+        "endChar": 33
+      },
+      "revId": "786e75e9e62c963b281a47e1a9b58a7da47c68b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
