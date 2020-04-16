@@ -1028,10 +1028,11 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 
       if (i < (h->nbuckets - 3))
 	{
-	  BVT (clib_bihash_bucket) * b = &h->buckets[i + 3];
+	  BVT (clib_bihash_bucket) * b =
+	    BV (clib_bihash_get_bucket) (h, i + 3);
 	  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
-	  b = &h->buckets[i + 1];
-	  if (b->offset)
+	  b = BV (clib_bihash_get_bucket) (h, i + 1);
+	  if (!BV (clib_bihash_bucket_is_empty) (b))
 	    {
 	      BVT (clib_bihash_value) * v =
 		BV (clib_bihash_get_value) (h, b->offset);
@@ -1039,8 +1040,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	    }
 	}
 
-      BVT (clib_bihash_bucket) * b = &h->buckets[i];
-      if (b->offset == 0)
+      BVT (clib_bihash_bucket) * b = BV (clib_bihash_get_bucket) (h, i);
+      if (BV (clib_bihash_bucket_is_empty) (b))
 	continue;
       BVT (clib_bihash_value) * v = BV (clib_bihash_get_value) (h, b->offset);
       for (j = 0; j < (1 << b->log2_pages); j++)
@@ -1146,7 +1147,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	       * Note: we may have just freed the bucket's backing
 	       * storage, so check right here...
 	       */
-	      if (b->offset == 0)
+	      if (BV (clib_bihash_bucket_is_empty) (b))
 		goto doublebreak;
 	    }
 	  v++;

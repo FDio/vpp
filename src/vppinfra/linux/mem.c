@@ -344,6 +344,38 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
     }
 }
 
+uword
+clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz)
+{
+  uword off, pagesize = 1 << log2_page_sz;
+  int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  u8 *p;
+
+  if (start)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, pagesize);
+
+  p = uword_to_pointer (start, void *);
+  p = mmap (p, size + pagesize, PROT_NONE, mmap_flags, -1, 0);
+
+  if (p == MAP_FAILED)
+    return ~0;
+
+  off = round_pow2 ((uword) p, pagesize) - (uword) p;
+
+  /* trim start and end of reservation to be page aligned */
+  if (off)
+    {
+      munmap (p, off);
+      p += off;
+    }
+
+  munmap (p + size, pagesize - off);
+
+  return (uword) p;
+}
+
 u64 *
 clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages)
 {
