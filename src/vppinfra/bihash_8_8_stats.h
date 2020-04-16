@@ -16,10 +16,14 @@
 #undef BIHASH_KVP_PER_PAGE
 #undef BIHASH_32_64_SVM
 #undef BIHASH_ENABLE_STATS
+#undef BIHASH_KVP_AT_BUCKET_LEVEL
+#undef BIHASH_LAZY_INSTANTIATE
 
 #define BIHASH_TYPE _8_8_stats
 #define BIHASH_KVP_PER_PAGE 4
 #define BIHASH_ENABLE_STATS 1
+#define BIHASH_KVP_AT_BUCKET_LEVEL 0
+#define BIHASH_LAZY_INSTANTIATE 1
 
 #ifndef __included_bihash_8_8_stats_h__
 #define __included_bihash_8_8__stats_h__

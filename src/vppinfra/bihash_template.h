@@ -345,19 +345,34 @@ format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
 format_function_t BV (format_bihash_lru);
 
+static inline
+BVT (clib_bihash_bucket) *
+BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
+{
+#if BIHASH_KVP_AT_BUCKET_LEVEL
+  uword offset;
+  offset = (hash & (h->nbuckets - 1));
+  offset = offset * (sizeof (BVT (clib_bihash_bucket))
+		     + (BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv))));
+  return ((BVT (clib_bihash_bucket) *) (((u8 *) h->buckets) + offset));
+#endif
+
+  return h->buckets + (hash & (h->nbuckets - 1));
+}
+
 static inline int BV (clib_bihash_search_inline_with_hash)
   (BVT (clib_bihash) * h, u64 hash, BVT (clib_bihash_kv) * key_result)
 {
-  u32 bucket_index;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
 
+#if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return -1;
+#endif
 
-  bucket_index = hash & (h->nbuckets - 1);
-  b = &h->buckets[bucket_index];
+  b = BV (clib_bihash_get_bucket) (h, hash);
 
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
@@ -400,13 +415,6 @@ static inline int BV (clib_bihash_search_inline)
   return BV (clib_bihash_search_inline_with_hash) (h, hash, key_result);
 }
 
-static inline
-BVT (clib_bihash_bucket) *
-BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
-{
-  return h->buckets + (hash & (h->nbuckets - 1));
-}
-
 static inline void BV (clib_bihash_prefetch_bucket)
   (BVT (clib_bihash) * h, u64 hash)
 {
@@ -419,8 +427,10 @@ static inline void BV (clib_bihash_prefetch_data)
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
 
+#if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return;
+#endif
 
   b = BV (clib_bihash_get_bucket) (h, hash);
 
@@ -445,8 +455,10 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
 
   ASSERT (valuep);
 
+#if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (alloc_arena (h) == 0))
     return -1;
+#endif
 
   b = BV (clib_bihash_get_bucket) (h, hash);
 
