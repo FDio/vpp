@@ -1090,35 +1090,34 @@ vppcom_app_create (char *app_name)
 void
 vppcom_app_destroy (void)
 {
-  int rv;
-  f64 orig_app_timeout;
+  struct dlmallinfo mi;
+  vcl_worker_t *wrk;
+  mspace heap;
 
   if (!pool_elts (vcm->workers))
     return;
 
   vcl_evt (VCL_EVT_DETACH, vcm);
 
-  if (pool_elts (vcm->workers) == 1)
-    {
-      vcl_send_app_detach (vcl_worker_get_current ());
-      orig_app_timeout = vcm->cfg.app_timeout;
-      vcm->cfg.app_timeout = 2.0;
-      rv = vcl_wait_for_app_state_change (STATE_APP_ENABLED);
-      vcm->cfg.app_timeout = orig_app_timeout;
-      if (PREDICT_FALSE (rv))
-	VDBG (0, "application detach timed out! returning %d (%s)", rv,
-	      vppcom_retval_str (rv));
-      vec_free (vcm->app_name);
-      vcl_worker_cleanup (vcl_worker_get_current (), 0 /* notify vpp */ );
-    }
-  else
-    {
-      vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
-    }
+  vcl_send_app_detach (vcl_worker_get_current ());
 
-  vcl_set_worker_index (~0);
+  /* *INDENT-OFF* */
+  pool_foreach (wrk, vcm->workers, ({
+    vcl_worker_cleanup (wrk, 0 /* notify vpp */ );
+  }));
+  /* *INDENT-ON* */
+
   vcl_elog_stop (vcm);
   vl_client_disconnect_from_vlib ();
+
+  /*
+   * Free the heap and fix vcm
+   */
+  heap = clib_mem_get_heap ();
+  mi = mspace_mallinfo (heap);
+  munmap (mspace_least_addr (heap), mi.arena);
+
+  vcm = &_vppcom_main;
 }
 
 int
