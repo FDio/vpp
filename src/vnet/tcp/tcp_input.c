@@ -210,6 +210,7 @@ tcp_rcv_rst (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
+      tcp_connection_timers_reset (tc);
       tcp_program_reset_ntf (wrk, tc);
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       break;
