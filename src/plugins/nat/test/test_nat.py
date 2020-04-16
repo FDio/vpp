@@ -1,40 +1,35 @@
 #!/usr/bin/env python3
 
 import ipaddress
-import socket
-import unittest
-import struct
 import random
-
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+import socket
+import struct
+import unittest
+from io import BytesIO
+from time import sleep
 
 import scapy.compat
-from scapy.layers.inet import IP, TCP, UDP, ICMP
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
-    ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, fragment6
-from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
-from scapy.layers.l2 import Ether, ARP, GRE
-from scapy.data import IP_PROTOS
-from scapy.packet import bind_layers, Raw
-from util import ppp
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
-from time import sleep
-from util import ip4_range
-from vpp_papi import mac_pton
-from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
-from io import BytesIO
-from vpp_papi import VppEnum
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
-from vpp_neighbor import VppNeighbor
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
-from ipaddress import IPv6Network
+from scapy.data import IP_PROTOS
+from scapy.layers.inet import IP, TCP, UDP, ICMP
+from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
+from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply, \
+    ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, fragment6
+from scapy.layers.l2 import Ether, ARP, GRE
+from scapy.packet import Raw
+from syslog_rfc5424_parser import SyslogMessage, ParseError
+from syslog_rfc5424_parser.constants import SyslogSeverity
+from util import ip4_range
 from util import ppc, ppp
-from socket import inet_pton, AF_INET
 from vpp_acl import AclRule, VppAcl, VppAclInterface
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_neighbor import VppNeighbor
+from vpp_papi import VppEnum
 
 
 # NAT HA protocol event data
@@ -4149,6 +4144,139 @@ class TestNAT44(MethodHolder):
         self.logger.info(
             self.vapi.cli("show nat addr-port-assignment-alg"))
         self.logger.info(self.vapi.cli("show nat ha"))
+
+
+class TestNAT44EndpointDependent2(MethodHolder):
+    """ Endpoint-Dependent mapping and filtering test cases """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestNAT44EndpointDependent2, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["nat", "{", "endpoint-dependent", "}"])
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestNAT44EndpointDependent2, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestNAT44EndpointDependent2, self).tearDown()
+
+    @classmethod
+    def create_and_add_ip4_table(cls, i, table_id):
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': table_id})
+        i.set_table_ip4(table_id)
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestNAT44EndpointDependent2, cls).setUpClass()
+
+        cls.create_pg_interfaces(range(3))
+        cls.interfaces = list(cls.pg_interfaces)
+
+        cls.create_and_add_ip4_table(cls.pg1, 10)
+
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+            i.generate_remote_hosts(1)
+            i.configure_ipv4_neighbors()
+
+    def setUp(self):
+        super(TestNAT44EndpointDependent2, self).setUp()
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.endpoint_dependent)
+
+    def nat_add_inside_interface(self, i):
+        self.vapi.nat44_interface_add_del_feature(
+            flags=self.config_flags.NAT_IS_INSIDE,
+            sw_if_index=i.sw_if_index, is_add=1)
+
+    def nat_add_outside_interface(self, i):
+        self.vapi.nat44_interface_add_del_feature(
+            flags=self.config_flags.NAT_IS_OUTSIDE,
+            sw_if_index=i.sw_if_index, is_add=1)
+
+    def nat_add_interface_address(self, i):
+        self.nat_addr = i.local_ip4
+        self.vapi.nat44_add_del_interface_addr(
+            sw_if_index=i.sw_if_index, is_add=1)
+
+    def nat_add_address(self, address, vrf_id=0xFFFFFFFF):
+        self.nat_addr = address
+        self.nat44_add_address(address, vrf_id=vrf_id)
+
+    def cli(self, command):
+        result = self.vapi.cli(command)
+        self.logger.info(result)
+        # print(result)
+
+    def show_configuration(self):
+        self.cli("show interface")
+        self.cli("show interface address")
+        self.cli("show nat44 addresses")
+        self.cli("show nat44 interfaces")
+
+    def create_tcp_stream(self, in_if, out_if, count):
+        """
+        Create tcp packet stream
+
+        :param in_if: Inside interface
+        :param out_if: Outside interface
+        :param count: count of packets to generate
+        """
+        pkts = []
+        port = 6303
+
+        for i in range(count):
+            p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+                 IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=64) /
+                 TCP(sport=port + i, dport=20))
+            pkts.append(p)
+
+        return pkts
+
+    def test_session_limit_per_vrf(self):
+
+        inside = self.pg0
+        inside_vrf10 = self.pg1
+        outside = self.pg2
+
+        limit = 5
+
+        # 2 interfaces pg0, pg1 (vrf10, limit 1 tcp session)
+        # non existing vrf_id makes process core dump
+        self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=10)
+
+        self.nat_add_inside_interface(inside)
+        self.nat_add_inside_interface(inside_vrf10)
+        self.nat_add_outside_interface(outside)
+
+        # vrf independent
+        self.nat_add_interface_address(outside)
+
+        # BUG: causing core dump - when bad vrf_id is specified
+        # self.nat44_add_address(outside.local_ip4, vrf_id=20)
+
+        self.show_configuration()
+
+        stream = self.create_tcp_stream(inside_vrf10, outside, limit * 2)
+        inside_vrf10.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(limit)
+
+        stream = self.create_tcp_stream(inside, outside, limit * 2)
+        inside.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(len(stream))
 
 
 class TestNAT44EndpointDependent(MethodHolder):
