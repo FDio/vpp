@@ -213,6 +213,11 @@ nat44_user_session_cleanup (snat_user_t * u, u32 thread_index, f64 now)
       // do cleanup of this call (refactor for ED NAT44 only)
       nat44_free_session_data (sm, s, thread_index, 0);
 
+      if (snat_is_session_static (s))
+	u->nstaticsessions--;
+      else
+	u->nsessions--;
+
       clib_dlist_remove (tsm->list_pool, s->per_user_index);
       pool_put_index (tsm->list_pool, s->per_user_index);
       clib_dlist_remove (tsm->global_lru_pool, s->global_lru_index);
@@ -220,11 +225,6 @@ nat44_user_session_cleanup (snat_user_t * u, u32 thread_index, f64 now)
       pool_put (tsm->sessions, s);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
-
-      if (snat_is_session_static (s))
-	u->nstaticsessions--;
-      else
-	u->nsessions--;
 
       cleared++;
     }
