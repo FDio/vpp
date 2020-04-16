@@ -75,6 +75,8 @@ app_worker_free (app_worker_t * app_wrk)
   }));
   /* *INDENT-ON* */
 
+  hash_free (app_wrk->listeners_table);
+
   for (i = 0; i < vec_len (handles); i++)
     {
       a->app_index = app->app_index;
@@ -83,6 +85,7 @@ app_worker_free (app_worker_t * app_wrk)
       /* seg manager is removed when unbind completes */
       (void) vnet_unlisten (a);
     }
+  vec_reset_length (handles);
 
   /*
    * Connects segment manager cleanup
@@ -96,6 +99,34 @@ app_worker_free (app_worker_t * app_wrk)
       segment_manager_init_free (sm);
     }
 
+  /*
+   * Half-open cleanup
+   */
+
+  for (i = 0; i < vec_len (app_wrk->half_open_table); i++)
+    {
+      if (!app_wrk->half_open_table[i])
+	continue;
+
+      /* *INDENT-OFF* */
+      hash_foreach (handle, sm_index, app_wrk->half_open_table[i], ({
+	vec_add1 (handles, handle);
+      }));
+      /* *INDENT-ON* */
+
+      hash_free (app_wrk->half_open_table[i]);
+
+      for (i = 0; i < vec_len (handles); i++)
+	{
+	  session_cleanup_half_open (i, handles[i]);
+	  app_worker_del_half_open (app_wrk, i, handles[i]);
+	}
+      vec_reset_length (handles);
+    }
+
+  vec_free (app_wrk->half_open_table);
+  vec_free (handles);
+
   /* If first segment manager is used by a listener */
   if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
       && app_wrk->first_segment_manager != app_wrk->connects_seg_manager)
@@ -108,6 +139,7 @@ app_worker_free (app_worker_t * app_wrk)
       if (!segment_manager_has_fifos (sm))
 	segment_manager_free (sm);
     }
+
 
   if (CLIB_DEBUG)
     clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
@@ -332,6 +364,48 @@ app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
 						 s, err);
+}
+
+int
+app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+			  u64 ho_handle, u32 ho_index)
+{
+  clib_warning ("adding %lx", ho_handle);
+  ASSERT (vlib_get_thread_index () == 0);
+//  clib_spinlock_lock (&app_wrk->half_open_table_lock);
+  vec_validate (app_wrk->half_open_table, tp);
+  hash_set (app_wrk->half_open_table[tp], ho_handle, ho_index);
+//  clib_spinlock_unlock (&app_wrk->half_open_table_lock);
+  return 0;
+}
+
+int
+app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+			  u64 ho_handle)
+{
+  clib_warning ("removing %lx", ho_handle);
+
+  ASSERT (vlib_get_thread_index () == 0);
+//  clib_spinlock_lock (&app_wrk->half_open_table_lock);
+  hash_unset (app_wrk->half_open_table, ho_handle);
+//  clib_spinlock_unlock (&app_wrk->half_open_table_lock);
+  return 0;
+}
+
+u64
+app_worker_lookup_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+			     u64 ho_handle)
+{
+  u64 *ho_wrk_handlep;
+
+  clib_warning ("looking up %lx", ho_handle);
+
+//  clib_spinlock_lock (&app_wrk->half_open_table_lock);
+  ho_wrk_handlep = hash_get (app_wrk->half_open_table[tp], ho_handle);
+//  clib_spinlock_unlock (&app_wrk->half_open_table_lock);
+  if (!ho_wrk_handlep)
+    return SESSION_INVALID_HANDLE;
+  return *ho_wrk_handlep;
 }
 
 int

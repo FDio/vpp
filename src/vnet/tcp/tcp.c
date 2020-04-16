@@ -186,7 +186,7 @@ tcp_session_get_listener (u32 listener_index)
  *
  */
 static void
-tcp_half_open_connection_del (tcp_connection_t * tc)
+tcp_half_open_connection_free (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   clib_spinlock_lock_if_init (&tm->half_open_lock);
@@ -216,7 +216,7 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
 
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
-  tcp_half_open_connection_del (tc);
+  tcp_half_open_connection_free (tc);
   return 0;
 }
 
@@ -441,6 +441,18 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
     return;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
   tcp_connection_cleanup (tc);
+}
+
+static void
+tcp_session_cleanup_ho (u32 conn_index)
+{
+  tcp_worker_ctx_t *wrk;
+  tcp_connection_t *tc;
+
+  wrk = tcp_get_worker (0);
+  tc = tcp_half_open_connection_get (conn_index);
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
+  tcp_half_open_connection_free (tc);
 }
 
 static void
@@ -1148,6 +1160,7 @@ const static transport_proto_vft_t tcp_proto = {
   .connect = tcp_session_open,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
+  .cleanup_ho = tcp_session_cleanup_ho,
   .reset = tcp_session_reset,
   .send_params = tcp_session_send_params,
   .update_time = tcp_update_time,

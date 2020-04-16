@@ -1461,6 +1461,8 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
    * thread. */
   if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
     {
+      session_half_open_delete_notify (TRANSPORT_PROTO_TCP,
+				       tc->c_s_ho_handle);
       if (tcp_half_open_connection_cleanup (tc))
 	TCP_DBG ("could not remove half-open connection");
       return;
