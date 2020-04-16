@@ -817,8 +817,8 @@ static void
 ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t * ad)
 {
   /* remove our delegate */
-  adj_delegate_remove (ad->ad_adj_index, ipsec_tun_adj_delegate_type);
   ipsec_tun_protect_add_adj (ad->ad_adj_index, INDEX_INVALID);
+  adj_delegate_remove (ad->ad_adj_index, ipsec_tun_adj_delegate_type);
 }
 
 static void
