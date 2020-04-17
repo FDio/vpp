@@ -44,7 +44,7 @@
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
-#include <vnet/gso/gso.h>
+#include <vnet/gso/gho.h>
 /*
  * On the transmit side, we keep processing the buffers from vlib in the while
  * loop and prepare the copy order to be executed later. However, the static
@@ -236,8 +236,8 @@ static_always_inline void
 vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 			      virtio_net_hdr_t * hdr)
 {
-  gso_header_offset_t gho =
-    vnet_gso_header_offset_parser (b, b->flags & VNET_BUFFER_F_IS_IP6);
+  generic_header_offset_t gho = { 0 };
+  vnet_generic_header_offset_parser (b, &gho);
   if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
     {
       ip4_header_t *ip4;
