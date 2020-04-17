@@ -617,7 +617,8 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 
   clib_spinlock_lock (&fss->chunk_lock);
 
-  if (fss->free_fifos && fss->free_chunks[fl_index])
+  if (fss->free_fifos && fl_index < vec_len (fss->free_chunks)
+      && fss->free_chunks[fl_index])
     {
       f = fs_try_alloc_fifo_freelist (fss, fl_index);
       if (f)
@@ -691,9 +692,8 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
 
   clib_spinlock_lock (&fss->chunk_lock);
 
-  c = fss->free_chunks[fl_index];
-
-  if (c)
+  if (fl_index < vec_len (fss->free_chunks)
+      && (c = fss->free_chunks[fl_index]))
     {
       fss->free_chunks[fl_index] = c->next;
       c->next = 0;
