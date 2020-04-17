@@ -1,0 +1,59 @@
+From 1fd5b01a56edca5cd978cec647ef7990f263207a Mon Sep 17 00:00:00 2001
+From: Andrew Yourtchenko <ayourtch@gmail.com>
+Date: Wed, 15 Apr 2020 18:46:43 +0000
+Subject: [PATCH] fix compilation error for gperf source
+
+---
+ src/gperf-cc.c | 3 ---
+ src/gperf.c    | 3 ---
+ 2 files changed, 6 deletions(-)
+
+diff --git a/src/gperf-cc.c b/src/gperf-cc.c
+index 9ba8f99..48b9a53 100644
+--- a/src/gperf-cc.c
++++ b/src/gperf-cc.c
+@@ -38,10 +38,8 @@ error "gperf generated tables don't work with this execution character set. Plea
+ /* maximum key range = 55, duplicates = 0 */
+ 
+ #ifdef __GNUC__
+-__inline
+ #else
+ #ifdef __cplusplus
+-inline
+ #endif
+ #endif
+ static unsigned int
+@@ -94,7 +92,6 @@ hash_cc (str, len)
+ }
+ 
+ #ifdef __GNUC__
+-__inline
+ #endif
+ templ_ty *
+ is_reserved_cc (str, len)
+diff --git a/src/gperf.c b/src/gperf.c
+index 02d584e..b17d323 100644
+--- a/src/gperf.c
++++ b/src/gperf.c
+@@ -38,10 +38,8 @@ error "gperf generated tables don't work with this execution character set. Plea
+ /* maximum key range = 39, duplicates = 0 */
+ 
+ #ifdef __GNUC__
+-__inline
+ #else
+ #ifdef __cplusplus
+-inline
+ #endif
+ #endif
+ static unsigned int
+@@ -93,7 +91,6 @@ hash (str, len)
+ }
+ 
+ #ifdef __GNUC__
+-__inline
+ #endif
+ templ_ty *
+ is_reserved (str, len)
+-- 
+2.25.1
+

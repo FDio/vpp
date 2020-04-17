@@ -34,6 +34,7 @@ CMAKE?=cmake
 endif
 
 include packages.mk
+include packages/indent.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk

@@ -43,12 +43,33 @@ fi
 
 # Check to make sure we have indent.  Exit if we don't with an error message, but
 # don't *fail*.
+command -v dirname > /dev/null
+if [ $? != 0 ]; then
+    echo "Cound not find required command \"dirname\".  Checkstyle aborted"
+    exit ${EXIT_CODE}
+fi
 command -v indent > /dev/null
 if [ $? != 0 ]; then
     echo "Cound not find required command \"indent\".  Checkstyle aborted"
     exit ${EXIT_CODE}
 fi
-indent --version
+
+# Check that the installed indent has the correct version.
+# if not - the checkstyle job will fail upon upload, bringing a lot of pain..
+REQUIRED_INDENT_VERSION="GNU indent 2.2.11"
+INDENT_VERSION="$(indent --version)"
+if [ "${INDENT_VERSION}" != "${REQUIRED_INDENT_VERSION}" ]; then
+    LOCAL_INDENT="$(find $(pwd) -name indent -type f -executable | head -n 1)"
+    if [ "${LOCAL_INDENT}" != "" ]; then
+        PATH="$(dirname ${LOCAL_INDENT}):$PATH"
+        INDENT_VERSION=$(indent --version)
+    fi
+fi
+echo "${INDENT_VERSION}"
+if [ "${INDENT_VERSION}" != "${REQUIRED_INDENT_VERSION}" ]; then
+	echo "Wrong indent version. Need ${REQUIRED_INDENT_VERSION}. Please run 'make install-checkstyle'"
+	exit 1
+fi
 
 # Check to make sure we have clang-format.  Exit if we don't with an error message, but
 # don't *fail*.

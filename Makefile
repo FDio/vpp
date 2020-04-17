@@ -593,6 +593,18 @@ dpdk-install-dev:
 install-ext-deps:
 	make -C build/external install-$(PKG)
 
+.PHONY: install-checkstyle
+install-checkstyle:
+ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+ifeq ($(OS_VERSION_ID),20.04)
+endif
+	@sudo -E apt-get update
+	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install texi2html
+	make -C build/external indent-install
+else
+	$(error "This option currently works only on Ubuntu or Debian systems")
+endif
+
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
 
