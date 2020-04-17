@@ -211,6 +211,17 @@ add_vpp_library(vppinfra
   COMPONENT libvppinfra
 )
 
+if (DEFINED ENV{BUILD_STATIC_VPPCTL})
+add_vpp_library(vppinfra_static
+  SOURCES ${VPPINFRA_SRCS}
+  LINK_LIBRARIES m
+  INSTALL_HEADERS ${VPPINFRA_HEADERS}
+  COMPONENT libvppinfra
+  BUILD_STATIC_LIBRARY 1
+  NO_INSTALL
+)
+endif()
+
 ##############################################################################
 # vppinfra headers
 ##############################################################################
