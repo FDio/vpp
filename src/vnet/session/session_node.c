@@ -906,6 +906,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_BUFFERS;
     }
 
+  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
+
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
 
@@ -979,7 +981,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 
   *n_tx_packets += ctx->n_segs_per_evt;
-  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
