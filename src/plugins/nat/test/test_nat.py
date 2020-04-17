@@ -929,44 +929,6 @@ class MethodHolder(VppTestCase):
         # maxBIBEntries
         self.assertEqual(struct.pack("I", limit), record[472])
 
-    def verify_ipfix_max_fragments_ip6(self, data, limit, src_addr):
-        """
-        Verify IPFIX maximum IPv6 fragments pending reassembly exceeded event
-
-        :param data: Decoded IPFIX data records
-        :param limit: Number of maximum fragments pending reassembly
-        :param src_addr: IPv6 source address
-        """
-        self.assertEqual(1, len(data))
-        record = data[0]
-        # natEvent
-        self.assertEqual(scapy.compat.orb(record[230]), 13)
-        # natQuotaExceededEvent
-        self.assertEqual(struct.pack("I", 5), record[466])
-        # maxFragmentsPendingReassembly
-        self.assertEqual(struct.pack("I", limit), record[475])
-        # sourceIPv6Address
-        self.assertEqual(src_addr, record[27])
-
-    def verify_ipfix_max_fragments_ip4(self, data, limit, src_addr):
-        """
-        Verify IPFIX maximum IPv4 fragments pending reassembly exceeded event
-
-        :param data: Decoded IPFIX data records
-        :param limit: Number of maximum fragments pending reassembly
-        :param src_addr: IPv4 source address
-        """
-        self.assertEqual(1, len(data))
-        record = data[0]
-        # natEvent
-        self.assertEqual(scapy.compat.orb(record[230]), 13)
-        # natQuotaExceededEvent
-        self.assertEqual(struct.pack("I", 5), record[466])
-        # maxFragmentsPendingReassembly
-        self.assertEqual(struct.pack("I", limit), record[475])
-        # sourceIPv4Address
-        self.assertEqual(src_addr, record[8])
-
     def verify_ipfix_bib(self, data, is_create, src_addr):
         """
         Verify IPFIX NAT64 BIB create and delete events
@@ -2703,7 +2665,7 @@ class TestNAT44(MethodHolder):
         self.verify_capture_out(capture)
         self.nat44_add_address(self.nat_addr, is_add=0)
         self.vapi.ipfix_flush()
-        capture = self.pg3.get_capture(9)
+        capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
         # first load template
         for p in capture:
@@ -2748,7 +2710,7 @@ class TestNAT44(MethodHolder):
         self.pg1.assert_nothing_captured()
         sleep(1)
         self.vapi.ipfix_flush()
-        capture = self.pg3.get_capture(9)
+        capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
         # first load template
         for p in capture:
@@ -8907,7 +8869,7 @@ class TestNAT64(MethodHolder):
         p = self.pg1.get_capture(1)
         self.tcp_port_out = p[0][TCP].sport
         self.vapi.ipfix_flush()
-        capture = self.pg3.get_capture(10)
+        capture = self.pg3.get_capture(8)
         ipfix = IPFIXDecoder()
         # first load template
         for p in capture:

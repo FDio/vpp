@@ -142,13 +142,6 @@ typedef struct
   };
 } snat_user_key_t;
 
-typedef struct
-{
-  u32 sw_if_index;
-  u32 next_index;
-  u8 cached;
-} nat44_reass_trace_t;
-
 /* NAT API Configuration flags */
 #define foreach_nat_config_flag \
   _(0x01, IS_TWICE_NAT)         \
@@ -223,8 +216,6 @@ _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
 _(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
-_(MAX_REASS, "maximum reassemblies exceeded")           \
-_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
@@ -253,8 +244,6 @@ _(NO_TRANSLATION, "no translation")                     \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
 _(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
-_(MAX_REASS, "maximum reassemblies exceeded")           \
-_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
 _(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
@@ -1143,9 +1132,6 @@ void nat44_ed_hairpinning_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 int snat_hairpinning (snat_main_t * sm, vlib_buffer_t * b0,
 		      ip4_header_t * ip0, udp_header_t * udp0,
 		      tcp_header_t * tcp0, u32 proto0, int is_ed);
-void nat44_reass_hairpinning (snat_main_t * sm, vlib_buffer_t * b0,
-			      ip4_header_t * ip0, u16 sport, u16 dport,
-			      u32 proto0, int is_ed);
 
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
 int nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg);
