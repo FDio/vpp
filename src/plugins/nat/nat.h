@@ -96,6 +96,7 @@ typedef struct
   };
 } snat_session_key_t;
 
+#if 1
 /* endpoint-dependent session key (6-tuple) */
 typedef struct
 {
@@ -112,6 +113,7 @@ typedef struct
     u64 as_u64[2];
   };
 } nat_ed_ses_key_t;
+#endif
 
 /* deterministic session outside key */
 typedef struct

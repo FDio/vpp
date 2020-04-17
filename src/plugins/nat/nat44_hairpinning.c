@@ -126,9 +126,9 @@ snat_hairpinning (snat_main_t * sm,
       if (is_ed)
 	{
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
-	  make_ed_kv (&ed_kv, &ip0->dst_address, &ip0->src_address,
+	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
 		      ip0->protocol, sm->outside_fib_index, udp0->dst_port,
-		      udp0->src_port);
+		      udp0->src_port, ~0ULL, &ed_kv);
 	  rv = clib_bihash_search_16_8 (&sm->per_thread_data[ti].out2in_ed,
 					&ed_kv, &ed_value);
 	  si = ed_value.value;
@@ -226,11 +226,12 @@ snat_icmp_hairpinning (snat_main_t * sm,
       if (is_ed)
 	{
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
-	  make_ed_kv (&ed_kv, &ip0->dst_address, &ip0->src_address,
+	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
 		      inner_ip0->protocol, sm->outside_fib_index,
-		      l4_header->src_port, l4_header->dst_port);
-	  if (clib_bihash_search_16_8 (&sm->per_thread_data[ti].out2in_ed,
-				       &ed_kv, &ed_value))
+		      l4_header->src_port, l4_header->dst_port, ~0ULL,
+		      &ed_kv);
+	  if (clib_bihash_search_16_8
+	      (&sm->per_thread_data[ti].out2in_ed, &ed_kv, &ed_value))
 	    return 1;
 	  si = ed_value.value;
 	}
@@ -397,8 +398,8 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
   tsm = &sm->per_thread_data[ti];
 
   old_addr = ip->dst_address.as_u32;
-  make_ed_kv (&s_kv, &ip->dst_address, &ip->src_address, ip->protocol,
-	      sm->outside_fib_index, 0, 0);
+  make_ed_kv (&ip->dst_address, &ip->src_address, ip->protocol,
+	      sm->outside_fib_index, 0, 0, ~0ULL, &s_kv);
   if (clib_bihash_search_16_8 (&tsm->out2in_ed, &s_kv, &s_value))
     {
       make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
@@ -469,9 +470,9 @@ nat44_reass_hairpinning (snat_main_t * sm,
       if (is_ed)
 	{
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
-	  make_ed_kv (&ed_kv, &ip0->dst_address, &ip0->src_address,
+	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
 		      ip0->protocol, sm->outside_fib_index, udp0->dst_port,
-		      udp0->src_port);
+		      udp0->src_port, ~0ULL, &ed_kv);
 	  rv = clib_bihash_search_16_8 (&sm->per_thread_data[ti].out2in_ed,
 					&ed_kv, &ed_value);
 	  si = ed_value.value;

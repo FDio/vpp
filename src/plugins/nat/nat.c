@@ -3362,8 +3362,9 @@ nat44_ed_get_worker_in2out_cb (ip4_header_t * ip, u32 rx_fib_index,
 	  break;
 	}
 
-      make_ed_kv (&kv16, &ip->src_address, &ip->dst_address,
-		  ip->protocol, fib_index, udp->src_port, udp->dst_port);
+      make_ed_kv (&ip->src_address, &ip->dst_address,
+		  ip->protocol, fib_index, udp->src_port, udp->dst_port,
+		  ~0ULL, &kv16);
 
       /* *INDENT-OFF* */
       vec_foreach (tsm, sm->per_thread_data)
@@ -3432,8 +3433,9 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
     {
       udp = ip4_next_header (ip);
 
-      make_ed_kv (&kv16, &ip->dst_address, &ip->src_address,
-		  ip->protocol, rx_fib_index, udp->dst_port, udp->src_port);
+      make_ed_kv (&ip->dst_address, &ip->src_address,
+		  ip->protocol, rx_fib_index, udp->dst_port, udp->src_port,
+		  ~0ULL, &kv16);
 
       /* *INDENT-OFF* */
       vec_foreach (tsm, sm->per_thread_data)
@@ -3453,15 +3455,8 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
     }
   else if (proto == SNAT_PROTOCOL_ICMP)
     {
-      nat_ed_ses_key_t key;
-
-      if (!get_icmp_o2i_ed_key (b, ip, &key))
+      if (!get_icmp_o2i_ed_key (b, ip, rx_fib_index, ~0ULL, 0, 0, 0, &kv16))
 	{
-
-	  key.fib_index = rx_fib_index;
-	  kv16.key[0] = key.as_u64[0];
-	  kv16.key[1] = key.as_u64[1];
-
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
@@ -3818,14 +3813,14 @@ nat_ha_sadd_ed_cb (ip4_address_t * in_addr, u16 in_port,
   key.fib_index = fib_index;
   s->in2out = key;
 
-  make_ed_kv (&kv, in_addr, &s->ext_host_nat_addr,
+  make_ed_kv (in_addr, &s->ext_host_nat_addr,
 	      snat_proto_to_ip_proto (proto), fib_index, in_port,
-	      s->ext_host_nat_port);
+	      s->ext_host_nat_port, s - tsm->sessions, &kv);
   if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &kv, 1))
     nat_elog_warn ("in2out key add failed");
 
-  make_ed_kv (&kv, out_addr, eh_addr, snat_proto_to_ip_proto (proto),
-	      s->out2in.fib_index, out_port, eh_port);
+  make_ed_kv (out_addr, eh_addr, snat_proto_to_ip_proto (proto),
+	      s->out2in.fib_index, out_port, eh_port, s - tsm->sessions, &kv);
   if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &kv, 1))
     nat_elog_warn ("out2in key add failed");
 }
@@ -4433,7 +4428,6 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
 {
   ip4_header_t ip;
   clib_bihash_16_8_t *t;
-  nat_ed_ses_key_t key;
   clib_bihash_kv_16_8_t kv, value;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
   snat_session_t *s;
@@ -4451,16 +4445,12 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
   t = is_in ? &tsm->in2out_ed : &tsm->out2in_ed;
-  key.l_addr.as_u32 = addr->as_u32;
-  key.r_addr.as_u32 = eh_addr->as_u32;
-  key.l_port = clib_host_to_net_u16 (port);
-  key.r_port = clib_host_to_net_u16 (eh_port);
-  key.proto = proto;
-  key.fib_index = fib_index;
-  kv.key[0] = key.as_u64[0];
-  kv.key[1] = key.as_u64[1];
+  make_ed_kv (addr, eh_addr, proto, fib_index, clib_host_to_net_u16 (port),
+	      clib_host_to_net_u16 (eh_port), ~0ULL, &kv);
   if (clib_bihash_search_16_8 (t, &kv, &value))
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
+    {
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
 
   if (pool_is_free_index (tsm->sessions, value.value))
     return VNET_API_ERROR_UNSPECIFIED;
