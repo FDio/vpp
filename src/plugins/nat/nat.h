@@ -96,23 +96,6 @@ typedef struct
   };
 } snat_session_key_t;
 
-/* endpoint-dependent session key (6-tuple) */
-typedef struct
-{
-  union
-  {
-    struct
-    {
-      ip4_address_t l_addr;
-      ip4_address_t r_addr;
-      u32 proto:8, fib_index:24;
-      u16 l_port;
-      u16 r_port;
-    };
-    u64 as_u64[2];
-  };
-} nat_ed_ses_key_t;
-
 /* deterministic session outside key */
 typedef struct
 {
