@@ -615,6 +615,9 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
   min_size = clib_max ((fsh->pct_first_alloc * data_bytes) / 100, 4096);
   fl_index = fs_freelist_for_size (min_size);
 
+  if (fl_index >= vec_len (fss->free_chunks))
+    return 0;
+
   clib_spinlock_lock (&fss->chunk_lock);
 
   if (fss->free_fifos && fss->free_chunks[fl_index])
@@ -691,6 +694,7 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
 
   clib_spinlock_lock (&fss->chunk_lock);
 
+  ASSERT (vec_len (fss->free_chunks) > fl_index);
   c = fss->free_chunks[fl_index];
 
   if (c)
@@ -833,6 +837,9 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
   svm_fifo_t *f = 0;
 
   ASSERT (slice_index < fs->n_slices);
+
+  if (PREDICT_FALSE (data_bytes > 1 << fsh->max_log2_chunk_size))
+    return 0;
 
   fss = fsh_slice_get (fsh, slice_index);
   f = fs_try_alloc_fifo (fsh, fss, data_bytes);

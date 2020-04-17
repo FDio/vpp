@@ -2127,9 +2127,9 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   fifo_segment_main_t *sm = &segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
   u8 *test_data = 0, *data_buf = 0;
-  u32 n_free_chunk_bytes;
+  u32 n_free_chunk_bytes, new_size;
   fifo_segment_t *fs;
-  svm_fifo_t *f;
+  svm_fifo_t *f, *tf;
 
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
@@ -2298,12 +2298,20 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 	      n_free_chunk_bytes, rv);
 
   /*
-   * Allocate fifo that has all chunks
+   * Allocate fifo that has all chunks. Because we have a chunk size limit of
+   * segment_size / 2, allocate 2 fifos.
    */
-  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes, FIFO_SEGMENT_RX_FIFO);
+  tf = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2,
+				FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (tf != 0, "allocation should work");
+  SFIFO_TEST (svm_fifo_is_sane (tf), "fifo should be sane");
+
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2,
+			       FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f != 0, "allocation should work");
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
+  fifo_segment_free_fifo (fs, tf);
   fifo_segment_free_fifo (fs, f);
 
   rv = fifo_segment_fl_chunk_bytes (fs);
@@ -2325,12 +2333,13 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 			       FIFO_SEGMENT_RX_FIFO);
 
   /* Try to force fifo growth */
-  svm_fifo_set_size (f, svm_fifo_size (f) + n_free_chunk_bytes + 1);
-  validate_test_and_buf_vecs (&test_data, &data_buf, svm_fifo_size (f));
-  rv = svm_fifo_enqueue (f, svm_fifo_size (f), test_data);
+  new_size = svm_fifo_size (f) + n_free_chunk_bytes + 1;
+  svm_fifo_set_size (f, new_size);
+  validate_test_and_buf_vecs (&test_data, &data_buf, new_size);
+  rv = svm_fifo_enqueue (f, new_size, test_data);
 
-  SFIFO_TEST (rv != svm_fifo_size (f), "grow should fail size %u wrote %d",
-	      svm_fifo_size (f), rv);
+  SFIFO_TEST (rv != new_size, "grow should fail size %u wrote %d",
+	      new_size, rv);
 
   fifo_segment_free_fifo (fs, f);
 
@@ -2514,7 +2523,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t *sm = &segment_main;
   u32 max_pairs, pairs_req, free_space, pair_mem;
-  svm_fifo_t *f, *old;
+  svm_fifo_t *f, *tf, *old;
   fifo_segment_t *fs;
   int rv, alloc;
 
@@ -2561,13 +2570,20 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (clib_abs (rv - (int) free_space) < 512,
 	      "free space expected %u is %u", free_space, rv);
 
-  f = fifo_segment_alloc_fifo (fs, 200 << 10, FIFO_SEGMENT_RX_FIFO);
+  /* Use all free chunk memory */
+  f = fifo_segment_alloc_fifo (fs, 100 << 10, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f != 0, "fifo allocated");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  tf = fifo_segment_alloc_fifo (fs, 100 << 10, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (tf != 0, "fifo allocated");
+  SFIFO_TEST (svm_fifo_is_sane (tf), "fifo should be sane");
+
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == 0, "prealloc chunks expected %u is %u", 0, rv);
   rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 0, "chunk free space expected %u is %u", 0, rv);
-  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
 
   /*
    * Multiple preallocs that consume the remaining space
@@ -2622,6 +2638,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
    * Cleanup
    */
   fifo_segment_free_fifo (fs, old);
+  fifo_segment_free_fifo (fs, tf);
   close (fs->ssvm.fd);
   fifo_segment_delete (sm, fs);
   return 0;
