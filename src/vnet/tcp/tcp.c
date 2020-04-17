@@ -1421,7 +1421,7 @@ tcp_configuration_init (void)
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
-  tcp_cfg.cc_algo = TCP_CC_NEWRENO;
+  tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
 
   /* Time constants defined as timer tick (100ms) multiples */
