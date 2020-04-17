@@ -142,13 +142,6 @@ typedef struct
   };
 } snat_user_key_t;
 
-typedef struct
-{
-  u32 sw_if_index;
-  u32 next_index;
-  u8 cached;
-} nat44_reass_trace_t;
-
 /* NAT API Configuration flags */
 #define foreach_nat_config_flag \
   _(0x01, IS_TWICE_NAT)         \
