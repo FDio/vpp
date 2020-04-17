@@ -1005,6 +1005,8 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   gso/gho.h
+  gso/gro.h
+  gso/gro_func.h
   gso/gso.h
 )
 
