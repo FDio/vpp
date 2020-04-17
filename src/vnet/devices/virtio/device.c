@@ -24,6 +24,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gho.h>
+#include <vnet/gso/gro_func.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
@@ -517,7 +518,24 @@ retry:
 
   while (n_left && free_desc_count)
     {
-      u16 n_added = 0;
+      u16 n_added = 0, n_coalesce = 1;
+
+//      if (do_gso)
+//      {
+//        n_coalesce = vnet_gro_simple_inline (vm, buffers, n_left);
+//      }
+      if (do_gso)
+      {
+        buffers[0] = vnet_gro_flow_table_inline (vm, vring->flow_table, buffers[0]);
+        if (buffers[0] == 0)
+          {
+		  n_left--;
+		  buffers++;
+		continue;
+	  }
+      }
+
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], free_desc_count,
 			    avail, next, mask, do_gso, csum_offload,
@@ -525,8 +543,8 @@ retry:
 
       if (PREDICT_FALSE (n_added == 0))
 	{
-	  buffers++;
-	  n_left--;
+	  buffers += n_coalesce;
+	  n_left -= n_coalesce;
 	  continue;
 	}
       else if (PREDICT_FALSE (n_added > free_desc_count))
@@ -535,9 +553,14 @@ retry:
       avail++;
       next = (next + n_added) & mask;
       used += n_added;
-      buffers++;
-      n_left--;
+      buffers += n_coalesce;
+      n_left -= n_coalesce;
       free_desc_count -= n_added;
+      if (n_coalesce >= 2)
+	{
+	  vring->total_gro_vectors += n_coalesce;
+	  vring->n_gro_vectors++;
+	}
     }
 
   if (n_left != frame->n_vectors)
