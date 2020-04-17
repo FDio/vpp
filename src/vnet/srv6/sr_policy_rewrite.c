@@ -1147,7 +1147,7 @@ show_sr_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
       }
       s = format (s, "\b\b > ");
       s = format (s, "weight: %u", segment_list->weight);
-      vlib_cli_output (vm, "  %s", s);
+      vlib_cli_output (vm, "  %v", s);
     }
     vlib_cli_output (vm, "-----------");
   }
