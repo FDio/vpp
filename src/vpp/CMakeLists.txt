@@ -100,6 +100,15 @@ add_vpp_executable(vppctl
   LINK_LIBRARIES vppinfra
 )
 
+if (DEFINED ENV{BUILD_STATIC_VPPCTL})
+add_vpp_executable(vppctl_static
+  SOURCES app/vppctl.c
+  STATIC_LINK 1
+  NO_INSTALL
+  LINK_LIBRARIES vppinfra_static
+)
+endif()
+
 ##############################################################################
 # vpp_get_metrics binary
 ##############################################################################
