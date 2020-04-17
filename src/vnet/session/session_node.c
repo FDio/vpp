@@ -1032,7 +1032,17 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 
   *n_tx_packets += ctx->n_segs_per_evt;
-  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
+  /*
+   * /!\ /!\ /!\
+   * For unconnected transports (UDP for now), ctx->tc might have been
+   * cleaned-up during the last call to puhs_header() above. In that case,
+   * ctx->tc is no longer valid. However, as the pool is per-worker and no new
+   * connection could have been created, we can optimistically continue to
+   * access it here for performance reasons, until the end of the node
+   */
+  CLIB_MEM_OVERFLOW_BLOCK (transport_connection_update_tx_bytes
+			   (ctx->tc, ctx->max_len_to_snd), ctx->tc,
+			   sizeof (*ctx->tc));
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);

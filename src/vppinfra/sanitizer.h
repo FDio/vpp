@@ -10,18 +10,30 @@
 #define CLIB_MEM_POISON(a, s)   ASAN_POISON_MEMORY_REGION((a), (s))
 #define CLIB_MEM_UNPOISON(a, s) ASAN_UNPOISON_MEMORY_REGION((a), (s))
 
-#define CLIB_MEM_OVERFLOW(f, src, n) \
-  ({ \
-   typeof (f) clib_mem_overflow_ret__; \
+#define CLIB_MEM_OVERFLOW_START(src, n) \
    const void *clib_mem_overflow_src__ = (src); \
    size_t clib_mem_overflow_n__ = (n); \
    const void *clib_mem_overflow_start__ = __asan_region_is_poisoned((void *)clib_mem_overflow_src__, clib_mem_overflow_n__); \
    clib_mem_overflow_n__ -= (size_t)(clib_mem_overflow_start__ - clib_mem_overflow_src__); \
    if (clib_mem_overflow_start__) \
-     CLIB_MEM_UNPOISON(clib_mem_overflow_start__, clib_mem_overflow_n__); \
-   clib_mem_overflow_ret__ = f; \
+     CLIB_MEM_UNPOISON(clib_mem_overflow_start__, clib_mem_overflow_n__)
+
+#define CLIB_MEM_OVERFLOW_END \
    if (clib_mem_overflow_start__) \
      CLIB_MEM_POISON(clib_mem_overflow_start__, clib_mem_overflow_n__); \
+
+#define CLIB_MEM_OVERFLOW_BLOCK(block, src, n) \
+  do { \
+      CLIB_MEM_OVERFLOW_START(src, n); \
+      do { block; } while (0); \
+      CLIB_MEM_OVERFLOW_END; \
+   } while (0)
+
+#define CLIB_MEM_OVERFLOW(f, src, n) \
+  ({ \
+   CLIB_MEM_OVERFLOW_START(src, n); \
+   typeof(f) clib_mem_overflow_ret__ = f; \
+   CLIB_MEM_OVERFLOW_END; \
    clib_mem_overflow_ret__; \
    })
 
