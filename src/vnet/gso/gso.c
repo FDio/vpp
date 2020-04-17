@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/l2/l2_in_out_feat_arc.h>
 #include <vnet/gso/gso.h>

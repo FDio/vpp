@@ -23,7 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/gso/gso.h>
+#include <vnet/gso/hdr_offset_parser.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
@@ -173,7 +173,8 @@ set_checksum_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr)
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
+      generic_header_offset_t gho = { 0 };
+      vnet_generic_header_offset_parser (b, &gho);
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -196,7 +197,8 @@ set_checksum_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr)
     }
   else if (b->flags & VNET_BUFFER_F_IS_IP6)
     {
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
+      generic_header_offset_t gho = { 0 };
+      vnet_generic_header_offset_parser (b, &gho);
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -216,10 +218,11 @@ set_gso_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr)
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 0);
+      generic_header_offset_t gho = { 0 };
+      vnet_generic_header_offset_parser (b, &gho);
       hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
       hdr->gso_size = vnet_buffer2 (b)->gso_size;
-      hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
+      hdr->hdr_len = gho.hdr_sz;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
       hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
@@ -234,10 +237,11 @@ set_gso_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr)
     }
   else if (b->flags & VNET_BUFFER_F_IS_IP6)
     {
-      gso_header_offset_t gho = vnet_gso_header_offset_parser (b, 1);
+      generic_header_offset_t gho = { 0 };
+      vnet_generic_header_offset_parser (b, &gho);
       hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
       hdr->gso_size = vnet_buffer2 (b)->gso_size;
-      hdr->hdr_len = gho.l4_hdr_offset + gho.l4_hdr_sz;
+      hdr->hdr_len = gho.hdr_sz;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
       hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
