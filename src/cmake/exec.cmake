@@ -15,13 +15,19 @@ macro(add_vpp_executable exec)
   cmake_parse_arguments(ARG
     "ENABLE_EXPORTS;NO_INSTALL"
     ""
-    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    "SOURCES;LINK_LIBRARIES;STATIC;DEPENDS"
     ${ARGN}
   )
 
   add_executable(${exec} ${ARG_SOURCES})
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
+  endif()
+  if(ARG_STATIC)
+    set_target_properties(${exec} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+    # the compiler complains about unused -pie argument, so attempt to remove it
+    string(REPLACE "-pie" "" CMAKE_EXE_LINKER_FLAGS_RELEASE ${CMAKE_EXE_LINKER_FLAGS_RELEASE})
+    target_link_libraries(${exec} -static)
   endif()
   if(ARG_ENABLE_EXPORTS)
     set_target_properties(${exec} PROPERTIES ENABLE_EXPORTS 1)

@@ -208,6 +208,15 @@ add_vpp_library(vppinfra
   LTO
 )
 
+add_vpp_library(vppinfra_static
+  SOURCES ${VPPINFRA_SRCS}
+  LINK_LIBRARIES m
+  INSTALL_HEADERS ${VPPINFRA_HEADERS}
+  COMPONENT libvppinfra
+  BUILD_STATIC_LIBRARY 1
+  NO_INSTALL
+)
+
 ##############################################################################
 # vppinfra headers
 ##############################################################################
