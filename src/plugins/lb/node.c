@@ -173,6 +173,49 @@ lb_node_get_other_ports6 (ip6_header_t *ip60)
   return 0;
 }
 
+static inline int
+lb_search_5tuple (lb_main_t *lbm, ip6_header_t * ip60, udp_header_t *udp0, u32* vip_index0)
+{
+  clib_bihash_kv_40_8_t kv, val;
+  u64 t;
+  t = (u64) (vlib_time_now (lbm->vlib_main) * 1000.f);
+  int rv;
+
+  kv.key[0] = ip60->src_address.as_u64[0];
+  kv.key[1] = ip60->src_address.as_u64[1];
+  kv.key[2] = ip60->dst_address.as_u64[0];
+  kv.key[3] = ip60->dst_address.as_u64[1];
+  kv.key[4] = ((u64) ip60->protocol << 32) | (((u64) udp0->src_port) << 16) | ((u64) udp0->dst_port);
+  // FIXME fib index ?
+  rv = clib_bihash_search_40_8 (&lbm->return_path_5tuple_map, &kv, &val);
+  if (rv)
+    return rv;
+
+  if ((val.value >> 32) - t < LB_NAT_TIMEOUT)
+    {
+      *vip_index0 = (u32) val.value & 0xffffffff;
+      return 0;
+    }
+  clib_bihash_add_del_40_8(&lbm->return_path_5tuple_map, &kv, 0 /* is_add */);
+  return 1;
+}
+
+static inline void
+lb_add_5tuple (lb_main_t *lbm, ip6_header_t * ip60, udp_header_t *udp0, u32 vip_index0)
+{
+  clib_bihash_kv_40_8_t kv;
+  u64 t;
+  t = (u64) (vlib_time_now (lbm->vlib_main) * 1000.f);
+  kv.key[0] = ip60->dst_address.as_u64[0];
+  kv.key[1] = ip60->dst_address.as_u64[1];
+  kv.key[2] = ip60->src_address.as_u64[0];
+  kv.key[3] = ip60->src_address.as_u64[1];
+  kv.key[4] = ((u64) ip60->protocol << 32) | (((u64) udp0->dst_port) << 16) | ((u64) udp0->src_port);
+  // FIXME fib index ?
+  kv.value = t << 32 | (u64) vip_index0;
+  clib_bihash_add_del_40_8(&lbm->return_path_5tuple_map, &kv, 1 /* is_add */);
+}
+
 static_always_inline void
 lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
                   u32 *hash, u32 *vip_idx, u8 per_port_vip)
@@ -518,6 +561,8 @@ lb_node_fn (vlib_main_t * vm,
                   /* NAT66 */
                   ip6_header_t *ip60;
                   ip6_address_t old_dst;
+                  udp_header_t *udp0;
+                  tcp_header_t *tcp0;
 
                   ip60 = vlib_buffer_get_current (p0);
 
@@ -527,34 +572,32 @@ lb_node_fn (vlib_main_t * vm,
                       lbm->ass[asindex0].address.ip6.as_u64[0];
                   ip60->dst_address.as_u64[1] =
                       lbm->ass[asindex0].address.ip6.as_u64[1];
+                  udp0 = ip6_next_header(ip60);
 
                   if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_TCP))
                     {
-		      th = (tcp_header_t *) ip6_next_header(ip60);
-                      csum = th->checksum;
+		      tcp0 = (tcp_header_t *) udp0;
+                      csum = tcp0->checksum;
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
-                      csum = ip_csum_add_even (
-                          csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
-                      csum = ip_csum_add_even (
-                          csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
-                      csum = ip_csum_sub_even (csum, th->dst_port);
-                      th->dst_port = vip0->encap_args.target_port;
-                      csum = ip_csum_add_even (csum, th->dst_port);
-                      th->checksum = ip_csum_fold (csum);
+                      csum = ip_csum_add_even (csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
+                      csum = ip_csum_add_even (csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
+                      csum = ip_csum_sub_even (csum, tcp0->dst_port);
+                      tcp0->dst_port = vip0->encap_args.target_port;
+                      csum = ip_csum_add_even (csum, tcp0->dst_port);
+                      tcp0->checksum = ip_csum_fold (csum);
+                      lb_add_5tuple (lbm, ip60, udp0, vip_index0);
                     }
                   else if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
                     {
-                      uh = (udp_header_t *) ip6_next_header(ip60);
-                      uh->dst_port = vip0->encap_args.target_port;
-                      csum = uh->checksum;
+                      udp0->dst_port = vip0->encap_args.target_port;
+                      csum = udp0->checksum;
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
-                      csum = ip_csum_add_even (
-                          csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
-                      csum = ip_csum_add_even (
-                          csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
-                      uh->checksum = ip_csum_fold (csum);
+                      csum = ip_csum_add_even (csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
+                      csum = ip_csum_add_even (csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
+                      udp0->checksum = ip_csum_fold (csum);
+                      lb_add_5tuple (lbm, ip60, udp0, vip_index0);
                     }
                   else
                     {
@@ -775,6 +818,15 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
+  u32 nexthash0 = 0;
+  u32 next_vip_idx0 = ~0;
+  if (PREDICT_TRUE(n_left_from > 0))
+    {
+      vlib_buffer_t *p0 = vlib_get_buffer (vm, from[0]);
+      lb_node_get_hash (lbm, p0, is_nat4, &nexthash0,
+                        &next_vip_idx0, 1 /* per_port_vip */);
+    }
+
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -791,6 +843,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
           u16 old_port0, new_port0;
           udp_header_t * udp0;
           tcp_header_t * tcp0;
+          u32 vip_index0 = next_vip_idx0;
 
           u32 proto0;
           u32 rx_fib_index0;
@@ -808,6 +861,22 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
           rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (
               sw_if_index0);
+
+          if (PREDICT_TRUE(n_left_from > 1))
+            {
+              vlib_buffer_t *p1 = vlib_get_buffer (vm, from[1]);
+              //Compute next hash and prefetch bucket
+              lb_node_get_hash (lbm, p1, is_nat4,
+                                &nexthash0, &next_vip_idx0,
+                                1 /* per_port_vip */);
+            }
+
+          if (vip_index0)
+	    {
+	      /* Do not touch traffic destinated to a VIP */
+	      next0 = LB_NAT4_IN2OUT_NEXT_LOOKUP;
+              goto trace0;
+	    }
 
           if (is_nat4)
             {
@@ -829,7 +898,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               if (lb_nat44_mapping_match (lbm, &key40, &index40))
                 {
-                  next0 = LB_NAT4_IN2OUT_NEXT_DROP;
+                  next0 = LB_NAT6_IN2OUT_NEXT_SNAT6;
                   goto trace0;
                 }
 
@@ -876,39 +945,44 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               ip6_header_t * ip60;
               ip6_address_t old_addr0, new_addr0;
-              lb_snat6_key_t key60;
-              lb_snat_mapping_t *sm60;
-              u32 index60;
+              lb_vip_t *vip0;
 
               ip60 = vlib_buffer_get_current (b0);
               udp0 = ip6_next_header (ip60);
-              tcp0 = (tcp_header_t *) udp0;
-              proto0 = lb_ip_proto_to_nat_proto (ip60->protocol);
 
-              key60.addr.as_u64[0] = ip60->src_address.as_u64[0];
-              key60.addr.as_u64[1] = ip60->src_address.as_u64[1];
-              key60.protocol = proto0;
-              key60.port = udp0->src_port;
-              key60.fib_index = rx_fib_index0;
+              // key60.addr.as_u64[0] = ip60->src_address.as_u64[0];
+              // key60.addr.as_u64[1] = ip60->src_address.as_u64[1];
+              // key60.protocol = proto0;
+              // key60.port = udp0->src_port;
+              // key60.fib_index = rx_fib_index0;
 
-              if (lb_nat66_mapping_match (lbm, &key60, &index60))
-                {
-                  next0 = LB_NAT4_IN2OUT_NEXT_LOOKUP;
-                  goto trace0;
-                }
+              // if (lb_nat66_mapping_match (lbm, &key60, &index60))
+              //   {
+              //     next0 = LB_NAT4_IN2OUT_NEXT_LOOKUP;
+              //     goto trace0;
+              //   }
 
-              sm60 = pool_elt_at_index(lbm->snat_mappings, index60);
-              new_addr0.as_u64[0] = sm60->src_ip.as_u64[0];
-              new_addr0.as_u64[1] = sm60->src_ip.as_u64[1];
-              new_port0 = sm60->src_port;
-              vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm60->fib_index;
+	      if (lb_search_5tuple(lbm, ip60, udp0, &vip_index0))
+		{
+		    next0 = LB_NAT6_IN2OUT_NEXT_SNAT6;
+                    goto trace0;
+		}
+
+              vip0 = pool_elt_at_index(lbm->vips, vip_index0);
+
+              // sm60 = pool_elt_at_index(lbm->snat_mappings, index60);
+              new_addr0.as_u64[0] = vip0->prefix.ip6.as_u64[0];
+              new_addr0.as_u64[1] = vip0->prefix.ip6.as_u64[1];
+              new_port0 = vip0->port;
+              // vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm60->fib_index;
               old_addr0.as_u64[0] = ip60->src_address.as_u64[0];
               old_addr0.as_u64[1] = ip60->src_address.as_u64[1];
               ip60->src_address.as_u64[0] = new_addr0.as_u64[0];
               ip60->src_address.as_u64[1] = new_addr0.as_u64[1];
 
-              if (PREDICT_TRUE(proto0 == LB_NAT_PROTOCOL_TCP))
+              if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_TCP))
                 {
+        	  tcp0 = (tcp_header_t *) udp0;
                   old_port0 = tcp0->src_port;
                   tcp0->src_port = new_port0;
 
@@ -921,7 +995,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   csum = ip_csum_add_even (csum, new_port0);
                   tcp0->checksum = ip_csum_fold (csum);
                 }
-              else if (PREDICT_TRUE(proto0 == LB_NAT_PROTOCOL_UDP))
+              else if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
                 {
                   old_port0 = udp0->src_port;
                   udp0->src_port = new_port0;
@@ -957,6 +1031,123 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, stats_node_index,
                                LB_NAT_IN2OUT_ERROR_IN2OUT_PACKETS,
                                pkts_processed);
+  return frame->n_vectors;
+}
+
+static uword
+lb_snat_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                 vlib_frame_t * frame, u32 is_input_v4)
+{
+  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+        {
+          u32 bi0;
+          vlib_buffer_t *b0;
+          udp_header_t * udp0;
+          tcp_header_t * tcp0;
+          ip_csum_t csum;
+          u32 next0;
+
+          if (PREDICT_TRUE(n_left_from > 1))
+            {
+              vlib_buffer_t *p1 = vlib_get_buffer (vm, from[1]);
+              //Prefetch for encap, next
+              CLIB_PREFETCH(vlib_buffer_get_current (p1) - 64, 64, STORE);
+            }
+
+          if (PREDICT_TRUE(n_left_from > 2))
+            {
+              vlib_buffer_t *p2;
+              p2 = vlib_get_buffer (vm, from[2]);
+              /* prefetch packet header and data */
+              vlib_prefetch_buffer_header(p2, STORE);
+              CLIB_PREFETCH(vlib_buffer_get_current (p2), 64, STORE);
+            }
+
+          bi0 = to_next[0] = from[0];
+          from += 1;
+          n_left_from -= 1;
+          to_next += 1;
+          n_left_to_next -= 1;
+
+          b0 = vlib_get_buffer (vm, bi0);
+          next0 = LB_SNAT6_NEXT_OUTPUT;
+
+          if (is_input_v4)
+            {
+              goto trace0;
+            }
+          else
+            {
+              ip6_header_t * ip60;
+              // vlib_buffer_advance (b0, -sizeof(ip6_header_t));
+              ip60 = vlib_buffer_get_current (b0);
+              udp0 = ip6_next_header (ip60);
+              ip6_address_t old_addr0, new_addr0;
+              ip6_address_t src, dst;
+              src.as_u64[0] = clib_net_to_host_u64(ip60->src_address.as_u64[0]);
+              src.as_u64[1] = clib_net_to_host_u64(ip60->src_address.as_u64[1]);
+              dst.as_u64[1] = clib_net_to_host_u64(ip60->dst_address.as_u64[1]);
+              dst.as_u64[0] = clib_net_to_host_u64(ip60->dst_address.as_u64[0]);
+              clib_warning("DST : %U", format_ip6_address, &dst);
+              clib_warning("SRC : %U", format_ip6_address, &src);
+              if (!lb_search_snat6_entry(&ip60->dst_address, &new_addr0, 0))
+        	{
+        	  clib_warning("FOUND DST (%U)", format_ip6_address, &new_addr0);
+		  goto trace0;
+        	}
+              if (lb_search_snat6_entry(&ip60->src_address, &new_addr0, 0))
+        	{
+		  goto trace0;
+        	}
+              clib_warning("FOUND SRC (%U)", format_ip6_address, &new_addr0);
+              old_addr0.as_u64[0] = ip60->src_address.as_u64[0];
+              old_addr0.as_u64[1] = ip60->src_address.as_u64[1];
+              ip60->src_address.as_u64[0] = new_addr0.as_u64[0];
+              ip60->src_address.as_u64[1] = new_addr0.as_u64[1];
+
+              if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_TCP))
+                {
+        	  tcp0 = (tcp_header_t *) udp0;
+                  csum = tcp0->checksum;
+                  csum = ip_csum_sub_even (csum, old_addr0.as_u64[0]);
+                  csum = ip_csum_sub_even (csum, old_addr0.as_u64[1]);
+                  csum = ip_csum_add_even (csum, new_addr0.as_u64[0]);
+                  csum = ip_csum_add_even (csum, new_addr0.as_u64[1]);
+                  tcp0->checksum = ip_csum_fold (csum);
+                }
+              else if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
+                {
+                  csum = udp0->checksum;
+                  csum = ip_csum_sub_even (csum, old_addr0.as_u64[0]);
+                  csum = ip_csum_sub_even (csum, old_addr0.as_u64[1]);
+                  csum = ip_csum_add_even (csum, new_addr0.as_u64[0]);
+                  csum = ip_csum_add_even (csum, new_addr0.as_u64[1]);
+                  udp0->checksum = ip_csum_fold (csum);
+                }
+
+            }
+
+    trace0:
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+            	/* Todo */
+            }
+
+          vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next, n_left_to_next, bi0, next0);
+        }
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
   return frame->n_vectors;
 }
 
@@ -1056,6 +1247,13 @@ lb_nat6_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                         vlib_frame_t * frame)
 {
   return lb_nat_in2out_node_fn (vm, node, frame, 0);
+}
+
+static uword
+lb_snat6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+                        vlib_frame_t * frame)
+{
+  return lb_snat_node_fn (vm, node, frame, 0);
 }
 
 VLIB_REGISTER_NODE (lb6_gre6_node) =
@@ -1285,9 +1483,9 @@ VLIB_REGISTER_NODE (lb_nat4_in2out_node) =
 
 VNET_FEATURE_INIT (lb_nat6_in2out_node_fn, static) =
   {
-    .arc_name = "ip6-unicast",
+    .arc_name = "ip6-output",
     .node_name = "lb-nat6-in2out",
-    .runs_before = VNET_FEATURES("ip6-lookup"),
+    .runs_before = VNET_FEATURES("interface-output"),
   };
 
 VLIB_REGISTER_NODE (lb_nat6_in2out_node) =
@@ -1303,6 +1501,30 @@ VLIB_REGISTER_NODE (lb_nat6_in2out_node) =
       {
           [LB_NAT6_IN2OUT_NEXT_DROP] = "error-drop",
           [LB_NAT6_IN2OUT_NEXT_LOOKUP] = "ip6-lookup",
+          [LB_NAT6_IN2OUT_NEXT_SNAT6] = "lb-snat6",
+      },
+  };
+
+// VNET_FEATURE_INIT (lb_snat6_node_fn, static) =
+//   {
+//     .arc_name = "lb-nat6-in2out",
+//     .node_name = "lb-snat6",
+//     .runs_before = VNET_FEATURES("lb-nat6-in2out"),
+//   };
+
+VLIB_REGISTER_NODE (lb_snat6_node) =
+  {
+    .function = lb_snat6_node_fn,
+    .name = "lb-snat6",
+    .vector_size = sizeof(u32),
+    .format_trace = format_lb_nat_trace,
+    .n_errors = LB_N_ERROR,
+    .error_strings = lb_error_strings,
+    .n_next_nodes = LB_SNAT6_N_NEXT,
+    .next_nodes =
+      {
+          [LB_SNAT6_NEXT_DROP] = "error-drop",
+          [LB_SNAT6_NEXT_OUTPUT] = "interface-output",
       },
   };
 

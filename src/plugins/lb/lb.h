@@ -40,6 +40,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_40_8.h>
 #include <lb/lbhash.h>
 #include <vppinfra/lock.h>
 
@@ -50,6 +51,8 @@
 
 #define LB_VIP_PER_PORT_BUCKETS  1024
 #define LB_VIP_PER_PORT_MEMORY_SIZE  64<<20
+/* ms expiration of NAT 5tuple entries */
+#define LB_NAT_TIMEOUT 60000
 
 typedef enum {
   LB_NEXT_DROP,
@@ -65,8 +68,15 @@ typedef enum {
 typedef enum {
   LB_NAT6_IN2OUT_NEXT_DROP,
   LB_NAT6_IN2OUT_NEXT_LOOKUP,
+  LB_NAT6_IN2OUT_NEXT_SNAT6,
   LB_NAT6_IN2OUT_N_NEXT,
 } LB_nat6_in2out_next_t;
+
+typedef enum {
+  LB_SNAT6_NEXT_DROP,
+  LB_SNAT6_NEXT_OUTPUT,
+  LB_SNAT6_N_NEXT,
+} LB_snat6_next_t;
 
 #define foreach_lb_nat_in2out_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -468,6 +478,18 @@ typedef struct {
 } lb_per_cpu_t;
 
 typedef struct {
+  /* SNAT prefixes -> snat_address_index map */
+  clib_bihash_24_8_t ip6_hash;
+
+  ip6_address_t * dst_addresses;
+  u32 dst_address_length_refcounts[129];
+  u16 *prefix_lengths_in_search_order;
+  uword *non_empty_dst_address_length_bitmap;
+
+  ip6_address_t fib_masks[129];
+} lb_fib6;
+
+typedef struct {
   /**
    * Pool of all Virtual IPs
    */
@@ -553,9 +575,13 @@ typedef struct {
   /* Find a static mapping by AS IP : target_port */
   clib_bihash_8_8_t mapping_by_as4;
   clib_bihash_24_8_t mapping_by_as6;
+  /* Mapping (dst, src, sport, dport, proto) -> vip_index
+     for de-NAT-ing packets on the return (out2in) path */
+  clib_bihash_40_8_t return_path_5tuple_map;
 
-  /* Static mapping pool */
+  /* Static mapping pool TODO : REMOVE */
   lb_snat_mapping_t * snat_mappings;
+  lb_fib6 snat6_fib;
 
   /**
    * API dynamically registered base ID.
@@ -616,6 +642,9 @@ void lb_garbage_collection();
 
 int lb_nat4_interface_add_del (u32 sw_if_index, int is_del);
 int lb_nat6_interface_add_del (u32 sw_if_index, int is_del);
+int lb_del_snat6_entry(ip6_address_t *prefix, u8 len, u32 fib_index);
+int lb_add_snat6_entry(ip6_address_t *prefix, u8 len, ip6_address_t *addr, u32 fib_index);
+int lb_search_snat6_entry(ip6_address_t *addr, ip6_address_t *dst, u32 fib_index);
 
 format_function_t format_lb_main;
 

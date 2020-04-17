@@ -297,6 +297,8 @@ VLIB_CLI_COMMAND (lb_as_command, static) =
   .function = lb_as_command_fn,
 };
 
+
+// FIXME : remove
 static clib_error_t *
 lb_conf_command_fn (vlib_main_t * vm,
               unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -353,6 +355,66 @@ VLIB_CLI_COMMAND (lb_conf_command, static) =
   .path = "lb conf",
   .short_help = "lb conf [ip4-src-address <addr>] [ip6-src-address <addr>] [buckets <n>] [timeout <s>]",
   .function = lb_conf_command_fn,
+};
+
+static clib_error_t *
+lb_snat_command_fn (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip46_address_t prefix, addr;
+  u8 plen;
+  int ret;
+  int is_del = 0;
+  int table = 0;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY))
+      ;
+    else if (unformat(line_input, "with %U", unformat_ip46_address, &addr))
+      ;
+    else if (unformat(line_input, "table %d", &table))
+      ;
+    else if (unformat(line_input, "del"))
+      is_del = 1;
+    else {
+      error = clib_error_return (0, "parse error: '%U'",
+                                 format_unformat_error, line_input);
+      goto done;
+    }
+  }
+  if (is_del)
+    {
+      if ((ret = lb_del_snat6_entry((ip6_address_t *) &prefix, plen, table)))
+	{
+	  error = clib_error_return (0, "lb del snat error %d", ret);
+	  goto done;
+	}
+    }
+  else
+    {
+      if ((ret = lb_add_snat6_entry((ip6_address_t *) &prefix, plen, (ip6_address_t *) &addr, table)))
+	{
+	  error = clib_error_return (0, "lb add snat error %d", ret);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (lb_snat_command, static) =
+{
+  .path = "lb snat",
+  .short_help = "lb snat <prefix> with <addr>",
+  .function = lb_snat_command_fn,
 };
 
 static clib_error_t *

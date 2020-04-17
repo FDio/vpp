@@ -490,7 +490,142 @@ int lb_conf(ip4_address_t *ip4_address, ip6_address_t *ip6_address,
   return 0;
 }
 
+int
+lb_search_snat6_entry(ip6_address_t *addr, ip6_address_t *dst, u32 fib_index)
+{
+  lb_fib6 *table = &lb_main.snat6_fib;
+  ip6_address_t *_dst;
+  clib_bihash_kv_24_8_t kv, val;
+  u64 fib;
+  int i, n_p, rv;
+  n_p = vec_len (table->prefix_lengths_in_search_order);
+  kv.key[0] = addr->as_u64[0];
+  kv.key[1] = addr->as_u64[1];
+  fib = ((u64)((fib_index))<<32);
+  /*
+    * start search from a mask length same length or shorter.
+    * we don't want matches longer than the mask passed
+    */
+  i = 0;
+  for (; i < n_p; i++)
+    {
+	int dst_address_length = table->prefix_lengths_in_search_order[i];
+	ip6_address_t * mask = &ip6_main.fib_masks[dst_address_length];
 
+	ASSERT(dst_address_length >= 0 && dst_address_length <= 128);
+	//As lengths are decreasing, masks are increasingly specific.
+	kv.key[0] &= mask->as_u64[0];
+	kv.key[1] &= mask->as_u64[1];
+	kv.key[2] = fib | dst_address_length;
+
+	rv = clib_bihash_search_inline_2_24_8(&table->ip6_hash, &kv, &val);
+	if (rv == 0)
+	  {
+	    _dst = pool_elt_at_index(table->dst_addresses, val.value);
+	    clib_memcpy(dst, _dst, sizeof(ip6_address_t));
+	    return 0;
+	  }
+    }
+  return -1;
+}
+
+static void
+lb_compute_prefix_lengths_in_search_order (lb_fib6 *table)
+{
+    int i;
+    vec_reset_length (table->prefix_lengths_in_search_order);
+    /* Note: bitmap reversed so this is in fact a longest prefix match */
+    clib_bitmap_foreach (i, table->non_empty_dst_address_length_bitmap,
+    ({
+	int dst_address_length = 128 - i;
+	vec_add1(table->prefix_lengths_in_search_order, dst_address_length);
+    }));
+}
+
+static void
+lb_init_fibs() {
+  lb_fib6 *table = &lb_main.snat6_fib;
+  int i;
+  for (i = 0; i < ARRAY_LEN (table->fib_masks); i++)
+    {
+      u32 j, i0, i1;
+
+      i0 = i / 32;
+      i1 = i % 32;
+
+      for (j = 0; j < i0; j++)
+	table->fib_masks[i].as_u32[j] = ~0;
+
+      if (i1)
+	table->fib_masks[i].as_u32[i0] =
+	  clib_host_to_net_u32 (pow2_mask (i1) << (32 - i1));
+    }
+
+  clib_bihash_init_24_8 (&table->ip6_hash, "snat prefixes->addr map", LB_MAPPING_BUCKETS, LB_MAPPING_MEMORY_SIZE);
+}
+
+/* This snat's with addr all trafic for which src matches prefix/plen but dest does not */
+int
+lb_add_snat6_entry(ip6_address_t *prefix, u8 len, ip6_address_t *addr, u32 fib_index)
+{
+  lb_fib6 *table = &lb_main.snat6_fib;
+  clib_bihash_kv_24_8_t kv;
+  ip6_address_t *mask, *_addr;
+  u32 addr_index;
+  u64 fib;
+  pool_get(table->dst_addresses, _addr);
+  addr_index = (_addr - table->dst_addresses);
+  clib_memcpy(_addr, addr, sizeof(ip6_address_t));
+
+  mask = &ip6_main.fib_masks[len];
+  fib = ((u64)((fib_index))<<32);
+
+  kv.key[1] = clib_host_to_net_u64(prefix->as_u64[0] & mask->as_u64[0]);
+  kv.key[0] = clib_host_to_net_u64(prefix->as_u64[1] & mask->as_u64[1]);
+  kv.key[2] = fib | len;
+  kv.value = addr_index;
+  clib_bihash_add_del_24_8(&table->ip6_hash, &kv, 1 /* is_add */);
+
+  table->dst_address_length_refcounts[len]++;
+  table->non_empty_dst_address_length_bitmap = clib_bitmap_set (table->non_empty_dst_address_length_bitmap, 128 - len, 1);
+  lb_compute_prefix_lengths_in_search_order (table);
+
+  return 0;
+}
+
+int
+lb_del_snat6_entry(ip6_address_t *prefix, u8 len, u32 fib_index)
+{
+  lb_fib6 *table = &lb_main.snat6_fib;
+  clib_bihash_kv_24_8_t kv, val;
+  ip6_address_t *mask, *_addr;
+  u64 fib;
+
+  mask = &ip6_main.fib_masks[len];
+  fib = ((u64)((fib_index))<<32);
+
+  kv.key[0] = prefix->as_u64[0] & mask->as_u64[0];
+  kv.key[1] = prefix->as_u64[1] & mask->as_u64[1];
+  kv.key[2] = fib | len;
+  if (clib_bihash_search_24_8(&table->ip6_hash, &kv, &val))
+    {
+      return 1;
+    }
+  _addr = pool_elt_at_index(table->dst_addresses, val.value);
+  pool_put(table->dst_addresses, _addr);
+  clib_bihash_add_del_24_8(&table->ip6_hash, &kv, 0 /* is_add */);
+
+  /* refcount accounting */
+  ASSERT (table->dst_address_length_refcounts[len] > 0);
+  if (--table->dst_address_length_refcounts[len] == 0)
+    {
+	table->non_empty_dst_address_length_bitmap =
+            clib_bitmap_set (table->non_empty_dst_address_length_bitmap,
+                              128 - len, 0);
+	lb_compute_prefix_lengths_in_search_order (table);
+    }
+  return 0;
+}
 
 static
 int lb_vip_port_find_index(ip46_address_t *prefix, u8 plen,
@@ -1346,12 +1481,12 @@ int lb_nat6_interface_add_del (u32 sw_if_index, int is_del)
 {
   if (is_del)
     {
-      vnet_feature_enable_disable ("ip6-unicast", "lb-nat6-in2out",
+      vnet_feature_enable_disable ("ip6-output", "lb-nat6-in2out",
                                    sw_if_index, 0, 0, 0);
     }
   else
     {
-      vnet_feature_enable_disable ("ip6-unicast", "lb-nat6-in2out",
+      vnet_feature_enable_disable ("ip6-output", "lb-nat6-in2out",
                                    sw_if_index, 1, 0, 0);
     }
 
@@ -1445,6 +1580,12 @@ lb_init (vlib_main_t * vm)
   clib_bihash_init_24_8 (&lbm->mapping_by_as6,
                         "mapping_by_as6", LB_MAPPING_BUCKETS,
                         LB_MAPPING_MEMORY_SIZE);
+
+  clib_bihash_init_40_8 (&lbm->return_path_5tuple_map,
+                        "return_path_5tuple_map", LB_MAPPING_BUCKETS,
+                        LB_MAPPING_MEMORY_SIZE);
+
+  lb_init_fibs();
 
 #define _(a,b,c) lbm->vip_counters[c].name = b;
   lb_foreach_vip_counter
