@@ -78,6 +78,28 @@ nat44_global_lru_insert (snat_main_per_thread_data_t * tsm,
 }
 
 static_always_inline void
+nat44_sessions_clear ()
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  /* *INDENT-OFF* */
+  vec_foreach (tsm, sm->per_thread_data)
+    {
+      u32 ti;
+
+      nat44_db_free (tsm);
+      nat44_db_init (tsm);
+
+      ti = tsm->snat_thread_index;
+      // clear per thread session counters
+      vlib_set_simple_counter (&sm->total_users, ti, 0, 0);
+      vlib_set_simple_counter (&sm->total_sessions, ti, 0, 0);
+    }
+  /* *INDENT-ON* */
+}
+
+static_always_inline void
 nat44_user_del_sessions (snat_user_t * u, u32 thread_index)
 {
   dlist_elt_t *elt;
@@ -112,6 +134,9 @@ nat44_user_del (ip4_address_t * addr, u32 fib_index)
 
   snat_user_key_t user_key;
   clib_bihash_kv_8_8_t kv, value;
+
+  if (sm->deterministic || sm->endpoint_dependent)
+    return rv;
 
   user_key.addr.as_u32 = addr->as_u32;
   user_key.fib_index = fib_index;
