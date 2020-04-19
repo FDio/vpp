@@ -60,7 +60,7 @@ app_worker_free (app_worker_t * app_wrk)
   segment_manager_t *sm;
   session_t *ls;
   u32 sm_index;
-  int i;
+  int i, j;
 
   /*
    *  Listener cleanup
@@ -114,8 +114,8 @@ app_worker_free (app_worker_t * app_wrk)
       }));
       /* *INDENT-ON* */
 
-      for (i = 0; i < vec_len (handles); i++)
-	session_cleanup_half_open (i, handles[i]);
+      for (j = 0; j < vec_len (handles); j++)
+	session_cleanup_half_open (i, handles[j]);
 
       hash_free (app_wrk->half_open_table[i]);
       vec_reset_length (handles);
