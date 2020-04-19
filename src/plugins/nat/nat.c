@@ -3903,6 +3903,76 @@ nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
   s->total_bytes = total_bytes;
 }
 
+void
+nat44_db_init (snat_main_per_thread_data_t * tsm)
+{
+  snat_main_t *sm = &snat_main;
+
+  pool_alloc (tsm->sessions, sm->max_translations);
+  pool_alloc (tsm->global_lru_pool, sm->max_translations);
+
+  dlist_elt_t *head;
+  pool_get (tsm->global_lru_pool, head);
+  tsm->global_lru_head_index = head - tsm->global_lru_pool;
+  clib_dlist_init (tsm->global_lru_pool, tsm->global_lru_head_index);
+
+  if (sm->endpoint_dependent)
+    {
+      clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
+			     sm->translation_buckets,
+			     sm->translation_memory_size);
+      clib_bihash_set_kvp_format_fn_16_8 (&tsm->in2out_ed,
+					  format_ed_session_kvp);
+      clib_bihash_init_16_8 (&tsm->out2in_ed, "out2in-ed",
+			     sm->translation_buckets,
+			     sm->translation_memory_size);
+      clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
+					  format_ed_session_kvp);
+    }
+  else
+    {
+      clib_bihash_init_8_8 (&tsm->in2out, "in2out",
+			    sm->translation_buckets,
+			    sm->translation_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&tsm->in2out, format_session_kvp);
+      clib_bihash_init_8_8 (&tsm->out2in, "out2in",
+			    sm->translation_buckets,
+			    sm->translation_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&tsm->out2in, format_session_kvp);
+    }
+
+  // TODO: resolve static mappings (put only to !ED)
+  pool_alloc (tsm->list_pool, sm->max_translations);
+  clib_bihash_init_8_8 (&tsm->user_hash, "users", sm->user_buckets,
+			sm->user_memory_size);
+  clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
+}
+
+void
+nat44_db_free (snat_main_per_thread_data_t * tsm)
+{
+  snat_main_t *sm = &snat_main;
+
+  pool_free (tsm->sessions);
+  pool_free (tsm->global_lru_pool);
+
+  if (sm->endpoint_dependent)
+    {
+      clib_bihash_free_16_8 (&tsm->in2out_ed);
+      clib_bihash_free_16_8 (&tsm->out2in_ed);
+    }
+  else
+    {
+      clib_bihash_free_8_8 (&tsm->in2out);
+      clib_bihash_free_8_8 (&tsm->out2in);
+    }
+
+  // TODO: resolve static mappings (put only to !ED)
+  pool_free (tsm->users);
+  pool_free (tsm->list_pool);
+  clib_bihash_free_8_8 (&tsm->user_hash);
+}
+
 static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -4100,52 +4170,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
-              pool_alloc (tsm->sessions, sm->max_translations);
-              pool_alloc (tsm->list_pool, sm->max_translations);
-              pool_alloc (tsm->global_lru_pool, sm->max_translations);
-
-              dlist_elt_t *head;
-              pool_get (tsm->global_lru_pool, head);
-              tsm->global_lru_head_index = head - tsm->global_lru_pool;
-              clib_dlist_init (tsm->global_lru_pool,
-                               tsm->global_lru_head_index);
-
-              if (sm->endpoint_dependent)
-                {
-                  clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
-                                         translation_buckets,
-                                         translation_memory_size);
-                  clib_bihash_set_kvp_format_fn_16_8 (&tsm->in2out_ed,
-                                                      format_ed_session_kvp);
-
-                  clib_bihash_init_16_8 (&tsm->out2in_ed, "out2in-ed",
-                                         translation_buckets,
-                                         translation_memory_size);
-                  clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
-                                                      format_ed_session_kvp);
-                }
-              else
-                {
-                  clib_bihash_init_8_8 (&tsm->in2out, "in2out",
-                                        translation_buckets,
-                                        translation_memory_size);
-                  clib_bihash_set_kvp_format_fn_8_8 (&tsm->in2out,
-                                                     format_session_kvp);
-
-                  clib_bihash_init_8_8 (&tsm->out2in, "out2in",
-                                        translation_buckets,
-                                        translation_memory_size);
-                  clib_bihash_set_kvp_format_fn_8_8 (&tsm->out2in,
-                                                     format_session_kvp);
-                }
-
-              clib_bihash_init_8_8 (&tsm->user_hash, "users", user_buckets,
-                                    user_memory_size);
-              clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash,
-                                                 format_user_kvp);
+              nat44_db_init (tsm);
             }
           /* *INDENT-ON* */
-
 	}
       else
 	{

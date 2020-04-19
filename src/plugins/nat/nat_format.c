@@ -117,7 +117,7 @@ format_snat_session_state (u8 * s, va_list * args)
 u8 *
 format_snat_session (u8 * s, va_list * args)
 {
-  snat_main_per_thread_data_t *sm =
+  snat_main_per_thread_data_t *tsm =
     va_arg (*args, snat_main_per_thread_data_t *);
   snat_session_t *sess = va_arg (*args, snat_session_t *);
 
@@ -153,7 +153,7 @@ format_snat_session (u8 * s, va_list * args)
 			clib_net_to_host_u16 (sess->ext_host_port));
 	}
     }
-  s = format (s, "       index %llu\n", sess - sm->sessions);
+  s = format (s, "       index %llu\n", sess - tsm->sessions);
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
 	      sess->total_pkts, sess->total_bytes);
@@ -174,8 +174,6 @@ format_snat_session (u8 * s, va_list * args)
 u8 *
 format_snat_user (u8 * s, va_list * args)
 {
-
-  snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm =
     va_arg (*args, snat_main_per_thread_data_t *);
   snat_user_t *u = va_arg (*args, snat_user_t *);
@@ -204,91 +202,13 @@ format_snat_user (u8 * s, va_list * args)
 	{
 	  sess = pool_elt_at_index (tsm->sessions, session_index);
 
-	  s = format (s, "  %U\n", format_snat_session, sm, sess);
+	  s = format (s, "  %U\n", format_snat_session, tsm, sess);
 
 	  elt_index = elt->next;
 	  elt = pool_elt_at_index (tsm->list_pool, elt_index);
 	  session_index = elt->value;
 	}
     }
-
-  return s;
-}
-
-u8 *
-format_snat_user_v2 (u8 * s, va_list * args)
-{
-
-  snat_main_t *sm = &snat_main;
-  snat_main_per_thread_data_t *tsm =
-    va_arg (*args, snat_main_per_thread_data_t *);
-  snat_user_t *u = va_arg (*args, snat_user_t *);
-  u64 now = va_arg (*args, u64);
-
-  dlist_elt_t *head, *elt;
-  u32 elt_index, head_index;
-  u32 session_index;
-  snat_session_t *sess;
-
-  u32 udp_sessions = 0;
-  u32 tcp_sessions = 0;
-  u32 icmp_sessions = 0;
-
-  u32 timed_out = 0;
-  u32 transitory = 0;
-  u32 established = 0;
-
-  u64 sess_timeout_time;
-
-  if (u->nsessions || u->nstaticsessions)
-    {
-      head_index = u->sessions_per_user_list_head_index;
-      head = pool_elt_at_index (tsm->list_pool, head_index);
-
-      elt_index = head->next;
-      elt = pool_elt_at_index (tsm->list_pool, elt_index);
-      session_index = elt->value;
-
-      while (session_index != ~0)
-	{
-	  sess = pool_elt_at_index (tsm->sessions, session_index);
-
-	  sess_timeout_time = sess->last_heard +
-	    (f64) nat44_session_get_timeout (sm, sess);
-	  if (now >= sess_timeout_time)
-	    timed_out++;
-
-	  switch (sess->in2out.protocol)
-	    {
-	    case SNAT_PROTOCOL_ICMP:
-	      icmp_sessions++;
-	      break;
-	    case SNAT_PROTOCOL_TCP:
-	      tcp_sessions++;
-	      if (sess->state)
-		transitory++;
-	      else
-		established++;
-	      break;
-	    case SNAT_PROTOCOL_UDP:
-	    default:
-	      udp_sessions++;
-	      break;
-
-	    }
-
-	  elt_index = elt->next;
-	  elt = pool_elt_at_index (tsm->list_pool, elt_index);
-	  session_index = elt->value;
-	}
-    }
-
-  s = format (s, "%U: %d dynamic translations, %d static translations\n",
-	      format_ip4_address, &u->addr, u->nsessions, u->nstaticsessions);
-  s = format (s, "\t%u timed out, %u transitory, %u established\n",
-	      timed_out, transitory, established);
-  s = format (s, "\t%u tcp sessions, %u udp sessions, %u icmp sessions\n",
-	      tcp_sessions, udp_sessions, icmp_sessions);
 
   return s;
 }
