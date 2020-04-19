@@ -573,6 +573,11 @@ session_enqueue_notify_inline (session_t * s)
   SESSION_EVT (SESSION_EVT_ENQ, s, svm_fifo_max_dequeue_prod (s->rx_fifo));
 
   s->flags &= ~SESSION_F_RX_EVT;
+
+  /* Application didn't confirm accept yet */
+  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING))
+    return 0;
+
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
 						     SESSION_IO_EVT_RX)))
     return -1;
