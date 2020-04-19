@@ -64,14 +64,8 @@ typedef struct
   u32 next_index;
 } nat_pre_trace_t;
 
-/*
-STATIC_ASSERT (sizeof (nat_buffer_opaque_t) <=
-               STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
-               "Custom meta-data too large for vnet_buffer_opaque_t");
-
 #define nat_buffer_opaque(b) \
-  ((nat_buffer_opaque_t *)((u8 *)((b)->opaque) + \
-    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))*/
+  ((nat_buffer_opaque_t *)((vnet_buffer_opaque2_t *)b->opaque2)->__unused2)
 
 /* session key (4-tuple) */
 typedef struct
@@ -721,7 +715,6 @@ extern fib_source_t nat_fib_src_low;
 
 /* format functions */
 format_function_t format_snat_user;
-format_function_t format_snat_user_v2;
 format_function_t format_snat_static_mapping;
 format_function_t format_snat_static_map_to_resolve;
 format_function_t format_snat_session;
@@ -1272,6 +1265,21 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 void
 nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 			 u32 thread_index, u8 is_ha);
+
+/**
+ * @brief Initialize NAT44 data
+ *
+ * @param tsm          per thread data
+ */
+void nat44_db_init (snat_main_per_thread_data_t * tsm);
+
+/**
+ * @brief Free NAT44 data
+ *
+ * @param tsm          per thread data
+ */
+void nat44_db_free (snat_main_per_thread_data_t * tsm);
+
 /**
  * @brief Find or create NAT user
  *
