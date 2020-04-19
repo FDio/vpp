@@ -716,7 +716,6 @@ extern fib_source_t nat_fib_src_low;
 
 /* format functions */
 format_function_t format_snat_user;
-format_function_t format_snat_user_v2;
 format_function_t format_snat_static_mapping;
 format_function_t format_snat_static_map_to_resolve;
 format_function_t format_snat_session;
@@ -1276,6 +1275,21 @@ int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 void
 nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 			 u32 thread_index, u8 is_ha);
+
+/**
+ * @brief Initialize NAT44 data
+ *
+ * @param tsm          per thread data
+ */
+void nat44_db_init (snat_main_per_thread_data_t * tsm);
+
+/**
+ * @brief Free NAT44 data
+ *
+ * @param tsm          per thread data
+ */
+void nat44_db_free (snat_main_per_thread_data_t * tsm);
+
 /**
  * @brief Find or create NAT user
  *
