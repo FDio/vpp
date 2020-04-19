@@ -2024,7 +2024,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_IO_EVT_RX:
       sid = e->session_index;
       session = vcl_session_get (wrk, sid);
-      if (!session)
+      if (!session || !vcl_session_is_open (session))
 	break;
       vcl_fifo_rx_evt_valid_or_break (session);
       if (sid < n_bits && read_map)
@@ -2036,7 +2036,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
       session = vcl_session_get (wrk, sid);
-      if (!session)
+      if (!session || !vcl_session_is_open (session))
 	break;
       if (sid < n_bits && write_map)
 	{
@@ -2217,7 +2217,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   u32 sid, minbits = clib_max (n_bits, BITS (uword)), bits_set = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
-  int rv, i;
+  int i;
 
   if (n_bits && read_map)
     {
@@ -2256,8 +2256,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         continue;
       }
 
-    rv = svm_fifo_is_full_prod (session->tx_fifo);
-    if (!rv)
+    if (vcl_session_write_ready (session) > 0)
       {
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
@@ -2278,8 +2277,7 @@ check_rd:
         continue;
       }
 
-    rv = vcl_session_read_ready (session);
-    if (rv)
+    if (vcl_session_read_ready (session) > 0)
       {
         clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
         bits_set++;
