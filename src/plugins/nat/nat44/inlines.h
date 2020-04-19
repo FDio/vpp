@@ -31,28 +31,6 @@ nat44_maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
   return 0;
 }
 
-static_always_inline snat_session_t *
-nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
-			 snat_session_t * s, u32 thread_index, f64 now)
-{
-  nat44_free_session_data (sm, s, thread_index, 0);
-  if (snat_is_session_static (s))
-    u->nstaticsessions--;
-  else
-    u->nsessions--;
-  s->flags = 0;
-  s->total_bytes = 0;
-  s->total_pkts = 0;
-  s->state = 0;
-  s->ext_host_addr.as_u32 = 0;
-  s->ext_host_port = 0;
-  s->ext_host_nat_addr.as_u32 = 0;
-  s->ext_host_nat_port = 0;
-  s->tcp_close_timestamp = 0;
-  s->ha_last_refreshed = now;
-  return s;
-}
-
 static_always_inline void
 nat44_global_lru_insert (snat_main_per_thread_data_t * tsm,
 			 snat_session_t * s, f64 now)
@@ -66,31 +44,26 @@ nat44_global_lru_insert (snat_main_per_thread_data_t * tsm,
   s->last_lru_update = now;
 }
 
-static_always_inline snat_session_t *
-nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
-			 f64 now)
+static_always_inline void
+nat44_sessions_clear ()
 {
-  snat_session_t *s;
-  dlist_elt_t *per_user_translation_list_elt;
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
 
-  pool_get (tsm->sessions, s);
-  clib_memset (s, 0, sizeof (*s));
-  /* Create list elts */
-  pool_get (tsm->list_pool, per_user_translation_list_elt);
-  clib_dlist_init (tsm->list_pool,
-		   per_user_translation_list_elt - tsm->list_pool);
+  /* *INDENT-OFF* */
+  vec_foreach (tsm, sm->per_thread_data)
+    {
+      u32 ti;
 
-  per_user_translation_list_elt->value = s - tsm->sessions;
-  s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
-  s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+      nat44_db_free (tsm);
+      nat44_db_init (tsm);
 
-  clib_dlist_addtail (tsm->list_pool,
-		      s->per_user_list_head_index,
-		      per_user_translation_list_elt - tsm->list_pool);
-
-  nat44_global_lru_insert (tsm, s, now);
-  s->ha_last_refreshed = now;
-  return s;
+      ti = tsm->snat_thread_index;
+      // clear per thread session counters
+      vlib_set_simple_counter (&sm->total_users, ti, 0, 0);
+      vlib_set_simple_counter (&sm->total_sessions, ti, 0, 0);
+    }
+  /* *INDENT-ON* */
 }
 
 static_always_inline void
@@ -128,6 +101,9 @@ nat44_user_del (ip4_address_t * addr, u32 fib_index)
 
   snat_user_key_t user_key;
   clib_bihash_kv_8_8_t kv, value;
+
+  if (sm->deterministic || sm->endpoint_dependent)
+    return rv;
 
   user_key.addr.as_u32 = addr->as_u32;
   user_key.fib_index = fib_index;
