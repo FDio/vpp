@@ -27,6 +27,9 @@
 #include <vnet/fib/fib_table.h>
 #include <nat/nat_ha.h>
 
+
+#define UNSUPPORTED_IN_DET_OR_ED_MODE_STR \
+  "This command is unsupported in deterministic or endpoint dependent mode"
 #define UNSUPPORTED_IN_DET_MODE_STR \
   "This command is unsupported in deterministic mode"
 #define SUPPORTED_ONLY_IN_DET_MODE_STR \
@@ -1474,11 +1477,11 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  snat_main_t *sm = &snat_main;
-  snat_main_per_thread_data_t *tsm;
 
-  int detail = 0, metrics = 0;
-  snat_user_t *u;
+  snat_main_per_thread_data_t *tsm;
+  snat_main_t *sm = &snat_main;
+
+  int detail = 0;
   int i = 0;
 
   if (sm->deterministic)
@@ -1491,8 +1494,6 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "detail"))
 	detail = 1;
-      else if (unformat (line_input, "metrics"))
-	metrics = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1503,7 +1504,11 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_free (line_input);
 
 print:
-  vlib_cli_output (vm, "NAT44 sessions:");
+  if (!sm->endpoint_dependent)
+    vlib_cli_output (vm, "NAT44 sessions:");
+  else
+    vlib_cli_output (vm, "NAT44 ED sessions:");
+
   /* *INDENT-OFF* */
   vec_foreach_index (i, sm->per_thread_data)
     {
@@ -1512,19 +1517,21 @@ print:
       vlib_cli_output (vm, "-------- thread %d %s: %d sessions --------\n",
                        i, vlib_worker_threads[i].name,
                        pool_elts (tsm->sessions));
-      if (metrics)
+
+      if (!sm->endpoint_dependent)
         {
-          u64 now = vlib_time_now (sm->vlib_main);
+          snat_user_t *u;
           pool_foreach (u, tsm->users,
           ({
-            vlib_cli_output (vm, "  %U", format_snat_user_v2, tsm, u, now);
+            vlib_cli_output (vm, "  %U", format_snat_user, tsm, u, detail);
           }));
         }
       else
         {
-          pool_foreach (u, tsm->users,
+          snat_session_t *s;
+          pool_foreach (s, tsm->sessions,
           ({
-            vlib_cli_output (vm, "  %U", format_snat_user, tsm, u, detail);
+            vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
           }));
         }
     }
@@ -1543,8 +1550,8 @@ nat44_del_user_command_fn (vlib_main_t * vm,
   u32 fib_index = 0;
   int rv;
 
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+  if (sm->deterministic || sm->endpoint_dependent)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_OR_ED_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1574,6 +1581,20 @@ nat44_del_user_command_fn (vlib_main_t * vm,
 done:
   unformat_free (line_input);
 
+  return error;
+}
+
+static clib_error_t *
+nat44_clear_sessions_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  clib_error_t *error = 0;
+
+  if (sm->deterministic)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+  nat44_sessions_clear ();
   return error;
 }
 
@@ -2596,6 +2617,19 @@ VLIB_CLI_COMMAND (nat44_del_user_command, static) = {
     .path = "nat44 del user",
     .short_help = "nat44 del user <addr> [fib <index>]",
     .function = nat44_del_user_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{clear nat44 sessions}
+ * To clear all NAT44 sessions
+ *  vpp# clear nat44 sessions
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_clear_sessions_command, static) = {
+    .path = "clear nat44 sessions",
+    .short_help = "clear nat44 sessions",
+    .function = nat44_clear_sessions_command_fn,
 };
 
 /*?

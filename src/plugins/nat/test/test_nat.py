@@ -1445,6 +1445,53 @@ class TestNAT44(MethodHolder):
     def tearDownClass(cls):
         super(TestNAT44, cls).tearDownClass()
 
+    def test_clear_sessions(self):
+        """ NAT44 session clearing test """
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(0, nat_config.endpoint_dependent)
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        users = self.statistics.get_counter('/nat44/total-users')
+        sessions = self.statistics.get_counter('/nat44/total-sessions')
+
+        self.assertTrue(users[0][0] > 0)
+        self.assertTrue(sessions[0][0] > 0)
+
+        self.logger.info("users before clearing: %s" % users[0][0])
+        self.logger.info("sessions before clearing: %s" % sessions[0][0])
+
+        # just for testing purposes
+        self.logger.info(self.vapi.cli("show nat44 summary"))
+
+        self.vapi.cli("clear nat44 sessions")
+
+        self.logger.info(self.vapi.cli("show nat44 summary"))
+
+        users = self.statistics.get_counter('/nat44/total-users')
+        sessions = self.statistics.get_counter('/nat44/total-sessions')
+
+        self.assertEqual(users[0][0], 0)
+        self.assertEqual(sessions[0][0], 0)
+
+        self.logger.info("users after clearing: %s" % users[0][0])
+        self.logger.info("sessions after clearing: %s" % sessions[0][0])
+
     def test_dynamic(self):
         """ NAT44 dynamic translation test """
         self.nat44_add_address(self.nat_addr)
@@ -4434,6 +4481,43 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.reass_hairpinning(proto=IP_PROTOS.tcp)
         self.reass_hairpinning(proto=IP_PROTOS.udp)
         self.reass_hairpinning(proto=IP_PROTOS.icmp)
+
+    def test_clear_sessions(self):
+        """ NAT44 session clearing test """
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.endpoint_dependent)
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        self.assertTrue(sessions[0][0] > 0)
+        self.logger.info("sessions before clearing: %s" % sessions[0][0])
+
+        # just for testing purposes
+        self.logger.info(self.vapi.cli("show nat44 summary"))
+
+        self.vapi.cli("clear nat44 sessions")
+
+        self.logger.info(self.vapi.cli("show nat44 summary"))
+
+        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        self.assertEqual(sessions[0][0], 0)
+        self.logger.info("sessions after clearing: %s" % sessions[0][0])
 
     def test_dynamic(self):
         """ NAT44 dynamic translation test """
