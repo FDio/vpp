@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "212997cf_e37f3f3d",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-04-19T20:18:19Z",
+      "side": 1,
+      "message": "Neale, \nI agree with your opinion. \nBut, displaying policy ID and SPI id for plain inner packet would be confusing.(Inner IP+UDP). \n\nI also think, we should print action type along with the policy in trace log, i.e \"Policy 1 (Protect)\". \n\nAny thoughts?\n \nIf you are OK with the suggestion, I would take that up in a separate gerrit patch",
+      "parentUuid": "46c96e8f_b93d0f09",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4abf6c2e_2666516c",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-16T17:33:48Z",
       "side": 1,
       "message": "please refactor this.\nif i see code that looks the same, i think to myself surely that\u0027s not a cut-n-paste job, and stare for ages looking for the subtle differences. i didn\u0027t find any...",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "322535ae_97e0c4dc",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-04-19T20:18:19Z",
+      "side": 1,
+      "message": "ACK",
+      "parentUuid": "4abf6c2e_2666516c",
       "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1aab4d4e_24f15919",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-04-19T20:18:19Z",
+      "side": 1,
+      "message": "ACK",
+      "parentUuid": "24380050_c1f6e975",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "daca6718_7bf5cb01",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -64,6 +118,24 @@
       "writtenOn": "2020-04-16T17:33:48Z",
       "side": 1,
       "message": "why is the policy sa_id guaranteed to be valid for any policy type other than PROTECT?",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25bfdb3f_ea96fb28",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-04-19T20:18:19Z",
+      "side": 1,
+      "message": "ACK, reverted the change.",
+      "parentUuid": "daca6718_7bf5cb01",
       "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
