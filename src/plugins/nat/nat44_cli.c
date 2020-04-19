@@ -1578,6 +1578,20 @@ done:
 }
 
 static clib_error_t *
+nat44_clear_sessions_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  clib_error_t *error = 0;
+
+  if (sm->deterministic)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+  nat44_sessions_clear ();
+  return error;
+}
+
+static clib_error_t *
 nat44_del_session_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
@@ -2596,6 +2610,19 @@ VLIB_CLI_COMMAND (nat44_del_user_command, static) = {
     .path = "nat44 del user",
     .short_help = "nat44 del user <addr> [fib <index>]",
     .function = nat44_del_user_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{clear nat44 sessions}
+ * To clear all NAT44 sessions
+ *  vpp# clear nat44 sessions
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_clear_sessions_command, static) = {
+    .path = "clear nat44 sessions",
+    .short_help = "clear nat44 sessions",
+    .function = nat44_clear_sessions_command_fn,
 };
 
 /*?

@@ -94,6 +94,21 @@ nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
 }
 
 static_always_inline void
+nat44_sessions_clear ()
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+
+  /* *INDENT-OFF* */
+  vec_foreach (tsm, sm->per_thread_data)
+    {
+      nat44_db_free (tsm);
+      nat44_db_init (tsm);
+    }
+  /* *INDENT-ON* */
+}
+
+static_always_inline void
 nat44_user_del_sessions (snat_user_t * u, u32 thread_index)
 {
   dlist_elt_t *elt;
