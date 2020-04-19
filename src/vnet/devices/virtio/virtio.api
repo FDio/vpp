@@ -17,7 +17,7 @@ option version = "2.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
-import "vnet/pci/pci_types.api";
+import "vlib/pci/pci_types.api";
 
 
 /** \brief Initialize a new virtio pci interface with the given parameters

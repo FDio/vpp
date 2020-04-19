@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import socket
 from socket import inet_pton, inet_ntop
 import unittest
 

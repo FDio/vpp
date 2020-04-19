@@ -239,6 +239,26 @@ reference time, at the current clock tick rate:
     * c->clocks_per_second;
 ```
 
+### Timebase precision
+
+Cognoscenti may notice that vlib/clib\_time\_now(...) return a 64-bit
+floating-point value; the number of seconds since vpp started.
+
+Please see [this Wikipedia
+article](https://en.wikipedia.org/wiki/Double-precision_floating-point_format)
+for more information. C double-precision floating point numbers
+(called f64 in the vpp code base) have a 53-bit effective mantissa,
+and can accurately represent 15 decimal digits' worth of precision.
+
+There are 315,360,000.000001 seconds in ten years plus one
+microsecond. That string has exactly 15 decimal digits. The vpp time
+base retains 1us precision for roughly 30 years.
+
+vlib/clib\_time\_now do *not* provide precision in excess of 1e-6
+seconds. If necessary, please use clib_cpu_time_now(...) for direct
+access to the CPU clock-cycle counter. Note that the number of CPU
+clock cycles per second varies significantly across CPU architectures.
+
 Format
 ------
 

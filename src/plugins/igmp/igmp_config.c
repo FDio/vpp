@@ -31,7 +31,7 @@ igmp_clear_config (igmp_config_t * config)
   /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
     ({
-      igmp_group_clear (group);
+      igmp_group_clear (&group);
     }));
   /* *INDENT-ON* */
 

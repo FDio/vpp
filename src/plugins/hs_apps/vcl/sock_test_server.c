@@ -238,7 +238,8 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
 		{
 		  static char buf[64];
 
-		  sprintf (buf, "SERVER (fd %d) RESULTS", tc->fd);
+		  snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS",
+			    tc->fd);
 		  vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
 				       test == VCL_TEST_TYPE_BI
 				       /* show tx */ ,
@@ -558,7 +559,8 @@ main (int argc, char **argv)
 
   memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
   ssm->serveraddr.sun_family = AF_UNIX;
-  strcpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME);
+  strncpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
+	   sizeof (ssm->serveraddr.sun_path));
 
   rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
 	     SUN_LEN (&ssm->serveraddr));

@@ -258,6 +258,9 @@ check_send_client_message (vlib_main_t * vm,
   next_index = ip6_rewrite_mcast_node.index;
 
   c0 = vlib_buffer_copy (vm, p0);
+  if (c0 == NULL)
+    return client_state->keep_sending_client_message;
+
   ci0 = vlib_get_buffer_index (vm, c0);
 
   ip = (ip6_header_t *) vlib_buffer_get_current (c0);

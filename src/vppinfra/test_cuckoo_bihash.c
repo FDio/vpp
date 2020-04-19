@@ -134,7 +134,7 @@ w_thread (c, {
   CVT (clib_cuckoo_kv) kv;
   kv.key = tm->keys[idx];
   kv.value = *hash_get (tm->key_hash, kv.key);
-  CV (clib_cuckoo_add_del) (&tm->ch, &kv, op);
+  CV (clib_cuckoo_add_del) (&tm->ch, &kv, op, 0);
 });
 /* *INDENT-ON* */
 

@@ -122,9 +122,7 @@ format_dhcp_client (u8 * s, va_list * va)
       s =
 	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
 		c->next_transmit);
-      s =
-	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
-		c->ai_bcast);
+      s = format (s, "\n broadcast adjacency:%d", c->ai_bcast);
     }
   return s;
 }
@@ -165,15 +163,6 @@ dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
               FIB_ROUTE_PATH_FLAG_NONE);
           /* *INDENT-ON* */
 	}
-      if (c->learned.dhcp_server.as_u32)
-	{
-	  ip46_address_t dst = {
-	    .ip4 = c->learned.dhcp_server,
-	  };
-	  c->ai_ucast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-					     VNET_LINK_IP4, &dst,
-					     c->sw_if_index);
-	}
     }
   clib_memcpy (&c->installed, &c->learned, sizeof (c->installed));
   c->addresses_installed = 1;
@@ -210,8 +199,6 @@ dhcp_client_release_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 				       DPO_PROTO_IP4, &nh, c->sw_if_index, ~0,
 				       1, FIB_ROUTE_PATH_FLAG_NONE);
 	}
-      adj_unlock (c->ai_ucast);
-      c->ai_ucast = ADJ_INDEX_INVALID;
     }
   clib_memset (&c->installed, 0, sizeof (c->installed));
   c->addresses_installed = 0;
@@ -253,7 +240,7 @@ dhcp_client_addr_callback (u32 * cindex)
   if (c->event_callback)
     c->event_callback (c->client_index, c);
 
-  DHCP_INFO ("update: %U", format_dhcp_client, dcm, c);
+  DHCP_INFO ("update: %U", format_dhcp_client, dcm, c, 1 /* verbose */ );
 }
 
 static void
@@ -492,7 +479,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 
   DHCP_INFO ("send: type:%U bcast:%d %U",
 	     format_dhcp_packet_type, type,
-	     is_broadcast, format_dhcp_client, dcm, c);
+	     is_broadcast, format_dhcp_client, dcm, c, 1 /* verbose */ );
 
   /* Interface(s) down? */
   if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
@@ -518,24 +505,13 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   vnet_buffer (b)->sw_if_index[VLIB_RX] = c->sw_if_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
-  if (ADJ_INDEX_INVALID == c->ai_ucast)
-    is_broadcast = 1;
-
   if (is_broadcast)
     {
       node_index = ip4_rewrite_node.index;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_bcast;
     }
   else
-    {
-      ip_adjacency_t *adj = adj_get (c->ai_ucast);
-
-      if (IP_LOOKUP_NEXT_ARP == adj->lookup_next_index)
-	node_index = ip4_arp_node.index;
-      else
-	node_index = ip4_rewrite_node.index;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_ucast;
-    }
+    node_index = dcm->ip4_lookup_node_index;
 
   /* Enqueue the packet right now */
   f = vlib_get_frame_to_node (vm, node_index);
@@ -717,8 +693,6 @@ dhcp_discover_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "DISCOVER" state. Send a dhcp discover packet,
    * eventually back off the retry rate.
    */
-  DHCP_INFO ("enter discover: %U", format_dhcp_client, dcm, c);
-
   /*
    * In order to accept any OFFER, whether broadcasted or unicasted, we
    * need to configure the dhcp-client-detect feature as an input feature
@@ -753,7 +727,8 @@ dhcp_request_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    * State machine "REQUEST" state. Send a dhcp request packet,
    * eventually drop back to the discover state.
    */
-  DHCP_INFO ("enter request: %U", format_dhcp_client, dcm, c);
+  DHCP_INFO ("enter request: %U", format_dhcp_client, dcm, c,
+	     1 /*verbose */ );
 
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 1 /* is_broadcast */ );
 
@@ -793,7 +768,8 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    */
   if (now > c->lease_expires)
     {
-      DHCP_INFO ("lease expired: %U", format_dhcp_client, dcm, c);
+      DHCP_INFO ("lease expired: %U", format_dhcp_client, dcm, c,
+		 1 /*verbose */ );
 
       /* reset all data for the client. do not send any more messages
        * since the objects to do so have been lost */
@@ -801,7 +777,7 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
       return 1;
     }
 
-  DHCP_INFO ("enter bound: %U", format_dhcp_client, dcm, c);
+  DHCP_INFO ("enter bound: %U", format_dhcp_client, dcm, c, 1 /* verbose */ );
   send_dhcp_pkt (dcm, c, DHCP_PACKET_REQUEST, 0 /* is_broadcast */ );
 
   c->retry_count++;
@@ -827,7 +803,9 @@ dhcp_client_sm (f64 now, f64 timeout, uword pool_index)
 
   /* Time for us to do something with this client? */
   if (now < c->next_transmit)
-    return timeout;
+    return c->next_transmit;
+
+  DHCP_INFO ("sm active session %d", c - dcm->clients);
 
 again:
   switch (c->state)
@@ -853,17 +831,15 @@ again:
       break;
     }
 
-  if (c->next_transmit < now + timeout)
-    return c->next_transmit - now;
-
-  return timeout;
+  return c->next_transmit;
 }
 
 static uword
 dhcp_client_process (vlib_main_t * vm,
 		     vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  f64 timeout = 100.0;
+  f64 timeout = 1000.0;
+  f64 next_expire_time, this_next_expire_time;
   f64 now;
   uword event_type;
   uword *event_data = 0;
@@ -883,23 +859,32 @@ dhcp_client_process (vlib_main_t * vm,
 	{
 	case EVENT_DHCP_CLIENT_WAKEUP:
 	  for (i = 0; i < vec_len (event_data); i++)
-	    timeout = dhcp_client_sm (now, timeout, event_data[i]);
-	  break;
+	    (void) dhcp_client_sm (now, timeout, event_data[i]);
+	  /* FALLTHROUGH */
 
 	case ~0:
 	  if (pool_elts (dcm->clients))
 	    {
-	      DHCP_INFO ("timeout");
               /* *INDENT-OFF* */
+              next_expire_time = 1e70;
               pool_foreach (c, dcm->clients,
               ({
-                timeout = dhcp_client_sm (now, timeout,
-                                          (uword) (c - dcm->clients));
+                this_next_expire_time = dhcp_client_sm
+                  (now, timeout, (uword) (c - dcm->clients));
+                next_expire_time = this_next_expire_time < next_expire_time ?
+                  this_next_expire_time : next_expire_time;
               }));
+              if (next_expire_time > now)
+                timeout = next_expire_time - now;
+              else
+                {
+                  clib_warning ("BUG");
+                  timeout = 1.13;
+                }
               /* *INDENT-ON* */
 	    }
 	  else
-	    timeout = 100.0;
+	    timeout = 1000.0;
 	  break;
 	}
 
@@ -1002,7 +987,6 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       c->client_identifier = a->client_identifier;
       c->set_broadcast_flag = a->set_broadcast_flag;
       c->dscp = a->dscp;
-      c->ai_ucast = ADJ_INDEX_INVALID;
       c->ai_bcast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
 					 VNET_LINK_IP4,
 					 &ADJ_BCAST_ADDR, c->sw_if_index);
@@ -1018,7 +1002,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       vlib_process_signal_event (vm, dhcp_client_process_node.index,
 				 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
 
-      DHCP_INFO ("create: %U", format_dhcp_client, dcm, c);
+      DHCP_INFO ("create: %U", format_dhcp_client, dcm, c, 1 /* verbose */ );
     }
   else
     {
@@ -1252,7 +1236,15 @@ static clib_error_t *
 dhcp_client_init (vlib_main_t * vm)
 {
   dhcp_client_main_t *dcm = &dhcp_client_main;
+  vlib_node_t *ip4_lookup_node;
 
+  ip4_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
+
+  /* Should never happen... */
+  if (ip4_lookup_node == 0)
+    return clib_error_return (0, "ip4-lookup node not found");
+
+  dcm->ip4_lookup_node_index = ip4_lookup_node->index;
   dcm->vlib_main = vm;
   dcm->vnet_main = vnet_get_main ();
   dcm->seed = (u32) clib_cpu_time_now ();

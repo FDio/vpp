@@ -42,7 +42,7 @@ typedef struct session_cb_vft_
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
+				     session_t * s, session_error_t code);
 
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
@@ -387,6 +387,7 @@ typedef struct session_connect_msg_
   u32 wrk_index;
   u32 vrf;
   u16 port;
+  u16 lcl_port;
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
@@ -607,7 +608,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   int rv;
 
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+  if (max_enqueue < (sizeof (session_dgram_hdr_t) + len))
     return 0;
 
   max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -681,7 +682,7 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   int rv;
 
   max_deq = svm_fifo_max_dequeue_cons (f);
-  if (max_deq < sizeof (session_dgram_hdr_t))
+  if (max_deq <= sizeof (session_dgram_hdr_t))
     {
       if (clear_evt)
 	svm_fifo_unset_event (f);
@@ -693,17 +694,21 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 
   svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
   ASSERT (ph.data_length >= ph.data_offset);
-  if (!ph.data_offset)
-    svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
+
+  /* Check if we have the full dgram */
+  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN)
+      && len >= ph.data_length)
+    return 0;
+
+  svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
     return rv;
-  ph.data_offset += rv;
-  if (ph.data_offset == ph.data_length)
-    svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
-  else
-    svm_fifo_overwrite_head (f, (u8 *) & ph, sizeof (ph));
+
+  /* Discards data that did not fit in buffer */
+  svm_fifo_dequeue_drop (f, ph.data_length + SESSION_CONN_HDR_LEN);
+
   return rv;
 }
 
@@ -739,6 +744,24 @@ app_recv (app_session_t * s, u8 * data, u32 len)
   return app_recv_stream (s, data, len);
 }
 
+/* *INDENT-OFF* */
+static char *session_error_str[] = {
+#define _(sym, str) str,
+    foreach_session_error
+#undef _
+};
+/* *INDENT-ON* */
+
+static inline u8 *
+format_session_error (u8 * s, va_list * args)
+{
+  session_error_t error = va_arg (*args, session_error_t);
+  if (-error >= 0 && -error < SESSION_N_ERRORS)
+    s = format (s, "%s", session_error_str[-error]);
+  else
+    s = format (s, "invalid session err %u", -error);
+  return s;
+}
 #endif /* __included_uri_h__ */
 
 /*

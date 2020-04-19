@@ -436,9 +436,6 @@ ip4_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip4_cli_init)))
     return error;
 
-  if ((error = vlib_call_init_function (vm, ip4_source_check_init)))
-    return error;
-
   if ((error = vlib_call_init_function
        (vm, ip4_source_and_port_range_check_init)))
     return error;

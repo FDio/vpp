@@ -8,12 +8,13 @@
 
 import unittest
 import time
-from socket import inet_pton, inet_ntop, AF_INET6
+import socket
+from socket import inet_pton, inet_ntop
 
 from vpp_object import VppObject
 from vpp_papi import VppEnum
 
-from scapy.packet import Raw
+from scapy.packet import raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, ICMP, icmptypes
 from scapy.layers.inet6 import IPv6, ipv6nh, IPv6ExtHdrHopByHop, \
@@ -833,8 +834,8 @@ class TestVRRP6(VppTestCase):
 
         self.assertEqual(pkt[IPv6].dst, "ff02::1")
         # convert addrs to packed format since string versions could differ
-        src_addr = inet_pton(AF_INET6, pkt[IPv6].src)
-        vr_ll_addr = inet_pton(AF_INET6, vr.interface().local_ip6_ll)
+        src_addr = inet_pton(socket.AF_INET6, pkt[IPv6].src)
+        vr_ll_addr = inet_pton(socket.AF_INET6, vr.interface().local_ip6_ll)
         self.assertEqual(src_addr, vr_ll_addr)
 
         self.assertTrue(pkt[ICMPv6ND_NA].tgt in vr.virtual_ips())

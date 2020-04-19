@@ -571,6 +571,17 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   vlib_buffer_pool_thread_t *bpt;
   u32 *src, *dst, len, n_left;
 
+  /* If buffer allocation fault injection is configured */
+  if (VLIB_BUFFER_ALLOC_FAULT_INJECTOR > 0)
+    {
+      u32 vlib_buffer_alloc_may_fail (vlib_main_t *, u32);
+
+      /* See how many buffers we're willing to allocate */
+      n_buffers = vlib_buffer_alloc_may_fail (vm, n_buffers);
+      if (n_buffers == 0)
+	return (n_buffers);
+    }
+
   bp = vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
   bpt = vec_elt_at_index (bp->threads, vm->thread_index);
 
@@ -1208,11 +1219,11 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
-  s->ref_count = n_buffers;
+  s->ref_count = n_buffers ? n_buffers : s->ref_count;
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       s = vlib_get_buffer (vm, s->next_buffer);
-      s->ref_count = n_buffers;
+      s->ref_count = n_buffers ? n_buffers : s->ref_count;
     }
 
   return n_buffers;

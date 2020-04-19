@@ -1219,6 +1219,9 @@ check_send_rs (vlib_main_t * vm, ip6_ra_t * radv_info, f64 current_time,
   next_index = ip6_rewrite_mcast_node.index;
 
   c0 = vlib_buffer_copy (vm, p0);
+  if (c0 == NULL)
+    return radv_info->keep_sending_rs;
+
   ci0 = vlib_get_buffer_index (vm, c0);
 
   f = vlib_get_frame_to_node (vm, next_index);

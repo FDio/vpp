@@ -56,6 +56,7 @@ list(APPEND VNET_HEADERS
   handoff.h
   interface.h
   interface_funcs.h
+  interface_output.h
   ip/ip4_to_ip6.h
   ip/ip6_to_ip4.h
   ip/ip_types_api.h
@@ -440,7 +441,6 @@ list(APPEND VNET_SOURCES
   ip/ip4_mtrie.c
   ip/ip4_pg.c
   ip/ip4_source_and_port_range_check.c
-  ip/ip4_source_check.c
   ip/reass/ip4_full_reass.c
   ip/reass/ip4_sv_reass.c
   ip/ip6_format.c
@@ -470,7 +470,6 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
-  ip/ip4_source_check.c
   ip/ip4_punt_drop.c
   ip/reass/ip4_full_reass.c
   ip/ip6_hop_by_hop.c
@@ -659,9 +658,11 @@ list(APPEND VNET_SOURCES
   tcp/tcp_output.c
   tcp/tcp_input.c
   tcp/tcp_newreno.c
-  tcp/tcp_cubic.c
   tcp/tcp_bt.c
+  tcp/tcp_cli.c
+  tcp/tcp_cubic.c
   tcp/tcp_debug.c
+  tcp/tcp_sack.c
   tcp/tcp.c
 )
 
@@ -674,7 +675,12 @@ list(APPEND VNET_MULTIARCH_SOURCES
 list(APPEND VNET_HEADERS
   tcp/tcp_packet.h
   tcp/tcp_timer.h
+  tcp/tcp_bt.h
+  tcp/tcp_cc.h
   tcp/tcp_debug.h
+  tcp/tcp_inlines.h
+  tcp/tcp_sack.h
+  tcp/tcp_types.h
   tcp/tcp.h
   tcp/tcp_error.def
 )
@@ -686,6 +692,7 @@ list(APPEND VNET_API_FILES tcp/tcp.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   udp/udp.c
+  udp/udp_cli.c
   udp/udp_input.c
   udp/udp_format.c
   udp/udp_local.c
@@ -1151,6 +1158,7 @@ list(APPEND VNET_API_FILES devices/pipe/pipe.api)
 
 list(APPEND VNET_SOURCES
   session/session.c
+  session/session_debug.c
   session/session_table.c
   session/session_rules_table.c
   session/session_lookup.c
@@ -1514,20 +1522,6 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES syslog/syslog.api)
-
-##############################################################################
-# PCI
-##############################################################################
-
-list (APPEND VNET_SOURCES
-  pci/pci_types_api.c
-)
-
-list(APPEND VNET_HEADERS
-  pci/pci_types_api.h
-)
-
-list(APPEND VNET_API_FILES pci/pci_types.api)
 
 ##############################################################################
 # Tunnel Endpoint Information Base

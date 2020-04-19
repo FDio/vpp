@@ -40,10 +40,8 @@ release = u'20.01'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
-    'recommonmark']
-
-# This is currently breaking the build
-####    'sphinxcontrib.spelling']
+    'recommonmark',
+    'sphinxcontrib.spelling']
 
 spelling_word_list_filename = 'spelling_wordlist.txt'
 # Add any paths that contain templates here, relative to this directory.

@@ -122,7 +122,7 @@ class AutoConfig(object):
                     answer = input("Please enter the netmask [n.n.n.n]: ")
                     plen = ip_address(answer).netmask_bits()
                 return '{}/{}'.format(ipaddr, plen)
-            except None:
+            except ValueError:
                 print("Please enter a valid IPv4 address.")
 
     @staticmethod

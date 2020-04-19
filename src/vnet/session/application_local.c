@@ -96,7 +96,7 @@ ct_session_connect_notify (session_t * ss)
   segment_manager_t *sm;
   fifo_segment_t *seg;
   u64 segment_handle;
-  int is_fail = 0;
+  int err = 0;
   session_t *cs;
   u32 ss_index;
 
@@ -108,13 +108,12 @@ ct_session_connect_notify (session_t * ss)
   seg = segment_manager_get_segment_w_lock (sm, ss->rx_fifo->segment_index);
   segment_handle = segment_manager_segment_handle (sm, seg);
 
-  if (app_worker_add_segment_notify (client_wrk, segment_handle))
+  if ((err = app_worker_add_segment_notify (client_wrk, segment_handle)))
     {
       clib_warning ("failed to notify client %u of new segment",
 		    sct->client_wrk);
       segment_manager_segment_reader_unlock (sm);
       session_close (ss);
-      is_fail = 1;
     }
   else
     {
@@ -149,8 +148,7 @@ ct_session_connect_notify (session_t * ss)
       return -1;
     }
 
-  if (app_worker_connect_notify (client_wrk, is_fail ? 0 : cs,
-				 sct->client_opaque))
+  if (app_worker_connect_notify (client_wrk, cs, err, sct->client_opaque))
     {
       session_close (ss);
       return -1;
@@ -296,7 +294,6 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 
   if (ct_init_local_session (client_wrk, server_wrk, sct, ss, ll))
     {
-      clib_warning ("failed");
       ct_connection_free (sct);
       session_free (ss);
       return -1;
@@ -305,9 +302,9 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ss->session_state = SESSION_STATE_ACCEPTING;
   if (app_worker_accept_notify (server_wrk, ss))
     {
-      clib_warning ("failed");
       ct_connection_free (sct);
-      session_free_w_fifos (ss);
+      segment_manager_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
+      session_free (ss);
       return -1;
     }
 
@@ -371,7 +368,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   table_index = application_local_session_table (app);
   lh = session_lookup_local_endpoint (table_index, sep);
   if (lh == SESSION_DROP_HANDLE)
-    return VNET_API_ERROR_APP_CONNECT_FILTERED;
+    return SESSION_E_FILTERED;
 
   if (lh == SESSION_INVALID_HANDLE)
     goto global_scope;
@@ -396,10 +393,10 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
 
 global_scope:
   if (session_endpoint_is_local (sep))
-    return VNET_API_ERROR_SESSION_CONNECT;
+    return SESSION_E_NOROUTE;
 
   if (!application_has_global_scope (app))
-    return VNET_API_ERROR_APP_CONNECT_SCOPE;
+    return SESSION_E_SCOPE;
 
   fib_proto = session_endpoint_fib_proto (sep);
   table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
@@ -472,7 +469,7 @@ format_ct_connection_id (u8 * s, va_list * args)
 }
 
 static int
-ct_custom_tx (void *session, u32 max_burst_size)
+ct_custom_tx (void *session, transport_send_params_t * sp)
 {
   session_t *s = (session_t *) session;
   if (session_has_transport (s))

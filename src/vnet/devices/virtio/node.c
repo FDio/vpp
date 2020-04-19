@@ -143,27 +143,44 @@ more:
 
 static_always_inline void
 virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
-		   u8 * l4_proto, u8 * l4_hdr_sz)
+		   u8 * l4_proto, u8 * l4_hdr_sz, virtio_if_type_t type)
 {
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 
     {
-      ethernet_header_t *eh =
-	(ethernet_header_t *) vlib_buffer_get_current (b0);
-      u16 ethertype = clib_net_to_host_u16 (eh->type);
-      u16 l2hdr_sz = sizeof (ethernet_header_t);
-
-      if (ethernet_frame_is_tagged (ethertype))
+      u16 ethertype = 0, l2hdr_sz = 0;
+      if (type != VIRTIO_IF_TYPE_TUN)
 	{
-	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+	  ethernet_header_t *eh =
+	    (ethernet_header_t *) vlib_buffer_get_current (b0);
+	  ethertype = clib_net_to_host_u16 (eh->type);
+	  l2hdr_sz = sizeof (ethernet_header_t);
 
-	  ethertype = clib_net_to_host_u16 (vlan->type);
-	  l2hdr_sz += sizeof (*vlan);
-	  if (ethertype == ETHERNET_TYPE_VLAN)
+	  if (ethernet_frame_is_tagged (ethertype))
 	    {
-	      vlan++;
+	      ethernet_vlan_header_t *vlan =
+		(ethernet_vlan_header_t *) (eh + 1);
+
 	      ethertype = clib_net_to_host_u16 (vlan->type);
 	      l2hdr_sz += sizeof (*vlan);
+	      if (ethertype == ETHERNET_TYPE_VLAN)
+		{
+		  vlan++;
+		  ethertype = clib_net_to_host_u16 (vlan->type);
+		  l2hdr_sz += sizeof (*vlan);
+		}
+	    }
+	}
+      else
+	{
+	  switch (b0->data[0] & 0xf0)
+	    {
+	    case 0x40:
+	      ethertype = ETHERNET_TYPE_IP4;
+	      break;
+	    case 0x60:
+	      ethertype = ETHERNET_TYPE_IP6;
+	      break;
 	    }
 	}
 
@@ -201,7 +218,6 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  *l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
 	}
       else if (*l4_proto == IP_PROTOCOL_UDP)
 	{
@@ -210,7 +226,6 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  *l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
 	}
     }
 
@@ -287,7 +302,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  if (checksum_offload_enabled)
-	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz);
+	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, vif->type);
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr, l4_proto, l4_hdr_sz);
@@ -323,6 +338,22 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  n_left--;
 		}
 	    }
+	  if (PREDICT_FALSE (vif->type == VIRTIO_IF_TYPE_TUN))
+	    {
+	      switch (b0->data[0] & 0xf0)
+		{
+		case 0x40:
+		  next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+		  break;
+		case 0x60:
+		  next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		  break;
+		default:
+		  next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+		  break;
+		}
+	    }
+
 
 	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
 	    next0 = vif->per_interface_next_index;

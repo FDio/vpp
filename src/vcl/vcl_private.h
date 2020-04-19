@@ -149,6 +149,11 @@ do {                                            \
 #define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
+typedef enum vcl_session_flags_
+{
+  VCL_SESSION_F_CONNECTED = 1 << 0,
+} __clib_packed vcl_session_flags_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -167,6 +172,7 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  vcl_session_flags_t flags;
   /* VCL session index of the listening session (if any) */
   u32 listener_index;
   /* Accepted sessions on this listener */
@@ -354,6 +360,7 @@ typedef struct vppcom_main_t_
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
+extern vppcom_main_t _vppcom_main;
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
 #define VCL_INVALID_SESSION_HANDLE ((u64)~0)
@@ -555,6 +562,25 @@ vcl_session_closed_error (vcl_session_t * s)
     ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
 }
 
+static inline void
+vcl_ip_copy_from_ep (ip46_address_t * ip, vppcom_endpt_t * ep)
+{
+  if (ep->is_ip4)
+    clib_memcpy_fast (&ip->ip4, ep->ip, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (&ip->ip6, ep->ip, sizeof (ip6_address_t));
+}
+
+static inline void
+vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
+{
+  ep->is_ip4 = is_ip4;
+  if (is_ip4)
+    clib_memcpy_fast (ep->ip, &ip->ip4, sizeof (ip4_address_t));
+  else
+    clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
+}
+
 /*
  * Helpers
  */
@@ -641,8 +667,6 @@ int vcl_segment_attach (u64 segment_handle, char *name,
 void vcl_segment_detach (u64 segment_handle);
 
 u32 vcl_max_nsid_len (void);
-
-u8 *format_api_error (u8 * s, va_list * args);
 
 void vls_init ();
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */

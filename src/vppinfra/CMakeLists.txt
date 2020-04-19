@@ -75,6 +75,7 @@ set(VPPINFRA_SRCS
   time.c
   time_range.c
   timing_wheel.c
+  tw_timer_2t_2w_512sl.c
   tw_timer_16t_1w_2048sl.c
   tw_timer_16t_2w_512sl.c
   tw_timer_1t_3w_1024sl_ov.c
@@ -110,6 +111,8 @@ set(VPPINFRA_HEADERS
   crc32.h
   cuckoo_8_8.h
   cuckoo_16_8.h
+  cuckoo_common.h
+  cuckoo_debug.h
   cuckoo_template.h
   cuckoo_template.c
   dlist.h
@@ -165,6 +168,7 @@ set(VPPINFRA_HEADERS
   time.h
   time_range.h
   timing_wheel.h
+  tw_timer_2t_2w_512sl.h
   tw_timer_16t_1w_2048sl.h
   tw_timer_16t_2w_512sl.h
   tw_timer_1t_3w_1024sl_ov.h

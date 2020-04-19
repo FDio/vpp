@@ -1,7 +1,8 @@
 import os
-import time
+import socket
 from socket import inet_pton, inet_ntop
 import struct
+import time
 from traceback import format_exc, format_stack
 
 import scapy.compat

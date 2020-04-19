@@ -62,6 +62,26 @@ vl_api_ikev2_plugin_get_version_t_handler (vl_api_ikev2_plugin_get_version_t *
 }
 
 static void
+  vl_api_ikev2_profile_set_liveness_t_handler
+  (vl_api_ikev2_profile_set_liveness_t * mp)
+{
+  vl_api_ikev2_profile_set_liveness_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  clib_error_t *error;
+  error = ikev2_set_liveness_params (clib_net_to_host_u32 (mp->period),
+				     clib_net_to_host_u32 (mp->max_retries));
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_LIVENESS_REPLY);
+}
+
+static void
 vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
 {
   vl_api_ikev2_profile_add_del_reply_t *rmp;

@@ -103,13 +103,16 @@ int
 vat_socket_connect (vat_main_t * vam)
 {
   int rv;
+  api_main_t *am = vlibapi_get_main ();
   vam->socket_client_main = &socket_client_main;
   if ((rv = vl_socket_client_connect ((char *) vam->socket_name,
 				      "vpp_api_test",
 				      0 /* default socket rx, tx buffer */ )))
     return rv;
+
   /* vpp expects the client index in network order */
   vam->my_client_index = htonl (socket_client_main.client_index);
+  am->my_client_index = vam->my_client_index;
   return 0;
 }
 #else /* vpp built-in case, we don't do sockets... */
@@ -13804,7 +13807,7 @@ vl_api_ipsec_sa_details_t_handler (vl_api_ipsec_sa_details_t * mp)
 	 "crypto_key %U integ_alg %u integ_key %U flags %x "
 	 "tunnel_src_addr %U tunnel_dst_addr %U "
 	 "salt %u seq_outbound %lu last_seq_inbound %lu "
-	 "replay_window %lu\n",
+	 "replay_window %lu stat_index %u\n",
 	 ntohl (mp->entry.sad_id),
 	 ntohl (mp->sw_if_index),
 	 ntohl (mp->entry.spi),
@@ -13818,7 +13821,7 @@ vl_api_ipsec_sa_details_t_handler (vl_api_ipsec_sa_details_t * mp)
 	 &mp->entry.tunnel_dst, ntohl (mp->salt),
 	 clib_net_to_host_u64 (mp->seq_outbound),
 	 clib_net_to_host_u64 (mp->last_seq_inbound),
-	 clib_net_to_host_u64 (mp->replay_window));
+	 clib_net_to_host_u64 (mp->replay_window), ntohl (mp->stat_index));
 }
 
 #define vl_api_ipsec_sa_details_t_endian vl_noop_handler
@@ -13866,6 +13869,7 @@ static void vl_api_ipsec_sa_details_t_handler_json
   vat_json_object_add_address (node, "dst", &mp->entry.tunnel_dst);
   vat_json_object_add_uint (node, "replay_window",
 			    clib_net_to_host_u64 (mp->replay_window));
+  vat_json_object_add_uint (node, "stat_index", ntohl (mp->stat_index));
 }
 
 static int
@@ -17636,7 +17640,7 @@ vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
       clib_memcpy (&ip4, &fp->nh.address.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "next_hop", ip4);
     }
-  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP4)
+  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP6)
     {
       clib_memcpy (&ip6, &fp->nh.address.ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "next_hop", ip6);

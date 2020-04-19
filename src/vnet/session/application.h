@@ -63,6 +63,9 @@ typedef struct app_worker_
   u32 api_client_index;
 
   u8 app_is_builtin;
+
+  /** Per transport proto hash tables of half-open connection handles */
+  uword **half_open_table;
 } app_worker_t;
 
 typedef struct app_worker_map_
@@ -250,7 +253,14 @@ int app_worker_init_accepted (session_t * s);
 int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
-			       u32 opaque);
+			       session_error_t err, u32 opaque);
+int app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+			      session_handle_t ho_handle,
+			      session_handle_t wrk_handle);
+int app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+			      session_handle_t ho_handle);
+u64 app_worker_lookup_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+				 session_handle_t ho_handle);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 					session_t * s);
@@ -299,7 +309,7 @@ app_cert_key_pair_t *app_cert_key_pair_get_default ();
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			      session_handle_t handle, int rv);
 int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-				  session_t * s, u8 is_fail);
+				  session_t * s, session_error_t err);
 void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			     u32 context, int rv);
 

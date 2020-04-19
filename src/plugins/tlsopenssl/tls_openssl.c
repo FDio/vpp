@@ -110,15 +110,11 @@ openssl_lctx_get (u32 lctx_index)
 }
 
 static int
-openssl_read_from_bio_into_fifo (svm_fifo_t * f, BIO * bio)
+openssl_read_from_bio_into_fifo (svm_fifo_t * f, BIO * bio, u32 enq_max)
 {
-  u32 enq_now, enq_max;
   svm_fifo_chunk_t *c;
   int read, rv;
-
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
-    return 0;
+  u32 enq_now;
 
   svm_fifo_fill_chunk_list (f);
 
@@ -256,12 +252,17 @@ openssl_try_handshake_read (openssl_ctx_t * oc, session_t * tls_session)
 static int
 openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
 {
-  u32 read;
+  u32 read, enq_max;
 
   if (BIO_ctrl_pending (oc->rbio) <= 0)
     return 0;
 
-  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio);
+  enq_max = svm_fifo_max_enqueue_prod (tls_session->tx_fifo);
+  if (!enq_max)
+    return 0;
+
+  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio,
+					  enq_max);
   if (read)
     tls_add_vpp_q_tx_evt (tls_session);
 
@@ -317,7 +318,7 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
       /*
        * Also handles cleanup of the pre-allocated session
        */
-      tls_notify_app_connected (ctx, /* is failed */ 1);
+      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
     }
 }
 
@@ -385,11 +386,11 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	   */
 	  if (ctx->srv_hostname)
 	    {
-	      tls_notify_app_connected (ctx, /* is failed */ 0);
+	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
 	      return -1;
 	    }
 	}
-      tls_notify_app_connected (ctx, /* is failed */ 0);
+      tls_notify_app_connected (ctx, SESSION_E_NONE);
     }
   else
     {
@@ -413,11 +414,12 @@ openssl_confirm_app_close (tls_ctx_t * ctx)
 }
 
 static inline int
-openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
+openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session,
+		   transport_send_params_t * sp)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int wrote = 0, read, max_buf = 4 * TLS_CHUNK_SIZE, max_space;
-  u32 deq_max, to_write;
+  int wrote = 0, read, max_buf = 4 * TLS_CHUNK_SIZE, max_space, n_pending;
+  u32 deq_max, to_write, enq_max;
   session_t *tls_session;
   svm_fifo_t *f;
 
@@ -427,6 +429,8 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   if (!deq_max)
     goto check_tls_fifo;
 
+  deq_max = clib_min (deq_max, sp->max_burst_size);
+
   /* Figure out how much data to write */
   max_space = max_buf - BIO_ctrl_pending (oc->rbio);
   max_space = (max_space < 0) ? 0 : max_space;
@@ -434,37 +438,44 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 
   wrote = openssl_write_from_fifo_into_ssl (f, oc->ssl, to_write);
   if (!wrote)
-    {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
-      goto check_tls_fifo;
-    }
+    goto check_tls_fifo;
 
   if (svm_fifo_needs_deq_ntf (f, wrote))
     session_dequeue_notify (app_session);
 
-  if (svm_fifo_max_dequeue_cons (f))
-    tls_add_vpp_q_builtin_tx_evt (app_session);
-
 check_tls_fifo:
 
-  if (BIO_ctrl_pending (oc->rbio) <= 0)
+  if ((n_pending = BIO_ctrl_pending (oc->rbio)) <= 0)
     return wrote;
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
 
-  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio);
+  enq_max = svm_fifo_max_enqueue_prod (tls_session->tx_fifo);
+  if (!enq_max)
+    goto maybe_reschedule;
+
+  read = openssl_read_from_bio_into_fifo (tls_session->tx_fifo, oc->rbio,
+					  enq_max);
   if (!read)
-    {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
-      return wrote;
-    }
+    goto maybe_reschedule;
 
   tls_add_vpp_q_tx_evt (tls_session);
 
-  if (BIO_ctrl_pending (oc->rbio) > 0)
-    tls_add_vpp_q_builtin_tx_evt (app_session);
-  else if (ctx->app_closed)
+  if (PREDICT_FALSE (ctx->app_closed && !BIO_ctrl_pending (oc->rbio)))
     openssl_confirm_app_close (ctx);
+
+maybe_reschedule:
+
+  if (!svm_fifo_max_enqueue_prod (tls_session->tx_fifo))
+    {
+      svm_fifo_add_want_deq_ntf (tls_session->tx_fifo,
+				 SVM_FIFO_WANT_DEQ_NOTIF);
+      transport_connection_deschedule (&ctx->connection);
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+    }
+  else
+    /* Request tx reschedule of the app session */
+    app_session->flags |= SESSION_F_CUSTOM_TX;
 
   return wrote;
 }

@@ -150,6 +150,5 @@ function(vpp_add_api_files name dir component)
 endfunction()
 
 add_custom_target(api_headers
-  DEPENDS vlibmemory_api_headers vnet_api_headers vpp_api_headers
+  DEPENDS vlibmemory_api_headers vnet_api_headers vpp_api_headers vlib_api_headers
 )
-

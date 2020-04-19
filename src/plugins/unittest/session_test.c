@@ -54,7 +54,7 @@ volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
 dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  session_t * s, u8 is_fail)
+				  session_t * s, session_error_t err)
 {
   if (s)
     {
@@ -596,7 +596,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   connect_args.app_index = client_index;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
-  SESSION_TEST ((error == VNET_API_ERROR_INVALID_VALUE),
+  SESSION_TEST ((error == SESSION_E_INVALID_RMT_IP),
 		"error code should be invalid value (zero ip)");
   SESSION_TEST ((dummy_segment_count == 0),
 		"shouldn't have received request to map new segment");
@@ -616,7 +616,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "client attachment should work");
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
-  SESSION_TEST ((error == VNET_API_ERROR_SESSION_CONNECT),
+  SESSION_TEST ((error == SESSION_E_NOINTF),
 		"error code should be connect (nothing in local scope)");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
@@ -678,8 +678,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   vnet_application_attach (&attach_args);
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
-  SESSION_TEST ((error == VNET_API_ERROR_SESSION_CONNECT),
-		"error code should be connect (not in same ns)");
+  SESSION_TEST ((error == SESSION_E_NOROUTE),
+		"error code should be noroute (not in same ns)");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
@@ -1255,8 +1255,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   /* Try connecting */
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
-  SESSION_TEST ((error == VNET_API_ERROR_APP_CONNECT_FILTERED),
-		"connect should be filtered");
+  SESSION_TEST ((error == SESSION_E_FILTERED), "connect should be filtered");
 
   sep.ip.ip4.as_u32 -= 1 << 24;
 
@@ -1529,8 +1528,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
-  SESSION_TEST ((error == VNET_API_ERROR_APP_CONNECT_FILTERED),
-		"connect should be filtered");
+  SESSION_TEST ((error == SESSION_E_FILTERED), "connect should be filtered");
 
   /*
    * Lookup test namespace
@@ -1542,8 +1540,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   connect_args.app_index = server_index;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "connect should fail");
-  SESSION_TEST ((error == VNET_API_ERROR_APP_CONNECT_FILTERED),
-		"connect should be filtered");
+  SESSION_TEST ((error == SESSION_E_FILTERED), "connect should be filtered");
 
   args.table_args.is_add = 0;
   vnet_session_rule_add_del (&args);

@@ -106,6 +106,34 @@ api_ikev2_profile_set_ipsec_udp_port (vat_main_t * vam)
 }
 
 static int
+api_ikev2_profile_set_liveness (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_profile_set_liveness_t *mp;
+  u32 period = 0, max_retries = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!unformat (i, "period %d max-retries %d", &period, &max_retries))
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_PROFILE_SET_LIVENESS, mp);
+
+  mp->period = clib_host_to_net_u32 (period);
+  mp->max_retries = clib_host_to_net_u32 (max_retries);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;

@@ -81,6 +81,8 @@ vxlan_encap_inline (vlib_main_t * vm,
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **b = bufs;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -96,6 +98,7 @@ vxlan_encap_inline (vlib_main_t * vm,
   u32 const csum_flags = is_ip4 ? VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
       VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
       VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
@@ -108,16 +111,11 @@ vxlan_encap_inline (vlib_main_t * vm,
 	{
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t * p2, * p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  u32 bi0 = to_next[0] = from[0];
@@ -127,8 +125,10 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
-	  vlib_buffer_t * b1 = vlib_get_buffer (vm, bi1);
+	  vlib_buffer_t * b0 = b[0];
+	  vlib_buffer_t * b1 = b[1];
+	  b += 2;
+
           u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
           u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
 
@@ -334,7 +334,9 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  vlib_buffer_t * b0 = vlib_get_buffer (vm, bi0);
+	  vlib_buffer_t * b0 = b[0];
+	  b += 1;
+
           u32 flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */

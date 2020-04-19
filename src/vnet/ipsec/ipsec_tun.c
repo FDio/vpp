@@ -626,6 +626,12 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
 	    format_ip_address, nh);
 
+  if (vec_len (sas_in) > ITP_MAX_N_SA_IN)
+    {
+      rv = VNET_API_ERROR_LIMIT_EXCEEDED;
+      goto out;
+    }
+
   rv = 0;
   im = &ipsec_main;
   if (NULL == nh)
@@ -811,8 +817,8 @@ static void
 ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t * ad)
 {
   /* remove our delegate */
-  adj_delegate_remove (ad->ad_adj_index, ipsec_tun_adj_delegate_type);
   ipsec_tun_protect_add_adj (ad->ad_adj_index, INDEX_INVALID);
+  adj_delegate_remove (ad->ad_adj_index, ipsec_tun_adj_delegate_type);
 }
 
 static void

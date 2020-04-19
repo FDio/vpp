@@ -172,7 +172,6 @@ echo_proto_cb_vft_t echo_udp_proto_cb_vft = {
 };
 
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_UDP, echo_udp_proto_cb_vft);
-ECHO_REGISTER_PROTO (TRANSPORT_PROTO_UDPC, echo_udp_proto_cb_vft);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -34,11 +34,26 @@ typedef enum
   UDP_N_ERROR,
 } udp_error_t;
 
-typedef enum
+#define foreach_udp_connection_flag					\
+  _(CONNECTED, "CONNECTED")	/**< connected mode */			\
+  _(OWNS_PORT, "OWNS_PORT")	/**< port belong to conn (UDPC) */	\
+  _(CLOSING, "CLOSING")		/**< conn closed with data */		\
+  _(LISTEN, "LISTEN")		/**< conn is listening */		\
+  _(MIGRATED, "MIGRATED")	/**< cloned to another thread */	\
+
+enum udp_conn_flags_bits
 {
-  UDP_CONN_F_CONNECTED = 1 << 0,	/**< connected mode */
-  UDP_CONN_F_OWNS_PORT = 1 << 1,	/**< port belong to conn (UDPC) */
-  UDP_CONN_F_CLOSING = 1 << 2,		/**< conn closed with data */
+#define _(sym, str) UDP_CONN_F_BIT_##sym,
+  foreach_udp_connection_flag
+#undef _
+  UDP_CONN_N_FLAGS
+};
+
+typedef enum udp_conn_flags_
+{
+#define _(sym, str) UDP_CONN_F_##sym = 1 << UDP_CONN_F_BIT_##sym,
+  foreach_udp_connection_flag
+#undef _
 } udp_conn_flags_t;
 
 typedef struct
@@ -48,6 +63,7 @@ typedef struct
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 flags;				/**< connection flags */
+  u16 mss;				/**< connection mss */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -106,7 +122,7 @@ typedef struct
   /* Name (a c string). */
   char *name;
 
-  /* GRE protocol type in host byte order. */
+  /* Port number in host byte order. */
   udp_dst_port_t dst_port;
 
   /* Node which handles this type. */
@@ -114,6 +130,9 @@ typedef struct
 
   /* Next index for this type. */
   u32 next_index;
+
+  /* UDP sessions refcount (not tunnels) */
+  u32 n_connections;
 
   /* Parser for packet generator edits for this protocol */
   unformat_function_t *unformat_pg_edit;
@@ -141,6 +160,9 @@ typedef struct
   u8 punt_unknown4;
   u8 punt_unknown6;
 
+  /* Udp local to input arc index */
+  u32 local_to_input_edge[N_UDP_AF];
+
   /*
    * Per-worker thread udp connection pools used with session layer
    */
@@ -150,6 +172,7 @@ typedef struct
   clib_spinlock_t *peekers_write_locks;
   udp_connection_t *listener_pool;
 
+  u16 default_mtu;
 } udp_main_t;
 
 extern udp_main_t udp_main;
@@ -179,7 +202,7 @@ vnet_get_udp_main ()
 }
 
 always_inline udp_connection_t *
-udp_get_connection_from_transport (transport_connection_t * tc)
+udp_connection_from_transport (transport_connection_t * tc)
 {
   return ((udp_connection_t *) tc);
 }
@@ -190,6 +213,7 @@ udp_connection_index (udp_connection_t * uc)
   return (uc - udp_main.connections[uc->c_thread_index]);
 }
 
+void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
 
 /**
@@ -238,13 +262,13 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   udp_pool_add_peeker (thread_index);
   old_c = udp_main.connections[thread_index] + connection_index;
   clib_memcpy_fast (new_c, old_c, sizeof (*new_c));
+  old_c->flags |= UDP_CONN_F_MIGRATED;
   udp_pool_remove_peeker (thread_index);
   new_c->c_thread_index = current_thread_index;
   new_c->c_c_index = udp_connection_index (new_c);
   new_c->c_fib_index = old_c->c_fib_index;
   return new_c;
 }
-
 
 always_inline udp_dst_port_info_t *
 udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
@@ -255,14 +279,18 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 
 format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
+format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 
+void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
+		       char *dst_port_name, u8 is_ip4);
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
 			    u32 node_index, u8 is_ip4);
 void udp_unregister_dst_port (vlib_main_t * vm,
 			      udp_dst_port_t dst_port, u8 is_ip4);
 bool udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
+void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
@@ -280,10 +308,9 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
   uh->checksum = 0;
   uh->length = clib_host_to_net_u16 (udp_len);
   if (offload_csum)
-    {
-      b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-      vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
-    }
+    b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
+  b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
   return uh;
 }
 

@@ -31,6 +31,7 @@
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
 #include <vlib/log.h>
+#include <vppinfra/bihash_16_8.h>
 
 /* default session timeouts */
 #define SNAT_UDP_TIMEOUT 300
@@ -219,7 +220,6 @@ _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
 _(IN2OUT_PACKETS, "good in2out packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(SESS_EXPIRED, "session expired")                      \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
 _(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
@@ -250,7 +250,6 @@ _(OUT2IN_PACKETS, "good out2in packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(NO_TRANSLATION, "no translation")                     \
-_(SESS_EXPIRED, "session expired")                      \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
 _(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
@@ -321,6 +320,10 @@ typedef CLIB_PACKED(struct
   u32 per_user_index;
   u32 per_user_list_head_index;
 
+  /* index in global LRU list */
+  u32 global_lru_index;
+  f64 last_lru_update;
+
   /* Last heard timer */
   f64 last_heard;
 
@@ -358,8 +361,6 @@ typedef struct
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
 } snat_user_t;
 
 typedef struct
@@ -370,7 +371,7 @@ typedef struct
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
-  uword * busy_##n##_port_bitmap;
+  u32 busy_##n##_port_refcounts[65535];
   foreach_snat_protocol
 #undef _
 /* *INDENT-ON* */
@@ -522,19 +523,15 @@ typedef struct
   /* Pool of doubly-linked list elements */
   dlist_elt_t *list_pool;
 
+  /* LRU session list - head is stale, tail is fresh */
+  dlist_elt_t *global_lru_pool;
+  u32 global_lru_head_index;
+
   /* NAT thread index */
   u32 snat_thread_index;
 
   /* real thread index */
   u32 thread_index;
-
-  /* discovered minimum session timeout time */
-  u64 min_session_timeout;
-
-  /* session scavenging */
-  u32 cleared;
-  u32 cleanup_runs;
-  f64 cleanup_timeout;
 
 } snat_main_per_thread_data_t;
 
@@ -568,6 +565,28 @@ typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
 						      snat_session_key_t * k,
 						      u16 port_per_thread,
 						      u32 snat_thread_index);
+
+typedef struct ed_bihash_key_s
+{
+  u32 src_address;
+  u32 dst_address;
+  u16 src_port;
+  u16 dst_port;
+  u8 protocol;
+} ed_bihash_key_t;
+
+typedef struct ed_bihash_kv_s
+{
+  union
+  {
+    ed_bihash_key_t k;
+    clib_bihash_kv_16_8_t kv;
+  };
+} ed_bihash_kv_t;
+
+STATIC_ASSERT (STRUCT_SIZE_OF (ed_bihash_kv_t, k) <=
+	       STRUCT_SIZE_OF (ed_bihash_kv_t, kv.key),
+	       "ed key needs to fit in bihash key");
 
 typedef struct snat_main_s
 {
@@ -682,10 +701,10 @@ typedef struct snat_main_s
   u8 out2in_dpo;
   u8 endpoint_dependent;
   u32 translation_buckets;
-  u32 translation_memory_size;
+  uword translation_memory_size;
   u32 max_translations;
   u32 user_buckets;
-  u32 user_memory_size;
+  uword user_memory_size;
   u32 max_translations_per_user;
   u32 outside_vrf_id;
   u32 outside_fib_index;
@@ -693,9 +712,6 @@ typedef struct snat_main_s
   u32 inside_fib_index;
 
   /* values of various timeouts */
-
-  // min timeout of all proto timeouts
-  u32 min_timeout;
   // proto timeouts
   u32 udp_timeout;
   u32 tcp_transitory_timeout;
@@ -725,6 +741,7 @@ typedef struct snat_main_s
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
 
+  clib_bihash_16_8_t ed_ext_ports;
 } snat_main_t;
 
 typedef struct

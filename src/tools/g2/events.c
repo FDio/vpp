@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2005-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ void event_init(void)
         g_little_endian = FALSE;
 
     askstr = getprop("dont_ask_ticks_per_ns_initially");
-    
+
     if (askstr && (*askstr == 't' || *askstr == 'T')) {
         tmp = atol(getprop_default("ticks_per_ns", 0));
         if (tmp > 0) {
@@ -189,10 +189,10 @@ static void make_sorted_pid_vector(void)
     /*
      * Squirrel away original (sorted) vector, so we can
      * toggle between "chase" mode, snapshots, and the original
-     * display method on short notice 
+     * display method on short notice
      */
     g_original_pids = g_malloc0(sizeof(pid_sort_t)*g_npids);
-    memcpy (g_original_pids, g_pids, sizeof(pid_sort_t)*g_npids); 
+    memcpy (g_original_pids, g_pids, sizeof(pid_sort_t)*g_npids);
 }
 
 /****************************************************************************
@@ -214,7 +214,7 @@ void read_events(char *filename)
     ulp = (ulong *)mapfile(filename, &size);
 
     if (ulp == NULL) {
-        sprintf(tmpbuf, "Couldn't open %s\n", filename);
+        snprintf(tmpbuf, sizeof(tmpbuf), "Couldn't open %s\n", filename);
         infobox("Read Event Log Failure", tmpbuf);
         return;
     }
@@ -222,7 +222,8 @@ void read_events(char *filename)
     g_nevents = ntohl(*ulp);
 
     if (size != (g_nevents*sizeof(raw_event_t) + sizeof(g_nevents))) {
-        sprintf(tmpbuf, "%s was damaged, or isn't an event log.\n", filename);
+        snprintf(tmpbuf, sizeof(tmpbuf),
+                 "%s was damaged, or isn't an event log.\n", filename);
         infobox("Bad Input File", tmpbuf);
         g_nevents = 0;
         unmapfile((char *)ulp, size);
@@ -279,7 +280,7 @@ void read_events(char *filename)
     }
 
     unmapfile((char *)ulp, size);
-    
+
     make_sorted_pid_vector();
     g_free(s_pidhash);
     s_pidhash = 0;
@@ -333,7 +334,7 @@ void add_cpel_event(ulonglong delta, ulong track, ulong event, ulong datum)
 * add_clib_event
 ****************************************************************************/
 
-void add_clib_event(double delta, unsigned short track, 
+void add_clib_event(double delta, unsigned short track,
                     unsigned short event, unsigned int index)
 {
     event_t *ep;
@@ -355,7 +356,7 @@ void cpel_event_finalize(void)
     make_sorted_pid_vector();
     g_free(s_pidhash);
     s_pidhash = 0;
-    
+
     /* Give the view-1 world a chance to reset a few things... */
     view1_read_events_callback();
 }
@@ -370,7 +371,7 @@ char *mapfile (char *file, ulong *sizep)
     char *rv;
     int maphfile;
     size_t mapfsize;
-    
+
     maphfile = open (file, O_RDONLY);
 
     if (maphfile < 0)
@@ -417,7 +418,7 @@ char *mapfile (char *file, ulong *sizep)
 boolean unmapfile (char *addr, ulong size)
 {
     if (munmap (addr, size) < 0) {
-        g_warning("Unmap error, addr 0x%lx size 0x%x\n", 
+        g_warning("Unmap error, addr 0x%lx size 0x%x\n",
                   (unsigned long) addr, (unsigned int)size);
         return(FALSE);
     }
@@ -459,7 +460,7 @@ int find_event_index (ulonglong t)
 
         if (ep->time < t)
             top = index + 1;
-        else 
+        else
             bottom = index - 1;
     }
 }
@@ -470,6 +471,7 @@ int find_event_index (ulonglong t)
 
 void events_about (char *tmpbuf)
 {
-    sprintf(tmpbuf+strlen(tmpbuf), "%d total events, %.3f ticks per us\n", 
-            (int)g_nevents, ticks_per_ns);
+    snprintf(tmpbuf+strlen(tmpbuf), 1024 - strlen(tmpbuf),
+             "%d total events, %.3f ticks per us\n",
+             (int)g_nevents, ticks_per_ns);
 }

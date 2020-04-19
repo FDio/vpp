@@ -529,6 +529,45 @@ VLIB_CLI_COMMAND (show_ikev2_profile_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+set_ikev2_liveness_period_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *r = 0;
+  u32 period = 0, max_retries = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%d %d", &period, &max_retries))
+	{
+	  r = ikev2_set_liveness_params (period, max_retries);
+	  goto done;
+	}
+      else
+	break;
+    }
+
+  r = clib_error_return (0, "parse error: '%U'",
+			 format_unformat_error, line_input);
+
+done:
+  unformat_free (line_input);
+  return r;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_ikev2_liveness_command, static) = {
+  .path = "ikev2 set liveness",
+  .short_help = "ikev2 set liveness <period> <max-retires>",
+  .function = set_ikev2_liveness_period_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 set_ikev2_local_key_command_fn (vlib_main_t * vm,
 				unformat_input_t * input,
 				vlib_cli_command_t * cmd)

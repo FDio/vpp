@@ -436,9 +436,6 @@ void format_popbox_string (char *tmpbuf, int len, event_t *ep, event_def_t *edp)
 {
     char *fp;
 
-#ifdef NOTDEF
-    sprintf(tmpbuf,"%d:", ep->code);
-#endif
     if (ep->flags & EVENT_FLAG_CLIB) {
         elog_event_t *eep;
         u8 *s;
@@ -898,7 +895,7 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
             }
         }
 
-        sprintf(tmpbuf, "%ld", ep->code);
+        snprintf(tmpbuf, sizeof(tmpbuf), "%ld", ep->code);
 
         /* Figure out the dimensions of the regular box */
         rp = tbox(tmpbuf, x, y, TBOX_GETRECT_EVENT);
@@ -1405,13 +1402,13 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
              */
             nsec = ((double)xdelta)*time_per_pixel;
             if (nsec >1e9) {
-                sprintf(tmpbuf, "%8.3f sec ", nsec/1e9);
+                snprintf(tmpbuf, sizeof(tmpbuf), "%8.3f sec ", nsec/1e9);
             } else if (nsec > 1e6) {
-                sprintf(tmpbuf, "%8.3f msec", nsec/1e6);
+                snprintf(tmpbuf, sizeof(tmpbuf), "%8.3f msec", nsec/1e6);
             } else if (nsec > 1e3) {
-                sprintf(tmpbuf, "%8.3f usec", nsec/1e3);
+                snprintf(tmpbuf, sizeof(tmpbuf), "%8.3f usec", nsec/1e3);
             } else {
-                sprintf(tmpbuf, "%8.0f nsec", nsec);
+                snprintf(tmpbuf, sizeof(tmpbuf), "%8.0f nsec", nsec);
             }
             s_v1->last_time_interval = nsec;
             tbox(tmpbuf, (int)(press3_event.x), s_v1->pop_offset,
@@ -1580,7 +1577,7 @@ boolean event_search_internal (void)
                     x = s_v1->pid_ax_width +
                         (int)(((double)(ep->time - s_v1->minvistime)) /
                               time_per_pixel);
-                    sprintf(tmpbuf, "SEARCH RESULT");
+                    snprintf(tmpbuf, sizeof(tmpbuf), "SEARCH RESULT");
                     tbox(tmpbuf, x, y - s_v1->pop_offset, TBOX_DRAW_BOXED);
                     line(x, y-s_v1->pop_offset, x, y, LINE_DRAW_BLACK);
                 } else {
@@ -1594,7 +1591,8 @@ boolean event_search_internal (void)
             return(TRUE);
         }
     }
-    sprintf (tmpbuf, "Search for event %ld failed...\n", s_srchcode);
+    snprintf (tmpbuf, sizeof(tmpbuf),
+              "Search for event %ld failed...\n", s_srchcode);
     message_line(tmpbuf);
     s_srchfail_up = TRUE;
     return(TRUE);
@@ -1814,8 +1812,9 @@ boolean anomaly_search_internal (void)
             return(TRUE);
         }
     }
-    sprintf (tmpbuf, "Search for an anomalous event %ld failed...\n",
-             s_anomalycode);
+    snprintf (tmpbuf, sizeof(tmpbuf),
+              "Search for an anomalous event %ld failed...\n",
+              s_anomalycode);
     message_line(tmpbuf);
     s_srchfail_up = TRUE;
     return(TRUE);
@@ -3397,13 +3396,8 @@ static void display_event_data(v1_geometry_t *vp)
         if (ep->flags & (EVENT_FLAG_SELECT | EVENT_FLAG_SEARCHRSLT)) {
             if (ep->flags & EVENT_FLAG_SELECT) {
                 format_popbox_string(tmpbuf, sizeof(tmpbuf), ep, edp);
-#ifdef NOTDEF
-                sprintf(tmpbuf, edp->name);
-                sprintf(tmpbuf+strlen(tmpbuf), ": ");
-                sprintf(tmpbuf+strlen(tmpbuf), edp->format, ep->datum);
-#endif
             } else {
-                sprintf(tmpbuf, "SEARCH RESULT");
+                snprintf(tmpbuf, sizeof(tmpbuf), "SEARCH RESULT");
             }
             print_rect = tbox(tmpbuf, x, y - vp->pop_offset,
                               TBOX_DRAW_BOXED+s_print_offset);
@@ -3419,7 +3413,7 @@ static void display_event_data(v1_geometry_t *vp)
             line(x, y - delta, x, y + delta, LINE_DRAW_BLACK);
             last_x_used[pid_index] = x + 1;
         } else {
-            sprintf(tmpbuf, "%ld", ep->code);
+            snprintf(tmpbuf, sizeof(tmpbuf), "%ld", ep->code);
             print_rect = tbox(tmpbuf, x, y, TBOX_DRAW_EVENT+s_print_offset);
             if (last_x_used != NULL)
                 last_x_used[pid_index] = x + print_rect->width;
@@ -3506,7 +3500,7 @@ static void display_time_axis(v1_geometry_t *vp)
         time += (double)(vp->minvistime);
         time /= unit_divisor;
 
-        sprintf (tmpbuf, "%.2f%s", time, units);
+        snprintf (tmpbuf, sizeof(tmpbuf), "%.2f%s", time, units);
 
         tbox(tmpbuf, x+xoffset, y+15, TBOX_DRAW_PLAIN+s_print_offset);
 
@@ -3571,13 +3565,13 @@ void view1_about (char *tmpbuf)
     int nsnaps;
     snapshot_t *snaps;
 
-    sprintf(tmpbuf+strlen(tmpbuf), "Minvistime %lld\nMaxvistime %lld\n",
+    snprintf(tmpbuf+strlen(tmpbuf), 128, "Minvistime %lld\nMaxvistime %lld\n",
             s_v1->minvistime, s_v1->maxvistime);
-    sprintf(tmpbuf+strlen(tmpbuf), "Strip Height %d\n",
+    snprintf(tmpbuf+strlen(tmpbuf), 128, "Strip Height %d\n",
             s_v1->strip_height);
 
     for (nsnaps = 0, snaps = s_snapshots; snaps; snaps = snaps->next) {
         nsnaps++;
     }
-    sprintf(tmpbuf+strlen(tmpbuf), "%d snapshots in the ring\n", nsnaps);
+    snprintf(tmpbuf+strlen(tmpbuf), 128, "%d snapshots in the ring\n", nsnaps);
 }

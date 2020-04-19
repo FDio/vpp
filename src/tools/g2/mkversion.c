@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 1997-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,21 +44,21 @@ int main (int argc, char **argv)
     }
 
     now = time (0);
-    
+
     fprintf (ofp, "/*\n");
     fprintf (ofp, " * G2 Version Stamp, %s",
              ctime (&now));
     fprintf (ofp, " * Automatically generated, hand edits are pointless.\n");
     fprintf (ofp, " */\n\n");
 
-    fprintf (ofp, 
+    fprintf (ofp,
             "const char *version_string = \"G2 (%s) major version %s\";\n",
              argv[1], argv[2]);
-    
+
     username = (char *) cuserid (0);
 
-    strcpy(timestr, ctime(&now));
-    
+    strncpy(timestr, ctime(&now), sizeof (timestr));
+
     cp = timestr;
 
     while (*cp) {
@@ -70,8 +70,6 @@ int main (int argc, char **argv)
     fprintf (ofp,
              "const char *minor_v_string = \"Built by %s at %s\";\n",
              username, timestr);
-    
+
     exit (0);
 }
-
-    

@@ -1289,6 +1289,19 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   return 0;
 }
 
+transport_connection_t *
+session_lookup_connection (u32 fib_index, ip46_address_t * lcl,
+			   ip46_address_t * rmt, u16 lcl_port, u16 rmt_port,
+			   u8 proto, u8 is_ip4)
+{
+  if (is_ip4)
+    return session_lookup_connection4 (fib_index, &lcl->ip4, &rmt->ip4,
+				       lcl_port, rmt_port, proto);
+  else
+    return session_lookup_connection6 (fib_index, &lcl->ip6, &rmt->ip6,
+				       lcl_port, rmt_port, proto);
+}
+
 int
 vnet_session_rule_add_del (session_rule_add_del_args_t * args)
 {

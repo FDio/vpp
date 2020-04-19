@@ -29,7 +29,7 @@
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
 
-#define IKEV2_LIVENESS_RETRIES 2
+#define IKEV2_LIVENESS_RETRIES 3
 #define IKEV2_LIVENESS_PERIOD_CHECK 30
 
 ikev2_main_t ikev2_main;
@@ -2309,7 +2309,7 @@ ikev2_init_sa (ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
   sa->liveness_period_check =
-    vlib_time_now (km->vlib_main) + IKEV2_LIVENESS_PERIOD_CHECK;
+    vlib_time_now (km->vlib_main) + km->liveness_period;
 }
 
 static uword
@@ -2595,7 +2595,11 @@ ikev2_node_fn (vlib_main_t * vm,
 			    }
 			}
 		    }
-		  len = ikev2_generate_message (sa0, ike0, 0);
+		  if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
+		    {
+		      ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
+		      len = ikev2_generate_message (sa0, ike0, 0);
+		    }
 		}
 	    }
 	  else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
@@ -3370,7 +3374,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ikev2_sa_free_proposal_vector (&proposals);
 
     sa.is_initiator = 1;
-    sa.profile_index = km->profiles - p;
+    sa.profile_index = p - km->profiles;
     sa.is_profile_index_set = 1;
     sa.state = IKEV2_STATE_SA_INIT;
     sa.tun_itf = p->tun_itf;
@@ -3706,6 +3710,8 @@ ikev2_init (vlib_main_t * vm)
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
 
+  km->liveness_period = IKEV2_LIVENESS_PERIOD_CHECK;
+  km->liveness_max_retries = IKEV2_LIVENESS_RETRIES;
   ikev2_crypto_init (km);
 
   mhash_init_vec_string (&km->profile_index_by_name, sizeof (uword));
@@ -3843,6 +3849,19 @@ ikev2_set_log_level (ikev2_log_level_t log_level)
   return 0;
 }
 
+clib_error_t *
+ikev2_set_liveness_params (u32 period, u32 max_retries)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  if (period == 0 || max_retries == 0)
+    return clib_error_return (0, "invalid args");
+
+  km->liveness_period = period;
+  km->liveness_max_retries = max_retries;
+  return 0;
+}
+
 static void
 ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
 {
@@ -3956,7 +3975,10 @@ ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
   ikev2_main_t *km = &ikev2_main;
   vlib_main_t *vm = km->vlib_main;
 
-  if (sa->liveness_retries > IKEV2_LIVENESS_RETRIES)
+  if (!sa->sk_ai || !sa->sk_ar)
+    return 0;
+
+  if (sa->liveness_retries >= km->liveness_max_retries)
     return 1;
 
   f64 now = vlib_time_now (vm);
@@ -3964,7 +3986,7 @@ ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
   if (sa->liveness_period_check < now)
     {
       sa->liveness_retries++;
-      sa->liveness_period_check = now + IKEV2_LIVENESS_PERIOD_CHECK;
+      sa->liveness_period_check = now + km->liveness_period;
       ikev2_send_informational_request (sa);
     }
   return 0;

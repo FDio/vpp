@@ -38,13 +38,13 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/gso/gso.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/classify/trace_classify.h>
+#include <vnet/interface_output.h>
 
 typedef struct
 {
@@ -157,66 +157,6 @@ vnet_interface_output_trace (vlib_main_t * vm,
       from += 1;
       n_left -= 1;
     }
-}
-
-static_always_inline void
-calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
-{
-  tcp_header_t *th;
-  udp_header_t *uh;
-  gso_header_offset_t gho = { 0 };
-
-  int is_ip4 = (b->flags & VNET_BUFFER_F_IS_IP4) != 0;
-  int is_ip6 = (b->flags & VNET_BUFFER_F_IS_IP6) != 0;
-
-  ASSERT (!(is_ip4 && is_ip6));
-
-  gho = vnet_gso_header_offset_parser (b, is_ip6);
-  th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
-  uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
-
-  if (is_ip4)
-    {
-      ip4_header_t *ip4;
-
-      ip4 =
-	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
-      if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
-	ip4->checksum = ip4_header_checksum (ip4);
-      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
-	{
-	  th->checksum = 0;
-	  th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
-	}
-      else if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
-	{
-	  uh->checksum = 0;
-	  uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
-	}
-    }
-  else if (is_ip6)
-    {
-      int bogus;
-      ip6_header_t *ip6;
-
-      ip6 =
-	(ip6_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
-      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
-	{
-	  th->checksum = 0;
-	  th->checksum =
-	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
-	}
-      else if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
-	{
-	  uh->checksum = 0;
-	  uh->checksum =
-	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
-	}
-    }
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 }
 
 static_always_inline uword
@@ -399,10 +339,22 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
 		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
 		{
-		  calc_checksums (vm, b[0]);
-		  calc_checksums (vm, b[1]);
-		  calc_checksums (vm, b[2]);
-		  calc_checksums (vm, b[3]);
+		  vnet_calc_checksums_inline
+		    (vm, b[0],
+		     b[0]->flags & VNET_BUFFER_F_IS_IP4,
+		     b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  vnet_calc_checksums_inline
+		    (vm, b[1],
+		     b[1]->flags & VNET_BUFFER_F_IS_IP4,
+		     b[1]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  vnet_calc_checksums_inline
+		    (vm, b[2],
+		     b[2]->flags & VNET_BUFFER_F_IS_IP4,
+		     b[2]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  vnet_calc_checksums_inline
+		    (vm, b[3],
+		     b[3]->flags & VNET_BUFFER_F_IS_IP4,
+		     b[3]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
 		}
 	    }
 	  b += 4;
@@ -450,7 +402,10 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 		  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
 		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
 		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
-		calc_checksums (vm, b[0]);
+		vnet_calc_checksums_inline
+		  (vm, b[0],
+		   b[0]->flags & VNET_BUFFER_F_IS_IP4,
+		   b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
 	    }
 	  b += 1;
 	}

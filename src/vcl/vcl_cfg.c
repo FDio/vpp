@@ -19,7 +19,7 @@
  *       Do not access it directly -- use vcm which will point to
  *       the heap allocated copy after init.
  */
-static vppcom_main_t _vppcom_main = {
+vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
   .is_init = 0,
   .app_index = ~0,

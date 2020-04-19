@@ -11,9 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(VPP_BUFFER_FAULT_INJECTOR "Include the buffer fault injector" OFF)
+
 ##############################################################################
 # Generate vlib/config.h
 ##############################################################################
+if(VPP_BUFFER_FAULT_INJECTOR)
+  set(BUFFER_ALLOC_FAULT_INJECTOR 1 CACHE STRING "fault injector on")
+else()
+  set(BUFFER_ALLOC_FAULT_INJECTOR 0 CACHE STRING "fault injector off")
+endif()
+
 set(PRE_DATA_SIZE 128 CACHE STRING "Buffer headroom size.")
 configure_file(
   ${CMAKE_SOURCE_DIR}/vlib/config.h.in
@@ -63,6 +71,7 @@ add_vpp_library(vlib
   node_cli.c
   node_format.c
   pci/pci.c
+  pci/pci_types_api.c
   physmem.c
   punt.c
   punt_node.c
@@ -103,6 +112,7 @@ add_vpp_library(vlib
   node.h
   pci/pci_config.h
   pci/pci.h
+  pci/pci_types_api.h
   physmem_funcs.h
   physmem.h
   punt.h
@@ -116,5 +126,10 @@ add_vpp_library(vlib
   vlib.h
   vmbus/vmbus.h
 
+  API_FILES
+  pci/pci_types.api
+
   LINK_LIBRARIES vppinfra svm ${VMBUS_LIBS} ${CMAKE_DL_LIBS}
+
+  DEPENDS api_headers
 )

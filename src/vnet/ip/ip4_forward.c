@@ -903,20 +903,6 @@ VNET_FEATURE_INIT (ip4_inacl, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-inacl",
-  .runs_before = VNET_FEATURES ("ip4-source-check-via-rx"),
-};
-
-VNET_FEATURE_INIT (ip4_source_check_1, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-source-check-via-rx",
-  .runs_before = VNET_FEATURES ("ip4-source-check-via-any"),
-};
-
-VNET_FEATURE_INIT (ip4_source_check_2, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-source-check-via-any",
   .runs_before = VNET_FEATURES ("ip4-policer-classify"),
 };
 
@@ -1990,10 +1976,7 @@ ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
   i32 ttl;
   u32 checksum;
   if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
-    {
-      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-      return;
-    }
+    return;
 
   ttl = ip->ttl;
 
@@ -2016,10 +1999,7 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
   i32 ttl;
   u32 checksum;
   if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
-    {
-      b->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-      return;
-    }
+    return;
 
   ttl = ip->ttl;
 
@@ -2181,7 +2161,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
 	  if (is_midchain)
-	    calc_checksums (vm, b[0]);
+	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
+					0 /* is_ip6 */ ,
+					0 /* with gso */ );
 	}
       else
 	{
@@ -2203,7 +2185,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 				    tx_sw_if_index1, &next_index, b[1]);
 	  next[1] = next_index;
 	  if (is_midchain)
-	    calc_checksums (vm, b[1]);
+	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
+					0 /* is_ip6 */ ,
+					0 /* with gso */ );
 	}
       else
 	{
@@ -2347,7 +2331,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  next[0] = next_index;
 
 	  if (is_midchain)
-	    calc_checksums (vm, b[0]);
+	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
+					0 /* is_ip6 */ ,
+					0 /* with gso */ );
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
@@ -2446,7 +2432,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (is_midchain)
 	    /* this acts on the packet that is about to be encapped */
-	    calc_checksums (vm, b[0]);
+	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
+					0 /* is_ip6 */ ,
+					0 /* with gso */ );
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));

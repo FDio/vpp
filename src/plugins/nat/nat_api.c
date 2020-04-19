@@ -104,9 +104,9 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = htonl (sm->translation_memory_size);
+    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = htonl (sm->user_memory_size);
+    rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -117,10 +117,10 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
     rmp->endpoint_dependent = sm->endpoint_dependent;
     rmp->out2in_dpo = sm->out2in_dpo;
     //rmp->dslite_ce = dm->is_ce;
-    rmp->nat64_bib_buckets = n64m->bib_buckets;
-    rmp->nat64_bib_memory_size = n64m->bib_memory_size;
-    rmp->nat64_st_buckets = n64m->st_buckets;
-    rmp->nat64_st_memory_size = n64m->st_memory_size;
+    rmp->nat64_bib_buckets = clib_net_to_host_u32(n64m->bib_buckets);
+    rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
+    rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
+    rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
   }));
   /* *INDENT-ON* */
 }
@@ -242,28 +242,6 @@ vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
 }
 
 static void
-vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat44_session_cleanup_reply_t *rmp;
-  int rv = 0;
-  nat44_force_users_cleanup ();
-  REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
-}
-
-static void *
-vl_api_nat44_session_cleanup_t_print (vl_api_nat44_session_cleanup_t * mp,
-				      void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_session_cleanup");
-
-  FINISH;
-}
-
-
-static void
 vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
 {
   snat_main_t *sm = &snat_main;
@@ -335,8 +313,6 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
   sm->tcp_established_timeout = ntohl (mp->tcp_established);
   sm->tcp_transitory_timeout = ntohl (mp->tcp_transitory);
   sm->icmp_timeout = ntohl (mp->icmp);
-
-  sm->min_timeout = nat44_minimal_timeout (sm);
 
   rv = nat64_set_icmp_timeout (ntohl (mp->icmp));
   if (rv)
@@ -3142,7 +3118,6 @@ _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT44_DEL_USER, nat44_del_user)                                       \
-_(NAT44_SESSION_CLEANUP, nat44_session_cleanup)                         \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \

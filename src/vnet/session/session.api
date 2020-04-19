@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -25,51 +25,7 @@ enum transport_proto : u8
         TRANSPORT_PROTO_API_UDP,
         TRANSPORT_PROTO_API_NONE,
         TRANSPORT_PROTO_API_TLS,
-        TRANSPORT_PROTO_API_UDPC,
         TRANSPORT_PROTO_API_QUIC,
-};
-
-/** \brief client->vpp, attach application to session layer
- 	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param initial_segment_size - size of the initial shm segment to be
-    							  allocated
-    @param options - segment size, fifo sizes, etc.
-    @param namespace_id - string
-*/
- define application_attach {
-    u32 client_index;
-    u32 context;
-    u32 initial_segment_size;
-    u64 options[17];
-    string namespace_id[];
- };
-
- /** \brief Application attach reply
- 	### WILL BE DEPRECATED POST 20.01 ###
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param app_event_queue_address - vpp event queue address or 0 if this
-                                 	 connection shouldn't send events
-    @param n_fds - number of fds exchanged
-    @param fd_flags - set of flags that indicate which fds are to be expected
-    				  over the socket (set only if socket transport available)
-    @param segment_size - size of first shm segment
-    @param app_index - index of the newly created app
-    @param segment_handle - handle for segment
-    @param segment_name - name of segment client needs to attach to
-*/
-define application_attach_reply {
-    u32 context;
-    i32 retval;
-    u64 app_event_queue_address;
-    u8 n_fds;
-    u8 fd_flags;
-    u32 segment_size;
-    u32 app_index;
-    u64 segment_handle;
-    string segment_name[];
 };
 
 /** \brief Application attach to session layer
@@ -112,6 +68,15 @@ define app_attach_reply {
     u32 segment_size;
     u64 segment_handle;
     string segment_name[];
+};
+
+ /** \brief client->vpp, attach application to session layer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define application_detach {
+    u32 client_index;
+    u32 context;
 };
 
 /** \brief Add certificate and key
@@ -180,215 +145,6 @@ autoreply define application_tls_key_add {
     u32 app_index;
     u16 key_len;
     u8 key[key_len];
-};
-
- /** \brief client->vpp, attach application to session layer
- 	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-autoreply define application_detach {
-    u32 client_index;
-    u32 context;
- };
-
-/** \brief vpp->client, please map an additional shared memory segment
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-   	@param fd_flags - set of flags that indicate which, if any, fds are
-   					  to be expected over the socket. This is set only if
-   					  socket transport available
-    @param segment_size - size of the segment to be mapped
-    @param segment_name - name of the segment to be mapped
-    @param segment_handle - unique identifier for segment
-*/
-autoreply define map_another_segment {
-    u32 client_index;
-    u32 context;
-    u8 fd_flags;
-    u32 segment_size;
-    string segment_name[128];
-    u64 segment_handle;
-};
-
-/** \brief vpp->client unmap shared memory segment
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param segment_name - segment name
-    @param segment_handle - handle of the segment to be unmapped
-*/
-autoreply define unmap_segment {
-    u32 client_index;
-    u32 context;
-    u64 segment_handle;
-};
-
- /** \brief Bind to a given URI
- 	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param accept_cookie - sender accept cookie, to identify this bind flavor
-    @param uri - a URI, e.g. "tcp://0.0.0.0/0/80" [ipv4]
-                 "tcp://::/0/80" [ipv6] etc.
-    @param options - socket options, fifo sizes, etc.
-*/
-autoreply define bind_uri {
-  u32 client_index;
-  u32 context;
-  u32 accept_cookie;
-  u8 uri[128];
-};
-
-/** \brief Unbind a given URI
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param uri - a URI, e.g. "tcp://0.0.0.0/0/80" [ipv4]
-                 "tcp://::/0/80" [ipv6], etc.
-    @param options - socket options, fifo sizes, etc.
-*/
-autoreply define unbind_uri {
-  u32 client_index;
-  u32 context;
-  u8 uri[128];
-};
-
-/** \brief Connect to a given URI
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param client_queue_address - binary API client queue address. Used by
-    							  local server when connect was redirected.
-    @param options - socket options, fifo sizes, etc. passed by vpp to the
-    				 server when redirecting connects
-    @param uri - a URI, e.g. "tcp4://0.0.0.0/0/80"
-                 "tcp6://::/0/80" [ipv6], etc.
-*/
-autoreply define connect_uri {
-  u32 client_index;
-  u32 context;
-  u64 client_queue_address;
-  u64 options[16];
-  u8 uri[128];
-};
-
-/** \brief bidirectional disconnect API
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
-    @param context - sender context, to match reply w/ request
-    @param handle - session handle obtained from accept/connect
-*/
-define disconnect_session {
-  u32 client_index;
-  u32 context;
-  u64 handle;
-};
-
-/** \brief bidirectional disconnect reply API
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - session handle
-*/
-define disconnect_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-};
-
-/** \brief Bind to an ip:port pair for a given transport protocol
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param wrk_index - index of worker requesting the bind
-    @param vrf - bind namespace
-    @param ip - ip address
-    @param port - port
-    @param proto - protocol 0 - TCP 1 - UDP
-    @param options - socket options, fifo sizes, etc.
-*/
-autoreply define bind_sock {
-  u32 client_index;
-  u32 context;
-  u32 wrk_index;
-  u32 vrf;
-  vl_api_address_t ip;
-  u16 port;
-  vl_api_transport_proto_t proto;
-  u64 options[16];
-};
-
-/** \brief Unbind
-	### WILL BE DEPRECATED POST 20.01 ###s
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param wrk_index - index of worker requesting the bind
-    @param handle - bind handle obtained from bind reply
-*/
-autoreply define unbind_sock {
-  u32 client_index;
-  u32 context;
-  u32 wrk_index;
-  u64 handle;
-};
-
-/** \brief Connect to a remote peer
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param wrk_index - worker that requests the connect
-    @param client_queue_address - client's API queue address. Non-zero when
-                                  used to perform redirects
-    @param options - socket options, fifo sizes, etc. when doing redirects
-    @param vrf - connection namespace
-    @param ip - ip address
-    @param port - port
-    @param proto - protocol 0 - TCP 1 - UDP
-    @param hostname-len - length of hostname
-    @param hostname - destination's hostname. If present, used by protocols
-					  like tls.
-    @param parent_handle - handle of parent session (e.g. for opening quic streams).
-*/
-autoreply define connect_sock {
-  u32 client_index;
-  u32 context;
-  u32 wrk_index;
-  u64 client_queue_address;
-  u64 options[16];
-  u32 vrf;
-  vl_api_address_t ip;
-  u16 port;
-  vl_api_transport_proto_t proto;
-  u64 parent_handle;
-  string hostname[];
-};
-
-/** \brief ask app to add a new cut-through registration
-	### WILL BE DEPRECATED POST 20.01 ###
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
-    @param context - sender context, to match reply w/ request
-    @param evt_q_address - address of the mq in ssvm segment
-    @param peer_evt_q_address - address of peer's mq in ssvm segment
-    @param wrk_index - index of worker to receive the registration
-    @param n_fds - number of fds exchanged
-    @param fd_flags - flag indicating the fds that will be exchanged over
-    				  api socket
-*/
-autoreply define app_cut_through_registration_add
-{
-  u32 client_index;
-  u32 context;
-  u64 evt_q_address;
-  u64 peer_evt_q_address;
-  u32 wrk_index;
-  u8 n_fds;
-  u8 fd_flags;
 };
 
 /** \brief add/del application worker

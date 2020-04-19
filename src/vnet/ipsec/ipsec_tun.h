@@ -59,6 +59,8 @@ typedef struct ipsec_ep_t_
   ip46_address_t dst;
 } ipsec_ep_t;
 
+#define ITP_MAX_N_SA_IN 4
+
 typedef struct ipsec_tun_protect_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -67,7 +69,7 @@ typedef struct ipsec_tun_protect_t_
   /* not using a vector since we want the memory inline
    * with this struct */
   u32 itp_n_sa_in;
-  index_t itp_in_sas[4];
+  index_t itp_in_sas[ITP_MAX_N_SA_IN];
 
   u32 itp_sw_if_index;
 

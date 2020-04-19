@@ -22,6 +22,7 @@
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
 #define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
+#define TRANSPORT_PACER_MAX_BURST_PKTS	43
 #define TRANSPORT_PACER_MIN_IDLE	100
 #define TRANSPORT_PACER_IDLE_FACTOR	0.05
 
@@ -31,7 +32,6 @@ typedef struct _transport_options_t
   char *short_name;
   transport_tx_fn_type_t tx_type;
   transport_service_type_t service_type;
-  u8 half_open_has_fifos;
 } transport_options_t;
 
 typedef enum transport_snd_flags_
@@ -43,9 +43,21 @@ typedef enum transport_snd_flags_
 
 typedef struct transport_send_params_
 {
-  u32 snd_space;
-  u32 tx_offset;
-  u16 snd_mss;
+  union
+  {
+    /* Used to retrieve snd params from transports */
+    struct
+    {
+      u32 snd_space;
+      u32 tx_offset;
+      u16 snd_mss;
+    };
+    /* Used by custom tx functions */
+    struct
+    {
+      u32 max_burst_size;
+    };
+  };
   transport_snd_flags_t flags;
 } transport_send_params_t;
 
@@ -64,6 +76,7 @@ typedef struct _transport_proto_vft
   void (*close) (u32 conn_index, u32 thread_index);
   void (*reset) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
+  void (*cleanup_ho) (u32 conn_index);
   clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
 
   /*
@@ -75,7 +88,7 @@ typedef struct _transport_proto_vft
 		      transport_send_params_t *sp);
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
-  int (*custom_tx) (void *session, u32 max_burst_size);
+  int (*custom_tx) (void *session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*
@@ -125,6 +138,7 @@ u32 transport_start_listen (transport_proto_t tp, u32 session_index,
 u32 transport_stop_listen (transport_proto_t tp, u32 conn_index);
 void transport_cleanup (transport_proto_t tp, u32 conn_index,
 			u8 thread_index);
+void transport_cleanup_half_open (transport_proto_t tp, u32 conn_index);
 void transport_get_endpoint (transport_proto_t tp, u32 conn_index,
 			     u32 thread_index, transport_endpoint_t * tep,
 			     u8 is_lcl);
@@ -151,9 +165,10 @@ transport_get_half_open (transport_proto_t tp, u32 conn_index)
 }
 
 static inline int
-transport_custom_tx (transport_proto_t tp, void *s, u32 max_burst_size)
+transport_custom_tx (transport_proto_t tp, void *s,
+		     transport_send_params_t * sp)
 {
-  return tp_vfts[tp].custom_tx (s, max_burst_size);
+  return tp_vfts[tp].custom_tx (s, sp);
 }
 
 static inline int
@@ -195,6 +210,12 @@ transport_connection_deschedule (transport_connection_t * tc)
   tc->flags |= TRANSPORT_CONNECTION_F_DESCHED;
 }
 
+static inline u8
+transport_connection_is_cless (transport_connection_t * tc)
+{
+  return ((tc->flags & TRANSPORT_CONNECTION_F_CLESS) ? 1 : 0);
+}
+
 void transport_connection_reschedule (transport_connection_t * tc);
 
 /**
@@ -219,6 +240,8 @@ int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
 int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				    ip46_address_t * lcl_addr,
 				    u16 * lcl_port);
+void transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip,
+				     u16 port);
 void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 void transport_init (void);

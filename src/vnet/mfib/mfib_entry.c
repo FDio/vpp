@@ -1144,17 +1144,17 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
                 mfib_entry_itf_remove(msrc, rpath->frp_sw_if_index);
             }
         }
-
-        if (mfib_entry_src_ok_for_delete(msrc))
-        {
-            /*
-             * this source has no interfaces and no flags.
-             * it has nothing left to give - remove it
-             */
-            mfib_entry_src_remove(mfib_entry, source);
-        }
     }
     vec_free(path_indices);
+
+    if (mfib_entry_src_ok_for_delete(msrc))
+      {
+        /*
+         * this source has no interfaces and no flags.
+         * it has nothing left to give - remove it
+         */
+        mfib_entry_src_remove(mfib_entry, source);
+      }
 
     mfib_entry_recalculate_forwarding(mfib_entry, current_best);
 
@@ -1491,7 +1491,8 @@ mfib_entry_contribute_forwarding (fib_node_index_t mfib_entry_index,
             /*
              * caller does not want the local paths that the entry has
              */
-            dpo_set(dpo, DPO_REPLICATE, rep->rep_proto,
+            dpo_proto_t rep_proto = rep->rep_proto;
+            dpo_set(dpo, DPO_REPLICATE, rep_proto,
                     replicate_dup(REPLICATE_FLAGS_NONE,
                                   mfib_entry->mfe_rep.dpoi_index));
         }

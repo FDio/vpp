@@ -82,6 +82,7 @@ class Siphon(object):
         self._tplenv = jinja2.Environment(
             loader=loader,
             trim_blocks=True,
+            autoescape=True,
             keep_trailing_newline=True)
 
         # Convenience, get a reference to the internal escape and

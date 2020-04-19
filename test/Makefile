@@ -270,10 +270,8 @@ wipe: reset
 	@rm -rf $(VENV_PATH)
 	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS) $(BUILD_TEST_SRC))
 
-$(TEST_DOC_BR):
+$(TEST_DOC_BR): $(PIP_INSTALL_DONE)
 	@mkdir -p $@
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc html"
 
 .PHONY: doc

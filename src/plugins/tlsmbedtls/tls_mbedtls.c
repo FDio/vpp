@@ -414,11 +414,11 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 	   */
 	  if (ctx->srv_hostname)
 	    {
-	      tls_notify_app_connected (ctx, /* is failed */ 0);
+	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
 	      return -1;
 	    }
 	}
-      tls_notify_app_connected (ctx, /* is failed */ 0);
+      tls_notify_app_connected (ctx, SESSION_E_NONE);
     }
   else
     {
@@ -431,7 +431,8 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 }
 
 static int
-mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
+mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
+		   transport_send_params_t * sp)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   u8 thread_index = ctx->c_thread_index;
@@ -446,13 +447,14 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   if (!deq_max)
     return 0;
 
+  deq_max = clib_min (deq_max, sp->max_burst_size);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
   enq_max = svm_fifo_max_enqueue_prod (tls_session->tx_fifo);
   deq_now = clib_min (deq_max, TLS_CHUNK_SIZE);
 
   if (PREDICT_FALSE (enq_max == 0))
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+      app_session->flags |= SESSION_F_CUSTOM_TX;
       return 0;
     }
 
@@ -462,7 +464,7 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   wrote = mbedtls_ssl_write (&mc->ssl, mm->tx_bufs[thread_index], deq_now);
   if (wrote <= 0)
     {
-      tls_add_vpp_q_builtin_tx_evt (app_session);
+      app_session->flags |= SESSION_F_CUSTOM_TX;
       return 0;
     }
 
@@ -471,7 +473,7 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   tls_add_vpp_q_tx_evt (tls_session);
 
   if (deq_now < deq_max)
-    tls_add_vpp_q_builtin_tx_evt (app_session);
+    app_session->flags |= SESSION_F_CUSTOM_TX;
 
   return 0;
 }

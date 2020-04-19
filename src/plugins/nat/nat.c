@@ -33,6 +33,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vppinfra/bihash_16_8.h>
 
 #include <vpp/app/version.h>
 
@@ -322,6 +323,16 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   if (snat_is_session_static (s))
     return;
 
+  ed_bihash_kv_t bihash_key;
+  clib_memset (&bihash_key, 0, sizeof (bihash_key));
+  bihash_key.k.dst_address = s->ext_host_addr.as_u32;
+  bihash_key.k.dst_port = s->ext_host_port;
+  bihash_key.k.src_address = s->out2in.addr.as_u32;
+  bihash_key.k.src_port = s->out2in.port;
+  bihash_key.k.protocol = s->out2in.protocol;
+  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+			    0 /* is_add */ );
+
   snat_free_outside_address_and_port (sm->addresses, thread_index,
 				      &s->out2in);
 }
@@ -447,6 +458,16 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
   if (snat_is_session_static (s))
     return;
 
+  ed_bihash_kv_t bihash_key;
+  clib_memset (&bihash_key, 0, sizeof (bihash_key));
+  bihash_key.k.dst_address = s->ext_host_addr.as_u32;
+  bihash_key.k.dst_port = s->ext_host_port;
+  bihash_key.k.src_address = s->out2in.addr.as_u32;
+  bihash_key.k.src_port = s->out2in.port;
+  bihash_key.k.protocol = s->out2in.protocol;
+  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+			    0 /* is_add */ );
+
   // should be called for every dynamic session
   snat_free_outside_address_and_port (sm->addresses, thread_index,
 				      &s->out2in);
@@ -473,8 +494,6 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       /* no, make a new one */
       pool_get (tsm->users, u);
       clib_memset (u, 0, sizeof (*u));
-
-      u->min_session_timeout = 0;
 
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
@@ -572,6 +591,14 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
 			  s->per_user_list_head_index,
 			  per_user_translation_list_elt - tsm->list_pool);
 
+      dlist_elt_t *global_lru_list_elt;
+      pool_get (tsm->global_lru_pool, global_lru_list_elt);
+      global_lru_list_elt->value = s - tsm->sessions;
+      s->global_lru_index = global_lru_list_elt - tsm->global_lru_pool;
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
+			  s->global_lru_index);
+      s->last_lru_update = now;
+
       s->user_index = u - tsm->users;
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -586,7 +613,7 @@ snat_session_t *
 nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 		      f64 now)
 {
-  snat_session_t *s;
+  snat_session_t *s = NULL;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   dlist_elt_t *oldest_elt;
@@ -601,9 +628,6 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   if (PREDICT_FALSE
       ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user))
     {
-      if (nat44_max_translations_per_user_cleanup (u, thread_index, now))
-	goto alloc_new;
-
       nat_elog_addr (SNAT_LOG_WARNING, "[warn] max translations per user",
 		     clib_net_to_host_u32 (u->addr.as_u32));
       snat_ipfix_logging_max_entries_per_user (thread_index,
@@ -612,6 +636,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       return 0;
     }
 
+  /* first try to reuse an expired session from this ip */
   oldest_index =
     clib_dlist_remove_head (tsm->list_pool,
 			    u->sessions_per_user_list_head_index);
@@ -626,13 +651,44 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
       clib_dlist_addtail (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
       s = nat44_session_reuse_old (sm, u, s, thread_index, now);
+      s->last_lru_update = now;
     }
   else
     {
-      // alloc new session
       clib_dlist_addhead (tsm->list_pool,
 			  u->sessions_per_user_list_head_index, oldest_index);
-    alloc_new:
+      s = NULL;
+    }
+
+alloc_new:
+  /* try to free an expired session from global LRU list */
+  if (!s)
+    {
+      oldest_index = clib_dlist_remove_head (tsm->global_lru_pool,
+					     tsm->global_lru_head_index);
+      if (~0 != oldest_index)
+	{
+	  oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
+	  s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
+	  sess_timeout_time =
+	    s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+	  if (now >= sess_timeout_time
+	      || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
+	    {
+	      nat_free_session_data (sm, s, thread_index, 0);
+	      nat44_ed_delete_session (sm, s, thread_index, 0);
+	    }
+	  else
+	    {
+	      clib_dlist_addhead (tsm->global_lru_pool,
+				  tsm->global_lru_head_index, oldest_index);
+	    }
+	  s = NULL;
+	}
+    }
+  if (!s)
+    {
       s = nat44_session_alloc_new (tsm, u, now);
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -701,7 +757,7 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
-  clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535); \
+  clib_memset(ap->busy_##n##_port_refcounts, 0, sizeof(ap->busy_##n##_port_refcounts));\
   ap->busy_##n##_ports = 0; \
   ap->busy_##n##_ports_per_thread = 0;\
   vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
@@ -980,9 +1036,9 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                      if (a->busy_##n##_port_refcounts[e_port]) \
                         return VNET_API_ERROR_INVALID_VALUE; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      ++a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
@@ -1164,7 +1220,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      --a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
@@ -1343,9 +1399,9 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                      if (a->busy_##n##_port_refcounts[e_port]) \
                         return VNET_API_ERROR_INVALID_VALUE; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      ++a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
@@ -1459,7 +1515,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 		    {
 #define _(N, j, n, s) \
                     case SNAT_PROTOCOL_##N: \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      --a->busy_##n##_port_refcounts[e_port]; \
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
@@ -1826,7 +1882,6 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     }
 
 #define _(N, i, n, s) \
-  clib_bitmap_free (a->busy_##n##_port_bitmap); \
   vec_free (a->busy_##n##_ports_per_thread);
   foreach_snat_protocol
 #undef _
@@ -2651,10 +2706,8 @@ snat_free_outside_address_and_port (snat_address_t * addresses,
     {
 #define _(N, i, n, s) \
     case SNAT_PROTOCOL_##N: \
-      ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-        port_host_byte_order) == 1); \
-      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
-        port_host_byte_order, 0); \
+      ASSERT (a->busy_##n##_port_refcounts[port_host_byte_order] >= 1); \
+      --a->busy_##n##_port_refcounts[port_host_byte_order]; \
       a->busy_##n##_ports--; \
       a->busy_##n##_ports_per_thread[thread_index]--; \
       break;
@@ -2685,9 +2738,9 @@ nat_set_outside_address_and_port (snat_address_t * addresses,
 	{
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, port_host_byte_order)) \
+          if (a->busy_##n##_port_refcounts[port_host_byte_order]) \
             return VNET_API_ERROR_INSTANCE_IN_USE; \
-          clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port_host_byte_order, 1); \
+	  ++a->busy_##n##_port_refcounts[port_host_byte_order]; \
           a->busy_##n##_ports_per_thread[thread_index]++; \
           a->busy_##n##_ports++; \
           return 0;
@@ -2902,9 +2955,9 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
                       portnum = (port_per_thread * \
                         snat_thread_index) + \
                         snat_random_port(1, port_per_thread) + 1024; \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                      if (a->busy_##n##_port_refcounts[portnum]) \
                         continue; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+		      --a->busy_##n##_port_refcounts[portnum]; \
                       a->busy_##n##_ports_per_thread[thread_index]++; \
                       a->busy_##n##_ports++; \
                       k->addr = a->addr; \
@@ -2939,9 +2992,9 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
               portnum = (port_per_thread * \
                 snat_thread_index) + \
                 snat_random_port(1, port_per_thread) + 1024; \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports_per_thread[thread_index]++; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
@@ -2989,9 +3042,9 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
               A = snat_random_port(1, pow2_mask(sm->psid_offset)); \
               j = snat_random_port(0, pow2_mask(m)); \
               portnum = A | (sm->psid << sm->psid_offset) | (j << (16 - m)); \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
               k->port = clib_host_to_net_u16 (portnum); \
@@ -3037,9 +3090,9 @@ nat_alloc_addr_and_port_range (snat_address_t * addresses,
           while (1) \
             { \
               portnum = snat_random_port(sm->start_port, sm->end_port); \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
               a->busy_##n##_ports++; \
               k->addr = a->addr; \
               k->port = clib_host_to_net_u16 (portnum); \
@@ -3859,18 +3912,18 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   snat_main_per_thread_data_t *tsm;
 
   u32 static_mapping_buckets = 1024;
-  u32 static_mapping_memory_size = 64 << 20;
+  uword static_mapping_memory_size = 64 << 20;
 
   u32 nat64_bib_buckets = 1024;
   u32 nat64_bib_memory_size = 128 << 20;
 
   u32 nat64_st_buckets = 2048;
-  u32 nat64_st_memory_size = 256 << 20;
+  uword nat64_st_memory_size = 256 << 20;
 
   u32 user_buckets = 128;
-  u32 user_memory_size = 64 << 20;
+  uword user_memory_size = 64 << 20;
   u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128 << 20;
+  uword translation_memory_size = 128 << 20;
 
   u32 max_translations_per_user = ~0;
 
@@ -3967,8 +4020,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->tcp_established_timeout = tcp_established_timeout;
   sm->icmp_timeout = icmp_timeout;
 
-  sm->min_timeout = nat44_minimal_timeout (sm);
-
   sm->user_buckets = user_buckets;
   sm->user_memory_size = user_memory_size;
 
@@ -4049,11 +4100,15 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           /* *INDENT-OFF* */
           vec_foreach (tsm, sm->per_thread_data)
             {
-	      tsm->min_session_timeout = 0;
+              pool_alloc (tsm->sessions, sm->max_translations);
+              pool_alloc (tsm->list_pool, sm->max_translations);
+              pool_alloc (tsm->global_lru_pool, sm->max_translations);
 
-              tsm->cleared = 0;
-              tsm->cleanup_runs = 0;
-              tsm->cleanup_timeout = 0;
+              dlist_elt_t *head;
+              pool_get (tsm->global_lru_pool, head);
+              tsm->global_lru_head_index = head - tsm->global_lru_pool;
+              clib_dlist_init (tsm->global_lru_pool,
+                               tsm->global_lru_head_index);
 
               if (sm->endpoint_dependent)
                 {
@@ -4068,6 +4123,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                                          translation_memory_size);
                   clib_bihash_set_kvp_format_fn_16_8 (&tsm->out2in_ed,
                                                       format_ed_session_kvp);
+                  clib_bihash_init_16_8
+                  (&sm->ed_ext_ports, "ed-nat-5-tuple-port-overload-hash",
+                   translation_buckets, translation_memory_size);
                 }
               else
                 {

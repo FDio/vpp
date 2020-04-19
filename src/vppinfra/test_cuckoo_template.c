@@ -138,7 +138,8 @@ test_cuckoo (test_main_t * tm)
       kv.key = tm->keys[i];
       kv.value = i + 1;
 
-      CV (clib_cuckoo_add_del) (h, &kv, 1 /* is_add */ );
+      CV (clib_cuckoo_add_del) (h, &kv, 1 /* is_add */ ,
+				0 /* overwrite */ );
 
       if (tm->verbose > 1)
 	{
@@ -207,7 +208,8 @@ test_cuckoo (test_main_t * tm)
 
       kv.key = tm->keys[i];
       kv.value = (u64) (i + 1);
-      rv = CV (clib_cuckoo_add_del) (h, &kv, 0 /* is_add */ );
+      rv = CV (clib_cuckoo_add_del) (h, &kv, 0 /* is_add */ ,
+				     0 /* dont_overwrite */ );
 
       if (rv < 0)
 	clib_warning ("delete key %lld not ok but should be", tm->keys[i]);

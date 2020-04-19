@@ -1,0 +1,12 @@
+
+packet-generator new {
+    name x
+    limit 5
+    size 128-128
+    interface local0
+    node ip6-lookup
+    data {
+        ICMP: db00::1 -> db00::2
+        incrementing 30
+    }
+}

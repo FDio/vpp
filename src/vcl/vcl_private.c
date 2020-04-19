@@ -308,6 +308,8 @@ vcl_cleanup_bapi (void)
 int
 vcl_session_read_ready (vcl_session_t * session)
 {
+  u32 max_deq;
+
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
@@ -335,7 +337,23 @@ vcl_session_read_ready (vcl_session_t * session)
   if (vcl_session_is_ct (session))
     return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
 
-  return svm_fifo_max_dequeue_cons (session->rx_fifo);
+  max_deq = svm_fifo_max_dequeue_cons (session->rx_fifo);
+
+  if (session->is_dgram)
+    {
+      session_dgram_pre_hdr_t ph;
+
+      if (max_deq <= SESSION_CONN_HDR_LEN)
+	return 0;
+      if (svm_fifo_peek (session->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
+	return 0;
+      if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
+	return 0;
+
+      return ph.data_length;
+    }
+
+  return max_deq;
 }
 
 int
@@ -371,6 +389,15 @@ vcl_session_write_ready (vcl_session_t * session)
 
   if (vcl_session_is_ct (session))
     return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
+
+  if (session->is_dgram)
+    {
+      u32 max_enq = svm_fifo_max_enqueue_prod (session->tx_fifo);
+
+      if (max_enq <= sizeof (session_dgram_hdr_t))
+	return 0;
+      return max_enq - sizeof (session_dgram_hdr_t);
+    }
 
   return svm_fifo_max_enqueue_prod (session->tx_fifo);
 }

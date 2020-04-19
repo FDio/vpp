@@ -75,17 +75,19 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
     }
   else
     {
+      svm_fifo_t *f = s->data.tx_fifo;
+      u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
+
+      if (max_enqueue < sizeof (session_dgram_hdr_t))
+	return;
+
+      max_enqueue -= sizeof (session_dgram_hdr_t);
+
       if (ecm->no_copy)
 	{
 	  session_dgram_hdr_t hdr;
-	  svm_fifo_t *f = s->data.tx_fifo;
 	  app_session_transport_t *at = &s->data.transport;
-	  u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
 
-	  if (max_enqueue <= sizeof (session_dgram_hdr_t))
-	    return;
-
-	  max_enqueue -= sizeof (session_dgram_hdr_t);
 	  rv = clib_min (max_enqueue, bytes_this_chunk);
 
 	  hdr.data_length = rv;
@@ -104,8 +106,11 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 						SESSION_IO_EVT_TX);
 	}
       else
-	rv = app_send_dgram (&s->data, test_data + test_buf_offset,
-			     bytes_this_chunk, 0);
+	{
+	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
+	  rv = app_send_dgram (&s->data, test_data + test_buf_offset,
+			       bytes_this_chunk, 0);
+	}
     }
 
   /* If we managed to enqueue data... */
@@ -362,7 +367,8 @@ echo_clients_init (vlib_main_t * vm)
 
 static int
 quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
-					       session_t * s, u8 is_fail)
+					       session_t * s,
+					       session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t *a = 0;
@@ -406,7 +412,8 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 
 static int
 quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					      session_t * s, u8 is_fail)
+					      session_t * s,
+					      session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -416,7 +423,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
 
-  if (is_fail)
+  if (err)
     {
       clib_warning ("connection %d failed!", api_context);
       ecm->run_test = ECHO_CLIENTS_EXITING;
@@ -427,7 +434,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (s->listener_handle == SESSION_INVALID_HANDLE)
     return quic_echo_clients_qsession_connected_callback (app_index,
 							  api_context, s,
-							  is_fail);
+							  err);
   DBG ("STREAM Connection callback %d", api_context);
 
   thread_index = s->thread_index;
@@ -479,7 +486,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					 session_t * s, u8 is_fail)
+					 session_t * s, session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -489,7 +496,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
 
-  if (is_fail)
+  if (err)
     {
       clib_warning ("connection %d failed!", api_context);
       ecm->run_test = ECHO_CLIENTS_EXITING;
@@ -891,8 +898,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
     return clib_error_return (0, "Uri parse error: %d", rv);
   ecm->transport_proto = sep.transport_proto;
-  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP
-		   || sep.transport_proto == TRANSPORT_PROTO_UDPC);
+  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();

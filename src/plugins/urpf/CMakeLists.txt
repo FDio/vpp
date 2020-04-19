@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2020 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -11,11 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(SRv6uN
+add_vpp_plugin(urpf
   SOURCES
-  un.c
-  node.c
+  urpf.c
+  urpf_api.c
+  ip4_urpf.c
+  ip6_urpf.c
 
-  INSTALL_HEADERS
-  un.h
+  MULTIARCH_SOURCES
+  ip4_urpf.c
+  ip6_urpf.c
+
+  API_FILES
+  urpf.api
 )

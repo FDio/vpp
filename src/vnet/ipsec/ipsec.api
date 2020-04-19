@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.1";
+option version = "3.0.2";
 
 import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
@@ -414,7 +414,7 @@ define ipsec_sa_dump {
     @param last_seq - highest sequence number received inbound
     @param last_seq_hi - high 32 bits of highest ESN received inbound
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
-    @param total_data_size - total bytes sent or received
+    @param stat_index - index for the SA in the stats segment @ /net/ipsec/sa
     @param udp_encap - 1 if UDP encap enabled, 0 otherwise
 */
 define ipsec_sa_details {
@@ -427,7 +427,7 @@ define ipsec_sa_details {
   u64 last_seq_inbound;
   u64 replay_window;
 
-  u64 total_data_size;
+  u32 stat_index;
 };
 
 /** \brief Set new SA on IPsec interface

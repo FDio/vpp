@@ -332,6 +332,7 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 	       "wheel_time_ticks %u", bs->event_time_nsec,
 	       bs->event_time_nsec - now,
 	       (bs->event_time_nsec - now) * SEC_PER_NSEC, wheel_time_ticks);
+      wheel_time_ticks = wheel_time_ticks ? wheel_time_ticks : 1;
       bfd_lock (bm);
       if (bs->tw_id)
 	{

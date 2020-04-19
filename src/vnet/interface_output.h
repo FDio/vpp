@@ -41,24 +41,37 @@
 #define __INTERFACE_INLINES_H__
 
 #include <vnet/vnet.h>
+#include <vnet/gso/gso.h>
 
 static_always_inline void
-calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
+vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
+			    int is_ip4, int is_ip6, int with_gso)
 {
   ip4_header_t *ip4;
   ip6_header_t *ip6;
   tcp_header_t *th;
   udp_header_t *uh;
 
-  int is_ip4 = (b->flags & VNET_BUFFER_F_IS_IP4) != 0;
-  int is_ip6 = (b->flags & VNET_BUFFER_F_IS_IP6) != 0;
-
   ASSERT (!(is_ip4 && is_ip6));
 
-  ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-  ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  if (with_gso)
+    {
+      gso_header_offset_t gho;
+      gho = vnet_gso_header_offset_parser (b, is_ip6);
+      ip4 = (ip4_header_t *)
+	(vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+      ip6 = (ip6_header_t *)
+	(vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+      th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+      uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+    }
+  else
+    {
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+      uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+    }
 
   if (is_ip4)
     {

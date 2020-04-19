@@ -133,16 +133,42 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec):
     def tearDownClass(cls):
         super(TemplateIpsec4TunIfEspUdp, cls).tearDownClass()
 
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                # ensure the UDP ports are correct before we decrypt
+                # which strips them
+                self.assertTrue(rx.haslayer(UDP))
+                self.assert_equal(rx[UDP].sport, 4500)
+                self.assert_equal(rx[UDP].dport, 4500)
+
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+
+                self.assert_packet_checksums_valid(pkt)
+                self.assert_equal(pkt[IP].dst, "1.1.1.1")
+                self.assert_equal(pkt[IP].src, self.pg1.remote_ip4)
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
     def setUp(self):
         super(TemplateIpsec4TunIfEspUdp, self).setUp()
-
-        self.tun_if = self.pg0
 
         p = self.ipv4_params
         p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
                    IPSEC_API_SAD_FLAG_UDP_ENCAP)
         p.nat_header = UDP(sport=5454, dport=4500)
 
+    def config_network(self):
+
+        self.tun_if = self.pg0
+        p = self.ipv4_params
         p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
                                         p.scapy_tun_spi, p.crypt_algo_vpp_id,
                                         p.crypt_key, p.crypt_key,
@@ -204,9 +230,32 @@ class TestIpsec4TunIfEspUdp(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
 
     tun4_input_node = "ipsec4-tun-input"
 
+    def setUp(self):
+        super(TemplateIpsec4TunIfEspUdp, self).setUp()
+        self.config_network()
+
     def test_keepalive(self):
         """ IPSEC NAT Keepalive """
         self.verify_keepalive(self.ipv4_params)
+
+
+class TestIpsec4TunIfEspUdpGCM(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
+    """ Ipsec ESP UDP GCM tests """
+
+    tun4_input_node = "ipsec4-tun-input"
+
+    def setUp(self):
+        super(TemplateIpsec4TunIfEspUdp, self).setUp()
+        p = self.ipv4_params
+        p.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_NONE)
+        p.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                               IPSEC_API_CRYPTO_ALG_AES_GCM_256)
+        p.crypt_algo = "AES-GCM"
+        p.auth_algo = "NULL"
+        p.crypt_key = b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"
+        p.salt = 0
+        self.config_network()
 
 
 class TestIpsec4TunIfEsp2(TemplateIpsec4TunIfEsp, IpsecTcpTests):

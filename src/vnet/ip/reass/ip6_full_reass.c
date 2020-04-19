@@ -1208,7 +1208,10 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 
 	      /* bi0 might have been updated by reass_finalize, reload */
 	      b0 = vlib_get_buffer (vm, bi0);
-	      b0->error = node->errors[error0];
+	      if (IP6_ERROR_NONE != error0)
+		{
+		  b0->error = node->errors[error0];
+		}
 
 	      if (next0 == IP6_FULL_REASSEMBLY_NEXT_HANDOFF)
 		{

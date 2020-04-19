@@ -1744,10 +1744,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
+
 	  is_locally_originated1 =
 	    p1->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  if (PREDICT_TRUE (!is_locally_originated1))
@@ -1775,10 +1772,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p1->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
+
 	  adj0 = adj_get (adj_index0);
 	  adj1 = adj_get (adj_index1);
 
@@ -1865,8 +1859,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	    {
 	      /* before we paint on the next header, update the L4
 	       * checksums if required, since there's no offload on a tunnel */
-	      calc_checksums (vm, p0);
-	      calc_checksums (vm, p1);
+	      vnet_calc_checksums_inline (vm, p0, 0 /* is_ip4 */ ,
+					  1 /* is_ip6 */ ,
+					  0 /* with gso */ );
+	      vnet_calc_checksums_inline (vm, p1, 0 /* is_ip4 */ ,
+					  1 /* is_ip6 */ ,
+					  0 /* with gso */ );
 	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */
@@ -1954,14 +1952,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					       0);
 		}
 	    }
-	  else
-	    {
-	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	    }
 
 	  if (is_midchain)
 	    {
-	      calc_checksums (vm, p0);
+	      vnet_calc_checksums_inline (vm, p0, 0 /* is_ip4 */ ,
+					  1 /* is_ip6 */ ,
+					  0 /* with gso */ );
 	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */

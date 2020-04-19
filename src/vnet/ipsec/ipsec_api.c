@@ -178,7 +178,8 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_tunnel_protect_details_t *mp;
   ipsec_tun_protect_t *itp;
-  u32 sai, ii = 0;
+  u32 ii = 0;
+  ipsec_sa_t *sa;
 
   itp = ipsec_tun_protect_get (itpi);
 
@@ -190,12 +191,13 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
   mp->tun.sw_if_index = htonl (itp->itp_sw_if_index);
   ip_address_encode2 (itp->itp_key, &mp->tun.nh);
 
-  mp->tun.sa_out = htonl (itp->itp_out_sa);
+  sa = ipsec_sa_get (itp->itp_out_sa);
+  mp->tun.sa_out = htonl (sa->id);
   mp->tun.n_sa_in = itp->itp_n_sa_in;
   /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
+  FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
-    mp->tun.sa_in[ii++] = htonl (sai);
+    mp->tun.sa_in[ii++] = htonl (sa->id);
   }));
   /* *INDENT-ON* */
 
@@ -824,6 +826,8 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
+
+  mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

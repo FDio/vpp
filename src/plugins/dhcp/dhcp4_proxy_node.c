@@ -364,6 +364,13 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 		  u32 ci0;
 
 		  c0 = vlib_buffer_copy (vm, b0);
+		  if (c0 == NULL)
+		    {
+		      vlib_node_increment_counter
+			(vm, dhcp_proxy_to_server_node.index,
+			 DHCP_PROXY_ERROR_ALLOC_FAIL, 1);
+		      continue;
+		    }
 		  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (c0);
 		  ci0 = vlib_get_buffer_index (vm, c0);
 		  server = &proxy->dhcp_servers[ii];

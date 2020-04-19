@@ -211,6 +211,15 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
   pool_put (sm->segments, fs);
 }
 
+static fifo_segment_t *
+segment_manager_get_segment_if_valid (segment_manager_t * sm,
+				      u32 segment_index)
+{
+  if (pool_is_free_index (sm->segments, segment_index))
+    return 0;
+  return pool_elt_at_index (sm->segments, segment_index);
+}
+
 /**
  * Removes segment after acquiring writer lock
  */
@@ -221,15 +230,18 @@ segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
   u8 is_prealloc;
 
   clib_rwlock_writer_lock (&sm->segments_rwlock);
-  fs = segment_manager_get_segment (sm, fs_index);
+
+  fs = segment_manager_get_segment_if_valid (sm, fs_index);
+  if (!fs)
+    goto done;
+
   is_prealloc = fifo_segment_flags (fs) & FIFO_SEGMENT_F_IS_PREALLOCATED;
   if (is_prealloc && !segment_manager_app_detached (sm))
-    {
-      clib_rwlock_writer_unlock (&sm->segments_rwlock);
-      return;
-    }
+    goto done;
 
   segment_manager_del_segment (sm, fs);
+
+done:
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
 }
 
@@ -540,7 +552,12 @@ segment_manager_del_sessions (segment_manager_t * sm)
   /* *INDENT-ON* */
 
   vec_foreach (handle, handles)
-    session_close (session_get_from_handle (*handle));
+  {
+    session = session_get_from_handle (*handle);
+    session_close (session);
+    /* Avoid propagating notifications back to the app */
+    session->app_wrk_index = APP_INVALID_INDEX;
+  }
 }
 
 int
@@ -664,12 +681,12 @@ alloc_check:
 	{
 	  clib_warning ("Added a segment, still can't allocate a fifo");
 	  segment_manager_segment_reader_unlock (sm);
-	  return SESSION_ERROR_NEW_SEG_NO_SPACE;
+	  return SESSION_E_SEG_NO_SPACE2;
 	}
       if ((new_fs_index = segment_manager_add_segment (sm, 0)) < 0)
 	{
 	  clib_warning ("Failed to add new segment");
-	  return SESSION_ERROR_SEG_CREATE;
+	  return SESSION_E_SEG_CREATE;
 	}
       fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
       alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
@@ -682,7 +699,7 @@ alloc_check:
   else
     {
       clib_warning ("Can't add new seg and no space to allocate fifos!");
-      return SESSION_ERROR_NO_SPACE;
+      return SESSION_E_SEG_NO_SPACE;
     }
 }
 
@@ -729,6 +746,30 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
     }
   else
     segment_manager_segment_reader_unlock (sm);
+}
+
+void
+segment_manager_detach_fifo (segment_manager_t * sm, svm_fifo_t * f)
+{
+  fifo_segment_t *fs;
+
+  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  fifo_segment_detach_fifo (fs, f);
+  segment_manager_segment_reader_unlock (sm);
+}
+
+void
+segment_manager_attach_fifo (segment_manager_t * sm, svm_fifo_t * f,
+			     session_t * s)
+{
+  fifo_segment_t *fs;
+
+  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  fifo_segment_attach_fifo (fs, f, s->thread_index);
+  segment_manager_segment_reader_unlock (sm);
+
+  f->master_session_index = s->session_index;
+  f->master_thread_index = s->thread_index;
 }
 
 u32

@@ -16,7 +16,9 @@
  * draft-cheng-iccrg-delivery-rate-estimation-00
  */
 
+#include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 
 static tcp_bt_sample_t *
 bt_get_sample (tcp_byte_tracker_t * bt, u32 bts_index)

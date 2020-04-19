@@ -671,6 +671,34 @@ vnet_register_format_buffer_opaque2_helper (vnet_buffer_opquae_formatter_t fp)
 
 
 uword
+unformat_vnet_buffer_flags (unformat_input_t * input, va_list * args)
+{
+  u32 *flagp = va_arg (*args, u32 *);
+  int rv = 0;
+  u32 flags = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      /* Red herring, there is no such buffer flag */
+      if (unformat (input, "avail8"))
+	return 0;
+#define _(bit,enum,str,verbose)                                 \
+      else if (unformat (input, str))                           \
+        {                                                       \
+          flags |= (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit));      \
+          rv = 1;                                               \
+        }
+      foreach_vnet_buffer_flag
+#undef _
+	else
+	break;
+    }
+  if (rv)
+    *flagp = flags;
+  return rv;
+}
+
+uword
 unformat_vnet_hw_interface (unformat_input_t * input, va_list * args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);

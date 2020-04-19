@@ -578,6 +578,14 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 	p = m->base + (j << m->log2_page_size) + i * alloc_size;
 	p += bm->ext_hdr_size;
 
+	/*
+	 * Waste 1 buffer (maximum) so that 0 is never a valid buffer index.
+	 * Allows various places to ASSERT (bi != 0). Much easier
+	 * than debugging downstream crashes in successor nodes.
+	 */
+	if (p == m->base)
+	  continue;
+
 	vlib_buffer_copy_template ((vlib_buffer_t *) p, &bp->buffer_template);
 
 	bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);
@@ -923,6 +931,24 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (vlib_buffers_configure, "buffers");
 
+#if VLIB_BUFFER_ALLOC_FAULT_INJECTOR > 0
+u32
+vlib_buffer_alloc_may_fail (vlib_main_t * vm, u32 n_buffers)
+{
+  f64 r;
+
+  r = random_f64 (&vm->buffer_alloc_success_seed);
+
+  /* Fail this request? */
+  if (r > vm->buffer_alloc_success_rate)
+    n_buffers--;
+  /* 5% chance of returning nothing at all */
+  if (r > vm->buffer_alloc_success_rate && r > 0.95)
+    n_buffers = 0;
+
+  return n_buffers;
+}
+#endif
 
 /** @endcond */
 /*

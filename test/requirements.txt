@@ -17,3 +17,5 @@ subprocess32                            # PSF
 syslog_rfc5424_parser>=0.3.1            # ISC
 objgraph                                # MIT
 pympler                                 # Apache-2.0
+sphinx<3.0.0                            # BSD,  sphinx 3.0.0 crashes with a traceback
+sphinx-rtd-theme                        # MIT

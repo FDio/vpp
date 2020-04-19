@@ -5,7 +5,7 @@ import struct
 from scapy.layers.inet import IP, ICMP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
+from scapy.packet import raw, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, IPv6ExtHdrHopByHop, \
     IPv6ExtHdrFragment, IPv6ExtHdrDestOpt
 

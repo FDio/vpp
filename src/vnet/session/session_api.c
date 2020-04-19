@@ -43,18 +43,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_session_api_msg                                         \
-_(MAP_ANOTHER_SEGMENT_REPLY, map_another_segment_reply)                 \
-_(APPLICATION_ATTACH, application_attach)				\
 _(APP_ATTACH, app_attach)						\
 _(APPLICATION_DETACH, application_detach)				\
-_(BIND_URI, bind_uri)                                                   \
-_(UNBIND_URI, unbind_uri)                                               \
-_(CONNECT_URI, connect_uri)                                             \
-_(DISCONNECT_SESSION, disconnect_session)                               \
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)                   \
-_(BIND_SOCK, bind_sock)							\
-_(UNBIND_SOCK, unbind_sock)                                             \
-_(CONNECT_SOCK, connect_sock)                                          	\
 _(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
 _(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
 _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
@@ -76,8 +66,6 @@ api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
       return TRANSPORT_PROTO_UDP;
     case TRANSPORT_PROTO_API_TLS:
       return TRANSPORT_PROTO_TLS;
-    case TRANSPORT_PROTO_API_UDPC:
-      return TRANSPORT_PROTO_UDPC;
     case TRANSPORT_PROTO_API_QUIC:
       return TRANSPORT_PROTO_QUIC;
     default:
@@ -96,8 +84,6 @@ api_session_transport_proto_encode (const transport_proto_t tp)
       return TRANSPORT_PROTO_API_UDP;
     case TRANSPORT_PROTO_TLS:
       return TRANSPORT_PROTO_API_TLS;
-    case TRANSPORT_PROTO_UDPC:
-      return TRANSPORT_PROTO_API_UDPC;
     case TRANSPORT_PROTO_QUIC:
       return TRANSPORT_PROTO_API_QUIC;
     default:
@@ -110,89 +96,13 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 {
   clib_error_t *error;
   if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-    {
-      clib_warning ("can't send memfd fd");
-      return -1;
-    }
+    return SESSION_E_BAPI_NO_FD;
   error = vl_api_send_fd_msg (reg, fds, n_fds);
   if (error)
     {
       clib_error_report (error);
-      return -1;
+      return SESSION_E_BAPI_SEND_FD;
     }
-  return 0;
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static int
-send_add_segment_callback (u32 api_client_index, u64 segment_handle)
-{
-  int fds[SESSION_N_FD_TYPE], n_fds = 0;
-  vl_api_map_another_segment_t *mp;
-  vl_api_registration_t *reg;
-  fifo_segment_t *fs;
-  ssvm_private_t *sp;
-  u8 fd_flags = 0;
-
-  reg = vl_mem_api_client_index_to_registration (api_client_index);
-  if (!reg)
-    {
-      clib_warning ("no api registration for client: %u", api_client_index);
-      return -1;
-    }
-
-  fs = segment_manager_get_segment_w_handle (segment_handle);
-  sp = &fs->ssvm;
-  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
-    {
-      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-	{
-	  clib_warning ("can't send memfd fd");
-	  return -1;
-	}
-
-      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
-      fds[n_fds] = sp->fd;
-      n_fds += 1;
-    }
-
-  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
-  mp->segment_size = sp->ssvm_size;
-  mp->fd_flags = fd_flags;
-  mp->segment_handle = clib_host_to_net_u64 (segment_handle);
-  strncpy ((char *) mp->segment_name, (char *) sp->name,
-	   sizeof (mp->segment_name) - 1);
-
-  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
-
-  if (n_fds)
-    return session_send_fds (reg, fds, n_fds);
-
-  return 0;
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static int
-send_del_segment_callback (u32 api_client_index, u64 segment_handle)
-{
-  vl_api_unmap_segment_t *mp;
-  vl_api_registration_t *reg;
-
-  reg = vl_mem_api_client_index_to_registration (api_client_index);
-  if (!reg)
-    {
-      clib_warning ("no registration: %u", api_client_index);
-      return -1;
-    }
-
-  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
-  mp->segment_handle = clib_host_to_net_u64 (segment_handle);
-  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
-
   return 0;
 }
 
@@ -229,7 +139,7 @@ mq_send_session_accepted_cb (session_t * s)
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -348,7 +258,7 @@ mq_send_session_reset_cb (session_t * s)
 
 int
 mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-			      session_t * s, u8 is_fail)
+			      session_t * s, session_error_t err)
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_connected_msg_t *mp;
@@ -367,7 +277,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -376,7 +286,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = api_context;
 
-  if (is_fail)
+  if (err)
     goto done;
 
   if (session_has_transport (s))
@@ -384,7 +294,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       tc = session_get_transport (s);
       if (!tc)
 	{
-	  is_fail = 1;
+	  clib_warning ("failed to retrieve transport!");
+	  err = SESSION_E_REFUSED;
 	  goto done;
 	}
 
@@ -419,8 +330,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
 done:
-  mp->retval = is_fail ?
-    clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT) : 0;
+  mp->retval = err;
 
   svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
@@ -448,7 +358,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    return SESSION_E_MQ_MSG_ALLOC;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -660,17 +570,6 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static session_cb_vft_t session_mq_cb_vft_old = {
-  .session_accept_callback = mq_send_session_accepted_cb,
-  .session_disconnect_callback = mq_send_session_disconnected_cb,
-  .session_connected_callback = mq_send_session_connected_cb,
-  .session_reset_callback = mq_send_session_reset_cb,
-  .session_migrate_callback = mq_send_session_migrate_cb,
-  .add_segment_callback = send_add_segment_callback,
-  .del_segment_callback = send_del_segment_callback,
-};
-
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
@@ -691,89 +590,6 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 
   vnet_session_enable_disable (vm, mp->is_enable);
   REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_REPLY);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
-{
-  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
-  vl_api_application_attach_reply_t *rmp;
-  ssvm_private_t *segp, *evt_q_segment;
-  vnet_app_attach_args_t _a, *a = &_a;
-  vl_api_registration_t *reg;
-  u8 fd_flags = 0;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
-		 sizeof (mp->options),
-		 "Out of options, fix api message definition");
-
-  clib_memset (a, 0, sizeof (*a));
-  a->api_client_index = mp->client_index;
-  a->options = mp->options;
-  a->session_cb_vft = &session_mq_cb_vft_old;
-  a->namespace_id =
-    (u8 *) vl_api_from_api_to_new_c_string (&mp->namespace_id);
-
-  if ((rv = vnet_application_attach (a)))
-    {
-      clib_warning ("attach returned: %d", rv);
-      vec_free (a->namespace_id);
-      goto done;
-    }
-  vec_free (a->namespace_id);
-
-  /* Send event queues segment */
-  if ((evt_q_segment = session_main_get_evt_q_segment ()))
-    {
-      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->fd;
-      n_fds += 1;
-    }
-  /* Send fifo segment fd if needed */
-  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
-    {
-      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
-      fds[n_fds] = a->segment->fd;
-      n_fds += 1;
-    }
-  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
-    {
-      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
-      n_fds += 1;
-    }
-
-done:
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
-    if (!rv)
-      {
-	segp = a->segment;
-	rmp->app_index = clib_host_to_net_u32 (a->app_index);
-        vl_api_vec_to_api_string (segp->name, &rmp->segment_name);
-	rmp->segment_size = segp->ssvm_size;
-	rmp->app_event_queue_address = pointer_to_uword (a->app_evt_q);
-	rmp->n_fds = n_fds;
-	rmp->fd_flags = fd_flags;
-	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
-      }
-  }));
-  /* *INDENT-ON* */
-
-  if (n_fds)
-    session_send_fds (reg, fds, n_fds);
 }
 
 static void
@@ -865,363 +681,6 @@ done:
     session_send_fds (reg, fds, n_fds);
 }
 
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
-{
-  vl_api_application_detach_reply_t *rmp;
-  int rv = VNET_API_ERROR_INVALID_VALUE_2;
-  vnet_app_detach_args_t _a, *a = &_a;
-  application_t *app;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      a->app_index = app->app_index;
-      a->api_client_index = mp->client_index;
-      rv = vnet_application_detach (a);
-    }
-
-done:
-  REPLY_MACRO (VL_API_APPLICATION_DETACH_REPLY);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
-{
-  vl_api_bind_uri_reply_t *rmp;
-  vnet_listen_args_t _a, *a = &_a;
-  application_t *app = 0;
-  app_worker_t *app_wrk;
-  int rv;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      clib_memset (a, 0, sizeof (*a));
-      a->uri = (char *) mp->uri;
-      a->app_index = app->app_index;
-      rv = vnet_bind_uri (a);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-done:
-
-  REPLY_MACRO (VL_API_BIND_URI_REPLY);
-
-  if (app)
-    {
-      app_wrk = application_get_worker (app, 0);
-      mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle,
-				rv);
-    }
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_unbind_uri_t_handler (vl_api_unbind_uri_t * mp)
-{
-  vl_api_unbind_uri_reply_t *rmp;
-  application_t *app;
-  vnet_unlisten_args_t _a, *a = &_a;
-  int rv;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      a->uri = (char *) mp->uri;
-      a->app_index = app->app_index;
-      a->wrk_map_index = 0;
-      rv = vnet_unbind_uri (a);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-done:
-  REPLY_MACRO (VL_API_UNBIND_URI_REPLY);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
-{
-  vl_api_connect_uri_reply_t *rmp;
-  vnet_connect_args_t _a, *a = &_a;
-  application_t *app;
-  int rv = 0;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      clib_memset (a, 0, sizeof (*a));
-      a->uri = (char *) mp->uri;
-      a->api_context = mp->context;
-      a->app_index = app->app_index;
-      if ((rv = vnet_connect_uri (a)))
-	clib_warning ("connect_uri returned: %d", rv);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-  /*
-   * Don't reply to stream (tcp) connects. The reply will come once
-   * the connection is established. In case of the redirects, the reply
-   * will come from the server app.
-   */
-  if (rv == 0)
-    return;
-
-done:
-  REPLY_MACRO (VL_API_CONNECT_URI_REPLY);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
-{
-  vl_api_disconnect_session_reply_t *rmp;
-  vnet_disconnect_args_t _a, *a = &_a;
-  application_t *app;
-  int rv = 0;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      a->handle = mp->handle;
-      a->app_index = app->app_index;
-      rv = vnet_disconnect_session (a);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-done:
-  REPLY_MACRO2 (VL_API_DISCONNECT_SESSION_REPLY, rmp->handle = mp->handle);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
-					   mp)
-{
-  vnet_disconnect_args_t _a, *a = &_a;
-  application_t *app;
-
-  /* Client objected to disconnecting the session, log and continue */
-  if (mp->retval)
-    {
-      clib_warning ("client retval %d", mp->retval);
-      return;
-    }
-
-  /* Disconnect has been confirmed. Confirm close to transport */
-  app = application_lookup (mp->context);
-  if (app)
-    {
-      a->handle = mp->handle;
-      a->app_index = app->app_index;
-      vnet_disconnect_session (a);
-    }
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_map_another_segment_reply_t_handler (vl_api_map_another_segment_reply_t
-					    * mp)
-{
-  clib_warning ("not implemented");
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
-{
-  vnet_listen_args_t _a, *a = &_a;
-  vl_api_bind_sock_reply_t *rmp;
-  application_t *app = 0;
-  app_worker_t *app_wrk;
-  int rv = 0;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (!app)
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-      goto done;
-    }
-
-  clib_memset (a, 0, sizeof (*a));
-  ip_address_decode (&mp->ip, &a->sep.ip);
-  a->sep.is_ip4 = ip46_address_is_ip4 (&a->sep.ip);
-  a->sep.port = mp->port;
-  a->sep.fib_index = mp->vrf;
-  a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
-  a->sep.transport_proto = api_session_transport_proto_decode (&mp->proto);
-  a->app_index = app->app_index;
-  a->wrk_map_index = mp->wrk_index;
-
-  if ((rv = vnet_listen (a)))
-    clib_warning ("listen returned: %d", rv);
-
-done:
-  /* Actual reply sent only over mq */
-  REPLY_MACRO (VL_API_BIND_SOCK_REPLY);
-
-  if (app)
-    {
-      app_wrk = application_get_worker (app, mp->wrk_index);
-      mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle,
-				rv);
-    }
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
-{
-  vl_api_unbind_sock_reply_t *rmp;
-  vnet_unlisten_args_t _a, *a = &_a;
-  app_worker_t *app_wrk;
-  application_t *app = 0;
-  int rv = 0;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      a->app_index = app->app_index;
-      a->handle = mp->handle;
-      a->wrk_map_index = mp->wrk_index;
-      if ((rv = vnet_unlisten (a)))
-	clib_warning ("unlisten returned: %d", rv);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-done:
-  REPLY_MACRO (VL_API_UNBIND_SOCK_REPLY);
-
-  if (!app)
-    return;
-
-  app_wrk = application_get_worker (app, a->wrk_map_index);
-  if (!app_wrk)
-    return;
-
-  mq_send_unlisten_reply (app_wrk, mp->handle, mp->context, rv);
-}
-
-/* ### WILL BE DEPRECATED POST 20.01 ### */
-static void
-vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
-{
-  vl_api_connect_sock_reply_t *rmp;
-  vnet_connect_args_t _a, *a = &_a;
-  application_t *app = 0;
-  int rv = 0;
-
-  if (session_main_is_enabled () == 0)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-
-  app = application_lookup (mp->client_index);
-  if (app)
-    {
-      svm_queue_t *client_q;
-
-      clib_memset (a, 0, sizeof (*a));
-      client_q = vl_api_client_index_to_input_queue (mp->client_index);
-      mp->client_queue_address = pointer_to_uword (client_q);
-      ip_address_decode (&mp->ip, &a->sep.ip);
-      a->sep.is_ip4 = ip46_address_is_ip4 (&a->sep.ip);
-      a->sep.port = mp->port;
-      a->sep.transport_proto =
-	api_session_transport_proto_decode (&mp->proto);
-      a->sep.peer.fib_index = mp->vrf;
-      a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
-      a->sep_ext.parent_handle = mp->parent_handle;
-      a->sep_ext.hostname =
-	(u8 *) vl_api_from_api_to_new_c_string (&mp->hostname);
-      a->api_context = mp->context;
-      a->app_index = app->app_index;
-      a->wrk_map_index = mp->wrk_index;
-      if ((rv = vnet_connect (a)))
-	clib_warning ("connect returned: %U", format_vnet_api_errno, rv);
-      vec_free (a->sep_ext.hostname);
-    }
-  else
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
-
-  if (rv == 0)
-    return;
-
-  /* Got some error, relay it */
-
-done:
-  REPLY_MACRO (VL_API_CONNECT_SOCK_REPLY);
-
-  if (app)
-    {
-      app_worker_t *app_wrk = application_get_worker (app, mp->wrk_index);
-      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, 1);
-    }
-}
-
 static void
 vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
 {
@@ -1299,6 +758,32 @@ done:
 
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
+}
+
+static void
+vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
+{
+  vl_api_application_detach_reply_t *rmp;
+  int rv = VNET_API_ERROR_INVALID_VALUE_2;
+  vnet_app_detach_args_t _a, *a = &_a;
+  application_t *app;
+
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  app = application_lookup (mp->client_index);
+  if (app)
+    {
+      a->app_index = app->app_index;
+      a->api_client_index = mp->client_index;
+      rv = vnet_application_detach (a);
+    }
+
+done:
+  REPLY_MACRO (VL_API_APPLICATION_DETACH_REPLY);
 }
 
 static void
@@ -1710,16 +1195,6 @@ session_api_hookup (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_session_api_msg;
 #undef _
-
-  /*
-   * Messages which bounce off the data-plane to
-   * an API client. Simply tells the message handling infra not
-   * to free the message.
-   *
-   * Bounced message handlers MUST NOT block the data plane
-   */
-  am->message_bounce[VL_API_CONNECT_URI] = 1;
-  am->message_bounce[VL_API_CONNECT_SOCK] = 1;
 
   /*
    * Set up the (msg_name, crc, message-id) table

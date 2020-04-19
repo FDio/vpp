@@ -21,7 +21,7 @@
 
 #define SESSION_INVALID_INDEX ((u32)~0)
 #define SESSION_INVALID_HANDLE ((u64)~0)
-#define SESSION_CTRL_MSG_MAX_SIZE 84
+#define SESSION_CTRL_MSG_MAX_SIZE 86
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
@@ -309,9 +309,21 @@ session_parse_handle (session_handle_t handle, u32 * index,
 }
 
 static inline session_handle_t
-session_make_handle (u32 session_index, u32 thread_index)
+session_make_handle (u32 session_index, u32 data)
 {
-  return (((u64) thread_index << 32) | (u64) session_index);
+  return (((u64) data << 32) | (u64) session_index);
+}
+
+always_inline u32
+session_handle_index (session_handle_t ho_handle)
+{
+  return (ho_handle & 0xffffffff);
+}
+
+always_inline u32
+session_handle_data (session_handle_t ho_handle)
+{
+  return (ho_handle >> 32);
 }
 
 typedef enum
@@ -433,6 +445,59 @@ typedef struct session_dgram_header_
 
 STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
 	       "session conn id wrong length");
+
+#define foreach_session_error						\
+  _(NONE, "no error")							\
+  _(UNKNOWN, "generic/unknown error")					\
+  _(REFUSED, "refused")							\
+  _(TIMEDOUT, "timedout")						\
+  _(ALLOC, "obj/memory allocation error")				\
+  _(OWNER, "object not owned by application")				\
+  _(NOROUTE, "no route")						\
+  _(NOINTF, "no resolving interface")					\
+  _(NOIP, "no ip for lcl interface")					\
+  _(NOPORT, "no lcl port")						\
+  _(NOSUPPORT, "not supported")						\
+  _(NOLISTEN, "not listening")						\
+  _(NOSESSION, "session does not exist")				\
+  _(NOAPP, "app not attached")						\
+  _(PORTINUSE, "lcl port in use")					\
+  _(IPINUSE, "ip in use")						\
+  _(ALREADY_LISTENING, "ip port pair already listened on")		\
+  _(INVALID_RMT_IP, "invalid remote ip")				\
+  _(INVALID_APPWRK, "invalid app worker")				\
+  _(INVALID_NS, "invalid namespace")					\
+  _(SEG_NO_SPACE, "Couldn't allocate a fifo pair")			\
+  _(SEG_NO_SPACE2, "Created segment, couldn't allocate a fifo pair") 	\
+  _(SEG_CREATE, "Couldn't create a new segment")			\
+  _(FILTERED, "session filtered")					\
+  _(SCOPE, "scope not supported")					\
+  _(BAPI_NO_FD, "bapi doesn't have a socket fd")			\
+  _(BAPI_SEND_FD, "couldn't send fd over bapi socket fd")		\
+  _(BAPI_NO_REG, "app bapi registration not found")			\
+  _(MQ_MSG_ALLOC, "failed to alloc mq msg")				\
+  _(TLS_HANDSHAKE, "failed tls handshake")				\
+
+typedef enum session_error_p_
+{
+#define _(sym, str) SESSION_EP_##sym,
+  foreach_session_error
+#undef _
+  SESSION_N_ERRORS
+} session_error_p_t;
+
+typedef enum session_error_
+{
+#define _(sym, str) SESSION_E_##sym = -SESSION_EP_##sym,
+  foreach_session_error
+#undef _
+} session_error_t;
+
+/* Maintained for compatibility. Will be deprecated */
+#define SESSION_ERROR_SEG_CREATE SESSION_E_SEG_CREATE
+#define SESSION_ERROR_NO_SPACE SESSION_E_SEG_NO_SPACE
+#define SESSION_ERROR_NEW_SEG_NO_SPACE SESSION_E_SEG_NO_SPACE2
+
 #endif /* SRC_VNET_SESSION_SESSION_TYPES_H_ */
 
 /*

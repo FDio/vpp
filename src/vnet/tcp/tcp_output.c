@@ -14,6 +14,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <math.h>
 
 typedef enum _tcp_output_next
@@ -164,90 +165,6 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
 
   tcp_update_rcv_wnd (tc);
   return tc->rcv_wnd >> tc->rcv_wscale;
-}
-
-/**
- * Write TCP options to segment.
- */
-static u32
-tcp_options_write (u8 * data, tcp_options_t * opts)
-{
-  u32 opts_len = 0;
-  u32 buf, seq_len = 4;
-
-  if (tcp_opts_mss (opts))
-    {
-      *data++ = TCP_OPTION_MSS;
-      *data++ = TCP_OPTION_LEN_MSS;
-      buf = clib_host_to_net_u16 (opts->mss);
-      clib_memcpy_fast (data, &buf, sizeof (opts->mss));
-      data += sizeof (opts->mss);
-      opts_len += TCP_OPTION_LEN_MSS;
-    }
-
-  if (tcp_opts_wscale (opts))
-    {
-      *data++ = TCP_OPTION_WINDOW_SCALE;
-      *data++ = TCP_OPTION_LEN_WINDOW_SCALE;
-      *data++ = opts->wscale;
-      opts_len += TCP_OPTION_LEN_WINDOW_SCALE;
-    }
-
-  if (tcp_opts_sack_permitted (opts))
-    {
-      *data++ = TCP_OPTION_SACK_PERMITTED;
-      *data++ = TCP_OPTION_LEN_SACK_PERMITTED;
-      opts_len += TCP_OPTION_LEN_SACK_PERMITTED;
-    }
-
-  if (tcp_opts_tstamp (opts))
-    {
-      *data++ = TCP_OPTION_TIMESTAMP;
-      *data++ = TCP_OPTION_LEN_TIMESTAMP;
-      buf = clib_host_to_net_u32 (opts->tsval);
-      clib_memcpy_fast (data, &buf, sizeof (opts->tsval));
-      data += sizeof (opts->tsval);
-      buf = clib_host_to_net_u32 (opts->tsecr);
-      clib_memcpy_fast (data, &buf, sizeof (opts->tsecr));
-      data += sizeof (opts->tsecr);
-      opts_len += TCP_OPTION_LEN_TIMESTAMP;
-    }
-
-  if (tcp_opts_sack (opts))
-    {
-      int i;
-
-      if (opts->n_sack_blocks != 0)
-	{
-	  *data++ = TCP_OPTION_SACK_BLOCK;
-	  *data++ = 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
-	  for (i = 0; i < opts->n_sack_blocks; i++)
-	    {
-	      buf = clib_host_to_net_u32 (opts->sacks[i].start);
-	      clib_memcpy_fast (data, &buf, seq_len);
-	      data += seq_len;
-	      buf = clib_host_to_net_u32 (opts->sacks[i].end);
-	      clib_memcpy_fast (data, &buf, seq_len);
-	      data += seq_len;
-	    }
-	  opts_len += 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
-	}
-    }
-
-  /* Terminate TCP options */
-  if (opts_len % 4)
-    {
-      *data++ = TCP_OPTION_EOL;
-      opts_len += TCP_OPTION_LEN_EOL;
-    }
-
-  /* Pad with zeroes to a u32 boundary */
-  while (opts_len % 4)
-    {
-      *data++ = TCP_OPTION_NOOP;
-      opts_len += TCP_OPTION_LEN_NOOP;
-    }
-  return opts_len;
 }
 
 static int
@@ -563,7 +480,7 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 /**
  * Convert buffer to FIN-ACK
  */
-void
+static void
 tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK);
@@ -598,7 +515,7 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 /**
  * Convert buffer to SYN-ACK
  */
-void
+static void
 tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
@@ -620,13 +537,12 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   th->checksum = tcp_compute_checksum (tc, b);
 }
 
-always_inline void
-tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			    u8 is_ip4, u32 fib_index, u8 flush)
+static void
+tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
+			  u8 is_ip4, u32 fib_index)
 {
+  tcp_main_t *tm = &tcp_main;
   vlib_main_t *vm = wrk->vm;
-  u32 *to_next, next_index;
-  vlib_frame_t *f;
 
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
@@ -634,55 +550,24 @@ tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
   vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
-  /* Send to IP lookup */
-  next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
   tcp_trajectory_add_start (b, 1);
 
-  f = wrk->ip_lookup_tx_frames[!is_ip4];
-  if (!f)
-    {
-      f = vlib_get_frame_to_node (vm, next_index);
-      ASSERT (f);
-      wrk->ip_lookup_tx_frames[!is_ip4] = f;
-    }
+  session_add_pending_tx_buffer (vm->thread_index, bi,
+				 tm->ipl_next_node[!is_ip4]);
 
-  to_next = vlib_frame_vector_args (f);
-  to_next[f->n_vectors] = bi;
-  f->n_vectors += 1;
-  if (flush || f->n_vectors == VLIB_FRAME_SIZE)
-    {
-      vlib_put_frame_to_node (vm, next_index, f);
-      wrk->ip_lookup_tx_frames[!is_ip4] = 0;
-    }
-}
-
-static void
-tcp_enqueue_to_ip_lookup_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b,
-			      u32 bi, u8 is_ip4, u32 fib_index)
-{
-  tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 1);
-}
-
-static void
-tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4, u32 fib_index)
-{
-  tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 0);
-  if (wrk->vm->thread_index == 0 && vlib_num_workers ())
-    session_flush_frames_main_thread (wrk->vm);
+  if (vm->thread_index == 0 && vlib_num_workers ())
+    session_queue_run_on_main_thread (wrk->vm);
 }
 
 static void
 tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 		       u8 is_ip4)
 {
-  session_type_t st;
-
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  st = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, is_ip4);
-  session_add_pending_tx_buffer (st, wrk->vm->thread_index, bi);
+  session_add_pending_tx_buffer (wrk->vm->thread_index, bi,
+				 wrk->tco_next_node[!is_ip4]);
 }
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -846,7 +731,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
       ASSERT (!bogus);
     }
 
-  tcp_enqueue_to_ip_lookup_now (wrk, b, bi, is_ip4, fib_index);
+  tcp_enqueue_to_ip_lookup (wrk, b, bi, is_ip4, fib_index);
   TCP_EVT (TCP_EVT_RST_SENT, tc);
   vlib_node_increment_counter (vm, tcp_node_index (output, tc->c_is_ip4),
 			       TCP_ERROR_RST_SENT, 1);
@@ -923,12 +808,12 @@ tcp_send_syn (tcp_connection_t * tc)
    * Setup retransmit and establish timers before requesting buffer
    * such that we can return if we've ran out.
    */
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
       return;
     }
 
@@ -954,11 +839,11 @@ tcp_send_synack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
-  tcp_retransmit_timer_force_update (tc);
+  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       return;
     }
 
@@ -989,7 +874,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       if (fin_snt)
 	tc->snd_nxt += 1;
       else
@@ -1002,7 +887,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if ((tc->flags & TCP_CONN_SNDACK) && !tc->pending_dupacks)
     tc->flags &= ~TCP_CONN_SNDACK;
 
-  tcp_retransmit_timer_force_update (tc);
+  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_fin (tc, b);
@@ -1116,7 +1001,8 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
     }
   if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
     {
-      tcp_retransmit_timer_set (tc);
+      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+      tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
       tc->rto_boff = 0;
     }
   tcp_trajectory_add_start (b, 3);
@@ -1367,7 +1253,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   tc->bytes_retrans += n_bytes;
   tc->segs_retrans += 1;
-  tcp_workerp_stats_inc (wrk, rxt_segs, 1);
+  tcp_worker_stats_inc (wrk, rxt_segs, 1);
   TCP_EVT (TCP_EVT_CC_RTX, tc, offset, n_bytes);
 
   return n_bytes;
@@ -1419,7 +1305,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
-  tcp_workerp_stats_inc (wrk, tr_events, 1);
+  tcp_worker_stats_inc (wrk, tr_events, 1);
 
   /* Should be handled by a different handler */
   if (PREDICT_FALSE (tc->state == TCP_STATE_SYN_SENT))
@@ -1472,7 +1358,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  session_transport_closed_notify (&tc->connection);
 	  tcp_connection_timers_reset (tc);
 	  tcp_program_cleanup (wrk, tc);
-	  tcp_workerp_stats_inc (wrk, tr_abort, 1);
+	  tcp_worker_stats_inc (wrk, tr_abort, 1);
 	  return;
 	}
 
@@ -1488,7 +1374,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
-	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 
@@ -1496,7 +1382,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
-      tcp_retransmit_timer_force_update (tc);
+      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
       tc->rto_boff += 1;
       if (tc->rto_boff == 1)
@@ -1524,13 +1410,13 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  tcp_connection_timers_reset (tc);
 	  tcp_program_cleanup (wrk, tc);
-	  tcp_workerp_stats_inc (wrk, tr_abort, 1);
+	  tcp_worker_stats_inc (wrk, tr_abort, 1);
 	  return;
 	}
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 
@@ -1538,7 +1424,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      tcp_retransmit_timer_force_update (tc);
+      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
 
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
@@ -1586,14 +1472,14 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   /* Active open establish timeout */
   if (tc->rto >= TCP_ESTABLISH_TIME >> 1)
     {
-      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
+      session_stream_connect_notify (&tc->connection, SESSION_E_TIMEDOUT);
       tcp_connection_cleanup (tc);
       return;
     }
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
       return;
     }
 
@@ -1613,7 +1499,7 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   tcp_push_ip_hdr (wrk, tc, b);
   tcp_enqueue_to_ip_lookup (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
 
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 }
 
@@ -1644,7 +1530,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
    * next time */
   if (!available_bytes)
     {
-      tcp_persist_timer_set (tc);
+      tcp_persist_timer_set (&wrk->timer_wheel, tc);
       return;
     }
 
@@ -1660,7 +1546,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
    */
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_persist_timer_set (tc);
+      tcp_persist_timer_set (&wrk->timer_wheel, tc);
       return;
     }
 
@@ -1691,7 +1577,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
   /* Just sent new data, enable retransmit */
-  tcp_retransmit_timer_update (tc);
+  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
   return;
 
@@ -2124,7 +2010,7 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 }
 
 int
-tcp_session_custom_tx (void *conn, u32 max_burst_size)
+tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
 {
   tcp_connection_t *tc = (tcp_connection_t *) conn;
   u32 n_segs = 0;
@@ -2132,8 +2018,7 @@ tcp_session_custom_tx (void *conn, u32 max_burst_size)
   if (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING))
     {
       tc->flags &= ~TCP_CONN_RXT_PENDING;
-      n_segs = tcp_do_retransmit (tc, max_burst_size);
-      max_burst_size -= n_segs;
+      n_segs = tcp_do_retransmit (tc, sp->max_burst_size);
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))
@@ -2145,13 +2030,13 @@ tcp_session_custom_tx (void *conn, u32 max_burst_size)
   if (n_segs && !tc->pending_dupacks)
     return n_segs;
 
-  if (!max_burst_size)
+  if (sp->max_burst_size <= n_segs)
     {
       tcp_program_ack (tc);
-      return max_burst_size;
+      return n_segs;
     }
 
-  n_segs += tcp_send_acks (tc, max_burst_size);
+  n_segs += tcp_send_acks (tc, sp->max_burst_size - n_segs);
 
   return n_segs;
 }
@@ -2286,9 +2171,6 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
 	}
     }
 
-  if (!TCP_ALWAYS_ACK)
-    tcp_timer_reset (tc0, TCP_TIMER_DELACK);
-
   tc0->segs_out += 1;
 }
 
@@ -2299,9 +2181,6 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  vlib_node_runtime_t *error_node;
-
-  error_node = vlib_node_get_runtime (vm, tcp_node_index (output, is_ip4));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2339,8 +2218,8 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_check_if_gso (tc0, b[0]);
 	  tcp_check_if_gso (tc1, b[1]);
 
-	  tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
-	  tcp_output_handle_packet (tc1, b[1], error_node, &next[1], is_ip4);
+	  tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
+	  tcp_output_handle_packet (tc1, b[1], node, &next[1], is_ip4);
 	}
       else
 	{
@@ -2348,24 +2227,22 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      tcp_output_push_ip (vm, b[0], tc0, is_ip4);
 	      tcp_check_if_gso (tc0, b[0]);
-	      tcp_output_handle_packet (tc0, b[0], error_node, &next[0],
-					is_ip4);
+	      tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
 	    }
 	  else
 	    {
-	      b[0]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	      b[0]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	      next[0] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	  if (tc1 != 0)
 	    {
 	      tcp_output_push_ip (vm, b[1], tc1, is_ip4);
 	      tcp_check_if_gso (tc1, b[1]);
-	      tcp_output_handle_packet (tc1, b[1], error_node, &next[1],
-					is_ip4);
+	      tcp_output_handle_packet (tc1, b[1], node, &next[1], is_ip4);
 	    }
 	  else
 	    {
-	      b[1]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	      b[1]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	      next[1] = TCP_OUTPUT_NEXT_DROP;
 	    }
 	}
@@ -2391,11 +2268,11 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  tcp_output_push_ip (vm, b[0], tc0, is_ip4);
 	  tcp_check_if_gso (tc0, b[0]);
-	  tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
+	  tcp_output_handle_packet (tc0, b[0], node, &next[0], is_ip4);
 	}
       else
 	{
-	  b[0]->error = error_node->errors[TCP_ERROR_INVALID_CONNECTION];
+	  b[0]->error = node->errors[TCP_ERROR_INVALID_CONNECTION];
 	  next[0] = TCP_OUTPUT_NEXT_DROP;
 	}
 

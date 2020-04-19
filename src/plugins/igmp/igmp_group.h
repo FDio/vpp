@@ -103,7 +103,7 @@ do {                                                                    \
  */
 struct igmp_config_t_;
 
-extern void igmp_group_clear (igmp_group_t * group);
+extern void igmp_group_clear (igmp_group_t ** group);
 extern void igmp_group_free_all_srcs (igmp_group_t * group);
 
 extern igmp_group_t *igmp_group_alloc (struct igmp_config_t_ *config,
