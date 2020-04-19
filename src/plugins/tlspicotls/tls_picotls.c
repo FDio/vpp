@@ -459,8 +459,8 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   if (!deq_max)
     return deq_max;
 
-  deq_max = clib_min (deq_max, sp->max_burst_size);
-  deq_now = clib_min (deq_max, svm_fifo_max_read_chunk (app_tx_fifo));
+  deq_now = clib_min (deq_max, sp->max_burst_size);
+  deq_now = clib_min (deq_now, svm_fifo_max_read_chunk (app_tx_fifo));
 
   enq_max = svm_fifo_max_enqueue_prod (tls_tx_fifo);
     /** There is no engough enqueue space for one record **/
