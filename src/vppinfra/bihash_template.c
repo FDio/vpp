@@ -29,6 +29,35 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
   if (alloc_arena_next (h) > alloc_arena_size (h))
     os_out_of_memory ();
 
+  if (alloc_arena_next (h) > alloc_arena_mapped (h))
+    {
+      void *base, *rv;
+      uword alloc = alloc_arena_next (h) - alloc_arena_mapped (h);
+      int mmap_flags = MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS;
+      int mmap_flags_huge = (mmap_flags | MAP_HUGETLB |
+			     BIHASH_LOG2_HUGEPAGE_SIZE << MAP_HUGE_SHIFT);
+
+      /* new allocation is 25% of existing one */
+      if (alloc_arena_mapped (h) >> 2 > alloc)
+	alloc = alloc_arena_mapped (h) >> 2;
+
+      /* round allocation to page size */
+      alloc = round_pow2 (alloc, 1 << BIHASH_LOG2_HUGEPAGE_SIZE);
+
+      base = (void *) (uword) (alloc_arena (h) + alloc_arena_mapped (h));
+
+      rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags_huge, -1, 0);
+
+      /* fallback - maybe we are still able to allocate normal pages */
+      if (rv == MAP_FAILED)
+	rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+      if (rv == MAP_FAILED)
+	os_out_of_memory ();
+
+      alloc_arena_mapped (h) += alloc;
+    }
+
   return (void *) (uword) (rv + alloc_arena (h));
 }
 
@@ -36,9 +65,13 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 {
   uword bucket_size;
 
-  alloc_arena (h) = (uword) clib_mem_vm_alloc (h->memory_size);
+  alloc_arena (h) = clib_mem_vm_reserve (0, h->memory_size,
+					 BIHASH_LOG2_HUGEPAGE_SIZE);
+  if (alloc_arena (h) == ~0)
+    os_out_of_memory ();
   alloc_arena_next (h) = 0;
   alloc_arena_size (h) = h->memory_size;
+  alloc_arena_mapped (h) = 0;
 
   bucket_size = h->nbuckets * sizeof (h->buckets[0]);
   h->buckets = BV (alloc_aligned) (h, bucket_size);
