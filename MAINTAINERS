@@ -634,6 +634,13 @@ M:	Neale Ranns <nranns@cisco.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	extras/vom/vom/
 
+Linux Control Plane Integration
+I:	linuxcp
+M:	Neale Ranns <nranns@cisco.com>
+M:	Matthew Smith <mgsmith@netgate.com>
+M:	Jon Loeliger <jdl@netgate.com>
+F:	extras/linuxcp
+
 Plugin - Host Stack Applications
 I:	hsa
 M:	Florin Coras <fcoras@cisco.com>

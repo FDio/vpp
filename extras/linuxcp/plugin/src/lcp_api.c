@@ -12,17 +12,15 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vpp/app/version.h>
 #include <vnet/format_fns.h>
 
-#include <linux-cp/lcp_interface.h>
-#include <linux-cp/lcp.api_enum.h>
-#include <linux-cp/lcp.api_types.h>
-
+#include <lcp_interface.h>
+#include <linuxcp/plugin/src/lcp.api_enum.h>
+#include <linuxcp/plugin/src/lcp.api_types.h>
 
 typedef struct lcp_main_s
 {
-  u16 msg_id_base;			/* API message ID base */
+  u16 msg_id_base;		/* API message ID base */
   u8 default_namespace[IFNAMSIZ];	/* default namespace if set */
   int default_ns_fd;
 } lcp_main_t;
@@ -32,24 +30,23 @@ typedef struct lcp_main_s
 
 static lcp_main_t lcp_main;
 
-#include <vlibapi/api_helper_macros.h>
-
-
 static void
-vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
+vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t * mp)
 {
   lcp_main_t *lcpm = &lcp_main;
-  u32 phy_sw_if_index;
   vl_api_lcp_itf_pair_add_del_reply_t *rmp;
+  u32 phy_sw_if_index, vif;
   int rv;
 
   VALIDATE_SW_IF_INDEX (mp);
 
+  vif = ~0;
   phy_sw_if_index = ntohl (mp->sw_if_index);
+
   if (mp->is_add)
     {
       rv = lcp_itf_pair_create (phy_sw_if_index,
-				mp->host_if_name, mp->namespace);
+				mp->host_if_name, mp->namespace, &vif);
     }
   else
     {
@@ -57,14 +54,18 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_LCP_ITF_PAIR_ADD_DEL_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_LCP_ITF_PAIR_ADD_DEL_REPLY,
+  {
+    rmp->host_vif = htonl(vif);
+  });
+  /* *INDENT-ON* */
 }
 
 
 static void
-send_lcp_itf_pair_details (vl_api_registration_t *reg,
-			   u32 context,
-			   lcp_itf_pair_t *lcp_pair)
+send_lcp_itf_pair_details (vl_api_registration_t * reg,
+			   u32 context, lcp_itf_pair_t * lcp_pair)
 {
   lcp_main_t *lcpm = &lcp_main;
   vl_api_lcp_itf_pair_details_t *mp;
@@ -81,14 +82,14 @@ send_lcp_itf_pair_details (vl_api_registration_t *reg,
   mp->host_sw_if_index = htonl (lcp_pair->lip_host_sw_if_index);
   mp->vif_index = htonl (lcp_pair->lip_vif_index);
 
-  clib_strncpy ((char *)mp->host_tap_name,
-		(char *)lcp_pair->lip_host_name, 64 - 1);
+  clib_strncpy ((char *) mp->host_tap_name,
+		(char *) lcp_pair->lip_host_name, 64 - 1);
 
-  vl_api_send_msg(reg, (u8 *) mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 walk_rc_t
-lcp_itf_pair_walk_send_cb(index_t api, void *ctx)
+lcp_itf_pair_walk_send_cb (index_t api, void *ctx)
 {
   vl_api_lcp_itf_pair_dump_t *mp = ctx;
   vl_api_registration_t *reg;
@@ -108,7 +109,7 @@ lcp_itf_pair_walk_send_cb(index_t api, void *ctx)
 
 
 static void
-vl_api_lcp_itf_pair_dump_t_handler (vl_api_lcp_itf_pair_dump_t *mp)
+vl_api_lcp_itf_pair_dump_t_handler (vl_api_lcp_itf_pair_dump_t * mp)
 {
   u32 sw_if_index;
   index_t api;
@@ -121,7 +122,7 @@ vl_api_lcp_itf_pair_dump_t_handler (vl_api_lcp_itf_pair_dump_t *mp)
   else
     {
       api = lcp_itf_pair_find_by_phy (sw_if_index);
-      lcp_itf_pair_walk_send_cb(api, (void *)mp);
+      lcp_itf_pair_walk_send_cb (api, (void *) mp);
     }
 }
 
@@ -151,7 +152,7 @@ lcp_get_default_ns_fd (void)
  * ns is expected to be or look like a NUL-terminated C string.
  */
 int
-lcp_set_default_ns (u8 *ns)
+lcp_set_default_ns (u8 * ns)
 {
   lcp_main_t *lcpm = &lcp_main;
   char *p;
@@ -165,8 +166,8 @@ lcp_set_default_ns (u8 *ns)
 
   if (!p || *p == 0)
     {
-      clib_memset(lcpm->default_namespace,
-		  0, sizeof (lcpm->default_namespace));
+      clib_memset (lcpm->default_namespace,
+		   0, sizeof (lcpm->default_namespace));
       if (lcpm->default_ns_fd > 0)
 	close (lcpm->default_ns_fd);
       lcpm->default_ns_fd = 0;
@@ -175,7 +176,7 @@ lcp_set_default_ns (u8 *ns)
 
   clib_strncpy ((char *) lcpm->default_namespace, p, IFNAMSIZ - 1);
 
-  s = format (0, "/var/run/netns/%s%c", (char *)lcpm->default_namespace, 0);
+  s = format (0, "/var/run/netns/%s%c", (char *) lcpm->default_namespace, 0);
   lcpm->default_ns_fd = open ((char *) s, O_RDONLY);
   vec_free (s);
 
@@ -184,7 +185,7 @@ lcp_set_default_ns (u8 *ns)
 
 
 static void
-vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t *mp)
+vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t * mp)
 {
   lcp_main_t *lcpm = &lcp_main;
   vl_api_lcp_default_ns_set_reply_t *rmp;
@@ -198,7 +199,7 @@ vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t *mp)
 
 
 static void
-vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
+vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t * mp)
 {
   lcp_main_t *lcpm = &lcp_main;
   vl_api_lcp_default_ns_get_reply_t *rmp;
@@ -217,16 +218,15 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 
   ns = (char *) lcp_get_default_ns ();
   if (ns)
-    clib_strncpy((char *) rmp->namespace, ns, IFNAMSIZ - 1);
+    clib_strncpy ((char *) rmp->namespace, ns, IFNAMSIZ - 1);
 
-  vl_api_send_msg(reg, (u8 *) rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
-
 
 /*
  * Set up the API message handling tables
  */
-#include <linux-cp/lcp.api.c>
+#include <linuxcp/plugin/src/lcp.api.c>
 
 static clib_error_t *
 lcp_plugin_api_hookup (vlib_main_t * vm)

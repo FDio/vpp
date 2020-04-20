@@ -622,9 +622,29 @@ again:
 }
 
 vapi_error_e
-vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode)
+vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode, double timeout)
 {
-  return VAPI_ENOTSUP;
+  api_main_t *am = vlibapi_get_main ();
+  int rv;
+
+  if (am->our_pid == 0)
+    {
+      return VAPI_EINVAL;
+    }
+
+  svm_queue_t *q = am->vl_input_queue;
+
+  rv = svm_queue_timedwait (q, timeout);
+
+  switch (rv)
+    {
+    case ETIMEDOUT:
+      return VAPI_EAGAIN;
+    case EINVAL:
+      return VAPI_EINVAL;
+    }
+
+  return VAPI_OK;
 }
 
 static vapi_error_e

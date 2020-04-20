@@ -17,7 +17,7 @@
 #include <sys/socket.h>
 #include <linux/if.h>
 
-#include <plugins/linux-cp/lcp_interface.h>
+#include <lcp_interface.h>
 
 #include <vnet/plugin/plugin.h>
 #include <vnet/plugin/plugin.h>
@@ -45,7 +45,6 @@ static lcp_itf_pair_t *lip_pool;
  *  - key'd by VPP's physical interface
  *  - number of shared uses of VPP's tap/host interface
  */
-static uword *lip_db_by_vif;
 index_t *lip_db_by_phy;
 static u32 *lip_db_by_host;
 
@@ -57,7 +56,7 @@ static u32 *lip_db_by_host;
 
 
 u8 *
-format_lcp_itf_pair (u8 *s, va_list *args)
+format_lcp_itf_pair (u8 * s, va_list * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   lcp_itf_pair_t *lip = va_arg (*args, lcp_itf_pair_t *);
@@ -86,9 +85,8 @@ format_lcp_itf_pair (u8 *s, va_list *args)
   return s;
 }
 
-
 static walk_rc_t
-lcp_itf_pair_walk_show_cb(index_t api, void *ctx)
+lcp_itf_pair_walk_show_cb (index_t api, void *ctx)
 {
   vlib_main_t *vm;
   lcp_itf_pair_t *lip;
@@ -103,7 +101,6 @@ lcp_itf_pair_walk_show_cb(index_t api, void *ctx)
   return WALK_CONTINUE;
 }
 
-
 void
 lcp_itf_pair_show (u32 phy_sw_if_index)
 {
@@ -113,9 +110,8 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
 
   vm = vlib_get_main ();
   ns = lcp_get_default_ns ();
-  vlib_cli_output(vm,
-		  "lcp default netns '%s'\n",
-		  ns ? (char *) ns : "<unset>");
+  vlib_cli_output (vm,
+		   "lcp default netns '%s'\n", ns ? (char *) ns : "<unset>");
 
   if (phy_sw_if_index == ~0)
     {
@@ -124,10 +120,9 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
   else
     {
       api = lcp_itf_pair_find_by_phy (phy_sw_if_index);
-      lcp_itf_pair_walk_show_cb(api, 0);
+      lcp_itf_pair_walk_show_cb (api, 0);
     }
 }
-
 
 lcp_itf_pair_t *
 lcp_itf_pair_get (u32 index)
@@ -135,24 +130,9 @@ lcp_itf_pair_get (u32 index)
   return pool_elt_at_index (lip_pool, index);
 }
 
-index_t
-lcp_itf_pair_find_by_vif (u32 vif_index)
-{
-  uword *p;
-
-  p = hash_get (lip_db_by_vif, vif_index);
-
-  if (p)
-    return p[0];
-
-  return INDEX_INVALID;
-}
-
 int
 lcp_itf_pair_add_sub (u32 vif,
-		      u32 sub_sw_if_index,
-		      u32 phy_sw_if_index,
-		      u8 *ns)
+		      u32 sub_sw_if_index, u32 phy_sw_if_index, u8 * ns)
 {
   lcp_itf_pair_t *lip;
 
@@ -164,10 +144,7 @@ lcp_itf_pair_add_sub (u32 vif,
 
 int
 lcp_itf_pair_add (u32 host_sw_if_index,
-		  u32 phy_sw_if_index,
-		  u8 * host_name,
-		  u32 host_index,
-		  u8 *ns)
+		  u32 phy_sw_if_index, u8 * host_name, u32 vif, u8 * ns)
 {
   index_t lipi;
   lcp_itf_pair_t *lip;
@@ -177,8 +154,7 @@ lcp_itf_pair_add (u32 host_sw_if_index,
   LCP_ITF_PAIR_INFO ("add: host:%U phy:%U, tap:%v vif:%d",
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, format_vnet_sw_if_index_name,
-		     vnet_get_main (), phy_sw_if_index, host_name,
-		     host_index);
+		     vnet_get_main (), phy_sw_if_index, host_name, vif);
 
 
   if (lipi != INDEX_INVALID)
@@ -193,13 +169,14 @@ lcp_itf_pair_add (u32 host_sw_if_index,
 
   vec_validate_init_empty (lip_db_by_phy, phy_sw_if_index, INDEX_INVALID);
   lip_db_by_phy[phy_sw_if_index] = lipi;
-  hash_set (lip_db_by_vif, host_index, lipi);
 
   lip->lip_host_sw_if_index = host_sw_if_index;
   lip->lip_phy_sw_if_index = phy_sw_if_index;
   lip->lip_host_name = vec_dup (host_name);
-  lip->lip_vif_index = host_index;
-  clib_strncpy((char *) lip->lip_host_name, (char *) ns, IFNAMSIZ);
+  lip->lip_vif_index = vif;
+
+  if (ns)
+    clib_strncpy ((char *) lip->lip_host_name, (char *) ns, IFNAMSIZ);
 
   if (lip->lip_host_sw_if_index == ~0)
     return 0;
@@ -252,7 +229,7 @@ lcp_itf_pair_delete (u32 phy_sw_if_index)
   lipi = lcp_itf_pair_find_by_phy (phy_sw_if_index);
 
   if (lipi == INDEX_INVALID)
-      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   lcp_itf_pair_t *lip;
 
@@ -309,88 +286,12 @@ lcp_itf_pair_walk (lcp_itf_pair_walk_cb_t cb, void *ctx)
   /* *INDENT-ON* */
 }
 
-typedef struct lcp_itf_pair_names_t_
-{
-  u8 *lip_host_name;
-  u8 *lip_phy_name;
-  u8 *lip_namespace;
-  u32 lip_phy_sw_if_index;
-} lcp_itf_pair_names_t;
-
-static lcp_itf_pair_names_t *lip_names;
-
-
-static clib_error_t *
-lcp_itf_pair_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  u8 *host, *phy;
-  u8 *ns;
-  u8 *default_ns;
-
-  host = phy = ns = default_ns = NULL;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      vec_reset_length (host);
-
-      if (unformat (input, "pair %s %s %s", &phy, &host, &ns))
-	{
-	  lcp_itf_pair_names_t *lipn;
-
-	  if (vec_len (ns) > IFNAMSIZ)
-	    {
-	      return clib_error_return (0,
-					"linux-cp IF namespace must"
-					" be less than %d characters",
-					IFNAMSIZ);
-	    }
-
-	  vec_add2 (lip_names, lipn, 1);
-
-	  lipn->lip_host_name = vec_dup (host);
-	  lipn->lip_phy_name = vec_dup (phy);
-	  lipn->lip_namespace = vec_dup (ns);
-	}
-      else if (unformat (input, "pair %v %v", &phy, &host))
-	{
-	  lcp_itf_pair_names_t *lipn;
-
-	  vec_add2 (lip_names, lipn, 1);
-
-	  lipn->lip_host_name = vec_dup (host);
-	  lipn->lip_phy_name = vec_dup (phy);
-	  lipn->lip_namespace = 0;
-	}
-      else if (unformat (input, "default netns %v", &default_ns))
-	{
-	  vec_add1 (default_ns, 0);
-	  if (lcp_set_default_ns (default_ns) < 0)
-	    {
-	      return clib_error_return (0,
-					"linux-cp default namespace must"
-					" be less than %d characters",
-					IFNAMSIZ);
-	    }
-	}
-      else
-	return clib_error_return (0, "interfaces not found");
-    }
-
-  vec_free (host);
-  vec_free (phy);
-  vec_free (default_ns);
-
-  return NULL;
-}
-
-VLIB_EARLY_CONFIG_FUNCTION (lcp_itf_pair_config, "linux-cp");
-
 /*
  * Returns 1 if the tap name is valid.
  * Returns 0 if the tap name is invalid.
  */
 static int
-lcp_validate_tap_name (u8 *name)
+lcp_validate_tap_name (u8 * name)
 {
   int len;
   char *p;
@@ -400,29 +301,31 @@ lcp_validate_tap_name (u8 *name)
   if (len >= IFNAMSIZ)
     return 0;
 
-  for ( ; *p; ++p) {
-    if (isalnum (*p))
-      continue;
+  for (; *p; ++p)
+    {
+      if (isalnum (*p))
+	continue;
 
-    switch (*p) {
-    case '-':
-    case '_':
-    case '%':
-    case '@':
-    case ':':
-    case '.':
-      continue;
+      switch (*p)
+	{
+	case '-':
+	case '_':
+	case '%':
+	case '@':
+	case ':':
+	case '.':
+	  continue;
+	}
+
+      return 0;
     }
-
-    return 0;
-  }
 
   return 1;
 }
 
-
 int
-lcp_itf_pair_create(u32 phy_sw_if_index, u8 *host_tap_name, u8 *ns)
+lcp_itf_pair_create (u32 phy_sw_if_index,
+		     u8 * host_tap_name, u8 * ns, u32 * vifi)
 {
   vlib_main_t *vm;
   vnet_main_t *vnm;
@@ -432,136 +335,88 @@ lcp_itf_pair_create(u32 phy_sw_if_index, u8 *host_tap_name, u8 *ns)
   if (!vnet_sw_if_index_is_api_valid (phy_sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  if (!lcp_validate_tap_name (host_tap_name))
-    return VNET_API_ERROR_INVALID_ARGUMENT;
-
-  vnm = vnet_get_main ();
-  hw = vnet_get_sup_hw_interface (vnm, phy_sw_if_index);
-  ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
-
-  tap_create_if_args_t args = {
-    .num_rx_queues = clib_max (1, vlib_num_workers ()),
-    .id = hw->hw_if_index,
-    .sw_if_index = ~0,
-    .rx_ring_sz = 256,
-    .tx_ring_sz = 256,
-    .host_if_name = host_tap_name,
-    .host_namespace = 0,
-  };
-
-  memcpy (args.host_mac_addr.bytes, ei->address, sizeof (args.host_mac_addr));
-
-  /*
-   * Use interface-specific netns if supplied.
-   * Otherwise, use default netns if defined.
-   * Otherwise ignore a netns and use the OS default.
-   */
-  if (ns == 0 || ns[0] == 0)
-    ns = lcp_get_default_ns ();
-  if (ns && ns[0] != 0)
-    args.host_namespace = ns;
-
-  vm = vlib_get_main ();
-  tap_create_if (vm, &args);
-
-  if (args.rv < 0)
+  if (!vnet_sw_interface_is_sub (vnet_get_main (), phy_sw_if_index))
     {
-      return args.rv;
+      if (!lcp_validate_tap_name (host_tap_name))
+	return VNET_API_ERROR_INVALID_ARGUMENT;
+
+      vnm = vnet_get_main ();
+      hw = vnet_get_sup_hw_interface (vnm, phy_sw_if_index);
+      ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
+
+      tap_create_if_args_t args = {
+	.num_rx_queues = clib_max (1, vlib_num_workers ()),
+	.id = hw->hw_if_index,
+	.sw_if_index = ~0,
+	.rx_ring_sz = 256,
+	.tx_ring_sz = 256,
+	.host_if_name = host_tap_name,
+	.host_namespace = 0,
+      };
+
+      memcpy (args.host_mac_addr.bytes, ei->address,
+	      sizeof (args.host_mac_addr));
+
+      /*
+       * Use interface-specific netns if supplied.
+       * Otherwise, use default netns if defined.
+       * Otherwise ignore a netns and use the OS default.
+       */
+      if (ns == 0 || ns[0] == 0)
+	ns = lcp_get_default_ns ();
+      if (ns && ns[0] != 0)
+	args.host_namespace = ns;
+
+      vm = vlib_get_main ();
+      tap_create_if (vm, &args);
+
+      if (args.rv < 0)
+	return args.rv;
+
+      hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
+
+      /*
+       * Set the interface down on the host side.
+       * This controls whether the host can RX/TX.
+       */
+      virtio_main_t *mm = &virtio_main;
+      virtio_if_t *vif = pool_elt_at_index (mm->interfaces,
+					    hw->dev_instance);
+
+      vnet_netlink_set_link_state (vif->ifindex, 0 /* down */ );
+
+      /*
+       * Leave the TAP permanently up on the VPP side.
+       * This TAP will be shared by many sub-interface.
+       * Therefore we can't use it to manage admin state.
+       */
+      vnet_sw_interface_admin_up (vnm, args.sw_if_index);
+
+      lcp_itf_pair_add (args.sw_if_index,
+			phy_sw_if_index, host_tap_name, vif->ifindex, ns);
+
+      if (vifi)
+	*vifi = vif->ifindex;
     }
+  else
+    {
+      vnet_sw_interface_t *sw;
+      lcp_itf_pair_t *lip;
 
-  hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
+      vnm = vnet_get_main ();
+      sw = vnet_get_sw_interface (vnm, phy_sw_if_index);
 
-  /*
-   * Set the interface down on the host side.
-   * This controls whether the host can RX/TX.
-   */
-  virtio_main_t *mm = &virtio_main;
-  virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+      lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (sw->sup_sw_if_index));
 
-  vnet_netlink_set_link_state (vif->ifindex, 0 /* down */ );
+      lcp_itf_pair_add (lip->lip_host_sw_if_index,
+			phy_sw_if_index,
+			lip->lip_host_name, lip->lip_vif_index, ns);
 
-  /*
-   * Leave the TAP permanently up on the VPP side.
-   * This TAP will be shared by many sub-interface.
-   * Therefore we can't use it to manage admin state.
-   */
-  vnet_sw_interface_admin_up (vnm, args.sw_if_index);
-
-  lcp_itf_pair_add (args.sw_if_index,
-		    phy_sw_if_index,
-		    host_tap_name, vif->ifindex, ns);
-
+      if (vifi)
+	*vifi = lip->lip_vif_index;
+    }
   return 0;
 }
-
-
-static uword
-lcp_itf_pair_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * rt, vlib_frame_t * f)
-{
-  uword *event_data = 0;
-  uword *lipn_index;
-
-  while (1)
-    {
-      vlib_process_wait_for_event (vm);
-
-      vlib_process_get_events (vm, &event_data);
-
-      vec_foreach (lipn_index, event_data)
-      {
-	lcp_itf_pair_names_t *lipn;
-
-	lipn = &lip_names[*lipn_index];
-	lcp_itf_pair_create(lipn->lip_phy_sw_if_index,
-			    lipn->lip_host_name,
-			    lipn->lip_namespace);
-      }
-
-      vec_reset_length (event_data);
-    }
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (lcp_itf_pair_process_node, static) =
-{
-  .function = lcp_itf_pair_process,
-  .name = "linux-cp-itf-process",
-  .type = VLIB_NODE_TYPE_PROCESS,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-lcp_itf_phy_add (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
-{
-  lcp_itf_pair_names_t *lipn;
-  vlib_main_t *vm = vlib_get_main ();
-  vnet_hw_interface_t *hw;
-
-  if (!is_create || vnet_sw_interface_is_sub (vnm, sw_if_index))
-    return NULL;
-
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-  vec_foreach (lipn, lip_names)
-  {
-    if (!vec_cmp (hw->name, lipn->lip_phy_name))
-      {
-	lipn->lip_phy_sw_if_index = sw_if_index;
-
-	vlib_process_signal_event (vm,
-				   lcp_itf_pair_process_node.index,
-				   0, lipn - lip_names);
-	break;
-      }
-  }
-
-  return NULL;
-}
-
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION (lcp_itf_phy_add);
 
 static clib_error_t *
 lcp_itf_pair_init (vlib_main_t * vm)
@@ -583,9 +438,19 @@ lcp_itf_pair_init (vlib_main_t * vm)
 /* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (lcp_itf_pair_init) =
 {
-  .runs_after = VLIB_INITS ("vnet_interface_init", "tcp_init", "udp_init"),
+  .runs_after = VLIB_INITS ("vnet_interface_init",
+                            "ethernet_arp_init",
+                            "tcp_init",
+                            "udp_init"),
+};
+
+VLIB_PLUGIN_REGISTER () = {
+  .version = "1.0.0",
+  .description = "linux Control Plane",
+  // .default_disabled = 1,
 };
 /* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -17,7 +17,9 @@
 #include <sched.h>
 #include <fcntl.h>
 
-#include <linux-cp/lcp_nl.h>
+#include <lcp_nl.h>
+#include <lcp_ns.h>
+#include <lcp_log.h>
 
 #include <netlink/route/rule.h>
 #include <netlink/msg.h>
@@ -36,32 +38,12 @@
 
 #include <libmnl/libmnl.h>
 
-#include <plugins/linux-cp/lcp_interface.h>
-
 
 static struct nl_sock *sk_route;
-
-static vlib_log_class_t nl_logger;
-
-typedef enum nl_event_type_t_
-{
-  NL_EVENT_READ,
-} nl_event_type_t;
 
 static nl_vft_t *nl_vfts;
 
 static struct nl_cache *nl_caches[LCP_NL_N_OBJS];
-
-/* #define foreach_nl_nft_proto  \ */
-/*   _(IP4, "ip", AF_INT)  \ */
-/*   _(IP6, "ip6", NFPROTO_IPV6) */
-
-/* typedef enum nl_nft_proto_t_ */
-/* { */
-/* #define _(a,b,c) NL_NFT_PROTO_##a = c, */
-/*   foreach_nl_nft_proto */
-/* #undef _ */
-/* } nl_nft_proto_t; */
 
 #define FOREACH_VFT(__func, __arg)              \
   {                                             \
@@ -74,19 +56,11 @@ static struct nl_cache *nl_caches[LCP_NL_N_OBJS];
     }
 
 void
-nl_register_vft (const nl_vft_t * nv)
+lcp_nl_register_vft (const nl_vft_t * nv)
 {
   vec_add1 (nl_vfts, *nv);
 }
 
-#define NL_DBG(...)                             \
-  vlib_log_notice (nl_logger, __VA_ARGS__);
-
-#define NL_INFO(...)                            \
-  vlib_log_notice (nl_logger, __VA_ARGS__);
-
-#define NL_ERROR(...)                            \
-  vlib_log_err (nl_logger, __VA_ARGS__);
 
 static void
 nl_route_del (struct rtnl_route *rr, void *arg)
@@ -190,7 +164,7 @@ nl_route_dispatch (struct nl_object *obj, void *arg)
       nl_link_del ((struct rtnl_link *) obj, arg);
       break;
     default:
-      NL_INFO ("unhandled: %s", nl_object_get_type (obj));
+      LCP_INFO ("unhandled: %s", nl_object_get_type (obj));
       break;
     }
 }
@@ -201,88 +175,27 @@ nl_route_cb (struct nl_msg *msg, void *arg)
   int err;
 
   if ((err = nl_msg_parse (msg, nl_route_dispatch, NULL)) < 0)
-    NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+    LCP_ERROR ("Unable to parse object: %s", nl_geterror (err));
 
   return 0;
 }
 
-static uword
-nl_route_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+int
+lcp_nl_read (void)
 {
-  uword event_type;
-  uword *event_data = 0;
+  int err;
+  if ((err = nl_recvmsgs_default (sk_route)) < 0)
+    LCP_ERROR ("recv: %s", nl_geterror (err));
 
-  while (1)
-    {
-      vlib_process_wait_for_event (vm);
-      event_type = vlib_process_get_events (vm, &event_data);
-
-      if (event_type == ~0)
-	{			//Clock event or no event
-
-	}
-      else
-	{
-	  uword *d;
-	  vec_foreach (d, event_data)
-	  {
-
-	    switch (event_type)
-	      {
-	      case NL_EVENT_READ:
-		{
-		  int err;
-		  if ((err = nl_recvmsgs_default (sk_route)) < 0)
-		    NL_ERROR ("recv: %s", nl_geterror (err));
-		  break;
-		}
-	      }
-	  }
-	}
-
-      vec_reset_length (event_data);
-    }
-  return frame->n_vectors;
+  return (err);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE(nl_route_process_node, static) = {
-  .function = nl_route_process,
-  .name = "nl-route-process",
-  .type = VLIB_NODE_TYPE_PROCESS,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-nl_route_read_cb (struct clib_file *f)
-{
-  vlib_process_signal_event (vlib_get_main (),
-			     nl_route_process_node.index, NL_EVENT_READ, 0);
-  return 0;
-}
-
-static void
-nl_dump_vlib_cli (struct nl_dump_params *p, char *s)
-{
-  vlib_cli_output (p->dp_data, "%s", s);
-}
-
-struct nl_cache *
-lcp_nl_get_cache (lcp_nl_obj_t t)
-{
-  return nl_caches[t];
-}
-
-
-#include <vnet/plugin/plugin.h>
-clib_error_t *
-lcp_nl_init (vlib_main_t * vm)
+int
+lcp_nl_connect (void)
 {
   int err;
   int dest_ns_fd, curr_ns_fd;
 
-  nl_logger = vlib_log_register_class ("nl", "nl");
 
   /* Allocate a new socket for both routes and acls
    * Notifications do not use sequence numbers, disable sequence number
@@ -293,10 +206,10 @@ lcp_nl_init (vlib_main_t * vm)
   sk_route = nl_socket_alloc ();
   nl_socket_disable_seq_check (sk_route);
 
-  dest_ns_fd = lcp_get_default_ns_fd();
+  dest_ns_fd = lcp_get_default_ns_fd ();
   if (dest_ns_fd)
     {
-      curr_ns_fd = open("/proc/self/ns/net", O_RDONLY);
+      curr_ns_fd = open ("/proc/self/ns/net", O_RDONLY);
       setns (dest_ns_fd, CLONE_NEWNET);
     }
 
@@ -307,7 +220,6 @@ lcp_nl_init (vlib_main_t * vm)
       setns (curr_ns_fd, CLONE_NEWNET);
       close (curr_ns_fd);
     }
-
 
   /* Subscribe to all the 'routing' notifications on the route socket */
   nl_socket_add_memberships (sk_route,
@@ -322,84 +234,51 @@ lcp_nl_init (vlib_main_t * vm)
 #endif
 			     RTNLGRP_IPV4_RULE, RTNLGRP_IPV6_RULE, 0);
 
-  clib_file_t rt_file = {
-    .read_function = nl_route_read_cb,
-    .file_descriptor = nl_socket_get_fd (sk_route),
-  };
-
-  clib_file_add (&file_main, &rt_file);
-
   nl_socket_modify_cb (sk_route, NL_CB_VALID, NL_CB_CUSTOM, nl_route_cb,
 		       NULL);
 
-  struct nl_dump_params p = {
-    .dp_cb = nl_dump_vlib_cli,
-    .dp_data = vm,
-  };
 
-  {
-    if ((err =
-	 rtnl_link_alloc_cache (sk_route, AF_UNSPEC,
-				&nl_caches[LCP_NL_LINK])) < 0)
-      NL_DBG ("link cache build fail");
-    nl_cache_mngt_provide (nl_caches[LCP_NL_LINK]);
-    nl_cache_foreach (nl_caches[LCP_NL_LINK], nl_obj_link_add, NULL);
-    vlib_cli_output (vm, "Links:");
-    nl_cache_dump (nl_caches[LCP_NL_LINK], &p);
-  }
-  {
-    if ((err = rtnl_addr_alloc_cache (sk_route, &nl_caches[LCP_NL_ADDR])) < 0)
-      NL_ERROR ("link-addres cache build fail");
-    nl_cache_mngt_provide (nl_caches[LCP_NL_ADDR]);
-    nl_cache_foreach (nl_caches[LCP_NL_ADDR], nl_obj_link_addr_add, NULL);
-    vlib_cli_output (vm, "Addresses:");
-    //nl_cache_dump (cache, &p);
-  }
-  {
-    if ((err =
-	 rtnl_neigh_alloc_cache (sk_route, &nl_caches[LCP_NL_NEIGH])) < 0)
-      NL_ERROR ("neighbour cache build fail");
-    nl_cache_mngt_provide (nl_caches[LCP_NL_NEIGH]);
-    nl_cache_foreach (nl_caches[LCP_NL_NEIGH], nl_obj_neigh_add, NULL);
-    vlib_cli_output (vm, "Neighbours:");
-    // nl_cache_dump (cache, &p);
-  }
-  {
-    if ((err =
-	 rtnl_route_alloc_cache (sk_route, AF_UNSPEC, 0,
-				 &nl_caches[LCP_NL_ROUTE])) < 0)
-      NL_ERROR ("route cache build fail");
-    nl_cache_mngt_provide (nl_caches[LCP_NL_ROUTE]);
-    nl_cache_foreach (nl_caches[LCP_NL_ROUTE], nl_obj_route_add, NULL);
-    vlib_cli_output (vm, "Routes:");
-    // nl_cache_dump (cache, &p);
-  }
-  {
-    struct nl_cache *cache;
-    if ((err = rtnl_rule_alloc_cache (sk_route, AF_UNSPEC, &cache)) < 0)
-      NL_ERROR ("rule cache build fail");
-    nl_cache_mngt_provide (cache);
-    nl_cache_foreach (cache, nl_obj_link_addr_add, NULL);
-    vlib_cli_output (vm, "Rules:");
-    // nl_cache_dump (cache, &p);
-  }
+  if ((err = rtnl_link_alloc_cache (sk_route, AF_UNSPEC,
+				    &nl_caches[LCP_NL_LINK])) < 0)
+    {
+      LCP_ERROR ("link cache build fail");
+    }
+  else
+    {
+      nl_cache_mngt_provide (nl_caches[LCP_NL_LINK]);
+      nl_cache_foreach (nl_caches[LCP_NL_LINK], nl_obj_link_add, NULL);
+    }
+  if ((err = rtnl_addr_alloc_cache (sk_route, &nl_caches[LCP_NL_ADDR])) < 0)
+    {
+      LCP_ERROR ("link-address cache build fail: %s", strerror (err));
+    }
+  else
+    {
+      nl_cache_mngt_provide (nl_caches[LCP_NL_ADDR]);
+      nl_cache_foreach (nl_caches[LCP_NL_ADDR], nl_obj_link_addr_add, NULL);
+    }
+  if ((err = rtnl_neigh_alloc_cache (sk_route, &nl_caches[LCP_NL_NEIGH])) < 0)
+    {
+      LCP_ERROR ("neighbour cache build fail");
+    }
+  else
+    {
+      nl_cache_mngt_provide (nl_caches[LCP_NL_NEIGH]);
+      nl_cache_foreach (nl_caches[LCP_NL_NEIGH], nl_obj_neigh_add, NULL);
+    }
+  if ((err = rtnl_route_alloc_cache (sk_route, AF_UNSPEC, 0,
+				     &nl_caches[LCP_NL_ROUTE])) < 0)
+    {
+      LCP_ERROR ("route cache build fail");
+    }
+  else
+    {
+      nl_cache_mngt_provide (nl_caches[LCP_NL_ROUTE]);
+      nl_cache_foreach (nl_caches[LCP_NL_ROUTE], nl_obj_route_add, NULL);
+    }
 
-  return (NULL);
+  return (nl_socket_get_fd (sk_route));
 }
-
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (lcp_nl_init) =
-{
-  .runs_after = VLIB_INITS ("lcp_itf_pair_init"),
-};
-
-#include <vpp/app/version.h>
-VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER,
-  .description = "linux Control Plane",
-  // .default_disabled = 1,
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

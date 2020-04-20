@@ -1,7 +1,7 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright 2020 Rubicon Communications, LLC.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -23,10 +23,9 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vpp/app/version.h>
 #include <vnet/format_fns.h>
 
-#include <plugins/linux-cp/lcp_interface.h>
+#include <lcp_interface.h>
 
 
 static clib_error_t *
@@ -86,7 +85,7 @@ lcp_itf_pair_create_command_fn (vlib_main_t * vm,
 				IFNAMSIZ);
     }
 
-  r = lcp_itf_pair_create(sw_if_index, tap_name, ns);
+  r = lcp_itf_pair_create (sw_if_index, tap_name, ns, NULL);
 
   vec_free (tap_name);
   vec_free (ns);
@@ -132,9 +131,9 @@ lcp_default_netns_command_fn (vlib_main_t * vm,
 
   unformat_free (line_input);
 
-  vlib_cli_output(vm, "lcp set default netns '%s'\n", (char *)ns);
+  vlib_cli_output (vm, "lcp set default netns '%s'\n", (char *) ns);
 
-  r = lcp_set_default_ns(ns);
+  r = lcp_set_default_ns (ns);
   if (r)
     return clib_error_return (0, "linux-cp set default netns failed (%d)", r);
 
@@ -179,14 +178,12 @@ lcp_itf_pair_delete_command_fn (vlib_main_t * vm,
   unformat_free (line_input);
 
   if (sw_if_index == ~0)
-    return clib_error_return (0,
-			      "interface name or sw_if_index required");
+    return clib_error_return (0, "interface name or sw_if_index required");
 
-  r = lcp_itf_pair_delete(sw_if_index);
+  r = lcp_itf_pair_delete (sw_if_index);
 
   if (r)
-      return clib_error_return (0,
-				"linux-cp pair deletion failed (%d)", r);
+    return clib_error_return (0, "linux-cp pair deletion failed (%d)", r);
   return 0;
 }
 
@@ -239,7 +236,7 @@ VLIB_CLI_COMMAND (lcp_itf_pair_show_cmd_node, static) = {
 clib_error_t *
 lcp_cli_init (vlib_main_t * vm)
 {
-	return 0;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (lcp_cli_init);

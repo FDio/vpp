@@ -18,7 +18,7 @@
 #include <sys/socket.h>
 #include <linux/if.h>
 
-#include <plugins/linux-cp/lcp_interface.h>
+#include <lcp_interface.h>
 
 #include <vnet/feature/feature.h>
 #include <vnet/ip/ip4_packet.h>

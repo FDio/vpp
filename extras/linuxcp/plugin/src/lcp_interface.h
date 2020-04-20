@@ -37,11 +37,11 @@ extern vlib_node_registration_t lcp_ethernet_node;
 /**
  * Get/Set the default namespace for LCP host taps.
  */
-int lcp_set_default_ns (u8 *ns);
-u8 *lcp_get_default_ns (void);		/* Returns NULL or shared string */
+int lcp_set_default_ns (u8 * ns);
+u8 *lcp_get_default_ns (void);	/* Returns NULL or shared string */
 int lcp_get_default_ns_fd (void);
 
-u8 *format_lcp_itf_pair (u8 *s, va_list *args);
+u8 *format_lcp_itf_pair (u8 * s, va_list * args);
 void lcp_itf_pair_show (u32 phy_sw_if_index);
 
 /**
@@ -56,8 +56,6 @@ extern lcp_itf_pair_t *lcp_itf_pair_get (index_t index);
  * @return VPP's object index
  */
 extern index_t lcp_itf_pair_find_by_host (u32 host_sw_if_index);
-extern index_t lcp_itf_pair_find_by_vif (u32 vif_index);
-
 
 /**
  * Create an interface-pair
@@ -66,20 +64,18 @@ extern index_t lcp_itf_pair_find_by_vif (u32 vif_index);
  */
 extern int lcp_itf_pair_add (u32 host_sw_if_index,
 			     u32 phy_sw_if_index,
-			     u8 * host_name,
-			     u32 host_index,
-			     u8 *ns);
+			     u8 * host_name, u32 host_index, u8 * ns);
 extern int lcp_itf_pair_add_sub (u32 vif,
 				 u32 sub_sw_if_index,
-				 u32 phy_sw_if_index,
-				 u8 *ns);
+				 u32 phy_sw_if_index, u8 * ns);
 
 /**
  * Create an interface-pair from PHY sw_if_index and tap name.
  *
  * @return error code
  */
-int lcp_itf_pair_create(u32 phy_sw_if_index, u8 *host_tap_name, u8 *ns);
+int lcp_itf_pair_create (u32 phy_sw_if_index,
+			 u8 * host_tap_name, u8 * ns, u32 * vif);
 
 /**
  * Delete a LCP_ITF_PAIR

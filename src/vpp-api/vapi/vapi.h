@@ -179,10 +179,12 @@ extern "C"
  *
  * @param ctx opaque vapi context
  * @param mode type of property to wait for - readability, writability or both
+ * @param timeout how long to wait for in seconds
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode);
+  vapi_error_e vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode,
+			  double timeout);
 
 /**
  * @brief pick next message sent by vpp and call the appropriate callback

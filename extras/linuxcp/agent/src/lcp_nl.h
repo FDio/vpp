@@ -41,8 +41,7 @@ typedef struct nl_vft_t_
   nl_rt_route_del_cb_t nvl_rt_route_del;
 } nl_vft_t;
 
-extern void nl_register_vft (const nl_vft_t * nv);
-
+extern void lcp_nl_register_vft (const nl_vft_t * nv);
 
 typedef enum lcp_nl_obj_t_
 {
@@ -54,7 +53,8 @@ typedef enum lcp_nl_obj_t_
 
 #define LCP_NL_N_OBJS (LCP_NL_ROUTE+1)
 
-extern struct nl_cache *lcp_nl_get_cache (lcp_nl_obj_t t);
+extern int lcp_nl_connect (void);
+extern int lcp_nl_read (void);
 
 /*
  * fd.io coding-style-patch-verification: ON
