@@ -97,6 +97,7 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   close (ssvm_fd);
 
   sh = mapa.addr;
+  CLIB_MEM_UNPOISON (sh, sizeof (*sh));
   sh->master_pid = ssvm->my_pid;
   sh->ssvm_size = ssvm->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);

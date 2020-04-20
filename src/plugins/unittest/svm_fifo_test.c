@@ -2710,8 +2710,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
   int res = 0;
   char *str;
 
-  clib_warning ("high mem %lu", HIGH_SEGMENT_BASEVA << 4);
-  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA << 4, 5);
+  clib_warning ("high mem %lu", HIGH_SEGMENT_BASEVA << 1);
+  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA << 1, 5);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo1"))
