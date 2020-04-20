@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8ee58852_779a4d63",
+        "filename": "src/vnet/lisp-cp/lisp.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2020-04-20T12:04:05Z",
+      "side": 1,
+      "message": "remove - not existing argument",
+      "range": {
+        "startLine": 75,
+        "startChar": 1,
+        "endLine": 78,
+        "endChar": 3
+      },
+      "revId": "a8a8f9f80ade1008308b94153e4b14cbf6b198e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59d6817b_7d435139",
+        "filename": "src/vnet/lisp-cp/lisp.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2020-04-20T12:04:05Z",
+      "side": 1,
+      "message": "remove - not existing argument",
+      "range": {
+        "startLine": 80,
+        "startChar": 5,
+        "endLine": 80,
+        "endChar": 3
+      },
+      "revId": "a8a8f9f80ade1008308b94153e4b14cbf6b198e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "341da614_e14b94e0",
+        "filename": "src/vnet/lisp-cp/lisp.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2020-04-20T12:04:05Z",
+      "side": 1,
+      "message": "remove - not existing argument",
+      "range": {
+        "startLine": 297,
+        "startChar": 4,
+        "endLine": 300,
+        "endChar": 1
+      },
+      "revId": "a8a8f9f80ade1008308b94153e4b14cbf6b198e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e8abdd0_766b187b",
+        "filename": "src/vnet/lisp-cp/lisp.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2020-04-20T12:04:05Z",
+      "side": 1,
+      "message": "remove - not existing argument",
+      "range": {
+        "startLine": 326,
+        "startChar": 4,
+        "endLine": 329,
+        "endChar": 1
+      },
+      "revId": "a8a8f9f80ade1008308b94153e4b14cbf6b198e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
