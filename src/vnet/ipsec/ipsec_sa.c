@@ -123,6 +123,43 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
   ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
 }
 
+void
+ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
+{
+  /* *INDENT-OFF* */
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    {
+#define _(n, s, k) \
+  if( sa->crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC ) \
+    sa->crypto_async_enc_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD12_ENC; \
+  if( sa->crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC ) \
+    sa->crypto_async_dec_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD12_DEC;
+    foreach_crypto_aead_alg
+#undef _
+    }
+  else
+    {
+#define _(n, s, k) \
+  if( sa->crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC ) \
+    sa->crypto_async_enc_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD8_ENC; \
+  if( sa->crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC ) \
+    sa->crypto_async_dec_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD8_DEC;
+    foreach_crypto_aead_alg
+#undef _
+    }
+
+#define _(c, h, s, k ,d) \
+  if( sa->crypto_enc_op_id == VNET_CRYPTO_OP_##c##_ENC && \
+      sa->integ_op_id == VNET_CRYPTO_OP_##h##_HMAC) \
+    sa->crypto_async_enc_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC; \
+  if( sa->crypto_dec_op_id == VNET_CRYPTO_OP_##c##_DEC && \
+      sa->integ_op_id == VNET_CRYPTO_OP_##h##_HMAC) \
+    sa->crypto_async_dec_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;
+  foreach_crypto_link_async_alg
+#undef _
+  /* *INDENT-ON* */
+}
+
 int
 ipsec_sa_add_and_lock (u32 id,
 		       u32 spi,
@@ -172,6 +209,7 @@ ipsec_sa_add_and_lock (u32 id,
       clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
     }
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
+  ipsec_sa_set_async_op_ids (sa);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
@@ -196,6 +234,13 @@ ipsec_sa_add_and_lock (u32 id,
 	  pool_put (im->sad, sa);
 	  return VNET_API_ERROR_KEY_LENGTH;
 	}
+    }
+
+  if (sa->crypto_async_enc_op_id && !ipsec_sa_is_set_IS_AEAD (sa))
+    {				//AES-CBC & HMAC
+      sa->linked_key_index = vnet_crypto_key_add_linked (vm,
+							 sa->crypto_key_index,
+							 sa->integ_key_index);
     }
 
   err = ipsec_check_support_cb (im, sa);
