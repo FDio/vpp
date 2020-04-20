@@ -138,6 +138,24 @@
     },
     {
       "key": {
+        "uuid": "5e1897c5_f3fc6edb",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-20T15:05:50Z",
+      "side": 1,
+      "message": "A possibility could be to keep only the already existing VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO flag, and to add a new \"extended\" interface bitfield at the end of vnet_hw_interface_t struct and put those gso specific flags there. That way, we\u0027ll save the precious bits in the 1st cacheline and will occurs a cache penalty only if gso is in use.\nWould that be acceptable?",
+      "parentUuid": "f895aab4_88f8c7f2",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "13dd6055_9beb877e",
         "filename": "src/vnet/interface_output.h",
         "patchSetId": 23
