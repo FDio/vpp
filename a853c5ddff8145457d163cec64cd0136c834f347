@@ -46,6 +46,30 @@
       "revId": "a853c5ddff8145457d163cec64cd0136c834f347",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1765742_39097827",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-20T14:51:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89a30b37_fa001e68",
+      "range": {
+        "startLine": 1035,
+        "startChar": 0,
+        "endLine": 1045,
+        "endChar": 25
+      },
+      "revId": "a853c5ddff8145457d163cec64cd0136c834f347",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
