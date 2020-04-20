@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0439a3dd_ed8910e2",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "Why getting rid of the static is_ip6 ? Is it triggered by need of ipv4-in-ipv6 and ipv6-in-ipv4 ? If yes, what is the performance impact for the regular non-encapped traffic ?",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b35bd9e2_7d14f0ba",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "As we discussed - since this is \"generic header offset parser\" - worth renaming the file into \"hdr_offset_parser.h\" or something like that, and maybe add some blurb of text to talk about it (assuming we want it to ever be used outside gso). if not then only the first part applies about renaming the file into something obvious :) \n\nGSO and GHO clash in my head :) for the short form in constants \"GHO\" is probably unique enough, given the context, but not for the file name..",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d0012388_4b3e9dc5",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "worth adding an assert here so that if we end up by accident in this code path, we cleanly crash at least in the debug build ? (same about the other few places with \"not supported yet\")",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7137ef03_fca8ef08",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "How will the lack of support for the EH traversal manifest itself to the user ? Seems like with this code it will just cause weird failures... Maybe useful to do a check and at least to increment a counter in the stats somewhere... Also, how will the fragmented packets be dealt with ?",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "906ead93_834d9023",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "why do we need these in the quad loop ? Are we using the offsets there ? (My understanding: The quad loop is only functional for the gso-to-gso interface, isn\u0027t it ? As such - we should not be needing the offsets.. if this understanding is right, just maybe init those to zero and display accordingly as N/A or somesuch?)",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e61aa754_7adc1cb8",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "Same thing here...",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b490aaa9_d9d6f2a0",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 595,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "Now, probably here might be a place to have the \"if buffer if being traced then copy the gho from the local variable to t0-\u003egho\" ?\n\nthis way you will (for free) actually get a bit of an execution trace - only the packets that are about to be segmented will have the offsets shown...\n\nit\u0027s one more conditional though..",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f895aab4_88f8c7f2",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "I will let Damjan comment here if he is happy about this many flags being consumed... it leaves us with 8 bits remaining, which is kinda short)",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "13dd6055_9beb877e",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-04-20T13:10:20Z",
+      "side": 1,
+      "message": "Would an ASSERT(gho.gho_flags ^ (GHO_F_IP4|GHO_F_IP6)) or something along the lines be of use here ?",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
