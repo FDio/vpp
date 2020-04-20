@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3d8b82c_86b6037b",
+        "filename": "src/vnet/ip/ip4_error.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2020-04-20T11:53:42Z",
+      "side": 1,
+      "message": "typo?",
+      "range": {
+        "startLine": 93,
+        "startChar": 34,
+        "endLine": 93,
+        "endChar": 36
+      },
+      "revId": "337b2c26011cb7f581612ba0277f39f270f7a6ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
