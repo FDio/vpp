@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "584a22f5_27d4ea54",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-04-20T12:49:59Z",
+      "side": 1,
+      "message": "Neale, \nThanks for the clarification. Will take up in a separate patch. \nRestored original version for now.",
+      "parentUuid": "11219dc8_3aba6728",
+      "revId": "60e033b3e6dd61473af9cd14a9aa815865466d2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4abf6c2e_2666516c",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 2
