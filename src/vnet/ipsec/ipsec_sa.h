@@ -127,9 +127,27 @@ typedef struct
 
   vnet_crypto_key_index_t crypto_key_index;
   vnet_crypto_key_index_t integ_key_index;
-  vnet_crypto_op_id_t crypto_enc_op_id:16;
-  vnet_crypto_op_id_t crypto_dec_op_id:16;
-  vnet_crypto_op_id_t integ_op_id:16;
+
+  /* Union data shared by sync and async ops, updated when mode is
+   * changed. */
+  union
+  {
+    struct
+    {
+      vnet_crypto_op_id_t crypto_enc_op_id:16;
+      vnet_crypto_op_id_t crypto_dec_op_id:16;
+      vnet_crypto_op_id_t integ_op_id:16;
+    };
+
+    struct
+    {
+      vnet_crypto_async_op_id_t crypto_async_enc_op_id:16;
+      vnet_crypto_async_op_id_t crypto_async_dec_op_id:16;
+      vnet_crypto_key_index_t linked_key_index;
+    };
+
+    u64 crypto_op_data;
+  };
 
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -165,6 +183,28 @@ typedef struct
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
   u64 gcm_iv_counter;
+
+  union
+  {
+    struct
+    {
+      vnet_crypto_op_id_t crypto_enc_op_id:16;
+      vnet_crypto_op_id_t crypto_dec_op_id:16;
+      vnet_crypto_op_id_t integ_op_id:16;
+    };
+    u64 data;
+  } sync_op_data;
+
+  union
+  {
+    struct
+    {
+      vnet_crypto_async_op_id_t crypto_async_enc_op_id:16;
+      vnet_crypto_async_op_id_t crypto_async_dec_op_id:16;
+      vnet_crypto_key_index_t linked_key_index;
+    };
+    u64 data;
+  } async_op_data;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
