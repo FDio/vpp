@@ -778,10 +778,28 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	      ctx->max_len_to_snd = 0;
 	      return;
 	    }
+
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  u32 len = ctx->hdr.data_length - ctx->hdr.data_offset;
+
+	  if (len + sizeof (session_dgram_hdr_t) < ctx->max_dequeue)
+	    {
+	      u32 offset = 0, max_offset;
+	      session_dgram_hdr_t tmp;
+
+	      max_offset = clib_min (ctx->max_dequeue, 32 << 10);
+	      while (offset < max_offset)
+		{
+		  svm_fifo_peek (ctx->s->tx_fifo, offset, sizeof (ctx->hdr),
+				 (u8 *) & tmp);
+		  ASSERT (tmp.data_length > tmp.data_offset);
+		  len += tmp.data_length - tmp.data_offset;
+		  offset += sizeof (tmp) + tmp.data_length;
+		}
+	    }
+	  ctx->max_dequeue = len;
 	}
     }
   ASSERT (ctx->max_dequeue > 0);
