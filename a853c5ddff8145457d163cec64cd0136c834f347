@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a00944a_0c09a330",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-20T14:25:19Z",
+      "side": 1,
+      "message": "After talking, I realized that we could simplify this by moving transport_connection_update_tx_bytes above line 962 above, i.e., above ctx-\u003eleft_to_snd \u003d ctx-\u003emax_len_to_snd;\n\nThat should in theory avoid the issue completely.",
+      "range": {
+        "startLine": 1035,
+        "startChar": 0,
+        "endLine": 1045,
+        "endChar": 25
+      },
+      "revId": "a853c5ddff8145457d163cec64cd0136c834f347",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
