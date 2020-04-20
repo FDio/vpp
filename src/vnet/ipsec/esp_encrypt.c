@@ -28,6 +28,7 @@
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
+_(PENDING, "pending")                              \
 _(HANDOFF, "handoff")                              \
 _(INTERFACE_OUTPUT, "interface-output")
 
@@ -41,8 +42,10 @@ typedef enum
 
 #define foreach_esp_encrypt_error                               \
  _(RX_PKTS, "ESP pkts received")                                \
+ _(POST_RX_PKTS, "ESP-post pkts received")                      \
  _(SEQ_CYCLED, "sequence number cycled (packet dropped)")       \
  _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
+ _(CRYPTO_QUEUE_FULL, "crypto queue full (packet dropped)")     \
  _(NO_BUFFERS, "no buffers (packet dropped)")                   \
 
 typedef enum
@@ -70,6 +73,11 @@ typedef struct
   ipsec_integ_alg_t integ_alg;
 } esp_encrypt_trace_t;
 
+typedef struct
+{
+  u32 next_index;
+} esp_encrypt_post_trace_t;
+
 /* packet trace format function */
 static u8 *
 format_esp_encrypt_trace (u8 * s, va_list * args)
@@ -85,6 +93,17 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 	    format_ipsec_crypto_alg,
 	    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
 	    t->udp_encap ? " udp-encap-enabled" : "");
+  return s;
+}
+
+static u8 *
+format_esp_post_encrypt_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  esp_encrypt_post_trace_t *t = va_arg (*args, esp_encrypt_post_trace_t *);
+
+  s = format (s, "esp-post: next node index %u", t->next_index);
   return s;
 }
 
@@ -276,9 +295,280 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (esp_gcm_nonce_t, 12);
 
+static_always_inline u32
+esp_encrypt_chain_crypto (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
+			  ipsec_sa_t * sa0, vlib_buffer_t * b,
+			  vlib_buffer_t * lb, u8 icv_sz, u8 * start,
+			  u32 start_len, u16 * n_ch)
+{
+  vnet_crypto_op_chunk_t *ch;
+  vlib_buffer_t *cb = b;
+  u32 n_chunks = 1;
+  u32 total_len;
+  vec_add2 (ptd->chunks, ch, 1);
+  total_len = ch->len = start_len;
+  ch->src = ch->dst = start;
+  cb = vlib_get_buffer (vm, cb->next_buffer);
+
+  while (1)
+    {
+      vec_add2 (ptd->chunks, ch, 1);
+      n_chunks += 1;
+      if (lb == cb)
+	total_len += ch->len = cb->current_length - icv_sz;
+      else
+	total_len += ch->len = cb->current_length;
+      ch->src = ch->dst = vlib_buffer_get_current (cb);
+
+      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
+      cb = vlib_get_buffer (vm, cb->next_buffer);
+    }
+
+  if (n_ch)
+    *n_ch = n_chunks;
+
+  return total_len;
+}
+
+static_always_inline u32
+esp_encrypt_chain_integ (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
+			 ipsec_sa_t * sa0, vlib_buffer_t * b,
+			 vlib_buffer_t * lb, u8 icv_sz, u8 * start,
+			 u32 start_len, u8 * digest, u16 * n_ch)
+{
+  vnet_crypto_op_chunk_t *ch;
+  vlib_buffer_t *cb = b;
+  u32 n_chunks = 1;
+  u32 total_len;
+  vec_add2 (ptd->chunks, ch, 1);
+  total_len = ch->len = start_len;
+  ch->src = start;
+  cb = vlib_get_buffer (vm, cb->next_buffer);
+
+  while (1)
+    {
+      vec_add2 (ptd->chunks, ch, 1);
+      n_chunks += 1;
+      if (lb == cb)
+	{
+	  total_len += ch->len = cb->current_length - icv_sz;
+	  if (ipsec_sa_is_set_USE_ESN (sa0))
+	    {
+	      u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
+	      clib_memcpy_fast (digest, &seq_hi, sizeof (seq_hi));
+	      ch->len += sizeof (seq_hi);
+	      total_len += sizeof (seq_hi);
+	    }
+	}
+      else
+	total_len += ch->len = cb->current_length;
+      ch->src = vlib_buffer_get_current (cb);
+
+      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
+      cb = vlib_get_buffer (vm, cb->next_buffer);
+    }
+
+  if (n_ch)
+    *n_ch = n_chunks;
+
+  return total_len;
+}
+
+always_inline void
+esp_prepare_sync_op (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
+		     vnet_crypto_op_t ** crypto_ops,
+		     vnet_crypto_op_t ** integ_ops, ipsec_sa_t * sa0,
+		     u8 * payload, u16 payload_len, u8 iv_sz, u8 icv_sz,
+		     vlib_buffer_t ** bufs, vlib_buffer_t ** b,
+		     vlib_buffer_t * lb, u32 hdr_len, esp_header_t * esp,
+		     esp_gcm_nonce_t * nonce)
+{
+  if (sa0->crypto_enc_op_id)
+    {
+      vnet_crypto_op_t *op;
+      vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
+      vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
+
+      op->src = op->dst = payload;
+      op->key_index = sa0->crypto_key_index;
+      op->len = payload_len - icv_sz;
+      op->user_data = b - bufs;
+
+      if (ipsec_sa_is_set_IS_AEAD (sa0))
+	{
+	  /*
+	   * construct the AAD in a scratch space in front
+	   * of the IP header.
+	   */
+	  op->aad = payload - hdr_len - sizeof (esp_aead_t);
+	  op->aad_len = esp_aad_fill (op->aad, esp, sa0);
+
+	  op->tag = payload + op->len;
+	  op->tag_len = 16;
+
+	  u64 *iv = (u64 *) (payload - iv_sz);
+	  nonce->salt = sa0->salt;
+	  nonce->iv = *iv = clib_host_to_net_u64 (sa0->gcm_iv_counter++);
+	  op->iv = (u8 *) nonce;
+	}
+      else
+	{
+	  op->iv = payload - iv_sz;
+	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
+	}
+
+      if (lb != b[0])
+	{
+	  /* is chained */
+	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+	  op->chunk_index = vec_len (ptd->chunks);
+	  op->tag = vlib_buffer_get_tail (lb) - icv_sz;
+	  esp_encrypt_chain_crypto (vm, ptd, sa0, b[0], lb, icv_sz, payload,
+				    payload_len, &op->n_chunks);
+	}
+    }
+
+  if (sa0->integ_op_id)
+    {
+      vnet_crypto_op_t *op;
+      vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
+      vnet_crypto_op_init (op, sa0->integ_op_id);
+      op->src = payload - iv_sz - sizeof (esp_header_t);
+      op->digest = payload + payload_len - icv_sz;
+      op->key_index = sa0->integ_key_index;
+      op->digest_len = icv_sz;
+      op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
+      op->user_data = b - bufs;
+
+      if (lb != b[0])
+	{
+	  /* is chained */
+	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+	  op->chunk_index = vec_len (ptd->chunks);
+	  op->digest = vlib_buffer_get_tail (lb) - icv_sz;
+
+	  esp_encrypt_chain_integ (vm, ptd, sa0, b[0], lb, icv_sz,
+				   payload - iv_sz - sizeof (esp_header_t),
+				   payload_len + iv_sz +
+				   sizeof (esp_header_t), op->digest,
+				   &op->n_chunks);
+	}
+      else if (ipsec_sa_is_set_USE_ESN (sa0))
+	{
+	  u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
+	  clib_memcpy_fast (op->digest, &seq_hi, sizeof (seq_hi));
+	  op->len += sizeof (seq_hi);
+	}
+    }
+}
+
+static_always_inline int
+esp_prepare_async_frame (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
+			 vnet_crypto_async_frame_t ** async_frame,
+			 ipsec_sa_t * sa, vlib_buffer_t * b,
+			 esp_header_t * esp, u8 * payload, u32 payload_len,
+			 u8 iv_sz, u8 icv_sz, u32 bi, u16 * next, u32 hdr_len,
+			 u16 async_next, vlib_buffer_t * lb)
+{
+  esp_post_data_t *post = esp_post_data (b);
+  u8 *tag, *iv, *aad = 0;
+  u8 flag = 0;
+  u32 key_index;
+  i16 crypto_start_offset, integ_start_offset = 0;
+  u16 crypto_total_len, integ_total_len;
+
+  post->next_index = next[0];
+  next[0] = ESP_ENCRYPT_NEXT_PENDING;
+
+  /* crypto */
+  crypto_start_offset = payload - b->data;
+  crypto_total_len = integ_total_len = payload_len - icv_sz;
+  tag = payload + crypto_total_len;
+
+  /* aead */
+  if (ipsec_sa_is_set_IS_AEAD (sa))
+    {
+      esp_gcm_nonce_t *nonce;
+      u64 *pkt_iv = (u64 *) (payload - iv_sz);
+
+      aad = payload - hdr_len - sizeof (esp_aead_t);
+      esp_aad_fill (aad, esp, sa);
+      nonce = (esp_gcm_nonce_t *) (aad - sizeof (*nonce));
+      nonce->salt = sa->salt;
+      nonce->iv = *pkt_iv = clib_host_to_net_u64 (sa->gcm_iv_counter++);
+      iv = (u8 *) nonce;
+      key_index = sa->crypto_key_index;
+
+      if (lb != b)
+	{
+	  /* chain */
+	  flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+	  crypto_total_len = esp_encrypt_chain_crypto (vm, ptd, sa, b, lb,
+						       icv_sz, payload,
+						       payload_len, 0);
+	}
+      goto out;
+    }
+
+  /* cipher then hash */
+  iv = payload - iv_sz;
+  integ_start_offset = crypto_start_offset - iv_sz - sizeof (esp_header_t);
+  integ_total_len += iv_sz + sizeof (esp_header_t);
+  flag |= VNET_CRYPTO_OP_FLAG_INIT_IV;
+  key_index = sa->linked_key_index;
+
+  if (b != lb)
+    {
+      flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      crypto_total_len = esp_encrypt_chain_crypto (vm, ptd, sa, b, lb,
+						   icv_sz, payload,
+						   payload_len, 0);
+      tag = vlib_buffer_get_tail (lb) - icv_sz;
+      integ_total_len = esp_encrypt_chain_integ (vm, ptd, sa, b, lb, icv_sz,
+						 payload - iv_sz -
+						 sizeof (esp_header_t),
+						 payload_len + iv_sz +
+						 sizeof (esp_header_t),
+						 tag, 0);
+    }
+  else if (ipsec_sa_is_set_USE_ESN (sa) && !ipsec_sa_is_set_IS_AEAD (sa))
+    {
+      u32 seq_hi = clib_net_to_host_u32 (sa->seq_hi);
+      clib_memcpy_fast (tag, &seq_hi, sizeof (seq_hi));
+      integ_total_len += sizeof (seq_hi);
+    }
+
+out:
+  return vnet_crypto_async_add_to_frame (vm, async_frame, key_index,
+					 crypto_total_len,
+					 integ_total_len - crypto_total_len,
+					 crypto_start_offset,
+					 integ_start_offset, bi, async_next,
+					 iv, tag, aad, flag);
+}
+
+/* when submitting a frame is failed, drop all buffers in the frame */
+static_always_inline void
+esp_async_recycle_failed_submit (vnet_crypto_async_frame_t * f,
+				 vlib_buffer_t ** b, u16 * next)
+{
+  u32 n_drop = f->n_elts;
+  while (--n_drop)
+    {
+      (b - n_drop)[0]->error = ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+      (next - n_drop)[0] = ESP_ENCRYPT_NEXT_DROP;
+    }
+  vnet_crypto_async_reset_frame (f);
+}
+
 always_inline uword
 esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_ip6, int is_tun)
+		    vlib_frame_t * frame, int is_ip6, int is_tun,
+		    u16 async_next)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, vm->thread_index);
@@ -293,16 +583,21 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 current_sa_bytes = 0, spi = 0;
   u8 block_sz = 0, iv_sz = 0, icv_sz = 0;
   ipsec_sa_t *sa0 = 0;
-  vnet_crypto_op_chunk_t *ch;
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
+  vnet_crypto_async_frame_t *async_frame = 0;
+  int is_async = im->async_mode;
+  vnet_crypto_async_op_id_t last_async_op = ~0;
 
   vlib_get_buffers (vm, from, b, n_left);
-  vec_reset_length (ptd->crypto_ops);
-  vec_reset_length (ptd->integ_ops);
-  vec_reset_length (ptd->chained_crypto_ops);
-  vec_reset_length (ptd->chained_integ_ops);
+  if (!is_async)
+    {
+      vec_reset_length (ptd->crypto_ops);
+      vec_reset_length (ptd->integ_ops);
+      vec_reset_length (ptd->chained_crypto_ops);
+      vec_reset_length (ptd->chained_integ_ops);
+    }
   vec_reset_length (ptd->chunks);
 
   while (n_left > 0)
@@ -351,6 +646,20 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  block_sz = sa0->crypto_block_size;
 	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
+
+	  /* submit frame when op_id is different then the old one */
+	  if (is_async && sa0->crypto_async_enc_op_id != last_async_op)
+	    {
+	      if (async_frame && async_frame->n_elts)
+		{
+		  if (vnet_crypto_async_submit_open_frame (vm, async_frame)
+		      < 0)
+		    esp_async_recycle_failed_submit (async_frame, b, next);
+		}
+	      async_frame =
+		vnet_crypto_async_get_frame (vm, sa0->crypto_async_enc_op_id);
+	      last_async_op = sa0->crypto_async_enc_op_id;
+	    }
 	}
 
       if (PREDICT_FALSE (~0 == sa0->encrypt_thread_index))
@@ -569,129 +878,25 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp->spi = spi;
       esp->seq = clib_net_to_host_u32 (sa0->seq);
 
-      if (sa0->crypto_enc_op_id)
+      if (is_async)
 	{
-	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
+	  if (PREDICT_FALSE (sa0->crypto_async_enc_op_id == 0))
+	    goto trace;
 
-	  op->src = op->dst = payload;
-	  op->key_index = sa0->crypto_key_index;
-	  op->len = payload_len - icv_sz;
-	  op->user_data = b - bufs;
-
-	  if (ipsec_sa_is_set_IS_AEAD (sa0))
+	  if (esp_prepare_async_frame (vm, ptd, &async_frame, sa0, b[0], esp,
+				       payload, payload_len, iv_sz,
+				       icv_sz, from[b - bufs], next, hdr_len,
+				       async_next, lb))
 	    {
-	      /*
-	       * construct the AAD in a scratch space in front
-	       * of the IP header.
-	       */
-	      op->aad = payload - hdr_len - sizeof (esp_aead_t);
-
-	      esp_aad_fill (op, esp, sa0);
-
-	      op->tag = payload + op->len;
-	      op->tag_len = 16;
-
-	      u64 *iv = (u64 *) (payload - iv_sz);
-	      nonce->salt = sa0->salt;
-	      nonce->iv = *iv = clib_host_to_net_u64 (sa0->gcm_iv_counter++);
-	      op->iv = (u8 *) nonce;
-	      nonce++;
-	    }
-	  else
-	    {
-	      op->iv = payload - iv_sz;
-	      op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
-	    }
-
-	  if (lb != b[0])
-	    {
-	      /* is chained */
-	      vlib_buffer_t *cb = b[0];
-	      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-	      op->chunk_index = vec_len (ptd->chunks);
-	      op->tag = vlib_buffer_get_tail (lb) - icv_sz;
-	      vec_add2 (ptd->chunks, ch, 1);
-	      ch->len = payload_len;
-	      ch->src = ch->dst = payload;
-	      cb = vlib_get_buffer (vm, cb->next_buffer);
-	      op->n_chunks = 1;
-
-	      while (1)
-		{
-		  vec_add2 (ptd->chunks, ch, 1);
-		  op->n_chunks += 1;
-		  if (lb == cb)
-		    ch->len = cb->current_length - icv_sz;
-		  else
-		    ch->len = cb->current_length;
-		  ch->src = ch->dst = vlib_buffer_get_current (cb);
-
-		  if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
-		    break;
-
-		  cb = vlib_get_buffer (vm, cb->next_buffer);
-		}
+	      esp_async_recycle_failed_submit (async_frame, b, next);
+	      goto trace;
 	    }
 	}
-
-      if (sa0->integ_op_id)
+      else
 	{
-	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
-	  op->src = payload - iv_sz - sizeof (esp_header_t);
-	  op->digest = payload + payload_len - icv_sz;
-	  op->key_index = sa0->integ_key_index;
-	  op->digest_len = icv_sz;
-	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
-	  op->user_data = b - bufs;
-
-	  if (lb != b[0])
-	    {
-	      /* is chained */
-	      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-	      vlib_buffer_t *cb = b[0];
-	      op->chunk_index = vec_len (ptd->chunks);
-	      op->digest = vlib_buffer_get_tail (lb) - icv_sz;
-	      vec_add2 (ptd->chunks, ch, 1);
-	      ch->len = payload_len + iv_sz + sizeof (esp_header_t);
-	      ch->src = payload - iv_sz - sizeof (esp_header_t);
-	      cb = vlib_get_buffer (vm, cb->next_buffer);
-	      op->n_chunks = 1;
-
-	      while (1)
-		{
-		  vec_add2 (ptd->chunks, ch, 1);
-		  op->n_chunks += 1;
-		  if (lb == cb)
-		    {
-		      ch->len = cb->current_length - icv_sz;
-		      if (ipsec_sa_is_set_USE_ESN (sa0))
-			{
-			  u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
-			  clib_memcpy_fast (op->digest, &seq_hi,
-					    sizeof (seq_hi));
-			  ch->len += sizeof (seq_hi);
-			}
-		    }
-		  else
-		    ch->len = cb->current_length;
-		  ch->src = vlib_buffer_get_current (cb);
-
-		  if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
-		    break;
-
-		  cb = vlib_get_buffer (vm, cb->next_buffer);
-		}
-	    }
-	  else if (ipsec_sa_is_set_USE_ESN (sa0))
-	    {
-	      u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
-	      clib_memcpy_fast (op->digest, &seq_hi, sizeof (seq_hi));
-	      op->len += sizeof (seq_hi);
-	    }
+	  esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, sa0, payload,
+			       payload_len, iv_sz, icv_sz, bufs, b, lb,
+			       hdr_len, esp, nonce++);
 	}
 
       vlib_buffer_advance (b[0], 0LL - hdr_len);
@@ -721,14 +926,21 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 				   current_sa_index, current_sa_packets,
 				   current_sa_bytes);
+  if (!is_async)
+    {
+      esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
+      esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, bufs, nexts,
+			       ptd->chunks);
 
-  esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
-  esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, bufs, nexts,
-			   ptd->chunks);
-
-  esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
-  esp_process_chained_ops (vm, node, ptd->chained_integ_ops, bufs, nexts,
-			   ptd->chunks);
+      esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
+      esp_process_chained_ops (vm, node, ptd->chained_integ_ops, bufs, nexts,
+			       ptd->chunks);
+    }
+  else if (async_frame && async_frame->n_elts)
+    {
+      if (vnet_crypto_async_submit_open_frame (vm, async_frame) < 0)
+	esp_async_recycle_failed_submit (async_frame, b, next);
+    }
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_ENCRYPT_ERROR_RX_PKTS, frame->n_vectors);
@@ -737,11 +949,98 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
+always_inline uword
+esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			 vlib_frame_t * frame)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  u32 *from = vlib_frame_vector_args (frame);
+  u32 n_left = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, b, n_left);
+
+  if (n_left >= 4)
+    {
+      vlib_prefetch_buffer_header (b[0], LOAD);
+      vlib_prefetch_buffer_header (b[1], LOAD);
+      vlib_prefetch_buffer_header (b[2], LOAD);
+      vlib_prefetch_buffer_header (b[3], LOAD);
+    }
+
+  while (n_left > 8)
+    {
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+
+      next[0] = (esp_post_data (b[0]))->next_index;
+      next[1] = (esp_post_data (b[1]))->next_index;
+      next[2] = (esp_post_data (b[2]))->next_index;
+      next[3] = (esp_post_data (b[3]))->next_index;
+
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[0],
+							     sizeof (*tr));
+	      tr->next_index = next[0];
+	    }
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[1],
+							     sizeof (*tr));
+	      tr->next_index = next[1];
+	    }
+	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[2],
+							     sizeof (*tr));
+	      tr->next_index = next[2];
+	    }
+	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[3],
+							     sizeof (*tr));
+	      tr->next_index = next[3];
+	    }
+	}
+
+      b += 4;
+      next += 4;
+      n_left -= 4;
+    }
+
+  while (n_left > 0)
+    {
+      next[0] = (esp_post_data (b[0]))->next_index;
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[0],
+							 sizeof (*tr));
+	  tr->next_index = next[0];
+	}
+
+      b += 1;
+      next += 1;
+      n_left -= 1;
+    }
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       ESP_ENCRYPT_ERROR_POST_RX_PKTS,
+			       frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  return frame->n_vectors;
+}
+
 VLIB_NODE_FN (esp4_encrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 0);
+  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 0,
+			     esp_encrypt_async_next.esp4_post_next);
 }
 
 /* *INDENT-OFF* */
@@ -759,7 +1058,28 @@ VLIB_REGISTER_NODE (esp4_encrypt_node) = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
+    [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * from_frame)
+{
+  return esp_encrypt_post_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
+  .name = "esp4-encrypt-post",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_post_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "esp4-encrypt",
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
 };
 /* *INDENT-ON* */
 
@@ -767,7 +1087,8 @@ VLIB_NODE_FN (esp6_encrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 0);
+  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 0,
+			     esp_encrypt_async_next.esp6_post_next);
 }
 
 /* *INDENT-OFF* */
@@ -785,7 +1106,28 @@ VLIB_REGISTER_NODE (esp6_encrypt_node) = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
+    [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * from_frame)
+{
+  return esp_encrypt_post_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
+  .name = "esp6-encrypt-post",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_post_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "esp6-encrypt",
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
 };
 /* *INDENT-ON* */
 
@@ -793,7 +1135,8 @@ VLIB_NODE_FN (esp4_encrypt_tun_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 1);
+  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 1,
+			     esp_encrypt_async_next.esp4_tun_post_next);
 }
 
 /* *INDENT-OFF* */
@@ -811,7 +1154,27 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
+    [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
+};
+
+VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * from_frame)
+{
+  return esp_encrypt_post_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
+  .name = "esp4-encrypt-tun-post",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_post_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "esp4-encrypt-tun",
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
 };
 
 VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
@@ -840,7 +1203,8 @@ VLIB_NODE_FN (esp6_encrypt_tun_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 1);
+  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 1,
+			     esp_encrypt_async_next.esp6_tun_post_next);
 }
 
 /* *INDENT-OFF* */
@@ -858,6 +1222,7 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
     [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "error-drop",
+    [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
 };
 
@@ -875,6 +1240,26 @@ VNET_FEATURE_INIT (esp4o6_encrypt_tun_feat_node, static) =
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * from_frame)
+{
+  return esp_encrypt_post_inline (vm, node, from_frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
+  .name = "esp6-encrypt-tun-post",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_post_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "esp6-encrypt-tun",
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+};
 /* *INDENT-ON* */
 
 typedef struct
@@ -1005,6 +1390,23 @@ VNET_FEATURE_INIT (esp6_no_crypto_tun_feat_node, static) =
   .arc_name = "ip6-output",
   .node_name = "esp6-no-crypto",
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp_encrypt_pending_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
+{
+  return from_frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp_encrypt_pending_node) = {
+  .name = "esp-encrypt-pending",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_next_nodes = 0
 };
 /* *INDENT-ON* */
 
