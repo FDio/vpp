@@ -620,12 +620,13 @@ ldp_select_init_maps (fd_set * __restrict original,
     if (vlsh == VLS_INVALID_HANDLE)
       clib_bitmap_set_no_check (*libcb, fd, 1);
     else
-      clib_bitmap_set_no_check (*vclb, vlsh_to_session_index (vlsh), 1);
+      *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
   }));
   /* *INDENT-ON* */
 
   si_bits_set = clib_bitmap_last_set (*vclb) + 1;
   *si_bits = (si_bits_set > *si_bits) ? si_bits_set : *si_bits;
+  clib_bitmap_validate (*resultb, *si_bits);
 
   libc_bits_set = clib_bitmap_last_set (*libcb) + 1;
   *libc_bits = (libc_bits_set > *libc_bits) ? libc_bits_set : *libc_bits;
@@ -756,15 +757,15 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	{
 	  if (readfds)
 	    clib_memcpy_fast (ldpw->rd_bitmap, ldpw->si_rd_bitmap,
-			      vec_len (ldpw->rd_bitmap) *
+			      vec_len (ldpw->si_rd_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (writefds)
 	    clib_memcpy_fast (ldpw->wr_bitmap, ldpw->si_wr_bitmap,
-			      vec_len (ldpw->wr_bitmap) *
+			      vec_len (ldpw->si_wr_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (exceptfds)
 	    clib_memcpy_fast (ldpw->ex_bitmap, ldpw->si_ex_bitmap,
-			      vec_len (ldpw->ex_bitmap) *
+			      vec_len (ldpw->si_ex_bitmap) *
 			      sizeof (clib_bitmap_t));
 
 	  rv = vls_select (si_bits, readfds ? ldpw->rd_bitmap : NULL,
