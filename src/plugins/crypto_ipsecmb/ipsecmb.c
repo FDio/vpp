@@ -459,6 +459,10 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       clib_mem_free_s (imbm->key_data[idx]);
     }
 
+  /** TODO: add linked alg support **/
+  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+    return;
+
   kd = imbm->key_data[idx] = clib_mem_alloc_aligned (ad->data_size,
 						     CLIB_CACHE_LINE_BYTES);
 
