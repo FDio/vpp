@@ -286,7 +286,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	  if (PREDICT_FALSE
 	      (ip6_address_is_link_local_unicast (&ip6->dst_address)))
 	    {
-	      ip4_main_t *im = &ip4_main;
+	      ip6_main_t *im = &ip6_main;
 	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
 				   vnet_buffer (b)->sw_if_index[VLIB_RX]);
 	    }
