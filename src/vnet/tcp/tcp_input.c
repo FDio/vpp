@@ -2830,6 +2830,53 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
     }
 }
 
+tcp_input_prefetch_session (vlib_buffer_t * b, u8 thread_index u8 is_ip4)
+{
+  u32 fib_index = vnet_buffer (b)->ip.fib_index;
+  int n_advance_bytes, n_data_bytes;
+  transport_connection_t *tc;
+  tcp_header_t *tcp;
+  u8 result = 0;
+
+  if (is_ip4)
+    {
+      ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      int ip_hdr_bytes = ip4_header_bytes (ip4);
+      tcp = ip4_next_header (ip4);
+      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip4;
+      n_advance_bytes = (ip_hdr_bytes + tcp_header_bytes (tcp));
+      n_data_bytes = clib_net_to_host_u16 (ip4->length) - n_advance_bytes;
+
+      session_prefetch_connection_wt4 (fib_index, &ip4->dst_address,
+                                       &ip4->src_address, tcp->dst_port,
+                                       tcp->src_port,
+                                       TRANSPORT_PROTO_TCP, thread_index);
+    }
+  else
+    {
+      ip6_header_t *ip6 = vlib_buffer_get_current (b);
+      tcp = ip6_next_header (ip6);
+      vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip6;
+      n_advance_bytes = tcp_header_bytes (tcp);
+      n_data_bytes = clib_net_to_host_u16 (ip6->payload_length)
+	- n_advance_bytes;
+      n_advance_bytes += sizeof (ip6[0]);
+      if (PREDICT_FALSE
+          (ip6_address_is_link_local_unicast (&ip6->dst_address)))
+        {
+          ip6_main_t *im = &ip6_main;
+          fib_index = vec_elt (im->fib_index_by_sw_if_index,
+                               vnet_buffer (b)->sw_if_index[VLIB_RX]);
+        }
+
+      session_prefetch_connection_wt6 (fib_index, &ip6->dst_address,
+                                       &ip6->src_address,
+                                       tcp->dst_port, tcp->src_port,
+                                       TRANSPORT_PROTO_TCP,
+                                       thread_index);
+    }
+}
+
 always_inline uword
 tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, int is_ip4, u8 is_nolookup)
@@ -2848,17 +2895,23 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   b = bufs;
   next = nexts;
 
-  while (n_left_from >= 4)
+  while (n_left_from >= 6)
     {
       u32 error0 = TCP_ERROR_NO_LISTENER, error1 = TCP_ERROR_NO_LISTENER;
       tcp_connection_t *tc0, *tc1;
 
       {
-	vlib_prefetch_buffer_header (b[2], STORE);
+	vlib_prefetch_buffer_header (b[4], STORE);
 	CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 
-	vlib_prefetch_buffer_header (b[3], STORE);
+	vlib_prefetch_buffer_header (b[5], STORE);
 	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+
+        if (!is_nolookup)
+          {
+            tcp_input_prefetch_session (b[2], thread_index, is_ip4);
+            tcp_input_prefetch_session (b[3], thread_index, is_ip4);
+          }
       }
 
       next[0] = next[1] = TCP_INPUT_NEXT_DROP;
