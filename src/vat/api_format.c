@@ -762,9 +762,9 @@ increment_v6_address (vl_api_ip6_address_t * i)
 static void
 increment_address (vl_api_address_t * a)
 {
-  if (clib_net_to_host_u32 (a->af) == ADDRESS_IP4)
+  if (a->af == ADDRESS_IP4)
     increment_v4_address (&a->un.ip4);
-  else if (clib_net_to_host_u32 (a->af) == ADDRESS_IP6)
+  else if (a->af == ADDRESS_IP6)
     increment_v6_address (&a->un.ip6);
 }
 
