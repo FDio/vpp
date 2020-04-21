@@ -35,12 +35,10 @@ build option, so all VPP targets should be supported. For example:
     $ make test-debug TEST=test_gbp VPP_EXTRA_CMAKE_ARGS=-DENABLE_SANITIZE_ADDR=ON
     ....
 
-Once VPP has been built with ASan support, you can use it as usual. When
-running under a debugger it can be useful to disable LeakSanitizer which is
-not compatible with a debugger and displays spurious warnings at exit:
-
+Once VPP has been built with ASan support you can use it as usual including
+under gdb:
 .. code-block:: console
 
-    $ ASAN_OPTIONS=detect_leaks=0 gdb --args $PWD/build-root/install-vpp_debug-native/vpp/bin/vpp "unix { interactive }"
+    $ gdb --args $PWD/build-root/install-vpp_debug-native/vpp/bin/vpp "unix { interactive }"
     ....
 
