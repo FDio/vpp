@@ -267,7 +267,6 @@ static inline void BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
       locked_bucket.as_u64 = unlocked_bucket.as_u64 = b->as_u64;
       unlocked_bucket.lock = 0;
       locked_bucket.lock = 1;
-      CLIB_PAUSE ();
     }
   while (__atomic_compare_exchange_n (&b->as_u64, &unlocked_bucket.as_u64,
 				      locked_bucket.as_u64, 1 /* weak */ ,
@@ -278,7 +277,6 @@ static inline void BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
 static inline void BV (clib_bihash_unlock_bucket)
   (BVT (clib_bihash_bucket) * b)
 {
-  CLIB_MEMORY_BARRIER ();
   b->lock = 0;
 }
 
