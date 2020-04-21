@@ -678,12 +678,14 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   if (ret != sizeof (hdr))
     {
       QUIC_ERR ("Not enough space to enqueue header");
+      // TODO dequeue ? Or close the connection
       return QUIC_ERROR_FULL_FIFO;
     }
   ret = svm_fifo_enqueue (f, len, packet->data.base);
   if (ret != len)
     {
       QUIC_ERR ("Not enough space to enqueue payload");
+      // TODO dequeue? or close the connection
       return QUIC_ERROR_FULL_FIFO;
     }
 
@@ -719,15 +721,11 @@ quic_send_packets (quic_ctx_t * ctx)
   if (!conn)
     return 0;
 
-  /* TODO : quicly can assert it can send min_packets up to 2 */
-  if (quic_sendable_packet_count (udp_session) < 2)
-    goto stop_sending;
-
   pa = quic_get_quicly_ctx_from_ctx (ctx)->packet_allocator;
   do
     {
       max_packets = quic_sendable_packet_count (udp_session);
-      if (max_packets < 2)
+      if (max_packets < 16)     // TODO: ensure fifo can have at least 16 pkts
 	break;
       num_packets = max_packets;
       if ((err = quicly_send (conn, packets, &num_packets)))
@@ -747,7 +745,6 @@ quic_send_packets (quic_ctx_t * ctx)
     }
   while (num_packets > 0 && num_packets == max_packets);
 
-stop_sending:
   quic_set_udp_tx_evt (udp_session);
 
   QUIC_DBG (3, "%u[TX] %u[RX]", svm_fifo_max_dequeue (udp_session->tx_fifo),
@@ -1759,7 +1756,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 				     session_t * udp_session,
 				     session_error_t err)
 {
-  QUIC_DBG (2, "QSession is now connected (id %u)",
+  QUIC_DBG (2, "UDP Session is now connected (id %u)",
 	    udp_session->session_index);
   /* This should always be called before quic_connect returns since UDP always
    * connects instantly. */
@@ -1792,8 +1789,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   ctx->c_thread_index = thread_index;
   ctx->c_c_index = ctx_index;
 
-  QUIC_DBG (2, "Quic connect returned %u. New ctx [%u]%x",
-	    is_fail, thread_index, (ctx) ? ctx_index : ~0);
+  QUIC_DBG (2, "New ctx [%u]%x", thread_index, (ctx) ? ctx_index : ~0);
 
   ctx->udp_session_handle = session_handle (udp_session);
   udp_session->opaque = ctx_index;
@@ -2745,6 +2741,9 @@ quic_format_connection_ctx (u8 * s, va_list * args)
 	      quicly_stats.num_packets.received,
 	      quicly_stats.num_packets.lost,
 	      quicly_stats.num_packets.ack_received);
+  s = format (s, "\ncwnd:%u ssthresh:%u stash:%u recovery_end:%lu",
+              quicly_stats.cc.cwnd, quicly_stats.cc.ssthresh,
+              quicly_stats.cc.stash, quicly_stats.cc.recovery_end);
   return s;
 }
 
