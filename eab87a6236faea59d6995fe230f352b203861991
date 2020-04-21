@@ -16,6 +16,24 @@
       "revId": "eab87a6236faea59d6995fe230f352b203861991",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fc13af3c_6a26c125",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 803,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-21T16:27:04Z",
+      "side": 1,
+      "message": "Fair but in this scenario data_offset should be 0, unless the app builds broken dgrams",
+      "parentUuid": "64a126e0_3cc26c12",
+      "revId": "eab87a6236faea59d6995fe230f352b203861991",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
