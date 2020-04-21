@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "64a126e0_3cc26c12",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 803,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-04-21T16:13:12Z",
+      "side": 1,
+      "message": "I think offset should be ctx-\u003ehdr.data_length + sizeof (session_dgram_hdr_t)",
+      "revId": "eab87a6236faea59d6995fe230f352b203861991",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
