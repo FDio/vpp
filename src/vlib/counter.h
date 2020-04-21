@@ -304,6 +304,8 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 
 void vlib_validate_simple_counter (vlib_simple_counter_main_t * cm,
 				   u32 index);
+void vlib_free_simple_counter (vlib_simple_counter_main_t * cm);
+
 /** validate a combined counter
     @param cm - (vlib_combined_counter_main_t *) pointer to the counter
     collection
@@ -312,6 +314,7 @@ void vlib_validate_simple_counter (vlib_simple_counter_main_t * cm,
 
 void vlib_validate_combined_counter (vlib_combined_counter_main_t * cm,
 				     u32 index);
+void vlib_free_combined_counter (vlib_combined_counter_main_t * cm);
 
 /** Obtain the number of simple or combined counters allocated.
     A macro which reduces to to vec_len(cm->maxi), the answer in either
