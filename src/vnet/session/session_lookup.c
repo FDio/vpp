@@ -958,6 +958,24 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
   return 0;
 }
 
+void
+session_prefetch_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
+				 ip4_address_t * rmt, u16 lcl_port,
+				 u16 rmt_port, u8 proto, u32 thread_index)
+{
+  session_table_t *st;
+  session_kv4_t kv4;
+  u64 hash;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+  if (PREDICT_FALSE (!st))
+    return;
+
+  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
+  hash = clib_bihash_hash_16_8 (&kv4);
+  clib_bihash_prefetch_bucket_16_8 (&st->v4_session_hash, hash);
+}
+
 /**
  * Lookup connection with ip4 and transport layer information
  *
@@ -1172,6 +1190,24 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
     return transport_get_listener (proto, s->connection_index);
 
   return 0;
+}
+
+void
+session_prefetch_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
+				 ip6_address_t * rmt, u16 lcl_port,
+				 u16 rmt_port, u8 proto, u32 thread_index)
+{
+  session_table_t *st;
+  session_kv6_t kv6;
+  u64 hash;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
+  if (PREDICT_FALSE (!st))
+    return;
+
+  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
+  hash = clib_bihash_hash_48_8 (&kv6);
+  clib_bihash_prefetch_bucket_48_8 (&st->v6_session_hash, hash);
 }
 
 /**

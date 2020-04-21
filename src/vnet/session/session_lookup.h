@@ -42,6 +42,10 @@ transport_connection_t *session_lookup_connection_wt4 (u32 fib_index,
 						       u16 rmt_port, u8 proto,
 						       u32 thread_index,
 						       u8 * is_filtered);
+void session_prefetch_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
+				      ip4_address_t * rmt, u16 lcl_port,
+				      u16 rmt_port, u8 proto,
+				      u32 thread_index);
 transport_connection_t *session_lookup_connection4 (u32 fib_index,
 						    ip4_address_t * lcl,
 						    ip4_address_t * rmt,
@@ -54,6 +58,10 @@ transport_connection_t *session_lookup_connection_wt6 (u32 fib_index,
 						       u16 rmt_port, u8 proto,
 						       u32 thread_index,
 						       u8 * is_filtered);
+void session_prefetch_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
+				      ip6_address_t * rmt, u16 lcl_port,
+				      u16 rmt_port, u8 proto,
+				      u32 thread_index);
 transport_connection_t *session_lookup_connection6 (u32 fib_index,
 						    ip6_address_t * lcl,
 						    ip6_address_t * rmt,
