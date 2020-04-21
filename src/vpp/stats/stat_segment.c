@@ -148,6 +148,44 @@ vlib_stats_delete_counter (u32 index, void *oldheap)
   e->type = STAT_DIR_TYPE_EMPTY;
 }
 
+/*
+ * Called from main heap
+ */
+void
+vlib_stats_delete_cm (void *cm_arg)
+{
+  vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_directory_entry_t *e;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  /* Not all counters have names / hash-table entries */
+  if (!cm->name && !cm->stat_segment_name)
+    {
+      return;
+    }
+  vlib_stat_segment_lock ();
+
+  /* Lookup hash-table is on the main heap */
+  char *stat_segment_name =
+    cm->stat_segment_name ? cm->stat_segment_name : cm->name;
+  u32 index = lookup_hash_index ((u8 *) stat_segment_name);
+
+  e = &sm->directory_vector[index];
+  hash_unset (sm->directory_vector_by_name, &e->name);
+
+  u64 *offset_vector = stat_segment_pointer (shared_header, e->offset_vector);
+
+  void *oldheap = clib_mem_set_heap (sm->heap);	/* Enter stats segment */
+  vec_free (offset_vector);
+  clib_mem_set_heap (oldheap);	/* Exit stats segment */
+
+  memset (e, 0, sizeof (*e));
+  e->type = STAT_DIR_TYPE_EMPTY;
+
+  vlib_stat_segment_unlock ();
+}
+
 void
 vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
 		     stat_directory_type_t type)
@@ -172,6 +210,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
   /* Lookup hash-table is on the main heap */
   stat_segment_name =
     cm->stat_segment_name ? cm->stat_segment_name : cm->name;
+
   clib_mem_set_heap (oldheap);	/* Exit stats segment */
   u32 vector_index = lookup_hash_index ((u8 *) stat_segment_name);
   /* Back to stats segment */
