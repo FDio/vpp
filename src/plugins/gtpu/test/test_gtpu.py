@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import re
 import socket
+from ipaddress import ip_address
 from util import ip4n_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
@@ -406,6 +408,35 @@ class TestGtpu(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show int"))
         self.logger.info(self.vapi.cli("show gtpu tunnel"))
         self.logger.info(self.vapi.cli("show trace"))
+
+
+class TestGtpuDontLeakDpo(VppTestCase):
+    """ GTPU DPO leak Test Case
+    VPP used to leak DPO's in GTPU tunnels
+    """
+
+    def test_dont_leak_dpo(self):
+        """ DPO don't leak """
+        dpo_usage_before = self.get_dpo_usage()
+        self.add_or_del_many_tunnels(100, is_add=True)
+        self.add_or_del_many_tunnels(100, is_add=False)
+        dpo_usage_after = self.get_dpo_usage()
+
+        self.assertEqual(dpo_usage_before["load-balance"],
+                         dpo_usage_after["load-balance"])
+
+    def get_dpo_usage(self):
+        return dict((m.group(1), int(m.group(2))) for m in
+                    re.finditer("^\\s*(\\S+)\\s+\\d+\\s+(\\d+)",
+                                self.vapi.cli("show dpo memory"), flags=re.M))
+
+    def add_or_del_many_tunnels(self, n, is_add):
+        for i in range(n):
+            src = ip_address("10.0.10.1")
+            dst = ip_address("10.0.{}.2".format(i))
+            self.vapi.gtpu_add_del_tunnel(is_add=is_add,
+                                          src_address=src,
+                                          dst_address=dst)
 
 
 if __name__ == '__main__':

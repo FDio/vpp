@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import re
 import socket
+from ipaddress import ip_address
 from util import ip4_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
@@ -233,6 +235,35 @@ class TestGeneve(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
         self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
         self.logger.info(self.vapi.cli("show geneve tunnel"))
+
+
+class TestGeneveDontLeakDpo(VppTestCase):
+    """ Geneve DPO leak Test Case
+    VPP used to leak DPO's in Geneve tunnels
+    """
+
+    def test_dont_leak_dpo(self):
+        """ DPO don't leak """
+        dpo_usage_before = self.get_dpo_usage()
+        self.add_or_del_many_tunnels(100, is_add=True)
+        self.add_or_del_many_tunnels(100, is_add=False)
+        dpo_usage_after = self.get_dpo_usage()
+
+        self.assertEqual(dpo_usage_before["load-balance"],
+                         dpo_usage_after["load-balance"])
+
+    def get_dpo_usage(self):
+        return dict((m.group(1), int(m.group(2))) for m in
+                    re.finditer("^\\s*(\\S+)\\s+\\d+\\s+(\\d+)",
+                                self.vapi.cli("show dpo memory"), flags=re.M))
+
+    def add_or_del_many_tunnels(self, n, is_add):
+        for i in range(n):
+            src = ip_address("10.0.10.1")
+            dst = ip_address("10.0.{}.2".format(i))
+            self.vapi.geneve_add_del_tunnel(is_add=is_add,
+                                            local_address=src,
+                                            remote_address=dst)
 
 
 if __name__ == '__main__':
