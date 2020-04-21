@@ -91,6 +91,20 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 }
 
 void
+vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
+{
+  int i;
+
+  vlib_stats_delete_cm (cm);
+
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+  for (i = 0; i < vec_len (cm->counters); i++)
+    vec_free (cm->counters[i]);
+  vec_free (cm->counters);
+  clib_mem_set_heap (oldheap);
+}
+
+void
 vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -103,6 +117,20 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 
   vlib_stats_pop_heap (cm, oldheap, index,
 		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+}
+
+void
+vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
+{
+  int i;
+
+  vlib_stats_delete_cm (cm);
+
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+  for (i = 0; i < vec_len (cm->counters); i++)
+    vec_free (cm->counters[i]);
+  vec_free (cm->counters);
+  clib_mem_set_heap (oldheap);
 }
 
 u32

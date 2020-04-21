@@ -57,5 +57,10 @@ void
 vlib_stat_segment_unlock (void)
 {
 }
+void vlib_stats_delete_cm (void *) __attribute__ ((weak));
+void
+vlib_stats_delete_cm (void *notused)
+{
+}
 
 #endif
