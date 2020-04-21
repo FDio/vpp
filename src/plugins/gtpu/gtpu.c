@@ -596,6 +596,7 @@ int vnet_gtpu_add_del_tunnel
 	  mcast_shared_remove (&t->dst);
 	}
 
+      dpo_reset (&t->next_dpo);
       fib_node_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (gtm->tunnels, t);

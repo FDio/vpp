@@ -651,6 +651,7 @@ int vnet_vxlan_gbp_tunnel_add_del
       vnet_delete_hw_interface (vnm, t->hw_if_index);
       hash_unset (vxm->instance_used, t->user_instance);
 
+      dpo_reset (&t->next_dpo);
       fib_node_deinit (&t->node);
       pool_put (vxm->tunnels, t);
     }

@@ -707,6 +707,7 @@ int vnet_vxlan_gpe_add_del_tunnel
 	  mcast_shared_remove (&t->remote);
 	}
 
+      dpo_reset (&t->next_dpo);
       fib_node_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (ngm->tunnels, t);
