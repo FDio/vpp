@@ -201,7 +201,7 @@ picotls_transport_close (tls_ctx_t * ctx)
     }
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   ptls_free (ptls_ctx->tls);
-  session_transport_closed_notify (&ctx->connection);
+  session_transport_closing_notify (&ctx->connection);
   return 0;
 }
 
