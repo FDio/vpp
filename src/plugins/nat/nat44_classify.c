@@ -264,7 +264,7 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 		}
 	      m_key0.port =
 		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
-	      m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
+	      m_key0.protocol = ip_proto_to_nat_proto (ip0->protocol);
 	      kv0.key = m_key0.as_u64;
 	      if (!clib_bihash_search_8_8
 		  (&sm->static_mapping_by_external, &kv0, &value0))
@@ -369,7 +369,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      make_ed_kv (&ip0->src_address, &ip0->dst_address,
 			  ip0->protocol, rx_fib_index0,
 			  vnet_buffer (b0)->ip.reass.l4_src_port,
-			  vnet_buffer (b0)->ip.reass.l4_dst_port, ~0ULL,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, ~0, ~0,
 			  &ed_kv0);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8
