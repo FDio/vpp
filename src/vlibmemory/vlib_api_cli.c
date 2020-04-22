@@ -456,7 +456,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       vlib_cli_output (vm, "Range (%d, %d) outside file range (0, %d)\n",
 		       first_index, last_index, nitems - 1);
       munmap (hp, file_size);
-      CLIB_MEM_POISON (hp, file_size);
       return;
     }
   if (hp->wrapped)
@@ -507,7 +506,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
 	  munmap (hp, file_size);
-	  CLIB_MEM_POISON (hp, file_size);
 	  return;
 	}
       msg += size;
@@ -539,7 +537,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
 	  munmap (hp, file_size);
-	  CLIB_MEM_POISON (hp, file_size);
 	  vec_free (tmpbuf);
 	  am->replay_in_progress = 0;
 	  return;
@@ -563,7 +560,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
-	      CLIB_MEM_POISON (hp, file_size);
 	      vec_free (tmpbuf);
 	      am->replay_in_progress = 0;
 	      return;
@@ -666,7 +662,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     }
 
   munmap (hp, file_size);
-  CLIB_MEM_POISON (hp, file_size);
   vec_free (tmpbuf);
   am->replay_in_progress = 0;
 }

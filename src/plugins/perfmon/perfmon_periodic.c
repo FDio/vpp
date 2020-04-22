@@ -248,8 +248,6 @@ disable_events (perfmon_main_t * pm)
 	  if (munmap (pm->perf_event_pages[i][my_thread_index],
 		      pm->page_size) < 0)
 	    clib_unix_warning ("munmap");
-	  CLIB_MEM_POISON (pm->perf_event_pages[i][my_thread_index],
-			   pm->page_size);
 	  pm->perf_event_pages[i][my_thread_index] = 0;
 	}
 
