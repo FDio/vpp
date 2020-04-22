@@ -362,13 +362,17 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   /* Head overlap */
   if (bts->min_seq == start)
     {
+      /* bts can be freed by bt_fix_overlapped() below */
+      tcp_bts_flags_t bts_flags = bts->flags;
+
       prev_index = bts->prev;
       next = bt_fix_overlapped (bt, bts, end, is_end);
+      /* bts is no longer valid from here */
       next_index = bt_sample_index (bt, next);
 
       cur = tcp_bt_alloc_tx_sample (tc, start, end);
       cur->flags |= TCP_BTS_IS_RXT;
-      if (bts->flags & TCP_BTS_IS_RXT)
+      if (bts_flags & TCP_BTS_IS_RXT)
 	cur->flags |= TCP_BTS_IS_RXT_LOST;
       cur->next = next_index;
       cur->prev = prev_index;
