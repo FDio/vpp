@@ -65,28 +65,6 @@ nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
 }
 
 static_always_inline void
-nat44_sessions_clear ()
-{
-  snat_main_t *sm = &snat_main;
-  snat_main_per_thread_data_t *tsm;
-
-  /* *INDENT-OFF* */
-  vec_foreach (tsm, sm->per_thread_data)
-    {
-      u32 ti;
-
-      nat44_db_free (tsm);
-      nat44_db_init (tsm);
-
-      ti = tsm->snat_thread_index;
-      // clear per thread session counters
-      vlib_set_simple_counter (&sm->total_users, ti, 0, 0);
-      vlib_set_simple_counter (&sm->total_sessions, ti, 0, 0);
-    }
-  /* *INDENT-ON* */
-}
-
-static_always_inline void
 nat44_user_del_sessions (snat_user_t * u, u32 thread_index)
 {
   dlist_elt_t *elt;
