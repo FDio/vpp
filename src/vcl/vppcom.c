@@ -1103,12 +1103,13 @@ vppcom_app_destroy (void)
 
   /* *INDENT-OFF* */
   pool_foreach (wrk, vcm->workers, ({
+    if (pool_elts (vcm->workers) == 1)
+      vl_client_disconnect_from_vlib ();
     vcl_worker_cleanup (wrk, 0 /* notify vpp */ );
   }));
   /* *INDENT-ON* */
 
   vcl_elog_stop (vcm);
-  vl_client_disconnect_from_vlib ();
 
   /*
    * Free the heap and fix vcm
