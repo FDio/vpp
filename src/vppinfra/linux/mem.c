@@ -347,7 +347,7 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
 uword
 clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz)
 {
-  uword off, pagesize = 1 << log2_page_sz;
+  uword off, pagesize = 1ULL << log2_page_sz;
   int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
   u8 *p;
 
