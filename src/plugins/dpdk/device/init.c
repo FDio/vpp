@@ -942,13 +942,18 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Cavium FastlinQ QL41000 Series */
     else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
       ;
-    /* Mellanox mlx4 */
+    /* Mellanox CX3, CX3VF */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1003 && d->device_id <= 0x1004)
       {
         continue;
       }
-    /* Mellanox mlx5 */
+    /* Mellanox CX4, CX4VF, CX4LX, CX4LXVF, CX5, CX5VF, CX5EX, CX5EXVF */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
+      {
+        continue;
+      }
+    /* Mellanox CX6, CX6VF, CX6DX, CX6DXVF */
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x101b && d->device_id <= 0x101e)
       {
         continue;
       }
