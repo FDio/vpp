@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a62948d_0a505927",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 794,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "Which DPDK version? Is it fixed in DPDK master?\nI think it would be better to have a runtime config flag instead to enable the workaround explicitly at interface creation. Or can we compare the value of last_used_idx etc. and if they do not match, display a big warning and do the workaround?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b3cc52a_94754d1f",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1869,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "it looks like there are a lot of code duplication here. Shouldn\u0027t it be better to write vhost_user_vring_format(), vhost_user_vring_desc_format() etc.?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6016a0c7_9f1bcaae",
+        "filename": "src/vnet/devices/virtio/vhost_user.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "any reason for not using CLIB_PACKED() instead?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56e5de3f_2f2c91fb",
+        "filename": "src/vnet/devices/virtio/vhost_user.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "any reason for not using CLIB_PACKED() instead?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a32db07_3f6a62bf",
+        "filename": "src/vnet/devices/virtio/vhost_user_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "Need to update the comment to match the code",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3365fcb8_557b07ac",
+        "filename": "src/vnet/devices/virtio/vhost_user_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "Need to update the comment to match the code",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8e679e7_7905ba54",
+        "filename": "src/vnet/devices/virtio/vhost_user_inline.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "what is the value of adding this compared to calling vhost_user_dequeue_chained_descs() directly?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "61a27454_f1bf997d",
+        "filename": "src/vnet/devices/virtio/vhost_user_input.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1109,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-22T10:24:32Z",
+      "side": 1,
+      "message": "it looks like there are a lot of ducplicated code with the non-packed version: interrupt management etc. - can we merge both function and use constant folding with a \u0027is_packed\u0027 compile-time constant instead?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
