@@ -228,6 +228,7 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%U",
 		   format_bihash_8_8, &sm->static_mapping_by_external,
 		   verbose);
+  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed, verbose);
   vec_foreach_index (i, sm->per_thread_data)
   {
     tsm = vec_elt_at_index (sm->per_thread_data, i);
@@ -236,8 +237,6 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     if (sm->endpoint_dependent)
       {
 	vlib_cli_output (vm, "%U", format_bihash_16_8, &tsm->in2out_ed,
-			 verbose);
-	vlib_cli_output (vm, "%U", format_bihash_16_8, &tsm->out2in_ed,
 			 verbose);
       }
     else

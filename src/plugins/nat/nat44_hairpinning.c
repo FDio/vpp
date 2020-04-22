@@ -128,10 +128,10 @@ snat_hairpinning (snat_main_t * sm,
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
 	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
 		      ip0->protocol, sm->outside_fib_index, udp0->dst_port,
-		      udp0->src_port, ~0ULL, &ed_kv);
-	  rv = clib_bihash_search_16_8 (&sm->per_thread_data[ti].out2in_ed,
-					&ed_kv, &ed_value);
-	  si = ed_value.value;
+		      udp0->src_port, ~0, ~0, &ed_kv);
+	  rv = clib_bihash_search_16_8 (&sm->out2in_ed, &ed_kv, &ed_value);
+	  ASSERT (ti == ed_value_get_thread_index (&ed_value));
+	  si = ed_value_get_session_index (&ed_value);
 	}
       else
 	{
@@ -228,12 +228,12 @@ snat_icmp_hairpinning (snat_main_t * sm,
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
 	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
 		      inner_ip0->protocol, sm->outside_fib_index,
-		      l4_header->src_port, l4_header->dst_port, ~0ULL,
+		      l4_header->src_port, l4_header->dst_port, ~0, ~0,
 		      &ed_kv);
-	  if (clib_bihash_search_16_8
-	      (&sm->per_thread_data[ti].out2in_ed, &ed_kv, &ed_value))
+	  if (clib_bihash_search_16_8 (&sm->out2in_ed, &ed_kv, &ed_value))
 	    return 1;
-	  si = ed_value.value;
+	  ASSERT (ti == ed_value_get_thread_index (&ed_value));
+	  si = ed_value_get_session_index (&ed_value);
 	}
       else
 	{
@@ -389,18 +389,16 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
   snat_static_mapping_t *m;
   ip_csum_t sum;
   snat_session_t *s;
-  snat_main_per_thread_data_t *tsm;
 
   if (sm->num_workers > 1)
     ti = sm->worker_out2in_cb (b, ip, sm->outside_fib_index, 0);
   else
     ti = sm->num_workers;
-  tsm = &sm->per_thread_data[ti];
 
   old_addr = ip->dst_address.as_u32;
   make_ed_kv (&ip->dst_address, &ip->src_address, ip->protocol,
-	      sm->outside_fib_index, 0, 0, ~0ULL, &s_kv);
-  if (clib_bihash_search_16_8 (&tsm->out2in_ed, &s_kv, &s_value))
+	      sm->outside_fib_index, 0, 0, ~0, ~0, &s_kv);
+  if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
     {
       make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
       if (clib_bihash_search_8_8
@@ -414,7 +412,10 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
     }
   else
     {
-      s = pool_elt_at_index (sm->per_thread_data[ti].sessions, s_value.value);
+      ASSERT (ti == ed_value_get_thread_index (&s_value));
+      s =
+	pool_elt_at_index (sm->per_thread_data[ti].sessions,
+			   ed_value_get_session_index (&s_value));
       if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
 	vnet_buffer (b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
       new_addr = ip->dst_address.as_u32 = s->in2out.addr.as_u32;
