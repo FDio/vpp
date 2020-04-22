@@ -338,7 +338,6 @@ always_inline void
 clib_mem_vm_free (void *addr, uword size)
 {
   munmap (addr, size);
-  CLIB_MEM_POISON (addr, size);
 }
 
 always_inline void *
