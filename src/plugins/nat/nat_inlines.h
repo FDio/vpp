@@ -474,13 +474,39 @@ nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
 
 always_inline void
 make_ed_kv (ip4_address_t * l_addr, ip4_address_t * r_addr, u8 proto,
-	    u32 fib_index, u16 l_port, u16 r_port, u64 value,
-	    clib_bihash_kv_16_8_t * kv)
+	    u32 fib_index, u16 l_port, u16 r_port, u32 thread_index,
+	    u32 session_index, clib_bihash_kv_16_8_t * kv)
 {
   kv->key[0] = (u64) r_addr->as_u32 << 32 | l_addr->as_u32;
   kv->key[1] =
     (u64) r_port << 48 | (u64) l_port << 32 | fib_index << 8 | proto;
-  kv->value = value;
+  kv->value = (u64) thread_index << 32 | session_index;
+}
+
+always_inline u32
+ed_value_get_thread_index (clib_bihash_kv_16_8_t * value)
+{
+  return value->value >> 32;
+}
+
+always_inline u32
+ed_value_get_session_index (clib_bihash_kv_16_8_t * value)
+{
+  return value->value & ~(u32) 0;
+}
+
+always_inline void
+split_ed_value (clib_bihash_kv_16_8_t * value, u32 * thread_index,
+		u32 * session_index)
+{
+  if (thread_index)
+    {
+      *thread_index = ed_value_get_thread_index (value);
+    }
+  if (session_index)
+    {
+      *session_index = ed_value_get_session_index (value);
+    }
 }
 
 always_inline void
@@ -526,8 +552,8 @@ make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
 
 static_always_inline int
 get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u64 value, u8 * snat_proto, u16 * l_port, u16 * r_port,
-		     clib_bihash_kv_16_8_t * kv)
+		     u32 thread_index, u32 session_index, u8 * snat_proto,
+		     u16 * l_port, u16 * r_port, clib_bihash_kv_16_8_t * kv)
 {
   u8 proto;
   u16 _l_port, _r_port;
@@ -575,8 +601,8 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
 	  return NAT_IN2OUT_ED_ERROR_UNSUPPORTED_PROTOCOL;
 	}
     }
-  make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port, value,
-	      kv);
+  make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port,
+	      thread_index, session_index, kv);
   if (snat_proto)
     {
       *snat_proto = ip_proto_to_snat_proto (proto);
@@ -595,8 +621,8 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
 
 static_always_inline int
 get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u64 value, u8 * snat_proto, u16 * l_port, u16 * r_port,
-		     clib_bihash_kv_16_8_t * kv)
+		     u32 thread_index, u32 session_index, u8 * snat_proto,
+		     u16 * l_port, u16 * r_port, clib_bihash_kv_16_8_t * kv)
 {
   icmp46_header_t *icmp0;
   u8 proto;
@@ -643,8 +669,8 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
 	  return -1;
 	}
     }
-  make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port, value,
-	      kv);
+  make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port,
+	      thread_index, session_index, kv);
   if (snat_proto)
     {
       *snat_proto = ip_proto_to_snat_proto (proto);
