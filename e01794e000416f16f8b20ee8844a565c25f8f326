@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "a42731a3_351cc76d",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "Yes, it is required for ipv4-in-ipv4 and/or ipv6-in-ipv4.\n\nI am not benchmarking GSO at the moment. We need to add GSO benchmarking in CSIT. \nOn my local machine, I can\u0027t observe significant performance drop as cost of few instructions amortize over 64KB packets. In fact, I ran three run of each 100 secs with and without this patch. And I get slightly better performance on average than without this patch.",
+      "parentUuid": "0439a3dd_ed8910e2",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b35bd9e2_7d14f0ba",
         "filename": "src/vnet/gso/gho.h",
         "patchSetId": 23
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-20T13:10:20Z",
       "side": 1,
       "message": "As we discussed - since this is \"generic header offset parser\" - worth renaming the file into \"hdr_offset_parser.h\" or something like that, and maybe add some blurb of text to talk about it (assuming we want it to ever be used outside gso). if not then only the first part applies about renaming the file into something obvious :) \n\nGSO and GHO clash in my head :) for the short form in constants \"GHO\" is probably unique enough, given the context, but not for the file name..",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6276c9bd_615ded2a",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b35bd9e2_7d14f0ba",
       "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1a852556_7573dd26",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d0012388_4b3e9dc5",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7137ef03_fca8ef08",
         "filename": "src/vnet/gso/gho.h",
         "patchSetId": 23
@@ -64,6 +118,24 @@
       "writtenOn": "2020-04-20T13:10:20Z",
       "side": 1,
       "message": "How will the lack of support for the EH traversal manifest itself to the user ? Seems like with this code it will just cause weird failures... Maybe useful to do a check and at least to increment a counter in the stats somewhere... Also, how will the fragmented packets be dealt with ?",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a4af1a9_9c1590a5",
+        "filename": "src/vnet/gso/gho.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "The comment is here historically when I have copied the function from its previous location gso.h.\nBut the idea is great. I\u0027ll add it in separate patch.\n\nFragment packets are handled as far as I know.\nIn make test GSO, I do have test cases where we fragment the packet instead of segment based on MTU and gso size comparisons.",
+      "parentUuid": "7137ef03_fca8ef08",
       "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "74332c7c_2e30dd63",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "It is for debugging purposes in tracing. It won\u0027t impact the regular traffic unless you enable tracing for it which users only enable for debugging.",
+      "parentUuid": "906ead93_834d9023",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e61aa754_7adc1cb8",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 23
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "f1284826_1abbb352",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "Same as above. For debugging purposes when tracing is enabled.",
+      "parentUuid": "e61aa754_7adc1cb8",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b490aaa9_d9d6f2a0",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 23
@@ -115,6 +223,24 @@
       "writtenOn": "2020-04-20T13:10:20Z",
       "side": 1,
       "message": "Now, probably here might be a place to have the \"if buffer if being traced then copy the gho from the local variable to t0-\u003egho\" ?\n\nthis way you will (for free) actually get a bit of an execution trace - only the packets that are about to be segmented will have the offsets shown...\n\nit\u0027s one more conditional though..",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "518c4a5d_6dfa382a",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 595,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "N/A",
+      "parentUuid": "b490aaa9_d9d6f2a0",
       "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -156,6 +282,42 @@
     },
     {
       "key": {
+        "uuid": "55bc35c6_0b32e118",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "It would be acceptable. But I\u0027ll leave it for future when we will add tso-tunnel support for hardware interfaces in dpdk-plugin.",
+      "parentUuid": "5e1897c5_f3fc6edb",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "956f03d1_d24a07a2",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "I am removing these. It is not used within GSO node. I have added these flags for physical interfaces.",
+      "parentUuid": "f895aab4_88f8c7f2",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "13dd6055_9beb877e",
         "filename": "src/vnet/interface_output.h",
         "patchSetId": 23
@@ -167,6 +329,24 @@
       "writtenOn": "2020-04-20T13:10:20Z",
       "side": 1,
       "message": "Would an ASSERT(gho.gho_flags ^ (GHO_F_IP4|GHO_F_IP6)) or something along the lines be of use here ?",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "356ce4f6_34fb2617",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:10:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "13dd6055_9beb877e",
       "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
