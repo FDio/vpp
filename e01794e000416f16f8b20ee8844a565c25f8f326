@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "e5b9fa53_7bf21ec8",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:47:07Z",
+      "side": 1,
+      "message": "\u003e Yes, it is required for ipv4-in-ipv4 and/or ipv6-in-ipv4.\ns/ipv4-in-ipv4/ipv4-in-ipv6",
+      "parentUuid": "a42731a3_351cc76d",
+      "revId": "e01794e000416f16f8b20ee8844a565c25f8f326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b35bd9e2_7d14f0ba",
         "filename": "src/vnet/gso/gho.h",
         "patchSetId": 23
