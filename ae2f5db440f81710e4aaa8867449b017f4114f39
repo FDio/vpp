@@ -16,6 +16,24 @@
       "revId": "ae2f5db440f81710e4aaa8867449b017f4114f39",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f9fa21c_018b7971",
+        "filename": "src/vnet/gso/gso.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-22T14:58:30Z",
+      "side": 1,
+      "message": "I removed the headers from gso.h which includes ethernet.h\nWe need ethernet.h as it is required by this file at line number 29, 31, 35, etc",
+      "parentUuid": "9f51e1a5_ae4ac4a6",
+      "revId": "ae2f5db440f81710e4aaa8867449b017f4114f39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
