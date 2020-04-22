@@ -315,6 +315,7 @@ typedef struct
   u8 *key;
   lisp_key_type_t key_id;
   u8 timer_set;
+  u32 timer_handle;
   counter_t packets;
 } mapping_t;
 

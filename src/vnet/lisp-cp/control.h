@@ -20,6 +20,7 @@
 #include <vnet/lisp-cp/gid_dictionary.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vppinfra/timing_wheel.h>
+#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 #define NUMBER_OF_RETRIES                   1
 #define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */
@@ -266,7 +267,7 @@ typedef struct
   u8 rloc_probing;
 
   /* timing wheel for mapping timeouts */
-  timing_wheel_t wheel;
+    TWT (tw_timer_wheel) wheel;
 
   /** Per thread pool of records shared with thread0 */
   map_records_arg_t **map_records_args_pool;
