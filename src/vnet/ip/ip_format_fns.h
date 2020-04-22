@@ -64,7 +64,7 @@ format_vl_api_address_t (u8 * s, va_list * args)
   vl_api_address_t *a = va_arg (*args, vl_api_address_t *);
   u32 indent __attribute__((unused)) = va_arg (*args, u32);
 
-  switch (clib_host_to_net_u32 (a->af))  {
+  switch (a->af)  {
   case ADDRESS_IP4:
     return format(s, "%U", format_ip4_address, &a->un.ip4);
   case ADDRESS_IP6:
