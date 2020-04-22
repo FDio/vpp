@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "06cc7953_c5c99a05",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-04-22T08:34:40Z",
+      "side": 1,
+      "message": "Why the check against mss? Wouldn\u0027t we want to be able to send several mss-sized datagrams? (And should the app always set a data_length \u003c\u003d mss?)",
+      "revId": "6560e7e096c135b65259f178b85b8415797dc72e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
