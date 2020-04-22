@@ -1238,12 +1238,6 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
   vec_free (a.eids_to_be_deleted);
 }
 
-static void
-mapping_delete_timer (lisp_cp_main_t * lcm, u32 mi)
-{
-  timing_wheel_delete (&lcm->wheel, mi);
-}
-
 static int
 is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
 {
@@ -1409,7 +1403,7 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
 
   /* delete timer associated to the mapping if any */
   if (old_map->timer_set)
-    mapping_delete_timer (lcm, mi);
+    TW (tw_timer_stop) (&lcm->wheel, old_map->timer_handle);
 
   /* delete locator set */
   vnet_lisp_add_del_locator_set (ls_args, 0);
@@ -3777,8 +3771,8 @@ remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
   if (vnet_lisp_add_del_adjacency (adj_args))
     clib_warning ("failed to del adjacency!");
 
+  TW (tw_timer_stop) (&lcm->wheel, m->timer_handle);
   vnet_lisp_del_mapping (&m->eid, NULL);
-  mapping_delete_timer (lcm, mi);
 }
 
 static void
@@ -3793,7 +3787,7 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
   m = pool_elt_at_index (lcm->mapping_pool, mi);
 
   m->timer_set = 1;
-  timing_wheel_insert (&lcm->wheel, exp_clock_time, mi);
+  m->timer_handle = TW (tw_timer_start) (&lcm->wheel, mi, 0, exp_clock_time);
 }
 
 static void
@@ -4546,8 +4540,9 @@ lisp_cp_init (vlib_main_t * vm)
   hash_set (lcm->table_id_by_vni, 0, 0);
   hash_set (lcm->vni_by_table_id, 0, 0);
 
-  u64 now = clib_cpu_time_now ();
-  timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
+  TW (tw_timer_wheel_init) (&lcm->wheel, 0 /* no callback */ ,
+			    1e-3 /* timer period 1ms */ ,
+			    ~0 /* max expirations per call */ );
   lcm->nsh_map_index = ~0;
   lcm->map_register_ttl = MAP_REGISTER_DEFAULT_TTL;
   lcm->max_expired_map_registers = MAX_EXPIRED_MAP_REGISTERS_DEFAULT;
@@ -4869,9 +4864,8 @@ send_map_resolver_service (vlib_main_t * vm,
       update_map_register (lcm, period);
       update_rloc_probing (lcm, period);
 
-      u64 now = clib_cpu_time_now ();
-
-      expired = timing_wheel_advance (&lcm->wheel, now, expired, 0);
+      expired = TW (tw_timer_expire_timers_vec) (&lcm->wheel,
+						 vlib_time_now (vm), expired);
       if (vec_len (expired) > 0)
 	{
 	  u32 *mi = 0;
