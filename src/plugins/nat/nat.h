@@ -472,7 +472,6 @@ typedef struct
   clib_bihash_8_8_t in2out;
 
   /* Endpoint dependent sessions lookup tables */
-  clib_bihash_16_8_t out2in_ed;
   clib_bihash_16_8_t in2out_ed;
 
   /* Find-a-user => src address lookup */
@@ -557,6 +556,9 @@ typedef struct snat_main_s
 
   /* Static mapping pool */
   snat_static_mapping_t *static_mappings;
+
+  /* Endpoint-dependent out2in mappings */
+  clib_bihash_16_8_t out2in_ed;
 
   /* Interface pool */
   snat_interface_t *interfaces;
