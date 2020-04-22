@@ -34,6 +34,24 @@
       "revId": "6560e7e096c135b65259f178b85b8415797dc72e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a1b6ce4_d65649db",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-04-22T14:39:49Z",
+      "side": 1,
+      "message": "That\u0027s making sure we don\u0027t need to do any segmentation of the datagram. If the mss is smaller than the dgram size, we need to segment the data. \n\nThis is a \"gso like\" segmentation that we can do at the cost of losing original datagram integrity. Apps using udp should probably avoid it unless they have some other means, e.g., parsing the data for higher level headers, of detecting loss.",
+      "parentUuid": "02aef6a6_32f2ffe9",
+      "revId": "6560e7e096c135b65259f178b85b8415797dc72e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
