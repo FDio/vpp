@@ -261,7 +261,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      make_ed_kv (&ip0->src_address, &ip0->dst_address,
 			  ip0->protocol, rx_fib_index0,
 			  vnet_buffer (b0)->ip.reass.l4_src_port,
-			  vnet_buffer (b0)->ip.reass.l4_dst_port, ~0ULL,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, ~0, ~0,
 			  &ed_kv0);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8
