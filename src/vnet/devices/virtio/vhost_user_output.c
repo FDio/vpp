@@ -237,7 +237,11 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 			      virtio_net_hdr_t * hdr)
 {
   generic_header_offset_t gho = { 0 };
-  vnet_generic_header_offset_parser (b, &gho);
+  int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  int is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
+
+  ASSERT (!(is_ip4 && is_ip6));
+  vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4, is_ip6);
   if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
     {
       ip4_header_t *ip4;
@@ -272,13 +276,13 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
     {
       if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
 	{
-	  if ((b->flags & VNET_BUFFER_F_IS_IP4) &&
+	  if (is_ip4 &&
 	      (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO4)))
 	    {
 	      hdr->gso_size = vnet_buffer2 (b)->gso_size;
 	      hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
 	    }
-	  else if ((b->flags & VNET_BUFFER_F_IS_IP6) &&
+	  else if (is_ip6 &&
 		   (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO6)))
 	    {
 	      hdr->gso_size = vnet_buffer2 (b)->gso_size;
