@@ -300,33 +300,42 @@ vnet_generic_inner_header_parser_inline (vlib_buffer_t * b0,
 
 static_always_inline void
 vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
-					 generic_header_offset_t * gho)
+					 generic_header_offset_t * gho,
+					 int is_l2, int is_ip4, int is_ip6)
 {
   u8 l4_proto = 0;
   u8 l4_hdr_sz = 0;
+  u16 ethertype = 0;
+  u16 l2hdr_sz = 0;
 
-  ethernet_header_t *eh = (ethernet_header_t *) vlib_buffer_get_current (b0);
-  u16 ethertype = clib_net_to_host_u16 (eh->type);
-  u16 l2hdr_sz = sizeof (ethernet_header_t);
-
-  if (ethernet_frame_is_tagged (ethertype))
+  if (is_l2)
     {
-      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+      ethernet_header_t *eh =
+	(ethernet_header_t *) vlib_buffer_get_current (b0);
+      ethertype = clib_net_to_host_u16 (eh->type);
+      l2hdr_sz = sizeof (ethernet_header_t);
 
-      ethertype = clib_net_to_host_u16 (vlan->type);
-      l2hdr_sz += sizeof (*vlan);
-      if (ethertype == ETHERNET_TYPE_VLAN)
+      if (ethernet_frame_is_tagged (ethertype))
 	{
-	  vlan++;
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
 	  ethertype = clib_net_to_host_u16 (vlan->type);
 	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
 	}
     }
+  else
+    l2hdr_sz = vnet_buffer (b0)->ip.save_rewrite_length;
 
   gho->l2_hdr_offset = b0->current_data;
   gho->l3_hdr_offset = l2hdr_sz;
 
-  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+  if (PREDICT_TRUE (is_ip4))
     {
       ip4_header_t *ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
@@ -334,7 +343,7 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
       l4_proto = ip4->protocol;
       gho->gho_flags |= GHO_F_IP4;
     }
-  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+  else if (PREDICT_TRUE (is_ip6))
     {
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
@@ -387,9 +396,10 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
 
 static_always_inline void
 vnet_generic_header_offset_parser (vlib_buffer_t * b0,
-				   generic_header_offset_t * gho)
+				   generic_header_offset_t * gho, int is_l2,
+				   int is_ip4, int is_ip6)
 {
-  vnet_generic_outer_header_parser_inline (b0, gho);
+  vnet_generic_outer_header_parser_inline (b0, gho, is_l2, is_ip4, is_ip6);
 
   if (gho->gho_flags & GHO_F_TUNNEL)
     {
