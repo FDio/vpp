@@ -330,8 +330,9 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   bihash_key.k.src_address = s->out2in.addr.as_u32;
   bihash_key.k.src_port = s->out2in.port;
   bihash_key.k.protocol = s->out2in.protocol;
-  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
-			    0 /* is_add */ );
+  if (sm->ed_ext_ports.instantiated)
+    clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+			      0 /* is_add */ );
 
   snat_free_outside_address_and_port (sm->addresses, thread_index,
 				      &s->out2in);
@@ -465,8 +466,9 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
   bihash_key.k.src_address = s->out2in.addr.as_u32;
   bihash_key.k.src_port = s->out2in.port;
   bihash_key.k.protocol = s->out2in.protocol;
-  clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
-			    0 /* is_add */ );
+  if (sm->ed_ext_ports.instantiated)
+    clib_bihash_add_del_16_8 (&sm->ed_ext_ports, &bihash_key.kv,
+			      0 /* is_add */ );
 
   // should be called for every dynamic session
   snat_free_outside_address_and_port (sm->addresses, thread_index,

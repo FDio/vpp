@@ -568,6 +568,9 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	BV (clib_bihash_instantiate) (h);
       BV (clib_bihash_alloc_unlock) (h);
     }
+#else
+  /* Debug image: make sure the table has been instantiated */
+  ASSERT (h->instantiated != 0);
 #endif
 
   b = BV (clib_bihash_get_bucket) (h, hash);
