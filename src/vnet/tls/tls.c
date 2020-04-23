@@ -521,6 +521,11 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
     return;
 
   ctx = tls_ctx_get (s->opaque);
+
+  session_t *as = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
+  clib_warning ("%u has app session %u (%u) state %u", ctx->c_s_index, !ctx->no_app_session,
+                as != 0, as ? as->session_state : 20);
+
   if (!ctx->no_app_session)
     session_transport_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
@@ -783,10 +788,19 @@ format_tls_ctx_state (u8 * s, va_list * args)
   ts = session_get_from_handle (ctx->app_session_handle);
   if (ts->session_state == SESSION_STATE_LISTENING)
     s = format (s, "%s", "LISTEN");
-  else if (tls_ctx_handshake_is_over (ctx))
-    s = format (s, "%s", "ESTABLISHED");
   else
-    s = format (s, "%s", "HANDSHAKE");
+    {
+      if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	s = format (s, "%s", "CLOSED");
+      else if (ts->session_state == SESSION_STATE_APP_CLOSED)
+	s = format (s, "%s", "APP-CLOSED");
+      else if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	s = format (s, "%s", "CLOSING");
+      else if (tls_ctx_handshake_is_over (ctx))
+	s = format (s, "%s", "ESTABLISHED");
+      else
+	s = format (s, "%s", "HANDSHAKE");
+    }
 
   return s;
 }

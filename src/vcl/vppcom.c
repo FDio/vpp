@@ -2366,7 +2366,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   u32 sid, minbits = clib_max (n_bits, BITS (uword)), bits_set = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
-  int i;
+  int rv, i;
 
   if (n_bits && read_map)
     {
@@ -2400,15 +2400,22 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   clib_bitmap_foreach (sid, wrk->wr_bitmap, ({
     if (!(session = vcl_session_get (wrk, sid)))
       {
-        if (except_map && sid < minbits)
-          clib_bitmap_set_no_check (except_map, sid, 1);
-        continue;
+//        if (except_map && sid < minbits)
+//          clib_bitmap_set_no_check (except_map, sid, 1);
+//        continue;
+	return VPPCOM_EBADFD;
       }
-
-    if (vcl_session_write_ready (session) > 0)
+    rv = vcl_session_write_ready (session);
+    if (rv > 0)
       {
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
+      }
+    else if (rv < 0)
+      {
+//	if (except_map && sid < minbits)
+//        clib_bitmap_set_no_check (except_map, sid, 1);
+	return VPPCOM_EBADFD;
       }
     else
       svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -2421,16 +2428,31 @@ check_rd:
   clib_bitmap_foreach (sid, wrk->rd_bitmap, ({
     if (!(session = vcl_session_get (wrk, sid)))
       {
-        if (except_map && sid < minbits)
-          clib_bitmap_set_no_check (except_map, sid, 1);
-        continue;
+//        if (except_map && sid < minbits)
+//          clib_bitmap_set_no_check (except_map, sid, 1);
+//        continue;
+	return VPPCOM_EBADFD;
       }
 
-    if (vcl_session_read_ready (session) > 0)
+    rv = vcl_session_read_ready (session);
+    if (rv > 0)
       {
         clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
         bits_set++;
       }
+    else if (rv < 0)
+      {
+//	if (except_map && sid < minbits)
+//	  clib_bitmap_set_no_check (except_map, sid, 1);
+	return VPPCOM_EBADFD;
+      }
+
+//    if (rv == 0 && ((session->session_state & STATE_VPP_CLOSING)
+//	|| session->session_state == STATE_CLOSED))
+//      {
+//	clib_warning ("HAPPENS");
+//	return VPPCOM_EBADFD;
+//      }
   }));
   /* *INDENT-ON* */
 
