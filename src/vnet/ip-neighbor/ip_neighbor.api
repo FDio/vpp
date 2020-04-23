@@ -163,6 +163,22 @@ autoreply define ip_neighbor_replace_end
   u32 context;
 };
 
+/** \brief IP neighbor flush request - removes *all* neighbours.
+     dynamic and static from API/CLI and dynamic from data-plane.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param af - Flush neighbours of this address family
+    @param sw_if_index - Flush on this interface (~0 => all interfaces)
+*/
+autoreply define ip_neighbor_flush
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+};
+
 /** \brief Register for IP4 ARP resolution event on receiving ARP reply or
            MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender
