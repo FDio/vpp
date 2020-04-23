@@ -40,6 +40,10 @@
 
 #include <vppinfra/config.h>
 
+#ifdef  __x86_64__
+#include <x86intrin.h>
+#endif
+
 /* Standalone means to not assume we are running on a Unix box. */
 #if ! defined (CLIB_STANDALONE) && ! defined (CLIB_LINUX_KERNEL)
 #define CLIB_UNIX
@@ -291,6 +295,15 @@ always_inline f64
 flt_round_to_multiple (f64 x, f64 f)
 {
   return f * flt_round_nearest (x / f);
+}
+
+always_inline uword
+extract_bits (uword x, int start, int count)
+{
+#ifdef __BMI__
+  return _bextr_u64 (x, start, count);
+#endif
+  return (x >> start) & pow2_mask (count);
 }
 
 #define clib_max(x,y)				\
