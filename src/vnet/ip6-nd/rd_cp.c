@@ -428,7 +428,7 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
                 u32 sw_if_index = slaac_address->sw_if_index;
                 remove_slaac_address (vm, slaac_address);
                 /* make sure ip6 stays enabled */
-                ip6_link_enable (sw_if_index);
+                ip6_link_enable (sw_if_index, NULL);
               }
           }));
           pool_foreach_index (index, rm->default_route_pool,
@@ -504,7 +504,7 @@ rd_cp_set_address_autoconfig (u32 sw_if_index,
   if_config = &rm->config_by_sw_if_index[sw_if_index];
 
   if (!if_config->enabled && enable)
-    ip6_link_enable (sw_if_index);
+    ip6_link_enable (sw_if_index, NULL);
 
   if ((!if_config->enabled && enable)
       || (!if_config->install_default_routes && install_default_routes))

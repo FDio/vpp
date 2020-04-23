@@ -320,7 +320,7 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 	{
 	  int rv;
 
-	  rv = ip6_set_link_local_address (sw_if_index, address);
+	  rv = ip6_link_set_local_address (sw_if_index, address);
 
 	  if (rv)
 	    {
@@ -342,6 +342,8 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 	      return clib_error_create ("address not found");
 	    }
 	}
+
+      return (NULL);
     }
 
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
@@ -479,7 +481,7 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 
   ip6_sw_interface_enable_disable (sw_if_index, !is_del);
   if (!is_del)
-    ip6_link_enable (sw_if_index);
+    ip6_link_enable (sw_if_index, NULL);
 
   /* intf addr routes are added/deleted on admin up/down */
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))
