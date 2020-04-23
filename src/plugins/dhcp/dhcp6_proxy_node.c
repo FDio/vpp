@@ -595,6 +595,8 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       u32 sw_if_index = ~0;
       u32 original_sw_if_index = ~0;
       vnet_sw_interface_t *si0;
+      u32 inner_vlan = (u32) ~ 0;
+      u32 outer_vlan = (u32) ~ 0;
       u32 error0 = (u32) ~ 0;
       vnet_sw_interface_t *swif;
       dhcpv6_option_t *r0 = 0, *o;
@@ -765,7 +767,19 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       vlib_buffer_advance (b0, -(sizeof (ethernet_header_t)));
       si0 = vnet_get_sw_interface (vnm, original_sw_if_index);
       if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
-	vlib_buffer_advance (b0, -4 /* space for VLAN tag */ );
+	{
+	  if (si0->sub.eth.flags.one_tag == 1)
+	    {
+	      vlib_buffer_advance (b0, -4 /* space for 1 VLAN tag */ );
+	      outer_vlan = (si0->sub.eth.outer_vlan_id << 16) | 0x86dd;
+	    }
+	  else if (si0->sub.eth.flags.two_tags == 1)
+	    {
+	      vlib_buffer_advance (b0, -8 /* space for 2 VLAN tag */ );
+	      outer_vlan = (si0->sub.eth.outer_vlan_id << 16) | 0x8100;
+	      inner_vlan = (si0->sub.eth.inner_vlan_id << 16) | 0x86dd;
+	    }
+	}
 
       mac0 = vlib_buffer_get_current (b0);
 
@@ -773,15 +787,22 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
       clib_memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
       clib_memset (&mac0->dst_address, 0xff, sizeof (mac0->dst_address));
-      mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
-	clib_net_to_host_u16 (0x8100) : clib_net_to_host_u16 (0x86dd);
 
-      if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
+      if (si0->type == VNET_SW_INTERFACE_TYPE_SUB && outer_vlan != (u32) ~ 0)
 	{
+	  mac0->type = (si0->sub.eth.flags.dot1ad == 1) ?
+	    clib_net_to_host_u16 (0x88a8) : clib_net_to_host_u16 (0x8100);
 	  u32 *vlan_tag = (u32 *) (mac0 + 1);
-	  u32 tmp;
-	  tmp = (si0->sub.id << 16) | 0x0800;
-	  *vlan_tag = clib_host_to_net_u32 (tmp);
+	  *vlan_tag = clib_host_to_net_u32 (outer_vlan);
+	  if (inner_vlan != (u32) ~ 0)
+	    {
+	      u32 *inner_vlan_tag = (u32 *) (vlan_tag + 1);
+	      *inner_vlan_tag = clib_host_to_net_u32 (inner_vlan);
+	    }
+	}
+      else
+	{
+	  mac0->type = clib_net_to_host_u16 (0x86dd);
 	}
 
       /* $$$ consider adding a dynamic next to the graph node, for performance */
