@@ -5,9 +5,11 @@ features:
   - Basic GSO support
   - GSO for VLAN tagged packets
   - GSO for VXLAN tunnel
+  - GSO for IP-IP tunnel
+  - GSO for IPSec tunnel  
   - Provide inline function to get header offsets
 description: "Generic Segmentation Offload"
 missing:
-  - Thorough Testing, IPIP, GRE, Geneve, IPSec
+  - Thorough Testing, GRE, Geneve
 state: experimental
 properties: [API, CLI]
