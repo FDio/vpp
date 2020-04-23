@@ -111,7 +111,7 @@ static void
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = ((mp->enable == 1) ?
-	ip6_link_enable (ntohl (mp->sw_if_index)) :
+	ip6_link_enable (ntohl (mp->sw_if_index), NULL) :
 	ip6_link_disable (ntohl (mp->sw_if_index)));
 
   BAD_SW_IF_INDEX_LABEL;
@@ -1262,7 +1262,7 @@ static void
 
   ip6_address_decode (mp->ip, &ip);
 
-  rv = ip6_set_link_local_address (ntohl (mp->sw_if_index), &ip);
+  rv = ip6_link_set_local_address (ntohl (mp->sw_if_index), &ip);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY);

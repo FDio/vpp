@@ -25,7 +25,8 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, FibPathProto, \
-    VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
+    VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump, \
+    VppIp6LinkLocalAddress
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
@@ -2442,7 +2443,6 @@ class TestIPReplace(VppTestCase):
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip6()
-            i.resolve_arp()
             i.generate_remote_hosts(2)
             self.tables.append(VppIpTable(self, table_id,
                                           True).add_vpp_config())
@@ -2452,7 +2452,7 @@ class TestIPReplace(VppTestCase):
         super(TestIPReplace, self).tearDown()
         for i in self.pg_interfaces:
             i.admin_down()
-            i.unconfig_ip4()
+            i.unconfig_ip6()
 
     def test_replace(self):
         """ IP Table Replace """
@@ -2719,6 +2719,94 @@ class TestIP6Replace(VppTestCase):
             self.assertEqual(self.get_n_pfxs(intf), 1)
         for pfx in pfxs:
             self.assertTrue(pfx.query_vpp_config())
+
+
+class TestIP6LinkLocal(VppTestCase):
+    """ IPv6 Link Local """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6LinkLocal, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6LinkLocal, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIP6LinkLocal, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+    def tearDown(self):
+        super(TestIP6LinkLocal, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+
+    def test_ip6_ll(self):
+        """ IPv6 Link Local """
+
+        #
+        # two APIs to add a link local address.
+        #   1 - just like any other prefix
+        #   2 - with the special set LL API
+        #
+
+        #
+        # First with the API to set a 'normal' prefix
+        #
+        ll1 = "fe80:1::1"
+        ll2 = "fe80:2::2"
+        ll3 = "fe80:3::3"
+
+        VppIpInterfaceAddress(self, self.pg0, ll1, 128).add_vpp_config()
+
+        #
+        # should be able to ping the ll
+        #
+        p_echo_request_1 = (Ether(src=self.pg0.remote_mac,
+                                  dst=self.pg0.local_mac) /
+                            IPv6(src=ll2,
+                                 dst=ll1) /
+                            ICMPv6EchoRequest())
+
+        self.send_and_expect(self.pg0, [p_echo_request_1], self.pg0)
+
+        #
+        # change the link-local on pg0
+        #
+        v_ll3 = VppIpInterfaceAddress(self, self.pg0,
+                                      ll3, 128).add_vpp_config()
+
+        p_echo_request_3 = (Ether(src=self.pg0.remote_mac,
+                                  dst=self.pg0.local_mac) /
+                            IPv6(src=ll2,
+                                 dst=ll3) /
+                            ICMPv6EchoRequest())
+
+        self.send_and_expect(self.pg0, [p_echo_request_3], self.pg0)
+
+        #
+        # set a normal v6 prefix on the link
+        #
+        self.pg0.config_ip6()
+
+        self.send_and_expect(self.pg0, [p_echo_request_3], self.pg0)
+
+        # the link-local cannot be removed
+        with self.vapi.assert_negative_api_retval():
+            v_ll3.remove_vpp_config()
+
+        #
+        # Use the specific link-local API on pg1
+        #
+        VppIp6LinkLocalAddress(self, self.pg1, ll1).add_vpp_config()
+        self.send_and_expect(self.pg1, [p_echo_request_1], self.pg1)
+
+        VppIp6LinkLocalAddress(self, self.pg1, ll3).add_vpp_config()
+        self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
 
 
 if __name__ == '__main__':

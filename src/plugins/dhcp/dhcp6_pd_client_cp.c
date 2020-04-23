@@ -1287,7 +1287,7 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
 	  dhcp6_clients_enable_disable (1);
 	}
 
-      ip6_link_enable (sw_if_index);
+      ip6_link_enable (sw_if_index, NULL);
       send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT,
 				      0, 1);
     }
