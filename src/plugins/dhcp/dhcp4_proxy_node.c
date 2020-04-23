@@ -532,6 +532,8 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 	  vnet_hw_interface_t *hi0;
 	  u32 sw_if_index = ~0;
 	  vnet_sw_interface_t *si0;
+	  u32 inner_vlan = (u32) ~ 0;
+	  u32 outer_vlan = (u32) ~ 0;
 	  u32 error0 = (u32) ~ 0;
 	  vnet_sw_interface_t *swif;
 	  u32 fib_index;
@@ -719,7 +721,19 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, -(sizeof (ethernet_header_t)));
 	  si0 = vnet_get_sw_interface (vnm, original_sw_if_index);
 	  if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
-	    vlib_buffer_advance (b0, -4 /* space for VLAN tag */ );
+	    {
+	      if (si0->sub.eth.flags.one_tag == 1)
+		{
+		  vlib_buffer_advance (b0, -4 /* space for 1 VLAN tag */ );
+		  outer_vlan = (si0->sub.eth.outer_vlan_id << 16) | 0x0800;
+		}
+	      else if (si0->sub.eth.flags.two_tags == 1)
+		{
+		  vlib_buffer_advance (b0, -8 /* space for 2 VLAN tag */ );
+		  outer_vlan = (si0->sub.eth.outer_vlan_id << 16) | 0x8100;
+		  inner_vlan = (si0->sub.eth.inner_vlan_id << 16) | 0x0800;
+		}
+	    }
 
 	  mac0 = vlib_buffer_get_current (b0);
 
@@ -731,12 +745,16 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 	  mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
 	    clib_net_to_host_u16 (0x8100) : clib_net_to_host_u16 (0x0800);
 
-	  if (si0->type == VNET_SW_INTERFACE_TYPE_SUB)
+	  if (si0->type == VNET_SW_INTERFACE_TYPE_SUB
+	      && outer_vlan != (u32) ~ 0)
 	    {
 	      u32 *vlan_tag = (u32 *) (mac0 + 1);
-	      u32 tmp;
-	      tmp = (si0->sub.id << 16) | 0x0800;
-	      *vlan_tag = clib_host_to_net_u32 (tmp);
+	      *vlan_tag = clib_host_to_net_u32 (outer_vlan);
+	      if (inner_vlan != (u32) ~ 0)
+		{
+		  u32 *inner_vlan_tag = (u32 *) (vlan_tag + 1);
+		  *inner_vlan_tag = clib_host_to_net_u32 (inner_vlan);
+		}
 	    }
 
 	do_trace:
