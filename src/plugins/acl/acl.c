@@ -2950,7 +2950,8 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 	  rules[rule_idx].is_permit = action;
 	}
       else if (unformat (line_input, "src %U/%d",
-			 unformat_ip46_address, &src, &src_prefix_length))
+			 unformat_ip46_address, &src, IP46_TYPE_ANY,
+			 &src_prefix_length))
 	{
 	  vec_validate_acl_rules (rules, rule_idx);
 	  ip_address_encode (&src, IP46_TYPE_ANY,
@@ -2959,7 +2960,8 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 	  rules[rule_idx].src_prefix.len = src_prefix_length;
 	}
       else if (unformat (line_input, "dst %U/%d",
-			 unformat_ip46_address, &dst, &dst_prefix_length))
+			 unformat_ip46_address, &dst, IP46_TYPE_ANY,
+			 &dst_prefix_length))
 	{
 	  vec_validate_acl_rules (rules, rule_idx);
 	  ip_address_encode (&dst, IP46_TYPE_ANY,
