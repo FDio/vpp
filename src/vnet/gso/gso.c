@@ -26,30 +26,6 @@ gso_main_t gso_main;
 int
 vnet_sw_interface_gso_enable_disable (u32 sw_if_index, u8 enable)
 {
-  ethernet_interface_t *eif;
-  vnet_sw_interface_t *si;
-  ethernet_main_t *em;
-  vnet_main_t *vnm;
-
-  vnm = vnet_get_main ();
-  em = &ethernet_main;
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-
-  /*
-   * only ethernet HW interfaces are supported at this time
-   */
-  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-    {
-      return (VNET_API_ERROR_INVALID_VALUE);
-    }
-
-  eif = ethernet_get_interface (em, si->hw_if_index);
-
-  if (!eif)
-    {
-      return (VNET_API_ERROR_FEATURE_DISABLED);
-    }
-
   vnet_feature_enable_disable ("ip4-output", "gso-ip4", sw_if_index, enable,
 			       0, 0);
   vnet_feature_enable_disable ("ip6-output", "gso-ip6", sw_if_index, enable,
