@@ -41,6 +41,8 @@ extern int ip_neighbor_del (const ip46_address_t * ip,
 extern int ip_neighbor_config (ip46_type_t type, u32 limit, u32 age,
 			       bool recycle);
 
+extern void ip_neighbor_del_all (ip46_type_t type, u32 sw_if_index);
+
 typedef walk_rc_t (*ip_neighbor_walk_cb_t) (index_t ipni, void *ctx);
 extern void ip_neighbor_walk (ip46_type_t type,
 			      u32 sw_if_index,
