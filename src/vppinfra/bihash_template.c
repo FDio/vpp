@@ -463,8 +463,7 @@ BV (split_and_rehash)
 
       /* rehash the item onto its new home-page */
       new_hash = BV (clib_bihash_hash) (&(old_values->kvp[i]));
-      new_hash >>= h->log2_nbuckets;
-      new_hash &= (1 << new_log2_pages) - 1;
+      new_hash = extract_bits (new_hash, h->log2_nbuckets, new_log2_pages);
       new_v = &new_values[new_hash];
 
       /* Across the new home-page */
@@ -547,6 +546,14 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
   int mark_bucket_linear;
   int resplit_once;
 
+  /* *INDENT-OFF* */
+  static const BVT (clib_bihash_bucket) mask = {
+    .linear_search = 1,
+    .log2_pages = -1
+  };
+  /* *INDENT-ON* */
+
+#if BIHASH_LAZY_INSTANTIATE
   /*
    * Create the table (is_add=1,2), or flunk the request now (is_add=0)
    * Use the alloc_lock to protect the instantiate operation.
@@ -561,10 +568,9 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	BV (clib_bihash_instantiate) (h);
       BV (clib_bihash_alloc_unlock) (h);
     }
+#endif
 
   b = BV (clib_bihash_get_bucket) (h, hash);
-
-  hash >>= h->log2_nbuckets;
 
   BV (clib_bihash_lock_bucket) (b);
 
@@ -597,10 +603,13 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
   limit = BIHASH_KVP_PER_PAGE;
   v = BV (clib_bihash_get_value) (h, b->offset);
 
-  if (b->linear_search)
-    limit <<= b->log2_pages;
-  else
-    v += hash & ((1 << b->log2_pages) - 1);
+  if (PREDICT_FALSE (b->as_u64 & mask.as_u64))
+    {
+      if (PREDICT_FALSE (b->linear_search))
+	limit <<= b->log2_pages;
+      else
+	v += extract_bits (hash, h->log2_nbuckets, b->log2_pages);
+    }
 
   if (is_add)
     {
@@ -782,9 +791,8 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
   limit = BIHASH_KVP_PER_PAGE;
   if (mark_bucket_linear)
     limit <<= new_log2_pages;
-  new_hash >>= h->log2_nbuckets;
-  new_hash &= (1 << new_log2_pages) - 1;
-  new_v += mark_bucket_linear ? 0 : new_hash;
+  else
+    new_v += extract_bits (new_hash, h->log2_nbuckets, new_log2_pages);
 
   for (i = 0; i < limit; i++)
     {
@@ -864,49 +872,7 @@ int BV (clib_bihash_search)
   (BVT (clib_bihash) * h,
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
-  u64 hash;
-  BVT (clib_bihash_value) * v;
-  BVT (clib_bihash_bucket) * b;
-  int i, limit;
-
-  ASSERT (valuep);
-
-#if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
-    return -1;
-#endif
-
-  hash = BV (clib_bihash_hash) (search_key);
-
-  b = BV (clib_bihash_get_bucket) (h, hash);
-
-  if (BV (clib_bihash_bucket_is_empty) (b))
-    return -1;
-
-  if (PREDICT_FALSE (b->lock))
-    {
-      volatile BVT (clib_bihash_bucket) * bv = b;
-      while (bv->lock)
-	CLIB_PAUSE ();
-    }
-
-  hash >>= h->log2_nbuckets;
-
-  v = BV (clib_bihash_get_value) (h, b->offset);
-  limit = BIHASH_KVP_PER_PAGE;
-  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
-  if (PREDICT_FALSE (b->linear_search))
-    limit <<= b->log2_pages;
-
-  for (i = 0; i < limit; i++)
-    {
-      if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
-	{
-	  *valuep = v->kvp[i];
-	  return 0;
-	}
-    }
-  return -1;
+  return BV (clib_bihash_search_inline_2) (h, search_key, valuep);
 }
 
 u8 *BV (format_bihash) (u8 * s, va_list * args)
