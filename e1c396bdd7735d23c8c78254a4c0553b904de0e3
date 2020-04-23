@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ddb1b5dc_e8cdaf11",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 794,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "I tested it with dpdk 20.02. Didn\u0027t try master. Anyway, I just set last_used_idx to last_avail_idx.",
+      "parentUuid": "3a62948d_0a505927",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3b3cc52a_94754d1f",
         "filename": "src/vnet/devices/virtio/vhost_user.c",
         "patchSetId": 12
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-22T10:24:32Z",
       "side": 1,
       "message": "it looks like there are a lot of code duplication here. Shouldn\u0027t it be better to write vhost_user_vring_format(), vhost_user_vring_desc_format() etc.?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09c4c76f_6c60985c",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1869,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "Actually, packed and non-packed have different fields. So we meed separate routines and formatters for packed and non-packed.",
+      "parentUuid": "3b3cc52a_94754d1f",
       "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "ca2cf539_ef07096e",
+        "filename": "src/vnet/devices/virtio/vhost_user.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "Sure.",
+      "parentUuid": "6016a0c7_9f1bcaae",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "56e5de3f_2f2c91fb",
         "filename": "src/vnet/devices/virtio/vhost_user.h",
         "patchSetId": 12
@@ -64,6 +118,24 @@
       "writtenOn": "2020-04-22T10:24:32Z",
       "side": 1,
       "message": "any reason for not using CLIB_PACKED() instead?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd28e2a5_9d9a3018",
+        "filename": "src/vnet/devices/virtio/vhost_user.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "sure.",
+      "parentUuid": "56e5de3f_2f2c91fb",
       "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "736dced4_a24d5a7b",
+        "filename": "src/vnet/devices/virtio/vhost_user_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "8a32db07_3f6a62bf",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3365fcb8_557b07ac",
         "filename": "src/vnet/devices/virtio/vhost_user_api.c",
         "patchSetId": 12
@@ -98,6 +188,24 @@
       "writtenOn": "2020-04-22T10:24:32Z",
       "side": 1,
       "message": "Need to update the comment to match the code",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c35d317_be016199",
+        "filename": "src/vnet/devices/virtio/vhost_user_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "3365fcb8_557b07ac",
       "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "29278b4d_e4e59b24",
+        "filename": "src/vnet/devices/virtio/vhost_user_inline.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "Gone.",
+      "parentUuid": "c8e679e7_7905ba54",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "61a27454_f1bf997d",
         "filename": "src/vnet/devices/virtio/vhost_user_input.c",
         "patchSetId": 12
@@ -132,6 +258,24 @@
       "writtenOn": "2020-04-22T10:24:32Z",
       "side": 1,
       "message": "it looks like there are a lot of ducplicated code with the non-packed version: interrupt management etc. - can we merge both function and use constant folding with a \u0027is_packed\u0027 compile-time constant instead?",
+      "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c23a6eb9_884279da",
+        "filename": "src/vnet/devices/virtio/vhost_user_input.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1109,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-04-23T04:31:08Z",
+      "side": 1,
+      "message": "Not a lot, maybe a few. My original intention was to not change the old driver to avoid regression.I factor out the common stuff now. The sad news is I can no longer claim that the existing driver is not impacted. C\u0027est la vie.",
+      "parentUuid": "61a27454_f1bf997d",
       "revId": "e1c396bdd7735d23c8c78254a4c0553b904de0e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
