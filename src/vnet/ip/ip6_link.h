@@ -19,13 +19,14 @@
  * IPv6 Configuration on an interface
  */
 
-extern int ip6_link_enable (u32 sw_if_index);
+extern int ip6_link_enable (u32 sw_if_index,
+			    const ip6_address_t * link_local_addr);
 extern bool ip6_link_is_enabled (u32 sw_if_index);
 extern int ip6_link_disable (u32 sw_if_index);
 
 extern const ip6_address_t *ip6_get_link_local_address (u32 sw_if_index);
 
-extern int ip6_set_link_local_address (u32 sw_if_index,
+extern int ip6_link_set_local_address (u32 sw_if_index,
 				       const ip6_address_t * address);
 extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
 

@@ -263,6 +263,31 @@ class VppIpInterfaceAddress(VppObject):
         return "interface-ip-%s-%s" % (self.intf, self.prefix)
 
 
+class VppIp6LinkLocalAddress(VppObject):
+
+    def __init__(self, test, intf, addr):
+        self._test = test
+        self.intf = intf
+        self.addr = addr
+
+    def add_vpp_config(self):
+        self._test.vapi.sw_interface_ip6_set_link_local_address(
+            sw_if_index=self.intf.sw_if_index, ip=self.addr)
+        self._test.registry.register(self, self._test.logger)
+        return self
+
+    def remove_vpp_config(self):
+        # link locals can't be removed, only changed
+        pass
+
+    def query_vpp_config(self):
+        # no API to query
+        return False
+
+    def object_id(self):
+        return "ip6-link-local-%s-%s" % (self.intf, self.addr)
+
+
 class VppIpInterfaceBind(VppObject):
 
     def __init__(self, test, intf, table):
