@@ -156,24 +156,27 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * tc)
 }
 
 static session_table_t *
-session_table_get_or_alloc (u8 fib_proto, u8 fib_index)
+session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
 {
   session_table_t *st;
   u32 table_index;
-  if (vec_len (fib_index_to_table_index[fib_proto]) <= fib_index)
+  ASSERT (fib_index != ~0);
+  if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index &&
+      fib_index_to_table_index[fib_proto][fib_index] != ~0)
+    {
+      table_index = fib_index_to_table_index[fib_proto][fib_index];
+      return session_table_get (table_index);
+    }
+  else
     {
       st = session_table_alloc ();
       table_index = session_table_index (st);
-      vec_validate (fib_index_to_table_index[fib_proto], fib_index);
+      vec_validate_init_empty (fib_index_to_table_index[fib_proto], fib_index,
+			       ~0);
       fib_index_to_table_index[fib_proto][fib_index] = table_index;
       st->active_fib_proto = fib_proto;
       session_table_init (st, fib_proto);
       return st;
-    }
-  else
-    {
-      table_index = fib_index_to_table_index[fib_proto][fib_index];
-      return session_table_get (table_index);
     }
 }
 
