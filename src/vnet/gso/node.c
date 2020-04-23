@@ -56,6 +56,58 @@ format_gso_trace (u8 * s, va_list * args)
   return s;
 }
 
+static_always_inline u16
+tso_segment_ipip_tunnel_fixup (vlib_main_t * vm,
+			       vnet_interface_per_thread_data_t * ptd,
+			       vlib_buffer_t * sb0,
+			       generic_header_offset_t * gho)
+{
+  u16 n_tx_bufs = vec_len (ptd->split_buffers);
+  u16 i = 0, n_tx_bytes = 0;
+
+  while (i < n_tx_bufs)
+    {
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[i]);
+      vnet_get_outer_header (b0, gho);
+      clib_memcpy_fast (vlib_buffer_get_current (b0),
+			vlib_buffer_get_current (sb0), gho->outer_hdr_sz);
+/*      u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+
+      ip_adjacency_t *adj0 = adj_get (adj_index0);
+
+      if (adj0->lookup_next_index == IP_LOOKUP_NEXT_MIDCHAIN &&
+        adj0->sub_type.midchain.fixup_func)
+      / calls e.g. ipip44_fixup /
+      adj0->sub_type.midchain.fixup_func
+        (vm, adj0, b0, adj0->sub_type.midchain.fixup_data);
+*/
+      ip4_header_t *ip4 =
+	(ip4_header_t *) (vlib_buffer_get_current (b0) +
+			  gho->outer_l3_hdr_offset);
+      ip6_header_t *ip6 =
+	(ip6_header_t *) (vlib_buffer_get_current (b0) +
+			  gho->outer_l3_hdr_offset);
+
+      if (gho->gho_flags & GHO_F_OUTER_IP4)
+	{
+	  ip4->length =
+	    clib_host_to_net_u16 (b0->current_length -
+				  gho->outer_l3_hdr_offset);
+	  ip4->checksum = ip4_header_checksum (ip4);
+	}
+      else if (gho->gho_flags & GHO_F_OUTER_IP6)
+	{
+	  ip6->payload_length =
+	    clib_host_to_net_u16 (b0->current_length -
+				  gho->outer_l4_hdr_offset);
+	}
+      n_tx_bytes += gho->outer_hdr_sz;
+      i++;
+    }
+  return n_tx_bytes;
+
+}
+
 static_always_inline void
 tso_segment_vxlan_tunnel_headers_fixup (vlib_main_t * vm, vlib_buffer_t * b,
 					generic_header_offset_t * gho)
@@ -411,7 +463,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		      vlib_frame_t * frame,
 		      vnet_main_t * vnm,
 		      vnet_hw_interface_t * hi,
-		      int is_ip6, int do_segmentation)
+		      int is_l2, int is_ip4, int is_ip6, int do_segmentation)
 {
   u32 *to_next;
   u32 next_index = node->cached_next_index;
@@ -496,7 +548,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
 		t0->gso_size = vnet_buffer2 (b[0])->gso_size;
 		t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[0], &t0->gho);
+		vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
+						   is_ip4, is_ip6);
 	      }
 	    if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	      {
@@ -504,7 +557,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
 		t1->gso_size = vnet_buffer2 (b[1])->gso_size;
 		t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[1], &t1->gho);
+		vnet_generic_header_offset_parser (b[1], &t1->gho, is_l2,
+						   is_ip4, is_ip6);
 	      }
 	    if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
 	      {
@@ -512,7 +566,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
 		t2->gso_size = vnet_buffer2 (b[2])->gso_size;
 		t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[2], &t2->gho);
+		vnet_generic_header_offset_parser (b[2], &t2->gho, is_l2,
+						   is_ip4, is_ip6);
 	      }
 	    if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
 	      {
@@ -520,7 +575,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
 		t3->gso_size = vnet_buffer2 (b[3])->gso_size;
 		t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[3], &t3->gho);
+		vnet_generic_header_offset_parser (b[3], &t3->gho, is_l2,
+						   is_ip4, is_ip6);
 	      }
 
 	    from += 4;
@@ -573,7 +629,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
 	      t0->gso_size = vnet_buffer2 (b[0])->gso_size;
 	      t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
-	      vnet_generic_header_offset_parser (b[0], &t0->gho);
+	      vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
+						 is_ip4, is_ip6);
 	    }
 
 	  if (do_segmentation0)
@@ -592,12 +649,14 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		  u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
 		  u32 n_tx_bytes = 0;
 
-		  vnet_generic_header_offset_parser (b[0], &gho);
+		  vnet_generic_header_offset_parser (b[0], &gho, is_l2,
+						     is_ip4, is_ip6);
 
 		  if (PREDICT_FALSE (gho.gho_flags & GHO_F_TUNNEL))
 		    {
 		      if (PREDICT_FALSE
-			  ((gho.gho_flags & GHO_F_VXLAN_TUNNEL) == 0))
+			  (gho.gho_flags & (GHO_F_GRE_TUNNEL |
+					    GHO_F_GENEVE_TUNNEL)))
 			{
 			  /* not supported yet */
 			  drop_one_buffer_and_count (vm, vnm, node, from - 1,
@@ -631,11 +690,21 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		      continue;
 		    }
 
+
 		  if (PREDICT_FALSE (gho.gho_flags & GHO_F_VXLAN_TUNNEL))
 		    {
 		      vnet_get_outer_header (b[0], &gho);
 		      n_tx_bytes +=
 			tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0], &gho);
+		    }
+		  else
+		    if (PREDICT_FALSE
+			(gho.gho_flags & (GHO_F_IPIP_TUNNEL |
+					  GHO_F_IPIP6_TUNNEL)))
+		    {
+		      vnet_get_outer_header (b[0], &gho);
+		      n_tx_bytes +=
+			tso_segment_ipip_tunnel_fixup (vm, ptd, b[0], &gho);
 		    }
 
 		  u16 n_tx_bufs = vec_len (ptd->split_buffers);
@@ -707,7 +776,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 
 static_always_inline uword
 vnet_gso_inline (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame, int is_ip6)
+		 vlib_node_runtime_t * node, vlib_frame_t * frame, int is_l2,
+		 int is_ip4, int is_ip6)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
@@ -721,10 +791,12 @@ vnet_gso_inline (vlib_main_t * vm,
 
       if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
-				     is_ip6, /* do_segmentation */ 0);
+				     is_l2, is_ip4, is_ip6,
+				     /* do_segmentation */ 0);
       else
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
-				     is_ip6, /* do_segmentation */ 1);
+				     is_l2, is_ip4, is_ip6,
+				     /* do_segmentation */ 1);
     }
   return 0;
 }
@@ -732,25 +804,29 @@ vnet_gso_inline (vlib_main_t * vm,
 VLIB_NODE_FN (gso_l2_ip4_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  return vnet_gso_inline (vm, node, frame, 0 /* ip6 */ );
+  return vnet_gso_inline (vm, node, frame, 1 /* l2 */ , 1 /* ip4 */ ,
+			  0 /* ip6 */ );
 }
 
 VLIB_NODE_FN (gso_l2_ip6_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  return vnet_gso_inline (vm, node, frame, 1 /* ip6 */ );
+  return vnet_gso_inline (vm, node, frame, 1 /* l2 */ , 0 /* ip4 */ ,
+			  1 /* ip6 */ );
 }
 
 VLIB_NODE_FN (gso_ip4_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     vlib_frame_t * frame)
 {
-  return vnet_gso_inline (vm, node, frame, 0 /* ip6 */ );
+  return vnet_gso_inline (vm, node, frame, 0 /* l2 */ , 1 /* ip4 */ ,
+			  0 /* ip6 */ );
 }
 
 VLIB_NODE_FN (gso_ip6_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     vlib_frame_t * frame)
 {
-  return vnet_gso_inline (vm, node, frame, 1 /* ip6 */ );
+  return vnet_gso_inline (vm, node, frame, 0 /* l2 */ , 0 /* ip4 */ ,
+			  1 /* ip6 */ );
 }
 
 /* *INDENT-OFF* */
@@ -806,15 +882,15 @@ VNET_FEATURE_INIT (gso_l2_ip6_node, static) = {
 VNET_FEATURE_INIT (gso_ip4_node, static) = {
   .arc_name = "ip4-output",
   .node_name = "gso-ip4",
-  .runs_after = VNET_FEATURES ("ipsec4-output-feature"),
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_before = VNET_FEATURES ("ipsec4-output-feature", "esp4-encrypt-tun"),
+//  .runs_before = VNET_FEATURES ("interface-output"),
 };
 
 VNET_FEATURE_INIT (gso_ip6_node, static) = {
   .arc_name = "ip6-output",
   .node_name = "gso-ip6",
-  .runs_after = VNET_FEATURES ("ipsec6-output-feature"),
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_before = VNET_FEATURES ("ipsec6-output-feature", "esp6-encrypt-tun"),
+//  .runs_before = VNET_FEATURES ("interface-output"),
 };
 
 /*

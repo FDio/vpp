@@ -92,7 +92,8 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   if (with_gso)
     {
       generic_header_offset_t gho = { 0 };
-      vnet_generic_header_offset_parser (b, &gho);
+      vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4,
+					 is_ip6);
 
       ASSERT (gho.gho_flags ^ (GHO_F_IP4 | GHO_F_IP6));
 
