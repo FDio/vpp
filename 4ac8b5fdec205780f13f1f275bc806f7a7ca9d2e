@@ -1,0 +1,446 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77517fc0_faf38e9f",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "Why can\u0027t we initialize it at creation time?",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c50859ea_691dec55",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "I wonder if we should not make a vectorized version instead o fprocessing packets 1-by-1, ie n_left \u003d vnet_gro_flow_table_inline (vm, flow_table, buffers, n_left), with \u0027buffers\u0027 updated in the call",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca8368f7_7757993e",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "I think those stats should be maintained directly in the flow_table, instead of by each driver",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4223488d_621115b8",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "I think this should be embed in vnet_gro_flow_table_schedule_node_on_dispatcher() instead, with the flush_count counter in the flow_table struct, so that we can just call vnet_gro_flow_table_schedule_node_on_dispatcher() straight in the driver (to minimize code in the driver).\nRegarding the threshold of 100: it should be a macro (\"#define GRO_FLUSH_COUNT 100\" or similar) and on my Skylake test system, when idling with several HW interfaces my workers can do ~7.5M/s call to input nodes \u003d ~7.5 calls/µs, so if we want to target a max delay of ~100µs between checks when idling, we can probably use eg. 512 instead of 100.\nFinally, the test could be \u0027if (PREDICT_FALSE(0 \u003d\u003d (++flow_table-\u003eflush_counter \u0026 (512-1)))) { ... }\u0027",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9f24b91_e80e93ad",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1435,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "We should have a gro_flow_table_free() instead - this should be more future proof",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ab8b615_85d2a2a8",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "virtio_pci_vring_init() does not init total_gro_vectors and n_gro_vectors to 0, possibly because it uses memset() - but this is a good illustration where embedding them into struct flow_table and init them in gro_flow_table_init() would be better",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "756cbdbd_7e7f76d8",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "gro_flow_table_free()...",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04e68ba5_09f5b3d9",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "there should be a format_gro_flow_table() that should be called from there instead",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6e3a63f5_d1cde7ea",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "as mentioned earlier, I\u0027d prefer total_gro_vectors, n_gro_vectors and flush_count inside gro_flow_table_t to minimize code impact in drivers",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13390e7e_47ce16ae",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "as mentioned by Neale, it should be better to use sw_if_index instead of mac src and mac dest here: this will allow to support eg. vlans transparently",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "950cc125_5b03b82a",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "I think we should use a static array gro_flow_t gro_flow[GRO_FLOW_TABLE_MAX_SIZE] instead of a vector: the size is static anyway, and it would avoid an additional pointer redirection.\nAlso, gro_flow_table_t should be allocated directly in the driver txq structure of being allocated by gro_flow_table_init(), ie driver should call gro_flow_table_init(\u0026virtq-\u003egro_flow_table) instead of virtq-\u003egro_flow_table \u003d gro_flow_table_init(), this would remove another pointer redirection.",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "127362a4_2bcf39d4",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "to be removed?",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a97e3211_f82cb8c2",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "vm shoud be passed in the parameters instead of fetched from global memory",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1a84e21_2c8e91fe",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "vlib_time_now() should be called once per call to gro_coalesce_buffers() and passed as a parameter here to avoid multiple calls to vlib_time_now() (we want a single call per device node)",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b89c4074_5371cd63",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "As above, vlib_time_now() should be called once and timestamp passed as a parameter",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c8ac8c7_297eea8c",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "As above, I think it would be better to allocate everything statically instead to avoid pointer chasing",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95d4d119_45de1fb2",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "find + new should be done in the same iteration: loop over flows looking for a matching flow, while recording oldest flow index.\nIf a matching flow is found, you\u0027re done.\nAt the end of the loop, if no matching flow were found, then flush the oldest flow and use its entry for the new flow",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8066295_b827d149",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "we do not need to do all this, just do flow_table-\u003eflow_table_size\u003d0",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "17c74cb8_6c99d5d4",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "sw_if_index...",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ddad3641_66b0eb4e",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "sw_if_index...",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3b07c03_f40542e1",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "just write\nu32 next_tcp_seq0 \u003d clib_net_to_host_u32 (tcp0-\u003eseq_number);\nu32 next_tcp_seq1 \u003d clib_net_to_host_u32 (tcp1-\u003eseq_number);",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d801999b_783cc6e8",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "you need to take care of tcp sequence number wrapping to 0 here. A usual trick is to compare with signed integer instead of unsigned:\nelse if ((i32)(next_tcp_sqe0 + payload_len0) \u003e (i32) next_tcp_seq1)",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4d6d7c22_ccfb3473",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "ditto:\nelse if ((i32)(next_tcp_sqe0 + payload_len0) \u003c (i32)next_tcp_seq1)\n\nAlso, I think we should flush but not enqueue the new one, we should send the new one too in this case: there is probably a packet loss, we want the receiver to detect and react to that loss as fast as possible (but to detect the loss the receiver needs the the current packet)\n\nSo in the end, the whole test should probably just be:\nif (next_tcp_seq0 + payload_len0 \u003d\u003d next_tcp_seq1)\n   ENQUEUE()\nelse\n   FLUSH_ALL_INCLUDING_CURRENT()",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8dba6fbb_1a4b8d68",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "what about simply:\nwhile (pb-\u003eflags \u0026 VLIB_BUFFER_NEXT_PRESENT)\n    pb \u003d vlib_get_buffer (vm, pb-\u003enext_buffer);",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb869cfe_e777f9d3",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "No need to initialize all variables to 0 here. Not initializing them can help catch errors because the compiler will complain if we use an unitialized var.",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15597e35_1e2692ec",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-04-23T13:22:03Z",
+      "side": 1,
+      "message": "What about vlib_buffer_enqueue_to_single_next() instead?",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
