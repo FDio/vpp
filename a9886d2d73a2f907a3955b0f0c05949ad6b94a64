@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4f385845_524b6dcb",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2020-04-23T02:34:02Z",
+      "side": 1,
+      "message": "Agree with the change, the previous code does not make any sense. \"enable tcp udp checksum\" is for tx direction, while the flag for CORRECT and COMPUTED is for rx direction.",
+      "revId": "a9886d2d73a2f907a3955b0f0c05949ad6b94a64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
