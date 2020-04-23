@@ -146,7 +146,7 @@ ip6_link_is_enabled (u32 sw_if_index)
 
 
 int
-ip6_link_enable (u32 sw_if_index)
+ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 {
   ip6_link_t *il;
   int rv;
@@ -187,9 +187,11 @@ ip6_link_enable (u32 sw_if_index)
 
       sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
 
-      if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
-	  sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
-	  sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+      if (NULL != link_local_addr)
+	ip6_address_copy (&il->il_ll_addr, link_local_addr);
+      else if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
+	       sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
+	       sw->type == VNET_SW_INTERFACE_TYPE_P2P)
 	{
 	  il->il_ll_addr.as_u64[0] =
 	    clib_host_to_net_u64 (0xFE80000000000000ULL);
@@ -367,7 +369,7 @@ ip6_src_address_for_packet (u32 sw_if_index,
 }
 
 int
-ip6_set_link_local_address (u32 sw_if_index, const ip6_address_t * address)
+ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
 {
   ip6_link_delegate_t *ild;
   ip6_link_t *il;
@@ -375,7 +377,7 @@ ip6_set_link_local_address (u32 sw_if_index, const ip6_address_t * address)
   il = ip6_link_get (sw_if_index);
 
   if (NULL == il)
-    return (VNET_API_ERROR_IP6_NOT_ENABLED);
+    return ip6_link_enable (sw_if_index, address);
 
   ip6_ll_prefix_t ilp = {
     .ilp_addr = il->il_ll_addr,
@@ -794,7 +796,7 @@ enable_ip6_interface_cmd (vlib_main_t * vm,
 
   if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
-      if (ip6_link_enable (sw_if_index))
+      if (ip6_link_enable (sw_if_index, NULL))
 	error = clib_error_return (0, "Failed\n");
     }
   else
