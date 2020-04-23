@@ -576,6 +576,40 @@ ip_neighbor_del (const ip46_address_t * ip, ip46_type_t type, u32 sw_if_index)
   return (0);
 }
 
+typedef struct ip_neighbor_del_all_ctx_t_
+{
+  index_t *ipn_del;
+} ip_neighbor_del_all_ctx_t;
+
+static walk_rc_t
+ip_neighbor_del_all_walk_cb (index_t ipni, void *arg)
+{
+  ip_neighbor_del_all_ctx_t *ctx = arg;
+
+  vec_add1 (ctx->ipn_del, ipni);
+
+  return (WALK_CONTINUE);
+}
+
+void
+ip_neighbor_del_all (ip46_type_t type, u32 sw_if_index)
+{
+  IP_NEIGHBOR_INFO ("delete-all: %U, %U",
+		    format_ip46_type, type,
+		    format_vnet_sw_if_index_name, vnet_get_main (),
+		    sw_if_index);
+
+  ip_neighbor_del_all_ctx_t ctx = {
+    .ipn_del = NULL,
+  };
+  index_t *ipni;
+
+  ip_neighbor_walk (type, sw_if_index, ip_neighbor_del_all_walk_cb, &ctx);
+
+  vec_foreach (ipni, ctx.ipn_del) ip_neighbor_free (ip_neighbor_get (*ipni));
+  vec_free (ctx.ipn_del);
+}
+
 void
 ip_neighbor_update (vnet_main_t * vnm, adj_index_t ai)
 {
