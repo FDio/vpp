@@ -305,101 +305,162 @@ vcl_cleanup_bapi (void)
   vl_client_api_unmap ();
 }
 
-int
-vcl_session_read_ready (vcl_session_t * session)
+static inline int
+vcl_session_max_deq (vcl_session_t *s)
 {
-  u32 max_deq;
+  if (vcl_session_is_ct (s))
+    return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
 
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE (session->is_vep))
-    {
-      VDBG (0, "ERROR: session %u: cannot read from an epoll session!",
-	    session->session_index);
-      return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (!(session->session_state & (STATE_OPEN | STATE_LISTEN))))
-    {
-      vcl_session_state_t state = session->session_state;
-      int rv;
-
-      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
-
-      VDBG (1, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
-	    session->session_index, session->vpp_handle, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
-      return rv;
-    }
-
-  if (session->session_state & STATE_LISTEN)
-    return clib_fifo_elts (session->accept_evts_fifo);
-
-  if (vcl_session_is_ct (session))
-    return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
-
-  max_deq = svm_fifo_max_dequeue_cons (session->rx_fifo);
-
-  if (session->is_dgram)
+  if (s->is_dgram)
     {
       session_dgram_pre_hdr_t ph;
+      u32 max_deq;
 
+      max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
       if (max_deq <= SESSION_CONN_HDR_LEN)
 	return 0;
-      if (svm_fifo_peek (session->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
+      if (svm_fifo_peek (s->rx_fifo, 0, sizeof(ph), (u8*) &ph) < 0)
 	return 0;
       if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
 	return 0;
 
       return ph.data_length;
     }
-
-  return max_deq;
+  return svm_fifo_max_dequeue_cons (s->rx_fifo);
 }
 
-int
-vcl_session_write_ready (vcl_session_t * session)
+static inline int
+vcl_session_max_enq (vcl_session_t *s)
 {
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE (session->is_vep))
+  if (vcl_session_is_ct (s))
+    return svm_fifo_max_enqueue_prod (s->ct_tx_fifo);
+
+  if (s->is_dgram)
     {
-      VDBG (0, "session %u [0x%llx]: cannot write to an epoll session!",
-	    session->session_index, session->vpp_handle);
-      return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
-    {
-      if (session->tx_fifo)
-	return svm_fifo_max_enqueue_prod (session->tx_fifo);
-      else
-	return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (!(session->session_state & STATE_OPEN)))
-    {
-      vcl_session_state_t state = session->session_state;
-      int rv;
-
-      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
-      VDBG (0, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
-	    session->session_index, session->vpp_handle, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
-      return rv;
-    }
-
-  if (vcl_session_is_ct (session))
-    return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
-
-  if (session->is_dgram)
-    {
-      u32 max_enq = svm_fifo_max_enqueue_prod (session->tx_fifo);
+      u32 max_enq = svm_fifo_max_enqueue_prod (s->tx_fifo);
 
       if (max_enq <= sizeof (session_dgram_hdr_t))
 	return 0;
       return max_enq - sizeof (session_dgram_hdr_t);
     }
+  return svm_fifo_max_enqueue_prod (s->tx_fifo);
+}
 
-  return svm_fifo_max_enqueue_prod (session->tx_fifo);
+int
+vcl_session_read_ready (vcl_session_t * s)
+{
+  int rv;
+
+  if (PREDICT_FALSE (s->is_vep))
+    {
+      VDBG (0, "ERROR: session %u: cannot read from an epoll session!",
+	    s->session_index);
+      return VPPCOM_EBADFD;
+    }
+
+//  if (PREDICT_FALSE (!(s->session_state & (STATE_OPEN | STATE_LISTEN))))
+//    {
+//      vcl_session_state_t state = s->session_state;
+//      int rv;
+//
+//      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
+//
+//      VDBG (1, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
+//	    s->session_index, s->vpp_handle, state,
+//	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
+//      return rv;
+//    }
+
+  if (s->session_state & STATE_OPEN)
+    {
+      rv = vcl_session_max_deq (s);
+    }
+  else if (s->session_state & STATE_LISTEN)
+    {
+      rv = clib_fifo_elts (s->accept_evts_fifo);
+    }
+  else if (s->session_state & STATE_DISCONNECT)
+    {
+      rv = vcl_session_max_deq (s);
+      if (!rv)
+	rv = VPPCOM_ECONNRESET;
+    }
+  else if (s->session_state == STATE_CLOSED
+      || s->session_state == STATE_DETACHED)
+    {
+      rv = VPPCOM_EBADFD;
+    }
+  else
+    rv = 0;
+
+
+  return rv;
+}
+
+int
+vcl_session_write_ready (vcl_session_t * s)
+{
+  int rv;
+
+  if (PREDICT_FALSE (s->is_vep))
+    {
+      VDBG (0, "session %u [0x%llx]: cannot write to an epoll session!",
+	    s->session_index, s->vpp_handle);
+      return VPPCOM_EBADFD;
+    }
+
+  if (s->session_state & STATE_OPEN)
+    {
+      rv = vcl_session_max_enq (s);
+    }
+  else if (s->session_state & STATE_LISTEN)
+    {
+      if (s->tx_fifo)
+	rv = svm_fifo_max_enqueue_prod (s->tx_fifo);
+      else
+	rv = VPPCOM_EBADFD;
+    }
+  else
+    {
+      rv = ((s->session_state & STATE_DISCONNECT) ?
+	      VPPCOM_ECONNRESET : VPPCOM_EBADFD);
+    }
+
+  return rv;
+
+//  if (PREDICT_FALSE (s->session_state & STATE_LISTEN))
+//    {
+//      if (s->tx_fifo)
+//	return svm_fifo_max_enqueue_prod (s->tx_fifo);
+//      else
+//	return VPPCOM_EBADFD;
+//    }
+//
+//  if (PREDICT_FALSE (!(s->session_state & STATE_OPEN)))
+//    {
+//      vcl_session_state_t state = s->session_state;
+//      int rv;
+//
+//      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
+//      VDBG (0, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
+//	    s->session_index, s->vpp_handle, state,
+//	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
+//      return rv;
+//    }
+//
+//  if (vcl_session_is_ct (s))
+//    return svm_fifo_max_enqueue_prod (s->ct_tx_fifo);
+//
+//  if (s->is_dgram)
+//    {
+//      u32 max_enq = svm_fifo_max_enqueue_prod (s->tx_fifo);
+//
+//      if (max_enq <= sizeof (session_dgram_hdr_t))
+//	return 0;
+//      return max_enq - sizeof (session_dgram_hdr_t);
+//    }
+//
+//  return svm_fifo_max_enqueue_prod (s->tx_fifo);
 }
 
 int
