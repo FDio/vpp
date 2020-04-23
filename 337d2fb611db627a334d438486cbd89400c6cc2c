@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1f060eb0_1b900221",
+        "filename": "INFO.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-04-23T17:31:05Z",
+      "side": 1,
+      "message": "All names seems to be listed in alphabetical order of last name except this one.  Should it be moved before all L..s?",
+      "range": {
+        "startLine": 62,
+        "startChar": 20,
+        "endLine": 62,
+        "endChar": 25
+      },
+      "revId": "337d2fb611db627a334d438486cbd89400c6cc2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
