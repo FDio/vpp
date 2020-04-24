@@ -50,6 +50,11 @@
 
 #include <stdint.h>
 #include <x86intrin.h>
+#include <vppinfra/warnings.h>
+
+/* *INDENT-OFF* */
+WARN_OFF (stringop-overflow)
+/* *INDENT-ON* */
 
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
@@ -264,6 +269,9 @@ clib_memcpy_fast (void *dst, const void *src, size_t n)
   goto COPY_BLOCK_128_BACK63;
 }
 
+/* *INDENT-OFF* */
+WARN_ON (stringop-overflow)
+/* *INDENT-ON* */
 
 #endif /* included_clib_memcpy_avx512_h */
 
