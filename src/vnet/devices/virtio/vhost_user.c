@@ -1819,7 +1819,6 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
   vhost_user_intf_details_t *vuid = NULL;
   u32 *hw_if_indices = 0;
   vnet_hw_interface_t *hi;
-  u8 *s = NULL;
   int i;
 
   if (!out_vuids)
@@ -1841,17 +1840,13 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
       vuid->num_regions = vui->nregions;
       vuid->is_server = vui->unix_server_index != ~0;
       vuid->sock_errno = vui->sock_errno;
-      strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
-	       sizeof (vuid->sock_filename));
-      vuid->sock_filename[ARRAY_LEN (vuid->sock_filename) - 1] = '\0';
-      s = format (s, "%v%c", hi->name, 0);
-
-      strncpy ((char *) vuid->if_name, (char *) s,
-	       ARRAY_LEN (vuid->if_name) - 1);
-      _vec_len (s) = 0;
+      snprintf ((char *) vuid->sock_filename, sizeof (vuid->sock_filename),
+		"%s", vui->sock_filename);
+      memcpy_s (vuid->if_name, sizeof (vuid->if_name), hi->name,
+		clib_min (vec_len (hi->name), sizeof (vuid->if_name) - 1));
+      vuid->if_name[sizeof (vuid->if_name) - 1] = 0;
     }
 
-  vec_free (s);
   vec_free (hw_if_indices);
 
   *out_vuids = r_vuids;
