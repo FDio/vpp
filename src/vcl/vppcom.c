@@ -2252,12 +2252,12 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   clib_bitmap_foreach (sid, wrk->wr_bitmap, ({
     if (!(session = vcl_session_get (wrk, sid)))
       {
-        if (except_map && sid < minbits)
-          clib_bitmap_set_no_check (except_map, sid, 1);
-        continue;
+	clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
+	bits_set++;
+	continue;
       }
 
-    if (vcl_session_write_ready (session) > 0)
+    if (vcl_session_write_ready (session))
       {
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
@@ -2273,12 +2273,12 @@ check_rd:
   clib_bitmap_foreach (sid, wrk->rd_bitmap, ({
     if (!(session = vcl_session_get (wrk, sid)))
       {
-        if (except_map && sid < minbits)
-          clib_bitmap_set_no_check (except_map, sid, 1);
-        continue;
+	clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
+	bits_set++;
+	continue;
       }
 
-    if (vcl_session_read_ready (session) > 0)
+    if (vcl_session_read_ready (session))
       {
         clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
         bits_set++;

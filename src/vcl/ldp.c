@@ -775,6 +775,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	    {
 	      errno = -rv;
 	      rv = -1;
+	      goto done;
 	    }
 	  else if (rv > 0)
 	    {
