@@ -980,11 +980,11 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  if (is_output_feature)
 	    {
-	      vnet_feature_next (&nat_buffer_opaque (b0)->arc_next, b0);
+	      vnet_feature_next (&vnet_buffer2 (b0)->nat.arc_next, b0);
 	      iph_offset0 = vnet_buffer (b0)->ip.reass.save_rewrite_length;
 	    }
 
-	  next0 = nat_buffer_opaque (b0)->arc_next;
+	  next0 = vnet_buffer2 (b0)->nat.arc_next;
 
 	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  iph_offset0);
@@ -1185,7 +1185,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == nat_buffer_opaque (b0)->arc_next;
+	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -1265,7 +1265,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  if (is_output_feature)
 	    iph_offset0 = vnet_buffer (b0)->ip.reass.save_rewrite_length;
 
-	  next0 = nat_buffer_opaque (b0)->arc_next;
+	  next0 = vnet_buffer2 (b0)->nat.arc_next;
 
 	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  iph_offset0);
@@ -1489,7 +1489,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == nat_buffer_opaque (b0)->arc_next;
+	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
