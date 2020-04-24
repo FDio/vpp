@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3078ffa_35ac0ac0",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 899,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "maybe refactor this, it\u0027s repeated above.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
