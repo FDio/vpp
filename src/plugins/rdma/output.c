@@ -294,7 +294,7 @@ rdma_device_output_tx_mlx5 (vlib_main_t * vm,
 wrap_around:
   wqe = txq->dv_sq_wqes + (tail & sq_mask);
 
-  while (n >= 4)
+  while (n >= 8)
     {
       u32 flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
       if (PREDICT_FALSE (flags & VLIB_BUFFER_NEXT_PRESENT))
@@ -302,18 +302,16 @@ wrap_around:
 						   n_left_from, n, bi, b, wqe,
 						   tail);
 
-      if (PREDICT_TRUE (n >= 8))
-	{
-	  vlib_prefetch_buffer_header (b[4], LOAD);
-	  vlib_prefetch_buffer_header (b[5], LOAD);
-	  vlib_prefetch_buffer_header (b[6], LOAD);
-	  vlib_prefetch_buffer_header (b[7], LOAD);
-	  CLIB_PREFETCH (wqe + 4, 4 * sizeof (wqe[0]), STORE);
-	}
-
+      vlib_prefetch_buffer_header (b[4], LOAD);
       rdma_mlx5_wqe_init (wqe + 0, txq->dv_wqe_tmpl, b[0], tail + 0);
+
+      vlib_prefetch_buffer_header (b[5], LOAD);
       rdma_mlx5_wqe_init (wqe + 1, txq->dv_wqe_tmpl, b[1], tail + 1);
+
+      vlib_prefetch_buffer_header (b[6], LOAD);
       rdma_mlx5_wqe_init (wqe + 2, txq->dv_wqe_tmpl, b[2], tail + 2);
+
+      vlib_prefetch_buffer_header (b[7], LOAD);
       rdma_mlx5_wqe_init (wqe + 3, txq->dv_wqe_tmpl, b[3], tail + 3);
 
       b += 4;
@@ -395,33 +393,24 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
   struct ibv_sge sge[VLIB_FRAME_SIZE], *s = sge;
   u32 n = n_left_from;
 
-  while (n >= 4)
+  while (n >= 8)
     {
-      if (PREDICT_TRUE (n >= 8))
-	{
-	  vlib_prefetch_buffer_header (b[4 + 0], LOAD);
-	  vlib_prefetch_buffer_header (b[4 + 1], LOAD);
-	  vlib_prefetch_buffer_header (b[4 + 2], LOAD);
-	  vlib_prefetch_buffer_header (b[4 + 3], LOAD);
-	  CLIB_PREFETCH (&s[4 + 0], 4 * sizeof (s[0]), STORE);
-	  clib_prefetch_store (&w[4 + 0]);
-	  clib_prefetch_store (&w[4 + 1]);
-	  clib_prefetch_store (&w[4 + 2]);
-	  clib_prefetch_store (&w[4 + 3]);
-	}
-
+      vlib_prefetch_buffer_header (b[4], LOAD);
       s[0].addr = vlib_buffer_get_current_va (b[0]);
       s[0].length = b[0]->current_length;
       s[0].lkey = rd->lkey;
 
+      vlib_prefetch_buffer_header (b[5], LOAD);
       s[1].addr = vlib_buffer_get_current_va (b[1]);
       s[1].length = b[1]->current_length;
       s[1].lkey = rd->lkey;
 
+      vlib_prefetch_buffer_header (b[6], LOAD);
       s[2].addr = vlib_buffer_get_current_va (b[2]);
       s[2].length = b[2]->current_length;
       s[2].lkey = rd->lkey;
 
+      vlib_prefetch_buffer_header (b[7], LOAD);
       s[3].addr = vlib_buffer_get_current_va (b[3]);
       s[3].length = b[3]->current_length;
       s[3].lkey = rd->lkey;
