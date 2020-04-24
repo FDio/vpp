@@ -556,6 +556,10 @@ Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
 
+IOAM
+I:      ioam
+F:      src/plugins/ioam
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

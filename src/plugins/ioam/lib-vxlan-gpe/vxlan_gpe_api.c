@@ -272,7 +272,7 @@ setup_message_id_table (vxlan_gpe_ioam_main_t * sm, api_main_t * am)
 }
 
 static clib_error_t *
-vxlan_gpe_init (vlib_main_t * vm)
+ioam_vxlan_gpe_init (vlib_main_t * vm)
 {
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   clib_error_t *error = 0;
@@ -321,7 +321,7 @@ vxlan_gpe_init (vlib_main_t * vm)
   return error;
 }
 
-VLIB_INIT_FUNCTION (vxlan_gpe_init);
+VLIB_INIT_FUNCTION (ioam_vxlan_gpe_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
