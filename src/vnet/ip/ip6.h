@@ -249,6 +249,7 @@ extern ip6_main_t ip6_main;
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
 extern vlib_node_registration_t ip6_input_node;
 extern vlib_node_registration_t ip6_rewrite_node;
+extern vlib_node_registration_t ip6_rewrite_18_node;
 extern vlib_node_registration_t ip6_rewrite_mcast_node;
 extern vlib_node_registration_t ip6_rewrite_local_node;
 extern vlib_node_registration_t ip6_discover_neighbor_node;

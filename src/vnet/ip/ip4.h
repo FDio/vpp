@@ -186,6 +186,7 @@ extern vlib_node_registration_t ip4_input_node;
 extern vlib_node_registration_t ip4_lookup_node;
 extern vlib_node_registration_t ip4_local_node;
 extern vlib_node_registration_t ip4_rewrite_node;
+extern vlib_node_registration_t ip4_rewrite_18_node;
 extern vlib_node_registration_t ip4_rewrite_mcast_node;
 extern vlib_node_registration_t ip4_rewrite_local_node;
 extern vlib_node_registration_t ip4_arp_node;

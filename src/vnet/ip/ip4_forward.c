@@ -2102,6 +2102,7 @@ always_inline uword
 ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 			     vlib_node_runtime_t * node,
 			     vlib_frame_t * frame,
+			     u16 l2_rewrite_size,
 			     int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
@@ -2261,9 +2262,8 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    ip4_ttl_inc (b[1], ip1);
 	}
 
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_two_headers (adj0[0], adj1[0],
-				ip0, ip1, sizeof (ethernet_header_t));
+      /* Paint the L2 header. */
+      vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1, l2_rewrite_size);
 
       if (do_counters)
 	{
@@ -2400,8 +2400,8 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 					0 /* is_ip6 */ ,
 					0 /* with gso */ );
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+	  /* Paint the L2 header. */
+	  vnet_rewrite_one_header (adj0[0], ip0, l2_rewrite_size);
 
 	  /*
 	   * Bump the per-adjacency counters
@@ -2546,10 +2546,11 @@ always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
+		    u16 l2_rewrite_size,
 		    int do_counters, int is_midchain, int is_mcast)
 {
   return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
-				      is_midchain, is_mcast);
+				      l2_rewrite_size, is_midchain, is_mcast);
 }
 
 
@@ -2589,9 +2590,23 @@ VLIB_NODE_FN (ip4_rewrite_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 0);
   else
-    return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 0);
+}
+
+VLIB_NODE_FN (ip4_rewrite_18_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame,
+			       sizeof (ethernet_vlan_header_t), 1, 0, 0);
+  else
+    return ip4_rewrite_inline (vm, node, frame,
+			       sizeof (ethernet_vlan_header_t), 0, 0, 0);
 }
 
 VLIB_NODE_FN (ip4_rewrite_bcast_node) (vlib_main_t * vm,
@@ -2599,9 +2614,11 @@ VLIB_NODE_FN (ip4_rewrite_bcast_node) (vlib_main_t * vm,
 				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 0);
   else
-    return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 0);
 }
 
 VLIB_NODE_FN (ip4_midchain_node) (vlib_main_t * vm,
@@ -2609,9 +2626,11 @@ VLIB_NODE_FN (ip4_midchain_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip4_rewrite_inline (vm, node, frame, 1, 1, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ip4_header_t), 1, 1,
+			       0);
   else
-    return ip4_rewrite_inline (vm, node, frame, 0, 1, 0);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ip4_header_t), 0, 1,
+			       0);
 }
 
 VLIB_NODE_FN (ip4_rewrite_mcast_node) (vlib_main_t * vm,
@@ -2619,9 +2638,11 @@ VLIB_NODE_FN (ip4_rewrite_mcast_node) (vlib_main_t * vm,
 				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip4_rewrite_inline (vm, node, frame, 1, 0, 1);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 1);
   else
-    return ip4_rewrite_inline (vm, node, frame, 0, 0, 1);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 1);
 }
 
 VLIB_NODE_FN (ip4_mcast_midchain_node) (vlib_main_t * vm,
@@ -2629,9 +2650,11 @@ VLIB_NODE_FN (ip4_mcast_midchain_node) (vlib_main_t * vm,
 					vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip4_rewrite_inline (vm, node, frame, 1, 1, 1);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ip4_header_t), 1, 1,
+			       1);
   else
-    return ip4_rewrite_inline (vm, node, frame, 0, 1, 1);
+    return ip4_rewrite_inline (vm, node, frame, sizeof (ip4_header_t), 0, 1,
+			       1);
 }
 
 /* *INDENT-OFF* */
@@ -2647,6 +2670,14 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
     [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_REWRITE_NEXT_FRAGMENT] = "ip4-frag",
   },
+};
+
+VLIB_REGISTER_NODE (ip4_rewrite_18_node) = {
+  .name = "ip4-rewrite-18",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_rewrite_trace,
+  .sibling_of = "ip4-rewrite",
 };
 
 VLIB_REGISTER_NODE (ip4_rewrite_bcast_node) = {

@@ -315,7 +315,8 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
 	 * from the rewrite node to the interface's TX node
 	 */
 	adj_nbr_update_rewrite_internal(adj, IP_LOOKUP_NEXT_REWRITE,
-					adj_get_rewrite_node(adj->ia_link),
+					adj_get_rewrite_node(adj->ia_link,
+                                                             vec_len(rewrite)),
 					vnet_tx_node_index_for_sw_interface(
 					    vnet_get_main(),
 					    adj->rewrite_header.sw_if_index),
@@ -1052,12 +1053,31 @@ adj_mem_show (void)
 			  sizeof(ip_adjacency_t));
 }
 
+u32*
+adj_nbr_get_next_node (const dpo_id_t *dpo)
+{
+    ip_adjacency_t *adj;
+    u32 *node_indices = NULL;
+
+    adj = adj_get (dpo->dpoi_index);
+
+    /*
+     * return the interface's TX node for the wrapped sw_if_index
+     */
+    vec_add1(node_indices,
+             adj_get_rewrite_node(adj->ia_link,
+                                  adj->rewrite_header.data_bytes));;
+
+    return (node_indices);
+}
+
 const static dpo_vft_t adj_nbr_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr,
     .dv_mem_show = adj_mem_show,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_next_node = adj_nbr_get_next_node,
 };
 const static dpo_vft_t adj_nbr_incompl_dpo_vft = {
     .dv_lock = adj_dpo_lock,
@@ -1081,6 +1101,7 @@ const static char* const nbr_ip4_nodes[] =
 const static char* const nbr_ip6_nodes[] =
 {
     "ip6-rewrite",
+    "ip6-rewrite-18",
     NULL,
 };
 const static char* const nbr_mpls_nodes[] =

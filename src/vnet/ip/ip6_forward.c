@@ -1718,6 +1718,7 @@ always_inline uword
 ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			     vlib_node_runtime_t * node,
 			     vlib_frame_t * frame,
+			     u16 l2_rewrite_size,
 			     int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
@@ -1931,9 +1932,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					  0 /* with gso */ );
 	    }
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_two_headers (adj0[0], adj1[0],
-				    ip0, ip1, sizeof (ethernet_header_t));
+	  /* Paint the l2 rewrite. */
+	  vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1,
+				    l2_rewrite_size);
 
 	  if (is_midchain)
 	    {
@@ -2024,8 +2025,8 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					  0 /* with gso */ );
 	    }
 
-	  /* Guess we are only writing on simple Ethernet header. */
-	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+	  /* Paint the L2 rewrite. */
+	  vnet_rewrite_one_header (adj0[0], ip0, l2_rewrite_size);
 
 	  /* Update packet buffer attributes/set output interface. */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
@@ -2112,10 +2113,11 @@ always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
+		    u16 l2_rewrite_size,
 		    int do_counters, int is_midchain, int is_mcast)
 {
-  return ip6_rewrite_inline_with_gso (vm, node, frame, do_counters,
-				      is_midchain, is_mcast);
+  return ip6_rewrite_inline_with_gso (vm, node, frame, l2_rewrite_size,
+				      do_counters, is_midchain, is_mcast);
 }
 
 VLIB_NODE_FN (ip6_rewrite_node) (vlib_main_t * vm,
@@ -2123,9 +2125,23 @@ VLIB_NODE_FN (ip6_rewrite_node) (vlib_main_t * vm,
 				 vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 0);
   else
-    return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 0);
+}
+
+VLIB_NODE_FN (ip6_rewrite_18_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame,
+			       sizeof (ethernet_vlan_header_t), 1, 0, 0);
+  else
+    return ip6_rewrite_inline (vm, node, frame,
+			       sizeof (ethernet_vlan_header_t), 0, 0, 0);
 }
 
 VLIB_NODE_FN (ip6_rewrite_bcast_node) (vlib_main_t * vm,
@@ -2133,9 +2149,11 @@ VLIB_NODE_FN (ip6_rewrite_bcast_node) (vlib_main_t * vm,
 				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 0);
   else
-    return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 0);
 }
 
 VLIB_NODE_FN (ip6_rewrite_mcast_node) (vlib_main_t * vm,
@@ -2143,9 +2161,11 @@ VLIB_NODE_FN (ip6_rewrite_mcast_node) (vlib_main_t * vm,
 				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip6_rewrite_inline (vm, node, frame, 1, 0, 1);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 1,
+			       0, 1);
   else
-    return ip6_rewrite_inline (vm, node, frame, 0, 0, 1);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ethernet_header_t), 0,
+			       0, 1);
 }
 
 VLIB_NODE_FN (ip6_midchain_node) (vlib_main_t * vm,
@@ -2153,9 +2173,11 @@ VLIB_NODE_FN (ip6_midchain_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip6_rewrite_inline (vm, node, frame, 1, 1, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ip6_header_t), 1, 1,
+			       0);
   else
-    return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ip6_header_t), 0, 1,
+			       0);
 }
 
 VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
@@ -2163,9 +2185,11 @@ VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
 					vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
-    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ip6_header_t), 1, 1,
+			       1);
   else
-    return ip6_rewrite_inline (vm, node, frame, 0, 1, 1);
+    return ip6_rewrite_inline (vm, node, frame, sizeof (ip6_header_t), 0, 1,
+			       1);
 }
 
 /* *INDENT-OFF* */
@@ -2189,6 +2213,14 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
     [IP6_REWRITE_NEXT_ICMP_ERROR] = "ip6-icmp-error",
     [IP6_REWRITE_NEXT_FRAGMENT] = "ip6-frag",
   },
+};
+
+VLIB_REGISTER_NODE (ip6_rewrite_18_node) =
+{
+  .name = "ip6-rewrite-18",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_rewrite_trace,
+  .sibling_of = "ip6-rewrite",
 };
 
 VLIB_REGISTER_NODE (ip6_rewrite_bcast_node) = {

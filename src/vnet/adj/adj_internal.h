@@ -43,13 +43,19 @@
 #endif
 
 static inline u32
-adj_get_rewrite_node (vnet_link_t linkt)
+adj_get_rewrite_node (vnet_link_t linkt, u16 n_bytes)
 {
     switch (linkt) {
     case VNET_LINK_IP4:
-	return (ip4_rewrite_node.index);
+        if (18 == n_bytes)
+            return (ip4_rewrite_18_node.index);
+        else
+            return (ip4_rewrite_node.index);
     case VNET_LINK_IP6:
-	return (ip6_rewrite_node.index);
+        if (18 == n_bytes)
+            return (ip6_rewrite_18_node.index);
+        else
+            return (ip6_rewrite_node.index);
     case VNET_LINK_MPLS:
 	return (mpls_output_node.index);
     case VNET_LINK_ETHERNET:
