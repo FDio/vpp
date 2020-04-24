@@ -1,0 +1,9 @@
+---
+name: Load Balancer
+maintainer: Me <me@email.com>
+features:
+  - features
+
+description: ""
+state: production
+properties: [API, CLI, MULTITHREAD]
