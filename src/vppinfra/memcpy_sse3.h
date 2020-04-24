@@ -50,6 +50,11 @@
 
 #include <stdint.h>
 #include <x86intrin.h>
+#include <vppinfra/warnings.h>
+
+/* *INDENT-OFF* */
+WARN_OFF (stringop-overflow)
+/* *INDENT-ON* */
 
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
@@ -344,6 +349,9 @@ clib_memcpy_fast (void *dst, const void *src, size_t n)
   goto COPY_BLOCK_64_BACK15;
 }
 
+/* *INDENT-OFF* */
+WARN_ON (stringop-overflow)
+/* *INDENT-ON* */
 
 #undef CLIB_MVUNALIGN_LEFT47_IMM
 #undef CLIB_MVUNALIGN_LEFT47
