@@ -550,8 +550,9 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   session_event_t *evt;
   app_worker_t *app_wrk;
 
-  /* Only propagate session cleanup notification */
-  if (ntf == SESSION_CLEANUP_TRANSPORT)
+  /* Propagate transport cleanup notifications only if app didn't close */
+  if (ntf == SESSION_CLEANUP_TRANSPORT
+      && s->session_state != SESSION_STATE_TRANSPORT_DELETED)
     return;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
@@ -567,6 +568,7 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   evt->event_type = SESSION_CTRL_EVT_CLEANUP;
   mp = (session_cleanup_msg_t *) evt->data;
   mp->handle = session_handle (s);
+  mp->type = ntf;
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
