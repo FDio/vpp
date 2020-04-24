@@ -94,11 +94,12 @@ format_transport_connection (u8 * s, va_list * args)
   s = format (s, "%U", tp_vft->format_connection, conn_index, thread_index,
 	      verbose);
   tc = tp_vft->get_connection (conn_index, thread_index);
-  if (tc && transport_connection_is_tx_paced (tc) && verbose > 1)
+  if (tc && verbose > 1)
     {
       indent = format_get_indent (s) + 1;
-      s = format (s, "%Upacer: %U\n", format_white_space, indent,
-		  format_transport_pacer, &tc->pacer, tc->thread_index);
+      if (transport_connection_is_tx_paced (tc))
+	s = format (s, "%Upacer: %U\n", format_white_space, indent,
+		    format_transport_pacer, &tc->pacer, tc->thread_index);
       s = format (s, "%Utransport: flags 0x%x\n", format_white_space, indent,
 		  tc->flags);
     }

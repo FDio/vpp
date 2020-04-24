@@ -518,7 +518,12 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
   tls_ctx_t *ctx;
 
   if (ntf == SESSION_CLEANUP_TRANSPORT)
-    return;
+    {
+      /* Allow cleanup of tcp session */
+      if (s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+	session_close (s);
+      return;
+    }
 
   ctx = tls_ctx_get (s->opaque);
   if (!ctx->no_app_session)
