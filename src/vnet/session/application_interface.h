@@ -522,6 +522,7 @@ typedef struct session_migrate_msg_
 typedef struct session_cleanup_msg_
 {
   session_handle_t handle;
+  u8 type;
 } __clib_packed session_cleanup_msg_t;
 
 typedef struct app_session_event_
