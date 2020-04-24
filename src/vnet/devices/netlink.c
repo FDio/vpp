@@ -201,7 +201,7 @@ vnet_netlink_set_link_state (int ifindex, int up)
   struct ifinfomsg ifmsg = { 0 };
   clib_error_t *err = 0;
 
-  ifmsg.ifi_flags = IFF_UP;
+  ifmsg.ifi_flags = ((up) ? IFF_UP : 0);
   ifmsg.ifi_change = IFF_UP;
   ifmsg.ifi_index = ifindex;
 
