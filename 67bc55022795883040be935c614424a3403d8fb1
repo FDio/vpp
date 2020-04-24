@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7808d8e3_9e88bcde",
+        "filename": "src/plugins/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 746,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-04-24T15:08:55Z",
+      "side": 1,
+      "message": "In order to handle QinQ properly, also need to check dot1ad flag to use either 0x8100 or 0x88a8 for VLAN EtherType.",
+      "range": {
+        "startLine": 746,
+        "startChar": 27,
+        "endLine": 746,
+        "endChar": 33
+      },
+      "revId": "67bc55022795883040be935c614424a3403d8fb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
