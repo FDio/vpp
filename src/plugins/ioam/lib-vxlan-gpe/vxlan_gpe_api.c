@@ -204,7 +204,7 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
 
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.c>
 static clib_error_t *
-vxlan_gpe_init (vlib_main_t * vm)
+ioam_vxlan_gpe_init (vlib_main_t * vm)
 {
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   u32 encap_node_index = vxlan_gpe_encap_ioam_v4_node.index;
@@ -242,7 +242,7 @@ vxlan_gpe_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vxlan_gpe_init);
+VLIB_INIT_FUNCTION (ioam_vxlan_gpe_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
