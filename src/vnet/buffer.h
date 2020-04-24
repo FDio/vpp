@@ -455,6 +455,12 @@ typedef struct
   /* The union below has a u64 alignment, so this space is unused */
   u32 __unused2[1];
 
+  struct
+  {
+    u32 arc_next;
+    u32 unused;
+  } nat;
+
   union
   {
     struct
