@@ -180,6 +180,7 @@ set(VPPINFRA_HEADERS
   vector.h
   vector_neon.h
   vector_sse42.h
+  warnings.h
   xxhash.h
   xy.h
   zvec.h
