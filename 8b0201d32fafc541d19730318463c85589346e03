@@ -2,6 +2,57 @@
   "comments": [
     {
       "key": {
+        "uuid": "d187916b_71b39cae",
+        "filename": "src/vnet/ipsec/esp.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "pointless cast",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66c30126_5a5936c4",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "there\u0027s a lot of common code here between preparing sync and async frames. can we refactor so what bugs we have don\u0027t appear twice.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4008a0b8_b4c7e502",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "what\u0027s the logic behind producing frames that contain a common SA rather than containing a common crypto op. filling a frame of only one SA is less likely.\nare the engines optimised for the same SA.\nsome code comments here would be helpful for other readers.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b3078ffa_35ac0ac0",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 49
@@ -13,6 +64,74 @@
       "writtenOn": "2020-04-24T13:01:35Z",
       "side": 1,
       "message": "maybe refactor this, it\u0027s repeated above.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "384ad67d_05f0c1b5",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 941,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "it\u0027s best to wrap these in a if(node \u0026 TRACED), saves you cycles.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "16c60750_f54471e4",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 1351,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "what becomes of buffers if they make it here? if you need the name of a node just to write temporarily into next[n] then use the drop?",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03099edb_ba0507ef",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "probably not the right error code :)",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7785cf72_09f1fb40",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-24T13:01:35Z",
+      "side": 1,
+      "message": "does one of this fit on cacheline 1?",
       "revId": "8b0201d32fafc541d19730318463c85589346e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
