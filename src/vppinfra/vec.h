@@ -974,12 +974,16 @@ do {						\
 
 /** \brief Sort a vector using the supplied element comparison function
 
+    Does not depend on the underlying implementation to deal correctly
+    with null, zero-long, or 1-long vectors
+
     @param vec vector to sort
     @param f comparison function
 */
-#define vec_sort_with_function(vec,f)				\
-do {								\
-  qsort (vec, vec_len (vec), sizeof (vec[0]), (void *) (f));	\
+#define vec_sort_with_function(vec,f)                           \
+do {                                                            \
+  if (vec_len (vec) > 1)                                        \
+    qsort (vec, vec_len (vec), sizeof (vec[0]), (void *) (f));  \
 } while (0)
 
 /** \brief Make a vector containing a NULL terminated c-string.
