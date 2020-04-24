@@ -783,10 +783,19 @@ format_tls_ctx_state (u8 * s, va_list * args)
   ts = session_get_from_handle (ctx->app_session_handle);
   if (ts->session_state == SESSION_STATE_LISTENING)
     s = format (s, "%s", "LISTEN");
-  else if (tls_ctx_handshake_is_over (ctx))
-    s = format (s, "%s", "ESTABLISHED");
   else
-    s = format (s, "%s", "HANDSHAKE");
+    {
+      if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	s = format (s, "%s", "CLOSED");
+      else if (ts->session_state == SESSION_STATE_APP_CLOSED)
+	s = format (s, "%s", "APP-CLOSED");
+      else if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	s = format (s, "%s", "CLOSING");
+      else if (tls_ctx_handshake_is_over (ctx))
+	s = format (s, "%s", "ESTABLISHED");
+      else
+	s = format (s, "%s", "HANDSHAKE");
+    }
 
   return s;
 }
