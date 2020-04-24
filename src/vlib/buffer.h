@@ -178,7 +178,7 @@ typedef union
     u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE];
 
     /** Packet data */
-    u8 data[0];
+    u8 data[];
   };
 #ifdef CLIB_HAVE_VEC128
   u8x16 as_u8x16[4];
