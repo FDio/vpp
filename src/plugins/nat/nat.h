@@ -45,11 +45,6 @@
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
-typedef struct
-{
-  u32 arc_next;
-} nat_buffer_opaque_t;
-
 typedef enum
 {
   NAT_NEXT_DROP,
@@ -68,9 +63,6 @@ typedef struct
 {
   u32 next_index;
 } nat_pre_trace_t;
-
-#define nat_buffer_opaque(b) \
-  ((nat_buffer_opaque_t *)((vnet_buffer_opaque2_t *)b->opaque2)->__unused2)
 
 /*
 STATIC_ASSERT (sizeof (nat_buffer_opaque_t) <=

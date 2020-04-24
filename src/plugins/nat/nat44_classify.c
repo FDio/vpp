@@ -248,7 +248,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      u32 arc_next = 0;
 
 	      vnet_feature_next (&arc_next, b0);
-	      nat_buffer_opaque (b0)->arc_next = arc_next;
+	      vnet_buffer2 (b0)->nat.arc_next = arc_next;
 	    }
 
 	  if (ip0->protocol != IP_PROTOCOL_ICMP)
