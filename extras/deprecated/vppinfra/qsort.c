@@ -25,6 +25,7 @@
  */
 
 #include <vppinfra/clib.h>
+#include <vppinfra/error.h>
 
 /*
  * qsort.c: Our own version of the system qsort routine which is faster by an
@@ -64,6 +65,8 @@ qsort (void *base, uword n, uword size,
   char c;
   char *max;
   qst_t _q, *q = &_q;
+
+  clib_warning ("oingo boingo!");
 
   if (n <= 1)
     return;
