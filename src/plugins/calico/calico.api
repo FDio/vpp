@@ -1,0 +1,175 @@
+option version = "1.0.0";
+import "plugins/calico/calico_types.api";
+import "vnet/interface_types.api";
+
+/** \brief Configure Load-Balancer global parameters (unlike the CLI, both ip4_src_address and ip6_src_address need to be specified.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sticky_buckets_per_core - Number of buckets *per worker thread* in the
+           established flow table (must be power of 2).
+    @param flow_timeout - Time in seconds after which, if no packet is received
+           for a given flow, the flow is removed from the established flow table.
+*/
+autoreply manual_print define calico_conf
+{
+  u32 client_index;
+  u32 context;
+  u32 sticky_buckets_per_core;
+  u32 flow_timeout;
+  option vat_help = "[buckets <n>] [timeout <s>]";
+};
+
+/** \brief Add a virtual address (or prefix)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port. (0) means 'all-port VIP'
+    @param encap - Encap is ip4 GRE(0) or ip6 GRE(1) or L3DSR(2) or NAT4(3) or NAT6(4).
+    @param target_port - Pod's port corresponding to specific service(applicable in NAT4/NAT6 mode only).
+    @param new_flows_table_length - Size of the new connections flow table used
+           for this VIP (must be power of 2).
+    @param is_del - The VIP should be removed.
+*/
+autoreply manual_print define calico_add_del_vip {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_calico_encap_type_t encap;
+  u16 target_port;
+  u32 new_flows_table_length [default=1024];
+  bool is_del;
+  option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (nat4|nat6)] [target_port <n>] [new_len <n>] [del]";
+};
+
+/** \brief Add an application server for a given VIP
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+    @param as_address - The application server address (IPv4 in lower order 32 bits).
+    @param is_del - The AS should be removed.
+    @param is_flush - The sessions related to this AS should be flushed.
+*/
+autoreply manual_print define calico_add_del_as {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_address_t as_address;
+  bool is_del;
+  bool is_flush;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush]";
+};
+
+/** \brief Flush a given vip
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+autoreply manual_print define calico_flush_vip {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief Dump all vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define calico_vip_dump{
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  vl_api_prefix_matcher_t pfx_matcher;
+  u8 protocol [default=255];
+  u16 port;
+};
+
+/** \brief Reply all configured vip
+    @param context - sender context, to match reply w/ request
+    @param vip - all vip addrs.
+*/
+define calico_vip_details {
+  u32 context;
+  vl_api_calico_vip_t vip;
+  vl_api_calico_encap_type_t encap;
+  u16 target_port;
+  u16 flow_table_length;
+};
+
+/** \brief dump AS list per VIP or all ASs for all VIPs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+define calico_as_dump{
+  u32 client_index;
+  u32 context;
+  /* vip */
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol;
+  u16 port;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>]";
+};
+
+/** \brief calico_as_details
+    @param context - sender context, to match reply w/ request
+    @param as - AS detail record
+*/
+define calico_as_details {
+  u32 context;
+  vl_api_calico_vip_t vip;
+  vl_api_address_t app_srv;
+  u8 flags;
+  u32 in_use_since;
+};
+
+/** \brief Add/Del SNAT feature
+    @param pfx - prefix to match for snat
+    @param is_add - true if add, false if delete
+*/
+autoreply define calico_add_del_snat_entry {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  vl_api_address_t addr;
+  u32 table_id;
+  bool is_add;
+};
+
+/** \brief Enable/disable NAT4 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define calico_add_del_intf_nat4 {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Enable/disable NAT6 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define calico_add_del_intf_nat6 {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+};

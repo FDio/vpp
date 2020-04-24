@@ -1,0 +1,58 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2019 Vinci Consulting Corp.  All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import "vnet/ip/ip_types.api";
+
+enum calico_encap_type
+{
+  CALICO_API_ENCAP_TYPE_NAT4 = 0,
+  CALICO_API_ENCAP_TYPE_NAT6 = 1,
+  CALICO_API_ENCAP_N_TYPES = 2,
+};
+
+/* Lookup types */
+enum calico_lkp_type_t
+{
+  CALICO_API_LKP_SAME_IP_PORT = 0,
+  CALICO_API_LKP_DIFF_IP_PORT = 1,
+  CALICO_API_LKP_ALL_PORT_IP = 2,
+  CALICO_API_LKP_N_TYPES = 3,
+};
+
+enum calico_vip_type
+{
+  CALICO_API_VIP_TYPE_IP4_NAT4 = 0,
+  CALICO_API_VIP_TYPE_IP6_NAT6 = 1,
+  CALICO_API_VIP_N_TYPES = 2,
+};
+
+enum calico_nat_protocol
+{
+  CALICO_API_NAT_PROTOCOL_UDP = 0x06,
+  CALICO_API_NAT_PROTOCOL_TCP = 0x17,
+  CALICO_API_NAT_PROTOCOL_ANY = 0xffffffff,
+};
+
+/** \brief Define connection statistics structure
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+typedef calico_vip
+{
+  vl_api_address_with_prefix_t pfx;
+  vl_api_ip_proto_t protocol;
+  u16 port;
+};
