@@ -459,15 +459,15 @@ again:
   if (!clib_bihash_search_16_8
       (&rm->hash, (clib_bihash_kv_16_8_t *) kv, (clib_bihash_kv_16_8_t *) kv))
     {
+      if (vm->thread_index != kv->v.memory_owner_thread_index)
+	{
+	  *do_handoff = 1;
+	  return NULL;
+	}
       reass =
 	pool_elt_at_index (rm->per_thread_data
 			   [kv->v.memory_owner_thread_index].pool,
 			   kv->v.reass_index);
-      if (vm->thread_index != reass->memory_owner_thread_index)
-	{
-	  *do_handoff = 1;
-	  return reass;
-	}
 
       if (now > reass->last_heard + rm->timeout)
 	{
