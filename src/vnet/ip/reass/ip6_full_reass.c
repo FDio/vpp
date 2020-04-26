@@ -508,15 +508,16 @@ again:
 
   if (!clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
     {
+      if (vm->thread_index != kv->v.memory_owner_thread_index)
+	{
+	  *do_handoff = 1;
+	  return NULL;
+	}
+
       reass =
 	pool_elt_at_index (rm->per_thread_data
 			   [kv->v.memory_owner_thread_index].pool,
 			   kv->v.reass_index);
-      if (vm->thread_index != kv->v.memory_owner_thread_index)
-	{
-	  *do_handoff = 1;
-	  return reass;
-	}
 
       if (now > reass->last_heard + rm->timeout)
 	{
