@@ -22,6 +22,7 @@
 #include <vnet/api_errno.h>
 #include <vpp/app/version.h>
 
+#include <vnet/ip/ip_types_api.h>
 #include <ikev2/ikev2.h>
 #include <ikev2/ikev2_priv.h>
 
@@ -184,13 +185,17 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
 #if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
+  ip4_address_t start_addr, end_addr;
+
+  ip4_address_decode (mp->start_addr, &start_addr);
+  ip4_address_decode (mp->end_addr, &end_addr);
+
   u8 *tmp = format (0, "%s", mp->name);
   error =
     ikev2_set_profile_ts (vm, tmp, mp->proto,
 			  clib_net_to_host_u16 (mp->start_port),
 			  clib_net_to_host_u16 (mp->end_port),
-			  (ip4_address_t) mp->start_addr,
-			  (ip4_address_t) mp->end_addr, mp->is_local);
+			  start_addr, end_addr, mp->is_local);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;

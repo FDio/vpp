@@ -126,8 +126,8 @@ autoreply define ikev2_profile_set_ts
   u8 proto;
   u16 start_port;
   u16 end_port;
-  u32 start_addr;
-  u32 end_addr;
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
   option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
 };
 
