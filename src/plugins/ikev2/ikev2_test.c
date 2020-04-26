@@ -21,6 +21,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
+#include <vnet/ip/ip_types_api.h>
 #include <plugins/ikev2/ikev2.h>
 
 #define __plugin_msg_base ikev2_test_main.msg_id_base
@@ -389,8 +390,8 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
   mp->proto = (u8) proto;
   mp->start_port = (u16) start_port;
   mp->end_port = (u16) end_port;
-  mp->start_addr = start_addr.as_u32;
-  mp->end_addr = end_addr.as_u32;
+  ip4_address_encode (&start_addr, mp->start_addr);
+  ip4_address_encode (&end_addr, mp->end_addr);
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
 
