@@ -232,8 +232,8 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
     return;
 
   filter_sw_if_index = htonl (mp->sw_if_index);
-  if (filter_sw_if_index != ~0)
-    return;			/* UNIMPLEMENTED */
+  if (mp->sw_if_index != ~0)
+    VALIDATE_SW_IF_INDEX (mp);
 
   rv = tap_dump_ifs (&tapifs);
   if (rv)
@@ -241,9 +241,11 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
 
   vec_foreach (tap_if, tapifs)
   {
-    tap_send_sw_interface_details (am, reg, tap_if, mp->context);
+    if ((filter_sw_if_index == ~0)
+	|| (tap_if->sw_if_index == filter_sw_if_index))
+      tap_send_sw_interface_details (am, reg, tap_if, mp->context);
   }
-
+  BAD_SW_IF_INDEX_LABEL;
   vec_free (tapifs);
 }
 
