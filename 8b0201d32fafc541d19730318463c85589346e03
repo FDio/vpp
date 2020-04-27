@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "000b1acc_48a6c6fb",
+        "filename": "src/vnet/ipsec/esp.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "d187916b_71b39cae",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "66c30126_5a5936c4",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 49
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-24T13:01:35Z",
       "side": 1,
       "message": "there\u0027s a lot of common code here between preparing sync and async frames. can we refactor so what bugs we have don\u0027t appear twice.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f6d4dda_17388d78",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "I managed to put all chaining ops code shared by sync/async.",
+      "parentUuid": "66c30126_5a5936c4",
       "revId": "8b0201d32fafc541d19730318463c85589346e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "c27d4f0b_d359ab11",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "Will change to is (is_async \u0026\u0026 async_op_id !\u003d sa0-\u003ecrypto_async_enc_op_id) and add comments here.",
+      "parentUuid": "4008a0b8_b4c7e502",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b3078ffa_35ac0ac0",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 49
@@ -64,6 +118,24 @@
       "writtenOn": "2020-04-24T13:01:35Z",
       "side": 1,
       "message": "maybe refactor this, it\u0027s repeated above.",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e4e463d9_3d73d17c",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 899,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "Will do",
+      "parentUuid": "b3078ffa_35ac0ac0",
       "revId": "8b0201d32fafc541d19730318463c85589346e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "a7ef758b_d6759698",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 941,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "Thanks, I didn\u0027t know there is such way.",
+      "parentUuid": "384ad67d_05f0c1b5",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "16c60750_f54471e4",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 49
@@ -98,6 +188,24 @@
       "writtenOn": "2020-04-24T13:01:35Z",
       "side": 1,
       "message": "what becomes of buffers if they make it here? if you need the name of a node just to write temporarily into next[n] then use the drop?",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "32e408b0_c684d87d",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 1351,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "The buffers are inflight proessed by async engine, and will then sent to esp_encrypt_post/decrypt_post after dequeued from the engine. Since they are at no position to be sent to next node yet (or drop).",
+      "parentUuid": "16c60750_f54471e4",
       "revId": "8b0201d32fafc541d19730318463c85589346e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -132,6 +240,24 @@
       "writtenOn": "2020-04-24T13:01:35Z",
       "side": 1,
       "message": "does one of this fit on cacheline 1?",
+      "revId": "8b0201d32fafc541d19730318463c85589346e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24b2ea1f_16f41af3",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-04-27T15:22:14Z",
+      "side": 1,
+      "message": "I managed to use union to wrap both async and sync inside cacheline 1. However there is both sync and async duplicates in the end of each SA. 14 bytes extended for each SA as the price.",
+      "parentUuid": "7785cf72_09f1fb40",
       "revId": "8b0201d32fafc541d19730318463c85589346e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
