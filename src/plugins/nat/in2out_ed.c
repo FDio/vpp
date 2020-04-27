@@ -289,7 +289,6 @@ slow_path_ed (snat_main_t * sm,
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   clib_bihash_kv_16_8_t out2in_ed_kv;
-  bool out2in_ed_inserted = false;
   u8 identity_nat;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
@@ -337,7 +336,7 @@ slow_path_ed (snat_main_t * sm,
 	{
 	  nat_elog_warn ("create NAT session failed");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
-	  goto drop;
+	  return NAT_NEXT_DROP;
 	}
       switch (vec_len (sm->outside_fibs))
 	{
@@ -374,10 +373,10 @@ slow_path_ed (snat_main_t * sm,
 	{
 	  nat_elog_notice ("addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
-	  goto drop;
+	  nat_free_session_data (sm, s, thread_index, 0);
+	  nat44_ed_delete_session (sm, s, thread_index, 1);
+	  return NAT_NEXT_DROP;
 	}
-
-      out2in_ed_inserted = true;
     }
   else
     {
@@ -391,7 +390,7 @@ slow_path_ed (snat_main_t * sm,
 	{
 	  nat_elog_warn ("create NAT session failed");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
-	  goto drop;
+	  return NAT_NEXT_DROP;
 	}
       switch (vec_len (sm->outside_fibs))
 	{
@@ -429,7 +428,6 @@ slow_path_ed (snat_main_t * sm,
 	  (&tsm->out2in_ed, &out2in_ed_kv, nat44_o2i_ed_is_idle_session_cb,
 	   &ctx))
 	nat_elog_notice ("out2in-ed key add failed");
-      out2in_ed_inserted = true;
     }
 
   if (lb)
@@ -473,18 +471,6 @@ slow_path_ed (snat_main_t * sm,
 	       thread_index, 0);
 
   return next;
-drop:
-  if (out2in_ed_inserted)
-    {
-      if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &out2in_ed_kv, 0))
-	nat_elog_notice ("out2in-ed key del failed");
-    }
-  if (s)
-    {
-      nat_free_session_data (sm, s, thread_index, 0);
-      nat44_ed_delete_session (sm, s, thread_index, 1);
-    }
-  return NAT_NEXT_DROP;
 }
 
 static_always_inline int
