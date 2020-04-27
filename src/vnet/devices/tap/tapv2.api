@@ -57,7 +57,7 @@ enum tap_flags {
     @param tap_flags - flags for the TAP interface creation
     @param host_if_name_set - host side interface name should be set
     @param host_if_name - host side interface name
-    @param host_namespace_set - host namespece should be set
+    @param host_namespace_set - host namespace should be set
     @param host_namespace - host namespace to attach interface to
     @param host_bridge_set - host bridge should be set
     @param host_bridge - host bridge to attach interface to
@@ -71,8 +71,8 @@ define tap_create_v2
   bool use_random_mac [default=true];
   vl_api_mac_address_t mac_address;
   u8 num_rx_queues [default=1];
-  u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
-  u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+  u16 tx_ring_sz [default=256]; /* optional, default is 256 entries, must be power of 2 */
+  u16 rx_ring_sz [default=256]; /* optional, default is 256 entries, must be power of 2 */
   bool host_mtu_set;
   u32 host_mtu_size;
   bool host_mac_addr_set;
@@ -120,7 +120,7 @@ autoreply define tap_delete_v2
 };
 
 /** \brief Dump tap interfaces request
-    @param sw_if_index - filter by sw_if_index UNIMPLEMENTED
+    @param sw_if_index - filter by sw_if_index
 */
 define sw_interface_tap_v2_dump
 {
