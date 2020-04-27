@@ -730,7 +730,7 @@ clib_bitmap_next_clear (uword * ai, uword i)
 	}
 
       /* no clear bit left in bitmap, return bit just beyond bitmap */
-      return (i0 + 1) * BITS (ai[0]);
+      return (i0 * BITS (ai[0])) + 1;
     }
   return i;
 }
