@@ -79,8 +79,8 @@ define memif_create
   u8 tx_queues; /* optional, default is 1 */
   u32 id; /* optional, default is 0 */
   u32 socket_id; /* optional, default is 0, "/var/vpp/memif.sock" */
-  u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
-  u16 buffer_size; /* optional, default is 2048 bytes */
+  u32 ring_size [default=1024]; /* optional, default is 1024 entries, must be power of 2 */
+  u16 buffer_size [default=2048]; /* optional, default is 2048 bytes */
   bool no_zero_copy; /* disable zero copy */
   vl_api_mac_address_t hw_addr; /* optional, randomly generated if zero */
   string secret[24]; /* optional, default is "", max length 24 */
@@ -116,7 +116,7 @@ autoreply define memif_delete
 /** \brief Memory interface details structure
     @param context - sender context, to match reply w/ request
     @param socket_id - u32 used to identify the given socket filename
-    @param socket_filename - correpsonding NUL terminated socket filename
+    @param socket_filename - corresponding NUL terminated socket filename
 */
 define memif_socket_filename_details
 {
