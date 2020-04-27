@@ -420,8 +420,11 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
   f = fss->free_fifos;
   if (!f)
     {
+      if (PREDICT_FALSE (fsh_n_free_bytes (fsh) < sizeof (svm_fifo_t)))
+	return 0;
+
       void *oldheap = ssvm_push_heap (fsh->ssvm_sh);
-      f = clib_mem_alloc_aligned (sizeof (*f), CLIB_CACHE_LINE_BYTES);
+      f = clib_mem_alloc_aligned_or_null (sizeof (*f), CLIB_CACHE_LINE_BYTES);
       ssvm_pop_heap (oldheap);
       if (!f)
 	return 0;
