@@ -7,8 +7,5 @@ features:
   - attach to existing tap at host
 description: "Create a tap v2 device interface, which connects to a
               tap interface on the host system."
-missing:
-
-  - API dump filtering by sw_if_index
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
