@@ -44,9 +44,6 @@
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 #include <vlib/unix/unix.h>
-#include <vlib/unix/cj.h>
-
-CJ_GLOBAL_LOG_PROTOTYPE;
 
 /* Actually allocate a few extra slots of vector data to support
    speculative vector enqueues which overflow vector data in next frame. */

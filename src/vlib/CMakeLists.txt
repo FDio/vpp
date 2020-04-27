@@ -61,7 +61,6 @@ add_vpp_library(vlib
   error.c
   format.c
   handoff_trace.c
-  i2c.c
   init.c
   linux/pci.c
   linux/vfio.c
@@ -78,7 +77,6 @@ add_vpp_library(vlib
   threads.c
   threads_cli.c
   trace.c
-  unix/cj.c
   unix/cli.c
   unix/input.c
   unix/main.c
@@ -103,7 +101,6 @@ add_vpp_library(vlib
   error.h
   format_funcs.h
   global_funcs.h
-  i2c.h
   init.h
   linux/vfio.h
   log.h
@@ -119,7 +116,6 @@ add_vpp_library(vlib
   threads.h
   trace_funcs.h
   trace.h
-  unix/cj.h
   unix/mc_socket.h
   unix/plugin.h
   unix/unix.h

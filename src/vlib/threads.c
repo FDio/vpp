@@ -22,12 +22,8 @@
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
-#include <vlib/unix/cj.h>
 
 #include <vlib/stat_weak_inlines.h>
-
-DECLARE_CJ_GLOBAL_LOG;
-
 
 u32
 vl (void *p)
