@@ -277,8 +277,6 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
 {
   sack_scoreboard_hole_t *last_hole;
 
-  clib_warning ("sack reneging");
-
   scoreboard_clear (sb);
   last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
 				      start, end);
