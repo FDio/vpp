@@ -299,7 +299,6 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_data += hdr_sz;
 	  b0->current_length = len;
 	  b0->total_length_not_including_first_buffer = 0;
-	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  if (checksum_offload_enabled)
 	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, vif->type);

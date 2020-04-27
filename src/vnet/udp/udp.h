@@ -299,7 +299,7 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
 {
   udp_header_t *uh;
   u16 udp_len = sizeof (udp_header_t) + b->current_length;
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     udp_len += b->total_length_not_including_first_buffer;
 
   uh = vlib_buffer_push_uninit (b, sizeof (udp_header_t));

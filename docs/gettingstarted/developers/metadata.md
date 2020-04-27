@@ -26,7 +26,6 @@ the pre-data (rewrite space) area.
   * src/vlib/buffer.h flag bits
     * VLIB_BUFFER_IS_TRACED: buffer is traced
     * VLIB_BUFFER_NEXT_PRESENT: buffer has multiple chunks
-    * VLIB_BUFFER_TOTAL_LENGTH_VALID: total_length_not_including_first_buffer is valid (see below)
   * src/vnet/buffer.h flag bits
     * VNET_BUFFER_F_L4_CHECKSUM_COMPUTED: tcp/udp checksum has been computed
     * VNET_BUFFER_F_L4_CHECKSUM_CORRECT: tcp/udp checksum is correct
@@ -66,7 +65,7 @@ the pre-data (rewrite space) area.
 * u32 opaque[10]: primary vnet-layer opaque data (see below)
 * END of first cache line / data initialized by the buffer allocator
 * u32 trace_index: buffer's index in the packet trace subsystem
-* u32 total_length_not_including_first_buffer: see VLIB_BUFFER_TOTAL_LENGTH_VALID above
+* u32 total_length_not_including_first_buffer: only valid if VLIB_BUFFER_NEXT_PRESENT is set
 * u32 opaque2[14]: secondary vnet-layer opaque data (see below)
 * u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE]: rewrite space, often used to prepend tunnel encapsulations
 * u8 data[0]: buffer data received from the wire. Ordinarily, hardware devices use b->data[0] as the DMA target but there are exceptions. Do not write code which blindly assumes that packet data starts in b->data[0]. Use vlib_buffer_get_current(...).

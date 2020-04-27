@@ -128,7 +128,6 @@ oddbuf_inline (vlib_main_t * vm,
 
 	  b0next = vlib_get_buffer (vm, bi);
 	  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	  b0->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  b0->next_buffer = bi;
 
 	  src = b0->data + b0->current_data + b0->current_length -

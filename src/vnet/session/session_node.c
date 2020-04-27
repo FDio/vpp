@@ -569,7 +569,6 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
   u8 *data, j;
 
   wrk = session_main_get_worker (ctx->s->thread_index);
-  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   b->total_length_not_including_first_buffer = 0;
 
   chain_b = b;

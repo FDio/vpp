@@ -686,7 +686,6 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       return IP4_REASS_RC_INTERNAL_ERROR;
     }
   total_length -= first_b->current_length;
-  first_b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   first_b->total_length_not_including_first_buffer = total_length;
   ip4_header_t *ip = vlib_buffer_get_current (first_b);
   ip->flags_and_fragment_offset = 0;

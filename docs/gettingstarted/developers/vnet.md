@@ -206,8 +206,6 @@ blindly cut-'n-pasted.
                                    vec_len (udp_data));
 
     }
-  b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID;
-
   /* sw_if_index 0 is the "local" interface, which always exists */
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 

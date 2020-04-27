@@ -420,7 +420,6 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next[0] = ESP_ENCRYPT_NEXT_DROP;
 	      goto trace;
 	    }
-	  b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  payload_len = b[0]->current_length;
 	  payload_len_total = vlib_buffer_length_in_chain (vm, b[0]);
 
@@ -491,7 +490,6 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (!next_hdr_ptr)
 	    goto trace;
 
-	  b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  payload_len = b[0]->current_length;
 	  payload_len_total = vlib_buffer_length_in_chain (vm, b[0]);
 

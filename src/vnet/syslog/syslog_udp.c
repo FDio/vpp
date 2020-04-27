@@ -59,8 +59,6 @@ syslog_add_udp_transport (vlib_main_t * vm, u32 bi)
   udp->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip);
   if (udp->checksum == 0)
     udp->checksum = 0xffff;
-
-  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 }
 
 /*

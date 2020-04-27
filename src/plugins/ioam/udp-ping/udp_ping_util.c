@@ -269,7 +269,6 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
       clib_memcpy_fast (b0->data, stats->ping_rewrite, stats->rewrite_len);
       b0->current_data = 0;
       b0->current_length = stats->rewrite_len;
-      b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
       /* If session is going down, then set path down */
       if ((stats->retry != 0) && ((stats->retry % MAX_PING_RETRIES) == 0))

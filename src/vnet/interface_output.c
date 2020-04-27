@@ -879,7 +879,6 @@ pcap_drop_trace (vlib_main_t * vm,
 				  2, em->error_strings_heap[b0->error],
 				  error_string_len);
 		last->current_length += drop_string_len;
-		b0->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
 		pcap_add_buffer (&pp->pcap_main, vm, bi0,
 				 pp->max_bytes_per_pkt);
 		last->current_length -= drop_string_len;

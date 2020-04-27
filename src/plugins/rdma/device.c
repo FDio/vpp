@@ -930,7 +930,6 @@ rdma_init (vlib_main_t * vm)
     {
       rdma_per_thread_data_t *ptd = vec_elt_at_index (rm->per_thread_data, i);
       clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
-      ptd->buffer_template.flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
       ptd->buffer_template.ref_count = 1;
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }

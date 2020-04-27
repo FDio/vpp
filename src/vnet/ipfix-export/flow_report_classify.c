@@ -229,7 +229,6 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 		  clib_memcpy_fast (b0->data, fr->rewrite, copy_len);
 		  b0->current_data = 0;
 		  b0->current_length = copy_len;
-		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
 
@@ -294,7 +293,6 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 		    version_length (next_offset -
 				    (sizeof (*ip) + sizeof (*udp)));
 		  b0->current_length = next_offset;
-		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 		  tp = vlib_buffer_get_current (b0);
 		  ip = (ip4_header_t *) & tp->ip4;
@@ -351,7 +349,6 @@ flush:
       h->version_length = version_length (next_offset -
 					  (sizeof (*ip) + sizeof (*udp)));
       b0->current_length = next_offset;
-      b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
       tp = vlib_buffer_get_current (b0);
       ip = (ip4_header_t *) & tp->ip4;

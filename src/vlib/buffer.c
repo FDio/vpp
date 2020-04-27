@@ -87,7 +87,6 @@ vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
       l += b->current_length;
     }
   b_first->total_length_not_including_first_buffer = l;
-  b_first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   return l + l_first;
 }
 
@@ -107,7 +106,7 @@ format_vlib_buffer_no_chain (u8 * s, va_list * args)
 		"ref-count %u", b->current_data, b->current_length,
 		b->buffer_pool_index, b->ref_count);
 
-  if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
+  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     s = format (s, ", totlen-nifb %d",
 		b->total_length_not_including_first_buffer);
 
@@ -434,7 +433,6 @@ vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
   n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
 
   b = vlib_get_buffer (vm, bi);
-  b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
   /* Get to the end of the chain before we try to append data... */
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)

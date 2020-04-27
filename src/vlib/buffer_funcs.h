@@ -406,10 +406,7 @@ vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     return len;
 
-  if (PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
-    return len + b->total_length_not_including_first_buffer;
-
-  return vlib_buffer_length_in_chain_slow_path (vm, b);
+  return len + b->total_length_not_including_first_buffer;
 }
 
 /** \brief Get length in bytes of the buffer index buffer chain
@@ -1028,8 +1025,8 @@ int vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 
 /* Define vlib_buffer and vnet_buffer flags bits preserved for copy/clone */
 #define VLIB_BUFFER_COPY_CLONE_FLAGS_MASK                     	\
-  (VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID |	\
-   VLIB_BUFFER_IS_TRACED | ~VLIB_BUFFER_FLAGS_ALL)
+  (VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_IS_TRACED |	\
+   ~VLIB_BUFFER_FLAGS_ALL)
 
 /* duplicate all buffers in chain */
 always_inline vlib_buffer_t *
@@ -1302,9 +1299,7 @@ vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
   ASSERT (head->buffer_pool_index == tail->buffer_pool_index);
 
   head->flags |= VLIB_BUFFER_NEXT_PRESENT;
-  head->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
   head->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
-  head->flags |= (tail->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID);
   head->next_buffer = vlib_get_buffer_index (vm, tail);
   head->total_length_not_including_first_buffer = tail->current_length +
     tail->total_length_not_including_first_buffer;
@@ -1326,7 +1321,6 @@ vlib_buffer_chain_init (vlib_buffer_t * first)
   first->total_length_not_including_first_buffer = 0;
   first->current_length = 0;
   first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-  first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 }
 
 /* The provided next_bi buffer index is appended to the end of the packet. */
@@ -1553,8 +1547,6 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 	  ++n_buffers;
 	}
     }
-
-  first->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
   return n_buffers;
 }

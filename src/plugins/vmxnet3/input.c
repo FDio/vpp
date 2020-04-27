@@ -302,7 +302,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  bi[0] = bi0;
 	  if (!(rx_comp->index & VMXNET3_RXCI_EOP))
 	    {
-	      hb->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	      prev_b0 = b0;
 	    }
 	  else

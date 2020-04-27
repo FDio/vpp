@@ -190,7 +190,7 @@ This function creates the packet header for an ipfix data packet
       b0->current_data = 0;
       b0->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*h) +
         sizeof (*s);
-      b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
+      b0->flags |= VNET_BUFFER_F_FLOW_REPORT;
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
       tp = vlib_buffer_get_current (b0);

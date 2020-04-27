@@ -82,7 +82,6 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 		  memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
 		  b0->current_data = 0;
 		  b0->current_length = vec_len (fr->rewrite);
-		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
@@ -121,7 +120,6 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 	      if (next_offset > (frm->path_mtu - UDP_PING_EXPORT_RECORD_SIZE))
 		{
 		  b0->current_length = next_offset;
-		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  tp = vlib_buffer_get_current (b0);
 		  ip = (ip4_header_t *) & tp->ip4;
 		  udp = (udp_header_t *) (ip + 1);
@@ -175,7 +173,6 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
   if (b0)
     {
       b0->current_length = next_offset;
-      b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       tp = vlib_buffer_get_current (b0);
       ip = (ip4_header_t *) & tp->ip4;
       udp = (udp_header_t *) (ip + 1);

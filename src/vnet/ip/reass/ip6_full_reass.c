@@ -717,7 +717,6 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       goto free_buffers_and_return;
     }
   total_length -= first_b->current_length;
-  first_b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   first_b->total_length_not_including_first_buffer = total_length;
   // drop fragment header
   vnet_buffer_opaque_t *first_b_vnb = vnet_buffer (first_b);

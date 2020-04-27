@@ -75,7 +75,7 @@ mrvl_pp2_set_buf_data_len_flags (vlib_buffer_t * b, struct pp2_ppio_desc *d,
   u16 len;
   len = pp2_ppio_inq_desc_get_pkt_len (d);
   b->total_length_not_including_first_buffer = 0;
-  b->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID | add_flags;
+  b->flags = add_flags;
 
   if (add_flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
     vnet_buffer (b)->l2_hdr_offset = 2;

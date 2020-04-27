@@ -286,7 +286,6 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
       }
     b = vlib_get_buffer (vm, bi);
     b->current_length = vec_len (td->resend_queue[i].data);
-    b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
     b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
     vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
     vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
@@ -513,7 +512,6 @@ nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
 
   b->current_data = 0;
   b->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*h);
-  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;

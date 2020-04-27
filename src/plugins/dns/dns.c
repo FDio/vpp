@@ -295,8 +295,7 @@ found_src_address:
   b->current_length = sizeof (ip4_header_t) + sizeof (udp_header_t) +
     vec_len (ep->dns_request);
   b->total_length_not_including_first_buffer = 0;
-  b->flags =
-    VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;	/* "local0" */
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;	/* default VRF for now */
 
@@ -404,8 +403,7 @@ found_src_address:
   b->current_length = sizeof (ip6_header_t) + sizeof (udp_header_t) +
     vec_len (ep->dns_request);
   b->total_length_not_including_first_buffer = 0;
-  b->flags =
-    VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   ip = vlib_buffer_get_current (b);
   clib_memset (ip, 0, sizeof (*ip));
@@ -2825,8 +2823,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
    * In the resolution-required / deferred case, resetting a freshly-allocated
    * buffer won't hurt. We hope.
    */
-  b0->flags |= (VNET_BUFFER_F_LOCALLY_ORIGINATED
-		| VLIB_BUFFER_TOTAL_LENGTH_VALID);
+  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;	/* "local0" */
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;	/* default VRF for now */
 

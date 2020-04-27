@@ -407,8 +407,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 	{
 	  d->flags = VRING_DESC_F_NEXT;
 	  vring->buffers[count] = bi;
-	  b->flags &=
-	    ~(VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID);
+	  b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 	  bi = b->next_buffer;
 	  b->next_buffer = 0;
 	  n_added++;

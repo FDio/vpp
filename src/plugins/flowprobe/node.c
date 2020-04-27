@@ -653,8 +653,7 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 
       b0->current_data = 0;
       b0->current_length = flowprobe_get_headersize ();
-      b0->flags |=
-	(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
+      b0->flags |= VNET_BUFFER_F_FLOW_REPORT;
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
       fm->context[which].next_record_offset_per_worker[my_cpu_number] =

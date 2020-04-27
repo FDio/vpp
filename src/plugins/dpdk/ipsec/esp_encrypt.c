@@ -508,8 +508,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  else			/* should never happen */
 	    clib_warning ("No outer header found for ESP packet");
 
-	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-
 	  /* mbuf packet starts at ESP header */
 	  mb0->data_len = vlib_buffer_get_tail (b0) - ((u8 *) esp0);
 	  mb0->pkt_len = vlib_buffer_get_tail (b0) - ((u8 *) esp0);

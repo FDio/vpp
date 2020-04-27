@@ -61,11 +61,9 @@ test_vlib_command_fn (vlib_main_t * vm,
   vlib_buffer_chain_append_data_with_alloc (vm, b, &last_b,
 					    junk, ARRAY_LEN (junk));
 
-  /* Cover vlib_buffer_length_in_chain_slow_path(...) */
-  b->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
+  /* Cover vlib_buffer_length_in_chain(...) */
   vlib_cli_output (vm, "buffer length %d",
 		   vlib_buffer_length_in_chain (vm, b));
-  b->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
   vlib_cli_output (vm, "%u", vlib_buffer_index_length_in_chain (vm, bi));
 
   /* Add more data. Eat Mor Chikin. */

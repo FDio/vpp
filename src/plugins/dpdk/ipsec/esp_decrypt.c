@@ -574,7 +574,6 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 
 	  vlib_buffer_advance (b0, sizeof (esp_header_t) + iv_size);
 
-	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  f0 = (esp_footer_t *) (vlib_buffer_get_tail (b0) - trunc_size - 2);
 	  b0->current_length -= (f0->pad_length + trunc_size + 2);
 #if 0

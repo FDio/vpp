@@ -208,8 +208,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 		   * buffer index and descriptor index, we build
 		   * 4-fragments chains and save the head
 		   */
-		  chained_b->flags &= ~(VLIB_BUFFER_NEXT_PRESENT |
-					VLIB_BUFFER_TOTAL_LENGTH_VALID);
+		  chained_b->flags &= ~(VLIB_BUFFER_NEXT_PRESENT);
 		  u32 idx = tail + 1 + RDMA_TXQ_DV_DSEG2WQE (chained_n);
 		  idx &= mask;
 		  txq->bufs[idx] = chained_b->next_buffer;

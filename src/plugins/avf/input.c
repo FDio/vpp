@@ -154,7 +154,6 @@ avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
     }
 
   hb->total_length_not_including_first_buffer = tlnifb;
-  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   return tlnifb;
 }
 

@@ -269,7 +269,6 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (offset == 0)
 		{
 		  b0->total_length_not_including_first_buffer = 0;
-		  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = apif->sw_if_index;
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		  first_bi0 = bi0;

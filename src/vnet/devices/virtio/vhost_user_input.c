@@ -528,7 +528,6 @@ vhost_user_if_input (vlib_main_t * vm,
 
       /* The buffer should already be initialized */
       b_head->total_length_not_including_first_buffer = 0;
-      b_head->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
       if (PREDICT_FALSE (n_trace))
 	{

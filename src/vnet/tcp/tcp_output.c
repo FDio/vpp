@@ -1165,7 +1165,6 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 					    bytes_per_buffer -
 					    TRANSPORT_MAX_HDRS_LEN);
       b[0]->current_length = n_bytes;
-      b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
       max_deq_bytes -= n_bytes;
 
@@ -2122,7 +2121,7 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
 
   u16 data_len = b->current_length - sizeof (tcp_header_t) - tc->snd_opts_len;
 
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     data_len += b->total_length_not_including_first_buffer;
 
   if (PREDICT_TRUE (data_len <= tc->snd_mss))

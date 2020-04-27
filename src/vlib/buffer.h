@@ -73,8 +73,7 @@
 #define foreach_vlib_buffer_flag \
   _( 0, IS_TRACED, 0)					\
   _( 1, NEXT_PRESENT, "next-present")			\
-  _( 2, TOTAL_LENGTH_VALID, 0)				\
-  _( 3, EXT_HDR_VALID, "ext-hdr-valid")
+  _( 2, EXT_HDR_VALID, "ext-hdr-valid")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */
@@ -116,7 +115,6 @@ typedef union
 	<br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list index,
 	<br> VLIB_BUFFER_IS_TRACED: trace this buffer.
 	<br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
-	<br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
 	<br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
 	set to avoid adding it to a flow report
 	<br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N

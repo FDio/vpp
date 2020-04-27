@@ -637,7 +637,6 @@ init_icmp46_echo_request (vlib_main_t * vm, vlib_buffer_t * b0,
       b0->current_data = 0;
       remaining_data_len -= this_buf_data_len;
     }
-  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   hb->current_length = l34_len + first_buf_data_len;
   hb->total_length_not_including_first_buffer = data_len - first_buf_data_len;
 
