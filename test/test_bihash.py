@@ -61,5 +61,11 @@ class TestBihash(VppTestCase):
             self.logger.critical(error)
             self.assertNotIn('failed', error)
 
+        error = self.vapi.cli("test bihash nitems 10 nbuckets 1 ncycles 3" +
+                              "search 2 careful 1 verbose 2 non-random-keys")
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn('failed', error)
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

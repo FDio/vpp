@@ -6,4 +6,7 @@ cd build-root
 rm -rf html
 mkdir html
 lcov --no-checksum --directory . --capture --output-file out.info
-genhtml out.info -o html
+lcov --remove out.info \
+       "/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
+       -o filtered.info
+genhtml filtered.info -o html
