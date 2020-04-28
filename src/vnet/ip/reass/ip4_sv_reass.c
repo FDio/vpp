@@ -305,7 +305,7 @@ ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
 			     ip4_sv_reass_kv_t * kv, u8 * do_handoff)
 {
   ip4_sv_reass_t *reass = NULL;
-  f64 now = vlib_time_now (rm->vlib_main);
+  f64 now = vlib_time_now (vm);
 
   if (!clib_bihash_search_16_8 (&rm->hash, &kv->kv, &kv->kv))
     {
