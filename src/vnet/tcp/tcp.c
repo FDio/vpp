@@ -1258,13 +1258,14 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
 static void
 tcp_initialize_timer_wheels (tcp_main_t * tm)
 {
+  vlib_main_t *vm = vlib_get_main ();
   tw_timer_wheel_16t_2w_512sl_t *tw;
   /* *INDENT-OFF* */
   foreach_vlib_main (({
     tw = &tm->wrk_ctx[ii].timer_wheel;
     tw_timer_wheel_init_16t_2w_512sl (tw, tcp_expired_timers_dispatch,
                                       TCP_TIMER_TICK, ~0);
-    tw->last_run_time = vlib_time_now (this_vlib_main);
+    tw->last_run_time = vlib_time_now (vm);
   }));
   /* *INDENT-ON* */
 }
