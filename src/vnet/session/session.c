@@ -1676,7 +1676,7 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_mains[i];
-      wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
+      wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
 
