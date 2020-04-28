@@ -78,6 +78,30 @@
     },
     {
       "key": {
+        "uuid": "7992eee7_4bff05dd",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-28T08:12:45Z",
+      "side": 1,
+      "message": "the reason it was like this is the vapi generator did not support default values in typedefs.\ni\u0027ve patched that now so it at least doesn\u0027t fail. the papi generator is fine.",
+      "parentUuid": "0a9a3e6b_b48127b9",
+      "range": {
+        "startLine": 132,
+        "startChar": 22,
+        "endLine": 132,
+        "endChar": 36
+      },
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ef5b98e1_c4982c95",
         "filename": "src/vnet/ipsec/ipsec_types.api",
         "patchSetId": 4
@@ -89,6 +113,30 @@
       "writtenOn": "2020-04-27T17:36:59Z",
       "side": 1,
       "message": "If I see correctly, this type is used in ipsec_sad_entry_add_del call, see ipsec_api.c lines 375-276.\nThen ipsec_sa_add_and_lock is called, which checks for special values of ports, see ipsec_sa.c lines 273 and 278.\nBut the check is against IPSEC_UDP_PORT_NONE value, which I see defined in ipsec_sa.h line 237 as ((u16)~0). Only those values are replaced with UDP_DST_PORT_ipsec (4500).\n\nTaken together, I believe clients unaware of the port fields will send zero (the default default value), which is not a value we want in sa-\u003eudp_hdr.src_port nor sa-\u003eudp_hdr.dst_port (unless there are other ifs down the line).",
+      "range": {
+        "startLine": 133,
+        "startChar": 31,
+        "endLine": 133,
+        "endChar": 35
+      },
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0f8aae86_fe820589",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-28T08:12:45Z",
+      "side": 1,
+      "message": "with the defaults now set, i think this comment is answered.",
+      "parentUuid": "ef5b98e1_c4982c95",
       "range": {
         "startLine": 133,
         "startChar": 31,
@@ -121,6 +169,30 @@
       "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e38799ac_ad24e26d",
+        "filename": "test/vpp_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-28T08:12:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "78940379_e03657ce",
+      "range": {
+        "startLine": 192,
+        "startChar": 37,
+        "endLine": 192,
+        "endChar": 49
+      },
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
