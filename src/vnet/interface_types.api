@@ -25,11 +25,10 @@ enum if_status_flags
 /* Per protocol MTU */
 enum mtu_proto
 {
-  MTU_PROTO_API_L3,			/* Default payload MTU (without L2 headers) */
-  MTU_PROTO_API_IP4,			/* Per-protocol MTUs overriding default */
-  MTU_PROTO_API_IP6,
-  MTU_PROTO_API_MPLS,
-  MTU_PROTO_API_N,
+  MTU_PROTO_API_L3 = 0,		/* Default payload MTU (without L2 headers) */
+  MTU_PROTO_API_IP4 = 1,	/* Per-protocol MTUs overriding default */
+  MTU_PROTO_API_IP6 = 2,
+  MTU_PROTO_API_MPLS = 3,
 };
 
 enum link_duplex
@@ -65,10 +64,10 @@ enum rx_mode
 enum if_type
 {
 	/* A hw interface. */
-	IF_API_TYPE_HARDWARE,
+	IF_API_TYPE_HARDWARE = 0,
 
 	/* A sub-interface. */
-	IF_API_TYPE_SUB,
-	IF_API_TYPE_P2P,
-	IF_API_TYPE_PIPE,
+	IF_API_TYPE_SUB = 1,
+	IF_API_TYPE_P2P = 2,
+	IF_API_TYPE_PIPE = 3,
 };
