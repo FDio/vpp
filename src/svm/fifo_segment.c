@@ -572,21 +572,27 @@ fs_try_alloc_fifo_batch (fifo_segment_header_t * fsh,
   if (fmem == 0)
     return -1;
 
-  /* Carve fifo + chunk space */
+  /* Carve fifo hdr space */
   for (i = 0; i < batch_size; i++)
     {
       f = (svm_fifo_t *) fmem;
       memset (f, 0, sizeof (*f));
       f->next = fss->free_fifos;
       fss->free_fifos = f;
-      c = (svm_fifo_chunk_t *) (fmem + sizeof (*f));
+      fmem += sizeof (*f);
+    }
+
+  /* Carve chunk space */
+  for (i = 0; i < batch_size; i++)
+    {
+      c = (svm_fifo_chunk_t *) fmem;
       c->start_byte = 0;
       c->length = rounded_data_size;
       c->enq_rb_index = RBTREE_TNIL_INDEX;
       c->deq_rb_index = RBTREE_TNIL_INDEX;
       c->next = fss->free_chunks[fl_index];
       fss->free_chunks[fl_index] = c;
-      fmem += hdrs + rounded_data_size;
+      fmem += sizeof (svm_fifo_chunk_t) + rounded_data_size;
     }
 
   fss->num_chunks[fl_index] += batch_size;
