@@ -59,6 +59,7 @@ list(APPEND VNET_HEADERS
   interface_output.h
   ip/ip4_to_ip6.h
   ip/ip6_to_ip4.h
+  ip/ip_punt_drop.h
   ip/ip_types_api.h
   l3_types.h
   plugin/plugin.h
@@ -95,6 +96,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   policer/police.h
+  policer/police_inlines.h
   policer/policer.h
   policer/xlate.h
 )

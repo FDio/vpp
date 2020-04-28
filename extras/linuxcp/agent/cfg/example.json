@@ -1,0 +1,6 @@
+{
+    "pairs": [
+	[ "host-veast", "tap-veth0" ],
+	[ "host-vwest", "tap-veth1" ]
+    ]
+}
