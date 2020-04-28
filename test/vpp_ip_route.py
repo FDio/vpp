@@ -639,41 +639,39 @@ class VppIpMRoute(VppObject):
         for path in self.paths:
             self.encoded_paths.append(path.encode())
 
+    def encode(self, paths=None):
+        _paths = self.encoded_paths if paths is None else paths
+        return {'table_id': self.table_id,
+                'entry_flags': self.e_flags,
+                'rpf_id': self.rpf_id,
+                'prefix': self.prefix.encode(),
+                'n_paths': len(_paths),
+                'paths': _paths,
+                }
+
     def add_vpp_config(self):
-        r = self._test.vapi.ip_mroute_add_del(self.table_id,
-                                              self.prefix.encode(),
-                                              self.e_flags,
-                                              self.rpf_id,
-                                              self.encoded_paths,
+        r = self._test.vapi.ip_mroute_add_del(route=self.encode(),
+                                              is_multipath=1,
                                               is_add=1)
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
         return self
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_mroute_add_del(self.table_id,
-                                          self.prefix.encode(),
-                                          self.e_flags,
-                                          self.rpf_id,
-                                          self.encoded_paths,
+        self._test.vapi.ip_mroute_add_del(route=self.encode(),
+                                          is_multipath=1,
                                           is_add=0)
 
     def update_entry_flags(self, flags):
         self.e_flags = flags
-        self._test.vapi.ip_mroute_add_del(self.table_id,
-                                          self.prefix.encode(),
-                                          self.e_flags,
-                                          self.rpf_id,
-                                          [],
+        self._test.vapi.ip_mroute_add_del(route=self.encode(paths=[]),
+                                          is_multipath=1,
                                           is_add=1)
 
     def update_rpf_id(self, rpf_id):
         self.rpf_id = rpf_id
-        self._test.vapi.ip_mroute_add_del(self.table_id,
-                                          self.prefix.encode(),
-                                          self.e_flags,
-                                          self.rpf_id,
-                                          [],
+        self._test.vapi.ip_mroute_add_del(route=self.encode(paths=[]),
+                                          is_multipath=1,
                                           is_add=1)
 
     def update_path_flags(self, itf, flags):
@@ -683,13 +681,11 @@ class VppIpMRoute(VppObject):
             self.encoded_paths[p] = self.paths[p].encode()
             break
 
-        self._test.vapi.ip_mroute_add_del(self.table_id,
-                                          self.prefix.encode(),
-                                          self.e_flags,
-                                          self.rpf_id,
-                                          [self.encoded_paths[p]],
-                                          is_add=1,
-                                          is_multipath=0)
+        self._test.vapi.ip_mroute_add_del(
+            route=self.encode(
+                paths=[self.encoded_paths[p]]),
+            is_add=1,
+            is_multipath=0)
 
     def query_vpp_config(self):
         return find_mroute(self._test,

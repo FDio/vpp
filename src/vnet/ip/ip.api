@@ -290,7 +290,7 @@ define ip_mroute_add_del
   u32 client_index;
   u32 context;
   bool is_add [default=true];
-  bool is_multipath;
+  bool is_multipath [default=true];
   vl_api_ip_mroute_t route;
 };
 define ip_mroute_add_del_reply

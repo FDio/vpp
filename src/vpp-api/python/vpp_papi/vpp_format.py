@@ -27,6 +27,11 @@ except NameError:
 ADDRESS_IP4 = 0
 ADDRESS_IP6 = 1
 
+
+def verify_enum_hint(e):
+    return (e.ADDRESS_IP4.value == ADDRESS_IP4) and\
+           (e.ADDRESS_IP6.value == ADDRESS_IP6)
+
 #
 # Type conversion for input arguments and return values
 #

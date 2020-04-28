@@ -93,29 +93,16 @@ class VppIpMPrefix():
                              'same address family.')
 
     def encode(self):
-        if 6 == self.version:
-            prefix = {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                'grp_address': {
-                    'ip6': self.gaddr
-                },
-                'src_address': {
-                    'ip6': self.saddr
-                },
-                'grp_address_length': self.glen,
-            }
-        else:
-            prefix = {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                'grp_address': {
-                    'ip4': self.gaddr
-                },
-                'src_address': {
-                    'ip4':  self.saddr
-                },
-                'grp_address_length': self.glen,
-            }
-        return prefix
+        return {
+            'af': ip_address(self.gaddr).vapi_af,
+            'grp_address': {
+                ip_address(self.gaddr).vapi_af_name: self.gaddr
+            },
+            'src_address': {
+                ip_address(self.saddr).vapi_af_name: self.saddr
+            },
+            'grp_address_length': self.glen,
+        }
 
     @property
     def length(self):
@@ -145,6 +132,4 @@ class VppIpMPrefix():
                 return (self.glen == other.grp_address_length and
                         self.gaddr == str(other.grp_address.ip6) and
                         self.saddr == str(other.src_address.ip6))
-            raise Exception("Comparing VppIpMPrefix:%s with unknown type: %s" %
-                            (self, other))
-        return False
+        return NotImplemented
