@@ -678,8 +678,8 @@ class VppIpMRoute(VppObject):
         for p in range(len(self.paths)):
             if self.paths[p].nh_itf == itf:
                 self.paths[p].nh_i_flags = flags
-            self.encoded_paths[p] = self.paths[p].encode()
-            break
+                self.encoded_paths[p] = self.paths[p].encode()
+                break
 
         self._test.vapi.ip_mroute_add_del(
             route=self.encode(
