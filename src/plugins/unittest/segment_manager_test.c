@@ -697,6 +697,58 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
+				    unformat_input_t * input)
+{
+  u32 fifo_size = size_4KB, prealloc_hdrs, sm_index, fs_index;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  uword app_seg_size = size_2MB;
+  segment_manager_t *sm;
+  fifo_segment_t *fs;
+  int rv;
+
+  memset (&options, 0, sizeof (options));
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "segment_manager_prealloc_hdrs"),
+  };
+
+  prealloc_hdrs = (app_seg_size - (16 << 10)) / sizeof (svm_fifo_t);
+
+  attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
+  attach_args.options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  attach_args.options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  attach_args.options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  attach_args.options[APP_OPTIONS_PREALLOC_FIFO_HDRS] = prealloc_hdrs;
+
+  rv = vnet_application_attach (&attach_args);
+  vec_free (attach_args.name);
+
+  SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
+
+  segment_manager_parse_segment_handle (attach_args.segment_handle, &sm_index,
+					&fs_index);
+  sm = segment_manager_get (sm_index);
+
+  SEG_MGR_TEST ((sm != 0), "seg manager is valid", sm);
+
+  fs = segment_manager_get_segment (sm, fs_index);
+  SEG_MGR_TEST (fifo_segment_num_free_fifos (fs) == prealloc_hdrs,
+		"prealloc should be %u", prealloc_hdrs);
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = attach_args.app_index,
+    .api_client_index = ~0,
+  };
+  rv = vnet_application_detach (&detach_args);
+  SEG_MGR_TEST ((rv == 0), "vnet_application_detach %d", rv);
+  return 0;
+}
 
 static clib_error_t *
 segment_manager_test (vlib_main_t * vm,
@@ -716,6 +768,8 @@ segment_manager_test (vlib_main_t * vm,
 	res = segment_manager_test_fifo_balanced_alloc (vm, input);
       else if (unformat (input, "fifo_ops"))
 	res = segment_manager_test_fifo_ops (vm, input);
+      else if (unformat (input, "prealloc_hdrs"))
+	res = segment_manager_test_prealloc_hdrs (vm, input);
 
       else if (unformat (input, "all"))
 	{
@@ -726,6 +780,8 @@ segment_manager_test (vlib_main_t * vm,
 	  if ((res = segment_manager_test_fifo_balanced_alloc (vm, input)))
 	    goto done;
 	  if ((res = segment_manager_test_fifo_ops (vm, input)))
+	    goto done;
+	  if ((res = segment_manager_test_prealloc_hdrs (vm, input)))
 	    goto done;
 	}
       else
@@ -743,7 +799,7 @@ VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
   .path = "test segment-manager",
   .short_help = "test segment manager [pressure_levels_1]"
-                "[pressure_level_2][alloc][fifo_ops][all]",
+                "[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
   .function = segment_manager_test,
 };
 
