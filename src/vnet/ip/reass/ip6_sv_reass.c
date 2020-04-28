@@ -303,7 +303,7 @@ ip6_sv_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     u8 * do_handoff)
 {
   ip6_sv_reass_t *reass = NULL;
-  f64 now = vlib_time_now (rm->vlib_main);
+  f64 now = vlib_time_now (vm);
 
   if (!clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
     {
