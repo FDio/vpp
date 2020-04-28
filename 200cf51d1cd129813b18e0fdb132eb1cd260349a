@@ -102,6 +102,30 @@
     },
     {
       "key": {
+        "uuid": "38e80d55_9cb4519a",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-04-28T17:42:17Z",
+      "side": 1,
+      "message": "\u003e the vapi generator did not support default values in typedefs\n\nOh, I did not know that.\n\n\u003e i\u0027ve patched that now\n\nThanks.",
+      "parentUuid": "7992eee7_4bff05dd",
+      "range": {
+        "startLine": 132,
+        "startChar": 22,
+        "endLine": 132,
+        "endChar": 36
+      },
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ef5b98e1_c4982c95",
         "filename": "src/vnet/ipsec/ipsec_types.api",
         "patchSetId": 4
@@ -146,6 +170,30 @@
       "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ca03f84_72d62c47",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-04-28T17:42:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0f8aae86_fe820589",
+      "range": {
+        "startLine": 133,
+        "startChar": 31,
+        "endLine": 133,
+        "endChar": 35
+      },
+      "revId": "200cf51d1cd129813b18e0fdb132eb1cd260349a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
