@@ -86,7 +86,7 @@ ifeq ($(OS_VERSION_ID),16.04)
 else ifeq ($(OS_VERSION_ID),18.04)
 	DEB_DEPENDS += python-dev
 	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += gcc-8
+	DEB_DEPENDS += gcc-8 clang-9
 else ifeq ($(OS_VERSION_ID),20.04)
 	LIBFFI=libffi7
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)

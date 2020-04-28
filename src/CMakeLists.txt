@@ -13,6 +13,8 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
+set(CMAKE_C_COMPILER_NAMES clang-9 cc)
+
 project(vpp C)
 
 include(CheckCCompilerFlag)
