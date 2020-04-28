@@ -64,15 +64,6 @@ typedef struct
   u32 next_index;
 } nat_pre_trace_t;
 
-/*
-STATIC_ASSERT (sizeof (nat_buffer_opaque_t) <=
-               STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
-               "Custom meta-data too large for vnet_buffer_opaque_t");
-
-#define nat_buffer_opaque(b) \
-  ((nat_buffer_opaque_t *)((u8 *)((b)->opaque) + \
-    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))*/
-
 /* session key (4-tuple) */
 typedef struct
 {
