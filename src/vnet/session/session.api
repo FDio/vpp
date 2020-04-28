@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.1.0";
+option version = "3.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -37,7 +37,7 @@ enum transport_proto : u8
  define app_attach {
     u32 client_index;
     u32 context;
-    u64 options[17];
+    u64 options[18];
     string namespace_id[];
  };
 

@@ -642,7 +642,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
-  u64 options[17];
+  u64 options[18];
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
