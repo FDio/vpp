@@ -544,7 +544,7 @@ pattern_end:
       dpdk_flow_convert_rss_types (f->rss_types, &rss_type);
 
       rss.types = rss_type;
-      rss.func = f->rss_fun;
+      rss.func = (enum rte_eth_hash_function) f->rss_fun;
 
       if (fate == true)
 	{
