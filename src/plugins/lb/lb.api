@@ -18,8 +18,8 @@ autoreply manual_print define lb_conf
   u32 context;
   vl_api_ip4_address_t ip4_src_address;
   vl_api_ip6_address_t ip6_src_address;
-  u32 sticky_buckets_per_core;
-  u32 flow_timeout;
+  u32 sticky_buckets_per_core [default=0xffffffff];
+  u32 flow_timeout [default=0xffffffff];
   option vat_help = "[ip4-src-address <addr>] [ip6-src-address <addr>] [buckets <n>] [timeout <s>]";
 };
 

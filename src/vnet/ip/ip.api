@@ -31,11 +31,11 @@ import "vnet/interface_types.api";
 /** \brief An IP table
     @param is_ipv6 - V4 or V6 table
     @param table_id - table ID associated with the route
-                     This table ID will apply to both the unicats
-		      and mlticast FIBs
+                     This table ID will apply to both the unicast
+		      and multicast FIBs
     @param name - A client provided name/tag for the table. If this is
                   not set by the client, then VPP will generate something
-		  meaningfull.
+		  meaningful.
 */
 typedef ip_table
 {
@@ -73,10 +73,10 @@ define ip_table_dump
     has a very different set of entries it wants in the table than VPP
     currently has. The CP would thus like to 'replace' VPP's current table
     only by specifying what the new set of entries shall be, i.e. it is not
-    going to delete anything that already eixts.
-    the CP delcartes the start of this procedure with this begin_replace
+    going to delete anything that already exists.
+    the CP declares the start of this procedure with this begin_replace
     API Call, and when it has populated all the entries it wants, it calls
-    the below end_replace API. From this point on it is of coursce free
+    the below end_replace API. From this point on it is of course free
     to add and delete entries as usual.
     The underlying mechanism by which VPP implements this replace is
     purposefully left unspecified.
@@ -336,7 +336,7 @@ define ip_address_dump
 
 /** \brief IP unnumbered configurations
     @param sw_if_index The interface that has unnumbered configuration
-    @param ip_sw_if_index The IP interface that it is unnnumbered to
+    @param ip_sw_if_index The IP interface that it is unnumbered to
 */
 define ip_unnumbered_details
 {
@@ -352,7 +352,7 @@ define ip_unnumbered_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 define ip_details
@@ -404,7 +404,7 @@ autoreply define ip_punt_police
 /** \brief Punt redirect type
     @param rx_sw_if_index - specify the original RX interface of traffic
                             that should be redirected. ~0 means any interface.
-    @param tx_sw_if_index - the TX interface to which traffic shoulde be
+    @param tx_sw_if_index - the TX interface to which traffic should be
                             redirected.
     @param nh - the next-hop to redirect the traffic to.
     @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4

@@ -218,7 +218,7 @@ define app_namespace_add_del {
   u32 client_index;
   u32 context;
   u64 secret;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
   u32 ip4_fib_id;
   u32 ip6_fib_id;
   string namespace_id[];

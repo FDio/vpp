@@ -225,14 +225,14 @@ manual_endian manual_print define acl_details
 /** \brief Dump the list(s) of ACL applied to specific or all interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface to dump the ACL list for
+    @param sw_if_index - interface for which to dump the ACL list. Default: 0xffffffff (All interfaces)
 */
 
 define acl_interface_list_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index; /* ~0 for all interfaces */
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
   option vat_help = "[<intfc> | sw_if_index <if-idx>]";
 };
 
@@ -287,7 +287,7 @@ define macip_acl_add_reply
 /** \brief Add/Replace a MACIP ACL
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param acl_index - an existing MACIP ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new MACIP ACL
+    @param acl_index - an existing MACIP ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new MACIP ACL Default: 0xffffffff
     @param tag - descriptive value for this MACIP ACL
     @param count - number of rules in this MACIP ACL
     @param r - vector of MACIP ACL rules
@@ -297,7 +297,7 @@ manual_endian manual_print define macip_acl_add_replace
 {
   u32 client_index;
   u32 context;
-  u32 acl_index; /* ~0 to add, existing MACIP ACL# to replace */
+  u32 acl_index [default=0xffffffff]; /* ~0 to add, existing MACIP ACL# to replace */
   string tag[64];
   u32 count;
   vl_api_macip_acl_rule_t r[count];
@@ -353,14 +353,14 @@ autoreply manual_print define macip_acl_interface_add_del
 /** \brief Dump one or all defined MACIP ACLs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param acl_index - MACIP ACL index or ~0 to dump all MACIP ACLs
+    @param acl_index - MACIP ACL index or ~0 to dump all MACIP ACLs Default: 0xffffffff
 */
 
 define macip_acl_dump
 {
   u32 client_index;
   u32 context;
-  u32 acl_index; /* ~0 for all ACLs */
+  u32 acl_index [default=0xffffffff]; /* ~0 for all ACLs */
   option vat_help = "[<acl-idx>]";
 };
 

@@ -610,7 +610,7 @@ autoreply define bvi_delete
   vl_api_interface_index_t sw_if_index;
 };
 
-/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+/** \brief Register for IP4 ARP resolution event on receiving ARP reply or
            MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

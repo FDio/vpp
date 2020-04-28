@@ -33,9 +33,9 @@ enum syslog_severity
     @param context - sender context, to match reply w/ request
     @param src_address - IPv4 address of syslog sender (source)
     @param collector_address - IPv4 address of syslog collector (destination)
-    @param collector_port - UDP port of syslog colector (destination)
+    @param collector_port - UDP port of syslog collector (destination) Default: 514
     @param vrf_id - VRF/FIB table ID
-    @param max_msg_size - maximum message length
+    @param max_msg_size - maximum message length. Default: 480
 */
 autoreply define syslog_set_sender
 {
@@ -43,9 +43,9 @@ autoreply define syslog_set_sender
   u32 context;
   vl_api_ip4_address_t src_address;
   vl_api_ip4_address_t collector_address;
-  u16 collector_port;
+  u16 collector_port [default=514];
   u32 vrf_id;
-  u32 max_msg_size;
+  u32 max_msg_size [default=480];
 };
 
 /** \brief Get syslog sender configuration
@@ -63,7 +63,7 @@ define syslog_get_sender
     @param retval - return code for the request
     @param src_address - IPv4 address of syslog sender (source)
     @param collector_address - IPv4 address of syslog collector (destination)
-    @param collector_port - UDP port of syslog colector (destination)
+    @param collector_port - UDP port of syslog collector (destination)
     @param vrf_id - VRF/FIB table ID
     @param max_msg_size - maximum message length
 */

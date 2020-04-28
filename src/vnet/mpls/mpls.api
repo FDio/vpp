@@ -81,7 +81,7 @@ define mpls_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief mpls tunnel details
@@ -99,7 +99,7 @@ manual_endian manual_print define mpls_tunnel_details
     @param mt_is_add - Is this a route add or delete
     @param mt_name - A client provided name/tag for the table. If this
                      is not set by the client, then VPP will generate
-		     something meaningfull.
+		     something meaningful.
 */
 typedef mpls_table
 {
@@ -133,7 +133,7 @@ define mpls_table_details
     @param mr_table_id - The MPLS table-id the route is added in
     @param mr_label - The MPLS label value
     @param mr_eos - The End of stack bit
-    @param mr_eos_proto - If EOS then this is the DPO packect's proto post pop
+    @param mr_eos_proto - If EOS then this is the DPO packet's proto post pop
     @param mr_is_multicast - Is this a multicast route
     @param mr_n_paths - The number of paths
     @param mr_paths - The paths

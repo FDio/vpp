@@ -49,7 +49,7 @@ enum bond_lb_algo
     @param id - if non-~0, specifies a custom interface ID
     @param use_custom_mac - if set, mac_address is valid
     @param mac_address - mac addr to assign to the interface if use_custom_mac is set
-    @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcastcast, 5=lacp)
+    @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcast, 5=lacp)
     @param lb - load balance, optional (0=l2, 1=l34, 2=l23) valid for xor and lacp modes. Otherwise ignored
     @param numa_only - if numa_only is set, pkts will be transmitted by LAG members on local numa node only if have at least one, otherwise it works as usual.
 */
@@ -57,7 +57,7 @@ define bond_create
 {
   u32 client_index;
   u32 context;
-  u32 id;
+  u32 id [default=0xFFFFFFFF];
   bool use_custom_mac;
   vl_api_mac_address_t mac_address;
   vl_api_bond_mode_t mode;

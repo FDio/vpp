@@ -27,7 +27,7 @@ import "vnet/interface_types.api";
     @param ea_bits_len - Embedded Address bits length
     @param psid_offset - Port Set Identifier (PSID) offset
     @param psid_length - PSID length
-    @param mtu - MTU
+    @param mtu - MTU. default 1280
     @param tag - A user field stored with the MAP
 */
 define map_add_domain
@@ -40,7 +40,7 @@ define map_add_domain
   u8 ea_bits_len;
   u8 psid_offset;
   u8 psid_length;
-  u16 mtu;
+  u16 mtu [default=1280];
   string tag[64];
 };
 

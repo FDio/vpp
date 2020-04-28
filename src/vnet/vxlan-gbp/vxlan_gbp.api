@@ -69,7 +69,7 @@ define vxlan_gbp_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 define vxlan_gbp_tunnel_details

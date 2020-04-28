@@ -36,7 +36,7 @@ typedef srv6_sid_list
     @param end_psp Boolean of whether decapsulation is allowed in this function
     @param behavior Type of behavior (function) for this localsid
     @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
-     fib_table.
+     fib_table. Default:0xffffffff
     @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
     @param fib_table  FIB table in which we should install the localsid entry
     @param nh_addr Next Hop IPv46 address. Only for L2/L3 xconnect.
@@ -49,7 +49,7 @@ autoreply define sr_localsid_add_del
   vl_api_ip6_address_t localsid;
   bool end_psp;
   vl_api_sr_behavior_t behavior;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
   u32 vlan_index;
   u32 fib_table;
   vl_api_address_t nh_addr;
