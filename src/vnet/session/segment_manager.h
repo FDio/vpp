@@ -27,6 +27,7 @@ typedef struct _segment_manager_props
   u32 tx_fifo_size;			/**< transmit fifo size */
   u32 evt_q_size;			/**< event queue length */
   u32 prealloc_fifos;			/**< preallocated fifo pairs */
+  u32 prealloc_fifo_hdrs;		/**< preallocated fifo hdrs */
   uword segment_size;			/**< first segment size */
   uword add_segment_size;		/**< additional segment size */
   u8 add_segment:1;			/**< can add new segments flag */

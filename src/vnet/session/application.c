@@ -517,6 +517,10 @@ application_alloc_and_init (app_init_args_t * a)
   if (!application_verify_cfg (seg_type))
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
+  if (options[APP_OPTIONS_PREALLOC_FIFO_PAIRS]
+      && options[APP_OPTIONS_PREALLOC_FIFO_HDRS])
+    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
 
@@ -535,6 +539,7 @@ application_alloc_and_init (app_init_args_t * a)
   segment_manager_props_init (props);
   props->segment_size = options[APP_OPTIONS_SEGMENT_SIZE];
   props->prealloc_fifos = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
+  props->prealloc_fifo_hdrs = options[APP_OPTIONS_PREALLOC_FIFO_HDRS];
   if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
     {
       props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
