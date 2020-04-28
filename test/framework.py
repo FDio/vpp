@@ -574,9 +574,12 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
+        except vpp_papi.VPPRuntimeError as e:
+            cls.logger.debug("%s" % e)
+            cls.quit()
+            raise
         except Exception as e:
             cls.logger.debug("Exception connecting to VPP: %s" % e)
-
             cls.quit()
             raise
 

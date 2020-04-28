@@ -41,7 +41,7 @@ enum ip_neighbor_flags: u8
 
 /** \brief IP neighbor
     @param sw_if_index - interface used to reach neighbor
-    @param flags - flags for the nieghbor
+    @param flags - flags for the neighbor
     @param mac_address - l2 address of the neighbor
     @param ip_address - ip4 or ip6 address of the neighbor
 */
@@ -56,7 +56,7 @@ typedef ip_neighbor {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - 1 to add neighbor, 0 to delete
-    @param neighbor - the neighor to add/remove
+    @param neighbor - the neighbor to add/remove
 */
 define ip_neighbor_add_del
 {
@@ -70,7 +70,7 @@ define ip_neighbor_add_del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return value
-    @param stats_index - the index to use for this neighbor in the stats segement
+    @param stats_index - the index to use for this neighbor in the stats segment
 */
 define ip_neighbor_add_del_reply
 {
@@ -79,10 +79,10 @@ define ip_neighbor_add_del_reply
   u32 stats_index;
 };
 
-/** \brief Dump IP neighboors
+/** \brief Dump IP neighbors
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - the interface to dump neighboors, ~0 == all
+    @param sw_if_index - the interface to dump neighbors, ~0 == all
     @param af - address family is ipv[6|4]
 */
 define ip_neighbor_dump
@@ -93,7 +93,7 @@ define ip_neighbor_dump
   vl_api_address_family_t af;
 };
 
-/** \brief IP neighboors dump response
+/** \brief IP neighbors dump response
     @param context - sender context which was passed in the request
     @param age - time between last update and sending this message, in seconds
     @param neighbour - the neighbor
@@ -132,7 +132,7 @@ autoreply define ip_neighbor_config
     has a different set of neighbours it than VPP
     currently has. The CP would thus like to 'replace' VPP's set
     only by specifying what the new set shall be, i.e. it is not
-    going to delete anything that already eixts, rather, is wants any
+    going to delete anything that already exists, rather, it wants any
     unspecified neighbors deleted implicitly.
     The CP declares the start of this procedure with this replace_begin
     API Call, and when it has populated all neighbours it wants, it calls
@@ -163,7 +163,7 @@ autoreply define ip_neighbor_replace_end
   u32 context;
 };
 
-/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+/** \brief Register for IP4 ARP resolution event on receiving ARP reply or
            MAC/IP info from ARP requests in L2 BDs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
