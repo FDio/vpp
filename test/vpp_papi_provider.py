@@ -690,32 +690,6 @@ class VppPapiProvider(object):
                 'udp_checksum': udp_checksum,
             })
 
-    def ip_mroute_add_del(self,
-                          table_id,
-                          prefix,
-                          e_flags,
-                          rpf_id,
-                          paths,
-                          is_add=1,
-                          is_multipath=1):
-        """
-        IP Multicast Route add/del
-        """
-        return self.api(
-            self.papi.ip_mroute_add_del,
-            {
-                'is_add': is_add,
-                'is_multipath': is_multipath,
-                'route': {
-                    'table_id': table_id,
-                    'entry_flags': e_flags,
-                    'rpf_id': rpf_id,
-                    'prefix': prefix,
-                    'n_paths': len(paths),
-                    'paths': paths,
-                }
-            })
-
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})
 

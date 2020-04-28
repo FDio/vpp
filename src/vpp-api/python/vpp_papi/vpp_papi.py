@@ -17,6 +17,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 import ctypes
+import ipaddress
 import sys
 import multiprocessing as mp
 import os
@@ -28,6 +29,7 @@ import fnmatch
 import weakref
 import atexit
 import time
+from . vpp_format import verify_enum_hint
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 
@@ -77,6 +79,26 @@ else:
         return d.items()
 
 
+def add_convenience_methods():
+    # provide convenience methods to IP[46]Address.vapi_af
+    def _vapi_af(self):
+        if 6 == self._version:
+            return VppEnum.vl_api_address_family_t.ADDRESS_IP6.value
+        if 4 == self._version:
+            return VppEnum.vl_api_address_family_t.ADDRESS_IP4.value
+        raise ValueError("Invalid _version.")
+
+    def _vapi_af_name(self):
+        if 6 == self._version:
+            return 'ip6'
+        if 4 == self._version:
+            return 'ip4'
+        raise ValueError("Invalid _version.")
+
+    ipaddress._IPAddressBase.vapi_af = property(_vapi_af)
+    ipaddress._IPAddressBase.vapi_af_name = property(_vapi_af_name)
+
+
 class VppApiDynamicMethodHolder(object):
     pass
 
@@ -112,6 +134,7 @@ class VPPRuntimeError(RuntimeError):
 
 class VPPValueError(ValueError):
     pass
+
 
 class VPPApiJSONFiles(object):
     @classmethod
@@ -295,6 +318,7 @@ class VPPApiJSONFiles(object):
                 self.logger.error('Not implemented error for {}'.format(m[0]))
         return messages, services
 
+
 class VPPApiClient(object):
     """VPP interface.
 
@@ -383,15 +407,19 @@ class VPPApiClient(object):
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
             raise VPPValueError(1, 'Missing JSON message definitions')
+        if not(verify_enum_hint(VppEnum.vl_api_address_family_t)):
+            raise VPPRuntimeError("Invalid address family hints. "
+                                  "Cannot continue.")
 
         self.transport = VppTransport(self, read_timeout=read_timeout,
                                       server_address=server_address)
         # Make sure we allow VPP to clean up the message rings.
         atexit.register(vpp_atexit, weakref.ref(self))
 
+        add_convenience_methods()
+
     def get_function(self, name):
         return getattr(self._api, name)
-
 
     class ContextId(object):
         """Multiprocessing-safe provider of unique context IDs."""
