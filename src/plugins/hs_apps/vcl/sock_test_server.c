@@ -357,6 +357,78 @@ new_client (void)
     ssm->nfds++;
 }
 
+static int
+socket_server_echo_af_unix_init (sock_server_main_t * ssm)
+{
+  int rv, errno_val;
+
+  if (ssm->af_unix_listen_fd > 0)
+    return 0;
+
+  unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+  ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (ssm->af_unix_listen_fd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): socket(AF_UNIX) failed");
+      fprintf (stderr,
+	       "SERVER: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
+	       "(errno = %d)!\n", errno_val);
+      return ssm->af_unix_listen_fd;
+    }
+
+  memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
+  ssm->serveraddr.sun_family = AF_UNIX;
+  strncpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
+	   sizeof (ssm->serveraddr.sun_path));
+
+  rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
+	     SUN_LEN (&ssm->serveraddr));
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): bind(SOCK_TEST_AF_UNIX_FILENAME) failed");
+      fprintf (stderr, "SERVER: ERROR: bind() fd %d, \"%s\": "
+	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
+	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+
+  rv = listen (ssm->af_unix_listen_fd, 10);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): listen(AF_UNIX) failed");
+      fprintf (stderr, "SERVER: ERROR: listen() fd %d, \"%s\": "
+	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
+	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+
+  ssm->af_unix_listen_ev.events = EPOLLIN;
+  ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
+  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
+		  &ssm->af_unix_listen_ev);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main(): mixed epoll_ctl(EPOLL_CTL_ADD)");
+      fprintf (stderr, "SERVER: ERROR: mixed epoll_ctl(epfd %d (0x%x), "
+	       "EPOLL_CTL_ADD, af_unix_listen_fd %d (0x%x), EPOLLIN) failed "
+	       "(errno = %d)!\n", ssm->epfd, ssm->epfd,
+	       ssm->af_unix_listen_fd, ssm->af_unix_listen_fd, errno_val);
+      close (ssm->af_unix_listen_fd);
+      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
+      return rv;
+    }
+
+  return 0;
+}
+
 void
 print_usage_and_exit (void)
 {
@@ -433,49 +505,6 @@ main (int argc, char **argv)
   ssm->listen_fd = socket (ssm->cfg.address_ip6 ? AF_INET6 : AF_INET,
 			   ssm->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM,
 			   0);
-  unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-  ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
-  if (ssm->af_unix_listen_fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): socket(AF_UNIX) failed");
-      fprintf (stderr,
-	       "SERVER: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
-	       "(errno = %d)!\n", errno_val);
-      return ssm->af_unix_listen_fd;
-    }
-
-  memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
-  ssm->serveraddr.sun_family = AF_UNIX;
-  strncpy (ssm->serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
-	   sizeof (ssm->serveraddr.sun_path));
-
-  rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
-	     SUN_LEN (&ssm->serveraddr));
-  if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): bind(SOCK_TEST_AF_UNIX_FILENAME) failed");
-      fprintf (stderr, "SERVER: ERROR: bind() fd %d, \"%s\": "
-	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
-	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
-
-  rv = listen (ssm->af_unix_listen_fd, 10);
-  if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): listen(AF_UNIX) failed");
-      fprintf (stderr, "SERVER: ERROR: listen() fd %d, \"%s\": "
-	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
-	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
 
   if (ssm->listen_fd < 0)
     {
@@ -522,7 +551,6 @@ main (int argc, char **argv)
 	       errno_val);
       return rv;
     }
-
   rv = listen (ssm->listen_fd, 10);
   if (rv < 0)
     {
@@ -545,22 +573,6 @@ main (int argc, char **argv)
 
   ssm->listen_ev.events = EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
-  ssm->af_unix_listen_ev.events = EPOLLIN;
-  ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
-  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
-		  &ssm->af_unix_listen_ev);
-  if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): mixed epoll_ctl(EPOLL_CTL_ADD)");
-      fprintf (stderr, "SERVER: ERROR: mixed epoll_ctl(epfd %d (0x%x), "
-	       "EPOLL_CTL_ADD, af_unix_listen_fd %d (0x%x), EPOLLIN) failed "
-	       "(errno = %d)!\n", ssm->epfd, ssm->epfd,
-	       ssm->af_unix_listen_fd, ssm->af_unix_listen_fd, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
 
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
   if (rv < 0)
@@ -652,7 +664,12 @@ main (int argc, char **argv)
 		      switch (rx_cfg->test)
 			{
 			case VCL_TEST_TYPE_NONE:
+			  sync_config_and_reply (conn, rx_cfg);
+			  break;
+
 			case VCL_TEST_TYPE_ECHO:
+			  if (socket_server_echo_af_unix_init (ssm))
+			    goto done;
 			  sync_config_and_reply (conn, rx_cfg);
 			  break;
 
