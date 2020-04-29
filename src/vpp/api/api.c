@@ -221,7 +221,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
       goto error;
     }
 
-  cmd_vec = vl_api_from_api_to_new_vec (&mp->cmd);
+  cmd_vec = vl_api_from_api_to_new_vec (mp, &mp->cmd);
 
   unformat_init_string (&input, (char *) cmd_vec,
 			vl_api_string_len (&mp->cmd));

@@ -533,6 +533,8 @@ msg_handler_internal (api_main_t * am,
     }
 }
 
+void (*vl_msg_api_fuzz_hook) (u16, void *);
+
 /* This is only to be called from a vlib/vnet app */
 void
 vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
@@ -600,6 +602,10 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 	  am->vlib_rp = vlib_rp;
 	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
 	}
+
+      if (PREDICT_FALSE (vl_msg_api_fuzz_hook != 0))
+	(*vl_msg_api_fuzz_hook) (id, the_msg);
+
       (*handler) (the_msg, vm, node);
       if (is_private)
 	{
@@ -870,6 +876,21 @@ vl_msg_api_queue_handler (svm_queue_t * q)
     vl_msg_api_handler ((void *) msg);
 }
 
+u32
+vl_msg_api_max_length (void *mp)
+{
+  msgbuf_t *mb;
+  u32 data_len = ~0;
+
+  /* Work out the maximum sane message length, and return it */
+  if (PREDICT_TRUE (mp != 0))
+    {
+      mb = (msgbuf_t *) (((u8 *) mp) - offsetof (msgbuf_t, data));
+      data_len = clib_net_to_host_u32 (mb->data_len);
+    }
+  return data_len;
+}
+
 vl_api_trace_t *
 vl_msg_api_trace_get (api_main_t * am, vl_api_trace_which_t which)
 {
@@ -1132,9 +1153,13 @@ vl_api_format_string (u8 * s, va_list * args)
  * NOT nul terminated.
  */
 u8 *
-vl_api_from_api_to_new_vec (vl_api_string_t * astr)
+vl_api_from_api_to_new_vec (void *mp, vl_api_string_t * astr)
 {
   u8 *v = 0;
+
+  if (vl_msg_api_max_length (mp) < clib_net_to_host_u32 (astr->length))
+    return format (0, "insane astr->length %u%c",
+		   clib_net_to_host_u32 (astr->length), 0);
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
   return v;
 }
