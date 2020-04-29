@@ -24,18 +24,12 @@
 #include <arpa/inet.h>
 #include <hs_apps/vcl/sock_test.h>
 #include <fcntl.h>
-#ifndef VCL_TEST
 #include <sys/un.h>
-#endif
 
 typedef struct
 {
-#ifdef VCL_TEST
-  vppcom_endpt_t server_endpt;
-#else
   int af_unix_echo_tx;
   int af_unix_echo_rx;
-#endif
   struct sockaddr_storage server_addr;
   uint32_t server_addr_size;
   uint32_t cfg_seq_num;
@@ -46,7 +40,6 @@ typedef struct
 } sock_client_main_t;
 
 sock_client_main_t vcl_client_main;
-
 
 static int
 sock_test_cfg_sync (vcl_test_session_t * socket)
@@ -156,18 +149,12 @@ echo_test_client ()
       _wfdset = wr_fdset;
       _rfdset = rd_fdset;
 
-#ifdef VCL_TEST
-      rv =
-	vppcom_select (nfds, (unsigned long *) rfdset,
-		       (unsigned long *) wfdset, NULL, 0);
-#else
-      {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 0;
 	rv = select (nfds, rfdset, wfdset, NULL, &timeout);
       }
-#endif
+
       if (rv < 0)
 	{
 	  perror ("select()");
@@ -230,7 +217,6 @@ echo_test_client ()
     }
   clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
 
-#ifndef VCL_TEST
   {
     int fd, errno_val;
     struct sockaddr_un serveraddr;
@@ -317,7 +303,6 @@ echo_test_client ()
   out:
     ;
   }
-#endif
 
   for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
     {
@@ -418,18 +403,12 @@ stream_test_client (vcl_test_t test)
       _wfdset = wr_fdset;
       _rfdset = rd_fdset;
 
-#ifdef VCL_TEST
-      rv =
-	vppcom_select (nfds, (unsigned long *) rfdset,
-		       (unsigned long *) wfdset, NULL, 0);
-#else
-      {
 	struct timeval timeout;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 0;
 	rv = select (nfds, rfdset, wfdset, NULL, &timeout);
       }
-#endif
+
       if (rv < 0)
 	{
 	  perror ("select()");
@@ -598,11 +577,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       for (i = scm->num_test_sockets - 1; i >= num_test_sockets; i--)
 	{
 	  tsock = &scm->test_socket[i];
-#ifdef VCL_TEST
-	  vppcom_session_close (tsock->fd);
-#else
 	  close (tsock->fd);
-#endif
 	  free (tsock->txbuf);
 	  free (tsock->rxbuf);
 	}
@@ -629,21 +604,10 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       for (i = scm->num_test_sockets; i < num_test_sockets; i++)
 	{
 	  tsock = &scm->test_socket[i];
-#ifdef VCL_TEST
-	  tsock->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
-					     VPPCOM_PROTO_UDP :
-					     VPPCOM_PROTO_TCP,
-					     1 /* is_nonblocking */ );
-	  if (tsock->fd < 0)
-	    {
-	      errno = -tsock->fd;
-	      tsock->fd = -1;
-	    }
-#else
 	  tsock->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
 			      ctrl->cfg.transport_udp ?
 			      SOCK_DGRAM : SOCK_STREAM, 0);
-#endif
+
 	  if (tsock->fd < 0)
 	    {
 	      errno_val = errno;
@@ -653,17 +617,9 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	      return tsock->fd;
 	    }
 
-#ifdef VCL_TEST
-	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
-	  if (rv)
-	    {
-	      errno = -rv;
-	      rv = -1;
-	    }
-#else
 	  rv = connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
 			scm->server_addr_size);
-#endif
+
 	  if (rv < 0)
 	    {
 	      errno_val = errno;
@@ -1082,29 +1038,8 @@ main (int argc, char **argv)
       print_usage_and_exit ();
     }
 
-#ifdef VCL_TEST
-  ctrl->fd = vppcom_app_create ("vcl_test_client");
-  if (ctrl->fd < 0)
-    {
-      errno = -ctrl->fd;
-      ctrl->fd = -1;
-    }
-  else
-    {
-      ctrl->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
-					VPPCOM_PROTO_UDP :
-					VPPCOM_PROTO_TCP,
-					0 /* is_nonblocking */ );
-      if (ctrl->fd < 0)
-	{
-	  errno = -ctrl->fd;
-	  ctrl->fd = -1;
-	}
-    }
-#else
   ctrl->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
 		     ctrl->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM, 0);
-#endif
 
   if (ctrl->fd < 0)
     {
@@ -1135,41 +1070,14 @@ main (int argc, char **argv)
       server_addr->sin_port = htons (atoi (argv[optind]));
     }
 
-#ifdef VCL_TEST
-  if (ctrl->cfg.address_ip6)
-    {
-      struct sockaddr_in6 *server_addr =
-	(struct sockaddr_in6 *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 0;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin6_port;
-    }
-  else
-    {
-      struct sockaddr_in *server_addr =
-	(struct sockaddr_in *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 1;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin_port;
-    }
-#endif
-
   do
     {
       printf ("\nCLIENT: Connecting to server...\n");
 
-#ifdef VCL_TEST
-      rv = vppcom_session_connect (ctrl->fd, &scm->server_endpt);
-      if (rv)
-	{
-	  errno = -rv;
-	  rv = -1;
-	}
-#else
       rv =
 	connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
 		 scm->server_addr_size);
-#endif
+
       if (rv < 0)
 	{
 	  errno_val = errno;
@@ -1259,14 +1167,8 @@ main (int argc, char **argv)
     }
 
   exit_client ();
-#ifdef VCL_TEST
-  vppcom_session_close (ctrl->fd);
-  vppcom_app_destroy ();
-  return 0;
-#else
   close (ctrl->fd);
   return (scm->af_unix_echo_tx == scm->af_unix_echo_rx) ? 0 : -1;
-#endif
 }
 
 /*

@@ -31,18 +31,7 @@
 
 #if SOCK_SERVER_USE_EPOLL
 #include <sys/epoll.h>
-#if !defined(VCL_TEST)
 #include <sys/un.h>
-#endif
-#endif
-
-#ifdef VCL_TEST
-#if VPPCOM_SESSION_ATTR_UNIT_TEST
-#define BUFLEN  sizeof (uint64_t) * 16
-uint64_t buffer[16];
-uint32_t buflen = BUFLEN;
-uint32_t *flags = (uint32_t *) buffer;
-#endif
 #endif
 
 typedef struct
@@ -53,10 +42,6 @@ typedef struct
   uint32_t buf_size;
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
-#ifdef VCL_TEST
-  vppcom_endpt_t endpt;
-  uint8_t ip[16];
-#endif
 } sock_server_conn_t;
 
 typedef struct
@@ -76,13 +61,6 @@ typedef struct
   int epfd;
   struct epoll_event listen_ev;
   struct epoll_event wait_events[SOCK_SERVER_MAX_EPOLL_EVENTS];
-#if !defined (VCL_TEST)
-  int af_unix_listen_fd;
-  int af_unix_fd;
-  struct epoll_event af_unix_listen_ev;
-  struct sockaddr_un serveraddr;
-  uint32_t af_unix_xacts;
-#endif
 #endif
   size_t num_conn;
   size_t conn_pool_size;
@@ -172,9 +150,6 @@ conn_pool_alloc (void)
     {
       if (!ssm->conn_pool[i].is_alloc)
 	{
-#ifdef VCL_TEST
-	  ssm->conn_pool[i].endpt.ip = ssm->conn_pool[i].ip;
-#endif
 	  ssm->conn_pool[i].is_alloc = 1;
 	  return (&ssm->conn_pool[i]);
 	}
@@ -302,7 +277,7 @@ stream_test_server (sock_server_conn_t * conn, int rx_bytes)
     }
 }
 
-#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+#if SOCK_SERVER_USE_EPOLL
 static inline void
 af_unix_echo (void)
 {
@@ -388,11 +363,7 @@ new_client (void)
       return;
     }
 
-#ifdef VCL_TEST
-  client_fd = vppcom_session_accept (ssm->listen_fd, &conn->endpt, 0);
-  if (client_fd < 0)
-    errno = -client_fd;
-#elif HAVE_ACCEPT4
+#if HAVE_ACCEPT4
   client_fd = accept4 (ssm->listen_fd, (struct sockaddr *) NULL, NULL, NULL);
 #else
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
@@ -422,13 +393,8 @@ new_client (void)
 
     ev.events = EPOLLIN;
     ev.data.u64 = conn - ssm->conn_pool;
-#ifdef VCL_TEST
-    rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
-    if (rv)
-      errno = -rv;
-#else
     rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
-#endif
+
     if (rv < 0)
       {
 	int errno_val;
@@ -472,13 +438,9 @@ main (int argc, char **argv)
 #if ! SOCK_SERVER_USE_EPOLL
   fd_set _rfdset, *rfdset = &_rfdset;
 #endif
-#ifdef VCL_TEST
-  vppcom_endpt_t endpt;
-#else
   uint32_t servaddr_size;
 #if ! SOCK_SERVER_USE_EPOLL
   fd_set _wfdset, *wfdset = &_wfdset;
-#endif
 #endif
 
   opterr = 0;
@@ -526,25 +488,10 @@ main (int argc, char **argv)
 
   conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
 
-#ifdef VCL_TEST
-  rv = vppcom_app_create ("vcl_test_server");
-  if (rv)
-    {
-      errno = -rv;
-      ssm->listen_fd = -1;
-    }
-  else
-    {
-      ssm->listen_fd = vppcom_session_create (ssm->cfg.transport_udp ?
-					      VPPCOM_PROTO_UDP :
-					      VPPCOM_PROTO_TCP,
-					      0 /* is_nonblocking */ );
-    }
-#else
   ssm->listen_fd = socket (ssm->cfg.address_ip6 ? AF_INET6 : AF_INET,
 			   ssm->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM,
 			   0);
-#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+#if SOCK_SERVER_USE_EPOLL
   unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
   ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
   if (ssm->af_unix_listen_fd < 0)
@@ -589,7 +536,6 @@ main (int argc, char **argv)
       return rv;
     }
 #endif /* SOCK_SERVER_USE_EPOLL */
-#endif
   if (ssm->listen_fd < 0)
     {
       errno_val = errno;
@@ -604,9 +550,6 @@ main (int argc, char **argv)
   if (ssm->cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
-#ifndef VCL_TEST
-      servaddr_size = sizeof (*server_addr);
-#endif
       server_addr->sin6_family = AF_INET6;
       server_addr->sin6_addr = in6addr_any;
       server_addr->sin6_port = htons (port);
@@ -614,39 +557,12 @@ main (int argc, char **argv)
   else
     {
       struct sockaddr_in *server_addr = (struct sockaddr_in *) &servaddr;
-#ifndef VCL_TEST
-      servaddr_size = sizeof (*server_addr);
-#endif
       server_addr->sin_family = AF_INET;
       server_addr->sin_addr.s_addr = htonl (INADDR_ANY);
       server_addr->sin_port = htons (port);
     }
 
-#ifdef VCL_TEST
-  if (ssm->cfg.address_ip6)
-    {
-      struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) &servaddr;
-      endpt.is_ip4 = 0;
-      endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      endpt.port = (uint16_t) server_addr->sin6_port;
-    }
-  else
-    {
-      struct sockaddr_in *server_addr = (struct sockaddr_in *) &servaddr;
-      endpt.is_ip4 = 1;
-      endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      endpt.port = (uint16_t) server_addr->sin_port;
-    }
-
-  rv = vppcom_session_bind (ssm->listen_fd, &endpt);
-  if (rv)
-    {
-      errno = -rv;
-      rv = -1;
-    }
-#else
   rv = bind (ssm->listen_fd, (struct sockaddr *) &servaddr, servaddr_size);
-#endif
   if (rv < 0)
     {
       errno_val = errno;
@@ -664,16 +580,7 @@ main (int argc, char **argv)
       return rv;
     }
 
-#ifdef VCL_TEST
-  rv = vppcom_session_listen (ssm->listen_fd, 10);
-  if (rv)
-    {
-      errno = -rv;
-      rv = -1;
-    }
-#else
   rv = listen (ssm->listen_fd, 10);
-#endif
   if (rv < 0)
     {
       errno_val = errno;
@@ -692,13 +599,7 @@ main (int argc, char **argv)
   ssm->nfds = ssm->listen_fd + 1;
 
 #else
-#ifdef VCL_TEST
-  ssm->epfd = vppcom_epoll_create ();
-  if (ssm->epfd < 0)
-    errno = -ssm->epfd;
-#else
   ssm->epfd = epoll_create (1);
-#endif
   if (ssm->epfd < 0)
     {
       errno_val = errno;
@@ -710,12 +611,6 @@ main (int argc, char **argv)
 
   ssm->listen_ev.events = EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
-#ifdef VCL_TEST
-  rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd,
-			 &ssm->listen_ev);
-  if (rv < 0)
-    errno = -rv;
-#else
   ssm->af_unix_listen_ev.events = EPOLLIN;
   ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
@@ -734,7 +629,6 @@ main (int argc, char **argv)
     }
 
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
-#endif
   if (rv < 0)
     {
       errno_val = errno;
@@ -752,16 +646,12 @@ main (int argc, char **argv)
 #if ! SOCK_SERVER_USE_EPOLL
       _rfdset = ssm->rd_fdset;
 
-#ifdef VCL_TEST
-      rv = vppcom_select (ssm->nfds, (unsigned long *) rfdset, NULL, NULL, 0);
-#else
       {
 	struct timeval timeout;
 	timeout = ssm->timeout;
 	_wfdset = ssm->wr_fdset;
 	rv = select (ssm->nfds, rfdset, wfdset, NULL, &timeout);
       }
-#endif
       if (rv < 0)
 	{
 	  perror ("select()");
@@ -783,15 +673,8 @@ main (int argc, char **argv)
 	  conn = &ssm->conn_pool[i];
 #else
       int num_ev;
-#ifdef VCL_TEST
-      num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
-				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60.0);
-      if (num_ev < 0)
-	errno = -num_ev;
-#else
       num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
 			   SOCK_SERVER_MAX_EPOLL_EVENTS, 60000);
-#endif
       if (num_ev < 0)
 	{
 	  perror ("epoll_wait()");
@@ -810,11 +693,7 @@ main (int argc, char **argv)
 	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
 	  if (ssm->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
-#ifdef VCL_TEST
-	      vppcom_session_close (conn->fd);
-#else
 	      close (conn->fd);
-#endif
 	      continue;
 	    }
 	  if (ssm->wait_events[i].data.u32 == ~0)
@@ -822,14 +701,12 @@ main (int argc, char **argv)
 	      new_client ();
 	      continue;
 	    }
-#if !defined (VCL_TEST)
 	  else if (ssm->wait_events[i].data.u32 ==
 		   SOCK_TEST_AF_UNIX_ACCEPT_DATA)
 	    {
 	      af_unix_echo ();
 	      continue;
 	    }
-#endif
 #endif
 	  client_fd = conn->fd;
 
@@ -888,11 +765,7 @@ main (int argc, char **argv)
 			case VCL_TEST_TYPE_EXIT:
 			  printf ("SERVER: Have a great day, "
 				  "connection %d!\n", client_fd);
-#ifdef VCL_TEST
-			  vppcom_session_close (client_fd);
-#else
 			  close (client_fd);
-#endif
 			  conn_pool_free (conn);
 			  printf ("SERVER: Closed client fd %d\n", client_fd);
 #if ! SOCK_SERVER_USE_EPOLL
@@ -990,18 +863,13 @@ main (int argc, char **argv)
     }
 
 done:
-#ifdef VCL_TEST
-  vppcom_session_close (ssm->listen_fd);
-  vppcom_app_destroy ();
-#else
   close (ssm->listen_fd);
 
-#if SOCK_SERVER_USE_EPOLL && !defined (VCL_TEST)
+#if SOCK_SERVER_USE_EPOLL
   close (ssm->af_unix_listen_fd);
   unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
 #endif /* SOCK_SERVER_USE_EPOLL */
 
-#endif
   if (ssm->conn_pool)
     free (ssm->conn_pool);
 
