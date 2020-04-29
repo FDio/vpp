@@ -56,6 +56,22 @@ set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
     CACHE STRING "Target CPU cache line size (power of 2)")
 
 ##############################################################################
+# Gnu Assembler AVX-512 bug detection
+# - see: https://sourceware.org/bugzilla/show_bug.cgi?id=23465
+##############################################################################
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+  if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    set(pfx ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gas_avx512_bug_test)
+    file(WRITE ${pfx}.s "vmovaps 0x40(,%rax), %zmm0\n")
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -c ${pfx}.s -o ${pfx}.o)
+    execute_process(COMMAND objdump -s ${pfx}.o OUTPUT_VARIABLE _output)
+    if (NOT _output MATCHES "62f17c48 28040540 000000")
+      set(GNU_ASSEMBLER_AVX512_BUG 1)
+    endif()
+  endif()
+endif()
+
+##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
@@ -64,10 +80,14 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   if(compiler_flag_march_core_avx2)
     list(APPEND MARCH_VARIANTS "avx2\;-march=core-avx2 -mtune=core-avx2")
   endif()
-  check_c_compiler_flag("-march=skylake-avx512" compiler_flag_march_skylake_avx512)
-  check_c_compiler_flag("-march=icelake-client" compiler_flag_march_icelake_client)
-  if(compiler_flag_march_skylake_avx512)
-    list(APPEND MARCH_VARIANTS "avx512\;-march=skylake-avx512 -mtune=skylake-avx512")
+  if (GNU_ASSEMBLER_AVX512_BUG)
+     message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
+  else()
+    check_c_compiler_flag("-march=skylake-avx512" compiler_flag_march_skylake_avx512)
+    check_c_compiler_flag("-march=icelake-client" compiler_flag_march_icelake_client)
+    if(compiler_flag_march_skylake_avx512)
+      list(APPEND MARCH_VARIANTS "avx512\;-march=skylake-avx512 -mtune=skylake-avx512")
+    endif()
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   set(CMAKE_C_FLAGS "-march=armv8-a+crc ${CMAKE_C_FLAGS}")
