@@ -623,7 +623,7 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	  if (vec_len (s) == 0)
 	    s = format (s, "\n    %-15s  %=8s  %6s",
 			"Name", "Priority", "Active");
-	  s = format (s, "\n    %-15s  %=8u  %=6s", fnr->name, fnr->priority,
+	  s = format (s, "\n    %-15s  %8d  %=6s", fnr->name, fnr->priority,
 		      fnr->function == n->function ? "yes" : "");
 	  fnr = fnr->next_registration;
 	}
