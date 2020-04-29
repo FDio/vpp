@@ -518,6 +518,32 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
   return (tx_bytes);
 }
 
+static inline void
+dump_help (void)
+{
+#define INDENT "\n  "
+
+  printf ("CLIENT: Test configuration commands:"
+	  INDENT VCL_TEST_TOKEN_HELP
+	  "\t\t\tDisplay help."
+	  INDENT VCL_TEST_TOKEN_EXIT
+	  "\t\t\tExit test client & server."
+	  INDENT VCL_TEST_TOKEN_SHOW_CFG
+	  "\t\t\tShow the current test cfg."
+	  INDENT VCL_TEST_TOKEN_RUN_UNI
+	  "\t\t\tRun the Uni-directional test."
+	  INDENT VCL_TEST_TOKEN_RUN_BI
+	  "\t\t\tRun the Bi-directional test."
+	  INDENT VCL_TEST_TOKEN_VERBOSE
+	  "\t\t\tToggle verbose setting."
+	  INDENT VCL_TEST_TOKEN_RXBUF_SIZE
+	  "<rxbuf size>\tRx buffer size (bytes)."
+	  INDENT VCL_TEST_TOKEN_TXBUF_SIZE
+	  "<txbuf size>\tTx buffer size (bytes)."
+	  INDENT VCL_TEST_TOKEN_NUM_WRITES
+	  "<# of writes>\tNumber of txbuf writes to server." "\n");
+}
+
 #endif /* __vcl_test_h__ */
 
 /*
