@@ -770,7 +770,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
-  if (vif->type != VIRTIO_IF_TYPE_TAP)
+  if ((vif->type != VIRTIO_IF_TYPE_TAP) && (vif->type != VIRTIO_IF_TYPE_TUN))
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   /* bring down the interface */
@@ -779,7 +779,10 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   for (i = 0; i < vif->num_rxqs; i++)
     vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
 
-  ethernet_delete_interface (vnm, vif->hw_if_index);
+  if (vif->type == VIRTIO_IF_TYPE_TAP)
+    ethernet_delete_interface (vnm, vif->hw_if_index);
+  else				/* VIRTIO_IF_TYPE_TUN */
+    vnet_delete_hw_interface (vnm, vif->hw_if_index);
   vif->hw_if_index = ~0;
 
   tap_free (vm, vif);
