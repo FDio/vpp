@@ -71,7 +71,7 @@ void clib_memswap (void *_a, void *_b, uword bytes);
  * so don't let it anywhere near them.
  */
 #ifndef __COVERITY__
-#if __AVX512F__
+#if __AVX512BITALG__
 #include <vppinfra/memcpy_avx512.h>
 #elif __AVX2__
 #include <vppinfra/memcpy_avx2.h>

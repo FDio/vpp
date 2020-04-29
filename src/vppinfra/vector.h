@@ -66,7 +66,7 @@
 #endif
 #endif
 
-#if defined (__AVX512F__)
+#if defined (__AVX512BITALG__)
 #define CLIB_HAVE_VEC512
 #endif
 
@@ -168,7 +168,10 @@ typedef u64 u64x _vector_size (8);
 #include <vppinfra/vector_avx2.h>
 #endif
 
-#if defined (__AVX512F__)
+#if defined (__AVX512BITALG__)
+/* Due to power level transition issues, we don't preffer AVX-512 on
+   Skylake X and CascadeLake CPUs, AVX512BITALG is introduced on
+   icelake CPUs  */
 #include <vppinfra/vector_avx512.h>
 #endif
 

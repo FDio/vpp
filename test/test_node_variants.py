@@ -66,39 +66,62 @@ class TestNodeVariant(VppTestCase):
         variant_info = self.getActiveVariant("ip4-rewrite")
         self.assertEqual(variant_info[0], variant)
 
+class TestICLVariant(TestNodeVariant):
+    """ Test icl Node Variants """
 
-class TestAVX512Variant(TestNodeVariant):
-    """ Test avx512 Node Variants """
-
-    VARIANT = "avx512"
-    LINUX_VARIANT = VARIANT + "f"
+    VARIANT = "icl"
+    LINUX_VARIANT = "avx512_bitalg"
 
     @classmethod
     def setUpConstants(cls):
-        super(TestAVX512Variant, cls).setUpConstants(cls.VARIANT)
+        super(TestICLVariant, cls).setUpConstants(cls.VARIANT)
 
     @classmethod
     def setUpClass(cls):
-        super(TestAVX512Variant, cls).setUpClass()
+        super(TestICLVariant, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestAVX512Variant, cls).tearDownClass()
+        super(TestICLVariant, cls).tearDownClass()
 
     @unittest.skipUnless(skipVariant(LINUX_VARIANT),
                          VARIANT + " not a supported variant, skip.")
-    def test_avx512(self):
+    def test_icl(self):
         self.checkVariant(self.VARIANT)
 
+class TestSKXVariant(TestNodeVariant):
+    """ Test skx Node Variants """
 
-class TestAVX2Variant(TestNodeVariant):
-    """ Test avx2 Node Variants """
-
-    VARIANT = "avx2"
+    VARIANT = "skx"
+    LINUX_VARIANT = "avx512f"
 
     @classmethod
     def setUpConstants(cls):
-        super(TestAVX2Variant, cls).setUpConstants(cls.VARIANT)
+        super(TestSKXVariant, cls).setUpConstants(cls.VARIANT)
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSKXVariant, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSKXVariant, cls).tearDownClass()
+
+    @unittest.skipUnless(skipVariant(LINUX_VARIANT),
+                         VARIANT + " not a supported variant, skip.")
+    def test_skx(self):
+        self.checkVariant(self.VARIANT)
+
+
+class TestHSWVariant(TestNodeVariant):
+    """ Test avx2 Node Variants """
+
+    VARIANT = "hsw"
+    LINUX_VARIANT = "avx2"
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestHSWVariant, cls).setUpConstants(cls.VARIANT)
 
     @classmethod
     def setUpClass(cls):
@@ -106,9 +129,9 @@ class TestAVX2Variant(TestNodeVariant):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestAVX2Variant, cls).tearDownClass()
+        super(TestHSWVariant, cls).tearDownClass()
 
-    @unittest.skipUnless(skipVariant(VARIANT),
+    @unittest.skipUnless(skipVariant(LINUX_VARIANT),
                          VARIANT + " not a supported variant, skip.")
-    def test_avx2(self):
+    def test_hsw(self):
         self.checkVariant(self.VARIANT)
