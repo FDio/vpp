@@ -477,13 +477,8 @@ writev (int fd, const struct iovec * iov, int iovcnt)
   return size;
 }
 
-#ifdef HAVE_FCNTL64
-int
-fcntl64 (int fd, int cmd, ...)
-#else
 int
 fcntl (int fd, int cmd, ...)
-#endif
 {
   vls_handle_t vlsh;
   int rv = 0;
@@ -540,6 +535,18 @@ fcntl (int fd, int cmd, ...)
 
   va_end (ap);
 
+  return rv;
+}
+
+int
+fcntl64 (int fd, int cmd, ...)
+{
+  va_list ap;
+  int rv;
+
+  va_start (ap, cmd);
+  rv = fcntl (fd, cmd, ap);
+  va_end (ap);
   return rv;
 }
 
