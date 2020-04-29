@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3681cf5a_e01b7c1c",
+        "filename": "src/vnet/devices/tap/tapv2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-29T13:04:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f19d5d9c_57e7172a",
+      "revId": "002ad88b6d9a24f2b1371f6b21225a40e431982b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "14657427_6e36ebf4",
         "filename": "test/vpp_devices.py",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-29T08:11:49Z",
       "side": 1,
       "message": "i appreciate this is the same functionality as before, but is it correct? Shouldn\u0027t there be a check that this object is represented in the contents of the dump list?",
+      "revId": "002ad88b6d9a24f2b1371f6b21225a40e431982b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a3d9cc0_681acd24",
+        "filename": "test/vpp_devices.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-29T13:04:36Z",
+      "side": 1,
+      "message": "get_vpp_dump is subtly different.  It previously returned the value or None.  It now returns [entry] or [], consistent with the api.\n\u003e\u003e\u003ebool([])\nFalse\n\u003e\u003e\u003ebool(None)\nFalse\n\n\u003e\u003e\u003ebool([1])\nTrue\n\nI would have removed get_vpp_dump, but since it isn\u0027t prefixed with an underscore, it may be used but it is not prefixed with an underscore.  My preference would be to refactor VppInterface (vpp_interface:481) and not need to publicly expose the implementation details here.",
+      "parentUuid": "14657427_6e36ebf4",
       "revId": "002ad88b6d9a24f2b1371f6b21225a40e431982b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
