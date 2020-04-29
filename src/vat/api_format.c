@@ -1165,7 +1165,7 @@ vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
 
   vam->retval = retval;
   if (retval == 0)
-    vam->cmd_reply = vl_api_from_api_to_new_vec (&mp->reply);
+    vam->cmd_reply = vl_api_from_api_to_new_vec (mp, &mp->reply);
   vam->result_ready = 1;
 }
 
@@ -1176,7 +1176,7 @@ vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
   vat_json_node_t node;
   u8 *reply = 0;		/* reply vector */
 
-  reply = vl_api_from_api_to_new_vec (&mp->reply);
+  reply = vl_api_from_api_to_new_vec (mp, &mp->reply);
   vec_reset_length (vam->cmd_reply);
 
   vat_json_init_object (&node);

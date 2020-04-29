@@ -1799,7 +1799,7 @@ static void *vl_api_sw_interface_dump_t_print
 
   if (mp->name_filter_valid)
     {
-      u8 *v = vl_api_from_api_to_new_vec (&mp->name_filter);
+      u8 *v = vl_api_from_api_to_new_vec (mp, &mp->name_filter);
       s = format (s, "name_filter %v ", v);
       vec_free (v);
     }
@@ -1858,7 +1858,7 @@ static void *vl_api_cli_inband_t_print
   u8 *s;
   u8 *cmd = 0;
 
-  cmd = vl_api_from_api_to_new_vec (&mp->cmd);
+  cmd = vl_api_from_api_to_new_vec (mp, &mp->cmd);
 
   s = format (0, "SCRIPT: exec %v ", cmd);
 

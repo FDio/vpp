@@ -57,7 +57,7 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
   int rv = 0;
   u8 *sys_name = 0;
 
-  sys_name = vl_api_from_api_to_new_vec (&mp->system_name);
+  sys_name = vl_api_from_api_to_new_vec (mp, &mp->system_name);
 
   if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval))
       != lldp_ok)
