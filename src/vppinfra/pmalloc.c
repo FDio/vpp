@@ -63,8 +63,9 @@ pmalloc_validate_numa_node (u32 * numa_node)
 int
 clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 {
-  uword base, pagesize;
+  uword off, pagesize;
   u64 *pt = 0;
+  int mmap_flags;
 
   ASSERT (pm->error == 0);
 
@@ -83,16 +84,32 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 
   pm->max_pages = size >> pm->def_log2_page_sz;
 
-  base = clib_mem_vm_reserve (base_addr, size, pm->def_log2_page_sz);
+  /* reserve VA space for future growth */
+  mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
-  if (base == ~0)
+  if (base_addr)
+    mmap_flags |= MAP_FIXED;
+
+  pm->base = mmap (uword_to_pointer (base_addr, void *), size + pagesize,
+		   PROT_NONE, mmap_flags, -1, 0);
+
+  if (pm->base == MAP_FAILED)
     {
-      pm->error = clib_error_return (0, "failed to reserve %u pages",
-				     pm->max_pages);
+      pm->error = clib_error_return_unix (0, "failed to reserve %u pages");
       return -1;
     }
 
-  pm->base = uword_to_pointer (base, void *);
+  off = round_pow2 (pointer_to_uword (pm->base), pagesize) -
+    pointer_to_uword (pm->base);
+
+  /* trim start and end of reservation to be page aligned */
+  if (off)
+    {
+      munmap (pm->base, off);
+      pm->base += off;
+    }
+
+  munmap (pm->base + ((uword) pm->max_pages * pagesize), pagesize - off);
   return 0;
 }
 
