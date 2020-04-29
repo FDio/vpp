@@ -37,8 +37,8 @@ endif
 endif
 
 # Use devtoolset on centos 7
-ifneq ($(wildcard /opt/rh/devtoolset-7/enable),)
-vpp_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-7/root/bin"
+ifneq ($(wildcard /opt/rh/devtoolset-9/enable),)
+vpp_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-9/root/bin"
 endif
 
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)

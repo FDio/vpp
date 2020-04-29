@@ -31,8 +31,8 @@ sample-plugin_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
 sample-plugin_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 
 # Use devtoolset on centos 7
-ifneq ($(wildcard /opt/rh/devtoolset-7/enable),)
-sample-plugin_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-7/root/bin"
+ifneq ($(wildcard /opt/rh/devtoolset-9/enable),)
+sample-plugin_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-9/root/bin"
 endif
 
 sample-plugin_configure = \
