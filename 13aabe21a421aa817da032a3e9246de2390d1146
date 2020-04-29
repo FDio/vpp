@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "cbf6f191_5bfcd4af",
+        "filename": "src/vnet/gso/hdr_offset_parser.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-29T11:57:10Z",
+      "side": 1,
+      "message": "I\u0027ll add ASSERT (!(is_ip4 ^ is_ip6)) here to make sure it should be either of one.",
+      "parentUuid": "00b32a6c_e93a8858",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ece24c93_52513fe6",
         "filename": "src/vnet/gso/hdr_offset_parser.h",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-29T08:06:05Z",
       "side": 1,
       "message": "i don\u0027t understand why you need to know that it\u0027s a tunnel. \nwhatever interface the packet is egressing the GSO node will given a packet that looks like:\n   INTERFACE-ENCAP | IP | L4 | PAYLOAD\nsave_rewrite_length tells you how big the INTERFACE-ENCAP is and adj-\u003efixup function will fix any fields in INTERFACE-ENCAP that need updating after the PAYLOAD has been segmented.\ni would have hoped that all interfaces could then be treated in the same way.",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "19826ec5_d66c5144",
+        "filename": "src/vnet/gso/hdr_offset_parser.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-29T11:57:10Z",
+      "side": 1,
+      "message": "In case of l2 path, we need to know offsets for both inner and outer headers i.e. VXLAN. Secondly, GSO node will be placed right before output interface in most of the cases (regular gso, gso/vxlan, gso/ip-ip, gso/gre, gso/geneve) except IPSEC which is placed before the tunnel interface. At output interface, we can check the interface capabilities and act accordingly on the GSO packets. That\u0027s why we also need to parse both headers.\n\nhdr-parser is also used in interface_output.h to get the header offset for non-gso packet checksum calculation.",
+      "parentUuid": "ece24c93_52513fe6",
       "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "cc340971_15e9ab17",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-29T11:57:10Z",
+      "side": 1,
+      "message": "This function is used when gso node will be enabled on output interface instead of ipip tunnel interface. Packet will be: ETHERNET | OUTER IP | INNER IP | L4 | PAYLOAD in this case. While, adj\u0027s fixup needs packet starting with OUTER IP | INNER IP | L4 | PAYLOAD which is the use case of IPSec at line 295.",
+      "parentUuid": "bb0f2187_d8a4402a",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a93c742a_adea3000",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 4
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "15ab62a6_b4c182ec",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-29T11:57:10Z",
+      "side": 1,
+      "message": "I don\u0027t get the requirement of testing \"node\" in above condition.",
+      "parentUuid": "a93c742a_adea3000",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "de8a7f23_2cc1a939",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 4
@@ -81,6 +153,24 @@
       "writtenOn": "2020-04-29T08:06:05Z",
       "side": 1,
       "message": "still need the runs_before \u003d \"ipsecX-output-feature\"",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15353ecd_bcd7edea",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 877,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-29T11:57:10Z",
+      "side": 1,
+      "message": "I\u0027ll fix it.",
+      "parentUuid": "de8a7f23_2cc1a939",
       "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
