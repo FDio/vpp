@@ -387,6 +387,10 @@ class VppTestCase(unittest.TestCase):
         else:
             default_variant = ""
 
+        api_fuzzing = os.getenv("API_FUZZ")
+        if api_fuzzing is None:
+            api_fuzzing = 'off'
+
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
                            coredump_size, "runtime-dir", cls.tempdir, "}",
@@ -398,6 +402,7 @@ class VppTestCase(unittest.TestCase):
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "node { ", default_variant, "}",
+                           "api-fuzz {", api_fuzzing, "}",
                            "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "rdma_plugin.so", "{", "disable",

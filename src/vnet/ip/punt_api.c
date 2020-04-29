@@ -372,7 +372,7 @@ vl_api_punt_reason_dump_t_handler (vl_api_punt_reason_dump_t * mp)
   punt_reason_dump_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
-    .name = vl_api_from_api_to_new_vec (&mp->reason.name),
+    .name = vl_api_from_api_to_new_vec (mp, &mp->reason.name),
   };
 
   punt_reason_walk (punt_reason_dump_walk_cb, &ctx);

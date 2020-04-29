@@ -122,7 +122,7 @@ vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
 
   if (vl_api_string_len (&mp->stream_name) > 0)
     {
-      u8 *stream_name = vl_api_from_api_to_new_vec (&mp->stream_name);
+      u8 *stream_name = vl_api_from_api_to_new_vec (mp, &mp->stream_name);
       uword *p = hash_get_mem (pg->stream_index_by_name, stream_name);
       if (p)
 	stream_index = *p;
