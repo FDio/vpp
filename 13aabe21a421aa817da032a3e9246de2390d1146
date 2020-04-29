@@ -143,6 +143,24 @@
     },
     {
       "key": {
+        "uuid": "1b443187_3d4dc3d2",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T12:20:11Z",
+      "side": 1,
+      "message": "but you don\u0027t need GSO to work for tunnelled packets when enabled on the ethernet, since it\u0027s enabled on the tunnel interface.",
+      "parentUuid": "cc340971_15e9ab17",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a93c742a_adea3000",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 4
@@ -172,6 +190,24 @@
       "side": 1,
       "message": "I don\u0027t get the requirement of testing \"node\" in above condition.",
       "parentUuid": "a93c742a_adea3000",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fcaf6d0a_4ecb972f",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T12:20:11Z",
+      "side": 1,
+      "message": "it\u0027s not a requirement, it\u0027s an optimisation. one check on the node versus 4 checks on the buffers. it saves you cycles in the common case.",
+      "parentUuid": "15ab62a6_b4c182ec",
       "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
