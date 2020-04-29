@@ -624,7 +624,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   a->options = mp->options;
   a->session_cb_vft = &session_mq_cb_vft;
 
-  a->namespace_id = vl_api_from_api_to_new_vec (&mp->namespace_id);
+  a->namespace_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
 
   if ((rv = vnet_application_attach (a)))
     {
@@ -801,7 +801,7 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
       goto done;
     }
 
-  ns_id = vl_api_from_api_to_new_vec (&mp->namespace_id);
+  ns_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
 
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,

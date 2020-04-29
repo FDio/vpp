@@ -1544,13 +1544,14 @@ static void
 vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
 {
   vl_api_registration_t *reg;
-  fib_protocol_t fproto;
+  fib_protocol_t fproto = FIB_PROTOCOL_IP4;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  fproto = mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
+  if (mp->is_ipv6 == 1)
+    fproto = FIB_PROTOCOL_IP6;
 
   ip_punt_redirect_walk_ctx_t ctx = {
     .reg = reg,

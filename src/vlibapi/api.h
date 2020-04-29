@@ -109,6 +109,7 @@ void vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 				      void *the_msg, vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      u8 is_private);
+u32 vl_msg_api_max_length (void *mp);
 vl_api_trace_t *vl_msg_api_trace_get (api_main_t * am,
 				      vl_api_trace_which_t which);
 void vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string,
