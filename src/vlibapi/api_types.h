@@ -46,7 +46,7 @@ extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);
 extern u32 vl_api_string_len (vl_api_string_t * astr);
 
 /* Returns new vector. NON nul terminated */
-extern u8 * vl_api_from_api_to_new_vec (vl_api_string_t *astr);
+extern u8 * vl_api_from_api_to_new_vec (void *mp, vl_api_string_t *astr);
 /* Returns new vector. Nul terminated */
 extern char * vl_api_from_api_to_new_c_string (vl_api_string_t *astr);
 

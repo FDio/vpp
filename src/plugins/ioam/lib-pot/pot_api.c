@@ -14,7 +14,7 @@
  */
 /*
  *------------------------------------------------------------------
- * pot_api.c - Proof of Transit related APIs to create 
+ * pot_api.c - Proof of Transit related APIs to create
  *             and maintain profiles
  *------------------------------------------------------------------
  */
@@ -43,7 +43,7 @@ static void vl_api_pot_profile_add_t_handler
     pot_profile *profile = NULL;
     u8 *name = 0;
 
-    name = vl_api_from_api_to_new_vec(&mp->list_name);
+    name = vl_api_from_api_to_new_vec(mp, &mp->list_name);
 
     pot_profile_list_init(name);
     id = mp->id;
@@ -61,7 +61,7 @@ static void vl_api_pot_profile_add_t_handler
         (void)pot_profile_set_bit_mask(profile, mp->max_bits);
     } else {
         rv = -3;
-    }  
+    }
  ERROROUT:
     vec_free(name);
     REPLY_MACRO(VL_API_POT_PROFILE_ADD_REPLY);
@@ -121,14 +121,14 @@ static void vl_api_pot_profile_activate_t_handler
     u8 id;
     u8 *name = NULL;
 
-    name = vl_api_from_api_to_new_vec(&mp->list_name);
+    name = vl_api_from_api_to_new_vec(mp, &mp->list_name);
     if (!pot_profile_list_is_enabled(name)) {
         rv = -1;
     } else {
         id = mp->id;
 	rv = pot_profile_set_active(id);
     }
-     
+
     vec_free(name);
     REPLY_MACRO(VL_API_POT_PROFILE_ACTIVATE_REPLY);
 }

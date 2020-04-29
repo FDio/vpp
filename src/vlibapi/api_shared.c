@@ -533,6 +533,12 @@ msg_handler_internal (api_main_t * am,
     }
 }
 
+#define BINARY_API_FUZZ_TEST 0
+
+#if BINARY_API_FUZZ_TEST > 0
+static u32 seed = 0xdeaddabe;
+#endif
+
 /* This is only to be called from a vlib/vnet app */
 void
 vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
@@ -600,6 +606,33 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 	  am->vlib_rp = vlib_rp;
 	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
 	}
+
+#if BINARY_API_FUZZ_TEST > 0
+      /*
+       * Fuzz (aka screw up) this message? Leave connection establishment
+       * messages alone as well as CLI messages.
+       */
+      if ((id > 22) && !(id >= 735 && id < 738))
+	{
+	  msgbuf_t *mb;
+	  u8 *limit, *start;
+
+	  mb = (msgbuf_t *) (((u8 *) the_msg) - offsetof (msgbuf_t, data));
+
+	  limit = (u8 *) (mb->data + ntohl (mb->data_len));
+
+	  /*
+	   * Leave the first 14 octets alone, aka msg_id, client_index,
+	   * context, sw_if_index
+	   */
+
+	  start = ((u8 *) the_msg) + 14;
+
+	  for (; start < limit; start++)
+	    *start ^= (random_u32 (&seed) & 0xFF);
+	}
+#endif
+
       (*handler) (the_msg, vm, node);
       if (is_private)
 	{
@@ -870,6 +903,21 @@ vl_msg_api_queue_handler (svm_queue_t * q)
     vl_msg_api_handler ((void *) msg);
 }
 
+u32
+vl_msg_api_max_length (void *mp)
+{
+  msgbuf_t *mb;
+  u32 data_len = ~0;
+
+  /* Work out the maximum sane message length, and return it */
+  if (PREDICT_TRUE (mp != 0))
+    {
+      mb = (msgbuf_t *) (((u8 *) mp) - offsetof (msgbuf_t, data));
+      data_len = clib_net_to_host_u32 (mb->data_len);
+    }
+  return data_len;
+}
+
 vl_api_trace_t *
 vl_msg_api_trace_get (api_main_t * am, vl_api_trace_which_t which)
 {
@@ -1132,9 +1180,13 @@ vl_api_format_string (u8 * s, va_list * args)
  * NOT nul terminated.
  */
 u8 *
-vl_api_from_api_to_new_vec (vl_api_string_t * astr)
+vl_api_from_api_to_new_vec (void *mp, vl_api_string_t * astr)
 {
   u8 *v = 0;
+
+  if (vl_msg_api_max_length (mp) < clib_net_to_host_u32 (astr->length))
+    return format (0, "insane astr->length %u%c",
+		   clib_net_to_host_u32 (astr->length), 0);
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
   return v;
 }

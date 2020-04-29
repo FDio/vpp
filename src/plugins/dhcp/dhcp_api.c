@@ -549,6 +549,12 @@ void
   params.T1 = ntohl (mp->T1);
   params.T2 = ntohl (mp->T2);
   n_addresses = ntohl (mp->n_addresses);
+  /* Make sure that the number of addresses is sane */
+  if (n_addresses * sizeof (params.addresses) > vl_msg_api_max_length (mp))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
   params.addresses = 0;
   if (n_addresses > 0)
     vec_validate (params.addresses, n_addresses - 1);
@@ -593,6 +599,14 @@ void
   params.T1 = ntohl (mp->T1);
   params.T2 = ntohl (mp->T2);
   n_prefixes = ntohl (mp->n_prefixes);
+
+  /* Minimal check to see that the number of prefixes is sane */
+  if (n_prefixes * sizeof (params.prefixes) > vl_msg_api_max_length (mp))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
   params.prefixes = 0;
   if (n_prefixes > 0)
     vec_validate (params.prefixes, n_prefixes - 1);

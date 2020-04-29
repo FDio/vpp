@@ -892,7 +892,8 @@ START_TEST (test_api_strings)
   ck_assert_int_eq (strlen (str), strlen (cstr));
   vec_free (cstr);
 
-  vstr = vl_api_from_api_to_new_vec (&dump->payload.name_filter);
+  vstr = vl_api_from_api_to_new_vec (0 /* not really an API message */ ,
+				     &dump->payload.name_filter);
   ck_assert_ptr_ne (vstr, NULL);
   /* Assert nul terminator NOT present */
   ck_assert_int_eq (vec_len (vstr), strlen (str));
@@ -915,7 +916,8 @@ START_TEST (test_api_strings)
   ck_assert_int_eq (strlen (str), strlen (cstr));
   vec_free (cstr);
 
-  vstr = vl_api_from_api_to_new_vec (&dump->payload.name_filter);
+  vstr = vl_api_from_api_to_new_vec (0 /* not a real api msg */ ,
+				     &dump->payload.name_filter);
   ck_assert_ptr_ne (vstr, NULL);
   /* Assert nul terminator NOT present */
   ck_assert_int_eq (vec_len (vstr), strlen (str));
