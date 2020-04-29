@@ -130,6 +130,7 @@ add_vpp_plugin(dpdk
   ipsec/esp_decrypt.c
   ipsec/esp_encrypt.c
   ipsec/ipsec.c
+  cryptodev/cryptodev.c
 
   MULTIARCH_SOURCES
   buffer.c
