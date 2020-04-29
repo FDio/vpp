@@ -414,6 +414,9 @@ show_ipsec_command_fn (vlib_main_t * vm,
   ipsec_spd_bindings_show_all (vm, im);
   ipsec_tun_protect_walk (ipsec_tun_protect_show_one, vm);
 
+  vlib_cli_output (vm, "IPSec async mode: %s",
+		   (im->async_mode ? "on" : "off"));
+
   return 0;
 }
 
@@ -1038,6 +1041,41 @@ ipsec_cli_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ipsec_cli_init);
 
+static clib_error_t *
+set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int async_enable = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	async_enable = 1;
+      else if (unformat (line_input, "off"))
+	async_enable = 0;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input));
+    }
+
+  vnet_crypto_request_async_mode (async_enable);
+  ipsec_set_async_mode (async_enable);
+
+  unformat_free (line_input);
+  return (NULL);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_async_mode_command, static) = {
+    .path = "set ipsec async mode",
+    .short_help = "set ipsec async mode on|off",
+    .function = set_async_mode_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
