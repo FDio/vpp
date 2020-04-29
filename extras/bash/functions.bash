@@ -15,7 +15,6 @@
 # This file is meant to be sourced in a .bashrc file to add useful
 # bash functions to an interactive shell
 
-
 # Bash function to run vpp 'make test' testcases
 # repeatedly, stopping on test failure or when
 # a test log contains the optionally specified text
@@ -34,15 +33,15 @@ vpp-make-test()
     local retry_count=100
     local tester=${GERRIT_USER:-$USER}
     local jobs="auto"
-    
+
     if [ -z "$WS_ROOT" ] ; then
         echo "ERROR: WS_ROOT is not set!"
         return
-    elif [ -z "$(find $WS_ROOT -type d -name vppinfra)" ] ; then
+    elif [ ! -d "$WS_ROOT/src/vppinfra" ] ; then
         echo "ERROR: WS_ROOT is not set to a VPP workspace!"
         return
     fi
-    
+
     options=$(getopt -o "adfg:j:r:" -- "$@")
     if [ $? -eq 1 ] ; then
         usage=true
@@ -89,7 +88,7 @@ vpp-make-test()
         esac
         shift
     done
-    
+
     if [ -n "$usage" ] || [ -z "$1" ] ; then
         if [ -z "$1" ] ; then
             echo "ERROR: no testcase specified!"
@@ -144,8 +143,118 @@ vpp-make-test()
             return
         fi
     done
-    
+
     echo -e "\n$line\nPASS [$((i-1))/$retry_count]: $test_desc\n$line\n"
     echo -e "Hey $tester, Life is good!!! :D\n"
     cd $old_pwd
+}
+
+# bash function to set up csit python virtual environment
+csit-env()
+{
+    if [ -f "$WS_ROOT/VPP_REPO_URL" ] && [ -f "$WS_ROOT/requirements.txt" ]; then
+        if [ -n "$(declare -f deactivate)" ]; then
+            echo "Deactivating Python Virtualenv!"
+            deactivate
+        fi
+        local PIP=pip
+        local setup_framework=$WS_ROOT/resources/libraries/python/SetupFramework.py
+        if [ -n "$(grep pip3 $setup_framework)" ]; then
+            PIP=pip3
+            local VENV_OPTS="-p python3"
+        fi
+        export CSIT_DIR=$WS_ROOT
+        export PYTHONPATH=$CSIT_DIR
+        rm -rf $PYTHONPATH/env && virtualenv $VENV_OPTS $PYTHONPATH/env \
+            && source $PYTHONPATH/env/bin/activate \
+            && $PIP install --upgrade -r $PYTHONPATH/requirements.txt \
+            && $PIP install --upgrade -r $PYTHONPATH/tox-requirements.txt
+    else
+        echo "ERROR: WS_ROOT not set to a CSIT workspace!"
+    fi
+}
+
+# bash function to set up jenkins sandbox environment
+#
+# See LF Sandbox documentation:
+#   https://docs.releng.linuxfoundation.org/en/latest/jenkins-sandbox.html
+#
+# Prerequisites:
+#   1. Create jenkins sandbox token and add it to your local jenkins.ini file
+#      Either specify the location of the init file in $JENKINS_INI or
+#      JENKINS_INI will be initialized to either
+#         ~/.config/jenkins_jobs/jenkins.ini
+#         $WS_ROOT/jenkins.ini
+#   2. Clone ci-management workspace from gerrit.fd.io
+#   3. export WS_ROOT=<local ci-management workspace>
+jjb-sandbox-env()
+{
+    if [ -z "$WS_ROOT" ] ; then
+        echo "ERROR: WS_ROOT is not set!"
+        return
+    elif [ ! -d "$WS_ROOT/jjb" ] ; then
+        echo "ERROR: WS_ROOT is not set to a ci-management workspace!"
+        return
+    fi
+
+    if [ -n "$(declare -f deactivate)" ]; then
+        echo "Deactivating Python Virtualenv!"
+        deactivate
+    fi
+
+    if [ -z "$JENKINS_INI" ] ; then
+        local user_jenkins_ini="/home/$USER/.config/jenkins_jobs/jenkins.ini"
+        if [ -f "$user_jenkins_ini" ] ; then
+            export JENKINS_INI=$user_jenkins_ini
+        elif [ -f "$WS_ROOT/jenkins.ini" ] ; then
+            export JENKINS_INI="$WS_ROOT/jenkins.ini"
+        else
+            echo "ERROR: Unable to find 'jenkins.ini'!"
+            return
+        fi
+        echo "Exporting JENKINS_INI=$JENKINS_INI"
+    elif [ ! -f "$JENKINS_INI" ] ; then
+        echo "ERROR: file specified in JENKINS_INI ($JENKINS_INI) not found!"
+        return
+    fi
+
+    if [ -n "$(declare -f deactivate)" ]; then
+        echo "Deactivating Python Virtualenv!"
+        deactivate
+    fi
+    cd $WS_ROOT
+    git submodule update --init --recursive
+
+    local VENV_DIR=$WS_ROOT/venv
+    rm -rf $VENV_DIR \
+       && python3 -m venv $VENV_DIR \
+       && source $VENV_DIR/bin/activate \
+       && pip3 install wheel jenkins-job-builder==3.0.2
+
+    alias jjsb='jenkins-jobs --conf $JENKINS_INI'
+    function jjsb-test() {
+        if [ -z "$(which jenkins-jobs 2>&1)" ] ; then
+            echo "jenkins-jobs not found!  Run jjb-sandbox-env to activate."
+            return
+        fi
+        if [ -z "$1" ] ; then
+            echo "Usage: $FUNCNAME <jenkins-job-name>"
+            return
+        fi
+        which jenkins-jobs \
+            && jenkins-jobs --conf $JENKINS_INI test $WS_ROOT/jjb $@
+    }
+    function jjsb-update() {
+        if [ -z "$(which jenkins-jobs 2>&1)" ] ; then
+            echo "jenkins-jobs not found!  Run jjb-sandbox-env to activate."
+            return
+        fi
+        if [ -z "$1" ] ; then
+            echo "Usage: $FUNCNAME <jenkins-job-name>"
+            return
+        fi
+        which jenkins-jobs \
+            && jenkins-jobs --conf $JENKINS_INI update $WS_ROOT/jjb $@
+    }
+    jenkins-jobs --version
 }
