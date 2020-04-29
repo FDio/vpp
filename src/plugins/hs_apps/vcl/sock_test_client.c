@@ -24,18 +24,12 @@
 #include <arpa/inet.h>
 #include <hs_apps/vcl/sock_test.h>
 #include <fcntl.h>
-#ifndef VCL_TEST
 #include <sys/un.h>
-#endif
 
 typedef struct
 {
-#ifdef VCL_TEST
-  vppcom_endpt_t server_endpt;
-#else
   int af_unix_echo_tx;
   int af_unix_echo_rx;
-#endif
   struct sockaddr_storage server_addr;
   uint32_t server_addr_size;
   uint32_t cfg_seq_num;
@@ -45,13 +39,12 @@ typedef struct
   uint8_t dump_cfg;
 } sock_client_main_t;
 
-sock_client_main_t vcl_client_main;
-
+sock_client_main_t sock_client_main;
 
 static int
 sock_test_cfg_sync (vcl_test_session_t * socket)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_cfg_t *rl_cfg = (vcl_test_cfg_t *) socket->rxbuf;
   int rx_bytes, tx_bytes;
@@ -116,9 +109,99 @@ sock_test_cfg_sync (vcl_test_session_t * socket)
 }
 
 static void
+sock_client_echo_af_unix (sock_client_main_t * scm)
+{
+  int fd, errno_val;
+  struct sockaddr_un serveraddr;
+  uint8_t buffer[256];
+  size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
+  struct timeval timeout;
+  int rv;
+
+  /* Open AF_UNIX socket and send an echo to test mixed epoll on server.
+   */
+  fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (fd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in echo_test_client(): socket(AF_UNIX) failed");
+      fprintf (stderr,
+	       "CLIENT: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
+	       "(errno = %d)!\n", errno_val);
+      goto out;
+    }
+  memset (&serveraddr, 0, sizeof (serveraddr));
+  serveraddr.sun_family = AF_UNIX;
+  strncpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
+	   sizeof (serveraddr.sun_path));
+  rv = connect (fd, (struct sockaddr *) &serveraddr, SUN_LEN (&serveraddr));
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in echo_test_client(): connect() failed");
+      fprintf (stderr, "CLIENT: ERROR: connect(fd %d, \"%s\", %lu) "
+	       "failed (errno = %d)!\n", fd, SOCK_TEST_AF_UNIX_FILENAME,
+	       SUN_LEN (&serveraddr), errno_val);
+      goto done;
+    }
+
+  scm->af_unix_echo_tx++;
+  strncpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA, sizeof (buffer));
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 250000;
+  select (0, NULL, NULL, NULL, &timeout);	/* delay .25 secs */
+  rv = write (fd, buffer, nbytes);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in echo_test_client(): write() failed");
+      fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
+	       "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
+      goto done;
+    }
+  else if (rv < nbytes)
+    {
+      fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
+	       "returned %d!\n", fd, buffer, nbytes, rv);
+      goto done;
+    }
+
+  printf ("CLIENT (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
+  memset (buffer, 0, sizeof (buffer));
+  rv = read (fd, buffer, nbytes);
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in echo_test_client(): read() failed");
+      fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
+	       "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
+      goto done;
+    }
+  else if (rv < nbytes)
+    {
+      fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
+	       "returned %d!\n", fd, buffer, nbytes, rv);
+      goto done;
+    }
+
+  if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
+    {
+      printf ("CLIENT (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
+      scm->af_unix_echo_rx++;
+    }
+  else
+    printf ("CLIENT (AF_UNIX): ERROR: RX (%d bytes) - '%s'\n", rv, buffer);
+
+done:
+  close (fd);
+out:
+  ;
+}
+
+static void
 echo_test_client ()
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
   int rx_bytes, tx_bytes, nbytes;
@@ -156,18 +239,11 @@ echo_test_client ()
       _wfdset = wr_fdset;
       _rfdset = rd_fdset;
 
-#ifdef VCL_TEST
-      rv =
-	vppcom_select (nfds, (unsigned long *) rfdset,
-		       (unsigned long *) wfdset, NULL, 0);
-#else
-      {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-	rv = select (nfds, rfdset, wfdset, NULL, &timeout);
-      }
-#endif
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 0;
+      rv = select (nfds, rfdset, wfdset, NULL, &timeout);
+
       if (rv < 0)
 	{
 	  perror ("select()");
@@ -230,94 +306,7 @@ echo_test_client ()
     }
   clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
 
-#ifndef VCL_TEST
-  {
-    int fd, errno_val;
-    struct sockaddr_un serveraddr;
-    uint8_t buffer[256];
-    size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
-    struct timeval timeout;
-
-    /* Open AF_UNIX socket and send an echo to test mixed epoll on server.
-     */
-    fd = socket (AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0)
-      {
-	errno_val = errno;
-	perror ("ERROR in echo_test_client(): socket(AF_UNIX) failed");
-	fprintf (stderr,
-		 "CLIENT: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
-		 "(errno = %d)!\n", errno_val);
-	goto out;
-      }
-    memset (&serveraddr, 0, sizeof (serveraddr));
-    serveraddr.sun_family = AF_UNIX;
-    strncpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
-	     sizeof (serveraddr.sun_path));
-    rv = connect (fd, (struct sockaddr *) &serveraddr, SUN_LEN (&serveraddr));
-    if (rv < 0)
-      {
-	errno_val = errno;
-	perror ("ERROR in echo_test_client(): connect() failed");
-	fprintf (stderr, "CLIENT: ERROR: connect(fd %d, \"%s\", %lu) "
-		 "failed (errno = %d)!\n", fd, SOCK_TEST_AF_UNIX_FILENAME,
-		 SUN_LEN (&serveraddr), errno_val);
-	goto done;
-      }
-
-    scm->af_unix_echo_tx++;
-    strncpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA, sizeof (buffer));
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 250000;
-    select (0, NULL, NULL, NULL, &timeout);	/* delay .25 secs */
-    rv = write (fd, buffer, nbytes);
-    if (rv < 0)
-      {
-	errno_val = errno;
-	perror ("ERROR in echo_test_client(): write() failed");
-	fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
-		 "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
-	goto done;
-      }
-    else if (rv < nbytes)
-      {
-	fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
-		 "returned %d!\n", fd, buffer, nbytes, rv);
-	goto done;
-      }
-
-    printf ("CLIENT (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
-    memset (buffer, 0, sizeof (buffer));
-    rv = read (fd, buffer, nbytes);
-    if (rv < 0)
-      {
-	errno_val = errno;
-	perror ("ERROR in echo_test_client(): read() failed");
-	fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
-		 "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
-	goto done;
-      }
-    else if (rv < nbytes)
-      {
-	fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
-		 "returned %d!\n", fd, buffer, nbytes, rv);
-	goto done;
-      }
-
-    if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
-      {
-	printf ("CLIENT (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
-	scm->af_unix_echo_rx++;
-      }
-    else
-      printf ("CLIENT (AF_UNIX): ERROR: RX (%d bytes) - '%s'\n", rv, buffer);
-
-  done:
-    close (fd);
-  out:
-    ;
-  }
-#endif
+  sock_client_echo_af_unix (scm);
 
   for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
     {
@@ -364,7 +353,7 @@ echo_test_client ()
 static void
 stream_test_client (vcl_test_t test)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
   int tx_bytes;
@@ -418,18 +407,11 @@ stream_test_client (vcl_test_t test)
       _wfdset = wr_fdset;
       _rfdset = rd_fdset;
 
-#ifdef VCL_TEST
-      rv =
-	vppcom_select (nfds, (unsigned long *) rfdset,
-		       (unsigned long *) wfdset, NULL, 0);
-#else
-      {
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 0;
-	rv = select (nfds, rfdset, wfdset, NULL, &timeout);
-      }
-#endif
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 0;
+      rv = select (nfds, rfdset, wfdset, NULL, &timeout);
+
       if (rv < 0)
 	{
 	  perror ("select()");
@@ -540,15 +522,13 @@ stream_test_client (vcl_test_t test)
 static void
 exit_client (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
   int i;
 
-#ifndef VCL_TEST
   printf ("CLIENT: af_unix_echo_tx %d, af_unix_echo_rx %d\n",
 	  scm->af_unix_echo_tx, scm->af_unix_echo_rx);
-#endif
   for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
     {
       tsock = &scm->test_socket[i];
@@ -582,7 +562,7 @@ exit_client (void)
 static int
 sock_test_connect_test_sockets (uint32_t num_test_sockets)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
   int i, rv, errno_val;
@@ -598,11 +578,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       for (i = scm->num_test_sockets - 1; i >= num_test_sockets; i--)
 	{
 	  tsock = &scm->test_socket[i];
-#ifdef VCL_TEST
-	  vppcom_session_close (tsock->fd);
-#else
 	  close (tsock->fd);
-#endif
 	  free (tsock->txbuf);
 	  free (tsock->rxbuf);
 	}
@@ -629,21 +605,10 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       for (i = scm->num_test_sockets; i < num_test_sockets; i++)
 	{
 	  tsock = &scm->test_socket[i];
-#ifdef VCL_TEST
-	  tsock->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
-					     VPPCOM_PROTO_UDP :
-					     VPPCOM_PROTO_TCP,
-					     1 /* is_nonblocking */ );
-	  if (tsock->fd < 0)
-	    {
-	      errno = -tsock->fd;
-	      tsock->fd = -1;
-	    }
-#else
 	  tsock->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
 			      ctrl->cfg.transport_udp ?
 			      SOCK_DGRAM : SOCK_STREAM, 0);
-#endif
+
 	  if (tsock->fd < 0)
 	    {
 	      errno_val = errno;
@@ -653,17 +618,9 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	      return tsock->fd;
 	    }
 
-#ifdef VCL_TEST
-	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
-	  if (rv)
-	    {
-	      errno = -rv;
-	      rv = -1;
-	    }
-#else
 	  rv = connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
 			scm->server_addr_size);
-#endif
+
 	  if (rv < 0)
 	    {
 	      errno_val = errno;
@@ -695,35 +652,9 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 }
 
 static void
-dump_help (void)
-{
-#define INDENT "\n  "
-
-  printf ("CLIENT: Test configuration commands:"
-	  INDENT VCL_TEST_TOKEN_HELP
-	  "\t\t\tDisplay help."
-	  INDENT VCL_TEST_TOKEN_EXIT
-	  "\t\t\tExit test client & server."
-	  INDENT VCL_TEST_TOKEN_SHOW_CFG
-	  "\t\t\tShow the current test cfg."
-	  INDENT VCL_TEST_TOKEN_RUN_UNI
-	  "\t\t\tRun the Uni-directional test."
-	  INDENT VCL_TEST_TOKEN_RUN_BI
-	  "\t\t\tRun the Bi-directional test."
-	  INDENT VCL_TEST_TOKEN_VERBOSE
-	  "\t\t\tToggle verbose setting."
-	  INDENT VCL_TEST_TOKEN_RXBUF_SIZE
-	  "<rxbuf size>\tRx buffer size (bytes)."
-	  INDENT VCL_TEST_TOKEN_TXBUF_SIZE
-	  "<txbuf size>\tTx buffer size (bytes)."
-	  INDENT VCL_TEST_TOKEN_NUM_WRITES
-	  "<# of writes>\tNumber of txbuf writes to server." "\n");
-}
-
-static void
 cfg_txbuf_size_set (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (VCL_TEST_TOKEN_TXBUF_SIZE);
   uint64_t txbuf_size = strtoull ((const char *) p, NULL, 10);
@@ -745,7 +676,7 @@ cfg_txbuf_size_set (void)
 static void
 cfg_num_writes_set (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (VCL_TEST_TOKEN_NUM_WRITES);
   uint32_t num_writes = strtoul ((const char *) p, NULL, 10);
@@ -765,7 +696,7 @@ cfg_num_writes_set (void)
 static void
 cfg_num_test_sockets_set (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (VCL_TEST_TOKEN_NUM_TEST_SESS);
   uint32_t num_test_sockets = strtoul ((const char *) p, NULL, 10);
@@ -789,7 +720,7 @@ cfg_num_test_sockets_set (void)
 static void
 cfg_rxbuf_size_set (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   char *p = ctrl->txbuf + strlen (VCL_TEST_TOKEN_RXBUF_SIZE);
   uint64_t rxbuf_size = strtoull ((const char *) p, NULL, 10);
@@ -810,7 +741,7 @@ cfg_rxbuf_size_set (void)
 static void
 cfg_verbose_toggle (void)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
 
   ctrl->cfg.verbose = ctrl->cfg.verbose ? 0 : 1;
@@ -821,7 +752,7 @@ cfg_verbose_toggle (void)
 static vcl_test_t
 parse_input ()
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_t rv = VCL_TEST_TYPE_NONE;
 
@@ -896,7 +827,7 @@ print_usage_and_exit (void)
 int
 main (int argc, char **argv)
 {
-  sock_client_main_t *scm = &vcl_client_main;
+  sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   int c, rv, errno_val;
   vcl_test_t post_test = VCL_TEST_TYPE_NONE;
@@ -1082,29 +1013,8 @@ main (int argc, char **argv)
       print_usage_and_exit ();
     }
 
-#ifdef VCL_TEST
-  ctrl->fd = vppcom_app_create ("vcl_test_client");
-  if (ctrl->fd < 0)
-    {
-      errno = -ctrl->fd;
-      ctrl->fd = -1;
-    }
-  else
-    {
-      ctrl->fd = vppcom_session_create (ctrl->cfg.transport_udp ?
-					VPPCOM_PROTO_UDP :
-					VPPCOM_PROTO_TCP,
-					0 /* is_nonblocking */ );
-      if (ctrl->fd < 0)
-	{
-	  errno = -ctrl->fd;
-	  ctrl->fd = -1;
-	}
-    }
-#else
   ctrl->fd = socket (ctrl->cfg.address_ip6 ? AF_INET6 : AF_INET,
 		     ctrl->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM, 0);
-#endif
 
   if (ctrl->fd < 0)
     {
@@ -1135,41 +1045,13 @@ main (int argc, char **argv)
       server_addr->sin_port = htons (atoi (argv[optind]));
     }
 
-#ifdef VCL_TEST
-  if (ctrl->cfg.address_ip6)
-    {
-      struct sockaddr_in6 *server_addr =
-	(struct sockaddr_in6 *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 0;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin6_port;
-    }
-  else
-    {
-      struct sockaddr_in *server_addr =
-	(struct sockaddr_in *) &scm->server_addr;
-      scm->server_endpt.is_ip4 = 1;
-      scm->server_endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      scm->server_endpt.port = (uint16_t) server_addr->sin_port;
-    }
-#endif
-
   do
     {
       printf ("\nCLIENT: Connecting to server...\n");
 
-#ifdef VCL_TEST
-      rv = vppcom_session_connect (ctrl->fd, &scm->server_endpt);
-      if (rv)
-	{
-	  errno = -rv;
-	  rv = -1;
-	}
-#else
-      rv =
-	connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
-		 scm->server_addr_size);
-#endif
+      rv = connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
+		    scm->server_addr_size);
+
       if (rv < 0)
 	{
 	  errno_val = errno;
@@ -1259,14 +1141,8 @@ main (int argc, char **argv)
     }
 
   exit_client ();
-#ifdef VCL_TEST
-  vppcom_session_close (ctrl->fd);
-  vppcom_app_destroy ();
-  return 0;
-#else
   close (ctrl->fd);
   return (scm->af_unix_echo_tx == scm->af_unix_echo_rx) ? 0 : -1;
-#endif
 }
 
 /*
