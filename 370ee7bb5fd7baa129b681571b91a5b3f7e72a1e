@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60b6498f_e211b619",
+        "filename": "build-root/scripts/checkstyle.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-04-29T13:11:21Z",
+      "side": 1,
+      "message": "spelling -\u003e Could",
+      "range": {
+        "startLine": 48,
+        "startChar": 10,
+        "endLine": 48,
+        "endChar": 15
+      },
+      "revId": "370ee7bb5fd7baa129b681571b91a5b3f7e72a1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
