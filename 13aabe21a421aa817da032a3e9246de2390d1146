@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "00b32a6c_e93a8858",
+        "filename": "src/vnet/gso/hdr_offset_parser.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T08:06:05Z",
+      "side": 1,
+      "message": "what happens if it\u0027s neither v4 nor v6?",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ece24c93_52513fe6",
+        "filename": "src/vnet/gso/hdr_offset_parser.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T08:06:05Z",
+      "side": 1,
+      "message": "i don\u0027t understand why you need to know that it\u0027s a tunnel. \nwhatever interface the packet is egressing the GSO node will given a packet that looks like:\n   INTERFACE-ENCAP | IP | L4 | PAYLOAD\nsave_rewrite_length tells you how big the INTERFACE-ENCAP is and adj-\u003efixup function will fix any fields in INTERFACE-ENCAP that need updating after the PAYLOAD has been segmented.\ni would have hoped that all interfaces could then be treated in the same way.",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb0f2187_d8a4402a",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T08:06:05Z",
+      "side": 1,
+      "message": "this is done by the adj\u0027s fixup function.",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a93c742a_adea3000",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T08:06:05Z",
+      "side": 1,
+      "message": "do (if node \u0026 TRACED) around all these.",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de8a7f23_2cc1a939",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 877,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-29T08:06:05Z",
+      "side": 1,
+      "message": "still need the runs_before \u003d \"ipsecX-output-feature\"",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
