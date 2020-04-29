@@ -642,32 +642,6 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
 }
 
 static void
-dump_help (void)
-{
-#define INDENT "\n  "
-
-  printf ("CLIENT: Test configuration commands:"
-	  INDENT VCL_TEST_TOKEN_HELP
-	  "\t\t\tDisplay help."
-	  INDENT VCL_TEST_TOKEN_EXIT
-	  "\t\t\tExit test client & server."
-	  INDENT VCL_TEST_TOKEN_SHOW_CFG
-	  "\t\t\tShow the current test cfg."
-	  INDENT VCL_TEST_TOKEN_RUN_UNI
-	  "\t\t\tRun the Uni-directional test."
-	  INDENT VCL_TEST_TOKEN_RUN_BI
-	  "\t\t\tRun the Bi-directional test."
-	  INDENT VCL_TEST_TOKEN_VERBOSE
-	  "\t\t\tToggle verbose setting."
-	  INDENT VCL_TEST_TOKEN_RXBUF_SIZE
-	  "<rxbuf size>\tRx buffer size (bytes)."
-	  INDENT VCL_TEST_TOKEN_TXBUF_SIZE
-	  "<txbuf size>\tTx buffer size (bytes)."
-	  INDENT VCL_TEST_TOKEN_NUM_WRITES
-	  "<# of writes>\tNumber of txbuf writes to server." "\n");
-}
-
-static void
 cfg_txbuf_size_set (void)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
