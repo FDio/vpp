@@ -1580,7 +1580,7 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 }
 
 static int
-ikev2_create_tunnel_interface (vnet_main_t * vnm,
+ikev2_create_tunnel_interface (vlib_main_t * vm,
 			       u32 thread_index,
 			       ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child, u32 sa_index,
@@ -1756,8 +1756,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
 
   if (p && p->lifetime)
     {
-      child->time_to_expiration =
-	vlib_time_now (vnm->vlib_main) + p->lifetime;
+      child->time_to_expiration = vlib_time_now (vm) + p->lifetime;
       if (p->lifetime_jitter)
 	{
 	  // This is not much better than rand(3), which Coverity warns
@@ -1765,7 +1764,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm,
 	  // however fast. If this perturbance to the expiration time
 	  // needs to use a better RNG then we may need to use something
 	  // like /dev/urandom which has significant overhead.
-	  u32 rnd = (u32) (vlib_time_now (vnm->vlib_main) * 1e6);
+	  u32 rnd = (u32) (vlib_time_now (vm) * 1e6);
 	  rnd = random_u32 (&rnd);
 
 	  child->time_to_expiration += 1 + (rnd % p->lifetime_jitter);
@@ -2305,11 +2304,10 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
 }
 
 static void
-ikev2_init_sa (ikev2_sa_t * sa)
+ikev2_init_sa (vlib_main_t * vm, ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
-  sa->liveness_period_check =
-    vlib_time_now (km->vlib_main) + km->liveness_period;
+  sa->liveness_period_check = vlib_time_now (vm) + km->liveness_period;
 }
 
 static uword
@@ -2420,7 +2418,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			  pool_get (km->per_thread_data[thread_index].sas,
 				    sa0);
 			  clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
-			  ikev2_init_sa (sa0);
+			  ikev2_init_sa (vm, sa0);
 			  hash_set (km->
 				    per_thread_data[thread_index].sa_by_rspi,
 				    sa0->rspi,
@@ -2511,8 +2509,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		      ikev2_initial_contact_cleanup (sa0);
 		      ikev2_sa_match_ts (sa0);
 		      if (sa0->state != IKEV2_STATE_TS_UNACCEPTABLE)
-			ikev2_create_tunnel_interface (km->vnet_main,
-						       thread_index, sa0,
+			ikev2_create_tunnel_interface (vm, thread_index, sa0,
 						       &sa0->childs[0],
 						       p[0], 0, 0);
 		    }
@@ -2643,9 +2640,8 @@ ikev2_node_fn (vlib_main_t * vm,
 			  child->i_proposals = sa0->rekey[0].i_proposal;
 			  child->tsi = sa0->rekey[0].tsi;
 			  child->tsr = sa0->rekey[0].tsr;
-			  ikev2_create_tunnel_interface (km->vnet_main,
-							 thread_index, sa0,
-							 child, p[0],
+			  ikev2_create_tunnel_interface (vm, thread_index,
+							 sa0, child, p[0],
 							 child - sa0->childs,
 							 1);
 			}
