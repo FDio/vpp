@@ -132,7 +132,7 @@ else
 	RPM_DEPENDS += python36-ply  # for vppapigen
 	RPM_DEPENDS += python3-devel python3-pip
 	RPM_DEPENDS += python-virtualenv python36-jsonschema
-	RPM_DEPENDS += devtoolset-7
+	RPM_DEPENDS += devtoolset-8
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
