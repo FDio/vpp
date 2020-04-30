@@ -538,7 +538,7 @@ tcp_sack_vector_is_sane (sack_block_t * sacks)
  * @param start Start sequence number of the newest SACK block
  * @param end End sequence of the newest SACK block
  */
-void
+int
 tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 {
   sack_block_t *new_list = tc->snd_sacks_fl, *block = 0;
@@ -572,8 +572,10 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 	}
 
       /* Save to new SACK list if we have space. */
-      if (vec_len (new_list) < TCP_MAX_SACK_BLOCKS)
-	vec_add1 (new_list, tc->snd_sacks[i]);
+      if (PREDICT_FALSE (vec_len (new_list) == TCP_MAX_SACK_BLOCKS))
+	return -1;
+
+      vec_add1 (new_list, tc->snd_sacks[i]);
     }
 
   ASSERT (vec_len (new_list) <= TCP_MAX_SACK_BLOCKS);
@@ -585,6 +587,8 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 
   /* Segments should not 'touch' */
   ASSERT (tcp_sack_vector_is_sane (tc->snd_sacks));
+
+  return 0;
 }
 
 u32

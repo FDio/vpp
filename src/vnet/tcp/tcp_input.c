@@ -1243,8 +1243,19 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 	  ASSERT (offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
 	  start = tc->rcv_nxt + offset;
 	  end = start + ooo_segment_length (s0->rx_fifo, newest);
-	  tcp_update_sack_list (tc, start, end);
-	  svm_fifo_newest_ooo_segment_reset (s0->rx_fifo);
+
+	  /* If we run out of space for sack blocks reset everything
+	   * and start over */
+	  if (PREDICT_FALSE (tcp_update_sack_list (tc, start, end)))
+	    {
+	      svm_fifo_free_ooo_data (s0->rx_fifo);
+	      vec_reset_length (tc->snd_sacks);
+	      vec_reset_length (tc->snd_sacks_fl);
+	      tc->snd_sack_pos = 0;
+	    }
+	  else
+	    svm_fifo_newest_ooo_segment_reset (s0->rx_fifo);
+
 	  TCP_EVT (TCP_EVT_CC_SACKS, tc);
 	}
     }
