@@ -161,6 +161,24 @@
     },
     {
       "key": {
+        "uuid": "f066ee59_17996131",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-04-30T12:40:46Z",
+      "side": 1,
+      "message": "GSO node does not affect non-GSO traffic. GSO node enabled on ethernet will not process packets except putting them in frame for next node, if GSO node is enabled on ethernet interface and on IPSec tunnel. GSO packets will be segmented before the IPSec tunnel in this case.",
+      "parentUuid": "1b443187_3d4dc3d2",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a93c742a_adea3000",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 4
