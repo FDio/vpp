@@ -58,7 +58,6 @@
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
   _ (VIRTIO_F_VERSION_1, 32)
 
-
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
   _(1, DELETING, "deleting")
@@ -81,16 +80,16 @@ typedef enum
 #define RX_QUEUE_ACCESS(X) (X/2)
 
 #define foreach_virtio_if_types \
-  _ (TAP, 1)                    \
-  _ (TUN, 2)                    \
-  _ (PCI, 3)
+  _ (TAP, 0)                    \
+  _ (TUN, 1)                    \
+  _ (PCI, 2)
 
 typedef enum
 {
 #define _(a, b) VIRTIO_IF_TYPE_##a = (1 << b),
   foreach_virtio_if_types
 #undef _
-    VIRTIO_IF_N_TYPES = (1 << 4),
+    VIRTIO_IF_N_TYPES = (1 << 3),
 } virtio_if_type_t;
 
 
