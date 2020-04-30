@@ -1,0 +1,44 @@
+set term pag off
+loop cre
+set int ip address loop0 11.22.33.1/24
+set int ip6 table loop0 0
+set int ip address loop0 2001:db01::1/64
+set int state loop0 up
+loop cre
+set int ip address loop1 11.22.34.1/24
+set int ip6 table loop1 0
+set int ip address loop1 2001:db02::1/64
+set int state loop1 up
+
+set ip neighbor loop1 11.22.34.44 03:00:11:22:34:44
+
+packet-generator new {
+    name s0
+    limit 100e6
+    size 128-128
+    interface loop0
+    node ethernet-input
+    data { IP4: 1.2.3 -> dead.0000.0000
+           UDP: 11.22.33.44 -> 11.22.34.44
+                ttl 1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+packet-generator new {
+    name s1
+    limit 100e6
+    size 128-128
+    interface loop0
+    node ethernet-input
+    data { IP6: 1.2.3 -> dead.0000.0000
+           UDP: 2001:db01::44 -> 2001:db02::44
+                hop-limit 1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+pfuzz configure mode header
+pfuzz enable loop0
