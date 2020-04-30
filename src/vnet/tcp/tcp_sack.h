@@ -109,7 +109,7 @@ void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
 format_function_t format_tcp_scoreboard;
 
 /* Made public for unit testing only */
-void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+int tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 void tcp_rcv_sacks (tcp_connection_t * tc, u32 ack);
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);

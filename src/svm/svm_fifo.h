@@ -238,6 +238,7 @@ void svm_fifo_free_chunk_lookup (svm_fifo_t * f);
  * @param f	fifo to cleanup
  */
 void svm_fifo_free_ooo_data (svm_fifo_t * f);
+void svm_fifo_clear_ooo_data (svm_fifo_t * f);
 /**
  * Init fifo head and tail
  *

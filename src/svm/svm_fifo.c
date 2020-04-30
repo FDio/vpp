@@ -113,6 +113,13 @@ svm_fifo_free_ooo_data (svm_fifo_t * f)
   pool_free (f->ooo_segments);
 }
 
+void
+svm_fifo_clear_ooo_data (svm_fifo_t * f)
+{
+  pool_free (f->ooo_segments);
+  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+}
+
 static inline ooo_segment_t *
 ooo_segment_prev (svm_fifo_t * f, ooo_segment_t * s)
 {
