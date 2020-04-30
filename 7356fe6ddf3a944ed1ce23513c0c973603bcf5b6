@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e182aca_affd5960",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-04-30T15:54:21Z",
+      "side": 1,
+      "message": "This costs cycles, right approach will be something like flow_offload. Assume that all L4 checksums are good, at the end of this loop check if or_flags have PKT_RX_L4_CKSUM_BAD and\nonly if that is true, run trough buffers and reset VNET_BUFFER_F_L4_CHECKSUM_CORRECT.",
+      "revId": "7356fe6ddf3a944ed1ce23513c0c973603bcf5b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
