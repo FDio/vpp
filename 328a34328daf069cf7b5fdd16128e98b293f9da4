@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc36c676_8ee0c76c",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-04-30T06:47:45Z",
+      "side": 1,
+      "message": "dpdk_flow_convert, not dpdk_flow_convert_func\nwhy not return rte_eth_hash_function instead, would be tidier.",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "250671ba_9a0492af",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-04-30T06:47:45Z",
+      "side": 1,
+      "message": "would tidier as \n\nif ((rss.func \u003d dpdk_flow_convert_rss(...))\n \u003d\u003d RTE_ETH_HASH_FUNCTION_MAX) \n{\n ...\n  goto done;\n}",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f1db6f0_ce8ad8f7",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 574,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-04-30T06:47:45Z",
+      "side": 1,
+      "message": "you should log something under these circumstances?",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
