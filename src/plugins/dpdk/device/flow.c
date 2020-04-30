@@ -79,6 +79,33 @@ dpdk_flow_convert_rss_types (u64 type, u64 * dpdk_rss_type)
     return;
 }
 
+static inline enum rte_eth_hash_function
+dpdk_flow_convert_rss_func (vnet_rss_function_t func)
+{
+  enum rte_eth_hash_function rss_func;
+
+  switch (func)
+    {
+    case VNET_RSS_FUNC_DEFAULT:
+      rss_func = RTE_ETH_HASH_FUNCTION_DEFAULT;
+      break;
+    case VNET_RSS_FUNC_TOEPLITZ:
+      rss_func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+      break;
+    case VNET_RSS_FUNC_SIMPLE_XOR:
+      rss_func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+      break;
+    case VNET_RSS_FUNC_SYMMETRIC_TOEPLITZ:
+      rss_func = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ;
+      break;
+    default:
+      rss_func = RTE_ETH_HASH_FUNCTION_MAX;
+      break;
+    }
+
+  return rss_func;
+}
+
 static int
 dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
@@ -571,6 +598,7 @@ pattern_end:
   if (f->actions & VNET_FLOW_ACTION_RSS)
     {
       u64 rss_type = 0;
+
       vec_add2 (actions, action, 1);
       action->type = RTE_FLOW_ACTION_TYPE_RSS;
       action->conf = &rss;
@@ -579,7 +607,12 @@ pattern_end:
       dpdk_flow_convert_rss_types (f->rss_types, &rss_type);
 
       rss.types = rss_type;
-      rss.func = (enum rte_eth_hash_function) f->rss_fun;
+      if ((rss.func = dpdk_flow_convert_rss_func (f->rss_fun)) ==
+	  RTE_ETH_HASH_FUNCTION_MAX)
+	{
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
 
       if (fate == true)
 	{
