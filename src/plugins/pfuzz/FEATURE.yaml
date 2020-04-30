@@ -1,0 +1,9 @@
+---
+name: Packet Fuzzer
+maintainer: No Body <no@body.net>
+features:
+  - Flip a few bits in pkt data, see what happens
+description: "Device-input/output arc pseudo-random bit-flipper.
+              Can evolve into a directed random stream injector"
+state: experimental
+properties: [API, CLI]
