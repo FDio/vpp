@@ -155,7 +155,8 @@ endif
 endif
 endif
 
-DPDK_EXTRA_CFLAGS += -L$(I)/lib -I$(I)/include
+DPDK_EXTRA_CFLAGS += -I$(I)/include
+DPDK_EXTRA_LDFLAGS += -L$(I)/lib
 
 # assemble DPDK make arguments
 DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
