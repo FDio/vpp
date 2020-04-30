@@ -433,6 +433,7 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
   ipsecmb_main_t *imbm = &ipsecmb_main;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   ipsecmb_alg_data_t *ad = imbm->alg_data + key->alg;
+  u8 expand;
   u32 i;
   void *kd;
 
@@ -452,7 +453,19 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
   if (ad->data_size == 0)
     return;
 
+  /*
+   * there's no guarantee the caller will also have expanded a per-index
+   * pool, since other indexes might be using other engines
+   */
+  expand = vec_validate_will_expand (imbm->key_data, idx);
+
+  if (expand)
+    vlib_worker_thread_barrier_sync (vm);
+
   vec_validate_aligned (imbm->key_data, idx, CLIB_CACHE_LINE_BYTES);
+
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
 
   if (kop == VNET_CRYPTO_KEY_OP_MODIFY && imbm->key_data[idx])
     {

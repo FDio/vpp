@@ -186,11 +186,24 @@ ipsec_sa_add_and_lock (u32 id,
   clib_error_t *err;
   ipsec_sa_t *sa;
   u32 sa_index;
+  u8 expand;
   uword *p;
+  int rv;
 
+  rv = 0;
+  expand = 0;
   p = hash_get (im->sa_index_by_sa_id, id);
   if (p)
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+
+  /*
+   * If the pool will expand than inflight packets that are using the SAs
+   * will get a nasty surprise when they realloc
+   */
+  pool_get_aligned_will_expand (im->sad, expand, CLIB_CACHE_LINE_BYTES);
+
+  if (expand)
+    vlib_worker_thread_barrier_sync (vm);
 
   pool_get_aligned_zero (im->sad, sa, CLIB_CACHE_LINE_BYTES);
 
@@ -227,7 +240,8 @@ ipsec_sa_add_and_lock (u32 id,
   if (~0 == sa->crypto_key_index)
     {
       pool_put (im->sad, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      rv = VNET_API_ERROR_KEY_LENGTH;
+      goto done;
     }
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
@@ -239,7 +253,8 @@ ipsec_sa_add_and_lock (u32 id,
       if (~0 == sa->integ_key_index)
 	{
 	  pool_put (im->sad, sa);
-	  return VNET_API_ERROR_KEY_LENGTH;
+	  rv = VNET_API_ERROR_KEY_LENGTH;
+	  goto done;
 	}
     }
 
@@ -261,14 +276,16 @@ ipsec_sa_add_and_lock (u32 id,
     {
       clib_warning ("%s", err->what);
       pool_put (im->sad, sa);
-      return VNET_API_ERROR_UNIMPLEMENTED;
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto done;
     }
 
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
   if (err)
     {
       pool_put (im->sad, sa);
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
+      rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto done;
     }
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
@@ -284,7 +301,8 @@ ipsec_sa_add_and_lock (u32 id,
       if (sa->tx_fib_index == ~((u32) 0))
 	{
 	  pool_put (im->sad, sa);
-	  return VNET_API_ERROR_NO_SUCH_FIB;
+	  rv = VNET_API_ERROR_NO_SUCH_FIB;
+	  goto done;
 	}
 
       sa->fib_entry_index = fib_entry_track (sa->tx_fib_index,
@@ -345,7 +363,11 @@ ipsec_sa_add_and_lock (u32 id,
   if (sa_out_index)
     *sa_out_index = sa_index;
 
-  return (0);
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
+
+done:
+  return (rv);
 }
 
 static void

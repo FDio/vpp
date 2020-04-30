@@ -28,6 +28,7 @@ crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   crypto_native_main_t *cm = &crypto_native_main;
+  u8 expand;
 
   if (cm->key_fn[key->alg] == 0)
     return;
@@ -49,7 +50,19 @@ crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
     return;
 
+  /*
+   * there's no guarantee the caller will also have expanded a per-index
+   * pool, since other indexes might be using other engines
+   */
+  expand = vec_validate_will_expand (cm->key_data, idx);
+
+  if (expand)
+    vlib_worker_thread_barrier_sync (vm);
+
   vec_validate_aligned (cm->key_data, idx, CLIB_CACHE_LINE_BYTES);
+
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
 
   if (kop == VNET_CRYPTO_KEY_OP_MODIFY && cm->key_data[idx])
     {

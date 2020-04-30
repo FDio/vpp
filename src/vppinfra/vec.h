@@ -176,7 +176,6 @@ _vec_resize_inline (void *v,
 /** \brief Determine if vector will resize with next allocation
 
     @param v pointer to a vector
-    @param length_increment length increment in elements
     @param data_bytes requested size in bytes
     @param header_bytes header size in bytes (may be zero)
     @param data_align alignment (may be zero)
@@ -185,7 +184,6 @@ _vec_resize_inline (void *v,
 
 always_inline int
 _vec_resize_will_expand (void *v,
-			 word length_increment,
 			 uword data_bytes, uword header_bytes,
 			 uword data_align)
 {
@@ -516,6 +514,19 @@ do {                                                                    \
 */
 
 #define vec_validate_aligned(V,I,A) vec_validate_ha(V,I,0,A)
+
+/** \brief Return true if the validation of the vector for the
+ *         requested index causes the vector to realloc/expand
+ *
+ * @param V (possibly NULL) pointer to a vector.
+ * @param I vector index that needs to be accommodated
+ * @param A alignment (may be zero)
+ */
+#define vec_validate_aligned_will_expand(V,I,A)                         \
+  _vec_resize_will_expand (V, (((I) - 1) + vec_len(V)) * sizeof(V[0]), 0, A)
+
+#define vec_validate_will_expand(V,I)          \
+  vec_validate_aligned_will_expand(V,I,0)
 
 /** \brief Make sure vector is long enough for given index
     and initialize empty space (general version)

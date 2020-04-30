@@ -1434,6 +1434,18 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
   *vlib_worker_threads->wait_at_barrier = 0;
 }
 
+/**
+ * Return true if the wroker thread barrier is held
+ */
+u8
+vlib_worker_thread_barrier_held (vlib_main_t * vm)
+{
+  if (vec_len (vlib_mains) < 2)
+    return (1);
+
+  return (*vlib_worker_threads->wait_at_barrier == 1);
+}
+
 void
 vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {

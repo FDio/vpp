@@ -277,7 +277,6 @@ do {                                                                    \
       /* Nothing on free list, make a new element and return it. */     \
       YESNO = _vec_resize_will_expand                                   \
         (P,                                                             \
-         /* length_increment */ 1,                                      \
          /* new size */ (vec_len (P) + 1) * sizeof (P[0]),              \
          pool_aligned_header_bytes,                                     \
          /* align */ (A));                                              \

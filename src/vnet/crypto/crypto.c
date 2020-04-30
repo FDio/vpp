@@ -349,9 +349,17 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key;
+  u8 expand;
 
   if (!vnet_crypto_key_len_check (alg, length))
     return ~0;
+
+  pool_get_will_expand (cm->keys, expand);
+
+  if (expand)
+    /* the caller probably has called the barrier too, but recursive
+     * calls are supported, so let's be sure */
+    vlib_worker_thread_barrier_sync (vm);
 
   pool_get_zero (cm->keys, key);
   index = key - cm->keys;
@@ -364,6 +372,10 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
     if (engine->key_op_handler)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
   /* *INDENT-ON* */
+
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
+
   return index;
 }
 
