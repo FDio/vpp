@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa7c77c3_e1264fe8",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-04-30T10:15:04Z",
+      "side": 1,
+      "message": "Just cast bellow....",
+      "revId": "ff0fe4bfada5fce516c04595fd172eebbddc7438",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55b0bbc4_a5b43611",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-04-30T10:15:04Z",
+      "side": 1,
+      "message": "We already have uXXxYY_pack(), (looks like there is a bug in sse4.2 code, should be _mm_packus_epi32, not _mm_packs_epi32). Can you use that and, sure, add neon version...",
+      "revId": "ff0fe4bfada5fce516c04595fd172eebbddc7438",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
