@@ -140,6 +140,7 @@ void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 svm_msg_q_t *segment_manager_event_queue (segment_manager_t * sm);
 u32 segment_manager_evt_q_expected_size (u32 q_size);
 
+u8 segment_manager_app_detached (segment_manager_t * sm);
 void segment_manager_app_detach (segment_manager_t * sm);
 
 /**
