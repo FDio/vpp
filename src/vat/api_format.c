@@ -7360,15 +7360,19 @@ api_tap_create_v2 (vat_main_t * vam)
       else if (unformat (i, "host-mtu-size %u", &host_mtu_size))
 	host_mtu_set = 1;
       else if (unformat (i, "no-gso"))
-	tap_flags &= ~TAP_FLAG_GSO;
+	tap_flags &= ~TAP_API_FLAG_GSO;
       else if (unformat (i, "gso"))
-	tap_flags |= TAP_FLAG_GSO;
+	tap_flags |= TAP_API_FLAG_GSO;
       else if (unformat (i, "csum-offload"))
-	tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
+	tap_flags |= TAP_API_FLAG_CSUM_OFFLOAD;
       else if (unformat (i, "persist"))
-	tap_flags |= TAP_FLAG_PERSIST;
+	tap_flags |= TAP_API_FLAG_PERSIST;
       else if (unformat (i, "attach"))
-	tap_flags |= TAP_FLAG_ATTACH;
+	tap_flags |= TAP_API_FLAG_ATTACH;
+      else if (unformat (i, "tun"))
+	tap_flags |= TAP_API_FLAG_TUN;
+      else if (unformat (i, "gro-coalesce"))
+	tap_flags |= TAP_API_FLAG_GRO_COALESCE;
       else
 	break;
     }
@@ -20587,7 +20591,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload] [persist] [attach]") \
+  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload | gro-coalesce] [persist] [attach] [tun]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
