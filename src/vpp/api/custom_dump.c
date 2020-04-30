@@ -587,6 +587,10 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "persist ");
   if ((mp->tap_flags) & 0x8)
     s = format (s, "attach ");
+  if ((mp->tap_flags) & 0x16)
+    s = format (s, "tun ");
+  if ((mp->tap_flags) & 0x32)
+    s = format (s, "gro-coalesce-enabled ");
   FINISH;
 }
 

@@ -22,6 +22,21 @@
 #define MIN(x,y) (((x)<(y))?(x):(y))
 #endif
 
+#define foreach_tapv2_flags  \
+  _ (GSO, 0)                 \
+  _ (CSUM_OFFLOAD, 1)        \
+  _ (PERSIST, 2)             \
+  _ (ATTACH, 3)              \
+  _ (TUN, 4)                 \
+  _ (GRO_COALESCE, 5)
+
+typedef enum
+{
+#define _(a, b) TAP_FLAG_##a = (1 << b),
+  foreach_tapv2_flags
+#undef _
+} tap_flag_t;
+
 typedef struct
 {
   u32 id;
@@ -31,11 +46,6 @@ typedef struct
   u16 rx_ring_sz;
   u16 tx_ring_sz;
   u32 tap_flags;
-#define TAP_FLAG_GSO (1 << 0)
-#define TAP_FLAG_CSUM_OFFLOAD (1 << 1)
-#define TAP_FLAG_PERSIST (1 << 2)
-#define TAP_FLAG_ATTACH (1 << 3)
-#define TAP_FLAG_TUN (1 << 4)
   u8 *host_namespace;
   u8 *host_if_name;
   mac_address_t host_mac_addr;
