@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3a4d495_95125913",
+        "filename": "src/vnet/devices/tap/tapv2_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-04-30T13:07:01Z",
+      "side": 1,
+      "message": "this needs to go at the end of the function (just before vec_free(...))",
+      "revId": "55ccc6066d274a26fff617213ce21fde3de1127b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
