@@ -19,18 +19,19 @@
     the Linux kernel TAP device driver
 */
 
-option version = "3.0.0";
+option version = "4.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
 enum tap_flags {
-        TAP_FLAG_GSO = 1,
-        TAP_FLAG_CSUM_OFFLOAD = 2,
-	TAP_FLAG_PERSIST = 4,
-	TAP_FLAG_ATTACH = 8,
-	TAP_FLAG_TUN = 16,
+        TAP_API_FLAG_GSO = 1, /* enable gso on the interface */
+        TAP_API_FLAG_CSUM_OFFLOAD = 2, /* enable checksum offload without gso on the interface */
+        TAP_API_FLAG_PERSIST = 4, /* make the interface persistence to exist in linux even vpp crash/restart */
+        TAP_API_FLAG_ATTACH = 8,  /* attach to the existing persistence interface after vpp crash/restart */
+        TAP_API_FLAG_TUN = 16,  /* create TUN interface instead of tap */
+        TAP_API_FLAG_GRO_COALESCE = 32, /* enable packet coalescing on tx side, provided gso enabled */
 };
 
 /** \brief Initialize a new tap interface with the given parameters
