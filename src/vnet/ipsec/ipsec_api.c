@@ -1120,6 +1120,18 @@ vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
 static clib_error_t *
 ipsec_api_hookup (vlib_main_t * vm)
 {
+  api_main_t *am = vlibapi_get_main ();
+
+  /*
+   * Mark adding/deleting SAs as MP safe
+   */
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V3] = 1;
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V3_REPLY] = 1;
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD] = 1;
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD_REPLY] = 1;
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_DEL] = 1;
+  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_DEL_REPLY] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */

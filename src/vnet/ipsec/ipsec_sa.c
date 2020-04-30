@@ -178,12 +178,24 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   clib_error_t *err;
   ipsec_sa_t *sa;
   u32 sa_index;
+  u8 expand;
   uword *p;
   int rv;
 
+  rv = 0;
+  expand = 0;
   p = hash_get (im->sa_index_by_sa_id, id);
   if (p)
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+
+  /*
+   * If the pool will expand than inflight packets that are using the SAs
+   * will get a nasty surprise when they realloc
+   */
+  pool_get_aligned_will_expand (ipsec_sa_pool, expand, CLIB_CACHE_LINE_BYTES);
+
+  if (expand)
+    vlib_worker_thread_barrier_sync (vm);
 
   pool_get_aligned_zero (ipsec_sa_pool, sa, CLIB_CACHE_LINE_BYTES);
 
@@ -218,7 +230,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   if (~0 == sa->crypto_key_index)
     {
       pool_put (ipsec_sa_pool, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      rv = VNET_API_ERROR_KEY_LENGTH;
+      goto done;
     }
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
@@ -230,7 +243,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       if (~0 == sa->integ_key_index)
 	{
 	  pool_put (ipsec_sa_pool, sa);
-	  return VNET_API_ERROR_KEY_LENGTH;
+	  rv = VNET_API_ERROR_KEY_LENGTH;
+	  goto done;
 	}
     }
 
@@ -260,14 +274,16 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     {
       clib_warning ("%s", err->what);
       pool_put (ipsec_sa_pool, sa);
-      return VNET_API_ERROR_UNIMPLEMENTED;
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto done;
     }
 
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
   if (err)
     {
       pool_put (ipsec_sa_pool, sa);
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
+      rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto done;
     }
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) &&
@@ -283,7 +299,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       if (rv)
 	{
 	  pool_put (ipsec_sa_pool, sa);
-	  return rv;
+	  rv = VNET_API_ERROR_NO_SUCH_FIB;
+	  goto done;
 	}
       ipsec_sa_stack (sa);
 
@@ -327,7 +344,11 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   if (sa_out_index)
     *sa_out_index = sa_index;
 
-  return (0);
+done:
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
+
+  return (rv);
 }
 
 static void

@@ -319,7 +319,14 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 cryptodev_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 		       vnet_crypto_key_index_t idx)
 {
+  /* Adding/deleting keys may happen in an MP safe API and so without
+   * workers held; this code cannot handle that, so grab the worker
+   * lock here. The lock is recursive, so we're safe in the event the
+   * caller has already taken the lock
+   */
+  vlib_worker_thread_barrier_sync (vm);
   cryptodev_sess_handler (vm, kop, idx, 8);
+  vlib_worker_thread_barrier_release (vm);
 }
 
 int

@@ -56,8 +56,17 @@ crypto_sw_scheduler_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
+  u8 expand;
+
+  expand = vec_validate_will_expand (cm->keys, idx);
+
+  if (expand)
+    vlib_worker_thread_barrier_sync (vm);
 
   vec_validate (cm->keys, idx);
+
+  if (expand)
+    vlib_worker_thread_barrier_release (vm);
 
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
     {
