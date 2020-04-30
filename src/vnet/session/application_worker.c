@@ -56,7 +56,7 @@ app_worker_free (app_worker_t * app_wrk)
 {
   application_t *app = application_get (app_wrk->app_index);
   vnet_unlisten_args_t _a, *a = &_a;
-  u64 handle, *handles = 0;
+  u64 handle, *handles = 0, *sm_indices = 0;
   segment_manager_t *sm;
   session_t *ls;
   u32 sm_index;
@@ -70,22 +70,29 @@ app_worker_free (app_worker_t * app_wrk)
   hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
     ls = listen_session_get_from_handle (handle);
     vec_add1 (handles, app_listen_session_handle (ls));
+    vec_add1 (sm_indices, sm_index);
     sm = segment_manager_get (sm_index);
-    sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
   }));
   /* *INDENT-ON* */
 
-  hash_free (app_wrk->listeners_table);
-
   for (i = 0; i < vec_len (handles); i++)
     {
+      /* Cleanup listener */
       a->app_index = app->app_index;
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
-      /* seg manager is removed when unbind completes */
       (void) vnet_unlisten (a);
+
+      sm = segment_manager_get_if_valid (sm_indices[i]);
+      if (sm && !segment_manager_app_detached (sm))
+	{
+	  sm->first_is_protected = 0;
+	  segment_manager_init_free (sm);
+	}
     }
   vec_reset_length (handles);
+  vec_free (sm_indices);
+  hash_free (app_wrk->listeners_table);
 
   /*
    * Connects segment manager cleanup
@@ -124,11 +131,11 @@ app_worker_free (app_worker_t * app_wrk)
   vec_free (app_wrk->half_open_table);
   vec_free (handles);
 
-  /* If first segment manager is used by a listener */
-  if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
-      && app_wrk->first_segment_manager != app_wrk->connects_seg_manager)
+  /* If first segment manager is used by a listener that recently
+   * stopped listening, mark it as detached */
+  if (app_wrk->first_segment_manager != app_wrk->connects_seg_manager
+      && (sm = segment_manager_get_if_valid (app_wrk->first_segment_manager)))
     {
-      sm = segment_manager_get (app_wrk->first_segment_manager);
       sm->first_is_protected = 0;
       sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
       /* .. and has no fifos, e.g. it might be used for redirected sessions,

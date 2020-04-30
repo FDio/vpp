@@ -64,7 +64,7 @@ segment_manager_props_init (segment_manager_props_t * props)
   return props;
 }
 
-static u8
+u8
 segment_manager_app_detached (segment_manager_t * sm)
 {
   return (sm->app_wrk_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
