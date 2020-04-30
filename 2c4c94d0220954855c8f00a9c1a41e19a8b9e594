@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a68eb85e_2ad3b2fd",
+        "filename": "extras/bash/functions.bash",
+        "patchSetId": 4
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-04-30T14:47:28Z",
+      "side": 1,
+      "message": "Should this be:\n${PYTHON_INTERP:\u003dpython3}",
+      "range": {
+        "startLine": 225,
+        "startChar": 4,
+        "endLine": 225,
+        "endChar": 25
+      },
+      "revId": "2c4c94d0220954855c8f00a9c1a41e19a8b9e594",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
