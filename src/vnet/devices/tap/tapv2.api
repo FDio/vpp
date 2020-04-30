@@ -26,11 +26,12 @@ import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
 enum tap_flags {
-        TAP_FLAG_GSO = 1,
-        TAP_FLAG_CSUM_OFFLOAD = 2,
-	TAP_FLAG_PERSIST = 4,
-	TAP_FLAG_ATTACH = 8,
-	TAP_FLAG_TUN = 16,
+        TAP_API_FLAG_GSO = 1,
+        TAP_API_FLAG_CSUM_OFFLOAD = 2,
+        TAP_API_FLAG_GRO_COALESCE = 4,
+	TAP_API_FLAG_PERSIST = 8,
+	TAP_API_FLAG_ATTACH = 16,
+	TAP_API_FLAG_TUN = 32,
 };
 
 /** \brief Initialize a new tap interface with the given parameters
