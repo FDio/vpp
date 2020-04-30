@@ -58,6 +58,7 @@ app_worker_free (app_worker_t * app_wrk)
   vnet_unlisten_args_t _a, *a = &_a;
   u64 handle, *handles = 0;
   segment_manager_t *sm;
+  uword *sm_indexp;
   session_t *ls;
   u32 sm_index;
   int i, j;
@@ -75,17 +76,23 @@ app_worker_free (app_worker_t * app_wrk)
   }));
   /* *INDENT-ON* */
 
-  hash_free (app_wrk->listeners_table);
-
   for (i = 0; i < vec_len (handles); i++)
     {
+      /* Grab segment manager index before it's cleaned up */
+      sm_indexp = hash_get (app_wrk->listeners_table, handle);
+
+      /* Cleanup listener */
       a->app_index = app->app_index;
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
-      /* seg manager is removed when unbind completes */
       (void) vnet_unlisten (a);
+
+      sm = sm_indexp ? segment_manager_get (*sm_indexp) : 0;
+      if (sm && !segment_manager_app_detached (sm))
+	segment_manager_init_free (sm);
     }
   vec_reset_length (handles);
+  hash_free (app_wrk->listeners_table);
 
   /*
    * Connects segment manager cleanup
