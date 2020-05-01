@@ -240,6 +240,7 @@ scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
     {
       snd_una = seq_gt (snd_una, hole->start) ? snd_una : hole->start;
       sb->cur_rxt_hole = sb->head;
+      hole->is_lost = 1;
     }
   sb->high_rxt = snd_una;
   sb->rescue_rxt = snd_una - 1;
