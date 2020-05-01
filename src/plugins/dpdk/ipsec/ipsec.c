@@ -1075,12 +1075,9 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					dpdk_ipsec_check_support,
 					add_del_sa_session,
 					dpdk_ipsec_enable_disable);
-  int rv;
-  if (im->esp_current_backend == ~0)
-    {
-      rv = ipsec_select_esp_backend (im, idx);
-      ASSERT (rv == 0);
-    }
+  int rv = ipsec_select_esp_backend (im, idx);
+  ASSERT (rv == 0);
+
   return 0;
 }
 
