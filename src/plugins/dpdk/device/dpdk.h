@@ -42,6 +42,7 @@
 #include <rte_net.h>
 #include <rte_bus_pci.h>
 #include <rte_flow.h>
+#include <rte_cryptodev.h>
 
 #include <vnet/devices/devices.h>
 
