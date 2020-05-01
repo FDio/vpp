@@ -29,6 +29,10 @@ class Field(object):
     def __str__(self):
         if self.len is None:
             return "Field(name: %s, type: %s)" % (self.name, self.type)
+        elif type(self.len) == dict:
+            return "Field(name: %s, type: %s, length: %s)" % (self.name,
+                                                              self.type,
+                                                              self.len)
         elif self.len > 0:
             return "Field(name: %s, type: %s, length: %s)" % (self.name,
                                                               self.type,
