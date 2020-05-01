@@ -29,6 +29,13 @@ class Field(object):
     def __str__(self):
         if self.len is None:
             return "Field(name: %s, type: %s)" % (self.name, self.type)
+<<<<<<< HEAD
+=======
+        elif type(self.len) == dict:
+            return "Field(name: %s, type: %s, length: %s)" % (self.name,
+                                                              self.type,
+                                                              self.len)
+>>>>>>> 92246f3... vapi:  add support for defaults in typedefs
         elif self.len > 0:
             return "Field(name: %s, type: %s, length: %s)" % (self.name,
                                                               self.type,
