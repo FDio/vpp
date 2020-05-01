@@ -457,8 +457,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   cryptodev_op_t **cop;
   u32 *bi;
   u32 n_enqueue, n_elts;
-  cryptodev_key_t *key = 0;
-  u32 last_key_index = ~0;
+  cryptodev_key_t *key;
+  u32 last_key_index;
 
   if (PREDICT_FALSE (frame == 0 || frame->n_elts == 0))
     return -1;
@@ -484,6 +484,9 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   bi = frame->buffer_indices;
   cop[0]->frame = frame;
   cop[0]->n_elts = n_elts;
+
+  key = pool_elt_at_index (cmt->keys, fe->key_index);
+  last_key_index = fe->key_index;
 
   while (n_elts)
     {
@@ -559,8 +562,8 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   cryptodev_op_t **cop;
   u32 *bi;
   u32 n_enqueue = 0, n_elts;
-  cryptodev_key_t *key = 0;
-  u32 last_key_index = ~0;
+  cryptodev_key_t *key;
+  u32 last_key_index;
 
   if (PREDICT_FALSE (frame == 0 || frame->n_elts == 0))
     return -1;
@@ -587,6 +590,9 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   cop[0]->frame = frame;
   cop[0]->n_elts = n_elts;
   frame->state = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  key = pool_elt_at_index (cmt->keys, fe->key_index);
+  last_key_index = fe->key_index;
 
   while (n_elts)
     {
@@ -1229,7 +1235,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   u32 n_workers = tm->n_vlib_mains - skip_master;
   u32 numa = vm->numa_node;
   i32 sess_sz;
-  u32 n_cop_elts;
+  u64 n_cop_elts;
   u32 eidx;
   u32 i;
   u8 *name = 0;
