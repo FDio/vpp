@@ -204,6 +204,7 @@ typedef struct
   u8 is_ip6;
   u32 instance;
   ip46_address_t src, dst;
+  u32 sw_if_index;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;

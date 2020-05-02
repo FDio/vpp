@@ -5792,12 +5792,22 @@ api_want_interface_events (vat_main_t * vam)
 int
 api_sw_interface_dump (vat_main_t * vam)
 {
+  unformat_input_t *i = vam->input;
   vl_api_sw_interface_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
   hash_pair_t *p;
   name_sort_t *nses = 0, *ns;
   sw_interface_subif_t *sub = NULL;
   int ret;
+  u32 sw_if_index = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	break;
+    }
 
   /* Toss the old name table */
   /* *INDENT-OFF* */
@@ -5834,6 +5844,7 @@ api_sw_interface_dump (vat_main_t * vam)
 
   /* Use a control ping for synchronization */
   MPING (CONTROL_PING, mp_ping);
+  mp->sw_if_index = ntohl (sw_if_index);
   S (mp_ping);
 
   W (ret);
@@ -20550,7 +20561,7 @@ echo (vat_main_t * vam)
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
 _(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
-_(sw_interface_dump,"")                                                 \
+_(sw_interface_dump,"sw_if_index <id>")                                 \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \

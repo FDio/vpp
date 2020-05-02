@@ -10,7 +10,6 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_teib import VppTeib
 from vpp_papi import VppEnum
-from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
 """ Testipip is a subclass of  VPPTestCase classes.
@@ -20,16 +19,15 @@ IPIP tests.
 """
 
 
-def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0,
-                    flags=0):
+def ipip_add_tunnel(test, src, dst, table_id=None, dscp=None,
+                    flags=None):
     """ Add a IPIP tunnel """
     return test.vapi.ipip_add_tunnel(
         tunnel={
             'src': src,
             'dst': dst,
             'table_id': table_id,
-            'instance': 0xffffffff,
-            'dscp': dscp,
+            'instance': None,
             'flags': flags
         }
     )
@@ -126,9 +124,9 @@ class TestIPIP(VppTestCase):
         # are for the ECN.
         dscp = d.IP_API_DSCP_AF31 << 2
         ecn = 3
-        dscp_ecn = d.IP_API_DSCP_AF31 << 2 | ecn
+        dscp_ecn = dscp | ecn
 
-        # IPv4 transport that copies the DCSP from the payload
+        # IPv4 transport that copies the DSCP from the payload
         tun_dscp = VppIpIpTunInterface(
             self,
             self.pg0,
@@ -136,7 +134,7 @@ class TestIPIP(VppTestCase):
             self.pg1.remote_hosts[0].ip4,
             flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
         tun_dscp.add_vpp_config()
-        # IPv4 transport that copies the DCSP and ECN from the payload
+        # IPv4 transport that copies the DSCP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
             self,
             self.pg0,
@@ -171,10 +169,10 @@ class TestIPIP(VppTestCase):
         tuns = [tun_dscp, tun_dscp_ecn, tun_ecn, tun]
 
         # addresses for prefixes routed via each tunnel
-        a4s = ["" for i in range(len(tuns))]
-        a6s = ["" for i in range(len(tuns))]
+        a4s = ["" for _ in range(len(tuns))]
+        a6s = ["" for _ in range(len(tuns))]
 
-        # IP headers with each combination of DSCp/ECN tested
+        # IP headers with each combination of DSCP/ECN tested
         p_ip6s = [IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp),
                   IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp_ecn),
                   IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=ecn),
@@ -216,7 +214,7 @@ class TestIPIP(VppTestCase):
         #
 
         # tun_dscp copies only the dscp
-        # expected TC values are thus only the DCSP value is present from the
+        # expected TC values are thus only the DSCP value is present from the
         # inner
         exp_tcs = [dscp, dscp, 0, 0xfc]
         p_ip44_encaps = [IP(src=self.pg0.local_ip4,
@@ -266,7 +264,7 @@ class TestIPIP(VppTestCase):
         p_ip64_encaps = [IP(src=self.pg0.local_ip4,
                             dst=tun.dst,
                             proto='ipv6', id=0,
-                            tos=fixed_dscp) for i in range(len(p_ip4s))]
+                            tos=fixed_dscp) for _ in range(len(p_ip4s))]
 
         self.verify_ip4ip4_encaps(a4s[3], p_ip4s, p_ip44_encaps)
         self.verify_ip6ip4_encaps(a6s[3], p_ip6s, p_ip64_encaps)
@@ -306,7 +304,7 @@ class TestIPIP(VppTestCase):
         p_ip4_encaps = [IP(src=tun_ecn.dst,
                            dst=self.pg0.local_ip4,
                            tos=tc) for tc in tcs]
-        p_ip4_replys = [p_ip4.copy() for i in range(len(p_ip4_encaps))]
+        p_ip4_replys = [p_ip4.copy() for _ in range(len(p_ip4_encaps))]
         p_ip4_replys[2].tos = ecn
         p_ip4_replys[3].tos = ecn
         for i, p_ip4_encap in enumerate(p_ip4_encaps):
@@ -352,7 +350,7 @@ class TestIPIP(VppTestCase):
                            dst=self.pg0.local_ip4,
                            tos=tc) for tc in tcs]
         p_ip6 = IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
-        p_ip6_replys = [p_ip6.copy() for i in range(len(p_ip4_encaps))]
+        p_ip6_replys = [p_ip6.copy() for _ in range(len(p_ip4_encaps))]
         p_ip6_replys[2].tc = ecn
         p_ip6_replys[3].tc = ecn
         for i, p_ip4_encap in enumerate(p_ip4_encaps):
@@ -372,7 +370,7 @@ class TestIPIP(VppTestCase):
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip4=1)
 
@@ -485,7 +483,7 @@ class TestIPIP(VppTestCase):
             #
             # Create an p2mo IPIP tunnel.
             #  - set it admin up
-            #  - assign an IP Addres
+            #  - assign an IP Address
             #  - Add a route via the tunnel
             #
             ipip_if = VppIpIpTunInterface(self, itf,
@@ -546,8 +544,7 @@ class TestIPIP(VppTestCase):
                          Raw(b'0x44' * 100))
                 tx_e = [(Ether(dst=self.pg0.local_mac,
                                src=self.pg0.remote_mac) /
-                         inner) for x in range(63)]
-
+                         inner) for _ in range(63)]
                 rxs = self.send_and_expect(self.pg0, tx_e, itf)
 
                 for rx in rxs:
@@ -560,7 +557,7 @@ class TestIPIP(VppTestCase):
                             dst=itf.local_ip4) /
                          IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4) /
                          UDP(sport=1234, dport=1234) /
-                         Raw(b'0x44' * 100)) for x in range(63)]
+                         Raw(b'0x44' * 100)) for _ in range(63)]
 
                 self.logger.info(self.vapi.cli("sh ipip tunnel-hash"))
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
@@ -783,7 +780,7 @@ class TestIPIP6(VppTestCase):
         ecn = 3
         dscp_ecn = d.IP_API_DSCP_AF31 << 2 | ecn
 
-        # IPv4 transport that copies the DCSP from the payload
+        # IPv4 transport that copies the DSCP from the payload
         tun_dscp = VppIpIpTunInterface(
             self,
             self.pg0,
@@ -791,7 +788,7 @@ class TestIPIP6(VppTestCase):
             self.pg1.remote_hosts[0].ip6,
             flags=e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
         tun_dscp.add_vpp_config()
-        # IPv4 transport that copies the DCSP and ECN from the payload
+        # IPv4 transport that copies the DSCP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
             self,
             self.pg0,
@@ -826,8 +823,8 @@ class TestIPIP6(VppTestCase):
         tuns = [tun_dscp, tun_dscp_ecn, tun_ecn, tun]
 
         # addresses for prefixes routed via each tunnel
-        a4s = ["" for i in range(len(tuns))]
-        a6s = ["" for i in range(len(tuns))]
+        a4s = ["" for _ in range(len(tuns))]
+        a6s = ["" for _ in range(len(tuns))]
 
         # IP headers for inner packets with each combination of DSCp/ECN tested
         p_ip6s = [IPv6(src="1::1", dst="DEAD::1", nh='UDP', tc=dscp),
@@ -871,7 +868,7 @@ class TestIPIP6(VppTestCase):
         #
 
         # tun_dscp copies only the dscp
-        # expected TC values are thus only the DCSP value is present from the
+        # expected TC values are thus only the DSCP value is present from the
         # inner
         exp_tcs = [dscp, dscp, 0, 0xfc]
         p_ip6_encaps = [IPv6(src=self.pg0.local_ip6,
@@ -905,7 +902,7 @@ class TestIPIP6(VppTestCase):
         fixed_dscp = tun.dscp << 2
         p_ip6_encaps = [IPv6(src=self.pg0.local_ip6,
                              dst=tun.dst,
-                             tc=fixed_dscp) for i in range(len(p_ip4s))]
+                             tc=fixed_dscp) for _ in range(len(p_ip4s))]
 
         self.verify_ip4ip6_encaps(a4s[3], p_ip4s, p_ip6_encaps)
         self.verify_ip6ip6_encaps(a6s[3], p_ip6s, p_ip6_encaps)
@@ -947,7 +944,7 @@ class TestIPIP6(VppTestCase):
         p_ip6_encaps = [IPv6(src=tun_ecn.dst,
                              dst=self.pg0.local_ip6,
                              tc=tc) for tc in tcs]
-        p_ip4_replys = [p_ip4.copy() for i in range(len(p_ip6_encaps))]
+        p_ip4_replys = [p_ip4.copy() for _ in range(len(p_ip6_encaps))]
         p_ip4_replys[2].tos = ecn
         p_ip4_replys[3].tos = ecn
         for i, p_ip6_encap in enumerate(p_ip6_encaps):
@@ -1019,7 +1016,7 @@ class TestIPIP6(VppTestCase):
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip6=1)
 
@@ -1107,7 +1104,7 @@ class TestIPIP6(VppTestCase):
         """ ipip create / delete interface test """
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vapi.ipip_del_tunnel(sw_if_index=sw_if_index)
 
     def test_ipip_vrf_create(self):
         """ ipip create / delete interface VRF test """
@@ -1116,7 +1113,7 @@ class TestIPIP6(VppTestCase):
         t.add_vpp_config()
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', table_id=20)
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vapi.ipip_del_tunnel(sw_if_index=sw_if_index)
 
     def payload(self, len):
         return 'x' * len

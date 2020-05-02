@@ -9,7 +9,5 @@ features:
   - support multi-queue, GSO, checksum offload, indirect descriptor,
     jumbo frame, and packed ring.
 description: "Virtio v1.0 implementation"
-missing:
-  - API dump filtering by sw_if_index
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]

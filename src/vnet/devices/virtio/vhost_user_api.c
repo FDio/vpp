@@ -211,7 +211,7 @@ static void
 
   filter_sw_if_index = htonl (mp->sw_if_index);
   if (filter_sw_if_index != ~0)
-    return;			/* UNIMPLEMENTED */
+    VALIDATE_SW_IF_INDEX (mp);
 
   rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
   if (rv)
@@ -219,8 +219,11 @@ static void
 
   vec_foreach (vuid, ifaces)
   {
-    send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
+    if ((filter_sw_if_index == ~0)
+	|| (vuid->sw_if_index == filter_sw_if_index))
+      send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
   }
+  BAD_SW_IF_INDEX_LABEL;
   vec_free (ifaces);
 }
 
