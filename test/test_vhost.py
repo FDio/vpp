@@ -119,5 +119,6 @@ class TesVhostInterface(VppTestCase):
         events = self.vapi.collect_events()
         self.assert_equal(len(events), 0, "number of events")
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
