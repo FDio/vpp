@@ -115,6 +115,10 @@ defaultmapping = {
 }
 
 
+def as_fn_signature(d):
+    return ", ".join(f"{k}={v}" for k, v in d.items())
+
+
 class CliFailedCommandError(Exception):
     """ cli command failed."""
 
@@ -289,15 +293,19 @@ class VppPapiProvider(object):
         reply = api_fn(**api_args)
         if self._expect_api_retval == self._negative:
             if hasattr(reply, 'retval') and reply.retval >= 0:
-                msg = "API call passed unexpectedly: expected negative " \
+                msg = "%s(%s) passed unexpectedly: expected negative " \
                       "return value instead of %d in %s" % \
-                      (reply.retval, moves.reprlib.repr(reply))
+                      (api_fn.__name__, as_fn_signature(api_args),
+                       reply.retval,
+                       moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
-                msg = "API call failed, expected %d return value instead " \
-                      "of %d in %s" % (expected_retval, reply.retval,
+                msg = "%s(%s) failed, expected %d return value instead " \
+                      "of %d in %s" % (api_fn.__name__,
+                                       as_fn_signature(api_args),
+                                       expected_retval, reply.retval,
                                        repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
