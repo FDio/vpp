@@ -129,6 +129,10 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
   bool is_ipv6;
   u32 fib_index;
   ip46_address_t src, dst;
+  u32 sw_if_index = ~0;
+
+  if ((mp->is_add == 0) && (mp->sw_if_index != ~0))
+    VALIDATE_SW_IF_INDEX (mp);
 
   ip_address_decode (&mp->src_address, &src);
   ip_address_decode (&mp->dst_address, &dst);
@@ -153,6 +157,7 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     .is_add = mp->is_add,
     .is_ip6 = is_ipv6,
     .instance = ntohl (mp->instance),
+    .sw_if_index = ntohl (mp->sw_if_index),
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
@@ -170,18 +175,18 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
   if (ip46_address_is_multicast (&a.dst) &&
       !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
     {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
       goto out;
     }
 
-  u32 sw_if_index = ~0;
   rv = vnet_vxlan_add_del_tunnel (&a, &sw_if_index);
 
+  BAD_SW_IF_INDEX_LABEL;
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_VXLAN_ADD_DEL_TUNNEL_REPLY,
   ({
-    rmp->sw_if_index = ntohl (sw_if_index);
+    rmp->sw_if_index = htonl (sw_if_index);
   }));
   /* *INDENT-ON* */
 }
@@ -248,6 +253,7 @@ static void vl_api_vxlan_tunnel_dump_t_handler
       t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_vxlan_tunnel_details (t, reg, mp->context);
     }
+
 }
 
 /*

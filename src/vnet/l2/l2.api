@@ -472,7 +472,7 @@ enum l2_port_type
     @param bd_id - bridge domain id
     @param port_type - port_mode, see #l2_port_type
     @param shg - Split horizon group, for bridge mode only
-    @param enable - Enable beige mode if not 0, else set to L3 mode
+    @param enable - Enable bridge mode if not 0, else set to L3 mode
 */
 
 autoreply define sw_interface_set_l2_bridge
@@ -569,7 +569,7 @@ autoreply define sw_interface_set_vpath
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
-  bool enable [default=0xffffffff];
+  bool enable [default=true];
 };
 
 /** \brief Create BVI interface instance request

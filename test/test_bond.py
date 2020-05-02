@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import socket
 import unittest
 
 from framework import VppTestCase, VppTestRunner
@@ -173,7 +172,7 @@ class TestBondInterface(VppTestCase):
         bond0.admin_up()
 
         # verify that interfaces can be enslaved and detached two times
-        for i in range(2):
+        for _ in range(2):
             # verify pg0 and pg1 not in BondEthernet0
             if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
             self.assertFalse(self.pg0.is_interface_config_in_dump(if_dump))
