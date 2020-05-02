@@ -146,7 +146,7 @@ typedef enum tcp_connection_flag_
 } tcp_connection_flags_e;
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS 256	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _scoreboard_trace_elt
