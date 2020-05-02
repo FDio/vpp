@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-  TEIB objects
+  Tunnel Endpoint Information Base (TEIB) objects
 """
 
 from vpp_object import VppObject
@@ -25,7 +25,7 @@ class VppTeib(VppObject):
         self.nh = nh
 
     def add_vpp_config(self):
-        r = self._test.vapi.teib_entry_add_del(
+        self._test.vapi.teib_entry_add_del(
             is_add=1,
             entry={
                 'nh_table_id': self.table_id,
@@ -37,7 +37,7 @@ class VppTeib(VppObject):
         return self
 
     def remove_vpp_config(self):
-        r = self._test.vapi.teib_entry_add_del(
+        self._test.vapi.teib_entry_add_del(
             is_add=0,
             entry={
                 'nh_table_id': self.table_id,
@@ -50,3 +50,8 @@ class VppTeib(VppObject):
 
     def object_id(self):
         return ("teib-%s-%s" % (self.itf, self.peer))
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(self._test)}, " \
+               f"{repr(self.itf)}, {repr(self.peer)}, {repr(self.nh)}, " \
+               f"table_id={repr(self.table_id)})"

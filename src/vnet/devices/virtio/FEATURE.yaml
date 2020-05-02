@@ -12,7 +12,5 @@ features:
     jumbo frame, and packed ring.
   - Support virtio 1.1 packed ring in vhost
 description: "Virtio implementation"
-missing:
-  - API dump filtering by sw_if_index
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]

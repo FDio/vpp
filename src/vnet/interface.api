@@ -576,7 +576,7 @@ define create_loopback_reply
     @param context - sender context, to match reply w/ request
     @param mac_address - mac addr to assign to the interface if none-zero
     @param is_specified - if non-0, a specific user_instance is being requested
-    @param user_instance - requested instance, ~0 => dynamically allocate
+    @param user_instance - requested instance, ~0 => dynamically allocate default: ~0
 */
 define create_loopback_instance
 {
@@ -584,7 +584,7 @@ define create_loopback_instance
   u32 context;
   vl_api_mac_address_t mac_address;
   bool is_specified;
-  u32 user_instance;
+  u32 user_instance [default=0xffffffff];
 };
 
 /** \brief Create loopback interface instance response

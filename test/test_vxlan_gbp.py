@@ -18,6 +18,13 @@ from vpp_ip import INVALID_INDEX
 class TestVxlanGbp(VppTestCase):
     """ VXLAN GBP Test Case """
 
+    dport = 48879
+    I_flag = 0x8
+    G_flag = 0x80
+    flags = I_flag | G_flag
+    gpflags = 0x0
+    sclass = 0
+
     @property
     def frame_request(self):
         """ Ethernet frame modeling a generic request """
@@ -54,7 +61,7 @@ class TestVxlanGbp(VppTestCase):
         Decapsulate the original payload frame by removing VXLAN header
         """
         # check if is set G and I flag
-        self.assertEqual(pkt[VXLAN].flags, int('0x88', 16))
+        self.assertEqual(pkt[VXLAN].flags, self.flags)
         return pkt[VXLAN].payload
 
     # Method for checking VXLAN GBP encapsulation.
@@ -89,9 +96,10 @@ class TestVxlanGbp(VppTestCase):
         self.assertEqual(pkt[VXLAN].gpid, 0)
 
     @classmethod
-    def create_vxlan_gbp_flood_test_bd(cls, vni, n_ucast_tunnels):
+    def create_vxlan_gbp_flood_test_bd(cls, vni, n_ucast_tunnels, *,
+                                       ip_range_start=10):
         # Create 2 ucast vxlan tunnels under bd
-        ip_range_start = 10
+
         ip_range_end = ip_range_start + n_ucast_tunnels
         next_hop_address = cls.pg0.remote_ip4
         for dest_ip4 in ip4_range(cls.pg0.remote_ip4,
@@ -127,10 +135,6 @@ class TestVxlanGbp(VppTestCase):
         super(TestVxlanGbp, cls).setUpClass()
 
         try:
-            cls.dport = 48879
-            cls.flags = 0x88
-            cls.gpflags = 0x0
-            cls.sclass = 0
 
             # Create 2 pg interfaces.
             cls.create_pg_interfaces(range(4))
@@ -211,6 +215,7 @@ class TestVxlanGbp(VppTestCase):
         # frame
         out = self.pg1.get_capture(1)
         pkt = out[0]
+        print(out)
         self.assert_eq_pkts(pkt, self.frame_request)
 
     def test_encap(self):
@@ -251,7 +256,7 @@ class TestVxlanGbp(VppTestCase):
             self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_encap_big_packet(self):
-        """ Encapsulation test send big frame from pg1
+        """ Encapsulation test send MTU 1500 frame from pg1
         Verify receipt of encapsulated frames on pg0
         """
 

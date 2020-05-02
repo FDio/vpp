@@ -237,6 +237,7 @@ const static fib_node_vft_t vxlan_vft = {
   .fnv_back_walk = vxlan_tunnel_back_walk,
 };
 
+<<<<<<< HEAD
 #define foreach_copy_field                                                    \
   _ (vni)                                                                     \
   _ (mcast_sw_if_index)                                                       \
@@ -246,6 +247,17 @@ const static fib_node_vft_t vxlan_vft = {
   _ (dst)                                                                     \
   _ (src_port)                                                                \
   _ (dst_port)
+=======
+
+#define foreach_copy_field                      \
+_(vni)                                          \
+_(mcast_sw_if_index)                            \
+_(sw_if_index)                                  \
+_(encap_fib_index)                              \
+_(decap_next_index)                             \
+_(src)                                          \
+_(dst)
+>>>>>>> tests: refactor VppInterface
 
 static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
@@ -613,12 +625,19 @@ int vnet_vxlan_add_del_tunnel
     }
   else
     {
-      /* deleting a tunnel: tunnel must exist */
-      if (!p)
-	return VNET_API_ERROR_NO_SUCH_ENTRY;
-
+      u32 idx;
+      if (a->sw_if_index != ~0)
+	idx = a->sw_if_index;
+      else
+	{
+	  /* deleting a tunnel without specified sw_if_index: tunnel must exist */
+	  if (!p)
+	    return VNET_API_ERROR_NO_SUCH_ENTRY;
+	  idx = p->sw_if_index;
+	}
       u32 instance = is_ip6 ? key6.value :
-	vxm->tunnel_index_by_sw_if_index[p->sw_if_index];
+	vxm->tunnel_index_by_sw_if_index[idx];
+
       vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, instance);
 
       sw_if_index = t->sw_if_index;
@@ -720,6 +739,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 instance = ~0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
+  u32 sw_if_index = ~0;
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
   u32 src_port = 0;
