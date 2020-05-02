@@ -64,7 +64,7 @@ mpls_table_delete (u32 table_id, u8 is_api)
   u32 fib_index;
 
   /*
-   * The MPLS defult table must also be explicitly created via the API.
+   * The MPLS default table must also be explicitly created via the API.
    * So in contrast to IP, it gets no special treatment here.
    *
    * The API holds only one lock on the table.
@@ -236,7 +236,7 @@ mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
   u32 fib_index;
 
   /*
-   * The MPLS defult table must also be explicitly created via the API.
+   * The MPLS default table must also be explicitly created via the API.
    * So in contrast to IP, it gets no special treatment here.
    */
 

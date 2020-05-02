@@ -21,11 +21,12 @@ import "vnet/ip/ip_types.api";
 /** \brief Create or delete a VXLAN tunnel
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - Use 1 to create the tunnel, 0 to remove it
-    @param instance - optional unique custom device instance, else ~0.
+    @param is_add - Use true to create the tunnel, false to remove it. Default: true
+    @param instance - optional unique custom device instance, else ~0. Default: ~0
     @param src_address - Source IP address
     @param dst_address - Destination IP address, can be multicast
-    @param mcast_sw_if_index - Interface for multicast destination
+    @param mcast_sw_if_index - Interface for multicast destination Default: ~0
+    @param sw_if_index - Interface index for deletion. Default: ~0
     @param encap_vrf_id - Encap route table FIB index
     @param decap_next_index - index of decap next graph node
     @param vni - The VXLAN Network Identifier, uint24
@@ -35,12 +36,13 @@ define vxlan_add_del_tunnel
   u32 client_index;
   u32 context;
   bool is_add [default=true];
-  u32 instance;		/* If non-~0, specifies a custom dev instance */
+  u32 instance [default=0xffffffff];	/* If non-~0, specifies a custom dev instance */
   vl_api_address_t src_address;
   vl_api_address_t dst_address;
-  vl_api_interface_index_t mcast_sw_if_index;
+  vl_api_interface_index_t mcast_sw_if_index [default=0xffffffff];
+  vl_api_interface_index_t sw_if_index [default=0xffffffff]; /* for delete */
   u32 encap_vrf_id;
-  u32 decap_next_index;
+  u32 decap_next_index [default=0xffffffff];
   u32 vni;
 };
 
@@ -55,7 +57,7 @@ define vxlan_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 define vxlan_tunnel_details
