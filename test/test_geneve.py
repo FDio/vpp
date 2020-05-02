@@ -18,10 +18,6 @@ from vpp_ip import INVALID_INDEX
 class TestGeneve(BridgeDomain, VppTestCase):
     """ GENEVE Test Case """
 
-    def __init__(self, *args):
-        BridgeDomain.__init__(self)
-        VppTestCase.__init__(self, *args)
-
     def encapsulate(self, pkt, vni):
 
         """
@@ -104,7 +100,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
                                                 bd_id=vni)
 
     @classmethod
-    def add_del_shared_mcast_dst_load(cls, is_add):
+    def _add_del_shared_mcast_dst_load(cls, is_add):
         """
         add or del tunnels sharing the same mcast dst
         to test geneve ref_count mechanism
@@ -122,14 +118,14 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
     @classmethod
     def add_shared_mcast_dst_load(cls):
-        cls.add_del_shared_mcast_dst_load(is_add=1)
+        cls._add_del_shared_mcast_dst_load(is_add=1)
 
     @classmethod
     def del_shared_mcast_dst_load(cls):
-        cls.add_del_shared_mcast_dst_load(is_add=0)
+        cls._add_del_shared_mcast_dst_load(is_add=0)
 
     @classmethod
-    def add_del_mcast_tunnels_load(cls, is_add):
+    def _add_del_mcast_tunnels_load(cls, is_add):
         """
         add or del tunnels to test geneve stability
         """
@@ -146,11 +142,11 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
     @classmethod
     def add_mcast_tunnels_load(cls):
-        cls.add_del_mcast_tunnels_load(is_add=1)
+        cls._add_del_mcast_tunnels_load(is_add=1)
 
     @classmethod
     def del_mcast_tunnels_load(cls):
-        cls.add_del_mcast_tunnels_load(is_add=0)
+        cls._add_del_mcast_tunnels_load(is_add=0)
 
     # Class method to start the GENEVE test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -218,12 +214,9 @@ class TestGeneve(BridgeDomain, VppTestCase):
             cls.vapi.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
         except Exception:
-            super(TestGeneve, cls).tearDownClass()
+            cls.tearDownClass()
             raise
 
-    # Method to define VPP actions before tear down of the test case.
-    #  Overrides tearDown method in VppTestCase class.
-    #  @param self The object pointer.
     def tearDown(self):
         super(TestGeneve, self).tearDown()
 
