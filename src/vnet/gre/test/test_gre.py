@@ -20,6 +20,8 @@ from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 from util import ppp, ppc
 from vpp_papi import VppEnum
 
+NUM_PKTS = 257
+
 
 class TestGREInputNodes(VppTestCase):
     """ GRE Input Nodes Test Case """
@@ -41,7 +43,7 @@ class TestGREInputNodes(VppTestCase):
         super(TestGREInputNodes, self).tearDown()
 
     def test_gre_input_node(self):
-        """ GRE gre input nodes not registerd unless configured """
+        """ GRE protocol (gre input nodes) not registered unless configured """
         pkt = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
                GRE())
@@ -111,88 +113,81 @@ class TestGRE(VppTestCase):
         super(TestGRE, self).tearDown()
 
     def create_stream_ip4(self, src_if, src_ip, dst_ip, dscp=0, ecn=0):
-        pkts = []
         tos = (dscp << 2) | ecn
-        for i in range(0, 257):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=src_ip, dst=dst_ip, tos=tos) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
-            pkts.append(p)
-        return pkts
+        info = self.create_packet_info(src_if, src_if)
+        payload = self.info_to_payload(info)
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IP(src=src_ip, dst=dst_ip, tos=tos) /
+             UDP(sport=1234, dport=1234) /
+             Raw(payload))
+        info.data = p.copy()
+
+        return [p for _ in range(0, NUM_PKTS)]
 
     def create_stream_ip6(self, src_if, src_ip, dst_ip, dscp=0, ecn=0):
-        pkts = []
         tc = (dscp << 2) | ecn
-        for i in range(0, 257):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IPv6(src=src_ip, dst=dst_ip, tc=tc) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
-            pkts.append(p)
-        return pkts
+
+        info = self.create_packet_info(src_if, src_if)
+        payload = self.info_to_payload(info)
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IPv6(src=src_ip, dst=dst_ip, tc=tc) /
+             UDP(sport=1234, dport=1234) /
+             Raw(payload))
+        info.data = p.copy()
+
+        return [p for _ in range(0, NUM_PKTS)]
 
     def create_tunnel_stream_4o4(self, src_if,
                                  tunnel_src, tunnel_dst,
                                  src_ip, dst_ip):
-        pkts = []
-        for i in range(0, 257):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=tunnel_src, dst=tunnel_dst) /
-                 GRE() /
-                 IP(src=src_ip, dst=dst_ip) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
-            pkts.append(p)
-        return pkts
+
+        info = self.create_packet_info(src_if, src_if)
+        payload = self.info_to_payload(info)
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IP(src=tunnel_src, dst=tunnel_dst) /
+             GRE() /
+             IP(src=src_ip, dst=dst_ip) /
+             UDP(sport=1234, dport=1234) /
+             Raw(payload))
+        info.data = p.copy()
+
+        return [p for _ in range(0, NUM_PKTS)]
 
     def create_tunnel_stream_6o4(self, src_if,
                                  tunnel_src, tunnel_dst,
                                  src_ip, dst_ip):
-        pkts = []
-        for i in range(0, 257):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=tunnel_src, dst=tunnel_dst) /
-                 GRE() /
-                 IPv6(src=src_ip, dst=dst_ip) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
-            pkts.append(p)
-        return pkts
+
+        info = self.create_packet_info(src_if, src_if)
+        payload = self.info_to_payload(info)
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IP(src=tunnel_src, dst=tunnel_dst) /
+             GRE() /
+             IPv6(src=src_ip, dst=dst_ip) /
+             UDP(sport=1234, dport=1234) /
+             Raw(payload))
+        info.data = p.copy()
+
+        return [p for _ in range(0, NUM_PKTS)]
 
     def create_tunnel_stream_6o6(self, src_if,
                                  tunnel_src, tunnel_dst,
                                  src_ip, dst_ip):
-        pkts = []
-        for i in range(0, 257):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IPv6(src=tunnel_src, dst=tunnel_dst) /
-                 GRE() /
-                 IPv6(src=src_ip, dst=dst_ip) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
-            pkts.append(p)
-        return pkts
+        info = self.create_packet_info(src_if, src_if)
+        payload = self.info_to_payload(info)
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IPv6(src=tunnel_src, dst=tunnel_dst) /
+             GRE() /
+             IPv6(src=src_ip, dst=dst_ip) /
+             UDP(sport=1234, dport=1234) /
+             Raw(payload))
+        info.data = p.copy()
+
+        return [p for _ in range(0, NUM_PKTS)]
 
     def create_tunnel_stream_l2o4(self, src_if,
                                   tunnel_src, tunnel_dst):
         pkts = []
-        for i in range(0, 257):
+        for _ in range(0, NUM_PKTS):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -211,7 +206,7 @@ class TestGRE(VppTestCase):
     def create_tunnel_stream_vlano4(self, src_if,
                                     tunnel_src, tunnel_dst, vlan):
         pkts = []
-        for i in range(0, 257):
+        for _ in range(0, NUM_PKTS):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -498,7 +493,7 @@ class TestGRE(VppTestCase):
         #
         # Create an L3 GRE tunnel.
         #  - set it admin up
-        #  - assign an IP Addres
+        #  - assign an IP Address
         #  - Add a route via the tunnel
         #
         gre_if = VppGreInterface(self,
@@ -528,7 +523,7 @@ class TestGRE(VppTestCase):
 
         #
         # Send a packet stream that is routed into the tunnel
-        #  - they are all dropped since the tunnel's destintation IP
+        #  - they are all dropped since the tunnel's destination IP
         #    is unresolved - or resolves via the default route - which
         #    which is a drop.
         #
@@ -586,7 +581,7 @@ class TestGRE(VppTestCase):
         self.pg0.resolve_ndp()
 
         #
-        # Send IPv6 tunnel encapslated packets
+        # Send IPv6 tunnel encapsulated packets
         #  - dropped since IPv6 is not enabled on the tunnel
         #
         tx = self.create_tunnel_stream_6o4(self.pg0,
@@ -604,7 +599,7 @@ class TestGRE(VppTestCase):
         gre_if.config_ip6()
 
         #
-        # Send IPv6 tunnel encapslated packets
+        # Send IPv6 tunnel encapsulated packets
         #  - forwarded since IPv6 is enabled on the tunnel
         #
         tx = self.create_tunnel_stream_6o4(self.pg0,
@@ -720,7 +715,7 @@ class TestGRE(VppTestCase):
 
         #
         # Send a packet stream that is routed into the tunnel
-        #  - they are all dropped since the tunnel's destintation IP
+        #  - they are all dropped since the tunnel's destination IP
         #    is unresolved - or resolves via the default route - which
         #    which is a drop.
         #
@@ -797,7 +792,7 @@ class TestGRE(VppTestCase):
         # table. The underlay is thus non-default - the overlay is still
         # the default.
         #  - set it admin up
-        #  - assign an IP Addres
+        #  - assign an IP Address
         #
         gre_if = VppGreInterface(
             self, self.pg1.local_ip4,
@@ -868,7 +863,7 @@ class TestGRE(VppTestCase):
                                            self.pg1.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        rx = self.send_and_assert_no_replies(
+        self.send_and_assert_no_replies(
             self.pg2, tx,
             "GRE decap packets in wrong VRF")
 
@@ -969,8 +964,8 @@ class TestGRE(VppTestCase):
                                                enable=1)
 
         #
-        # Configure both to pop thier respective VLAN tags,
-        # so that during the x-coonect they will subsequently push
+        # Configure both to pop their respective VLAN tags,
+        # so that during the x-connect they will subsequently push
         #
         self.vapi.l2_interface_vlan_tag_rewrite(
             sw_if_index=gre_if_12.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
@@ -980,7 +975,7 @@ class TestGRE(VppTestCase):
             push_dot1q=11)
 
         #
-        # Send traffic in both directiond - expect the VLAN tags to
+        # Send traffic in both directions - expect the VLAN tags to
         # be swapped.
         #
         tx = self.create_tunnel_stream_vlano4(self.pg0,
@@ -1019,7 +1014,7 @@ class TestGRE(VppTestCase):
         #
         # Create an L3 GRE tunnel.
         #  - set it admin up
-        #  - assign an IP Addres
+        #  - assign an IP Address
         #
         gre_if = VppGreInterface(self,
                                  self.pg0.local_ip4,
@@ -1053,10 +1048,10 @@ class TestGRE(VppTestCase):
                                        self.pg1.sw_if_index)])
         route_dst.add_vpp_config()
 
-        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+        self.send_and_expect(self.pg0, tx, self.pg1)
 
         #
-        # a good route throught the tunnel to check it restacked
+        # a good route through the tunnel to check it restacked
         #
         route_via_tun_2 = VppIpRoute(self, "2.2.2.2", 32,
                                      [VppRoutePath("0.0.0.0",
@@ -1087,7 +1082,7 @@ class TestGRE(VppTestCase):
             #
             # Create an L3 GRE tunnel.
             #  - set it admin up
-            #  - assign an IP Addres
+            #  - assign an IP Address
             #  - Add a route via the tunnel
             #
             gre_if = VppGreInterface(self,
@@ -1192,7 +1187,7 @@ class TestGRE(VppTestCase):
             #
             # Create an L3 GRE tunnel.
             #  - set it admin up
-            #  - assign an IP Addres
+            #  - assign an IP Address
             #  - Add a route via the tunnel
             #
             gre_if = VppGreInterface(

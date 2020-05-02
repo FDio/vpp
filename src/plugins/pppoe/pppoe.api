@@ -24,14 +24,14 @@ import "vnet/ip/ip_types.api";
     @param is_add - add address if non-zero, else delete
     @param session_id - PPPoE session ID
     @param client_ip - PPPOE session's client address.
-    @param decap_vrf_id - the vrf index for pppoe decaped packet
+    @param decap_vrf_id - the vrf index for pppoe decapped packet
     @param client_mac - the client ethernet address
 */
 define pppoe_add_del_session
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   u16 session_id;
   vl_api_address_t client_ip;
   u32 decap_vrf_id;
@@ -60,7 +60,7 @@ define pppoe_session_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
   option vat_help = "[<intfc> | sw_if_index <nn>]";
 };
 
@@ -69,8 +69,8 @@ define pppoe_session_dump
     @param sw_if_index - software index of the interface
     @param session_id - PPPoE session ID
     @param client_ip - PPPOE session's client address.
-    @param encap_if_index - the index of tx interface for pppoe encaped packet
-    @param decap_vrf_id - the vrf index for pppoe decaped packet
+    @param encap_if_index - the index of tx interface for pppoe encapped packet
+    @param decap_vrf_id - the vrf index for pppoe decapped packet
     @param local_mac - the local ethernet address
     @param client_mac - the client ethernet address
 */

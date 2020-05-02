@@ -14876,7 +14876,7 @@ echo (vat_main_t * vam)
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
 _(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
-_(sw_interface_dump,"")                                                 \
+_(sw_interface_dump,"sw_if_index <id>")                                 \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \

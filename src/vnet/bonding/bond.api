@@ -43,7 +43,7 @@ enum bond_lb_algo
  BOND_API_LB_ALGO_AB = 5,
 };
 
-/** \brief Initialize a new bond interface with the given paramters
+/** \brief Initialize a new bond interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param id - if non-~0, specifies a custom interface ID
@@ -126,7 +126,7 @@ autoreply define bond_delete
   vl_api_interface_index_t sw_if_index;
 };
 
-/** \brief Initialize a new bond interface with the given paramters
+/** \brief Initialize a new bond interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - slave sw_if_index
@@ -280,13 +280,13 @@ define sw_interface_slave_dump
   option deprecated;
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief Reply for slave dump request
     @param sw_if_index - software index of slave interface
     @param interface_name - name of interface
-    @param is_passve - interface does not initiate the lacp protocol, remote must be active speaker
+    @param is_passive - interface does not initiate the lacp protocol, remote must be active speaker
     @param is_long_timeout - 90 seconds vs default 3 seconds neighbor timeout
     @param is_local_numa - the slave interface is local numa
     @param weight - the weight for the slave interface (active-backup mode only)

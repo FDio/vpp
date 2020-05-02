@@ -41,7 +41,7 @@
  * - The Tunnel encapsulation limit described in RFC2473 is not
  *   implemented.
  *
- * - ICMP proxying, as in a tunnel head-end receiving ICMP erors on
+ * - ICMP proxying, as in a tunnel head-end receiving ICMP errors on
  *   the outer packet is currently not relayed to the original source
  *   of the packet.
  *
@@ -60,7 +60,7 @@ import "vnet/tunnel/tunnel_types.api";
  */
 typedef ipip_tunnel
 {
-  u32 instance; /* If non-~0, specifies a custom dev instance */
+  u32 instance [default=0xffffffff]; /* If non-~0, specifies a custom dev instance */
   vl_api_address_t src;
   vl_api_address_t dst;
   vl_api_interface_index_t sw_if_index; /* ignored on create, set in
@@ -69,7 +69,7 @@ typedef ipip_tunnel
   vl_api_tunnel_encap_decap_flags_t flags;
   vl_api_tunnel_mode_t mode;
   vl_api_ip_dscp_t dscp; /* DSCP value for the tunnel encap,
-                            ignored if ECNAP_COPY_DSCP flag is set */
+                            ignored if ENCAP_COPY_DSCP flag is set */
 };
 
 /**
@@ -86,7 +86,7 @@ define ipip_add_tunnel_reply
 {
   u32 context;
   i32 retval;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /**
@@ -140,7 +140,7 @@ define ipip_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 define ipip_tunnel_details

@@ -1663,8 +1663,10 @@ static void *vl_api_sw_interface_dump_t_print
       s = format (s, "name_filter %v ", v);
       vec_free (v);
     }
-  else
+  else if (mp->sw_if_index == ~0)
     s = format (s, "all ");
+  else
+    s = format (s, "sw_if_index %d", mp->sw_if_index);
 
   FINISH;
 }

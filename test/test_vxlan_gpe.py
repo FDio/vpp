@@ -229,7 +229,7 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
             cls.vapi.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
         except Exception:
-            super(TestVxlanGpe, cls).tearDownClass()
+            cls.tearDownClass()
             raise
 
     @classmethod

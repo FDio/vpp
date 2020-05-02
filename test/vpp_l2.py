@@ -109,7 +109,7 @@ class VppBridgeDomainPort(VppObject):
     def add_vpp_config(self):
         self._test.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.itf.sw_if_index, bd_id=self.bd.bd_id,
-            port_type=self.port_type, enable=1)
+            port_type=self.port_type)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):

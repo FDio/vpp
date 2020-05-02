@@ -103,7 +103,7 @@ typedef struct mpls_tunnel_t_
 
 /**
  * @brief Create a new MPLS tunnel
- * @return the SW Interface index of the newly created tuneel
+ * @return the SW Interface index of the newly created tunnel
  */
 extern u32 vnet_mpls_tunnel_create (u8 l2_only,
                                     u8 is_multicast,

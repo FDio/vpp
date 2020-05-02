@@ -400,7 +400,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
             self.assertEqual(c['packets'], 127)
 
     def test_tun_rr_44(self):
-        """ Round-robin packets acrros multiple interface """
+        """ Round-robin packets across multiple interface """
         tx = []
         for p in self.multi_params:
             tx = tx + self.gen_encrypt_pkts(p, p.scapy_tun_sa, self.tun_if,

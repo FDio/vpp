@@ -10,9 +10,8 @@ import time
 from collections import deque
 
 from six import moves, iteritems
-from vpp_papi import VPPApiClient, mac_pton
+from vpp_papi import VPPApiClient
 from hook import Hook
-from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
 #
@@ -73,10 +72,6 @@ defaultmapping = {
                            'mr_is_add': 1,
                            'mr_classify_table_index': 4294967295, },
     'mpls_table_add_del': {'is_add': 1, },
-    'mpls_tunnel_add_del': {'next_hop_sw_if_index': 4294967295,
-                            'next_hop_weight': 1,
-                            'next_hop_via_label': 1048576,
-                            'is_add': 1, },
     'output_acl_set_interface': {'ip4_table_index': 4294967295,
                                  'ip6_table_index': 4294967295,
                                  'l2_table_index': 4294967295, },
@@ -90,7 +85,6 @@ defaultmapping = {
     'sw_interface_ip6nd_ra_prefix': {'val_lifetime': 4294967295,
                                      'pref_lifetime': 4294967295, },
     'sw_interface_set_ip_directed_broadcast': {'enable': 1, },
-    'sw_interface_set_l2_bridge': {'enable': 1, },
     'sw_interface_set_mpls_enable': {'enable': 1, },
     'sw_interface_set_mtu': {'mtu': [0, 0, 0, 0], },
     'sw_interface_set_unnumbered': {'is_add': 1, },
@@ -233,12 +227,19 @@ class VppPapiProvider(object):
         def f(*a, **ka):
             fields = apifn._func.msg.fields
 
+            # TODO: move to vpp_papi
+            if a and type(a[0]) is dict:
+                raise TypeError(f"Invalid API signature {type(a[0])}.  "
+                                f"Maybe you wanted to pass **signature?")
+
             # add positional and kw arguments
             d = ka
-            for i, o in enumerate(fields[3:]):
+            # iterate over the fieldnames, skipping the common header
+            for i, fieldname in enumerate(fields[3:]):
                 try:
-                    d[o] = a[i]
-                except BaseException:
+                    d[fieldname] = a[i]
+                except IndexError:
+                    # tuple index out of range
                     break
 
             # Default override
@@ -400,14 +401,6 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'vlan_id': vlan})
 
-    def create_loopback(self, mac=''):
-        """
-
-        :param mac: (Optional)
-        """
-        return self.api(self.papi.create_loopback,
-                        {'mac_address': mac})
-
     def ip_route_dump(self, table_id, is_ip6=False):
         return self.api(self.papi.ip_route_dump,
                         {'table': {
@@ -548,27 +541,6 @@ class VppPapiProvider(object):
              'mb_ip_table_id': ip_table_id,
              'mb_is_bind': is_bind,
              'mb_prefix': prefix})
-
-    def mpls_tunnel_add_del(
-            self,
-            tun_sw_if_index,
-            paths,
-            is_add=1,
-            l2_only=0,
-            is_multicast=0):
-        """
-        """
-        return self.api(
-            self.papi.mpls_tunnel_add_del,
-            {'mt_is_add': is_add,
-             'mt_tunnel':
-             {
-                 'mt_sw_if_index': tun_sw_if_index,
-                 'mt_l2_only': l2_only,
-                 'mt_is_multicast': is_multicast,
-                 'mt_n_paths': len(paths),
-                 'mt_paths': paths,
-             }})
 
     def input_acl_set_interface(
             self,

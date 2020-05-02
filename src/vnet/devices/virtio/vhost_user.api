@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.1";
+option version = "4.0.2";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -28,6 +28,7 @@ import "vnet/devices/virtio/virtio_types.api";
     @param disable_indirect_desc - disable the use of indirect descriptors which driver can use
     @param enable_gso - enable gso support (default 0)
     @param enable_packed - enable packed ring support (default 0)
+    @custom_dev_instance - create interface with specific instance id. Default: ~0
     @param mac_address - hardware address to use if 'use_custom_mac' is set
 */
 define create_vhost_user_if
@@ -41,7 +42,7 @@ define create_vhost_user_if
   bool disable_indirect_desc;
   bool enable_gso;
   bool enable_packed;
-  u32 custom_dev_instance;
+  u32 custom_dev_instance [default=0xffffffff];
   bool use_custom_mac;
   vl_api_mac_address_t mac_address;
   string tag[64];
@@ -115,7 +116,7 @@ define sw_interface_vhost_user_details
 };
 
 /** \brief Vhost-user interface dump request
-    @param sw_if_index - filter by sw_if_index
+    @param sw_if_index - filter by sw_if_index Default: 0xffffffff (all interfaces)
 */
 define sw_interface_vhost_user_dump
 {

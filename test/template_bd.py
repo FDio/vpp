@@ -51,7 +51,7 @@ class BridgeDomain(object):
         pass
 
     @abc.abstractmethod
-    def check_encapsulation(self, pkt, vni, local_only=False):
+    def check_encapsulation(self, pkt, vni, local_only=False, mcast_pkt=False):
         """ Verify the encapsulation """
         pass
 
@@ -121,7 +121,7 @@ class BridgeDomain(object):
         # Get packet from each tunnel and assert it's correctly encapsulated.
         out = self.pg0.get_capture(self.n_ucast_tunnels)
         for pkt in out:
-            self.check_encapsulation(pkt, self.ucast_flood_bd, True)
+            self.check_encapsulation(pkt, self.ucast_flood_bd, local_only=True)
             payload = self.decapsulate(pkt)
             self.assert_eq_pkts(payload, self.frame_reply)
 

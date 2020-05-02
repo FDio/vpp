@@ -1,4 +1,3 @@
-import binascii
 import socket
 import abc
 
@@ -6,18 +5,22 @@ import six
 from six import moves
 
 from util import Host, mk_ll_addr
-from vpp_papi import mac_ntop, VppEnum
+from vpp_papi import VppEnum
 from ipaddress import IPv4Network, IPv6Network
+from vpp_object import VppObject
 
 try:
     text_type = unicode
 except NameError:
     text_type = str
 
+INDEX_INVALID = 0xffffffff
+
 
 @six.add_metaclass(abc.ABCMeta)
-class VppInterface(object):
+class VppInterface(VppObject):
     """Generic VPP interface."""
+    details_api = 'sw_interface_dump'
 
     @property
     def sw_if_index(self):
@@ -117,7 +120,7 @@ class VppInterface(object):
     @property
     def dump(self):
         """RAW result of sw_interface_dump for this interface."""
-        return self._dump
+        return self._dump(sw_if_index=self.sw_if_index)
 
     @property
     def test(self):
@@ -142,6 +145,12 @@ class VppInterface(object):
             self._hosts_by_mac[host.mac] = host
             self._hosts_by_ip4[host.ip4] = host
             self._hosts_by_ip6[host.ip6] = host
+
+    def add_vpp_config(self):
+        """VppObject"""
+
+    def remove_vpp_config(self):
+        """VppObject"""
 
     def host_by_mac(self, mac):
         """
@@ -188,6 +197,7 @@ class VppInterface(object):
     @abc.abstractmethod
     def __init__(self, test):
         self._test = test
+        self._sw_if_index = INDEX_INVALID
 
         self._remote_hosts = []
         self._hosts_by_mac = {}
@@ -226,18 +236,18 @@ class VppInterface(object):
         self._remote_addr = {socket.AF_INET: self.remote_ip4,
                              socket.AF_INET6: self.remote_ip6}
 
-        r = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
-        for intf in r:
-            if intf.sw_if_index == self.sw_if_index:
-                self._name = intf.interface_name
-                self._local_mac = intf.l2_address
-                self._dump = intf
-                break
-        else:
-            raise Exception(
+        try:
+            intf = self.test.vapi.sw_interface_dump(
+                sw_if_index=self.sw_if_index)[0]
+            self._name = intf.interface_name
+            self._local_mac = intf.l2_address
+        except AttributeError:
+            raise ValueError(f"intf ._dump() {intf}")
+        except IndexError:
+            raise IndexError(
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
-                (self.sw_if_index, moves.reprlib.repr(r)))
+                (self.sw_if_index, moves.reprlib.repr(intf)))
         self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
 
@@ -442,38 +452,55 @@ class VppInterface(object):
             enable=enable)
         return self
 
+    def _dump(self, **kwargs):
+        fn = getattr(self.test.vapi.papi, self.details_api)
+        return fn(**kwargs)
+
     def query_vpp_config(self):
-        dump = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
-        return self.is_interface_config_in_dump(dump)
+        kwargs = {'sw_if_index': self.sw_if_index}
+        return bool(self._dump(**kwargs))
 
     def get_interface_config_from_dump(self, dump):
+        if not isinstance(dump, list):
+            raise TypeError(f"Expected dump as list. got: {type(dump)}")
         for i in dump:
             if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
                     i.sw_if_index == self.sw_if_index:
                 return i
-        else:
-            return None
+        return None
 
     def is_interface_config_in_dump(self, dump):
+        if not isinstance(dump, list):
+            raise ValueError("dump expected as list.")
         return self.get_interface_config_from_dump(dump) is not None
 
     def assert_interface_state(self, admin_up_down, link_up_down,
                                expect_event=False):
+        if_status_flags = VppEnum.vl_api_if_status_flags_t
         if expect_event:
             event = self.test.vapi.wait_for_event(timeout=1,
                                                   name='sw_interface_event')
             self.test.assert_equal(event.sw_if_index, self.sw_if_index,
                                    "sw_if_index")
-            self.test.assert_equal((event.flags & 1), admin_up_down,
-                                   "admin state")
-            self.test.assert_equal((event.flags & 2), link_up_down,
-                                   "link state")
-        dump = self.test.vapi.sw_interface_dump()
+            self.test.assert_equal(
+                (event.flags & if_status_flags.IF_STATUS_API_FLAG_ADMIN_UP),
+                admin_up_down,
+                "admin state")
+            self.test.assert_equal(
+                (event.flags & if_status_flags.IF_STATUS_API_FLAG_LINK_UP),
+                link_up_down,
+                "link state")
+        dump = self._test.vapi.sw_interface_dump(
+            sw_if_index=self.sw_if_index)
         if_state = self.get_interface_config_from_dump(dump)
-        self.test.assert_equal((if_state.flags & 1), admin_up_down,
-                               "admin state")
-        self.test.assert_equal((if_state.flags & 2), link_up_down,
-                               "link state")
+        self.test.assert_equal(
+            (if_state.flags & if_status_flags.IF_STATUS_API_FLAG_ADMIN_UP),
+            admin_up_down,
+            "admin state")
+        self.test.assert_equal(
+            (if_state.flags & if_status_flags.IF_STATUS_API_FLAG_LINK_UP),
+            link_up_down,
+            "link state")
 
     def __str__(self):
         return self.name

@@ -1,14 +1,26 @@
 """ abstract vpp object and object registry """
 
 import abc
+import weakref
 import six
-
-from six import moves
 
 
 @six.add_metaclass(abc.ABCMeta)
 class VppObject(object):
     """ Abstract vpp object """
+    ignore_removal_failure = False
+
+    def __init__(self, parent=None):
+        self._parent = None
+        if parent is not None:
+            self.add_parent(parent)
+        self.children = weakref.WeakSet()
+
+    def add_parent(self, parent):
+        if self._parent is not None:
+            raise RuntimeError("Remove existing parent first.")
+        self._parent = parent
+        self._parent.children.add(self)
 
     @abc.abstractmethod
     def add_vpp_config(self) -> None:
@@ -47,10 +59,6 @@ class VppObject(object):
             return True
         return False
 
-    # This can be removed when python2 support is dropped.
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class VppObjectRegistry(object):
     """ Class which handles automatic configuration cleanup. """
@@ -72,7 +80,15 @@ class VppObjectRegistry(object):
         else:
             logger.debug("REG: duplicate add, ignoring (%s)" % obj)
 
-    def unregister_all(self, logger) -> None:
+    def unregister(self, obj, logger) -> None:
+        if obj.object_id() in self._object_dict:
+            del self._object_dict[obj.object_id()]
+            self._object_registry.remove(obj)
+            logger.debug("REG: removing %s" % obj)
+        else:
+            logger.debug("REG: removing nonexistent (%r), ignoring" % obj)
+
+    def unregister_all(self, logger):
         """ Remove all object registrations from registry. """
         logger.debug("REG: removing all object registrations")
         self._object_registry = []
@@ -99,10 +115,16 @@ class VppObjectRegistry(object):
                 logger.info(
                     "REG: Skipping removal for %s, configuration not present" %
                     obj)
-        self.unregister_all(logger)
         if failed:
+            critical = False
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
                 logger.error(repr(obj))
-            raise Exception("Couldn't remove configuration for object(s): %s" %
-                            (", ".join(str(x) for x in failed)))
+                if not obj.ignore_removal_failure:
+                    critical = True
+            if critical:
+                raise RuntimeError("Couldn't remove configuration for "
+                                   "object(s): %s" %
+                                   (", ".join(str(x) for x in failed)))
+
+        self.unregister_all(logger)

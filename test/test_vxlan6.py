@@ -19,9 +19,9 @@ from vpp_ip import INVALID_INDEX
 class TestVxlan6(BridgeDomain, VppTestCase):
     """ VXLAN over IPv6 Test Case """
 
-    def __init__(self, *args):
-        BridgeDomain.__init__(self)
-        VppTestCase.__init__(self, *args)
+    dport = 4789
+    I_flag = 0x8
+    flags = I_flag
 
     def encapsulate(self, pkt, vni):
         """
@@ -56,7 +56,7 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         Decapsulate the original payload frame by removing VXLAN header
         """
         # check if is set I flag
-        self.assertEqual(pkt[VXLAN].flags, int('0x8', 16))
+        self.assertEqual(pkt[VXLAN].flags, self.flags)
         return pkt[VXLAN].payload
 
     # Method for checking VXLAN encapsulation.
@@ -104,11 +104,11 @@ class TestVxlan6(BridgeDomain, VppTestCase):
 
     @classmethod
     def add_mcast_tunnels_load(cls):
-        cls.add_del_mcast_tunnels_load(is_add=1)
+        cls._add_del_mcast_tunnels_load(is_add=1)
 
     @classmethod
     def del_mcast_tunnels_load(cls):
-        cls.add_del_mcast_tunnels_load(is_add=0)
+        cls._add_del_mcast_tunnels_load(is_add=0)
 
     # Class method to start the VXLAN test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -120,8 +120,6 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         super(TestVxlan6, cls).setUpClass()
 
         try:
-            cls.dport = 4789
-            cls.flags = 0x8
 
             # Create 2 pg interfaces.
             cls.create_pg_interfaces(range(4))
@@ -138,7 +136,7 @@ class TestVxlan6(BridgeDomain, VppTestCase):
             cls.mcast_ip6 = 'ff0e::1'
             cls.mcast_mac = util.mcast_ip_to_mac(cls.mcast_ip6)
         except Exception:
-            super(TestVxlan6, cls).tearDownClass()
+            cls.tearDownClass()
             raise
 
     @classmethod
@@ -149,27 +147,34 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         super(TestVxlan6, self).setUp()
         # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
         #  into BD.
+
+        # needed for BridgeDomain tests
         self.single_tunnel_vni = 0x12345
+
         self.single_tunnel_bd = 1
-        r = VppVxlanTunnel(self, src=self.pg0.local_ip6,
-                           dst=self.pg0.remote_ip6,
-                           vni=self.single_tunnel_vni)
-        r.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                             bd_id=self.single_tunnel_bd)
+        self.vni1 = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+                                   dst=self.pg0.remote_ip6,
+                                   vni=self.single_tunnel_vni)
+        self.vni1.add_vpp_config()
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg1.sw_if_index, bd_id=self.single_tunnel_bd)
+            rx_sw_if_index=self.vni1.sw_if_index,
+            bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index,
+            bd_id=self.single_tunnel_bd)
 
         # Setup vni 2 to test multicast flooding
         self.n_ucast_tunnels = 10
         self.mcast_flood_bd = 2
         self.create_vxlan_flood_test_bd(self.mcast_flood_bd,
                                         self.n_ucast_tunnels)
-        r = VppVxlanTunnel(self, src=self.pg0.local_ip6, dst=self.mcast_ip6,
-                           mcast_sw_if_index=1, vni=self.mcast_flood_bd)
-        r.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                             bd_id=self.mcast_flood_bd)
+        self.vni2 = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+                                   dst=self.mcast_ip6,
+                                   vni=self.mcast_flood_bd,
+                                   mcast_sw_if_index=1)
+        self.vni2.add_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.vni2.sw_if_index, bd_id=self.mcast_flood_bd)
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.mcast_flood_bd)
 

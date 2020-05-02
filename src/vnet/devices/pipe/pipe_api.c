@@ -50,8 +50,10 @@ vl_api_pipe_create_t_handler (vl_api_pipe_create_t * mp)
   u32 parent_sw_if_index;
   u32 pipe_sw_if_index[2];
   int rv;
-  u8 is_specified = mp->is_specified;
+  bool is_specified;
   u32 user_instance = ntohl (mp->user_instance);
+
+  is_specified = (user_instance != ~0);
 
   rv = vnet_create_pipe_interface (is_specified, user_instance,
 				   &parent_sw_if_index, pipe_sw_if_index);
@@ -81,6 +83,7 @@ typedef struct pipe_dump_walk_t_
 {
   vl_api_registration_t *reg;
   u32 context;
+  u32 scope;			/* specific sw_if_index or ~0 for all */
 } pipe_dump_walk_t;
 
 static walk_rc_t
@@ -119,6 +122,7 @@ vl_api_pipe_dump_t_handler (vl_api_pipe_dump_t * mp)
   pipe_dump_walk_t ctx = {
     .reg = reg,
     .context = mp->context,
+    .scope = ntohl (mp->sw_if_index)
   };
 
   pipe_walk (pipe_send_details, &ctx);

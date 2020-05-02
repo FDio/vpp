@@ -850,7 +850,7 @@ class VppTestCase(unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
-        result = [VppLoInterface(cls) for i in range(count)]
+        result = [VppLoInterface(cls) for _ in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
         cls.lo_interfaces = result
@@ -864,7 +864,7 @@ class VppTestCase(unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
-        result = [VppBviInterface(cls) for i in range(count)]
+        result = [VppBviInterface(cls) for _ in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
         cls.bvi_interfaces = result
@@ -1018,7 +1018,7 @@ class VppTestCase(unittest.TestCase):
                          expected_value, str(name_or_class(expected_value)))
         except Exception:
             msg = "Invalid %s: %s does not match expected value %s" % (
-                name_or_class, real_value, expected_value)
+                name_or_class, real_value, repr(expected_value))
 
         self.assertEqual(real_value, expected_value, msg)
 

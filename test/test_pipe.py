@@ -19,6 +19,7 @@ class VppPipe(VppInterface):
     """
     VPP Pipe
     """
+    details_api = 'pipe_dump'
 
     @property
     def east(self):
@@ -28,36 +29,31 @@ class VppPipe(VppInterface):
     def west(self):
         return self.result.pipe_sw_if_index[0]
 
-    def __init__(self, test, instance=0xffffffff):
+    def __init__(self, test, instance=None):
         super(VppPipe, self).__init__(test)
-        self._test = test
         self.instance = instance
 
     def add_vpp_config(self):
         self.result = self._test.vapi.pipe_create(
-            0 if self.instance == 0xffffffff else 1,
-            self.instance)
+            user_instance=self.instance)
         self.set_sw_if_index(self.result.sw_if_index)
 
     def remove_vpp_config(self):
         self._test.vapi.pipe_delete(
-            self.result.sw_if_index)
+            parent_sw_if_index=self.result.sw_if_index)
 
     def object_id(self):
         return "pipe-%d" % (self._sw_if_index)
 
-    def query_vpp_config(self):
-        pipes = self._test.vapi.pipe_dump()
-        for p in pipes:
-            if p.sw_if_index == self.result.sw_if_index:
-                return True
-        return False
-
     def set_unnumbered(self, ip_sw_if_index, is_add=True):
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.east, is_add)
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.west, is_add)
+        self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                    self.east, is_add)
+        self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                    self.west, is_add)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.test}, " \
+               f"instance={repr(self.instance)})"
 
 
 class TestPipe(VppTestCase):

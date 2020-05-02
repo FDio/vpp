@@ -36,7 +36,7 @@ enum gre_tunnel_type : u8
     @param mode - P2P or P2MP
     @param flags - to control encap/decap behaviour
     @param session_id - session for ERSPAN tunnel, range 0-1023
-    @param instance - optional unique custom device instance, else ~0.
+    @param instance - optional unique custom device instance, else ~0. Default: ~0
     @param outer_table_id - Encap FIB table ID
     @param sw_if_index - ignored on create/delete, present in details.
     @param src - Source IP address
@@ -48,7 +48,7 @@ typedef gre_tunnel
   vl_api_tunnel_mode_t mode;
   vl_api_tunnel_encap_decap_flags_t flags;
   u16 session_id;
-  u32 instance;
+  u32 instance [default=0xffffffff];
   u32 outer_table_id;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t src;
@@ -58,14 +58,14 @@ typedef gre_tunnel
 /** \brief Add or delete a single GRE tunnel.
     @param client_index - opaque cookie to identify the sender.
     @param context - sender context, to match reply w/ request.
-    @param is_add - add if true, delete if false.
+    @param is_add - add if true, delete if false. Default: true(add)
     @param tunnel - tunnel definition to add or delete.
 */
 define gre_tunnel_add_del
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_gre_tunnel_t tunnel;
 };
 
@@ -90,7 +90,7 @@ define gre_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief Details response for one of the requested GRE tunnels.
