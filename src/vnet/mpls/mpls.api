@@ -42,7 +42,7 @@ autoreply define mpls_ip_bind_unbind
 
 typedef mpls_tunnel
 {
-  vl_api_interface_index_t mt_sw_if_index;
+  vl_api_interface_index_t mt_sw_if_index [default=0xffffffff];
   u32 mt_tunnel_index;
   bool mt_l2_only;
   bool mt_is_multicast;

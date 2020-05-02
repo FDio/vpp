@@ -61,7 +61,7 @@ typedef fib_path_nh
   /* proto = IP[46] */
   vl_api_address_union_t address;
   /* proto = MPLS */
-  u32 via_label;
+  u32 via_label [default= 1048576];
   /* proto = ANY, determined by path type */
   u32 obj_id;
   /* path-type = CLASSIFY */
@@ -117,7 +117,7 @@ typedef fib_path
   u32 sw_if_index;
   u32 table_id;
   u32 rpf_id;
-  u8 weight;
+  u8 weight [default=1];
   u8 preference;
 
   vl_api_fib_path_type_t type;
