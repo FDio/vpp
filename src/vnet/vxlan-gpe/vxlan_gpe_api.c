@@ -88,7 +88,7 @@ static void
     }
   encap_fib_index = p[0];
 
-  protocol = mp->protocol;
+  protocol = mp->next_protocol;
 
   /* Interpret decap_vrf_id as an opaque if sending to other-than-ip4-input */
   if (protocol == VXLAN_GPE_INPUT_NEXT_IP4_INPUT)
@@ -166,7 +166,7 @@ static void send_vxlan_gpe_tunnel_details
     }
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
-  rmp->protocol = t->protocol;
+  rmp->next_protocol = t->protocol;
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
 
