@@ -197,6 +197,24 @@
     },
     {
       "key": {
+        "uuid": "d10d9bec_bee7714c",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-03T16:51:48Z",
+      "side": 1,
+      "message": "I think so, I should address your earlier comment differently. Think about IPIP and IPSec as different tunnels as GSO IPIP can be supported by Physical Interface while there is no GSO IPSec support in Physical interfaces. This patch implements supports for both IPSec and IPIP. In case of IPIP, GSO node should be enabled on output interface and above function will be executed as a fixup. In case of IPSec, GSO node should be enabled before IPSec tunnel and above function has nothing to do with IPSec use case.",
+      "parentUuid": "f8f6e0a5_5c7ab715",
+      "revId": "13aabe21a421aa817da032a3e9246de2390d1146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a93c742a_adea3000",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 4
