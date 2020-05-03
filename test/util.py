@@ -1,6 +1,7 @@
 """ test framework utilities """
 
 import abc
+import ipaddress
 import socket
 from socket import AF_INET6
 import six
