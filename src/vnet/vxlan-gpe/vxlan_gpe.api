@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/vxlan-gpe/vxlan_gpe_types.api";
 
 define vxlan_gpe_add_del_tunnel
 {
@@ -24,10 +25,10 @@ define vxlan_gpe_add_del_tunnel
   u32 context;
   vl_api_address_t local;
   vl_api_address_t remote;
-  vl_api_interface_index_t mcast_sw_if_index;
+  vl_api_interface_index_t mcast_sw_if_index [default=0xffffffff];
   u32 encap_vrf_id;
   u32 decap_vrf_id;
-  vl_api_ip_proto_t protocol;
+  vl_api_vxlan_gpe_api_next_proto_t next_protocol [default=3]; /* Ethernet */
   u32 vni;
   bool is_add [default=true];
 };
@@ -43,7 +44,7 @@ define vxlan_gpe_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  vl_api_interface_index_t sw_if_index;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 define vxlan_gpe_tunnel_details
@@ -53,8 +54,8 @@ define vxlan_gpe_tunnel_details
   vl_api_address_t local;
   vl_api_address_t remote;
   u32 vni;
-  vl_api_ip_proto_t protocol;
-  vl_api_interface_index_t mcast_sw_if_index;
+  vl_api_vxlan_gpe_api_next_proto_t next_protocol;
+  vl_api_interface_index_t mcast_sw_if_index [default=0xffffffff];
   u32 encap_vrf_id;
   u32 decap_vrf_id;
   bool is_ipv6;
