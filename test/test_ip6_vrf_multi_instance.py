@@ -193,8 +193,6 @@ class TestIP6VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.local_ip6n
-            dest_addr_len = 64
             self.vapi.ip_table_add_del(is_add=1,
                                        table={'table_id': vrf_id, 'is_ip6': 1})
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
