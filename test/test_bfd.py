@@ -5,6 +5,7 @@ from __future__ import division
 
 import binascii
 import hashlib
+import ipaddress
 import time
 import unittest
 from random import randint, shuffle, getrandbits
@@ -283,8 +284,8 @@ class BFDAPITestCase(VppTestCase):
         self.assertFalse(echo_source.have_usable_ip6)
 
         self.loopback0.config_ip4()
-        unpacked = unpack("!L", self.loopback0.local_ip4n)
-        echo_ip4 = pack("!L", unpacked[0] ^ 1)
+        echo_ip4 = ipaddress.IPv4Address(int(ipaddress.IPv4Address(
+            self.loopback0.local_ip4)) ^ 1).packed
         echo_source = self.vapi.bfd_udp_get_echo_source()
         self.assertTrue(echo_source.is_set)
         self.assertEqual(echo_source.sw_if_index, self.loopback0.sw_if_index)
@@ -293,9 +294,9 @@ class BFDAPITestCase(VppTestCase):
         self.assertFalse(echo_source.have_usable_ip6)
 
         self.loopback0.config_ip6()
-        unpacked = unpack("!LLLL", self.loopback0.local_ip6n)
-        echo_ip6 = pack("!LLLL", unpacked[0], unpacked[1], unpacked[2],
-                        unpacked[3] ^ 1)
+        echo_ip6 = ipaddress.IPv6Address(int(ipaddress.IPv6Address(
+            self.loopback0.local_ip6)) ^ 1).packed
+
         echo_source = self.vapi.bfd_udp_get_echo_source()
         self.assertTrue(echo_source.is_set)
         self.assertEqual(echo_source.sw_if_index, self.loopback0.sw_if_index)
@@ -2728,16 +2729,15 @@ class BFDCLITestCase(VppTestCase):
                                  "IPv6 address usable as echo source: none" %
                                  self.loopback0.name)
         self.loopback0.config_ip4()
-        unpacked = unpack("!L", self.loopback0.local_ip4n)
-        echo_ip4 = inet_ntop(AF_INET, pack("!L", unpacked[0] ^ 1))
+        echo_ip4 = str(ipaddress.IPv4Address(int(ipaddress.IPv4Address(
+            self.loopback0.local_ip4)) ^ 1))
         self.cli_verify_response("show bfd echo-source",
                                  "UDP echo source is: %s\n"
                                  "IPv4 address usable as echo source: %s\n"
                                  "IPv6 address usable as echo source: none" %
                                  (self.loopback0.name, echo_ip4))
-        unpacked = unpack("!LLLL", self.loopback0.local_ip6n)
-        echo_ip6 = inet_ntop(AF_INET6, pack("!LLLL", unpacked[0], unpacked[1],
-                                            unpacked[2], unpacked[3] ^ 1))
+        echo_ip6 = str(ipaddress.IPv6Address(int(ipaddress.IPv6Address(
+            self.loopback0.local_ip6)) ^ 1))
         self.loopback0.config_ip6()
         self.cli_verify_response("show bfd echo-source",
                                  "UDP echo source is: %s\n"

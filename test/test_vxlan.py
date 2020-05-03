@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4n_range, ip4_range, reassemble4
+from util import ip4_range, reassemble4
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -10,7 +10,8 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
-from scapy.utils import atol
+
+import util
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
@@ -91,13 +92,12 @@ class TestVxlan(BridgeDomain, VppTestCase):
         next_hop_address = cls.pg0.remote_ip4
         for dest_ip4 in ip4_range(next_hop_address, ip_range_start,
                                   ip_range_end):
-            # add host route so dest_ip4n will not be resolved
+            # add host route so dest_ip4 will not be resolved
             rip = VppIpRoute(cls, dest_ip4, 32,
                              [VppRoutePath(next_hop_address,
                                            INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            dest_ip4n = socket.inet_pton(socket.AF_INET, dest_ip4)
 
             r = VppVxlanTunnel(cls, src=cls.pg0.local_ip4,
                                dst=dest_ip4, vni=vni)
@@ -183,13 +183,9 @@ class TestVxlan(BridgeDomain, VppTestCase):
 
             # Our Multicast address
             cls.mcast_ip4 = '239.1.1.1'
-            cls.mcast_ip4n = socket.inet_pton(socket.AF_INET, cls.mcast_ip4)
-            iplong = atol(cls.mcast_ip4)
-            cls.mcast_mac = "01:00:5e:%02x:%02x:%02x" % (
-                (iplong >> 16) & 0x7F, (iplong >> 8) & 0xFF, iplong & 0xFF)
-
+            cls.mcast_mac = util.mcast_ip_to_mac(cls.mcast_ip4)
         except Exception:
-            super(TestVxlan, cls).tearDownClass()
+            cls.tearDownClass()
             raise
 
     @classmethod

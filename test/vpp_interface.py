@@ -66,21 +66,9 @@ class VppInterface(object):
         return ("%s/%d" % (self._local_ip4, self._local_ip4_len))
 
     @property
-    def local_ip4n(self):
-        """DEPRECATED """
-        """Local IPv4 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self._local_ip4)
-
-    @property
     def remote_ip4(self):
         """IPv4 address of remote peer "connected" to this interface."""
         return self._remote_hosts[0].ip4
-
-    @property
-    def remote_ip4n(self):
-        """DEPRECATED """
-        """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self._remote_hosts[0].ip4)
 
     @property
     def local_ip6(self):
@@ -106,21 +94,9 @@ class VppInterface(object):
         return ("%s/%d" % (self._local_ip6, self._local_ip6_len))
 
     @property
-    def local_ip6n(self):
-        """DEPRECATED """
-        """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET6, self._local_ip6)
-
-    @property
     def remote_ip6(self):
         """IPv6 address of remote peer "connected" to this interface."""
         return self._remote_hosts[0].ip6
-
-    @property
-    def remote_ip6n(self):
-        """DEPRECATED """
-        """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET6, self._remote_hosts[0].ip6)
 
     @property
     def local_ip6_ll(self):
@@ -128,22 +104,10 @@ class VppInterface(object):
         return self._local_ip6_ll
 
     @property
-    def local_ip6n_ll(self):
-        """DEPRECATED """
-        """Local IPv6 link-local address on VPP interface (string)."""
-        return socket.inet_pton(socket.AF_INET6, self._local_ip6_ll.address)
-
-    @property
     def remote_ip6_ll(self):
         """Link-local IPv6 address of remote peer
         "connected" to this interface."""
         return self._remote_ip6_ll
-
-    @property
-    def remote_ip6n_ll(self):
-        """DEPRECATED """
-        """Local IPv6 link-local address on VPP interface (string)."""
-        return socket.inet_pton(socket.AF_INET6, self._remote_ip6_ll)
 
     @property
     def name(self):

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import ipaddress
 import socket
 import unittest
 import struct
@@ -857,7 +858,8 @@ class MethodHolder(VppTestCase):
             else:
                 nat44_ses_delete_num += 1
             # sourceIPv4Address
-            self.assertEqual(self.pg0.remote_ip4n, record[8])
+            self.assertEqual(self.pg0.remote_ip4,
+                             str(ipaddress.IPv4Address(record[8])))
             # postNATSourceIPv4Address
             self.assertEqual(socket.inet_pton(socket.AF_INET, self.nat_addr),
                              record[225])
@@ -945,7 +947,7 @@ class MethodHolder(VppTestCase):
         else:
             self.assertEqual(scapy.compat.orb(record[230]), 11)
         # sourceIPv6Address
-        self.assertEqual(src_addr, record[27])
+        self.assertEqual(src_addr, str(ipaddress.IPv6Address(record[27])))
         # postNATSourceIPv4Address
         self.assertEqual(self.nat_addr_n, record[225])
         # protocolIdentifier
@@ -976,7 +978,7 @@ class MethodHolder(VppTestCase):
         else:
             self.assertEqual(scapy.compat.orb(record[230]), 7)
         # sourceIPv6Address
-        self.assertEqual(src_addr, record[27])
+        self.assertEqual(src_addr, str(ipaddress.IPv6Address(record[27])))
         # destinationIPv6Address
         self.assertEqual(socket.inet_pton(socket.AF_INET6,
                                           self.compose_ip6(dst_addr,
@@ -7973,19 +7975,19 @@ class TestNAT64(MethodHolder):
         self.vapi.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6n,
+        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.tcp_port_in,
                                            o_port=self.tcp_port_out,
                                            proto=IP_PROTOS.tcp, vrf_id=0,
                                            is_add=1)
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6n,
+        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.udp_port_in,
                                            o_port=self.udp_port_out,
                                            proto=IP_PROTOS.udp, vrf_id=0,
                                            is_add=1)
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6n,
+        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.icmp_id_in,
                                            o_port=self.icmp_id_out,
@@ -8876,11 +8878,11 @@ class TestNAT64(MethodHolder):
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 if scapy.compat.orb(data[0][230]) == 10:
-                    self.verify_ipfix_bib(data, 1, self.pg0.remote_ip6n)
+                    self.verify_ipfix_bib(data, 1, self.pg0.remote_ip6)
                 elif scapy.compat.orb(data[0][230]) == 6:
                     self.verify_ipfix_nat64_ses(data,
                                                 1,
-                                                self.pg0.remote_ip6n,
+                                                self.pg0.remote_ip6,
                                                 self.pg1.remote_ip4,
                                                 25)
                 else:
@@ -8906,11 +8908,11 @@ class TestNAT64(MethodHolder):
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 if scapy.compat.orb(data[0][230]) == 11:
-                    self.verify_ipfix_bib(data, 0, self.pg0.remote_ip6n)
+                    self.verify_ipfix_bib(data, 0, self.pg0.remote_ip6)
                 elif scapy.compat.orb(data[0][230]) == 7:
                     self.verify_ipfix_nat64_ses(data,
                                                 0,
-                                                self.pg0.remote_ip6n,
+                                                self.pg0.remote_ip6,
                                                 self.pg1.remote_ip4,
                                                 25)
                 else:
@@ -9054,7 +9056,7 @@ class TestNAT66(MethodHolder):
         self.vapi.nat66_add_del_interface(is_add=1,
                                           sw_if_index=self.pg1.sw_if_index)
         self.vapi.nat66_add_del_static_mapping(
-            local_ip_address=self.pg0.remote_ip6n,
+            local_ip_address=self.pg0.remote_ip6,
             external_ip_address=self.nat_addr,
             is_add=1)
 
@@ -9133,7 +9135,7 @@ class TestNAT66(MethodHolder):
         self.vapi.nat66_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg1.sw_if_index)
         self.vapi.nat66_add_del_static_mapping(
-            local_ip_address=self.pg0.remote_ip6n,
+            local_ip_address=self.pg0.remote_ip6,
             external_ip_address=self.nat_addr,
             is_add=1)
 
