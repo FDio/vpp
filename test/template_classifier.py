@@ -406,9 +406,9 @@ class TestClassifier(VppTestCase):
 
         """
         addr_len = 24
-        self.vapi.ip_add_del_route(dst_address=intf.local_ip4n,
+        self.vapi.ip_add_del_route(dst_address=intf.local_ip4,
                                    dst_address_length=addr_len,
-                                   next_hop_address=intf.remote_ip4n,
+                                   next_hop_address=intf.remote_ip4,
                                    table_id=self.pbr_vrfid, is_add=is_add)
 
     def verify_vrf(self, vrf_id):

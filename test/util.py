@@ -1,6 +1,7 @@
 """ test framework utilities """
 
 import abc
+import ipaddress
 import socket
 from socket import AF_INET6
 import six
@@ -50,10 +51,21 @@ def ip4_range(ip4, s, e):
     return ("%s.%d" % (tmp, i) for i in range(s, e))
 
 
-def ip4n_range(ip4n, s, e):
-    ip4 = socket.inet_ntop(socket.AF_INET, ip4n)
-    return (socket.inet_pton(socket.AF_INET, ip)
-            for ip in ip4_range(ip4, s, e))
+def mcast_ip_to_mac(ip):
+    ip = ipaddress.ip_address(ip)
+    if not ip.is_multicast:
+        raise ValueError("Must be multicast address.")
+    ip_as_int = int(ip)
+    if ip.version == 4:
+        mcast_mac = "01:00:5e:%02x:%02x:%02x" % ((ip_as_int >> 16) & 0x7f,
+                                                 (ip_as_int >> 8) & 0xff,
+                                                 ip_as_int & 0xff)
+    else:
+        mcast_mac = "33:33:%02x:%02x:%02x:%02x" % ((ip_as_int >> 24) & 0xff,
+                                                   (ip_as_int >> 16) & 0xff,
+                                                   (ip_as_int >> 8) & 0xff,
+                                                   ip_as_int & 0xff)
+    return mcast_mac
 
 
 # wrapper around scapy library function.
