@@ -98,8 +98,6 @@ defaultmapping = {
     'vxlan_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                              'decap_next_index': 4294967295,
                              'instance': 4294967295, },
-    'vxlan_gpe_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
-                                 'protocol': 3, },
     'want_bfd_events': {'enable_disable': 1, },
     'want_igmp_events': {'enable': 1, },
     'want_interface_events': {'enable_disable': 1, },
@@ -646,45 +644,6 @@ class VppPapiProvider(object):
                             'table_id': table_id,
                             'is_ip6': is_ip6
                         }})
-
-    def vxlan_gpe_add_del_tunnel(
-            self,
-            src_addr,
-            dst_addr,
-            mcast_sw_if_index=0xFFFFFFFF,
-            is_add=1,
-            is_ipv6=0,
-            encap_vrf_id=0,
-            decap_vrf_id=0,
-            protocol=3,
-            vni=0):
-        """
-
-        :param local:
-        :param remote:
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param encap_vrf_id:  (Default value = 0)
-        :param decap_vrf_id:  (Default value = 0)
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param protocol:  (Default value = 3)
-        :param vni:  (Default value = 0)
-
-        """
-        return self.api(self.papi.vxlan_gpe_add_del_tunnel,
-                        {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
-                         'local': src_addr,
-                         'remote': dst_addr,
-                         'mcast_sw_if_index': mcast_sw_if_index,
-                         'encap_vrf_id': encap_vrf_id,
-                         'decap_vrf_id': decap_vrf_id,
-                         'protocol': protocol,
-                         'vni': vni})
-
-    def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
-        return self.api(self.papi.vxlan_gbp_tunnel_dump,
-                        {'sw_if_index': sw_if_index})
 
     def pppoe_add_del_session(
             self,

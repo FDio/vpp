@@ -824,7 +824,9 @@ list(APPEND VNET_HEADERS
   vxlan-gpe/vxlan_gpe_error.def
 )
 
-list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
+list(APPEND VNET_API_FILES
+  vxlan-gpe/vxlan_gpe.api
+  vxlan-gpe/vxlan_gpe_types.api)
 
 ##############################################################################
 # ipv6 segment routing

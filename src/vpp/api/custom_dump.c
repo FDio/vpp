@@ -1788,7 +1788,7 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
 
   if (is_grp)
     s = format (s, "mcast_sw_if_index %d ", (mp->mcast_sw_if_index));
-  s = format (s, "protocol %d ", (mp->protocol));
+  s = format (s, "next-protocol %d ", (mp->next_protocol));
 
   s = format (s, "vni %d ", (mp->vni));
 

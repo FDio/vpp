@@ -10196,7 +10196,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_vrf_id = ntohl (decap_vrf_id);
-  mp->protocol = protocol;
+  mp->next_protocol = protocol;
   mp->vni = ntohl (vni);
   mp->is_add = is_add;
 
@@ -10218,7 +10218,7 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler
 	 ntohl (mp->sw_if_index),
 	 format_ip46_address, &local, IP46_TYPE_ANY,
 	 format_ip46_address, &remote, IP46_TYPE_ANY,
-	 ntohl (mp->vni), mp->protocol,
+	 ntohl (mp->vni), mp->next_protocol,
 	 ntohl (mp->mcast_sw_if_index),
 	 ntohl (mp->encap_vrf_id), ntohl (mp->decap_vrf_id));
 }
@@ -10260,7 +10260,7 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
       vat_json_object_add_ip6 (node, "remote", ip6);
     }
   vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
-  vat_json_object_add_uint (node, "protocol", ntohl (mp->protocol));
+  vat_json_object_add_uint (node, "next_protocol", ntohl (mp->next_protocol));
   vat_json_object_add_uint (node, "mcast_sw_if_index",
 			    ntohl (mp->mcast_sw_if_index));
   vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
@@ -15266,4 +15266,4 @@ VLIB_API_INIT_FUNCTION (vat_api_hookup_shim);
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:
- */
+*/
