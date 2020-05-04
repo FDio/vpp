@@ -22,7 +22,7 @@ DEFINE_VAPI_MSG_IDS_IP6_ND_API_JSON;
 namespace VOM {
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 ra_config::ra_config(uint8_t suppress,
                      uint8_t send_unicast,

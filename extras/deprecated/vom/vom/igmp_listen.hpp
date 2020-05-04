@@ -39,7 +39,7 @@ public:
   typedef std::pair<interface::key_t, boost::asio::ip::address> key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   igmp_listen(const igmp_binding& igmp_bind,
               const boost::asio::ip::address_v4& gaddr,
@@ -125,7 +125,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const igmp_listen& obj);
 
@@ -135,7 +135,7 @@ private:
   static std::shared_ptr<igmp_listen> find_or_add(const igmp_listen& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

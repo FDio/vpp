@@ -96,7 +96,7 @@ public:
 
 private:
   /**
-   * Reference to the interface to unbind fomr
+   * Reference to the interface to unbind from
    */
   const handle_t& m_itf;
 
@@ -107,7 +107,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the IPv4 L3 configs
+ * A cmd class that dumps all the IPv4 L3 configs
  */
 class dump_v4_cmd : public dump_cmd<vapi::Ip_address_dump>
 {
@@ -134,7 +134,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 

@@ -36,7 +36,7 @@ public:
   typedef interface::key_t key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   lldp_binding(const interface& itf, const std::string& hostname);
 
@@ -117,7 +117,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const lldp_binding& obj);
 

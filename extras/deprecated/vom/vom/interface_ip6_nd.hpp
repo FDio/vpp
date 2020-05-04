@@ -37,7 +37,7 @@ class interface_ip6_nd : public object_base
 public:
   typedef CLASS class_t;
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   interface_ip6_nd(const interface& itf, const class_t cls)
     : m_itf(itf.singular())
@@ -103,7 +103,7 @@ public:
   static std::shared_ptr<interface_ip6_nd> find(const interface& i)
   {
     /*
-     * Loop throught the entire map looking for matching interface.
+     * Loop through the entire map looking for matching interface.
      * not the most efficient algorithm, but it will do for now. The
      * number of ra configs is low.
      */
@@ -224,7 +224,7 @@ public:
 
   private:
     /**
-     * Reference to the interface to unbind fomr
+     * Reference to the interface to unbind from
      */
     const handle_t& m_itf;
 
@@ -318,7 +318,7 @@ private:
   }
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

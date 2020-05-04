@@ -82,12 +82,12 @@ public:
   std::shared_ptr<gbp_contract> singular() const;
 
   /**
-   * Find the instnace of the bridge_domain domain in the OM
+   * Find the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<gbp_contract> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all bridge_domain-domains into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -138,7 +138,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const gbp_contract& obj);
 
@@ -148,7 +148,7 @@ private:
   static std::shared_ptr<gbp_contract> find_or_add(const gbp_contract& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 
@@ -183,12 +183,12 @@ private:
   sclass_t m_dclass;
 
   /**
-   * The ACL applied to traffic between the gourps
+   * The ACL applied to traffic between the groups
    */
   std::shared_ptr<ACL::l3_list> m_acl;
 
   /**
-   * The gbp rules applied to traffic between the gourps
+   * The gbp rules applied to traffic between the groups
    */
   gbp_rules_t m_gbp_rules;
 

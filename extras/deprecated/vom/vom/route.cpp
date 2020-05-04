@@ -439,7 +439,7 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
 
         /*
          * Write each of the discovered interfaces into the OM,
-         * but disable the HW Command q whilst we do, so that no
+         * but disable the HW command queue whilst we do, so that no
          * commands are sent to VPP
          */
         OM::commit(key, ip_r);
@@ -629,7 +629,7 @@ ip_mroute::event_handler::handle_populate(const client_db::key_t& key)
 
         /*
          * Write each of the discovered interfaces into the OM,
-         * but disable the HW Command q whilst we do, so that no
+         * but disable the HW command queue whilst we do, so that no
          * commands are sent to VPP
          */
         OM::commit(key, ip_r);

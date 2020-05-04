@@ -96,7 +96,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all arp termination tables
+ * A cmd class that dumps all arp termination tables
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Bd_ip_mac_dump>
 {
@@ -123,7 +123,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 

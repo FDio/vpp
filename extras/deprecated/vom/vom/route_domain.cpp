@@ -28,7 +28,7 @@ route_domain::event_handler route_domain::m_evh;
 singular_db<route::table_id_t, route_domain> route_domain::m_db;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 route_domain::route_domain(route::table_id_t id)
   : m_hw_v4(true)
@@ -186,7 +186,7 @@ route_domain::event_handler::handle_populate(const client_db::key_t& key)
 
     /*
      * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, rd);

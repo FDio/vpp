@@ -27,7 +27,7 @@ singular_db<l2_xconnect::key_t, l2_xconnect> l2_xconnect::m_db;
 l2_xconnect::event_handler l2_xconnect::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 l2_xconnect::l2_xconnect(const interface& east_itf, const interface& west_itf)
   : m_east_itf(east_itf.singular())

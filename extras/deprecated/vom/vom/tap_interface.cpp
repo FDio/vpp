@@ -22,7 +22,7 @@ namespace VOM {
 tap_interface::event_handler tap_interface::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 tap_interface::tap_interface(const std::string& name,
                              const admin_state_t& state,

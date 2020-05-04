@@ -164,7 +164,7 @@ private:
   static std::shared_ptr<neighbour> find_or_add(const neighbour& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

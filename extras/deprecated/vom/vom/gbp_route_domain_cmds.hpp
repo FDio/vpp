@@ -87,7 +87,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the route domains
+ * A cmd class that dumps all the route domains
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Gbp_route_domain_dump>
 {
@@ -114,7 +114,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

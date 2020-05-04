@@ -31,7 +31,7 @@ class ip_unnumbered : public object_base
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    *
    * @param itf - The interface with no IP address
    * @param l3_itf - The interface that has the IP address we wish to
@@ -112,7 +112,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const ip_unnumbered& obj);
 
@@ -122,7 +122,7 @@ private:
   static std::shared_ptr<ip_unnumbered> find_or_add(const ip_unnumbered& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

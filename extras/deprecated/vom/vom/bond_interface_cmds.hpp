@@ -73,7 +73,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the Vpp Interfaces
+ * A cmd class that dumps all the Vpp Interfaces
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_bond_dump>
 {

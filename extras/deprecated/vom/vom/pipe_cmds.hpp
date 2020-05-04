@@ -92,7 +92,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the Vpp interfaces
+ * A cmd class that dumps all the Vpp interfaces
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Pipe_dump>
 {

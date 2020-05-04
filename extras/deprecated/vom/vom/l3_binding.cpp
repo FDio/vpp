@@ -23,7 +23,7 @@ singular_db<l3_binding::key_t, l3_binding> l3_binding::m_db;
 l3_binding::event_handler l3_binding::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 l3_binding::l3_binding(const interface& itf, const route::prefix_t& pfx)
   : m_itf(itf.singular())

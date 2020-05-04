@@ -40,7 +40,7 @@ l2_binding::l2_port_type_t::l2_port_type_t(int v, const std::string s)
 }
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 l2_binding::l2_binding(const interface& itf, const bridge_domain& bd)
   : m_itf(itf.singular())
@@ -55,7 +55,7 @@ l2_binding::l2_binding(const interface& itf, const bridge_domain& bd)
 }
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 l2_binding::l2_binding(const interface& itf,
                        const bridge_domain& bd,

@@ -70,7 +70,7 @@ private:
 };
 
 /**
- * A cmd class that Unconfigs interface span
+ * A cmd class that unconfigures an interface span
  */
 class unconfig_cmd
   : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_span_enable_disable>
@@ -109,7 +109,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the interface spans
+ * A cmd class that dumps all the interface spans
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_span_dump>
 {
@@ -136,7 +136,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

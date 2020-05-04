@@ -39,7 +39,7 @@ nat_binding::zone_t::from_vpp(u8 is_inside)
 }
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 nat_binding::nat_binding(const interface& itf,
                          const direction_t& dir,

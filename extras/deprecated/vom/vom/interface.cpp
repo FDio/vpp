@@ -46,7 +46,7 @@ interface::event_handler interface::m_evh;
 std::shared_ptr<interface_cmds::events_cmd> interface::m_events_cmd;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
@@ -347,14 +347,14 @@ interface::update(const interface& desired)
     return;
 
   /*
-   * change the interface state to that which is deisred
+   * change the interface state to that which is desired
    */
   if (m_state.update(desired.m_state)) {
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
   /*
-   * change the interface state to that which is deisred
+   * change the interface state to that which is desired
    */
   if (m_l2_address.update(desired.m_l2_address)) {
     HW::enqueue(new interface_cmds::set_mac_cmd(m_l2_address, m_hdl));
@@ -629,7 +629,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
     /*
      * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, *tapv2itf);
@@ -656,7 +656,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();
       /*
        * Write each of the discovered interfaces into the OM,
-       * but disable the HW Command q whilst we do, so that no
+       * but disable the HW command queue whilst we do, so that no
        * commands are sent to VPP
        */
       OM::commit(key, *itf);
@@ -700,7 +700,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
     /*
      * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, *bond_itf);
@@ -722,7 +722,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
       /*
        * Write each of the discovered interfaces into the OM,
-       * but disable the HW Command q whilst we do, so that no
+       * but disable the HW command queue whilst we do, so that no
        * commands are sent to VPP
        */
       //      OM::commit(slave_itf->key(), *slave_itf);
@@ -733,7 +733,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
       bond_group_binding bid(*bond_itf, enslaved_itfs);
       /*
        * Write each of the discovered interfaces into the OM,
-       * but disable the HW Command q whilst we do, so that no
+       * but disable the HW command queue whilst we do, so that no
        * commands are sent to VPP
        */
       OM::commit(key, bid);

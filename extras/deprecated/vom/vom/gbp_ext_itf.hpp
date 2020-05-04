@@ -23,7 +23,7 @@
 
 namespace VOM {
 /**
- * A enternal interface for GBP
+ * A external interface for GBP
  */
 class gbp_ext_itf : public object_base
 {
@@ -66,12 +66,12 @@ public:
   std::shared_ptr<gbp_ext_itf> singular() const;
 
   /**
-   * Find the instnace of the ext_itf interface in the OM
+   * Find the instance of the ext_itf interface in the OM
    */
   static std::shared_ptr<gbp_ext_itf> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all bridge_domain-domain into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -127,17 +127,17 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const gbp_ext_itf& obj);
 
   /**
-   * Find or add the instnace of the bridge_domain domain in the OM
+   * Find or add the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<gbp_ext_itf> find_or_add(const gbp_ext_itf& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

@@ -102,7 +102,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps IP fib tables
+ * A cmd class that dumps IP fib tables
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Ip_table_dump>
 {
@@ -129,7 +129,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

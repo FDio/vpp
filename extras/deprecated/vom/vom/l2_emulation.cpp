@@ -26,7 +26,7 @@ singular_db<l2_emulation::key_t, l2_emulation> l2_emulation::m_db;
 l2_emulation::event_handler l2_emulation::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 l2_emulation::l2_emulation(const interface& itf)
   : m_itf(itf.singular())

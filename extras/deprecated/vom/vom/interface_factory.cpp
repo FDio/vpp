@@ -127,7 +127,7 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   }
 
   /*
-   * set the handle on the intterface - N.B. this is the sigluar instance
+   * set the handle on the interface - N.B. this is the singular instance
    * not a stack local.
    */
   if (sp)

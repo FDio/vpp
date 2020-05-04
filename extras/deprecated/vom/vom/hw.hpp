@@ -125,7 +125,7 @@ public:
     void set(const rc_t& rc) { item_rc = rc; }
 
     /**
-     * Return true if the HW item is configred in HW
+     * Return true if the HW item is configured in HW
      */
     operator bool() const { return (rc_t::OK == item_rc); }
 
@@ -138,14 +138,14 @@ public:
       bool need_hw_update = false;
 
       /*
-       * if the deisred set is unset (i.e. defaulted, we've
+       * if the desired set is unset (i.e. defaulted, we've
        * no update to make
        */
       if (rc_t::UNSET == desired.rc()) {
         return (false);
       }
       /*
-       * A HW update is needed if thestate is different
+       * A HW update is needed if the state is different
        * or the state is not yet in HW
        */
       need_hw_update = (item_data != desired.data() || rc_t::OK != rc());
@@ -197,7 +197,7 @@ public:
     ~cmd_q();
 
     /**
-     * Copy assignement - only used in UT
+     * Copy assignment - only used in UT
      */
     cmd_q& operator=(const cmd_q& f);
 
@@ -221,7 +221,7 @@ public:
     virtual rc_t write();
 
     /**
-     * Blocking Connect to VPP - call once at bootup
+     * Blocking Connect to VPP - call once at boot up
      */
     virtual bool connect();
 
@@ -250,7 +250,7 @@ public:
 
     /**
      * A map of issued, but uncompleted, commands.
-     *  i.e. those that we are waiting, async stylee,
+     *  i.e. those that we are waiting, async style,
      * for VPP to complete
      */
     std::map<cmd*, std::shared_ptr<cmd>> m_pending;
@@ -340,7 +340,7 @@ public:
 
 private:
   /**
-   * The command Q toward HW
+   * The command queue toward HW
    */
   static cmd_q* m_cmdQ;
 

@@ -57,7 +57,7 @@ public:
 
 private:
   /**
-   * Enpoint values of the tunnel to be created
+   * Endpoint values of the tunnel to be created
    */
   const vxlan_tunnel::endpoint_t m_ep;
   bool m_is_l2;
@@ -93,13 +93,13 @@ public:
 
 private:
   /**
-   * Enpoint values of the tunnel to be deleted
+   * Endpoint values of the tunnel to be deleted
    */
   const vxlan_tunnel::endpoint_t m_ep;
 };
 
 /**
- * A cmd class that Dumps all the Vpp interfaces
+ * A cmd class that dumps all the Vpp interfaces
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Vxlan_gbp_tunnel_dump>
 {

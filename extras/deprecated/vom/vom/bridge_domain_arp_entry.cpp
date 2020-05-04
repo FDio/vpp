@@ -184,7 +184,7 @@ bridge_domain_arp_entry::event_handler::handle_populate(
 
     /*
      * Write each of the discovered bridge-domain arp entry into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, bd_ae);

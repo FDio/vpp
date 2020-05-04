@@ -65,7 +65,7 @@ private:
   const boost::asio::ip::address_v4& m_gaddr;
 
   /**
-   * The igmp srouce specific addresses to listen them
+   * The igmp source specific addresses to listen them
    */
   const igmp_listen::src_addrs_t& m_saddrs;
 };
@@ -111,7 +111,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the igmp configs
+ * A cmd class that dumps all the igmp configs
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Igmp_dump>
 {
@@ -138,7 +138,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 

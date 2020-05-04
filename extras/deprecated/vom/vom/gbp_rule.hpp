@@ -216,7 +216,7 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   gbp_rule(uint32_t priority, const next_hop_set_t& nhs, const action_t& a);
   gbp_rule(uint32_t priority, const action_t& a);

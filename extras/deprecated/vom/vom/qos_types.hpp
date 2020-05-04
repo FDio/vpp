@@ -45,7 +45,7 @@ private:
   source_t(int v, const std::string& s);
 };
 
-}; // namesapce QoS
+}; // namespace QoS
 
 }; // namespace VOM
 

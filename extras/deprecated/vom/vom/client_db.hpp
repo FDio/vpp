@@ -23,7 +23,7 @@
 
 namespace VOM {
 /**
- * A convenitent typedef for set of objects owned.
+ * A convenient typedef for set of objects owned.
  *  A set of shared pointers. This is how the reference counting
  *  of an object in the model it managed. Once all these shared ptr
  *  and hence references are gone, the object is deleted and any state
