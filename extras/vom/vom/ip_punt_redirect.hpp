@@ -31,7 +31,7 @@ class ip_punt_redirect : public object_base
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    *
    * @param rx_itf - The interface from where the punt traffic should come.
    * @param tx_itf - The interface to which traffic should be redirected.
@@ -42,7 +42,7 @@ public:
                    const boost::asio::ip::address& addr);
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    *
    * @param tx_itf - The interface to which traffic should be redirected.
    * @param addr - The next hop ip address to redirect the traffic.
@@ -128,7 +128,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const ip_punt_redirect& obj);
 
@@ -139,7 +139,7 @@ private:
     const ip_punt_redirect& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

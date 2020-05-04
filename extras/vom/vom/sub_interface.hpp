@@ -31,7 +31,7 @@ class sub_interface : public interface
 
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   sub_interface(const interface& parent, admin_state_t state, vlan_id_t vlan);
 

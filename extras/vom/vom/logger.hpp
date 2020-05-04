@@ -137,7 +137,7 @@ private:
   log_level_t m_level;
 
   /**
-   * Pointer to a registered handler. Null if no handler registerd
+   * Pointer to a registered handler. Null if no handler registered
    */
   handler* m_handler;
 };

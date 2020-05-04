@@ -123,7 +123,7 @@ private:
 };
 
 /**
- * A functor class represents our desire to recieve interface events
+ * A functor class represents our desire to receive interface events
  */
 class events_cmd : public event_cmd<vapi::Control_ping, vapi::Dhcp_compl_event>
 {
@@ -161,13 +161,13 @@ public:
 private:
   void succeeded() {}
   /**
-   * The listner of this command
+   * The listener of this command
    */
   dhcp_client::event_listener& m_listener;
 };
 
 /**
- * A cmd class that Dumps all the DHCP clients
+ * A cmd class that dumps all the DHCP clients
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Dhcp_client_dump>
 {
@@ -194,7 +194,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

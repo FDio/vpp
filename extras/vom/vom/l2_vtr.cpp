@@ -19,7 +19,7 @@ namespace VOM {
 namespace l2_vtr {
 
 /*
- * Make sure these are in sync with the smae enum in VPP
+ * Make sure these are in sync with the same enum in VPP
  */
 const option_t option_t::DISABLED(0, "disabled");
 const option_t option_t::PUSH_1(1, "push-1");

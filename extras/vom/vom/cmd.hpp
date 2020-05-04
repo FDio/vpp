@@ -53,7 +53,7 @@ public:
 
   /**
    * Invoked on a Command when the HW queue is disabled to indicate
-   * that the commnad can be considered successful
+   * that the command can be considered successful
    */
   virtual void succeeded() = 0;
 

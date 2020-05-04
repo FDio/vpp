@@ -40,7 +40,7 @@ private:
   option_t(int v, const std::string s);
 };
 }; // namespace l2_vtr
-}; // namesapce VOM
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

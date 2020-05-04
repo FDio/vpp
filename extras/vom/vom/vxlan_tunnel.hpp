@@ -92,7 +92,7 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   vxlan_tunnel(const boost::asio::ip::address& src,
                const boost::asio::ip::address& dst,
@@ -197,7 +197,7 @@ private:
   static std::shared_ptr<vxlan_tunnel> find_or_add(const vxlan_tunnel& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 
@@ -217,7 +217,7 @@ private:
   void replay(void);
 
   /**
-   * Tunnel enpoint/key
+   * Tunnel Endpoint/key
    */
   endpoint_t m_tep;
 

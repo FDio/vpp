@@ -108,7 +108,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the bridge domains
+ * A cmd class that dumps all the bridge domains
  */
 class dump_cmd : public VOM::dump_cmd<vapi::L2_xconnect_dump>
 {

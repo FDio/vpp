@@ -407,14 +407,14 @@ private:
 };
 
 /**
- * A command class represents our desire to recieve interface events
+ * A command class represents our desire to receive interface events
  */
 class events_cmd
   : public event_cmd<vapi::Want_interface_events, vapi::Sw_interface_event>
 {
 public:
   /**
-   * Constructor taking the listner to notify
+   * Constructor taking the listener to notify
    */
   events_cmd(interface::event_listener& el);
 
@@ -451,7 +451,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the Vpp interfaces
+ * A cmd class that dumps all the Vpp interfaces
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_dump>
 {
@@ -477,7 +477,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the Vpp Interfaces
+ * A cmd class that dumps all the Vpp Interfaces
  */
 class vhost_dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_vhost_user_dump>
 {
@@ -503,7 +503,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the Vpp interfaces
+ * A cmd class that dumps all the Vpp interfaces
  */
 class af_packet_dump_cmd : public VOM::dump_cmd<vapi::Af_packet_dump>
 {

@@ -46,7 +46,7 @@ public:
   static const_iterator_t cend();
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   route_domain(route::table_id_t id);
 

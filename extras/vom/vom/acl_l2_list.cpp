@@ -209,7 +209,7 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
 
     /*
      * Write each of the discovered ACLs into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, acl);
@@ -245,7 +245,7 @@ l2_list::update(const l2_list& obj)
   }
   /*
    * We don't, can't, read the priority from VPP,
-   * so the is equals check above does not include the priorty.
+   * so the is equals check above does not include the priority.
    * but we save it now.
    */
   m_rules = obj.m_rules;

@@ -30,12 +30,12 @@ class lldp_global : public object_base
 {
 public:
   /**
-   * The key for the global conifugration is the 'system' namse
+   * The key for the global configuration is the 'system's name
    */
   typedef std::string key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   lldp_global(const std::string& system_name,
               uint32_t tx_hold,
@@ -118,7 +118,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const lldp_global& obj);
 
@@ -159,7 +159,7 @@ private:
   uint32_t m_tx_interval;
 
   /**
-   * HW globaluration for the binding. The bool representing the
+   * HW global configuration for the binding. The bool representing the
    * do/don't bind.
    */
   HW::item<bool> m_binding;

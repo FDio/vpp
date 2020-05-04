@@ -90,7 +90,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the GBP recircs
+ * A cmd class that dumps all the GBP recircs
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Gbp_recirc_dump>
 {
@@ -117,11 +117,11 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };
-}; // namespace gbp_enpoint_cms
+}; // namespace gbp_endpoint_cms
 }; // namespace VOM
 
 /*

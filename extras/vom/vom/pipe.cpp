@@ -35,7 +35,7 @@ pipe_mk_name(uint32_t instance)
 }
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 pipe::pipe(uint32_t instance, admin_state_t state)
   : interface(pipe_mk_name(instance), type_t::PIPE, state)

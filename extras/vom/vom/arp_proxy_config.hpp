@@ -36,7 +36,7 @@ public:
     key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   arp_proxy_config(const boost::asio::ip::address_v4& low,
                    const boost::asio::ip::address_v4& high);
@@ -103,7 +103,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const arp_proxy_config& obj);
 

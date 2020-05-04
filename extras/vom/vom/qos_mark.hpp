@@ -121,7 +121,7 @@ private:
   static std::shared_ptr<mark> find_or_add(const mark& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class VOM::OM;
 
@@ -162,7 +162,7 @@ private:
   static singular_db<key_t, mark> m_db;
 };
 
-}; // namesapce QoS
+}; // namespace QoS
 
 std::ostream& operator<<(std::ostream& os, const QoS::mark::key_t& key);
 

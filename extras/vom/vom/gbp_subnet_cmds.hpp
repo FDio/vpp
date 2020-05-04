@@ -97,7 +97,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the GBP subnets
+ * A cmd class that dumps all the GBP subnets
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Gbp_subnet_dump>
 {
@@ -124,11 +124,11 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };
-}; // namespace gbp_enpoint_cms
+}; // namespace gbp_endpoint_cms
 }; // namespace VOM
 
 /*
