@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "b273d4ed_f63268b0",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-05-04T17:58:00Z",
+      "side": 1,
+      "message": "from the centos job:\n\n17:37:55 /w/workspace/vpp-verify-master-centos7/src/vnet/ip/ip_api.c:618:34: error: ‘pfx’ may be used uninitialized in this function [-Werror\u003dmaybe-uninitialized]\n17:37:55   618 |         rmp-\u003eroute.stats_index \u003d fib_table_entry_get_stats_index (fib_index, pfx);\n\nmaybe:\n  pfx \u003d \u0026lookup\nto initialize.\n\nor preferably remove pfx and\n  fib_prefix_copy (\u0026lookup, fib_entry_get_prefix (fib_entry_index));",
+      "revId": "8bccfc8ab7d6c7de749db0270f533dd950d9bca8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8c905699_9938d6d5",
         "filename": "test/test_ip6.py",
         "patchSetId": 5
