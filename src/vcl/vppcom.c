@@ -3635,6 +3635,12 @@ vppcom_worker_unregister (void)
   vcl_set_worker_index (~0);
 }
 
+void
+vppcom_worker_index_set (int index)
+{
+  vcl_set_worker_index (index);
+}
+
 int
 vppcom_worker_index (void)
 {
