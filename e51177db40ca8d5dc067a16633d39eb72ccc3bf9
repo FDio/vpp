@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1cedb6a_b2b2f5ce",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-04T09:39:30Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we increment the version here? As we are renaming flags, code using old names will not work anymore.\nAny thoughts?",
+      "revId": "e51177db40ca8d5dc067a16633d39eb72ccc3bf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
