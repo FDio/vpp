@@ -1137,7 +1137,7 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   if (*result == (void *) -1)
     {
       error = clib_error_return_unix (0, "mmap `BAR%u'", bar);
-      if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+      if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && (fd != -1))
 	close (fd);
       return error;
     }

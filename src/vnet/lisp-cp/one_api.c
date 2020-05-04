@@ -1119,7 +1119,7 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
 	  a.leid.address.nsh.si = gid_address_nsh_si (&adj->leid);
 	  break;
 	default:
-	  ASSERT (0);
+	  ALWAYS_ASSERT (0);
 	}
       a.reid.type = eid_type;
       a.leid.type = eid_type;
