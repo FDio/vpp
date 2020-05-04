@@ -823,12 +823,15 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
   if (queue_num % 2)
     {
+      gro_flow_table_init (&vring->flow_table);
+      vring->flow_table->is_l2 = 1;
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
       clib_memset_u32 (vring->buffers, ~0, queue_size);
     }
   else
     {
+      vring->flow_table = 0;
       virtio_log_debug (vif, "rx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
@@ -1430,6 +1433,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 	virtio_free_used_desc (vm, vring);
       }
     vec_free (vring->buffers);
+    gro_flow_table_free (vring->flow_table);
     clib_spinlock_free (&vring->lockp);
     vlib_physmem_free (vm, vring->desc);
   }

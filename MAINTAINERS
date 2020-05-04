@@ -239,6 +239,12 @@ M:	Andrew Yourtchenko <ayourtch@gmail.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/gso/
 
+VNET GRO
+I:      gro
+M:      Mohsin Kazmi <sykazmi@cisco.com>
+F:      src/vnet/gso/gro.h
+F:      src/vnet/gso/gro_func.h
+
 Plugin - MAP
 I:	map
 Y:	src/plugins/map/FEATURE.yaml
