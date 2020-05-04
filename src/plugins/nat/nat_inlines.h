@@ -261,8 +261,11 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
   pool_put_index (tsm->list_pool, ses->per_user_index);
-  clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
-  pool_put_index (tsm->global_lru_pool, ses->global_lru_index);
+  if (sm->endpoint_dependent)
+    {
+      clib_dlist_remove (tsm->lru_pool, ses->lru_index);
+      pool_put_index (tsm->lru_pool, ses->lru_index);
+    }
   pool_put (tsm->sessions, ses);
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
@@ -280,25 +283,6 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
     }
 }
 
-always_inline void
-nat44_ed_delete_session (snat_main_t * sm, snat_session_t * ses,
-			 u32 thread_index, int global_lru_delete
-			 /* delete from global LRU list */ )
-{
-  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
-						       thread_index);
-
-  if (global_lru_delete)
-    {
-      clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
-    }
-  pool_put_index (tsm->global_lru_pool, ses->global_lru_index);
-  pool_put (tsm->sessions, ses);
-  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
-			   pool_elts (tsm->sessions));
-
-}
-
 /** \brief Set TCP session state.
     @return 1 if session was closed, otherwise 0
 */
@@ -307,6 +291,7 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 				 snat_session_t * ses, vlib_buffer_t * b,
 				 u32 thread_index)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
   u32 tcp_ack_number = vnet_buffer (b)->ip.reass.tcp_ack_number;
   u32 tcp_seq_number = vnet_buffer (b)->ip.reass.tcp_seq_number;
@@ -331,10 +316,23 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 	  ses->state |= NAT44_SES_O2I_FIN_ACK;
 	  if (nat44_is_ses_closed (ses))
 	    {			// if session is now closed, save the timestamp
-	      ses->tcp_close_timestamp = now + sm->tcp_transitory_timeout;
+	      ses->tcp_closed_timestamp = now + sm->tcp_transitory_timeout;
+	      ses->last_lru_update = now;
 	    }
 	}
     }
+
+  // move the session to proper LRU
+  if (ses->state)
+    {
+      ses->lru_head_index = tsm->tcp_trans_lru_head_index;
+    }
+  else
+    {
+      ses->lru_head_index = tsm->tcp_estab_lru_head_index;
+    }
+  clib_dlist_remove (tsm->lru_pool, ses->lru_index);
+  clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
   return 0;
 }
 
@@ -344,6 +342,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
 				 u32 tcp_ack_number, u32 tcp_seq_number,
 				 u32 thread_index)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
     ses->state = NAT44_SES_RST;
   if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
@@ -364,9 +363,21 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
 	ses->state |= NAT44_SES_I2O_FIN_ACK;
       if (nat44_is_ses_closed (ses))
 	{			// if session is now closed, save the timestamp
-	  ses->tcp_close_timestamp = now + sm->tcp_transitory_timeout;
+	  ses->tcp_closed_timestamp = now + sm->tcp_transitory_timeout;
+	  ses->last_lru_update = now;
 	}
     }
+  // move the session to proper LRU
+  if (ses->state)
+    {
+      ses->lru_head_index = tsm->tcp_trans_lru_head_index;
+    }
+  else
+    {
+      ses->lru_head_index = tsm->tcp_estab_lru_head_index;
+    }
+  clib_dlist_remove (tsm->lru_pool, ses->lru_index);
+  clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
   return 0;
 }
 
@@ -411,7 +422,7 @@ always_inline void
 nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
 			  u32 thread_index)
 {
-  /* don't update too often - timeout is in a magnitude of seconds anyway */
+  /* don't update too often - timeout is in magnitude of seconds anyway */
   if (s->last_heard > s->last_lru_update + 1)
     {
       if (!sm->endpoint_dependent)
@@ -421,13 +432,13 @@ nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
 	  clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
 			      s->per_user_list_head_index, s->per_user_index);
 	}
-
-      clib_dlist_remove (sm->per_thread_data[thread_index].global_lru_pool,
-			 s->global_lru_index);
-      clib_dlist_addtail (sm->per_thread_data[thread_index].global_lru_pool,
-			  sm->
-			  per_thread_data[thread_index].global_lru_head_index,
-			  s->global_lru_index);
+      else
+	{
+	  clib_dlist_remove (sm->per_thread_data[thread_index].lru_pool,
+			     s->lru_index);
+	  clib_dlist_addtail (sm->per_thread_data[thread_index].lru_pool,
+			      s->lru_head_index, s->lru_index);
+	}
       s->last_lru_update = s->last_heard;
     }
 }

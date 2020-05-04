@@ -34,6 +34,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vppinfra/bihash_16_8.h>
+#include <nat/nat44/ed_inlines.h>
 
 #include <vpp/app/version.h>
 
@@ -593,14 +594,6 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
 			  s->per_user_list_head_index,
 			  per_user_translation_list_elt - tsm->list_pool);
 
-      dlist_elt_t *global_lru_list_elt;
-      pool_get (tsm->global_lru_pool, global_lru_list_elt);
-      global_lru_list_elt->value = s - tsm->sessions;
-      s->global_lru_index = global_lru_list_elt - tsm->global_lru_pool;
-      clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
-			  s->global_lru_index);
-      s->last_lru_update = now;
-
       s->user_index = u - tsm->users;
       vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			       pool_elts (tsm->sessions));
@@ -608,58 +601,6 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
 
   s->ha_last_refreshed = now;
 
-  return s;
-}
-
-int
-nat_global_lru_free_one (snat_main_t * sm, int thread_index, f64 now)
-{
-  snat_session_t *s = NULL;
-  dlist_elt_t *oldest_elt;
-  u64 sess_timeout_time;
-  u32 oldest_index;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  oldest_index = clib_dlist_remove_head (tsm->global_lru_pool,
-					 tsm->global_lru_head_index);
-  if (~0 != oldest_index)
-    {
-      oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
-      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
-
-      sess_timeout_time =
-	s->last_heard + (f64) nat44_session_get_timeout (sm, s);
-      if (now >= sess_timeout_time
-	  || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
-	{
-	  nat_free_session_data (sm, s, thread_index, 0);
-	  nat44_ed_delete_session (sm, s, thread_index, 0);
-	  return 1;
-	}
-      else
-	{
-	  clib_dlist_addhead (tsm->global_lru_pool,
-			      tsm->global_lru_head_index, oldest_index);
-	}
-    }
-  return 0;
-}
-
-snat_session_t *
-nat_ed_session_alloc (snat_main_t * sm, u32 thread_index, f64 now)
-{
-  snat_session_t *s;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-
-  nat_global_lru_free_one (sm, thread_index, now);
-
-  pool_get (tsm->sessions, s);
-  clib_memset (s, 0, sizeof (*s));
-
-  nat44_global_lru_insert (tsm, s, now);
-
-  s->ha_last_refreshed = now;
-  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
-			   pool_elts (tsm->sessions));
   return s;
 }
 
@@ -912,7 +853,7 @@ snat_ed_static_mapping_del_sessions (snat_main_t * sm,
   vec_foreach (ses_index, indexes_to_free)
   {
     s = pool_elt_at_index (tsm->sessions, *ses_index);
-    nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+    nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
   }
   vec_free (indexes_to_free);
 }
@@ -1617,7 +1558,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
               continue;
 
             nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-            nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+            nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
           });
       }));
       /* *INDENT-ON* */
@@ -1749,7 +1690,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
           continue;
 
         nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-        nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+        nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
       });
       /* *INDENT-ON* */
 
@@ -1866,7 +1807,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
 	      vec_foreach (ses_index, ses_to_be_removed)
 		{
 		  ses = pool_elt_at_index (tsm->sessions, ses_index[0]);
-		  nat44_ed_delete_session (sm, ses, tsm - sm->per_thread_data, 1);
+		  nat_ed_session_delete (sm, ses, tsm - sm->per_thread_data, 1);
 		}
 	  }else{
 	      vec_foreach (ses_index, ses_to_be_removed)
@@ -3657,6 +3598,11 @@ nat_ha_sadd_cb (ip4_address_t * in_addr, u16 in_port,
   if (!s)
     return;
 
+  if (sm->endpoint_dependent)
+    {
+      nat_ed_lru_insert (tsm, s, now, proto);
+    }
+
   s->last_heard = now;
   s->flags = flags;
   s->ext_host_addr.as_u32 = eh_addr->as_u32;
@@ -3806,7 +3752,7 @@ nat_ha_sadd_ed_cb (ip4_address_t * in_addr, u16 in_port,
 	return;
     }
 
-  s = nat_ed_session_alloc (sm, thread_index, now);
+  s = nat_ed_session_alloc (sm, thread_index, now, proto);
   if (!s)
     return;
 
@@ -3925,12 +3871,29 @@ nat44_db_init (snat_main_per_thread_data_t * tsm)
   snat_main_t *sm = &snat_main;
 
   pool_alloc (tsm->sessions, sm->max_translations);
-  pool_alloc (tsm->global_lru_pool, sm->max_translations);
+  pool_alloc (tsm->lru_pool, sm->max_translations);
 
   dlist_elt_t *head;
-  pool_get (tsm->global_lru_pool, head);
-  tsm->global_lru_head_index = head - tsm->global_lru_pool;
-  clib_dlist_init (tsm->global_lru_pool, tsm->global_lru_head_index);
+
+  pool_get (tsm->lru_pool, head);
+  tsm->tcp_trans_lru_head_index = head - tsm->lru_pool;
+  clib_dlist_init (tsm->lru_pool, tsm->tcp_trans_lru_head_index);
+
+  pool_get (tsm->lru_pool, head);
+  tsm->tcp_estab_lru_head_index = head - tsm->lru_pool;
+  clib_dlist_init (tsm->lru_pool, tsm->tcp_estab_lru_head_index);
+
+  pool_get (tsm->lru_pool, head);
+  tsm->udp_lru_head_index = head - tsm->lru_pool;
+  clib_dlist_init (tsm->lru_pool, tsm->udp_lru_head_index);
+
+  pool_get (tsm->lru_pool, head);
+  tsm->icmp_lru_head_index = head - tsm->lru_pool;
+  clib_dlist_init (tsm->lru_pool, tsm->icmp_lru_head_index);
+
+  pool_get (tsm->lru_pool, head);
+  tsm->unk_proto_lru_head_index = head - tsm->lru_pool;
+  clib_dlist_init (tsm->lru_pool, tsm->unk_proto_lru_head_index);
 
   if (sm->endpoint_dependent)
     {
@@ -3970,7 +3933,7 @@ nat44_db_free (snat_main_per_thread_data_t * tsm)
   snat_main_t *sm = &snat_main;
 
   pool_free (tsm->sessions);
-  pool_free (tsm->global_lru_pool);
+  pool_free (tsm->lru_pool);
 
   if (sm->endpoint_dependent)
     {
@@ -4503,7 +4466,7 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
     return VNET_API_ERROR_UNSPECIFIED;
   s = pool_elt_at_index (tsm->sessions, value.value);
   nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-  nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
   return 0;
 }
 

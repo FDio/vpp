@@ -31,6 +31,7 @@
 #include <nat/nat_msg_enum.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
+#include <nat/nat44/ed_inlines.h>
 
 #define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
 #define vl_api_nat44_nat44_lb_static_mapping_details_t_endian vl_noop_handler
@@ -2058,7 +2059,7 @@ static void
 	      {
 		s = pool_elt_at_index(tsm->sessions, ses_index[0]);
 		nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-		nat44_ed_delete_session (sm, s, tsm - sm->per_thread_data, 1);
+		nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
 	      }
 	}else{
 	    vec_foreach (ses_index, ses_to_be_removed)
