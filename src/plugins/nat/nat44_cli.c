@@ -221,6 +221,7 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%U",
 		   format_bihash_8_8, &sm->static_mapping_by_external,
 		   verbose);
+  vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed, verbose);
   vec_foreach_index (i, sm->per_thread_data)
   {
     tsm = vec_elt_at_index (sm->per_thread_data, i);
@@ -681,9 +682,9 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                 tcp_sessions++;
                 if (s->state)
                   {
-                    if (s->tcp_close_timestamp)
+                    if (s->tcp_closed_timestamp)
                       {
-                        if (now >= s->tcp_close_timestamp)
+                        if (now >= s->tcp_closed_timestamp)
                           {
                             ++transitory_closed;
                           }
@@ -727,9 +728,9 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
             tcp_sessions++;
             if (s->state)
               {
-                if (s->tcp_close_timestamp)
+                if (s->tcp_closed_timestamp)
                   {
-                    if (now >= s->tcp_close_timestamp)
+                    if (now >= s->tcp_closed_timestamp)
                       {
                         ++transitory_closed;
                       }
@@ -751,6 +752,31 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
       }));
       /* *INDENT-ON* */
       count = pool_elts (tsm->sessions);
+      if (sm->endpoint_dependent)
+	{
+	  dlist_elt_t *oldest_elt;
+	  u32 oldest_index;
+#define _(n, d)                                                          \
+  oldest_index =                                                         \
+      clib_dlist_remove_head (tsm->lru_pool, tsm->n##_lru_head_index);   \
+  if (~0 != oldest_index)                                                \
+    {                                                                    \
+      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);      \
+      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);          \
+      sess_timeout_time =                                                \
+          s->last_heard + (f64)nat44_session_get_timeout (sm, s);        \
+      vlib_cli_output (vm, d " LRU min session timeout %llu (now %llu)", \
+                       sess_timeout_time, now);                          \
+      clib_dlist_addhead (tsm->lru_pool, tsm->n##_lru_head_index,        \
+                          oldest_index);                                 \
+    }
+	  _(tcp_estab, "established tcp");
+	  _(tcp_trans, "transitory tcp");
+	  _(udp, "udp");
+	  _(unk_proto, "unknown protocol");
+	  _(icmp, "icmp");
+#undef _
+	}
     }
 
   vlib_cli_output (vm, "total timed out sessions: %u", timed_out);
