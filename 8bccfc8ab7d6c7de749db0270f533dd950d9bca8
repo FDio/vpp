@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8c905699_9938d6d5",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-05-04T15:56:12Z",
+      "side": 1,
+      "message": "just FYI, you don\u0027t have to do this, all VPPObject you create in the test case are auto deleted for you in the super\u0027s teardown.",
+      "revId": "8bccfc8ab7d6c7de749db0270f533dd950d9bca8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff3722cc_8a3ff9a5",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1053,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-05-04T15:56:12Z",
+      "side": 1,
+      "message": "indeed you can\u0027t 😊\nthis is one of the difference between the RIB and the FIB. The RIB would contain only the routes that some routing protocol added, so if you did an exact match lookup for 0.0.0.0/0 in a RIB you might expect to get nothing if no routing protocol had advertised one. In a FIB a default route always exits and if routing has not provided a route that the FIB\u0027s entry points to drop. this is so that all FIB look ups return a valid result and the DP does not need an if (lookup_ok) branch.\nif you wanted to make this API lookup only return routes that the API added, you could filter based on the fib_entry_t\u0027s source in VPP before sending to the client.\n\nsimilarly if you added a route to say self.pg0.remote_ip4 \u0027via p.q.r.s\u0027 then you\u0027ll not see this path in the lookup. instead you\u0027ll get \u0027via self.pg0\u0027 because that\u0027s what the FIB is using for forwarding despite what the API requested.\n\ni\u0027ll merge the patch once it verifies, i\u0027m just highlighting some possible banana skins in its use.",
+      "revId": "8bccfc8ab7d6c7de749db0270f533dd950d9bca8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
