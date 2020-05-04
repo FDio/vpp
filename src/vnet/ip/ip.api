@@ -190,6 +190,32 @@ manual_endian manual_print define ip_route_details
   vl_api_ip_route_t route;
 };
 
+/** \brief Lookup IP route from a table
+    @param client_index - opaque cookie to identify the sender
+    @param table_id - The IP table to look the route up in
+    @param exact - 0 for normal route lookup, 1 for exact match only
+    @param prefix - The prefix (or host) for route lookup.
+*/
+define ip_route_lookup
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  u8 exact;
+  vl_api_prefix_t prefix;
+};
+
+/** \brief IP FIB table lookup response
+    @param retval - return code of the lookup
+    @param route - The route entry in the table if found
+*/
+define ip_route_lookup_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip_route_t route;
+};
+
 /** \brief Set the ip flow hash config for a fib request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
