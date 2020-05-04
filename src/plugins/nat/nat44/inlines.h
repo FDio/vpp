@@ -59,22 +59,9 @@ nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
   s->ext_host_port = 0;
   s->ext_host_nat_addr.as_u32 = 0;
   s->ext_host_nat_port = 0;
-  s->tcp_close_timestamp = 0;
+  s->tcp_closed_timestamp = 0;
   s->ha_last_refreshed = now;
   return s;
-}
-
-static_always_inline void
-nat44_global_lru_insert (snat_main_per_thread_data_t * tsm,
-			 snat_session_t * s, f64 now)
-{
-  dlist_elt_t *lru_list_elt;
-  pool_get (tsm->global_lru_pool, lru_list_elt);
-  s->global_lru_index = lru_list_elt - tsm->global_lru_pool;
-  clib_dlist_addtail (tsm->global_lru_pool, tsm->global_lru_head_index,
-		      s->global_lru_index);
-  lru_list_elt->value = s - tsm->sessions;
-  s->last_lru_update = now;
 }
 
 static_always_inline void

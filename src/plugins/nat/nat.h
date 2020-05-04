@@ -276,8 +276,10 @@ typedef CLIB_PACKED(struct
   u32 per_user_index;
   u32 per_user_list_head_index;
 
+  /* head of LRU list in which this session is tracked */
+  u32 lru_head_index;
   /* index in global LRU list */
-  u32 global_lru_index;
+  u32 lru_index;
   f64 last_lru_update;
 
   /* Last heard timer */
@@ -302,7 +304,7 @@ typedef CLIB_PACKED(struct
   u8 state;
   u32 i2o_fin_seq;
   u32 o2i_fin_seq;
-  u32 tcp_close_timestamp;
+  u64 tcp_closed_timestamp;
 
   /* user index */
   u32 user_index;
@@ -480,8 +482,12 @@ typedef struct
   dlist_elt_t *list_pool;
 
   /* LRU session list - head is stale, tail is fresh */
-  dlist_elt_t *global_lru_pool;
-  u32 global_lru_head_index;
+  dlist_elt_t *lru_pool;
+  u32 tcp_trans_lru_head_index;
+  u32 tcp_estab_lru_head_index;
+  u32 udp_lru_head_index;
+  u32 icmp_lru_head_index;
+  u32 unk_proto_lru_head_index;
 
   /* NAT thread index */
   u32 snat_thread_index;
@@ -1262,7 +1268,6 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 			    u32 thread_index, u8 is_ha);
 
 /**
-<<<<<<< bdfe5955f59a735fd8d70e9026f8c1867a4c8cc6
  * @brief Set NAT44 session limit (session limit, vrf id)
  *
  * @param session_limit Session limit
@@ -1272,10 +1277,7 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 
 /**
- * @brief Free NAT44 ED session data (lookup keys, external addrres port)
-=======
  * @brief Free NAT44 ED session data (lookup keys, external address port)
->>>>>>> docs: clean up make docs job
  *
  * @param s            NAT session
  * @param thread_index thread index
@@ -1326,18 +1328,6 @@ snat_user_t *nat_user_get_or_create (snat_main_t * sm,
 snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 					      snat_user_t * u,
 					      u32 thread_index, f64 now);
-
-/**
- * @brief Allocate NAT endpoint-dependent session
- *
- * @param sm           snat global configuration data
- * @param thread_index thread index
- * @param now          time now
- *
- * @return session data structure on success otherwise zero value
- */
-snat_session_t *nat_ed_session_alloc (snat_main_t * sm, u32 thread_index,
-				      f64 now);
 
 /**
  * @brief Set address and port assignment algorithm for MAP-E CE
@@ -1447,8 +1437,6 @@ typedef struct
 {
   u16 src_port, dst_port;
 } tcp_udp_header_t;
-
-int nat_global_lru_free_one (snat_main_t * sm, int thread_index, f64 now);
 
 #endif /* __included_nat_h__ */
 /*
