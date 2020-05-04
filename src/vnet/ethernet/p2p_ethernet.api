@@ -18,6 +18,18 @@ option version = "1.0.0";
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
+/** \brief Create a point-to-point (p2p) Ethernet sub-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param parent_if_index - index of the parent interface
+    @param subif_id - subinterface index identifier
+    @param remote_mac - client MAC address
+    @retval VNET_API_ERROR_INVALID_SW_IF_INDEX on invalid parent_if_index
+    @retval VNET_API_ERROR_INVALID_SW_IF_INDEX_2 on invalid subif_id
+    @retval VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED
+    @retval VNET_API_ERROR_SUBIF_ALREADY_EXISTS
+    @retval VNET_API_ERROR_SUBIF_CREATE_FAILED
+*/
 define p2p_ethernet_add
 {
   u32 client_index;
@@ -34,6 +46,13 @@ define p2p_ethernet_add_reply
   vl_api_interface_index_t sw_if_index;
 };
 
+/** \brief Delete a point-to-point (p2p) Ethernet sub-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param parent_if_index - index of the parent interface
+    @param remote_mac - client MAC address
+    @retval VNET_API_ERROR_SUBIF_DOESNT_EXIST
+*/
 define p2p_ethernet_del
 {
   u32 client_index;
