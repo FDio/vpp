@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e16a5a0f_a15afcba",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2020-05-04T10:01:32Z",
+      "side": 1,
+      "message": "Hi Ray, the reason I put \u0027func\u0027 in name is, this inline function is used to convert the \"rss function\"...\nHave re-defined to return the rte_eth_hash_function",
+      "parentUuid": "dc36c676_8ee0c76c",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "250671ba_9a0492af",
         "filename": "src/plugins/dpdk/device/flow.c",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "46dffa19_64114f9d",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2020-05-04T10:01:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "250671ba_9a0492af",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f1db6f0_ce8ad8f7",
         "filename": "src/plugins/dpdk/device/flow.c",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2020-04-30T06:47:45Z",
       "side": 1,
       "message": "you should log something under these circumstances?",
+      "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c56909b7_28e2d775",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 574,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2020-05-04T10:01:32Z",
+      "side": 1,
+      "message": "I think no need to log anything here.\nUsers will get an VNET_FLOW_ERROR_NOT_SUPPORTED error and see the \"not supported\" prompt in vnet/flow layer.",
+      "parentUuid": "5f1db6f0_ce8ad8f7",
       "revId": "328a34328daf069cf7b5fdd16128e98b293f9da4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
