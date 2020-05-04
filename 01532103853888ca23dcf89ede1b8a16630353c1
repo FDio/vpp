@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e74f3cf5_4ba594fe",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-05-04T07:46:47Z",
+      "side": 1,
+      "message": "Why aren\u0027t new flagged added to the end?\nThis approach makes the API change backwards incompatible.",
+      "revId": "01532103853888ca23dcf89ede1b8a16630353c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
