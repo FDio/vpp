@@ -16,6 +16,24 @@
       "revId": "01532103853888ca23dcf89ede1b8a16630353c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b17c76e0_8ab51425",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-04T08:51:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e74f3cf5_4ba594fe",
+      "revId": "01532103853888ca23dcf89ede1b8a16630353c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
