@@ -31,6 +31,7 @@
 #include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
+#include <nat/nat44/ed_inlines.h>
 
 static char *nat_out2in_ed_error_strings[] = {
 #define _(sym,string) string,
@@ -179,7 +180,7 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       snat_free_outside_address_and_port (sm->addresses, ctx->thread_index,
 					  &s->out2in);
     delete:
-      nat44_ed_delete_session (sm, s, ctx->thread_index, 1);
+      nat_ed_session_delete (sm, s, ctx->thread_index, 1);
       return 1;
     }
 
@@ -214,7 +215,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
       return 0;
     }
 
-  s = nat_ed_session_alloc (sm, thread_index, now);
+  s = nat_ed_session_alloc (sm, thread_index, now, e_key.protocol);
   if (!s)
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_USER_SESS_EXCEEDED];
@@ -258,7 +259,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 					       tsm->snat_thread_index))
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_OUT_OF_PORTS];
-	  nat44_ed_delete_session (sm, s, thread_index, 1);
+	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &kv, 0))
 	    nat_elog_notice ("out2in-ed key del failed");
 	  return 0;
@@ -366,7 +367,7 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
 	   (sm, rx_fib_index, thread_index)))
 	return;
 
-      s = nat_ed_session_alloc (sm, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now, ip->protocol);
       if (!s)
 	{
 	  nat_elog_warn ("create NAT session failed");
@@ -595,7 +596,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t * sm,
       new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
 
       /* Create a new session */
-      s = nat_ed_session_alloc (sm, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now, ip->protocol);
       if (!s)
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_USER_SESS_EXCEEDED];
@@ -761,7 +762,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	    {
 	      // session is closed, go slow path
 	      nat_free_session_data (sm, s0, thread_index, 0);
-	      nat44_ed_delete_session (sm, s0, thread_index, 1);
+	      nat_ed_session_delete (sm, s0, thread_index, 1);
 	      next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	      goto trace0;
 	    }
@@ -1023,7 +1024,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      if (s0->tcp_close_timestamp && now >= s0->tcp_close_timestamp)
 		{
 		  nat_free_session_data (sm, s0, thread_index, 0);
-		  nat44_ed_delete_session (sm, s0, thread_index, 1);
+		  nat_ed_session_delete (sm, s0, thread_index, 1);
 		  s0 = NULL;
 		}
 	    }
