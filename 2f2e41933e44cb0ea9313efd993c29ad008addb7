@@ -22,6 +22,30 @@
       "revId": "2f2e41933e44cb0ea9313efd993c29ad008addb7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "974c2a89_601d83a4",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2020-05-04T06:25:55Z",
+      "side": 1,
+      "message": "Could perhaps move some of the code (rmp\u003d and beyond) into REPLY_MACRO3_ZERO body argument, and eliminate the early code at the top of the function. Still need to do the table decode and lookup first to determine the size of the allocation. Seems like a decent change to be tested after the code is accepted prior to the API freeze perhaps?",
+      "parentUuid": "87c1a64e_0ef8e4ce",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 634,
+        "endChar": 55
+      },
+      "revId": "2f2e41933e44cb0ea9313efd993c29ad008addb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
