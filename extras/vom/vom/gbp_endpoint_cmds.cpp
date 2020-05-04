@@ -113,7 +113,7 @@ create_cmd::to_string() const
   for (auto ip : m_ip_addrs)
     s << ip.to_string();
 
-  s << "] mac:" << m_mac << " slcass:" << m_sclass
+  s << "] mac:" << m_mac << " sclass:" << m_sclass
     << " flags:" << m_flags.to_string();
 
   return (s.str());
