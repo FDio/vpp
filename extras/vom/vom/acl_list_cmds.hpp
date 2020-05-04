@@ -167,7 +167,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the ACLs
+ * A cmd class that dumps all the ACLs
  */
 template <typename DUMP>
 class dump_cmd : public VOM::dump_cmd<DUMP>

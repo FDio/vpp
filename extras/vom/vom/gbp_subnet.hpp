@@ -25,7 +25,7 @@
 
 namespace VOM {
 /**
- * A GBP Enpoint (i.e. a VM)
+ * A GBP Endpoint (i.e. a VM)
  */
 class gbp_subnet : public object_base
 {
@@ -116,12 +116,12 @@ public:
   std::shared_ptr<gbp_subnet> singular() const;
 
   /**
-   * Find the instnace of the bridge_domain domain in the OM
+   * Find the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<gbp_subnet> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all bridge_domain-domains into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -172,17 +172,17 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const gbp_subnet& obj);
 
   /**
-   * Find or add the instnace of the bridge_domain domain in the OM
+   * Find or add the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<gbp_subnet> find_or_add(const gbp_subnet& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

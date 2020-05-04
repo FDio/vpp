@@ -100,7 +100,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the neighbours
+ * A cmd class that dumps all the neighbours
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Ip_neighbor_dump>
 {
@@ -127,7 +127,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 

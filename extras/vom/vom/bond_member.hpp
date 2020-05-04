@@ -120,7 +120,7 @@ public:
 
 private:
   /**
-   * Refernece conter lock on the parent
+   * Reference counter lock on the parent
    */
   const std::shared_ptr<interface> m_itf;
 

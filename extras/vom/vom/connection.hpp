@@ -54,7 +54,7 @@ public:
   void disconnect();
 
   /**
-   * Retrun the VAPI context the commands will use
+   * Return the VAPI context the commands will use
    */
   vapi::Connection& ctx();
 

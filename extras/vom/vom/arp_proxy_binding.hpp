@@ -32,7 +32,7 @@ class arp_proxy_binding : public object_base
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   arp_proxy_binding(const interface& itf);
 
@@ -98,7 +98,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const arp_proxy_binding& obj);
 

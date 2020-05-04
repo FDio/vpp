@@ -45,7 +45,7 @@ public:
   typedef std::pair<direction_t, interface::key_t> key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   binding(const direction_t& direction, const interface& itf, const LIST& acl)
     : m_direction(direction)
@@ -139,7 +139,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const binding& obj);
 

@@ -52,7 +52,7 @@ public:
   }
 
   /**
-   * bitwise or assignemnt
+   * bitwise or assignment
    */
   enum_base& operator|=(const enum_base& e)
   {

@@ -47,7 +47,7 @@ public:
   typedef std::set<bond_member> enslaved_itf_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   bond_group_binding(const bond_interface& itf, const enslaved_itf_t& mem);
 
@@ -119,7 +119,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enqueue command to the VPP command Q for the update
+   * Enqueue command to the VPP command queue for the update
    */
   void update(const bond_group_binding& obj);
 

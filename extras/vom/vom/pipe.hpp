@@ -34,7 +34,7 @@ public:
   typedef std::pair<handle_t, handle_t> handle_pair_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   pipe(uint32_t instance, admin_state_t state);
 

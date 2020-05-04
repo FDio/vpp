@@ -28,7 +28,7 @@ class ra_prefix
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   ra_prefix(const route::prefix_t& pfx,
             uint8_t use_default,

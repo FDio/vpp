@@ -29,7 +29,7 @@ singular_db<uint32_t, gbp_route_domain> gbp_route_domain::m_db;
 gbp_route_domain::event_handler gbp_route_domain::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 gbp_route_domain::gbp_route_domain(const gbp_route_domain& rd)
   : m_id(rd.id())

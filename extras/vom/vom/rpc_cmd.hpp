@@ -97,7 +97,7 @@ public:
   }
 
   /**
-   * Called by the HW Command Q when it is disabled to indicate the
+   * Called by the HW command queue when it is disabled to indicate the
    * command can be considered successful without issuing it to HW
    */
   virtual void succeeded()

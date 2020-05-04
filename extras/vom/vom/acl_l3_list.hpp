@@ -48,7 +48,7 @@ public:
   typedef std::multiset<l3_rule> rules_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   l3_list(const key_t& key);
 
@@ -67,7 +67,7 @@ public:
   ~l3_list();
 
   /**
-   * Return the 'sigular instance' of the ACL that matches this object
+   * Return the 'singular instance' of the ACL that matches this object
    */
   std::shared_ptr<l3_list> singular() const;
 
@@ -150,7 +150,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enqueue commands to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const l3_list& obj);
 
@@ -160,7 +160,7 @@ private:
   HW::item<handle_t> m_hdl;
 
   /**
-   * Find or add the sigular instance in the DB
+   * Find or add the singular instance in the DB
    */
   static std::shared_ptr<l3_list> find_or_add(const l3_list& temp);
 
@@ -200,7 +200,7 @@ private:
   static std::map<handle_t, std::weak_ptr<l3_list>> m_hdl_db;
 
   /**
-   * The Key is a user defined identifer for this ACL
+   * The Key is a user defined identifier for this ACL
    */
   const key_t m_key;
 
@@ -210,7 +210,7 @@ private:
   rules_t m_rules;
 };
 
-}; // namesace ACL
+}; // namespace ACL
 }; // namespace VOM
 
 /*

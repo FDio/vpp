@@ -97,7 +97,7 @@ private:
 };
 
 }; // namespace lldp_binding_cmds
-}; // naemspace VOM
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

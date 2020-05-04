@@ -71,7 +71,7 @@ public:
      */
     const static type_t UNKNOWN;
     /**
-     * A brideged Virtual interface (aka SVI or IRB)
+     * A bridged Virtual interface (aka SVI or IRB)
      */
     const static type_t BVI;
     /**
@@ -201,14 +201,14 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   interface(const std::string& name,
             type_t type,
             admin_state_t state,
             const std::string& tag = "");
   /**
-   * Construct a new object matching the desried state mapped
+   * Construct a new object matching the desired state mapped
    * to a specific route_domain
    */
   interface(const std::string& name,
@@ -272,7 +272,7 @@ public:
   /**
    * Set the admin state of the interface
    *
-   * N.B. All set function change only the attibute of the object on whcih
+   * N.B. All set function change only the attribute of the object on which
    * they act, they do not make changes in VPP
    */
   void set(const admin_state_t& state);
@@ -370,7 +370,7 @@ public:
   };
 
   /**
-   * Base class for intterface Delete commands
+   * Base class for interface Delete commands
    */
   template <typename MSG>
   class delete_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
@@ -535,7 +535,7 @@ protected:
   friend class interface_factory;
   friend class pipe;
   /**
-   * The SW interface handle VPP has asigned to the interface
+   * The SW interface handle VPP has assigned to the interface
    */
   HW::item<handle_t> m_hdl;
 
@@ -640,7 +640,7 @@ private:
   void disable_stats_i();
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const interface& obj);
 
@@ -671,7 +671,7 @@ private:
   const type_t m_type;
 
   /**
-   * shared pointer to the routeDoamin the interface is in.
+   * shared pointer to the routeDomain the interface is in.
    * NULL is not mapped  - i.e. in the default table
    */
   std::shared_ptr<route_domain> m_rd;
@@ -727,14 +727,14 @@ private:
   virtual void replay(void);
 
   /**
-   * Create commands are firends so they can add interfaces to the
+   * Create commands are friends so they can add interfaces to the
    * handle store.
    */
   template <typename MSG>
   friend class create_cmd;
 
   /**
-   * Create commands are firends so they can remove interfaces from the
+   * Create commands are friends so they can remove interfaces from the
    * handle store.
    */
   template <typename MSG>
