@@ -1,0 +1,165 @@
+/*
+ * simple nat plugin
+ *
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef __included_ed_inlines_h__
+#define __included_ed_inlines_h__
+
+#include <float.h>
+#include <vppinfra/clib.h>
+#include <nat/nat.h>
+#include <nat/nat_inlines.h>
+
+/* Supported L4 protocols */
+#define foreach_ed_protocol \
+  _ (UDP, 0, udp, "udp")    \
+  _ (TCP, 1, tcp, "tcp")    \
+  _ (ICMP, 2, icmp, "icmp") \
+  _ (UNK, 3, unk, "unknown")
+
+typedef enum
+{
+#define _(N, i, n, s) ED_PROTO_##N = i,
+  foreach_ed_protocol
+#undef _
+} ed_protocol_t;
+
+static_always_inline int
+nat_global_lru_insert (snat_main_per_thread_data_t * tsm,
+		       snat_session_t * s, f64 now, ed_protocol_t proto)
+{
+  dlist_elt_t *lru_list_elt;
+  pool_get (tsm->global_lru_pool, lru_list_elt);
+  s->global_lru_index = lru_list_elt - tsm->global_lru_pool;
+  switch (proto)
+    {
+    case ED_PROTO_UNK:
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->unk_proto_lru_head_index,
+			  s->global_lru_index);
+      break;
+    case ED_PROTO_UDP:
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->udp_lru_head_index,
+			  s->global_lru_index);
+      break;
+    case ED_PROTO_TCP:
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->tcp_lru_head_index,
+			  s->global_lru_index);
+      break;
+    case ED_PROTO_ICMP:
+      clib_dlist_addtail (tsm->global_lru_pool, tsm->icmp_lru_head_index,
+			  s->global_lru_index);
+      break;
+    default:
+      nat_elog_err ("Unexpected ed protocol value");
+      ASSERT (0);
+      return 0;
+    }
+  lru_list_elt->value = s - tsm->sessions;
+  s->last_lru_update = now;
+  return 1;
+}
+
+always_inline void
+nat_ed_session_delete (snat_main_t * sm, snat_session_t * ses,
+		       u32 thread_index, int global_lru_delete
+		       /* delete from global LRU list */ )
+{
+  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
+						       thread_index);
+
+  if (global_lru_delete)
+    {
+      clib_dlist_remove (tsm->global_lru_pool, ses->global_lru_index);
+    }
+  pool_put_index (tsm->global_lru_pool, ses->global_lru_index);
+  pool_put (tsm->sessions, ses);
+  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			   pool_elts (tsm->sessions));
+
+}
+
+static_always_inline int
+nat_global_lru_free_one_with_head (snat_main_t * sm, int thread_index,
+				   f64 now, u32 head_index)
+{
+  snat_session_t *s = NULL;
+  dlist_elt_t *oldest_elt;
+  f64 sess_timeout_time;
+  u32 oldest_index;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  oldest_index = clib_dlist_remove_head (tsm->global_lru_pool, head_index);
+  if (~0 != oldest_index)
+    {
+      oldest_elt = pool_elt_at_index (tsm->global_lru_pool, oldest_index);
+      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
+      sess_timeout_time =
+	s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+      if (now >= sess_timeout_time
+	  || (s->tcp_close_timestamp && now >= s->tcp_close_timestamp))
+	{
+	  nat_free_session_data (sm, s, thread_index, 0);
+	  nat_ed_session_delete (sm, s, thread_index, 0);
+	  return 1;
+	}
+      else
+	{
+	  clib_dlist_addhead (tsm->global_lru_pool, head_index, oldest_index);
+	}
+    }
+  return 0;
+}
+
+static_always_inline int
+nat_global_lru_free_one (snat_main_t * sm, int thread_index, f64 now)
+{
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  int rc = 0;
+#define _(p)                                                              \
+  if ((rc = nat_global_lru_free_one_with_head (sm, thread_index, now,     \
+                                               tsm->p##_lru_head_index))) \
+    {                                                                     \
+      return rc;                                                          \
+    }
+  _(tcp_closed);
+  _(udp);
+  _(unk_proto);
+  _(icmp);
+  _(tcp);
+#undef _
+  return 0;
+}
+
+static_always_inline snat_session_t *
+nat_ed_session_alloc (snat_main_t * sm, u32 thread_index, f64 now,
+		      ed_protocol_t proto)
+{
+  snat_session_t *s;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+
+  nat_global_lru_free_one (sm, thread_index, now);
+
+  pool_get (tsm->sessions, s);
+  clib_memset (s, 0, sizeof (*s));
+
+  nat_global_lru_insert (tsm, s, now, proto);
+
+  s->ha_last_refreshed = now;
+  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			   pool_elts (tsm->sessions));
+  return s;
+}
+#endif

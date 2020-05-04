@@ -31,6 +31,7 @@
 #include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
+#include <nat/nat44/ed_inlines.h>
 
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,
@@ -155,7 +156,7 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       snat_free_outside_address_and_port (sm->addresses, ctx->thread_index,
 					  &s->out2in);
     delete:
-      nat44_ed_delete_session (sm, s, ctx->thread_index, 1);
+      nat_ed_session_delete (sm, s, ctx->thread_index, 1);
       return 1;
     }
 
@@ -339,7 +340,7 @@ slow_path_ed (snat_main_t * sm,
   if (snat_static_mapping_match
       (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
-      s = nat_ed_session_alloc (sm, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now, snat_proto);
       if (!s)
 	{
 	  nat_elog_warn ("create NAT session failed");
@@ -396,7 +397,7 @@ slow_path_ed (snat_main_t * sm,
 	  *sessionp = s;
 	  return next;
 	}
-      s = nat_ed_session_alloc (sm, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now, snat_proto);
       if (!s)
 	{
 	  nat_elog_warn ("create NAT session failed");
@@ -494,7 +495,7 @@ drop:
   if (s)
     {
       nat_free_session_data (sm, s, thread_index, 0);
-      nat44_ed_delete_session (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, s, thread_index, 1);
     }
   return NAT_NEXT_DROP;
 }
@@ -611,7 +612,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       if (nat44_is_ses_closed (s))
 	{
 	  nat_free_session_data (sm, s, thread_index, 0);
-	  nat44_ed_delete_session (sm, s, thread_index, 1);
+	  nat_ed_session_delete (sm, s, thread_index, 1);
 	}
       else
 	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;
@@ -864,7 +865,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	}
 
     create_ses:
-      s = nat_ed_session_alloc (sm, thread_index, now);
+      s = nat_ed_session_alloc (sm, thread_index, now, ED_PROTO_UNK);
       if (!s)
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
@@ -1056,7 +1057,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	  if (now >= sess_timeout_time)
 	    {
 	      nat_free_session_data (sm, s0, thread_index, 0);
-	      nat44_ed_delete_session (sm, s0, thread_index, 1);
+	      nat_ed_session_delete (sm, s0, thread_index, 1);
 	      // session is closed, go slow path
 	      next0 = def_slow;
 	      goto trace0;
@@ -1317,7 +1318,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      if (s0->tcp_close_timestamp && now >= s0->tcp_close_timestamp)
 		{
 		  nat_free_session_data (sm, s0, thread_index, 0);
-		  nat44_ed_delete_session (sm, s0, thread_index, 1);
+		  nat_ed_session_delete (sm, s0, thread_index, 1);
 		  s0 = NULL;
 		}
 	    }

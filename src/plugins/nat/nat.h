@@ -275,6 +275,8 @@ typedef CLIB_PACKED(struct
   u32 per_user_index;
   u32 per_user_list_head_index;
 
+  /* head of global LRU list in which this session is tracked */
+  u32 global_lru_head_index;
   /* index in global LRU list */
   u32 global_lru_index;
   f64 last_lru_update;
@@ -480,7 +482,11 @@ typedef struct
 
   /* LRU session list - head is stale, tail is fresh */
   dlist_elt_t *global_lru_pool;
-  u32 global_lru_head_index;
+  u32 tcp_closed_lru_head_index;
+  u32 tcp_lru_head_index;
+  u32 udp_lru_head_index;
+  u32 icmp_lru_head_index;
+  u32 unk_proto_lru_head_index;
 
   /* NAT thread index */
   u32 snat_thread_index;
@@ -1289,16 +1295,6 @@ snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 					      u32 thread_index, f64 now);
 
 /**
- * @brief Allocate NAT endpoint-dependent session
- *
- * @param thread_index thread index
- *
- * @return session data structure on success otherwise zero value
- */
-snat_session_t *nat_ed_session_alloc (snat_main_t * sm, u32 thread_index,
-				      f64 now);
-
-/**
  * @brief Set address and port assignment algorithm for MAP-E CE
  *
  * @param psid        Port Set Identifier value
@@ -1406,8 +1402,6 @@ typedef struct
 {
   u16 src_port, dst_port;
 } tcp_udp_header_t;
-
-int nat_global_lru_free_one (snat_main_t * sm, int thread_index, f64 now);
 
 #endif /* __included_nat_h__ */
 /*
