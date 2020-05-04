@@ -90,7 +90,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the GBP ext_itfs
+ * A cmd class that dumps all the GBP ext_itfs
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Gbp_ext_itf_dump>
 {
@@ -116,7 +116,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

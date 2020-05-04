@@ -64,7 +64,7 @@ private:
 };
 
 /**
- * A cmd class that Unconfigs L3 Config from an interface
+ * A cmd class that unconfigures L3 Config from an interface
  */
 class unconfig_cmd
   : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_unnumbered>
@@ -103,7 +103,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the IP unnumbered interfaces
+ * A cmd class that dumps all the IP unnumbered interfaces
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Ip_unnumbered_dump>
 {
@@ -129,7 +129,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

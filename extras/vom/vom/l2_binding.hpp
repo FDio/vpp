@@ -27,7 +27,7 @@
 
 namespace VOM {
 /**
- * A Clas representing the binding of an L2 interface to a bridge-domain
+ * A class representing the binding of an L2 interface to a bridge-domain
  * and the properties of that binding.
  */
 class l2_binding : public object_base
@@ -52,7 +52,7 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   l2_binding(const interface& itf, const bridge_domain& bd);
   l2_binding(const interface& itf,
@@ -142,7 +142,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const l2_binding& obj);
 

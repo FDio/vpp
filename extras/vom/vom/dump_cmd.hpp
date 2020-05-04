@@ -65,7 +65,7 @@ public:
   dump_cmd(const dump_cmd& d) = default;
 
   /**
-   * Constant iterator to the start of the records retunred during the dump
+   * Constant iterator to the start of the records returned during the dump
    */
   const_iterator begin()
   {
@@ -78,7 +78,7 @@ public:
   }
 
   /**
-   * Constant iterator to the end of the records retunred during the dump
+   * Constant iterator to the end of the records returned during the dump
    */
   const_iterator end()
   {
@@ -122,7 +122,7 @@ public:
 
 protected:
   /**
-   * The underlying promise that implements the synchornous nature
+   * The underlying promise that implements the synchronous nature
    * of the command issue
    */
   std::promise<rc_t> m_promise;
@@ -133,7 +133,7 @@ protected:
   void succeeded() {}
 
   /**
-   * The HW::cmd_q is a friend so it can call suceedded.
+   * The HW::cmd_q is a friend so it can call succeeded.
    */
   friend class HW::cmd_q;
 

@@ -93,7 +93,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps ip fib routes
+ * A cmd class that dumps ip fib routes
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Ip_route_dump>
 {
@@ -120,7 +120,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
   route::table_id_t m_id;

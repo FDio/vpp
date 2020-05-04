@@ -130,7 +130,7 @@ dump_cmd::to_string() const
   return ("ARP-proxy-dump");
 }
 
-}; // namesapce cmds
+}; // namespace cmds
 }; // namespace VOM
 
 /*

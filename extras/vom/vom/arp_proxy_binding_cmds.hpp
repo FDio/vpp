@@ -90,7 +90,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the Proxy ARP configs
+ * A cmd class that dumps all the Proxy ARP configs
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Proxy_arp_intfc_dump>
 {
@@ -116,7 +116,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

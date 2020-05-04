@@ -582,7 +582,7 @@ private:
 std::ostream& operator<<(std::ostream& os, const ip_route::key_t& key);
 std::ostream& operator<<(std::ostream& os, const ip_mroute::key_t& key);
 }; // namespace route
-}; // namesapce VPP
+}; // namespace VPP
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -111,7 +111,7 @@ public:
 };
 
 /**
- * A cmd class that Dumps all the bridge domains
+ * A cmd class that dumps all the bridge domains
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Bridge_domain_dump>
 {
@@ -138,7 +138,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

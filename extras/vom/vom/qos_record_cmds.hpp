@@ -90,7 +90,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the GBP endpoints
+ * A cmd class that dumps all the GBP endpoints
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Qos_record_dump>
 {
@@ -117,7 +117,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

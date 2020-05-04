@@ -23,7 +23,7 @@ namespace VOM {
 namespace ACL {
 /**
  * An ACL rule is the building block of an ACL. An ACL, which is
- * the object applied to an interface, is comprised of an ordersed
+ * the object applied to an interface, is comprised of an ordered
  * sequence of ACL rules.
  * This class is a wrapper around the VAPI generated struct and exports
  * an API with better types.
@@ -32,7 +32,7 @@ class l3_rule
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   l3_rule(uint32_t priority,
           const action_t& action,

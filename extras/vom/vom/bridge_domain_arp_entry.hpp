@@ -73,12 +73,12 @@ public:
   std::shared_ptr<bridge_domain_arp_entry> singular() const;
 
   /**
-   * Find the instnace of the bridge_domain domain in the OM
+   * Find the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<bridge_domain_arp_entry> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all bridge_domain-domain into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -129,18 +129,18 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const bridge_domain_arp_entry& obj);
 
   /**
-   * Find or add the instnace of the bridge_domain domain in the OM
+   * Find or add the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<bridge_domain_arp_entry> find_or_add(
     const bridge_domain_arp_entry& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 
